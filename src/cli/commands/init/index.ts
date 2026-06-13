@@ -56,6 +56,7 @@ import {
   scaffoldBaseKit,
 } from './scaffold-base-kit.js'
 import { scaffoldMonorepoNav } from './scaffold-monorepo-nav.js'
+import { scaffoldPostinstallPin } from './scaffolders/postinstall-pin/index.js'
 import {
   REQUIRED_CORE_CAPABILITIES,
   auditHostSkillVisibility,
@@ -499,6 +500,11 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
       GENERATED_PATHS_BLOCK,
       { dryRun: options.dryRun },
     )
+
+    const postinstallPinResult = scaffoldPostinstallPin({
+      repoRoot: consumer.repoRoot,
+      options,
+    })
 
     const baseKitResults = tier3Selection.includes('base-kit')
       ? scaffoldBaseKit({
@@ -1080,6 +1086,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
       ...agentSkillsReport.results,
       ...catalogIgnoreReport.results,
       generatedSurfaceIgnoreResult,
+      postinstallPinResult,
       ...baseKitResults,
       ...docsResults,
       ...blueprintResults,

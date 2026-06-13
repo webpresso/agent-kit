@@ -56,9 +56,9 @@ execution-owned vs authoring-owned dependency migration guidance. Re-running
 refreshes the webpresso-owned pieces and preserves consumer-owned files.
 
 The default cross-host Webpresso skill contract is intentionally curated:
-`fix`, `verify`, `testing-philosophy`, `plan-refine`, and `pll` are the shared
-favorites projected by default, while broader methodology/library skills stay
-opt-in via `wp setup --with ...`.
+`fix`, `verify`, `testing-philosophy`, `plan-refine`, `pll`, and
+`best-practice-research` are the shared favorites projected by default, while
+broader methodology/library skills stay opt-in via `wp setup --with ...`.
 
 > **`wp setup` is required for hooks.** Setup-managed host configs own active
 > hooks: Claude uses `.claude/settings.json`, Codex uses `.codex/hooks.json`,
@@ -92,7 +92,7 @@ vp run public:consumer-smoke -- --setup-only
 | **Summary-first `wp_*` MCP tools** | `wp_test` / `wp_typecheck` / `wp_lint` / `wp_qa` / `wp_e2e` / `wp_format` / `wp_ci_act` / `wp_audit` return JSON with `bytes` / `tokensSaved` budget metadata. Session-memory tools are registered and tested as `wp_session_doctor` / `wp_session_execute_file` / `wp_session_fetch_and_index` / `wp_session_index` / `wp_session_purge` / `wp_session_restore` / `wp_session_search` / `wp_session_stats`; see [`docs/guides/session-memory.md`](docs/guides/session-memory.md) for local storage, bounded outputs, reset safety, and non-goals. | [`src/mcp/tools/`](src/mcp/tools/) (each with co-located `.test.ts`), [`src/mcp/server.integration.test.ts`](src/mcp/server.integration.test.ts) |
 | **MCP server + CLI surface** | Registers the tool set and exposes it to agents | [`src/mcp/server.ts`](src/mcp/server.ts), [`src/mcp/cli.ts`](src/mcp/cli.ts), [`src/mcp/cli.integration.test.ts`](src/mcp/cli.integration.test.ts) |
 | **Blueprint runtime** | Lifecycle states, dependency-aware task graph, structured authoring control plane (`wp_blueprint_depgraph` / `put` / `transition`) | [`src/mcp/blueprint-server.ts`](src/mcp/blueprint-server.ts), [`docs/lifecycle.md`](docs/lifecycle.md), [`docs/blueprint-format.md`](docs/blueprint-format.md) |
-| **Audit contract family** | `blueprint-lifecycle`, `reference-parity-matrix`, `docs-frontmatter`, `catalog-drift`, `vision`, `architecture-drift`, `bundle-budget`, `commit-message` (Lore), `tech-debt`, `absolute-path-policy`, `open-source-licenses`, **`secrets-policy`**, **`no-dev-vars`**, **`secret-provider-quarantine`**, **`secrets-config`** — each runs as a `wp_audit` MCP tool **and** a pre-commit/CI gate | [`src/audit/`](src/audit/), [`src/mcp/tools/audit.ts`](src/mcp/tools/audit.ts), [`.github/workflows/ci.agent-kit.yml`](.github/workflows/ci.agent-kit.yml) |
+| **Audit contract family** | `blueprint-lifecycle`, `blueprint-readme-drift`, `reference-parity-matrix`, `docs-frontmatter`, `catalog-drift`, `vision`, `architecture-drift`, `cloudflare-deploy-contract`, `harness-surfaces`, `weakness-mining`, `harness-overlay-evidence`, `bundle-budget`, `commit-message` (Lore), `tech-debt`, `absolute-path-policy`, `open-source-licenses`, **`secrets-policy`**, **`no-dev-vars`**, **`secret-provider-quarantine`**, **`secrets-config`** — each runs through the `wp audit` CLI surface; the `wp_audit` MCP tool exposes the common agent-safe subset and guardrails runs the repo-shaped gate | [`src/audit/`](src/audit/), [`src/mcp/tools/audit.ts`](src/mcp/tools/audit.ts), [`.github/workflows/ci.agent-kit.yml`](.github/workflows/ci.agent-kit.yml) |
 | **Symlinker** | Syncs canonical `.agent/` to per-IDE surfaces (Codex/Amp skills, Gemini TOML commands) via rulesync | [`src/symlinker/index.ts`](src/symlinker/index.ts), [`src/symlinker/symlinker.integration.test.ts`](src/symlinker/symlinker.integration.test.ts), [`docs/symlinker.md`](docs/symlinker.md) |
 | **Mutation testing** | `wp audit mutation` (Stryker) catches tests that pass without asserting | [`src/config/stryker/`](src/config/stryker/), `./stryker` + `./mutation` exports |
 | **Tech-debt lifecycle** | `accepted → needs-remediation → monitoring → resolved`, auto-filed from failing audits | [`src/blueprint/tech-debt/`](src/blueprint/tech-debt/), [`src/cli/commands/tech-debt/`](src/cli/commands/tech-debt/) |
@@ -197,7 +197,7 @@ Cursor/OpenCode degraded host coverage documented in the hook matrix.
 ## Defaults and opt-ins
 
 - Default cross-host favorites: `fix`, `verify`, `testing-philosophy`,
-  `plan-refine`, `pll`
+  `plan-refine`, `pll`, `best-practice-research`
 - Opt-in shared add-ons: `systematic-debugging`, `test-driven-development`,
   `deep-research`
 - Opt-in rendered source skill: `monorepo-navigation`

@@ -111,7 +111,7 @@ function formatHazardNumber(n: number): string {
 
 // ── From-audit helpers ────────────────────────────────────────────────────────
 
-type SupportedAuditName = 'skill-sizes' | 'broken-refs' | 'memory-rotation'
+type SupportedAuditName = 'skill-sizes' | 'broken-refs' | 'memory-rotation' | 'weakness-mining'
 
 interface AuditFinding {
   file?: string
@@ -123,7 +123,12 @@ interface FromAuditResult {
   auditName: SupportedAuditName
 }
 
-const SUPPORTED_FROM_AUDIT_NAMES = ['skill-sizes', 'broken-refs', 'memory-rotation'] as const
+const SUPPORTED_FROM_AUDIT_NAMES = [
+  'skill-sizes',
+  'broken-refs',
+  'memory-rotation',
+  'weakness-mining',
+] as const
 
 function isSupportedAuditName(name: string): name is SupportedAuditName {
   return (SUPPORTED_FROM_AUDIT_NAMES as readonly string[]).includes(name)
@@ -158,6 +163,17 @@ async function runAuditForTechDebt(
           message: `Unacked rotation: section '${e.sectionSlug}' (${e.daysAgo}d ago)`,
         }))
       return { auditName, findings }
+    }
+    case 'weakness-mining': {
+      const { mineWeaknesses } = await import('#audit/weakness-mining/index')
+      const result = mineWeaknesses(cwd)
+      return {
+        auditName,
+        findings: result.findings.map((finding) => ({
+          file: finding.files[0],
+          message: finding.message,
+        })),
+      }
     }
   }
 }
@@ -211,6 +227,8 @@ function auditNameToSeverity(auditName: SupportedAuditName): TechDebtSeverity {
       return 'high'
     case 'memory-rotation':
       return 'low'
+    case 'weakness-mining':
+      return 'medium'
   }
 }
 

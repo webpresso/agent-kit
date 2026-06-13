@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-05-09'
+last_updated: '2026-06-13'
 ---
 
 # Symlinker
@@ -97,6 +97,34 @@ the symlinker:
    ```
 3. Deletes `.gemini/commands/*.toml` whose source `.md` no longer exists
    (stale-artifact cleanup).
+
+### Evidence-backed agent overlays
+
+`wp sync` also performs a validation-only pass over optional
+`agent-overlays/<cli>/manifest.yaml` files. Overlays are the dormant harness
+extension point for future CLI-specific deltas: they must name the target CLI,
+list affected harness surfaces, cite local evidence files, and avoid target
+collisions with other overlays or `catalog/agent/` canonical content.
+
+Current behavior is deliberately conservative: valid overlay manifests are
+reported as validated, invalid manifests block sync, and no overlay files are
+projected into generated host surfaces yet. The first projected overlay should
+only ship after `wp audit weakness-mining`, the harness gate, and
+`wp audit harness-overlay-evidence` prove a concrete supported-CLI behavior gap.
+
+Minimal manifest shape:
+
+```yaml
+version: 1
+cli: codex
+surfaces:
+  - generated-agent-surfaces
+evidence:
+  - evidence.md
+files:
+  - source: prompt.md
+    target: overlays/codex/prompt.md
+```
 
 ## Commands
 

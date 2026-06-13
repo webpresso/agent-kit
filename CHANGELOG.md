@@ -12,6 +12,43 @@
   distinguish proven support from open or degraded rows until the strict
   reference-parity gate is green.
 
+## 0.34.5
+
+### Patch Changes
+
+- a8d2f1f: Fix: add `open-source-licenses` to `wp_audit` MCP tool kind enum
+
+  `open-source-licenses` existed in the CLI `REPO_AUDIT_REGISTRY` and ran
+  correctly via `wp audit guardrails`, but was omitted from the MCP tool's
+  `AUDIT_KINDS` enum in `_shared/audit-kinds.ts`. Calling
+  `wp_audit({kind: "open-source-licenses"})` returned
+  `"Invalid wp_audit input for open-source-licenses"` instead of running
+  the audit.
+
+  Adds the kind to the enum, wires the dispatch case in `audit.ts`, updates
+  the tool description string, and adds a regression test.
+
+  Note: `guardrails` is a CLI-only umbrella that runs all repo audit kinds as
+  an aggregate — it is intentionally not an MCP kind.
+
+## 0.34.4
+
+### Patch Changes
+
+- d063a0d: Fix wp-pretool-guard deny message and add postinstall-pin scaffolder.
+
+  `wp setup` now adds `"postinstall": "wp setup"` to consumer `package.json`
+  so managed hooks are regenerated on every `pnpm install` after an upgrade.
+
+  The pretool-guard deny message no longer misleads with "Run vp install" —
+  it now says "Install @webpresso/agent-kit globally and re-run wp setup."
+
+## 0.34.3
+
+### Patch Changes
+
+- c90bc62: Fix Codex Context7 MCP setup by emitting the required Accept header while keeping API keys provider-injected via env-backed headers. Also make the QA flow auto-format when possible and tighten related setup, audit, and blueprint validation coverage.
+
 ## 0.34.2
 
 ### Patch Changes
