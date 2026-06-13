@@ -1,6 +1,6 @@
 ---
 type: docs-index
-last_updated: '2026-05-31'
+last_updated: '2026-06-13'
 ---
 
 # webpresso docs
@@ -25,8 +25,8 @@ Core references:
 
 Maintainer release gate:
 
-- Run `npm run public:readiness` for the package-release gate.
-- Run `npm run public:readiness -- --require-repo-visibility` only when the
+- Run `vp run public:readiness` for the package-release gate.
+- Run `vp run public:readiness -- --require-repo-visibility` only when the
   history/public-visibility strategy has also been executed.
 
 The product surface should stay simple: install the package, run `wp setup`, and

@@ -87,9 +87,8 @@ describe('quality log store', () => {
       ),
     ).toEqual([])
     expect(
-      readdirSync(join(stateRoot.path, 'cli-logs', 'audit')).filter((file) =>
-        file.endsWith('.log'),
-      ).length,
+      readdirSync(join(stateRoot.path, 'cli-logs', 'audit')).filter((file) => file.endsWith('.log'))
+        .length,
     ).toBe(13)
   })
 

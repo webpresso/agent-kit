@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-06-08'
+last_updated: '2026-06-13'
 ---
 
 # Skills catalog
@@ -88,6 +88,19 @@ wp skill install tanstack-query
 | `web-design-guidelines/` | General web-UI guidelines. |
 | `vercel-react-best-practices/` | Vercel / React deployment hygiene, server-cache patterns, edge-runtime considerations. |
 
+### Operational/domain catalog skills
+
+These are catalog-owned skills for repo operations or general engineering
+practice. They can be installed explicitly with `wp skill install <name>` when
+a consumer wants the surface.
+
+| Skill | Scope |
+|---|---|
+| `hooks-doctor/` | Verify and troubleshoot webpresso plugin hook installation health. |
+| `lore-protocol/` | Structured commit-message / Lore protocol guidance. |
+| `tech-debt/` | Manage the `wp tech-debt` lifecycle and tech-debt audits. |
+| `logging-best-practices/` | General logging-quality practices from the vendored third-party skill source. |
+
 Two skills from webpresso's `.agent/skills/` that are `[OMX]`-marked
 and therefore **not** in the catalog: `visual-verdict`, `web-clone`.
 
@@ -112,11 +125,22 @@ At `.agent/rules/*.md`. Short enforceable rules that cite and diff well.
 
 | Rule | Gist |
 |---|---|
+| `agent-guide.md` | Top-level behavior rules and deterministic boundaries. |
 | `blueprint-scoping.md` | Infra blueprints must anchor to a product wedge or stay in `draft/`. |
-| `cmd-execution.md` | How to run repo commands (use the task runner, don't shell raw). |
-| `generated-code-governance.md` | Don't hand-edit generated files; re-generate from the source of truth. |
-| `repo-restrictions.md` | What agents may / may not do in this repo. |
-| `agent-guide.md` | Top-level behavior rules (deterministic boundaries, lore-commit protocol, etc). |
+| `changeset-release.md` | Changesets release protocol and versioning boundaries. |
+| `cmd-execution.md` | How to run repo commands through the supported facade. |
+| `engineering-principles.md` | General implementation quality principles. |
+| `extraction-parity.md` | Keep extracted/shared surfaces behaviorally equivalent. |
+| `generated-code-governance.md` | Do not hand-edit generated files; regenerate from source truth. |
+| `gstack-routing.md` | gstack integration routing and ownership rules. |
+| `no-timeout-as-fix.md` | Treat timeout failures as diagnostics, not fixes. |
+| `package-conventions.md` | Workspace/package conventions, import boundaries, and publish rules. |
+| `pre-implementation.md` | Blueprint-before-nontrivial-implementation gate. |
+| `public-package-safety.md` | Public package/tarball safety requirements. |
+| `repo-restrictions.md` | What agents may and may not do in this repo. |
+| `rtk-routing.md` | RTK integration routing and guard expectations. |
+| `supported-agent-clis.md` | Single source of truth for supported agent CLI tiers. |
+| `ts-coding-conventions.md` | TypeScript coding conventions for generated/consumer code. |
 
 ## Guides (always installed)
 
@@ -134,7 +158,8 @@ A dedicated `wp docs new` scaffold command is not shipped today.
 
 - `blueprint.md` + `blueprint.yaml` — the canonical plan template.
 - `adr.md` — Architecture Decision Record.
-- `guide.md` — how-to guide shape.
+- `core-doc.yaml` — common frontmatter schema for core docs.
+- `guide.md` + `guide.yaml` — how-to guide shape and schema.
 - `research.md` — research doc frontmatter + structure.
 - `postmortem.md` — incident postmortem.
 - `system.md` — system-level reference doc.
@@ -186,15 +211,18 @@ when there is a concrete upstream contract.
 | Skills (shared favorites) | 6 |
 | Skills (shared + rendered opt-ins) | 4 |
 | Skills (tech/library opt-in) | 6 |
+| Skills (operational/domain) | 4 |
 | Workflows | 7 |
-| Rules | 5 |
+| Rules | 16 |
 | Guides | 4 |
-| Doc templates | 8 |
+| Doc templates | 11 |
 | `AGENTS.md.tpl` | 1 |
+| Harness manifests/docs | 3 |
 
-Total catalog size: **51 primary files** (plus the support files inside
-multi-file skills like `tanstack-query/` and the reference example in
-`monorepo-navigation/examples/`).
+Total catalog size: **72 primary files** by current doc grouping (plus the
+support files inside multi-file skills like `tanstack-query/` and the reference
+example in `monorepo-navigation/examples/`). Run `wp audit catalog-drift` after
+catalog edits to catch generated-surface drift.
 
 ## What's deliberately NOT in the catalog
 
