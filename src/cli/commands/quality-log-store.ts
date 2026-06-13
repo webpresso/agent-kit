@@ -7,6 +7,7 @@ import {
   readFileSync,
   statSync,
   renameSync,
+  utimesSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
@@ -94,6 +95,7 @@ export function createCliLogSink(command: CliLogCommandName, cwd = process.cwd()
         ...(metadata.summary ? { summary: metadata.summary } : {}),
       }
       try {
+        markLogRecentlyFinalized(absoluteLogPath)
         writeLogEntry(entry, cwd)
       } finally {
         rmSync(activeMarkerPath, { force: true })
@@ -214,6 +216,11 @@ function pruneInactiveOrphanedLogFiles(
       rmSync(absolutePath, { force: true })
     }
   }
+}
+
+function markLogRecentlyFinalized(logPath: string): void {
+  const now = new Date()
+  utimesSync(logPath, now, now)
 }
 
 function canPruneLogPath(logPath: string): boolean {

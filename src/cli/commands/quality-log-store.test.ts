@@ -110,6 +110,26 @@ describe('quality log store', () => {
     expect(readFileSync(victimEntry.logPath, 'utf8')).toContain('victim')
   })
 
+
+  it('stamps quiet logs as recent when they finalize', async () => {
+    const victim = createCliLogSink('test')
+    victim.write('victim\n')
+    const stale = new Date(Date.now() - 120_000)
+    utimesSync(victim.absoluteLogPath, stale, stale)
+
+    const victimEntry = await victim.finalize({ exitCode: 0, summary: 'victim' })
+
+    await Promise.all(
+      Array.from({ length: 12 }, async (_, index) => {
+        const sink = createCliLogSink('test')
+        sink.write(`new-${index}\n`)
+        await sink.finalize({ exitCode: 0, summary: `new ${index}` })
+      }),
+    )
+
+    expect(readFileSync(victimEntry.logPath, 'utf8')).toContain('victim')
+  })
+
   it('retains only the latest 10 entries and prunes old log files', async () => {
     let oldestPath = ''
     for (let index = 0; index < 11; index += 1) {
