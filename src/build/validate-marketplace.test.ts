@@ -93,11 +93,11 @@ describe('.codex-plugin/plugin.json', () => {
     resolve(repoRoot, '.claude-plugin', 'plugin.json'),
   )
 
-  it('shares identity with the Claude plugin (same name + skills dir)', () => {
+  it('shares identity with the Claude plugin and exposes plugin-scoped skills', () => {
     expect(codexPlugin.name).toBe('agent-kit')
     expect(codexPlugin.name).toBe(claudePlugin.name)
-    expect(codexPlugin.skills).toBe('./skills')
-    expect(codexPlugin.skills).toBe(claudePlugin.skills)
+    expect(codexPlugin.skills?.replace(/\/+$/, '')).toBe('./skills')
+    expect(claudePlugin.skills?.replace(/\/+$/, '')).toBe('./skills')
   })
 
   it('mirrors package.json#version (drift gate, synced by sync-marketplace-version)', () => {
@@ -108,9 +108,7 @@ describe('.codex-plugin/plugin.json', () => {
     expect(JSON.stringify(codexPlugin)).not.toContain('CLAUDE_PLUGIN_ROOT')
   })
 
-  it('does not bundle an MCP server (Codex MCP is wired via ~/.codex/config.toml)', () => {
-    // Bundling mcpServers here would double-register webpresso alongside the
-    // codex-mcp scaffolder's config.toml entry.
-    expect(codexPlugin.mcpServers).toBeUndefined()
+  it('declares the Codex plugin-scoped MCP server manifest', () => {
+    expect(codexPlugin.mcpServers).toBe('./codex.mcp.json')
   })
 })
