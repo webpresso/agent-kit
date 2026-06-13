@@ -10,3 +10,5 @@ This directory declares deterministic reference-consumer suites for the harness 
 Suite IDs are stable and must be cited in regression verdict evidence.
 
 The CI job intentionally emits a `planned-only` verdict: it proves surface-to-suite selection in this repository without executing downstream consumer suites on GitHub-hosted runners. Local release checks may pass `--execute` with consumer worktree roots to run the declared suites.
+
+Verdicts include `mode`, `plannedOnly`, `manifestBacked`, and per-suite `suiteSource` fields so CI selection proof cannot be confused with downstream manifest-backed execution.

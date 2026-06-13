@@ -42,6 +42,7 @@ export type HarnessGateConsumer = z.infer<typeof consumerSchema>
 export type HarnessGateSuite = z.infer<typeof suiteSchema>
 export interface HarnessGatePlanSuite extends HarnessGateSuite {
   consumer: string
+  suiteSource: 'manifest' | 'synthetic'
 }
 export interface HarnessGatePlan {
   consumers: HarnessGateConsumer[]
@@ -51,6 +52,7 @@ export interface HarnessGateVerdict {
   ok: boolean
   mode: 'planned-only' | 'executed'
   plannedOnly: boolean
+  manifestBacked: boolean
   triggeredSurfaces: string[]
   suites: Array<
     HarnessGatePlanSuite & { status: 'passed' | 'failed' | 'planned'; exitCode?: number }
@@ -78,7 +80,13 @@ export function loadHarnessGatePlan(rootDirectory: string = process.cwd()): Harn
     for (const suiteId of [...consumer.heldInSuites, ...consumer.heldOutSuites]) {
       if (!declaredSuiteIds.has(suiteId)) throw new Error(`${consumer.id} missing suite ${suiteId}`)
     }
-    suites.push(...manifest.suites.map((suite) => ({ ...suite, consumer: consumer.id })))
+    suites.push(
+      ...manifest.suites.map((suite) => ({
+        ...suite,
+        consumer: consumer.id,
+        suiteSource: 'manifest' as const,
+      })),
+    )
   }
   return { consumers: consumers.consumers, suites }
 }
@@ -134,6 +142,7 @@ export function buildHarnessGateVerdict(input: {
     ok: suites.every((suite) => suite.status !== 'failed'),
     mode: plannedOnly ? 'planned-only' : 'executed',
     plannedOnly,
+    manifestBacked: suites.every((suite) => suite.suiteSource === 'manifest'),
     triggeredSurfaces: [...triggered].sort(),
     suites,
   }
@@ -147,6 +156,7 @@ function synthesizeExternalSuites(consumer: HarnessGateConsumer): HarnessGatePla
     surfaces: consumer.harnessSurfaces,
     proof: `External manifest ${consumer.suiteManifest} for ${consumer.id} was unavailable; planned verdict only.`,
     consumer: consumer.id,
+    suiteSource: 'synthetic',
   })
   return [
     ...consumer.heldInSuites.map((id) => synthesize(id, 'held-in')),
@@ -192,8 +202,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   else {
     console.log(`Harness gate: ${verdict.ok ? 'OK' : 'FAILED'}`)
     console.log(`Mode: ${verdict.mode}`)
+    console.log(`Manifest-backed suites: ${verdict.manifestBacked ? 'yes' : 'no'}`)
     console.log(`Triggered surfaces: ${verdict.triggeredSurfaces.join(', ') || '(none)'}`)
-    for (const suite of verdict.suites) console.log(`- ${suite.id}: ${suite.status}`)
+    for (const suite of verdict.suites)
+      console.log(`- ${suite.id}: ${suite.status} (${suite.suiteSource})`)
   }
   process.exit(verdict.ok ? 0 : 1)
 }

@@ -45,7 +45,8 @@ describe('readPretoolEvidence', () => {
     const result = readPretoolEvidence(root, { maxDirectories: 1, maxDepth: 1 })
 
     expect(result.records).toEqual([])
-    expect(result.warnings.some((warning) => warning.includes('search stopped after 1 directories'))).toBe(true)
+    expect(
+      result.warnings.some((warning) => warning.includes('search stopped after 1 directories')),
+    ).toBe(true)
   })
-
 })

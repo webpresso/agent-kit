@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -45,6 +45,7 @@ describe('harness gate runner', () => {
     const plan = loadHarnessGatePlan(root)
 
     expect(plan.suites.map((suite) => suite.id)).toEqual(['sample.smoke', 'sample.deep'])
+    expect(plan.suites.map((suite) => suite.suiteSource)).toEqual(['manifest', 'manifest'])
   })
 
   it('detects changed harness surfaces and creates planned verdicts', () => {
@@ -56,6 +57,26 @@ describe('harness gate runner', () => {
     expect(verdict.ok).toBe(true)
     expect(verdict.mode).toBe('planned-only')
     expect(verdict.plannedOnly).toBe(true)
+    expect(verdict.manifestBacked).toBe(true)
     expect(verdict.suites.map((suite) => suite.status)).toEqual(['planned', 'planned'])
   })
+
+  it('labels synthetic suites when downstream manifests are unavailable', () => {
+    rmSync(join(consumerRoot, 'harness-gate', 'suites.yaml'), { force: true })
+
+    const plan = loadHarnessGatePlan(root)
+    const verdict = buildHarnessGateVerdict({
+      plan,
+      triggeredSurfaces: ['codex-hooks'],
+      rootDirectory: root,
+    })
+
+    expect(plan.suites.map((suite) => suite.suiteSource)).toEqual(['synthetic', 'synthetic'])
+    expect(verdict.manifestBacked).toBe(false)
+    expect(verdict.suites.map((suite) => suite.proof)).toEqual([
+      expect.stringContaining('planned verdict only'),
+      expect.stringContaining('planned verdict only'),
+    ])
+  })
+
 })

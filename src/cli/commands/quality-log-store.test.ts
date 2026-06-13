@@ -58,7 +58,6 @@ describe('quality log store', () => {
     expect(existsSync(second.absoluteLogPath)).toBe(true)
   })
 
-
   it('preserves concurrent finalized entries and removes inactive orphan logs', async () => {
     const active = createCliLogSink('audit')
     active.write('still running\n')
@@ -82,8 +81,16 @@ describe('quality log store', () => {
     const entries = readCliLogEntries('audit')
     expect(entries).toHaveLength(10)
     expect(entries[0]?.summary).toBe('still running')
-    expect(readdirSync(join(stateRoot.path, 'cli-logs', 'audit')).filter((file) => file.endsWith('.log.active'))).toEqual([])
-    expect(readdirSync(join(stateRoot.path, 'cli-logs', 'audit')).filter((file) => file.endsWith('.log'))).toHaveLength(10)
+    expect(
+      readdirSync(join(stateRoot.path, 'cli-logs', 'audit')).filter((file) =>
+        file.endsWith('.log.active'),
+      ),
+    ).toEqual([])
+    expect(
+      readdirSync(join(stateRoot.path, 'cli-logs', 'audit')).filter((file) =>
+        file.endsWith('.log'),
+      ),
+    ).toHaveLength(10)
   })
 
   it('retains only the latest 10 entries and prunes old log files', async () => {

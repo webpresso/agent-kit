@@ -106,8 +106,7 @@ function collectCandidateFiles(
     warnings.push(...found.warnings)
     for (const file of found.files) {
       candidates.add(normalize(root, file))
-      if (candidates.size >= limits.maxFiles)
-        return { candidateFiles: [...candidates], warnings }
+      if (candidates.size >= limits.maxFiles) return { candidateFiles: [...candidates], warnings }
     }
   }
 

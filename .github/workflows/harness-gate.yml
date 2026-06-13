@@ -1,4 +1,4 @@
-name: Harness Gate
+name: Harness Gate (planned-only)
 
 on:
   pull_request:
@@ -12,6 +12,7 @@ on:
 
 jobs:
   verdict:
+    name: Planned-only harness gate verdict
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
