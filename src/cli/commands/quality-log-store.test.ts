@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -43,7 +43,6 @@ describe('quality log store', () => {
     expect(existsSync(sink.absoluteLogPath)).toBe(true)
   })
 
-
   it('does not remove another active sink before it finalizes', async () => {
     const first = createCliLogSink('audit')
     const second = createCliLogSink('audit')
@@ -57,6 +56,34 @@ describe('quality log store', () => {
 
     await second.finalize({ exitCode: 0, summary: 'second run' })
     expect(existsSync(second.absoluteLogPath)).toBe(true)
+  })
+
+
+  it('preserves concurrent finalized entries and removes inactive orphan logs', async () => {
+    const active = createCliLogSink('audit')
+    active.write('still running\n')
+
+    await Promise.all(
+      Array.from({ length: 12 }, async (_, index) => {
+        const sink = createCliLogSink('audit')
+        sink.write(`run-${index}\n`)
+        await sink.finalize({ exitCode: 0, summary: `run ${index}` })
+      }),
+    )
+
+    expect(existsSync(active.absoluteLogPath)).toBe(true)
+
+    const entriesBeforeActiveFinalizes = readCliLogEntries('audit')
+    expect(entriesBeforeActiveFinalizes).toHaveLength(10)
+    expect(new Set(entriesBeforeActiveFinalizes.map((entry) => entry.id)).size).toBe(10)
+
+    await active.finalize({ exitCode: 0, summary: 'still running' })
+
+    const entries = readCliLogEntries('audit')
+    expect(entries).toHaveLength(10)
+    expect(entries[0]?.summary).toBe('still running')
+    expect(readdirSync(join(stateRoot.path, 'cli-logs', 'audit')).filter((file) => file.endsWith('.log.active'))).toEqual([])
+    expect(readdirSync(join(stateRoot.path, 'cli-logs', 'audit')).filter((file) => file.endsWith('.log'))).toHaveLength(10)
   })
 
   it('retains only the latest 10 entries and prunes old log files', async () => {

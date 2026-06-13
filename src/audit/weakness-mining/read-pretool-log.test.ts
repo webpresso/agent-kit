@@ -36,4 +36,16 @@ describe('readPretoolEvidence', () => {
       lineNumber: 2,
     })
   })
+
+  it('stops log discovery at explicit traversal bounds with warnings', () => {
+    mkdirSync(join(root, '.omx', 'state', 'a', 'b', 'c'), { recursive: true })
+    mkdirSync(join(root, '.omx', 'runtime', 'one', 'two', 'three'), { recursive: true })
+    mkdirSync(join(root, 'logs', 'x', 'y', 'z'), { recursive: true })
+
+    const result = readPretoolEvidence(root, { maxDirectories: 1, maxDepth: 1 })
+
+    expect(result.records).toEqual([])
+    expect(result.warnings.some((warning) => warning.includes('search stopped after 1 directories'))).toBe(true)
+  })
+
 })

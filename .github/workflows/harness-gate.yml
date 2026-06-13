@@ -24,5 +24,5 @@ jobs:
         with:
           bun-version: latest
       - run: pnpm install --frozen-lockfile
-      - name: Produce harness gate verdict
+      - name: Produce planned-only harness gate verdict
         run: bun scripts/bench/harness-gate/index.ts --json --changed-file catalog/agent/harness-surfaces.yaml

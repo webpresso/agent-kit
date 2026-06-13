@@ -28,7 +28,8 @@ overlay.
   overlay.
 - Overlay support is now available through `agent-overlays/<cli>/manifest.yaml`
   with required evidence, source validation, target collision checks, and
-  `wp sync` preflight validation.
+  `wp sync` validation-only preflight. Overlay files are not projected by
+  `wp sync` until a future evidence-backed overlay changes the sync contract.
 
 ## Decision
 

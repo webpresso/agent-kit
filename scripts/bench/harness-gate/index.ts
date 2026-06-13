@@ -49,6 +49,8 @@ export interface HarnessGatePlan {
 }
 export interface HarnessGateVerdict {
   ok: boolean
+  mode: 'planned-only' | 'executed'
+  plannedOnly: boolean
   triggeredSurfaces: string[]
   suites: Array<
     HarnessGatePlanSuite & { status: 'passed' | 'failed' | 'planned'; exitCode?: number }
@@ -127,8 +129,11 @@ export function buildHarnessGateVerdict(input: {
       exitCode,
     }
   })
+  const plannedOnly = !input.execute
   return {
     ok: suites.every((suite) => suite.status !== 'failed'),
+    mode: plannedOnly ? 'planned-only' : 'executed',
+    plannedOnly,
     triggeredSurfaces: [...triggered].sort(),
     suites,
   }
@@ -186,6 +191,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   if (args.json) console.log(JSON.stringify(verdict, null, 2))
   else {
     console.log(`Harness gate: ${verdict.ok ? 'OK' : 'FAILED'}`)
+    console.log(`Mode: ${verdict.mode}`)
     console.log(`Triggered surfaces: ${verdict.triggeredSurfaces.join(', ') || '(none)'}`)
     for (const suite of verdict.suites) console.log(`- ${suite.id}: ${suite.status}`)
   }

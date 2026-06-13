@@ -54,6 +54,8 @@ describe('harness gate runner', () => {
 
     expect(triggeredSurfaces).toEqual(['codex-hooks'])
     expect(verdict.ok).toBe(true)
+    expect(verdict.mode).toBe('planned-only')
+    expect(verdict.plannedOnly).toBe(true)
     expect(verdict.suites.map((suite) => suite.status)).toEqual(['planned', 'planned'])
   })
 })

@@ -80,7 +80,7 @@ surfaces:
       - .github/workflows
     triggers:
       - wp audit harness-surfaces
-      - wp harness-gate
+      - bun scripts/bench/harness-gate/index.ts
     evidence:
       - catalog/agent/harness-surfaces.yaml
   - id: agent-overlays

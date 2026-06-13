@@ -18,6 +18,8 @@ export interface ReadPretoolEvidenceOptions {
   logFiles?: readonly string[]
   maxFiles?: number
   maxBytesPerFile?: number
+  maxDirectories?: number
+  maxDepth?: number
 }
 
 const DEFAULT_CANDIDATE_FILES = [
@@ -33,8 +35,15 @@ export function readPretoolEvidence(
   const root = resolve(rootDirectory)
   const maxFiles = options.maxFiles ?? 24
   const maxBytesPerFile = options.maxBytesPerFile ?? 512_000
-  const candidateFiles = collectCandidateFiles(root, options.logFiles, maxFiles)
-  const warnings: string[] = []
+  const maxDirectories = options.maxDirectories ?? 256
+  const maxDepth = options.maxDepth ?? 8
+  const collected = collectCandidateFiles(root, options.logFiles, {
+    maxFiles,
+    maxDirectories,
+    maxDepth,
+  })
+  const candidateFiles = collected.candidateFiles
+  const warnings: string[] = [...collected.warnings]
   const records: PretoolLogRecord[] = []
 
   for (const candidate of candidateFiles) {
@@ -66,58 +75,96 @@ export function readPretoolEvidence(
   return { records, candidateFiles, warnings }
 }
 
+interface CandidateCollectionLimits {
+  maxFiles: number
+  maxDirectories: number
+  maxDepth: number
+}
+
+interface CandidateCollectionResult {
+  candidateFiles: string[]
+  warnings: string[]
+}
+
 function collectCandidateFiles(
   root: string,
   explicitFiles: readonly string[] | undefined,
-  maxFiles: number,
-): string[] {
+  limits: CandidateCollectionLimits,
+): CandidateCollectionResult {
   if (explicitFiles && explicitFiles.length > 0)
-    return explicitFiles.map((file) => normalize(root, file))
+    return { candidateFiles: explicitFiles.map((file) => normalize(root, file)), warnings: [] }
 
   const candidates = new Set<string>()
+  const warnings: string[] = []
   for (const file of DEFAULT_CANDIDATE_FILES) candidates.add(file)
 
   const envLogDir = process.env.PRETOOL_LOG_DIR
   if (envLogDir) candidates.add(normalize(root, join(envLogDir, 'pretool-guard.log')))
 
   for (const rootRelativeDir of ['.omx/state', '.omx/runtime', 'logs']) {
-    for (const file of findNamedFiles(
-      resolve(root, rootRelativeDir),
-      'pretool-guard.log',
-      maxFiles,
-    )) {
+    const found = findNamedFiles(resolve(root, rootRelativeDir), 'pretool-guard.log', limits)
+    warnings.push(...found.warnings)
+    for (const file of found.files) {
       candidates.add(normalize(root, file))
-      if (candidates.size >= maxFiles) return [...candidates]
+      if (candidates.size >= limits.maxFiles)
+        return { candidateFiles: [...candidates], warnings }
     }
   }
 
-  return [...candidates]
+  return { candidateFiles: [...candidates], warnings }
 }
 
-function findNamedFiles(startDir: string, fileName: string, maxFiles: number): string[] {
-  const found: string[] = []
-  const stack = [startDir]
-  while (stack.length > 0 && found.length < maxFiles) {
-    const dir = stack.pop()
-    if (!dir || !existsSync(dir)) continue
+interface NamedFileSearchResult {
+  files: string[]
+  warnings: string[]
+}
+
+function findNamedFiles(
+  startDir: string,
+  fileName: string,
+  limits: CandidateCollectionLimits,
+): NamedFileSearchResult {
+  const files: string[] = []
+  const warnings: string[] = []
+  const stack: Array<{ path: string; depth: number }> = [{ path: startDir, depth: 0 }]
+  let visitedDirectories = 0
+  let depthWarningEmitted = false
+
+  while (stack.length > 0 && files.length < limits.maxFiles) {
+    if (visitedDirectories >= limits.maxDirectories) {
+      warnings.push(`${startDir} search stopped after ${limits.maxDirectories} directories`)
+      break
+    }
+
+    const current = stack.pop()
+    if (!current || !existsSync(current.path)) continue
+    visitedDirectories += 1
+
     let entries
     try {
-      entries = readdirSync(dir, { withFileTypes: true })
+      entries = readdirSync(current.path, { withFileTypes: true })
     } catch {
       continue
     }
     for (const entry of entries) {
-      const fullPath = join(dir, entry.name)
+      const fullPath = join(current.path, entry.name)
       if (entry.isDirectory()) {
         if (entry.name === 'node_modules' || entry.name === '.git') continue
-        stack.push(fullPath)
+        if (current.depth >= limits.maxDepth) {
+          if (!depthWarningEmitted) {
+            warnings.push(`${startDir} search stopped at depth ${limits.maxDepth}`)
+            depthWarningEmitted = true
+          }
+          continue
+        }
+        stack.push({ path: fullPath, depth: current.depth + 1 })
       } else if (entry.isFile() && entry.name === fileName) {
-        found.push(fullPath)
-        if (found.length >= maxFiles) break
+        files.push(fullPath)
+        if (files.length >= limits.maxFiles) break
       }
     }
   }
-  return found
+  return { files, warnings }
 }
 
 function normalize(root: string, filePath: string): string {

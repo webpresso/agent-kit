@@ -8,3 +8,5 @@ This directory declares deterministic reference-consumer suites for the harness 
 - `heldOutSuites` are stronger confidence checks used before declaring a change release-ready.
 
 Suite IDs are stable and must be cited in regression verdict evidence.
+
+The CI job intentionally emits a `planned-only` verdict: it proves surface-to-suite selection in this repository without executing downstream consumer suites on GitHub-hosted runners. Local release checks may pass `--execute` with consumer worktree roots to run the declared suites.
