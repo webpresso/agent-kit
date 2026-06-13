@@ -4,19 +4,17 @@ import { tmpdir } from 'node:os'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { loadNativeSessionMemoryEngine } from './native-runtime.js'
 import { SessionMemoryStore, getStore, resetStoreCacheForTests } from './store.js'
 import type { SessionStore } from './store.js'
 
 let tmpDir: string
 let dbPath: string
-let nativeStore: SessionStore
+let sharedStore: SessionStore
 
 beforeEach(() => {
-  loadNativeSessionMemoryEngine()
-  tmpDir = mkdtempSync(join(tmpdir(), 'wp-native-store-test-'))
+  tmpDir = mkdtempSync(join(tmpdir(), 'wp-local-store-test-'))
   dbPath = join(tmpDir, 'memory.db')
-  nativeStore = getStore(dbPath)
+  sharedStore = getStore(dbPath)
 })
 
 afterEach(() => {
@@ -24,43 +22,43 @@ afterEach(() => {
   rmSync(tmpDir, { recursive: true, force: true })
 })
 
-describe('native session-memory store', () => {
+describe('shared TypeScript session-memory store adapter', () => {
   it('returns the same cached store per dbPath', () => {
-    expect(getStore(dbPath)).toBe(nativeStore)
+    expect(getStore(dbPath)).toBe(sharedStore)
   })
 
   it('indexes chunks and returns porter matches', () => {
-    nativeStore.insertChunks(
+    sharedStore.insertChunks(
       Array.from({ length: 20 }, (_, index) => ({
         source: 'notes',
         content: index < 5 ? `session memory fox ${index}` : `other content ${index}`,
       })),
     )
-    const hits = nativeStore.search({ query: 'session memory fox', limit: 5 })
+    const hits = sharedStore.search({ query: 'session memory fox', limit: 5 })
     expect(hits.length).toBeGreaterThan(0)
     expect(hits[0]?.tier).toBe('porter')
   })
 
   it('surfaces trigram fallback hits for partial tokens', () => {
-    nativeStore.insertChunks([{ source: 'partial', content: 'alphabet soup and session memory' }])
-    const hits = nativeStore.search({ query: 'alphab', limit: 5 })
+    sharedStore.insertChunks([{ source: 'partial', content: 'alphabet soup and session memory' }])
+    const hits = sharedStore.search({ query: 'alphab', limit: 5 })
     expect(hits.length).toBeGreaterThan(0)
     expect(['porter', 'trigram']).toContain(hits[0]?.tier)
   })
 
   it('surfaces levenshtein fallback hits for typos', () => {
-    nativeStore.insertChunks([{ source: 'typo', content: 'contextual memory restores state' }])
-    const hits = nativeStore.search({ query: 'memry', limit: 5 })
+    sharedStore.insertChunks([{ source: 'typo', content: 'contextual memory restores state' }])
+    const hits = sharedStore.search({ query: 'memry', limit: 5 })
     expect(hits.length).toBeGreaterThan(0)
     expect(['porter', 'trigram', 'levenshtein']).toContain(hits[0]?.tier)
   })
 
   it('respects source scoping', () => {
-    nativeStore.insertChunks([
+    sharedStore.insertChunks([
       { source: 'a', content: 'shared restore context for source a' },
       { source: 'b', content: 'shared restore context for source b' },
     ])
-    const hits = nativeStore.search({ query: 'restore context', source: 'a', limit: 5 })
+    const hits = sharedStore.search({ query: 'restore context', source: 'a', limit: 5 })
     expect(hits.length).toBeGreaterThan(0)
     expect(hits.every((hit) => hit.source === 'a')).toBe(true)
   })

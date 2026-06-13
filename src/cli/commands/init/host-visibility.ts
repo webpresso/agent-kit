@@ -204,16 +204,15 @@ export function auditHostSetupSurfaceVisibility(
       host: 'codex',
       artifact: allExist(packageRoot, [
         '.codex-plugin/plugin.json',
-        '.codex-plugin/mcp.json',
-        '.codex-plugin/hooks.json',
+        'codex.mcp.json',
+        'hooks/hooks.json',
       ])
         ? 'installed'
         : 'missing',
       active: existsSync(join(repoRoot, '.codex', 'hooks.json')) ? 'managed' : 'not-installed',
       support: 'full',
       required: true,
-      ownership:
-        '.codex-plugin/hooks.json metadata; active hooks setup-managed in .codex/hooks.json',
+      ownership: 'hooks/hooks.json metadata; active hooks setup-managed in .codex/hooks.json',
     },
     {
       host: 'cursor',

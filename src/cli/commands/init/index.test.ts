@@ -87,18 +87,19 @@ describe('formatHostSetupSurfaceVisibility', () => {
     cleanup.add(root)
     cleanup.add(packageRoot)
     mkdirSync(join(packageRoot, '.codex-plugin'), { recursive: true })
+    mkdirSync(join(packageRoot, 'hooks'), { recursive: true })
     mkdirSync(join(root, '.codex'), { recursive: true })
     mkdirSync(join(root, '.opencode', 'plugins'), { recursive: true })
     writeFileSync(join(packageRoot, '.codex-plugin', 'plugin.json'), '{}')
-    writeFileSync(join(packageRoot, '.codex-plugin', 'mcp.json'), '{}')
-    writeFileSync(join(packageRoot, '.codex-plugin', 'hooks.json'), '{}')
+    writeFileSync(join(packageRoot, 'codex.mcp.json'), '{}')
+    writeFileSync(join(packageRoot, 'hooks', 'hooks.json'), '{}')
     writeFileSync(join(root, '.codex', 'hooks.json'), '{}')
     writeFileSync(join(root, '.opencode', 'plugins', 'webpresso-hooks.js'), '')
 
     const output = formatHostSetupSurfaceVisibility({ repoRoot: root, packageRoot })
     expect(output).toContain('Host setup surfaces:')
     expect(output).toContain('codex: artifact=installed active=managed support=full required=yes')
-    expect(output).toContain('.codex-plugin/hooks.json metadata')
+    expect(output).toContain('hooks/hooks.json metadata')
     expect(output).toContain('.codex/hooks.json')
     expect(output).toContain(
       'opencode: artifact=installed active=plugin-bridge support=degraded required=no',

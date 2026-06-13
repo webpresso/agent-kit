@@ -217,23 +217,24 @@ describe('deriveHostSurfaceStatus', () => {
     const repoRoot = withTempRepo((root) => {
       mkdirSync(join(root, '.claude-plugin'), { recursive: true })
       mkdirSync(join(root, '.codex-plugin'), { recursive: true })
+      mkdirSync(join(root, 'hooks'), { recursive: true })
       mkdirSync(join(root, '.claude'), { recursive: true })
       mkdirSync(join(root, '.codex'), { recursive: true })
       writeFileSync(join(root, '.claude-plugin', 'plugin.json'), '{}')
       writeFileSync(
         join(root, '.codex-plugin', 'plugin.json'),
         JSON.stringify({
-          mcpServers: './.codex-plugin/mcp.json',
-          hooks: './.codex-plugin/hooks.json',
+          mcpServers: './codex.mcp.json',
+          hooks: './hooks/hooks.json',
         }),
       )
       writeFileSync(
-        join(root, '.codex-plugin', 'mcp.json'),
+        join(root, 'codex.mcp.json'),
         JSON.stringify({
-          mcpServers: { webpresso: { command: '${PLUGIN_ROOT}/bin/wp', args: ['mcp'] } },
+          webpresso: { command: '${PLUGIN_ROOT}/bin/wp', args: ['mcp'] },
         }),
       )
-      writeFileSync(join(root, '.codex-plugin', 'hooks.json'), JSON.stringify({ hooks: {} }))
+      writeFileSync(join(root, 'hooks', 'hooks.json'), JSON.stringify({ hooks: {} }))
       writeFileSync(join(root, '.claude', 'settings.json'), '{}')
       writeFileSync(join(root, '.codex', 'hooks.json'), '{}')
     })
@@ -250,7 +251,7 @@ describe('deriveHostSurfaceStatus', () => {
         lifecycle: 'full',
       })
       expect(result.find((surface) => surface.host === 'codex')?.ownership).toContain(
-        'package metadata only',
+        'inert package metadata',
       )
       expect(result.find((surface) => surface.host === 'codex')?.ownership).toContain(
         '.codex/hooks.json',

@@ -1,81 +1,91 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
-const mockSearch = vi.fn()
-const mockExecuteSandboxed = vi.fn()
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-vi.mock('#session-memory/native-runtime', () => ({
-  loadNativeSessionMemoryEngine: () => ({
-    executeSandboxed: mockExecuteSandboxed,
-  }),
-}))
+import sessionExecuteTool from './_session-execute.js'
+import sessionSearchTool from './session-search.js'
 
-vi.mock('#session-memory/store', () => ({
-  getStore: () => ({ search: mockSearch }),
-}))
+let tmpDir: string
+let previousIndexDb: string | undefined
 
-vi.mock('#session-memory/repo-hash', () => ({
-  resolveSessionRepoHash: () => 'repohash12345678',
-}))
+function payload(result: Awaited<ReturnType<typeof sessionExecuteTool.handler>>) {
+  return result.structuredContent as {
+    passed: boolean
+    exitCode: number
+    details: {
+      label: string
+      exitCode: number
+      outputBytes: number
+      indexed: boolean
+      summary: string
+      hits?: Array<{ content: string; source: string; rank: number; tier: string }>
+    }
+  }
+}
+
+beforeEach(() => {
+  tmpDir = mkdtempSync(join(tmpdir(), 'wp-session-execute-test-'))
+  previousIndexDb = process.env.WP_SESSION_MEMORY_INDEX_DB
+  process.env.WP_SESSION_MEMORY_INDEX_DB = join(tmpDir, 'index.sqlite')
+})
+
+afterEach(() => {
+  if (previousIndexDb === undefined) delete process.env.WP_SESSION_MEMORY_INDEX_DB
+  else process.env.WP_SESSION_MEMORY_INDEX_DB = previousIndexDb
+  rmSync(tmpDir, { recursive: true, force: true })
+})
 
 describe('wp_session_execute', () => {
-  beforeEach(() => {
-    vi.resetModules()
-    mockSearch.mockReset()
-    mockExecuteSandboxed.mockReset()
-  })
-
-  it('returns indexed search hits when a query is provided', async () => {
-    mockExecuteSandboxed.mockResolvedValue({
-      exitCode: 0,
-      outputBytes: 4096,
-      indexed: true,
-      summary: 'large output summary',
-    })
-    mockSearch.mockReturnValue([
-      { content: 'indexed chunk', source: 'label:2', rank: 1, tier: 'porter' },
-    ])
-
-    const tool = (await import('./_session-execute.js')).default
-    const result = await tool.handler?.({
-      command: 'seq 1 600',
+  it('executes, indexes output into the shared TypeScript store, and returns query hits', async () => {
+    const result = await sessionExecuteTool.handler?.({
+      command: 'printf "%s\\n" "indexed needle from command"',
       label: 'label',
-      query: 'indexed',
+      query: 'indexed needle',
       execute: true,
-      timeoutMs: 1234,
-      cwd: '/tmp/worktree-a',
+      timeoutMs: 5_000,
+      cwd: tmpDir,
     })
-    expect(result?.structuredContent).toMatchObject({
+    const data = payload(result)
+
+    expect(data).toMatchObject({
       passed: true,
+      exitCode: 0,
       details: {
         label: 'label',
+        exitCode: 0,
         indexed: true,
-        hits: [{ content: 'indexed chunk' }],
+        hits: [{ content: expect.stringContaining('indexed needle from command') }],
       },
     })
-    expect(mockExecuteSandboxed).toHaveBeenCalledWith(
-      expect.any(String),
-      'seq 1 600',
-      'label',
-      1234,
-      '/tmp/worktree-a',
-    )
+
+    const search = await sessionSearchTool.handler?.({
+      cwd: tmpDir,
+      query: 'indexed needle',
+      sourceTypes: ['indexed_chunk'],
+      limit: 1,
+    })
+    expect(JSON.stringify(search.structuredContent)).toContain('indexed needle from command')
   })
 
-  it('returns an error envelope when execution fails', async () => {
-    mockExecuteSandboxed.mockRejectedValue(new Error('native boom'))
-    const tool = (await import('./_session-execute.js')).default
-    const result = await tool.handler?.({ command: 'broken command', execute: true })
-    expect(result?.structuredContent).toMatchObject({
-      passed: false,
-      exitCode: -1,
-      details: { indexed: false },
+  it('returns an error envelope when execution fails while preserving indexed output', async () => {
+    const result = await sessionExecuteTool.handler?.({
+      command: 'printf "%s\\n" "failure sentinel"; exit 42',
+      label: 'failure-label',
+      query: 'failure sentinel',
+      execute: true,
+      cwd: tmpDir,
     })
+    const data = payload(result)
+
+    expect(result.isError).toBe(true)
+    expect(data).toMatchObject({ passed: false, exitCode: 42 })
+    expect(data.details.hits?.[0]?.content).toContain('failure sentinel')
   })
 
   it('requires explicit execute=true before running a shell command', async () => {
-    const tool = (await import('./_session-execute.js')).default
-    const result = await tool.handler?.({ command: 'echo nope' })
-    expect(mockExecuteSandboxed).not.toHaveBeenCalled()
-    expect(result?.structuredContent).toMatchObject({ passed: false, exitCode: -1 })
+    const result = await sessionExecuteTool.handler?.({ command: 'echo nope' })
+    expect(payload(result)).toMatchObject({ passed: false, exitCode: -1 })
   })
 })

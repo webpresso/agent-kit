@@ -1001,8 +1001,8 @@ async function checkClaudeHost(): Promise<DoctorCheck> {
 // single source — if it does not reference them, the hooks are not installed.
 const MANAGED_HOOK_MARKER = 'hooks/managed/wp-pretool-guard'
 const CODEX_PLUGIN_ARTIFACTS = [
-  '.codex-plugin/hooks.json',
-  '.codex-plugin/mcp.json',
+  'hooks/hooks.json',
+  'codex.mcp.json',
   '.codex-plugin/plugin.json',
 ] as const
 
@@ -1039,8 +1039,8 @@ export function checkPackagedHostArtifacts(cwd = process.cwd()): DoctorCheck {
   if (!hasClaudePlugin) failures.push('missing Claude artifact: .claude-plugin/plugin.json')
 
   const codexPluginPath = join(cwd, '.codex-plugin', 'plugin.json')
-  const codexMcpPath = join(cwd, '.codex-plugin', 'mcp.json')
-  const codexHooksPath = join(cwd, '.codex-plugin', 'hooks.json')
+  const codexMcpPath = join(cwd, 'codex.mcp.json')
+  const codexHooksPath = join(cwd, 'hooks', 'hooks.json')
   const codexPlugin = tryAccess(codexPluginPath) ? readJsonRecord(codexPluginPath) : null
   const codexMcp = tryAccess(codexMcpPath) ? readJsonRecord(codexMcpPath) : null
   const codexHooks = tryAccess(codexHooksPath) ? readJsonRecord(codexHooksPath) : null
@@ -1049,28 +1049,23 @@ export function checkPackagedHostArtifacts(cwd = process.cwd()): DoctorCheck {
     failures.push('Codex artifact is not valid JSON: .codex-plugin/plugin.json')
   }
   if (tryAccess(codexMcpPath) && !codexMcp) {
-    failures.push('Codex artifact is not valid JSON: .codex-plugin/mcp.json')
+    failures.push('Codex artifact is not valid JSON: codex.mcp.json')
   }
   if (tryAccess(codexHooksPath) && !codexHooks) {
-    failures.push('Codex artifact is not valid JSON: .codex-plugin/hooks.json')
+    failures.push('Codex artifact is not valid JSON: hooks/hooks.json')
   }
 
   if (codexPlugin) {
-    if (codexPlugin.mcpServers !== './.codex-plugin/mcp.json') {
-      failures.push('Codex plugin manifest must point mcpServers at .codex-plugin/mcp.json')
+    if (codexPlugin.mcpServers !== './codex.mcp.json') {
+      failures.push('Codex plugin manifest must point mcpServers at codex.mcp.json')
     }
-    if (codexPlugin.hooks !== './.codex-plugin/hooks.json') {
-      failures.push('Codex plugin manifest must point hooks at .codex-plugin/hooks.json')
+    if (codexPlugin.hooks !== './hooks/hooks.json') {
+      failures.push('Codex plugin manifest must point hooks at hooks/hooks.json')
     }
   }
 
   if (codexMcp) {
-    const servers = codexMcp.mcpServers
-    const serversRecord =
-      servers && typeof servers === 'object' && !Array.isArray(servers)
-        ? (servers as Record<string, unknown>)
-        : null
-    const server = serversRecord?.webpresso
+    const server = codexMcp.webpresso
     const serverRecord =
       server && typeof server === 'object' && !Array.isArray(server)
         ? (server as Record<string, unknown>)
@@ -1080,7 +1075,7 @@ export function checkPackagedHostArtifacts(cwd = process.cwd()): DoctorCheck {
       !stringArrayEquals(serverRecord.args, ['mcp'])
     ) {
       failures.push(
-        'Codex MCP artifact must expose mcpServers.webpresso launching ${PLUGIN_ROOT}/bin/wp mcp',
+        'Codex MCP artifact must expose direct webpresso server map launching ${PLUGIN_ROOT}/bin/wp mcp',
       )
     }
   }
@@ -1123,7 +1118,7 @@ export function checkHostArtifactOwnership(cwd = process.cwd()): DoctorCheck {
     detail: [
       'Claude active hooks stay setup-managed in .claude/settings.json',
       'Codex active hooks stay setup-managed in .codex/hooks.json',
-      '.codex-plugin/hooks.json is package metadata only; active hooks require wp setup',
+      'hooks/hooks.json is package metadata only; active hooks require wp setup',
       opencodeInstalled
         ? 'OpenCode bridge is degraded and installed at .opencode/plugins/webpresso-hooks.js'
         : 'OpenCode bridge is degraded and not installed',

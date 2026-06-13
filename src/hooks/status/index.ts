@@ -136,19 +136,14 @@ function stringArrayEquals(value: unknown, expected: readonly string[]): boolean
 
 function hasValidCodexPluginArtifacts(repoRoot: string): boolean {
   const pluginPath = join(repoRoot, '.codex-plugin', 'plugin.json')
-  const mcpPath = join(repoRoot, '.codex-plugin', 'mcp.json')
-  const hooksPath = join(repoRoot, '.codex-plugin', 'hooks.json')
+  const mcpPath = join(repoRoot, 'codex.mcp.json')
+  const hooksPath = join(repoRoot, 'hooks', 'hooks.json')
   if (!existsSync(pluginPath) || !existsSync(mcpPath) || !existsSync(hooksPath)) return false
 
   const plugin = readJsonRecord(pluginPath)
   const mcp = readJsonRecord(mcpPath)
   const hooks = readJsonRecord(hooksPath)
-  const servers = mcp?.mcpServers
-  const serversRecord =
-    servers && typeof servers === 'object' && !Array.isArray(servers)
-      ? (servers as Record<string, unknown>)
-      : null
-  const server = serversRecord?.webpresso
+  const server = mcp?.webpresso
   const serverRecord =
     server && typeof server === 'object' && !Array.isArray(server)
       ? (server as Record<string, unknown>)
@@ -156,8 +151,8 @@ function hasValidCodexPluginArtifacts(repoRoot: string): boolean {
   const hookMap = hooks?.hooks
 
   return (
-    plugin?.mcpServers === './.codex-plugin/mcp.json' &&
-    plugin.hooks === './.codex-plugin/hooks.json' &&
+    plugin?.mcpServers === './codex.mcp.json' &&
+    plugin.hooks === './hooks/hooks.json' &&
     serverRecord?.command === '${PLUGIN_ROOT}/bin/wp' &&
     stringArrayEquals(serverRecord.args, ['mcp']) &&
     hookMap !== null &&
@@ -202,7 +197,7 @@ export function deriveHostSurfaceStatus(repoRoot: string): readonly HostSurfaceS
       lifecycle: supportLevelForHost('codex'),
       required: true,
       ownership:
-        '.codex-plugin/hooks.json is package metadata only; active hooks stay in .codex/hooks.json',
+        'hooks/hooks.json is inert package metadata; active hooks stay in .codex/hooks.json',
     },
     {
       host: 'cursor',

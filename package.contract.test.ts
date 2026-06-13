@@ -326,10 +326,9 @@ describe('tooling umbrella package contract', () => {
     expect(banned).toEqual([])
     expect(packedPaths).toContain('bin/wp')
     expect(packedPaths).not.toContain('bin/wp.js')
-    expect(packedPaths).toContain('native/session-memory-engine/Cargo.toml')
-    expect(packedPaths).toContain(
-      'native/session-memory-engine/crates/session-memory-core/Cargo.toml',
-    )
+    expect(
+      packedPaths.some((path) => path.startsWith(['native', 'session-memory-engine'].join('/'))),
+    ).toBe(false)
   }, 30_000)
 
   it('packs a manifest with no workspace-only catalog specifiers', () => {

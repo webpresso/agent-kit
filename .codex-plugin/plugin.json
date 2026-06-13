@@ -17,8 +17,8 @@
     "developer-tools"
   ],
   "skills": "./skills/",
-  "mcpServers": "./.codex-plugin/mcp.json",
-  "hooks": "./.codex-plugin/hooks.json",
+  "mcpServers": "./codex.mcp.json",
+  "hooks": "./hooks/hooks.json",
   "interface": {
     "displayName": "Webpresso agent-kit",
     "shortDescription": "Blueprints, skills, hooks, and MCP tools.",

@@ -87,8 +87,8 @@ function getDryRunPackagePaths(): string[] {
 }
 
 const codexPluginArtifactPaths = [
-  '.codex-plugin/hooks.json',
-  '.codex-plugin/mcp.json',
+  'hooks/hooks.json',
+  'codex.mcp.json',
   '.codex-plugin/plugin.json',
 ] as const
 
@@ -340,7 +340,9 @@ describe('createPackedManifest', () => {
       files?: unknown
       version?: unknown
     }
-    expect(packageJson.files).toEqual(expect.arrayContaining(['.claude-plugin', '.codex-plugin']))
+    expect(packageJson.files).toEqual(
+      expect.arrayContaining(['.claude-plugin', '.codex-plugin', 'codex.mcp.json', 'hooks']),
+    )
 
     for (const artifactPath of codexPluginArtifactPaths) {
       expect(existsSync(join(repoRoot, artifactPath))).toBe(true)
@@ -352,29 +354,25 @@ describe('createPackedManifest', () => {
       version: packageJson.version,
       description: 'Webpresso agent-kit: blueprints, skills, hooks, and MCP server',
       skills: './skills/',
-      mcpServers: './.codex-plugin/mcp.json',
-      hooks: './.codex-plugin/hooks.json',
+      mcpServers: './codex.mcp.json',
+      hooks: './hooks/hooks.json',
     })
 
-    expect(readJsonObject(join(repoRoot, '.codex-plugin', 'mcp.json'))).toStrictEqual({
-      mcpServers: {
-        webpresso: {
-          command: '${PLUGIN_ROOT}/bin/wp',
-          args: ['mcp'],
-        },
+    expect(readJsonObject(join(repoRoot, 'codex.mcp.json'))).toStrictEqual({
+      webpresso: {
+        command: '${PLUGIN_ROOT}/bin/wp',
+        args: ['mcp'],
       },
     })
 
-    expect(readJsonObject(join(repoRoot, '.codex-plugin', 'hooks.json'))).toStrictEqual({
+    expect(readJsonObject(join(repoRoot, 'hooks', 'hooks.json'))).toStrictEqual({
       hooks: {},
     })
   })
 
   it('pins Codex plugin artifacts in the dry-run package file list', () => {
     const packedPaths = getDryRunPackagePaths()
-    expect(packedPaths.filter((path) => path.startsWith('.codex-plugin/')).sort()).toEqual([
-      ...codexPluginArtifactPaths,
-    ])
+    expect(packedPaths).toEqual(expect.arrayContaining([...codexPluginArtifactPaths]))
   }, 30_000)
 
   it('keeps the package-surface denied-content policy regex-based and public-safe', () => {

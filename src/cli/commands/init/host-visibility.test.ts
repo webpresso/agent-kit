@@ -125,17 +125,18 @@ describe('host skill visibility', () => {
 
   it('reports Codex packaged artifacts separately from active hook ownership', () => {
     mkdirSync(join(packageRoot, '.codex-plugin'), { recursive: true })
+    mkdirSync(join(packageRoot, 'hooks'), { recursive: true })
     mkdirSync(join(repoRoot, '.codex'), { recursive: true })
     writeFileSync(join(packageRoot, '.codex-plugin', 'plugin.json'), '{}')
-    writeFileSync(join(packageRoot, '.codex-plugin', 'mcp.json'), '{}')
-    writeFileSync(join(packageRoot, '.codex-plugin', 'hooks.json'), '{}')
+    writeFileSync(join(packageRoot, 'codex.mcp.json'), '{}')
+    writeFileSync(join(packageRoot, 'hooks', 'hooks.json'), '{}')
     writeFileSync(join(repoRoot, '.codex', 'hooks.json'), '{}')
 
     const lines = summarizeHostSetupSurfaceVisibility({ repoRoot, packageRoot })
     const codex = lines.find((line) => line.includes('codex:'))
     expect(codex).toContain('artifact=installed')
     expect(codex).toContain('active=managed')
-    expect(codex).toContain('.codex-plugin/hooks.json metadata')
+    expect(codex).toContain('hooks/hooks.json metadata')
     expect(codex).toContain('.codex/hooks.json')
   })
 

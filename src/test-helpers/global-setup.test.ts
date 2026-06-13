@@ -1,22 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-const loadNativeSessionMemoryEngine = vi.fn()
-
-vi.mock('#session-memory/native-runtime', () => ({
-  loadNativeSessionMemoryEngine,
-}))
+import { describe, expect, it } from 'vitest'
 
 describe('test global setup', () => {
-  beforeEach(() => {
-    vi.resetModules()
-    loadNativeSessionMemoryEngine.mockClear()
-  })
-
-  it('pre-warms the native session-memory engine before workers fork', async () => {
+  it('runs without pre-warming session-memory native addon', async () => {
     const { setup } = await import('./global-setup.js')
 
-    setup()
-
-    expect(loadNativeSessionMemoryEngine).toHaveBeenCalledTimes(1)
+    expect(() => setup()).not.toThrow()
   })
 })

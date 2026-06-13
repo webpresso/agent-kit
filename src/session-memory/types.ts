@@ -129,43 +129,6 @@ export interface SessionMemoryUnifiedResult {
   metadata: Record<string, unknown>
 }
 
-export const NATIVE_FILE_OPERATIONS = ['read_text', 'metadata'] as const
-
-export type NativeFileOperation = (typeof NATIVE_FILE_OPERATIONS)[number]
-
-export type NativeFileRuntimeCode =
-  | 'ok'
-  | 'denied_path'
-  | 'secret_path'
-  | 'unsupported_operation'
-  | 'invalid_repo_root'
-  | 'not_found'
-  | 'not_file'
-  | 'binary_file'
-  | 'file_too_large'
-  | 'unsupported_platform'
-  | 'read_failed'
-
-export interface NativeFileRuntimeMetadata {
-  sizeBytes: number
-  lineCount: number
-  extension: string
-}
-
-export interface NativeFileRuntimeResult {
-  passed: boolean
-  code: NativeFileRuntimeCode
-  operation: string
-  path: string
-  preview: string
-  previewBytes: number
-  truncated: boolean
-  overflowIndexed: boolean
-  indexedChunkIds: string[]
-  warnings: string[]
-  metadata?: NativeFileRuntimeMetadata
-}
-
 export interface ChunkInsertInput {
   readonly content: string
   readonly source: string
@@ -196,17 +159,4 @@ export interface FetchIndexResult {
   readonly chunkCount: number
   readonly cached: boolean
   readonly cachedAt?: number
-}
-
-export interface NativeSessionMemoryUnavailableStatus {
-  readonly status: 'unavailable'
-}
-
-export function isUnavailable(value: unknown): value is NativeSessionMemoryUnavailableStatus {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'status' in value &&
-    (value as NativeSessionMemoryUnavailableStatus).status === 'unavailable'
-  )
 }

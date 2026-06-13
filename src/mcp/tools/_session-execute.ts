@@ -1,24 +1,12 @@
-import { mkdirSync } from 'node:fs'
-import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
 import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
-import { resolveSessionRepoHash } from '#session-memory/repo-hash'
-import { loadNativeSessionMemoryEngine } from '#session-memory/native-runtime'
-import { getStore } from '#session-memory/store'
+import { runSessionCommand, searchSessionCommandOutput } from './_session-command.js'
+import { defaultIndexDbPath } from './session-restore.js'
 import type { SearchHit } from '#session-memory/types'
 
-const DEFAULT_SEARCH_LIMIT = 10
 const DEFAULT_TIMEOUT_MS = 30_000
-
-function resolveSessionDbPath(cwd?: string): string {
-  const repoHash = resolveSessionRepoHash(cwd)
-  const dbDir = join(homedir(), '.webpresso', 'sessions')
-  mkdirSync(dbDir, { recursive: true })
-  return join(dbDir, `${repoHash}.db`)
-}
 
 const inputSchema = z
   .object({
@@ -54,7 +42,7 @@ const outputSchema = createSummaryOutputSchema({
 const tool: ToolDescriptor = {
   name: 'wp_session_execute',
   description:
-    'Run one shell command and sandbox large output through the built-in native session-memory engine. Use instead of raw shell for large-output commands.',
+    'Run one shell command and index bounded output into the local session-memory store. Use instead of raw shell for large-output commands.',
   inputSchema,
   outputSchema,
   annotations: {
@@ -95,29 +83,24 @@ const tool: ToolDescriptor = {
             exitCode: -1,
             outputBytes: 0,
             indexed: false,
-            summary: 'native session execute currently shells through sh -c and rejects win32',
+            summary: 'session execute shells through sh -c and rejects win32',
           },
         },
         { isError: true },
       )
     }
     try {
-      const dbPath = resolveSessionDbPath(effectiveCwd)
-      mkdirSync(dirname(dbPath), { recursive: true })
-      const result = await loadNativeSessionMemoryEngine().executeSandboxed(
-        dbPath,
-        input.command,
+      const dbPath = defaultIndexDbPath(effectiveCwd)
+      const result = await runSessionCommand({
+        command: input.command,
         label,
-        input.timeoutMs,
-        effectiveCwd,
-      )
+        timeoutMs: input.timeoutMs,
+        cwd: effectiveCwd,
+        dbPath,
+      })
       let hits: readonly SearchHit[] | undefined
       if (input.query && result.indexed) {
-        hits = getStore(dbPath).search({
-          query: input.query,
-          limit: DEFAULT_SEARCH_LIMIT,
-          source: label,
-        })
+        hits = searchSessionCommandOutput(dbPath, [label], input.query)
       }
       const passed = result.exitCode === 0
       return createSummaryResult(

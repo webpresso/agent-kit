@@ -811,7 +811,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         break
       case 'codex-webpresso-mcp-not-installed':
         console.log(
-          `  codex webpresso mcp: ⚠ no install root found (checked ${webpressoMcpResult.checked.length} paths). Install webpresso globally (\`bun add -g webpresso\`) or via the Claude plugin to wire up codex MCP.`,
+          `  codex webpresso mcp: ⚠ no install root found (checked ${webpressoMcpResult.checked.length} paths). Install @webpresso/agent-kit globally (\`bun add -g @webpresso/agent-kit\`) or via the Claude plugin to wire up codex MCP.`,
         )
         break
     }

@@ -162,7 +162,7 @@ describe('reference parity host smoke fixtures', () => {
       'utf8',
     )
 
-    expect(liveSmokeSource.match(/\b240_000\b/gu)?.length).toBe(5)
+    expect(liveSmokeSource.match(/\b240_000\b/gu)?.length).toBe(7)
     expect(fixtureSource).not.toMatch(/\b\d+_000\b/u)
     expect(fixtureTestSource).not.toMatch(/\b\d+_000\b/u)
   })

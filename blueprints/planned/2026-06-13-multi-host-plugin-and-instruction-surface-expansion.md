@@ -119,14 +119,14 @@ plugin files. (F2, F5)
 **Files:**
 
 - Create: `.codex-plugin/plugin.json`
-- Create: `.codex-plugin/mcp.json`
-- Create: `.codex-plugin/hooks.json`
+- Create: `codex.mcp.json`
+- Create: `hooks/hooks.json`
 - Modify: `package.json`
 - Modify: `src/build/package-manifest.test.ts`
 
 **Steps (TDD):**
 
-1. Write failing package-surface tests that assert `.codex-plugin/plugin.json`, `.codex-plugin/mcp.json`, and `.codex-plugin/hooks.json` are required shipped assets and contain no denied public-package content.
+1. Write failing package-surface tests that assert `.codex-plugin/plugin.json`, `codex.mcp.json`, and `hooks/hooks.json` are required shipped assets and contain no denied public-package content.
 2. Run: `./bin/wp test --file src/build/package-manifest.test.ts` — verify FAIL.
 3. Add the minimal Codex artifact files and `package.json#files` inclusion; keep `.claude-plugin/` unchanged and avoid adding any generated runtime/state directories.
 4. Run: `./bin/wp test --file src/build/package-manifest.test.ts` — verify PASS.

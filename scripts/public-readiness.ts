@@ -423,21 +423,17 @@ if (import.meta.main) {
       | { files?: Array<{ path: string }> }
       | undefined
     const files = parsed?.files?.map((f) => f.path) ?? []
-    const requiredNativePaths = [
-      'native/session-memory-engine/Cargo.toml',
-      'native/session-memory-engine/crates/session-memory-core/Cargo.toml',
-      'native/session-memory-engine/crates/session-memory-napi/Cargo.toml',
-    ]
-    const missingNativePaths = requiredNativePaths.filter((path) => !files.includes(path))
+    const sessionNativePrefix = `${['native', 'session-memory-engine'].join('/')}/`
+    const sessionNativePaths = files.filter((path) => path.startsWith(sessionNativePrefix))
     results.push(
-      missingNativePaths.length === 0
+      sessionNativePaths.length === 0
         ? pass(
-            'tarball-session-memory-native-engine',
-            'packed artifact includes the absorbed native session-memory workspace',
+            'tarball-session-memory-local-store',
+            'packed artifact excludes the retired native session-memory workspace',
           )
         : fail(
-            'tarball-session-memory-native-engine',
-            `missing packed native engine paths: ${missingNativePaths.join(', ')}`,
+            'tarball-session-memory-local-store',
+            `retired native session-memory paths still ship: ${sessionNativePaths.join(', ')}`,
           ),
     )
   }

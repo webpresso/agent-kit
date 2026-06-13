@@ -16,7 +16,7 @@ describe('session-memory hard-cut audit', () => {
   it('flags banned legacy strings in live operational surfaces', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'src', 'session-memory'), { recursive: true })
-    writeFileSync(join(root, 'src', 'session-memory', 'native-runtime.ts'), `${CTX_RS} bridge\n`)
+    writeFileSync(join(root, 'src', 'session-memory', 'legacy-bridge.ts'), `${CTX_RS} bridge\n`)
 
     const result = auditSessionMemoryHardcut(root)
 
@@ -24,7 +24,7 @@ describe('session-memory hard-cut audit', () => {
     expect(result.violations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          file: 'src/session-memory/native-runtime.ts',
+          file: 'src/session-memory/legacy-bridge.ts',
           message: expect.stringContaining(CTX_RS),
         }),
       ]),

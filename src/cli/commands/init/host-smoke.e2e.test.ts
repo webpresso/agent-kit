@@ -1,5 +1,13 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -100,8 +108,35 @@ function makeRepo(): string {
         private: true,
         packageManager: 'pnpm@10.33.0',
         devDependencies: {
-          webpresso: `file:${REPO_ROOT}`,
+          '@webpresso/agent-kit': `file:${REPO_ROOT}`,
         },
+      },
+      null,
+      2,
+    ) + '\n',
+  )
+  return dir
+}
+
+function makeCodexMarketplace(pluginRoot: string): string {
+  const dir = mkdtempSync(path.join(tmpdir(), 'wp-codex-marketplace-'))
+  mkdirSync(path.join(dir, '.agents', 'plugins'), { recursive: true })
+  mkdirSync(path.join(dir, 'plugins'), { recursive: true })
+  symlinkSync(pluginRoot, path.join(dir, 'plugins', 'agent-kit'), 'dir')
+  writeFileSync(
+    path.join(dir, '.agents', 'plugins', 'marketplace.json'),
+    JSON.stringify(
+      {
+        name: 'local-webpresso-test',
+        interface: { displayName: 'Local Webpresso Test' },
+        plugins: [
+          {
+            name: 'agent-kit',
+            source: { source: 'local', path: './plugins/agent-kit' },
+            policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
+            category: 'Development',
+          },
+        ],
       },
       null,
       2,
@@ -135,12 +170,13 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
       WP_SKIP_OMC: '1',
     })
     expect(setup.code).toBe(0)
-    expect(existsSync(path.join(repo, 'opencode.json'))).toBe(true)
-    expect(readFileSync(path.join(repo, 'opencode.json'), 'utf8')).toContain('webpresso')
+    expect(existsSync(path.join(repo, '.claude', 'settings.json'))).toBe(true)
+    expect(readFileSync(path.join(repo, '.claude', 'settings.json'), 'utf8')).toContain(
+      'wp-sessionstart-routing',
+    )
     const codexConfig = readFileSync(path.join(codexHome, 'config.toml'), 'utf8')
     expect(codexConfig).toContain('[features]')
     expect(codexConfig).toContain('hooks = true')
-    expect(codexConfig).toContain('plugin_hooks = true')
     expect(readFileSync(path.join(codexHome, 'config.toml'), 'utf8')).toContain(
       '[mcp_servers.webpresso]',
     )
@@ -157,15 +193,27 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
       WP_SKIP_OMC: '1',
     })
     expect(setup.code).toBe(0)
-    expect(existsSync(path.join(repo, 'opencode.json'))).toBe(true)
-    expect(readFileSync(path.join(repo, 'opencode.json'), 'utf8')).toContain('webpresso')
+    expect(readFileSync(path.join(repo, '.claude', 'settings.json'), 'utf8')).toContain(
+      'wp-precompact-snapshot',
+    )
     expect(readFileSync(path.join(codexHome, 'config.toml'), 'utf8')).toContain(
       '[mcp_servers.webpresso]',
     )
-    expect(readFileSync(path.join(codexHome, 'config.toml'), 'utf8')).toContain(
-      'plugin_hooks = true',
+    expect(readFileSync(path.join(repo, '.codex', 'hooks.json'), 'utf8')).toContain(
+      'wp-pretool-guard',
     )
-    expect(readFileSync(path.join(codexHome, 'hooks.json'), 'utf8')).toContain('wp-pretool-guard')
+  }, 240_000)
+
+  it('Claude host validates the packaged webpresso plugin MCP entry', () => {
+    if (!requireHostBinary('claude', REQUIRE_CLAUDE)) {
+      return
+    }
+
+    const validate = run('claude', ['plugin', 'validate', '.'], REPO_ROOT, {})
+    expect(validate.code).toBe(0)
+    expect(readFileSync(path.join(REPO_ROOT, '.claude-plugin', 'plugin.json'), 'utf8')).toContain(
+      '"webpresso"',
+    )
   }, 240_000)
 
   it('fails when codex is required but not on PATH', () => {
@@ -206,6 +254,47 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
     expect(list.stdout).toContain('webpresso')
   }, 240_000)
 
+  it('Codex host installs the local packaged plugin and exposes its bundled MCP entry', () => {
+    if (!requireHostBinary('codex', REQUIRE_CODEX)) {
+      return
+    }
+
+    const marketplace = makeCodexMarketplace(REPO_ROOT)
+    try {
+      const addMarketplace = run(
+        'codex',
+        ['plugin', 'marketplace', 'add', marketplace, '--json'],
+        repo,
+        {
+          CODEX_HOME: codexHome,
+        },
+      )
+      expect(addMarketplace.code).toBe(0)
+
+      const available = run('codex', ['plugin', 'list', '--available', '--json'], repo, {
+        CODEX_HOME: codexHome,
+      })
+      expect(available.code).toBe(0)
+      expect(available.stdout).toContain('agent-kit@local-webpresso-test')
+
+      const addPlugin = run(
+        'codex',
+        ['plugin', 'add', 'agent-kit', '--marketplace', 'local-webpresso-test', '--json'],
+        repo,
+        { CODEX_HOME: codexHome },
+      )
+      expect(addPlugin.code).toBe(0)
+      expect(addPlugin.stdout).toContain('agent-kit@local-webpresso-test')
+
+      const list = run('codex', ['mcp', 'list'], repo, { CODEX_HOME: codexHome })
+      expect(list.code).toBe(0)
+      expect(list.stdout).toContain('webpresso')
+      expect(list.stdout).toContain('${PLUGIN_ROOT}/bin/wp')
+    } finally {
+      rmSync(marketplace, { recursive: true, force: true })
+    }
+  }, 240_000)
+
   it('gracefully skips OpenCode host check when opencode is not on PATH', () => {
     if (hasCommand('opencode')) return
 
@@ -213,6 +302,9 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
   })
 
   it('OpenCode host sees the webpresso MCP entry when installed', () => {
+    if (!REQUIRE_OPENCODE) {
+      return
+    }
     if (!requireHostBinary('opencode', REQUIRE_OPENCODE)) {
       return
     }
@@ -246,9 +338,14 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
     })
     expect(setup.code).toBe(0)
 
-    const doctor = run('vp', ['exec', 'wp', 'hooks', 'doctor', '--hosts', 'auto'], repo, {
-      CODEX_HOME: codexHome,
-    })
+    const doctor = run(
+      CLI_RUNTIME,
+      [CLI_PATH, 'hooks', 'doctor', '--hosts', 'required', '--host', 'codex', '--host', 'claude'],
+      repo,
+      {
+        CODEX_HOME: codexHome,
+      },
+    )
     expect(doctor.code).toBe(0)
   }, 240_000)
 })

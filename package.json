@@ -54,15 +54,13 @@
     "commands",
     ".claude-plugin",
     ".codex-plugin",
+    "hooks",
+    "codex.mcp.json",
     "LICENSE",
     "THIRD-PARTY-NOTICES.md",
     "README.md",
     "docs/guides/session-memory.md",
-    "docs/bench/session-memory-methodology.md",
-    "native/session-memory-engine",
-    "!native/session-memory-engine/.github/**",
-    "!native/session-memory-engine/target/**",
-    "!native/session-memory-engine/crates/session-memory-core/benches/**"
+    "docs/bench/session-memory-methodology.md"
   ],
   "type": "module",
   "sideEffects": false,

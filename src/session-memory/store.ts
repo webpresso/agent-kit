@@ -2,8 +2,6 @@ import { createHash } from 'node:crypto'
 
 import { Database } from '#db/sqlite.js'
 
-import { loadNativeSessionMemoryEngine } from './native-runtime.js'
-
 import type {
   IndexedSessionMemoryChunk,
   SessionMemoryChunk,
@@ -413,7 +411,7 @@ export class SessionMemoryStore {
   }
 }
 
-const DEFAULT_NATIVE_SEARCH_LIMIT = 5
+const DEFAULT_SEARCH_LIMIT = 5
 
 export interface SessionStore {
   insertChunks(chunks: readonly ChunkInsertInput[]): void
@@ -421,37 +419,54 @@ export interface SessionStore {
   getDbPath(): string
 }
 
-class NativeSessionStore implements SessionStore {
-  constructor(private readonly dbPath: string) {}
+class LocalSessionStore implements SessionStore {
+  private readonly store: SessionMemoryStore
+  private insertedChunkCount = 0
+
+  constructor(private readonly dbPath: string) {
+    this.store = new SessionMemoryStore(dbPath)
+  }
 
   insertChunks(chunks: readonly ChunkInsertInput[]): void {
-    const runtime = loadNativeSessionMemoryEngine()
-    const grouped = new Map<string, string[]>()
     for (const chunk of chunks) {
-      const list = grouped.get(chunk.source) ?? []
-      list.push(chunk.content)
-      grouped.set(chunk.source, list)
-    }
-    for (const [source, parts] of grouped) {
-      runtime.index(this.dbPath, source, parts.join('\n\n'), false)
+      const sequence = this.insertedChunkCount
+      this.insertedChunkCount += 1
+      const id = createHash('sha256')
+        .update(chunk.source)
+        .update('\0')
+        .update(String(sequence))
+        .update('\0')
+        .update(chunk.content)
+        .digest('hex')
+        .slice(0, 32)
+      this.store.indexChunk({
+        id: `chunk:${id}`,
+        source: chunk.source,
+        text: chunk.content,
+        metadata: { kind: 'session_memory_chunk', sequence },
+      })
     }
   }
 
   search(options: SearchOptions): readonly SearchHit[] {
     if (options.query.trim().length === 0) return []
-    return loadNativeSessionMemoryEngine()
-      .search(
-        this.dbPath,
-        options.query,
-        options.limit ?? DEFAULT_NATIVE_SEARCH_LIMIT,
-        options.source ?? null,
-      )
-      .map((hit) => ({
-        content: hit.content,
+    return this.store
+      .search({
+        query: options.query,
+        limit: options.limit ?? DEFAULT_SEARCH_LIMIT,
+        source: options.source,
+      })
+      .filter((hit) => (options.source ? hit.source === options.source : true))
+      .map((hit, index) => ({
+        content: hit.text,
         source: hit.source,
-        rank: hit.rank,
-        tier: hit.tier === 'trigram' || hit.tier === 'levenshtein' ? hit.tier : 'porter',
+        rank: index + 1,
+        tier: hit.tier,
       }))
+  }
+
+  close(): void {
+    this.store.close()
   }
 
   getDbPath(): string {
@@ -464,11 +479,14 @@ const storeCache = new Map<string, SessionStore>()
 export function getStore(dbPath: string): SessionStore {
   const cached = storeCache.get(dbPath)
   if (cached !== undefined) return cached
-  const store = new NativeSessionStore(dbPath)
+  const store = new LocalSessionStore(dbPath)
   storeCache.set(dbPath, store)
   return store
 }
 
 export function resetStoreCacheForTests(): void {
+  for (const store of storeCache.values()) {
+    if ('close' in store && typeof store.close === 'function') store.close()
+  }
   storeCache.clear()
 }

@@ -52,8 +52,8 @@ describe('hooks/doctor', () => {
   const distPkgJson = join(repoRoot, 'dist/esm', 'package.json')
   const pluginJson = join(repoRoot, '.claude-plugin', 'plugin.json')
   const codexPluginJson = join(repoRoot, '.codex-plugin', 'plugin.json')
-  const codexPluginMcpJson = join(repoRoot, '.codex-plugin', 'mcp.json')
-  const codexPluginHooksJson = join(repoRoot, '.codex-plugin', 'hooks.json')
+  const codexPluginMcpJson = join(repoRoot, 'codex.mcp.json')
+  const codexPluginHooksJson = join(repoRoot, 'hooks', 'hooks.json')
   const opencodePluginBridge = join(repoRoot, '.opencode', 'plugins', 'webpresso-hooks.js')
   const wpBin = join(repoRoot, 'bin', 'wp')
   const builtMcpCli = join(repoRoot, 'dist/esm/mcp/cli.js')
@@ -994,13 +994,13 @@ describe('hooks/doctor', () => {
             name: 'agent-kit',
             version: '0.34.2',
             skills: './skills/',
-            mcpServers: './.codex-plugin/mcp.json',
-            hooks: './.codex-plugin/hooks.json',
+            mcpServers: './codex.mcp.json',
+            hooks: './hooks/hooks.json',
           })
         }
         if (String(path) === codexPluginMcpJson) {
           return JSON.stringify({
-            mcpServers: { webpresso: { command: '${PLUGIN_ROOT}/bin/wp', args: ['mcp'] } },
+            webpresso: { command: '${PLUGIN_ROOT}/bin/wp', args: ['mcp'] },
           })
         }
         if (String(path) === codexPluginHooksJson) return JSON.stringify({ hooks: {} })
@@ -1012,8 +1012,8 @@ describe('hooks/doctor', () => {
       const artifacts = checkPackagedHostArtifacts(repoRoot)
       expect(artifacts.ok).toBe(true)
       expect(artifacts.detail).toContain('.codex-plugin/plugin.json')
-      expect(artifacts.detail).toContain('.codex-plugin/mcp.json')
-      expect(artifacts.detail).toContain('.codex-plugin/hooks.json')
+      expect(artifacts.detail).toContain('codex.mcp.json')
+      expect(artifacts.detail).toContain('hooks/hooks.json')
       expect(artifacts.detail).toContain('.claude-plugin/plugin.json')
 
       const ownership = checkHostArtifactOwnership(repoRoot)
@@ -1040,8 +1040,8 @@ describe('hooks/doctor', () => {
           return JSON.stringify({
             name: 'agent-kit',
             version: '0.34.2',
-            mcpServers: './.codex-plugin/mcp.json',
-            hooks: './.codex-plugin/hooks.json',
+            mcpServers: './codex.mcp.json',
+            hooks: './hooks/hooks.json',
           })
         }
         throw new Error(`unexpected read: ${String(path)}`)
@@ -1050,9 +1050,7 @@ describe('hooks/doctor', () => {
       const { checkPackagedHostArtifacts } = await import('#hooks/doctor')
       const result = checkPackagedHostArtifacts(repoRoot)
       expect(result.ok).toBe(false)
-      expect(result.detail).toContain(
-        'missing Codex artifact(s): .codex-plugin/hooks.json, .codex-plugin/mcp.json',
-      )
+      expect(result.detail).toContain('missing Codex artifact(s): hooks/hooks.json, codex.mcp.json')
       expect(result.detail).toContain('Codex repair: run `wp setup`')
       expect(result.detail).toContain('package repair: rebuild the public artifact from source')
       expect(result.detail).not.toContain('/Users/')
@@ -1102,13 +1100,13 @@ describe('hooks/doctor', () => {
             name: 'agent-kit',
             version: '0.34.2',
             skills: './skills/',
-            mcpServers: './.codex-plugin/mcp.json',
-            hooks: './.codex-plugin/hooks.json',
+            mcpServers: './codex.mcp.json',
+            hooks: './hooks/hooks.json',
           })
         }
         if (String(path) === codexPluginMcpJson) {
           return JSON.stringify({
-            mcpServers: { webpresso: { command: '${PLUGIN_ROOT}/bin/wp', args: ['mcp'] } },
+            webpresso: { command: '${PLUGIN_ROOT}/bin/wp', args: ['mcp'] },
           })
         }
         if (String(path) === codexPluginHooksJson) return JSON.stringify({ hooks: {} })
