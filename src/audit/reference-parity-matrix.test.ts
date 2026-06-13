@@ -48,7 +48,7 @@ function seedArtifacts(root: string): void {
     'src/hooks/sessionstart/index.test.ts',
     'src/mcp/server.integration.test.ts',
     'src/session-memory/store.test.ts',
-    'src/__integration__/reference-parity-host-smoke.test.ts',
+    'src/__integration__/reference-parity-host-smoke.integration.test.ts',
     'src/cli/commands/init/host-smoke.e2e.test.ts',
     'src/cli/commands/bench/session-memory.test.ts',
     'docs/bench/session-memory-methodology.md',
@@ -93,7 +93,7 @@ function passingRows(): string[] {
     row('resume injection', 'src/hooks/sessionstart/index.test.ts'),
     row('tool discovery', 'src/mcp/server.integration.test.ts'),
     row('indexed search', 'src/session-memory/store.test.ts'),
-    row('host setup smoke', 'src/__integration__/reference-parity-host-smoke.test.ts'),
+    row('host setup smoke', 'src/__integration__/reference-parity-host-smoke.integration.test.ts'),
     row('benchmark thresholds', 'src/cli/commands/bench/session-memory.test.ts'),
     row('release claim gating', 'src/audit/reference-parity-claims.test.ts'),
   ]
@@ -166,9 +166,13 @@ describe('auditReferenceParityMatrix', () => {
         row('resume injection', 'src/hooks/sessionstart/index.test.ts', { support: 'degraded' }),
         row('tool discovery', 'src/mcp/server.integration.test.ts'),
         row('indexed search', 'src/session-memory/store.test.ts'),
-        row('host setup smoke', 'src/__integration__/reference-parity-host-smoke.test.ts', {
-          support: 'degraded',
-        }),
+        row(
+          'host setup smoke',
+          'src/__integration__/reference-parity-host-smoke.integration.test.ts',
+          {
+            support: 'degraded',
+          },
+        ),
         row('benchmark thresholds', 'src/cli/commands/bench/session-memory.test.ts'),
         row('release claim gating', 'src/audit/reference-parity-claims.test.ts'),
       ]),
@@ -191,9 +195,13 @@ describe('auditReferenceParityMatrix', () => {
         row('resume injection', 'src/hooks/sessionstart/index.test.ts', { support: 'degraded' }),
         row('tool discovery', 'src/mcp/server.integration.test.ts'),
         row('indexed search', 'src/session-memory/store.test.ts'),
-        row('host setup smoke', 'src/__integration__/reference-parity-host-smoke.test.ts', {
-          support: 'degraded',
-        }),
+        row(
+          'host setup smoke',
+          'src/__integration__/reference-parity-host-smoke.integration.test.ts',
+          {
+            support: 'degraded',
+          },
+        ),
         row('benchmark thresholds', 'src/cli/commands/bench/session-memory.test.ts'),
         row('release claim gating', 'src/audit/reference-parity-claims.test.ts'),
       ]),
@@ -261,7 +269,7 @@ describe('auditReferenceParityMatrix', () => {
     ])
     expect(result.releaseClaimGateReady).toBe(false)
     expect(result.rows.find((row) => row.capability === 'host setup smoke')).toMatchObject({
-      proofArtifact: 'src/__integration__/reference-parity-host-smoke.test.ts',
+      proofArtifact: 'src/__integration__/reference-parity-host-smoke.integration.test.ts',
       supportLevel: 'degraded',
       status: 'passed',
     })

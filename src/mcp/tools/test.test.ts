@@ -163,6 +163,8 @@ describe('wp_test tool', () => {
         'run',
         '--exclude',
         '**/*.integration.test.ts',
+        '--exclude',
+        '**/*.e2e.test.ts',
         '--reporter=json',
         '--no-color',
       ])

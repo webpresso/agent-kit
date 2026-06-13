@@ -16,8 +16,8 @@ const PUBLIC_CHANGELOG_PATH = 'CHANGELOG.md'
 
 const REFERENCE_PARITY_EVIDENCE = [
   'docs/bench/reference-parity-matrix.md',
-  'src/__integration__/reference-parity-host-smoke.test.ts',
-  'src/__integration__/reference-parity-tool-surface.test.ts',
+  'src/__integration__/reference-parity-host-smoke.integration.test.ts',
+  'src/__integration__/reference-parity-tool-surface.integration.test.ts',
   'docs/bench/session-memory-methodology.md',
 ] as const
 

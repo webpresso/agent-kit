@@ -92,15 +92,23 @@ describe('runDoctor', () => {
 })
 
 describe('registerDoctorCommand', () => {
-  it('returns the exit code from runDoctor', async () => {
+  it('returns the exit code from runDoctor for an explicit repo root', async () => {
     const repo = tempRepo()
+    const cli = buildFakeCli()
+    const logs: string[] = []
+    vi.spyOn(console, 'log').mockImplementation((msg?: unknown) => {
+      logs.push(String(msg ?? ''))
+    })
+
     try {
-      const cli = buildFakeCli()
       registerDoctorCommand(cli as never)
       const action = cli.getAction()
-      expect(typeof action).toBe('function')
-      const code = await action({ root: repo })
+      expect(action).toBeDefined()
+
+      const code = await action!({ root: repo })
+
       expect(code).toBe(0)
+      expect(logs.join('\n')).toContain('Catalog drift — single package (no workspace file): OK')
     } finally {
       rmSync(repo, { recursive: true, force: true })
     }

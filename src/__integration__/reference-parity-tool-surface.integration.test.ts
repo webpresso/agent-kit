@@ -72,7 +72,7 @@ describe('reference parity MCP tool-surface smoke', () => {
 
     expect(row).toMatchObject({
       capability: 'tool discovery',
-      proofArtifact: 'src/__integration__/reference-parity-tool-surface.test.ts',
+      proofArtifact: 'src/__integration__/reference-parity-tool-surface.integration.test.ts',
       supportLevel: 'degraded',
       status: 'open',
       requiredForRelease: true,

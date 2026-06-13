@@ -11,13 +11,20 @@ export interface ResolvedTestSuiteRun {
 const UNIT_SUITE_RUN: ResolvedTestSuiteRun = {
   suite: 'unit',
   label: 'suite unit',
-  vitestArgs: ['run', '--exclude', '**/*.integration.test.ts'],
+  vitestArgs: ['run', '--exclude', '**/*.integration.test.ts', '--exclude', '**/*.e2e.test.ts'],
 }
 
 const INTEGRATION_SUITE_RUN: ResolvedTestSuiteRun = {
   suite: 'integration',
   label: 'suite integration',
-  vitestArgs: ['run', '--no-file-parallelism', '.integration.test.ts', '--testTimeout', '30000'],
+  vitestArgs: [
+    'run',
+    '--no-file-parallelism',
+    '.integration.test.ts',
+    '.e2e.test.ts',
+    '--testTimeout',
+    '30000',
+  ],
 }
 
 export function normalizeTestSuiteName(suite?: TestSuiteName): TestSuiteName {

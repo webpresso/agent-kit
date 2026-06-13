@@ -269,6 +269,6 @@ These checks prove hook health, lifecycle state, reference parity gating, real
 package contents, package lint, secret policy, and path policy before release
 claims move forward. Public replacement-parity wording must cite the green proof
 set before promotion: `docs/bench/reference-parity-matrix.md`,
-`src/__integration__/reference-parity-host-smoke.test.ts`,
-`src/__integration__/reference-parity-tool-surface.test.ts`, and
+`src/__integration__/reference-parity-host-smoke.integration.test.ts`,
+`src/__integration__/reference-parity-tool-surface.integration.test.ts`, and
 `docs/bench/session-memory-methodology.md`.

@@ -142,10 +142,7 @@ export interface ArchiveResult {
  * }
  * ```
  */
-export async function archiveBlueprint(
-  slug: string,
-  projectPath: string,
-): Promise<ArchiveResult> {
+export async function archiveBlueprint(slug: string, projectPath: string): Promise<ArchiveResult> {
   // Check if already completed (before checking existence)
   if (isAlreadyCompleted(slug)) {
     return { success: false, error: 'Plan is already completed' }

@@ -206,7 +206,7 @@ source of truth. This task prevents docs from claiming host parity when
 **Verification:**
 
 ```webpresso-evidence-v1
-[{"agent":"codex","command":"./bin/wp test --file src/__integration__/reference-parity-host-smoke.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts","exit_code":0,"kind":"integration","result":"pass","target_files":["src/__integration__/reference-parity-host-smoke.test.ts","src/cli/commands/init/host-smoke.e2e.test.ts"],"ts":"2026-06-13T20:12:49.519Z"},{"agent":"codex","command":"./bin/wp lint src/__integration__/reference-parity-host-smoke.fixtures.ts src/__integration__/reference-parity-host-smoke.test.ts src/cli/commands/init/host-smoke.e2e.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"}]
+[{"agent":"codex","command":"./bin/wp test --file src/__integration__/reference-parity-host-smoke.integration.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts","exit_code":0,"kind":"integration","result":"pass","target_files":["src/__integration__/reference-parity-host-smoke.integration.test.ts","src/cli/commands/init/host-smoke.e2e.test.ts"],"ts":"2026-06-13T20:12:49.519Z"},{"agent":"codex","command":"./bin/wp lint src/__integration__/reference-parity-host-smoke.fixtures.ts src/__integration__/reference-parity-host-smoke.integration.test.ts src/cli/commands/init/host-smoke.e2e.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"}]
 ```
 
 **Depends:** None
@@ -223,15 +223,15 @@ binaries are unavailable. (F3, F7, F8)
 
 - Modify: `src/cli/commands/init/host-smoke.e2e.test.ts`
 - Create: `src/__integration__/reference-parity-host-smoke.fixtures.ts`
-- Create: `src/__integration__/reference-parity-host-smoke.test.ts`
+- Create: `src/__integration__/reference-parity-host-smoke.integration.test.ts`
 
 **Steps (TDD):**
 
 1. Add failing smoke tests for Claude, Codex, Cursor, and OpenCode setup/config expectations using fixture helpers from `reference-parity-host-smoke.fixtures.ts`, with fixture-backed checks that run in default CI and any live-host probes gated separately by env.
-2. Run: `./bin/wp test --file src/__integration__/reference-parity-host-smoke.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts` — verify FAIL.
+2. Run: `./bin/wp test --file src/__integration__/reference-parity-host-smoke.integration.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts` — verify FAIL.
 3. Implement bounded fixture helpers and tighten `host-smoke.e2e.test.ts` assertions so skipped optional hosts are explicit and required hosts fail closed.
-4. Run: `./bin/wp test --file src/__integration__/reference-parity-host-smoke.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts` — verify PASS.
-5. Run: `./bin/wp lint src/__integration__/reference-parity-host-smoke.fixtures.ts src/__integration__/reference-parity-host-smoke.test.ts src/cli/commands/init/host-smoke.e2e.test.ts` and `./bin/wp typecheck`.
+4. Run: `./bin/wp test --file src/__integration__/reference-parity-host-smoke.integration.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts` — verify PASS.
+5. Run: `./bin/wp lint src/__integration__/reference-parity-host-smoke.fixtures.ts src/__integration__/reference-parity-host-smoke.integration.test.ts src/cli/commands/init/host-smoke.e2e.test.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -240,8 +240,8 @@ binaries are unavailable. (F3, F7, F8)
 - [x] Smoke skips are controlled by explicit environment flags, not silent absence.
 - [x] Default CI still runs fixture-backed parity assertions for every named host even when live host binaries are absent.
 - [x] No timeout increase is used as the fix for slow or flaky smoke.
-- [x] `./bin/wp test --file src/__integration__/reference-parity-host-smoke.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts` passes.
-- [x] `./bin/wp lint src/__integration__/reference-parity-host-smoke.fixtures.ts src/__integration__/reference-parity-host-smoke.test.ts src/cli/commands/init/host-smoke.e2e.test.ts` passes.
+- [x] `./bin/wp test --file src/__integration__/reference-parity-host-smoke.integration.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts` passes.
+- [x] `./bin/wp lint src/__integration__/reference-parity-host-smoke.fixtures.ts src/__integration__/reference-parity-host-smoke.integration.test.ts src/cli/commands/init/host-smoke.e2e.test.ts` passes.
 - [x] `./bin/wp typecheck` passes.
 #### [mcp] Task 2.2: Add tool-surface smoke for replacement-critical MCP discovery
 
@@ -250,7 +250,7 @@ binaries are unavailable. (F3, F7, F8)
 **Verification:**
 
 ```webpresso-evidence-v1
-[{"agent":"codex","command":"./bin/wp test --file src/__integration__/reference-parity-tool-surface.test.ts --file src/mcp/server.integration.test.ts","exit_code":0,"kind":"integration","result":"pass","target_files":["src/__integration__/reference-parity-tool-surface.test.ts","src/mcp/server.integration.test.ts"],"ts":"2026-06-13T20:12:49.519Z"},{"agent":"codex","command":"./bin/wp lint src/__integration__/reference-parity-tool-surface.test.ts src/mcp/server.integration.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"}]
+[{"agent":"codex","command":"./bin/wp test --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/mcp/server.integration.test.ts","exit_code":0,"kind":"integration","result":"pass","target_files":["src/__integration__/reference-parity-tool-surface.integration.test.ts","src/mcp/server.integration.test.ts"],"ts":"2026-06-13T20:12:49.519Z"},{"agent":"codex","command":"./bin/wp lint src/__integration__/reference-parity-tool-surface.integration.test.ts src/mcp/server.integration.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"}]
 ```
 
 **Depends:** None
@@ -264,23 +264,23 @@ must show as pending matrix gaps, not as implied success. (F4, F6)
 **Files:**
 
 - Modify: `src/mcp/server.integration.test.ts`
-- Create: `src/__integration__/reference-parity-tool-surface.test.ts`
+- Create: `src/__integration__/reference-parity-tool-surface.integration.test.ts`
 
 **Steps (TDD):**
 
 1. Add failing integration assertions that compare the advertised MCP tool names to the replacement parity matrix rows.
-2. Run: `./bin/wp test --file src/__integration__/reference-parity-tool-surface.test.ts --file src/mcp/server.integration.test.ts` — verify FAIL.
+2. Run: `./bin/wp test --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/mcp/server.integration.test.ts` — verify FAIL.
 3. Implement the smallest test helpers/assertions needed; if a dependency-owned tool is not yet implemented, mark the matrix row as blocked/open rather than editing dependency-owned code in this task.
-4. Run: `./bin/wp test --file src/__integration__/reference-parity-tool-surface.test.ts --file src/mcp/server.integration.test.ts` — verify PASS.
-5. Run: `./bin/wp lint src/__integration__/reference-parity-tool-surface.test.ts src/mcp/server.integration.test.ts` and `./bin/wp typecheck`.
+4. Run: `./bin/wp test --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/mcp/server.integration.test.ts` — verify PASS.
+5. Run: `./bin/wp lint src/__integration__/reference-parity-tool-surface.integration.test.ts src/mcp/server.integration.test.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
 - [x] Tool-surface smoke checks advertised tools against explicit parity rows.
 - [x] Missing dependency-owned tools produce actionable open gaps, not green false positives.
 - [x] The test names the exact missing or misadvertised MCP surface.
-- [x] `./bin/wp test --file src/__integration__/reference-parity-tool-surface.test.ts --file src/mcp/server.integration.test.ts` passes.
-- [x] `./bin/wp lint src/__integration__/reference-parity-tool-surface.test.ts src/mcp/server.integration.test.ts` passes.
+- [x] `./bin/wp test --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/mcp/server.integration.test.ts` passes.
+- [x] `./bin/wp lint src/__integration__/reference-parity-tool-surface.integration.test.ts src/mcp/server.integration.test.ts` passes.
 - [x] `./bin/wp typecheck` passes.
 #### [bench] Task 2.3: Add dry-run regression thresholds for continuity latency and search quality
 
@@ -429,8 +429,8 @@ after the legal intermediate state exists on the base branch.
 | ---- | ------- | ---------------- |
 | Blueprint lifecycle | `./bin/wp audit blueprint-lifecycle` | Target blueprint remains lifecycle-valid. |
 | Type safety | `./bin/wp typecheck` | Zero errors. |
-| Lint | `./bin/wp lint docs/bench/reference-parity-matrix.md docs/bench/session-memory-methodology.md docs/hook-matrix.md src/audit/reference-parity-matrix.ts src/audit/reference-parity-matrix.test.ts src/audit/ai-contracts.ts src/audit/ai-contracts.test.ts src/audit/reference-parity-claims.test.ts src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.ts src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts src/cli/commands/init/host-smoke.e2e.test.ts src/cli/commands/bench/session-memory.ts src/cli/commands/bench/session-memory.test.ts scripts/bench/lib/manifest.ts src/__integration__/reference-parity-host-smoke.fixtures.ts src/__integration__/reference-parity-host-smoke.test.ts src/__integration__/reference-parity-tool-surface.test.ts src/__integration__/reference-parity-bench.integration.test.ts src/mcp/server.integration.test.ts README.md CHANGELOG.md` | Zero violations. |
-| Focused tests | `./bin/wp test --file src/audit/reference-parity-matrix.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file src/__integration__/reference-parity-host-smoke.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts --file src/__integration__/reference-parity-tool-surface.test.ts --file src/mcp/server.integration.test.ts --file src/cli/commands/bench/session-memory.test.ts --file src/__integration__/reference-parity-bench.integration.test.ts --file src/audit/ai-contracts.test.ts --file src/audit/reference-parity-claims.test.ts` | All pass. |
+| Lint | `./bin/wp lint docs/bench/reference-parity-matrix.md docs/bench/session-memory-methodology.md docs/hook-matrix.md src/audit/reference-parity-matrix.ts src/audit/reference-parity-matrix.test.ts src/audit/ai-contracts.ts src/audit/ai-contracts.test.ts src/audit/reference-parity-claims.test.ts src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.ts src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts src/cli/commands/init/host-smoke.e2e.test.ts src/cli/commands/bench/session-memory.ts src/cli/commands/bench/session-memory.test.ts scripts/bench/lib/manifest.ts src/__integration__/reference-parity-host-smoke.fixtures.ts src/__integration__/reference-parity-host-smoke.integration.test.ts src/__integration__/reference-parity-tool-surface.integration.test.ts src/__integration__/reference-parity-bench.integration.test.ts src/mcp/server.integration.test.ts README.md CHANGELOG.md` | Zero violations. |
+| Focused tests | `./bin/wp test --file src/audit/reference-parity-matrix.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file src/__integration__/reference-parity-host-smoke.integration.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/mcp/server.integration.test.ts --file src/cli/commands/bench/session-memory.test.ts --file src/__integration__/reference-parity-bench.integration.test.ts --file src/audit/ai-contracts.test.ts --file src/audit/reference-parity-claims.test.ts` | All pass. |
 | Bench dry-run | `./bin/wp bench session-memory --dry-run` | Manifest, scenarios, threshold schema, and report wiring validate without API calls. |
 | Public package safety | `npm pack --dry-run --json && vp run lint:pkg && vp run public:readiness && vp run verify:secrets` | Public tarball/package surface includes only intentional files and no denied content. |
 | Repo QA | `vp run qa` | Full build/typecheck/lint/format/test/package/audit pipeline passes before release claim lands. |

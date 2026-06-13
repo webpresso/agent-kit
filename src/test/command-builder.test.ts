@@ -322,7 +322,14 @@ describe('buildTestCommand', () => {
   it('builds a direct unit-suite workspace vitest command', () => {
     expect(buildTestCommand({ type: 'all', values: [] }, { suite: 'unit' })).toEqual({
       command: 'rtk',
-      args: [expect.stringContaining('vitest'), 'run', '--exclude', '**/*.integration.test.ts'],
+      args: [
+        expect.stringContaining('vitest'),
+        'run',
+        '--exclude',
+        '**/*.integration.test.ts',
+        '--exclude',
+        '**/*.e2e.test.ts',
+      ],
     })
   })
 
@@ -334,6 +341,7 @@ describe('buildTestCommand', () => {
         'run',
         '--no-file-parallelism',
         '.integration.test.ts',
+        '.e2e.test.ts',
         '--testTimeout',
         '30000',
       ],
@@ -357,6 +365,8 @@ describe('buildTestCommand', () => {
           'run',
           '--exclude',
           '**/*.integration.test.ts',
+          '--exclude',
+          '**/*.e2e.test.ts',
           '--coverage',
           '-t',
           'core',
@@ -369,6 +379,7 @@ describe('buildTestCommand', () => {
           'run',
           '--no-file-parallelism',
           '.integration.test.ts',
+          '.e2e.test.ts',
           '--testTimeout',
           '30000',
           '--coverage',
@@ -407,6 +418,7 @@ describe('buildTestCommand', () => {
         'run',
         '--no-file-parallelism',
         '.integration.test.ts',
+        '.e2e.test.ts',
         '--testTimeout',
         '30000',
         '--coverage',

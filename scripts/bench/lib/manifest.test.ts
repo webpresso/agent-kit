@@ -188,7 +188,6 @@ describe('manifest capture and validation', () => {
     expect(() => verifyManifest(captured, pinned)).toThrow()
   })
 
-
   it('keeps strict verification fail-closed for plugin SHA drift', () => {
     const captured: Manifest = {
       bun: '1.3.13',

@@ -10,8 +10,8 @@ const tempDirs: string[] = []
 
 const evidencePaths = [
   'docs/bench/reference-parity-matrix.md',
-  'src/__integration__/reference-parity-host-smoke.test.ts',
-  'src/__integration__/reference-parity-tool-surface.test.ts',
+  'src/__integration__/reference-parity-host-smoke.integration.test.ts',
+  'src/__integration__/reference-parity-tool-surface.integration.test.ts',
   'docs/bench/session-memory-methodology.md',
 ] as const
 
@@ -112,7 +112,7 @@ function seedReferenceParityProof(root: string, options: { releaseReady?: boolea
       'tool discovery',
       'MCP session tools',
       releaseReady ? 'full' : 'degraded',
-      'src/__integration__/reference-parity-tool-surface.test.ts',
+      'src/__integration__/reference-parity-tool-surface.integration.test.ts',
       'yes',
       releaseReady ? 'passed' : 'open',
     ],
@@ -128,7 +128,7 @@ function seedReferenceParityProof(root: string, options: { releaseReady?: boolea
       'host setup smoke',
       'Claude, Codex, Cursor, OpenCode',
       releaseReady ? 'full' : 'degraded',
-      'src/__integration__/reference-parity-host-smoke.test.ts',
+      'src/__integration__/reference-parity-host-smoke.integration.test.ts',
       'yes',
       'passed',
     ],

@@ -23,8 +23,8 @@ being present does not mean the release claim is green: required rows must be
 | --- | --- | --- | --- | --- | --- |
 | lifecycle capture | session memory store | full | src/session-memory/session.test.ts | yes | passed |
 | resume injection | Claude, Codex, Cursor, OpenCode | degraded | src/hooks/sessionstart/index.test.ts | yes | open |
-| tool discovery | MCP session tools | degraded | src/__integration__/reference-parity-tool-surface.test.ts | yes | open |
+| tool discovery | MCP session tools | degraded | src/__integration__/reference-parity-tool-surface.integration.test.ts | yes | open |
 | indexed search | session memory store | full | src/session-memory/store.test.ts | yes | passed |
-| host setup smoke | Claude, Codex, Cursor, OpenCode | degraded | src/__integration__/reference-parity-host-smoke.test.ts | yes | passed |
+| host setup smoke | Claude, Codex, Cursor, OpenCode | degraded | src/__integration__/reference-parity-host-smoke.integration.test.ts | yes | passed |
 | benchmark thresholds | continuity and search benchmarks | degraded | docs/bench/session-memory-methodology.md | yes | open |
 | release claim gating | public docs and release audits | degraded | src/audit/reference-parity-claims.test.ts | yes | open |

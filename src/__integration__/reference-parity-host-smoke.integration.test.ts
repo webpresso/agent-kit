@@ -158,7 +158,7 @@ describe('reference parity host smoke fixtures', () => {
       'utf8',
     )
     const fixtureTestSource = readFileSync(
-      'src/__integration__/reference-parity-host-smoke.test.ts',
+      'src/__integration__/reference-parity-host-smoke.integration.test.ts',
       'utf8',
     )
 
