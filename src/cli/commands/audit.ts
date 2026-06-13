@@ -145,6 +145,8 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
     (await import('#audit/weakness-mining/index')).auditWeaknessMining(root, {
       draftTechDebt: options.draftTechDebt,
     }),
+  'harness-overlay-evidence': async (root) =>
+    (await import('#audit/harness-overlay-evidence')).auditHarnessOverlayEvidence(root),
   rules: async (root) => runContentAudit(root, 'rule'),
   skills: async (root) => runContentAudit(root, 'skill'),
 }

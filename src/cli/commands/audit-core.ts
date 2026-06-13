@@ -45,6 +45,7 @@ export type AuditKind =
   | 'secrets-config'
   | 'harness-surfaces'
   | 'weakness-mining'
+  | 'harness-overlay-evidence'
 
 export type AuditOutcome =
   | { kind: 'invalid-usage'; message: string }
