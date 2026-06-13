@@ -245,7 +245,9 @@ describe('wp bench session-memory', () => {
     expect(result.thresholdReport.mode).toBe('dry-run')
     expect(result.thresholdReport.axes.every((axis) => axis.status === 'schema-valid')).toBe(true)
     expect(runCell).not.toHaveBeenCalled()
-    expect(deps.verifyManifest).toHaveBeenCalled()
+    expect(deps.verifyManifest).toHaveBeenCalledWith(TEST_MANIFEST, TEST_MANIFEST, {
+      mode: 'dry-run-current-checkout',
+    })
   })
 
   it('validates threshold schema in dry-run mode without API credentials', async () => {
@@ -321,6 +323,26 @@ describe('wp bench session-memory', () => {
         deps,
       ),
     ).rejects.toThrow('Workspace mode unspecified')
+  })
+
+  it('uses strict manifest verification for live benchmark runs', async () => {
+    dir = mkdtempSync(join(tmpdir(), 'bench-command-live-manifest-'))
+    const deps = makeDeps()
+
+    await runBenchSessionMemoryCommand(
+      {
+        scenario: 'debug-long-session',
+        variant: 'baseline',
+        trials: 1,
+        outputRoot: dir,
+        env: { BENCH_WORKSPACE_MODE: 'single-workspace', ANTHROPIC_API_KEY: 'test-key' },
+      },
+      deps,
+    )
+
+    expect(deps.verifyManifest).toHaveBeenCalledWith(TEST_MANIFEST, TEST_MANIFEST, {
+      mode: 'strict',
+    })
   })
 
   it('writes a report for a single scenario/variant run', async () => {

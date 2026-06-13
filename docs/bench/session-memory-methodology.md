@@ -75,7 +75,11 @@ leave `observed` as `n/a`.
 
 Dry-run output proves the gate contract is parseable. If workspace mode is
 omitted, dry-run uses a single-workspace schema default so the smoke gate remains
-credential-free. It is not replacement parity evidence.
+credential-free. Dry-run also uses a current-checkout manifest mode: tool locks
+(`bun`, `claude`, `node`, and `model`) must still match the pinned manifest, and
+plugin refs must still be valid git SHAs, but plugin SHA equality is not required
+because every feature-branch commit legitimately changes the current checkout
+HEAD. It is not replacement parity evidence.
 
 ### Live benchmark requirements
 

@@ -136,7 +136,7 @@ function seedReferenceParityProof(root: string, options: { releaseReady?: boolea
       'benchmark thresholds',
       'continuity and search benchmarks',
       releaseReady ? 'full' : 'degraded',
-      'src/__integration__/reference-parity-bench.test.ts',
+      'src/__integration__/reference-parity-bench.integration.test.ts',
       'yes',
       releaseReady ? 'passed' : 'open',
     ],

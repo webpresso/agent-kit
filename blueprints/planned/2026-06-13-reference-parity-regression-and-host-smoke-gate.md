@@ -6,7 +6,7 @@ status: planned
 complexity: L
 created: '2026-06-13'
 last_updated: '2026-06-13'
-progress: '0% (planned; plan-refine/testing-philosophy re-run complete; benchmark threshold tests exist, but dry-run manifest and true-integration gates are blocked until F9/F10 are fixed)'
+progress: '17% (Task 2.3 complete; benchmark dry-run is branch-stable with real CLI integration smoke; remaining parity/release tasks pending)'
 depends_on:
   - 2026-06-10-harness-regression-gate
   - 2026-06-10-harness-surface-manifest
@@ -59,8 +59,8 @@ repo-owned parity matrix
 | F6 | MEDIUM | Sibling blueprints can be edited as part of this refinement. | This refinement owns only this blueprint file; dependency plan changes must be reported, not edited here. | Remove sibling-blueprint edits from task file lists and record cross-plan follow-ups instead. |
 | F7 | MEDIUM | More retries or longer smoke-test budgets can stabilize host proof. | Repo policy says timeout failures are diagnostics, not fixes. | Tasks require bounded fixture proof and root-cause investigation rather than timeout increases. |
 | F8 | LOW | OpenCode can be ignored while proving multi-host parity. | Existing host smoke and capability matrix include OpenCode alongside Claude, Codex, and Cursor. | Include OpenCode as a documented degraded/parity row where relevant; do not claim full support when capability rows are partial or unsupported. |
-| F9 | HIGH | Passing threshold unit tests means the benchmark dry-run gate is ready. | `./bin/wp test --file src/cli/commands/bench/session-memory.test.ts --file src/__integration__/reference-parity-bench.test.ts` passes, but `./bin/wp bench session-memory --dry-run` currently fails because `scripts/bench/manifest.lock.json` pins plugin SHAs to `c90bc627...` while default capture reads the current checkout HEAD. Updating the lock to the current commit would drift again on the next commit unless the dry-run path has a branch-stable manifest strategy. | Task 2.3 must include a branch-stable manifest/repin contract before the benchmark system can be called ready. |
-| F10 | HIGH | `src/__integration__/reference-parity-bench.test.ts` proves the real benchmark path. | The current test injects a fully mocked `RunBenchSessionMemoryDeps` object with `vi.fn()` for manifest capture, scenario loading, workspace validation, run execution, and report writing. That is a unit-style contract test, not a real integration smoke; it can pass while the real `wp bench session-memory --dry-run` command fails. | Task 2.3 must split mocked dependency tests from a real command/runtime integration smoke that exercises the actual manifest/scenario/report wiring and uses exact output assertions. |
+| F9 | HIGH | Passing threshold unit tests means the benchmark dry-run gate is ready. | Prior threshold tests could pass while `./bin/wp bench session-memory --dry-run` failed because `scripts/bench/manifest.lock.json` pinned plugin SHAs to `c90bc627...` while default capture read the current checkout HEAD. Updating the lock to the current commit would drift again on the next commit unless the dry-run path had a branch-stable manifest strategy. | Task 2.3 now uses an explicit dry-run current-checkout manifest mode: tool/version locks remain strict, plugin refs must be git SHAs, and live benchmark verification remains strict. |
+| F10 | HIGH | `src/__integration__/reference-parity-bench.test.ts` proves the real benchmark path. | The old test injected a fully mocked `RunBenchSessionMemoryDeps` object with `vi.fn()` for manifest capture, scenario loading, workspace validation, run execution, and report writing. That was a unit-style contract test, not a real integration smoke; it could pass while the real `wp bench session-memory --dry-run` command failed. | Task 2.3 replaces it with `src/__integration__/reference-parity-bench.integration.test.ts`, which invokes the real CLI path with no injected benchmark runtime deps and exact dry-run output assertions. |
 
 ## Key Decisions
 
@@ -84,7 +84,7 @@ repo-owned parity matrix
 | Test runner | `./bin/wp test --file <path>` | Use exact repo command; repeat `--file` for multiple files. |
 | Lint | `./bin/wp lint [...files]` | Lint changed files directly; no nonexistent `--file` flag. |
 | Typecheck | `./bin/wp typecheck` | Typecheck is repo-wide; do not document unsupported per-file typecheck. |
-| Bench harness | `./bin/wp bench session-memory --dry-run` | Dry-run must validate manifest/scenarios/env without API calls; live runs require explicit operator credentials and are not a default CI smoke. Current blocker: default manifest capture follows the current checkout HEAD, so Task 2.3 must make dry-run branch-stable before this gate is counted green. |
+| Bench harness | `./bin/wp bench session-memory --dry-run` | Dry-run validates manifest/scenarios/env without API calls; live runs require explicit operator credentials and are not a default CI smoke. Task 2.3 made dry-run branch-stable with an explicit current-checkout manifest mode while keeping live verification strict. |
 | Blueprint audit | `./bin/wp audit blueprint-lifecycle` | Use as the durable lifecycle format gate after implementation. |
 | Package safety | `npm pack --dry-run --json`, `vp run lint:pkg`, `vp run public:readiness`, `vp run verify:secrets` | Required before release-facing parity claims ship because README/package surfaces are public disclosure boundaries. |
 | Generated/runtime surfaces | `.agent/`, `.agents/`, `.omx/`, `.codex/`, `.claude/skills/`, `.omc/`, `.opencode/` are ignored/generated | Do not add replacement proof to generated agent surfaces; update catalog/source-of-truth files only. |
@@ -148,7 +148,7 @@ informational. (F4, F5, F8)
 - [ ] Open or blocked rows prevent full replacement claims from turning green in Task 3.1.
 - [ ] `./bin/wp test --file src/audit/reference-parity-matrix.test.ts` passes.
 - [ ] `./bin/wp lint docs/bench/reference-parity-matrix.md src/audit/reference-parity-matrix.ts src/audit/reference-parity-matrix.test.ts` passes.
-- [ ] `./bin/wp typecheck` passes.
+- [x] `./bin/wp typecheck` passes.
 
 #### [host] Task 1.2: Crosswalk replacement rows to the canonical host capability matrix
 
@@ -182,7 +182,7 @@ source of truth. This task prevents docs from claiming host parity when
 - [ ] No generated agent/runtime surface is edited.
 - [ ] `./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts` passes.
 - [ ] `./bin/wp lint src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.ts src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts docs/hook-matrix.md` passes.
-- [ ] `./bin/wp typecheck` passes.
+- [x] `./bin/wp typecheck` passes.
 
 ## Phase 2: host smoke + benchmark gates [Complexity: L]
 
@@ -223,7 +223,7 @@ binaries are unavailable. (F3, F7, F8)
 - [ ] No timeout increase is used as the fix for slow or flaky smoke.
 - [ ] `./bin/wp test --file src/__integration__/reference-parity-host-smoke.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts` passes.
 - [ ] `./bin/wp lint src/__integration__/reference-parity-host-smoke.fixtures.ts src/__integration__/reference-parity-host-smoke.test.ts src/cli/commands/init/host-smoke.e2e.test.ts` passes.
-- [ ] `./bin/wp typecheck` passes.
+- [x] `./bin/wp typecheck` passes.
 
 #### [mcp] Task 2.2: Add tool-surface smoke for replacement-critical MCP discovery
 
@@ -257,11 +257,11 @@ must show as pending matrix gaps, not as implied success. (F4, F6)
 - [ ] The test names the exact missing or misadvertised MCP surface.
 - [ ] `./bin/wp test --file src/__integration__/reference-parity-tool-surface.test.ts --file src/mcp/server.integration.test.ts` passes.
 - [ ] `./bin/wp lint src/__integration__/reference-parity-tool-surface.test.ts src/mcp/server.integration.test.ts` passes.
-- [ ] `./bin/wp typecheck` passes.
+- [x] `./bin/wp typecheck` passes.
 
 #### [bench] Task 2.3: Add dry-run regression thresholds for continuity latency and search quality
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -281,7 +281,7 @@ command/runtime integration smoke with no injected benchmark runtime deps.
 - Modify: `src/cli/commands/bench/session-memory.ts`
 - Modify: `src/cli/commands/bench/session-memory.test.ts`
 - Modify: `scripts/bench/lib/manifest.ts`
-- Modify: `scripts/bench/manifest.lock.json`
+- Verify unchanged: `scripts/bench/manifest.lock.json`
 - Modify: `docs/bench/session-memory-methodology.md`
 - Rename/modify: `src/__integration__/reference-parity-bench.test.ts` -> `src/__integration__/reference-parity-bench.integration.test.ts`
 
@@ -289,27 +289,27 @@ command/runtime integration smoke with no injected benchmark runtime deps.
 
 1. Add failing unit tests in `src/cli/commands/bench/session-memory.test.ts` for threshold schema/report fields covering post-tool capture latency, pre-compaction snapshot latency, startup/resume injection, and search quality, plus a manifest-drift regression that proves dry-run does not require chasing the current feature-branch HEAD for all plugin SHA fields.
 2. Add a failing integration smoke in `src/__integration__/reference-parity-bench.integration.test.ts` that uses the real benchmark runtime path or shells through `./bin/wp bench session-memory --dry-run`; it must not inject a fake `RunBenchSessionMemoryDeps` object. Assert exact output/report fields for `runId`, `dryRun`, cell count, and all threshold axis ids/statuses.
-3. Run: `./bin/wp test --file src/cli/commands/bench/session-memory.test.ts --file src/__integration__/reference-parity-bench.integration.test.ts` — verify FAIL.
+3. Run: `./bin/wp test --file src/cli/commands/bench/session-memory.test.ts --file src/__integration__/reference-parity-bench.integration.test.ts` — verify FAIL before implementation when the real dry-run path still reports manifest drift.
 4. Implement minimal threshold/report handling in `session-memory.ts` and a branch-stable manifest strategy in `scripts/bench/lib/manifest.ts`. Acceptable fixes include a documented pinned fixture/plugin-dir contract or a dry-run-only manifest validation mode that verifies lock shape and explicit plugin refs without comparing every default plugin path to the mutable current checkout HEAD. Do not add a broad "skip manifest" bypass.
 5. Run: `./bin/wp test --file src/cli/commands/bench/session-memory.test.ts --file src/__integration__/reference-parity-bench.integration.test.ts` — verify PASS.
 6. Run: `./bin/wp bench session-memory --dry-run` to verify real manifest/scenario/report wiring.
 7. Document threshold semantics and manifest/repin semantics in `docs/bench/session-memory-methodology.md`.
-8. Run: `./bin/wp lint src/cli/commands/bench/session-memory.ts src/cli/commands/bench/session-memory.test.ts scripts/bench/lib/manifest.ts src/__integration__/reference-parity-bench.integration.test.ts docs/bench/session-memory-methodology.md` and `./bin/wp typecheck`.
+8. Run: `./bin/wp lint src/cli/commands/bench/session-memory.ts src/cli/commands/bench/session-memory.test.ts scripts/bench/lib/manifest.ts scripts/bench/lib/manifest.test.ts src/__integration__/reference-parity-bench.integration.test.ts docs/bench/session-memory-methodology.md` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
-- [ ] Continuity and search thresholds are represented in bench output, not only prose.
-- [ ] Dry-run validates threshold schema/report shape without API credentials.
-- [ ] Benchmark readiness has at least one no-injected-deps integration smoke; mocked dependency tests alone are not accepted as proof.
-- [ ] Integration assertions check exact output/report fields, not only `exitCode === 0` or truthy status.
-- [ ] Dry-run manifest validation is branch-stable and does not require repinning to the mutable current checkout HEAD after every commit.
-- [ ] Manifest mismatch failures remain fail-closed for real version/tool drift; no broad skip-manifest bypass is introduced.
-- [ ] Live benchmark requirements are documented separately from default CI smoke.
-- [ ] No timeout budget is raised to mask benchmark slowness.
-- [ ] `./bin/wp test --file src/cli/commands/bench/session-memory.test.ts --file src/__integration__/reference-parity-bench.integration.test.ts` passes.
-- [ ] `./bin/wp bench session-memory --dry-run` passes.
-- [ ] `./bin/wp lint src/cli/commands/bench/session-memory.ts src/cli/commands/bench/session-memory.test.ts scripts/bench/lib/manifest.ts src/__integration__/reference-parity-bench.integration.test.ts docs/bench/session-memory-methodology.md` passes.
-- [ ] `./bin/wp typecheck` passes.
+- [x] Continuity and search thresholds are represented in bench output, not only prose.
+- [x] Dry-run validates threshold schema/report shape without API credentials.
+- [x] Benchmark readiness has at least one no-injected-deps integration smoke; mocked dependency tests alone are not accepted as proof.
+- [x] Integration assertions check exact output/report fields, not only `exitCode === 0` or truthy status.
+- [x] Dry-run manifest validation is branch-stable and does not require repinning to the mutable current checkout HEAD after every commit.
+- [x] Manifest mismatch failures remain fail-closed for real version/tool drift; no broad skip-manifest bypass is introduced.
+- [x] Live benchmark requirements are documented separately from default CI smoke.
+- [x] No timeout budget is raised to mask benchmark slowness.
+- [x] `./bin/wp test --file src/cli/commands/bench/session-memory.test.ts --file src/__integration__/reference-parity-bench.integration.test.ts` passes.
+- [x] `./bin/wp bench session-memory --dry-run` passes.
+- [x] `./bin/wp lint src/cli/commands/bench/session-memory.ts src/cli/commands/bench/session-memory.test.ts scripts/bench/lib/manifest.ts scripts/bench/lib/manifest.test.ts src/__integration__/reference-parity-bench.integration.test.ts docs/bench/session-memory-methodology.md` passes.
+- [x] `./bin/wp typecheck` passes.
 
 ## Phase 3: release and claim gate [Complexity: S]
 
@@ -350,7 +350,7 @@ that fail closed on unsupported or unproven full-parity wording. (F5, F6)
 - [ ] `./bin/wp test --file src/audit/ai-contracts.test.ts --file src/audit/reference-parity-claims.test.ts` passes.
 - [ ] `npm pack --dry-run --json`, `vp run lint:pkg`, `vp run public:readiness`, and `vp run verify:secrets` pass.
 - [ ] `./bin/wp lint README.md CHANGELOG.md src/audit/ai-contracts.ts src/audit/ai-contracts.test.ts src/audit/reference-parity-claims.test.ts` passes.
-- [ ] `./bin/wp typecheck` passes.
+- [x] `./bin/wp typecheck` passes.
 
 ## Verification Gates
 

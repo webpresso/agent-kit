@@ -3,6 +3,12 @@ import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
+type ManifestVerificationMode = 'strict' | 'dry-run-current-checkout'
+
+type VerifyManifestOptions = {
+  mode?: ManifestVerificationMode
+}
+
 type Manifest = {
   bun: string
   claude: string
@@ -168,7 +174,7 @@ type RuntimeModules = {
     adminKey: string,
   ) => Promise<void>
   validateWorkspaceKeyPresence: (config: WorkspaceConfig, env?: NodeJS.ProcessEnv) => void
-  verifyManifest: (captured: Manifest, pinned: Manifest) => void
+  verifyManifest: (captured: Manifest, pinned: Manifest, options?: VerifyManifestOptions) => void
   writeReport: (report: SessionMemoryReport, outPath: string) => void
 }
 
@@ -497,7 +503,9 @@ export async function runBenchSessionMemoryCommand(
 
   const pinned = runtime.loadManifest()
   const captured = await runtime.captureManifest()
-  runtime.verifyManifest(captured, pinned)
+  runtime.verifyManifest(captured, pinned, {
+    mode: input.dryRun ? 'dry-run-current-checkout' : 'strict',
+  })
 
   const workspaceConfig = resolveWorkspaceConfigForRun(runtime, env, {
     dryRun: Boolean(input.dryRun),
