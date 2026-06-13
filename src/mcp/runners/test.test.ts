@@ -147,6 +147,8 @@ describe('test runner', () => {
         'run',
         '--exclude',
         '**/*.integration.test.ts',
+        '--exclude',
+        '**/*.e2e.test.ts',
         '--reporter=json',
         '--no-color',
       ])
@@ -181,6 +183,8 @@ describe('test runner', () => {
         'run',
         '--exclude',
         '**/*.integration.test.ts',
+        '--exclude',
+        '**/*.e2e.test.ts',
         '--reporter=json',
         '--no-color',
       ])
@@ -193,6 +197,7 @@ describe('test runner', () => {
         'run',
         '--no-file-parallelism',
         '.integration.test.ts',
+        '.e2e.test.ts',
         '--testTimeout',
         '30000',
         '--reporter=json',
@@ -371,6 +376,7 @@ describe('test runner', () => {
       'run',
       '--no-file-parallelism',
       '.integration.test.ts',
+      '.e2e.test.ts',
       '--testTimeout',
       '30000',
       '--reporter=json',
