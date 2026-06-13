@@ -2,16 +2,19 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 import sessionExecuteTool from './_session-execute.js'
 import { measureToolResultBytes } from './_session-gain.js'
+import { loadNativeSessionMemoryEngine } from '../../session-memory/native-runtime.js'
 import sessionSearchTool from './session-search.js'
 import { SessionMemoryStore } from '../../session-memory/store.js'
 
 let tmpDir: string
 let previousIndexDb: string | undefined
 let previousClaudeProjectDir: string | undefined
+
+const NATIVE_BUILD_TIMEOUT_MS = 120_000
 
 function payload(result: Awaited<ReturnType<typeof sessionExecuteTool.handler>>) {
   return result.structuredContent as {
@@ -28,6 +31,10 @@ function payload(result: Awaited<ReturnType<typeof sessionExecuteTool.handler>>)
     }
   }
 }
+
+beforeAll(() => {
+  loadNativeSessionMemoryEngine()
+}, NATIVE_BUILD_TIMEOUT_MS)
 
 beforeEach(() => {
   tmpDir = mkdtempSync(join(tmpdir(), 'wp-session-execute-test-'))

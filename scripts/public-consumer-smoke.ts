@@ -148,7 +148,7 @@ function assertSetupContract(repo: string): RunResult[] {
     })
   }
   for (const dep of [
-    '@webpresso/agent-kit',
+    '@webpresso/agent-config',
     'typescript',
     'vitest',
     '@playwright/test',

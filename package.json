@@ -57,6 +57,10 @@
     "LICENSE",
     "THIRD-PARTY-NOTICES.md",
     "README.md",
+    "native/session-memory-engine",
+    "!native/session-memory-engine/crates/session-memory-core/benches/**",
+    "!native/session-memory-engine/target/**",
+    "!native/session-memory-engine/.github/**",
     "docs/guides/session-memory.md",
     "docs/bench/session-memory-methodology.md"
   ],
@@ -493,7 +497,12 @@
     "verify:paths": "./bin/wp audit absolute-path-policy --root .",
     "prepare": "husky",
     "mutation": "./bin/wp test --mutation",
-    "e2e": "./bin/wp e2e --config playwright.config.ts"
+    "e2e": "./bin/wp e2e --config playwright.config.ts",
+    "native:session-memory:build": "cargo build --manifest-path native/session-memory-engine/Cargo.toml --package session-memory-napi --release --locked",
+    "native:session-memory:fmt": "cargo fmt --manifest-path native/session-memory-engine/Cargo.toml --all -- --check",
+    "native:session-memory:clippy": "cargo clippy --manifest-path native/session-memory-engine/Cargo.toml --all-targets --all-features -- -D warnings",
+    "native:session-memory:test": "cargo test --manifest-path native/session-memory-engine/Cargo.toml --all",
+    "native:session-memory:bench": "cargo bench --manifest-path native/session-memory-engine/Cargo.toml --package session-memory-core --no-run"
   },
   "dependencies": {
     "@webpresso/cli-contract": "^0.2.0",

@@ -4,17 +4,11 @@ import { basename, extname, join, relative, resolve } from 'node:path'
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 
 const CTX_RS = ['ctx', 'rs'].join('-')
-const NATIVE_SESSION_ENGINE = ['native', 'session-memory-engine'].join('/')
-const LOAD_NATIVE_SESSION_ENGINE = ['loadNative', 'SessionMemoryEngine'].join('')
-const RUN_NATIVE_FILE_OPERATION = ['runNative', 'FileOperation'].join('')
 const BANNED_STRINGS = [
   CTX_RS,
   `@webpresso/${CTX_RS}`,
   `vendor/${CTX_RS}`,
   `webpresso/${CTX_RS}`,
-  NATIVE_SESSION_ENGINE,
-  LOAD_NATIVE_SESSION_ENGINE,
-  RUN_NATIVE_FILE_OPERATION,
 ] as const
 
 const INCLUDED_PATHS = [

@@ -39,11 +39,11 @@ The compiled MCP registry exposes these tested session-memory tools:
 
 | Tool | Purpose | Bounds and safety |
 | --- | --- | --- |
-| `wp_session_batch_execute` | Run an explicit bounded batch of shell commands through the local session-memory store. | Requires explicit execute consent, caps concurrency/time/output, and indexes large outputs instead of returning them inline. |
+| `wp_session_batch_execute` | Run an explicit bounded batch of shell commands through the native session-memory engine. | Requires explicit execute consent, caps concurrency/time/summary size, and indexes output instead of returning large raw payloads inline. |
 | `wp_session_capture` | Manually capture continuity content for later restore. | Truncates captured content before storage and records it under the active repo/session identity. |
 | `wp_session_index` | Index caller-provided text chunks. | Accepts at most 100 chunks per call, skips empty or oversized chunks, and returns bounded chunk ids and warnings. |
 | `wp_session_fetch_and_index` | Fetch an absolute `http(s)` URL and index bounded response content. | Caps URL length, response bytes, chunk count, and returned ids; failed fetches return bounded warnings. |
-| `wp_session_execute` | Run one explicit shell command through the local session-memory store. | Requires explicit execute consent, caps timeout/output, and returns bounded summaries plus optional indexed search hits. |
+| `wp_session_execute` | Run one explicit shell command through the native session-memory engine. | Requires explicit execute consent, caps timeout/summary size, and returns bounded summaries plus optional indexed search hits. |
 | `wp_session_execute_file` | Run explicit local file `read_text` or `metadata` operations under repo-root validation. | Caps preview and file bytes; overflow content can be indexed instead of returned inline; no shell, write, network path, or repo escape behavior is part of this tool. |
 | `wp_session_restore` | Restore bounded continuity context for the active repo. | Defaults to continuity events, returns preview-only results, and caps result count and preview bytes. |
 | `wp_session_search` | Search indexed chunks plus continuity events with unified provenance. | Prioritizes indexed chunks, dedupes results, caps result count, and returns bounded previews. |

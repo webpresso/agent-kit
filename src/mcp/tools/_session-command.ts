@@ -1,14 +1,52 @@
-import { spawn } from 'node:child_process'
-import { createHash } from 'node:crypto'
 import { mkdirSync, realpathSync } from 'node:fs'
 import { dirname, sep } from 'node:path'
 
+import { loadNativeSessionMemoryEngine } from '#session-memory/native-runtime.js'
 import { SessionMemoryStore } from '#session-memory/store.js'
 import type { SearchHit } from '#session-memory/types.js'
 import { defaultIndexDbPath } from './session-restore.js'
 
-const MAX_CAPTURE_BYTES = 1024 * 1024
 const DEFAULT_SEARCH_LIMIT = 10
+
+const nativeExecutionQueues = new Map<string, Promise<void>>()
+
+async function withNativeExecutionQueue<T>(dbPath: string, task: () => Promise<T>): Promise<T> {
+  const previous = nativeExecutionQueues.get(dbPath) ?? Promise.resolve()
+  let release!: () => void
+  const current = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const queued = previous.catch(() => {}).then(() => current)
+  nativeExecutionQueues.set(dbPath, queued)
+  await previous.catch(() => {})
+  try {
+    return await task()
+  } finally {
+    release()
+    if (nativeExecutionQueues.get(dbPath) === queued) nativeExecutionQueues.delete(dbPath)
+  }
+}
+
+function assertNativeExecuteResult(value: unknown): asserts value is {
+  exitCode: number
+  outputBytes: number
+  indexed: boolean
+  summary: string
+} {
+  if (value instanceof Error) throw value
+  if (typeof value !== 'object' || value === null) {
+    throw new Error('native session-memory execute returned a non-object result')
+  }
+  const record = value as Record<string, unknown>
+  if (
+    typeof record.exitCode !== 'number' ||
+    typeof record.outputBytes !== 'number' ||
+    typeof record.indexed !== 'boolean' ||
+    typeof record.summary !== 'string'
+  ) {
+    throw new Error('native session-memory execute returned an invalid result shape')
+  }
+}
 
 export interface SessionCommandResult {
   readonly label: string
@@ -25,25 +63,6 @@ interface RunSessionCommandOptions {
   readonly projectRoot: string
   readonly timeoutMs: number
   readonly dbPath?: string
-}
-
-function appendBounded(parts: Buffer[], chunk: Buffer, currentBytes: number): number {
-  const nextBytes = currentBytes + chunk.length
-  if (currentBytes >= MAX_CAPTURE_BYTES) return nextBytes
-  const remaining = MAX_CAPTURE_BYTES - currentBytes
-  parts.push(chunk.length <= remaining ? chunk : chunk.subarray(0, remaining))
-  return nextBytes
-}
-
-function summarizeOutput(output: string, timedOut: boolean): string {
-  const normalized = output
-    .split(/\r?\n/u)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .slice(0, 6)
-    .join('\n')
-  if (!normalized) return timedOut ? 'command timed out with no captured output' : 'no output'
-  return normalized.length > 2_000 ? `${normalized.slice(0, 2_000)}…` : normalized
 }
 
 function isPathInside(child: string, parent: string): boolean {
@@ -124,17 +143,6 @@ export function validateCommand(command: string, cwd: string, projectRoot: strin
   }
 }
 
-function commandChunkId(label: string, command: string, output: string): string {
-  return createHash('sha256')
-    .update(label)
-    .update('\0')
-    .update(command)
-    .update('\0')
-    .update(output)
-    .digest('hex')
-    .slice(0, 32)
-}
-
 export async function runSessionCommand({
   command,
   label,
@@ -145,72 +153,17 @@ export async function runSessionCommand({
 }: RunSessionCommandOptions): Promise<SessionCommandResult> {
   validateCommand(command, cwd, projectRoot)
   mkdirSync(dirname(dbPath), { recursive: true })
-  const captured: Buffer[] = []
-  let totalOutputBytes = 0
-  let timedOut = false
-
-  const exitCode = await new Promise<number>((resolve, reject) => {
-    const child = spawn('sh', ['-c', command], {
-      cwd,
-      env: process.env,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
-    const timer = setTimeout(() => {
-      timedOut = true
-      child.kill('SIGTERM')
-      setTimeout(() => {
-        if (!child.killed) child.kill('SIGKILL')
-      }, 1_000).unref()
-    }, timeoutMs)
-    child.stdout.on('data', (chunk: Buffer) => {
-      totalOutputBytes = appendBounded(captured, chunk, totalOutputBytes)
-    })
-    child.stderr.on('data', (chunk: Buffer) => {
-      totalOutputBytes = appendBounded(captured, chunk, totalOutputBytes)
-    })
-    child.on('error', (error) => {
-      clearTimeout(timer)
-      reject(error)
-    })
-    child.on('close', (code, signal) => {
-      clearTimeout(timer)
-      if (timedOut) {
-        resolve(124)
-        return
-      }
-      if (code !== null) {
-        resolve(code)
-        return
-      }
-      resolve(signal ? 128 : -1)
-    })
-  })
-
-  const output = Buffer.concat(captured).toString('utf8')
-  const truncated = totalOutputBytes > Buffer.byteLength(output, 'utf8')
-  const summary = `${summarizeOutput(output, timedOut)}${truncated ? '\n[output truncated before indexing]' : ''}`
-  const indexed = output.trim().length > 0
-  if (indexed) {
-    const store = new SessionMemoryStore(dbPath)
-    try {
-      store.indexChunk({
-        id: `command:${commandChunkId(label, command, output)}`,
-        source: label,
-        text: output,
-        metadata: {
-          command,
-          cwd,
-          exitCode,
-          outputBytes: totalOutputBytes,
-          truncated,
-          kind: 'session_command_output',
-        },
-      })
-    } finally {
-      store.close()
-    }
+  const result = await withNativeExecutionQueue(dbPath, () =>
+    loadNativeSessionMemoryEngine().executeSandboxed(dbPath, command, label, timeoutMs, cwd),
+  )
+  assertNativeExecuteResult(result)
+  return {
+    label,
+    exitCode: result.exitCode,
+    outputBytes: result.outputBytes,
+    indexed: result.indexed,
+    summary: result.summary,
   }
-  return { label, exitCode, outputBytes: totalOutputBytes, indexed, summary }
 }
 
 export function searchSessionCommandOutput(

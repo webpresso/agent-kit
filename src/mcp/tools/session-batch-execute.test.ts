@@ -2,14 +2,17 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 import sessionBatchExecuteTool, { totalOutputBytes } from './_session-batch-execute.js'
 import sessionSearchTool from './session-search.js'
+import { loadNativeSessionMemoryEngine } from '../../session-memory/native-runtime.js'
 
 let tmpDir: string
 let previousIndexDb: string | undefined
 let previousClaudeProjectDir: string | undefined
+
+const NATIVE_BUILD_TIMEOUT_MS = 120_000
 
 function payload(result: Awaited<ReturnType<typeof sessionBatchExecuteTool.handler>>) {
   return result.structuredContent as {
@@ -21,6 +24,10 @@ function payload(result: Awaited<ReturnType<typeof sessionBatchExecuteTool.handl
     }
   }
 }
+
+beforeAll(() => {
+  loadNativeSessionMemoryEngine()
+}, NATIVE_BUILD_TIMEOUT_MS)
 
 beforeEach(() => {
   tmpDir = mkdtempSync(join(tmpdir(), 'wp-session-batch-test-'))
