@@ -5,6 +5,7 @@ import {
   openSync,
   readdirSync,
   readFileSync,
+  statSync,
   renameSync,
   rmSync,
   writeFileSync,
@@ -22,6 +23,8 @@ export const CLI_LOG_COMMANDS = [
   'lint',
   'format',
 ] as const
+
+const ORPHAN_LOG_GRACE_MS = 60_000
 
 export type CliLogCommandName = (typeof CLI_LOG_COMMANDS)[number]
 
@@ -148,7 +151,7 @@ function writeLogEntry(entry: CliLogEntry, cwd: string): void {
     const retainedLogPaths = new Set(nextEntries.map((item) => item.logPath))
 
     for (const removed of currentEntries.slice(9)) {
-      if (!retainedLogPaths.has(removed.logPath) && !isActiveLogPath(removed.logPath)) {
+      if (!retainedLogPaths.has(removed.logPath) && canPruneLogPath(removed.logPath)) {
         rmSync(removed.logPath, { force: true })
       }
     }
@@ -207,9 +210,18 @@ function pruneInactiveOrphanedLogFiles(
   for (const file of readdirSync(directory)) {
     if (!file.endsWith('.log')) continue
     const absolutePath = join(directory, file)
-    if (!retainedLogPaths.has(absolutePath) && !isActiveLogPath(absolutePath)) {
+    if (!retainedLogPaths.has(absolutePath) && canPruneLogPath(absolutePath)) {
       rmSync(absolutePath, { force: true })
     }
+  }
+}
+
+function canPruneLogPath(logPath: string): boolean {
+  if (isActiveLogPath(logPath)) return false
+  try {
+    return Date.now() - statSync(logPath).mtimeMs > ORPHAN_LOG_GRACE_MS
+  } catch {
+    return false
   }
 }
 

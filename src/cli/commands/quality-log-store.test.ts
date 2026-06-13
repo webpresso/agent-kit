@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -89,8 +89,25 @@ describe('quality log store', () => {
     expect(
       readdirSync(join(stateRoot.path, 'cli-logs', 'audit')).filter((file) =>
         file.endsWith('.log'),
-      ),
-    ).toHaveLength(10)
+      ).length,
+    ).toBeGreaterThanOrEqual(10)
+  })
+
+  it('keeps recently finalized logs readable even when they fall out of the index', async () => {
+    const victim = createCliLogSink('test')
+    victim.write('victim\n')
+    const victimEntry = await victim.finalize({ exitCode: 0, summary: 'victim' })
+
+    await Promise.all(
+      Array.from({ length: 12 }, async (_, index) => {
+        const sink = createCliLogSink('test')
+        sink.write(`new-${index}\n`)
+        await sink.finalize({ exitCode: 0, summary: `new ${index}` })
+      }),
+    )
+
+    expect(readCliLogEntries('test')).toHaveLength(10)
+    expect(readFileSync(victimEntry.logPath, 'utf8')).toContain('victim')
   })
 
   it('retains only the latest 10 entries and prunes old log files', async () => {
@@ -105,6 +122,14 @@ describe('quality log store', () => {
     const entries = readCliLogEntries('qa')
     expect(entries).toHaveLength(10)
     expect(entries.some((entry) => entry.summary === 'run 0')).toBe(false)
+    expect(readFileSync(oldestPath, 'utf8')).toContain('run-0')
+
+    const stale = new Date(Date.now() - 120_000)
+    utimesSync(oldestPath, stale, stale)
+    const cleanup = createCliLogSink('qa')
+    cleanup.write('cleanup\n')
+    await cleanup.finalize({ exitCode: 0, summary: 'cleanup' })
+
     expect(() => readFileSync(oldestPath, 'utf8')).toThrow()
   })
 })
