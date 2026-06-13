@@ -80,7 +80,6 @@ export const docTypeConfigs: DocTypeConfig[] = [
       /^\.agent\/rules\/agent-guide\.md$/,
       /^AGENTS\.md$/,
       /^CLAUDE\.md$/,
-      /^GEMINI\.md$/,
       /^README\.md$/,
       /README\.md$/,
       /^\.claude\//,

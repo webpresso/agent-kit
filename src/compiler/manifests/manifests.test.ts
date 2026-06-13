@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { emitManifest as emitClaude } from './claude.js'
 import { emitManifest as emitCodex } from './codex.js'
 import { emitManifest as emitCursor } from './cursor.js'
-import { emitManifest as emitGemini } from './gemini.js'
 
 function makeTmp(): string {
   return mkdtempSync(join(tmpdir(), 'wp-manifest-'))
@@ -163,44 +162,5 @@ describe('cursor manifest emitter', () => {
     await emitCursor({ ...BASE_OPTS, agentDir, outDir })
     const json = readJson(join(outDir, '.cursor-plugin', 'plugin.json'))
     expect((json['rules'] as string[]).some((r) => r.includes('my-rule'))).toBe(true)
-  })
-})
-
-describe('gemini manifest emitter', () => {
-  let dirs: string[] = []
-
-  beforeEach(() => {
-    dirs = []
-  })
-  afterEach(() => {
-    for (const d of dirs) rmSync(d, { recursive: true, force: true })
-  })
-
-  function tmp(): string {
-    const d = makeTmp()
-    dirs.push(d)
-    return d
-  }
-
-  it('emits gemini-extension.json with required fields', async () => {
-    const outDir = tmp()
-    const agentDir = tmp()
-    await emitGemini({ ...BASE_OPTS, agentDir, outDir })
-    const json = readJson(join(outDir, 'gemini-extension.json'))
-    expect(json['name']).toBe('webpresso')
-    expect(json['version']).toBe('1.2.3')
-    expect(Array.isArray(json['commands'])).toBe(true)
-    expect(json['schemaVersion']).toBe('0.4.0')
-    expect(json['_generated']).toMatch(/webpresso/)
-  })
-
-  it('commands list maps to correct paths', async () => {
-    const outDir = tmp()
-    const agentDir = tmp()
-    await emitGemini({ ...BASE_OPTS, agentDir, outDir })
-    const json = readJson(join(outDir, 'gemini-extension.json'))
-    const commands = json['commands'] as Array<{ path: string }>
-    expect(commands[0]).toStrictEqual({ path: 'commands/build.md' })
-    expect(commands[1]).toStrictEqual({ path: 'commands/test.md' })
   })
 })

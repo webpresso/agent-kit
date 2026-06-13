@@ -55,10 +55,8 @@ export const STANDARD_IGNORE_PATTERNS: readonly string[] = [
   '.claude',
   '.codex',
   '.cursor',
-  '.gemini',
   '.opencode',
   '.omx',
-  '.windsurf',
 ]
 
 export interface ResolvedOxlintRc {

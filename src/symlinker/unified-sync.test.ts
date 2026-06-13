@@ -97,7 +97,7 @@ describe('runUnifiedSync', () => {
     expect(isSymlink(join(consumerRoot, '.cursor', 'rules', 'foo.mdc'))).toBe(false)
     // .claude/rules/foo.md — symlinked rule
     expect(isSymlink(join(consumerRoot, '.claude', 'rules', 'foo.md'))).toBe(true)
-    // Codex skills are discovered from .agents/skills; rules are not projected
+    // Codex skills are delivered by the Codex plugin; rules are not projected
     // to unsupported .codex/agents.
     expect(existsSync(join(consumerRoot, '.codex', 'agents', 'foo.md'))).toBe(false)
   })
@@ -119,31 +119,24 @@ describe('runUnifiedSync', () => {
     expect(existsSync(join(consumerRoot, '.codex', 'agents', 'mine.md'))).toBe(false)
   })
 
-  it('projects a consumer skill dir into windsurf (copy), claude (symlink), and portable skills (symlink)', () => {
+  it('projects a consumer skill dir to opencode (symlink), but NOT plugin-host dirs', () => {
     writeFile(
       join(consumerRoot, 'agent-skills', 'mine', 'SKILL.md'),
       RULE_FRONTMATTER.replace('SLUG', 'mine').replace('type: rule', 'type: skill'),
     )
     writeFile(join(consumerRoot, 'agent-skills', 'mine', 'asset.txt'), 'hello')
 
-    runUnifiedSync({ catalogDir, consumerRoot })
+    runUnifiedSync({ catalogDir, consumerRoot, hosts: ['opencode'] })
 
-    // .claude/skills/mine — symlink to dir
-    const claudeDir = join(consumerRoot, '.claude', 'skills', 'mine')
-    expect(isSymlink(claudeDir)).toBe(true)
-    expect(existsSync(join(claudeDir, 'SKILL.md'))).toBe(true)
-    expect(readFileSync(join(claudeDir, 'asset.txt'), 'utf8')).toBe('hello')
+    // .opencode/skills/mine — OpenCode primary root, symlink to dir
+    const opencodeDir = join(consumerRoot, '.opencode', 'skills', 'mine')
+    expect(isSymlink(opencodeDir)).toBe(true)
+    expect(existsSync(join(opencodeDir, 'SKILL.md'))).toBe(true)
+    expect(readFileSync(join(opencodeDir, 'asset.txt'), 'utf8')).toBe('hello')
 
-    // .windsurf/skills/mine — copied dir
-    const wsDir = join(consumerRoot, '.windsurf', 'skills', 'mine')
-    expect(existsSync(wsDir)).toBe(true)
-    expect(isSymlink(wsDir)).toBe(false)
-    expect(readFileSync(join(wsDir, 'asset.txt'), 'utf8')).toBe('hello')
-
-    // .agents/skills/mine — portable Codex/OpenCode symlink to dir
-    const portableDir = join(consumerRoot, '.agents', 'skills', 'mine')
-    expect(isSymlink(portableDir)).toBe(true)
-    expect(readFileSync(join(portableDir, 'asset.txt'), 'utf8')).toBe('hello')
+    // Plugin-host skill dirs are NOT projected (skills come from the plugin).
+    expect(existsSync(join(consumerRoot, '.claude', 'skills', 'mine'))).toBe(false)
+    expect(existsSync(join(consumerRoot, '.agents', 'skills', 'mine'))).toBe(false)
   })
 
   it('prunes per-IDE files when consumer rule is deleted', () => {
@@ -220,7 +213,6 @@ describe('runUnifiedSync', () => {
     // Rule projected
     expect(existsSync(join(consumerRoot, '.cursor', 'rules', 'r.mdc'))).toBe(true)
     // Skill NOT projected (filtered out)
-    expect(existsSync(join(consumerRoot, '.windsurf', 'skills', 's'))).toBe(false)
     expect(existsSync(join(consumerRoot, '.claude', 'skills', 's'))).toBe(false)
     expect(existsSync(join(consumerRoot, '.agents', 'skills', 's'))).toBe(false)
   })
@@ -232,13 +224,12 @@ describe('runUnifiedSync', () => {
       RULE_FRONTMATTER.replace('SLUG', 's').replace('type: rule', 'type: skill'),
     )
 
-    runUnifiedSync({ catalogDir, consumerRoot })
-    expect(existsSync(join(consumerRoot, '.agents', 'skills', 's'))).toBe(true)
+    runUnifiedSync({ catalogDir, consumerRoot, hosts: ['opencode'] })
+    expect(existsSync(join(consumerRoot, '.opencode', 'skills', 's'))).toBe(true)
 
-    runUnifiedSync({ catalogDir, consumerRoot, kinds: ['rule'] })
+    runUnifiedSync({ catalogDir, consumerRoot, hosts: ['opencode'], kinds: ['rule'] })
 
-    expect(existsSync(join(consumerRoot, '.agents', 'skills', 's'))).toBe(true)
-    expect(existsSync(join(consumerRoot, '.claude', 'skills', 's'))).toBe(true)
+    expect(existsSync(join(consumerRoot, '.opencode', 'skills', 's'))).toBe(true)
   })
 
   it('catalogDir resolves through a symlink (realpathSync)', () => {

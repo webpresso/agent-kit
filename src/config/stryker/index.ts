@@ -25,8 +25,6 @@ export const baseConfig = {
     '**/.claude/**',
     '**/.codex/**',
     '**/.cursor/**',
-    '**/.gemini/**',
-    '**/.windsurf/**',
     '**/.opencode/**',
     '**/.omx/**',
     '**/dist/**',

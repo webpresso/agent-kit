@@ -12,7 +12,7 @@ tool owns prevents confusion and guides where to file issues or contribute.
 
 [rulesync](https://github.com/dyoshikawa/rulesync) is a file-emission CLI: you
 write rules once in a canonical format and rulesync generates the runtime-specific
-files for 17 targets (Claude Code, Codex CLI, Cursor, Windsurf, Gemini, Copilot,
+files for many targets (Claude Code, Codex CLI, Cursor, Copilot,
 OpenCode, and more). It has ~175k weekly downloads, is MIT-licensed, and is
 maintained actively as a standalone tool.
 
@@ -20,7 +20,7 @@ Core capabilities:
 
 - **Emit to 17 runtimes** — single source, deterministic output per target.
 - **Watch mode** — `rulesync watch` regenerates on source change.
-- **Format adapters** — handles TOML (Gemini), JSON (`.claude/`), Markdown (Cursor).
+- **Format adapters** — handles JSON (`.claude/`) and Markdown (Cursor).
 - **Validation** — warns on unknown frontmatter keys and unsupported targets.
 
 rulesync is laser-focused on file emission. It does not track lifecycle, audit

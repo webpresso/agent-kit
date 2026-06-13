@@ -20,7 +20,7 @@ import { createRequire } from 'node:module'
 import { flattenAgentDir, writeFlattenedAssets } from '#compiler/flatten'
 
 const PINNED_RULESYNC_VERSION = '8.15.1'
-const DEFAULT_TARGETS = 'claude,codex,cursor,gemini,opencode,windsurf'
+const DEFAULT_TARGETS = 'claude,codex,cursor,opencode'
 const COMPILE_MANIFEST_VERSION = 1
 
 // Resolve rulesync bin — checks consumer's node_modules first,
@@ -285,7 +285,6 @@ export async function runCompile(options: {
       import('#compiler/manifests/claude').then((m) => m.emitManifest(manifestOpts)),
       import('#compiler/manifests/codex').then((m) => m.emitManifest(manifestOpts)),
       import('#compiler/manifests/cursor').then((m) => m.emitManifest(manifestOpts)),
-      import('#compiler/manifests/gemini').then((m) => m.emitManifest(manifestOpts)),
     ])
 
     // Step 5: Run mergeAgentsMd to produce AGENTS.md at repo root
@@ -310,7 +309,6 @@ export async function runCompile(options: {
       '.claude-plugin/plugin.json': hashFile(join(cwd, '.claude-plugin', 'plugin.json')),
       '.codex-plugin/plugin.json': hashFile(join(cwd, '.codex-plugin', 'plugin.json')),
       '.cursor-plugin/plugin.json': hashFile(join(cwd, '.cursor-plugin', 'plugin.json')),
-      'gemini-extension.json': hashFile(join(cwd, 'gemini-extension.json')),
     }
     const compileManifest: CompileManifest = {
       version: COMPILE_MANIFEST_VERSION,

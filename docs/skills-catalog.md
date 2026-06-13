@@ -23,21 +23,19 @@ available unless you explicitly opt out of the relevant host/runtime.
 | Slash | What it does |
 |---|---|
 | `/verify` | Post-implementation quality gate — 6 phases, evidence-before-claims, test-quality audit, legacy/dead-code sweep |
-| `/tph` | Testing-philosophy helper — flags bullshit tests, over-mocking, weak assertions, wrong-named integration tests |
 | `/plan-refine` | Hardens a blueprint before `/pll` — tech fact-check, path verification, architecture review, cross-plan alignment |
 | `/pll` | Parallel lane launch — runs independent blueprint lanes in git worktrees, one commit per lane after `/verify` passes |
 | `/audit` | Code-quality audits (code, test, dup, ux) writing to `docs/research/quality-audits/` |
-| `/audit-duplication` | Dedicated jscpd-backed duplication audit |
 | `/fix` | Minimal-correct-fix protocol with iron-law invariants |
 | `/fix-all` | Parallel DAG error-fix across the repo |
 | `/brainstorm` | Pre-plan ideation workflow |
-| `/decide` | ADR workflow (`init`, `propose`, `verify`) |
 
 **Paired skills** (`.agent/skills/<name>/SKILL.md`):
 
 - `fix/` — backs `/fix`
 - `verify/` — backs `/verify`
-- `testing-philosophy/` — backs `/tph`; defines the "no bullshit tests" rules
+- `testing-philosophy/` — canonical "no bullshit tests" testing philosophy
+- `tph/` — literal `/tph` shortcut skill that delegates to `testing-philosophy/` and `wp audit tph`
 - `plan-refine/` — backs `/plan-refine`; 6-step refinement pipeline
 - `pll/` — backs `/pll`; blueprint-aware parallel execution adapter
 - `best-practice-research/` — shared best-practice research workflow for

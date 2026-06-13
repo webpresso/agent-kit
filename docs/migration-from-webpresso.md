@@ -61,7 +61,7 @@ If you happen to have forked or vendored webpresso's blueprint code:
    `@webpresso/agent-kit/blueprint`.
 4. Delete the vendored code.
 5. Run `wp sync` and commit the resulting `.claude/`, `.cursor/`,
-   `.windsurf/`, `.opencode/`, `.agents/skills/`, and `.gemini/` files.
+   `.opencode/` and `.agents/skills/` files.
 
 ## Invariants preserved during webpresso's migration
 

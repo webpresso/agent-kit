@@ -367,6 +367,85 @@ describe('package-surface audit', () => {
     )
   })
 
+  test.sequential('uses the agent-kit-owned secret scanner outside the agent-kit repo', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'node_modules', '.bin'), { recursive: true })
+    writeJson(join(root, 'package.json'), {
+      name: '@webpresso/webpresso',
+      version: '0.1.0',
+      private: false,
+      files: ['README.md'],
+    })
+    writeFileSync(join(root, 'README.md'), 'https://scanner-safe:sentinel@example.com\n')
+    const fakeConsumerSecretlint = join(root, 'node_modules', '.bin', 'secretlint')
+    writeFileSync(
+      fakeConsumerSecretlint,
+      '#!/usr/bin/env node\nprocess.stderr.write("consumer secretlint must not run\\n"); process.exit(42)\n',
+    )
+    chmodSync(fakeConsumerSecretlint, 0o755)
+
+    const originalCwd = process.cwd()
+    process.chdir(root)
+    try {
+      const result = auditPackageSurface(root)
+
+      expect(result.ok).toBe(false)
+      expect(result.violations).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            file: 'README.md',
+            message: expect.stringContaining('Secretlint flagged packed file'),
+          }),
+        ]),
+      )
+    } finally {
+      process.chdir(originalCwd)
+    }
+  })
+
+  test.sequential('uses WP_AGENT_KIT_ROOT to locate the owned scanner from compiled runtime lanes', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'node_modules', '.bin'), { recursive: true })
+    writeJson(join(root, 'package.json'), {
+      name: '@webpresso/webpresso',
+      version: '0.1.0',
+      private: false,
+      files: ['README.md'],
+    })
+    writeFileSync(join(root, 'README.md'), 'https://scanner-safe:sentinel@example.com\n')
+    const fakeConsumerSecretlint = join(root, 'node_modules', '.bin', 'secretlint')
+    writeFileSync(
+      fakeConsumerSecretlint,
+      '#!/usr/bin/env node\nprocess.stderr.write("consumer secretlint must not run\\n"); process.exit(42)\n',
+    )
+    chmodSync(fakeConsumerSecretlint, 0o755)
+
+    const originalCwd = process.cwd()
+    const originalAgentKitRoot = process.env.WP_AGENT_KIT_ROOT
+    process.chdir(root)
+    process.env.WP_AGENT_KIT_ROOT = resolve(import.meta.dirname, '..', '..')
+    try {
+      const result = auditPackageSurface(root)
+
+      expect(result.ok).toBe(false)
+      expect(result.violations).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            file: 'README.md',
+            message: expect.stringContaining('Secretlint flagged packed file'),
+          }),
+        ]),
+      )
+    } finally {
+      process.chdir(originalCwd)
+      if (originalAgentKitRoot === undefined) {
+        delete process.env.WP_AGENT_KIT_ROOT
+      } else {
+        process.env.WP_AGENT_KIT_ROOT = originalAgentKitRoot
+      }
+    }
+  })
+
   test('skips deep content and secret scans for generated dist artifacts', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'dist'), { recursive: true })

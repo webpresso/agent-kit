@@ -75,7 +75,6 @@ describe('runUnifiedSync (sync command core)', () => {
     runUnifiedSync({ catalogDir, consumerRoot, kinds: ['rule'] })
 
     expect(existsSync(join(consumerRoot, '.cursor', 'rules', 'r.mdc'))).toBe(true)
-    expect(existsSync(join(consumerRoot, '.windsurf', 'skills', 'sk'))).toBe(false)
     expect(existsSync(join(consumerRoot, '.agents', 'skills', 'sk'))).toBe(false)
   })
 
@@ -85,12 +84,12 @@ describe('runUnifiedSync (sync command core)', () => {
       join(catalogDir, 'skills', 'sk', 'SKILL.md'),
       RULE_FM.replace('SLUG', 'sk').replace('type: rule', 'type: skill'),
     )
-    runUnifiedSync({ catalogDir, consumerRoot })
-    expect(existsSync(join(consumerRoot, '.agents', 'skills', 'sk'))).toBe(true)
+    runUnifiedSync({ catalogDir, consumerRoot, hosts: ['opencode'] })
+    expect(existsSync(join(consumerRoot, '.opencode', 'skills', 'sk'))).toBe(true)
 
-    runUnifiedSync({ catalogDir, consumerRoot, kinds: ['rule'] })
+    runUnifiedSync({ catalogDir, consumerRoot, hosts: ['opencode'], kinds: ['rule'] })
 
-    expect(existsSync(join(consumerRoot, '.agents', 'skills', 'sk'))).toBe(true)
+    expect(existsSync(join(consumerRoot, '.opencode', 'skills', 'sk'))).toBe(true)
   })
 
   it('--check exits with mismatches when not synced and zero when synced', () => {

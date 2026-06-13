@@ -16,7 +16,6 @@ const AGENT_RULES_README = `# agent-rules/
 
 This directory holds consumer-owned **agent rules** — the canonical source
 of behavioural guidelines that get projected into per-tool surfaces
-(\`.agent/rules/\`, \`.cursor/rules/\`, \`.windsurf/rules/\`, etc.) by
 \`wp sync\`.
 
 ## Authoring
@@ -47,9 +46,7 @@ export const WEBPRESSO_ROUTING_RULE_FILENAME = 'webpresso-routing.md'
 const RULE_IGNORE_PATTERNS = [
   '.agent/rules/',
   '.cursor/rules/',
-  '.windsurf/rules/',
   '.claude/rules/',
-  '.gemini/commands/',
 ] as const
 
 export function scaffoldAgentRules(opts: ScaffoldAgentRulesOptions): ScaffoldAgentRulesResult {

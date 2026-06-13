@@ -3,9 +3,8 @@
  * Audit & Auto-Fix: Agent Command/Workflow Symlinks
  *
  * Ensures all consumer directories (e.g. .claude/commands) use symlinks
- * pointing to `.agent/` source files, keeps skill directories as single
- * directory-symlinks, and regenerates `.gemini/commands/*.toml` from
- * markdown sources.
+ * pointing to `.agent/` source files and keeps skill directories as single
+ * directory-symlinks.
  *
  * Auto-fixes:
  * - Replaces real files with symlinks to .agent/ source
@@ -43,8 +42,6 @@ import {
   type PerSkillConsumerConfig,
   type SkillsConsumerConfig,
 } from './consumers.js'
-import { parseMarkdownFrontmatter } from './frontmatter.js'
-import { toToml } from './toml.js'
 import { isSymlinkPointingTo } from './unified-sync.js'
 
 export {
@@ -58,9 +55,6 @@ export {
 }
 
 export function isAgentOrConsumerFile(file: string): boolean {
-  // Gemini TOML generated files
-  if (/^\.gemini\/commands\/.+\.toml$/.test(file)) return true
-
   if (!file.endsWith('.md')) return false
 
   // .agent/ source markdown (commands, workflows, skills)
@@ -421,82 +415,6 @@ export function syncConsumer(
   return fixCount
 }
 
-// === Gemini CLI TOML Generation ===
-// Gemini CLI uses .gemini/commands/*.toml (not markdown symlinks)
-// We generate TOML from .agent/commands/ and .agent/workflows/ sources
-
-export function syncGeminiCommands(repoRoot: string): number {
-  const geminiDir = join(repoRoot, '.gemini/commands')
-  mkdirSync(geminiDir, { recursive: true })
-
-  console.log('\n📁 .gemini/commands (TOML generation)')
-
-  // Collect sources: workflows first (lower priority), then commands override
-  const sources = new Map<string, { description: string; body: string; source: string }>()
-
-  const workflowsDir = join(repoRoot, '.agent/workflows')
-  if (existsSync(workflowsDir)) {
-    for (const workflowFile of readdirSync(workflowsDir).filter((fileName) =>
-      fileName.endsWith('.md'),
-    )) {
-      const name = workflowFile.replace('.md', '')
-      const content = readFileSync(join(workflowsDir, workflowFile), 'utf8')
-      const { description, body } = parseMarkdownFrontmatter(content)
-      sources.set(name, { description, body, source: 'workflows' })
-    }
-  }
-
-  const commandsDir = join(repoRoot, '.agent/commands')
-  if (existsSync(commandsDir)) {
-    for (const commandFile of readdirSync(commandsDir).filter((fileName) =>
-      fileName.endsWith('.md'),
-    )) {
-      const name = commandFile.replace('.md', '')
-      const content = readFileSync(join(commandsDir, commandFile), 'utf8')
-      const { description, body } = parseMarkdownFrontmatter(content)
-      sources.set(name, { description, body, source: 'commands' })
-    }
-  }
-
-  let fixCount = 0
-  const existingToml = new Set(readdirSync(geminiDir).filter((f) => f.endsWith('.toml')))
-
-  for (const [name, src] of sources) {
-    const tomlFile = `${name}.toml`
-    const tomlPath = join(geminiDir, tomlFile)
-
-    // Convert $ARGUMENTS → {{args}} for Gemini's argument substitution
-    const prompt = src.body.replace(/\$ARGUMENTS/g, '{{args}}')
-    const tomlContent = toToml(src.description, prompt)
-
-    let needsWrite = true
-    if (existsSync(tomlPath)) {
-      const existing = readFileSync(tomlPath, 'utf8')
-      if (existing === tomlContent) {
-        needsWrite = false
-      }
-    }
-
-    if (needsWrite) {
-      writeFileSync(tomlPath, tomlContent)
-      console.log(`  ✅ ${tomlFile} (from .agent/${src.source}/${name}.md)`)
-      fixCount++
-    }
-
-    existingToml.delete(tomlFile)
-  }
-
-  // Remove stale TOML files that no longer have a source
-  for (const stale of existingToml) {
-    unlinkSync(join(geminiDir, stale))
-    console.log(`  🗑️  ${stale}: removed (no source)`)
-    fixCount++
-  }
-
-  if (fixCount === 0) console.log('  ✅ All TOML files up to date')
-  return fixCount
-}
-
 /**
  * Sync repo-root AGENTS.md from canonical .agent/AGENTS.md.
  * Returns 1 if a write occurred, 0 if already up to date.
@@ -566,7 +484,6 @@ export function syncAll(repoRoot: string, consumers: ConsumerConfig[] = DEFAULT_
 
   totalFixes += syncSkills(repoRoot, DEFAULT_SKILLS_CONSUMERS)
   totalFixes += syncSkillFanouts(repoRoot, DEFAULT_PER_SKILL_CONSUMERS).wrote
-  totalFixes += syncGeminiCommands(repoRoot)
 
   // Fan-out writes are tracked separately — they are not "broken symlinks",
   // so they must not pollute totalFixes (which gates `wp symlink check`).

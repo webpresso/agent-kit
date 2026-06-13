@@ -18,7 +18,7 @@ A developer runs:
 wp setup
 ```
 
-Then Claude Code, Codex, Cursor, Windsurf, Gemini, OpenCode, and compatible
+Then Claude Code, Codex, Cursor, OpenCode, and compatible
 agents all inherit the same instructions, skills, hooks, planning files, and
 quality gates.
 

@@ -85,6 +85,7 @@ describe('host skill visibility', () => {
     const roots = hostSkillRoots(repoRoot, 'opencode', homeDir)
     expect(roots.project).toEqual([
       join(repoRoot, '.opencode', 'skills'),
+      join(repoRoot, '.agent', 'skills'),
       join(repoRoot, '.claude', 'skills'),
       join(repoRoot, '.agents', 'skills'),
     ])
@@ -101,6 +102,41 @@ describe('host skill visibility', () => {
       ['pll', 'not-visible'],
       ['best-practice-research', 'not-visible'],
     ])
+  })
+
+  it('treats plugin hosts as visible via the canonical .agent/skills SSOT (plugin delivery)', () => {
+    // No .claude/skills or .agents/skills projection (plugin is the channel),
+    // but the skill is installed in the canonical repo agent surface.
+    writeSkill(join(repoRoot, '.agent', 'skills'), 'verify')
+
+    const audit = auditHostSkillVisibility({
+      repoRoot,
+      homeDir,
+      hosts: ['claude', 'codex'],
+      requiredCapabilities: ['verify'],
+    })
+    expect(audit.results.map((r) => [r.host, r.status])).toEqual([
+      ['claude', 'visible-after-restart'],
+      ['codex', 'visible-after-restart'],
+    ])
+  })
+
+  it('treats a plugin host as visible when its installed plugin cache carries the skill', () => {
+    // Simulate an installed Claude plugin (versioned cache dir) with no repo
+    // skill dirs and no canonical .agent/skills.
+    writeSkill(
+      join(homeDir, '.claude', 'plugins', 'cache', 'webpresso', 'agent-kit', '9.9.9', 'skills'),
+      'verify',
+    )
+
+    const audit = auditHostSkillVisibility({
+      repoRoot,
+      homeDir,
+      hosts: ['claude'],
+      requiredCapabilities: ['verify'],
+    })
+    expect(audit.results[0]?.status).toBe('visible-after-restart')
+    expect(audit.results[0]?.foundPaths[0]).toContain(join('plugins', 'cache'))
   })
 
   it('marks skills visible now only when the current session reports those slugs live', () => {

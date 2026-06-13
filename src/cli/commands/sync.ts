@@ -16,6 +16,8 @@ import { join } from 'node:path'
 
 import { validateAgentOverlays } from '#symlinker/overlay-loader'
 import { runUnifiedSync, type UnifiedSyncMismatch } from '#symlinker/unified-sync'
+import { selectUnifiedConsumers } from '#symlinker/consumers'
+import { pruneInactiveSkillDirs } from '#compiler/orphans'
 import type { ContentKind } from '#content/loader'
 import { resolvePackageAsset } from '#utils/package-assets'
 import { defaultConfig, readConfig } from './init/config.js'
@@ -88,7 +90,6 @@ export function isUnmaterializedAgentKitSourceWorktree(consumer: ConsumerContext
     '.claude/skills',
     '.agents/skills',
     '.cursor/rules',
-    '.windsurf/skills',
   ]
 
   return requiredPaths.every((relativePath) => !existsSync(join(consumer.repoRoot, relativePath)))
@@ -110,11 +111,13 @@ export function registerSyncCommand(cli: CAC): void {
       if (!consumer) {
         throw commandError('wp sync: could not detect the current git repo root.')
       }
+      const config = readConfig(repoRoot) ?? defaultConfig()
+      const selectedHosts = config.hosts?.selected
       const agentsResult = scaffoldAgentsMd({
         catalogDir: resolvePackageAsset('catalog'),
         repoRoot,
         consumer,
-        config: readConfig(repoRoot) ?? defaultConfig(),
+        config,
         options: { dryRun: check, overwrite: false },
       })
 
@@ -143,6 +146,7 @@ export function registerSyncCommand(cli: CAC): void {
           catalogDir,
           consumerRoot: repoRoot,
           ...(kinds ? { kinds } : {}),
+          ...(selectedHosts ? { hosts: selectedHosts } : {}),
           check,
         })
       } catch (error) {
@@ -152,6 +156,21 @@ export function registerSyncCommand(cli: CAC): void {
           )
         }
         throw error
+      }
+
+      // Prune leftover skill symlinks from dirs that are no longer active
+      // projection targets (e.g. .claude/skills after Claude moved to its
+      // plugin), so skills are not double-shown.
+      if (!check) {
+        const activeSkillDirs = new Set(
+          selectUnifiedConsumers(selectedHosts)
+            .filter((consumer) => consumer.acceptsKind === 'skill')
+            .map((consumer) => consumer.dir),
+        )
+        const pruned = pruneInactiveSkillDirs(repoRoot, activeSkillDirs, false)
+        if (pruned.length > 0) {
+          console.log(`wp sync: pruned ${pruned.length} stale skill symlink(s) from plugin-host dirs.`)
+        }
       }
 
       const agentsMismatch = agentsResult === null ? null : agentsResultToMismatch(agentsResult)

@@ -16,6 +16,8 @@ import { readPackageVersion } from '#cli/utils'
 import { resolveBlueprintRoot } from '#utils/blueprint-root'
 
 import { runUnifiedSync } from '#symlinker/unified-sync'
+import { selectUnifiedConsumers } from '#symlinker/consumers'
+import { pruneInactiveSkillDirs } from '#compiler/orphans'
 import {
   type AgentkitConfig,
   defaultConfig,
@@ -89,6 +91,7 @@ import {
 import { ensureAgentKitGlobal } from './scaffolders/agent-kit-global/index.js'
 import { scaffoldAuditHooks } from './scaffolders/audit-hooks/index.js'
 import { ensureClaudeCodeUserPlugin } from './scaffolders/claude-plugin/index.js'
+import { ensureCodexUserPlugin } from './scaffolders/codex-plugin/index.js'
 import { scaffoldClaudeRules } from './scaffolders/claude-rules/index.js'
 import { ensureCodexCli } from './scaffolders/codex-cli/index.js'
 import { normalizeGlobalCodexHooksFile } from './scaffolders/agent-hooks/codex-global-normalize.js'
@@ -541,7 +544,17 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         kinds: ['rule', 'skill'],
         check: false,
         allowedSkillSlugs,
+        hosts: selectedHosts,
       })
+      // Remove leftover skill symlinks from dirs that are no longer active
+      // projection targets (e.g. .claude/skills / .agents/skills once Claude and
+      // Codex receive skills from their plugins) so skills are not double-shown.
+      const activeSkillDirs = new Set(
+        selectUnifiedConsumers(selectedHosts)
+          .filter((unifiedConsumer) => unifiedConsumer.acceptsKind === 'skill')
+          .map((unifiedConsumer) => unifiedConsumer.dir),
+      )
+      pruneInactiveSkillDirs(consumer.repoRoot, activeSkillDirs, false)
     }
 
     const blueprintsDir = inferBlueprintsDirOverride(consumer.repoRoot, existingConfig)
@@ -938,6 +951,36 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         break
     }
 
+    if (selectedHosts.includes('codex') && !isCiEnvironment) {
+      const codexPluginResult = ensureCodexUserPlugin({ options, packageRoot })
+      switch (codexPluginResult.kind) {
+        case 'codex-plugin-installed':
+          console.log(
+            `  codex plugin: ✓ marketplace + plugin ensured (${codexPluginResult.pluginId}) — restart Codex to load skills`,
+          )
+          break
+        case 'codex-plugin-skipped-dry-run':
+          console.log('  codex plugin: skipped (--dry-run)')
+          break
+        case 'codex-plugin-skipped-opt-out':
+          console.log('  codex plugin: skipped (WP_SKIP_CODEX_PLUGIN=1)')
+          break
+        case 'codex-plugin-skipped-no-cli':
+          console.log('  codex plugin: - skipped (codex not on PATH)')
+          break
+        case 'codex-plugin-unavailable':
+          console.log('  codex plugin: - skipped (plugin manifest unavailable in this install)')
+          break
+        case 'codex-plugin-failed':
+          console.warn(
+            `  codex plugin: ⚠ ${codexPluginResult.step} exited with ${codexPluginResult.exitCode}; ` +
+              `fallback: codex plugin marketplace add ${codexPluginResult.stagingRoot} && ` +
+              `codex plugin add ${codexPluginResult.pluginId}`,
+          )
+          break
+      }
+    }
+
     let gstackFailure: 'clone-failed' | 'pull-failed' | 'setup-failed' | null = null
     if (process.env.WP_SKIP_GSTACK === '1') {
       console.warn(
@@ -1183,13 +1226,19 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
           console.log(
             `  host visibility: - skipped hard gate (CI environment, ${missing.length} capability/host pair(s) not visible)`,
           )
-        } else {
+        } else if (process.env.WP_SETUP_STRICT_HOST_VISIBILITY === '1') {
           console.error(
             `\nwp setup: host visibility check failed for ${missing
               .map((result) => `${result.host}/${result.capability}`)
               .join(', ')}`,
           )
           return EXIT_SETUP_FAIL
+        } else {
+          console.warn(
+            `  host visibility: ⚠ ${missing
+              .map((result) => `${result.host}/${result.capability}`)
+              .join(', ')} not visible until the selected host skill roots are installed/reloaded`,
+          )
         }
       }
     } else {

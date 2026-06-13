@@ -52,20 +52,23 @@ describe('wp package-manager commands', () => {
     })
   })
 
-  it('keeps update local by default', () => {
+  it('runs tooling refresh by default inside a package root', () => {
     const run = vi.fn(() => spawnResult(0))
 
     expect(
       runPackageManagerCommand('update', {
         argv: ['node', 'wp', 'update'],
+        cwd: '/repo/packages/agent-kit',
+        exists: (target) =>
+          String(target) === '/repo/packages/agent-kit/package.json' ||
+          String(target) === '/fake-home/.claude/skills/gstack/.git',
+        gstackRoot: '/fake-home/.claude/skills/gstack',
         run,
       }),
     ).toBe(0)
 
-    expect(run).toHaveBeenCalledTimes(1)
-    expect(run).toHaveBeenCalledWith('rtk', ['vp', 'update'], {
-      cwd: process.cwd(),
-    })
+    expect(run).toHaveBeenNthCalledWith(1, 'vp', ['update', '-g', '--latest', '@openai/codex'])
+    expect(run).toHaveBeenNthCalledWith(7, 'vp', ['install', '-g', '@webpresso/agent-kit'])
   })
 
   it('runs local verbs from the nearest package root when invoked in a nested directory', () => {
@@ -85,21 +88,104 @@ describe('wp package-manager commands', () => {
     })
   })
 
-  it('falls back to the global refresh pipeline when wp update is invoked outside any package root', () => {
+  it('runs local dependency updates through managed vp only with --deps', () => {
     const run = vi.fn(() => spawnResult(0))
 
     expect(
       runPackageManagerCommand('update', {
-        argv: ['node', 'wp', 'update'],
-        cwd: '/umbrella/no-package-here',
-        exists: (target) => String(target) === '/fake-home/.claude/skills/gstack/.git',
-        gstackRoot: '/fake-home/.claude/skills/gstack',
+        argv: ['node', 'wp', 'update', '--deps'],
+        cwd: '/repo/packages/agent-kit/src',
+        exists: (target) => String(target) === '/repo/packages/agent-kit/package.json',
         run,
       }),
     ).toBe(0)
 
-    expect(run).toHaveBeenNthCalledWith(1, 'vp', ['update', '-g', '--latest', '@openai/codex'])
-    expect(run).toHaveBeenNthCalledWith(7, 'vp', ['install', '-g', '@webpresso/agent-kit'])
+    expect(run).toHaveBeenCalledTimes(1)
+    expect(run).toHaveBeenCalledWith('rtk', ['vp', 'update'], {
+      cwd: '/repo/packages/agent-kit',
+    })
+  })
+
+  it('strips --deps before forwarding dependency update args to vp', () => {
+    const run = vi.fn(() => spawnResult(0))
+
+    expect(
+      runPackageManagerCommand('update', {
+        argv: ['node', 'wp', 'update', '--deps', '--latest', 'typescript'],
+        cwd: '/repo/packages/agent-kit',
+        exists: (target) => String(target) === '/repo/packages/agent-kit/package.json',
+        run,
+      }),
+    ).toBe(0)
+
+    expect(run).toHaveBeenCalledWith('rtk', ['vp', 'update', '--latest', 'typescript'], {
+      cwd: '/repo/packages/agent-kit',
+    })
+  })
+
+  it('treats positional update packages as dependency updates', () => {
+    const run = vi.fn(() => spawnResult(0))
+
+    expect(
+      runPackageManagerCommand('update', {
+        argv: ['node', 'wp', 'update', 'typescript'],
+        cwd: '/repo/packages/agent-kit',
+        exists: (target) => String(target) === '/repo/packages/agent-kit/package.json',
+        run,
+      }),
+    ).toBe(0)
+
+    expect(run).toHaveBeenCalledWith('rtk', ['vp', 'update', 'typescript'], {
+      cwd: '/repo/packages/agent-kit',
+    })
+  })
+
+  it('rejects --deps with --global', () => {
+    const run = vi.fn(() => spawnResult(0))
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    expect(
+      runPackageManagerCommand('update', {
+        argv: ['node', 'wp', 'update', '--deps', '--global'],
+        run,
+      }),
+    ).toBe(1)
+
+    expect(run).not.toHaveBeenCalled()
+    expect(error.mock.calls.join('\n')).toContain('--deps cannot be combined with --global')
+  })
+
+  it('rejects --deps outside any package root instead of refreshing tooling', () => {
+    const run = vi.fn(() => spawnResult(0))
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    expect(
+      runPackageManagerCommand('update', {
+        argv: ['node', 'wp', 'update', '--deps'],
+        cwd: '/umbrella/no-package-here',
+        exists: () => false,
+        run,
+      }),
+    ).toBe(1)
+
+    expect(run).not.toHaveBeenCalled()
+    expect(error.mock.calls.join('\n')).toContain('no package root found')
+  })
+
+  it('rejects typoed update control flags instead of silently refreshing tooling', () => {
+    const run = vi.fn(() => spawnResult(0))
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    expect(
+      runPackageManagerCommand('update', {
+        argv: ['node', 'wp', 'update', '--dep'],
+        run,
+      }),
+    ).toBe(1)
+
+    expect(run).not.toHaveBeenCalled()
+    expect(error.mock.calls.join('\n')).toContain('unrecognized tooling option')
+    expect(error.mock.calls.join('\n')).toContain('wp update --deps --dep')
   })
 
   it('runs the global update refresh pipeline in order', () => {
@@ -199,6 +285,8 @@ describe('wp package-manager commands', () => {
     expect(run).toHaveBeenCalledTimes(7)
     expect(error.mock.calls.join('\n')).toContain('omc')
     expect(error.mock.calls.join('\n')).toContain('exit 3')
+    expect(error.mock.calls.join('\n')).toContain('wp update: omc failed')
+    expect(error.mock.calls.join('\n')).not.toContain('wp update --global')
   })
 
   it('reports missing global tools without throwing', () => {

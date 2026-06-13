@@ -39,8 +39,8 @@ import { dirname, join, relative, resolve } from 'node:path'
 import { type ContentKind, type ContentRecord, loadContent } from '#content/loader'
 
 import {
-  DEFAULT_UNIFIED_CONSUMERS,
   type UnifiedConsumerConfig,
+  selectUnifiedConsumers,
   unifiedRuleFilename,
 } from './consumers.js'
 
@@ -51,8 +51,16 @@ export interface UnifiedSyncOptions {
   readonly kinds?: readonly ContentKind[]
   /** When true, report mismatches without writing. */
   readonly check?: boolean
-  /** Override consumer registry (testing). */
+  /** Override consumer registry (testing). Takes precedence over `hosts`. */
   readonly consumers?: readonly UnifiedConsumerConfig[]
+  /**
+   * Selected agent hosts (`hosts.selected` from `.webpressorc.json`). When
+   * `consumers` is not given, the active consumer set is host-gated via
+   * `selectUnifiedConsumers`: plugin hosts (Claude, Codex) get no skill-dir
+   * projection, OpenCode gets `.opencode/skills`. Undefined → plugin-first
+   * default (no host skill dirs).
+   */
+  readonly hosts?: readonly string[]
   /**
    * Optional allowlist of skill slugs. When provided, only `kind === 'skill'`
    * records whose slug is in this set are projected. Rules are unaffected.
@@ -390,8 +398,8 @@ function pruneStale(
 export function runUnifiedSync(options: UnifiedSyncOptions): UnifiedSyncResult {
   const kinds = options.kinds ?? (['rule', 'skill'] as const)
   const kindSet = new Set<ContentKind>(kinds)
-  const consumers = (options.consumers ?? DEFAULT_UNIFIED_CONSUMERS).filter((consumer) =>
-    kindSet.has(consumer.acceptsKind),
+  const consumers = (options.consumers ?? selectUnifiedConsumers(options.hosts)).filter(
+    (consumer) => kindSet.has(consumer.acceptsKind),
   )
 
   // Realpath both roots so symlink target paths (computed via `relative()`)

@@ -10,6 +10,8 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, relative, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { createRequire } from 'node:module'
 
 import { syncBlueprintMigrationSqlAssets } from '#build/blueprint-migration-assets.js'
 import { createPackedManifest, readWorkspaceCatalogs } from '#build/package-manifest.js'
@@ -136,11 +138,9 @@ const DEFAULT_FORBIDDEN_TARBALL_PATH_PATTERNS = [
   '.claude/',
   '.codex/',
   '.cursor/',
-  '.gemini/',
   '.omc/',
   '.omx/',
   '.opencode/',
-  '.windsurf/',
   'docs/research/',
 ] as const
 const DEFAULT_FORBIDDEN_TARBALL_CONTENT_PATTERNS = [
@@ -692,8 +692,8 @@ function runSecretlintForAudit(
 function runSecretlint(stageRoot: string, packageRoot: string): unknown {
   const rcPath = findSecretlintRc(packageRoot)
   const outputFile = join(stageRoot, '.secretlint-output.json')
-  const toolRoot = findSecretlintToolRoot(packageRoot) ?? findSecretlintToolRoot(process.cwd())
-  const args = ['exec', 'secretlint', '--format', 'json', '--output', outputFile, '--no-gitignore']
+  const command = resolveSecretlintCommand()
+  const args = ['--format', 'json', '--output', outputFile, '--no-gitignore']
   if (rcPath) {
     args.push('--secretlintrc', rcPath)
   } else {
@@ -702,8 +702,8 @@ function runSecretlint(stageRoot: string, packageRoot: string): unknown {
   args.push(join(stageRoot, '**/*'))
 
   try {
-    execFileSync('pnpm', args, {
-      cwd: toolRoot ?? packageRoot,
+    execFileSync(command.bin, args, {
+      cwd: command.toolRoot,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
       maxBuffer: 20 * 1024 * 1024,
@@ -719,10 +719,78 @@ function runSecretlint(stageRoot: string, packageRoot: string): unknown {
   }
 }
 
-function findSecretlintToolRoot(start: string): string | undefined {
+function resolveSecretlintCommand(): { bin: string; toolRoot: string } {
+  const agentKitRoot = agentKitPackageRoot()
+  const owned = findOwnedSecretlintCommand(agentKitRoot)
+  if (owned) return owned
+
+  throw new Error(
+    'secretlint is unavailable for package-surface audit; @webpresso/agent-kit must ship secretlint as an owned runtime audit dependency',
+  )
+}
+
+function findOwnedSecretlintCommand(
+  agentKitRoot: string | undefined,
+): { bin: string; toolRoot: string } | undefined {
+  const resolvers = [
+    agentKitRoot ? createRequire(join(agentKitRoot, 'package.json')) : undefined,
+    createRequire(import.meta.url),
+  ].filter((resolver): resolver is NodeJS.Require => Boolean(resolver))
+
+  for (const requireFromOwnedRuntime of resolvers) {
+    try {
+      const secretlintPackageFile = requireFromOwnedRuntime.resolve('secretlint/package.json')
+      const secretlintPackageRoot = dirname(secretlintPackageFile)
+      const toolRoot =
+        agentKitRoot ?? findPackageRootNamed(secretlintPackageRoot, '@webpresso/agent-kit')
+      if (!toolRoot) continue
+      const secretlintPackage = readJsonObject<{ bin?: string | Record<string, string> }>(
+        secretlintPackageFile,
+      )
+      const binEntry =
+        typeof secretlintPackage.bin === 'string'
+          ? secretlintPackage.bin
+          : secretlintPackage.bin?.secretlint
+      if (!binEntry) continue
+      return { bin: join(secretlintPackageRoot, binEntry), toolRoot }
+    } catch {
+      continue
+    }
+  }
+  return undefined
+}
+
+function findPackageRootNamed(start: string, packageName: string): string | undefined {
   let current = resolve(start)
   while (true) {
-    if (existsSync(join(current, 'node_modules', '.bin', 'secretlint'))) return current
+    const packageFile = join(current, 'package.json')
+    if (existsSync(packageFile)) {
+      const pkg = readJsonObject<PackageRecord>(packageFile)
+      if (pkg.name === packageName) return current
+    }
+    const parent = dirname(current)
+    if (parent === current) return undefined
+    current = parent
+  }
+}
+
+function agentKitPackageRoot(): string | undefined {
+  const runtimeRoot = process.env.WP_AGENT_KIT_ROOT
+  if (runtimeRoot) {
+    const packageFile = join(runtimeRoot, 'package.json')
+    if (existsSync(packageFile)) {
+      const pkg = readJsonObject<PackageRecord>(packageFile)
+      if (pkg.name === '@webpresso/agent-kit') return runtimeRoot
+    }
+  }
+
+  let current = dirname(fileURLToPath(import.meta.url))
+  while (true) {
+    const packageFile = join(current, 'package.json')
+    if (existsSync(packageFile)) {
+      const pkg = readJsonObject<PackageRecord>(packageFile)
+      if (pkg.name === '@webpresso/agent-kit') return current
+    }
     const parent = dirname(current)
     if (parent === current) return undefined
     current = parent

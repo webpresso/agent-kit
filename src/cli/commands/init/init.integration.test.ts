@@ -327,8 +327,12 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     expect(existsSync(join(repo, '.agent', 'skills', 'fix', 'SKILL.md'))).toBe(true)
     expect(existsSync(join(repo, '.agent', 'skills', 'verify', 'SKILL.md'))).toBe(true)
     expect(existsSync(join(repo, '.agent', 'skills', 'pll', 'SKILL.md'))).toBe(true)
-    expect(existsSync(join(repo, '.agents', 'skills', 'fix', 'SKILL.md'))).toBe(true)
-    expect(existsSync(join(repo, '.agents', 'skills', 'pll', 'SKILL.md'))).toBe(true)
+    // OpenCode (a selected dir-host) receives skills at its primary .opencode/skills
+    // root; Claude/Codex get them from their plugins, so no .claude/.agents skill dirs.
+    expect(existsSync(join(repo, '.opencode', 'skills', 'fix', 'SKILL.md'))).toBe(true)
+    expect(existsSync(join(repo, '.opencode', 'skills', 'pll', 'SKILL.md'))).toBe(true)
+    expect(existsSync(join(repo, '.agents', 'skills', 'fix', 'SKILL.md'))).toBe(false)
+    expect(existsSync(join(repo, '.claude', 'skills', 'fix', 'SKILL.md'))).toBe(false)
     expect(existsSync(join(repo, '.agent', 'skills', 'testing-philosophy', 'SKILL.md'))).toBe(true)
     expect(existsSync(join(repo, '.agent', 'skills', 'systematic-debugging', 'SKILL.md'))).toBe(
       false,
@@ -599,7 +603,7 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     expect(body).toContain('Operating Contract')
   })
 
-  it('generates portable .agents/skills symlinks and host skill surfaces', async () => {
+  it('projects skills per host: OpenCode dir, plugins for Claude/Codex', async () => {
     const code = await runInit({ cwd: repo, yes: true })
     expect(code).toBe(0)
 
@@ -607,12 +611,11 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     // Commands surfaces (`.claude/commands`) remain unwritten — covered by
     // the Claude Code plugin, not by wp setup.
     expect(existsSync(join(repo, '.claude', 'commands'))).toBe(false)
-    // .claude/skills now hosts symlinked rules + skills via unified sync
-    expect(existsSync(join(repo, '.claude', 'skills'))).toBe(true)
+    // Claude skills come from the Claude Code plugin — wp setup does NOT project
+    // a .claude/skills dir (doing so would double-show every skill).
+    expect(existsSync(join(repo, '.claude', 'skills'))).toBe(false)
     // .cursor/rules now hosts copied rules (.mdc)
     expect(existsSync(join(repo, '.cursor', 'rules'))).toBe(true)
-    // .windsurf/skills now hosts copied skills
-    expect(existsSync(join(repo, '.windsurf', 'skills'))).toBe(true)
     // agent-hooks scaffolder writes hook config
     expect(existsSync(join(repo, '.claude', 'settings.json'))).toBe(true)
     expect(existsSync(join(repo, '.codex', 'hooks.json'))).toBe(true)
@@ -639,12 +642,13 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     ).toBe(true)
     expect(stopCommands.some((command) => command.includes('# from-skill: verify'))).toBe(true)
 
-    // Codex: skill folders are symlinked because official docs guarantee
-    // symlinked skill folder discovery.
-    const agentsVerifySkill = join(repo, '.agents', 'skills', 'verify')
-    expect(statSync(agentsVerifySkill).isDirectory()).toBe(true)
-    expect(lstatSync(agentsVerifySkill).isSymbolicLink()).toBe(true)
-    expect(existsSync(join(agentsVerifySkill, 'SKILL.md'))).toBe(true)
+    // OpenCode: skill folders are symlinked into its primary .opencode/skills
+    // root. Codex gets the same skills from its plugin, so no .agents/skills dir.
+    const opencodeVerifySkill = join(repo, '.opencode', 'skills', 'verify')
+    expect(statSync(opencodeVerifySkill).isDirectory()).toBe(true)
+    expect(lstatSync(opencodeVerifySkill).isSymbolicLink()).toBe(true)
+    expect(existsSync(join(opencodeVerifySkill, 'SKILL.md'))).toBe(true)
+    expect(existsSync(join(repo, '.agents', 'skills', 'verify'))).toBe(false)
 
     // agent-hooks scaffolder writes .codex/hooks.json
     expect(existsSync(join(repo, '.codex', 'hooks.json'))).toBe(true)
