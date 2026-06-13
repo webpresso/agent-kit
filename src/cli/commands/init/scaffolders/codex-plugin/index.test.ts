@@ -1,10 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { CODEX_PLUGIN_ID, ensureCodexUserPlugin } from './index.js'
+import { CODEX_PLUGIN_ID, buildCodexStagingMarketplace, ensureCodexUserPlugin } from './index.js'
 
 const tempRoots: string[] = []
 
@@ -16,6 +16,12 @@ function makePackageRoot(): string {
   return root
 }
 
+function makeStagingRoot(): string {
+  const root = mkdtempSync(join(tmpdir(), 'wp-codex-staging-'))
+  tempRoots.push(root)
+  return root
+}
+
 afterEach(() => {
   for (const root of tempRoots.splice(0)) {
     rmSync(root, { recursive: true, force: true })
@@ -23,14 +29,48 @@ afterEach(() => {
   delete process.env.WP_SKIP_CODEX_PLUGIN
 })
 
-describe('ensureCodexUserPlugin', () => {
-  it('runs marketplace add then plugin add (the verified non-interactive verbs)', () => {
+describe('buildCodexStagingMarketplace', () => {
+  it('symlinks plugins/agent-kit to the package and writes an object-source marketplace', () => {
     const packageRoot = makePackageRoot()
+    const stagingRoot = makeStagingRoot()
+
+    buildCodexStagingMarketplace(stagingRoot, packageRoot)
+
+    const link = join(stagingRoot, 'plugins', 'agent-kit')
+    expect(lstatSync(link).isSymbolicLink()).toBe(true)
+    expect(existsSync(join(link, '.codex-plugin', 'plugin.json'))).toBe(true)
+
+    const marketplace = JSON.parse(
+      readFileSync(join(stagingRoot, '.agents', 'plugins', 'marketplace.json'), 'utf8'),
+    ) as { name: string; plugins: Array<{ name: string; source: { source: string; path: string } }> }
+    expect(marketplace.name).toBe('webpresso')
+    expect(marketplace.plugins[0]?.source).toStrictEqual({
+      source: 'local',
+      path: './plugins/agent-kit',
+    })
+  })
+
+  it('refreshes the symlink on re-run (idempotent)', () => {
+    const packageRoot = makePackageRoot()
+    const stagingRoot = makeStagingRoot()
+
+    buildCodexStagingMarketplace(stagingRoot, packageRoot)
+    buildCodexStagingMarketplace(stagingRoot, packageRoot)
+
+    expect(lstatSync(join(stagingRoot, 'plugins', 'agent-kit')).isSymbolicLink()).toBe(true)
+  })
+})
+
+describe('ensureCodexUserPlugin', () => {
+  it('builds the staging marketplace then runs marketplace add + plugin add', () => {
+    const packageRoot = makePackageRoot()
+    const stagingRoot = makeStagingRoot()
     const calls: Array<{ command: string; args: readonly string[] }> = []
 
     const result = ensureCodexUserPlugin({
       options: { dryRun: false, overwrite: false },
       packageRoot,
+      stagingRoot,
       commandExists: () => true,
       runCommand: (command, args) => {
         calls.push({ command, args })
@@ -42,11 +82,15 @@ describe('ensureCodexUserPlugin', () => {
       kind: 'codex-plugin-installed',
       packageRoot,
       pluginId: CODEX_PLUGIN_ID,
+      stagingRoot,
     })
     expect(calls).toEqual([
-      { command: 'codex', args: ['plugin', 'marketplace', 'add', packageRoot] },
+      { command: 'codex', args: ['plugin', 'marketplace', 'remove', 'webpresso'] },
+      { command: 'codex', args: ['plugin', 'marketplace', 'add', stagingRoot] },
       { command: 'codex', args: ['plugin', 'add', CODEX_PLUGIN_ID] },
     ])
+    // staging artifacts were materialized
+    expect(lstatSync(join(stagingRoot, 'plugins', 'agent-kit')).isSymbolicLink()).toBe(true)
   })
 
   it('skips when the .codex-plugin manifest is absent', () => {
@@ -95,13 +139,16 @@ describe('ensureCodexUserPlugin', () => {
     expect(result).toEqual({ kind: 'codex-plugin-skipped-no-cli', packageRoot })
   })
 
-  it('returns a failing step when a codex subcommand fails', () => {
+  it('returns a failing step when plugin add fails', () => {
     const packageRoot = makePackageRoot()
+    const stagingRoot = makeStagingRoot()
 
     const result = ensureCodexUserPlugin({
       options: { dryRun: false, overwrite: false },
       packageRoot,
+      stagingRoot,
       commandExists: () => true,
+      // 'remove' and 'marketplace add' succeed; 'plugin add' (args[1]==='add') fails.
       runCommand: (_command, args) => (args[1] === 'add' ? 17 : 0),
     })
 
@@ -109,6 +156,7 @@ describe('ensureCodexUserPlugin', () => {
       kind: 'codex-plugin-failed',
       packageRoot,
       pluginId: CODEX_PLUGIN_ID,
+      stagingRoot,
       step: 'plugin-add',
       exitCode: 17,
     })

@@ -942,7 +942,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         break
     }
 
-    if (selectedHosts.includes('codex')) {
+    if (selectedHosts.includes('codex') && !isCiEnvironment) {
       const codexPluginResult = ensureCodexUserPlugin({ options, packageRoot })
       switch (codexPluginResult.kind) {
         case 'codex-plugin-installed':
@@ -965,7 +965,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         case 'codex-plugin-failed':
           console.warn(
             `  codex plugin: ⚠ ${codexPluginResult.step} exited with ${codexPluginResult.exitCode}; ` +
-              `fallback: codex plugin marketplace add ${codexPluginResult.packageRoot} && ` +
+              `fallback: codex plugin marketplace add ${codexPluginResult.stagingRoot} && ` +
               `codex plugin add ${codexPluginResult.pluginId}`,
           )
           break
