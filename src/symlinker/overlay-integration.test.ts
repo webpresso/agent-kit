@@ -9,7 +9,10 @@ describe('overlay sync integration contract', () => {
   let root: string
 
   beforeEach(() => {
-    root = join(tmpdir(), `wp-overlay-integration-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+    root = join(
+      tmpdir(),
+      `wp-overlay-integration-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    )
     mkdirSync(join(root, 'agent-overlays', 'codex'), { recursive: true })
     mkdirSync(join(root, 'agent-overlays', 'claude'), { recursive: true })
     for (const cli of ['codex', 'claude']) {

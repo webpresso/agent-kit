@@ -10,7 +10,10 @@ describe('tech-debt from weakness-mining audit', () => {
   let logs: string[]
 
   beforeEach(() => {
-    root = join(tmpdir(), `wp-tech-debt-weakness-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+    root = join(
+      tmpdir(),
+      `wp-tech-debt-weakness-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    )
     mkdirSync(join(root, '.agent', 'logs'), { recursive: true })
     writeFileSync(
       join(root, '.agent', 'logs', 'pretool-guard.log'),

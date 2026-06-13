@@ -123,7 +123,12 @@ interface FromAuditResult {
   auditName: SupportedAuditName
 }
 
-const SUPPORTED_FROM_AUDIT_NAMES = ['skill-sizes', 'broken-refs', 'memory-rotation', 'weakness-mining'] as const
+const SUPPORTED_FROM_AUDIT_NAMES = [
+  'skill-sizes',
+  'broken-refs',
+  'memory-rotation',
+  'weakness-mining',
+] as const
 
 function isSupportedAuditName(name: string): name is SupportedAuditName {
   return (SUPPORTED_FROM_AUDIT_NAMES as readonly string[]).includes(name)

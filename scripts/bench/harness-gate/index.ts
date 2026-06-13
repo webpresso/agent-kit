@@ -26,7 +26,11 @@ const suiteSchema = z.object({
   surfaces: z.array(z.string()),
   proof: z.string(),
 })
-const suitesSchema = z.object({ version: z.literal(1), consumer: z.string(), suites: z.array(suiteSchema) })
+const suitesSchema = z.object({
+  version: z.literal(1),
+  consumer: z.string(),
+  suites: z.array(suiteSchema),
+})
 const surfacesSchema = z.object({
   version: z.literal(1),
   surfaces: z.array(
@@ -46,12 +50,16 @@ export interface HarnessGatePlan {
 export interface HarnessGateVerdict {
   ok: boolean
   triggeredSurfaces: string[]
-  suites: Array<HarnessGatePlanSuite & { status: 'passed' | 'failed' | 'planned'; exitCode?: number }>
+  suites: Array<
+    HarnessGatePlanSuite & { status: 'passed' | 'failed' | 'planned'; exitCode?: number }
+  >
 }
 
 export function loadHarnessGatePlan(rootDirectory: string = process.cwd()): HarnessGatePlan {
   const root = resolve(rootDirectory)
-  const consumers = consumersSchema.parse(parseYaml(readFileSync(join(root, CONSUMERS_PATH), 'utf8')))
+  const consumers = consumersSchema.parse(
+    parseYaml(readFileSync(join(root, CONSUMERS_PATH), 'utf8')),
+  )
   const suites: HarnessGatePlanSuite[] = []
   for (const consumer of consumers.consumers) {
     const consumerRoot = resolveConsumerRoot(root, consumer)
@@ -82,7 +90,11 @@ export function detectTriggeredSurfaces(
   const triggered = new Set<string>()
   for (const surface of manifest.surfaces) {
     const prefixes = [...surface.paths, ...surface.evidence]
-    if (changedFiles.some((file) => prefixes.some((prefix) => file === prefix || file.startsWith(`${prefix}/`)))) {
+    if (
+      changedFiles.some((file) =>
+        prefixes.some((prefix) => file === prefix || file.startsWith(`${prefix}/`)),
+      )
+    ) {
       triggered.add(surface.id)
     }
   }
@@ -96,7 +108,9 @@ export function buildHarnessGateVerdict(input: {
   rootDirectory?: string
 }): HarnessGateVerdict {
   const triggered = new Set(input.triggeredSurfaces)
-  const selected = input.plan.suites.filter((suite) => suite.surfaces.some((surface) => triggered.has(surface)))
+  const selected = input.plan.suites.filter((suite) =>
+    suite.surfaces.some((surface) => triggered.has(surface)),
+  )
   const suites = selected.map((suite) => {
     if (!input.execute) return { ...suite, status: 'planned' as const }
     const consumer = input.plan.consumers.find((entry) => entry.id === suite.consumer)
@@ -107,7 +121,11 @@ export function buildHarnessGateVerdict(input: {
       stdio: 'inherit',
     })
     const exitCode = result.status ?? 1
-    return { ...suite, status: exitCode === 0 ? ('passed' as const) : ('failed' as const), exitCode }
+    return {
+      ...suite,
+      status: exitCode === 0 ? ('passed' as const) : ('failed' as const),
+      exitCode,
+    }
   })
   return {
     ok: suites.every((suite) => suite.status !== 'failed'),
@@ -161,7 +179,8 @@ function parseArgs(argv: string[]): { execute: boolean; json: boolean; changedFi
 if (import.meta.url === `file://${process.argv[1]}`) {
   const args = parseArgs(process.argv.slice(2))
   const plan = loadHarnessGatePlan(process.cwd())
-  const changedFiles = args.changedFiles.length > 0 ? args.changedFiles : [CONSUMERS_PATH, SURFACES_PATH]
+  const changedFiles =
+    args.changedFiles.length > 0 ? args.changedFiles : [CONSUMERS_PATH, SURFACES_PATH]
   const triggeredSurfaces = detectTriggeredSurfaces(changedFiles, process.cwd())
   const verdict = buildHarnessGateVerdict({ plan, triggeredSurfaces, execute: args.execute })
   if (args.json) console.log(JSON.stringify(verdict, null, 2))

@@ -30,7 +30,11 @@ describe('weakness mining audit', () => {
     const report = mineWeaknesses(root)
 
     expect(report.findings).toHaveLength(1)
-    expect(report.findings[0]).toMatchObject({ kind: 'repeated-block', surfaceId: 'codex-hooks', occurrences: 2 })
+    expect(report.findings[0]).toMatchObject({
+      kind: 'repeated-block',
+      surfaceId: 'codex-hooks',
+      occurrences: 2,
+    })
   })
 
   it('returns a RepoAuditResult violation for repeated weaknesses', async () => {

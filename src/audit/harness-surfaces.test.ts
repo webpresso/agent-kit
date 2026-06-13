@@ -6,7 +6,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { auditHarnessSurfaces, readHarnessSurfacesManifest } from './harness-surfaces.js'
 
 function makeTempDir(): string {
-  return join(tmpdir(), `wp-audit-harness-surfaces-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+  return join(
+    tmpdir(),
+    `wp-audit-harness-surfaces-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  )
 }
 
 function seedManifestRepo(root: string): void {

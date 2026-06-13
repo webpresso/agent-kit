@@ -30,6 +30,10 @@ describe('readPretoolEvidence', () => {
     const result = readPretoolEvidence(root)
 
     expect(result.records).toHaveLength(2)
-    expect(result.records[1]).toMatchObject({ status: 'BLOCK', sourceFile: '.agent/logs/pretool-guard.log', lineNumber: 2 })
+    expect(result.records[1]).toMatchObject({
+      status: 'BLOCK',
+      sourceFile: '.agent/logs/pretool-guard.log',
+      lineNumber: 2,
+    })
   })
 })

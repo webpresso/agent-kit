@@ -130,7 +130,9 @@ export function registerSyncCommand(cli: CAC): void {
       const overlayValidation = validateAgentOverlays(repoRoot)
       if (!overlayValidation.ok) {
         const first = overlayValidation.violations[0]
-        throw commandError(`wp sync: invalid agent overlay${first ? ` at ${first.file ?? 'unknown'}: ${first.message}` : ''}`)
+        throw commandError(
+          `wp sync: invalid agent overlay${first ? ` at ${first.file ?? 'unknown'}: ${first.message}` : ''}`,
+        )
       }
       if (overlayValidation.overlays.length > 0) {
         console.log(`wp sync: validated ${overlayValidation.overlays.length} agent overlay(s).`)

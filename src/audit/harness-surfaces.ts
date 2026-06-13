@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { join, relative, resolve } from 'node:path'
+import { relative, resolve } from 'node:path'
 
 import { parse as parseYaml } from 'yaml'
 import { z } from 'zod'

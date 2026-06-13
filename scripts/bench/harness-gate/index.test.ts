@@ -11,7 +11,10 @@ describe('harness gate runner', () => {
 
   beforeEach(() => {
     root = join(tmpdir(), `wp-harness-gate-${Date.now()}-${Math.random().toString(36).slice(2)}`)
-    consumerRoot = join(tmpdir(), `wp-harness-consumer-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+    consumerRoot = join(
+      tmpdir(),
+      `wp-harness-consumer-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    )
     mkdirSync(join(root, 'catalog', 'agent', 'harness-gate'), { recursive: true })
     mkdirSync(join(root, 'catalog', 'agent'), { recursive: true })
     mkdirSync(join(consumerRoot, 'harness-gate'), { recursive: true })

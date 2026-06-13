@@ -71,7 +71,8 @@ function collectCandidateFiles(
   explicitFiles: readonly string[] | undefined,
   maxFiles: number,
 ): string[] {
-  if (explicitFiles && explicitFiles.length > 0) return explicitFiles.map((file) => normalize(root, file))
+  if (explicitFiles && explicitFiles.length > 0)
+    return explicitFiles.map((file) => normalize(root, file))
 
   const candidates = new Set<string>()
   for (const file of DEFAULT_CANDIDATE_FILES) candidates.add(file)
@@ -80,7 +81,11 @@ function collectCandidateFiles(
   if (envLogDir) candidates.add(normalize(root, join(envLogDir, 'pretool-guard.log')))
 
   for (const rootRelativeDir of ['.omx/state', '.omx/runtime', 'logs']) {
-    for (const file of findNamedFiles(resolve(root, rootRelativeDir), 'pretool-guard.log', maxFiles)) {
+    for (const file of findNamedFiles(
+      resolve(root, rootRelativeDir),
+      'pretool-guard.log',
+      maxFiles,
+    )) {
       candidates.add(normalize(root, file))
       if (candidates.size >= maxFiles) return [...candidates]
     }
