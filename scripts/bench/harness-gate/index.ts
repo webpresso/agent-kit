@@ -117,23 +117,17 @@ export function buildHarnessGateVerdict(input: {
 }
 
 function synthesizeExternalSuites(consumer: HarnessGateConsumer): HarnessGatePlanSuite[] {
+  const synthesize = (id: string, tier: 'held-in' | 'held-out'): HarnessGatePlanSuite => ({
+    id,
+    tier,
+    command: '(external consumer manifest unavailable)',
+    surfaces: consumer.harnessSurfaces,
+    proof: `External manifest ${consumer.suiteManifest} for ${consumer.id} was unavailable; planned verdict only.`,
+    consumer: consumer.id,
+  })
   return [
-    ...consumer.heldInSuites.map((id) => ({
-      id,
-      tier: 'held-in' as const,
-      command: '(external consumer manifest unavailable)',
-      surfaces: consumer.harnessSurfaces,
-      proof: `External manifest ${consumer.suiteManifest} for ${consumer.id} was unavailable; planned verdict only.`,
-      consumer: consumer.id,
-    })),
-    ...consumer.heldOutSuites.map((id) => ({
-      id,
-      tier: 'held-out' as const,
-      command: '(external consumer manifest unavailable)',
-      surfaces: consumer.harnessSurfaces,
-      proof: `External manifest ${consumer.suiteManifest} for ${consumer.id} was unavailable; planned verdict only.`,
-      consumer: consumer.id,
-    })),
+    ...consumer.heldInSuites.map((id) => synthesize(id, 'held-in')),
+    ...consumer.heldOutSuites.map((id) => synthesize(id, 'held-out')),
   ]
 }
 
