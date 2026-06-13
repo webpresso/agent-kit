@@ -60,14 +60,12 @@ The default cross-host Webpresso skill contract is intentionally curated:
 `best-practice-research` are the shared favorites projected by default, while
 broader methodology/library skills stay opt-in via `wp setup --with ...`.
 
-> **`wp setup` is required for hooks.** The Claude Code hooks (PreToolUse guard,
-> Stop-QA gate, SessionStart routing, …) are installed by `wp setup` into your
-> repo's `.claude/settings.json`. They are intentionally **not** shipped in the
-> plugin manifest — declaring them in both places double-fires every hook (Claude
-> Code does not dedup across sources), and settings.json is the more reliable
-> surface. So enabling the plugin alone does **not** activate hooks; run
-> `wp setup`. Run `wp hooks doctor` to check — it warns if the managed hooks are
-> missing from `.claude/settings.json`.
+> **`wp setup` is required for hooks.** Setup-managed host configs own active
+> hooks: Claude uses `.claude/settings.json`, Codex uses `.codex/hooks.json`,
+> and plugin artifacts remain package metadata until setup writes the active
+> host surface. Enabling a packaged plugin alone does **not** activate managed
+> hooks; run `wp setup`. Run `wp hooks doctor` to check — it warns when the
+> managed host hook surface is missing or stale.
 
 `wp` owns **execution** for the generic tool lanes it manages (test / mutation /
 e2e / lint / format / typecheck). That does **not** mean every local
@@ -91,15 +89,15 @@ vp run public:consumer-smoke -- --setup-only
 | --- | --- | --- |
 | **`wp setup` onboarding** | Idempotent scaffolder for the base-kit quality config + `AGENTS.md` / `CLAUDE.md` wiring, with a curated shared-favorites default for host-visible Webpresso skills | [`src/cli/commands/init/`](src/cli/commands/init/), verified by [`scripts/public-consumer-smoke.ts`](scripts/public-consumer-smoke.ts) |
 | **Shared secret-aware command execution** | `with-secrets` injects shared runtime secrets/profile env for command execution, and shared deploy/e2e paths reuse that same runtime selector path | [`src/runtime/`](src/runtime/), [`src/deploy/`](src/deploy/), [`src/e2e/`](src/e2e/) |
-| **Summary-first `wp_*` MCP tools** | `wp_test` / `wp_typecheck` / `wp_lint` / `wp_qa` / `wp_e2e` / `wp_format` / `wp_ci_act` / `wp_audit` return JSON with `bytes` / `tokensSaved` budget metadata | [`src/mcp/tools/`](src/mcp/tools/) (each with co-located `.test.ts`), [`src/mcp/server.integration.test.ts`](src/mcp/server.integration.test.ts) |
+| **Summary-first `wp_*` MCP tools** | `wp_test` / `wp_typecheck` / `wp_lint` / `wp_qa` / `wp_e2e` / `wp_format` / `wp_ci_act` / `wp_audit` return JSON with `bytes` / `tokensSaved` budget metadata. Session-memory tools are registered and tested as `wp_session_batch_execute` / `wp_session_capture` / `wp_session_doctor` / `wp_session_execute` / `wp_session_execute_file` / `wp_session_fetch_and_index` / `wp_session_index` / `wp_session_purge` / `wp_session_restore` / `wp_session_search` / `wp_session_snapshot` / `wp_session_stats`; see [`docs/guides/session-memory.md`](docs/guides/session-memory.md) for local storage, bounded outputs, reset safety, and non-goals. | [`src/mcp/tools/`](src/mcp/tools/) (each with co-located `.test.ts`), [`src/mcp/server.integration.test.ts`](src/mcp/server.integration.test.ts) |
 | **MCP server + CLI surface** | Registers the tool set and exposes it to agents | [`src/mcp/server.ts`](src/mcp/server.ts), [`src/mcp/cli.ts`](src/mcp/cli.ts), [`src/mcp/cli.integration.test.ts`](src/mcp/cli.integration.test.ts) |
 | **Blueprint runtime** | Lifecycle states, dependency-aware task graph, structured authoring control plane (`wp_blueprint_depgraph` / `put` / `transition`) | [`src/mcp/blueprint-server.ts`](src/mcp/blueprint-server.ts), [`docs/lifecycle.md`](docs/lifecycle.md), [`docs/blueprint-format.md`](docs/blueprint-format.md) |
-| **Audit contract family** | `blueprint-lifecycle`, `blueprint-readme-drift`, `docs-frontmatter`, `catalog-drift`, `vision`, `architecture-drift`, `cloudflare-deploy-contract`, `harness-surfaces`, `weakness-mining`, `harness-overlay-evidence`, `bundle-budget`, `commit-message` (Lore), `tech-debt`, `absolute-path-policy`, `open-source-licenses`, **`secrets-policy`**, **`no-dev-vars`**, **`secret-provider-quarantine`**, **`secrets-config`** — each runs through the `wp audit` CLI surface; the `wp_audit` MCP tool exposes the common agent-safe subset and guardrails runs the repo-shaped gate | [`src/audit/`](src/audit/), [`src/mcp/tools/audit.ts`](src/mcp/tools/audit.ts), [`.github/workflows/ci.agent-kit.yml`](.github/workflows/ci.agent-kit.yml) |
+| **Audit contract family** | `blueprint-lifecycle`, `blueprint-readme-drift`, `reference-parity-matrix`, `docs-frontmatter`, `catalog-drift`, `vision`, `architecture-drift`, `cloudflare-deploy-contract`, `harness-surfaces`, `weakness-mining`, `harness-overlay-evidence`, `bundle-budget`, `commit-message` (Lore), `tech-debt`, `absolute-path-policy`, `open-source-licenses`, **`secrets-policy`**, **`no-dev-vars`**, **`secret-provider-quarantine`**, **`secrets-config`** — each runs through the `wp audit` CLI surface; the `wp_audit` MCP tool exposes the common agent-safe subset and guardrails runs the repo-shaped gate | [`src/audit/`](src/audit/), [`src/mcp/tools/audit.ts`](src/mcp/tools/audit.ts), [`.github/workflows/ci.agent-kit.yml`](.github/workflows/ci.agent-kit.yml) |
 | **Symlinker** | Syncs canonical `.agent/` to per-IDE surfaces (Codex/Amp skills, Gemini TOML commands) via rulesync | [`src/symlinker/index.ts`](src/symlinker/index.ts), [`src/symlinker/symlinker.integration.test.ts`](src/symlinker/symlinker.integration.test.ts), [`docs/symlinker.md`](docs/symlinker.md) |
 | **Mutation testing** | `wp audit mutation` (Stryker) catches tests that pass without asserting | [`src/config/stryker/`](src/config/stryker/), `./stryker` + `./mutation` exports |
 | **Tech-debt lifecycle** | `accepted → needs-remediation → monitoring → resolved`, auto-filed from failing audits | [`src/blueprint/tech-debt/`](src/blueprint/tech-debt/), [`src/cli/commands/tech-debt/`](src/cli/commands/tech-debt/) |
 | **Shared config subpaths** | `tsconfig/*`, `vitest/*`, `oxlint/*`, `workers-test`, `test-preset`, `e2e-preset`, `docs-lint`, `launch` | [`package.json` exports](package.json), [`src/config/`](src/config/) |
-| **Claude Code plugin** | Ships as a plugin; `vp run lint:pkg` runs `claude plugin validate .` | `.claude-plugin/` (in `package.json#files`) |
+| **Host plugin artifacts** | Ships Claude and Codex plugin metadata; `wp setup` owns active hook installation, reports Cursor/OpenCode degraded host surfaces, and `vp run lint:pkg` validates the public package surface. | `.claude-plugin/`, `.codex-plugin/` (in `package.json#files`), `.codex/hooks.json`, `.claude/settings.json` |
 
 ## Security audits
 
@@ -170,6 +168,32 @@ vp run qa          # build + typecheck + lint + format + test + lint:pkg + audit
 separately as `vp run lint:pkg` (publint + attw `--pack`, plus `claude plugin
 validate` when `claude` is present).
 
+**Release gate for hook-bin, session-continuity, or public docs changes** — run
+these as prerequisites before making shipped behavior or reference parity claims:
+
+```bash
+./bin/wp hooks doctor --skip-mcp
+./bin/wp audit blueprint-lifecycle
+./bin/wp audit reference-parity-matrix --json
+./bin/wp audit package-surface
+npm pack --dry-run --json
+vp run lint:pkg
+vp run verify:secrets
+./bin/wp audit secrets-policy
+./bin/wp audit no-dev-vars
+./bin/wp audit secret-provider-quarantine
+./bin/wp audit secrets-config
+vp run verify:paths
+```
+
+The `reference-parity-matrix --json` gate validates the matrix and exposes `releaseClaimGateReady`; run `./bin/wp audit reference-parity-matrix --strict` only when promoting public replacement-parity claims, because it intentionally fails while release-required rows remain open or degraded.
+
+These checks prove hook health, lifecycle state, reference parity gating, real
+pack tarball contents, package lint, the dev-var carrier check, secret-policy
+audits, and path safety for the public package. Session-continuity claims must
+stay scoped to typed continuity events, the tested capture/restore flow, and
+Cursor/OpenCode degraded host coverage documented in the hook matrix.
+
 ## Defaults and opt-ins
 
 - Default cross-host favorites: `fix`, `verify`, `testing-philosophy`,
@@ -230,7 +254,7 @@ This is tracked in the [capability matrix](src/cli/commands/docs/generate-capabi
 
 ## Hooks system
 
-webpresso ships a typed hooks-orchestrator for Claude Code, Codex CLI, and Cursor.
+webpresso ships a typed hooks-orchestrator for Claude Code, Codex CLI, Cursor, and the degraded OpenCode plugin bridge; see [docs/hook-matrix.md](docs/hook-matrix.md) for host-specific support levels.
 See [docs/hooks-quickstart.md](docs/hooks-quickstart.md) to get started.
 
 Key CLIs:
@@ -240,3 +264,11 @@ Key CLIs:
 - `wp hooks upgrade --workspace` — preview or apply manifest-backed hook refreshes across workspace repos
 - `wp setup --with hooks` — install or update hooks
 - `wp setup --dry-run` — preview changes without applying
+
+These checks prove hook health, lifecycle state, reference parity gating, real
+package contents, package lint, secret policy, and path policy before release
+claims move forward. Public replacement-parity wording must cite the green proof
+set before promotion: `docs/bench/reference-parity-matrix.md`,
+`src/__integration__/reference-parity-host-smoke.integration.test.ts`,
+`src/__integration__/reference-parity-tool-surface.integration.test.ts`, and
+`docs/bench/session-memory-methodology.md`.

@@ -32,10 +32,11 @@ export function setup(): void {
       env: { ...process.env, HUSKY: '0' },
     })
   }
-  if (!builtDist) return
-  execFileSync('bun', ['src/build/normalize-tsconfig-json-exports.ts'], {
-    cwd: REPO_ROOT,
-    encoding: 'utf8',
-    env: { ...process.env, HUSKY: '0' },
-  })
+  if (builtDist) {
+    execFileSync('bun', ['src/build/normalize-tsconfig-json-exports.ts'], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+      env: { ...process.env, HUSKY: '0' },
+    })
+  }
 }

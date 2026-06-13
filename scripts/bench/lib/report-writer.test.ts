@@ -90,4 +90,46 @@ describe('report-writer', () => {
       '| debug-long-session | baseline | 1 | ok | 0 | 0 | 0 |',
     )
   })
+
+  it('renders threshold report shape for dry-run validation', () => {
+    const report: SessionMemoryReport = {
+      run_id: 'abc123',
+      model: 'claude-sonnet-4-5',
+      dry_run: true,
+      cache_disclaimer: null,
+      cells: [],
+      threshold_report: {
+        mode: 'dry-run',
+        axes: [
+          {
+            id: 'post_tool_capture_latency_ms',
+            label: 'PostToolUse capture latency',
+            metric: 'latency_ms',
+            threshold: 750,
+            observed: null,
+            status: 'schema-valid',
+          },
+          {
+            id: 'search_quality_recall_at_5',
+            label: 'Search quality recall@5',
+            metric: 'recall_at_5',
+            threshold: 0.8,
+            observed: null,
+            status: 'schema-valid',
+          },
+        ],
+      },
+    }
+
+    const text = renderReport(report)
+
+    expect(text).toContain('## Threshold report')
+    expect(text).toContain('- mode: dry-run')
+    expect(text).toContain(
+      '| post_tool_capture_latency_ms | latency_ms | 750 | n/a | schema-valid |',
+    )
+    expect(text).toContain(
+      '| search_quality_recall_at_5 | recall_at_5 | 0.8 | n/a | schema-valid |',
+    )
+  })
 })

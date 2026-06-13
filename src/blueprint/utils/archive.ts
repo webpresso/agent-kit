@@ -124,13 +124,12 @@ export interface ArchiveResult {
  * Archives a plan by updating its status to completed in-place.
  *
  * This function:
- * 1. Validates all tasks are done (unless force = true)
+ * 1. Validates all tasks are done
  * 2. Updates frontmatter status to 'completed'
  * 3. Returns new path on success
  *
  * @param slug - Plan slug (e.g., 'my-plan')
  * @param projectPath - Root path of the project
- * @param force - Skip validation and force archive
  * @returns Archive result with success status and new path or error
  *
  * @example
@@ -143,11 +142,7 @@ export interface ArchiveResult {
  * }
  * ```
  */
-export async function archiveBlueprint(
-  slug: string,
-  projectPath: string,
-  force = false,
-): Promise<ArchiveResult> {
+export async function archiveBlueprint(slug: string, projectPath: string): Promise<ArchiveResult> {
   // Check if already completed (before checking existence)
   if (isAlreadyCompleted(slug)) {
     return { success: false, error: 'Plan is already completed' }
@@ -161,12 +156,10 @@ export async function archiveBlueprint(
     return { success: false, error: `Plan not found: ${slug}` }
   }
 
-  // Read plan and validate tasks (unless force)
-  if (!force) {
-    const validationError = await validatePlanTasks(paths.sourcePath, slug)
-    if (validationError) {
-      return { success: false, error: validationError }
-    }
+  // Read plan and validate tasks
+  const validationError = await validatePlanTasks(paths.sourcePath, slug)
+  if (validationError) {
+    return { success: false, error: validationError }
   }
 
   // Update frontmatter status

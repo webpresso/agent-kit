@@ -46,6 +46,9 @@ Prompt budget contract:
 - Keep the generated default `AGENTS.md` under 8 KB.
 - Move handbook prose to docs; keep only durable rules and command contracts here.
 
+Codex routing instruction surface:
+{{CODEX_ROUTING_INSTRUCTION_SURFACE}}
+
 ## Plan
 
 Use blueprints for non-trivial work. Specs live in

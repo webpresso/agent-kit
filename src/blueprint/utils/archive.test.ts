@@ -368,12 +368,28 @@ created: 2026-02-01
       expect(result.error).toBe('Plan is already completed')
     })
 
-    it('returns error when tasks are incomplete without force', async () => {
+    it('returns error when tasks are incomplete', async () => {
       const planPath = path.join(testDir, 'webpresso/blueprints/test-plan')
       await fs.mkdir(planPath, { recursive: true })
       await fs.writeFile(path.join(planPath, '_overview.md'), INCOMPLETE_PLAN)
 
       const result = await archiveBlueprint('test-plan', projectPath)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('incomplete')
+    })
+
+    it('returns error when a JavaScript caller passes a third truthy argument', async () => {
+      const planPath = path.join(testDir, 'webpresso/blueprints/test-plan')
+      await fs.mkdir(planPath, { recursive: true })
+      await fs.writeFile(path.join(planPath, '_overview.md'), INCOMPLETE_PLAN)
+      const archiveBlueprintFromJavaScript = archiveBlueprint as unknown as (
+        slug: string,
+        projectPath: string,
+        ignoredArgument: true,
+      ) => ReturnType<typeof archiveBlueprint>
+
+      const result = await archiveBlueprintFromJavaScript('test-plan', projectPath, true)
 
       expect(result.success).toBe(false)
       expect(result.error).toContain('incomplete')
@@ -394,17 +410,6 @@ created: 2026-02-01
       // Verify status was updated in place
       const content = await fs.readFile(path.join(planPath, '_overview.md'), 'utf-8')
       expect(content).toContain('status: completed')
-    })
-
-    it('archives plan with force flag despite incomplete tasks', async () => {
-      const planPath = path.join(testDir, 'webpresso/blueprints/test-plan')
-      await fs.mkdir(planPath, { recursive: true })
-      await fs.writeFile(path.join(planPath, '_overview.md'), INCOMPLETE_PLAN)
-
-      const result = await archiveBlueprint('test-plan', projectPath, true)
-
-      expect(result.success).toBe(true)
-      expect(result.newPath).toBe(path.join(testDir, 'webpresso/blueprints/test-plan'))
     })
 
     it('handles plan slug with in-progress prefix', async () => {
@@ -616,7 +621,7 @@ created: 2026-02-01
     const filePath = path.join(planPath, '_overview.md')
     await fs.writeFile(filePath, planContent)
 
-    await archiveBlueprint('regex-test', projectPath, true)
+    await archiveBlueprint('regex-test', projectPath)
 
     const content = await fs.readFile(filePath, 'utf-8')
     // The status line must be EXACTLY "status: completed" with nothing after it
@@ -627,12 +632,12 @@ created: 2026-02-01
     expect(content).not.toContain('in-progress')
   })
 
-  it('replaces status with multi-word value using \\S correctly', async () => {
-    // Status values are single words in YAML, but test with hyphenated value
-    // to ensure the entire value is captured by \S+
+  it('replaces status with a full valid value using \\S correctly', async () => {
+    // Use a valid frontmatter status so archive validation still runs while
+    // ensuring the entire value is captured by \S+.
     const planContent = `---
 type: blueprint
-status: needs-review-pending
+status: planned
 complexity: M
 last_updated: 2026-02-01
 created: 2026-02-01
@@ -652,13 +657,13 @@ created: 2026-02-01
     const filePath = path.join(planPath, '_overview.md')
     await fs.writeFile(filePath, planContent)
 
-    await archiveBlueprint('multiword-test', projectPath, true)
+    await archiveBlueprint('multiword-test', projectPath)
 
     const content = await fs.readFile(filePath, 'utf-8')
-    // Must replace the entire hyphenated status value
+    // Must replace the entire original status value
     expect(content).toMatch(/^status: completed$/m)
-    expect(content).not.toContain('needs-review-pending')
-    expect(content).not.toContain('eeds-review-pending')
+    expect(content).not.toContain('planned')
+    expect(content).not.toContain('lanned')
   })
 })
 

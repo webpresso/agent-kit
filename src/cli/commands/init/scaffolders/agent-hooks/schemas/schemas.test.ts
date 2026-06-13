@@ -87,8 +87,38 @@ describe('vendor hook schemas', () => {
     expect(result.success).toBe(false)
   })
 
+  it('a cursor config with a wrong version fails cursorHooksSchema validation', () => {
+    expect(cursorHooksSchema.safeParse({ version: 2 }).success).toBe(false)
+    expect(cursorHooksSchema.safeParse({ version: '1' }).success).toBe(false)
+  })
+
   it('an empty {} cursor config fails cursorHooksSchema validation (version required)', () => {
     const result = cursorHooksSchema.safeParse({})
     expect(result.success).toBe(false)
+  })
+
+  it('a cursor config rejects retired or unsupported lifecycle keys but accepts current host-valid preCompact', () => {
+    const group = [{ hooks: [{ type: 'command' as const, command: '/repo/node_modules/.bin/wp' }] }]
+
+    expect(cursorHooksSchema.safeParse({ version: 1, preCompact: group }).success).toBe(true)
+    expect(cursorHooksSchema.safeParse({ version: 1, PreCompact: group }).success).toBe(false)
+    expect(cursorHooksSchema.safeParse({ version: 1, postCompact: group }).success).toBe(false)
+    expect(cursorHooksSchema.safeParse({ version: 1, SessionStart: group }).success).toBe(false)
+    expect(cursorHooksSchema.safeParse({ version: 1, permissionRequest: group }).success).toBe(
+      false,
+    )
+  })
+
+  it('a cursor config with empty command or empty hook arrays fails validation', () => {
+    expect(
+      cursorHooksSchema.safeParse({
+        version: 1,
+        sessionStart: [{ hooks: [{ type: 'command', command: '' }] }],
+      }).success,
+    ).toBe(false)
+    expect(cursorHooksSchema.safeParse({ version: 1, sessionStart: [{ hooks: [] }] }).success).toBe(
+      false,
+    )
+    expect(cursorHooksSchema.safeParse({ version: 1, sessionStart: [] }).success).toBe(false)
   })
 })

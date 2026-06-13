@@ -103,6 +103,7 @@ export function registerBenchCommand(cli: CAC): void {
               dryRun: result.dryRun,
               reportPath: result.reportPath,
               cellCount: result.cellCount,
+              thresholdReport: result.thresholdReport,
             },
             null,
             2,

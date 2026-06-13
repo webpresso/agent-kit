@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
+import { auditReferenceParityMatrix } from './reference-parity-matrix.js'
+
 import ts from 'typescript'
 
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
@@ -9,6 +11,18 @@ const CONTRACT_DOC_PATH = 'docs/ai-reliability-contract.md'
 const RESULT_HELPER_PATH = 'src/mcp/tools/_shared/result.ts'
 const MCP_DISCOVERY_PATH = 'src/mcp/auto-discover.ts'
 const MCP_INTEGRATION_TEST_PATH = 'src/mcp/server.integration.test.ts'
+const PUBLIC_README_PATH = 'README.md'
+const PUBLIC_CHANGELOG_PATH = 'CHANGELOG.md'
+
+const REFERENCE_PARITY_EVIDENCE = [
+  'docs/bench/reference-parity-matrix.md',
+  'src/__integration__/reference-parity-host-smoke.integration.test.ts',
+  'src/__integration__/reference-parity-tool-surface.integration.test.ts',
+  'docs/bench/session-memory-methodology.md',
+] as const
+
+const FULL_REPLACEMENT_CLAIM_PATTERN =
+  /(?:drop[- ]?in replacement|100%\s+parity|full\s+replacement\s+parity|complete\s+replacement\s+parity|full\s+host\s+lifecycle\s+claims)/iu
 
 const SUMMARY_FIRST_TOOLS = [
   'src/mcp/tools/test.ts',
@@ -93,12 +107,84 @@ export function auditAiContracts(rootDirectory: string = process.cwd()): RepoAud
     })
   }
 
+  checked += auditReferenceParityPublicClaims(root, violations)
+
   return {
     ok: violations.length === 0,
     title: 'AI contracts audit',
     checked,
     violations,
   }
+}
+
+function auditReferenceParityPublicClaims(root: string, violations: RepoAuditViolation[]): number {
+  const matrix = auditReferenceParityMatrix(root, undefined, { requireReleaseReady: true })
+  let checked = 0
+
+  const publicSurfaces: Array<{ path: string; content: string }> = []
+  for (const relativePath of [PUBLIC_README_PATH, PUBLIC_CHANGELOG_PATH]) {
+    const content = readExistingFile(root, relativePath, violations, {
+      message: 'Reference parity claim gate requires the public disclosure surface to exist.',
+    })
+    checked += 1
+    if (!content) continue
+    publicSurfaces.push({
+      path: relativePath,
+      content: relativePath === PUBLIC_CHANGELOG_PATH ? latestChangelogEntry(content) : content,
+    })
+  }
+
+  for (const surface of publicSurfaces) {
+    for (const evidencePath of REFERENCE_PARITY_EVIDENCE) {
+      if (!surface.content.includes(evidencePath)) {
+        violations.push({
+          file: surface.path,
+          message: `Reference parity public claim gate must cite ${evidencePath}.`,
+        })
+      }
+    }
+
+    if (!matrix.releaseClaimGateReady && FULL_REPLACEMENT_CLAIM_PATTERN.test(surface.content)) {
+      violations.push({
+        file: surface.path,
+        message:
+          'Public release wording must not claim full replacement parity until reference parity strict readiness passes.',
+      })
+    }
+  }
+
+  checked += 1
+  if (matrix.violations.length > 0 && matrix.releaseClaimGateReady) {
+    violations.push({
+      file: 'docs/bench/reference-parity-matrix.md',
+      message:
+        'Reference parity matrix cannot be release-ready while strict audit violations exist.',
+    })
+  }
+
+  return checked
+}
+
+function readExistingFile(
+  root: string,
+  relativePath: string,
+  violations: RepoAuditViolation[],
+  options: { message: string },
+): string | null {
+  const filePath = resolve(root, relativePath)
+  if (!existsSync(filePath)) {
+    violations.push({ file: relativePath, message: options.message })
+    return null
+  }
+  return readFileSync(filePath, 'utf8')
+}
+
+function latestChangelogEntry(content: string): string {
+  const firstHeading = content.search(/^##\s+/mu)
+  if (firstHeading === -1) return content
+  const rest = content.slice(firstHeading)
+  const nextHeading = rest.slice(1).search(/^##\s+/mu)
+  return nextHeading === -1 ? rest : rest.slice(0, nextHeading + 1)
 }
 
 function expectFileContains(

@@ -2,11 +2,13 @@ import { execFileSync } from 'node:child_process'
 import {
   chmodSync,
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
   renameSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -36,6 +38,30 @@ const EXPECTED_BLUEPRINT_SCHEMA_VERSIONS = EXPECTED_BLUEPRINT_MIGRATION_SQL_FILE
   Number.parseInt(file.slice(0, file.indexOf('_')), 10),
 )
 const ORIGINAL_PACKAGE_JSON_TEXT = readFileSync(PACKAGE_JSON_PATH, 'utf8')
+const PACK_LOCK_DIRECTORY = join(tmpdir(), 'webpresso-agent-kit-npm-pack.lock')
+
+function acquirePackLock(): () => void {
+  const started = Date.now()
+  while (true) {
+    try {
+      mkdirSync(PACK_LOCK_DIRECTORY)
+      return () => rmSync(PACK_LOCK_DIRECTORY, { force: true, recursive: true })
+    } catch (error) {
+      const code = (error as { code?: string }).code
+      if (code !== 'EEXIST') throw error
+      const ageMs = Date.now() - statSync(PACK_LOCK_DIRECTORY).mtimeMs
+      if (ageMs > 120_000) {
+        rmSync(PACK_LOCK_DIRECTORY, { force: true, recursive: true })
+        continue
+      }
+      if (Date.now() - started > 60_000) {
+        throw new Error(`Timed out waiting for npm pack lock at ${PACK_LOCK_DIRECTORY}`)
+      }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100)
+    }
+  }
+}
+
 const FORBIDDEN_TARBALL_PATHS = [
   /^dist\/.*\.map$/,
   /^dist\/.*__integration__\//,
@@ -109,14 +135,20 @@ function ensureBuiltPackedDist() {
 function ensurePackedTarballArtifact() {
   if (packedTarballArtifactCache) return packedTarballArtifactCache
   ensureBuiltPackedDist()
-  const raw = execFileSync('npm', ['pack', '--json'], {
-    cwd: REPO_ROOT,
-    encoding: 'utf8',
-    env: {
-      ...process.env,
-      HUSKY: '0',
-    },
-  })
+  const release = acquirePackLock()
+  let raw: string
+  try {
+    raw = execFileSync('npm', ['pack', '--json'], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        HUSKY: '0',
+      },
+    })
+  } finally {
+    release()
+  }
   const entries = parseNpmJson<Array<{ filename?: string }>>(raw)
   const tarballName = entries[0]?.filename
   if (!tarballName) {
@@ -198,6 +230,9 @@ describe('tooling umbrella package integration contract', () => {
     expect(banned).toEqual([])
     expect(packedPaths).toContain('bin/wp')
     expect(packedPaths).not.toContain('bin/wp.js')
+    expect(
+      packedPaths.some((path) => path.startsWith(['native', 'session-memory-engine'].join('/'))),
+    ).toBe(false)
   }, 30_000)
 
   it('packs a manifest with no workspace-only catalog specifiers', () => {

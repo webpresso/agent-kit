@@ -6,6 +6,7 @@ const HOOK_NAMES = [
   'stop-qa',
   'guard-switch',
   'sessionstart-routing',
+  'precompact-snapshot',
   'test-quality-check',
 ] as const
 
@@ -30,6 +31,10 @@ const HOOK_HANDLERS: Readonly<Record<HookName, (args: string[]) => Promise<void>
   },
   'sessionstart-routing': async () => {
     const { main } = await import('#hooks/sessionstart/index')
+    await main()
+  },
+  'precompact-snapshot': async () => {
+    const { main } = await import('#hooks/precompact/index')
     await main()
   },
   'test-quality-check': async (args) => {

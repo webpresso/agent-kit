@@ -1,14 +1,19 @@
 ---
 type: guide
-last_updated: '2026-06-10'
+last_updated: 2026-06-13
 ---
 
 # wp hooks doctor
 
 `wp hooks doctor` is the canonical post-setup operator success check. It performs a 3-way comparison:
-1. What wp setup wrote (the hooks manifest at `.webpresso/hooks-manifest.json`)
+1. What `wp setup` wrote (the hooks manifest at `.webpresso/hooks-manifest.json`)
 2. What is actually installed (`.claude/settings.json`, `.codex/hooks.json`)
-3. What wp currently expects (the canonical WP_HOOK_SPECS)
+3. What `wp` currently expects from the canonical hook specs
+
+It also reports packaged host artifacts (`.claude-plugin/`, `.codex-plugin/`),
+active hook ownership, and host lifecycle depth. Claude and Codex report full coverage for replacement-critical managed lifecycle
+events emitted by `wp setup`; Cursor/OpenCode degraded coverage is reported as a
+documented boundary, not as a repairable failure.
 
 It also reports the public precedence model:
 
@@ -78,10 +83,7 @@ wp setup --restore-hooks
 
 ### Codex hooks show `pending-trust`
 
-This is normal after first install. Trust the hooks:
-```bash
-codex hooks trust
-```
+This is normal after first install. Re-run `wp setup` so webpresso can sync trust metadata. If Codex still reports pending trust, review the installed hooks in Codex with `/hooks` and approve the exact generated entries shown there.
 
 ### Some hooks show `unknown`
 
@@ -96,3 +98,39 @@ If `.webpresso/hooks-manifest.json` is missing, doctor treats all installed hook
 Re-run `wp setup` to regenerate the manifest. `wp hooks doctor --fix` reports
 this as `requires-approval` instead of silently running the broader setup flow
 for you.
+
+## Session-continuity release gate
+
+Before shipping hook-bin, typed continuity events, operator docs, or packaged
+artifact changes, run the bounded release gate from the repo root:
+
+```bash
+./bin/wp hooks doctor --skip-mcp
+./bin/wp audit blueprint-lifecycle
+./bin/wp audit reference-parity-matrix --json
+./bin/wp audit package-surface
+npm pack --dry-run --json
+vp run lint:pkg
+vp run verify:secrets
+./bin/wp audit secrets-policy
+./bin/wp audit no-dev-vars
+./bin/wp audit secret-provider-quarantine
+./bin/wp audit secrets-config
+vp run verify:paths
+```
+
+The `reference-parity-matrix --json` gate validates the matrix and exposes `releaseClaimGateReady`; run `./bin/wp audit reference-parity-matrix --strict` only when promoting public replacement-parity claims, because it intentionally fails while release-required rows remain open or degraded.
+
+Use `--skip-mcp` for release proof when MCP visibility is separately covered by
+tool-surface smoke tests. The doctor row must agree with the hook matrix: SessionStart restore plus typed
+continuity-event capture are installed for supported managed lifecycle hooks, active
+hooks are owned by setup-generated host config, and Cursor/OpenCode degraded
+lifecycle depth must remain explicit.
+
+Package-safety proof matters for docs too. Public examples must avoid secrets,
+machine-local absolute paths, private runtime state, and unpublished strategy
+notes. `npm pack --dry-run --json`, `vp run lint:pkg`,
+`./bin/wp audit package-surface`, `./bin/wp audit reference-parity-matrix --json`,
+`vp run verify:secrets`, the four `wp audit secret*`/`no-dev-vars` gates, and
+`vp run verify:paths` are prerequisites for hook-bin or public docs release
+claims.

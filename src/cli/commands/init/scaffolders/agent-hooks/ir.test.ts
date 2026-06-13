@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { HOOK_EVENT_NAMES, WP_HOOK_SPECS } from './ir.js'
 
 describe('WP_HOOK_SPECS', () => {
-  it('has 5 specs (1 SessionStart, 1 PreToolUse, 1 PostToolUse, 1 UserPromptSubmit, 1 Stop)', () => {
-    expect(WP_HOOK_SPECS).toHaveLength(5)
+  it('has 6 specs (1 each for SessionStart, PreToolUse, PostToolUse, UserPromptSubmit, Stop, PreCompact)', () => {
+    expect(WP_HOOK_SPECS).toHaveLength(6)
 
     const byEvent = WP_HOOK_SPECS.reduce<Record<string, number>>((acc, spec) => {
       acc[spec.event] = (acc[spec.event] ?? 0) + 1
@@ -16,6 +16,7 @@ describe('WP_HOOK_SPECS', () => {
     expect(byEvent['PostToolUse']).toStrictEqual(1)
     expect(byEvent['UserPromptSubmit']).toStrictEqual(1)
     expect(byEvent['Stop']).toStrictEqual(1)
+    expect(byEvent['PreCompact']).toStrictEqual(1)
   })
 
   it('all events are members of HOOK_EVENT_NAMES', () => {
@@ -56,6 +57,7 @@ describe('WP_HOOK_SPECS', () => {
       'wp-post-tool',
       'wp-guard-switch',
       'wp-stop-qa',
+      'wp-precompact-snapshot',
     ])
   })
 
@@ -66,7 +68,18 @@ describe('WP_HOOK_SPECS', () => {
       'post-tool',
       'guard-switch',
       'stop-qa',
+      'precompact-snapshot',
     ])
+  })
+
+  it('precompact is a managed PreCompact hook without a tool matcher', () => {
+    const preCompact = WP_HOOK_SPECS.find((s) => s.bin === 'wp-precompact-snapshot')
+    expect(preCompact).toMatchObject({
+      event: 'PreCompact',
+      bin: 'wp-precompact-snapshot',
+      hookName: 'precompact-snapshot',
+    })
+    expect(preCompact?.matcher).toBeUndefined()
   })
 
   it('pretool-guard has preToolUse matcher', () => {
@@ -91,8 +104,8 @@ describe('WP_HOOK_SPECS', () => {
     expect(stop?.jsonOnly).toStrictEqual(true)
   })
 
-  it('only Stop events are currently marked jsonOnly', () => {
+  it('only host-required JSON events are marked jsonOnly', () => {
     const jsonOnlySpecs = WP_HOOK_SPECS.filter((s) => s.jsonOnly === true)
-    expect(jsonOnlySpecs.map((s) => s.event)).toStrictEqual(['Stop'])
+    expect(jsonOnlySpecs.map((s) => s.event)).toStrictEqual(['Stop', 'PreCompact'])
   })
 })

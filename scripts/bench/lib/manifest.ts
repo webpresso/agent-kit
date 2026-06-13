@@ -33,6 +33,12 @@ export type WorkspaceLookup = (adminKey: string) => Promise<string[]>
 
 export type VersionRunner = (command: string, args: string[]) => Promise<string>
 
+export type ManifestVerificationMode = 'strict' | 'dry-run-current-checkout'
+
+export type VerifyManifestOptions = {
+  mode?: ManifestVerificationMode
+}
+
 export type CaptureOptions = {
   pluginDirs?: {
     main: string
@@ -177,8 +183,43 @@ export function diffManifest(captured: Manifest, pinned: Manifest): string[] {
   return diffs
 }
 
-export function verifyManifest(captured: Manifest, pinned: Manifest): void {
-  const diffs = diffManifest(captured, pinned)
+function isGitSha(value: string): boolean {
+  return /^[0-9a-f]{40}$/i.test(value)
+}
+
+function validateDryRunPluginRefs(captured: Manifest, pinned: Manifest): string[] {
+  const diffs: string[] = []
+  const pluginKeys: Array<keyof Manifest['plugins']> = ['main', 'v1', 'v2']
+  for (const key of pluginKeys) {
+    if (!isGitSha(captured.plugins[key]) || !isGitSha(pinned.plugins[key])) {
+      diffs.push(
+        `plugins.${key}: dry-run requires captured and pinned git SHAs; captured=${captured.plugins[key]} pinned=${pinned.plugins[key]}`,
+      )
+    }
+  }
+  return diffs
+}
+
+function diffManifestForMode(
+  captured: Manifest,
+  pinned: Manifest,
+  mode: ManifestVerificationMode,
+): string[] {
+  if (mode === 'strict') {
+    return diffManifest(captured, pinned)
+  }
+
+  const strictDiffs = diffManifest(captured, pinned)
+  const nonPluginDiffs = strictDiffs.filter((diff) => !diff.startsWith('plugins.'))
+  return [...nonPluginDiffs, ...validateDryRunPluginRefs(captured, pinned)]
+}
+
+export function verifyManifest(
+  captured: Manifest,
+  pinned: Manifest,
+  options: VerifyManifestOptions = {},
+): void {
+  const diffs = diffManifestForMode(captured, pinned, options.mode ?? 'strict')
   if (diffs.length > 0) {
     throw new Error(`Manifest mismatch\n${diffs.join('\n')}`)
   }
