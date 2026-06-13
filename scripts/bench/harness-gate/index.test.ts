@@ -74,9 +74,8 @@ describe('harness gate runner', () => {
     expect(plan.suites.map((suite) => suite.suiteSource)).toEqual(['synthetic', 'synthetic'])
     expect(verdict.manifestBacked).toBe(false)
     expect(verdict.suites.map((suite) => suite.proof)).toEqual([
-      expect.stringContaining('planned verdict only'),
-      expect.stringContaining('planned verdict only'),
+      'External manifest harness-gate/suites.yaml for sample was unavailable; planned verdict only.',
+      'External manifest harness-gate/suites.yaml for sample was unavailable; planned verdict only.',
     ])
   })
-
 })

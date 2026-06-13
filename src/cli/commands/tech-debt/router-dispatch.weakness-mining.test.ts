@@ -40,7 +40,15 @@ describe('tech-debt from weakness-mining audit', () => {
       dryRun: true,
     })
 
-    expect(logs.join('\n')).toContain('Would create:')
-    expect(logs.join('\n')).toContain('weakness-mining')
+    const today = new Date().toISOString().slice(0, 10)
+    expect(logs).toEqual([
+      `Would create: ${join(
+        root,
+        'webpresso',
+        'tech-debt',
+        'needs-remediation',
+        `h-001-audit-weakness-mining-findings-${today}.md`,
+      )}`,
+    ])
   })
 })

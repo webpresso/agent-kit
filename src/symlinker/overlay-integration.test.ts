@@ -33,6 +33,11 @@ describe('overlay sync integration contract', () => {
     const result = validateAgentOverlays(root)
 
     expect(result.ok).toBe(false)
-    expect(result.violations[0]?.message).toContain('Overlay target collision')
+    expect(result.violations).toEqual([
+      {
+        file: 'agent-overlays/codex/manifest.yaml',
+        message: 'Overlay target collision for shared/prompt.md: claude and codex',
+      },
+    ])
   })
 })

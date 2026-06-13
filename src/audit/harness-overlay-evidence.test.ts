@@ -33,6 +33,11 @@ describe('harness overlay evidence audit', () => {
     const result = auditHarnessOverlayEvidence(root)
 
     expect(result.ok).toBe(false)
-    expect(result.violations[0]?.message).toContain('evidence is missing')
+    expect(result.violations).toEqual([
+      {
+        file: 'agent-overlays/codex/manifest.yaml',
+        message: 'codex evidence is missing or outside repo: missing.md',
+      },
+    ])
   })
 })

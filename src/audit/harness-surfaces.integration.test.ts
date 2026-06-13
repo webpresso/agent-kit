@@ -27,7 +27,7 @@ describe('wp audit harness-surfaces dispatch', () => {
     if (outcome.kind === 'repo-result') {
       expect(outcome.name).toBe('harness-surfaces')
       expect(outcome.result.ok).toBe(true)
-      expect(outcome.result.checked).toBeGreaterThan(0)
+      expect(outcome.result.checked).toBe(6)
     }
   })
 })

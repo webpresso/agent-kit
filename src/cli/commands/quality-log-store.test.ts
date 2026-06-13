@@ -90,7 +90,7 @@ describe('quality log store', () => {
       readdirSync(join(stateRoot.path, 'cli-logs', 'audit')).filter((file) =>
         file.endsWith('.log'),
       ).length,
-    ).toBeGreaterThanOrEqual(10)
+    ).toBe(13)
   })
 
   it('keeps recently finalized logs readable even when they fall out of the index', async () => {
@@ -107,9 +107,8 @@ describe('quality log store', () => {
     )
 
     expect(readCliLogEntries('test')).toHaveLength(10)
-    expect(readFileSync(victimEntry.logPath, 'utf8')).toContain('victim')
+    expect(readFileSync(victimEntry.logPath, 'utf8')).toBe('victim\n')
   })
-
 
   it('stamps quiet logs as recent when they finalize', async () => {
     const victim = createCliLogSink('test')
@@ -127,7 +126,7 @@ describe('quality log store', () => {
       }),
     )
 
-    expect(readFileSync(victimEntry.logPath, 'utf8')).toContain('victim')
+    expect(readFileSync(victimEntry.logPath, 'utf8')).toBe('victim\n')
   })
 
   it('retains only the latest 10 entries and prunes old log files', async () => {
@@ -142,7 +141,7 @@ describe('quality log store', () => {
     const entries = readCliLogEntries('qa')
     expect(entries).toHaveLength(10)
     expect(entries.some((entry) => entry.summary === 'run 0')).toBe(false)
-    expect(readFileSync(oldestPath, 'utf8')).toContain('run-0')
+    expect(readFileSync(oldestPath, 'utf8')).toBe('run-0\n')
 
     const stale = new Date(Date.now() - 120_000)
     utimesSync(oldestPath, stale, stale)

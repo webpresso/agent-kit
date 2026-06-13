@@ -65,7 +65,10 @@ describe('harness surface manifest audit', () => {
     const result = auditHarnessSurfaces(root)
 
     expect(result.ok).toBe(false)
-    expect(result.violations[0]?.message).toContain('Missing canonical harness surface manifest')
+    expect(result.violations[0]).toEqual({
+      file: 'catalog/agent/harness-surfaces.yaml',
+      message: 'Missing canonical harness surface manifest.',
+    })
   })
 
   it('reports schema and path violations summary-first', () => {
@@ -79,7 +82,7 @@ describe('harness surface manifest audit', () => {
 
     expect(result.ok).toBe(false)
     expect(result.violations[0]?.file).toBe('catalog/agent/harness-surfaces.yaml')
-    expect(result.violations[0]?.message).toContain('Invalid harness surface manifest')
+    expect(result.violations[0]?.message).toMatch(/^Invalid harness surface manifest: /u)
   })
 
   it('requires canonical surface ids in the repo manifest', () => {
@@ -88,8 +91,12 @@ describe('harness surface manifest audit', () => {
     const result = auditHarnessSurfaces(root)
 
     expect(result.ok).toBe(false)
-    expect(result.violations.map((v) => v.message)).toContain(
+    expect(result.violations.map((v) => v.message)).toEqual([
       'Missing required harness surface id: claude-hooks',
-    )
+      'Missing required harness surface id: generated-agent-surfaces',
+      'Missing required harness surface id: omx-runtime-state',
+      'Missing required harness surface id: harness-regression-gate',
+      'Missing required harness surface id: agent-overlays',
+    ])
   })
 })

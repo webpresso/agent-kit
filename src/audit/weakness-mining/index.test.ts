@@ -50,7 +50,12 @@ describe('weakness mining audit', () => {
     const result = await auditWeaknessMining(root)
 
     expect(result.ok).toBe(false)
-    expect(result.violations[0]?.message).toContain('repeated ERROR Edit')
+    expect(result.violations).toEqual([
+      {
+        file: '.agent/logs/pretool-guard.log:1',
+        message: 'WM-7e4eed69: 2 repeated ERROR Edit pretool records for src/a.ts',
+      },
+    ])
   })
 
   it('passes with a checked=0 evidence gap when no logs exist', async () => {
