@@ -1298,8 +1298,7 @@ describe('hooks/doctor', () => {
       mockAccessSync.mockImplementation((() => undefined) as typeof accessSync)
       mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
         if (String(path) === registryPath) {
-          return JSON.stringify({
-          })
+          return JSON.stringify({})
         }
         return ''
       }) as typeof readFileSync)

@@ -78,7 +78,11 @@ const tool: ToolDescriptor = {
         : ''
     const payload = {
       query: input.query,
-      hits: result.hits.map((hit) => ({ content: hit.content, source: hit.source, tier: hit.tier })),
+      hits: result.hits.map((hit) => ({
+        content: hit.content,
+        source: hit.source,
+        tier: hit.tier,
+      })),
       hitCount: result.hits.length,
       snapshotId: result.snapshotId,
       sessionKnowledge,

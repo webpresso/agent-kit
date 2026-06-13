@@ -14,7 +14,12 @@ const FORBIDDEN_CONFIG_KEY =
   /(?:^|_)(?:token|secret|password|api[_-]?key|credential|private[_-]?key)(?:$|_)/iu
 const PROJECT_ID_PATTERN = /^[a-z0-9][a-z0-9_-]{0,62}$/u
 
-const FORBIDDEN_BASENAMES = new Set(['.dev.vars', '.dev.vars.example', 'secrets.json', 'credentials.json'])
+const FORBIDDEN_BASENAMES = new Set([
+  '.dev.vars',
+  '.dev.vars.example',
+  'secrets.json',
+  'credentials.json',
+])
 
 const FORBIDDEN_BASENAME_PATTERNS: readonly RegExp[] = [
   /^\.dev\.vars(?:\..+)?$/u,
@@ -58,6 +63,7 @@ export function isForbiddenGitPath(relativePath: string): boolean {
 }
 
 export function shouldScanGitFileForSecretValues(relativePath: string): boolean {
+  if (/\.(?:test|spec)\.(?:ts|tsx|js|jsx|mjs|cjs)$/iu.test(relativePath)) return false
   return /\.(?:md|ts|tsx|js|mjs|cjs|json|ya?ml|toml|txt|sh)$/iu.test(relativePath)
 }
 
@@ -101,7 +107,10 @@ function buildConfigMetadata(
   return { manager, projectId, projectLabel: obj.projectLabel }
 }
 
-export function parseSecretsConfigMetadata(raw: string, sourceLabel: string): SecretsConfigMetadata {
+export function parseSecretsConfigMetadata(
+  raw: string,
+  sourceLabel: string,
+): SecretsConfigMetadata {
   if (SECRET_VALUE_PATTERN.test(raw)) {
     throw new Error(`${sourceLabel} must not contain secret values`)
   }

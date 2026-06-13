@@ -115,7 +115,10 @@ async function findTestFiles(root: string): Promise<string[]> {
     .filter((f) => f.length > 0)
 }
 
-export async function runTphAudit(root: string, options?: { maxMocks?: number }): Promise<AuditResult> {
+export async function runTphAudit(
+  root: string,
+  options?: { maxMocks?: number },
+): Promise<AuditResult> {
   const relativePaths = await findTestFiles(root)
 
   const files = relativePaths.map((relPath) => ({

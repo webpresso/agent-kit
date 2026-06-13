@@ -24,7 +24,11 @@ const INCLUDED_PATHS = [
   'scripts/public-readiness.ts',
 ] as const
 
-const EXCLUDED_SUBSTRINGS = ['/docs/research/', '/blueprints/parked/', '/blueprints/archived/'] as const
+const EXCLUDED_SUBSTRINGS = [
+  '/docs/research/',
+  '/blueprints/parked/',
+  '/blueprints/archived/',
+] as const
 
 const TEXT_EXTENSIONS = new Set([
   '.json',

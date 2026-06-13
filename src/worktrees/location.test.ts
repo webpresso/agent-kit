@@ -14,8 +14,8 @@ describe('worktree location policy compatibility helpers', () => {
   })
 
   it('appends generated worktree slugs below a provided root', () => {
-    expect(resolveGeneratedWorktreePath('/home/alice/.agent/worktrees/repos/repo', 'agent-fix-login')).toBe(
-      '/home/alice/.agent/worktrees/repos/repo/agent-fix-login',
-    )
+    expect(
+      resolveGeneratedWorktreePath('/home/alice/.agent/worktrees/repos/repo', 'agent-fix-login'),
+    ).toBe('/home/alice/.agent/worktrees/repos/repo/agent-fix-login')
   })
 })

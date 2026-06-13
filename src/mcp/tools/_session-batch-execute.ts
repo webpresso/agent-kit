@@ -36,7 +36,9 @@ async function mapWithConcurrency<T, R>(
       results[index] = await worker(items[index]!, index)
     }
   }
-  await Promise.all(Array.from({ length: Math.max(1, Math.min(concurrency, items.length)) }, () => runOne()))
+  await Promise.all(
+    Array.from({ length: Math.max(1, Math.min(concurrency, items.length)) }, () => runOne()),
+  )
   return results
 }
 
@@ -44,9 +46,13 @@ function rankHits(hits: readonly SearchHit[]): SearchHit[] {
   return [...hits].sort((left, right) => left.rank - right.rank)
 }
 
-function searchIndexedLabels(store: ReturnType<typeof getStore>, labels: readonly string[], query: string): SearchHit[] {
-  const merged = labels.flatMap((label) =>
-    store.search({ query, limit: DEFAULT_SEARCH_LIMIT, source: label }) as SearchHit[],
+function searchIndexedLabels(
+  store: ReturnType<typeof getStore>,
+  labels: readonly string[],
+  query: string,
+): SearchHit[] {
+  const merged = labels.flatMap(
+    (label) => store.search({ query, limit: DEFAULT_SEARCH_LIMIT, source: label }) as SearchHit[],
   )
   const deduped = new Map<string, SearchHit>()
   for (const hit of rankHits(merged)) {
@@ -127,7 +133,15 @@ const tool: ToolDescriptor = {
         {
           passed: false,
           summary: 'wp_session_batch_execute requires execute=true before running shell commands',
-          details: { results: [] as Array<{ label: string; exitCode: number; outputBytes: number; indexed: boolean; summary: string }> },
+          details: {
+            results: [] as Array<{
+              label: string
+              exitCode: number
+              outputBytes: number
+              indexed: boolean
+              summary: string
+            }>,
+          },
         },
         { isError: true },
       )
@@ -137,7 +151,15 @@ const tool: ToolDescriptor = {
         {
           passed: false,
           summary: 'wp_session_batch_execute is not supported on win32 yet',
-          details: { results: [] as Array<{ label: string; exitCode: number; outputBytes: number; indexed: boolean; summary: string }> },
+          details: {
+            results: [] as Array<{
+              label: string
+              exitCode: number
+              outputBytes: number
+              indexed: boolean
+              summary: string
+            }>,
+          },
         },
         { isError: true },
       )
@@ -146,27 +168,33 @@ const tool: ToolDescriptor = {
       const dbPath = resolveSessionDbPath(effectiveCwd)
       mkdirSync(dirname(dbPath), { recursive: true })
       const runtime = loadNativeSessionMemoryEngine()
-      const results = await mapWithConcurrency(input.commands, input.concurrency, async ({ label, command }) => {
-        const result = await runtime.executeSandboxed(
-          dbPath,
-          command,
-          label,
-          input.timeoutMs,
-          effectiveCwd,
-        )
-        return {
-          label,
-          exitCode: result.exitCode,
-          outputBytes: result.outputBytes,
-          indexed: result.indexed,
-          summary: result.summary,
-        }
-      })
+      const results = await mapWithConcurrency(
+        input.commands,
+        input.concurrency,
+        async ({ label, command }) => {
+          const result = await runtime.executeSandboxed(
+            dbPath,
+            command,
+            label,
+            input.timeoutMs,
+            effectiveCwd,
+          )
+          return {
+            label,
+            exitCode: result.exitCode,
+            outputBytes: result.outputBytes,
+            indexed: result.indexed,
+            summary: result.summary,
+          }
+        },
+      )
 
       let queryHits: Record<string, SearchHit[]> | undefined
       if (input.queries && input.queries.length > 0) {
         const store = getStore(dbPath)
-        const indexedLabels = results.filter((result) => result.indexed).map((result) => result.label)
+        const indexedLabels = results
+          .filter((result) => result.indexed)
+          .map((result) => result.label)
         if (indexedLabels.length > 0) {
           queryHits = Object.fromEntries(
             input.queries.map((query) => [query, searchIndexedLabels(store, indexedLabels, query)]),
@@ -195,7 +223,15 @@ const tool: ToolDescriptor = {
         {
           passed: false,
           summary: `wp_session_batch_execute failed: ${message}`,
-          details: { results: [] as Array<{ label: string; exitCode: number; outputBytes: number; indexed: boolean; summary: string }> },
+          details: {
+            results: [] as Array<{
+              label: string
+              exitCode: number
+              outputBytes: number
+              indexed: boolean
+              summary: string
+            }>,
+          },
         },
         { isError: true },
       )

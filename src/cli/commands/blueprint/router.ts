@@ -9,7 +9,10 @@ import { parseBlueprintForDb } from '#db/parser/blueprint-db-parser'
 import { blueprintToSpecKit } from '#export/spec-kit/index'
 
 import { getProjectRoot } from '#cli/utils'
-import { clearBlueprintWorktreeOwnership, ensureBlueprintOwnerWorktree } from '#worktrees/manager.js'
+import {
+  clearBlueprintWorktreeOwnership,
+  ensureBlueprintOwnerWorktree,
+} from '#worktrees/manager.js'
 import { resolveBlueprintRoot } from '#utils/blueprint-root'
 import { getBlueprintDocumentPaths } from '#utils/document-paths.js'
 import {

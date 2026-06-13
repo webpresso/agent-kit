@@ -61,9 +61,9 @@ describe('fetchAndIndex', () => {
   })
 
   it('uses the in-process TTL cache', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response('cached body', { headers: { 'content-type': 'text/plain' } }),
-    )
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('cached body', { headers: { 'content-type': 'text/plain' } }))
 
     const first = await fetchAndIndex({
       url: 'https://example.test/cache#one',
@@ -83,9 +83,11 @@ describe('fetchAndIndex', () => {
   })
 
   it('reuses cached fetch content while still indexing into a second db target', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response('shared cached body', { headers: { 'content-type': 'text/plain' } }),
-    )
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(
+        new Response('shared cached body', { headers: { 'content-type': 'text/plain' } }),
+      )
     const secondDir = mkdtempSync(join(tmpdir(), 'wp-native-fetch-test-b-'))
     const secondDbPath = join(secondDir, 'memory.db')
 

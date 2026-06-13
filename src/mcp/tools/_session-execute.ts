@@ -113,24 +113,31 @@ const tool: ToolDescriptor = {
       )
       let hits: readonly SearchHit[] | undefined
       if (input.query && result.indexed) {
-        hits = getStore(dbPath).search({ query: input.query, limit: DEFAULT_SEARCH_LIMIT, source: label })
+        hits = getStore(dbPath).search({
+          query: input.query,
+          limit: DEFAULT_SEARCH_LIMIT,
+          source: label,
+        })
       }
       const passed = result.exitCode === 0
-      return createSummaryResult({
-        passed,
-        summary: passed
-          ? `command succeeded (${result.outputBytes} bytes${result.indexed ? ', indexed' : ''})`
-          : `command failed with exit code ${result.exitCode} (${result.outputBytes} bytes${result.indexed ? ', indexed' : ''})`,
-        exitCode: result.exitCode,
-        details: {
-          label,
+      return createSummaryResult(
+        {
+          passed,
+          summary: passed
+            ? `command succeeded (${result.outputBytes} bytes${result.indexed ? ', indexed' : ''})`
+            : `command failed with exit code ${result.exitCode} (${result.outputBytes} bytes${result.indexed ? ', indexed' : ''})`,
           exitCode: result.exitCode,
-          outputBytes: result.outputBytes,
-          indexed: result.indexed,
-          summary: result.summary,
-          ...(hits ? { hits: [...hits] } : {}),
+          details: {
+            label,
+            exitCode: result.exitCode,
+            outputBytes: result.outputBytes,
+            indexed: result.indexed,
+            summary: result.summary,
+            ...(hits ? { hits: [...hits] } : {}),
+          },
         },
-      }, passed ? {} : { isError: true })
+        passed ? {} : { isError: true },
+      )
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       return createSummaryResult(

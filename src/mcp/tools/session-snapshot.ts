@@ -20,8 +20,7 @@ const outputSchema = z.object({
 
 const tool: ToolDescriptor = {
   name: 'wp_session_snapshot',
-  description:
-    'Create a session-memory snapshot before risky operations or branch switches.',
+  description: 'Create a session-memory snapshot before risky operations or branch switches.',
   inputSchema,
   outputSchema,
   annotations: {

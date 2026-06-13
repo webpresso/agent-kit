@@ -65,6 +65,10 @@ const toolchainIsolationMock = {
   auditToolchainIsolation: vi.fn(),
 }
 
+const openSourceLicensesMock = {
+  auditOpenSourceLicenses: vi.fn(),
+}
+
 const viteLocalMock = {
   runBundleBudgetCli: vi.fn(),
 }
@@ -80,6 +84,7 @@ vi.mock('#audit/cloudflare-deploy-contract', () => cloudflareDeployContractMock)
 vi.mock('#audit/absolute-path-policy', () => absolutePathPolicyMock)
 vi.mock('#audit/no-first-party-mjs', () => noFirstPartyMjsMock)
 vi.mock('#audit/toolchain-isolation', () => toolchainIsolationMock)
+vi.mock('#audit/open-source-licenses', () => openSourceLicensesMock)
 vi.mock('../../vite/local.js', () => viteLocalMock)
 vi.mock('#audit/audit-tph-runner', () => tphRunnerMock)
 vi.mock('#audit/audit-tph-e2e-runner', () => tphE2eRunnerMock)
@@ -122,6 +127,7 @@ beforeEach(() => {
   blueprintReadmeDriftMock.auditBlueprintReadmeDrift.mockReset()
   blueprintLifecycleSqlMock.auditBlueprintLifecycleSql.mockReset()
   toolchainIsolationMock.auditToolchainIsolation.mockReset()
+  openSourceLicensesMock.auditOpenSourceLicenses.mockReset()
   viteLocalMock.runBundleBudgetCli.mockReset()
   tphRunnerMock.runTphAudit.mockReset()
   tphE2eRunnerMock.runTphE2eAudit.mockReset()
@@ -248,6 +254,15 @@ describe('wp_audit tool', () => {
       expect(payload.kind).toBe('toolchain-isolation')
     })
 
+    it('open-source-licenses -> auditOpenSourceLicenses', async () => {
+      openSourceLicensesMock.auditOpenSourceLicenses.mockReturnValue(passingAudit())
+      const result = await akAuditTool.handler({ kind: 'open-source-licenses' })
+      expect(openSourceLicensesMock.auditOpenSourceLicenses).toHaveBeenCalledTimes(1)
+      const payload = parsePayload(result)
+      expect(payload.passed).toBe(true)
+      expect(payload.kind).toBe('open-source-licenses')
+    })
+
     it('bundle-budget -> runBundleBudgetCli with directory arg', async () => {
       viteLocalMock.runBundleBudgetCli.mockResolvedValue(0)
       const result = await akAuditTool.handler({ kind: 'bundle-budget', directory: 'dist' })
@@ -271,7 +286,11 @@ describe('wp_audit tool', () => {
 
     it('tph -> calls runTphAudit directly', async () => {
       tphRunnerMock.runTphAudit.mockResolvedValue({
-        errorCount: 0, filesChecked: 5, violations: [], warningCount: 0, infoCount: 0,
+        errorCount: 0,
+        filesChecked: 5,
+        violations: [],
+        warningCount: 0,
+        infoCount: 0,
       })
       const result = await akAuditTool.handler({ kind: 'tph' })
       expect(tphRunnerMock.runTphAudit).toHaveBeenCalledTimes(1)
@@ -283,7 +302,11 @@ describe('wp_audit tool', () => {
 
     it('tph-e2e -> calls runTphE2eAudit directly', async () => {
       tphE2eRunnerMock.runTphE2eAudit.mockResolvedValue({
-        errorCount: 0, filesChecked: 3, violations: [], warningCount: 0, infoCount: 0,
+        errorCount: 0,
+        filesChecked: 3,
+        violations: [],
+        warningCount: 0,
+        infoCount: 0,
       })
       const result = await akAuditTool.handler({ kind: 'tph-e2e' })
       expect(tphE2eRunnerMock.runTphE2eAudit).toHaveBeenCalledTimes(1)
@@ -326,7 +349,9 @@ describe('wp_audit tool', () => {
       tphRunnerMock.runTphAudit.mockResolvedValue({
         errorCount: 1,
         filesChecked: 5,
-        violations: [{ rule: 'no-skip', message: 'test skipped', file: 'foo.test.ts', severity: 'ERROR' }],
+        violations: [
+          { rule: 'no-skip', message: 'test skipped', file: 'foo.test.ts', severity: 'ERROR' },
+        ],
         warningCount: 0,
         infoCount: 0,
       })
@@ -369,7 +394,9 @@ describe('wp_audit tool', () => {
     tphE2eRunnerMock.runTphE2eAudit.mockResolvedValue({
       errorCount: 1,
       filesChecked: 2,
-      violations: [{ rule: 'no-skip', message: 'test skipped', file: 'foo.e2e.test.ts', severity: 'ERROR' }],
+      violations: [
+        { rule: 'no-skip', message: 'test skipped', file: 'foo.e2e.test.ts', severity: 'ERROR' },
+      ],
       warningCount: 0,
       infoCount: 0,
     })

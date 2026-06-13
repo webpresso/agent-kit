@@ -1,5 +1,78 @@
 # Changelog
 
+## 0.34.5
+
+### Patch Changes
+
+- a8d2f1f: Fix: add `open-source-licenses` to `wp_audit` MCP tool kind enum
+
+  `open-source-licenses` existed in the CLI `REPO_AUDIT_REGISTRY` and ran
+  correctly via `wp audit guardrails`, but was omitted from the MCP tool's
+  `AUDIT_KINDS` enum in `_shared/audit-kinds.ts`. Calling
+  `wp_audit({kind: "open-source-licenses"})` returned
+  `"Invalid wp_audit input for open-source-licenses"` instead of running
+  the audit.
+
+  Adds the kind to the enum, wires the dispatch case in `audit.ts`, updates
+  the tool description string, and adds a regression test.
+
+  Note: `guardrails` is a CLI-only umbrella that runs all repo audit kinds as
+  an aggregate — it is intentionally not an MCP kind.
+
+## 0.34.4
+
+### Patch Changes
+
+- d063a0d: Fix wp-pretool-guard deny message and add postinstall-pin scaffolder.
+
+  `wp setup` now adds `"postinstall": "wp setup"` to consumer `package.json`
+  so managed hooks are regenerated on every `pnpm install` after an upgrade.
+
+  The pretool-guard deny message no longer misleads with "Run vp install" —
+  it now says "Install @webpresso/agent-kit globally and re-run wp setup."
+
+## 0.34.3
+
+### Patch Changes
+
+- c90bc62: Fix Codex Context7 MCP setup by emitting the required Accept header while keeping API keys provider-injected via env-backed headers. Also make the QA flow auto-format when possible and tighten related setup, audit, and blueprint validation coverage.
+
+## 0.34.2
+
+### Patch Changes
+
+- d4cca20: fix(audit): exclude test files from secrets-policy SECRET_VALUE_PATTERN scan
+
+  Test files (.test.ts, .spec.ts, etc.) legitimately contain fake credentials for
+  testing secret-handling code. Scanning them for secret-like values produces false
+  positives (e.g. Langfuse fixture keys like "pk-lf-test" or "sk-lf-test").
+
+  `shouldScanGitFileForSecretValues` now returns false for any file matching
+  `.test.{ts,tsx,js,jsx,mjs,cjs}` or `.spec.{ts,tsx,js,jsx,mjs,cjs}`.
+
+## 0.34.1
+
+### Patch Changes
+
+- d4cca20: fix(audit): exclude test files from secrets-policy SECRET_VALUE_PATTERN scan
+
+  Test files (.test.ts, .spec.ts, etc.) legitimately contain fake credentials for
+  testing secret-handling code. Scanning them for secret-like values produces false
+  positives (e.g. Langfuse fixture keys like "pk-lf-test" or "sk-lf-test").
+
+  `shouldScanGitFileForSecretValues` now returns false for any file matching
+  `.test.{ts,tsx,js,jsx,mjs,cjs}` or `.spec.{ts,tsx,js,jsx,mjs,cjs}`.
+
+## 0.34.0
+
+### Minor Changes
+
+- 378e2f2: Wire secrets-policy, no-dev-vars, secret-provider-quarantine, and secrets-config audit kinds to the `wp audit` CLI
+
+  These four governance audit modules existed in `src/audit/` and were callable via the `wp_audit` MCP tool but missing from the CLI `REPO_AUDIT_REGISTRY`. Running `wp audit secrets-policy` (or any of the other three) returned "unknown kind" instead of executing the audit.
+
+  Consumer repos can now retire bun-script fallbacks in `verify:secrets` and pre-commit hooks and use `wp audit secrets-policy`, `wp audit no-dev-vars`, `wp audit secret-provider-quarantine`, and `wp audit secrets-config` directly.
+
 ## 0.33.0
 
 ### Minor Changes
@@ -952,11 +1025,9 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
 
 ### Patch Changes
 
-
 ## 0.8.2
 
 ### Patch Changes
-
 
 ## 0.8.1
 

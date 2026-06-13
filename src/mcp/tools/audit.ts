@@ -276,7 +276,10 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
     case 'tph': {
       const { runTphAudit } = await import('#audit/audit-tph-runner')
       const result = await runTphAudit(input.cwd ?? input.directory ?? process.cwd())
-      const violations = result.violations.map((v) => ({ message: `[${v.rule}] ${v.message}`, file: v.file }))
+      const violations = result.violations.map((v) => ({
+        message: `[${v.rule}] ${v.message}`,
+        file: v.file,
+      }))
       const auditResult = { ok: result.errorCount === 0, checked: result.filesChecked, violations }
       return {
         passed: auditResult.ok,
@@ -288,8 +291,21 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
     case 'tph-e2e': {
       const { runTphE2eAudit } = await import('#audit/audit-tph-e2e-runner')
       const result = await runTphE2eAudit(input.cwd ?? input.directory ?? process.cwd())
-      const violations = result.violations.map((v) => ({ message: `[${v.rule}] ${v.message}`, file: v.file }))
+      const violations = result.violations.map((v) => ({
+        message: `[${v.rule}] ${v.message}`,
+        file: v.file,
+      }))
       const auditResult = { ok: result.errorCount === 0, checked: result.filesChecked, violations }
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
+    }
+    case 'open-source-licenses': {
+      const { auditOpenSourceLicenses } = await import('#audit/open-source-licenses')
+      const auditResult = auditOpenSourceLicenses(input.cwd ?? input.directory ?? process.cwd())
       return {
         passed: auditResult.ok,
         summary: summarizeRepoAudit(kind, auditResult),
@@ -319,7 +335,9 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
     }
     case 'secret-provider-quarantine': {
       const { auditSecretProviderQuarantine } = await import('#audit/secret-provider-quarantine')
-      const auditResult = auditSecretProviderQuarantine(input.cwd ?? input.directory ?? process.cwd())
+      const auditResult = auditSecretProviderQuarantine(
+        input.cwd ?? input.directory ?? process.cwd(),
+      )
       return {
         passed: auditResult.ok,
         summary: summarizeRepoAudit(kind, auditResult),
@@ -387,7 +405,7 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
 const tool: ToolDescriptor = {
   name: 'wp_audit',
   description:
-    'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-readme-drift, blueprint-lifecycle, architecture-drift, absolute-path-policy, no-first-party-mjs, roadmap-links, bundle-budget, commit-message, tech-debt, hook-surface, package-surface, no-relative-package-scripts, secrets-policy, no-dev-vars, secret-provider-quarantine, secrets-config). Returns {passed, kind, details}.',
+    'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-readme-drift, blueprint-lifecycle, architecture-drift, absolute-path-policy, no-first-party-mjs, roadmap-links, bundle-budget, commit-message, tech-debt, hook-surface, package-surface, no-relative-package-scripts, open-source-licenses, secrets-policy, no-dev-vars, secret-provider-quarantine, secrets-config). Returns {passed, kind, details}.',
   inputSchema,
   outputSchema,
   annotations: {

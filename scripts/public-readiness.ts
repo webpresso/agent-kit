@@ -414,7 +414,7 @@ if (import.meta.main) {
       ? pass(
           'stale-surface-literals',
           'no stale registry/auth/local-path literals on shipped/public surfaces',
-      )
+        )
       : fail('stale-surface-literals', staleHits.join('; ')),
   )
 

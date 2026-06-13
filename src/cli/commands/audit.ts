@@ -141,6 +141,14 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
     (await import('#audit/secret-provider-quarantine')).auditSecretProviderQuarantine(root),
   'secrets-config': async (root) =>
     (await import('#audit/secrets-config')).auditSecretsConfig(root),
+  'harness-surfaces': async (root) =>
+    (await import('#audit/harness-surfaces')).auditHarnessSurfaces(root),
+  'weakness-mining': async (root, options) =>
+    (await import('#audit/weakness-mining/index')).auditWeaknessMining(root, {
+      draftTechDebt: options.draftTechDebt,
+    }),
+  'harness-overlay-evidence': async (root) =>
+    (await import('#audit/harness-overlay-evidence')).auditHarnessOverlayEvidence(root),
   rules: async (root) => runContentAudit(root, 'rule'),
   skills: async (root) => runContentAudit(root, 'skill'),
 }
@@ -240,6 +248,7 @@ export function registerAuditCommand(cli: CAC): void {
       'Restrict to packages touched in git diff --name-only origin/main (bucket-boundary)',
     )
     .option('--docs-root <dir>', 'Docs directory for docs-frontmatter')
+    .option('--draft-tech-debt', 'Draft a tech-debt item for supported audit findings')
     .option('--message-file <file>', 'Commit message file for commit-message')
     .option('--require-lore', 'Require Lore trailers (hard-fail on missing/malformed trailers)')
     .option(

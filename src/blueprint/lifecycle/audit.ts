@@ -225,7 +225,6 @@ function validateBlueprintEngineSemantics(
   return issues
 }
 
-
 function validateOwnerBindingTruth(
   file: string,
   frontmatter: LifecycleAuditFrontmatter,
@@ -233,9 +232,12 @@ function validateOwnerBindingTruth(
   if (frontmatter.type !== 'blueprint' || frontmatter.status !== 'in-progress') return []
 
   const issues: BlueprintAuditIssue[] = []
-  const ownerId = typeof frontmatter.worktreeOwnerId === 'string' ? frontmatter.worktreeOwnerId.trim() : ''
+  const ownerId =
+    typeof frontmatter.worktreeOwnerId === 'string' ? frontmatter.worktreeOwnerId.trim() : ''
   const ownerBranch =
-    typeof frontmatter.worktreeOwnerBranch === 'string' ? frontmatter.worktreeOwnerBranch.trim() : ''
+    typeof frontmatter.worktreeOwnerBranch === 'string'
+      ? frontmatter.worktreeOwnerBranch.trim()
+      : ''
 
   if (!ownerId) {
     issues.push({

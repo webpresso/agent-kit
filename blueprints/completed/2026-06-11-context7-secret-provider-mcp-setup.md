@@ -25,7 +25,7 @@ tags:
 
 ## Scope
 
-Add a small setup/scaffolder path that registers Context7's remote MCP server in Codex config with `env_http_headers`, mapping the `CONTEXT7_API_KEY` HTTP header from the environment variable of the same name. The secret value remains owned by the configured agent-kit secret provider; setup must not shell out to `doppler secrets get`, persist `.env`, or write raw `http_headers` with secret values.
+Add a small setup/scaffolder path that registers Context7's remote MCP server in Codex config with a static `Accept` header plus `env_http_headers`, mapping the `CONTEXT7_API_KEY` HTTP header from the environment variable of the same name. The secret value remains owned by the configured agent-kit secret provider; setup must not shell out to `doppler secrets get`, persist `.env`, or write raw `http_headers` with secret values.
 
 ## Tasks
 
@@ -38,7 +38,7 @@ Add a small setup/scaffolder path that registers Context7's remote MCP server in
 **Acceptance:**
 
 - [x] Add constants/upsert support for `[mcp_servers.context7]`.
-- [x] Use `url = "https://mcp.context7.com/mcp"` and `env_http_headers = { "CONTEXT7_API_KEY" = "CONTEXT7_API_KEY" }`.
+- [x] Use `url = "https://mcp.context7.com/mcp"`, `http_headers = { "Accept" = "application/json, text/event-stream" }`, and `env_http_headers = { "CONTEXT7_API_KEY" = "CONTEXT7_API_KEY" }`.
 - [x] Preserve unrelated MCP servers and make repeated setup idempotent.
 
 **Verification:** `wp test src/cli/commands/init/scaffolders/codex-mcp/index.test.ts src/cli/commands/init/init.presets.integration.test.ts`

@@ -13,14 +13,20 @@ function normalizeUrl(url: string): string {
 }
 
 function stripTags(html: string): string {
-  return html.replace(/<[^>]+>/gu, ' ').replace(/[ \t\n]+/gu, ' ').trim()
+  return html
+    .replace(/<[^>]+>/gu, ' ')
+    .replace(/[ \t\n]+/gu, ' ')
+    .trim()
 }
 
 function htmlToMarkdown(html: string): string {
   return html
     .replace(/<script[\s\S]*?<\/script>/giu, '')
     .replace(/<style[\s\S]*?<\/style>/giu, '')
-    .replace(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/giu, (_m, level: string, text: string) => `${'#'.repeat(Number(level))} ${stripTags(text)}\n`)
+    .replace(
+      /<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/giu,
+      (_m, level: string, text: string) => `${'#'.repeat(Number(level))} ${stripTags(text)}\n`,
+    )
     .replace(/<li[^>]*>([\s\S]*?)<\/li>/giu, (_m, text: string) => `- ${stripTags(text)}\n`)
     .replace(/<p[^>]*>([\s\S]*?)<\/p>/giu, (_m, text: string) => `${stripTags(text)}\n\n`)
     .replace(/<br\s*\/?>/giu, '\n')
@@ -65,12 +71,7 @@ export async function fetchAndIndex(options: FetchIndexOptions): Promise<FetchIn
     }
   }
   const text = toIndexableText(entry.body, entry.contentType)
-  const chunkCount = loadNativeSessionMemoryEngine().index(
-    options.dbPath,
-    normalized,
-    text,
-    false,
-  )
+  const chunkCount = loadNativeSessionMemoryEngine().index(options.dbPath, normalized, text, false)
   return {
     url: normalized,
     chunkCount,

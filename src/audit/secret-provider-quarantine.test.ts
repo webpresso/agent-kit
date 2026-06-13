@@ -54,7 +54,10 @@ describe('auditSecretProviderQuarantine', () => {
   test('flags with-secrets provider flag in source file', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'src'), { recursive: true })
-    writeFileSync(join(root, 'src', 'run.ts'), "exec('with-secrets" + " --doppler -- node server.js')")
+    writeFileSync(
+      join(root, 'src', 'run.ts'),
+      "exec('with-secrets" + " --doppler -- node server.js')",
+    )
 
     const result = auditSecretProviderQuarantine(root)
 

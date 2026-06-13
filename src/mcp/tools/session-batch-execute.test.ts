@@ -28,7 +28,9 @@ describe('wp_session_batch_execute', () => {
     mockExecuteSandboxed
       .mockResolvedValueOnce({ exitCode: 0, outputBytes: 3000, indexed: true, summary: 'one' })
       .mockResolvedValueOnce({ exitCode: 0, outputBytes: 100, indexed: false, summary: 'two' })
-    mockSearch.mockReturnValue([{ content: 'shared result', source: 'cmd-a:4', rank: 1, tier: 'porter' }])
+    mockSearch.mockReturnValue([
+      { content: 'shared result', source: 'cmd-a:4', rank: 1, tier: 'porter' },
+    ])
 
     const tool = (await import('./_session-batch-execute.js')).default
     const result = await tool.handler?.({
@@ -66,7 +68,12 @@ describe('wp_session_batch_execute', () => {
   })
 
   it('surfaces failures when any command fails', async () => {
-    mockExecuteSandboxed.mockResolvedValue({ exitCode: 42, outputBytes: 20, indexed: false, summary: 'bad' })
+    mockExecuteSandboxed.mockResolvedValue({
+      exitCode: 42,
+      outputBytes: 20,
+      indexed: false,
+      summary: 'bad',
+    })
     const tool = (await import('./_session-batch-execute.js')).default
     const result = await tool.handler?.({
       commands: [{ label: 'cmd', command: 'exit 42' }],

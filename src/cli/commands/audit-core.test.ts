@@ -80,7 +80,9 @@ describe('runAuditDispatch', () => {
     test('errors → repo-result with ok: false', async () => {
       mockRunTphAudit.mockResolvedValue({
         filesChecked: 3,
-        violations: [{ file: 'a.test.ts', severity: 'ERROR', rule: 'over-mocking', message: 'too many mocks' }],
+        violations: [
+          { file: 'a.test.ts', severity: 'ERROR', rule: 'over-mocking', message: 'too many mocks' },
+        ],
         errorCount: 1,
         warningCount: 0,
         infoCount: 0,

@@ -37,7 +37,7 @@ function codexBinCommand(repoRoot: string, name: string): string {
     return `[ -x ${binPath} ] && ${binPath} || printf '%s\\n' '{}'`
   }
   if (name === 'wp-pretool-guard') {
-    return `[ -x ${binPath} ] && ${binPath} || printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp-pretool-guard is unavailable. Run vp install or wp setup."}}'`
+    return `[ -x ${binPath} ] && ${binPath} || printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install @webpresso/agent-kit globally and re-run wp setup."}}'`
   }
   return `[ -x ${binPath} ] && ${binPath} || true`
 }
@@ -48,7 +48,7 @@ function claudeBinCommand(name: string): string {
     return `[ -x "${binPath}" ] && "${binPath}" || printf '%s\\n' '{}'`
   }
   if (name === 'wp-pretool-guard') {
-    return `[ -x "${binPath}" ] && "${binPath}" || printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp-pretool-guard is unavailable. Run vp install or wp setup."}}'`
+    return `[ -x "${binPath}" ] && "${binPath}" || printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install @webpresso/agent-kit globally and re-run wp setup."}}'`
   }
   return `[ -x "${binPath}" ] && "${binPath}" || true`
 }
@@ -267,7 +267,10 @@ describe('scaffoldAgentHooks', () => {
       readFileSync(join(repoRoot, '.claude', 'hooks', 'check-gstack.sh'), 'utf8'),
     ).toThrow()
     expect(() =>
-      readFileSync(join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh'), 'utf8'),
+      readFileSync(
+        join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh'),
+        'utf8',
+      ),
     ).toThrow()
   })
 
@@ -288,7 +291,10 @@ describe('scaffoldAgentHooks', () => {
     expect(claudeCommands.some((cmd) => cmd.includes('$CLAUDE_PROJECT_DIR'))).toBe(true)
     expect(codexCommands).toContain(codexBinCommand(repoRoot, 'wp-sessionstart-routing'))
     expect(
-      readFileSync(join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh'), 'utf8'),
+      readFileSync(
+        join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh'),
+        'utf8',
+      ),
     ).toContain('wp hook sessionstart-routing')
     expect(
       readFileSync(join(repoRoot, '.codex', 'managed-hooks', 'wp-sessionstart-routing.sh'), 'utf8'),
@@ -931,8 +937,7 @@ hooks:
     expect(
       stopCommands.some(
         (command) =>
-          command.includes('wp audit agents') &&
-          command.includes('# from-skill: verify'),
+          command.includes('wp audit agents') && command.includes('# from-skill: verify'),
       ),
     ).toBe(true)
     expect(stopCommands.some((command) => command.includes('# from-skill: verify'))).toBe(true)
@@ -1695,7 +1700,7 @@ hooks:
     expect(preToolResult.status, preTool).toBe(0)
     expect(preToolResult.stdout).toContain('"hookEventName":"PreToolUse"')
     expect(preToolResult.stdout).toContain('"permissionDecision":"deny"')
-    expect(preToolResult.stdout).toContain('"wp-pretool-guard is unavailable.')
+    expect(preToolResult.stdout).toContain('"wp not found on PATH.')
 
     const stopResults = await Promise.all(
       commandByEvent.Stop.map(async (command) => ({

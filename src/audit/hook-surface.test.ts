@@ -101,7 +101,7 @@ describe('auditHookSurface — passing', () => {
     expect(result.details.violations).toHaveLength(0)
   })
 
-    it('passes when a validator and a rewriter share the same matcher', () => {
+  it('passes when a validator and a rewriter share the same matcher', () => {
     // Only one rewriter — validator does not count
     const result = auditHookSurface(
       opts({ PreToolUse: [hookGroup('Bash', ['rtk hook claude', 'wp-pretool-guard'])] }),
@@ -124,7 +124,7 @@ describe('auditHookSurface — passing', () => {
 // ---------------------------------------------------------------------------
 
 describe('auditHookSurface — violations', () => {
-    it('fails when RTK appears in two separate hook groups for the same matcher', () => {
+  it('fails when RTK appears in two separate hook groups for the same matcher', () => {
     const result = auditHookSurface(
       opts({
         PreToolUse: [
@@ -232,7 +232,6 @@ describe('extractOwner', () => {
     expect(extractOwner('wp_pretool_guard')).toBe('webpresso')
   })
 
-  
   it('classifies oh-my-codex / codex-native-hook.js as omx', () => {
     expect(extractOwner('node "/path/oh-my-codex/dist/scripts/codex-native-hook.js"')).toBe('omx')
     expect(extractOwner('node /path/omx/hook.js')).toBe('omx')
@@ -260,8 +259,8 @@ describe('extractOwner', () => {
 
 describe('detectDrift', () => {
   // TC-01: cross-owner same-event → allowed
-    // TC-02: same-owner + same-command → drift
-    // TC-03: same-owner, different-command → allowed
+  // TC-02: same-owner + same-command → drift
+  // TC-03: same-owner, different-command → allowed
   it('TC-03: allows same owner with different commands on the same event', () => {
     const hooks: readonly HookEntry[] = [
       { runtime: 'codex', event: 'Stop', command: './node_modules/.bin/wp-stop-qa' },
@@ -282,17 +281,25 @@ describe('detectDrift', () => {
   })
 
   // TC-06: same command across different matchers → still drift (dedup key ignores matcher)
-    // TC-07/TC-08: empty input → no errors
+  // TC-07/TC-08: empty input → no errors
   it('TC-07/TC-08: returns empty array for empty input', () => {
     expect(detectDrift([])).toHaveLength(0)
   })
 
   // TC-09: three-way cross-owner on same event → allowed
-    // Additional: cross-runtime same command → no drift (different runtime = different key)
+  // Additional: cross-runtime same command → no drift (different runtime = different key)
   it('allows the same command on different runtimes (not drift)', () => {
     const hooks: readonly HookEntry[] = [
-      { runtime: 'codex', event: 'PreToolUse', command: 'node "/path/oh-my-codex/dist/scripts/codex-native-hook.js"' },
-      { runtime: 'claude', event: 'PreToolUse', command: 'node "/path/oh-my-codex/dist/scripts/codex-native-hook.js"' },
+      {
+        runtime: 'codex',
+        event: 'PreToolUse',
+        command: 'node "/path/oh-my-codex/dist/scripts/codex-native-hook.js"',
+      },
+      {
+        runtime: 'claude',
+        event: 'PreToolUse',
+        command: 'node "/path/oh-my-codex/dist/scripts/codex-native-hook.js"',
+      },
     ]
     expect(detectDrift(hooks)).toHaveLength(0)
   })

@@ -94,9 +94,7 @@ describe('upgradeHooksForRepo', () => {
     writeHooksManifest(
       repoRoot,
       {
-        SessionStart: [
-          { hooks: [{ type: 'command', command: 'wp hook sessionstart-routing' }] },
-        ],
+        SessionStart: [{ hooks: [{ type: 'command', command: 'wp hook sessionstart-routing' }] }],
       },
       {
         SessionStart: [

@@ -204,9 +204,11 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       expect(codexConfig).toContain('[mcp_servers.playwright]')
       expect(codexConfig).toContain('[mcp_servers.context7]')
       expect(codexConfig).toContain(
+        'http_headers = { "Accept" = "application/json, text/event-stream" }',
+      )
+      expect(codexConfig).toContain(
         'env_http_headers = { "CONTEXT7_API_KEY" = "CONTEXT7_API_KEY" }',
       )
-      expect(codexConfig).not.toContain('\nhttp_headers =')
 
       const claudeMcpConfig = JSON.parse(readFileSync(join(repo, '.mcp.json'), 'utf8')) as {
         mcpServers: Record<string, unknown>

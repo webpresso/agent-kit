@@ -14,6 +14,7 @@ import type { CAC } from 'cac'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { validateAgentOverlays } from '#symlinker/overlay-loader'
 import { runUnifiedSync, type UnifiedSyncMismatch } from '#symlinker/unified-sync'
 import type { ContentKind } from '#content/loader'
 import { resolvePackageAsset } from '#utils/package-assets'
@@ -124,6 +125,17 @@ export function registerSyncCommand(cli: CAC): void {
             `  \`wp sync\` (or \`wp setup --source-maintenance\`) before \`wp sync --check\` can pass here.`,
         )
         return 1
+      }
+
+      const overlayValidation = validateAgentOverlays(repoRoot)
+      if (!overlayValidation.ok) {
+        const first = overlayValidation.violations[0]
+        throw commandError(
+          `wp sync: invalid agent overlay${first ? ` at ${first.file ?? 'unknown'}: ${first.message}` : ''}`,
+        )
+      }
+      if (overlayValidation.overlays.length > 0) {
+        console.log(`wp sync: validated ${overlayValidation.overlays.length} agent overlay(s).`)
       }
 
       try {

@@ -27,17 +27,29 @@ const claudeMap: HooksMap = {
 const codexMap: HooksMap = {
   SessionStart: [
     {
-      hooks: [{ type: 'command', command: '/repo/.codex/managed-hooks/wp-sessionstart-routing.sh', timeout: 5 }],
+      hooks: [
+        {
+          type: 'command',
+          command: '/repo/.codex/managed-hooks/wp-sessionstart-routing.sh',
+          timeout: 5,
+        },
+      ],
     },
   ],
   PreToolUse: [
     {
       matcher: 'Bash|apply_patch',
-      hooks: [{ type: 'command', command: '/repo/.codex/managed-hooks/wp-pretool-guard.sh', timeout: 5 }],
+      hooks: [
+        { type: 'command', command: '/repo/.codex/managed-hooks/wp-pretool-guard.sh', timeout: 5 },
+      ],
     },
   ],
   Stop: [
-    { hooks: [{ type: 'command', command: '/repo/.codex/managed-hooks/wp-stop-qa.sh', timeout: 10 }] },
+    {
+      hooks: [
+        { type: 'command', command: '/repo/.codex/managed-hooks/wp-stop-qa.sh', timeout: 10 },
+      ],
+    },
   ],
 }
 

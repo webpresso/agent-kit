@@ -44,6 +44,9 @@ export type AuditKind =
   | 'secret-provider-quarantine'
   | 'secrets-config'
   | 'session-memory-hardcut'
+  | 'harness-surfaces'
+  | 'weakness-mining'
+  | 'harness-overlay-evidence'
 
 export type AuditOutcome =
   | { kind: 'invalid-usage'; message: string }
@@ -61,6 +64,7 @@ export interface AuditActionOptions {
   changedOnly?: boolean
   dist?: string
   docsRoot?: string
+  draftTechDebt?: boolean
   fix?: boolean
   htmlEntry?: string
   ignore?: string | string[]
@@ -131,7 +135,10 @@ export async function runAuditDispatch(
           ok: result.errorCount === 0,
           title: 'Testing Philosophy Audit (TPH)',
           checked: result.filesChecked,
-          violations: result.violations.map((v) => ({ message: `[${v.rule}] ${v.message}`, file: v.file })),
+          violations: result.violations.map((v) => ({
+            message: `[${v.rule}] ${v.message}`,
+            file: v.file,
+          })),
         },
       }
     }
@@ -146,7 +153,10 @@ export async function runAuditDispatch(
           ok: result.errorCount === 0,
           title: 'Testing Philosophy Audit (TPH) - E2E',
           checked: result.filesChecked,
-          violations: result.violations.map((v) => ({ message: `[${v.rule}] ${v.message}`, file: v.file })),
+          violations: result.violations.map((v) => ({
+            message: `[${v.rule}] ${v.message}`,
+            file: v.file,
+          })),
         },
       }
     }

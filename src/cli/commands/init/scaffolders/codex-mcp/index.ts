@@ -17,10 +17,10 @@
  *      When the unified-cli sibling cutover lands (`webpresso mcp serve`
  *      from a path-stable bin), this block collapses to a fixed `command`.
  *   3. `[mcp_servers.context7]` plus `.mcp.json#mcpServers.context7` — point at
- *      Context7's hosted MCP endpoint with an env-backed `CONTEXT7_API_KEY`
- *      header. The value is supplied by agent-kit's selected secret provider
- *      through `with-secrets -- <agent>`; setup never reads or persists the raw
- *      key.
+ *      Context7's hosted MCP endpoint with the required static `Accept` header
+ *      plus an env-backed `CONTEXT7_API_KEY` header. The value is supplied by
+ *      agent-kit's selected secret provider through `with-secrets -- <agent>`;
+ *      setup never reads or persists the raw key.
  */
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -400,9 +400,11 @@ export function ensureCodexWebpressoMcp(
 export const CONTEXT7_MCP_SERVER_NAME = 'context7'
 export const CONTEXT7_API_KEY_ENV = 'CONTEXT7_API_KEY'
 export const CONTEXT7_MCP_URL = 'https://mcp.context7.com/mcp'
+export const CONTEXT7_MCP_ACCEPT_HEADER = 'application/json, text/event-stream'
 export const CONTEXT7_MCP_HEADER = `[mcp_servers.${CONTEXT7_MCP_SERVER_NAME}]`
 export const CONTEXT7_MCP_BLOCK = `${CONTEXT7_MCP_HEADER}
 url = "${CONTEXT7_MCP_URL}"
+http_headers = { "Accept" = "${CONTEXT7_MCP_ACCEPT_HEADER}" }
 env_http_headers = { "${CONTEXT7_API_KEY_ENV}" = "${CONTEXT7_API_KEY_ENV}" }
 enabled = true
 `

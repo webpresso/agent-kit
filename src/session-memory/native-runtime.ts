@@ -37,12 +37,7 @@ export interface NativeExecuteResult {
 }
 
 export interface NativeSessionMemoryModule {
-  readonly index: (
-    dbPath: string,
-    sourceLabel: string,
-    payload: string,
-    isHtml?: boolean,
-  ) => number
+  readonly index: (dbPath: string, sourceLabel: string, payload: string, isHtml?: boolean) => number
   readonly search: (
     dbPath: string,
     query: string,
@@ -102,7 +97,9 @@ function resolvePackageRoot(): string {
     }
     const parent = dirname(cursor)
     if (parent === cursor) {
-      throw new Error('native session-memory engine could not locate the @webpresso/agent-kit package root')
+      throw new Error(
+        'native session-memory engine could not locate the @webpresso/agent-kit package root',
+      )
     }
     cursor = parent
   }
@@ -140,7 +137,9 @@ function compiledNodePath(): string {
   const cacheRoot = sessionMemoryNativeCacheRoot()
   const packageRoot = resolvePackageRoot()
   const workspaceRoot = buildWorkspaceRoot()
-  const packageJson = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8')) as { version?: string }
+  const packageJson = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8')) as {
+    version?: string
+  }
   const cargoLock = readFileSync(join(workspaceRoot, 'Cargo.lock'), 'utf8')
   const fingerprint = createHash('sha256')
     .update(packageRoot)
@@ -153,7 +152,10 @@ function compiledNodePath(): string {
     .digest('hex')
     .slice(0, 16)
   const buildIdentity = `${packageJson.version ?? '0'}-${fingerprint}`
-  return join(cacheRoot, `${MODULE_BASENAME}.${buildIdentity}.${process.platform}-${process.arch}.node`)
+  return join(
+    cacheRoot,
+    `${MODULE_BASENAME}.${buildIdentity}.${process.platform}-${process.arch}.node`,
+  )
 }
 
 function cargoTargetDir(): string {
@@ -196,7 +198,15 @@ function ensureNativeModuleBuilt(): string {
   try {
     execFileSync(
       process.env['CARGO'] || 'cargo',
-      ['build', '--manifest-path', manifestPath, '--package', BUILD_PACKAGE, '--release', '--locked'],
+      [
+        'build',
+        '--manifest-path',
+        manifestPath,
+        '--package',
+        BUILD_PACKAGE,
+        '--release',
+        '--locked',
+      ],
       {
         cwd: workspaceRoot,
         stdio: 'pipe',
@@ -232,9 +242,12 @@ export function loadNativeSessionMemoryEngine(): NativeSessionMemoryModule {
   if (cachedModule !== null) return cachedModule
   const nodePath = ensureNativeModuleBuilt()
   const loaded = requireFromHere(nodePath) as unknown
-  const loadedRecord = typeof loaded === 'object' && loaded !== null ? (loaded as Record<string, unknown>) : null
+  const loadedRecord =
+    typeof loaded === 'object' && loaded !== null ? (loaded as Record<string, unknown>) : null
   const defaultRecord =
-    loadedRecord !== null && typeof loadedRecord['default'] === 'object' && loadedRecord['default'] !== null
+    loadedRecord !== null &&
+    typeof loadedRecord['default'] === 'object' &&
+    loadedRecord['default'] !== null
       ? (loadedRecord['default'] as Record<string, unknown>)
       : null
   const candidate = (
@@ -255,7 +268,9 @@ export function loadNativeSessionMemoryEngine(): NativeSessionMemoryModule {
     'executeSandboxed',
   ] as const
   if (candidate === null || requiredKeys.some((key) => typeof candidate[key] !== 'function')) {
-    throw new Error(`native session-memory engine loaded from ${nodePath} but did not expose the expected API`)
+    throw new Error(
+      `native session-memory engine loaded from ${nodePath} but did not expose the expected API`,
+    )
   }
   cachedModule = candidate as NativeSessionMemoryModule
   return cachedModule

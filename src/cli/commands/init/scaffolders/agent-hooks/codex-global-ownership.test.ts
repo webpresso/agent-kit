@@ -10,7 +10,8 @@ function ownedHook(overrides: Record<string, unknown> = {}): Record<string, unkn
     handlerType: 'command',
     pluginId: null,
     sourcePath: EXPECTED_SOURCE_PATHS[0],
-    command: 'node "/Users/test/.vite-plus/js_runtime/node/24.15.0/lib/node_modules/oh-my-codex/dist/scripts/codex-native-hook.js"',
+    command:
+      'node "/Users/test/.vite-plus/js_runtime/node/24.15.0/lib/node_modules/oh-my-codex/dist/scripts/codex-native-hook.js"',
     ...overrides,
   }
 }

@@ -6,7 +6,13 @@ import { dirname, join } from 'node:path'
 import { Database } from '#db/sqlite.js'
 
 import { loadNativeSessionMemoryEngine } from './native-runtime.js'
-import type { CaptureEventInput, RestoreInput, RestoreResult, SnapshotInput, SnapshotResult } from './types.js'
+import type {
+  CaptureEventInput,
+  RestoreInput,
+  RestoreResult,
+  SnapshotInput,
+  SnapshotResult,
+} from './types.js'
 
 const SESSIONS_DIR = join(homedir(), '.webpresso', 'sessions')
 
@@ -26,7 +32,11 @@ function sessionMemoryCaptureDisabled(): boolean {
   return process.env['WEBPRESSO_SESSION_MEMORY'] === '0'
 }
 
-function resolveLatestSnapshotId(dbPath: string, repoHash: string, sessionId: string): string | null {
+function resolveLatestSnapshotId(
+  dbPath: string,
+  repoHash: string,
+  sessionId: string,
+): string | null {
   const db = new Database(dbPath)
   try {
     const scoped = db
@@ -64,7 +74,10 @@ export function flushCapturedEvents(repoHash: string, sessionsDir?: string): num
   return runtime.flushEventsForDb ? runtime.flushEventsForDb(dbPath) : runtime.flushEvents()
 }
 
-export async function snapshot(input: SnapshotInput, sessionsDir?: string): Promise<SnapshotResult> {
+export async function snapshot(
+  input: SnapshotInput,
+  sessionsDir?: string,
+): Promise<SnapshotResult> {
   const dbPath = resolveDbPath(input.repoHash, sessionsDir)
   ensureDbParent(dbPath)
   const result = loadNativeSessionMemoryEngine().snapshot(
@@ -124,18 +137,14 @@ export function restore(input: RestoreInput, sessionsDir?: string): RestoreResul
   const runtime = loadNativeSessionMemoryEngine()
   if (runtime.flushEventsForDb) runtime.flushEventsForDb(dbPath)
   else runtime.flushEvents()
-  const eventHits = runtime.restore(
-    dbPath,
-    input.repoHash,
-    sessionId,
-    input.query,
-    input.limit ?? 10,
-  ).map((event, index) => ({
-    content: event.content,
-    source: `session:${event.toolName}`,
-    rank: index + 1,
-    tier: 'levenshtein' as const,
-  }))
+  const eventHits = runtime
+    .restore(dbPath, input.repoHash, sessionId, input.query, input.limit ?? 10)
+    .map((event, index) => ({
+      content: event.content,
+      source: `session:${event.toolName}`,
+      rank: index + 1,
+      tier: 'levenshtein' as const,
+    }))
   return {
     hits: eventHits,
     snapshotId: resolveLatestSnapshotId(dbPath, input.repoHash, sessionId),
