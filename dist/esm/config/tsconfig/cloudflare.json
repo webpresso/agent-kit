@@ -1,0 +1,10 @@
+{
+    "$schema": "https://json.schemastore.org/tsconfig",
+    "display": "Cloudflare Workers",
+    "extends": "@webpresso/agent-kit/tsconfig/base.json",
+    "compilerOptions": {
+        "target": "ES2024",
+        "lib": ["ES2024"],
+        "moduleResolution": "Bundler"
+    }
+}
