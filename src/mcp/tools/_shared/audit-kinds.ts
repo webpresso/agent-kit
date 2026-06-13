@@ -28,6 +28,7 @@ export const AUDIT_KINDS = [
   'ai-contracts',
   'no-relative-package-scripts',
   'toolchain-isolation',
+  'open-source-licenses',
   'secrets-policy',
   'no-dev-vars',
   'secret-provider-quarantine',
