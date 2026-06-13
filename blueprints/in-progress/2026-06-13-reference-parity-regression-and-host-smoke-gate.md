@@ -2,12 +2,11 @@
 type: blueprint
 title: Reference parity regression and host smoke gate
 owner: ozby
-status: completed
-completed_at: '2026-06-13'
+status: in-progress
 complexity: L
 created: '2026-06-13'
 last_updated: '2026-06-13'
-progress: '100% (6/6 tasks done, 0 blocked, updated 2026-06-13)'
+progress: '86% (6/7 tasks done, 0 blocked, updated 2026-06-13; implementation gates complete, lifecycle closeout pending legal follow-up promotion)'
 depends_on:
   - 2026-06-10-harness-regression-gate
   - 2026-06-10-harness-surface-manifest
@@ -36,7 +35,7 @@ tool surface, and operator flows.
 - Goal input: `Prove the replacement claim instead of arguing it`
 - Complexity: `L`
 - Draft slug: `2026-06-13-reference-parity-regression-and-host-smoke-gate`
-- Output path: `blueprints/planned/2026-06-13-reference-parity-regression-and-host-smoke-gate.md`
+- Output path: `blueprints/in-progress/2026-06-13-reference-parity-regression-and-host-smoke-gate.md`
 - Validation scope: capability matrix, host smoke fixtures, benchmark/regression thresholds, release claim audit
 - Refinement status: paths, commands, dependency blueprint relationships, public-package safety, benchmark dry-run behavior, and parallel execution shape verified on 2026-06-13.
 
@@ -386,6 +385,37 @@ that fail closed on unsupported or unproven full-parity wording. (F5, F6)
 - [x] `./bin/wp lint README.md CHANGELOG.md src/audit/ai-contracts.ts src/audit/ai-contracts.test.ts src/audit/reference-parity-claims.test.ts` passes.
 - [x] `./bin/wp typecheck` passes.
 
+### Phase 4: Lifecycle closeout [Complexity: XS]
+
+#### [lifecycle] Task 4.1: Promote to completed after the in-progress transition lands
+
+**Status:** todo
+
+**Depends:** Task 3.1
+
+This branch implements and verifies the blueprint work, but the repository
+lifecycle audit compares the PR against its merge-base. Because the merge-base
+still contains this blueprint under `planned/`, this PR can only legally move it
+to `in-progress/`; the final `completed/` promotion must happen in a follow-up
+after the legal intermediate state exists on the base branch.
+
+**Files:**
+
+- Move: `blueprints/in-progress/2026-06-13-reference-parity-regression-and-host-smoke-gate.md` → `blueprints/completed/2026-06-13-reference-parity-regression-and-host-smoke-gate.md`
+- Modify: `blueprints/README.md`
+
+**Steps:**
+
+1. After this PR lands, run `./bin/wp blueprint finalize 2026-06-13-reference-parity-regression-and-host-smoke-gate`.
+2. Run `./bin/wp audit blueprint-lifecycle` and `./bin/wp audit blueprint-readme-drift --fix`.
+3. Commit the lifecycle-only closeout.
+
+**Acceptance:**
+
+- [ ] The final closeout PR moves this blueprint from `in-progress/` to `completed/`.
+- [ ] `./bin/wp audit blueprint-lifecycle` passes on the closeout PR.
+- [ ] `blueprints/README.md` is in sync after the final lifecycle move.
+
 ## Verification Gates
 
 | Gate | Command | Success Criteria |
@@ -460,5 +490,5 @@ that fail closed on unsupported or unproven full-parity wording. (F5, F6)
 | Parallelization score | B |
 | Critical path | 3 waves |
 | Max parallel agents | 4 |
-| Total tasks | 6 |
-| Blueprint compliant | 6/6 |
+| Total tasks | 7 |
+| Blueprint compliant | 6/7 implementation tasks complete; lifecycle closeout pending follow-up promotion |
