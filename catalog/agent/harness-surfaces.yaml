@@ -1,0 +1,98 @@
+version: 1
+surfaces:
+  - id: codex-hooks
+    title: Codex hook runtime
+    owner: agent-kit
+    kind: hook
+    lifecycle: locked
+    paths:
+      - catalog/agent/hooks/codex
+      - src/hooks
+      - bin/wp-pretool-guard
+      - bin/wp-post-tool
+      - bin/wp-stop-qa
+      - bin/wp-guard-switch
+      - bin/wp-sessionstart-routing
+    triggers:
+      - wp setup
+      - wp hooks doctor
+      - wp audit hook-surface
+    evidence:
+      - src/audit/hook-surface.ts
+      - src/hooks/pretool-guard/index.ts
+  - id: claude-hooks
+    title: Claude hook runtime
+    owner: agent-kit
+    kind: hook
+    lifecycle: locked
+    paths:
+      - catalog/agent/hooks/claude
+      - src/hooks
+      - bin/wp-pretool-guard
+      - bin/wp-post-tool
+      - bin/wp-stop-qa
+      - bin/wp-guard-switch
+      - bin/wp-sessionstart-routing
+    triggers:
+      - wp setup
+      - wp hooks doctor
+      - wp audit hook-vendor-drift
+    evidence:
+      - src/audit/hook-vendor-drift.ts
+  - id: generated-agent-surfaces
+    title: Generated agent instructions and skills
+    owner: agent-kit
+    kind: generated-surface
+    lifecycle: locked
+    paths:
+      - catalog/AGENTS.md.tpl
+      - catalog/agent/agents
+      - catalog/agent/rules
+      - catalog/agent/skills
+    triggers:
+      - wp setup
+      - wp sync
+      - wp audit agents
+    evidence:
+      - src/audit/agents.ts
+      - src/symlinker/index.ts
+  - id: omx-runtime-state
+    title: OMX runtime and workflow state
+    owner: oh-my-codex
+    kind: runtime-state
+    lifecycle: governed
+    paths:
+      - .omx/state
+      - .omx/ultragoal
+      - src/blueprint/execution/progress-bridge.ts
+    triggers:
+      - omx ultragoal checkpoint
+      - omx team status
+    evidence:
+      - AGENTS.md
+  - id: harness-regression-gate
+    title: Reference consumer regression gate
+    owner: agent-kit
+    kind: regression-gate
+    lifecycle: governed
+    paths:
+      - scripts/bench/harness-gate
+      - .github/workflows
+    triggers:
+      - wp audit harness-surfaces
+      - bun scripts/bench/harness-gate/index.ts
+    evidence:
+      - catalog/agent/harness-surfaces.yaml
+  - id: agent-overlays
+    title: Evidence-backed agent overlays
+    owner: agent-kit
+    kind: overlay
+    lifecycle: experimental
+    paths:
+      - agent-overlays
+      - src/symlinker
+    triggers:
+      - wp sync
+      - wp audit harness-overlay-evidence
+    evidence:
+      - catalog/agent/harness-surfaces.yaml

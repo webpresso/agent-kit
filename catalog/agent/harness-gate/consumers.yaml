@@ -1,0 +1,30 @@
+version: 1
+consumers:
+  - id: ingest-lens
+    repo: ingest-lens
+    worktreeAlias: ingest-lens-harness-gate-20260613
+    suiteManifest: harness-gate/suites.yaml
+    harnessSurfaces:
+      - codex-hooks
+      - claude-hooks
+      - generated-agent-surfaces
+      - harness-regression-gate
+    heldInSuites:
+      - ingest-lens.agent-setup-smoke
+      - ingest-lens.e2e-smoke
+    heldOutSuites:
+      - ingest-lens.client-shell-e2e
+  - id: edge-matte
+    repo: edge-matte
+    worktreeAlias: edge-matte-harness-gate-20260613
+    suiteManifest: harness-gate/suites.yaml
+    harnessSurfaces:
+      - codex-hooks
+      - claude-hooks
+      - generated-agent-surfaces
+      - harness-regression-gate
+    heldInSuites:
+      - edge-matte.agent-setup-smoke
+      - edge-matte.e2e-smoke
+    heldOutSuites:
+      - edge-matte.worker-contract

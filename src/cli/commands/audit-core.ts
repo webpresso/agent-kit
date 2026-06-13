@@ -43,6 +43,9 @@ export type AuditKind =
   | 'no-dev-vars'
   | 'secret-provider-quarantine'
   | 'secrets-config'
+  | 'harness-surfaces'
+  | 'weakness-mining'
+  | 'harness-overlay-evidence'
 
 export type AuditOutcome =
   | { kind: 'invalid-usage'; message: string }
@@ -60,6 +63,7 @@ export interface AuditActionOptions {
   changedOnly?: boolean
   dist?: string
   docsRoot?: string
+  draftTechDebt?: boolean
   fix?: boolean
   htmlEntry?: string
   ignore?: string | string[]
