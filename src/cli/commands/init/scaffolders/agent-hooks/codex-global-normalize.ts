@@ -338,10 +338,6 @@ function launcherForCommand(
   return null
 }
 
-function renderShellLauncher(parts: readonly string[]): string {
-  return `#!/bin/sh\nexec ${parts.join(' ')}\n`
-}
-
 function renderOmxShellLauncher(
   nodeBinary: string,
   hookScriptPath: string,

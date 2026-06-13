@@ -97,8 +97,10 @@ export function upsertWorktreeRegistryEntry(
   writeWorktreeRegistry(
     {
       version: 1,
-      entries: [...registry.entries.filter((candidate) => candidate.id !== entry.id), next]
-        .toSorted((a, b) => a.path.localeCompare(b.path)),
+      entries: [
+        ...registry.entries.filter((candidate) => candidate.id !== entry.id),
+        next,
+      ].toSorted((a, b) => a.path.localeCompare(b.path)),
     },
     options,
   )

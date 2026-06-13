@@ -267,7 +267,10 @@ describe('scaffoldAgentHooks', () => {
       readFileSync(join(repoRoot, '.claude', 'hooks', 'check-gstack.sh'), 'utf8'),
     ).toThrow()
     expect(() =>
-      readFileSync(join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh'), 'utf8'),
+      readFileSync(
+        join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh'),
+        'utf8',
+      ),
     ).toThrow()
   })
 
@@ -288,7 +291,10 @@ describe('scaffoldAgentHooks', () => {
     expect(claudeCommands.some((cmd) => cmd.includes('$CLAUDE_PROJECT_DIR'))).toBe(true)
     expect(codexCommands).toContain(codexBinCommand(repoRoot, 'wp-sessionstart-routing'))
     expect(
-      readFileSync(join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh'), 'utf8'),
+      readFileSync(
+        join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh'),
+        'utf8',
+      ),
     ).toContain('wp hook sessionstart-routing')
     expect(
       readFileSync(join(repoRoot, '.codex', 'managed-hooks', 'wp-sessionstart-routing.sh'), 'utf8'),
@@ -931,8 +937,7 @@ hooks:
     expect(
       stopCommands.some(
         (command) =>
-          command.includes('wp audit agents') &&
-          command.includes('# from-skill: verify'),
+          command.includes('wp audit agents') && command.includes('# from-skill: verify'),
       ),
     ).toBe(true)
     expect(stopCommands.some((command) => command.includes('# from-skill: verify'))).toBe(true)

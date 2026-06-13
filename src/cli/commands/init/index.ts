@@ -89,10 +89,7 @@ import { scaffoldAuditHooks } from './scaffolders/audit-hooks/index.js'
 import { ensureClaudeCodeUserPlugin } from './scaffolders/claude-plugin/index.js'
 import { scaffoldClaudeRules } from './scaffolders/claude-rules/index.js'
 import { ensureCodexCli } from './scaffolders/codex-cli/index.js'
-import {
-  normalizeGlobalCodexHooksFile,
-  resolveBinaryOnPath,
-} from './scaffolders/agent-hooks/codex-global-normalize.js'
+import { normalizeGlobalCodexHooksFile } from './scaffolders/agent-hooks/codex-global-normalize.js'
 import {
   CONTEXT7_API_KEY_ENV,
   ensureClaudeContext7Mcp,

@@ -141,7 +141,9 @@ describe('resolveNewWorktreeTarget', () => {
 
     expect(target).toStrictEqual({
       branch: 'agent/2026-05-13-1427-x9k',
-      path: expect.stringMatching(/^.*\/.agent\/worktrees\/repos\/local-webpresso-[a-f0-9]{10}\/agent-2026-05-13-1427-x9k$/),
+      path: expect.stringMatching(
+        /^.*\/.agent\/worktrees\/repos\/local-webpresso-[a-f0-9]{10}\/agent-2026-05-13-1427-x9k$/,
+      ),
       generated: true,
     })
   })
@@ -158,7 +160,9 @@ describe('resolveNewWorktreeTarget', () => {
 
     expect(target).toStrictEqual({
       branch: 'agent/fix-login-flow',
-      path: expect.stringMatching(/^.*\/.agent\/worktrees\/repos\/local-webpresso-[a-f0-9]{10}\/agent-fix-login-flow$/),
+      path: expect.stringMatching(
+        /^.*\/.agent\/worktrees\/repos\/local-webpresso-[a-f0-9]{10}\/agent-fix-login-flow$/,
+      ),
       generated: true,
     })
   })
@@ -174,7 +178,9 @@ describe('resolveNewWorktreeTarget', () => {
     })
 
     expect(target.branch).toBe('ralph/2026-05-13-1427-q2w')
-    expect(target.path).toMatch(/^.*\/.agent\/worktrees\/repos\/local-webpresso-[a-f0-9]{10}\/ralph-2026-05-13-1427-q2w$/)
+    expect(target.path).toMatch(
+      /^.*\/.agent\/worktrees\/repos\/local-webpresso-[a-f0-9]{10}\/ralph-2026-05-13-1427-q2w$/,
+    )
   })
 
   it('retries generated names when the branch or default path collides', () => {
@@ -196,7 +202,9 @@ describe('resolveNewWorktreeTarget', () => {
 
     expect(target).toStrictEqual({
       branch: 'agent/2026-05-13-1427-bbb',
-      path: expect.stringMatching(/^.*\/.agent\/worktrees\/repos\/local-webpresso-[a-f0-9]{10}\/agent-2026-05-13-1427-bbb$/),
+      path: expect.stringMatching(
+        /^.*\/.agent\/worktrees\/repos\/local-webpresso-[a-f0-9]{10}\/agent-2026-05-13-1427-bbb$/,
+      ),
       generated: true,
     })
   })
@@ -212,7 +220,9 @@ describe('resolveNewWorktreeTarget', () => {
 
     expect(target).toStrictEqual({
       branch: 'agent/fix-login-flow-r2d',
-      path: expect.stringMatching(/^.*\/.agent\/worktrees\/repos\/local-webpresso-[a-f0-9]{10}\/agent-fix-login-flow-r2d$/),
+      path: expect.stringMatching(
+        /^.*\/.agent\/worktrees\/repos\/local-webpresso-[a-f0-9]{10}\/agent-fix-login-flow-r2d$/,
+      ),
       generated: true,
     })
   })
@@ -256,7 +266,9 @@ describe('resolveNewWorktreeTarget', () => {
 
     expect(target).toStrictEqual({
       branch: 'feat/auth',
-      path: expect.stringMatching(/^.*\/.agent\/worktrees\/repos\/local-webpresso-[a-f0-9]{10}\/feat-auth$/),
+      path: expect.stringMatching(
+        /^.*\/.agent\/worktrees\/repos\/local-webpresso-[a-f0-9]{10}\/feat-auth$/,
+      ),
       generated: false,
     })
   })

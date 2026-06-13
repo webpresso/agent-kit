@@ -53,11 +53,7 @@ function listTrackedFiles(root: string): readonly string[] | null {
   }
 }
 
-function checkTrackedFile(
-  root: string,
-  relPath: string,
-  violations: RepoAuditViolation[],
-): void {
+function checkTrackedFile(root: string, relPath: string, violations: RepoAuditViolation[]): void {
   if (isForbiddenGitPath(relPath)) {
     violations.push({ file: relPath, message: `tracked forbidden secret carrier: ${relPath}` })
     return
@@ -68,13 +64,19 @@ function checkTrackedFile(
     try {
       parseSecretsConfigMetadata(readFileSync(fullPath, 'utf8'), relPath)
     } catch (error) {
-      violations.push({ file: relPath, message: error instanceof Error ? error.message : String(error) })
+      violations.push({
+        file: relPath,
+        message: error instanceof Error ? error.message : String(error),
+      })
     }
     return
   }
   if (!shouldScanGitFileForSecretValues(relPath)) return
   if (SECRET_VALUE_PATTERN.test(readFileSync(fullPath, 'utf8'))) {
-    violations.push({ file: relPath, message: `tracked file contains secret-like value pattern: ${relPath}` })
+    violations.push({
+      file: relPath,
+      message: `tracked file contains secret-like value pattern: ${relPath}`,
+    })
   }
 }
 

@@ -55,7 +55,10 @@ export function deriveRepoNamespace(input: RepoNamespaceInput): string {
  * V1 is intentionally fixed under the user-global root: no repository or user
  * override is accepted for managed worktrees.
  */
-export function resolveWorktreeRoot(repoRoot: string, options: WorktreeLocationOptions = {}): string {
+export function resolveWorktreeRoot(
+  repoRoot: string,
+  options: WorktreeLocationOptions = {},
+): string {
   return join(
     resolveManagedWorktreeRoot(options.homeDir),
     'repos',

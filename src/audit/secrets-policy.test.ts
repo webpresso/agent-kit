@@ -52,7 +52,10 @@ describe('auditSecretsPolicy', () => {
 
     expect(result.ok).toBe(false)
     expect(result.violations).toEqual([
-      expect.objectContaining({ file: '.dev.vars', message: expect.stringContaining('forbidden secret carrier') }),
+      expect.objectContaining({
+        file: '.dev.vars',
+        message: expect.stringContaining('forbidden secret carrier'),
+      }),
     ])
   })
 
@@ -64,7 +67,10 @@ describe('auditSecretsPolicy', () => {
 
     expect(result.ok).toBe(false)
     expect(result.violations).toEqual([
-      expect.objectContaining({ file: 'deploy.key', message: expect.stringContaining('forbidden secret carrier') }),
+      expect.objectContaining({
+        file: 'deploy.key',
+        message: expect.stringContaining('forbidden secret carrier'),
+      }),
     ])
   })
 
@@ -76,7 +82,10 @@ describe('auditSecretsPolicy', () => {
 
     expect(result.ok).toBe(false)
     expect(result.violations).toEqual([
-      expect.objectContaining({ file: 'google-service-account.json', message: expect.stringContaining('forbidden secret carrier') }),
+      expect.objectContaining({
+        file: 'google-service-account.json',
+        message: expect.stringContaining('forbidden secret carrier'),
+      }),
     ])
   })
 
@@ -98,7 +107,9 @@ describe('auditSecretsPolicy', () => {
     expect(result.ok).toBe(false)
     expect(result.violations).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ message: expect.stringContaining('tracked forbidden secret carrier') }),
+        expect.objectContaining({
+          message: expect.stringContaining('tracked forbidden secret carrier'),
+        }),
       ]),
     )
   })
@@ -120,7 +131,8 @@ describe('auditSecretsPolicy', () => {
   test('does not flag test file containing fake secret-like fixtures', () => {
     const root = tempRepo(true)
     // Langfuse-style test fixture keys — real format, intentionally fake values
-    const testContent = 'const env = { LANGFUSE_PUBLIC_KEY: "pk-lf-test", LANGFUSE_SECRET_KEY: "sk-lf-test" }'
+    const testContent =
+      'const env = { LANGFUSE_PUBLIC_KEY: "pk-lf-test", LANGFUSE_SECRET_KEY: "sk-lf-test" }'
     writeFileSync(join(root, 'service.test.ts'), testContent)
     execFileSync('git', ['add', 'service.test.ts'], { cwd: root, stdio: 'ignore' })
 

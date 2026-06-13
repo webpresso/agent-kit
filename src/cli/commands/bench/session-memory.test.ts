@@ -308,11 +308,7 @@ describe('wp bench session-memory', () => {
     deps.resolveWorkspaceConfig = vi.fn(() => ({
       mode: 'isolated',
       cacheDisclaimer: 'operator-asserted workspace isolation',
-      keyEnvNames: [
-        'ANTHROPIC_API_KEY_BASELINE',
-        'ANTHROPIC_API_KEY_V1',
-        'ANTHROPIC_API_KEY_V2',
-      ],
+      keyEnvNames: ['ANTHROPIC_API_KEY_BASELINE', 'ANTHROPIC_API_KEY_V1', 'ANTHROPIC_API_KEY_V2'],
       adminVerification: 'operator-asserted',
     }))
     deps.resolveWorkspaceIdentitiesFromEnv = vi.fn(() => {
@@ -340,11 +336,7 @@ describe('wp bench session-memory', () => {
     deps.resolveWorkspaceConfig = vi.fn(() => ({
       mode: 'isolated',
       cacheDisclaimer: 'operator-asserted workspace isolation',
-      keyEnvNames: [
-        'ANTHROPIC_API_KEY_BASELINE',
-        'ANTHROPIC_API_KEY_V1',
-        'ANTHROPIC_API_KEY_V2',
-      ],
+      keyEnvNames: ['ANTHROPIC_API_KEY_BASELINE', 'ANTHROPIC_API_KEY_V1', 'ANTHROPIC_API_KEY_V2'],
       adminVerification: 'operator-asserted',
     }))
     deps.resolveWorkspaceIdentitiesFromEnv = vi.fn(() => [
@@ -377,11 +369,7 @@ describe('wp bench session-memory', () => {
     deps.resolveWorkspaceConfig = vi.fn(() => ({
       mode: 'isolated',
       cacheDisclaimer: null,
-      keyEnvNames: [
-        'ANTHROPIC_API_KEY_BASELINE',
-        'ANTHROPIC_API_KEY_V1',
-        'ANTHROPIC_API_KEY_V2',
-      ],
+      keyEnvNames: ['ANTHROPIC_API_KEY_BASELINE', 'ANTHROPIC_API_KEY_V1', 'ANTHROPIC_API_KEY_V2'],
       adminVerification: 'required-for-proof',
     }))
     deps.resolveWorkspaceIdentitiesFromEnv = vi.fn(() => [
@@ -410,7 +398,7 @@ describe('wp bench session-memory', () => {
     expect(deps.validateKnownAnthropicWorkspaces).toHaveBeenCalledWith(
       [
         { apiKeyEnv: 'ANTHROPIC_API_KEY_BASELINE', workspaceId: 'ws-a' },
-          { apiKeyEnv: 'ANTHROPIC_API_KEY_V1', workspaceId: 'ws-c' },
+        { apiKeyEnv: 'ANTHROPIC_API_KEY_V1', workspaceId: 'ws-c' },
         { apiKeyEnv: 'ANTHROPIC_API_KEY_V2', workspaceId: 'ws-d' },
       ],
       'admin-key',

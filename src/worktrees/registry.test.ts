@@ -29,9 +29,12 @@ describe('managed worktree location policy', () => {
     })
 
     expect(namespace).toMatch(/^github\.com-webpresso-agent-kit-[a-f0-9]{10}$/)
-    expect(resolveWorktreeRoot('/repos/agent-kit', { homeDir: '/home/alice', originUrl: 'git@github.com:webpresso/agent-kit.git' })).toBe(
-      `/home/alice/.agent/worktrees/repos/${namespace}`,
-    )
+    expect(
+      resolveWorktreeRoot('/repos/agent-kit', {
+        homeDir: '/home/alice',
+        originUrl: 'git@github.com:webpresso/agent-kit.git',
+      }),
+    ).toBe(`/home/alice/.agent/worktrees/repos/${namespace}`)
   })
 
   it('falls back to stable local repo identity when origin is unavailable', () => {
@@ -46,9 +49,9 @@ describe('managed worktree location policy', () => {
     expect(owner).toMatch(
       /^\/home\/alice\/\.agent\/worktrees\/repos\/github\.com-webpresso-agent-kit-[a-f0-9]{10}\/blueprints\/my-blueprint\/owner$/,
     )
-    expect(resolveScratchWorktreePath('/repos/agent-kit', 'my-blueprint', 'lint lane', 'abc', opts)).toBe(
-      owner.replace(/\/owner$/, '/.scratch/lint-lane-abc'),
-    )
+    expect(
+      resolveScratchWorktreePath('/repos/agent-kit', 'my-blueprint', 'lint lane', 'abc', opts),
+    ).toBe(owner.replace(/\/owner$/, '/.scratch/lint-lane-abc'))
   })
 })
 

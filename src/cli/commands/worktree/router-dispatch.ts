@@ -9,7 +9,12 @@ import { scaffoldAgent } from '#cli/commands/init/scaffold-agent'
 import { resolveCatalogDir } from '#cli/commands/init/index'
 import { getProjectRoot } from '#cli/utils'
 import { runUnifiedSync } from '#symlinker/unified-sync'
-import { deriveRepoNamespace, resolveGeneratedWorktreePath, resolveManagedWorktreeRoot, resolveWorktreeRoot } from '#worktrees/location.js'
+import {
+  deriveRepoNamespace,
+  resolveGeneratedWorktreePath,
+  resolveManagedWorktreeRoot,
+  resolveWorktreeRoot,
+} from '#worktrees/location.js'
 import {
   adoptBlueprintOwnerWorktree,
   ensureBlueprintOwnerWorktree,
@@ -123,7 +128,9 @@ function collides(
 
 export function resolveNewWorktreeTarget(input: NewWorktreeTargetInput): NewWorktreeTarget {
   if (input.explicitPath) {
-    throw new Error('Managed worktrees do not support custom creation paths; use wp worktree adopt or rebind instead.')
+    throw new Error(
+      'Managed worktrees do not support custom creation paths; use wp worktree adopt or rebind instead.',
+    )
   }
 
   const branch = input.branch?.trim()
@@ -322,13 +329,17 @@ function handleRefresh(opts: WorktreeCommandOptions): void {
     })
     updated += 1
   }
-  console.log(`Refreshed ${updated} managed worktree entr${updated === 1 ? 'y' : 'ies'} for ${repoRoot}.`)
+  console.log(
+    `Refreshed ${updated} managed worktree entr${updated === 1 ? 'y' : 'ies'} for ${repoRoot}.`,
+  )
 }
 
 function handlePrune(opts: WorktreeCommandOptions): void {
   if (!opts.all) throw new Error('Usage: wp worktree prune --all')
   const result = pruneStaleWorktreeRegistryEntries()
-  console.log(`Pruned ${result.removed.length} stale managed registry entr${result.removed.length === 1 ? 'y' : 'ies'}.`)
+  console.log(
+    `Pruned ${result.removed.length} stale managed registry entr${result.removed.length === 1 ? 'y' : 'ies'}.`,
+  )
 }
 
 function handleMigrate(opts: WorktreeCommandOptions): void {
@@ -340,8 +351,8 @@ function handleMigrate(opts: WorktreeCommandOptions): void {
   }
 
   const targetRoot = repoManagedRoot(repoRoot)
-  const legacyEntries = listEntries(repoRoot).filter((entry) =>
-    entry.path === legacyRoot || entry.path.startsWith(`${legacyRoot}/`),
+  const legacyEntries = listEntries(repoRoot).filter(
+    (entry) => entry.path === legacyRoot || entry.path.startsWith(`${legacyRoot}/`),
   )
   if (legacyEntries.length === 0) {
     console.log(`No git-registered worktrees found below ${legacyRoot}; manual migration required.`)

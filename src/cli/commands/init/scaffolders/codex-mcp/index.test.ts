@@ -57,8 +57,8 @@ describe('upsertContext7McpServer', () => {
     expect(next).toContain('model = "gpt-5.4"')
     expect(next).toContain('[mcp_servers.context7]')
     expect(next).toContain(`url = "${CONTEXT7_MCP_URL}"`)
+    expect(next).toContain('http_headers = { "Accept" = "application/json, text/event-stream" }')
     expect(next).toContain('env_http_headers = { "CONTEXT7_API_KEY" = "CONTEXT7_API_KEY" }')
-    expect(next).not.toContain('\nhttp_headers =')
   })
 
   it('replaces raw Context7 http_headers without touching following tables', () => {
@@ -71,6 +71,7 @@ command = "vp"
 `)
 
     expect(next).toContain(`url = "${CONTEXT7_MCP_URL}"`)
+    expect(next).toContain('http_headers = { "Accept" = "application/json, text/event-stream" }')
     expect(next).toContain('env_http_headers = { "CONTEXT7_API_KEY" = "CONTEXT7_API_KEY" }')
     expect(next).not.toContain('leaked-secret')
     expect(next).toContain('[mcp_servers.playwright]\ncommand = "vp"')

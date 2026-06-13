@@ -336,10 +336,7 @@ async function probeHookBin(
   hookName: string,
   checkStdin: boolean,
 ): Promise<{ ok: boolean; detail?: string }> {
-  if (
-    (wpCli.command.includes('/') || wpCli.command.includes('\\')) &&
-    !tryAccess(wpCli.command)
-  ) {
+  if ((wpCli.command.includes('/') || wpCli.command.includes('\\')) && !tryAccess(wpCli.command)) {
     return { ok: false, detail: 'file not found' }
   }
 

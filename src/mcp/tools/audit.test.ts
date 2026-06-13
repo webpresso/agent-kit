@@ -271,7 +271,11 @@ describe('wp_audit tool', () => {
 
     it('tph -> calls runTphAudit directly', async () => {
       tphRunnerMock.runTphAudit.mockResolvedValue({
-        errorCount: 0, filesChecked: 5, violations: [], warningCount: 0, infoCount: 0,
+        errorCount: 0,
+        filesChecked: 5,
+        violations: [],
+        warningCount: 0,
+        infoCount: 0,
       })
       const result = await akAuditTool.handler({ kind: 'tph' })
       expect(tphRunnerMock.runTphAudit).toHaveBeenCalledTimes(1)
@@ -283,7 +287,11 @@ describe('wp_audit tool', () => {
 
     it('tph-e2e -> calls runTphE2eAudit directly', async () => {
       tphE2eRunnerMock.runTphE2eAudit.mockResolvedValue({
-        errorCount: 0, filesChecked: 3, violations: [], warningCount: 0, infoCount: 0,
+        errorCount: 0,
+        filesChecked: 3,
+        violations: [],
+        warningCount: 0,
+        infoCount: 0,
       })
       const result = await akAuditTool.handler({ kind: 'tph-e2e' })
       expect(tphE2eRunnerMock.runTphE2eAudit).toHaveBeenCalledTimes(1)
@@ -326,7 +334,9 @@ describe('wp_audit tool', () => {
       tphRunnerMock.runTphAudit.mockResolvedValue({
         errorCount: 1,
         filesChecked: 5,
-        violations: [{ rule: 'no-skip', message: 'test skipped', file: 'foo.test.ts', severity: 'ERROR' }],
+        violations: [
+          { rule: 'no-skip', message: 'test skipped', file: 'foo.test.ts', severity: 'ERROR' },
+        ],
         warningCount: 0,
         infoCount: 0,
       })
@@ -369,7 +379,9 @@ describe('wp_audit tool', () => {
     tphE2eRunnerMock.runTphE2eAudit.mockResolvedValue({
       errorCount: 1,
       filesChecked: 2,
-      violations: [{ rule: 'no-skip', message: 'test skipped', file: 'foo.e2e.test.ts', severity: 'ERROR' }],
+      violations: [
+        { rule: 'no-skip', message: 'test skipped', file: 'foo.e2e.test.ts', severity: 'ERROR' },
+      ],
       warningCount: 0,
       infoCount: 0,
     })

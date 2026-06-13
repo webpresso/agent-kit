@@ -130,7 +130,10 @@ export async function runAuditDispatch(
           ok: result.errorCount === 0,
           title: 'Testing Philosophy Audit (TPH)',
           checked: result.filesChecked,
-          violations: result.violations.map((v) => ({ message: `[${v.rule}] ${v.message}`, file: v.file })),
+          violations: result.violations.map((v) => ({
+            message: `[${v.rule}] ${v.message}`,
+            file: v.file,
+          })),
         },
       }
     }
@@ -145,7 +148,10 @@ export async function runAuditDispatch(
           ok: result.errorCount === 0,
           title: 'Testing Philosophy Audit (TPH) - E2E',
           checked: result.filesChecked,
-          violations: result.violations.map((v) => ({ message: `[${v.rule}] ${v.message}`, file: v.file })),
+          violations: result.violations.map((v) => ({
+            message: `[${v.rule}] ${v.message}`,
+            file: v.file,
+          })),
         },
       }
     }
