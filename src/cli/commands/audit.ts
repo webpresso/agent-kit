@@ -139,6 +139,8 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
     (await import('#audit/secret-provider-quarantine')).auditSecretProviderQuarantine(root),
   'secrets-config': async (root) =>
     (await import('#audit/secrets-config')).auditSecretsConfig(root),
+  'harness-surfaces': async (root) =>
+    (await import('#audit/harness-surfaces')).auditHarnessSurfaces(root),
   rules: async (root) => runContentAudit(root, 'rule'),
   skills: async (root) => runContentAudit(root, 'skill'),
 }
