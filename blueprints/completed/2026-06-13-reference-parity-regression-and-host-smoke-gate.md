@@ -2,11 +2,12 @@
 type: blueprint
 title: Reference parity regression and host smoke gate
 owner: ozby
-status: in-progress
+status: completed
+completed_at: '2026-06-13'
 complexity: L
 created: '2026-06-13'
 last_updated: '2026-06-13'
-progress: '86% (6/7 tasks done, 0 blocked, updated 2026-06-13; implementation gates complete, lifecycle closeout pending legal follow-up promotion)'
+progress: '100% (7/7 tasks done, 0 blocked, updated 2026-06-13)'
 depends_on:
   - 2026-06-10-harness-regression-gate
   - 2026-06-10-harness-surface-manifest
@@ -389,7 +390,13 @@ that fail closed on unsupported or unproven full-parity wording. (F5, F6)
 
 #### [lifecycle] Task 4.1: Promote to completed after the in-progress transition lands
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","audit_kind":"blueprint-lifecycle","command":"./bin/wp audit blueprint-lifecycle","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-13T20:50:00Z"},{"agent":"codex","audit_kind":"blueprint-readme-drift","command":"./bin/wp audit blueprint-readme-drift --fix","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-13T20:50:00Z"}]
+```
 
 **Depends:** Task 3.1
 
@@ -412,9 +419,9 @@ after the legal intermediate state exists on the base branch.
 
 **Acceptance:**
 
-- [ ] The final closeout PR moves this blueprint from `in-progress/` to `completed/`.
-- [ ] `./bin/wp audit blueprint-lifecycle` passes on the closeout PR.
-- [ ] `blueprints/README.md` is in sync after the final lifecycle move.
+- [x] The final closeout PR moves this blueprint from `in-progress/` to `completed/`.
+- [x] `./bin/wp audit blueprint-lifecycle` passes on the closeout PR.
+- [x] `blueprints/README.md` is in sync after the final lifecycle move.
 
 ## Verification Gates
 
@@ -491,4 +498,4 @@ after the legal intermediate state exists on the base branch.
 | Critical path | 3 waves |
 | Max parallel agents | 4 |
 | Total tasks | 7 |
-| Blueprint compliant | 6/7 implementation tasks complete; lifecycle closeout pending follow-up promotion |
+| Blueprint compliant | 7/7 |
