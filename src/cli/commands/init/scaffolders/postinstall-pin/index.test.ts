@@ -18,7 +18,10 @@ describe('scaffoldPostinstallPin', () => {
   })
 
   function writePkg(scripts: Record<string, string>): void {
-    writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'test', scripts }, null, 2) + '\n')
+    writeFileSync(
+      join(dir, 'package.json'),
+      JSON.stringify({ name: 'test', scripts }, null, 2) + '\n',
+    )
   }
 
   function readPkg(): Record<string, unknown> {
