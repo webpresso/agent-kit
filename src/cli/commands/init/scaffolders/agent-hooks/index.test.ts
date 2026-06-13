@@ -37,7 +37,7 @@ function codexBinCommand(repoRoot: string, name: string): string {
     return `[ -x ${binPath} ] && ${binPath} || printf '%s\\n' '{}'`
   }
   if (name === 'wp-pretool-guard') {
-    return `[ -x ${binPath} ] && ${binPath} || printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp-pretool-guard is unavailable. Run vp install or wp setup."}}'`
+    return `[ -x ${binPath} ] && ${binPath} || printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install @webpresso/agent-kit globally and re-run wp setup."}}'`
   }
   return `[ -x ${binPath} ] && ${binPath} || true`
 }
@@ -48,7 +48,7 @@ function claudeBinCommand(name: string): string {
     return `[ -x "${binPath}" ] && "${binPath}" || printf '%s\\n' '{}'`
   }
   if (name === 'wp-pretool-guard') {
-    return `[ -x "${binPath}" ] && "${binPath}" || printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp-pretool-guard is unavailable. Run vp install or wp setup."}}'`
+    return `[ -x "${binPath}" ] && "${binPath}" || printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install @webpresso/agent-kit globally and re-run wp setup."}}'`
   }
   return `[ -x "${binPath}" ] && "${binPath}" || true`
 }
@@ -1700,7 +1700,7 @@ hooks:
     expect(preToolResult.status, preTool).toBe(0)
     expect(preToolResult.stdout).toContain('"hookEventName":"PreToolUse"')
     expect(preToolResult.stdout).toContain('"permissionDecision":"deny"')
-    expect(preToolResult.stdout).toContain('"wp-pretool-guard is unavailable.')
+    expect(preToolResult.stdout).toContain('"wp not found on PATH.')
 
     const stopResults = await Promise.all(
       commandByEvent.Stop.map(async (command) => ({
