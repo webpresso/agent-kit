@@ -44,7 +44,6 @@ const SKILL_IGNORE_PATTERNS = [
   '.cursor/skills/',
   '.windsurf/skills/',
   '.claude/skills/',
-  '.gemini/commands/',
   '.agents/skills/',
 ] as const
 

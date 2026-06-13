@@ -83,7 +83,6 @@ export const GENERATED_PATHS_BLOCK: GitignoreBlock = {
     '.cursor/rules/',
     '.windsurf/skills/',
     '.windsurf/rules/',
-    '.gemini/commands/',
     '.opencode/agents/',
     '.opencode/commands/',
     '.agents/skills/',

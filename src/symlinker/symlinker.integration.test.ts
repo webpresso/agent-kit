@@ -29,7 +29,6 @@ import {
   syncAgentsMd,
   syncAll,
   syncConsumer,
-  syncGeminiCommands,
   syncMcpJson,
   syncSkillFanout,
   syncSkillFanouts,
@@ -366,14 +365,13 @@ describe('symlinker', () => {
 
       const totalFixes = syncAll(root, consumers)
 
-      // 2 symlinks + 1 Gemini TOML
-      expect(totalFixes).toBe(3)
+      // 2 symlinks
+      expect(totalFixes).toBe(2)
       expect(isSymlink(join(root, '.consumer-a/commands/audit.md'))).toBe(true)
       expect(isSymlink(join(root, '.consumer-b/commands/audit.md'))).toBe(true)
-      expect(existsSync(join(root, '.gemini/commands/audit.toml'))).toBe(true)
     })
 
-    it('returns 0 when all consumers and Gemini TOML are already synced', () => {
+    it('returns 0 when all consumers are already synced', () => {
       writeFile(join(root, '.agent/commands/audit.md'))
 
       const consumers: ConsumerConfig[] = [
@@ -382,11 +380,10 @@ describe('symlinker', () => {
       mkdirSync(join(root, '.consumer-a/commands'), { recursive: true })
       symlinkSync('../../.agent/commands/audit.md', join(root, '.consumer-a/commands/audit.md'))
 
-      // First run generates TOML
+      // Pre-synced symlink → no fixes
       const firstRun = syncAll(root, consumers)
-      expect(firstRun).toBe(1) // 0 symlinks + 1 TOML
+      expect(firstRun).toBe(0)
 
-      // Second run: everything synced
       const secondRun = syncAll(root, consumers)
       expect(secondRun).toBe(0)
     })
@@ -400,8 +397,8 @@ describe('symlinker', () => {
       ]
 
       const firstRun = syncAll(root, consumers)
-      // 2 symlinks + 2 Gemini TOML
-      expect(firstRun).toBe(4)
+      // 2 symlinks
+      expect(firstRun).toBe(2)
 
       const secondRun = syncAll(root, consumers)
       expect(secondRun).toBe(0)
@@ -426,8 +423,8 @@ describe('symlinker', () => {
 
       const totalFixes = syncAll(root, consumers)
 
-      // 3 symlink fixes + 4 Gemini TOML files
-      expect(totalFixes).toBe(7)
+      // 3 symlink fixes
+      expect(totalFixes).toBe(3)
       expect(isSymlink(join(consumerDir, 'audit.md'))).toBe(true)
       expect(readTarget(join(consumerDir, 'audit.md'))).toBe('../../.agent/commands/audit.md')
       expect(isSymlink(join(consumerDir, 'tph.md'))).toBe(true)
@@ -435,9 +432,6 @@ describe('symlinker', () => {
       expect(isSymlink(join(consumerDir, 'verify.md'))).toBe(true)
       expect(isSymlink(join(consumerDir, 'soa.md'))).toBe(true)
       expect(readTarget(join(consumerDir, 'soa.md'))).toBe('../../.agent/commands/soa.md')
-      // Gemini TOML files generated
-      expect(existsSync(join(root, '.gemini/commands/audit.toml'))).toBe(true)
-      expect(existsSync(join(root, '.gemini/commands/soa.toml'))).toBe(true)
     })
 
     it('handles empty .agent/ directories gracefully', () => {
@@ -468,8 +462,6 @@ describe('symlinker', () => {
       expect(existsSync(join(root, '.consumer-a/commands/plan-refine.md'))).toBe(true)
       expect(existsSync(join(root, '.consumer-b/commands/plan-write.md'))).toBe(true)
       expect(existsSync(join(root, '.consumer-b/commands/plan-refine.md'))).toBe(true)
-      expect(existsSync(join(root, '.gemini/commands/plan-write.toml'))).toBe(true)
-      expect(existsSync(join(root, '.gemini/commands/plan-refine.toml'))).toBe(true)
 
       rmSync(join(root, '.agent/commands/plan-write.md'), { force: true })
       rmSync(join(root, '.agent/commands/plan-refine.md'), { force: true })
@@ -482,9 +474,6 @@ describe('symlinker', () => {
       expect(existsSync(join(root, '.consumer-b/commands/plan-refine.md'))).toBe(false)
       expect(existsSync(join(root, '.consumer-a/commands/verify.md'))).toBe(true)
       expect(existsSync(join(root, '.consumer-b/commands/verify.md'))).toBe(true)
-      expect(existsSync(join(root, '.gemini/commands/plan-write.toml'))).toBe(false)
-      expect(existsSync(join(root, '.gemini/commands/plan-refine.toml'))).toBe(false)
-      expect(existsSync(join(root, '.gemini/commands/verify.toml'))).toBe(true)
     })
 
     it('symlinker claude — syncAll does NOT write to .claude/, .cursor/, .windsurf/, .opencode/', () => {
@@ -741,8 +730,6 @@ describe('symlinker', () => {
       '.agent/skills/debugging/SKILL.md',
       '.agents/skills/pll/SKILL.md',
       '.agents/skills/verify/SKILL.md',
-      '.gemini/commands/verify.toml',
-      '.gemini/commands/soa.toml',
     ]
 
     const shouldNotMatch = [
@@ -791,102 +778,6 @@ describe('symlinker', () => {
 
     it('does not include arbitrary files', () => {
       expect(ALLOWED_REAL_FILES.has('audit.md')).toBe(false)
-    })
-  })
-
-  describe('syncGeminiCommands', () => {
-    it('generates TOML files from commands and workflows', () => {
-      writeFile(
-        join(root, '.agent/commands/verify.md'),
-        '---\ndescription: Quality gate\n---\n\n# Verify\n\nRun checks.',
-      )
-      writeFile(
-        join(root, '.agent/workflows/debug.md'),
-        '---\ndescription: Debug workflow\n---\n\n# Debug\n\nFind root cause.',
-      )
-
-      const fixCount = syncGeminiCommands(root)
-
-      expect(fixCount).toBe(2)
-      expect(existsSync(join(root, '.gemini/commands/verify.toml'))).toBe(true)
-      expect(existsSync(join(root, '.gemini/commands/debug.toml'))).toBe(true)
-    })
-
-    it('converts $ARGUMENTS to {{args}}', () => {
-      writeFile(
-        join(root, '.agent/commands/audit.md'),
-        '---\ndescription: Audit tool\n---\n\n# Audit\n\n**Arguments**: $ARGUMENTS',
-      )
-
-      syncGeminiCommands(root)
-
-      const content = readFileSync(join(root, '.gemini/commands/audit.toml'), 'utf8')
-      expect(content).toContain('{{args}}')
-      expect(content).not.toContain('$ARGUMENTS')
-    })
-
-    it('extracts description from frontmatter', () => {
-      writeFile(
-        join(root, '.agent/commands/verify.md'),
-        '---\ndescription: Quality gate check\n---\n\n# Verify',
-      )
-
-      syncGeminiCommands(root)
-
-      const content = readFileSync(join(root, '.gemini/commands/verify.toml'), 'utf8')
-      expect(content).toContain('description = "Quality gate check"')
-    })
-
-    it('commands override workflows with same name', () => {
-      writeFile(
-        join(root, '.agent/workflows/soa.md'),
-        '---\ndescription: Workflow version\n---\n\n# SOA workflow',
-      )
-      writeFile(
-        join(root, '.agent/commands/soa.md'),
-        '---\ndescription: Command version\n---\n\n# SOA command',
-      )
-
-      syncGeminiCommands(root)
-
-      const content = readFileSync(join(root, '.gemini/commands/soa.toml'), 'utf8')
-      expect(content).toContain('description = "Command version"')
-      expect(content).toContain('# SOA command')
-    })
-
-    it('is idempotent — second run returns 0', () => {
-      writeFile(
-        join(root, '.agent/commands/verify.md'),
-        '---\ndescription: Quality gate\n---\n\n# Verify',
-      )
-
-      expect(syncGeminiCommands(root)).toBe(1)
-      expect(syncGeminiCommands(root)).toBe(0)
-    })
-
-    it('removes stale TOML files with no source', () => {
-      mkdirSync(join(root, '.gemini/commands'), { recursive: true })
-      writeFileSync(join(root, '.gemini/commands/orphan.toml'), 'description = "stale"')
-
-      const fixCount = syncGeminiCommands(root)
-
-      expect(fixCount).toBe(1)
-      expect(existsSync(join(root, '.gemini/commands/orphan.toml'))).toBe(false)
-    })
-
-    it('handles markdown without frontmatter', () => {
-      writeFile(join(root, '.agent/commands/simple.md'), '# Simple command\n\nJust do it.')
-
-      syncGeminiCommands(root)
-
-      const content = readFileSync(join(root, '.gemini/commands/simple.toml'), 'utf8')
-      expect(content).toContain('description = ""')
-      expect(content).toContain('# Simple command')
-    })
-
-    it('returns 0 when no sources exist', () => {
-      const fixCount = syncGeminiCommands(root)
-      expect(fixCount).toBe(0)
     })
   })
 

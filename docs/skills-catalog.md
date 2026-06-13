@@ -31,7 +31,6 @@ available unless you explicitly opt out of the relevant host/runtime.
 | `/fix` | Minimal-correct-fix protocol with iron-law invariants |
 | `/fix-all` | Parallel DAG error-fix across the repo |
 | `/brainstorm` | Pre-plan ideation workflow |
-| `/decide` | ADR workflow (`init`, `propose`, `verify`) |
 
 **Paired skills** (`.agent/skills/<name>/SKILL.md`):
 

@@ -7,8 +7,8 @@ last_updated: '2026-06-13'
 
 The symlinker keeps per-IDE command/skill surfaces in sync with a canonical
 `.agent/` source of truth. It ships defaults for Claude Code, Cursor,
-Windsurf, OpenCode, Codex, Amp, and Gemini CLI, and is designed so new
-consumers plug in via configuration.
+Windsurf, OpenCode, Codex, and Amp, and is designed so new consumers plug
+in via configuration.
 
 ## Why
 
@@ -31,15 +31,16 @@ implemented it with compatibility fallbacks into `.claude/skills/` and
   is `.cursor/rules/*.mdc` (always-applied rules, different semantics) —
   not a target for webpresso skills.
 - **Windsurf:** `.windsurf/commands/*.md`. Same story as Cursor for rules.
-- **Gemini CLI:** `.gemini/commands/*.toml` (TOML, not markdown — with
-  `{{args}}` templating instead of `$ARGUMENTS`).
 
-Because Codex + Amp + OpenCode-fallback all converge on `.agents/skills/`,
-the symlinker ships **two skill surfaces that cover four tools**:
-`.claude/skills` (directory-symlink for Claude + OpenCode-fallback) and
-`.agents/skills/<name>` (per-skill symlinks for Codex + Amp +
-OpenCode-fallback). No per-tool `.codex/skills/` or `.opencode/skills/`
-entries are needed.
+Agent-kit now uses **one primary skill channel per host**. Claude Code and
+Codex get reusable webpresso skills through their native plugin channels;
+project skill-directory projection is only an explicit fallback
+(`WP_SKIP_CLAUDE_PLUGIN=1` / `WP_SKIP_CODEX_PLUGIN=1`). OpenCode gets its
+primary `.opencode/skills/<name>/SKILL.md` project root because its official
+discovery also reads Claude-compatible and agent-compatible fallbacks; using
+only the primary root avoids duplicate skill listings. The canonical
+`.agent/skills/` source-of-truth is still always projected, but host-visible
+skill directories are host-gated.
 
 Without a sync layer, contributors hand-maintain N copies of every
 command. The symlinker makes `.agent/` the one place to edit, and keeps
@@ -56,47 +57,28 @@ symlink** at each consumer's command directory pointing back at the
 `../../.agent/commands/<name>.md`. Same pattern for `.cursor/commands/`,
 `.windsurf/commands/`, and `.opencode/commands/`.
 
-### Skill symlinks — two modes
+### Skill symlinks — plugin-first, host-gated
 
-Skills under `.agent/skills/<name>/` are published in one of two modes,
-picked per consumer:
+Skills under `.agent/skills/<name>/` are projected to host-visible
+directories only when that host needs a filesystem channel:
 
-**Directory mode** — one symlink at `.claude/skills` pointing at the whole
-`../.agent/skills` directory. Cheapest, but assumes the consumer owns the
-entire skills directory (no coexistence with third-party skills). This
-single symlink also serves OpenCode, which reads `.claude/skills/` as a
-project-local fallback.
+- `.agent/skills/<name>` is the repo-local canonical projection and is always
+  created from catalog and consumer-owned skill sources.
+- `.opencode/skills/<name>` is created when OpenCode is selected, using
+  OpenCode's primary project skill root.
+- `.claude/skills/<name>` and `.agents/skills/<name>` are fallback-only for
+  Claude and Codex respectively. They are created only when the matching
+  plugin channel is opted out with `WP_SKIP_CLAUDE_PLUGIN=1` or
+  `WP_SKIP_CODEX_PLUGIN=1`.
 
-**Per-skill mode** — one symlink per skill, e.g. `.agents/skills/<name>`
-→ `../../.agent/skills/<name>`. Used for the convergent `.agents/skills/`
-directory that Codex + Amp + OpenCode-fallback all read, because that
-directory may already contain third-party or consumer-owned skills;
-per-skill mode creates links only for names that exist in
-`.agent/skills/`, leaving consumer-owned directories alone. If a
-consumer-owned directory collides with an webpresso skill name, the
-symlinker warns and skips rather than clobbering it.
+This keeps Codex and Claude on their plugin distribution path by default,
+prevents duplicate skill listings, and still provides a deterministic
+repo-local fallback for environments that intentionally disable plugins.
 
 Editors on macOS and Linux follow symlinks natively. Windows requires
 Developer Mode or admin privileges for `CreateSymbolicLink`; consumers on
 Windows who run into this should run from a shell with symlink privileges or
 use `wp sync --check` in CI to detect drift before committing.
-
-### TOML consumer (`.gemini`)
-
-Gemini CLI doesn't follow symlinks reliably and wants TOML with
-double-brace `{{args}}` templating. For each `.agent/commands/<name>.md`,
-the symlinker:
-
-1. Parses the markdown's YAML frontmatter + body.
-2. Writes `.gemini/commands/<name>.toml` with:
-   ```toml
-   description = "<frontmatter.description>"
-   prompt = """
-   <markdown body, with $ARGUMENTS → {{args}} substituted>
-   """
-   ```
-3. Deletes `.gemini/commands/*.toml` whose source `.md` no longer exists
-   (stale-artifact cleanup).
 
 ### Evidence-backed agent overlays
 
@@ -166,58 +148,45 @@ Defined in `src/symlinker/consumers.ts`:
 
 ```typescript
 export const DEFAULT_CONSUMERS: ConsumerConfig[] = [
-  { dir: '.claude/commands',   sourcePrefix: '../../.agent/' },
-  { dir: '.cursor/commands',   sourcePrefix: '../../.agent/' },
-  { dir: '.windsurf/commands', sourcePrefix: '../../.agent/' },
-  { dir: '.opencode/commands', sourcePrefix: '../../.agent/' },
+  // Primary command surfaces are distributed through native channels.
 ]
 
-// Directory-mode: one whole-directory symlink per consumer.
-// Serves Claude Code + OpenCode-fallback discovery.
 export const DEFAULT_SKILLS_CONSUMERS: SkillsConsumerConfig[] = [
-  { linkPath: '.claude/skills', target: '../.agent/skills' },
+  // Claude skills are delivered by the Claude Code plugin by default.
 ]
 
-// Per-skill mode: one symlink per file under each skill. `.agents/skills/`
-// is the convergent project path shared by Codex (official), Amp (official),
-// and OpenCode (fallback) — one entry covers three tools. Source-of-truth
-// is `.agent/skills/<slug>/` (the consumer projection produced by
-// `runUnifiedSync` + scaffolders), not `node_modules/...`.
-export const DEFAULT_PER_SKILL_CONSUMERS: PerSkillConsumerConfig[] = [
-  { dir: '.agents/skills' },
+export const DEFAULT_UNIFIED_CONSUMERS: readonly UnifiedConsumerConfig[] = [
+  { id: 'agent-rules', dir: '.agent/rules', acceptsKind: 'rule', strategy: 'symlink' },
+  { id: 'agent-skills', dir: '.agent/skills', acceptsKind: 'skill', strategy: 'symlink' },
+  { id: 'cursor-rules', dir: '.cursor/rules', acceptsKind: 'rule', strategy: 'copy' },
+  { id: 'windsurf-skills', dir: '.windsurf/skills', acceptsKind: 'skill', strategy: 'copy' },
+  { id: 'claude-rules', dir: '.claude/rules', acceptsKind: 'rule', strategy: 'symlink' },
+  { id: 'opencode-skills', dir: '.opencode/skills', acceptsKind: 'skill', strategy: 'symlink', host: 'opencode' },
+]
+
+export const PLUGIN_FALLBACK_SKILL_CONSUMERS: readonly UnifiedConsumerConfig[] = [
+  { id: 'claude-skills', dir: '.claude/skills', acceptsKind: 'skill', strategy: 'symlink', host: 'claude', pluginHost: true },
+  { id: 'portable-skills', dir: '.agents/skills', acceptsKind: 'skill', strategy: 'symlink', host: 'codex', pluginHost: true },
 ]
 ```
 
 To add a new consumer (e.g., a future CLI tool), either:
 
-- Send a PR to webpresso adding an entry to `DEFAULT_CONSUMERS`,
-  `DEFAULT_SKILLS_CONSUMERS`, or `DEFAULT_PER_SKILL_CONSUMERS` (pick the
-  mode that matches the tool's skill-directory semantics) so all repos
-  pick it up.
+- Send a PR to webpresso adding an entry to `DEFAULT_UNIFIED_CONSUMERS`
+  (primary host channel) or `PLUGIN_FALLBACK_SKILL_CONSUMERS` (explicit
+  plugin opt-out fallback) so all repos pick it up.
 - Or override in your `.webpressorc.json` for a repo-local customization
   (planned).
-
-`.gemini/commands/` is **not** in `DEFAULT_CONSUMERS` because it's a
-TOML-transform consumer (handled by `syncGeminiCommands`), not a
-symlink consumer.
 
 ## What counts as "out of sync"
 
 The symlinker flags drift when:
 
-- A `.agent/commands/<x>.md` exists but `.claude/commands/<x>.md` does not
-  (missing symlink).
-- `.claude/commands/<x>.md` exists and is a regular file (not a symlink) —
-  the symlinker removes it and re-links. **Warning:** if you've manually
-  edited the file thinking you were editing the source, those edits get
-  lost. `wp sync --check` catches this before it happens.
-- `.claude/commands/<x>.md` exists as a symlink pointing at the wrong
-  target (e.g., after restructuring `.agent/`).
-- `.claude/commands/<x>.md` exists but no corresponding `.agent/` source
-  does (stale symlink after deleting a command).
-
-`.gemini/commands/<x>.toml` drift: TOML contents differ from what
-transformation of the current `.md` would produce.
+- A selected host's generated rule/skill surface is missing, stale, or
+  points outside the canonical `.agent/` source tree.
+- A generated fallback skill directory exists for a plugin host even though
+  the plugin is active; plugin hosts should expose one skill channel.
+- A generated entry remains after the source skill/rule is removed.
 
 ## `ALLOWED_REAL_FILES`
 
@@ -229,9 +198,8 @@ leaves them alone.
 
 ## What to track vs ignore under `.claude/`
 
-- **Track** deliberate repo-owned surfaces like committed `.claude/commands/*.md`
-  symlinks (when a repo uses them) and any explicitly documented real files
-  allowed alongside them.
+- **Track** deliberate repo-owned source surfaces such as `agent-rules/`,
+  `agent-skills/`, and catalog content.
 - **Ignore** generated/runtime-only subpaths such as `.claude/rules/`,
   `.claude/skills/`, `.claude/worktrees/`, and local scheduler/runtime state.
 - Avoid blanket `.claude/` ignores in shared defaults unless the repo
@@ -250,7 +218,6 @@ import {
   syncSkillsConsumer,
   syncSkillFanout,
   syncSkillFanouts,
-  syncGeminiCommands,
   isAgentOrConsumerFile,
   type ConsumerConfig,
   type SkillsConsumerConfig,
@@ -277,9 +244,6 @@ console.log(`syncSkillFanouts: wrote ${result.wrote} entries`)
 - **Windows filesystem symlinks** require elevated permissions. A future
   `--copy` mode would write regular files instead of symlinks; drift
   detection would rely on content diffs. Not yet implemented.
-- **Gemini CLI `{{args}}` templating** is the only supported
-  transformation. Other runtimes with non-markdown formats need their
-  own converter alongside the TOML writer.
 - **`.gitignore` interactions.** Symlinks must be committed to git to
   reach CI and other contributors. Don't add `.claude/commands/` to
   `.gitignore` — commit it.

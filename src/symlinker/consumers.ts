@@ -36,7 +36,7 @@
  *   - 'symlink':   create a relative symlink to the source (file or dir)
  *   - 'copy':      copy file or recursively copy dir tree
  *   - 'transform': run a transform function over the body and write the
- *                  resulting bytes (used for Gemini TOML)
+ *                  resulting bytes (reserved for non-symlink, non-copy hosts)
  */
 
 import type { ContentKind, ContentRecord } from '#content/loader'
@@ -106,7 +106,7 @@ export interface UnifiedConsumerConfig {
   readonly strategy: UnifiedStrategy
   /**
    * Output extension for rules (single-file). Default '.md'. Cursor uses
-   * '.mdc'; Gemini uses '.toml'.
+   * '.mdc'.
    */
   readonly ruleExtension?: string
   /**
