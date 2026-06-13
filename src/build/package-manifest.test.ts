@@ -6,12 +6,13 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 
 import {
   createPackedManifest,
@@ -21,6 +22,30 @@ import {
 
 // Repo root anchored via import.meta.dirname so the test is cwd-independent.
 const repoRoot = join(import.meta.dirname, '..', '..')
+
+const packLockDirectory = join(tmpdir(), 'webpresso-agent-kit-npm-pack.lock')
+
+function acquirePackLock(): () => void {
+  const started = Date.now()
+  while (true) {
+    try {
+      mkdirSync(packLockDirectory)
+      return () => rmSync(packLockDirectory, { force: true, recursive: true })
+    } catch (error) {
+      const code = (error as { code?: string }).code
+      if (code !== 'EEXIST') throw error
+      const ageMs = Date.now() - statSync(packLockDirectory).mtimeMs
+      if (ageMs > 120_000) {
+        rmSync(packLockDirectory, { force: true, recursive: true })
+        continue
+      }
+      if (Date.now() - started > 60_000) {
+        throw new Error(`Timed out waiting for npm pack lock at ${packLockDirectory}`)
+      }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100)
+    }
+  }
+}
 
 type JsonObject = Record<string, unknown>
 
@@ -36,22 +61,28 @@ function parseNpmPackFileList(output: string): string[] {
 }
 
 function loadDryRunPackagePaths(): string[] {
-  const result = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-  })
+  const release = acquirePackLock()
+  try {
+    const result = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+    })
 
-  if (result.status !== 0) {
-    throw new Error(
-      `npm pack dry-run failed: ${result.stderr || result.stdout || `exit ${result.status}`}`,
-    )
+    if (result.status !== 0) {
+      throw new Error(
+        `npm pack dry-run failed: ${result.stderr || result.stdout || `exit ${result.status}`}`,
+      )
+    }
+    return parseNpmPackFileList(result.stdout)
+  } finally {
+    release()
   }
-  return parseNpmPackFileList(result.stdout)
 }
 
-const dryRunPackagePaths = loadDryRunPackagePaths()
+let dryRunPackagePaths: string[] | undefined
 
 function getDryRunPackagePaths(): string[] {
+  dryRunPackagePaths ??= loadDryRunPackagePaths()
   return dryRunPackagePaths
 }
 
@@ -94,6 +125,10 @@ const forbiddenPluginArtifactText = [
 ] as const
 
 describe('createPackedManifest', () => {
+  beforeAll(() => {
+    dryRunPackagePaths = loadDryRunPackagePaths()
+  }, 60_000)
+
   it('keeps transient prepack backup artifacts gitignored', () => {
     const gitignore = readFileSync(join(repoRoot, '.gitignore'), 'utf8')
 
@@ -336,7 +371,7 @@ describe('createPackedManifest', () => {
     expect(packedPaths.filter((path) => path.startsWith('.codex-plugin/')).sort()).toEqual([
       ...codexPluginArtifactPaths,
     ])
-  })
+  }, 30_000)
 
   it('keeps the package-surface denied-content policy regex-based and public-safe', () => {
     const rawContract = readFileSync(join(repoRoot, 'package-surface.json'), 'utf8')

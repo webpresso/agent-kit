@@ -53,6 +53,15 @@ function makeBashInput(command: string): ToolInput {
 }
 
 describe('lint-after-edit', () => {
+  const noOpCaptureDeps = {
+    dbPath: ':memory:',
+    repoHash: () => 'repo123456789abcd',
+    createStore: () => ({
+      captureEvent: () => 'event',
+      close: () => undefined,
+    }),
+  }
+
   it('classifies lintable files', () => {
     expect(shouldLintFile(makeWriteInput('/tmp/example.ts'))).toBe(true)
     expect(shouldLintFile(makeWriteInput('/tmp/example.md'))).toBe(false)
@@ -64,11 +73,15 @@ describe('lint-after-edit', () => {
   })
 
   it('returns true for eligible existing files without shelling out', () => {
-    expect(processPostToolUse(makeWriteInput(import.meta.filename), process.cwd())).toBe(true)
+    expect(
+      processPostToolUse(makeWriteInput(import.meta.filename), process.cwd(), {}, noOpCaptureDeps),
+    ).toBe(true)
   })
 
   it('returns false for ineligible files', () => {
-    expect(processPostToolUse(makeWriteInput('/tmp/example.md'), process.cwd())).toBe(false)
+    expect(
+      processPostToolUse(makeWriteInput('/tmp/example.md'), process.cwd(), {}, noOpCaptureDeps),
+    ).toBe(false)
   })
 
   it('captures write/edit/read/bash PostToolUse events as typed bounded continuity events', () => {

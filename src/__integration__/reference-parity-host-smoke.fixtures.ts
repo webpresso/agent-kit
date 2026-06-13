@@ -55,7 +55,7 @@ function codexFixtureCommand(name: string): string {
   const binPath = `'/repo/.codex/managed-hooks/${name}.sh'`
   const fallback =
     name === 'wp-pretool-guard'
-      ? `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp-pretool-guard is unavailable. Run vp install or wp setup."}}'`
+      ? `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install @webpresso/agent-kit globally and re-run wp setup."}}'`
       : WP_HOOK_SPECS.find((spec) => spec.bin === name)?.jsonOnly === true
         ? "printf '%s\\n' '{}'"
         : 'true'

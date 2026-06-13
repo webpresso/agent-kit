@@ -97,7 +97,7 @@ describe('vendor hook schemas', () => {
     expect(result.success).toBe(false)
   })
 
-  it('a cursor config rejects legacy or unsupported lifecycle keys but accepts current host-valid preCompact', () => {
+  it('a cursor config rejects retired or unsupported lifecycle keys but accepts current host-valid preCompact', () => {
     const group = [{ hooks: [{ type: 'command' as const, command: '/repo/node_modules/.bin/wp' }] }]
 
     expect(cursorHooksSchema.safeParse({ version: 1, preCompact: group }).success).toBe(true)

@@ -56,13 +56,15 @@ describe('wp_session_fetch_and_index tool', () => {
     expect(data.passed).toBe(true)
     expect(data.source).toBe('web:example')
     expect(data.url).toBe('https://example.com/page')
-    expect(data.counts.indexedChunks).toBeGreaterThan(0)
-    expect(data.chunkIds.length).toBeGreaterThan(0)
+    expect(data.counts.indexedChunks).toBe(1)
+    expect(data.chunkIds).toHaveLength(1)
     expect(JSON.stringify(result)).not.toContain('needle-html')
     expect(JSON.stringify(result)).not.toContain('large html body')
 
     const store = new SessionMemoryStore(dbPath)
-    expect(store.search({ query: 'needle-html', limit: 1 })[0]?.source).toBe('web:example')
+    expect(store.search({ query: 'needle-html', limit: 2 }).map((chunk) => chunk.source)).toEqual([
+      'web:example',
+    ])
     store.close()
   })
 

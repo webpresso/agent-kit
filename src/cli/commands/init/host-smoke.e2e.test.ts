@@ -17,27 +17,54 @@ function hasCommand(command: string): boolean {
   return spawnSync('which', [command], { stdio: 'ignore' }).status === 0
 }
 
-const RUN_HOST_SMOKE = process.env.WP_RUN_HOST_SMOKE === '1'
-const REQUIRE_CLAUDE = process.env.WP_REQUIRE_CLAUDE === '1'
-const REQUIRE_CODEX = process.env.WP_REQUIRE_CODEX === '1'
-const REQUIRE_CURSOR = process.env.WP_REQUIRE_CURSOR === '1'
-const REQUIRE_OPENCODE = process.env.WP_REQUIRE_OPENCODE === '1'
+function envFlag(env: Record<string, string | undefined>, name: string): boolean {
+  return env[name] === '1'
+}
+
+function requireHostBinary(
+  command: string,
+  required: boolean,
+  detectCommand: (name: string) => boolean = hasCommand,
+): boolean {
+  const installed = detectCommand(command)
+  if (!installed && required) throw new Error(`${command} required but not on PATH`)
+  return installed
+}
+
+const RUN_HOST_SMOKE = envFlag(process.env, 'WP_RUN_HOST_SMOKE')
+const REQUIRE_CLAUDE = envFlag(process.env, 'WP_REQUIRE_CLAUDE')
+const REQUIRE_CODEX = envFlag(process.env, 'WP_REQUIRE_CODEX')
+const REQUIRE_CURSOR = envFlag(process.env, 'WP_REQUIRE_CURSOR')
+const REQUIRE_OPENCODE = envFlag(process.env, 'WP_REQUIRE_OPENCODE')
 
 describe('wp setup host smoke gating', () => {
-  it('keeps live host probes behind explicit environment flags', () => {
-    expect(RUN_HOST_SMOKE).toBe(process.env.WP_RUN_HOST_SMOKE === '1')
-    expect(REQUIRE_CLAUDE).toBe(process.env.WP_REQUIRE_CLAUDE === '1')
-    expect(REQUIRE_CODEX).toBe(process.env.WP_REQUIRE_CODEX === '1')
-    expect(REQUIRE_CURSOR).toBe(process.env.WP_REQUIRE_CURSOR === '1')
-    expect(REQUIRE_OPENCODE).toBe(process.env.WP_REQUIRE_OPENCODE === '1')
+  it('parses live host probe flags only from exact "1" values', () => {
+    expect(envFlag({ WP_RUN_HOST_SMOKE: '1' }, 'WP_RUN_HOST_SMOKE')).toBe(true)
+    expect(envFlag({ WP_RUN_HOST_SMOKE: 'true' }, 'WP_RUN_HOST_SMOKE')).toBe(false)
+    expect(envFlag({ WP_RUN_HOST_SMOKE: '0' }, 'WP_RUN_HOST_SMOKE')).toBe(false)
+    expect(envFlag({}, 'WP_RUN_HOST_SMOKE')).toBe(false)
   })
 
   it('does not silently require optional live host binaries in default CI', () => {
     if (RUN_HOST_SMOKE) return
 
-    expect(REQUIRE_CODEX).toBe(false)
-    expect(REQUIRE_CURSOR).toBe(false)
-    expect(REQUIRE_OPENCODE).toBe(false)
+    expect({
+      codex: REQUIRE_CODEX,
+      cursor: REQUIRE_CURSOR,
+      opencode: REQUIRE_OPENCODE,
+    }).toStrictEqual({
+      codex: false,
+      cursor: false,
+      opencode: false,
+    })
+  })
+
+  it('fails closed when a required host binary is absent', () => {
+    expect(() => requireHostBinary('codex', true, () => false)).toThrow(
+      'codex required but not on PATH',
+    )
+    expect(requireHostBinary('codex', false, () => false)).toBe(false)
+    expect(requireHostBinary('codex', true, () => true)).toBe(true)
   })
 })
 
@@ -144,33 +171,23 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
   it('fails when codex is required but not on PATH', () => {
     if (hasCommand('codex')) return
 
-    expect(REQUIRE_CODEX).toBe(false)
-    expect(() => {
-      if (REQUIRE_CODEX) throw new Error('codex required but not on PATH')
-    }).not.toThrow()
+    expect(requireHostBinary('codex', REQUIRE_CODEX)).toBe(false)
   })
 
   it('fails when claude is required but not on PATH', () => {
     if (hasCommand('claude')) return
 
-    expect(REQUIRE_CLAUDE).toBe(false)
-    expect(() => {
-      if (REQUIRE_CLAUDE) throw new Error('claude required but not on PATH')
-    }).not.toThrow()
+    expect(requireHostBinary('claude', REQUIRE_CLAUDE)).toBe(false)
   })
 
   it('fails when cursor is required but not on PATH', () => {
     if (hasCommand('cursor')) return
 
-    expect(REQUIRE_CURSOR).toBe(false)
-    expect(() => {
-      if (REQUIRE_CURSOR) throw new Error('cursor required but not on PATH')
-    }).not.toThrow()
+    expect(requireHostBinary('cursor', REQUIRE_CURSOR)).toBe(false)
   })
 
   it('Codex host sees the webpresso MCP entry when installed', () => {
-    if (!hasCommand('codex')) {
-      if (REQUIRE_CODEX) throw new Error('codex required but not on PATH')
+    if (!requireHostBinary('codex', REQUIRE_CODEX)) {
       return
     }
 
@@ -192,12 +209,11 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
   it('gracefully skips OpenCode host check when opencode is not on PATH', () => {
     if (hasCommand('opencode')) return
 
-    expect(REQUIRE_OPENCODE).toBe(false)
+    expect(requireHostBinary('opencode', REQUIRE_OPENCODE)).toBe(false)
   })
 
   it('OpenCode host sees the webpresso MCP entry when installed', () => {
-    if (!hasCommand('opencode')) {
-      if (REQUIRE_OPENCODE) throw new Error('opencode required but not on PATH')
+    if (!requireHostBinary('opencode', REQUIRE_OPENCODE)) {
       return
     }
 

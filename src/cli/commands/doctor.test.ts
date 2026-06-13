@@ -93,11 +93,16 @@ describe('runDoctor', () => {
 
 describe('registerDoctorCommand', () => {
   it('returns the exit code from runDoctor', async () => {
-    const cli = buildFakeCli()
-    registerDoctorCommand(cli as never)
-    const action = cli.getAction()
-    expect(action).toBeDefined()
-    const code = await action!({})
-    expect([0, 1, 2]).toContain(code)
+    const repo = tempRepo()
+    try {
+      const cli = buildFakeCli()
+      registerDoctorCommand(cli as never)
+      const action = cli.getAction()
+      expect(typeof action).toBe('function')
+      const code = await action({ root: repo })
+      expect(code).toBe(0)
+    } finally {
+      rmSync(repo, { recursive: true, force: true })
+    }
   })
 })

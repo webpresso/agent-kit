@@ -16,7 +16,7 @@ vi.mock('./update-banner.js', () => ({
 }))
 
 import { readUpdateBanner } from './update-banner.js'
-import { buildOutput, MAX_BYTES, TRUNCATION_NOTICE } from './index.js'
+import { buildOutput, MAX_BYTES, RESUME_CAP_MS, TRUNCATION_NOTICE } from './index.js'
 
 const mockReadUpdateBanner = vi.mocked(readUpdateBanner)
 
@@ -170,19 +170,65 @@ describe('sessionstart hook buildOutput', () => {
     expect(parsed.hookSpecificOutput.additionalContext).toContain('CWD CONTENT')
   })
 
-  it('stays within the release resume-injection latency budget on a small file', () => {
+  it('keeps routing-only SessionStart injection on the fast path', () => {
     const cwd = tmp()
     writeRoutingMd(cwd, '# Routing\nshort content\n')
 
     // Warm up to avoid first-call overhead skewing the measurement.
-    buildOutput({}, cwd, {})
+    buildOutput({}, cwd, { WP_SESSIONSTART_RESUME_CAP_MS: '0' })
 
     const t0 = performance.now()
-    const out = buildOutput({}, cwd, {})
+    const out = buildOutput({}, cwd, { WP_SESSIONSTART_RESUME_CAP_MS: '0' })
     const elapsed = performance.now() - t0
 
     expect(out).not.toBeNull()
-    expect(elapsed).toBeLessThan(750)
+    expect(elapsed).toBeLessThan(50)
+  })
+
+  it('keeps resume injection within the release latency budget', () => {
+    const cwd = tmp()
+    const dbPath = join(cwd, 'sessions.sqlite')
+    const store = new SessionMemorySessionStore(dbPath)
+    store.captureEvent({
+      repoHash: 'repo123456789abcd',
+      sessionId: 'session-1',
+      agentId: 'agent-1',
+      event: {
+        eventId: 'evt-latency',
+        eventType: 'decision',
+        toolName: 'UserPromptSubmit',
+        content: 'Restore continuity details for the next turn.',
+        summary: 'Restore continuity',
+        priority: 90,
+        metadata: { source: 'resume' },
+      },
+    })
+    store.close()
+
+    buildOutput(
+      { source: 'resume', session_id: 'session-1' },
+      cwd,
+      {},
+      {
+        dbPath,
+        repoHash: () => 'repo123456789abcd',
+      },
+    )
+
+    const t0 = performance.now()
+    const out = buildOutput(
+      { source: 'resume', session_id: 'session-1' },
+      cwd,
+      {},
+      {
+        dbPath,
+        repoHash: () => 'repo123456789abcd',
+      },
+    )
+    const elapsed = performance.now() - t0
+
+    expect(out).toContain('<wp_session_continuity')
+    expect(elapsed).toBeLessThan(RESUME_CAP_MS)
   })
 
   it.each(['startup', 'resume', 'compact'])(

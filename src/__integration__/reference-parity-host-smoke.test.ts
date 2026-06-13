@@ -126,11 +126,29 @@ describe('reference parity host smoke fixtures', () => {
       (entry) => entry.capability === 'host setup smoke',
     )
 
-    expect(crosswalk).toBeDefined()
+    expect(crosswalk).toStrictEqual({
+      capability: 'host setup smoke',
+      events: [
+        'SessionStart',
+        'PreToolUse',
+        'PostToolUse',
+        'UserPromptSubmit',
+        'Stop',
+        'PreCompact',
+      ],
+      hosts: ['claude', 'codex', 'cursor', 'opencode'],
+      notes:
+        'Setup smoke covers emitted lifecycle hooks and must reflect degraded host/event gaps.',
+    })
     expect(crosswalk ? replacementParitySupportCeiling(crosswalk) : 'unsupported').toBe('degraded')
-    expect(referenceParityHostSmokeFixtures.some((fixture) => fixture.support === 'degraded')).toBe(
-      true,
-    )
+    expect(
+      referenceParityHostSmokeFixtures.map((fixture) => [fixture.host, fixture.support]),
+    ).toEqual([
+      ['claude', 'full'],
+      ['codex', 'full'],
+      ['cursor', 'degraded'],
+      ['opencode', 'degraded'],
+    ])
   })
 
   it('does not increase host smoke timeout budgets or add fixture timeout overrides', () => {
