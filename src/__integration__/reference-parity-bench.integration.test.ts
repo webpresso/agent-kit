@@ -1,49 +1,94 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { spawnSync } from 'node:child_process'
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
-import { main } from '#cli/cli.js'
+import { afterEach, describe, expect, it } from 'vitest'
 
-const originalArgv = [...process.argv]
-const originalCompiledRuntime = process.env.WP_COMPILED_RUNTIME
+const fakePluginSha = '1111111111111111111111111111111111111111'
+let tempDir: string | null = null
 
-async function runWpBenchDryRun(): Promise<{ code: number; stdout: string[]; stderr: string[] }> {
-  const stdout: string[] = []
-  const stderr: string[] = []
+function resolveCommand(command: string): string {
+  const result = spawnSync('which', [command], { encoding: 'utf8' })
+  if (result.status !== 0) {
+    throw new Error(`Unable to resolve required command for integration fixture: ${command}`)
+  }
+  return result.stdout.trim()
+}
 
-  vi.spyOn(console, 'log').mockImplementation((message?: unknown) => {
-    stdout.push(String(message ?? ''))
+function writeExecutable(path: string, content: string): void {
+  writeFileSync(path, content, 'utf8')
+  chmodSync(path, 0o755)
+}
+
+function createBenchToolFixtureBin(): string {
+  tempDir = mkdtempSync(join(tmpdir(), 'reference-parity-bench-bin-'))
+  const actualBun = resolveCommand('bun')
+  const actualGit = resolveCommand('git')
+  const actualNode = process.execPath
+
+  writeExecutable(
+    join(tempDir, 'bun'),
+    `#!/usr/bin/env sh\nif [ "$1" = "--version" ]; then\n  echo "1.3.13"\n  exit 0\nfi\nexec ${JSON.stringify(actualBun)} "$@"\n`,
+  )
+  writeExecutable(
+    join(tempDir, 'claude'),
+    '#!/usr/bin/env sh\nif [ "$1" = "--version" ]; then\n  echo "2.1.177 (Claude Code)"\n  exit 0\nfi\necho "unexpected claude invocation: $*" >&2\nexit 2\n',
+  )
+  writeExecutable(
+    join(tempDir, 'git'),
+    `#!/usr/bin/env sh\nif [ "$1" = "-C" ] && [ "$3" = "rev-parse" ] && [ "$4" = "HEAD" ]; then\n  echo "${fakePluginSha}"\n  exit 0\nfi\nexec ${JSON.stringify(actualGit)} "$@"\n`,
+  )
+  writeExecutable(
+    join(tempDir, 'node'),
+    `#!/usr/bin/env sh\nif [ "$1" = "--version" ]; then\n  echo "v24.16.0"\n  exit 0\nfi\nexec ${JSON.stringify(actualNode)} "$@"\n`,
+  )
+
+  return tempDir
+}
+
+function runWpBenchDryRun(): { code: number; stdout: string; stderr: string } {
+  const binDir = createBenchToolFixtureBin()
+  const actualBun = resolveCommand('bun')
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    BUN: actualBun,
+    FORCE_COLOR: '0',
+    NO_COLOR: '1',
+    PATH: `${binDir}:${process.env.PATH ?? ''}`,
+  }
+  delete env.WP_COMPILED_RUNTIME
+  delete env.npm_lifecycle_event
+  delete env.npm_lifecycle_script
+
+  const result = spawnSync(actualBun, ['src/cli/cli.ts', 'bench', 'session-memory', '--dry-run'], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    env,
   })
-  vi.spyOn(console, 'info').mockImplementation((message?: unknown) => {
-    stdout.push(String(message ?? ''))
-  })
-  vi.spyOn(console, 'error').mockImplementation((message?: unknown) => {
-    stderr.push(String(message ?? ''))
-  })
 
-  delete process.env.WP_COMPILED_RUNTIME
-  process.argv = ['node', 'wp', 'bench', 'session-memory', '--dry-run']
-  const code = await main()
-
-  return { code, stdout, stderr }
+  return {
+    code: result.status ?? 1,
+    stdout: result.stdout,
+    stderr: result.stderr,
+  }
 }
 
 afterEach(() => {
-  process.argv = [...originalArgv]
-  if (originalCompiledRuntime === undefined) {
-    delete process.env.WP_COMPILED_RUNTIME
-  } else {
-    process.env.WP_COMPILED_RUNTIME = originalCompiledRuntime
+  if (tempDir) {
+    rmSync(tempDir, { recursive: true, force: true })
+    tempDir = null
   }
-  vi.restoreAllMocks()
 })
 
 describe('reference parity bench dry-run integration', () => {
-  it('runs the real wp bench session-memory dry-run path without API calls or manifest drift', async () => {
-    const result = await runWpBenchDryRun()
+  it('runs the real wp bench session-memory dry-run path without API calls or manifest drift', () => {
+    const result = runWpBenchDryRun()
 
-    expect(result.code).toBe(0)
-    expect(result.stderr.join('\n')).not.toContain('Manifest mismatch')
+    expect(result.stderr).not.toContain('Manifest mismatch')
+    expect(result.code, result.stderr).toBe(0)
 
-    const parsed = JSON.parse(result.stdout.join('\n')) as {
+    const parsed = JSON.parse(result.stdout) as {
       exitCode: number
       runId: string
       dryRun: boolean
