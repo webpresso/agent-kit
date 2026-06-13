@@ -81,17 +81,12 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
     const install = run('vp', ['install', '--ignore-scripts'], repo, {})
     expect(install.code).toBe(0)
 
-    const setup = run(
-      CLI_RUNTIME,
-      [CLI_PATH, 'setup', '--yes', '--cwd', repo],
-      repo,
-      {
-        CODEX_HOME: codexHome,
-        WP_SKIP_GSTACK: '1',
-        WP_SKIP_RTK: '1',
-        WP_SKIP_OMC: '1',
-      },
-    )
+    const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--cwd', repo], repo, {
+      CODEX_HOME: codexHome,
+      WP_SKIP_GSTACK: '1',
+      WP_SKIP_RTK: '1',
+      WP_SKIP_OMC: '1',
+    })
     expect(setup.code).toBe(0)
     expect(existsSync(path.join(repo, 'opencode.json'))).toBe(true)
     expect(readFileSync(path.join(repo, 'opencode.json'), 'utf8')).toContain('webpresso')
@@ -143,17 +138,12 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
 
     const install = run('vp', ['install', '--ignore-scripts'], repo, {})
     expect(install.code).toBe(0)
-    const setup = run(
-      CLI_RUNTIME,
-      [CLI_PATH, 'setup', '--yes', '--cwd', repo],
-      repo,
-      {
-        CODEX_HOME: codexHome,
-        WP_SKIP_GSTACK: '1',
-        WP_SKIP_RTK: '1',
-        WP_SKIP_OMC: '1',
-      },
-    )
+    const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--cwd', repo], repo, {
+      CODEX_HOME: codexHome,
+      WP_SKIP_GSTACK: '1',
+      WP_SKIP_RTK: '1',
+      WP_SKIP_OMC: '1',
+    })
     expect(setup.code).toBe(0)
 
     const list = run('codex', ['mcp', 'list'], repo, { CODEX_HOME: codexHome })
@@ -175,17 +165,12 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
 
     const install = run('vp', ['install', '--ignore-scripts'], repo, {})
     expect(install.code).toBe(0)
-    const setup = run(
-      CLI_RUNTIME,
-      [CLI_PATH, 'setup', '--yes', '--cwd', repo],
-      repo,
-      {
-        CODEX_HOME: codexHome,
-        WP_SKIP_GSTACK: '1',
-        WP_SKIP_RTK: '1',
-        WP_SKIP_OMC: '1',
-      },
-    )
+    const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--cwd', repo], repo, {
+      CODEX_HOME: codexHome,
+      WP_SKIP_GSTACK: '1',
+      WP_SKIP_RTK: '1',
+      WP_SKIP_OMC: '1',
+    })
     expect(setup.code).toBe(0)
 
     const list = run('opencode', ['mcp', 'list'], repo, {})

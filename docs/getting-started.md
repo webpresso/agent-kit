@@ -100,9 +100,10 @@ show as skipped or warning lines in setup output, not as silent success.
 
 When `CONTEXT7_API_KEY` is provided by the configured Webpresso secret provider
 (for example Doppler via `wp config secrets`), `wp setup` wires Context7 without
-writing the raw key. Codex uses `env_http_headers` in its global config and
-Claude uses `${CONTEXT7_API_KEY}` in project `.mcp.json`. Launch the host through
-the wrapper so the selected provider injects the secret at runtime:
+writing the raw key. Codex uses a static `Accept` header plus
+`env_http_headers` in its global config, and Claude uses `${CONTEXT7_API_KEY}`
+in project `.mcp.json`. Launch the host through the wrapper so the selected
+provider injects the secret at runtime:
 `with-secrets -- codex` or `with-secrets -- claude`.
 
 Consecutive setup runs keep heavyweight integrations cheap by default. If the

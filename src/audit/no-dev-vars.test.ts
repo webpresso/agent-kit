@@ -43,9 +43,7 @@ describe('auditNoDevVars', () => {
     const result = auditNoDevVars(root)
 
     expect(result.ok).toBe(false)
-    expect(result.violations).toEqual([
-      expect.objectContaining({ file: '.dev.vars' }),
-    ])
+    expect(result.violations).toEqual([expect.objectContaining({ file: '.dev.vars' })])
   })
 
   test('flags .env on disk', () => {
@@ -55,9 +53,7 @@ describe('auditNoDevVars', () => {
     const result = auditNoDevVars(root)
 
     expect(result.ok).toBe(false)
-    expect(result.violations).toEqual([
-      expect.objectContaining({ file: '.env' }),
-    ])
+    expect(result.violations).toEqual([expect.objectContaining({ file: '.env' })])
   })
 
   test('passes when no forbidden files are present', () => {

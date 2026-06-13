@@ -633,7 +633,8 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     expect(stopCommands.some((command) => command.includes('wp-stop-qa'))).toBe(true)
     expect(
       stopCommands.some(
-        (command) => command.includes('wp audit agents') && command.includes('# from-skill: verify'),
+        (command) =>
+          command.includes('wp audit agents') && command.includes('# from-skill: verify'),
       ),
     ).toBe(true)
     expect(stopCommands.some((command) => command.includes('# from-skill: verify'))).toBe(true)
@@ -972,7 +973,9 @@ describe('warnIfNonLocalCli (DX2)', () => {
       captured.some(
         (line) =>
           line.includes('warning: wp running from a non-local install') &&
-          line.includes("Global `wp` must satisfy this repo's pinned `@webpresso/agent-kit` version range") &&
+          line.includes(
+            "Global `wp` must satisfy this repo's pinned `@webpresso/agent-kit` version range",
+          ) &&
           line.includes('wp setup'),
       ),
     ).toBe(true)

@@ -66,9 +66,26 @@ export type HookSpec = {
  * index.ts for the measurement rationale behind each budget).
  */
 export const WP_HOOK_SPECS: readonly HookSpec[] = [
-  { event: 'SessionStart', bin: 'wp-sessionstart-routing', hookName: 'sessionstart-routing', timeout: 5 },
-  { event: 'PreToolUse', bin: 'wp-pretool-guard', hookName: 'pretool-guard', matcher: 'preToolUse', timeout: 5 },
-  { event: 'PostToolUse', bin: 'wp-post-tool', hookName: 'post-tool', matcher: 'postToolUse', timeout: 15 },
+  {
+    event: 'SessionStart',
+    bin: 'wp-sessionstart-routing',
+    hookName: 'sessionstart-routing',
+    timeout: 5,
+  },
+  {
+    event: 'PreToolUse',
+    bin: 'wp-pretool-guard',
+    hookName: 'pretool-guard',
+    matcher: 'preToolUse',
+    timeout: 5,
+  },
+  {
+    event: 'PostToolUse',
+    bin: 'wp-post-tool',
+    hookName: 'post-tool',
+    matcher: 'postToolUse',
+    timeout: 15,
+  },
   { event: 'UserPromptSubmit', bin: 'wp-guard-switch', hookName: 'guard-switch', timeout: 5 },
   { event: 'Stop', bin: 'wp-stop-qa', hookName: 'stop-qa', timeout: 10, jsonOnly: true },
 ]

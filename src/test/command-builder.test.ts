@@ -322,12 +322,7 @@ describe('buildTestCommand', () => {
   it('builds a direct unit-suite workspace vitest command', () => {
     expect(buildTestCommand({ type: 'all', values: [] }, { suite: 'unit' })).toEqual({
       command: 'rtk',
-      args: [
-        expect.stringContaining('vitest'),
-        'run',
-        '--exclude',
-        '**/*.integration.test.ts',
-      ],
+      args: [expect.stringContaining('vitest'), 'run', '--exclude', '**/*.integration.test.ts'],
     })
   })
 

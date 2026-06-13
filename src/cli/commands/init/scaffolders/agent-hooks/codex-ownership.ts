@@ -2,9 +2,7 @@ import { normalize } from 'node:path'
 
 import type { CommandHookMetadata } from '#codex/app-server/types.js'
 import { WP_HOOK_BIN_NAMES } from './ir.js'
-import {
-  stripSingleShellQuotePair,
-} from './shell-identity.js'
+import { stripSingleShellQuotePair } from './shell-identity.js'
 
 // Derived from the WP_HOOK_BIN_NAMES single source of truth (ir.ts) so codex
 // ownership detection cannot drift from the emitted/installed wp-* hook set.

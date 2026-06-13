@@ -12,9 +12,7 @@ import {
   scaffoldAgentHooks,
   trustCodexWebpressoHooksForRepo,
 } from '#cli/commands/init/scaffolders/agent-hooks/index.js'
-import {
-  normalizeGlobalCodexHooksFile,
-} from '#cli/commands/init/scaffolders/agent-hooks/codex-global-normalize.js'
+import { normalizeGlobalCodexHooksFile } from '#cli/commands/init/scaffolders/agent-hooks/codex-global-normalize.js'
 import { setupCommandForRepo } from '#cli/commands/init/detect-consumer.js'
 import { deriveHookStatus } from '#hooks/status/index.js'
 import { readInstalledHooksMap } from '#hooks/shared/installed-hooks.js'

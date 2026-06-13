@@ -163,7 +163,7 @@ When you need a single lane, use `wp test --suite unit` or
 **Full maintainer check** (bookend — run once at start, once at end):
 
 ```bash
-vp run qa          # build + typecheck + lint + format:check + test + lint:pkg + audits:check
+vp run qa          # build + typecheck + lint + format + test + lint:pkg + audits:check
 ```
 
 `vp run qa` exits 0 when every stage passes. The package-surface gate runs

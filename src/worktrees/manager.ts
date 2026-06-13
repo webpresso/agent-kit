@@ -37,11 +37,13 @@ function shortHash(value: string): string {
 
 export function readRepoOriginUrl(repoRoot: string): string | null {
   try {
-    return execFileSync('git', ['config', '--get', 'remote.origin.url'], {
-      cwd: repoRoot,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim() || null
+    return (
+      execFileSync('git', ['config', '--get', 'remote.origin.url'], {
+        cwd: repoRoot,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }).trim() || null
+    )
   } catch {
     return null
   }
@@ -51,7 +53,12 @@ export function ownerWorktreeId(repoNamespace: string, slug: string): string {
   return `owner-${shortHash(`${repoNamespace}:${slug}`)}`
 }
 
-export function scratchWorktreeId(repoNamespace: string, slug: string, lane: string, id: string): string {
+export function scratchWorktreeId(
+  repoNamespace: string,
+  slug: string,
+  lane: string,
+  id: string,
+): string {
   return `scratch-${shortHash(`${repoNamespace}:${slug}:${lane}:${id}`)}`
 }
 

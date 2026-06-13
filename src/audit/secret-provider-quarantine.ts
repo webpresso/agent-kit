@@ -47,11 +47,7 @@ const BANNED_PATTERNS: readonly BannedPattern[] = [
   },
 ]
 
-function scanFile(
-  fullPath: string,
-  relPath: string,
-  violations: RepoAuditViolation[],
-): void {
+function scanFile(fullPath: string, relPath: string, violations: RepoAuditViolation[]): void {
   const content = readFileSync(fullPath, 'utf8')
   for (const { pattern, message } of BANNED_PATTERNS) {
     if (pattern.test(content)) {
@@ -77,7 +73,9 @@ function walkDir(dir: string, root: string, violations: RepoAuditViolation[]): n
   return checked
 }
 
-export function auditSecretProviderQuarantine(rootDirectory: string = process.cwd()): RepoAuditResult {
+export function auditSecretProviderQuarantine(
+  rootDirectory: string = process.cwd(),
+): RepoAuditResult {
   if (!existsSync(join(rootDirectory, SECRETS_CONFIG_PATH))) {
     return { ok: true, title: 'secret-provider-quarantine', checked: 0, violations: [] }
   }

@@ -266,7 +266,10 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
     case 'tph': {
       const { runTphAudit } = await import('#audit/audit-tph-runner')
       const result = await runTphAudit(input.cwd ?? input.directory ?? process.cwd())
-      const violations = result.violations.map((v) => ({ message: `[${v.rule}] ${v.message}`, file: v.file }))
+      const violations = result.violations.map((v) => ({
+        message: `[${v.rule}] ${v.message}`,
+        file: v.file,
+      }))
       const auditResult = { ok: result.errorCount === 0, checked: result.filesChecked, violations }
       return {
         passed: auditResult.ok,
@@ -278,7 +281,10 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
     case 'tph-e2e': {
       const { runTphE2eAudit } = await import('#audit/audit-tph-e2e-runner')
       const result = await runTphE2eAudit(input.cwd ?? input.directory ?? process.cwd())
-      const violations = result.violations.map((v) => ({ message: `[${v.rule}] ${v.message}`, file: v.file }))
+      const violations = result.violations.map((v) => ({
+        message: `[${v.rule}] ${v.message}`,
+        file: v.file,
+      }))
       const auditResult = { ok: result.errorCount === 0, checked: result.filesChecked, violations }
       return {
         passed: auditResult.ok,
@@ -309,7 +315,9 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
     }
     case 'secret-provider-quarantine': {
       const { auditSecretProviderQuarantine } = await import('#audit/secret-provider-quarantine')
-      const auditResult = auditSecretProviderQuarantine(input.cwd ?? input.directory ?? process.cwd())
+      const auditResult = auditSecretProviderQuarantine(
+        input.cwd ?? input.directory ?? process.cwd(),
+      )
       return {
         passed: auditResult.ok,
         summary: summarizeRepoAudit(kind, auditResult),

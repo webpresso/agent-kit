@@ -244,33 +244,33 @@
     },
     "./tsconfig/base.json": {
       "import": {
-        "types": "./dist/esm/config/tsconfig/base.json",
         "default": "./dist/esm/config/tsconfig/base.json"
-      }
+      },
+      "default": "./dist/esm/config/tsconfig/base.json"
     },
     "./tsconfig/cloudflare.json": {
       "import": {
-        "types": "./dist/esm/config/tsconfig/cloudflare.json",
         "default": "./dist/esm/config/tsconfig/cloudflare.json"
-      }
+      },
+      "default": "./dist/esm/config/tsconfig/cloudflare.json"
     },
     "./tsconfig/library.json": {
       "import": {
-        "types": "./dist/esm/config/tsconfig/library.json",
         "default": "./dist/esm/config/tsconfig/library.json"
-      }
+      },
+      "default": "./dist/esm/config/tsconfig/library.json"
     },
     "./tsconfig/react-library.json": {
       "import": {
-        "types": "./dist/esm/config/tsconfig/react-library.json",
         "default": "./dist/esm/config/tsconfig/react-library.json"
-      }
+      },
+      "default": "./dist/esm/config/tsconfig/react-library.json"
     },
     "./tsconfig/react-router.json": {
       "import": {
-        "types": "./dist/esm/config/tsconfig/react-router.json",
         "default": "./dist/esm/config/tsconfig/react-router.json"
-      }
+      },
+      "default": "./dist/esm/config/tsconfig/react-router.json"
     },
     "./vitest/node": {
       "import": {
@@ -574,7 +574,7 @@
     "audits:check": "./bin/wp audit guardrails && vp run workflow-actions:check && vp run hooks:doctor:ci",
     "hooks:doctor": "./bin/wp hooks doctor",
     "hooks:doctor:ci": "./bin/wp hooks doctor --skip-mcp",
-    "qa": "vp run build && vp run typecheck && vp run lint && vp run format:check && vp run test && vp run lint:pkg && vp run audits:check",
+    "qa": "vp run build && vp run typecheck && vp run lint && vp run format && vp run test && vp run lint:pkg && vp run audits:check",
     "changeset": "changeset",
     "changeset:status": "changeset status",
     "verify:paths": "./bin/wp audit absolute-path-policy --root .",

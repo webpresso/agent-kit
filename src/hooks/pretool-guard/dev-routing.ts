@@ -28,7 +28,6 @@ interface SourceEntrypointRule {
   guidance: string
 }
 
-
 const RAW_MUTATING_GIT_WORKTREE_RE = /^git\s+worktree\s+(?:add|remove|move|prune)(?:\s|$)/u
 
 function routeRawMutatingGitWorktree(command: string): RouteAction | null {
@@ -730,10 +729,7 @@ function extractInlineCommands(code: string): string[] {
 
 function isCtxTool(toolName: unknown): boolean {
   if (typeof toolName !== 'string') return false
-  const names = new Set([
-    'ctx_execute',
-    'ctx_batch_execute',
-  ])
+  const names = new Set(['ctx_execute', 'ctx_batch_execute'])
   if (names.has(toolName)) return true
 
   // Codex/App/plugin MCP tool names are host-generated and may include plugin

@@ -217,11 +217,7 @@ describe('manifest capture and validation', () => {
       mode: 'isolated',
       cacheDisclaimer:
         'operator-asserted workspace isolation: distinct Anthropic workspace IDs supplied, but not admin-verified.',
-      keyEnvNames: [
-        'ANTHROPIC_API_KEY_BASELINE',
-        'ANTHROPIC_API_KEY_V1',
-        'ANTHROPIC_API_KEY_V2',
-      ],
+      keyEnvNames: ['ANTHROPIC_API_KEY_BASELINE', 'ANTHROPIC_API_KEY_V1', 'ANTHROPIC_API_KEY_V2'],
       adminVerification: 'operator-asserted',
     })
   })
@@ -235,11 +231,7 @@ describe('manifest capture and validation', () => {
     ).toStrictEqual({
       mode: 'isolated',
       cacheDisclaimer: null,
-      keyEnvNames: [
-        'ANTHROPIC_API_KEY_BASELINE',
-        'ANTHROPIC_API_KEY_V1',
-        'ANTHROPIC_API_KEY_V2',
-      ],
+      keyEnvNames: ['ANTHROPIC_API_KEY_BASELINE', 'ANTHROPIC_API_KEY_V1', 'ANTHROPIC_API_KEY_V2'],
       adminVerification: 'required-for-proof',
     })
   })

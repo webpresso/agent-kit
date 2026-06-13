@@ -34,6 +34,8 @@ describe('hook command', () => {
   })
 
   it('rejects removed legacy hook names', async () => {
-    await expect(runHookCli(['hook', 'check-dev-link'])).rejects.toThrow('Unknown hook "check-dev-link"')
+    await expect(runHookCli(['hook', 'check-dev-link'])).rejects.toThrow(
+      'Unknown hook "check-dev-link"',
+    )
   })
 })
