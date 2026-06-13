@@ -106,6 +106,7 @@ import { ensureGstack } from './scaffolders/gstack/index.js'
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
 import { ensureOmx } from './scaffolders/omx/index.js'
 import { ensureOmc, OMC_SETUP_COMMAND } from './scaffolders/omc/index.js'
+import { scaffoldSessionMemory } from './scaffolders/session-memory/index.js'
 import { scaffoldOpencodePlugin } from './scaffolders/opencode-plugin/index.js'
 import { ensureRtk } from './scaffolders/rtk/index.js'
 import { checkRuntimes } from './scaffolders/runtime-check/index.js'
@@ -654,6 +655,23 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         case 'codex-cli-unavailable':
           console.warn(`  codex cli: ⚠ ${codexCliResult.hint}`)
           break
+      }
+    }
+
+    // Session memory scaffolder — runs always (not behind a preset flag).
+    // Idempotent: migrates context-mode → ak_session_* on first run, no-op thereafter.
+    {
+      const smResult = scaffoldSessionMemory({ repoRoot: consumer.repoRoot, options })
+      if (smResult.kind === 'ok' && smResult.migrated) {
+        console.log(
+          `  session-memory: ✓ migrated context-mode → ak_session_* (backup: ${smResult.backupPath ?? 'none'})`,
+        )
+      } else if (smResult.kind === 'malformed-plugin-json') {
+        console.warn(
+          `  session-memory: ⚠ malformed plugin.json — preserved unchanged: ${smResult.path}`,
+        )
+      } else if (smResult.kind === 'dry-run') {
+        console.log('  session-memory: skipped (--dry-run)')
       }
     }
 

@@ -196,7 +196,7 @@ Do not use `vp run wp`, `pnpm run wp`, or `bun run wp`. If you want an explicit
 repo-local source alias, use `vp run wp:source -- <args>`.
 
 `WP_FORCE_SOURCE=1` is scoped: it routes dev CLI gates to source but keeps the
-latency-sensitive `wp-pretool-guard` / `wp-post-tool` hook bins on the compiled
+latency-sensitive `wp-pretool-guard` / `wp-post-tool` / `wp-pre-compact` hook bins on the compiled
 binary (see `bin/_run.js`). Iterate on hook code with `bun src/hooks/…` directly.
 
 ## Contribute / Security / License
@@ -232,6 +232,8 @@ This is tracked in the [capability matrix](src/cli/commands/docs/generate-capabi
 
 webpresso ships a typed hooks-orchestrator for Claude Code, Codex CLI, and Cursor.
 See [docs/hooks-quickstart.md](docs/hooks-quickstart.md) to get started.
+
+Session-memory replacement work is tracked as independent v1/v2 candidates; see [docs/session-memory-option-matrix.md](docs/session-memory-option-matrix.md) for the current context tool comparison and selection gate.
 
 Key CLIs:
 - `wp hooks status` — show per-vendor hook states

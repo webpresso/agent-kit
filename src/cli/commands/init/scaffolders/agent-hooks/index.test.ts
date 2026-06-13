@@ -57,6 +57,7 @@ const WEBPRESSO_HOOK_BINS = [
   'wp-sessionstart-routing',
   'wp-pretool-guard',
   'wp-post-tool',
+  'wp-pre-compact',
   'wp-guard-switch',
   'wp-stop-qa',
 ] as const
@@ -267,7 +268,10 @@ describe('scaffoldAgentHooks', () => {
       readFileSync(join(repoRoot, '.claude', 'hooks', 'check-gstack.sh'), 'utf8'),
     ).toThrow()
     expect(() =>
-      readFileSync(join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh'), 'utf8'),
+      readFileSync(
+        join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh'),
+        'utf8',
+      ),
     ).toThrow()
   })
 
@@ -288,7 +292,10 @@ describe('scaffoldAgentHooks', () => {
     expect(claudeCommands.some((cmd) => cmd.includes('$CLAUDE_PROJECT_DIR'))).toBe(true)
     expect(codexCommands).toContain(codexBinCommand(repoRoot, 'wp-sessionstart-routing'))
     expect(
-      readFileSync(join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh'), 'utf8'),
+      readFileSync(
+        join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh'),
+        'utf8',
+      ),
     ).toContain('wp hook sessionstart-routing')
     expect(
       readFileSync(join(repoRoot, '.codex', 'managed-hooks', 'wp-sessionstart-routing.sh'), 'utf8'),
@@ -931,8 +938,7 @@ hooks:
     expect(
       stopCommands.some(
         (command) =>
-          command.includes('wp audit agents') &&
-          command.includes('# from-skill: verify'),
+          command.includes('wp audit agents') && command.includes('# from-skill: verify'),
       ),
     ).toBe(true)
     expect(stopCommands.some((command) => command.includes('# from-skill: verify'))).toBe(true)
@@ -2026,14 +2032,21 @@ describe('plugin-native invariants — .claude/settings.json', () => {
 })
 
 describe('buildWebpressoHookGroups', () => {
-  it('returns the canonical 5 wp-* event groups with the supplied bin resolver', async () => {
+  it('returns the canonical wp-* event groups with the supplied bin resolver', async () => {
     const result = buildWebpressoHookGroups({
       resolveBin: (name) => `./node_modules/.bin/${name}`,
       matchers: { preToolUse: 'Bash|Edit|Write', postToolUse: 'Edit|Write' },
     })
 
     expect(Object.keys(result).sort()).toStrictEqual(
-      ['PostToolUse', 'PreToolUse', 'SessionStart', 'Stop', 'UserPromptSubmit'].sort(),
+      [
+        'PostToolUse',
+        'PreCompact',
+        'PreToolUse',
+        'SessionStart',
+        'Stop',
+        'UserPromptSubmit',
+      ].sort(),
     )
     expect(result.SessionStart?.[0]?.hooks[0]?.command).toBe(
       './node_modules/.bin/wp-sessionstart-routing',

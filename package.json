@@ -31,6 +31,15 @@
   "preferGlobal": true,
   "bin": {
     "wp": "bin/wp",
+    "wp-pretool-guard": "bin/wp-pretool-guard.js",
+    "wp-post-tool": "bin/wp-post-tool.js",
+    "wp-pre-compact": "bin/wp-pre-compact.js",
+    "wp-stop-qa": "bin/wp-stop-qa.js",
+    "wp-guard-switch": "bin/wp-guard-switch.js",
+    "wp-test-quality-check": "bin/wp-test-quality-check.js",
+    "wp-sessionstart-routing": "bin/wp-sessionstart-routing.js",
+    "wp-check-dev-link": "bin/wp-check-dev-link.js",
+    "wp-restore-dev-links": "bin/wp-restore-dev-links.js",
     "docs-check-internal-links": "bin/docs-check-internal-links.js",
     "docs-check-refs": "bin/docs-check-refs.js",
     "docs-check-stale": "bin/docs-check-stale.js",
@@ -166,7 +175,8 @@
     "#*.js": "./src/blueprint/*.ts",
     "#*": "./src/blueprint/*.ts",
     "#deploy/*.js": "./src/deploy/*.ts",
-    "#deploy/*": "./src/deploy/*.ts"
+    "#deploy/*": "./src/deploy/*.ts",
+    "#session-memory/*": "./src/session-memory/*.ts"
   },
   "exports": {
     ".": {
@@ -589,10 +599,12 @@
     "better-sqlite3": "^12.10.0",
     "cac": "^7.0.0",
     "env-paths": "^4.0.0",
+    "execa": "^9.5.2",
     "glob": "^13.0.6",
     "gray-matter": "^4.0.3",
     "js-yaml": "^4.1.1",
     "ora": "^8.2.0",
+    "p-queue": "^8.1.0",
     "proper-lockfile": "^4.1.2",
     "remark": "^15.0.1",
     "remark-frontmatter": "^5.0.0",

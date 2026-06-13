@@ -5,6 +5,8 @@ export interface ToolInput {
   hook_event_name?: string
   tool_name?: string
   tool_input?: Record<string, unknown>
+  /** PostToolUse only: the tool's response output (string or structured) */
+  tool_output?: unknown
 }
 
 export interface ValidationResult {

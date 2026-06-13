@@ -1,63 +1,104 @@
 ---
-title: Session memory guide
 type: guide
-last_updated: 2026-05-27
+slug: session-memory
+title: Session Memory (ak_session_*)
+status: active
+scope: repo
+applies_to: [agents, consumers]
+created: '2026-05-13'
+last_reviewed: '2026-05-13'
+last_updated: '2026-05-13'
+paths:
+  - 'src/session-memory/**'
+  - 'src/hooks/post-tool/**'
+  - 'src/hooks/pre-compact/**'
+  - 'src/mcp/tools/session-*.ts'
 ---
 
-# Session memory
+# Session Memory — `ak_session_*`
 
-Session memory gives webpresso agents a local recall layer backed by SQLite and FTS5. Version 1 is intentionally in-process: it has no daemon, no cloud calls, and no telemetry.
+Agent-kit's in-process session memory engine. Captures tool events, snapshots
+context before compaction, and restores it automatically after. MIT-licensed,
+zero external dependencies beyond `better-sqlite3`.
 
-## Data location
+## Architecture
 
-The default data root is `~/.webpresso/sessions/`. Repositories do not own this directory, and the files should never be committed.
+```
+PostToolUse  →  ak-post-tool/index.ts  →  session-memory engine
+                                           (better-sqlite3 + FTS5)
+PreCompact   →  ak-pre-compact/index.ts →  snapshot() [5s cap]
+SessionStart →  ak-sessionstart/index.ts → restore() → <session_knowledge>
+```
 
-Set `WEBPRESSO_SESSION_MEMORY=0` to disable capture for a process. Delete the sessions directory to reset local history.
+**DB location**: `~/.webpresso/sessions/<repo-hash>.db` (one per project)
 
-## Event flow
+**Three-tier search**: porter FTS5 BM25 → trigram FTS5 → IDF-weighted Levenshtein
 
-1. A hook or command captures a tool event with `{ repoHash, toolName, content }`.
-2. `repoHash` is the first 16 hex characters of the SHA-256 hash of `git rev-parse --show-toplevel`, which scopes memory to the current repository.
-3. Events are appended to `session_events` with WAL enabled so multiple local handles can write safely.
-4. Snapshot points consolidate events into `sessions` rows. If a cap is reached, the snapshot is marked `partial` instead of blocking the agent.
-5. Restore queries search recent event content with FTS5 and return top-ranked snippets for the active repo.
+## MCP Tools
 
-## Fetch and index flow
+| Tool | Description |
+| ---- | ----------- |
+| `ak_session_search` | Search session memory for relevant prior context |
+| `ak_session_snapshot` | Manually checkpoint before risky operations |
+| `ak_session_restore` | Restore context by query, returns `<session_knowledge>` block |
+| `ak_session_capture` | Manually record a decision or finding into memory |
 
-`fetch-index` uses native `fetch()` with an `AbortSignal`, normalizes URLs, caches responses for 24 hours in-process, converts HTML to text/Markdown-like chunks, formats JSON, and indexes chunks into the same FTS search store.
+## Usage examples
+
+```
+# Search for related prior work
+ak_session_search query="session memory store SQLite"
+
+# Snapshot before a branch switch
+ak_session_snapshot
+
+# Restore context after compaction
+ak_session_restore query="what was I working on"
+
+# Record an important decision
+ak_session_capture content="Decided to use porter FTS5 for lane-2 memory" toolName="decision"
+```
+
+## Setup
+
+Run `ak setup` — the scaffolder:
+1. Creates `~/.webpresso/sessions/` directory
+2. Migrates context-mode MCP entries from `.claude-plugin/plugin.json` to ak_session_*
+3. Wires `ak-pre-compact` and updated `ak-post-tool` hooks
+
+Migration is idempotent. Re-running `ak setup` is safe.
+
+## Migration from context-mode
+
+When `ak setup` detects context-mode entries in `.claude-plugin/plugin.json`, it:
+1. Creates a timestamped backup: `plugin.pre-session-memory-backup.<ts>.json`
+2. Removes the context-mode MCP server entries
+3. Ensures `ak_session_*` tools are available via the agent-kit MCP server
+
+To restore context-mode: copy the backup file back to `plugin.json`.
 
 ## Schema
 
-### `session_memory_chunks`
+Forward-compatible with v2 (Rust) engine. Migration v1→v2 = swap engine binary, keep `.db` file.
 
-- `id` — deterministic chunk id
-- `source` — URL, file, or logical source
-- `text` — indexed body text
-- `metadata_json` — structured metadata such as URL and chunk index
-- `created_at` — ISO timestamp
+```sql
+CREATE VIRTUAL TABLE chunks USING fts5(content, source, tokenize='porter unicode61');
+CREATE VIRTUAL TABLE chunks_trigram USING fts5(content, source, tokenize='trigram');
+CREATE TABLE sources(id INTEGER PRIMARY KEY, label TEXT, indexed_at INTEGER, chunk_count INTEGER);
+CREATE TABLE vocabulary(term TEXT PRIMARY KEY, idf_score REAL);
+CREATE TABLE sessions(agent_id TEXT, snapshot_id TEXT, created_at INTEGER, status TEXT, content_json TEXT);
+CREATE TABLE session_events(session_id TEXT, event_id TEXT, ts INTEGER, tool_name TEXT, content TEXT);
+PRAGMA journal_mode=WAL;
+PRAGMA synchronous=NORMAL;
+PRAGMA mmap_size=268435456;
+```
 
-FTS tables:
+## Non-goals
 
-- `session_memory_chunks_fts` — porter tokenizer for normal keyword search
-- `session_memory_chunks_tri` — trigram tokenizer for partial-token fallback
-
-### `session_events`
-
-- `session_id`
-- `event_id`
-- `repo_hash`
-- `ts`
-- `tool_name`
-- `content`
-
-### `sessions`
-
-- `agent_id`
-- `snapshot_id`
-- `repo_hash`
-- `created_at`
-- `status` (`complete` or `partial`)
-- `content_json`
+- Vector / semantic search (out of v1 scope)
+- Cloud / multi-tenant sync (strictly local SQLite)
+- LLM-driven fact extraction (wrong tool for tool-call indexing)
+- 13 of context-mode's 15 platform adapters (Claude Code + stdio MCP only)
 
 ## Search fallback
 

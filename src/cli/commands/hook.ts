@@ -3,6 +3,7 @@ import type { CAC } from 'cac'
 const HOOK_NAMES = [
   'pretool-guard',
   'post-tool',
+  'pre-compact',
   'stop-qa',
   'guard-switch',
   'sessionstart-routing',
@@ -17,7 +18,11 @@ const HOOK_HANDLERS: Readonly<Record<HookName, (args: string[]) => Promise<void>
     await main()
   },
   'post-tool': async () => {
-    const { main } = await import('#hooks/post-tool/lint-after-edit')
+    const { main } = await import('#hooks/post-tool/index')
+    await main()
+  },
+  'pre-compact': async () => {
+    const { main } = await import('#hooks/pre-compact/index')
     await main()
   },
   'stop-qa': async () => {

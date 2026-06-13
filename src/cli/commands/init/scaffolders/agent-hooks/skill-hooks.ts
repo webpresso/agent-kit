@@ -15,6 +15,7 @@ const SKILL_HOOK_EVENTS = [
 const RESERVED_GLOBAL_BINS = [
   'wp-pretool-guard',
   'wp-post-tool',
+  'wp-pre-compact',
   'wp-guard-switch',
   'wp-sessionstart-routing',
   'wp-stop-qa',

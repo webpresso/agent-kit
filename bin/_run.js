@@ -15,7 +15,8 @@ export const BIN_ENTRYPOINTS = {
   wp: 'src/cli/cli.ts',
   'with-secrets': 'src/runtime/with-secrets-cli.ts',
   'wp-pretool-guard': 'src/hooks/pretool-guard/index.ts',
-  'wp-post-tool': 'src/hooks/post-tool/lint-after-edit.ts',
+  'wp-post-tool': 'src/hooks/post-tool/index.ts',
+  'wp-pre-compact': 'src/hooks/pre-compact/index.ts',
   'wp-stop-qa': 'src/hooks/stop/qa-changed-files.ts',
   'wp-guard-switch': 'src/hooks/guard-switch/index.ts',
   'wp-test-quality-check': 'src/hooks/test-quality-check.ts',
@@ -32,6 +33,7 @@ export const BIN_ENTRYPOINTS = {
 const LATENCY_SENSITIVE_BUILT_BINS = new Set([
   'wp-pretool-guard',
   'wp-post-tool',
+  'wp-pre-compact',
   'wp-stop-qa',
   'wp-guard-switch',
   'wp-test-quality-check',

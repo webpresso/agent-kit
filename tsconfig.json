@@ -178,6 +178,9 @@
       ],
       "#*": [
         "./src/blueprint/*"
+      ],
+      "#session-memory/*": [
+        "./src/session-memory/*.ts"
       ]
     },
     "rootDir": "./src"

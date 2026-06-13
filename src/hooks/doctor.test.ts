@@ -246,7 +246,8 @@ describe('hooks/doctor', () => {
         pluginJson,
         wpBin,
         join(repoRoot, 'src/hooks/pretool-guard/index.ts'),
-        join(repoRoot, 'src/hooks/post-tool/lint-after-edit.ts'),
+        join(repoRoot, 'src/hooks/post-tool/index.ts'),
+        join(repoRoot, 'src/hooks/pre-compact/index.ts'),
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
         join(repoRoot, 'src/hooks/guard-switch/index.ts'),
         join(repoRoot, 'src/hooks/sessionstart/index.ts'),
@@ -266,7 +267,8 @@ describe('hooks/doctor', () => {
           return JSON.stringify({
             bin: {
               'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
-              'wp-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'wp-post-tool': './src/hooks/post-tool/index.ts',
+              'wp-pre-compact': './src/hooks/pre-compact/index.ts',
               'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
               'wp-guard-switch': './src/hooks/guard-switch/index.ts',
               'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
@@ -295,7 +297,8 @@ describe('hooks/doctor', () => {
         pluginJson,
         wpBin,
         join(repoRoot, 'src/hooks/pretool-guard/index.ts'),
-        join(repoRoot, 'src/hooks/post-tool/lint-after-edit.ts'),
+        join(repoRoot, 'src/hooks/post-tool/index.ts'),
+        join(repoRoot, 'src/hooks/pre-compact/index.ts'),
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
         join(repoRoot, 'src/hooks/guard-switch/index.ts'),
         join(repoRoot, 'src/hooks/sessionstart/index.ts'),
@@ -311,7 +314,8 @@ describe('hooks/doctor', () => {
           return JSON.stringify({
             bin: {
               'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
-              'wp-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'wp-post-tool': './src/hooks/post-tool/index.ts',
+              'wp-pre-compact': './src/hooks/pre-compact/index.ts',
               'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
               'wp-guard-switch': './src/hooks/guard-switch/index.ts',
               'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
@@ -366,7 +370,8 @@ describe('hooks/doctor', () => {
         pkgJson,
         pluginJson,
         join(repoRoot, 'src/hooks/pretool-guard/index.ts'),
-        join(repoRoot, 'src/hooks/post-tool/lint-after-edit.ts'),
+        join(repoRoot, 'src/hooks/post-tool/index.ts'),
+        join(repoRoot, 'src/hooks/pre-compact/index.ts'),
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
         join(repoRoot, 'src/hooks/guard-switch/index.ts'),
         join(repoRoot, 'src/hooks/sessionstart/index.ts'),
@@ -384,7 +389,8 @@ describe('hooks/doctor', () => {
           return JSON.stringify({
             bin: {
               'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
-              'wp-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'wp-post-tool': './src/hooks/post-tool/index.ts',
+              'wp-pre-compact': './src/hooks/pre-compact/index.ts',
               'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
               'wp-guard-switch': './src/hooks/guard-switch/index.ts',
               'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
@@ -428,7 +434,8 @@ describe('hooks/doctor', () => {
         pluginJson,
         builtMcpCli,
         join(repoRoot, 'src/hooks/pretool-guard/index.ts'),
-        join(repoRoot, 'src/hooks/post-tool/lint-after-edit.ts'),
+        join(repoRoot, 'src/hooks/post-tool/index.ts'),
+        join(repoRoot, 'src/hooks/pre-compact/index.ts'),
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
         join(repoRoot, 'src/hooks/guard-switch/index.ts'),
         join(repoRoot, 'src/hooks/sessionstart/index.ts'),
@@ -446,7 +453,8 @@ describe('hooks/doctor', () => {
           return JSON.stringify({
             bin: {
               'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
-              'wp-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'wp-post-tool': './src/hooks/post-tool/index.ts',
+              'wp-pre-compact': './src/hooks/pre-compact/index.ts',
               'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
               'wp-guard-switch': './src/hooks/guard-switch/index.ts',
               'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
@@ -530,7 +538,8 @@ describe('hooks/doctor', () => {
         pluginJson,
         rtkMarker,
         join(repoRoot, 'src/hooks/pretool-guard/index.ts'),
-        join(repoRoot, 'src/hooks/post-tool/lint-after-edit.ts'),
+        join(repoRoot, 'src/hooks/post-tool/index.ts'),
+        join(repoRoot, 'src/hooks/pre-compact/index.ts'),
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
         join(repoRoot, 'src/hooks/guard-switch/index.ts'),
         join(repoRoot, 'src/hooks/sessionstart/index.ts'),
@@ -547,7 +556,8 @@ describe('hooks/doctor', () => {
           return JSON.stringify({
             bin: {
               'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
-              'wp-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'wp-post-tool': './src/hooks/post-tool/index.ts',
+              'wp-pre-compact': './src/hooks/pre-compact/index.ts',
               'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
               'wp-guard-switch': './src/hooks/guard-switch/index.ts',
               'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
@@ -606,7 +616,8 @@ describe('hooks/doctor', () => {
         pluginJson,
         rtkMarker,
         join(repoRoot, 'src/hooks/pretool-guard/index.ts'),
-        join(repoRoot, 'src/hooks/post-tool/lint-after-edit.ts'),
+        join(repoRoot, 'src/hooks/post-tool/index.ts'),
+        join(repoRoot, 'src/hooks/pre-compact/index.ts'),
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
         join(repoRoot, 'src/hooks/guard-switch/index.ts'),
         join(repoRoot, 'src/hooks/sessionstart/index.ts'),
@@ -623,7 +634,8 @@ describe('hooks/doctor', () => {
           return JSON.stringify({
             bin: {
               'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
-              'wp-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'wp-post-tool': './src/hooks/post-tool/index.ts',
+              'wp-pre-compact': './src/hooks/pre-compact/index.ts',
               'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
               'wp-guard-switch': './src/hooks/guard-switch/index.ts',
               'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
@@ -679,7 +691,8 @@ describe('hooks/doctor', () => {
         pkgJson,
         pluginJson,
         join(repoRoot, 'src/hooks/pretool-guard/index.ts'),
-        join(repoRoot, 'src/hooks/post-tool/lint-after-edit.ts'),
+        join(repoRoot, 'src/hooks/post-tool/index.ts'),
+        join(repoRoot, 'src/hooks/pre-compact/index.ts'),
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
         join(repoRoot, 'src/hooks/guard-switch/index.ts'),
         join(repoRoot, 'src/hooks/sessionstart/index.ts'),
@@ -696,7 +709,8 @@ describe('hooks/doctor', () => {
           return JSON.stringify({
             bin: {
               'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
-              'wp-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'wp-post-tool': './src/hooks/post-tool/index.ts',
+              'wp-pre-compact': './src/hooks/pre-compact/index.ts',
               'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
               'wp-guard-switch': './src/hooks/guard-switch/index.ts',
               'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
@@ -722,7 +736,8 @@ describe('hooks/doctor', () => {
         pkgJson,
         pluginJson,
         join(repoRoot, 'src/hooks/pretool-guard/index.ts'),
-        join(repoRoot, 'src/hooks/post-tool/lint-after-edit.ts'),
+        join(repoRoot, 'src/hooks/post-tool/index.ts'),
+        join(repoRoot, 'src/hooks/pre-compact/index.ts'),
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
         join(repoRoot, 'src/hooks/guard-switch/index.ts'),
         join(repoRoot, 'src/hooks/sessionstart/index.ts'),
@@ -741,7 +756,8 @@ describe('hooks/doctor', () => {
           return JSON.stringify({
             bin: {
               'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
-              'wp-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'wp-post-tool': './src/hooks/post-tool/index.ts',
+              'wp-pre-compact': './src/hooks/pre-compact/index.ts',
               'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
               'wp-guard-switch': './src/hooks/guard-switch/index.ts',
               'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
@@ -801,7 +817,8 @@ describe('hooks/doctor', () => {
         pkgJson,
         pluginJson,
         join(repoRoot, 'src/hooks/pretool-guard/index.ts'),
-        join(repoRoot, 'src/hooks/post-tool/lint-after-edit.ts'),
+        join(repoRoot, 'src/hooks/post-tool/index.ts'),
+        join(repoRoot, 'src/hooks/pre-compact/index.ts'),
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
         join(repoRoot, 'src/hooks/guard-switch/index.ts'),
         join(repoRoot, 'src/hooks/sessionstart/index.ts'),
@@ -819,7 +836,8 @@ describe('hooks/doctor', () => {
           return JSON.stringify({
             bin: {
               'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
-              'wp-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'wp-post-tool': './src/hooks/post-tool/index.ts',
+              'wp-pre-compact': './src/hooks/pre-compact/index.ts',
               'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
               'wp-guard-switch': './src/hooks/guard-switch/index.ts',
               'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
@@ -877,7 +895,8 @@ describe('hooks/doctor', () => {
         pluginJson,
         wpBin,
         join(repoRoot, 'src/hooks/pretool-guard/index.ts'),
-        join(repoRoot, 'src/hooks/post-tool/lint-after-edit.ts'),
+        join(repoRoot, 'src/hooks/post-tool/index.ts'),
+        join(repoRoot, 'src/hooks/pre-compact/index.ts'),
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
         join(repoRoot, 'src/hooks/guard-switch/index.ts'),
         join(repoRoot, 'src/hooks/sessionstart/index.ts'),
@@ -895,7 +914,8 @@ describe('hooks/doctor', () => {
           return JSON.stringify({
             bin: {
               'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
-              'wp-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'wp-post-tool': './src/hooks/post-tool/index.ts',
+              'wp-pre-compact': './src/hooks/pre-compact/index.ts',
               'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
               'wp-guard-switch': './src/hooks/guard-switch/index.ts',
               'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
@@ -906,6 +926,7 @@ describe('hooks/doctor', () => {
         if (String(path) === pluginJson) {
           return JSON.stringify({ version: '0.1.0', hooks: {}, mcpServers: {} })
         }
+
         throw new Error(`unexpected read: ${String(path)}`)
       }) as typeof readFileSync)
       mockHealthyHookProbe()

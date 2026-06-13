@@ -54,6 +54,10 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
       <trigger>package-manager wrappers around wp such as bun run wp, pnpm run wp, npm run wp, yarn wp, vp run wp</trigger>
       <tool>Use the matching wp_* MCP tool first; otherwise run direct wp</tool>
     </row>
+    <row>
+      <trigger>running shell commands that produce large output (tests, git log, grep, build output, lint)</trigger>
+      <tool>ak_session_execute or ak_session_batch_execute</tool>
+    </row>
   </decision_table>
 
   <tools>
@@ -99,6 +103,15 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
       <trigger>wrangler tail, with-secrets -- wrangler tail, Cloudflare Worker logs</trigger>
       <forbidden>wrangler tail, with-secrets -- wrangler tail</forbidden>
       <usage>Use the wp_worker_tail MCP tool for Cloudflare Worker tail logs. The tool routes through the canonical with-secrets -- wrangler tail ... contract and returns bounded redacted output.</usage>
+    </tool>
+    <tool name="ak_session_execute">
+      <trigger>any shell command where output may exceed 2KB</trigger>
+      <benefit>indexes full output to session memory FTS5; returns compact summary; searchable later via ak_session_search</benefit>
+      <forbidden>raw Bash for large-output commands</forbidden>
+    </tool>
+    <tool name="ak_session_batch_execute">
+      <trigger>multiple commands + search queries in one shot</trigger>
+      <benefit>parallel execution, auto-index, search results in one round trip; primary replacement for ctx_batch_execute</benefit>
     </tool>
   </tools>
 
