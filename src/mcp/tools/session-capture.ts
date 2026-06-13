@@ -2,7 +2,8 @@ import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
 import { resolveSessionRepoHash } from '#session-memory/repo-hash'
-import { captureEvent, flushCapturedEvents } from '#session-memory/session'
+import { SessionMemorySessionStore } from '#session-memory/session.js'
+import { defaultSessionDbPath } from './session-restore.js'
 
 const inputSchema = z
   .object({
@@ -10,21 +11,27 @@ const inputSchema = z
     toolName: z.string().optional().default('manual'),
     sessionId: z.string().optional(),
     cwd: z.string().optional(),
+    sessionDbPath: z.string().optional(),
   })
   .strict()
 
 const outputSchema = z.object({
   captured: z.boolean(),
-  flushedEvents: z.number(),
+  eventId: z.string().optional(),
+  capturedEventCount: z.number(),
   toolName: z.string(),
   capturedLength: z.number(),
   truncated: z.boolean(),
 })
 
+function captureDisabled(): boolean {
+  return process.env.WEBPRESSO_SESSION_MEMORY === '0'
+}
+
 const tool: ToolDescriptor = {
   name: 'wp_session_capture',
   description:
-    'Manually capture content into session memory so it survives compaction and becomes recallable via wp_session_restore.',
+    'Manually capture typed continuity content into session memory so it survives compaction and becomes recallable via wp_session_restore.',
   inputSchema,
   outputSchema,
   annotations: {
@@ -39,24 +46,48 @@ const tool: ToolDescriptor = {
     const cwd = input.cwd ?? process.env['CLAUDE_PROJECT_DIR'] ?? process.cwd()
     const repoHash = resolveSessionRepoHash(cwd)
     const capturedContent = input.content.slice(0, 4096)
-    const captured = captureEvent({
-      repoHash,
-      event: {
-        sessionId: input.sessionId,
+    if (captureDisabled()) {
+      const payload = {
+        captured: false,
+        capturedEventCount: 0,
         toolName: input.toolName,
-        content: capturedContent,
-      },
-    })
-    const payload = {
-      captured,
-      flushedEvents: captured ? flushCapturedEvents(repoHash) : 0,
-      toolName: input.toolName,
-      capturedLength: capturedContent.length,
-      truncated: capturedContent.length !== input.content.length,
+        capturedLength: capturedContent.length,
+        truncated: capturedContent.length !== input.content.length,
+      }
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
+        structuredContent: payload,
+      }
     }
-    return {
-      content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
-      structuredContent: payload,
+
+    const store = new SessionMemorySessionStore(input.sessionDbPath ?? defaultSessionDbPath(cwd))
+    try {
+      const eventId = store.captureEvent({
+        repoHash,
+        ...(input.sessionId === undefined ? {} : { sessionId: input.sessionId }),
+        event: {
+          eventType: 'assistant_turn_summary',
+          toolName: input.toolName,
+          content: capturedContent,
+          summary: 'Manual session capture',
+          priority: 80,
+          metadata: { source: 'wp_session_capture' },
+        },
+      })
+      const payload = {
+        captured: true,
+        eventId,
+        capturedEventCount: 1,
+        toolName: input.toolName,
+        capturedLength: capturedContent.length,
+        truncated: capturedContent.length !== input.content.length,
+      }
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
+        structuredContent: payload,
+      }
+    } finally {
+      store.close()
     }
   },
 }

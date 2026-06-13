@@ -123,4 +123,35 @@ describe('dispatch', () => {
       hooks: [],
     })
   })
+
+  it('dispatches every managed continuity lifecycle hook command', async () => {
+    const hooksMap: HooksMap = {
+      SessionStart: [
+        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-sessionstart-routing' }] },
+      ],
+      PostToolUse: [{ hooks: [{ type: 'command', command: './node_modules/.bin/wp-post-tool' }] }],
+      UserPromptSubmit: [
+        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-guard-switch' }] },
+      ],
+      Stop: [{ hooks: [{ type: 'command', command: './node_modules/.bin/wp-stop-qa' }] }],
+      PreCompact: [
+        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-precompact-snapshot' }] },
+      ],
+    }
+
+    await expect(
+      Promise.all(
+        [
+          ['SessionStart', 'wp-sessionstart-routing'],
+          ['PostToolUse', 'wp-post-tool'],
+          ['UserPromptSubmit', 'wp-guard-switch'],
+          ['Stop', 'wp-stop-qa'],
+          ['PreCompact', 'wp-precompact-snapshot'],
+        ].map(async ([event, command]) => {
+          const result = await dispatch(hooksMap, { ...BASE_OPTIONS, event })
+          return result.hooks.some((hook) => hook.command.includes(command))
+        }),
+      ),
+    ).resolves.toStrictEqual([true, true, true, true, true])
+  })
 })

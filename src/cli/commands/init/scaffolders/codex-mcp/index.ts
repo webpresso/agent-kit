@@ -26,6 +26,7 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import type { MergeOptions, MergeResult } from '#cli/commands/init/merge'
 
@@ -237,11 +238,12 @@ export interface WebpressoInstallProbe {
  * Resolve the absolute path to webpresso's MCP entry on this machine. Probes
  * the locations consumers use to install webpresso, in order of stability:
  *
- *   1. Claude plugin install — `~/.claude/plugins/cache/webpresso/webpresso/`
+ *   1. the currently executing `@webpresso/agent-kit` package
+ *   2. Claude plugin install — `~/.claude/plugins/cache/.../agent-kit/`
  *      (path-stable; updated by Claude Code's plugin manager)
- *   2. bun global — `~/.bun/install/global/node_modules/@webpresso/webpresso/`
- *   3. pnpm global — `$(pnpm root -g)/@webpresso/webpresso/`
- *   4. npm global — `$(npm root -g)/@webpresso/webpresso/`
+ *   3. bun global — `~/.bun/install/global/node_modules/@webpresso/agent-kit/`
+ *   4. pnpm global — `$(pnpm root -g)/@webpresso/agent-kit/`
+ *   5. npm global — `$(npm root -g)/@webpresso/agent-kit/`
  *
  * Returns `null` when none of the candidates contain `src/mcp/cli.ts`. The
  * caller surfaces a clear error in that case rather than writing a broken
@@ -261,7 +263,8 @@ export function findWebpressoMcpEntry(probe: WebpressoInstallProbe = {}): string
 
 function defaultCandidates(probe: WebpressoInstallProbe): readonly string[] {
   const home = process.env.HOME || homedir()
-  const claudePlugin = join(home, '.claude', 'plugins', 'cache', 'webpresso', 'webpresso')
+  const packageRoot = currentAgentKitPackageRoot()
+  const claudePlugin = join(home, '.claude', 'plugins', 'cache', 'webpresso', 'agent-kit')
   const bunGlobal = join(
     home,
     '.bun',
@@ -269,16 +272,36 @@ function defaultCandidates(probe: WebpressoInstallProbe): readonly string[] {
     'global',
     'node_modules',
     '@webpresso',
-    'webpresso',
+    'agent-kit',
   )
   const pnpmRoot = (probe.pnpmGlobalRoot ?? probePnpmGlobalRoot)()
   const npmRoot = (probe.npmGlobalRoot ?? probeNpmGlobalRoot)()
   return [
+    packageRoot ?? '',
     claudePlugin,
     bunGlobal,
-    pnpmRoot ? join(pnpmRoot, '@webpresso', 'webpresso') : '',
-    npmRoot ? join(npmRoot, '@webpresso', 'webpresso') : '',
+    pnpmRoot ? join(pnpmRoot, '@webpresso', 'agent-kit') : '',
+    npmRoot ? join(npmRoot, '@webpresso', 'agent-kit') : '',
   ]
+}
+
+function currentAgentKitPackageRoot(): string | null {
+  let current = dirname(fileURLToPath(import.meta.url))
+  for (let depth = 0; depth < 12; depth += 1) {
+    const packagePath = join(current, 'package.json')
+    if (existsSync(packagePath)) {
+      try {
+        const pkg = JSON.parse(readFileSync(packagePath, 'utf8')) as { name?: unknown }
+        if (pkg.name === '@webpresso/agent-kit') return current
+      } catch {
+        return null
+      }
+    }
+    const parent = dirname(current)
+    if (parent === current) break
+    current = parent
+  }
+  return null
 }
 
 function probePnpmGlobalRoot(): string | null {

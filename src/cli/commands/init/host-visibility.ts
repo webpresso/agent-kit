@@ -33,6 +33,26 @@ export interface HostVisibilityAudit {
   readonly results: readonly HostSkillVisibility[]
 }
 
+export const SETUP_SURFACE_HOSTS = ['claude', 'codex', 'cursor', 'opencode'] as const
+export type SetupSurfaceHost = (typeof SETUP_SURFACE_HOSTS)[number]
+export type SetupSurfaceArtifactStatus = 'installed' | 'missing' | 'deferred'
+export type SetupSurfaceActiveStatus = 'managed' | 'plugin-bridge' | 'not-installed'
+export type SetupSurfaceSupportStatus = 'full' | 'degraded'
+
+export interface HostSetupSurfaceVisibility {
+  readonly host: SetupSurfaceHost
+  readonly artifact: SetupSurfaceArtifactStatus
+  readonly active: SetupSurfaceActiveStatus
+  readonly support: SetupSurfaceSupportStatus
+  readonly required: boolean
+  readonly ownership: string
+}
+
+export interface HostSetupSurfaceVisibilityInput {
+  readonly repoRoot: string
+  readonly packageRoot: string
+}
+
 export interface AuditHostSkillVisibilityInput {
   readonly repoRoot: string
   readonly hosts?: readonly AgentHost[]
@@ -156,4 +176,70 @@ export function summarizeHostVisibility(repoRoot: string, audit: HostVisibilityA
       result.status === 'not-visible' ? '✗' : result.status === 'visible-now' ? '✓' : '↻'
     return `  ${result.host}: ${marker} ${result.capability} ${result.status} (${detail})`
   })
+}
+
+function allExist(repoRoot: string, relativePaths: readonly string[]): boolean {
+  return relativePaths.every((relativePath) => existsSync(join(repoRoot, relativePath)))
+}
+
+export function auditHostSetupSurfaceVisibility(
+  input: HostSetupSurfaceVisibilityInput,
+): readonly HostSetupSurfaceVisibility[] {
+  const { repoRoot, packageRoot } = input
+  const opencodeBridgeInstalled = existsSync(
+    join(repoRoot, '.opencode', 'plugins', 'webpresso-hooks.js'),
+  )
+  return [
+    {
+      host: 'claude',
+      artifact: existsSync(join(packageRoot, '.claude-plugin', 'plugin.json'))
+        ? 'installed'
+        : 'missing',
+      active: existsSync(join(repoRoot, '.claude', 'settings.json')) ? 'managed' : 'not-installed',
+      support: 'full',
+      required: true,
+      ownership: 'plugin artifact owns MCP; active hooks setup-managed in .claude/settings.json',
+    },
+    {
+      host: 'codex',
+      artifact: allExist(packageRoot, [
+        '.codex-plugin/plugin.json',
+        'codex.mcp.json',
+        'hooks/hooks.json',
+      ])
+        ? 'installed'
+        : 'missing',
+      active: existsSync(join(repoRoot, '.codex', 'hooks.json')) ? 'managed' : 'not-installed',
+      support: 'full',
+      required: true,
+      ownership: 'hooks/hooks.json metadata; active hooks setup-managed in .codex/hooks.json',
+    },
+    {
+      host: 'cursor',
+      artifact: 'deferred',
+      active: existsSync(join(repoRoot, '.cursor', 'hooks.json')) ? 'managed' : 'not-installed',
+      support: 'degraded',
+      required: false,
+      ownership: 'project hook config only; no packaged plugin artifact is shipped',
+    },
+    {
+      host: 'opencode',
+      artifact: opencodeBridgeInstalled ? 'installed' : 'deferred',
+      active: opencodeBridgeInstalled ? 'plugin-bridge' : 'not-installed',
+      support: 'degraded',
+      required: false,
+      ownership: 'generated whole-file plugin bridge under .opencode/plugins/webpresso-hooks.js',
+    },
+  ]
+}
+
+export function summarizeHostSetupSurfaceVisibility(
+  input: HostSetupSurfaceVisibilityInput,
+): string[] {
+  return auditHostSetupSurfaceVisibility(input).map(
+    (surface) =>
+      `  ${surface.host}: artifact=${surface.artifact} active=${surface.active} ` +
+      `support=${surface.support} required=${surface.required ? 'yes' : 'no'} ` +
+      `(${surface.ownership})`,
+  )
 }

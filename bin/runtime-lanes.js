@@ -51,6 +51,7 @@ export const DIRECT_RUNTIME_BIN_ARGS = {
   'wp-stop-qa': ['hook', 'stop-qa'],
   'wp-guard-switch': ['hook', 'guard-switch'],
   'wp-sessionstart-routing': ['hook', 'sessionstart-routing'],
+  'wp-precompact-snapshot': ['hook', 'precompact-snapshot'],
   'wp-test-quality-check': ['hook', 'test-quality-check'],
   'wp-check-dev-link': ['hook', 'check-dev-link'],
 }

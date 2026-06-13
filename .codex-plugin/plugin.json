@@ -1,0 +1,32 @@
+{
+  "name": "agent-kit",
+  "version": "0.34.5",
+  "description": "Webpresso agent-kit: blueprints, skills, hooks, and MCP server",
+  "author": {
+    "name": "Webpresso",
+    "url": "https://github.com/webpresso"
+  },
+  "homepage": "https://github.com/webpresso/agent-kit#readme",
+  "repository": "https://github.com/webpresso/agent-kit",
+  "license": "Elastic-2.0",
+  "keywords": [
+    "agent",
+    "blueprint",
+    "mcp",
+    "skills",
+    "developer-tools"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./codex.mcp.json",
+  "hooks": "./hooks/hooks.json",
+  "interface": {
+    "displayName": "Webpresso agent-kit",
+    "shortDescription": "Blueprints, skills, hooks, and MCP tools.",
+    "developerName": "Webpresso",
+    "category": "Development",
+    "capabilities": [
+      "Read",
+      "Write"
+    ]
+  }
+}

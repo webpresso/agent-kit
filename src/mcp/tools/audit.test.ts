@@ -37,6 +37,10 @@ const agentsAuditMock = {
   auditAgents: vi.fn(),
 }
 
+const referenceParityMatrixMock = {
+  auditReferenceParityMatrix: vi.fn(),
+}
+
 const techDebtMock = {
   auditTechDebt: vi.fn(),
 }
@@ -77,6 +81,7 @@ vi.mock('#audit/repo-guardrails', () => repoGuardrailsMock)
 vi.mock('#audit/blueprint-readme-drift', () => blueprintReadmeDriftMock)
 vi.mock('#audit/blueprint-lifecycle-sql', () => blueprintLifecycleSqlMock)
 vi.mock('#audit/agents', () => agentsAuditMock)
+vi.mock('#audit/reference-parity-matrix', () => referenceParityMatrixMock)
 vi.mock('#audit/tech-debt', () => techDebtMock)
 vi.mock('#audit/ai-contracts', () => aiContractsMock)
 vi.mock('#audit/architecture-drift', () => architectureDriftMock)
@@ -118,6 +123,7 @@ beforeEach(() => {
     if (typeof fn === 'function' && 'mockReset' in fn) (fn as { mockReset: () => void }).mockReset()
   }
   agentsAuditMock.auditAgents.mockReset()
+  referenceParityMatrixMock.auditReferenceParityMatrix.mockReset()
   techDebtMock.auditTechDebt.mockReset()
   aiContractsMock.auditAiContracts.mockReset()
   architectureDriftMock.auditArchitectureDrift.mockReset()
@@ -176,6 +182,33 @@ describe('wp_audit tool', () => {
       const payload = parsePayload(result)
       expect(payload.passed).toBe(true)
       expect(payload.kind).toBe('agents')
+    })
+
+    it('reference-parity-matrix -> auditReferenceParityMatrix', async () => {
+      referenceParityMatrixMock.auditReferenceParityMatrix.mockReturnValue(passingAudit())
+      const result = await akAuditTool.handler({ kind: 'reference-parity-matrix' })
+      expect(referenceParityMatrixMock.auditReferenceParityMatrix).toHaveBeenCalledWith(
+        process.cwd(),
+        undefined,
+        { requireReleaseReady: undefined },
+      )
+      const payload = parsePayload(result)
+      expect(payload.passed).toBe(true)
+      expect(payload.kind).toBe('reference-parity-matrix')
+    })
+
+    it('passes strict through to reference parity release readiness', async () => {
+      referenceParityMatrixMock.auditReferenceParityMatrix.mockReturnValue(passingAudit())
+      await akAuditTool.handler({
+        kind: 'reference-parity-matrix',
+        cwd: '/repo',
+        strict: true,
+      })
+      expect(referenceParityMatrixMock.auditReferenceParityMatrix).toHaveBeenCalledWith(
+        '/repo',
+        undefined,
+        { requireReleaseReady: true },
+      )
     })
 
     it('blueprint-lifecycle -> auditBlueprintLifecycleSql (ephemeral projection)', async () => {

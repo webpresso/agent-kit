@@ -33,6 +33,10 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
   'catalog-drift': async (root) => (await import('#audit/repo-guardrails')).auditCatalogDrift(root),
   'package-surface': async (root) =>
     (await import('#audit/package-surface')).auditPackageSurface(root),
+  'reference-parity-matrix': async (root, options) =>
+    (await import('#audit/reference-parity-matrix')).auditReferenceParityMatrix(root, undefined, {
+      requireReleaseReady: options.strict,
+    }),
   'blueprint-readme-drift': async (root, options) =>
     (await import('#audit/blueprint-readme-drift')).auditBlueprintReadmeDrift(root, {
       fix: options.fix,
@@ -242,7 +246,10 @@ export function registerAuditCommand(cli: CAC): void {
     .option('--full', 'Print the full raw output instead of the default summary-first view')
     .option('--dist <dir>', 'Built Vite dist directory for bundle-budget')
     .option('--root <dir>', 'Repository root for repo guardrail audits')
-    .option('--strict', 'Zero-tolerance mode: all violations are errors (bucket-boundary)')
+    .option(
+      '--strict',
+      'Zero-tolerance mode: all violations are errors; reference-parity-matrix also requires release readiness',
+    )
     .option(
       '--changed-only',
       'Restrict to packages touched in git diff --name-only origin/main (bucket-boundary)',

@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { CAPABILITY_MATRIX } from './capability-matrix.js'
+import {
+  CAPABILITY_MATRIX,
+  REPLACEMENT_PARITY_CAPABILITY_CROSSWALK,
+  replacementParitySupportCeiling,
+  validateReplacementParityCapabilityCrosswalk,
+} from './capability-matrix.js'
+import { buildCursorHooksConfig } from './emitters/cursor.js'
+import { OPENCODE_HOOK_SUPPORT_BOUNDARY } from './emitters/opencode.js'
 import { HOOK_EVENT_NAMES, MANAGED_HOOK_EVENT_NAMES } from './ir.js'
 
 describe('CAPABILITY_MATRIX', () => {
@@ -46,10 +53,87 @@ describe('CAPABILITY_MATRIX', () => {
       cursor: 'unsupported',
     })
     expect(preCompact).toMatchObject({
-      claude: 'partial',
-      codex: 'partial',
+      claude: 'full',
+      codex: 'full',
       cursor: 'unsupported',
     })
+  })
+
+  it('pins Cursor emitted lifecycle support without claiming PreCompact parity', () => {
+    const config = buildCursorHooksConfig({
+      resolveBin: (name) => `./node_modules/.bin/${name}`,
+      matchers: { preToolUse: 'Bash|Write|Edit', postToolUse: 'Write|Edit' },
+    })
+
+    expect(Object.keys(config).sort()).toStrictEqual(
+      ['beforeSubmitPrompt', 'postToolUse', 'preToolUse', 'sessionStart', 'stop', 'version'].sort(),
+    )
+    expect(Object.hasOwn(config, 'preCompact')).toBe(false)
+
+    expect(CAPABILITY_MATRIX.find((c) => c.event === 'SessionStart')).toMatchObject({
+      cursor: 'full',
+    })
+    expect(CAPABILITY_MATRIX.find((c) => c.event === 'PreToolUse')).toMatchObject({
+      cursor: 'full',
+    })
+    expect(CAPABILITY_MATRIX.find((c) => c.event === 'PostToolUse')).toMatchObject({
+      cursor: 'full',
+    })
+    expect(CAPABILITY_MATRIX.find((c) => c.event === 'UserPromptSubmit')).toMatchObject({
+      cursor: 'partial',
+      notes: expect.stringContaining('beforeSubmitPrompt'),
+    })
+    expect(CAPABILITY_MATRIX.find((c) => c.event === 'Stop')).toMatchObject({
+      cursor: 'full',
+      notes: expect.stringContaining('Cursor emits stop'),
+    })
+    expect(CAPABILITY_MATRIX.find((c) => c.event === 'Stop')?.notes).not.toContain('afterShell')
+    expect(CAPABILITY_MATRIX.find((c) => c.event === 'PreCompact')).toMatchObject({
+      cursor: 'unsupported',
+      notes: expect.stringContaining('no PreCompact projection'),
+    })
+  })
+
+  it('pins OpenCode degraded boundary support without overclaiming managed parity', () => {
+    expect(OPENCODE_HOOK_SUPPORT_BOUNDARY.support).toBe('degraded')
+    expect(OPENCODE_HOOK_SUPPORT_BOUNDARY.fullManagedEvents).toStrictEqual([
+      'SessionStart',
+      'PreToolUse',
+      'PostToolUse',
+    ])
+    expect(OPENCODE_HOOK_SUPPORT_BOUNDARY.degradedNativeCallbacks).toStrictEqual([
+      'PermissionRequest',
+      'PreCompact',
+    ])
+    expect(OPENCODE_HOOK_SUPPORT_BOUNDARY.unsupportedManagedEvents).toStrictEqual([
+      'PostToolUseFailure',
+      'UserPromptSubmit',
+      'Stop',
+      'SubagentStart',
+      'SubagentStop',
+      'SessionEnd',
+      'PostCompact',
+    ])
+
+    for (const event of OPENCODE_HOOK_SUPPORT_BOUNDARY.fullManagedEvents) {
+      expect(CAPABILITY_MATRIX.find((c) => c.event === event)?.opencode).toBe('full')
+    }
+    for (const event of OPENCODE_HOOK_SUPPORT_BOUNDARY.degradedNativeCallbacks) {
+      expect(CAPABILITY_MATRIX.find((c) => c.event === event)?.opencode).toBe('partial')
+    }
+    for (const event of OPENCODE_HOOK_SUPPORT_BOUNDARY.unsupportedManagedEvents) {
+      expect(CAPABILITY_MATRIX.find((c) => c.event === event)?.opencode).toBe('unsupported')
+    }
+
+    expect(CAPABILITY_MATRIX.find((c) => c.event === 'SessionStart')?.notes).not.toContain(
+      'experimental.session.compacting',
+    )
+    expect(CAPABILITY_MATRIX.find((c) => c.event === 'PreCompact')?.notes).toContain(
+      'OpenCode experimental.session.compacting',
+    )
+    expect(CAPABILITY_MATRIX.find((c) => c.event === 'Stop')?.notes).toContain(
+      'OpenCode has no turn-end/stop lifecycle event',
+    )
   })
 
   it('all support levels are valid SupportLevel values', () => {
@@ -122,5 +206,65 @@ describe('CAPABILITY_MATRIX', () => {
     for (const event of extended) {
       expect(matrixEvents.has(event)).toStrictEqual(true)
     }
+  })
+
+  it('crosswalks replacement parity rows to canonical host lifecycle support ceilings', () => {
+    const lifecycleCapture = REPLACEMENT_PARITY_CAPABILITY_CROSSWALK.find(
+      (entry) => entry.capability === 'lifecycle capture',
+    )
+    const resumeInjection = REPLACEMENT_PARITY_CAPABILITY_CROSSWALK.find(
+      (entry) => entry.capability === 'resume injection',
+    )
+
+    expect(lifecycleCapture).toStrictEqual({
+      capability: 'lifecycle capture',
+      events: ['PostToolUse', 'UserPromptSubmit', 'Stop', 'PreCompact'],
+      hosts: ['claude', 'codex', 'cursor', 'opencode'],
+      notes:
+        'Host lifecycle capture is degraded until every covered host/event is full; store-only rows may remain scoped outside host parity.',
+    })
+    expect(resumeInjection).toStrictEqual({
+      capability: 'resume injection',
+      events: ['SessionStart'],
+      hosts: ['claude', 'codex', 'cursor', 'opencode'],
+      notes: 'Resume injection enters host context through SessionStart-compatible surfaces.',
+    })
+    expect(replacementParitySupportCeiling(lifecycleCapture!)).toBe('degraded')
+    expect(replacementParitySupportCeiling(resumeInjection!)).toBe('full')
+  })
+
+  it('rejects full replacement parity claims when any covered host/event is not full', () => {
+    const violations = validateReplacementParityCapabilityCrosswalk([
+      {
+        capability: 'lifecycle capture',
+        hostScope: 'Claude, Codex, Cursor, OpenCode',
+        supportLevel: 'full',
+      },
+      {
+        capability: 'resume injection',
+        hostScope: 'Claude, Codex, Cursor, OpenCode',
+        supportLevel: 'full',
+      },
+    ])
+
+    expect(violations).toEqual([
+      {
+        capability: 'lifecycle capture',
+        message:
+          'Replacement parity row "lifecycle capture" cannot claim full support because canonical host lifecycle support is degraded.',
+      },
+    ])
+  })
+
+  it('allows degraded replacement parity claims for partial, unmapped, or unsupported host/event coverage', () => {
+    expect(
+      validateReplacementParityCapabilityCrosswalk([
+        {
+          capability: 'host setup smoke',
+          hostScope: 'Claude, Codex, Cursor, OpenCode',
+          supportLevel: 'degraded',
+        },
+      ]),
+    ).toEqual([])
   })
 })

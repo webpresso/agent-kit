@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { scaffoldAgentRules } from './scaffold-agent-rules.js'
+import { WEBPRESSO_ROUTING_RULE_FILENAME, scaffoldAgentRules } from './scaffold-agent-rules.js'
 
 describe('scaffoldAgentRules', () => {
   let cwd: string
@@ -83,5 +83,18 @@ describe('scaffoldAgentRules', () => {
     const readmeResult = results.find((r) => r.targetPath === readmePath)
     expect(readmeResult?.action).toBe('overwritten')
     expect(readFileSync(readmePath, 'utf8')).toContain('wp rule new')
+  })
+  it('writes a concrete Cursor-projected webpresso routing rule from the shared instruction renderer', () => {
+    scaffoldAgentRules({ cwd })
+    const content = readFileSync(join(cwd, 'agent-rules', WEBPRESSO_ROUTING_RULE_FILENAME), 'utf8')
+
+    expect(content).toContain('<wp_instruction_surface host="cursor"')
+    expect(content).toContain(
+      'artifact="agent-rules/webpresso-routing.md -&gt; .cursor/rules/webpresso-routing.mdc"',
+    )
+    expect(content).toContain(
+      'wp_test, wp_e2e, wp_lint, wp_typecheck, wp_qa, wp_audit, wp_ci_act, wp_worker_tail',
+    )
+    expect(content).not.toContain('generic plugin')
   })
 })

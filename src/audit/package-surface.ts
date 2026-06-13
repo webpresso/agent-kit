@@ -189,7 +189,15 @@ interface SecretlintMessage {
   column?: number
 }
 
-export function auditPackageSurface(rootDirectory: string = process.cwd()): RepoAuditResult {
+interface PackageSurfaceAuditOptions {
+  readPackedEntry?: (packageRoot: string) => NpmPackDryRunEntry
+  runSecretlint?: (stageRoot: string, packageRoot: string) => unknown
+}
+
+export function auditPackageSurface(
+  rootDirectory: string = process.cwd(),
+  options: PackageSurfaceAuditOptions = {},
+): RepoAuditResult {
   const root = resolve(rootDirectory)
   const loadedContract = loadPackageSurfaceContract(root)
   const contract = loadedContract.contract
@@ -255,7 +263,7 @@ export function auditPackageSurface(rootDirectory: string = process.cwd()): Repo
     checked += auditReferenceConsumerFreshness(root, baselines, violations)
   }
 
-  checked += auditPackedTarballSurface(root, contract, violations)
+  checked += auditPackedTarballSurface(root, contract, violations, options)
 
   return {
     ok: violations.length === 0,
@@ -268,6 +276,7 @@ export function auditPackageSurface(rootDirectory: string = process.cwd()): Repo
 export function stagePublishableTarballSurface(
   rootDirectory: string,
   destinationDirectory: string,
+  options: PackageSurfaceAuditOptions = {},
 ): { packageCount: number; fileCount: number } {
   const root = resolve(rootDirectory)
   const destinationRoot = resolve(destinationDirectory)
@@ -277,7 +286,7 @@ export function stagePublishableTarballSurface(
   const packages = discoverPublishablePackages(root)
   let fileCount = 0
   for (const candidate of packages) {
-    const packEntry = readPackedEntry(candidate.packageRoot)
+    const packEntry = readPackedEntryForAudit(candidate.packageRoot, options)
     const packedFiles = Array.isArray(packEntry.files)
       ? packEntry.files.filter((item): item is PackedFileRecord => Boolean(item?.path))
       : []
@@ -332,6 +341,7 @@ function auditPackedTarballSurface(
   root: string,
   contract: PackageSurfaceContract,
   violations: RepoAuditViolation[],
+  options: PackageSurfaceAuditOptions,
 ): number {
   const packages = discoverPublishablePackages(root)
   if (packages.length === 0) return 0
@@ -357,7 +367,7 @@ function auditPackedTarballSurface(
   for (const candidate of packages) {
     let packEntry: NpmPackDryRunEntry
     try {
-      packEntry = readPackedEntry(candidate.packageRoot)
+      packEntry = readPackedEntryForAudit(candidate.packageRoot, options)
     } catch (error) {
       violations.push({
         file: relativePath(root, candidate.packageFile),
@@ -411,6 +421,7 @@ function auditPackedTarballSurface(
       allowedPathRules,
       allowedSecretlintMessageIds,
       deepScanExcludedPathPrefixes,
+      options,
       violations,
     )
   }
@@ -566,6 +577,7 @@ function auditPackedTarballSecrets(
   allowedPathRules: readonly MatchRule[],
   allowedMessageIds: ReadonlySet<string>,
   deepScanExcludedPathPrefixes: readonly string[],
+  options: PackageSurfaceAuditOptions,
   violations: RepoAuditViolation[],
 ): number {
   const packageRelativeRoot = relativePath(root, candidate.packageRoot)
@@ -583,7 +595,7 @@ function auditPackedTarballSecrets(
   const stageRoot = mkdtempSync(join(tmpdir(), 'wp-package-surface-pack-'))
   try {
     stagePackedFiles(root, stageRoot, candidate, secretlintCandidates)
-    const secretlintOutput = runSecretlint(stageRoot, candidate.packageRoot)
+    const secretlintOutput = runSecretlintForAudit(stageRoot, candidate.packageRoot, options)
     let checked = secretlintCandidates.length
     for (const message of normalizeSecretlintMessages(secretlintOutput)) {
       const absoluteFilePath = message.filePath
@@ -634,6 +646,13 @@ function discoverPublishablePackages(root: string): PackageCandidate[] {
   return packages
 }
 
+function readPackedEntryForAudit(
+  packageRoot: string,
+  options: PackageSurfaceAuditOptions,
+): NpmPackDryRunEntry {
+  return options.readPackedEntry?.(packageRoot) ?? readPackedEntry(packageRoot)
+}
+
 function readPackedEntry(packageRoot: string): NpmPackDryRunEntry {
   syncBlueprintMigrationSqlAssets(packageRoot)
   const raw = execFileSync('npm', ['pack', '--dry-run', '--json'], {
@@ -660,6 +679,14 @@ function stagePackedFiles(
     mkdirSync(dirname(destination), { recursive: true })
     copyFileSync(source, destination)
   }
+}
+
+function runSecretlintForAudit(
+  stageRoot: string,
+  packageRoot: string,
+  options: PackageSurfaceAuditOptions,
+): unknown {
+  return options.runSecretlint?.(stageRoot, packageRoot) ?? runSecretlint(stageRoot, packageRoot)
 }
 
 function runSecretlint(stageRoot: string, packageRoot: string): unknown {

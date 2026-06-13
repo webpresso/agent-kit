@@ -1,92 +1,88 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
-const mockSearch = vi.fn()
-const mockExecuteSandboxed = vi.fn()
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-vi.mock('#session-memory/native-runtime', () => ({
-  loadNativeSessionMemoryEngine: () => ({
-    executeSandboxed: mockExecuteSandboxed,
-  }),
-}))
+import sessionBatchExecuteTool from './_session-batch-execute.js'
+import sessionSearchTool from './session-search.js'
 
-vi.mock('#session-memory/store', () => ({
-  getStore: () => ({ search: mockSearch }),
-}))
+let tmpDir: string
+let previousIndexDb: string | undefined
 
-vi.mock('#session-memory/repo-hash', () => ({
-  resolveSessionRepoHash: () => 'repohash12345678',
-}))
+function payload(result: Awaited<ReturnType<typeof sessionBatchExecuteTool.handler>>) {
+  return result.structuredContent as {
+    passed: boolean
+    details: {
+      results: Array<{ label: string; exitCode: number; indexed: boolean; summary: string }>
+      queryHits?: Record<string, Array<{ content: string; source: string; rank: number }>>
+    }
+  }
+}
+
+beforeEach(() => {
+  tmpDir = mkdtempSync(join(tmpdir(), 'wp-session-batch-test-'))
+  previousIndexDb = process.env.WP_SESSION_MEMORY_INDEX_DB
+  process.env.WP_SESSION_MEMORY_INDEX_DB = join(tmpDir, 'index.sqlite')
+})
+
+afterEach(() => {
+  if (previousIndexDb === undefined) delete process.env.WP_SESSION_MEMORY_INDEX_DB
+  else process.env.WP_SESSION_MEMORY_INDEX_DB = previousIndexDb
+  rmSync(tmpDir, { recursive: true, force: true })
+})
 
 describe('wp_session_batch_execute', () => {
-  beforeEach(() => {
-    vi.resetModules()
-    mockSearch.mockReset()
-    mockExecuteSandboxed.mockReset()
-  })
-
-  it('runs multiple commands and aggregates query hits', async () => {
-    mockExecuteSandboxed
-      .mockResolvedValueOnce({ exitCode: 0, outputBytes: 3000, indexed: true, summary: 'one' })
-      .mockResolvedValueOnce({ exitCode: 0, outputBytes: 100, indexed: false, summary: 'two' })
-    mockSearch.mockReturnValue([
-      { content: 'shared result', source: 'cmd-a:4', rank: 1, tier: 'porter' },
-    ])
-
-    const tool = (await import('./_session-batch-execute.js')).default
-    const result = await tool.handler?.({
+  it('runs multiple commands and aggregates query hits from the shared TypeScript store', async () => {
+    const result = await sessionBatchExecuteTool.handler?.({
       commands: [
-        { label: 'cmd-a', command: 'seq 1 600' },
-        { label: 'cmd-b', command: 'echo ok' },
+        { label: 'cmd-a', command: 'printf "%s\\n" "shared batch sentinel alpha"' },
+        { label: 'cmd-b', command: 'printf "%s\\n" "shared batch sentinel beta"' },
       ],
-      queries: ['shared'],
+      queries: ['shared batch sentinel'],
       concurrency: 2,
       execute: true,
-      timeoutMs: 4567,
-      cwd: '/tmp/worktree-b',
+      timeoutMs: 5_000,
+      cwd: tmpDir,
     })
+    const data = payload(result)
 
-    expect(result?.structuredContent).toMatchObject({
+    expect(data).toMatchObject({
       passed: true,
       details: {
         results: [
-          { label: 'cmd-a', indexed: true },
-          { label: 'cmd-b', indexed: false },
+          { label: 'cmd-a', exitCode: 0, indexed: true },
+          { label: 'cmd-b', exitCode: 0, indexed: true },
         ],
-        queryHits: {
-          shared: [{ content: 'shared result' }],
-        },
       },
     })
-    expect(mockExecuteSandboxed).toHaveBeenNthCalledWith(
-      1,
-      expect.any(String),
-      'seq 1 600',
-      'cmd-a',
-      4567,
-      '/tmp/worktree-b',
-    )
+    expect(
+      data.details.queryHits?.['shared batch sentinel']?.map((hit) => hit.source).sort(),
+    ).toEqual(['cmd-a', 'cmd-b'])
+
+    const search = await sessionSearchTool.handler?.({
+      cwd: tmpDir,
+      query: 'shared batch sentinel beta',
+      sourceTypes: ['indexed_chunk'],
+      limit: 1,
+    })
+    expect(JSON.stringify(search.structuredContent)).toContain('shared batch sentinel beta')
   })
 
   it('surfaces failures when any command fails', async () => {
-    mockExecuteSandboxed.mockResolvedValue({
-      exitCode: 42,
-      outputBytes: 20,
-      indexed: false,
-      summary: 'bad',
-    })
-    const tool = (await import('./_session-batch-execute.js')).default
-    const result = await tool.handler?.({
+    const result = await sessionBatchExecuteTool.handler?.({
       commands: [{ label: 'cmd', command: 'exit 42' }],
       concurrency: 1,
       execute: true,
+      cwd: tmpDir,
     })
-    expect(result?.structuredContent).toMatchObject({ passed: false })
+    expect(result.isError).toBe(true)
+    expect(payload(result)).toMatchObject({ passed: false })
   })
 
   it('rejects duplicate labels in one batch', async () => {
-    const tool = (await import('./_session-batch-execute.js')).default
     await expect(
-      tool.handler?.({
+      sessionBatchExecuteTool.handler?.({
         commands: [
           { label: 'dup', command: 'echo one' },
           { label: 'dup', command: 'echo two' },
@@ -97,9 +93,9 @@ describe('wp_session_batch_execute', () => {
   })
 
   it('requires explicit execute=true before running shell commands', async () => {
-    const tool = (await import('./_session-batch-execute.js')).default
-    const result = await tool.handler?.({ commands: [{ label: 'cmd', command: 'echo nope' }] })
-    expect(mockExecuteSandboxed).not.toHaveBeenCalled()
-    expect(result?.structuredContent).toMatchObject({ passed: false })
+    const result = await sessionBatchExecuteTool.handler?.({
+      commands: [{ label: 'cmd', command: 'echo nope' }],
+    })
+    expect(payload(result)).toMatchObject({ passed: false })
   })
 })

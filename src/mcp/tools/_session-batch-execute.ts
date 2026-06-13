@@ -1,25 +1,13 @@
-import { mkdirSync } from 'node:fs'
-import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
 import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
-import { resolveSessionRepoHash } from '#session-memory/repo-hash'
-import { loadNativeSessionMemoryEngine } from '#session-memory/native-runtime'
-import { getStore } from '#session-memory/store'
+import { runSessionCommand, searchSessionCommandOutput } from './_session-command.js'
+import { defaultIndexDbPath } from './session-restore.js'
 import type { SearchHit } from '#session-memory/types'
 
-const DEFAULT_SEARCH_LIMIT = 10
 const MAX_CONCURRENCY = 8
 const DEFAULT_TIMEOUT_MS = 30_000
-
-function resolveSessionDbPath(cwd?: string): string {
-  const repoHash = resolveSessionRepoHash(cwd)
-  const dbDir = join(homedir(), '.webpresso', 'sessions')
-  mkdirSync(dbDir, { recursive: true })
-  return join(dbDir, `${repoHash}.db`)
-}
 
 async function mapWithConcurrency<T, R>(
   items: readonly T[],
@@ -40,26 +28,6 @@ async function mapWithConcurrency<T, R>(
     Array.from({ length: Math.max(1, Math.min(concurrency, items.length)) }, () => runOne()),
   )
   return results
-}
-
-function rankHits(hits: readonly SearchHit[]): SearchHit[] {
-  return [...hits].sort((left, right) => left.rank - right.rank)
-}
-
-function searchIndexedLabels(
-  store: ReturnType<typeof getStore>,
-  labels: readonly string[],
-  query: string,
-): SearchHit[] {
-  const merged = labels.flatMap(
-    (label) => store.search({ query, limit: DEFAULT_SEARCH_LIMIT, source: label }) as SearchHit[],
-  )
-  const deduped = new Map<string, SearchHit>()
-  for (const hit of rankHits(merged)) {
-    const key = `${hit.source}\u0000${hit.content}`
-    if (!deduped.has(key)) deduped.set(key, hit)
-  }
-  return rankHits([...deduped.values()]).slice(0, DEFAULT_SEARCH_LIMIT)
 }
 
 const inputSchema = z
@@ -116,7 +84,7 @@ const outputSchema = createSummaryOutputSchema({
 const tool: ToolDescriptor = {
   name: 'wp_session_batch_execute',
   description:
-    'Run multiple shell commands and sandbox large outputs through the built-in native session-memory engine, then optionally search the indexed results.',
+    'Run multiple shell commands and index bounded outputs into the local session-memory store, then optionally search the indexed results.',
   inputSchema,
   outputSchema,
   annotations: {
@@ -165,39 +133,31 @@ const tool: ToolDescriptor = {
       )
     }
     try {
-      const dbPath = resolveSessionDbPath(effectiveCwd)
-      mkdirSync(dirname(dbPath), { recursive: true })
-      const runtime = loadNativeSessionMemoryEngine()
+      const dbPath = defaultIndexDbPath(effectiveCwd)
       const results = await mapWithConcurrency(
         input.commands,
         input.concurrency,
-        async ({ label, command }) => {
-          const result = await runtime.executeSandboxed(
-            dbPath,
+        async ({ label, command }) =>
+          runSessionCommand({
             command,
             label,
-            input.timeoutMs,
-            effectiveCwd,
-          )
-          return {
-            label,
-            exitCode: result.exitCode,
-            outputBytes: result.outputBytes,
-            indexed: result.indexed,
-            summary: result.summary,
-          }
-        },
+            timeoutMs: input.timeoutMs,
+            cwd: effectiveCwd,
+            dbPath,
+          }),
       )
 
       let queryHits: Record<string, SearchHit[]> | undefined
       if (input.queries && input.queries.length > 0) {
-        const store = getStore(dbPath)
         const indexedLabels = results
           .filter((result) => result.indexed)
           .map((result) => result.label)
         if (indexedLabels.length > 0) {
           queryHits = Object.fromEntries(
-            input.queries.map((query) => [query, searchIndexedLabels(store, indexedLabels, query)]),
+            input.queries.map((query) => [
+              query,
+              searchSessionCommandOutput(dbPath, indexedLabels, query),
+            ]),
           )
         }
       }
