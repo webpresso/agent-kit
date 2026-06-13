@@ -42,7 +42,6 @@ const FRONTMATTER_OPTIONAL_TYPES: Set<DocType> = new Set(['guide', 'research', '
 const DEFAULT_PATTERNS = [
   'docs/**/*.md',
   '.agent/**/*.md',
-  '.windsurf/**/*.md',
   'webpresso/blueprints/**/*.md',
   'webpresso/tech-debt/**/*.md',
   'CLAUDE.md',

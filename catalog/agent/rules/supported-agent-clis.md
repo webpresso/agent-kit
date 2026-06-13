@@ -46,7 +46,7 @@ Tier 2 requirements:
 
 ## Tier 3 — not supported
 
-Any other agent CLI (Aider, Gemini CLI, custom tools).
+Any other agent CLI (Aider, custom tools).
 Plans and docs MUST NOT introduce Tier 3 CLIs without first promoting them via
 this rule. Adding a new tier-3 CLI is a separate decision, not an in-band scope
 expansion.

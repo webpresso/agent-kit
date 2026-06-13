@@ -476,7 +476,7 @@ describe('symlinker', () => {
       expect(existsSync(join(root, '.consumer-b/commands/verify.md'))).toBe(true)
     })
 
-    it('symlinker claude — syncAll does NOT write to .claude/, .cursor/, .windsurf/, .opencode/', () => {
+    it('symlinker claude — syncAll does NOT write to .claude/, .cursor/, .opencode/', () => {
       // Verification gate: no primary-IDE writes after slimming.
       writeFile(join(root, '.agent/commands/audit.md'))
       writeFile(join(root, '.agent/skills/pll'), '# pll')
@@ -485,7 +485,6 @@ describe('symlinker', () => {
 
       expect(existsSync(join(root, '.claude'))).toBe(false)
       expect(existsSync(join(root, '.cursor'))).toBe(false)
-      expect(existsSync(join(root, '.windsurf'))).toBe(false)
       expect(existsSync(join(root, '.opencode'))).toBe(false)
     })
   })
@@ -739,16 +738,11 @@ describe('symlinker', () => {
       '.github/workflows/ci.yml',
       'apps/scripts/src/symlinker.ts',
       '.claude/settings.json',
-      '.windsurf/rules/quality-logs.md',
       'README.md',
-      '.gemini/commands/config.json',
-      '.gemini/settings.toml',
       // Primary IDEs removed from symlinker — handled by native channels.
       '.claude/commands/audit.md',
       '.claude/commands/verify.md',
       '.cursor/commands/audit.md',
-      '.windsurf/commands/soa.md',
-      '.windsurf/commands/brainstorm.md',
       '.claude/skills/debugging/SKILL.md',
       '.opencode/commands/verify.md',
       '.opencode/commands/pll.md',

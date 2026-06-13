@@ -42,7 +42,6 @@ export interface ScaffoldAgentSkillsResult {
 const SKILL_IGNORE_PATTERNS = [
   '.agent/skills/',
   '.cursor/skills/',
-  '.windsurf/skills/',
   '.claude/skills/',
   '.agents/skills/',
 ] as const

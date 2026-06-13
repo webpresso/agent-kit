@@ -138,11 +138,9 @@ const DEFAULT_FORBIDDEN_TARBALL_PATH_PATTERNS = [
   '.claude/',
   '.codex/',
   '.cursor/',
-  '.gemini/',
   '.omc/',
   '.omx/',
   '.opencode/',
-  '.windsurf/',
   'docs/research/',
 ] as const
 const DEFAULT_FORBIDDEN_TARBALL_CONTENT_PATTERNS = [

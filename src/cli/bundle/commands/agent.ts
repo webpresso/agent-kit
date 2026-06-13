@@ -52,11 +52,6 @@ export const agentCommands = {
     tph: placeholderCommand(SCOPE, 'tph', 'Run the TPH audit'),
     'tph-e2e': placeholderCommand(SCOPE, 'tph-e2e', 'Run the TPH E2E audit'),
   }),
-  'cursor-windsurf-sync': placeholderCommand(
-    SCOPE,
-    'cursor-windsurf-sync',
-    'Copy agent skills to .cursor/rules/ and .windsurf/skills/',
-  ),
   dev: placeholderCommand(SCOPE, 'dev', 'Run a manifest-backed development target'),
   docs: placeholderGroup(SCOPE, 'docs', 'Documentation tooling', {
     lint: placeholderCommand(SCOPE, 'lint', 'Lint blueprint documentation'),

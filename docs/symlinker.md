@@ -7,7 +7,7 @@ last_updated: '2026-06-13'
 
 The symlinker keeps per-IDE command/skill surfaces in sync with a canonical
 `.agent/` source of truth. It ships defaults for Claude Code, Cursor,
-Windsurf, OpenCode, Codex, and Amp, and is designed so new consumers plug
+OpenCode, Codex, and Amp, and is designed so new consumers plug
 in via configuration.
 
 ## Why
@@ -30,7 +30,6 @@ implemented it with compatibility fallbacks into `.claude/skills/` and
 - **Cursor:** `.cursor/commands/*.md`. Cursor's skills-analogous surface
   is `.cursor/rules/*.mdc` (always-applied rules, different semantics) —
   not a target for webpresso skills.
-- **Windsurf:** `.windsurf/commands/*.md`. Same story as Cursor for rules.
 
 Agent-kit now uses **one primary skill channel per host**. Claude Code and
 Codex get reusable webpresso skills through their native plugin channels;
@@ -55,7 +54,7 @@ For each markdown file at `.agent/commands/<name>.md` or
 symlink** at each consumer's command directory pointing back at the
 `.agent/` source. Example: `.claude/commands/<name>.md` →
 `../../.agent/commands/<name>.md`. Same pattern for `.cursor/commands/`,
-`.windsurf/commands/`, and `.opencode/commands/`.
+`.opencode/commands`.
 
 ### Skill symlinks — plugin-first, host-gated
 
@@ -159,7 +158,6 @@ export const DEFAULT_UNIFIED_CONSUMERS: readonly UnifiedConsumerConfig[] = [
   { id: 'agent-rules', dir: '.agent/rules', acceptsKind: 'rule', strategy: 'symlink' },
   { id: 'agent-skills', dir: '.agent/skills', acceptsKind: 'skill', strategy: 'symlink' },
   { id: 'cursor-rules', dir: '.cursor/rules', acceptsKind: 'rule', strategy: 'copy' },
-  { id: 'windsurf-skills', dir: '.windsurf/skills', acceptsKind: 'skill', strategy: 'copy' },
   { id: 'claude-rules', dir: '.claude/rules', acceptsKind: 'rule', strategy: 'symlink' },
   { id: 'opencode-skills', dir: '.opencode/skills', acceptsKind: 'skill', strategy: 'symlink', host: 'opencode' },
 ]

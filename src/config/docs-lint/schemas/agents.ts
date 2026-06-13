@@ -27,7 +27,7 @@ export const agentsSections = [
 ]
 
 /**
- * Frontmatter schema for agent entry points (CLAUDE.md, GEMINI.md)
+ * Frontmatter schema for agent entry points (CLAUDE.md).
  * These are pointer files and have lighter validation.
  */
 export const agentEntryFrontmatter = baseFrontmatter.extend({

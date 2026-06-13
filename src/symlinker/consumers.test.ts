@@ -71,10 +71,10 @@ describe('Codex consumer contract', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Claude + Gemini consumer contracts (regression guards)
+// Claude consumer contracts (regression guards)
 // ---------------------------------------------------------------------------
 
-describe('Claude + Gemini consumer contracts', () => {
+describe('Claude consumer contracts', () => {
   it('DEFAULT_UNIFIED_CONSUMERS maps claude-rules to .claude/rules but does NOT project claude skills', () => {
     const claudeRules = DEFAULT_UNIFIED_CONSUMERS.find((c) => c.id === 'claude-rules')
     expect(claudeRules?.dir).toStrictEqual('.claude/rules')
@@ -90,10 +90,6 @@ describe('Claude + Gemini consumer contracts', () => {
     expect(fallback?.pluginHost).toBe(true)
   })
 
-  it('DEFAULT_UNIFIED_CONSUMERS does not include gemini-commands', () => {
-    const geminiEntry = DEFAULT_UNIFIED_CONSUMERS.find((c) => c.id === 'gemini-commands')
-    expect(geminiEntry).toStrictEqual(undefined)
-  })
 })
 
 // ---------------------------------------------------------------------------

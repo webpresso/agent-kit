@@ -134,22 +134,6 @@ describe('auditToolchainIsolation', () => {
     expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 })
   })
 
-  it('skips generated .windsurf surfaces during the package walk', () => {
-    writePackage(root, {
-      scripts: { lint: 'wp lint' },
-      devDependencies: { '@webpresso/agent-kit': 'latest' },
-    })
-    mkdirSync(join(root, '.windsurf', 'skills', 'tanstack-query', 'templates'), {
-      recursive: true,
-    })
-    writePackage(join(root, '.windsurf', 'skills', 'tanstack-query', 'templates'), {
-      scripts: { build: 'vite build' },
-      devDependencies: { vite: '^8.0.0' },
-    })
-
-    expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 })
-  })
-
   it('skips generated sibling _worktrees scratch during the package walk', () => {
     writePackage(root, {
       scripts: { lint: 'wp lint' },

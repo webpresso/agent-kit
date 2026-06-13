@@ -6,7 +6,7 @@
  * directory and the relative prefix used when creating symlinks from that
  * directory back into `.agent/`.
  *
- * Primary IDEs (Claude Code, Codex, Cursor, Windsurf, OpenCode) are handled by
+ * Primary IDEs (Claude Code, Codex, Cursor, OpenCode) are handled by
  * their documented native surfaces. Skill delivery is **one channel per host**:
  *   - Claude Code skills: the Claude Code **plugin** (`agent-kit@webpresso`).
  *     `.claude/skills/` is NOT projected for Claude — that would double-show
@@ -22,8 +22,7 @@
  *     OpenCode also reads `.claude/skills/` and `.agents/skills/` as fallbacks,
  *     but agent-kit projects only the primary `.opencode/skills/` so the same
  *     skill is not surfaced twice.
- *   - Cursor / Windsurf: webpresso-localskills-distribution (localskills.sh)
- *     plus copied rules/skills below where the tools need project files.
+ *   - Cursor: copied rule files where Cursor needs project files.
  *
  * Skill-dir projection is **host-gated** via `selectUnifiedConsumers(hosts)`:
  * a consumer bound to a host is included only when that host is in
@@ -118,7 +117,7 @@ export interface UnifiedConsumerConfig {
    * Agent host this consumer's directory belongs to. When set, the consumer is
    * projected only if the host is selected (see `selectUnifiedConsumers`).
    * Omitted for host-agnostic surfaces (the canonical `.agent/` SSOT, Cursor
-   * rules, Windsurf skills) which always project.
+   * rules) which always project.
    */
   readonly host?: AgentHostName
   /**
@@ -161,7 +160,6 @@ export function unifiedRuleFilename(consumer: UnifiedConsumerConfig, slug: strin
  * `selectUnifiedConsumers(hosts)`:
  *   - `.agent/{rules,skills}/` (working dir, SSOT): symlink, always
  *   - `.cursor/rules/`: copy, always (Cursor follows symlinks unreliably)
- *   - `.windsurf/skills/`: copy, always
  *   - `.claude/rules/`: symlink, always (rules are not plugin-delivered)
  *   - `.opencode/skills/`: symlink, host `opencode` (OpenCode's primary root)
  *
@@ -182,8 +180,6 @@ export const DEFAULT_UNIFIED_CONSUMERS: readonly UnifiedConsumerConfig[] = [
     strategy: 'copy',
     ruleExtension: '.mdc',
   },
-  // Windsurf: skills only, copy
-  { id: 'windsurf-skills', dir: '.windsurf/skills', acceptsKind: 'skill', strategy: 'copy' },
   // Claude: rules are scaffolded to .claude/rules; skills come from the plugin.
   { id: 'claude-rules', dir: '.claude/rules', acceptsKind: 'rule', strategy: 'symlink' },
   // OpenCode: skills via its primary `.opencode/skills/` root (host-gated).

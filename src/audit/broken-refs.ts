@@ -43,8 +43,6 @@ const GENERATED_PATH_PATTERNS = [
   /^\.claude\/skills\//,
   /^\.agents\/skills\//,
   /^\.cursor\/rules\//,
-  /^\.gemini\/commands\//,
-  /^\.windsurf\/skills\//,
   /^\.opencode\/commands\//,
   /^node_modules\//,
 ]

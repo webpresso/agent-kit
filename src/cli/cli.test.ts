@@ -158,13 +158,6 @@ describe('wp root command surface', () => {
     expect(result.stderr.join('\n').toLowerCase()).toContain('unknown command')
   })
 
-  it('rejects legacy `wp cursor-windsurf-sync` with unknown command error', async () => {
-    const result = await runAk(['cursor-windsurf-sync'])
-
-    expect(result.code).toBe(1)
-    expect(result.stderr.join('\n').toLowerCase()).toContain('unknown command')
-  })
-
   it('exposes `wp sync` in help', async () => {
     const result = await runAk(['--help'])
 

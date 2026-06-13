@@ -2,7 +2,7 @@
 
 This directory holds consumer-owned **agent rules** — the canonical source
 of behavioural guidelines that get projected into per-tool surfaces
-(`.agent/rules/`, `.cursor/rules/`, `.windsurf/rules/`, etc.) by
+(`.agent/rules/`, `.cursor/rules/`, etc.) by
 `wp sync`.
 
 ## Authoring

@@ -39,17 +39,17 @@ in git, editable, divergence-allowed.
 ### Layer 3 — IDE-derived surfaces (regenerable)
 
 **Location:** `.claude/rules/`, `.claude/skills/`, `.cursor/rules/`,
-`.windsurf/skills/`, `.gemini/commands/`, `.agents/skills/`
+`.agents/skills/`
 
 Generated from `.agent/` by **`wp compile`** (v0.15+):
 
 1. `wp compile` calls `flattenAgentDir('.agent/')` to build a `.rulesync/`-shaped
    directory, then delegates to [rulesync](https://github.com/dyoshikawa/rulesync)
-   (`rulesync generate --targets claude,codex,cursor,gemini,opencode,windsurf`) to
+   (`rulesync generate --targets claude,codex,cursor,opencode`) to
    emit per-IDE surfaces. Agent-kit does not reimplement rulesync's emitters.
 2. Four **plugin manifests** are also emitted and committed (not gitignored):
    `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`,
-   `.cursor-plugin/plugin.json`, `gemini-extension.json`. These are ~30-line JSON
+   `.cursor-plugin/plugin.json`. These are ~30-line JSON
    files that allow IDE plugin marketplaces to install skills without file-writing.
 3. The **AGENTS.md merger** runs after compilation, writing the repo-root `AGENTS.md`
    from the layered sources in `.agent/memory/`.
@@ -123,8 +123,7 @@ surface split into three bands:
   any Node/Bun repo. These paths must not import `@webpresso/*` or assume
   `webpresso/` directories.
 - **Optional integrations:** tool-specific generated surfaces such as
-  `.claude/`, `.cursor/`, `.windsurf/`, `.opencode/`, `.agents/skills/`,
-  and `.gemini/`. They are derived from `.agent/` and can be skipped by
+  `.claude/`, `.cursor/`, `.opencode/`, and `.agents/skills/`. They are derived from `.agent/` and can be skipped by
   consumers that do not use a given tool.
 - **Optional runtime adapters:** OMX/team/pll execution details belong behind
   a future `webpresso-omx` seam, not in the public-core mental model.
@@ -162,7 +161,7 @@ Two alternatives fail for specific reasons:
    both.
 
 2. **Symlink `node_modules/` straight into `.claude/`** — breaks the
-   moment a second IDE (Gemini) needs a different file format. The
+   moment another supported host needs a different file format. The
    TOML transform isn't a symlink; it's a build step. Once one IDE
    needs a transform, you need a canonical source (`.agent/`) to
    transform *from*.

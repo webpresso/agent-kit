@@ -107,7 +107,6 @@ describe('agent-kit CLI bundles', () => {
       'audit tech-debt',
       'audit tph',
       'audit tph-e2e',
-      'cursor-windsurf-sync',
       'dev',
       'docs',
       'docs lint',

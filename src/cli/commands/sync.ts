@@ -90,7 +90,6 @@ export function isUnmaterializedAgentKitSourceWorktree(consumer: ConsumerContext
     '.claude/skills',
     '.agents/skills',
     '.cursor/rules',
-    '.windsurf/skills',
   ]
 
   return requiredPaths.every((relativePath) => !existsSync(join(consumer.repoRoot, relativePath)))

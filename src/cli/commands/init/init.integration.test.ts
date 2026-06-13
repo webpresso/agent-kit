@@ -616,8 +616,6 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     expect(existsSync(join(repo, '.claude', 'skills'))).toBe(false)
     // .cursor/rules now hosts copied rules (.mdc)
     expect(existsSync(join(repo, '.cursor', 'rules'))).toBe(true)
-    // .windsurf/skills now hosts copied skills
-    expect(existsSync(join(repo, '.windsurf', 'skills'))).toBe(true)
     // agent-hooks scaffolder writes hook config
     expect(existsSync(join(repo, '.claude', 'settings.json'))).toBe(true)
     expect(existsSync(join(repo, '.codex', 'hooks.json'))).toBe(true)

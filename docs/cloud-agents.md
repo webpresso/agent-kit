@@ -6,7 +6,7 @@ last_updated: 2026-05-11
 
 # Cloud agents and the blueprint structured store
 
-Cloud agents (Claude Code Routines, Codex web, Gemini web, OpenCode cloud, etc.) get canonical
+Cloud agents (Claude Code Routines, Codex web, OpenCode cloud, etc.) get canonical
 state for free — `blueprints/` and `tech-debt/` markdown is committed.
 
 ## Setup for cloud agents

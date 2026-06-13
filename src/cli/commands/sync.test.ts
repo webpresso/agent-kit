@@ -75,7 +75,6 @@ describe('runUnifiedSync (sync command core)', () => {
     runUnifiedSync({ catalogDir, consumerRoot, kinds: ['rule'] })
 
     expect(existsSync(join(consumerRoot, '.cursor', 'rules', 'r.mdc'))).toBe(true)
-    expect(existsSync(join(consumerRoot, '.windsurf', 'skills', 'sk'))).toBe(false)
     expect(existsSync(join(consumerRoot, '.agents', 'skills', 'sk'))).toBe(false)
   })
 

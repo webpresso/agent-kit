@@ -119,7 +119,7 @@ describe('runUnifiedSync', () => {
     expect(existsSync(join(consumerRoot, '.codex', 'agents', 'mine.md'))).toBe(false)
   })
 
-  it('projects a consumer skill dir to windsurf (copy) and opencode (symlink), but NOT plugin-host dirs', () => {
+  it('projects a consumer skill dir to opencode (symlink), but NOT plugin-host dirs', () => {
     writeFile(
       join(consumerRoot, 'agent-skills', 'mine', 'SKILL.md'),
       RULE_FRONTMATTER.replace('SLUG', 'mine').replace('type: rule', 'type: skill'),
@@ -133,12 +133,6 @@ describe('runUnifiedSync', () => {
     expect(isSymlink(opencodeDir)).toBe(true)
     expect(existsSync(join(opencodeDir, 'SKILL.md'))).toBe(true)
     expect(readFileSync(join(opencodeDir, 'asset.txt'), 'utf8')).toBe('hello')
-
-    // .windsurf/skills/mine — host-agnostic, copied dir
-    const wsDir = join(consumerRoot, '.windsurf', 'skills', 'mine')
-    expect(existsSync(wsDir)).toBe(true)
-    expect(isSymlink(wsDir)).toBe(false)
-    expect(readFileSync(join(wsDir, 'asset.txt'), 'utf8')).toBe('hello')
 
     // Plugin-host skill dirs are NOT projected (skills come from the plugin).
     expect(existsSync(join(consumerRoot, '.claude', 'skills', 'mine'))).toBe(false)
@@ -219,7 +213,6 @@ describe('runUnifiedSync', () => {
     // Rule projected
     expect(existsSync(join(consumerRoot, '.cursor', 'rules', 'r.mdc'))).toBe(true)
     // Skill NOT projected (filtered out)
-    expect(existsSync(join(consumerRoot, '.windsurf', 'skills', 's'))).toBe(false)
     expect(existsSync(join(consumerRoot, '.claude', 'skills', 's'))).toBe(false)
     expect(existsSync(join(consumerRoot, '.agents', 'skills', 's'))).toBe(false)
   })

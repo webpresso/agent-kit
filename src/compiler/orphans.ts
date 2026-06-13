@@ -1,14 +1,13 @@
 import { existsSync, readdirSync, readlinkSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 
-const GENERATED_SKILL_DIRS = ['.claude/skills', '.windsurf/skills', '.agents/skills'] as const
+const GENERATED_SKILL_DIRS = ['.claude/skills', '.agents/skills'] as const
 
 /**
  * Skill dirs agent-kit projects (by symlink) for specific hosts. When a host
  * moves to plugin-based delivery (Claude, Codex) or is no longer selected, its
  * skill dir stops being an active projection target and any leftover symlinks
  * from a previous `wp setup` must be pruned so skills are not double-shown.
- * `.windsurf/skills` is excluded — it is a host-agnostic copy, not a symlink.
  */
 const PRUNABLE_SKILL_DIRS = ['.claude/skills', '.agents/skills', '.opencode/skills'] as const
 

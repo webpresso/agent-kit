@@ -119,7 +119,7 @@ Principle (forced by F3): a selected host with a plugin channel contributes
 
 Remove the `claude-skills` consumer (`src/symlinker/consumers.ts:145`) from
 `DEFAULT_UNIFIED_CONSUMERS`. Make the **skill** consumers
-(`portable-skills`→`.agents/skills`, `windsurf-skills`, new
+(`portable-skills`→`.agents/skills`, new
 `opencode-skills`→`.opencode/skills`) filtered by `hosts.selected` so a selected
 plugin host (claude, codex) contributes **no** skill-dir consumer, and
 `.agents/skills` is contributed only when a host that needs it (amp, or
