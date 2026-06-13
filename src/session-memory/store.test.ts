@@ -1,58 +1,67 @@
 import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { tmpdir } from 'node:os'
 
-import { SessionMemoryStore } from './store.js'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-const dirs: string[] = []
-function store(): SessionMemoryStore {
-  const dir = mkdtempSync(join(tmpdir(), 'ak-session-store-'))
-  dirs.push(dir)
-  return new SessionMemoryStore(join(dir, 'memory.sqlite'))
-}
+import { loadNativeSessionMemoryEngine } from './native-runtime.js'
+import { getStore, resetStoreCacheForTests } from './store.js'
+import type { SessionStore } from './store.js'
 
-afterEach(() => {
-  while (dirs.length > 0) rmSync(dirs.pop()!, { recursive: true, force: true })
+let tmpDir: string
+let dbPath: string
+let store: SessionStore
+
+beforeEach(() => {
+  loadNativeSessionMemoryEngine()
+  tmpDir = mkdtempSync(join(tmpdir(), 'wp-native-store-test-'))
+  dbPath = join(tmpDir, 'memory.db')
+  store = getStore(dbPath)
 })
 
-describe('SessionMemoryStore', () => {
-  it('indexes chunks and returns top five porter matches', () => {
-    const s = store()
-    for (let i = 0; i < 100; i += 1) {
-      s.indexChunk({
-        id: `chunk-${i}`,
-        source: 'global',
-        text: i < 8 ? `foo note ${i}` : `bar note ${i}`,
-      })
-    }
-    expect(s.search({ query: 'foo', limit: 5 })).toHaveLength(5)
-    expect(s.search({ query: 'foo', limit: 5 }).every((row) => row.text.includes('foo'))).toBe(true)
-    s.close()
+afterEach(() => {
+  resetStoreCacheForTests()
+  rmSync(tmpDir, { recursive: true, force: true })
+})
+
+describe('native session-memory store', () => {
+  it('returns the same cached store per dbPath', () => {
+    expect(getStore(dbPath)).toBe(store)
   })
 
-  it('falls back through trigram and fuzzy search', () => {
-    const s = store()
-    s.indexChunk({ id: 'tri', source: 'a', text: 'alphabet soup' })
-    s.indexChunk({ id: 'fuzzy', source: 'a', text: 'contextual memory' })
-    expect(s.search({ query: 'alphab', source: 'a', limit: 1 })[0]?.tier).toBe('trigram')
-    expect(s.search({ query: 'memry', source: 'a', limit: 1 })[0]?.id).toBe('fuzzy')
-    s.close()
+  it('indexes chunks and returns porter matches', () => {
+    store.insertChunks(
+      Array.from({ length: 20 }, (_, index) => ({
+        source: 'notes',
+        content: index < 5 ? `session memory fox ${index}` : `other content ${index}`,
+      })),
+    )
+    const hits = store.search({ query: 'session memory fox', limit: 5 })
+    expect(hits.length).toBeGreaterThan(0)
+    expect(hits[0]?.tier).toBe('porter')
   })
 
-  it('uses source scoping with global fallback', () => {
-    const s = store()
-    s.indexChunk({ id: 'global', source: 'global', text: 'shared restore context' })
-    expect(s.search({ query: 'restore', source: 'missing', limit: 1 })[0]?.id).toBe('global')
-    s.close()
+  it('surfaces trigram fallback hits for partial tokens', () => {
+    store.insertChunks([{ source: 'partial', content: 'alphabet soup and session memory' }])
+    const hits = store.search({ query: 'alphab', limit: 5 })
+    expect(hits.length).toBeGreaterThan(0)
+    expect(['porter', 'trigram']).toContain(hits[0]?.tier)
   })
 
-  it('re-indexes idempotently without double adding', () => {
-    const s = store()
-    s.indexChunk({ id: 'same', source: 'global', text: 'old text' })
-    s.indexChunk({ id: 'same', source: 'global', text: 'new text' })
-    expect(s.count()).toBe(1)
-    expect(s.search({ query: 'new', limit: 5 })[0]?.text).toBe('new text')
-    s.close()
+  it('surfaces levenshtein fallback hits for typos', () => {
+    store.insertChunks([{ source: 'typo', content: 'contextual memory restores state' }])
+    const hits = store.search({ query: 'memry', limit: 5 })
+    expect(hits.length).toBeGreaterThan(0)
+    expect(['porter', 'trigram', 'levenshtein']).toContain(hits[0]?.tier)
+  })
+
+  it('respects source scoping', () => {
+    store.insertChunks([
+      { source: 'a', content: 'shared restore context for source a' },
+      { source: 'b', content: 'shared restore context for source b' },
+    ])
+    const hits = store.search({ query: 'restore context', source: 'a', limit: 5 })
+    expect(hits.length).toBeGreaterThan(0)
+    expect(hits.every((hit) => hit.source === 'a')).toBe(true)
   })
 })

@@ -1,66 +1,82 @@
-export interface SessionMemoryChunk {
-  id: string
-  source: string
-  text: string
-  metadata?: Record<string, unknown>
-  createdAt?: string
+export interface ChunkInsertInput {
+  readonly content: string
+  readonly source: string
 }
 
-export interface IndexedSessionMemoryChunk extends Required<Omit<SessionMemoryChunk, 'metadata'>> {
-  metadata: Record<string, unknown>
+export interface SearchHit {
+  readonly content: string
+  readonly source: string
+  readonly rank: number
+  readonly tier: 'porter' | 'trigram' | 'levenshtein'
 }
 
-export interface SessionMemorySearchOptions {
-  query: string
-  source?: string
-  limit?: number
+export interface SearchOptions {
+  readonly query: string
+  readonly limit?: number
+  readonly source?: string
 }
 
-export interface SessionMemorySearchResult extends IndexedSessionMemoryChunk {
-  score: number
-  tier: 'porter' | 'trigram' | 'levenshtein'
+export interface SessionEvent {
+  readonly eventId: string
+  readonly ts: number
+  readonly toolName: string
+  readonly content: string
 }
 
-export interface SessionEventInput {
-  eventId?: string
-  ts?: string
-  toolName: string
-  content: string
-}
-
-export interface SessionCaptureInput {
-  repoHash: string
-  agentId?: string
-  sessionId?: string
-  event: SessionEventInput
+export interface CaptureEventInput {
+  readonly repoHash: string
+  readonly event: Pick<SessionEvent, 'toolName' | 'content'> & { sessionId?: string }
 }
 
 export interface SnapshotInput {
-  repoHash: string
-  sessionId?: string
-  agentId?: string
-  capMs?: number
+  readonly repoHash: string
+  readonly capMs: number
+  readonly sessionId?: string
 }
 
 export interface SnapshotResult {
-  snapshotId: string
-  sessionId: string
-  status: 'complete' | 'partial'
-  eventCount: number
-  content: string
+  readonly snapshotId: string
+  readonly eventsIncluded: number
+  readonly partial: boolean
+  readonly error?: string
 }
 
 export interface RestoreInput {
-  repoHash: string
-  query: string
-  limit?: number
+  readonly repoHash: string
+  readonly query: string
+  readonly limit?: number
+  readonly sessionId?: string
+  readonly snapshotId?: string
 }
 
-export interface RestoredSessionEvent {
-  sessionId: string
-  eventId: string
-  ts: string
-  toolName: string
-  content: string
-  score: number
+export interface RestoreResult {
+  readonly hits: readonly SearchHit[]
+  readonly snapshotId: string | null
+}
+
+export interface FetchIndexOptions {
+  readonly url: string
+  readonly dbPath: string
+  readonly cacheTtlMs?: number
+  readonly fetchImpl?: typeof fetch
+}
+
+export interface FetchIndexResult {
+  readonly url: string
+  readonly chunkCount: number
+  readonly cached: boolean
+  readonly cachedAt?: number
+}
+
+export interface NativeSessionMemoryUnavailableStatus {
+  readonly status: 'unavailable'
+}
+
+export function isUnavailable(value: unknown): value is NativeSessionMemoryUnavailableStatus {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'status' in value &&
+    (value as NativeSessionMemoryUnavailableStatus).status === 'unavailable'
+  )
 }

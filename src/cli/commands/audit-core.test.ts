@@ -42,6 +42,7 @@ function makeDeps(overrides: Partial<AuditDeps> = {}): AuditDeps {
       'blueprint-lifecycle',
       'docs-frontmatter',
       'architecture-drift',
+      'session-memory-hardcut',
     ],
     ...overrides,
   }
@@ -209,8 +210,8 @@ describe('runAuditDispatch', () => {
       expect(result.kind).toBe('aggregate-result')
       if (result.kind !== 'aggregate-result') return
       expect(result.code).toBe(0)
-      expect(result.results).toHaveLength(4)
-      expect(deps.runRepoAudit).toHaveBeenCalledTimes(4)
+      expect(result.results).toHaveLength(5)
+      expect(deps.runRepoAudit).toHaveBeenCalledTimes(5)
     })
 
     test('one failure → aggregate-result with code 1 and the failed audit reported', async () => {
@@ -228,6 +229,7 @@ describe('runAuditDispatch', () => {
         { name: 'blueprint-lifecycle', ok: false },
         { name: 'docs-frontmatter', ok: true },
         { name: 'architecture-drift', ok: true },
+        { name: 'session-memory-hardcut', ok: true },
       ])
     })
 
@@ -238,6 +240,7 @@ describe('runAuditDispatch', () => {
       expect(deps.runRepoAudit).toHaveBeenCalledWith('blueprint-lifecycle', '/repo', noOptions)
       expect(deps.runRepoAudit).toHaveBeenCalledWith('docs-frontmatter', '/repo', noOptions)
       expect(deps.runRepoAudit).toHaveBeenCalledWith('architecture-drift', '/repo', noOptions)
+      expect(deps.runRepoAudit).toHaveBeenCalledWith('session-memory-hardcut', '/repo', noOptions)
     })
   })
 
@@ -285,7 +288,7 @@ describe('runAuditDispatch', () => {
       const deps = makeDeps()
       await runAuditDispatch('quality', [], noOptions, deps)
       expect(deps.runStryker).toHaveBeenCalledOnce()
-      expect(deps.runRepoAudit).toHaveBeenCalledTimes(4)
+      expect(deps.runRepoAudit).toHaveBeenCalledTimes(5)
     })
   })
 

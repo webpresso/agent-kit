@@ -203,6 +203,16 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
         details: auditResult,
       }
     }
+    case 'session-memory-hardcut': {
+      const { auditSessionMemoryHardcut } = await import('#audit/session-memory-hardcut')
+      const auditResult = auditSessionMemoryHardcut(input.cwd ?? input.directory ?? process.cwd())
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
+    }
     case 'roadmap-links': {
       const { auditRoadmapLinks } = await import('#audit/roadmap-links')
       const auditResult = auditRoadmapLinks(input.cwd ?? input.directory ?? process.cwd())
