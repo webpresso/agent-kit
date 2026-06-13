@@ -18,3 +18,7 @@ export function computeRepoHash(startDir: string = process.cwd()): string {
   }
   return repoHashFromRoot(root)
 }
+
+export function resolveSessionRepoHash(startDir?: string): string {
+  return process.env['WP_REPO_HASH'] ?? process.env['CLAUDE_REPO_HASH'] ?? computeRepoHash(startDir)
+}

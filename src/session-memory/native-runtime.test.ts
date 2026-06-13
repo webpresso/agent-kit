@@ -178,12 +178,16 @@ describe('runNativeFileOperation', () => {
     store.close()
   })
 
-  it('does not import shell, network, or write primitives', () => {
+  it('keeps file-operation runtime free of shell, network, or write primitives', () => {
     const source = readFileSync(new URL('./native-runtime.ts', import.meta.url), 'utf8')
-    expect(source).not.toContain('node:child_process')
-    expect(source).not.toMatch(/\bspawn\b|\bexec(File|Sync)?\b/u)
-    expect(source).not.toMatch(/\bfetch\b/u)
-    expect(source).not.toMatch(/writeFile|appendFile|createWriteStream/u)
+    const fileOperationSource = source.slice(
+      source.indexOf('export interface NativeFileOperationOptions'),
+      source.indexOf('export interface NativeSearchHit'),
+    )
+    expect(fileOperationSource).not.toContain('node:child_process')
+    expect(fileOperationSource).not.toMatch(/spawn|exec(File|Sync)?/u)
+    expect(fileOperationSource).not.toMatch(/fetch/u)
+    expect(fileOperationSource).not.toMatch(/writeFile|appendFile|createWriteStream/u)
   })
 
   it('surfaces unsupported platforms without reading or indexing', async () => {

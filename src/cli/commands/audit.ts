@@ -134,6 +134,8 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
       })),
     }
   },
+  'session-memory-hardcut': async (root) =>
+    (await import('#audit/session-memory-hardcut')).auditSessionMemoryHardcut(root),
   'open-source-licenses': async (root) =>
     (await import('#audit/open-source-licenses')).auditOpenSourceLicenses(root),
   'secrets-policy': async (root) =>

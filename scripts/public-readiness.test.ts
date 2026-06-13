@@ -101,4 +101,12 @@ describe('public-readiness runtime policy helpers', () => {
     expect(packIndex).toBeGreaterThan(source.indexOf('preparePackedManifest(ROOT)'))
     expect(source.indexOf('restorePackedManifest(ROOT)', packIndex)).toBeGreaterThan(packIndex)
   })
+
+  it('requires packed native session-memory engine paths in the tarball readiness script', () => {
+    const source = readFileSync(join(import.meta.dirname, 'public-readiness.ts'), 'utf8')
+
+    expect(source).toContain('tarball-session-memory-native-engine')
+    expect(source).toContain('native/session-memory-engine/Cargo.toml')
+    expect(source).toContain('native/session-memory-engine/crates/session-memory-core/Cargo.toml')
+  })
 })

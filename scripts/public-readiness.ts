@@ -418,6 +418,30 @@ if (import.meta.main) {
       : fail('stale-surface-literals', staleHits.join('; ')),
   )
 
+  if (pack.ok) {
+    const parsed = JSON.parse(pack.stdout.match(/\[.*\]/s)?.[0] ?? '[]')[0] as
+      | { files?: Array<{ path: string }> }
+      | undefined
+    const files = parsed?.files?.map((f) => f.path) ?? []
+    const requiredNativePaths = [
+      'native/session-memory-engine/Cargo.toml',
+      'native/session-memory-engine/crates/session-memory-core/Cargo.toml',
+      'native/session-memory-engine/crates/session-memory-napi/Cargo.toml',
+    ]
+    const missingNativePaths = requiredNativePaths.filter((path) => !files.includes(path))
+    results.push(
+      missingNativePaths.length === 0
+        ? pass(
+            'tarball-session-memory-native-engine',
+            'packed artifact includes the absorbed native session-memory workspace',
+          )
+        : fail(
+            'tarball-session-memory-native-engine',
+            `missing packed native engine paths: ${missingNativePaths.join(', ')}`,
+          ),
+    )
+  }
+
   // 5) Positive public-target assertions for updater/help surfaces
   const updaterSurface =
     read('src/cli/auto-update/detect-pm.ts') + '\n' + read('src/cli/auto-update/run.ts')

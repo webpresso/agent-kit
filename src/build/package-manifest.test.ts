@@ -98,13 +98,17 @@ const sessionMemoryPublicDocPaths = [
 ] as const
 
 const sessionMemoryToolNames = [
+  'wp_session_batch_execute',
+  'wp_session_capture',
   'wp_session_doctor',
+  'wp_session_execute',
   'wp_session_execute_file',
   'wp_session_fetch_and_index',
   'wp_session_index',
   'wp_session_purge',
   'wp_session_restore',
   'wp_session_search',
+  'wp_session_snapshot',
   'wp_session_stats',
 ] as const
 

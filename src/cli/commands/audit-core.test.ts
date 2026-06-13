@@ -43,6 +43,7 @@ function makeDeps(overrides: Partial<AuditDeps> = {}): AuditDeps {
       'docs-frontmatter',
       'architecture-drift',
       'reference-parity-matrix',
+      'session-memory-hardcut',
     ],
     ...overrides,
   }
@@ -210,8 +211,8 @@ describe('runAuditDispatch', () => {
       expect(result.kind).toBe('aggregate-result')
       if (result.kind !== 'aggregate-result') return
       expect(result.code).toBe(0)
-      expect(result.results).toHaveLength(5)
-      expect(deps.runRepoAudit).toHaveBeenCalledTimes(5)
+      expect(result.results).toHaveLength(6)
+      expect(deps.runRepoAudit).toHaveBeenCalledTimes(6)
     })
 
     test('one failure → aggregate-result with code 1 and the failed audit reported', async () => {
@@ -230,6 +231,7 @@ describe('runAuditDispatch', () => {
         { name: 'docs-frontmatter', ok: true },
         { name: 'architecture-drift', ok: true },
         { name: 'reference-parity-matrix', ok: true },
+        { name: 'session-memory-hardcut', ok: true },
       ])
     })
 
@@ -288,7 +290,7 @@ describe('runAuditDispatch', () => {
       const deps = makeDeps()
       await runAuditDispatch('quality', [], noOptions, deps)
       expect(deps.runStryker).toHaveBeenCalledOnce()
-      expect(deps.runRepoAudit).toHaveBeenCalledTimes(5)
+      expect(deps.runRepoAudit).toHaveBeenCalledTimes(6)
     })
   })
 

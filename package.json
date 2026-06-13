@@ -58,7 +58,11 @@
     "THIRD-PARTY-NOTICES.md",
     "README.md",
     "docs/guides/session-memory.md",
-    "docs/bench/session-memory-methodology.md"
+    "docs/bench/session-memory-methodology.md",
+    "native/session-memory-engine",
+    "!native/session-memory-engine/.github/**",
+    "!native/session-memory-engine/target/**",
+    "!native/session-memory-engine/crates/session-memory-core/benches/**"
   ],
   "type": "module",
   "sideEffects": false,

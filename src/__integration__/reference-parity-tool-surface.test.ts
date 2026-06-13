@@ -5,14 +5,18 @@ import { COMPILED_TOOL_REGISTRY } from '../mcp/tools/_registry.js'
 
 const REPLACEMENT_CRITICAL_MCP_TOOLS = [
   'wp_audit',
+  'wp_session_batch_execute',
+  'wp_session_capture',
+  'wp_session_doctor',
+  'wp_session_execute',
   'wp_session_execute_file',
   'wp_session_fetch_and_index',
   'wp_session_index',
+  'wp_session_purge',
   'wp_session_restore',
   'wp_session_search',
+  'wp_session_snapshot',
   'wp_session_stats',
-  'wp_session_purge',
-  'wp_session_doctor',
 ] as const
 
 const OPEN_MCP_TOOL_GAPS = [
