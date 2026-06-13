@@ -18,8 +18,28 @@ function hasCommand(command: string): boolean {
 }
 
 const RUN_HOST_SMOKE = process.env.WP_RUN_HOST_SMOKE === '1'
+const REQUIRE_CLAUDE = process.env.WP_REQUIRE_CLAUDE === '1'
 const REQUIRE_CODEX = process.env.WP_REQUIRE_CODEX === '1'
+const REQUIRE_CURSOR = process.env.WP_REQUIRE_CURSOR === '1'
 const REQUIRE_OPENCODE = process.env.WP_REQUIRE_OPENCODE === '1'
+
+describe('wp setup host smoke gating', () => {
+  it('keeps live host probes behind explicit environment flags', () => {
+    expect(RUN_HOST_SMOKE).toBe(process.env.WP_RUN_HOST_SMOKE === '1')
+    expect(REQUIRE_CLAUDE).toBe(process.env.WP_REQUIRE_CLAUDE === '1')
+    expect(REQUIRE_CODEX).toBe(process.env.WP_REQUIRE_CODEX === '1')
+    expect(REQUIRE_CURSOR).toBe(process.env.WP_REQUIRE_CURSOR === '1')
+    expect(REQUIRE_OPENCODE).toBe(process.env.WP_REQUIRE_OPENCODE === '1')
+  })
+
+  it('does not silently require optional live host binaries in default CI', () => {
+    if (RUN_HOST_SMOKE) return
+
+    expect(REQUIRE_CODEX).toBe(false)
+    expect(REQUIRE_CURSOR).toBe(false)
+    expect(REQUIRE_OPENCODE).toBe(false)
+  })
+})
 
 const ANSI_ESCAPE_PATTERN = new RegExp(String.raw`\u001B\[[0-9;]*m`, 'g')
 
@@ -127,6 +147,24 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
     expect(REQUIRE_CODEX).toBe(false)
     expect(() => {
       if (REQUIRE_CODEX) throw new Error('codex required but not on PATH')
+    }).not.toThrow()
+  })
+
+  it('fails when claude is required but not on PATH', () => {
+    if (hasCommand('claude')) return
+
+    expect(REQUIRE_CLAUDE).toBe(false)
+    expect(() => {
+      if (REQUIRE_CLAUDE) throw new Error('claude required but not on PATH')
+    }).not.toThrow()
+  })
+
+  it('fails when cursor is required but not on PATH', () => {
+    if (hasCommand('cursor')) return
+
+    expect(REQUIRE_CURSOR).toBe(false)
+    expect(() => {
+      if (REQUIRE_CURSOR) throw new Error('cursor required but not on PATH')
     }).not.toThrow()
   })
 

@@ -42,6 +42,7 @@ function makeDeps(overrides: Partial<AuditDeps> = {}): AuditDeps {
       'blueprint-lifecycle',
       'docs-frontmatter',
       'architecture-drift',
+      'reference-parity-matrix',
     ],
     ...overrides,
   }
@@ -209,8 +210,8 @@ describe('runAuditDispatch', () => {
       expect(result.kind).toBe('aggregate-result')
       if (result.kind !== 'aggregate-result') return
       expect(result.code).toBe(0)
-      expect(result.results).toHaveLength(4)
-      expect(deps.runRepoAudit).toHaveBeenCalledTimes(4)
+      expect(result.results).toHaveLength(5)
+      expect(deps.runRepoAudit).toHaveBeenCalledTimes(5)
     })
 
     test('one failure → aggregate-result with code 1 and the failed audit reported', async () => {
@@ -228,6 +229,7 @@ describe('runAuditDispatch', () => {
         { name: 'blueprint-lifecycle', ok: false },
         { name: 'docs-frontmatter', ok: true },
         { name: 'architecture-drift', ok: true },
+        { name: 'reference-parity-matrix', ok: true },
       ])
     })
 
@@ -238,6 +240,7 @@ describe('runAuditDispatch', () => {
       expect(deps.runRepoAudit).toHaveBeenCalledWith('blueprint-lifecycle', '/repo', noOptions)
       expect(deps.runRepoAudit).toHaveBeenCalledWith('docs-frontmatter', '/repo', noOptions)
       expect(deps.runRepoAudit).toHaveBeenCalledWith('architecture-drift', '/repo', noOptions)
+      expect(deps.runRepoAudit).toHaveBeenCalledWith('reference-parity-matrix', '/repo', noOptions)
     })
   })
 
@@ -285,11 +288,11 @@ describe('runAuditDispatch', () => {
       const deps = makeDeps()
       await runAuditDispatch('quality', [], noOptions, deps)
       expect(deps.runStryker).toHaveBeenCalledOnce()
-      expect(deps.runRepoAudit).toHaveBeenCalledTimes(4)
+      expect(deps.runRepoAudit).toHaveBeenCalledTimes(5)
     })
   })
 
-  describe('registry-based kinds (catalog-drift, blueprint-lifecycle, docs-frontmatter, architecture-drift)', () => {
+  describe('registry-based kinds (catalog-drift, blueprint-lifecycle, docs-frontmatter, architecture-drift, reference-parity-matrix)', () => {
     test('catalog-drift → calls runRepoAudit, returns repo-result', async () => {
       const deps = makeDeps()
       const auditResult = okResult('Catalog drift')
@@ -327,6 +330,26 @@ describe('runAuditDispatch', () => {
         result: auditResult,
       })
       expect(deps.runRepoAudit).toHaveBeenCalledWith('architecture-drift', '/repo', noOptions)
+    })
+
+    test('reference-parity-matrix -> calls runRepoAudit, returns repo-result', async () => {
+      const deps = makeDeps()
+      const auditResult = okResult('Reference parity matrix')
+      ;(deps.runRepoAudit as ReturnType<typeof vi.fn>).mockResolvedValue(auditResult)
+      const result = await runAuditDispatch('reference-parity-matrix', [], noOptions, deps)
+      expect(result).toStrictEqual({
+        kind: 'repo-result',
+        name: 'reference-parity-matrix',
+        result: auditResult,
+      })
+      expect(deps.runRepoAudit).toHaveBeenCalledWith('reference-parity-matrix', '/repo', noOptions)
+    })
+
+    test('reference-parity-matrix forwards strict option to repo audit dispatch', async () => {
+      const deps = makeDeps()
+      const options: AuditActionOptions = { strict: true }
+      await runAuditDispatch('reference-parity-matrix', [], options, deps)
+      expect(deps.runRepoAudit).toHaveBeenCalledWith('reference-parity-matrix', '/repo', options)
     })
 
     test('failed repo audit → returns repo-result with ok: false', async () => {

@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "webpresso": {
+      "command": "${PLUGIN_ROOT}/bin/wp",
+      "args": [
+        "mcp"
+      ]
+    }
+  }
+}

@@ -51,6 +51,10 @@ describe('hooks/doctor', () => {
   const pkgJson = join(repoRoot, 'package.json')
   const distPkgJson = join(repoRoot, 'dist/esm', 'package.json')
   const pluginJson = join(repoRoot, '.claude-plugin', 'plugin.json')
+  const codexPluginJson = join(repoRoot, '.codex-plugin', 'plugin.json')
+  const codexPluginMcpJson = join(repoRoot, '.codex-plugin', 'mcp.json')
+  const codexPluginHooksJson = join(repoRoot, '.codex-plugin', 'hooks.json')
+  const opencodePluginBridge = join(repoRoot, '.opencode', 'plugins', 'webpresso-hooks.js')
   const wpBin = join(repoRoot, 'bin', 'wp')
   const builtMcpCli = join(repoRoot, 'dist/esm/mcp/cli.js')
   const rtkMarker = join(repoRoot, '.agent', '.rtk-requested')
@@ -220,6 +224,28 @@ describe('hooks/doctor', () => {
       expect(mcpCheck?.detail).toContain('skipped')
     })
 
+    it('reports the managed PreCompact snapshot hook when skipMcp is true', async () => {
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (String(path) === rtkMarker) throw new Error('ENOENT')
+        return true
+      }) as typeof accessSync)
+      mockStatSync.mockReturnValue({ mode: 0o755 } as unknown as ReturnType<typeof statSync>)
+      mockHealthyHookProbe()
+
+      vi.stubGlobal('process', fakeProcess())
+
+      const { runHooksDoctor } = await import('#hooks/doctor')
+      const result = await runHooksDoctor({ skipMcp: true })
+      const precompactCheck = result.checks.find((c) => c.name === 'precompact-snapshot')
+      expect(precompactCheck).toEqual({
+        name: 'precompact-snapshot',
+        ok: true,
+      })
+      expect(result.checks.find((c) => c.name === 'MCP server liveness')?.detail).toContain(
+        'skipped',
+      )
+    })
+
     it('reports the MCP-first operator flow and forbids wrapped wp scripts', async () => {
       mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
         if (String(path) === rtkMarker) throw new Error('ENOENT')
@@ -250,6 +276,7 @@ describe('hooks/doctor', () => {
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
         join(repoRoot, 'src/hooks/guard-switch/index.ts'),
         join(repoRoot, 'src/hooks/sessionstart/index.ts'),
+        join(repoRoot, 'src/hooks/precompact/index.ts'),
         join(repoRoot, 'src/hooks/test-quality-check.ts'),
       ])
       mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
@@ -270,6 +297,7 @@ describe('hooks/doctor', () => {
               'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
               'wp-guard-switch': './src/hooks/guard-switch/index.ts',
               'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'wp-precompact-snapshot': './src/hooks/precompact/index.ts',
               'wp-test-quality-check': './src/hooks/test-quality-check.ts',
             },
           })
@@ -299,6 +327,7 @@ describe('hooks/doctor', () => {
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
         join(repoRoot, 'src/hooks/guard-switch/index.ts'),
         join(repoRoot, 'src/hooks/sessionstart/index.ts'),
+        join(repoRoot, 'src/hooks/precompact/index.ts'),
         join(repoRoot, 'src/hooks/test-quality-check.ts'),
       ])
       mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
@@ -315,6 +344,7 @@ describe('hooks/doctor', () => {
               'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
               'wp-guard-switch': './src/hooks/guard-switch/index.ts',
               'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'wp-precompact-snapshot': './src/hooks/precompact/index.ts',
               'wp-test-quality-check': './src/hooks/test-quality-check.ts',
             },
           })
@@ -370,6 +400,7 @@ describe('hooks/doctor', () => {
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
         join(repoRoot, 'src/hooks/guard-switch/index.ts'),
         join(repoRoot, 'src/hooks/sessionstart/index.ts'),
+        join(repoRoot, 'src/hooks/precompact/index.ts'),
         join(repoRoot, 'src/hooks/test-quality-check.ts'),
         join(repoRoot, 'src/cli/cli.ts'),
       ])
@@ -388,6 +419,7 @@ describe('hooks/doctor', () => {
               'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
               'wp-guard-switch': './src/hooks/guard-switch/index.ts',
               'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'wp-precompact-snapshot': './src/hooks/precompact/index.ts',
               'wp-test-quality-check': './src/hooks/test-quality-check.ts',
             },
           })
@@ -432,6 +464,7 @@ describe('hooks/doctor', () => {
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
         join(repoRoot, 'src/hooks/guard-switch/index.ts'),
         join(repoRoot, 'src/hooks/sessionstart/index.ts'),
+        join(repoRoot, 'src/hooks/precompact/index.ts'),
         join(repoRoot, 'src/hooks/test-quality-check.ts'),
         join(repoRoot, 'src/cli/cli.ts'),
       ])
@@ -450,6 +483,7 @@ describe('hooks/doctor', () => {
               'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
               'wp-guard-switch': './src/hooks/guard-switch/index.ts',
               'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'wp-precompact-snapshot': './src/hooks/precompact/index.ts',
               'wp-test-quality-check': './src/hooks/test-quality-check.ts',
             },
           })
@@ -534,6 +568,7 @@ describe('hooks/doctor', () => {
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
         join(repoRoot, 'src/hooks/guard-switch/index.ts'),
         join(repoRoot, 'src/hooks/sessionstart/index.ts'),
+        join(repoRoot, 'src/hooks/precompact/index.ts'),
         join(repoRoot, 'src/hooks/test-quality-check.ts'),
       ])
 
@@ -551,6 +586,7 @@ describe('hooks/doctor', () => {
               'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
               'wp-guard-switch': './src/hooks/guard-switch/index.ts',
               'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'wp-precompact-snapshot': './src/hooks/precompact/index.ts',
               'wp-test-quality-check': './src/hooks/test-quality-check.ts',
             },
           })
@@ -610,6 +646,7 @@ describe('hooks/doctor', () => {
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
         join(repoRoot, 'src/hooks/guard-switch/index.ts'),
         join(repoRoot, 'src/hooks/sessionstart/index.ts'),
+        join(repoRoot, 'src/hooks/precompact/index.ts'),
         join(repoRoot, 'src/hooks/test-quality-check.ts'),
       ])
 
@@ -627,6 +664,7 @@ describe('hooks/doctor', () => {
               'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
               'wp-guard-switch': './src/hooks/guard-switch/index.ts',
               'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'wp-precompact-snapshot': './src/hooks/precompact/index.ts',
               'wp-test-quality-check': './src/hooks/test-quality-check.ts',
             },
           })
@@ -683,6 +721,7 @@ describe('hooks/doctor', () => {
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
         join(repoRoot, 'src/hooks/guard-switch/index.ts'),
         join(repoRoot, 'src/hooks/sessionstart/index.ts'),
+        join(repoRoot, 'src/hooks/precompact/index.ts'),
         join(repoRoot, 'src/hooks/test-quality-check.ts'),
       ])
 
@@ -700,6 +739,7 @@ describe('hooks/doctor', () => {
               'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
               'wp-guard-switch': './src/hooks/guard-switch/index.ts',
               'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'wp-precompact-snapshot': './src/hooks/precompact/index.ts',
               'wp-test-quality-check': './src/hooks/test-quality-check.ts',
             },
           })
@@ -726,6 +766,7 @@ describe('hooks/doctor', () => {
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
         join(repoRoot, 'src/hooks/guard-switch/index.ts'),
         join(repoRoot, 'src/hooks/sessionstart/index.ts'),
+        join(repoRoot, 'src/hooks/precompact/index.ts'),
         join(repoRoot, 'src/hooks/test-quality-check.ts'),
       ])
 
@@ -745,6 +786,7 @@ describe('hooks/doctor', () => {
               'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
               'wp-guard-switch': './src/hooks/guard-switch/index.ts',
               'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'wp-precompact-snapshot': './src/hooks/precompact/index.ts',
               'wp-test-quality-check': './src/hooks/test-quality-check.ts',
             },
           })
@@ -805,6 +847,7 @@ describe('hooks/doctor', () => {
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
         join(repoRoot, 'src/hooks/guard-switch/index.ts'),
         join(repoRoot, 'src/hooks/sessionstart/index.ts'),
+        join(repoRoot, 'src/hooks/precompact/index.ts'),
         join(repoRoot, 'src/hooks/test-quality-check.ts'),
       ])
 
@@ -823,6 +866,7 @@ describe('hooks/doctor', () => {
               'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
               'wp-guard-switch': './src/hooks/guard-switch/index.ts',
               'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'wp-precompact-snapshot': './src/hooks/precompact/index.ts',
               'wp-test-quality-check': './src/hooks/test-quality-check.ts',
             },
           })
@@ -881,6 +925,7 @@ describe('hooks/doctor', () => {
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
         join(repoRoot, 'src/hooks/guard-switch/index.ts'),
         join(repoRoot, 'src/hooks/sessionstart/index.ts'),
+        join(repoRoot, 'src/hooks/precompact/index.ts'),
         join(repoRoot, 'src/hooks/test-quality-check.ts'),
       ])
 
@@ -899,6 +944,7 @@ describe('hooks/doctor', () => {
               'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
               'wp-guard-switch': './src/hooks/guard-switch/index.ts',
               'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'wp-precompact-snapshot': './src/hooks/precompact/index.ts',
               'wp-test-quality-check': './src/hooks/test-quality-check.ts',
             },
           })
@@ -915,6 +961,180 @@ describe('hooks/doctor', () => {
       const { runHooksDoctor } = await import('#hooks/doctor')
       const result = await runHooksDoctor({ skipMcp: true, cwd: repoRoot })
       expect(result.checks.find((check) => check.name === 'live-source dev-link')).toBeUndefined()
+    })
+  })
+
+  describe('packaged host artifact reporting', () => {
+    it('reports Codex plugin artifacts and preserves setup-managed hook ownership', async () => {
+      const knownPaths = new Set([
+        pluginJson,
+        codexPluginJson,
+        codexPluginMcpJson,
+        codexPluginHooksJson,
+        opencodePluginBridge,
+      ])
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === pluginJson) {
+          return JSON.stringify({
+            name: 'agent-kit',
+            version: '0.34.2',
+            skills: './skills',
+            commands: './commands',
+            mcpServers: {
+              webpresso: { command: '${CLAUDE_PLUGIN_ROOT}/bin/wp', args: ['mcp'] },
+            },
+          })
+        }
+        if (String(path) === codexPluginJson) {
+          return JSON.stringify({
+            name: 'agent-kit',
+            version: '0.34.2',
+            skills: './skills/',
+            mcpServers: './.codex-plugin/mcp.json',
+            hooks: './.codex-plugin/hooks.json',
+          })
+        }
+        if (String(path) === codexPluginMcpJson) {
+          return JSON.stringify({
+            mcpServers: { webpresso: { command: '${PLUGIN_ROOT}/bin/wp', args: ['mcp'] } },
+          })
+        }
+        if (String(path) === codexPluginHooksJson) return JSON.stringify({ hooks: {} })
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+
+      const { checkPackagedHostArtifacts, checkHostArtifactOwnership } =
+        await import('#hooks/doctor')
+      const artifacts = checkPackagedHostArtifacts(repoRoot)
+      expect(artifacts.ok).toBe(true)
+      expect(artifacts.detail).toContain('.codex-plugin/plugin.json')
+      expect(artifacts.detail).toContain('.codex-plugin/mcp.json')
+      expect(artifacts.detail).toContain('.codex-plugin/hooks.json')
+      expect(artifacts.detail).toContain('.claude-plugin/plugin.json')
+
+      const ownership = checkHostArtifactOwnership(repoRoot)
+      expect(ownership.ok).toBe(true)
+      expect(ownership.detail).toContain(
+        'Codex active hooks stay setup-managed in .codex/hooks.json',
+      )
+      expect(ownership.detail).toContain(
+        'Claude active hooks stay setup-managed in .claude/settings.json',
+      )
+      expect(ownership.detail).toContain('OpenCode bridge is degraded')
+      expect(ownership.detail).toContain('run `wp setup --host opencode`')
+    })
+
+    it('surfaces bounded host-specific repair hints when Codex artifacts are incomplete', async () => {
+      const knownPaths = new Set([pluginJson, codexPluginJson])
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === pluginJson) return JSON.stringify({ version: '0.34.2' })
+        if (String(path) === codexPluginJson) {
+          return JSON.stringify({
+            name: 'agent-kit',
+            version: '0.34.2',
+            mcpServers: './.codex-plugin/mcp.json',
+            hooks: './.codex-plugin/hooks.json',
+          })
+        }
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+
+      const { checkPackagedHostArtifacts } = await import('#hooks/doctor')
+      const result = checkPackagedHostArtifacts(repoRoot)
+      expect(result.ok).toBe(false)
+      expect(result.detail).toContain(
+        'missing Codex artifact(s): .codex-plugin/hooks.json, .codex-plugin/mcp.json',
+      )
+      expect(result.detail).toContain('Codex repair: run `wp setup`')
+      expect(result.detail).toContain('package repair: rebuild the public artifact from source')
+      expect(result.detail).not.toContain('/Users/')
+    })
+
+    it('reports degraded lifecycle depth without claiming same host behavior', async () => {
+      const { checkHostLifecycleDepth } = await import('#hooks/doctor')
+      const result = checkHostLifecycleDepth()
+      expect(result.ok).toBe(true)
+      expect(result.detail).toContain(
+        'Claude/Codex managed hooks: full for replacement-critical lifecycle events',
+      )
+      expect(result.detail).toContain('Cursor/OpenCode: degraded')
+      expect(result.detail).toContain('host-specific lifecycle depth')
+    })
+
+    it('includes packaged artifact and lifecycle depth checks in the doctor result', async () => {
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (String(path) === rtkMarker) throw new Error('ENOENT')
+        return
+      }) as typeof accessSync)
+      mockStatSync.mockReturnValue({ mode: 0o755 } as unknown as ReturnType<typeof statSync>)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === pkgJson) {
+          return JSON.stringify({
+            bin: {
+              'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
+              'wp-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
+              'wp-guard-switch': './src/hooks/guard-switch/index.ts',
+              'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'wp-precompact-snapshot': './src/hooks/precompact/index.ts',
+              'wp-test-quality-check': './src/hooks/test-quality-check.ts',
+            },
+          })
+        }
+        if (String(path) === pluginJson) {
+          return JSON.stringify({
+            version: '0.34.2',
+            mcpServers: {
+              webpresso: { command: '${CLAUDE_PLUGIN_ROOT}/bin/wp', args: ['mcp'] },
+            },
+          })
+        }
+        if (String(path) === codexPluginJson) {
+          return JSON.stringify({
+            name: 'agent-kit',
+            version: '0.34.2',
+            skills: './skills/',
+            mcpServers: './.codex-plugin/mcp.json',
+            hooks: './.codex-plugin/hooks.json',
+          })
+        }
+        if (String(path) === codexPluginMcpJson) {
+          return JSON.stringify({
+            mcpServers: { webpresso: { command: '${PLUGIN_ROOT}/bin/wp', args: ['mcp'] } },
+          })
+        }
+        if (String(path) === codexPluginHooksJson) return JSON.stringify({ hooks: {} })
+        return '{}'
+      }) as typeof readFileSync)
+      mockHealthyHookProbe()
+      vi.stubGlobal('process', fakeProcess({ cwd: () => repoRoot }))
+
+      const { runHooksDoctor } = await import('#hooks/doctor')
+      const result = await runHooksDoctor({ skipMcp: true, cwd: repoRoot })
+      expect(result.checks.find((check) => check.name === 'packaged host artifacts')).toMatchObject(
+        {
+          ok: true,
+          advisory: true,
+        },
+      )
+      expect(result.checks.find((check) => check.name === 'host artifact ownership')).toMatchObject(
+        {
+          ok: true,
+          advisory: true,
+        },
+      )
+      expect(result.checks.find((check) => check.name === 'host lifecycle depth')).toMatchObject({
+        ok: true,
+        advisory: true,
+      })
     })
   })
 

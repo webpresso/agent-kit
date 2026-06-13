@@ -13,6 +13,7 @@ export const AUDIT_KINDS = [
   'agents',
   'catalog-drift',
   'package-surface',
+  'reference-parity-matrix',
   'docs-frontmatter',
   'blueprint-readme-drift',
   'blueprint-lifecycle',

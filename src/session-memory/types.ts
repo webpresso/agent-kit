@@ -14,6 +14,8 @@ export interface SessionMemorySearchOptions {
   query: string
   source?: string
   limit?: number
+  maxPreviewBytes?: number
+  sourceTypes?: readonly SessionMemoryUnifiedSourceType[]
 }
 
 export interface SessionMemorySearchResult extends IndexedSessionMemoryChunk {
@@ -21,11 +23,31 @@ export interface SessionMemorySearchResult extends IndexedSessionMemoryChunk {
   tier: 'porter' | 'trigram' | 'levenshtein'
 }
 
+export const SESSION_CONTINUITY_EVENT_TYPES = [
+  'user_prompt',
+  'decision',
+  'constraint',
+  'tool_read',
+  'tool_edit',
+  'tool_command',
+  'failure',
+  'rejected_approach',
+  'assistant_turn_summary',
+  'compaction_boundary',
+  'rule_snapshot',
+] as const
+
+export type SessionContinuityEventType = (typeof SESSION_CONTINUITY_EVENT_TYPES)[number]
+
 export interface SessionEventInput {
   eventId?: string
   ts?: string
+  eventType: SessionContinuityEventType
   toolName: string
   content: string
+  summary?: string
+  priority?: number
+  metadata?: Record<string, unknown>
 }
 
 export interface SessionCaptureInput {
@@ -40,6 +62,9 @@ export interface SnapshotInput {
   sessionId?: string
   agentId?: string
   capMs?: number
+  minPriority?: number
+  maxEventBytes?: number
+  maxSnapshotBytes?: number
 }
 
 export interface SnapshotResult {
@@ -54,13 +79,84 @@ export interface RestoreInput {
   repoHash: string
   query: string
   limit?: number
+  maxPreviewBytes?: number
+  sourceTypes?: readonly SessionMemoryUnifiedSourceType[]
 }
 
 export interface RestoredSessionEvent {
   sessionId: string
   eventId: string
   ts: string
+  eventType: SessionContinuityEventType
   toolName: string
   content: string
+  summary?: string
+  priority: number
+  metadata: Record<string, unknown>
   score: number
+}
+
+export type SessionMemoryUnifiedSourceType = 'continuity_event' | 'indexed_chunk'
+
+export type SessionMemoryUnifiedTier =
+  | 'event_fts'
+  | 'chunk_porter'
+  | 'chunk_trigram'
+  | 'chunk_levenshtein'
+
+export interface SessionMemoryUnifiedProvenance {
+  kind: SessionMemoryUnifiedSourceType
+  id: string
+  source?: string
+  repoHash?: string
+  sessionId?: string
+  eventId?: string
+}
+
+export interface SessionMemoryUnifiedResult {
+  sourceType: SessionMemoryUnifiedSourceType
+  provenance: SessionMemoryUnifiedProvenance
+  dedupeKey: string
+  score: number
+  tier: SessionMemoryUnifiedTier
+  timestamp: string
+  preview: string
+  metadata: Record<string, unknown>
+}
+
+export const NATIVE_FILE_OPERATIONS = ['read_text', 'metadata'] as const
+
+export type NativeFileOperation = (typeof NATIVE_FILE_OPERATIONS)[number]
+
+export type NativeFileRuntimeCode =
+  | 'ok'
+  | 'denied_path'
+  | 'secret_path'
+  | 'unsupported_operation'
+  | 'invalid_repo_root'
+  | 'not_found'
+  | 'not_file'
+  | 'binary_file'
+  | 'file_too_large'
+  | 'unsupported_platform'
+  | 'read_failed'
+
+export interface NativeFileRuntimeMetadata {
+  sizeBytes: number
+  lineCount: number
+  extension: string
+}
+
+export interface NativeFileRuntimeResult {
+  passed: boolean
+  code: NativeFileRuntimeCode
+  operation: string
+  path: string
+  preview: string
+  previewBytes: number
+  truncated: boolean
+  overflowIndexed: boolean
+  indexedChunkIds: string[]
+  warnings: string[]
+  metadata?: NativeFileRuntimeMetadata
 }

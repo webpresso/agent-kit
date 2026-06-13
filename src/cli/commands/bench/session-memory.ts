@@ -91,6 +91,7 @@ type SessionMemoryReport = {
     recall_at_5: number
     wall_sec: number
   }>
+  threshold_report?: SessionMemoryThresholdReport
 }
 
 type BenchVariant = 'baseline' | 'v1' | 'v2'
@@ -113,6 +114,34 @@ export type RunBenchSessionMemoryResult = {
   dryRun: boolean
   reportPath: string | null
   cellCount: number
+  thresholdReport: SessionMemoryThresholdReport
+}
+
+export const DEFAULT_SESSION_MEMORY_THRESHOLDS = {
+  postToolCaptureLatencyMs: 750,
+  precompactSnapshotLatencyMs: 1000,
+  startupResumeInjectionLatencyMs: 750,
+  searchQualityRecallAt5: 0.8,
+} as const
+
+export type SessionMemoryThresholdAxisId =
+  | 'post_tool_capture_latency_ms'
+  | 'precompact_snapshot_latency_ms'
+  | 'startup_resume_injection_latency_ms'
+  | 'search_quality_recall_at_5'
+
+export type SessionMemoryThresholdAxis = {
+  readonly id: SessionMemoryThresholdAxisId
+  readonly label: string
+  readonly metric: 'latency_ms' | 'recall_at_5'
+  readonly threshold: number
+  readonly observed: number | null
+  readonly status: 'schema-valid' | 'passed' | 'failed'
+}
+
+export type SessionMemoryThresholdReport = {
+  readonly mode: 'dry-run' | 'measured'
+  readonly axes: readonly SessionMemoryThresholdAxis[]
 }
 
 type RuntimeModules = {
@@ -326,6 +355,61 @@ function apiKeyMapFromEnv(env: NodeJS.ProcessEnv): Record<string, string | undef
   }
 }
 
+export function buildSessionMemoryThresholdReport(input: {
+  readonly dryRun: boolean
+  readonly averageLatencyMs?: number
+  readonly averageRecallAt5?: number
+}): SessionMemoryThresholdReport {
+  const latencyObserved = input.dryRun ? null : (input.averageLatencyMs ?? 0)
+  const recallObserved = input.dryRun ? null : (input.averageRecallAt5 ?? 0)
+  const latencyStatus = (threshold: number): SessionMemoryThresholdAxis['status'] => {
+    if (input.dryRun) return 'schema-valid'
+    return (latencyObserved ?? Number.POSITIVE_INFINITY) <= threshold ? 'passed' : 'failed'
+  }
+  const recallStatus = (threshold: number): SessionMemoryThresholdAxis['status'] => {
+    if (input.dryRun) return 'schema-valid'
+    return (recallObserved ?? 0) >= threshold ? 'passed' : 'failed'
+  }
+
+  return {
+    mode: input.dryRun ? 'dry-run' : 'measured',
+    axes: [
+      {
+        id: 'post_tool_capture_latency_ms',
+        label: 'PostToolUse capture latency',
+        metric: 'latency_ms',
+        threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.postToolCaptureLatencyMs,
+        observed: latencyObserved,
+        status: latencyStatus(DEFAULT_SESSION_MEMORY_THRESHOLDS.postToolCaptureLatencyMs),
+      },
+      {
+        id: 'precompact_snapshot_latency_ms',
+        label: 'PreCompact snapshot latency',
+        metric: 'latency_ms',
+        threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.precompactSnapshotLatencyMs,
+        observed: latencyObserved,
+        status: latencyStatus(DEFAULT_SESSION_MEMORY_THRESHOLDS.precompactSnapshotLatencyMs),
+      },
+      {
+        id: 'startup_resume_injection_latency_ms',
+        label: 'SessionStart resume injection latency',
+        metric: 'latency_ms',
+        threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.startupResumeInjectionLatencyMs,
+        observed: latencyObserved,
+        status: latencyStatus(DEFAULT_SESSION_MEMORY_THRESHOLDS.startupResumeInjectionLatencyMs),
+      },
+      {
+        id: 'search_quality_recall_at_5',
+        label: 'Search quality recall@5',
+        metric: 'recall_at_5',
+        threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.searchQualityRecallAt5,
+        observed: recallObserved,
+        status: recallStatus(DEFAULT_SESSION_MEMORY_THRESHOLDS.searchQualityRecallAt5),
+      },
+    ],
+  }
+}
+
 async function loadRuntimeModules(repoRoot = resolveBenchRuntimeRoot()): Promise<RuntimeModules> {
   const [manifestModule, scenarioModule, costModule, runnerModule, reportModule] =
     await Promise.all([
@@ -358,8 +442,11 @@ async function runWorkspacePreflight(
   runtime: RuntimeModules,
   workspaceConfig: WorkspaceConfig,
   env: NodeJS.ProcessEnv,
+  options: { readonly requireApiKeys: boolean } = { requireApiKeys: true },
 ): Promise<void> {
-  runtime.validateWorkspaceKeyPresence(workspaceConfig, env)
+  if (options.requireApiKeys) {
+    runtime.validateWorkspaceKeyPresence(workspaceConfig, env)
+  }
 
   if (workspaceConfig.mode !== 'isolated') {
     return
@@ -374,6 +461,22 @@ async function runWorkspacePreflight(
   ) {
     await runtime.validateKnownAnthropicWorkspaces(identities, adminKey)
   }
+}
+
+function resolveWorkspaceConfigForRun(
+  runtime: RuntimeModules,
+  env: NodeJS.ProcessEnv,
+  options: { readonly dryRun: boolean },
+): WorkspaceConfig {
+  if (
+    options.dryRun &&
+    env.BENCH_WORKSPACE_MODE !== 'isolated' &&
+    env.BENCH_WORKSPACE_MODE !== 'single-workspace'
+  ) {
+    return runtime.resolveWorkspaceConfig({ ...env, BENCH_WORKSPACE_MODE: 'single-workspace' })
+  }
+
+  return runtime.resolveWorkspaceConfig(env)
 }
 
 export async function runBenchSessionMemoryCommand(
@@ -396,8 +499,10 @@ export async function runBenchSessionMemoryCommand(
   const captured = await runtime.captureManifest()
   runtime.verifyManifest(captured, pinned)
 
-  const workspaceConfig = runtime.resolveWorkspaceConfig(env)
-  await runWorkspacePreflight(runtime, workspaceConfig, env)
+  const workspaceConfig = resolveWorkspaceConfigForRun(runtime, env, {
+    dryRun: Boolean(input.dryRun),
+  })
+  await runWorkspacePreflight(runtime, workspaceConfig, env, { requireApiKeys: !input.dryRun })
 
   const allScenarios = runtime.loadAllScenarios()
   const scenarios = resolveSelectedScenarios(allScenarios, input)
@@ -414,6 +519,7 @@ export async function runBenchSessionMemoryCommand(
       dryRun: true,
       reportPath: null,
       cellCount: scenarios.length * variants.length,
+      thresholdReport: buildSessionMemoryThresholdReport({ dryRun: true }),
     }
   }
 
@@ -480,6 +586,20 @@ export async function runBenchSessionMemoryCommand(
   }
 
   const reportPath = resolve(outputRoot, runId, 'report.md')
+  const measuredCells = cells.filter((cell) => cell.status === 'ok')
+  const averageWallMs =
+    measuredCells.length > 0
+      ? (measuredCells.reduce((sum, cell) => sum + cell.wall_sec, 0) / measuredCells.length) * 1000
+      : 0
+  const averageRecallAt5 =
+    measuredCells.length > 0
+      ? measuredCells.reduce((sum, cell) => sum + cell.recall_at_5, 0) / measuredCells.length
+      : 0
+  const thresholdReport = buildSessionMemoryThresholdReport({
+    dryRun: false,
+    averageLatencyMs: Number(averageWallMs.toFixed(6)),
+    averageRecallAt5: Number(averageRecallAt5.toFixed(6)),
+  })
   runtime.writeReport(
     {
       run_id: runId,
@@ -487,6 +607,7 @@ export async function runBenchSessionMemoryCommand(
       dry_run: false,
       cache_disclaimer: workspaceConfig.cacheDisclaimer,
       cells,
+      threshold_report: thresholdReport,
     },
     reportPath,
   )
@@ -497,5 +618,6 @@ export async function runBenchSessionMemoryCommand(
     dryRun: false,
     reportPath,
     cellCount: cells.length,
+    thresholdReport,
   }
 }

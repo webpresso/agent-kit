@@ -15,6 +15,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { resolveRuntimeTarget, runtimePackageDirName } from '#build/runtime-targets.js'
 import { CLAUDE_PLUGIN_ID } from '#cli/commands/init/scaffolders/claude-plugin/index.js'
+import { buildCursorHooksConfig } from './emitters/cursor.js'
 
 import {
   buildWebpressoHookGroups,
@@ -33,7 +34,7 @@ function quoteShell(value: string): string {
 
 function codexBinCommand(repoRoot: string, name: string): string {
   const binPath = quoteShell(join(repoRoot, '.codex', 'managed-hooks', `${name}.sh`))
-  if (name === 'wp-stop-qa') {
+  if (name === 'wp-stop-qa' || name === 'wp-precompact-snapshot') {
     return `[ -x ${binPath} ] && ${binPath} || printf '%s\\n' '{}'`
   }
   if (name === 'wp-pretool-guard') {
@@ -44,7 +45,7 @@ function codexBinCommand(repoRoot: string, name: string): string {
 
 function claudeBinCommand(name: string): string {
   const binPath = `$CLAUDE_PROJECT_DIR/.claude/hooks/managed/${name}.sh`
-  if (name === 'wp-stop-qa') {
+  if (name === 'wp-stop-qa' || name === 'wp-precompact-snapshot') {
     return `[ -x "${binPath}" ] && "${binPath}" || printf '%s\\n' '{}'`
   }
   if (name === 'wp-pretool-guard') {
@@ -59,6 +60,7 @@ const WEBPRESSO_HOOK_BINS = [
   'wp-post-tool',
   'wp-guard-switch',
   'wp-stop-qa',
+  'wp-precompact-snapshot',
 ] as const
 
 function installFakeWebpressoBins(repoRoot: string): void {
@@ -104,6 +106,7 @@ describe('hookSubcommandFor (compiled-wp dispatch gate)', () => {
   it('returns the wp hook subcommand for dispatchable managed hooks', () => {
     expect(hookSubcommandFor('wp-pretool-guard')).toStrictEqual('pretool-guard')
     expect(hookSubcommandFor('wp-sessionstart-routing')).toStrictEqual('sessionstart-routing')
+    expect(hookSubcommandFor('wp-precompact-snapshot')).toStrictEqual('precompact-snapshot')
   })
 
   it('returns undefined for a non-dispatchable bin (no wp hook handler) so its launcher stays node-only', () => {
@@ -1659,6 +1662,55 @@ hooks:
     expect(postToolCommands).toContain(codexBinCommand(repoRoot, 'wp-post-tool'))
   })
 
+  it('wires the managed PreCompact lane for Claude and Codex but not unsupported Cursor output', async () => {
+    const result = await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+
+    const claude = JSON.parse(readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8')) as {
+      hooks: { PreCompact?: Array<{ hooks: Array<{ command: string }> }> }
+    }
+    const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
+      hooks: { PreCompact?: Array<{ hooks: Array<{ command: string }> }> }
+    }
+    const cursor = buildCursorHooksConfig({
+      resolveBin: (name) => `./node_modules/.bin/${name}`,
+      matchers: { preToolUse: 'Bash|Write|Edit', postToolUse: 'Write|Edit' },
+    }) as Record<string, unknown>
+
+    const claudePreCompactCommands = (claude.hooks.PreCompact ?? []).flatMap((group) =>
+      group.hooks.map((hook) => hook.command),
+    )
+    const codexPreCompactCommands = (codex.hooks.PreCompact ?? []).flatMap((group) =>
+      group.hooks.map((hook) => hook.command),
+    )
+
+    expect(claudePreCompactCommands).toStrictEqual([claudeBinCommand('wp-precompact-snapshot')])
+    expect(codexPreCompactCommands).toStrictEqual([
+      codexBinCommand(repoRoot, 'wp-precompact-snapshot'),
+    ])
+    expect(result.manifest.claude.PreCompact?.[0]?.hooks[0]?.command).toBe(
+      claudeBinCommand('wp-precompact-snapshot'),
+    )
+    expect(result.manifest.codex.PreCompact?.[0]?.hooks[0]?.command).toBe(
+      codexBinCommand(repoRoot, 'wp-precompact-snapshot'),
+    )
+    expect(
+      readFileSync(
+        join(repoRoot, '.claude', 'hooks', 'managed', 'wp-precompact-snapshot.sh'),
+        'utf8',
+      ),
+    ).toContain('wp hook precompact-snapshot')
+    expect(
+      readFileSync(join(repoRoot, '.codex', 'managed-hooks', 'wp-precompact-snapshot.sh'), 'utf8'),
+    ).toContain('wp hook precompact-snapshot')
+
+    // Cursor has no supported PreCompact/project-hook equivalent today. The
+    // Cursor emitter must degrade explicitly by omitting the managed
+    // wp-precompact-snapshot lane instead of inventing a lossy hook mapping.
+    expect(Object.hasOwn(cursor, 'preCompact')).toBe(false)
+    expect(Object.hasOwn(cursor, 'beforeCompact')).toBe(false)
+    expect(JSON.stringify(cursor)).not.toContain('wp-precompact-snapshot')
+  })
+
   it('fails closed for missing wp-pretool-guard launcher, emits JSON for missing Stop launcher, and fails open for other missing Codex hook launchers', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
 
@@ -2031,14 +2083,21 @@ describe('plugin-native invariants — .claude/settings.json', () => {
 })
 
 describe('buildWebpressoHookGroups', () => {
-  it('returns the canonical 5 wp-* event groups with the supplied bin resolver', async () => {
+  it('returns the canonical 6 wp-* event groups with the supplied bin resolver', async () => {
     const result = buildWebpressoHookGroups({
       resolveBin: (name) => `./node_modules/.bin/${name}`,
       matchers: { preToolUse: 'Bash|Edit|Write', postToolUse: 'Edit|Write' },
     })
 
     expect(Object.keys(result).sort()).toStrictEqual(
-      ['PostToolUse', 'PreToolUse', 'SessionStart', 'Stop', 'UserPromptSubmit'].sort(),
+      [
+        'PostToolUse',
+        'PreCompact',
+        'PreToolUse',
+        'SessionStart',
+        'Stop',
+        'UserPromptSubmit',
+      ].sort(),
     )
     expect(result.SessionStart?.[0]?.hooks[0]?.command).toBe(
       './node_modules/.bin/wp-sessionstart-routing',
@@ -2051,6 +2110,10 @@ describe('buildWebpressoHookGroups', () => {
       './node_modules/.bin/wp-guard-switch',
     )
     expect(result.Stop?.[0]?.hooks[0]?.command).toBe('./node_modules/.bin/wp-stop-qa')
+    expect(result.PreCompact?.[0]?.hooks[0]?.command).toBe(
+      './node_modules/.bin/wp-precompact-snapshot',
+    )
+    expect(result.PreCompact?.[0]?.matcher).toBeUndefined()
   })
 
   it('substitutes the Claude bin resolver for guarded $CLAUDE_PROJECT_DIR commands', async () => {

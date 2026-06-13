@@ -17,6 +17,11 @@ import {
   readHooksManifest,
   type HookVendorState,
 } from '#cli/commands/init/scaffolders/agent-hooks/manifest.js'
+import {
+  CAPABILITY_MATRIX,
+  type CapabilityMatrixHost,
+  type SupportLevel,
+} from '#cli/commands/init/scaffolders/agent-hooks/capability-matrix.js'
 import type { HookGroup, HooksMap } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
 import { WP_HOOK_SPECS as IR_HOOK_SPECS } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
 
@@ -61,6 +66,19 @@ function specStatus(spec: HookSpec, present: boolean, manifestExists: boolean): 
   return spec.isGuard ? HOOK_STATUS.enforcing : HOOK_STATUS.installed
 }
 
+export type HostPackagedArtifactStatus = 'installed' | 'missing' | 'deferred'
+export type HostActiveHookStatus = 'managed' | 'plugin-bridge' | 'not-installed'
+export type HostLifecycleStatus = 'full' | 'degraded' | 'unsupported'
+
+export interface HostSurfaceStatus {
+  readonly host: CapabilityMatrixHost
+  readonly packagedArtifact: HostPackagedArtifactStatus
+  readonly activeHooks: HostActiveHookStatus
+  readonly lifecycle: HostLifecycleStatus
+  readonly required: boolean
+  readonly ownership: string
+}
+
 type DeriveHookStatusOptions = {
   readonly hooksMap: HooksMap
   readonly vendor: 'claude' | 'codex'
@@ -94,6 +112,134 @@ export function deriveHookStatus(options: DeriveHookStatusOptions): readonly Hoo
     const eventOrder = a.event.localeCompare(b.event)
     return eventOrder !== 0 ? eventOrder : a.hook.localeCompare(b.hook)
   })
+}
+
+function readJsonRecord(filePath: string): Record<string, unknown> | null {
+  try {
+    const raw = readFileSync(filePath, 'utf8')
+    const parsed = JSON.parse(raw) as unknown
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null
+  } catch {
+    return null
+  }
+}
+
+function stringArrayEquals(value: unknown, expected: readonly string[]): boolean {
+  return (
+    Array.isArray(value) &&
+    value.length === expected.length &&
+    value.every((item, index) => item === expected[index])
+  )
+}
+
+function hasValidCodexPluginArtifacts(repoRoot: string): boolean {
+  const pluginPath = join(repoRoot, '.codex-plugin', 'plugin.json')
+  const mcpPath = join(repoRoot, '.codex-plugin', 'mcp.json')
+  const hooksPath = join(repoRoot, '.codex-plugin', 'hooks.json')
+  if (!existsSync(pluginPath) || !existsSync(mcpPath) || !existsSync(hooksPath)) return false
+
+  const plugin = readJsonRecord(pluginPath)
+  const mcp = readJsonRecord(mcpPath)
+  const hooks = readJsonRecord(hooksPath)
+  const servers = mcp?.mcpServers
+  const serversRecord =
+    servers && typeof servers === 'object' && !Array.isArray(servers)
+      ? (servers as Record<string, unknown>)
+      : null
+  const server = serversRecord?.webpresso
+  const serverRecord =
+    server && typeof server === 'object' && !Array.isArray(server)
+      ? (server as Record<string, unknown>)
+      : null
+  const hookMap = hooks?.hooks
+
+  return (
+    plugin?.mcpServers === './.codex-plugin/mcp.json' &&
+    plugin.hooks === './.codex-plugin/hooks.json' &&
+    serverRecord?.command === '${PLUGIN_ROOT}/bin/wp' &&
+    stringArrayEquals(serverRecord.args, ['mcp']) &&
+    hookMap !== null &&
+    typeof hookMap === 'object' &&
+    !Array.isArray(hookMap) &&
+    Object.keys(hookMap).length === 0
+  )
+}
+
+function supportLevelForHost(host: CapabilityMatrixHost): HostLifecycleStatus {
+  const emittedEvents = new Set(WP_HOOK_SPECS.map((spec) => spec.event))
+  const levels = CAPABILITY_MATRIX.filter((entry) => emittedEvents.has(entry.event)).map(
+    (entry) => entry[host] as SupportLevel,
+  )
+  if (levels.length === 0) return 'unsupported'
+  if (levels.every((level) => level === 'full')) return 'full'
+  if (levels.every((level) => level === 'unsupported' || level === 'unmapped')) {
+    return 'unsupported'
+  }
+  return 'degraded'
+}
+
+export function deriveHostSurfaceStatus(repoRoot: string): readonly HostSurfaceStatus[] {
+  return [
+    {
+      host: 'claude',
+      packagedArtifact: existsSync(join(repoRoot, '.claude-plugin', 'plugin.json'))
+        ? 'installed'
+        : 'missing',
+      activeHooks: existsSync(join(repoRoot, '.claude', 'settings.json'))
+        ? 'managed'
+        : 'not-installed',
+      lifecycle: supportLevelForHost('claude'),
+      required: true,
+      ownership:
+        'plugin artifact owns MCP; active hooks stay setup-managed in .claude/settings.json',
+    },
+    {
+      host: 'codex',
+      packagedArtifact: hasValidCodexPluginArtifacts(repoRoot) ? 'installed' : 'missing',
+      activeHooks: existsSync(join(repoRoot, '.codex', 'hooks.json')) ? 'managed' : 'not-installed',
+      lifecycle: supportLevelForHost('codex'),
+      required: true,
+      ownership:
+        '.codex-plugin/hooks.json is package metadata only; active hooks stay in .codex/hooks.json',
+    },
+    {
+      host: 'cursor',
+      packagedArtifact: 'deferred',
+      activeHooks: existsSync(join(repoRoot, '.cursor', 'hooks.json'))
+        ? 'managed'
+        : 'not-installed',
+      lifecycle: supportLevelForHost('cursor'),
+      required: false,
+      ownership: 'project hooks config only; no packaged plugin artifact is shipped',
+    },
+    {
+      host: 'opencode',
+      packagedArtifact: existsSync(join(repoRoot, '.opencode', 'plugins', 'webpresso-hooks.js'))
+        ? 'installed'
+        : 'deferred',
+      activeHooks: existsSync(join(repoRoot, '.opencode', 'plugins', 'webpresso-hooks.js'))
+        ? 'plugin-bridge'
+        : 'not-installed',
+      lifecycle: supportLevelForHost('opencode'),
+      required: false,
+      ownership:
+        'plugin bridge owns OpenCode integration; unsupported lifecycle events remain explicit',
+    },
+  ]
+}
+
+function bounded(value: string, maxLength: number): string {
+  return value.length <= maxLength ? value : `${value.slice(0, maxLength - 1)}…`
+}
+
+export function formatHostSurfaceStatusLine(surface: HostSurfaceStatus): string {
+  return (
+    `${surface.host}: artifact=${surface.packagedArtifact} active=${surface.activeHooks} ` +
+    `lifecycle=${surface.lifecycle} required=${surface.required ? 'yes' : 'no'} — ` +
+    bounded(surface.ownership, 120)
+  )
 }
 
 // ── File readers ──────────────────────────────────────────────────────────────
@@ -164,6 +310,14 @@ function printVendorStatus(
   }
 }
 
+function printHostSurfaceStatus(repoRoot: string): void {
+  process.stdout.write('\n[host surfaces]\n')
+  process.stdout.write(`${'─'.repeat(80)}\n`)
+  for (const surface of deriveHostSurfaceStatus(repoRoot)) {
+    process.stdout.write(`${formatHostSurfaceStatusLine(surface)}\n`)
+  }
+}
+
 /**
  * Entry point called from src/cli/commands/hooks.ts case 'status':
  *
@@ -181,6 +335,8 @@ export async function statusCommand(argv: readonly string[]): Promise<void> {
       'No hooks manifest found. Run `wp setup` to regenerate managed hook state.\n',
     )
   }
+
+  printHostSurfaceStatus(repoRoot)
 
   for (const vendor of vendors) {
     printVendorStatus(vendor, repoRoot, manifestExists, manifest?.vendorState[vendor] ?? 'enabled')

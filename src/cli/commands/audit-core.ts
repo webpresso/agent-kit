@@ -11,6 +11,7 @@ export type AuditKind =
   | 'docs-frontmatter'
   | 'catalog-drift'
   | 'package-surface'
+  | 'reference-parity-matrix'
   | 'agents'
   | 'tech-debt'
   | 'no-relative-parent-imports'

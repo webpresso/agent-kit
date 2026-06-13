@@ -1,6 +1,15 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { describe, expect, it } from 'vitest'
 
-import { deriveHookStatus, WP_HOOK_SPECS } from './index.js'
+import {
+  deriveHookStatus,
+  deriveHostSurfaceStatus,
+  formatHostSurfaceStatusLine,
+  WP_HOOK_SPECS,
+} from './index.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -35,7 +44,7 @@ function buildEmptyHooksMap(): HooksMap {
 
 describe('WP_HOOK_SPECS', () => {
   it('has one entry per canonical wp-* hook', () => {
-    expect(WP_HOOK_SPECS.length).toStrictEqual(5)
+    expect(WP_HOOK_SPECS.length).toStrictEqual(6)
   })
 
   it('all specs have non-empty hook and event fields', () => {
@@ -45,6 +54,7 @@ describe('WP_HOOK_SPECS', () => {
       { hook: 'wp-post-tool', event: 'PostToolUse' },
       { hook: 'wp-guard-switch', event: 'UserPromptSubmit' },
       { hook: 'wp-stop-qa', event: 'Stop' },
+      { hook: 'wp-precompact-snapshot', event: 'PreCompact' },
     ])
   })
 })
@@ -90,6 +100,32 @@ describe('deriveHookStatus', () => {
     for (const detail of nonGuards) {
       expect(detail.status).toStrictEqual('installed')
     }
+  })
+
+  it('reports the managed PreCompact snapshot hook when present', () => {
+    const result = deriveHookStatus({
+      hooksMap: {
+        PreCompact: [
+          {
+            hooks: [
+              {
+                type: 'command',
+                command: '/path/to/wp-precompact-snapshot',
+              },
+            ],
+          },
+        ],
+      },
+      vendor: 'codex',
+      manifestExists: true,
+    })
+
+    expect(result).toContainEqual({
+      hook: 'wp-precompact-snapshot',
+      event: 'PreCompact',
+      vendor: 'codex',
+      status: 'installed',
+    })
   })
 
   it('none present → all disabled when manifest exists', () => {
@@ -167,5 +203,104 @@ describe('deriveHookStatus', () => {
         }
       }
     }
+  })
+})
+
+describe('deriveHostSurfaceStatus', () => {
+  function withTempRepo(write: (repoRoot: string) => void): string {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'wp-hooks-status-'))
+    write(repoRoot)
+    return repoRoot
+  }
+
+  it('reports packaged artifacts separately from active hook installation', () => {
+    const repoRoot = withTempRepo((root) => {
+      mkdirSync(join(root, '.claude-plugin'), { recursive: true })
+      mkdirSync(join(root, '.codex-plugin'), { recursive: true })
+      mkdirSync(join(root, '.claude'), { recursive: true })
+      mkdirSync(join(root, '.codex'), { recursive: true })
+      writeFileSync(join(root, '.claude-plugin', 'plugin.json'), '{}')
+      writeFileSync(
+        join(root, '.codex-plugin', 'plugin.json'),
+        JSON.stringify({
+          mcpServers: './.codex-plugin/mcp.json',
+          hooks: './.codex-plugin/hooks.json',
+        }),
+      )
+      writeFileSync(
+        join(root, '.codex-plugin', 'mcp.json'),
+        JSON.stringify({
+          mcpServers: { webpresso: { command: '${PLUGIN_ROOT}/bin/wp', args: ['mcp'] } },
+        }),
+      )
+      writeFileSync(join(root, '.codex-plugin', 'hooks.json'), JSON.stringify({ hooks: {} }))
+      writeFileSync(join(root, '.claude', 'settings.json'), '{}')
+      writeFileSync(join(root, '.codex', 'hooks.json'), '{}')
+    })
+    try {
+      const result = deriveHostSurfaceStatus(repoRoot)
+      expect(result.find((surface) => surface.host === 'claude')).toMatchObject({
+        packagedArtifact: 'installed',
+        activeHooks: 'managed',
+        lifecycle: 'full',
+      })
+      expect(result.find((surface) => surface.host === 'codex')).toMatchObject({
+        packagedArtifact: 'installed',
+        activeHooks: 'managed',
+        lifecycle: 'full',
+      })
+      expect(result.find((surface) => surface.host === 'codex')?.ownership).toContain(
+        'package metadata only',
+      )
+      expect(result.find((surface) => surface.host === 'codex')?.ownership).toContain(
+        '.codex/hooks.json',
+      )
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
+  it('keeps partial/deferred hosts visible without treating them as failures', () => {
+    const repoRoot = withTempRepo((root) => {
+      mkdirSync(join(root, '.cursor'), { recursive: true })
+      mkdirSync(join(root, '.opencode', 'plugins'), { recursive: true })
+      writeFileSync(join(root, '.cursor', 'hooks.json'), '{}')
+      writeFileSync(join(root, '.opencode', 'plugins', 'webpresso-hooks.js'), '')
+    })
+    try {
+      const result = deriveHostSurfaceStatus(repoRoot)
+      expect(result.find((surface) => surface.host === 'cursor')).toMatchObject({
+        packagedArtifact: 'deferred',
+        activeHooks: 'managed',
+        lifecycle: 'degraded',
+        required: false,
+      })
+      expect(result.find((surface) => surface.host === 'opencode')).toMatchObject({
+        packagedArtifact: 'installed',
+        activeHooks: 'plugin-bridge',
+        lifecycle: 'degraded',
+        required: false,
+      })
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
+  it('formats host surface status summary-first and bounded', () => {
+    const line = formatHostSurfaceStatusLine({
+      host: 'opencode',
+      packagedArtifact: 'installed',
+      activeHooks: 'plugin-bridge',
+      lifecycle: 'degraded',
+      required: false,
+      ownership:
+        'plugin bridge owns OpenCode integration; unsupported lifecycle events remain explicit',
+    })
+
+    expect(line).toContain('opencode')
+    expect(line).toContain('artifact=installed')
+    expect(line).toContain('active=plugin-bridge')
+    expect(line).toContain('lifecycle=degraded')
+    expect(line.length).toBeLessThan(180)
   })
 })

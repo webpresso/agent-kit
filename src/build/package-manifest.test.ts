@@ -22,6 +22,77 @@ import {
 // Repo root anchored via import.meta.dirname so the test is cwd-independent.
 const repoRoot = join(import.meta.dirname, '..', '..')
 
+type JsonObject = Record<string, unknown>
+
+function readJsonObject(filePath: string): JsonObject {
+  return JSON.parse(readFileSync(filePath, 'utf8')) as JsonObject
+}
+
+function parseNpmPackFileList(output: string): string[] {
+  const parsed = JSON.parse(output) as [{ files?: { path?: unknown }[] }]
+  return (parsed[0]?.files ?? [])
+    .map((file) => file.path)
+    .filter((file): file is string => typeof file === 'string')
+}
+
+function loadDryRunPackagePaths(): string[] {
+  const result = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  })
+
+  if (result.status !== 0) {
+    throw new Error(
+      `npm pack dry-run failed: ${result.stderr || result.stdout || `exit ${result.status}`}`,
+    )
+  }
+  return parseNpmPackFileList(result.stdout)
+}
+
+const dryRunPackagePaths = loadDryRunPackagePaths()
+
+function getDryRunPackagePaths(): string[] {
+  return dryRunPackagePaths
+}
+
+const codexPluginArtifactPaths = [
+  '.codex-plugin/hooks.json',
+  '.codex-plugin/mcp.json',
+  '.codex-plugin/plugin.json',
+] as const
+
+const sessionMemoryPublicDocPaths = [
+  'docs/guides/session-memory.md',
+  'docs/bench/session-memory-methodology.md',
+] as const
+
+const sessionMemoryToolNames = [
+  'wp_session_doctor',
+  'wp_session_execute_file',
+  'wp_session_fetch_and_index',
+  'wp_session_index',
+  'wp_session_purge',
+  'wp_session_restore',
+  'wp_session_search',
+  'wp_session_stats',
+] as const
+
+const forbiddenPluginArtifactText = [
+  '/Users/',
+  '/home/',
+  '.omx/',
+  '.agent/',
+  '.agents/',
+  '.codex/',
+  '.claude/skills/',
+  '.env',
+  '.dev.vars',
+  'NPM_TOKEN',
+  'NODE_AUTH_TOKEN',
+  'replacement parity proof',
+  'replacement-parity',
+] as const
+
 describe('createPackedManifest', () => {
   it('keeps transient prepack backup artifacts gitignored', () => {
     const gitignore = readFileSync(join(repoRoot, '.gitignore'), 'utf8')
@@ -180,6 +251,213 @@ describe('createPackedManifest', () => {
     } finally {
       rmSync(fixtureDir, { force: true, recursive: true })
     }
+  })
+
+  it('does not publish the precompact snapshot hook as a public package bin', () => {
+    const manifest = createPackedManifest(
+      {
+        name: '@webpresso/agent-kit',
+        version: '1.0.0',
+        bin: {
+          wp: 'bin/wp',
+          'with-secrets': 'bin/with-secrets',
+        },
+      },
+      { catalog: {} },
+    ) as {
+      bin?: Record<string, string>
+    }
+
+    expect(manifest.bin).toEqual({
+      wp: 'bin/wp',
+      'with-secrets': 'bin/with-secrets',
+    })
+    expect(manifest.bin?.['wp-precompact-snapshot']).toBeUndefined()
+  })
+
+  it('classifies precompact snapshot as an internal hook bin rather than a public CLI', () => {
+    const packageJson = readJsonObject(join(repoRoot, 'package.json')) as {
+      bin?: Record<string, string>
+    }
+    const contract = JSON.parse(readFileSync(join(repoRoot, 'package-surface.json'), 'utf8')) as {
+      cliBins?: {
+        internalHooks?: string[]
+        public?: string[]
+      }
+    }
+
+    expect(contract.cliBins?.internalHooks ?? []).toContain('wp-precompact-snapshot')
+    expect(contract.cliBins?.public ?? []).not.toContain('wp-precompact-snapshot')
+    expect(Object.keys(packageJson.bin ?? {}).sort()).toEqual(
+      [...(contract.cliBins?.public ?? [])].sort(),
+    )
+    for (const internalHook of contract.cliBins?.internalHooks ?? []) {
+      expect(packageJson.bin).not.toHaveProperty(internalHook)
+    }
+  })
+
+  it('ships first-class Codex plugin artifacts as intentional package files', () => {
+    const packageJson = readJsonObject(join(repoRoot, 'package.json')) as {
+      files?: unknown
+      version?: unknown
+    }
+    expect(packageJson.files).toEqual(expect.arrayContaining(['.claude-plugin', '.codex-plugin']))
+
+    for (const artifactPath of codexPluginArtifactPaths) {
+      expect(existsSync(join(repoRoot, artifactPath))).toBe(true)
+    }
+
+    const manifest = readJsonObject(join(repoRoot, '.codex-plugin', 'plugin.json'))
+    expect(manifest).toMatchObject({
+      name: 'agent-kit',
+      version: packageJson.version,
+      description: 'Webpresso agent-kit: blueprints, skills, hooks, and MCP server',
+      skills: './skills/',
+      mcpServers: './.codex-plugin/mcp.json',
+      hooks: './.codex-plugin/hooks.json',
+    })
+
+    expect(readJsonObject(join(repoRoot, '.codex-plugin', 'mcp.json'))).toStrictEqual({
+      mcpServers: {
+        webpresso: {
+          command: '${PLUGIN_ROOT}/bin/wp',
+          args: ['mcp'],
+        },
+      },
+    })
+
+    expect(readJsonObject(join(repoRoot, '.codex-plugin', 'hooks.json'))).toStrictEqual({
+      hooks: {},
+    })
+  })
+
+  it('pins Codex plugin artifacts in the dry-run package file list', () => {
+    const packedPaths = getDryRunPackagePaths()
+    expect(packedPaths.filter((path) => path.startsWith('.codex-plugin/')).sort()).toEqual([
+      ...codexPluginArtifactPaths,
+    ])
+  })
+
+  it('keeps the package-surface denied-content policy regex-based and public-safe', () => {
+    const rawContract = readFileSync(join(repoRoot, 'package-surface.json'), 'utf8')
+    const contract = readJsonObject(join(repoRoot, 'package-surface.json')) as {
+      staleLinks?: unknown
+      tarball?: { forbiddenContentPatterns?: string[] }
+    }
+
+    expect(contract.staleLinks).toBeUndefined()
+    expect(contract.tarball?.forbiddenContentPatterns).toEqual(
+      expect.arrayContaining(['/ozby\\/ingest-lens/', '/webpresso\\/monorepo/']),
+    )
+    expect(rawContract).not.toContain('ozby/ingest-lens')
+    expect(rawContract).not.toContain('webpresso/monorepo')
+  })
+
+  it('keeps Codex plugin artifacts free of denied public package content', () => {
+    const contract = readJsonObject(join(repoRoot, 'package-surface.json')) as {
+      tarball?: { forbiddenContentPatterns?: string[] }
+    }
+    const denied = [
+      ...forbiddenPluginArtifactText,
+      ...(contract.tarball?.forbiddenContentPatterns ?? []),
+    ]
+    const artifactText = codexPluginArtifactPaths
+      .map((artifactPath) => readFileSync(join(repoRoot, artifactPath), 'utf8'))
+      .join('\n')
+
+    for (const value of denied) {
+      expect(artifactText).not.toContain(value)
+    }
+  })
+
+  it('documents session-continuity release gates for hook-bin and doc changes', () => {
+    const docs = [
+      'README.md',
+      'docs/guides/session-memory.md',
+      'docs/hook-matrix.md',
+      'docs/hooks-doctor.md',
+    ]
+      .map((path) => readFileSync(join(repoRoot, path), 'utf8'))
+      .join('\n')
+
+    for (const command of [
+      './bin/wp hooks doctor --skip-mcp',
+      './bin/wp audit blueprint-lifecycle',
+      './bin/wp audit reference-parity-matrix --json',
+      './bin/wp audit package-surface',
+      'npm pack --dry-run --json',
+      'vp run lint:pkg',
+      'vp run verify:secrets',
+      './bin/wp audit secrets-policy',
+      './bin/wp audit no-dev-vars',
+      './bin/wp audit secret-provider-quarantine',
+      './bin/wp audit secrets-config',
+      'vp run verify:paths',
+    ]) {
+      expect(docs).toContain(command)
+    }
+
+    expect(docs).toContain('typed continuity events')
+    expect(docs).toContain('Cursor/OpenCode degraded')
+    expect(docs).not.toMatch(/drop[- ]?in replacement|100% parity|identical\s+lifecycle\s+depth/iu)
+  })
+
+  it('pins the shipped README session-memory tool contract to registered public tools', () => {
+    const readme = readFileSync(join(repoRoot, 'README.md'), 'utf8')
+    const documentedTools = [...new Set(readme.match(/\bwp_session_[a-z_]+\b/gu) ?? [])].sort()
+
+    expect(documentedTools).toEqual([...sessionMemoryToolNames].sort())
+    expect(readme).toContain('docs/guides/session-memory.md')
+    expect(readme).toContain('local storage')
+    expect(readme).toContain('bounded outputs')
+    expect(readme).toContain('reset safety')
+    expect(readme).toContain('non-goals')
+    expect(readme).not.toMatch(/full.*replacement|drop[- ]?in.*replacement|100%.*parity/iu)
+  })
+
+  it('declares session-memory public docs as shipped package files', () => {
+    const packageJson = readJsonObject(join(repoRoot, 'package.json')) as { files?: unknown }
+
+    expect(packageJson.files).toEqual(expect.arrayContaining([...sessionMemoryPublicDocPaths]))
+  })
+
+  it('keeps the session-memory public contract intentional in the dry-run package file list', () => {
+    const packedPaths = getDryRunPackagePaths()
+
+    expect(packedPaths).toContain('README.md')
+    expect(packedPaths).toEqual(expect.arrayContaining([...sessionMemoryPublicDocPaths]))
+    expect(packedPaths).not.toEqual(
+      expect.arrayContaining(['.env', '.dev.vars', '.agent', '.agents', '.omx', '.codex']),
+    )
+  })
+
+  it('ships the registered session-memory MCP tool descriptors in the dry-run package file list', () => {
+    const packedPaths = getDryRunPackagePaths()
+    const expectedToolPaths = sessionMemoryToolNames.flatMap((toolName) => {
+      const fileBase = toolName.replace(/^wp_/u, '').replaceAll('_', '-')
+      return [`dist/esm/mcp/tools/${fileBase}.js`, `dist/esm/mcp/tools/${fileBase}.d.ts`]
+    })
+
+    expect(packedPaths).toEqual(expect.arrayContaining(expectedToolPaths))
+  })
+
+  it('preserves the existing reference plugin package surface', () => {
+    const packageJson = readJsonObject(join(repoRoot, 'package.json')) as { files?: unknown }
+    expect(packageJson.files).toEqual(expect.arrayContaining(['.claude-plugin']))
+
+    const manifest = readJsonObject(join(repoRoot, '.claude-plugin', 'plugin.json'))
+    expect(manifest).toMatchObject({
+      name: 'agent-kit',
+      skills: './skills',
+      commands: './commands',
+      mcpServers: {
+        webpresso: {
+          command: '${CLAUDE_PLUGIN_ROOT}/bin/wp',
+          args: ['mcp'],
+        },
+      },
+    })
+    expect(Object.hasOwn(manifest, 'hooks')).toBe(false)
   })
 
   it('preserves an Elastic-2.0 license in the packed manifest', () => {

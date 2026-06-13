@@ -431,6 +431,7 @@ describe('bin launcher', () => {
       'wp-stop-qa',
       'wp-guard-switch',
       'wp-sessionstart-routing',
+      'wp-precompact-snapshot',
       'wp-test-quality-check',
       'wp-check-dev-link',
     ])

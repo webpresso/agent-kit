@@ -1,6 +1,8 @@
 import type { AgentkitConfig } from './config.js'
 import type { ConsumerContext } from './detect-consumer.js'
 
+import { renderInstructionSurface } from '#hooks/shared/instruction-surfaces'
+
 /**
  * Render `catalog/AGENTS.md.tpl` into the consumer's `AGENTS.md`.
  *
@@ -225,6 +227,7 @@ export function renderAgentsMd(
     '{{ESCALATION_MAP}}': '{{TODO: populate escalation map — who to ping for which subsystem.}}',
     '{{DURABLE_PLANNING_ROOT}}': durablePlanningRoot,
     '{{BLUEPRINTS_DIR}}': withoutTrailingSlash(config.blueprintsDir ?? 'blueprints'),
+    '{{CODEX_ROUTING_INSTRUCTION_SURFACE}}': renderInstructionSurface({ host: 'codex' }).content,
   }
   let output = template
   for (const [key, value] of Object.entries(replacements)) {

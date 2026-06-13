@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto'
+
 import { Database } from '#db/sqlite.js'
 
 import type {
@@ -5,6 +7,7 @@ import type {
   SessionMemoryChunk,
   SessionMemorySearchOptions,
   SessionMemorySearchResult,
+  SessionMemoryUnifiedResult,
 } from './types.js'
 
 type ChunkRow = {
@@ -16,6 +19,33 @@ type ChunkRow = {
 }
 
 type SearchTier = SessionMemorySearchResult['tier']
+
+export interface SessionMemoryIndexStats {
+  chunkCount: number
+  sourceCount: number
+  sources: string[]
+}
+
+export interface SessionMemoryIndexPurgeOptions {
+  source?: string
+  confirm?: boolean
+  allowGlobal?: boolean
+}
+
+export interface SessionMemoryIndexPurgeResult {
+  dryRun: boolean
+  matchedCount: number
+  deletedCount: number
+  source?: string
+  warnings: string[]
+}
+
+export interface SessionMemoryIndexDoctorResult {
+  ok: boolean
+  chunkCount: number
+  sourceCount: number
+  warnings: string[]
+}
 
 // Search fallback uses a three-tier local ranking design:
 // porter FTS, then trigram FTS, then IDF-weighted Levenshtein.
@@ -36,6 +66,32 @@ CREATE VIRTUAL TABLE IF NOT EXISTS session_memory_chunks_fts
 CREATE VIRTUAL TABLE IF NOT EXISTS session_memory_chunks_tri
   USING fts5(id UNINDEXED, source UNINDEXED, text, tokenize='trigram');
 `
+
+function byteLength(value: string): number {
+  return Buffer.byteLength(value, 'utf8')
+}
+
+function truncateUtf8(value: string, maxBytes: number): string {
+  if (maxBytes < 0 || byteLength(value) <= maxBytes) return value
+  let bytes = 0
+  let output = ''
+  for (const char of value) {
+    const charBytes = byteLength(char)
+    if (bytes + charBytes > maxBytes) break
+    output += char
+    bytes += charBytes
+  }
+  return output
+}
+
+function contentFingerprint(value: string): string {
+  return createHash('sha256').update(value).digest('hex').slice(0, 24)
+}
+
+function normalizeLimit(value: number | undefined, fallback: number, max = 50): number {
+  if (value === undefined || !Number.isFinite(value) || value <= 0) return fallback
+  return Math.min(Math.trunc(value), max)
+}
 
 function tokenize(value: string): string[] {
   return value
@@ -69,6 +125,26 @@ function parseMetadata(raw: string): Record<string, unknown> {
   return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
     ? (parsed as Record<string, unknown>)
     : {}
+}
+
+function dedupeUnifiedResults(
+  results: SessionMemoryUnifiedResult[],
+  limit: number,
+): SessionMemoryUnifiedResult[] {
+  const seen = new Set<string>()
+  return results
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        a.timestamp.localeCompare(b.timestamp) ||
+        a.provenance.id.localeCompare(b.provenance.id),
+    )
+    .filter((result) => {
+      if (seen.has(result.dedupeKey)) return false
+      seen.add(result.dedupeKey)
+      return true
+    })
+    .slice(0, limit)
 }
 
 export class SessionMemoryStore {
@@ -146,11 +222,97 @@ export class SessionMemoryStore {
     return options.source ? this.search({ ...options, source: undefined }) : []
   }
 
+  searchUnified(options: SessionMemorySearchOptions): SessionMemoryUnifiedResult[] {
+    if (options.sourceTypes && !options.sourceTypes.includes('indexed_chunk')) return []
+    const limit = normalizeLimit(options.limit, 5)
+    const ftsQuery = escapeFtsQuery(options.query)
+    if (!ftsQuery) return []
+    let raw = this.searchFts('porter', ftsQuery, options.source, Math.max(limit * 2, limit))
+    if (raw.length === 0) {
+      raw = this.searchFts('trigram', ftsQuery, options.source, Math.max(limit * 2, limit))
+    }
+    if (raw.length === 0) {
+      raw = this.searchLevenshtein(options.query, options.source, Math.max(limit * 2, limit))
+    }
+    return dedupeUnifiedResults(
+      raw.map((result) => this.mapUnifiedResult(result, options.maxPreviewBytes)),
+      limit,
+    )
+  }
+
   count(): number {
     const row = this.db
       .prepare<[], { count: number }>('SELECT COUNT(*) AS count FROM session_memory_chunks')
       .get()
     return row?.count ?? 0
+  }
+
+  stats(): SessionMemoryIndexStats {
+    const chunkCount = this.count()
+    const sources = this.db
+      .prepare<[], { source: string }>(
+        'SELECT DISTINCT source FROM session_memory_chunks ORDER BY source ASC',
+      )
+      .all()
+      .map((row) => row.source)
+    return { chunkCount, sourceCount: sources.length, sources }
+  }
+
+  purge(options: SessionMemoryIndexPurgeOptions = {}): SessionMemoryIndexPurgeResult {
+    const ids = options.source
+      ? this.db
+          .prepare<[string], { id: string }>(
+            'SELECT id FROM session_memory_chunks WHERE source = ? ORDER BY id ASC',
+          )
+          .all(options.source)
+      : this.db
+          .prepare<[], { id: string }>('SELECT id FROM session_memory_chunks ORDER BY id ASC')
+          .all()
+    const matchedCount = ids.length
+    const dryRun = options.confirm !== true
+    const warnings: string[] = []
+    if (options.confirm === true && !options.source && options.allowGlobal !== true) {
+      warnings.push('global purge requires allowGlobal=true')
+      return { dryRun: true, matchedCount, deletedCount: 0, warnings }
+    }
+    if (dryRun || matchedCount === 0) {
+      return {
+        dryRun,
+        matchedCount,
+        deletedCount: 0,
+        ...(options.source ? { source: options.source } : {}),
+        warnings,
+      }
+    }
+
+    const tx = this.db.transaction((rawIds: unknown) => {
+      for (const row of rawIds as Array<{ id: string }>) {
+        this.db.prepare<[string]>('DELETE FROM session_memory_chunks_fts WHERE id = ?').run(row.id)
+        this.db.prepare<[string]>('DELETE FROM session_memory_chunks_tri WHERE id = ?').run(row.id)
+        this.db.prepare<[string]>('DELETE FROM session_memory_chunks WHERE id = ?').run(row.id)
+      }
+    })
+    tx(ids)
+    return {
+      dryRun: false,
+      matchedCount,
+      deletedCount: matchedCount,
+      ...(options.source ? { source: options.source } : {}),
+      warnings,
+    }
+  }
+
+  doctor(): SessionMemoryIndexDoctorResult {
+    const warnings: string[] = []
+    const quickCheck = this.db.prepare<[], { quick_check: string }>('PRAGMA quick_check').get()
+    if (quickCheck?.quick_check !== 'ok') warnings.push('index store quick_check failed')
+    const stats = this.stats()
+    return {
+      ok: warnings.length === 0,
+      chunkCount: stats.chunkCount,
+      sourceCount: stats.sourceCount,
+      warnings,
+    }
   }
 
   private searchFts(
@@ -182,6 +344,7 @@ export class SessionMemoryStore {
     source: string | undefined,
     limit: number,
   ): SessionMemorySearchResult[] {
+    const cappedLimit = normalizeLimit(limit, 5, 50)
     const rows = source
       ? this.db
           .prepare<[string], ChunkRow>(
@@ -207,8 +370,30 @@ export class SessionMemoryStore {
       })
       .filter((item) => Number.isFinite(item.score) && item.score > 0.15)
       .sort((a, b) => b.score - a.score)
-      .slice(0, limit)
+      .slice(0, cappedLimit)
       .map((item) => this.mapResult(item.row, item.score, 'levenshtein'))
+  }
+
+  private mapUnifiedResult(
+    result: SessionMemorySearchResult,
+    maxPreviewBytes: number | undefined,
+  ): SessionMemoryUnifiedResult {
+    const dedupeKey = `indexed_chunk:${result.source}:${contentFingerprint(result.text)}`
+    return {
+      sourceType: 'indexed_chunk',
+      provenance: { kind: 'indexed_chunk', id: result.id, source: result.source },
+      dedupeKey,
+      score: result.score,
+      tier:
+        result.tier === 'porter'
+          ? 'chunk_porter'
+          : result.tier === 'trigram'
+            ? 'chunk_trigram'
+            : 'chunk_levenshtein',
+      timestamp: result.createdAt,
+      preview: truncateUtf8(result.text, normalizeLimit(maxPreviewBytes, 1024)),
+      metadata: result.metadata,
+    }
   }
 
   private mapResult(row: ChunkRow, score: number, tier: SearchTier): SessionMemorySearchResult {

@@ -70,6 +70,7 @@ const HOOK_BINS: { name: string; hookName: string; checkStdin: boolean }[] = [
   { name: 'stop (qa-changed-files)', hookName: 'stop-qa', checkStdin: false },
   { name: 'guard-switch', hookName: 'guard-switch', checkStdin: true },
   { name: 'sessionstart', hookName: 'sessionstart-routing', checkStdin: true },
+  { name: 'precompact-snapshot', hookName: 'precompact-snapshot', checkStdin: true },
   { name: 'test-quality-check', hookName: 'test-quality-check', checkStdin: false },
 ]
 
@@ -999,6 +1000,146 @@ async function checkClaudeHost(): Promise<DoctorCheck> {
 // against these and were the less reliable surface), so settings.json is the
 // single source — if it does not reference them, the hooks are not installed.
 const MANAGED_HOOK_MARKER = 'hooks/managed/wp-pretool-guard'
+const CODEX_PLUGIN_ARTIFACTS = [
+  '.codex-plugin/hooks.json',
+  '.codex-plugin/mcp.json',
+  '.codex-plugin/plugin.json',
+] as const
+
+function readJsonRecord(filePath: string): Record<string, unknown> | null {
+  try {
+    const value = JSON.parse(readFileSync(filePath, 'utf-8')) as unknown
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : null
+  } catch {
+    return null
+  }
+}
+
+function stringArrayEquals(value: unknown, expected: readonly string[]): boolean {
+  return (
+    Array.isArray(value) &&
+    value.length === expected.length &&
+    value.every((item, index) => item === expected[index])
+  )
+}
+
+export function checkPackagedHostArtifacts(cwd = process.cwd()): DoctorCheck {
+  const missingCodexArtifacts = CODEX_PLUGIN_ARTIFACTS.filter(
+    (artifactPath) => !tryAccess(join(cwd, artifactPath)),
+  )
+  const claudePluginPath = join(cwd, '.claude-plugin', 'plugin.json')
+  const hasClaudePlugin = tryAccess(claudePluginPath)
+
+  const failures: string[] = []
+  if (missingCodexArtifacts.length > 0) {
+    failures.push(`missing Codex artifact(s): ${missingCodexArtifacts.join(', ')}`)
+  }
+  if (!hasClaudePlugin) failures.push('missing Claude artifact: .claude-plugin/plugin.json')
+
+  const codexPluginPath = join(cwd, '.codex-plugin', 'plugin.json')
+  const codexMcpPath = join(cwd, '.codex-plugin', 'mcp.json')
+  const codexHooksPath = join(cwd, '.codex-plugin', 'hooks.json')
+  const codexPlugin = tryAccess(codexPluginPath) ? readJsonRecord(codexPluginPath) : null
+  const codexMcp = tryAccess(codexMcpPath) ? readJsonRecord(codexMcpPath) : null
+  const codexHooks = tryAccess(codexHooksPath) ? readJsonRecord(codexHooksPath) : null
+
+  if (tryAccess(codexPluginPath) && !codexPlugin) {
+    failures.push('Codex artifact is not valid JSON: .codex-plugin/plugin.json')
+  }
+  if (tryAccess(codexMcpPath) && !codexMcp) {
+    failures.push('Codex artifact is not valid JSON: .codex-plugin/mcp.json')
+  }
+  if (tryAccess(codexHooksPath) && !codexHooks) {
+    failures.push('Codex artifact is not valid JSON: .codex-plugin/hooks.json')
+  }
+
+  if (codexPlugin) {
+    if (codexPlugin.mcpServers !== './.codex-plugin/mcp.json') {
+      failures.push('Codex plugin manifest must point mcpServers at .codex-plugin/mcp.json')
+    }
+    if (codexPlugin.hooks !== './.codex-plugin/hooks.json') {
+      failures.push('Codex plugin manifest must point hooks at .codex-plugin/hooks.json')
+    }
+  }
+
+  if (codexMcp) {
+    const servers = codexMcp.mcpServers
+    const serversRecord =
+      servers && typeof servers === 'object' && !Array.isArray(servers)
+        ? (servers as Record<string, unknown>)
+        : null
+    const server = serversRecord?.webpresso
+    const serverRecord =
+      server && typeof server === 'object' && !Array.isArray(server)
+        ? (server as Record<string, unknown>)
+        : null
+    if (
+      serverRecord?.command !== '${PLUGIN_ROOT}/bin/wp' ||
+      !stringArrayEquals(serverRecord.args, ['mcp'])
+    ) {
+      failures.push(
+        'Codex MCP artifact must expose mcpServers.webpresso launching ${PLUGIN_ROOT}/bin/wp mcp',
+      )
+    }
+  }
+
+  if (codexHooks) {
+    const hooks = codexHooks.hooks
+    const hookKeys =
+      hooks && typeof hooks === 'object' && !Array.isArray(hooks) ? Object.keys(hooks) : null
+    if (!hookKeys || hookKeys.length > 0) {
+      failures.push('Codex packaged hook artifact must remain inert; setup owns active hooks')
+    }
+  }
+
+  const present = [
+    hasClaudePlugin ? '.claude-plugin/plugin.json' : null,
+    ...CODEX_PLUGIN_ARTIFACTS.filter((artifactPath) => tryAccess(join(cwd, artifactPath))),
+  ].filter((value): value is string => value !== null)
+
+  const repairHint =
+    'Codex repair: run `wp setup`; package repair: rebuild the public artifact from source'
+  return failures.length === 0
+    ? {
+        name: 'packaged host artifacts',
+        ok: true,
+        detail: `packaged artifacts visible: ${present.join(', ')}; ${repairHint}`,
+      }
+    : {
+        name: 'packaged host artifacts',
+        ok: false,
+        detail: `${failures.join('; ')}; ${repairHint}`,
+      }
+}
+
+export function checkHostArtifactOwnership(cwd = process.cwd()): DoctorCheck {
+  const opencodePath = '.opencode/plugins/webpresso-hooks.js'
+  const opencodeInstalled = tryAccess(join(cwd, opencodePath))
+  return {
+    name: 'host artifact ownership',
+    ok: true,
+    detail: [
+      'Claude active hooks stay setup-managed in .claude/settings.json',
+      'Codex active hooks stay setup-managed in .codex/hooks.json',
+      '.codex-plugin/hooks.json is package metadata only; active hooks require wp setup',
+      opencodeInstalled
+        ? 'OpenCode bridge is degraded and installed at .opencode/plugins/webpresso-hooks.js'
+        : 'OpenCode bridge is degraded and not installed',
+      'run `wp setup --host opencode` to refresh the OpenCode bridge',
+    ].join('; '),
+  }
+}
+
+export function checkHostLifecycleDepth(): DoctorCheck {
+  return {
+    name: 'host lifecycle depth',
+    ok: true,
+    detail:
+      'Claude/Codex managed hooks: full for replacement-critical lifecycle events; Cursor/OpenCode: degraded with host-specific lifecycle depth',
+  }
+}
 
 /**
  * Verify the consumer's `.claude/settings.json` carries the managed agent-kit
@@ -1354,6 +1495,9 @@ export async function runHooksDoctor(opts: RunHooksDoctorOptions = {}): Promise<
   checks.push({ advisory: true, ...checkNativePluginRuntime() })
   checks.push({ advisory: true, ...checkOmxPluginCacheStaleSurfaceRepair() })
   checks.push({ advisory: true, ...checkThirdPartyHookCoexistence() })
+  checks.push({ advisory: true, ...checkPackagedHostArtifacts(opts.cwd) })
+  checks.push({ advisory: true, ...checkHostArtifactOwnership(opts.cwd) })
+  checks.push({ advisory: true, ...checkHostLifecycleDepth() })
   checks.push(operatorPrecedenceCheck())
   checks.push({
     name: 'managed hooks installed (.claude/settings.json)',

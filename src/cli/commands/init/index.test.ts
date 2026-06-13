@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { resolveCatalogDir } from './index.js'
+import { formatHostSetupSurfaceVisibility, resolveCatalogDir } from './index.js'
 
 function makePackageRoot(): string {
   const root = mkdtempSync(join(tmpdir(), 'wp-resolve-catalog-'))
@@ -70,5 +70,39 @@ describe('resolveCatalogDir', () => {
     })
 
     expect(resolved).toBe(join(root, 'catalog'))
+  })
+})
+
+describe('formatHostSetupSurfaceVisibility', () => {
+  const cleanup = new Set<string>()
+
+  afterEach(() => {
+    for (const root of cleanup) rmSync(root, { recursive: true, force: true })
+    cleanup.clear()
+  })
+
+  it('prints setup visibility for Codex plugin artifacts and OpenCode bridge surfaces', () => {
+    const root = makePackageRoot()
+    const packageRoot = makePackageRoot()
+    cleanup.add(root)
+    cleanup.add(packageRoot)
+    mkdirSync(join(packageRoot, '.codex-plugin'), { recursive: true })
+    mkdirSync(join(root, '.codex'), { recursive: true })
+    mkdirSync(join(root, '.opencode', 'plugins'), { recursive: true })
+    writeFileSync(join(packageRoot, '.codex-plugin', 'plugin.json'), '{}')
+    writeFileSync(join(packageRoot, '.codex-plugin', 'mcp.json'), '{}')
+    writeFileSync(join(packageRoot, '.codex-plugin', 'hooks.json'), '{}')
+    writeFileSync(join(root, '.codex', 'hooks.json'), '{}')
+    writeFileSync(join(root, '.opencode', 'plugins', 'webpresso-hooks.js'), '')
+
+    const output = formatHostSetupSurfaceVisibility({ repoRoot: root, packageRoot })
+    expect(output).toContain('Host setup surfaces:')
+    expect(output).toContain('codex: artifact=installed active=managed support=full required=yes')
+    expect(output).toContain('.codex-plugin/hooks.json metadata')
+    expect(output).toContain('.codex/hooks.json')
+    expect(output).toContain(
+      'opencode: artifact=installed active=plugin-bridge support=degraded required=no',
+    )
+    expect(output).toContain('.opencode/plugins/webpresso-hooks.js')
   })
 })

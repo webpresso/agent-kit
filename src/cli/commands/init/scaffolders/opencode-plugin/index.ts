@@ -10,6 +10,7 @@ import { type MergeOptions, type MergeResult, writeFileMerged } from '#cli/comma
  * generated file and refreshes it on every `wp setup`.
  */
 export const OPENCODE_PLUGIN_RELATIVE_PATH = '.opencode/plugins/webpresso-hooks.js'
+export const OPENCODE_PLUGIN_SUPPORT_LEVEL = 'degraded'
 
 export interface ScaffoldOpencodePluginInput {
   repoRoot: string

@@ -61,6 +61,7 @@ import {
   auditHostSkillVisibility,
   parseAgentHosts,
   serializeHostVisibility,
+  summarizeHostSetupSurfaceVisibility,
   summarizeHostVisibility,
 } from './host-visibility.js'
 import { WP_HOOK_SPECS } from './scaffolders/agent-hooks/ir.js'
@@ -238,6 +239,14 @@ function printRuntimeContractGuidance(
   }
 
   console.log('  Do not blanket-remove devDependencies just because wp can execute the tool.')
+}
+
+export function formatHostSetupSurfaceVisibility(input: {
+  readonly repoRoot: string
+  readonly packageRoot: string
+}): string {
+  const lines = summarizeHostSetupSurfaceVisibility(input)
+  return ['Host setup surfaces:', ...lines].join('\n')
 }
 
 function parseDisableHooksTarget(value: string | undefined): readonly ManagedHookVendor[] | null {
@@ -1155,6 +1164,10 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         }
       }
 
+      console.log(
+        `\n${formatHostSetupSurfaceVisibility({ repoRoot: consumer.repoRoot, packageRoot })}`,
+      )
+
       const missing = visibilityAudit.results.filter((result) => result.status === 'not-visible')
       if (missing.length > 0) {
         if (isCiEnvironment) {
@@ -1172,6 +1185,10 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
           return EXIT_SETUP_FAIL
         }
       }
+    } else {
+      console.log(
+        `\n${formatHostSetupSurfaceVisibility({ repoRoot: consumer.repoRoot, packageRoot })}`,
+      )
     }
 
     if (!options.dryRun) {

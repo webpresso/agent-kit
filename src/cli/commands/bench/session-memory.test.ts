@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { getBenchSessionMemoryHelpText } from '#cli/commands/bench/index.js'
 import {
+  DEFAULT_SESSION_MEMORY_THRESHOLDS,
   assertBenchSessionMemorySupportedRuntime,
   assertBenchRuntimeAssets,
   createRunId,
@@ -124,6 +125,21 @@ function makeDeps(
             `| ${cell.scenario_id} | ${cell.variant} | ${cell.trials} | ${cell.status} | ${cell.cost_usd} | ${cell.recall_at_5} | ${cell.wall_sec} |`,
         ),
         '',
+        ...(report.threshold_report
+          ? [
+              '## Threshold report',
+              '',
+              `- mode: ${report.threshold_report.mode}`,
+              '',
+              '| axis | metric | threshold | observed | status |',
+              '| --- | --- | ---: | ---: | --- |',
+              ...report.threshold_report.axes.map(
+                (axis) =>
+                  `| ${axis.id} | ${axis.metric} | ${axis.threshold} | ${axis.observed ?? 'n/a'} | ${axis.status} |`,
+              ),
+              '',
+            ]
+          : []),
       ].join('\n')
       mkdirSync(dirname(outPath), { recursive: true })
       writeFileSync(outPath, text, 'utf8')
@@ -220,8 +236,91 @@ describe('wp bench session-memory', () => {
     expect(result.exitCode).toBe(0)
     expect(result.dryRun).toBe(true)
     expect(result.reportPath).toBeNull()
+    expect(result.thresholdReport.axes.map((axis) => axis.id)).toEqual([
+      'post_tool_capture_latency_ms',
+      'precompact_snapshot_latency_ms',
+      'startup_resume_injection_latency_ms',
+      'search_quality_recall_at_5',
+    ])
+    expect(result.thresholdReport.mode).toBe('dry-run')
+    expect(result.thresholdReport.axes.every((axis) => axis.status === 'schema-valid')).toBe(true)
     expect(runCell).not.toHaveBeenCalled()
     expect(deps.verifyManifest).toHaveBeenCalled()
+  })
+
+  it('validates threshold schema in dry-run mode without API credentials', async () => {
+    const runCell = vi.fn()
+    const deps = makeDeps({ onRunCell: runCell })
+
+    const result = await runBenchSessionMemoryCommand(
+      {
+        dryRun: true,
+        scenario: 'debug-long-session',
+        variant: 'baseline',
+        env: { BENCH_WORKSPACE_MODE: 'single-workspace' },
+      },
+      deps,
+    )
+
+    expect(result.exitCode).toBe(0)
+    expect(result.thresholdReport.mode).toBe('dry-run')
+    expect(result.thresholdReport.axes.every((axis) => axis.status === 'schema-valid')).toBe(true)
+    expect(deps.resolveWorkspaceConfig).toHaveBeenCalled()
+    expect(deps.validateWorkspaceKeyPresence).not.toHaveBeenCalled()
+    expect(runCell).not.toHaveBeenCalled()
+  })
+
+  it('uses a dry-run-only workspace default when workspace mode is omitted', async () => {
+    const deps = makeDeps()
+    deps.resolveWorkspaceConfig = vi.fn((env) => {
+      if (env?.BENCH_WORKSPACE_MODE !== 'single-workspace') {
+        throw new Error('workspace mode missing')
+      }
+
+      return {
+        mode: 'single-workspace',
+        cacheDisclaimer: 'dry-run schema validation',
+        keyEnvNames: ['REFERENCE_API_KEY'],
+        adminVerification: 'not-applicable',
+      }
+    })
+
+    const result = await runBenchSessionMemoryCommand(
+      {
+        dryRun: true,
+        scenario: 'debug-long-session',
+        variant: 'baseline',
+        env: {},
+      },
+      deps,
+    )
+
+    expect(result.exitCode).toBe(0)
+    expect(result.thresholdReport.mode).toBe('dry-run')
+    expect(deps.resolveWorkspaceConfig).toHaveBeenCalledWith({
+      BENCH_WORKSPACE_MODE: 'single-workspace',
+    })
+    expect(deps.validateWorkspaceKeyPresence).not.toHaveBeenCalled()
+  })
+
+  it('still requires explicit workspace mode for live runs', async () => {
+    const deps = makeDeps()
+    deps.resolveWorkspaceConfig = vi.fn(() => {
+      throw new Error(
+        'Workspace mode unspecified. Set BENCH_WORKSPACE_MODE=isolated or BENCH_WORKSPACE_MODE=single-workspace.',
+      )
+    })
+
+    await expect(
+      runBenchSessionMemoryCommand(
+        {
+          scenario: 'debug-long-session',
+          variant: 'baseline',
+          env: {},
+        },
+        deps,
+      ),
+    ).rejects.toThrow('Workspace mode unspecified')
   })
 
   it('writes a report for a single scenario/variant run', async () => {
@@ -244,9 +343,20 @@ describe('wp bench session-memory', () => {
     expect(existsSync(result.reportPath ?? '')).toBe(true)
 
     const report = readFileSync(result.reportPath ?? '', 'utf8')
+    expect(result.thresholdReport.mode).toBe('measured')
+    expect(result.thresholdReport.axes).toContainEqual({
+      id: 'post_tool_capture_latency_ms',
+      label: 'PostToolUse capture latency',
+      metric: 'latency_ms',
+      threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.postToolCaptureLatencyMs,
+      observed: 500,
+      status: 'passed',
+    })
     expect(report).toContain('cost_usd')
     expect(report).toContain('recall@5')
     expect(report).toContain('wall_sec')
+    expect(report).toContain('Threshold report')
+    expect(report).toContain('post_tool_capture_latency_ms')
     expect(report).toContain('| debug-long-session | baseline | 1 | ok |')
   })
 

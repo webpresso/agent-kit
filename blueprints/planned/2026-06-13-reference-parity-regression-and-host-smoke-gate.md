@@ -35,7 +35,7 @@ tool surface, and operator flows.
 - Draft slug: `2026-06-13-reference-parity-regression-and-host-smoke-gate`
 - Output path: `blueprints/planned/2026-06-13-reference-parity-regression-and-host-smoke-gate.md`
 - Validation scope: capability matrix, host smoke fixtures, benchmark/regression thresholds, release claim audit
-- Refinement status: paths, commands, upstream blueprint relationships, public-package safety, and parallel execution shape verified on 2026-06-13.
+- Refinement status: paths, commands, dependency blueprint relationships, public-package safety, and parallel execution shape verified on 2026-06-13.
 
 ## Architecture Overview
 
@@ -56,7 +56,7 @@ repo-owned parity matrix
 | F3 | MEDIUM | Host smoke should be added only to generic init tests. | The repo already has `src/cli/commands/init/host-smoke.e2e.test.ts` with gated host smoke coverage. | Extend that file and add dedicated parity fixture helpers instead of overloading `init.e2e.test.ts`. |
 | F4 | HIGH | Capability parity can be documented without the canonical source. | `src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.ts` and its tests own host lifecycle support claims; `docs/hook-matrix.md` mirrors it. | Add a matrix crosswalk task that updates source, tests, and docs together. |
 | F5 | MEDIUM | Release claims are docs-only. | `README.md`, `CHANGELOG.md`, and public package surfaces are disclosure surfaces; repo rules require public-package safety checks. | Add claim audit and tarball/package-surface gates before parity language may ship. |
-| F6 | MEDIUM | Sibling blueprints can be edited as part of this refinement. | This refinement owns only this blueprint file; upstream plan changes must be reported, not edited here. | Remove sibling-blueprint edits from task file lists and record cross-plan follow-ups instead. |
+| F6 | MEDIUM | Sibling blueprints can be edited as part of this refinement. | This refinement owns only this blueprint file; dependency plan changes must be reported, not edited here. | Remove sibling-blueprint edits from task file lists and record cross-plan follow-ups instead. |
 | F7 | MEDIUM | More retries or longer smoke-test budgets can stabilize host proof. | Repo policy says timeout failures are diagnostics, not fixes. | Tasks require bounded fixture proof and root-cause investigation rather than timeout increases. |
 | F8 | LOW | OpenCode can be ignored while proving multi-host parity. | Existing host smoke and capability matrix include OpenCode alongside Claude, Codex, and Cursor. | Include OpenCode as a documented degraded/parity row where relevant; do not claim full support when capability rows are partial or unsupported. |
 
@@ -89,7 +89,7 @@ repo-owned parity matrix
 
 | Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
 | ---- | ----- | ------------ | -------------- | ---------------- |
-| **Wave 0** | 1.1, 2.1, 2.2, 2.3 | Upstream blueprint outputs available enough to fixture | 4 agents | S-M |
+| **Wave 0** | 1.1, 2.1, 2.2, 2.3 | Dependency blueprint outputs available enough to fixture | 4 agents | S-M |
 | **Wave 1** | 1.2 | Task 1.1 | 1 agent | S |
 | **Wave 2** | 3.1 | Tasks 1.1, 1.2, 2.1, 2.2, 2.3 | 1 agent | S |
 | **Critical path** | 1.1 → 1.2 → 3.1 | -- | 3 waves | L |
@@ -230,7 +230,7 @@ binaries are unavailable. (F3, F7, F8)
 Add integration coverage that proves the server exposes the replacement-critical
 tool surface expected by the parity matrix: file/session execution, indexing,
 fetch-and-index, restore/search, stats/purge/doctor/upgrade/insight, and audit
-entrypoints where those upstream blueprints have landed. Missing upstream tools
+entrypoints where those dependency blueprints have landed. Missing dependency-owned tools
 must show as pending matrix gaps, not as implied success. (F4, F6)
 
 **Files:**
@@ -242,14 +242,14 @@ must show as pending matrix gaps, not as implied success. (F4, F6)
 
 1. Add failing integration assertions that compare the advertised MCP tool names to the replacement parity matrix rows.
 2. Run: `./bin/wp test --file src/__integration__/reference-parity-tool-surface.test.ts --file src/mcp/server.integration.test.ts` — verify FAIL.
-3. Implement the smallest test helpers/assertions needed; if an upstream tool is not yet implemented, mark the matrix row as blocked/open rather than editing upstream code in this task.
+3. Implement the smallest test helpers/assertions needed; if a dependency-owned tool is not yet implemented, mark the matrix row as blocked/open rather than editing dependency-owned code in this task.
 4. Run: `./bin/wp test --file src/__integration__/reference-parity-tool-surface.test.ts --file src/mcp/server.integration.test.ts` — verify PASS.
 5. Run: `./bin/wp lint src/__integration__/reference-parity-tool-surface.test.ts src/mcp/server.integration.test.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
 - [ ] Tool-surface smoke checks advertised tools against explicit parity rows.
-- [ ] Missing upstream tools produce actionable open gaps, not green false positives.
+- [ ] Missing dependency-owned tools produce actionable open gaps, not green false positives.
 - [ ] The test names the exact missing or misadvertised MCP surface.
 - [ ] `./bin/wp test --file src/__integration__/reference-parity-tool-surface.test.ts --file src/mcp/server.integration.test.ts` passes.
 - [ ] `./bin/wp lint src/__integration__/reference-parity-tool-surface.test.ts src/mcp/server.integration.test.ts` passes.
@@ -350,11 +350,11 @@ that fail closed on unsupported or unproven full-parity wording. (F5, F6)
 
 | Type | Blueprint | Relationship | Refinement Note |
 | ---- | --------- | ------------ | --------------- |
-| Upstream | `2026-06-10-harness-regression-gate` | Reuse harness gating infrastructure. | Do not edit from this blueprint; if benchmark threshold fields need harness-gate integration, record a follow-up in that plan. |
-| Upstream | `2026-06-10-harness-surface-manifest` | Reuse manifest/reporting surface. | Parity matrix should link to manifest rows once the manifest exists. |
-| Upstream | `2026-06-13-session-continuity-and-resume-parity` | Supplies lifecycle parity. | Replacement rows for capture/resume stay blocked until that plan lands. |
-| Upstream | `2026-06-13-sandboxed-knowledge-tool-surface-parity` | Supplies tool-surface parity. | Tool smoke must distinguish missing upstream tools from local regression. |
-| Upstream | `2026-06-13-multi-host-plugin-and-instruction-surface-expansion` | Supplies packaged host parity. | Host smoke covers only supported/degraded claims surfaced by that plan. |
+| Dependency | `2026-06-10-harness-regression-gate` | Reuse harness gating infrastructure. | Do not edit from this blueprint; if benchmark threshold fields need harness-gate integration, record a follow-up in that plan. |
+| Dependency | `2026-06-10-harness-surface-manifest` | Reuse manifest/reporting surface. | Parity matrix should link to manifest rows once the manifest exists. |
+| Dependency | `2026-06-13-session-continuity-and-resume-parity` | Supplies lifecycle parity. | Replacement rows for capture/resume stay blocked until that plan lands. |
+| Dependency | `2026-06-13-sandboxed-knowledge-tool-surface-parity` | Supplies tool-surface parity. | Tool smoke must distinguish missing dependency-owned tools from local regression. |
+| Dependency | `2026-06-13-multi-host-plugin-and-instruction-surface-expansion` | Supplies packaged host parity. | Host smoke covers only supported/degraded claims surfaced by that plan. |
 
 ## Edge Cases and Error Handling
 
@@ -365,7 +365,7 @@ that fail closed on unsupported or unproven full-parity wording. (F5, F6)
 | Optional host binary is absent locally | False red local run or silent false green | Use explicit env flags to choose skip vs required-fail behavior. | 2.1 / F3 |
 | Benchmark noise masks regressions | Noisy release block or silent failure | Validate threshold schema in dry-run and reserve live thresholds for measured operator runs. | 2.3 / F2, F7 |
 | Degraded host support is marketed as full parity | Misleading public claim | Crosswalk replacement rows to canonical capability support levels. | 1.2, 3.1 / F4, F8 |
-| Upstream tool or lifecycle plans are not landed | Local tests fail for missing dependencies | Mark matrix rows blocked/open and avoid editing sibling blueprints from this plan. | 2.2 / F6 |
+| Dependency-owned tool or lifecycle plans are not landed | Local tests fail for missing dependencies | Mark matrix rows blocked/open and avoid editing sibling blueprints from this plan. | 2.2 / F6 |
 | Public package tarball includes private proof artifacts | Public disclosure leak | Run dry tarball/package-surface/secret checks before release-facing claims ship. | 3.1 / F5 |
 
 ## Non-goals
@@ -381,11 +381,11 @@ that fail closed on unsupported or unproven full-parity wording. (F5, F6)
 
 | Risk | Impact | Mitigation | Task / Finding |
 | ---- | ------ | ---------- | -------------- |
-| The checklist grows faster than implementation | Permanent red gate | Keep rows actionable, statused, and tied to concrete upstream blueprints. | 1.1 / F4 |
+| The checklist grows faster than implementation | Permanent red gate | Keep rows actionable, statused, and tied to concrete dependency blueprints. | 1.1 / F4 |
 | Bench harness becomes too expensive for routine use | Gate avoidance | Keep default gate to dry-run/schema/report validation; require explicit operator action for live API runs. | 2.3 / F2 |
 | Release docs drift from implementation | Overclaiming | Add claim audit coverage and public package safety gates. | 3.1 / F5 |
 | Same-file conflicts block parallel execution | Slower `/pll` execution or merge conflicts | Keep Wave 0 tasks disjoint; fan in only at release claim gate. | All tasks |
-| Upstream plans expose different file names or tool names when implemented | Broken references in parity smoke | Tests should read actual registry/matrix outputs and fail with exact missing surface names. | 2.1, 2.2 / F6 |
+| Dependency plans expose different file names or tool names when implemented | Broken references in parity smoke | Tests should read actual registry/matrix outputs and fail with exact missing surface names. | 2.1, 2.2 / F6 |
 | Host ecosystem behavior changes after the matrix lands | Stale capability claims | Treat capability-matrix updates as required when host smoke or official behavior changes. | 1.2, 2.1 / F4, F8 |
 
 ## Refinement Summary

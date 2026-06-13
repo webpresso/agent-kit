@@ -24,7 +24,7 @@ tags:
 
 **Goal:** Turn the continuity + knowledge surface into a consistent multi-host
 experience across plugin-capable and hook-configured hosts, with host-specific
-instruction files, packaging artifacts, and compatibility rules derived from one
+instruction files, packaging artifacts, and host-support rules derived from one
 repo-owned source of truth.
 
 ## Planning Summary
@@ -33,7 +33,7 @@ repo-owned source of truth.
 - Complexity: `XL`
 - Draft slug: `2026-06-13-multi-host-plugin-and-instruction-surface-expansion`
 - Output path: `blueprints/planned/2026-06-13-multi-host-plugin-and-instruction-surface-expansion.md`
-- Validation scope: host manifests, setup projection, compatibility docs, doctor coverage
+- Validation scope: host manifests, setup projection, host-support docs, doctor coverage
 - Refinement status: plan refined against repo files on 2026-06-13; no source implementation performed in this pass.
 
 ## Architecture Overview
@@ -65,14 +65,14 @@ one routing / lifecycle source of truth
 | -------- | ------ | --------- | ------- |
 | Claude hook ownership | keep hooks out of plugin manifest | Avoid double-fire and preserve current reliable setup contract | F2 |
 | Codex packaging | first-class plugin artifact + managed hook projection | Codex needs both packaging and repo-scoped hook config; package changes require tarball proof | F2, F5 |
-| Cursor compatibility | generate valid no-op JSON + instruction artifact | Cursor rejects empty stdout and needs explicit compatibility handling | F4 |
+| Cursor support | generate valid no-op JSON + instruction artifact | Cursor rejects empty stdout and needs explicit host handling | F4 |
 | Host instructions | generate from one routing source | Avoid hand-maintained drift across `.md`, `.mdc`, and plugin docs | F6 |
 | Documentation ownership | serialize README and hook-matrix edits | Public support claims must not race implementation tasks or overclaim parity | F3 |
-| Plugin-first hosts | OpenCode is pinned by tests before public support claims; other plugin-first hosts stay deferred unless proven | Repo has OpenCode plugin scaffolding, not a generic plugin-host abstraction | F7 |
+| Plugin-first hosts | OpenCode is pinned by tests before public support claims; other plugin-first hosts stay deferred unless proven | Repo has OpenCode plugin scaffolding, not a unscoped plugin framework abstraction | F7 |
 
 ## Technology Choices and Public-Package Safety Notes
 
-| Surface | Choice | Safety / Compatibility Notes | Verification |
+| Surface | Choice | Safety / Support Notes | Verification |
 | ------- | ------ | ---------------------------- | ------------ |
 | Codex plugin directory | Add `.codex-plugin/` only if package tests prove all files are intentional | Update `package.json#files`; keep generated/runtime agent state out of the tarball; do not ship secrets, local paths, private repo names, sourcemaps, or generated workspace state | `./bin/wp test --file src/build/package-manifest.test.ts`, `./bin/wp audit package-surface`, `vp run lint:pkg` |
 | Claude plugin | Preserve `.claude-plugin/` package ownership and keep hooks setup-managed | Do not add Claude hook commands to the plugin manifest; README warning remains aligned with tests | `./bin/wp test --file src/cli/commands/init/scaffolders/claude-plugin/index.test.ts` if touched by implementers |
@@ -85,7 +85,7 @@ one routing / lifecycle source of truth
 | Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
 | ---- | ----- | ------------ | -------------- | ---------------- |
 | **Wave 0** | 2.1, 2.2, 3.1, 3.2 | None | 4 agents | S-M |
-| **Wave 1** | 1.1, 1.2 | Required upstream interface artifacts landed and stable | 2 agents | S-M |
+| **Wave 1** | 1.1, 1.2 | Required reference-interface artifacts landed and stable | 2 agents | S-M |
 | **Wave 2** | 2.3, 4.1 | Wave 0 plus whichever of Tasks 1.1/1.2 they consume | 2 agents | S-M |
 | **Wave 3** | 4.2 | Wave 1 + Wave 2 package/docs facts | 1 agent | M |
 | **Critical path** | 1.2 → 2.3 → 4.2 | -- | 4 waves | XL |
@@ -99,7 +99,7 @@ one routing / lifecycle source of truth
 | DD | dependency_edges / total_tasks | ≤ 2.0 | 9 / 9 = 1.0 |
 | CP | same-file overlaps per wave | 0 | 0 |
 
-**Parallelization score:** B. Refinement delta: split shared docs, capability-matrix, doctor, and status work out of broad mixed tasks so same-wave file conflicts are zero, but only four tasks are truly ready before upstream interface artifacts land.
+**Parallelization score:** B. Refinement delta: split shared docs, capability-matrix, doctor, and status work out of broad mixed tasks so same-wave file conflicts are zero, but only four tasks are truly ready before reference-interface artifacts land.
 
 ### Phase 1: packaged host artifacts and instruction source [Complexity: L]
 
@@ -176,9 +176,9 @@ minimal host renderers instead of shipping a speculative shared layer. (F6)
 - [ ] The renderer lands with current callers/tests and no unused abstraction layer.
 - [ ] If a shared renderer cannot stay simpler than per-host renderers, the task stops and narrows scope instead of forcing the abstraction.
 
-### Phase 2: host compatibility emitters and matrix [Complexity: L]
+### Phase 2: host-support emitters and matrix [Complexity: L]
 
-#### [cursor] Task 2.1: Harden Cursor projection around compatibility quirks and degraded lifecycle support
+#### [cursor] Task 2.1: Harden Cursor projection around host quirks and degraded lifecycle support
 
 **Status:** todo
 
@@ -219,7 +219,7 @@ shared matrix and public docs updates to dependent tasks to avoid file conflicts
 
 Use the existing OpenCode plugin scaffolder and hook emitter as the current
 plugin-style host boundary. Decide in tests whether OpenCode is first-class,
-partial, or deferred for this blueprint; do not add a generic plugin-host
+partial, or deferred for this blueprint; do not add a unscoped plugin framework
 framework unless a current shipped host requires it. Keep capability-matrix and
 README claims out of this task. (F7)
 
@@ -304,7 +304,7 @@ and tests only; public documentation is serialized in Task 4.2. (F8)
 
 - [ ] Doctor understands packaged host artifacts and managed hook ownership rules.
 - [ ] Repair suggestions are concrete, bounded, and host-specific.
-- [ ] Doctor does not claim identical lifecycle depth across hosts.
+- [ ] Doctor reports host-specific lifecycle depth without flattening degraded hosts.
 
 #### [status] Task 3.2: Teach hook status about host artifacts and degraded modes
 
@@ -400,7 +400,7 @@ docs are shared public surfaces. (F2, F3, F5)
 **Acceptance:**
 
 - [ ] README and hook docs match actual shipped install paths and host support levels.
-- [ ] Public docs do not claim every host has identical lifecycle depth.
+- [ ] Public docs do not claim full lifecycle depth for every host.
 - [ ] Package-surface/tarball checks prove no denied content ships with the new plugin artifacts.
 - [ ] Final focused test suite passes with repeated `--file` flags.
 
@@ -420,8 +420,8 @@ docs are shared public surfaces. (F2, F3, F5)
 
 | Type | Blueprint | Relationship | Alignment note |
 | ---- | --------- | ------------ | -------------- |
-| Upstream | `2026-06-13-session-continuity-and-resume-parity` | Host packaging depends on stable lifecycle behavior | Task 1.2 depends on continuity Task 2.2 for resume/instruction semantics; host emitters must reflect degraded lifecycle depth rather than force parity. |
-| Upstream | `2026-06-13-sandboxed-knowledge-tool-surface-parity` | Host install surfaces must expose the completed tool set | Task 1.1 depends on knowledge Task 3.1 before public Codex artifacts claim complete tool availability. |
+| Dependency | `2026-06-13-session-continuity-and-resume-parity` | Host packaging depends on stable lifecycle behavior | Task 1.2 depends on continuity Task 2.2 for resume/instruction semantics; host emitters must reflect degraded lifecycle depth rather than force parity. |
+| Dependency | `2026-06-13-sandboxed-knowledge-tool-surface-parity` | Host install surfaces must expose the completed tool set | Task 1.1 depends on knowledge Task 3.1 before public Codex artifacts claim complete tool availability. |
 | Downstream | `2026-06-13-reference-parity-regression-and-host-smoke-gate` | Host-smoke verification consumes these artifacts | That blueprint may need its smoke fixtures updated after this blueprint finalizes exact Codex/OpenCode artifact paths. |
 
 ## Edge Cases and Error Handling
@@ -429,20 +429,20 @@ docs are shared public surfaces. (F2, F3, F5)
 | Edge Case | Risk | Solution | Task | Finding |
 | --------- | ---- | -------- | ---- | ------- |
 | Claude double-fire via plugin + settings hooks | Broken guard behavior | Keep hook ownership in setup-managed files only; plugin manifest remains non-hook-owning | 1.1, 4.2 | F2 |
-| Cursor empty stdout rejection | Hook failure on no-op | Emit valid structured no-op output for Cursor-compatible hooks and test the behavior | 2.1 | F4 |
+| Cursor empty stdout rejection | Hook failure on no-op | Emit valid structured no-op output for Cursor hooks and test the behavior | 2.1 | F4 |
 | Codex trust/install drift | Installed hooks not actually active | Extend setup, doctor, status, and docs with explicit trust/install paths and repair hints | 1.1, 3.1, 3.2, 4.1, 4.2 | F2, F5 |
 | Public package leaks through plugin artifacts | Secrets/local paths/private notes ship to npm | Add package-manifest assertions, package-surface audit updates, and tarball lint gate | 1.1, 4.2 | F2, F5 |
 | Same-wave doc edits collide | Parallel execution overwrites README or hook matrix updates | Serialize all public docs and hook-matrix edits in Task 4.2 | 4.2 | F3 |
 | Matrix claims diverge from emitters | Doctor/status/docs overclaim host support | Matrix task depends on host emitter decisions and owns matrix tests | 2.3 | F4, F7 |
 | Generic plugin-host abstraction expands scope | Unused framework increases maintenance and public API risk | Pin OpenCode explicitly; defer other plugin-first hosts unless a current test requires them | 2.2, 4.2 | F7 |
-| Upstream interface freeze slips | Wave 0 assumptions collapse and critical path stretches | Only start Tasks 1.1 and 1.2 after upstream artifacts are landed and stable; keep Wave 0 claims limited to truly local tasks | 1.1, 1.2 | F2, F6, F7 |
+| Reference interface freeze slips | Wave 0 assumptions collapse and critical path stretches | Only start Tasks 1.1 and 1.2 after reference-interface artifacts are landed and stable; keep Wave 0 claims limited to truly local tasks | 1.1, 1.2 | F2, F6, F7 |
 
 ## Non-goals
 
-- Claiming every host has identical lifecycle depth.
+- Claiming full lifecycle depth for every host.
 - Shipping a custom dashboard UI.
 - Expanding public support before setup/doctor/status and package-surface checks can verify it.
-- Adding a generic plugin-host framework for hosts that are not test-pinned in this blueprint.
+- Adding a unscoped plugin framework framework for hosts that are not test-pinned in this blueprint.
 - Editing downstream smoke-gate blueprints during this refinement pass.
 
 ## Risks
@@ -452,7 +452,7 @@ docs are shared public surfaces. (F2, F3, F5)
 | Packaging drift across hosts | Broken installs or plugin assets missing from npm package | Package-manifest tests, package-surface audit, and tarball lint for each required host artifact | 1.1, 4.2 | F2, F5 |
 | Docs overclaim host parity | User confusion and false replacement claims | Public docs depend on matrix + doctor/status tests and explicitly distinguish full/partial/deferred support | 2.3, 4.2 | F3, F4 |
 | Shared instruction generator becomes too abstract | Hard-to-maintain routing layer | Keep one renderer with concrete host fixtures and no unused adapters | 1.2 | F6 |
-| Cursor/OpenCode compatibility changes upstream | Generated config becomes invalid | Keep compatibility behavior isolated in emitter tests and matrix rows for fast updates | 2.1, 2.2, 2.3 | F4, F7 |
+| Cursor/OpenCode reference support changes | Generated config becomes invalid | Keep host behavior isolated in emitter tests and matrix rows for fast updates | 2.1, 2.2, 2.3 | F4, F7 |
 | Setup, doctor, and status disagree | Operators cannot repair installs reliably | Separate tests for each surface plus docs task that cites tested behavior | 3.1, 3.2, 4.1, 4.2 | F8 |
 
 ## Refinement Summary
@@ -468,8 +468,8 @@ docs are shared public surfaces. (F2, F3, F5)
 | Cross-plans updated | 0 (read-only alignment; downstream update may be needed after implementation paths are finalized) |
 | Edge cases documented | 7 |
 | Risks documented | 5 |
-| Parallelization score | B (4 truly ready tasks in Wave 0 before upstream handoff, CP=0) |
+| Parallelization score | B (4 truly ready tasks in Wave 0 before dependency handoff, CP=0) |
 | Critical path | 4 waves |
-| Max parallel agents | 4 immediate, 6 after upstream handoff |
+| Max parallel agents | 4 immediate, 6 after dependency handoff |
 | Total tasks | 9 |
 | Blueprint compliant | 9/9 |
