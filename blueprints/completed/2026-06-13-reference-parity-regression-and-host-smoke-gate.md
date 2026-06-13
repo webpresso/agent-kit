@@ -1,12 +1,13 @@
 ---
 type: blueprint
-title: "Reference parity regression and host smoke gate"
+title: Reference parity regression and host smoke gate
 owner: ozby
-status: planned
+status: completed
+completed_at: '2026-06-13'
 complexity: L
 created: '2026-06-13'
 last_updated: '2026-06-13'
-progress: '17% (Task 2.3 complete; benchmark dry-run is branch-stable with real CLI integration smoke; remaining parity/release tasks pending)'
+progress: '100% (6/6 tasks done, 0 blocked, updated 2026-06-13)'
 depends_on:
   - 2026-06-10-harness-regression-gate
   - 2026-06-10-harness-surface-manifest
@@ -20,6 +21,8 @@ tags:
   - parity
   - qa
   - hosts
+worktree_owner_id: owner-38f4c865435e
+worktree_owner_branch: bp/2026-06-13-reference-parity-regression-and-host-smoke-gate
 ---
 
 # Reference parity regression and host smoke gate
@@ -71,7 +74,7 @@ repo-owned parity matrix
 | Host proof | Bounded smoke fixtures per host surface | Claude, Codex, Cursor, and OpenCode differ materially; degraded support must be visible. |
 | CI proof mode | Fixture-backed host proof must run in normal CI; live host binaries stay optional behind explicit env flags | Prevent replacement smoke from degenerating into “all skipped except Claude.” |
 | Benchmark scope | Continuity + search + hot-path latency | These are the user-visible replacement axes. |
-| Benchmark readiness | Unit/integration threshold tests are necessary but not sufficient | The actual `wp bench session-memory --dry-run` command must pass from a committed feature branch without chasing HEAD-only manifest drift. |
+| Benchmark readiness | Unit/integration threshold tests are necessary but not sufficient | The actual `wp bench session-memory --dry-run` command passes from a committed feature branch without chasing HEAD-only manifest drift. |
 | Benchmark test shape | Mocked deps are only unit coverage | Any replacement-readiness claim needs a no-injected-deps command/runtime smoke, because users run `wp bench`, not `runBenchSessionMemoryCommand` with fake modules. |
 | Release gate | Fail closed on unresolved parity gaps | Prevent stale docs/claims from outrunning shipped behavior. |
 | Public package posture | Treat README, changelog, package manifest, bins, exports, docs, and catalog assets as disclosure surfaces | Public-package safety applies before any replacement claim is released. |
@@ -113,7 +116,13 @@ repo-owned parity matrix
 
 #### [qa] Task 1.1: Create the repo-owned replacement parity matrix
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/audit/reference-parity-matrix.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"},{"agent":"codex","command":"./bin/wp lint docs/bench/reference-parity-matrix.md src/audit/reference-parity-matrix.ts src/audit/reference-parity-matrix.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"}]
+```
 
 **Depends:** None
 
@@ -142,17 +151,22 @@ informational. (F4, F5, F8)
 
 **Acceptance:**
 
-- [ ] Every claimed parity capability is listed explicitly with status, host scope, proof artifact, and release criticality.
-- [ ] Degraded/unsupported host behavior is not counted as full replacement parity.
-- [ ] Matrix parser/checker fails closed when a required row or proof artifact is missing.
-- [ ] Open or blocked rows prevent full replacement claims from turning green in Task 3.1.
-- [ ] `./bin/wp test --file src/audit/reference-parity-matrix.test.ts` passes.
-- [ ] `./bin/wp lint docs/bench/reference-parity-matrix.md src/audit/reference-parity-matrix.ts src/audit/reference-parity-matrix.test.ts` passes.
+- [x] Every claimed parity capability is listed explicitly with status, host scope, proof artifact, and release criticality.
+- [x] Degraded/unsupported host behavior is not counted as full replacement parity.
+- [x] Matrix parser/checker fails closed when a required row or proof artifact is missing.
+- [x] Open or blocked rows prevent full replacement claims from turning green in Task 3.1.
+- [x] `./bin/wp test --file src/audit/reference-parity-matrix.test.ts` passes.
+- [x] `./bin/wp lint docs/bench/reference-parity-matrix.md src/audit/reference-parity-matrix.ts src/audit/reference-parity-matrix.test.ts` passes.
 - [x] `./bin/wp typecheck` passes.
-
 #### [host] Task 1.2: Crosswalk replacement rows to the canonical host capability matrix
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"},{"agent":"codex","command":"./bin/wp lint src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.ts src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts docs/hook-matrix.md","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"}]
+```
 
 **Depends:** Task 1.1
 
@@ -177,18 +191,23 @@ source of truth. This task prevents docs from claiming host parity when
 
 **Acceptance:**
 
-- [ ] Capability-matrix tests prevent unsupported host/event rows from becoming full replacement claims.
-- [ ] `docs/hook-matrix.md` points readers to the replacement parity matrix without duplicating unsupported claims.
-- [ ] No generated agent/runtime surface is edited.
-- [ ] `./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts` passes.
-- [ ] `./bin/wp lint src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.ts src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts docs/hook-matrix.md` passes.
+- [x] Capability-matrix tests prevent unsupported host/event rows from becoming full replacement claims.
+- [x] `docs/hook-matrix.md` points readers to the replacement parity matrix without duplicating unsupported claims.
+- [x] No generated agent/runtime surface is edited.
+- [x] `./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts` passes.
+- [x] `./bin/wp lint src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.ts src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts docs/hook-matrix.md` passes.
 - [x] `./bin/wp typecheck` passes.
 
 ## Phase 2: host smoke + benchmark gates [Complexity: L]
-
 #### [qa] Task 2.1: Add bounded host setup smoke fixtures for replacement-critical hosts
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/__integration__/reference-parity-host-smoke.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts","exit_code":0,"kind":"integration","result":"pass","target_files":["src/__integration__/reference-parity-host-smoke.test.ts","src/cli/commands/init/host-smoke.e2e.test.ts"],"ts":"2026-06-13T20:12:49.519Z"},{"agent":"codex","command":"./bin/wp lint src/__integration__/reference-parity-host-smoke.fixtures.ts src/__integration__/reference-parity-host-smoke.test.ts src/cli/commands/init/host-smoke.e2e.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"}]
+```
 
 **Depends:** None
 
@@ -216,18 +235,23 @@ binaries are unavailable. (F3, F7, F8)
 
 **Acceptance:**
 
-- [ ] Host smoke covers install/config, lifecycle output shape, and tool discoverability where the host supports it.
-- [ ] Claude, Codex, Cursor, and OpenCode are represented with full/degraded/unsupported distinctions.
-- [ ] Smoke skips are controlled by explicit environment flags, not silent absence.
-- [ ] Default CI still runs fixture-backed parity assertions for every named host even when live host binaries are absent.
-- [ ] No timeout increase is used as the fix for slow or flaky smoke.
-- [ ] `./bin/wp test --file src/__integration__/reference-parity-host-smoke.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts` passes.
-- [ ] `./bin/wp lint src/__integration__/reference-parity-host-smoke.fixtures.ts src/__integration__/reference-parity-host-smoke.test.ts src/cli/commands/init/host-smoke.e2e.test.ts` passes.
+- [x] Host smoke covers install/config, lifecycle output shape, and tool discoverability where the host supports it.
+- [x] Claude, Codex, Cursor, and OpenCode are represented with full/degraded/unsupported distinctions.
+- [x] Smoke skips are controlled by explicit environment flags, not silent absence.
+- [x] Default CI still runs fixture-backed parity assertions for every named host even when live host binaries are absent.
+- [x] No timeout increase is used as the fix for slow or flaky smoke.
+- [x] `./bin/wp test --file src/__integration__/reference-parity-host-smoke.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts` passes.
+- [x] `./bin/wp lint src/__integration__/reference-parity-host-smoke.fixtures.ts src/__integration__/reference-parity-host-smoke.test.ts src/cli/commands/init/host-smoke.e2e.test.ts` passes.
 - [x] `./bin/wp typecheck` passes.
-
 #### [mcp] Task 2.2: Add tool-surface smoke for replacement-critical MCP discovery
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/__integration__/reference-parity-tool-surface.test.ts --file src/mcp/server.integration.test.ts","exit_code":0,"kind":"integration","result":"pass","target_files":["src/__integration__/reference-parity-tool-surface.test.ts","src/mcp/server.integration.test.ts"],"ts":"2026-06-13T20:12:49.519Z"},{"agent":"codex","command":"./bin/wp lint src/__integration__/reference-parity-tool-surface.test.ts src/mcp/server.integration.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"}]
+```
 
 **Depends:** None
 
@@ -252,16 +276,21 @@ must show as pending matrix gaps, not as implied success. (F4, F6)
 
 **Acceptance:**
 
-- [ ] Tool-surface smoke checks advertised tools against explicit parity rows.
-- [ ] Missing dependency-owned tools produce actionable open gaps, not green false positives.
-- [ ] The test names the exact missing or misadvertised MCP surface.
-- [ ] `./bin/wp test --file src/__integration__/reference-parity-tool-surface.test.ts --file src/mcp/server.integration.test.ts` passes.
-- [ ] `./bin/wp lint src/__integration__/reference-parity-tool-surface.test.ts src/mcp/server.integration.test.ts` passes.
+- [x] Tool-surface smoke checks advertised tools against explicit parity rows.
+- [x] Missing dependency-owned tools produce actionable open gaps, not green false positives.
+- [x] The test names the exact missing or misadvertised MCP surface.
+- [x] `./bin/wp test --file src/__integration__/reference-parity-tool-surface.test.ts --file src/mcp/server.integration.test.ts` passes.
+- [x] `./bin/wp lint src/__integration__/reference-parity-tool-surface.test.ts src/mcp/server.integration.test.ts` passes.
 - [x] `./bin/wp typecheck` passes.
-
 #### [bench] Task 2.3: Add dry-run regression thresholds for continuity latency and search quality
 
 **Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file scripts/bench/lib/manifest.test.ts --file src/cli/commands/bench/session-memory.test.ts --file src/__integration__/reference-parity-bench.integration.test.ts","exit_code":0,"kind":"integration","result":"pass","target_files":["scripts/bench/lib/manifest.test.ts","src/cli/commands/bench/session-memory.test.ts","src/__integration__/reference-parity-bench.integration.test.ts"],"ts":"2026-06-13T20:12:49.519Z"},{"agent":"codex","command":"./bin/wp bench session-memory --dry-run","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"}]
+```
 
 **Depends:** None
 
@@ -312,10 +341,15 @@ command/runtime integration smoke with no injected benchmark runtime deps.
 - [x] `./bin/wp typecheck` passes.
 
 ## Phase 3: release and claim gate [Complexity: S]
-
 #### [release] Task 3.1: Tie public replacement claims to green parity proofs
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/audit/ai-contracts.test.ts --file src/audit/reference-parity-claims.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"},{"agent":"codex","audit_kind":"public-package-safety","command":"npm pack --dry-run --json && vp run lint:pkg && vp run public:readiness && vp run verify:secrets","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-13T20:12:49.519Z"}]
+```
 
 **Depends:** Task 1.1, Task 1.2, Task 2.1, Task 2.2, Task 2.3
 
@@ -343,13 +377,13 @@ that fail closed on unsupported or unproven full-parity wording. (F5, F6)
 
 **Acceptance:**
 
-- [ ] Public docs cannot claim full replacement before proof artifacts exist and pass.
-- [ ] The claim gate points to checklist, host smoke, tool-surface smoke, and bench evidence.
-- [ ] README/CHANGELOG language distinguishes proven support from open/degraded gaps.
-- [ ] Public package dry-run and package-surface checks pass with no denied content.
-- [ ] `./bin/wp test --file src/audit/ai-contracts.test.ts --file src/audit/reference-parity-claims.test.ts` passes.
-- [ ] `npm pack --dry-run --json`, `vp run lint:pkg`, `vp run public:readiness`, and `vp run verify:secrets` pass.
-- [ ] `./bin/wp lint README.md CHANGELOG.md src/audit/ai-contracts.ts src/audit/ai-contracts.test.ts src/audit/reference-parity-claims.test.ts` passes.
+- [x] Public docs cannot claim full replacement before proof artifacts exist and pass.
+- [x] The claim gate points to checklist, host smoke, tool-surface smoke, and bench evidence.
+- [x] README/CHANGELOG language distinguishes proven support from open/degraded gaps.
+- [x] Public package dry-run and package-surface checks pass with no denied content.
+- [x] `./bin/wp test --file src/audit/ai-contracts.test.ts --file src/audit/reference-parity-claims.test.ts` passes.
+- [x] `npm pack --dry-run --json`, `vp run lint:pkg`, `vp run public:readiness`, and `vp run verify:secrets` pass.
+- [x] `./bin/wp lint README.md CHANGELOG.md src/audit/ai-contracts.ts src/audit/ai-contracts.test.ts src/audit/reference-parity-claims.test.ts` passes.
 - [x] `./bin/wp typecheck` passes.
 
 ## Verification Gates
