@@ -38,7 +38,7 @@ without flooding the host conversation.
 agent request
   -> wp_session_* MCP tool
   -> local file / fetch / index / search path
-  -> native session-memory store
+  -> local session-memory store
   -> bounded structured response with searchable large-output references
 ```
 
@@ -47,7 +47,7 @@ agent request
 | ID | Severity | Claim / Assumption | Verified Reality | Blueprint Fix |
 | -- | -------- | ------------------ | ---------------- | ------------- |
 | F1 | HIGH | Existing private execution files can be modified at `src/mcp/tools/_session-execute.ts` and `src/mcp/tools/_session-batch-execute.ts`. | Those files do not exist in this repo. Current MCP tools live as one file per descriptor under `src/mcp/tools/`. | Create first-class session tool files instead of modifying missing private helpers. |
-| F2 | HIGH | `src/session-memory/native-runtime.ts` already exists. | It does not exist. Current session-memory files are `fetch-index.ts`, `repo-hash.ts`, `session.ts`, `store.ts`, and `types.ts`. | Treat the runtime owner as a new file with tests in the execution task. |
+| F2 | HIGH | `src/mcp/tools/session-execute-file.ts` already exists. | It does not exist. Current session-memory files are `fetch-index.ts`, `repo-hash.ts`, `session.ts`, `store.ts`, and `types.ts`. | Treat the runtime owner as a new file with tests in the execution task. |
 | F3 | MEDIUM | Existing `session-restore.ts` and `session-search.ts` tools can be modified. | No session MCP tool files are currently present; only non-session compiled tools are registered. | Split tool creation from store semantics and add registry wiring only after handlers exist. |
 | F4 | MEDIUM | Focused test commands use repeated `--files`. | `./bin/wp test --help` shows singular repeated `--file <path>`. | Use `./bin/wp test --file ... --file ...` in tasks and gates. |
 | F5 | MEDIUM | `./bin/wp lint --file ...` is valid. | `./bin/wp lint` accepts positional file/directory arguments, not `--file`. | Use `./bin/wp lint <paths...>` in task TDD steps and gates. |
@@ -176,8 +176,8 @@ belongs in this task. (F1, F2, F7)
 
 **Files:**
 
-- Create: `src/session-memory/native-runtime.ts`
-- Create: `src/session-memory/native-runtime.test.ts`
+- Create: `src/mcp/tools/session-execute-file.ts`
+- Create: `src/mcp/tools/session-execute-file.test.ts`
 - Create: `src/mcp/tools/session-execute-file.ts`
 - Create: `src/mcp/tools/session-execute-file.test.ts`
 - Modify: `src/session-memory/types.ts`
@@ -185,11 +185,11 @@ belongs in this task. (F1, F2, F7)
 **Steps (TDD):**
 
 1. Write failing runtime and tool tests for repo-root validation, explicit allowlisted operations, denied paths, bounded previews, overflow indexing, unsupported platform reporting, and command/file failures.
-2. Run: `./bin/wp test --file src/session-memory/native-runtime.test.ts --file src/mcp/tools/session-execute-file.test.ts` — verify FAIL.
+2. Run: `./bin/wp test --file src/session-memory/session-execute-file.test.ts --file src/mcp/tools/session-execute-file.test.ts` — verify FAIL.
 3. Implement the smallest runtime contract and handler needed for local file analysis without broad shell-generalization.
-4. Run: `./bin/wp test --file src/session-memory/native-runtime.test.ts --file src/mcp/tools/session-execute-file.test.ts` — verify PASS.
+4. Run: `./bin/wp test --file src/session-memory/session-execute-file.test.ts --file src/mcp/tools/session-execute-file.test.ts` — verify PASS.
 5. Refactor only to remove duplication with existing path validation utilities; do not create unused adapters.
-6. Run: `./bin/wp lint src/session-memory/native-runtime.ts src/mcp/tools/session-execute-file.ts src/session-memory/types.ts` and `./bin/wp typecheck`.
+6. Run: `./bin/wp lint src/session-memory/session-execute-file.ts src/mcp/tools/session-execute-file.ts src/session-memory/types.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 

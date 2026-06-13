@@ -13,6 +13,7 @@ export const AUDIT_KINDS = [
   'agents',
   'catalog-drift',
   'package-surface',
+  'reference-parity-matrix',
   'docs-frontmatter',
   'blueprint-readme-drift',
   'blueprint-lifecycle',
@@ -33,6 +34,7 @@ export const AUDIT_KINDS = [
   'no-dev-vars',
   'secret-provider-quarantine',
   'secrets-config',
+  'session-memory-hardcut',
 ] as const
 
 export type AuditKind = (typeof AUDIT_KINDS)[number]

@@ -1,7 +1,4 @@
 {
-  "staleLinks": [
-    "webpresso/monorepo/webpresso/blueprints/draft/webpresso-public-extraction-roadmap"
-  ],
   "referenceConsumerBaselines": {
     "@webpresso/db-branching": "0.2.4",
     "@webpresso/db-branching-neon": "0.2.4"
@@ -15,8 +12,22 @@
       "/^dist\\/esm\\/ai-prompts\\//"
     ],
     "forbiddenContentPatterns": [
-      "ozby/ingest-lens",
-      "webpresso/monorepo"
+      "/ozby\\/ingest-lens/",
+      "/webpresso\\/monorepo/"
+    ]
+  },
+  "cliBins": {
+    "public": [
+      "wp",
+      "docs-check-internal-links",
+      "docs-check-refs",
+      "docs-check-stale",
+      "docs-lint",
+      "docs-migrate",
+      "with-secrets"
+    ],
+    "internalHooks": [
+      "wp-precompact-snapshot"
     ]
   }
 }

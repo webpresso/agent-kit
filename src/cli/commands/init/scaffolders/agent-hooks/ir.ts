@@ -46,8 +46,8 @@ export type MatcherSet = {
  * MatcherSet, and the hook's measured timeout budget.
  *
  * `jsonOnly` marks events where the hook runner MUST emit valid JSON on stdout.
- * Codex mandates this for Stop and SubagentStop: "Plain text output is
- * invalid". Claude Code also accepts JSON-only stdout for these events.
+ * Codex mandates this for Stop and SubagentStop, and PreCompact uses an empty
+ * JSON object so the managed hook cannot overclaim host-specific context output.
  */
 export type HookSpec = {
   readonly event: (typeof HOOK_EVENT_NAMES)[number]
@@ -88,6 +88,13 @@ export const WP_HOOK_SPECS: readonly HookSpec[] = [
   },
   { event: 'UserPromptSubmit', bin: 'wp-guard-switch', hookName: 'guard-switch', timeout: 5 },
   { event: 'Stop', bin: 'wp-stop-qa', hookName: 'stop-qa', timeout: 10, jsonOnly: true },
+  {
+    event: 'PreCompact',
+    bin: 'wp-precompact-snapshot',
+    hookName: 'precompact-snapshot',
+    timeout: 5,
+    jsonOnly: true,
+  },
 ]
 
 /**

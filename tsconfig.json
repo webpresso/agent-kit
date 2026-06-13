@@ -104,6 +104,12 @@
       "#hooks/*": [
         "./src/hooks/*"
       ],
+      "#session-memory/*.js": [
+        "./src/session-memory/*.ts"
+      ],
+      "#session-memory/*": [
+        "./src/session-memory/*.ts"
+      ],
       "#secret-gate/*": [
         "./src/secret-gate/*"
       ],

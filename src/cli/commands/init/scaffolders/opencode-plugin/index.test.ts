@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   OPENCODE_PLUGIN_CONTENT,
   OPENCODE_PLUGIN_RELATIVE_PATH,
+  OPENCODE_PLUGIN_SUPPORT_LEVEL,
   scaffoldOpencodePlugin,
 } from './index'
 
@@ -24,6 +25,11 @@ afterEach(() => {
 })
 
 describe('scaffoldOpencodePlugin', () => {
+  it('keeps the generated OpenCode plugin path and support level explicit', () => {
+    expect(OPENCODE_PLUGIN_RELATIVE_PATH).toBe('.opencode/plugins/webpresso-hooks.js')
+    expect(OPENCODE_PLUGIN_SUPPORT_LEVEL).toBe('degraded')
+  })
+
   it('creates the plugin file under .opencode/plugins on first run', () => {
     const repoRoot = createTempRoot()
     const result = scaffoldOpencodePlugin({ repoRoot, options: {} })
@@ -94,9 +100,25 @@ describe('plugin-native invariants — webpresso-hooks.js', () => {
 })
 
 describe('OPENCODE_PLUGIN_CONTENT', () => {
+  it('embeds the concrete OpenCode instruction surface from the shared renderer', () => {
+    expect(OPENCODE_PLUGIN_CONTENT).toContain(
+      'OpenCode instruction surface generated from the shared wp_routing source',
+    )
+    expect(OPENCODE_PLUGIN_CONTENT).toContain('<wp_instruction_surface host="opencode"')
+    expect(OPENCODE_PLUGIN_CONTENT).toContain(
+      'wp_test, wp_e2e, wp_lint, wp_typecheck, wp_qa, wp_audit, wp_ci_act, wp_worker_tail',
+    )
+    expect(OPENCODE_PLUGIN_CONTENT).not.toContain('generic plugin')
+  })
+
   it('exports an async plugin function as required by opencode plugin contract', () => {
     expect(OPENCODE_PLUGIN_CONTENT).toContain('export const WebpressoHooksPlugin')
     expect(OPENCODE_PLUGIN_CONTENT).toContain('async ({ $, directory })')
+    expect(OPENCODE_PLUGIN_CONTENT).toContain('Support boundary: degraded plugin bridge')
+  })
+
+  it('does not use replacement parity overclaim wording in generated OpenCode text', () => {
+    expect(OPENCODE_PLUGIN_CONTENT).not.toMatch(/\bparity\b/iu)
   })
 
   it('shells out to canonical wp hook subcommands', () => {
@@ -122,6 +144,16 @@ describe('OPENCODE_PLUGIN_CONTENT', () => {
   it('uses experimental.session.compacting for context survival across compaction', () => {
     expect(OPENCODE_PLUGIN_CONTENT).toContain("'experimental.session.compacting'")
     expect(OPENCODE_PLUGIN_CONTENT).toContain('output.context.push(message)')
+    expect(OPENCODE_PLUGIN_CONTENT).toContain('degraded context refresh')
+  })
+
+  it('does not imply unsupported OpenCode lifecycle handlers are available', () => {
+    expect(OPENCODE_PLUGIN_CONTENT).toContain('Unsupported managed lifecycle events:')
+    expect(OPENCODE_PLUGIN_CONTENT).toContain('UserPromptSubmit')
+    expect(OPENCODE_PLUGIN_CONTENT).toContain('Stop')
+    expect(OPENCODE_PLUGIN_CONTENT).not.toContain('"UserPromptSubmit"')
+    expect(OPENCODE_PLUGIN_CONTENT).not.toContain('"Stop"')
+    expect(OPENCODE_PLUGIN_CONTENT).not.toContain('permission.asked')
   })
 
   it('blocks tool execution by throwing when a canonical wp hook denies', () => {
@@ -253,5 +285,58 @@ describe('OPENCODE_PLUGIN_CONTENT', () => {
     const envOutput = { env: {} as Record<string, string> }
     await plugin['shell.env']({ cwd: repoRoot }, envOutput)
     expect(envOutput.env.CLAUDE_PROJECT_DIR).toBe(repoRoot)
+  })
+
+  it('passes OpenCode tool output through the PostToolUse bridge without blocking', async () => {
+    const repoRoot = createTempRoot()
+    const targetPath = join(repoRoot, OPENCODE_PLUGIN_RELATIVE_PATH)
+    scaffoldOpencodePlugin({ repoRoot, options: {} })
+
+    const mod = (await import(`${pathToFileURL(targetPath).href}?t=${Date.now()}`)) as {
+      WebpressoHooksPlugin: (input: {
+        $: (
+          strings: TemplateStringsArray,
+          ...values: string[]
+        ) => {
+          cwd: (directory: string) => {
+            quiet: () => { nothrow: () => Promise<{ exitCode: number; stdout: Buffer }> }
+          }
+        }
+        directory: string
+      }) => Promise<{
+        'tool.execute.after': (
+          input: { tool: string; args: { command?: string } },
+          output: { args: { command?: string } },
+        ) => Promise<void>
+      }>
+    }
+
+    const commands: string[] = []
+    const payloads: string[] = []
+    const $ = (_strings: TemplateStringsArray, ...values: string[]) => {
+      payloads.push(values[0] ?? '')
+      commands.push(values.find((value) => value.includes('wp hook ')) ?? '')
+      return {
+        cwd: (_directory: string) => ({
+          quiet: () => ({
+            nothrow: async () => ({ exitCode: 0, stdout: Buffer.from('not-json') }),
+          }),
+        }),
+      }
+    }
+
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+    const plugin = await mod.WebpressoHooksPlugin({ $, directory: repoRoot })
+    await expect(
+      plugin['tool.execute.after'](
+        { tool: 'bash', args: { command: 'wp test' } },
+        { args: { command: 'wp test' } },
+      ),
+    ).resolves.toBeUndefined()
+    stderrSpy.mockRestore()
+
+    expect(commands).toContain('wp hook post-tool')
+    expect(payloads.some((payload) => payload.includes('"tool_name":"Bash"'))).toBe(true)
+    expect(payloads.some((payload) => payload.includes('"command":"wp test"'))).toBe(true)
   })
 })

@@ -1,4 +1,13 @@
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, expect, test } from 'vitest'
@@ -19,6 +28,68 @@ function tempRepo() {
 
 function writeJson(path: string, value: unknown) {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`)
+}
+
+function listFixtureFiles(root: string, entry: string): string[] {
+  const absolute = join(root, entry)
+  if (!existsSync(absolute)) return []
+  const stats = statSync(absolute)
+  if (stats.isFile()) return [entry]
+  if (!stats.isDirectory()) return []
+  return readdirSync(absolute)
+    .flatMap((name) => listFixtureFiles(root, join(entry, name)))
+    .toSorted((left, right) => left.localeCompare(right))
+}
+
+function fixturePackedEntry(packageRoot: string): { files: Array<{ path: string; size: number }> } {
+  const manifest = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8')) as {
+    bin?: string | Record<string, string>
+    files?: string[]
+  }
+  const paths = new Set<string>(['package.json'])
+  for (const entry of manifest.files ?? []) {
+    for (const file of listFixtureFiles(packageRoot, entry)) paths.add(file)
+  }
+  const binEntries =
+    typeof manifest.bin === 'string'
+      ? [manifest.bin]
+      : Object.values(manifest.bin ?? {}).filter(
+          (value): value is string => typeof value === 'string',
+        )
+  for (const binEntry of binEntries) {
+    const normalized = binEntry.replace(/^\.\//, '')
+    if (existsSync(join(packageRoot, normalized))) paths.add(normalized)
+  }
+  return {
+    files: [...paths]
+      .toSorted((left, right) => left.localeCompare(right))
+      .map((path) => ({
+        path,
+        size: statSync(join(packageRoot, path)).size,
+      })),
+  }
+}
+
+const fastFixtureAudit = {
+  readPackedEntry: fixturePackedEntry,
+  runSecretlint: () => [],
+}
+
+function fixtureSecretlintFinding(stageRoot: string): unknown {
+  return [
+    {
+      filePath: join(stageRoot, 'README.md'),
+      messages: [
+        {
+          message: 'Credential-like URL detected',
+          messageId: 'BasicAuth',
+          ruleId: '@secretlint/secretlint-rule-preset-recommend',
+          line: 1,
+          column: 1,
+        },
+      ],
+    },
+  ]
 }
 
 describe('package-surface audit', () => {
@@ -51,7 +122,7 @@ describe('package-surface audit', () => {
       private: false,
     })
 
-    const result = auditPackageSurface(root)
+    const result = auditPackageSurface(root, fastFixtureAudit)
 
     expect(result.ok).toBe(false)
     expect(result.violations).toEqual(
@@ -77,7 +148,7 @@ describe('package-surface audit', () => {
       private: false,
     })
 
-    const result = auditPackageSurface(root)
+    const result = auditPackageSurface(root, fastFixtureAudit)
 
     expect(result.ok).toBe(false)
     expect(result.violations).toEqual(
@@ -100,7 +171,7 @@ describe('package-surface audit', () => {
     writeJson(join(root, 'package-surface.json'), {})
     writeFileSync(join(root, 'README.md'), 'Install @webpresso/neon for Neon branching.\n')
 
-    const result = auditPackageSurface(root)
+    const result = auditPackageSurface(root, fastFixtureAudit)
 
     expect(result.ok).toBe(false)
     expect(result.violations).toEqual(
@@ -126,7 +197,7 @@ describe('package-surface audit', () => {
     )
     writeFileSync(join(root, 'pnpm-lock.yaml'), "'@webpresso/webpresso@0.1.1':\n")
 
-    const result = auditPackageSurface(root)
+    const result = auditPackageSurface(root, fastFixtureAudit)
 
     expect(result.ok).toBe(false)
     expect(result.violations).toEqual(
@@ -144,7 +215,7 @@ describe('package-surface audit', () => {
     writeJson(join(root, 'package-surface.json'), {})
     writeFileSync(join(root, 'pnpm-lock.yaml'), "'@webpresso/webpresso@0.1.1':\n")
 
-    const result = auditPackageSurface(root)
+    const result = auditPackageSurface(root, fastFixtureAudit)
 
     expect(result.violations).not.toEqual(
       expect.arrayContaining([
@@ -161,7 +232,7 @@ describe('package-surface audit', () => {
     writeJson(join(root, 'package-surface.json'), {})
     writeFileSync(join(root, 'pnpm-lock.yaml'), "'webpresso@0.18.17':\n")
 
-    const result = auditPackageSurface(root)
+    const result = auditPackageSurface(root, fastFixtureAudit)
 
     expect(result.violations).not.toEqual(
       expect.arrayContaining([
@@ -182,7 +253,7 @@ describe('package-surface audit', () => {
     })
     writeFileSync(join(root, 'pnpm-lock.yaml'), "'@webpresso/webpresso@0.3.8':\n")
 
-    const result = auditPackageSurface(root)
+    const result = auditPackageSurface(root, fastFixtureAudit)
 
     expect(result.violations).not.toEqual(
       expect.arrayContaining([
@@ -204,7 +275,7 @@ describe('package-surface audit', () => {
     })
     writeFileSync(join(root, 'README.md'), 'Use @webpresso/webpresso/runtime.\n')
 
-    expect(auditPackageSurface(root).ok).toBe(true)
+    expect(auditPackageSurface(root, fastFixtureAudit).ok).toBe(true)
   })
 
   test('flags forbidden packed tarball paths and content', () => {
@@ -222,7 +293,7 @@ describe('package-surface audit', () => {
       'private path /Users/ozby/example and @repo/hidden\n',
     )
 
-    const result = auditPackageSurface(root)
+    const result = auditPackageSurface(root, fastFixtureAudit)
 
     expect(result.ok).toBe(false)
     expect(
@@ -242,6 +313,34 @@ describe('package-surface audit', () => {
     ).toBe(true)
   })
 
+  test('regex forbidden-content patterns reject matching packed text', () => {
+    const root = tempRepo()
+    writeJson(join(root, 'package-surface.json'), {
+      allowedPublicPackages: ['@webpresso/webpresso'],
+      compatibilityPublicPackages: [],
+      tarball: { forbiddenContentPatterns: ['/ozby\\/ingest-lens/'] },
+    })
+    writeJson(join(root, 'package.json'), {
+      name: '@webpresso/webpresso',
+      version: '0.1.0',
+      private: false,
+      files: ['README.md'],
+    })
+    writeFileSync(join(root, 'README.md'), 'leaked private reference ozby/ingest-lens\n')
+
+    const result = auditPackageSurface(root, fastFixtureAudit)
+
+    expect(result.ok).toBe(false)
+    expect(
+      result.violations.some(
+        (violation) =>
+          violation.file === 'README.md' &&
+          violation.message.includes('forbidden pattern') &&
+          violation.message.includes('/ozby\\/ingest-lens/'),
+      ),
+    ).toBe(true)
+  })
+
   test('flags secretlint findings in packed files', () => {
     const root = tempRepo()
     writeJson(join(root, 'package.json'), {
@@ -252,7 +351,10 @@ describe('package-surface audit', () => {
     })
     writeFileSync(join(root, 'README.md'), 'https://scanner-safe:sentinel@example.com\n')
 
-    const result = auditPackageSurface(root)
+    const result = auditPackageSurface(root, {
+      ...fastFixtureAudit,
+      runSecretlint: fixtureSecretlintFinding,
+    })
 
     expect(result.ok).toBe(false)
     expect(result.violations).toEqual(
@@ -358,7 +460,7 @@ describe('package-surface audit', () => {
       'https://scanner-safe:sentinel@example.com and @repo/generated\n',
     )
 
-    const result = auditPackageSurface(root)
+    const result = auditPackageSurface(root, fastFixtureAudit)
 
     expect(result.ok).toBe(true)
     expect(result.violations).toEqual([])
@@ -384,7 +486,7 @@ describe('package-surface audit', () => {
       'https://scanner-safe:sentinel@example.com and @repo/generated\n',
     )
 
-    const result = auditPackageSurface(root)
+    const result = auditPackageSurface(root, fastFixtureAudit)
 
     expect(result.ok).toBe(true)
     expect(result.violations).toEqual([])
@@ -409,7 +511,7 @@ describe('package-surface audit', () => {
     writeFileSync(join(root, 'bin', 'webpresso.js'), '#!/usr/bin/env node\nconsole.log("ok")\n')
     chmodSync(join(root, 'bin', 'webpresso.js'), 0o755)
 
-    const result = stagePublishableTarballSurface(root, destination)
+    const result = stagePublishableTarballSurface(root, destination, fastFixtureAudit)
 
     expect(result.packageCount).toBe(1)
     expect(result.fileCount).toBeGreaterThanOrEqual(3)
@@ -442,7 +544,7 @@ describe('package-surface audit', () => {
       })}\n`,
     )
 
-    const result = auditPackageSurface(root)
+    const result = auditPackageSurface(root, fastFixtureAudit)
 
     expect(result.ok).toBe(false)
     expect(
@@ -483,7 +585,7 @@ describe('package-surface audit', () => {
     chmodSync(join(root, 'bin', 'runtime', 'darwin-arm64', 'wp'), 0o755)
     chmodSync(join(root, 'bin', 'wp'), 0o755)
 
-    const result = auditPackageSurface(root)
+    const result = auditPackageSurface(root, fastFixtureAudit)
 
     expect(result.ok).toBe(false)
     expect(
@@ -533,7 +635,7 @@ describe('package-surface audit', () => {
       0o755,
     )
 
-    const result = auditPackageSurface(root)
+    const result = auditPackageSurface(root, fastFixtureAudit)
 
     expect(result.ok).toBe(false)
     expect(
@@ -572,7 +674,7 @@ describe('package-surface audit', () => {
     writeFileSync(join(root, 'bin', 'wp'), ROOT_WP_DISPATCHER)
     chmodSync(join(root, 'bin', 'wp'), 0o755)
 
-    const result = auditPackageSurface(root)
+    const result = auditPackageSurface(root, fastFixtureAudit)
 
     expect(result.ok).toBe(true)
   })
@@ -609,7 +711,7 @@ describe('package-surface audit', () => {
     writeFileSync(join(root, 'bin', 'wp'), ROOT_WP_DISPATCHER)
     chmodSync(join(root, 'bin', 'wp'), 0o755)
 
-    const result = auditPackageSurface(root)
+    const result = auditPackageSurface(root, fastFixtureAudit)
 
     // No runtime-optional violation: the packed manifest wires the target to the
     // package version (0.28.0) even though the committed manifest declares none.
@@ -648,7 +750,7 @@ describe('package-surface audit', () => {
     writeFileSync(join(root, 'bin', 'wp'), Buffer.from([0x7f, 0x45, 0x4c, 0x46, 0]))
     chmodSync(join(root, 'bin', 'wp'), 0o755)
 
-    const result = auditPackageSurface(root)
+    const result = auditPackageSurface(root, fastFixtureAudit)
 
     expect(result.ok).toBe(false)
     expect(

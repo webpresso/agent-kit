@@ -64,6 +64,7 @@ import {
   auditHostSkillVisibility,
   parseAgentHosts,
   serializeHostVisibility,
+  summarizeHostSetupSurfaceVisibility,
   summarizeHostVisibility,
 } from './host-visibility.js'
 import { WP_HOOK_SPECS } from './scaffolders/agent-hooks/ir.js'
@@ -242,6 +243,14 @@ function printRuntimeContractGuidance(
   }
 
   console.log('  Do not blanket-remove devDependencies just because wp can execute the tool.')
+}
+
+export function formatHostSetupSurfaceVisibility(input: {
+  readonly repoRoot: string
+  readonly packageRoot: string
+}): string {
+  const lines = summarizeHostSetupSurfaceVisibility(input)
+  return ['Host setup surfaces:', ...lines].join('\n')
 }
 
 function parseDisableHooksTarget(value: string | undefined): readonly ManagedHookVendor[] | null {
@@ -815,7 +824,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         break
       case 'codex-webpresso-mcp-not-installed':
         console.log(
-          `  codex webpresso mcp: ⚠ no install root found (checked ${webpressoMcpResult.checked.length} paths). Install webpresso globally (\`bun add -g webpresso\`) or via the Claude plugin to wire up codex MCP.`,
+          `  codex webpresso mcp: ⚠ no install root found (checked ${webpressoMcpResult.checked.length} paths). Install @webpresso/agent-kit globally (\`bun add -g @webpresso/agent-kit\`) or via the Claude plugin to wire up codex MCP.`,
         )
         break
     }
@@ -1205,6 +1214,10 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         }
       }
 
+      console.log(
+        `\n${formatHostSetupSurfaceVisibility({ repoRoot: consumer.repoRoot, packageRoot })}`,
+      )
+
       const missing = visibilityAudit.results.filter((result) => result.status === 'not-visible')
       if (missing.length > 0) {
         if (isCiEnvironment) {
@@ -1228,6 +1241,10 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
           )
         }
       }
+    } else {
+      console.log(
+        `\n${formatHostSetupSurfaceVisibility({ repoRoot: consumer.repoRoot, packageRoot })}`,
+      )
     }
 
     if (!options.dryRun) {

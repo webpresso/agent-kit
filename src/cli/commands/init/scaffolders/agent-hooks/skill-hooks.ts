@@ -17,6 +17,7 @@ const RESERVED_GLOBAL_BINS = [
   'wp-post-tool',
   'wp-guard-switch',
   'wp-sessionstart-routing',
+  'wp-precompact-snapshot',
   'wp-stop-qa',
 ] as const
 

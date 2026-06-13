@@ -11,10 +11,10 @@
  * are NOT mapped in Cursor's third-party compatibility table).
  *
  * opencode column reflects the JS plugin API surface (opencode.ai/docs/plugins/):
- * - session.created / experimental.session.compacting → SessionStart (full)
+ * - session.created / experimental.session.compacting → SessionStart context refresh (full)
  * - tool.execute.before / after → PreToolUse / PostToolUse (full)
- * - permission.asked / replied → PermissionRequest (partial — no deny envelope)
- * - experimental.session.compacting fires before compaction → PreCompact (partial)
+ * - PermissionRequest is a degraded native callback; no managed permission hook is emitted
+ * - experimental.session.compacting refreshes context; no managed PreCompact snapshot hook is emitted
  * - No UserPromptSubmit, Stop, SubagentStart/Stop, SessionEnd, PostCompact equivalent
  */
 
@@ -27,6 +27,24 @@ export type VendorCapability = {
   readonly cursor: SupportLevel
   readonly opencode: SupportLevel
   readonly notes?: string
+}
+
+export type CapabilityMatrixHost = 'claude' | 'codex' | 'cursor' | 'opencode'
+
+export type ReplacementParitySupportLevel = 'full' | 'degraded' | 'unsupported'
+
+export type ReplacementParityCapabilityCrosswalk = {
+  readonly capability: string
+  readonly events: readonly string[]
+  readonly hosts: readonly CapabilityMatrixHost[]
+  readonly notes: string
+}
+
+export type ReplacementParityRowLike = {
+  readonly capability: string
+  readonly hostScope: string
+  readonly supportLevel: ReplacementParitySupportLevel
+  readonly status?: string
 }
 
 /**
@@ -43,7 +61,7 @@ export const CAPABILITY_MATRIX: readonly VendorCapability[] = [
     cursor: 'full',
     opencode: 'full',
     notes:
-      'Cursor requires project hooks.json with version: 1; OpenCode bridges via session.created + experimental.session.compacting',
+      'Cursor requires project hooks.json with version: 1; OpenCode bridges via session.created',
   },
   {
     event: 'PreToolUse',
@@ -59,7 +77,7 @@ export const CAPABILITY_MATRIX: readonly VendorCapability[] = [
     codex: 'full',
     cursor: 'full',
     opencode: 'full',
-    notes: 'Cursor maps to afterShell; OpenCode bridges via tool.execute.after',
+    notes: 'Cursor emits postToolUse; OpenCode bridges via tool.execute.after',
   },
   {
     event: 'PostToolUseFailure',
@@ -86,7 +104,7 @@ export const CAPABILITY_MATRIX: readonly VendorCapability[] = [
     cursor: 'full',
     opencode: 'unsupported',
     notes:
-      'Cursor maps to afterShell; OpenCode has no turn-end/stop lifecycle event. Codex mandates JSON-only stdout for Stop (plain text is invalid)',
+      'Cursor emits stop; OpenCode has no turn-end/stop lifecycle event. Codex mandates JSON-only stdout for Stop (plain text is invalid)',
   },
   {
     event: 'PermissionRequest',
@@ -95,7 +113,7 @@ export const CAPABILITY_MATRIX: readonly VendorCapability[] = [
     cursor: 'unmapped',
     opencode: 'partial',
     notes:
-      'Cursor: not mapped in third-party compat table. OpenCode: permission.asked/replied exist but no deny-envelope parity with Claude/Codex. Current managed wp-* surface does not install a dedicated permission hook',
+      'Cursor: not mapped in third-party compat table. OpenCode exposes native permission callbacks, but the managed plugin bridge emits no permission hook',
   },
   {
     event: 'SubagentStart',
@@ -126,12 +144,12 @@ export const CAPABILITY_MATRIX: readonly VendorCapability[] = [
   },
   {
     event: 'PreCompact',
-    claude: 'partial',
-    codex: 'partial',
+    claude: 'full',
+    codex: 'full',
     cursor: 'unsupported',
     opencode: 'partial',
     notes:
-      'Accepted in lifecycle tooling, but the current managed wp-* surface does not install a dedicated pre-compact hook. OpenCode experimental.session.compacting fires before compaction',
+      'Managed wp-precompact-snapshot is installed for Claude/Codex; Cursor has no PreCompact projection; its schema accepts host-native preCompact but the emitter intentionally omits it; OpenCode experimental.session.compacting refreshes SessionStart context and emits no wp-precompact-snapshot command',
   },
   {
     event: 'PostCompact',
@@ -143,3 +161,98 @@ export const CAPABILITY_MATRIX: readonly VendorCapability[] = [
       'Accepted in lifecycle tooling, but the current managed wp-* surface does not install a dedicated post-compact hook. OpenCode has no post-compaction event',
   },
 ]
+
+export const REPLACEMENT_PARITY_CAPABILITY_CROSSWALK: readonly ReplacementParityCapabilityCrosswalk[] =
+  [
+    {
+      capability: 'lifecycle capture',
+      events: ['PostToolUse', 'UserPromptSubmit', 'Stop', 'PreCompact'],
+      hosts: ['claude', 'codex', 'cursor', 'opencode'],
+      notes:
+        'Host lifecycle capture is degraded until every covered host/event is full; store-only rows may remain scoped outside host parity.',
+    },
+    {
+      capability: 'resume injection',
+      events: ['SessionStart'],
+      hosts: ['claude', 'codex', 'cursor', 'opencode'],
+      notes: 'Resume injection enters host context through SessionStart-compatible surfaces.',
+    },
+    {
+      capability: 'host setup smoke',
+      events: [
+        'SessionStart',
+        'PreToolUse',
+        'PostToolUse',
+        'UserPromptSubmit',
+        'Stop',
+        'PreCompact',
+      ],
+      hosts: ['claude', 'codex', 'cursor', 'opencode'],
+      notes:
+        'Setup smoke covers emitted lifecycle hooks and must reflect degraded host/event gaps.',
+    },
+  ]
+
+export interface ReplacementParityCrosswalkViolation {
+  readonly capability: string
+  readonly message: string
+}
+
+function capabilityForEvent(event: string): VendorCapability | undefined {
+  return CAPABILITY_MATRIX.find((entry) => entry.event === event)
+}
+
+function hostSupportFor(
+  events: readonly string[],
+  hosts: readonly CapabilityMatrixHost[],
+): SupportLevel[] {
+  return events.flatMap((event) => {
+    const capability = capabilityForEvent(event)
+    if (!capability) return ['unsupported' as const]
+    return hosts.map((host) => capability[host])
+  })
+}
+
+export function replacementParitySupportCeiling(
+  crosswalk: ReplacementParityCapabilityCrosswalk,
+): ReplacementParitySupportLevel {
+  const supportLevels = hostSupportFor(crosswalk.events, crosswalk.hosts)
+  if (supportLevels.length === 0) return 'unsupported'
+  if (supportLevels.every((level) => level === 'full')) return 'full'
+  if (supportLevels.every((level) => level === 'unsupported' || level === 'unmapped')) {
+    return 'unsupported'
+  }
+  return 'degraded'
+}
+
+function hostScopeCoversCrosswalkHosts(
+  hostScope: string,
+  hosts: readonly CapabilityMatrixHost[],
+): boolean {
+  const normalized = hostScope.toLowerCase()
+  return hosts.some((host) => normalized.includes(host))
+}
+
+export function validateReplacementParityCapabilityCrosswalk(
+  rows: readonly ReplacementParityRowLike[],
+  crosswalks: readonly ReplacementParityCapabilityCrosswalk[] = REPLACEMENT_PARITY_CAPABILITY_CROSSWALK,
+): ReplacementParityCrosswalkViolation[] {
+  const rowsByCapability = new Map(rows.map((row) => [row.capability.toLowerCase(), row]))
+  const violations: ReplacementParityCrosswalkViolation[] = []
+
+  for (const crosswalk of crosswalks) {
+    const row = rowsByCapability.get(crosswalk.capability)
+    if (!row) continue
+    if (row.status !== undefined && row.status !== 'passed') continue
+    if (!hostScopeCoversCrosswalkHosts(row.hostScope, crosswalk.hosts)) continue
+    const ceiling = replacementParitySupportCeiling(crosswalk)
+    if (row.supportLevel === 'full' && ceiling !== 'full') {
+      violations.push({
+        capability: row.capability,
+        message: `Replacement parity row "${row.capability}" cannot claim full support because canonical host lifecycle support is ${ceiling}.`,
+      })
+    }
+  }
+
+  return violations
+}

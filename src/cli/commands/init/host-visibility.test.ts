@@ -8,6 +8,7 @@ import {
   auditHostSkillVisibility,
   hostSkillRoots,
   parseAgentHosts,
+  summarizeHostSetupSurfaceVisibility,
 } from './host-visibility.js'
 
 function makeTempDir(): string {
@@ -21,17 +22,21 @@ function writeSkill(root: string, slug: string): void {
 
 describe('host skill visibility', () => {
   let repoRoot: string
+  let packageRoot: string
   let homeDir: string
 
   beforeEach(() => {
     repoRoot = makeTempDir()
+    packageRoot = makeTempDir()
     homeDir = makeTempDir()
     mkdirSync(repoRoot, { recursive: true })
+    mkdirSync(packageRoot, { recursive: true })
     mkdirSync(homeDir, { recursive: true })
   })
 
   afterEach(() => {
     rmSync(repoRoot, { recursive: true, force: true })
+    rmSync(packageRoot, { recursive: true, force: true })
     rmSync(homeDir, { recursive: true, force: true })
   })
 
@@ -152,5 +157,47 @@ describe('host skill visibility', () => {
 
     expect(audit.selectedHosts).toEqual([])
     expect(audit.results).toEqual([])
+  })
+
+  it('reports Codex packaged artifacts separately from active hook ownership', () => {
+    mkdirSync(join(packageRoot, '.codex-plugin'), { recursive: true })
+    mkdirSync(join(packageRoot, 'hooks'), { recursive: true })
+    mkdirSync(join(repoRoot, '.codex'), { recursive: true })
+    writeFileSync(join(packageRoot, '.codex-plugin', 'plugin.json'), '{}')
+    writeFileSync(join(packageRoot, 'codex.mcp.json'), '{}')
+    writeFileSync(join(packageRoot, 'hooks', 'hooks.json'), '{}')
+    writeFileSync(join(repoRoot, '.codex', 'hooks.json'), '{}')
+
+    const lines = summarizeHostSetupSurfaceVisibility({ repoRoot, packageRoot })
+    const codex = lines.find((line) => line.includes('codex:'))
+    expect(codex).toContain('artifact=installed')
+    expect(codex).toContain('active=managed')
+    expect(codex).toContain('hooks/hooks.json metadata')
+    expect(codex).toContain('.codex/hooks.json')
+  })
+
+  it('surfaces generated hook ownership and OpenCode degraded bridge boundaries', () => {
+    mkdirSync(join(repoRoot, '.claude'), { recursive: true })
+    mkdirSync(join(repoRoot, '.opencode', 'plugins'), { recursive: true })
+    writeFileSync(join(repoRoot, '.claude', 'settings.json'), '{}')
+    writeFileSync(join(repoRoot, '.opencode', 'plugins', 'webpresso-hooks.js'), '')
+
+    const lines = summarizeHostSetupSurfaceVisibility({ repoRoot, packageRoot })
+    expect(lines.find((line) => line.includes('claude:'))).toContain(
+      'active hooks setup-managed in .claude/settings.json',
+    )
+    const opencode = lines.find((line) => line.includes('opencode:'))
+    expect(opencode).toContain('artifact=installed')
+    expect(opencode).toContain('active=plugin-bridge')
+    expect(opencode).toContain('support=degraded')
+    expect(opencode).toContain('generated whole-file')
+  })
+
+  it('keeps deferred host setup surfaces visible without marking them required failures', () => {
+    const lines = summarizeHostSetupSurfaceVisibility({ repoRoot, packageRoot })
+    const cursor = lines.find((line) => line.includes('cursor:'))
+    expect(cursor).toContain('artifact=deferred')
+    expect(cursor).toContain('support=degraded')
+    expect(cursor).toContain('required=no')
   })
 })

@@ -1,30 +1,183 @@
 ---
 title: Session memory guide
 type: guide
-last_updated: 2026-05-27
+last_updated: 2026-06-13
 ---
 
 # Session memory
 
-Session memory gives webpresso agents a local recall layer backed by SQLite and FTS5. Version 1 is intentionally in-process: it has no daemon, no cloud calls, and no telemetry.
+Session memory gives webpresso agents a local-only recall layer backed by SQLite
+and FTS5. It has no daemon, no cloud sync, and no telemetry. Capture hooks write
+bounded continuity events, while MCP tools let an agent index, restore, search,
+inspect, and safely reset local recall data.
 
-## Data location
+## Data location and reset safety
 
-The default data root is `~/.webpresso/sessions/`. Repositories do not own this directory, and the files should never be committed.
+Session memory uses the webpresso state root and scopes default stores by repo or
+worktree key. The exact state root is host-platform specific; docs and examples
+use `<state-root>` instead of private machine paths.
 
-Set `WEBPRESSO_SESSION_MEMORY=0` to disable capture for a process. Delete the sessions directory to reset local history.
+Default stores:
+
+- continuity events: `<state-root>/<repo-key>/worktree/<worktree-key>/session-memory/sessions.sqlite`
+- indexed chunks: `<state-root>/<repo-key>/worktree/<worktree-key>/session-memory/index.sqlite`
+
+Environment overrides are available for tests and operator recovery:
+
+- `WEBPRESSO_SESSION_MEMORY=0` disables hook capture for a process.
+- `WP_SESSION_MEMORY_DB=<path>` overrides the continuity-event store.
+- `WP_SESSION_MEMORY_INDEX_DB=<path>` overrides the indexed-chunk store.
+- `WP_SESSION_MEMORY_DIR=<dir>` points continuity events at `<dir>/sessions.sqlite`.
+
+Use `wp_session_purge` for resets. It defaults to a dry run, requires
+`confirm: true` to delete records, and rejects an unscoped confirmed global
+purge unless `allowGlobal: true` is also supplied.
+
+## Registered MCP tools
+
+The compiled MCP registry exposes these tested session-memory tools:
+
+| Tool | Purpose | Bounds and safety |
+| --- | --- | --- |
+| `wp_session_batch_execute` | Run an explicit bounded batch of shell commands through the local session-memory store. | Requires explicit execute consent, caps concurrency/time/output, and indexes large outputs instead of returning them inline. |
+| `wp_session_capture` | Manually capture continuity content for later restore. | Truncates captured content before storage and records it under the active repo/session identity. |
+| `wp_session_index` | Index caller-provided text chunks. | Accepts at most 100 chunks per call, skips empty or oversized chunks, and returns bounded chunk ids and warnings. |
+| `wp_session_fetch_and_index` | Fetch an absolute `http(s)` URL and index bounded response content. | Caps URL length, response bytes, chunk count, and returned ids; failed fetches return bounded warnings. |
+| `wp_session_execute` | Run one explicit shell command through the local session-memory store. | Requires explicit execute consent, caps timeout/output, and returns bounded summaries plus optional indexed search hits. |
+| `wp_session_execute_file` | Run explicit local file `read_text` or `metadata` operations under repo-root validation. | Caps preview and file bytes; overflow content can be indexed instead of returned inline; no shell, write, network path, or repo escape behavior is part of this tool. |
+| `wp_session_restore` | Restore bounded continuity context for the active repo. | Defaults to continuity events, returns preview-only results, and caps result count and preview bytes. |
+| `wp_session_search` | Search indexed chunks plus continuity events with unified provenance. | Prioritizes indexed chunks, dedupes results, caps result count, and returns bounded previews. |
+| `wp_session_snapshot` | Create a typed session-memory snapshot before risky operations or branch switches. | Caps snapshot work and reports partial snapshots instead of hanging. |
+| `wp_session_stats` | Report local continuity and index counts. | Read-only; returns counts and bounded source lists. |
+| `wp_session_purge` | Dry-run or explicitly confirm scoped local purge operations. | Dry-run by default; scoped deletion requires `confirm: true`; unscoped deletion also requires `allowGlobal: true`. |
+| `wp_session_doctor` | Report bounded local diagnostics for continuity and index stores. | Read-only; corrupt or locked stores become bounded warnings instead of transport hangs. |
+
+## Examples
+
+Index direct notes:
+
+```json
+{
+  "tool": "wp_session_index",
+  "arguments": {
+    "source": "operator-notes",
+    "chunks": [
+      {
+        "text": "The release gate depends on green reference parity smoke checks.",
+        "metadata": { "kind": "note" }
+      }
+    ]
+  }
+}
+```
+
+Restore continuity context for a repo-scoped session:
+
+```json
+{
+  "tool": "wp_session_restore",
+  "arguments": {
+    "cwd": ".",
+    "query": "release gate",
+    "limit": 5,
+    "maxPreviewBytes": 1024
+  }
+}
+```
+
+Search all indexed and continuity sources:
+
+```json
+{
+  "tool": "wp_session_search",
+  "arguments": {
+    "cwd": ".",
+    "query": "reference parity smoke",
+    "sourceTypes": ["indexed_chunk", "continuity_event"],
+    "limit": 10
+  }
+}
+```
+
+Preview a scoped reset without deleting anything:
+
+```json
+{
+  "tool": "wp_session_purge",
+  "arguments": {
+    "target": "indexed_chunks",
+    "source": "operator-notes"
+  }
+}
+```
+
+Confirm the same scoped reset:
+
+```json
+{
+  "tool": "wp_session_purge",
+  "arguments": {
+    "target": "indexed_chunks",
+    "source": "operator-notes",
+    "confirm": true
+  }
+}
+```
 
 ## Event flow
 
-1. A hook or command captures a tool event with `{ repoHash, toolName, content }`.
-2. `repoHash` is the first 16 hex characters of the SHA-256 hash of `git rev-parse --show-toplevel`, which scopes memory to the current repository.
-3. Events are appended to `session_events` with WAL enabled so multiple local handles can write safely.
-4. Snapshot points consolidate events into `sessions` rows. If a cap is reached, the snapshot is marked `partial` instead of blocking the agent.
-5. Restore queries search recent event content with FTS5 and return top-ranked snippets for the active repo.
+1. `SessionStart` restores and injects bounded continuity context for the
+   current repo. It does not create a capture event by itself.
+2. `PostToolUse`, `UserPromptSubmit`, `Stop`, and supported `PreCompact` paths
+   capture typed continuity events with repo, session, event type, timestamp,
+   bounded content, summary, priority, and metadata fields.
+3. The repo hash scopes continuity recall to the current repository.
+4. Events are appended to `session_events` with WAL enabled so multiple local
+   handles can write safely. The hard-cut schema requires typed continuity
+   events; untyped event rows are rejected instead of being inferred.
+5. Snapshot points consolidate events into `sessions` rows. If a cap is reached,
+   the snapshot is marked `partial` instead of blocking the agent.
+6. Restore and search tools return top-ranked preview snippets with provenance.
+
+## Operator recovery and release gates
+
+For local recovery, first inspect data with `wp_session_stats` and
+`wp_session_doctor`, then preview scoped deletion with `wp_session_purge` before
+using `confirm: true`. Prefer a scoped `source`, `cwd`, or target-specific purge;
+global deletion requires both `confirm: true` and `allowGlobal: true`.
+
+Run these gates before shipping hook-bin, session-continuity, or public docs
+changes that mention this guide:
+
+```bash
+./bin/wp hooks doctor --skip-mcp
+./bin/wp audit blueprint-lifecycle
+./bin/wp audit reference-parity-matrix --json
+./bin/wp audit package-surface
+npm pack --dry-run --json
+vp run lint:pkg
+vp run verify:secrets
+./bin/wp audit secrets-policy
+./bin/wp audit no-dev-vars
+./bin/wp audit secret-provider-quarantine
+./bin/wp audit secrets-config
+vp run verify:paths
+```
+
+The `reference-parity-matrix --json` gate validates the matrix and exposes `releaseClaimGateReady`; run `./bin/wp audit reference-parity-matrix --strict` only when promoting public replacement-parity claims, because it intentionally fails while release-required rows remain open or degraded.
+
+The gates prove hook health, blueprint lifecycle state, reference parity gating,
+package-surface policy, real pack tarball contents, package lint, the dev-var
+carrier check, secret-policy audits, and path safety. Public claims
+should cite the reference parity matrix and must stay within the documented
+Cursor/OpenCode degraded support boundary.
 
 ## Fetch and index flow
 
-`fetch-index` uses native `fetch()` with an `AbortSignal`, normalizes URLs, caches responses for 24 hours in-process, converts HTML to text/Markdown-like chunks, formats JSON, and indexes chunks into the same FTS search store.
+`wp_session_fetch_and_index` uses native `fetch()`, normalizes URLs, converts
+HTML to text-like chunks, formats JSON, and indexes chunks into the same FTS
+search store. It only accepts absolute `http(s)` URLs and stores bounded chunks
+locally.
 
 ## Schema
 
@@ -47,8 +200,12 @@ FTS tables:
 - `event_id`
 - `repo_hash`
 - `ts`
+- `event_type`
 - `tool_name`
 - `content`
+- `summary`
+- `priority`
+- `metadata_json`
 
 ### `sessions`
 
@@ -61,4 +218,17 @@ FTS tables:
 
 ## Search fallback
 
-The store uses a three-tier fallback: porter FTS first, trigram FTS second, and an IDF-weighted Levenshtein pass last. The implementation is TypeScript and local to agent-kit.
+The store uses a three-tier fallback: porter FTS first, trigram FTS second, and
+an IDF-weighted Levenshtein pass last. Results include unified provenance so an
+agent can distinguish continuity events from indexed chunks.
+
+## Unsupported modes and non-goals
+
+- Session memory is local-only; it is not a shared team database or cloud sync
+  service.
+- MCP tools do not make replacement parity claims by themselves. Public claims
+  must point at the reference parity proof lane.
+- File execution is limited to explicit read/metadata operations under repo-root
+  validation; arbitrary shell execution is not part of this surface.
+- Upgrade, dashboard, and help tools are not shipped until they have tested
+  handlers and registry coverage.

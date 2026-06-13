@@ -188,6 +188,109 @@ describe('manifest capture and validation', () => {
     expect(() => verifyManifest(captured, pinned)).toThrow()
   })
 
+  it('keeps strict verification fail-closed for plugin SHA drift', () => {
+    const captured: Manifest = {
+      bun: '1.3.13',
+      claude: '2.1.177 (Claude Code)',
+      node: 'v24.16.0',
+      model: 'unknown',
+      plugins: {
+        main: '1111111111111111111111111111111111111111',
+        v1: '2222222222222222222222222222222222222222',
+        v2: '3333333333333333333333333333333333333333',
+      },
+    }
+    const pinned: Manifest = {
+      ...captured,
+      plugins: {
+        main: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        v1: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        v2: 'cccccccccccccccccccccccccccccccccccccccc',
+      },
+    }
+
+    expect(() => verifyManifest(captured, pinned)).toThrowError(/plugins.main/)
+  })
+
+  it('allows dry-run current-checkout plugin SHA drift while preserving tool locks', () => {
+    const captured: Manifest = {
+      bun: '1.3.13',
+      claude: '2.1.177 (Claude Code)',
+      node: 'v24.16.0',
+      model: 'unknown',
+      plugins: {
+        main: '1111111111111111111111111111111111111111',
+        v1: '2222222222222222222222222222222222222222',
+        v2: '3333333333333333333333333333333333333333',
+      },
+    }
+    const pinned: Manifest = {
+      ...captured,
+      plugins: {
+        main: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        v1: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        v2: 'cccccccccccccccccccccccccccccccccccccccc',
+      },
+    }
+
+    expect(() =>
+      verifyManifest(captured, pinned, { mode: 'dry-run-current-checkout' }),
+    ).not.toThrow()
+  })
+
+  it('rejects dry-run current-checkout mode when non-plugin tool locks drift', () => {
+    const captured: Manifest = {
+      bun: '1.3.13',
+      claude: 'DIFFERENT',
+      node: 'v24.16.0',
+      model: 'unknown',
+      plugins: {
+        main: '1111111111111111111111111111111111111111',
+        v1: '2222222222222222222222222222222222222222',
+        v2: '3333333333333333333333333333333333333333',
+      },
+    }
+    const pinned: Manifest = {
+      ...captured,
+      claude: '2.1.177 (Claude Code)',
+      plugins: {
+        main: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        v1: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        v2: 'cccccccccccccccccccccccccccccccccccccccc',
+      },
+    }
+
+    expect(() =>
+      verifyManifest(captured, pinned, { mode: 'dry-run-current-checkout' }),
+    ).toThrowError('Manifest mismatch\nclaude: captured=DIFFERENT pinned=2.1.177 (Claude Code)')
+  })
+
+  it('rejects dry-run current-checkout mode when plugin refs are not git SHAs', () => {
+    const captured: Manifest = {
+      bun: '1.3.13',
+      claude: '2.1.177 (Claude Code)',
+      node: 'v24.16.0',
+      model: 'unknown',
+      plugins: {
+        main: 'current-head',
+        v1: '2222222222222222222222222222222222222222',
+        v2: '3333333333333333333333333333333333333333',
+      },
+    }
+    const pinned: Manifest = {
+      ...captured,
+      plugins: {
+        main: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        v1: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        v2: 'cccccccccccccccccccccccccccccccccccccccc',
+      },
+    }
+
+    expect(() =>
+      verifyManifest(captured, pinned, { mode: 'dry-run-current-checkout' }),
+    ).toThrowError(/dry-run requires captured and pinned git SHAs/)
+  })
+
   it('refuses to run when workspace mode is unspecified', () => {
     expect(() => resolveWorkspaceConfig({})).toThrowError(
       'Workspace mode unspecified. Set BENCH_WORKSPACE_MODE=isolated or BENCH_WORKSPACE_MODE=single-workspace.',

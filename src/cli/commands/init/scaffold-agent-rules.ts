@@ -7,6 +7,8 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { renderInstructionSurface } from '#hooks/shared/instruction-surfaces'
+
 import { patchGitignore } from './gitignore-patcher.js'
 import { type MergeOptions, type MergeResult, writeFileMerged } from './merge.js'
 
@@ -40,6 +42,8 @@ export interface ScaffoldAgentRulesResult {
   results: readonly MergeResult[]
 }
 
+export const WEBPRESSO_ROUTING_RULE_FILENAME = 'webpresso-routing.md'
+
 const RULE_IGNORE_PATTERNS = [
   '.agent/rules/',
   '.cursor/rules/',
@@ -65,6 +69,13 @@ export function scaffoldAgentRules(opts: ScaffoldAgentRulesOptions): ScaffoldAge
   })
 
   results.push(writeFileMerged(join(dir, 'README.md'), AGENT_RULES_README, mergeOpts))
+  results.push(
+    writeFileMerged(
+      join(dir, WEBPRESSO_ROUTING_RULE_FILENAME),
+      renderInstructionSurface({ host: 'cursor' }).content + '\n',
+      mergeOpts,
+    ),
+  )
 
   results.push(
     patchGitignore(

@@ -25,6 +25,7 @@ interface PackageJson {
 
 interface PluginManifest {
   description?: string
+  version?: string
 }
 
 function readJson<T>(path: string): T {
@@ -38,6 +39,9 @@ describe('marketplace.json', () => {
   const packageJson = readJson<PackageJson>(resolve(repoRoot, 'package.json'))
   const pluginManifest = readJson<PluginManifest>(
     resolve(repoRoot, '.claude-plugin', 'plugin.json'),
+  )
+  const codexPluginManifest = readJson<PluginManifest>(
+    resolve(repoRoot, '.codex-plugin', 'plugin.json'),
   )
 
   it('has the required top-level identity fields', () => {
@@ -57,6 +61,11 @@ describe('marketplace.json', () => {
     const [plugin] = marketplace.plugins
     expect(plugin!.name).toBe('agent-kit')
     expect(plugin!.source).toBe('./')
+  })
+
+  it('keeps plugin manifest versions in sync with package.json#version', () => {
+    expect(pluginManifest.version).toBe(packageJson.version)
+    expect(codexPluginManifest.version).toBe(packageJson.version)
   })
 
   it('plugin description matches plugin.json#description when present', () => {

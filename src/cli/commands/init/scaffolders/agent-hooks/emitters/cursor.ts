@@ -14,6 +14,12 @@ const CURSOR_EVENT_MAP = {
 
 type CursorConfigEventKey = Exclude<keyof CursorHooksConfig, 'version'>
 
+const EMPTY_JSON_OBJECT_COMMAND = "printf '%s\\n' '{}'"
+
+function materializeCursorCommand(command: string): string {
+  return command.replaceAll(/\|\|\s*true\b/gu, `|| ${EMPTY_JSON_OBJECT_COMMAND}`)
+}
+
 export function buildCursorHooksConfig(input: {
   resolveBin: (name: string) => string
   matchers: MatcherSet
@@ -30,7 +36,9 @@ export function buildCursorHooksConfig(input: {
     const group = {
       ...(spec.matcher !== undefined ? { matcher: matchers[spec.matcher] } : {}),
       ...(spec.event === 'PreToolUse' ? { failClosed: true } : {}),
-      hooks: [{ type: 'command' as const, command: resolveBin(spec.bin) }],
+      hooks: [
+        { type: 'command' as const, command: materializeCursorCommand(resolveBin(spec.bin)) },
+      ],
     }
 
     const existing = config[event] ?? []

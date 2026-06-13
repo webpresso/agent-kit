@@ -126,6 +126,42 @@ function seedPassingFixture(root: string): void {
       'export default tool',
     ].join('\n'),
   )
+
+  const referenceEvidence = [
+    'docs/bench/reference-parity-matrix.md',
+    'src/__integration__/reference-parity-host-smoke.integration.test.ts',
+    'src/__integration__/reference-parity-tool-surface.integration.test.ts',
+    'docs/bench/session-memory-methodology.md',
+  ]
+  const claimGateText = ['Release claims are gated by:', ...referenceEvidence].join('\n')
+  write(root, 'README.md', claimGateText)
+  write(root, 'CHANGELOG.md', ['# Changelog', '', '## Unreleased', '', claimGateText].join('\n'))
+  write(
+    root,
+    'docs/bench/reference-parity-matrix.md',
+    [
+      '| capability | host scope | support level | proof artifact | required for release | status |',
+      '| --- | --- | --- | --- | --- | --- |',
+      '| lifecycle capture | session memory store | full | src/session-memory/session.test.ts | yes | passed |',
+      '| resume injection | Claude, Codex, Cursor, OpenCode | degraded | src/hooks/sessionstart/index.test.ts | yes | open |',
+      '| tool discovery | MCP session tools | degraded | src/__integration__/reference-parity-tool-surface.integration.test.ts | yes | open |',
+      '| indexed search | session memory store | full | src/session-memory/store.test.ts | yes | passed |',
+      '| host setup smoke | Claude, Codex, Cursor, OpenCode | degraded | src/__integration__/reference-parity-host-smoke.integration.test.ts | yes | passed |',
+      '| benchmark thresholds | continuity and search benchmarks | degraded | docs/bench/session-memory-methodology.md | yes | open |',
+      '| release claim gating | public docs and release audits | degraded | src/audit/reference-parity-claims.test.ts | yes | open |',
+    ].join('\n'),
+  )
+  for (const artifact of [
+    'src/session-memory/session.test.ts',
+    'src/hooks/sessionstart/index.test.ts',
+    'src/__integration__/reference-parity-tool-surface.integration.test.ts',
+    'src/session-memory/store.test.ts',
+    'src/__integration__/reference-parity-host-smoke.integration.test.ts',
+    'docs/bench/session-memory-methodology.md',
+    'src/audit/reference-parity-claims.test.ts',
+  ]) {
+    write(root, artifact, 'proof')
+  }
 }
 
 describe('auditAiContracts', () => {

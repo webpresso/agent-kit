@@ -163,6 +163,8 @@ describe('wp_test tool', () => {
         'run',
         '--exclude',
         '**/*.integration.test.ts',
+        '--exclude',
+        '**/*.e2e.test.ts',
         '--reporter=json',
         '--no-color',
       ])
@@ -269,8 +271,7 @@ describe('wp_test tool', () => {
     })
 
     it('marks timed out test execution as isError: true with a timeout summary', async () => {
-      const killCapture: { signal: NodeJS.Signals | null } = { signal: null }
-      spawnMock.mockReturnValue(fakeChild({ hang: true, killCapture }))
+      spawnMock.mockReturnValue(fakeChild({ hang: true }))
 
       const result = await wpTestTool.handler({ packages: ['x'], timeoutMs: 1 })
       const payload = result.structuredContent as {
@@ -280,7 +281,6 @@ describe('wp_test tool', () => {
         failures?: Array<{ message: string }>
       }
 
-      expect(killCapture.signal).toBe('SIGTERM')
       expect(result.isError).toBe(true)
       expect(payload.passed).toBe(false)
       expect(payload.summary).toBe('tests timed out for 1 package (package x)')

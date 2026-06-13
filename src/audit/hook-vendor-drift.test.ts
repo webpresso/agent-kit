@@ -27,6 +27,7 @@ describe('detectDrift', () => {
       'PostToolUse',
       'UserPromptSubmit',
       'Stop',
+      'PreCompact',
     ])
     const findings = detectDrift({ claude: claudeFullEvents, codex: new Set() })
     const claudeWarnings = findings.filter((f) => f.vendor === 'claude' && f.severity === 'warning')
@@ -75,6 +76,7 @@ describe('detectDrift', () => {
       'PostToolUse',
       'UserPromptSubmit',
       'Stop',
+      'PreCompact',
     ])
     const findings = detectDrift({ claude: allFullEvents, codex: allFullEvents })
     // Only warnings possible: entries where support != 'full' but event is installed

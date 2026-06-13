@@ -1,5 +1,5 @@
 /**
- * Keeps Claude + Codex plugin publishing manifests and snapshots in sync with
+ * Keeps Claude plugin publishing manifests and snapshots in sync with
  * package.json#version. Run automatically as part of `changeset version`
  * so marketplace/plugin metadata never drifts after a release bump.
  */
@@ -38,8 +38,6 @@ const pluginManifest = JSON.parse(readFileSync(pluginPath, 'utf8')) as Record<st
 
 pluginManifest.version = version
 
-const pluginJson = JSON.stringify(pluginManifest, null, 2) + '\n'
-
 const codexPluginManifest = JSON.parse(readFileSync(codexPluginPath, 'utf8')) as Record<
   string,
   unknown
@@ -49,11 +47,11 @@ const codexPluginManifest = JSON.parse(readFileSync(codexPluginPath, 'utf8')) as
 
 codexPluginManifest.version = version
 
-const codexPluginJson = JSON.stringify(codexPluginManifest, null, 2) + '\n'
+const pluginJson = JSON.stringify(pluginManifest, null, 2) + '\n'
 
 writeFileSync(marketplacePath, JSON.stringify(marketplaceManifest, null, 2) + '\n')
 writeFileSync(pluginPath, pluginJson)
-writeFileSync(codexPluginPath, codexPluginJson)
+writeFileSync(codexPluginPath, JSON.stringify(codexPluginManifest, null, 2) + '\n')
 writeFileSync(pluginFixturePath, pluginJson)
 writeFileSync(packagePath, JSON.stringify(packageManifest, null, 2) + '\n')
-console.log(`Claude + Codex plugin manifests synced to ${version}`)
+console.log(`Plugin manifests synced to ${version}`)

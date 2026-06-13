@@ -66,6 +66,11 @@ function seedConsumerRepo(root: string): void {
         { hooks: [{ type: 'command', command: managedClaudeHookCommand('wp-guard-switch') }] },
       ],
       Stop: [{ hooks: [{ type: 'command', command: managedClaudeHookCommand('wp-stop-qa') }] }],
+      PreCompact: [
+        {
+          hooks: [{ type: 'command', command: managedClaudeHookCommand('wp-precompact-snapshot') }],
+        },
+      ],
     },
   })
   // Canonical Codex schema is wrapped under "hooks" — matches what the
@@ -99,6 +104,13 @@ function seedConsumerRepo(root: string): void {
       ],
       Stop: [
         { hooks: [{ type: 'command', command: managedCodexHookCommand(root, 'wp-stop-qa') }] },
+      ],
+      PreCompact: [
+        {
+          hooks: [
+            { type: 'command', command: managedCodexHookCommand(root, 'wp-precompact-snapshot') },
+          ],
+        },
       ],
     },
   })
@@ -190,6 +202,47 @@ describe('auditAgents', () => {
     expect(result.violations.some((v) => v.message.includes('Missing SessionStart hook'))).toBe(
       true,
     )
+  })
+
+  it('fails when the managed PreCompact snapshot hook is missing and reports degraded host support explicitly', () => {
+    seedConsumerRepo(root)
+    writeJson(join(root, '.claude', 'settings.json'), {
+      worktree: { symlinkDirectories: ['.claude'] },
+      hooks: {
+        SessionStart: [
+          {
+            hooks: [
+              { type: 'command', command: managedClaudeHookCommand('wp-sessionstart-routing') },
+            ],
+          },
+        ],
+        PreToolUse: [
+          {
+            matcher: 'Bash|Write|Edit',
+            hooks: [{ type: 'command', command: managedClaudeHookCommand('wp-pretool-guard') }],
+          },
+        ],
+        PostToolUse: [
+          {
+            matcher: 'Write|Edit',
+            hooks: [{ type: 'command', command: managedClaudeHookCommand('wp-post-tool') }],
+          },
+        ],
+        UserPromptSubmit: [
+          { hooks: [{ type: 'command', command: managedClaudeHookCommand('wp-guard-switch') }] },
+        ],
+        Stop: [{ hooks: [{ type: 'command', command: managedClaudeHookCommand('wp-stop-qa') }] }],
+      },
+    })
+
+    const result = auditAgents(root)
+    const precompactViolation = result.violations.find((v) =>
+      v.message.includes('wp-precompact-snapshot'),
+    )
+    expect(result.ok).toBe(false)
+    expect(precompactViolation?.message).toContain('managed internal hook surface')
+    expect(precompactViolation?.message).toContain('degraded hosts: claude, codex, opencode')
+    expect(precompactViolation?.message).toContain('unsupported hosts: cursor')
   })
 
   it('fails when a canonical Claude subagent is missing', () => {

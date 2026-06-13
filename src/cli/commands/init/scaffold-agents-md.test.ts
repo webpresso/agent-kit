@@ -103,6 +103,7 @@ describe('renderAgentsMd', () => {
     expect(rendered).not.toContain('{{TECH_STACK}}')
     expect(rendered).not.toContain('{{DURABLE_PLANNING_ROOT}}')
     expect(rendered).not.toContain('{{BLUEPRINTS_DIR}}')
+    expect(rendered).not.toContain('{{CODEX_ROUTING_INSTRUCTION_SURFACE}}')
   })
 
   it('honours custom DURABLE_PLANNING_ROOT from config', () => {
@@ -158,6 +159,13 @@ describe('renderAgentsMd', () => {
 
     expect(Buffer.byteLength(rendered, 'utf8')).toBeLessThanOrEqual(AGENTS_MD_MAX_BYTES)
     expect(rendered).toContain('Keep the generated default `AGENTS.md` under 8 KB.')
+    expect(rendered).toContain('Codex routing instruction surface')
+    expect(rendered).toContain(
+      '<wp_instruction_surface host="codex" artifact="AGENTS.md" source="wp_routing">',
+    )
+    expect(rendered).toContain(
+      'wp_test, wp_e2e, wp_lint, wp_typecheck, wp_qa, wp_audit, wp_ci_act, wp_worker_tail',
+    )
   })
 
   it('renders the configured blueprint directory in the catalog template', () => {
@@ -175,6 +183,7 @@ describe('renderAgentsMd', () => {
     expect(rendered).toContain('Materialized by setup: blueprint lifecycle directories')
     expect(rendered).toContain('Generated on demand (not created by setup): boundary contracts')
     expect(rendered).not.toContain('{{BLUEPRINTS_DIR}}')
+    expect(rendered).not.toContain('{{CODEX_ROUTING_INSTRUCTION_SURFACE}}')
   })
 
   it('preserves user-owned blocks while refreshing managed content', () => {

@@ -73,12 +73,15 @@ describe('wp test command helpers', () => {
       'run',
       '--exclude',
       '**/*.integration.test.ts',
+      '--exclude',
+      '**/*.e2e.test.ts',
     ])
     expect(command.sequence[1]?.args).toEqual([
       expect.stringContaining('vitest'),
       'run',
       '--no-file-parallelism',
       '.integration.test.ts',
+      '.e2e.test.ts',
       '--testTimeout',
       '30000',
     ])

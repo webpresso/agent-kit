@@ -166,3 +166,12 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
     .omx is runtime/state only; it is not a direct hook surface.
   </fallback>
 </wp_routing>`
+
+export type RoutingInstructionSource = {
+  readonly name: 'wp_routing'
+  readonly content: string
+}
+
+export function createRoutingInstructionSource(): RoutingInstructionSource {
+  return { name: 'wp_routing', content: WP_ROUTING_BLOCK }
+}

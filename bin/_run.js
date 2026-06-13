@@ -20,6 +20,7 @@ export const BIN_ENTRYPOINTS = {
   'wp-guard-switch': 'src/hooks/guard-switch/index.ts',
   'wp-test-quality-check': 'src/hooks/test-quality-check.ts',
   'wp-sessionstart-routing': 'src/hooks/sessionstart/index.ts',
+  'wp-precompact-snapshot': 'src/hooks/precompact/index.ts',
   'wp-check-dev-link': 'src/hooks/check-dev-link/index.ts',
   'wp-restore-dev-links': 'src/dev/restore-dev-links/index.ts',
   'docs-check-internal-links': 'src/config/docs-lint/cli/check-internal-links.ts',
@@ -36,6 +37,7 @@ const LATENCY_SENSITIVE_BUILT_BINS = new Set([
   'wp-guard-switch',
   'wp-test-quality-check',
   'wp-sessionstart-routing',
+  'wp-precompact-snapshot',
   'wp-check-dev-link',
 ])
 

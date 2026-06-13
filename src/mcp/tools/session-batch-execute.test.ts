@@ -1,0 +1,101 @@
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
+import sessionBatchExecuteTool from './_session-batch-execute.js'
+import sessionSearchTool from './session-search.js'
+
+let tmpDir: string
+let previousIndexDb: string | undefined
+
+function payload(result: Awaited<ReturnType<typeof sessionBatchExecuteTool.handler>>) {
+  return result.structuredContent as {
+    passed: boolean
+    details: {
+      results: Array<{ label: string; exitCode: number; indexed: boolean; summary: string }>
+      queryHits?: Record<string, Array<{ content: string; source: string; rank: number }>>
+    }
+  }
+}
+
+beforeEach(() => {
+  tmpDir = mkdtempSync(join(tmpdir(), 'wp-session-batch-test-'))
+  previousIndexDb = process.env.WP_SESSION_MEMORY_INDEX_DB
+  process.env.WP_SESSION_MEMORY_INDEX_DB = join(tmpDir, 'index.sqlite')
+})
+
+afterEach(() => {
+  if (previousIndexDb === undefined) delete process.env.WP_SESSION_MEMORY_INDEX_DB
+  else process.env.WP_SESSION_MEMORY_INDEX_DB = previousIndexDb
+  rmSync(tmpDir, { recursive: true, force: true })
+})
+
+describe('wp_session_batch_execute', () => {
+  it('runs multiple commands and aggregates query hits from the shared TypeScript store', async () => {
+    const result = await sessionBatchExecuteTool.handler?.({
+      commands: [
+        { label: 'cmd-a', command: 'printf "%s\\n" "shared batch sentinel alpha"' },
+        { label: 'cmd-b', command: 'printf "%s\\n" "shared batch sentinel beta"' },
+      ],
+      queries: ['shared batch sentinel'],
+      concurrency: 2,
+      execute: true,
+      timeoutMs: 5_000,
+      cwd: tmpDir,
+    })
+    const data = payload(result)
+
+    expect(data).toMatchObject({
+      passed: true,
+      details: {
+        results: [
+          { label: 'cmd-a', exitCode: 0, indexed: true },
+          { label: 'cmd-b', exitCode: 0, indexed: true },
+        ],
+      },
+    })
+    expect(
+      data.details.queryHits?.['shared batch sentinel']?.map((hit) => hit.source).sort(),
+    ).toEqual(['cmd-a', 'cmd-b'])
+
+    const search = await sessionSearchTool.handler?.({
+      cwd: tmpDir,
+      query: 'shared batch sentinel beta',
+      sourceTypes: ['indexed_chunk'],
+      limit: 1,
+    })
+    expect(JSON.stringify(search.structuredContent)).toContain('shared batch sentinel beta')
+  })
+
+  it('surfaces failures when any command fails', async () => {
+    const result = await sessionBatchExecuteTool.handler?.({
+      commands: [{ label: 'cmd', command: 'exit 42' }],
+      concurrency: 1,
+      execute: true,
+      cwd: tmpDir,
+    })
+    expect(result.isError).toBe(true)
+    expect(payload(result)).toMatchObject({ passed: false })
+  })
+
+  it('rejects duplicate labels in one batch', async () => {
+    await expect(
+      sessionBatchExecuteTool.handler?.({
+        commands: [
+          { label: 'dup', command: 'echo one' },
+          { label: 'dup', command: 'echo two' },
+        ],
+        execute: true,
+      }),
+    ).rejects.toBeTruthy()
+  })
+
+  it('requires explicit execute=true before running shell commands', async () => {
+    const result = await sessionBatchExecuteTool.handler?.({
+      commands: [{ label: 'cmd', command: 'echo nope' }],
+    })
+    expect(payload(result)).toMatchObject({ passed: false })
+  })
+})

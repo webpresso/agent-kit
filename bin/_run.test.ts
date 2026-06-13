@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildLaunchPlan } from './_run.js'
+import { BIN_ENTRYPOINTS, buildLaunchPlan } from './_run.js'
 
 describe('buildLaunchPlan', () => {
   it('prefers wp source when any CLI runtime source file is newer than dist', () => {
@@ -89,6 +89,61 @@ describe('buildLaunchPlan', () => {
     expect(plan).toMatchObject({
       mode: 'built',
       entrypoint: '/repo/dist/esm/hooks/pretool-guard/index.js',
+    })
+  })
+
+  it('dispatches precompact snapshot hook bin from source when source launch is required', () => {
+    expect(BIN_ENTRYPOINTS).toMatchObject({
+      'wp-precompact-snapshot': 'src/hooks/precompact/index.ts',
+    })
+
+    const plan = buildLaunchPlan({
+      binName: 'wp-precompact-snapshot',
+      repoRoot: '/repo',
+      builtExists: true,
+      sourceExists: true,
+      sourceNeedsSourceLaunch: true,
+      pinnedNodeVersion: null,
+      runtimeManager: null,
+    })
+
+    expect(plan).toMatchObject({
+      mode: 'source',
+      entrypoint: '/repo/src/hooks/precompact/index.ts',
+      args: ['/repo/src/hooks/precompact/index.ts'],
+    })
+  })
+
+  it('dispatches precompact snapshot hook bin through the packaged runtime when source is unavailable', () => {
+    const plan = buildLaunchPlan({
+      binName: 'wp-precompact-snapshot',
+      repoRoot: '/repo',
+      platform: 'linux',
+      arch: 'x64',
+      runtimeManifest: {
+        binaryName: 'wp',
+        targets: [
+          {
+            id: 'linux-x64',
+            os: 'linux',
+            cpu: 'x64',
+            packageName: '@webpresso/agent-kit-runtime-linux-x64',
+          },
+        ],
+      },
+      runtimeBinaryExists: (candidate: string) =>
+        candidate === '/repo/node_modules/@webpresso/agent-kit-runtime-linux-x64/bin/wp',
+      builtExists: true,
+      sourceExists: false,
+      pinnedNodeVersion: null,
+      runtimeManager: null,
+    })
+
+    expect(plan).toMatchObject({
+      mode: 'runtime',
+      runtime: '/repo/node_modules/@webpresso/agent-kit-runtime-linux-x64/bin/wp',
+      entrypoint: '/repo/node_modules/@webpresso/agent-kit-runtime-linux-x64/bin/wp',
+      args: ['hook', 'precompact-snapshot'],
     })
   })
 })

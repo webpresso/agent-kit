@@ -96,18 +96,30 @@ describe('mcp server integration', () => {
 
     const names = tools.map((t) => t.name)
     expect(names).toEqual(
-      expect.arrayContaining(['wp_worker_tail', 'wp_ci_act', 'wp_lint', 'wp_qa', 'wp_typecheck']),
+      expect.arrayContaining([
+        'wp_worker_tail',
+        'wp_ci_act',
+        'wp_lint',
+        'wp_qa',
+        'wp_typecheck',
+        'wp_session_index',
+        'wp_session_fetch_and_index',
+        'wp_session_execute_file',
+        'wp_session_restore',
+        'wp_session_search',
+        'wp_session_stats',
+        'wp_session_purge',
+        'wp_session_doctor',
+      ]),
     )
     expect(names.filter((name) => name.startsWith('ak_'))).toEqual([])
   }, 20_000)
 
-  // Regression: Claude Code 2.1.x and OpenCode call prompts/list and
-  // resources/list during init. If the server returns -32601, the SDK
-  // transport gets poisoned and subsequent tools/list calls silently fail
-  // (anthropics/claude-code#36914, #42442, #45844). The workaround,
-  // keep parity with the host hook contract by registering empty handlers for these
-  // methods. Without this fix, webpresso tools never surface in
-  // Claude Code's deferred-tool registry.
+  // Regression: reference hosts call prompts/list and resources/list during init.
+  // If the server returns -32601, the SDK transport gets poisoned and
+  // subsequent tools/list calls silently fail. Keep parity with the host hook
+  // contract by registering empty handlers for these methods. Without this fix,
+  // webpresso tools never surface in the deferred-tool registry.
   it('responds to prompts/list and resources/list without -32601 (transport-poisoning workaround)', async () => {
     const { prompts, resources, resourceTemplates, tools } = await withClient(async (client) => ({
       prompts: await client.listPrompts(),
@@ -125,7 +137,22 @@ describe('mcp server integration', () => {
       name: string
     }>
     expect(listedTools.map((t) => t.name)).toEqual(
-      expect.arrayContaining(['wp_lint', 'wp_qa', 'wp_test', 'wp_e2e', 'wp_typecheck', 'wp_audit']),
+      expect.arrayContaining([
+        'wp_lint',
+        'wp_qa',
+        'wp_test',
+        'wp_e2e',
+        'wp_typecheck',
+        'wp_audit',
+        'wp_session_index',
+        'wp_session_fetch_and_index',
+        'wp_session_execute_file',
+        'wp_session_restore',
+        'wp_session_search',
+        'wp_session_stats',
+        'wp_session_purge',
+        'wp_session_doctor',
+      ]),
     )
   }, 20_000)
 
@@ -136,6 +163,31 @@ describe('mcp server integration', () => {
     expect(caps).toHaveProperty('prompts')
     expect(caps).toHaveProperty('resources')
   })
+
+  it('advertises the replacement-critical session-memory MCP tool surface by exact name', async () => {
+    const tools = await withClient(
+      async (client) =>
+        (await client.listTools()).tools as Array<{
+          name: string
+        }>,
+    )
+    const names = tools.map((tool) => tool.name)
+    const expectedSessionTools = [
+      'wp_session_doctor',
+      'wp_session_execute_file',
+      'wp_session_fetch_and_index',
+      'wp_session_index',
+      'wp_session_purge',
+      'wp_session_restore',
+      'wp_session_search',
+      'wp_session_stats',
+    ]
+
+    expect(names).toEqual(expect.arrayContaining(['wp_audit', ...expectedSessionTools]))
+    expect(
+      names.filter((name) => name === 'wp_session_upgrade' || name === 'wp_session_insight'),
+    ).toEqual([])
+  }, 20_000)
 
   let fixtureFilePath: string | undefined
   afterEach(() => {
@@ -261,6 +313,21 @@ describe('mcp server integration', () => {
       ]),
     )
     // Auto-discovered non-blueprint tools must still be present alongside.
-    expect(names).toEqual(expect.arrayContaining(['wp_lint', 'wp_qa', 'wp_test', 'wp_audit']))
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'wp_lint',
+        'wp_qa',
+        'wp_test',
+        'wp_audit',
+        'wp_session_index',
+        'wp_session_fetch_and_index',
+        'wp_session_execute_file',
+        'wp_session_restore',
+        'wp_session_search',
+        'wp_session_stats',
+        'wp_session_purge',
+        'wp_session_doctor',
+      ]),
+    )
   }, 20_000)
 })

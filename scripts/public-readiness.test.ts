@@ -101,4 +101,11 @@ describe('public-readiness runtime policy helpers', () => {
     expect(packIndex).toBeGreaterThan(source.indexOf('preparePackedManifest(ROOT)'))
     expect(source.indexOf('restorePackedManifest(ROOT)', packIndex)).toBeGreaterThan(packIndex)
   })
+
+  it('rejects retired native session-memory engine paths in the tarball readiness script', () => {
+    const source = readFileSync(join(import.meta.dirname, 'public-readiness.ts'), 'utf8')
+
+    expect(source).toContain('tarball-session-memory-local-store')
+    expect(source).not.toContain('requiredNativePaths = [')
+  })
 })

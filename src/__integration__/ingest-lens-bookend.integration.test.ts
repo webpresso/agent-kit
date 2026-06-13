@@ -9,10 +9,11 @@ import { seededLintErrorSource } from './fixtures/seeded-lint-error.js'
 import { seededTypeErrorSource } from './fixtures/seeded-type-error.js'
 
 const fixtureDir = join(dirname(fileURLToPath(import.meta.url)), 'fixtures')
-const fallbackIngestLensPath = '/Users/ozby/repos/ozby/ingest-lens'
+const configuredIngestLensPath = process.env.INGEST_LENS_PATH?.trim()
 const ingestLensPath =
-  process.env.INGEST_LENS_PATH?.trim() ??
-  (existsSync(fallbackIngestLensPath) ? fallbackIngestLensPath : undefined)
+  configuredIngestLensPath && existsSync(configuredIngestLensPath)
+    ? configuredIngestLensPath
+    : undefined
 const describeIfIngestLens = ingestLensPath ? describe : describe.skip
 
 const fixtureRoot = 'src/agentkit-qa'
@@ -55,7 +56,7 @@ afterEach(() => {
 describeIfIngestLens('ingest-lens BOOKEND compact QA integration', () => {
   it('returns a compact qa payload for seeded lint/type/test failures', async () => {
     const root = ingestLensPath
-    if (!root) throw new Error('INGEST_LENS_PATH was not set and fallback repo was not available')
+    if (!root) throw new Error('INGEST_LENS_PATH must point to an existing repo')
     const workerRoot = join(root, 'apps/workers')
     const seedDir = join(workerRoot, fixtureRoot)
     mkdirSync(seedDir, { recursive: true })

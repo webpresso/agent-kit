@@ -15,6 +15,7 @@ const REQUIRED_HOOKS = [
   { event: 'PostToolUse', bin: 'wp-post-tool' },
   { event: 'UserPromptSubmit', bin: 'wp-guard-switch' },
   { event: 'Stop', bin: 'wp-stop-qa' },
+  { event: 'PreCompact', bin: 'wp-precompact-snapshot' },
 ] as const
 
 const CLAUDE_SETTINGS_PATH = '.claude/settings.json'
@@ -221,9 +222,13 @@ function checkHookFile(
       (group.hooks ?? []).some((hook) => hook.command?.includes(requirement.bin)),
     )
     if (!found) {
+      const supportDetail =
+        requirement.event === 'PreCompact'
+          ? ' This is a managed internal hook surface; degraded hosts: claude, codex, opencode; unsupported hosts: cursor.'
+          : ''
       violations.push({
         file: relativePath,
-        message: `Missing ${requirement.event} hook for ${requirement.bin}. Re-run \`wp setup\` to repair agent hooks.`,
+        message: `Missing ${requirement.event} hook for ${requirement.bin}.${supportDetail} Re-run \`wp setup\` to repair agent hooks.`,
       })
     }
   }

@@ -1,7 +1,7 @@
 ---
 title: Session-memory benchmark methodology
 type: guide
-last_updated: 2026-05-28
+last_updated: 2026-06-13
 ---
 
 # Session-memory benchmark methodology
@@ -12,10 +12,10 @@ agent-kit maintainers.
 
 ## Research basis
 
-The authoritative research file is
-[`docs/research/2026-05-14-token-savings-benchmark-methodology.md`](../research/2026-05-14-token-savings-benchmark-methodology.md).
+The benchmark methodology is captured in this guide and in the durable harness
+assets under `scripts/bench/`.
 
-That research established three constraints that the harness keeps intact:
+The research basis established three constraints that the harness keeps intact:
 
 1. **Two-turn `--print` runs do not measure session-memory value.** The useful
    signal appears only after long sessions and compaction pressure.
@@ -61,6 +61,44 @@ be measured across long-running, compaction-aware workflows.
 4. Inspect `scripts/bench/runs/<run-id>/report.md` for cost, recall, and wall
    time summaries.
 
+## Regression thresholds
+
+The threshold report supports reference parity and replacement parity gates. It
+has two modes: dry-run schema validation and live benchmark evidence.
+
+### Dry-run schema validation
+
+`wp bench session-memory --dry-run` validates the manifest, scenarios, threshold
+schema, and report shape without measured benchmark results. In this mode the
+threshold report must use `mode: dry-run`, mark each axis as `schema-valid`, and
+leave `observed` as `n/a`.
+
+Dry-run output proves the gate contract is parseable. If workspace mode is
+omitted, dry-run uses a single-workspace schema default so the smoke gate remains
+credential-free. Dry-run also uses a current-checkout manifest mode: tool locks
+(`bun`, `claude`, `node`, and `model`) must still match the pinned manifest, and
+plugin refs must still be valid git SHAs, but plugin SHA equality is not required
+because every feature-branch commit legitimately changes the current checkout
+HEAD. It is not replacement parity evidence.
+
+### Live benchmark requirements
+
+Replacement parity evidence requires an operator-triggered live run that writes
+a measured `scripts/bench/runs/<run-id>/report.md`. The threshold report must
+use `mode: measured`, include numeric `observed` values, and show `passed` for
+every required reference parity axis:
+
+| axis | pass condition |
+| --- | --- |
+| `post_tool_capture_latency_ms` | observed average is at or below `750` |
+| `precompact_snapshot_latency_ms` | observed average is at or below `1000` |
+| `startup_resume_injection_latency_ms` | observed average is at or below `750` |
+| `search_quality_recall_at_5` | observed recall@5 is at or above `0.8` |
+
+A replacement parity claim should cite the live `report.md`, pinned manifest
+hash, workspace mode, scenario id, variant set, trial count, and threshold rows
+used for the reference parity decision.
+
 ## Why the workspace contract matters
 
 Cache-sensitive claims are only honest when variants do not share Anthropic
@@ -73,6 +111,5 @@ That is a methodological safeguard, not just an operator convenience.
 
 ## Related
 
-- [`docs/research/2026-05-14-token-savings-benchmark-methodology.md`](../research/2026-05-14-token-savings-benchmark-methodology.md)
 - [`../../scripts/bench/README.md`](../../scripts/bench/README.md)
 - [`../../scripts/bench/PREFLIGHT.md`](../../scripts/bench/PREFLIGHT.md)
