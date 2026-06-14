@@ -185,6 +185,16 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     mkdirSync(fakeBinDir, { recursive: true })
     writeFileSync(fakeOmx, '#!/usr/bin/env sh\necho 1.2.3\n', 'utf8')
     chmodSync(fakeOmx, 0o755)
+    // Command detection now uses a real PATH scan (#runtime/command-exists), not the
+    // mocked `which` spawnSync, so stage a real `claude` on PATH for the flows that
+    // gate on it (Claude-plugin install, OMC). `codex` is intentionally NOT staged:
+    // no assertion here needs codex detection, and the async `spawn` mock does not
+    // model codex-plugin's install handshake (it would hang). The real codex
+    // app-server boundary is deadline-guarded, so this is a test-mock gap, not a
+    // product hang.
+    const fakeClaude = join(fakeBinDir, 'claude')
+    writeFileSync(fakeClaude, '#!/usr/bin/env sh\nexit 0\n', 'utf8')
+    chmodSync(fakeClaude, 0o755)
     process.env.PATH = `${fakeBinDir}:${originalPath ?? ''}`
     spawnSyncMock.mockClear()
     spawnMock.mockClear()
@@ -771,6 +781,16 @@ describe('DX output: lane framing and next-steps block', { timeout: 15_000 }, ()
     mkdirSync(fakeBinDir, { recursive: true })
     writeFileSync(fakeOmx, '#!/usr/bin/env sh\necho 1.2.3\n', 'utf8')
     chmodSync(fakeOmx, 0o755)
+    // Command detection now uses a real PATH scan (#runtime/command-exists), not the
+    // mocked `which` spawnSync, so stage a real `claude` on PATH for the flows that
+    // gate on it (Claude-plugin install, OMC). `codex` is intentionally NOT staged:
+    // no assertion here needs codex detection, and the async `spawn` mock does not
+    // model codex-plugin's install handshake (it would hang). The real codex
+    // app-server boundary is deadline-guarded, so this is a test-mock gap, not a
+    // product hang.
+    const fakeClaude = join(fakeBinDir, 'claude')
+    writeFileSync(fakeClaude, '#!/usr/bin/env sh\nexit 0\n', 'utf8')
+    chmodSync(fakeClaude, 0o755)
     process.env.PATH = `${fakeBinDir}:${originalPath ?? ''}`
     spawnSyncMock.mockClear()
     spawnMock.mockClear()

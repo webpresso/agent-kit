@@ -1,11 +1,12 @@
-import { existsSync, mkdtempSync } from 'node:fs'
+import { existsSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   scaffoldAgentHooks,
+  trustCodexPresetHooksForUser,
   trustCodexWebpressoHooksForRepo,
   type CodexTrustSyncWarning,
 } from './index.js'
@@ -142,7 +143,7 @@ describe('codex app-server trust integration', () => {
     expect(batchWrites).toHaveLength(1)
   })
 
-  it('skips codex trust sync silently when codex is not installed (no spawn, no warning)', async () => {
+  it('skips (no spawn, no structured warning) via scaffoldAgentHooks when codex is absent', async () => {
     const repoRoot = tempRepo()
     let factoryCalls = 0
     const warnings: CodexTrustSyncWarning[] = []
@@ -160,6 +161,70 @@ describe('codex app-server trust integration', () => {
       },
       onCodexTrustSyncWarning: (warning) => warnings.push(warning),
     })
+
+    expect(factoryCalls).toBe(0)
+    expect(warnings).toStrictEqual([])
+  })
+
+  it('prints an info notice (and no structured warning) when codex is absent', async () => {
+    const repoRoot = tempRepo()
+    let factoryCalls = 0
+    const warnings: CodexTrustSyncWarning[] = []
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    let warnLines: string[] = []
+
+    try {
+      await trustCodexWebpressoHooksForRepo({
+        repoRoot,
+        options: {},
+        codexAvailable: () => false,
+        createCodexAppServer: async () => {
+          factoryCalls += 1
+          throw new Error('codex app-server must not be started when codex is absent')
+        },
+        onCodexTrustSyncWarning: (warning) => warnings.push(warning),
+      })
+      // Capture before mockRestore() — restoring resets mock.calls.
+      warnLines = warnSpy.mock.calls.map((call) => String(call[0]))
+    } finally {
+      warnSpy.mockRestore()
+    }
+
+    expect(factoryCalls).toBe(0)
+    expect(warnings).toStrictEqual([])
+    const infoLines = warnLines.filter((line) => line.includes('codex not detected on PATH'))
+    expect(infoLines).toHaveLength(1)
+  })
+
+  it('trustCodexPresetHooksForUser also skips (no spawn) when codex is absent', async () => {
+    const repoRoot = tempRepo()
+    // A real $CODEX_HOME/hooks.json exists, so the only reason to skip is the
+    // codex-unavailable gate (not the missing-hooks early-return) — proves the gate.
+    const codexHome = mkdtempSync(join(tmpdir(), 'wp-codex-home-'))
+    repos.push(codexHome)
+    writeFileSync(join(codexHome, 'hooks.json'), '{}\n')
+    const previousCodexHome = process.env.CODEX_HOME
+    process.env.CODEX_HOME = codexHome
+
+    let factoryCalls = 0
+    const warnings: CodexTrustSyncWarning[] = []
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      await trustCodexPresetHooksForUser({
+        repoRoot,
+        options: {},
+        codexAvailable: () => false,
+        createCodexAppServer: async () => {
+          factoryCalls += 1
+          throw new Error('codex app-server must not be started when codex is absent')
+        },
+        onCodexTrustSyncWarning: (warning) => warnings.push(warning),
+      })
+    } finally {
+      warnSpy.mockRestore()
+      if (previousCodexHome === undefined) delete process.env.CODEX_HOME
+      else process.env.CODEX_HOME = previousCodexHome
+    }
 
     expect(factoryCalls).toBe(0)
     expect(warnings).toStrictEqual([])

@@ -4,6 +4,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
+import { commandExists as defaultCommandExists } from '#runtime/command-exists.js'
 
 /**
  * Codex consumes agent-kit skills through its native plugin system (verified
@@ -48,11 +49,6 @@ export type EnsureCodexPluginResult =
       step: 'marketplace-add' | 'plugin-add'
       exitCode: number
     }
-
-function defaultCommandExists(command: string): boolean {
-  const result = spawnSync('which', [command], { stdio: 'ignore' })
-  return result.status === 0
-}
 
 function defaultRunCommand(command: string, args: readonly string[]): number {
   const result = spawnSync(command, [...args], {

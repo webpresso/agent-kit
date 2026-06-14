@@ -2,6 +2,8 @@ import { existsSync, readFileSync } from 'node:fs'
 import { isAbsolute, join, posix, win32 } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { pathCandidates } from '#runtime/command-exists.js'
+
 // The compiled `wp` runtime ships as a native sub-dependency named
 // `@webpresso/agent-kit-runtime-<os>-<cpu>`. It legitimately carries a native
 // `bin/wp` payload but is NOT the agent-kit package root: it has no
@@ -50,42 +52,24 @@ function pathModuleForPlatform(platform: NodeJS.Platform): typeof posix | typeof
   return platform === 'win32' ? win32 : posix
 }
 
-function pathDelimiterForPlatform(platform: NodeJS.Platform): string {
-  return platform === 'win32' ? ';' : ':'
-}
-
+// Locate an installed bin on PATH using the `exists` predicate: the first
+// candidate that is present on disk wins. This is deliberately weaker than
+// `#runtime/command-exists`'s `runnable` predicate — the doctor resolves npm
+// shims (e.g. `wp.cmd`) that may not carry an exec bit. The cross-platform
+// PATH + PATHEXT enumeration is shared via `pathCandidates` so it lives in one
+// place; only the predicate differs.
 function resolveBinOnPath(
   binName: string,
   pathEnv: string | undefined,
   options: { readonly pathExtEnv?: string; readonly platform?: NodeJS.Platform } = {},
 ): string | null {
   if (binName.length === 0 || typeof pathEnv !== 'string' || pathEnv.length === 0) return null
-  const platform = options.platform ?? process.platform
-  const pathExtEnv = options.pathExtEnv ?? process.env.PATHEXT
-  const pathModule = pathModuleForPlatform(platform)
-  const candidates =
-    platform === 'win32' && !/\.[^./\\]+$/u.test(binName)
-      ? [
-          binName,
-          ...(typeof pathExtEnv === 'string' && pathExtEnv.length > 0
-            ? pathExtEnv
-                .split(';')
-                .map((entry) => entry.trim())
-                .filter((entry) => entry.length > 0)
-                .map((entry) => `${binName}${entry.toLowerCase()}`)
-            : [`${binName}.exe`, `${binName}.cmd`, `${binName}.bat`]),
-        ]
-      : [binName]
-  for (const entry of pathEnv.split(pathDelimiterForPlatform(platform))) {
-    if (entry.length === 0) continue
-    for (const binCandidate of candidates) {
-      for (const candidate of new Set([
-        pathModule.join(entry, binCandidate),
-        join(entry, binCandidate),
-      ])) {
-        if (existsSync(candidate)) return candidate
-      }
-    }
+  for (const candidate of pathCandidates(binName, {
+    pathEnv,
+    platform: options.platform,
+    pathExtEnv: options.pathExtEnv,
+  })) {
+    if (existsSync(candidate)) return candidate
   }
   return null
 }

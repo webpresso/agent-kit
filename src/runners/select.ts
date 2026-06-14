@@ -1,6 +1,5 @@
-import { spawnSync } from 'node:child_process'
-
 import type { RunnerTask } from '#runners/types'
+import { commandExists } from '#runtime/command-exists.js'
 
 export type RunnerId = 'claude-subagent' | 'codex-exec' | 'local-worktree'
 
@@ -9,13 +8,8 @@ export interface SelectRunnerOptions {
   runner?: string
   /** Injectable for tests; defaults to process.env */
   env?: Readonly<Record<string, string>>
-  /** Injectable: checks if cmd is on PATH. Defaults to real `which` via spawnSync. */
+  /** Injectable: checks if cmd is on PATH. Defaults to a cross-platform PATH scan. */
   which?: (cmd: string) => boolean
-}
-
-function defaultWhich(cmd: string): boolean {
-  const result = spawnSync('which', [cmd], { encoding: 'utf8' })
-  return result.status === 0
 }
 
 function detect(env: Readonly<Record<string, string>>, which: (cmd: string) => boolean): RunnerId {
@@ -44,7 +38,7 @@ function assertAllowed(candidate: RunnerId, task: RunnerTask): void {
 
 export function selectRunner(task: RunnerTask, opts?: SelectRunnerOptions): RunnerId {
   const env: Readonly<Record<string, string>> = opts?.env ?? (process.env as Record<string, string>)
-  const which = opts?.which ?? defaultWhich
+  const which = opts?.which ?? commandExists
 
   let candidate: RunnerId
 

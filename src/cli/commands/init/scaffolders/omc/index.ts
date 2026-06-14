@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
+import { commandExists as defaultCommandExists } from '#runtime/command-exists.js'
 
 export const OMC_MARKETPLACE = 'https://github.com/Yeachan-Heo/oh-my-claudecode'
 export const OMC_PLUGIN_ID = 'oh-my-claudecode'
@@ -27,11 +28,6 @@ export type EnsureOmcResult =
       step: 'marketplace-add' | 'plugin-install'
       exitCode: number
     }
-
-function defaultCommandExists(command: string): boolean {
-  const result = spawnSync('which', [command], { stdio: 'ignore' })
-  return result.status === 0
-}
 
 function defaultRunCommand(command: string, args: readonly string[]): number {
   const result = spawnSync(command, [...args], {
