@@ -72,6 +72,14 @@ describe('agent-kit CLI bundles', () => {
         '@webpresso/cli-contract',
       )
     }
+
+    const workflowSources = globSync('.github/{workflows,actions}/**/*.yml', { cwd: repoRoot })
+    for (const sourcePath of workflowSources) {
+      const source = readFileSync(join(repoRoot, sourcePath), 'utf8')
+      expect(source).not.toContain('checkout-cli-contract')
+      expect(source).not.toContain('WEBPRESSO_CLI_CONTRACT_REF')
+      expect(source).not.toContain('monorepo/packages/cli/contract')
+    }
   })
 
   it('keeps the compatibility inventory metadata pointed at the public host', () => {

@@ -388,7 +388,6 @@ describe('test runner', () => {
     ])
   })
 
-
   it('shards selected workspace suites by discovered matching test files', async () => {
     writeVitestWorkspace(defaultRoot!)
     const unitFiles = writeTestFiles(defaultRoot!, 6)
@@ -411,7 +410,6 @@ describe('test runner', () => {
     expect(executedFiles).toEqual(unitFiles.sort())
     expect(executedFiles).not.toContain('src/slow.integration.test.ts')
   })
-
 
   it('keeps unsharded sibling suite runs when suite=all partially shards', async () => {
     writeVitestWorkspace(defaultRoot!)

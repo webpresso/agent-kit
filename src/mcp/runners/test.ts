@@ -280,7 +280,6 @@ async function runScopedSequence(
   }
 }
 
-
 async function runScopedConcurrent(
   cwd: string,
   runs: readonly ScopedRun[],
@@ -415,7 +414,6 @@ function resolveWorkspaceSharding(
   }
 }
 
-
 function resolveShardConcurrency(input?: WorkspaceShardingInput): number {
   if (input?.concurrency !== undefined) return input.concurrency
   return Math.max(1, Math.min(WORKSPACE_MAX_DEFAULT_CONCURRENCY, availableParallelism()))
@@ -454,7 +452,6 @@ function createWorkspaceVitestShardRuns(
 function createWorkspaceSuiteRuns(suite: TestSuiteName): ScopedRun[] {
   return createVitestScopedRuns(suite, ['exec', '--', 'vitest'], 'workspace')
 }
-
 
 function createWorkspaceSuiteShardRuns(
   cwd: string,
@@ -551,7 +548,6 @@ function discoverVitestFiles(cwd: string): string[] {
     ignore: [...VITEST_DEFAULT_IGNORE],
   }).sort((left, right) => left.localeCompare(right))
 }
-
 
 function filterFilesForSuite(
   files: readonly string[],
