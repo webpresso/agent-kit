@@ -245,14 +245,20 @@ jobs:
           echo "--- wp setup output ---"
           echo "$RAW_OUTPUT"
 
+          # Assert via here-strings, never `echo "$OUTPUT" | grep -q`: under
+          # `set -o pipefail`, grep -q closes the pipe on first match while echo
+          # is still writing, so echo takes SIGPIPE (141) and pipefail turns a
+          # successful match into a false failure. The race only trips on large
+          # output (e.g. when the codex-hook-trust warning is present in CI).
+
           # Assert 1: lane-4 framing printed (Task 1.6 requirement)
-          echo "$OUTPUT" | grep -qF 'Lane 1 wp_*' || {
+          grep -qF 'Lane 1 wp_*' <<<"$OUTPUT" || {
             echo "FAIL: lane framing missing — expected 'Lane 1 wp_*' in output"
             exit 1
           }
 
           # Assert 2: next-steps block printed
-          echo "$OUTPUT" | grep -qF 'Setup complete' || {
+          grep -qF 'Setup complete' <<<"$OUTPUT" || {
             echo "FAIL: next-steps missing — expected 'Setup complete' in output"
             exit 1
           }
