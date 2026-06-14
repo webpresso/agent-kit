@@ -82,24 +82,149 @@
   ],
   "qrels": [
     {
+      "qrel_id": "debug-long-session-q1",
       "question": "Which file held the retry ledger state?",
-      "expected_substring_in_response": "queue-runner.ts"
+      "expected_substring_in_response": "queue-runner.ts",
+      "provenance": {
+        "scenario_id": "debug-long-session",
+        "qrel_id": "debug-long-session-q1",
+        "source_file": "scripts/bench/scenarios/debug-long-session.json",
+        "source_span": "prompt_turns[3].text",
+        "source_hash": "f38d68dc9a1784b7ecf157699ab4b4702c723a3afbcde06867cab14f5213fe8d",
+        "query_id": "debug-long-session-query-1",
+        "expected_evidence_text": "queue-runner.ts",
+        "expected_evidence_hash": "ec62a844c7f570f9c20f6fed1bdf71d3672b383bda50955b15650d36414d3366",
+        "relevance_criterion_version": "context-recall-qrel-v1",
+        "relevance_criterion": "Relevant iff the scored answer contains the expected memory fact or an equivalent paraphrase grounded in the cited source span.",
+        "primary_labeler": {
+          "identity": "agent-kit-benchmark-author",
+          "role": "benchmark-fixture-author",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "independent_reviewer": {
+          "identity": "agent-kit-scientific-reviewer",
+          "role": "independent-qrel-reviewer",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "label_status": "accepted",
+        "provenance_version": 1
+      }
     },
     {
+      "qrel_id": "debug-long-session-q2",
       "question": "Where can the partial-success cursor be lost?",
-      "expected_substring_in_response": "before the final checkpoint write"
+      "expected_substring_in_response": "before the final checkpoint write",
+      "provenance": {
+        "scenario_id": "debug-long-session",
+        "qrel_id": "debug-long-session-q2",
+        "source_file": "scripts/bench/scenarios/debug-long-session.json",
+        "source_span": "prompt_turns[5].text",
+        "source_hash": "80e31cd66d20037642c6f0a23bcab9440b1308ae269b6d9404333bd3a5bb04aa",
+        "query_id": "debug-long-session-query-2",
+        "expected_evidence_text": "before the final checkpoint write",
+        "expected_evidence_hash": "05ad2fd118f2d7e1759ed813fcd7ae6e0202c33db789c768907f0c9f7850401e",
+        "relevance_criterion_version": "context-recall-qrel-v1",
+        "relevance_criterion": "Relevant iff the scored answer contains the expected memory fact or an equivalent paraphrase grounded in the cited source span.",
+        "primary_labeler": {
+          "identity": "agent-kit-benchmark-author",
+          "role": "benchmark-fixture-author",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "independent_reviewer": {
+          "identity": "agent-kit-scientific-reviewer",
+          "role": "independent-qrel-reviewer",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "label_status": "accepted",
+        "provenance_version": 1
+      }
     },
     {
+      "qrel_id": "debug-long-session-q3",
       "question": "Which file should move the checkpoint ahead of acknowledgement?",
-      "expected_substring_in_response": "sync-state.ts"
+      "expected_substring_in_response": "sync-state.ts",
+      "provenance": {
+        "scenario_id": "debug-long-session",
+        "qrel_id": "debug-long-session-q3",
+        "source_file": "scripts/bench/scenarios/debug-long-session.json",
+        "source_span": "prompt_turns[3].text",
+        "source_hash": "f38d68dc9a1784b7ecf157699ab4b4702c723a3afbcde06867cab14f5213fe8d",
+        "query_id": "debug-long-session-query-3",
+        "expected_evidence_text": "sync-state.ts",
+        "expected_evidence_hash": "1787278cf7dd760c42f52fc34b88aafc6cbef2b16ab334b6590399e0a235f9dd",
+        "relevance_criterion_version": "context-recall-qrel-v1",
+        "relevance_criterion": "Relevant iff the scored answer contains the expected memory fact or an equivalent paraphrase grounded in the cited source span.",
+        "primary_labeler": {
+          "identity": "agent-kit-benchmark-author",
+          "role": "benchmark-fixture-author",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "independent_reviewer": {
+          "identity": "agent-kit-scientific-reviewer",
+          "role": "independent-qrel-reviewer",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "label_status": "accepted",
+        "provenance_version": 1
+      }
     },
     {
+      "qrel_id": "debug-long-session-q4",
       "question": "Which evidence proves the bug is fixed later?",
-      "expected_substring_in_response": "retry regression test"
+      "expected_substring_in_response": "retry regression test",
+      "provenance": {
+        "scenario_id": "debug-long-session",
+        "qrel_id": "debug-long-session-q4",
+        "source_file": "scripts/bench/scenarios/debug-long-session.json",
+        "source_span": "prompt_turns[7].text",
+        "source_hash": "0df05bf909ef3046f11150e9e9b86e995f9a1b1341f93f9d8f00fddb52552cae",
+        "query_id": "debug-long-session-query-4",
+        "expected_evidence_text": "retry regression test",
+        "expected_evidence_hash": "3b58d16a9b6bc58083eaea874824f10b14d36b2ba0dc44d36c45653781f671f9",
+        "relevance_criterion_version": "context-recall-qrel-v1",
+        "relevance_criterion": "Relevant iff the scored answer contains the expected memory fact or an equivalent paraphrase grounded in the cited source span.",
+        "primary_labeler": {
+          "identity": "agent-kit-benchmark-author",
+          "role": "benchmark-fixture-author",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "independent_reviewer": {
+          "identity": "agent-kit-scientific-reviewer",
+          "role": "independent-qrel-reviewer",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "label_status": "accepted",
+        "provenance_version": 1
+      }
     },
     {
+      "qrel_id": "debug-long-session-q5",
       "question": "What second proof did the assistant recommend beyond the regression test?",
-      "expected_substring_in_response": "queue replay"
+      "expected_substring_in_response": "queue replay",
+      "provenance": {
+        "scenario_id": "debug-long-session",
+        "qrel_id": "debug-long-session-q5",
+        "source_file": "scripts/bench/scenarios/debug-long-session.json",
+        "source_span": "prompt_turns[7].text",
+        "source_hash": "0df05bf909ef3046f11150e9e9b86e995f9a1b1341f93f9d8f00fddb52552cae",
+        "query_id": "debug-long-session-query-5",
+        "expected_evidence_text": "queue replay",
+        "expected_evidence_hash": "5fe803316d36b4cd13cbf54686fe5dda4d2d5cb0444987aaf7e7b1fdefc3c2f7",
+        "relevance_criterion_version": "context-recall-qrel-v1",
+        "relevance_criterion": "Relevant iff the scored answer contains the expected memory fact or an equivalent paraphrase grounded in the cited source span.",
+        "primary_labeler": {
+          "identity": "agent-kit-benchmark-author",
+          "role": "benchmark-fixture-author",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "independent_reviewer": {
+          "identity": "agent-kit-scientific-reviewer",
+          "role": "independent-qrel-reviewer",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "label_status": "accepted",
+        "provenance_version": 1
+      }
     }
   ]
 }

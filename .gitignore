@@ -107,6 +107,7 @@ reports/
 .sourcemap-comments-prepack-backup/
 
 # Stryker scratch — written next to stryker.config when running locally
+.stryker-tmp/
 stryker-setup-*.js
 
 # Test sandbox: __fixtures__/fake-home/ exposes a fake $HOME for test runs.
@@ -297,4 +298,9 @@ _worktrees/
 .agent/.blueprints.lock
 .agent/.blueprints.snapshot.sql
 .agent/.tail-hint-history.jsonl
+# Stryker writes these mutation-test artifacts beside consumer source trees.
+.stryker-tmp/
+reports/mutation/
+reports/stryker-incremental.json
+stryker-setup-*.js
 # <<< managed by webpresso (generated)

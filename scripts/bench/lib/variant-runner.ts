@@ -6,6 +6,7 @@ import { extractToolUses, extractUsage, type Usage } from './usage-extractor'
 import { recordStream } from './transcript-recorder'
 
 export type BenchAuthMode = 'api-key' | 'claude-login'
+export type BenchProvider = 'claude' | 'codex'
 
 export type VariantSpawn = (
   cmd: string[],
@@ -29,6 +30,9 @@ export type RunCellInput = {
   apiKeys?: Record<string, string | undefined>
   authMode?: BenchAuthMode
   claudeHome?: string
+  provider?: BenchProvider
+  codexHome?: string
+  codexProfile?: string
   spawn?: VariantSpawn
 }
 
@@ -57,17 +61,17 @@ function variantEnvKey(variant: string): string {
   return `ANTHROPIC_API_KEY_${variant.replace(/[^a-z0-9]/gi, '_').toUpperCase()}`
 }
 
-function resolveAuth(
+function resolveClaudeAuth(
   input: RunCellInput,
   cellHomeDir: string,
 ): {
   homeDir: string
-  apiKey?: string
+  env: Record<string, string>
 } {
   if (input.authMode !== 'claude-login') {
     const envKey = variantEnvKey(input.variant)
     const apiKey = input.apiKeys?.[envKey] ?? process.env[envKey]
-    return { homeDir: cellHomeDir, ...(apiKey ? { apiKey } : {}) }
+    return { homeDir: cellHomeDir, env: apiKey ? { ANTHROPIC_API_KEY: apiKey } : {} }
   }
 
   const loggedInHome = input.claudeHome ?? process.env.BENCH_CLAUDE_HOME ?? process.env.HOME
@@ -75,7 +79,25 @@ function resolveAuth(
     throw new Error('BENCH_AUTH_MODE=claude-login requires HOME or BENCH_CLAUDE_HOME')
   }
 
-  return { homeDir: loggedInHome }
+  return { homeDir: loggedInHome, env: {} }
+}
+
+function resolveCodexAuth(
+  input: RunCellInput,
+  cellHomeDir: string,
+): {
+  homeDir: string
+  env: Record<string, string>
+} {
+  const homeDir = input.codexHome ?? process.env.BENCH_CODEX_HOME ?? cellHomeDir
+  const apiKey = input.apiKeys?.CODEX_API_KEY ?? process.env.CODEX_API_KEY
+  return {
+    homeDir,
+    env: {
+      CODEX_HOME: homeDir,
+      ...(apiKey ? { CODEX_API_KEY: apiKey } : {}),
+    },
+  }
 }
 
 async function spawnWithBun(
@@ -94,6 +116,45 @@ async function spawnWithBun(
   return { exitCode, stdout, stderr }
 }
 
+export function buildProviderCommand(input: {
+  readonly provider?: BenchProvider
+  readonly prompt: string
+  readonly pluginDir: string
+  readonly cwd: string
+  readonly variant: string
+  readonly lastMessagePath: string
+  readonly codexProfile?: string
+}): string[] {
+  if ((input.provider ?? 'claude') === 'codex') {
+    return [
+      'codex',
+      'exec',
+      '--json',
+      '--output-last-message',
+      input.lastMessagePath,
+      '--sandbox',
+      'workspace-write',
+      '--cd',
+      input.cwd,
+      '--profile',
+      input.codexProfile ?? input.variant,
+      '--ignore-user-config',
+      input.prompt,
+    ]
+  }
+
+  return [
+    'claude',
+    '--print',
+    '--verbose',
+    '--output-format',
+    'stream-json',
+    '--plugin-dir',
+    input.pluginDir,
+    input.prompt,
+  ]
+}
+
 function isRateLimit(text: string): boolean {
   return /rate[ -]?limit/i.test(text)
 }
@@ -105,10 +166,13 @@ export async function runCell(input: RunCellInput): Promise<RunResult> {
   const cellRoot = join(outputRoot, runId, input.variant, input.scenario, `trial-${input.trial}`)
   const homeDir = join(cellRoot, 'home')
   const transcriptPath = join(cellRoot, 'transcript.jsonl')
+  const lastMessagePath = join(cellRoot, 'last-message.txt')
+  const provider = input.provider ?? 'claude'
 
   mkdirSync(homeDir, { recursive: true })
 
-  const auth = resolveAuth(input, homeDir)
+  const auth =
+    provider === 'codex' ? resolveCodexAuth(input, homeDir) : resolveClaudeAuth(input, homeDir)
   const env = {
     ...Object.fromEntries(
       Object.entries(process.env).filter(
@@ -116,20 +180,19 @@ export async function runCell(input: RunCellInput): Promise<RunResult> {
       ),
     ),
     HOME: auth.homeDir,
-    ...(auth.apiKey ? { ANTHROPIC_API_KEY: auth.apiKey } : {}),
+    ...auth.env,
   }
 
   const spawn = input.spawn ?? spawnWithBun
-  const cmd = [
-    'claude',
-    '--print',
-    '--verbose',
-    '--output-format',
-    'stream-json',
-    '--plugin-dir',
-    input.pluginDir,
-    input.prompt,
-  ]
+  const cmd = buildProviderCommand({
+    provider,
+    prompt: input.prompt,
+    pluginDir: input.pluginDir,
+    cwd,
+    variant: input.variant,
+    lastMessagePath,
+    codexProfile: input.codexProfile,
+  })
 
   const result = await spawn(cmd, {
     cwd,

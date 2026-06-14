@@ -68,24 +68,149 @@
   ],
   "qrels": [
     {
+      "qrel_id": "resumable-task-q1",
       "question": "Which three components still had bare PATH lookups?",
-      "expected_substring_in_response": "hook generator"
+      "expected_substring_in_response": "hook generator",
+      "provenance": {
+        "scenario_id": "resumable-task",
+        "qrel_id": "resumable-task-q1",
+        "source_file": "scripts/bench/scenarios/resumable-task.json",
+        "source_span": "prompt_turns[1].text",
+        "source_hash": "c54045307e97db7f044bc7c31092aa93a142151521cfed251faf60163becdca4",
+        "query_id": "resumable-task-query-1",
+        "expected_evidence_text": "hook generator",
+        "expected_evidence_hash": "09fb7f89b42996aa2b288fabe420ec8d7ec42db56c8b795b9da43e60f48ddc0b",
+        "relevance_criterion_version": "context-recall-qrel-v1",
+        "relevance_criterion": "Relevant iff the scored answer contains the expected memory fact or an equivalent paraphrase grounded in the cited source span.",
+        "primary_labeler": {
+          "identity": "agent-kit-benchmark-author",
+          "role": "benchmark-fixture-author",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "independent_reviewer": {
+          "identity": "agent-kit-scientific-reviewer",
+          "role": "independent-qrel-reviewer",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "label_status": "accepted",
+        "provenance_version": 1
+      }
     },
     {
+      "qrel_id": "resumable-task-q2",
       "question": "What was the approved repair for path stability?",
-      "expected_substring_in_response": "setup-time absolute binary derivation"
+      "expected_substring_in_response": "setup-time absolute binary derivation",
+      "provenance": {
+        "scenario_id": "resumable-task",
+        "qrel_id": "resumable-task-q2",
+        "source_file": "scripts/bench/scenarios/resumable-task.json",
+        "source_span": "prompt_turns[5].text",
+        "source_hash": "5a1871799d2782a9069e34722aa973fc144e5a8114fc2f449a10881eb9055c98",
+        "query_id": "resumable-task-query-2",
+        "expected_evidence_text": "setup-time absolute binary derivation",
+        "expected_evidence_hash": "4419ff95295a5039988ca422cfbd4775eced18ff711b926cd46b46c51403495a",
+        "relevance_criterion_version": "context-recall-qrel-v1",
+        "relevance_criterion": "Relevant iff the scored answer contains the expected memory fact or an equivalent paraphrase grounded in the cited source span.",
+        "primary_labeler": {
+          "identity": "agent-kit-benchmark-author",
+          "role": "benchmark-fixture-author",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "independent_reviewer": {
+          "identity": "agent-kit-scientific-reviewer",
+          "role": "independent-qrel-reviewer",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "label_status": "accepted",
+        "provenance_version": 1
+      }
     },
     {
+      "qrel_id": "resumable-task-q3",
       "question": "Which timeout anti-pattern must stay forbidden?",
-      "expected_substring_in_response": "increasing timeouts"
+      "expected_substring_in_response": "increasing timeouts",
+      "provenance": {
+        "scenario_id": "resumable-task",
+        "qrel_id": "resumable-task-q3",
+        "source_file": "scripts/bench/scenarios/resumable-task.json",
+        "source_span": "prompt_turns[5].text",
+        "source_hash": "5a1871799d2782a9069e34722aa973fc144e5a8114fc2f449a10881eb9055c98",
+        "query_id": "resumable-task-query-3",
+        "expected_evidence_text": "increasing timeouts",
+        "expected_evidence_hash": "22d093f141d836d2608fc035facb71951e1dd93ea0c1cc865baf6bf8e52dc3a3",
+        "relevance_criterion_version": "context-recall-qrel-v1",
+        "relevance_criterion": "Relevant iff the scored answer contains the expected memory fact or an equivalent paraphrase grounded in the cited source span.",
+        "primary_labeler": {
+          "identity": "agent-kit-benchmark-author",
+          "role": "benchmark-fixture-author",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "independent_reviewer": {
+          "identity": "agent-kit-scientific-reviewer",
+          "role": "independent-qrel-reviewer",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "label_status": "accepted",
+        "provenance_version": 1
+      }
     },
     {
+      "qrel_id": "resumable-task-q4",
       "question": "How should slow discovery calls fail safely?",
-      "expected_substring_in_response": "partial results plus warnings"
+      "expected_substring_in_response": "partial results plus warnings",
+      "provenance": {
+        "scenario_id": "resumable-task",
+        "qrel_id": "resumable-task-q4",
+        "source_file": "scripts/bench/scenarios/resumable-task.json",
+        "source_span": "prompt_turns[7].text",
+        "source_hash": "1a07cc6bb9b52950a61342f8aef9e171212f3ac55d66f30f0733fbbd722987f9",
+        "query_id": "resumable-task-query-4",
+        "expected_evidence_text": "partial results plus warnings",
+        "expected_evidence_hash": "f7774964fec7bcc855ae409699f6b811e864c0d9ad3e7a32aa50bcca92cd7b61",
+        "relevance_criterion_version": "context-recall-qrel-v1",
+        "relevance_criterion": "Relevant iff the scored answer contains the expected memory fact or an equivalent paraphrase grounded in the cited source span.",
+        "primary_labeler": {
+          "identity": "agent-kit-benchmark-author",
+          "role": "benchmark-fixture-author",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "independent_reviewer": {
+          "identity": "agent-kit-scientific-reviewer",
+          "role": "independent-qrel-reviewer",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "label_status": "accepted",
+        "provenance_version": 1
+      }
     },
     {
+      "qrel_id": "resumable-task-q5",
       "question": "Why do bounded partial results matter?",
-      "expected_substring_in_response": "safer than global timeouts"
+      "expected_substring_in_response": "safer than global timeouts",
+      "provenance": {
+        "scenario_id": "resumable-task",
+        "qrel_id": "resumable-task-q5",
+        "source_file": "scripts/bench/scenarios/resumable-task.json",
+        "source_span": "prompt_turns[7].text",
+        "source_hash": "1a07cc6bb9b52950a61342f8aef9e171212f3ac55d66f30f0733fbbd722987f9",
+        "query_id": "resumable-task-query-5",
+        "expected_evidence_text": "safer than global timeouts",
+        "expected_evidence_hash": "e3b7faee91e87db8252b8378794741421257cfb6f124e8f702b32d8ff1a5c881",
+        "relevance_criterion_version": "context-recall-qrel-v1",
+        "relevance_criterion": "Relevant iff the scored answer contains the expected memory fact or an equivalent paraphrase grounded in the cited source span.",
+        "primary_labeler": {
+          "identity": "agent-kit-benchmark-author",
+          "role": "benchmark-fixture-author",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "independent_reviewer": {
+          "identity": "agent-kit-scientific-reviewer",
+          "role": "independent-qrel-reviewer",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "label_status": "accepted",
+        "provenance_version": 1
+      }
     }
   ]
 }

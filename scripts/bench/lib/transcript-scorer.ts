@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs'
 
+import { calculateRecallAt5 } from './recall-policy'
+
 export type TranscriptQrel = {
   question: string
   expected_substring_in_response: string
@@ -28,18 +30,15 @@ type ExtractedText = {
 }
 
 function isRecord(value: unknown): value is JsonRecord {
-  return typeof value === 'object' && value !== null
+  return Object.prototype.toString.call(value) === '[object Object]'
 }
 
-function parseJsonLine(line: string): JsonRecord | null {
-  const trimmed = line.trim()
-  if (!trimmed) return null
-
+function parseJsonLine(line: string): JsonRecord | undefined {
   try {
-    const parsed = JSON.parse(trimmed) as unknown
-    return isRecord(parsed) ? parsed : null
+    const parsed = JSON.parse(line) as unknown
+    return isRecord(parsed) ? parsed : undefined
   } catch {
-    return null
+    // Malformed provider JSONL lines are ignored by design.
   }
 }
 
@@ -50,11 +49,28 @@ function normalizeForRecall(value: string): string {
 function textFromContentParts(value: unknown): string | null {
   if (!Array.isArray(value)) return null
 
-  const parts = value
-    .map((part) => (isRecord(part) && typeof part.text === 'string' ? part.text : null))
-    .filter((part): part is string => typeof part === 'string' && part.trim().length > 0)
+  const parts: string[] = []
+  for (const part of value) {
+    const text = (part as { text?: unknown } | null | undefined)?.text
+    if (typeof text !== 'string') continue
+    if (!text.trim()) continue
+    parts.push(text)
+  }
 
-  return parts.length > 0 ? parts.join('\n') : null
+  return parts.join('\n') || null
+}
+
+function textFromCodexMessage(value: JsonRecord): string | null {
+  if (typeof value.message === 'string' && value.message.trim().length > 0) {
+    return value.message
+  }
+
+  const nestedMessage = isRecord(value.msg) ? value.msg : null
+  if (nestedMessage && typeof nestedMessage.message === 'string' && nestedMessage.message.trim()) {
+    return nestedMessage.message
+  }
+
+  return null
 }
 
 function extractTextFromRecord(record: JsonRecord): string | null {
@@ -66,6 +82,9 @@ function extractTextFromRecord(record: JsonRecord): string | null {
     return record.result
   }
 
+  const rawCodexText = textFromCodexMessage(record)
+  if (rawCodexText) return rawCodexText
+
   const wrapped = isRecord(record.event) ? record.event : null
   const wrappedMessage = wrapped && isRecord(wrapped.message) ? wrapped.message : null
   const wrappedMessageText = wrappedMessage ? textFromContentParts(wrappedMessage.content) : null
@@ -73,6 +92,10 @@ function extractTextFromRecord(record: JsonRecord): string | null {
 
   if (wrapped && typeof wrapped.result === 'string' && wrapped.result.trim().length > 0) {
     return wrapped.result
+  }
+
+  if (wrapped) {
+    return textFromCodexMessage(wrapped)
   }
 
   return null
@@ -83,7 +106,7 @@ export function extractScoredResponseText(transcriptJsonl: string): ExtractedTex
 
   for (const [lineIdx, line] of transcriptJsonl.split('\n').entries()) {
     const record = parseJsonLine(line)
-    if (!record) continue
+    if (record === undefined) continue
 
     const text = extractTextFromRecord(record)
     if (!text) continue
@@ -117,7 +140,7 @@ export function scoreTranscriptRecall(input: {
 
   const scored = extractScoredResponseText(transcript)
   const denominator = Math.min(5, input.qrels.length)
-  if (!scored || !scored.text.trim()) {
+  if (!scored) {
     return {
       recall_at_5: 0,
       matched_qrels: 0,
@@ -131,7 +154,7 @@ export function scoreTranscriptRecall(input: {
   const matched = qrels.filter((qrel) =>
     response.includes(normalizeForRecall(qrel.expected_substring_in_response)),
   )
-  const recall = denominator > 0 ? matched.length / denominator : 0
+  const recall = calculateRecallAt5({ matchedQrels: matched.length, qrelCount: input.qrels.length })
 
   return {
     recall_at_5: recall,

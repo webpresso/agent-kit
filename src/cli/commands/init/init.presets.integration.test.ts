@@ -251,6 +251,10 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       expect(gitignore).toContain('.codex/')
       expect(gitignore).toContain('.omx/')
       expect(gitignore).toContain('_worktrees/')
+      expect(gitignore).toContain('.stryker-tmp/')
+      expect(gitignore).toContain('reports/mutation/')
+      expect(gitignore).toContain('reports/stryker-incremental.json')
+      expect(gitignore).toContain('stryker-setup-*.js')
       expect(gitignore.trimEnd()).toMatch(/# <<< managed by webpresso \(generated\)$/)
 
       const gitRmCalls = spawnSyncMock.mock.calls.filter(
@@ -270,6 +274,10 @@ describe('runInit() — omx + gstack presets (integration)', () => {
           '.claude/settings.local.json',
           '.claude/rules/',
           '.claude/skills/',
+          '.stryker-tmp/',
+          'reports/mutation/',
+          'reports/stryker-incremental.json',
+          'stryker-setup-*.js',
         ]),
       )
       expect(gitRmCalls[0]?.[2]).toMatchObject({ cwd: repo, encoding: 'utf8' })
