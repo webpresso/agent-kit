@@ -9,7 +9,6 @@
  *
  * Runs by default on every `wp setup`.
  */
-import { spawnSync } from 'node:child_process'
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -22,6 +21,7 @@ import {
 } from '#cli/commands/init/package-root'
 import { CodexAppServerClient } from '#codex/app-server/client.js'
 import type { CodexAppServerApi } from '#codex/app-server/types.js'
+import { commandExists as defaultCommandExists } from '#runtime/command-exists.js'
 import {
   normalizeGlobalCodexHooksFile,
   resolveInstalledOmxHookScriptPath,
@@ -507,7 +507,7 @@ function reportCodexTrustSyncWarning(
   warning: CodexTrustSyncWarning,
 ): void {
   input.onCodexTrustSyncWarning?.(warning)
-  console.warn(`  codex hook trust: warning — ${warning.message}. Review in /hooks.`)
+  console.warn(`  codex hook trust: warning — ${warning.message} (review .codex/hooks.json)`)
 }
 
 export async function trustCodexWebpressoHooksForRepo(
@@ -585,23 +585,33 @@ export async function trustCodexPresetHooksForUser(input: ScaffoldAgentHooksInpu
   }
 }
 
-function defaultCommandExists(command: string): boolean {
-  const result = spawnSync('which', [command], { stdio: 'ignore' })
-  return result.status === 0
-}
-
 function isCodexCliAvailable(input: ScaffoldAgentHooksInput): boolean {
   const commandExists =
     input.codexAvailable ?? (input.createCodexAppServer ? () => true : defaultCommandExists)
   return commandExists('codex')
 }
 
-function shouldSkipCodexTrustSync(input: ScaffoldAgentHooksInput): boolean {
-  if (input.options.dryRun || process.env.WP_SKIP_CODEX_TRUST_SYNC === '1') return true
+type CodexTrustSkipReason = 'dry-run' | 'env-disabled' | 'vitest-no-seam' | 'codex-unavailable'
+
+function codexTrustSkipReason(input: ScaffoldAgentHooksInput): CodexTrustSkipReason | null {
+  if (input.options.dryRun) return 'dry-run'
+  if (process.env.WP_SKIP_CODEX_TRUST_SYNC === '1') return 'env-disabled'
   if (process.env.VITEST === 'true' && !input.createCodexAppServer && !input.codexAvailable) {
-    return true
+    return 'vitest-no-seam'
   }
-  return !isCodexCliAvailable(input)
+  // Resolve availability exactly once — the injected seam may have side effects.
+  if (!isCodexCliAvailable(input)) return 'codex-unavailable'
+  return null
+}
+
+function shouldSkipCodexTrustSync(input: ScaffoldAgentHooksInput): boolean {
+  const reason = codexTrustSkipReason(input)
+  if (reason === 'codex-unavailable') {
+    console.warn(
+      '  codex not detected on PATH — skipping codex hook trust (run wp setup again after installing codex)',
+    )
+  }
+  return reason !== null
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -613,9 +623,9 @@ export interface ScaffoldAgentHooksInput {
   onCodexTrustSyncWarning?: (warning: CodexTrustSyncWarning) => void
   trustCodexHooks?: boolean
   /**
-   * Injectable PATH probe for the `codex` binary. Defaults to a real `which`
-   * check. When a `createCodexAppServer` factory is injected (tests), codex is
-   * assumed available unless this is set explicitly.
+   * Injectable PATH probe for the `codex` binary. Defaults to a cross-platform
+   * PATH scan (`commandExists`). When a `createCodexAppServer` factory is injected
+   * (tests), codex is assumed available unless this is set explicitly.
    */
   codexAvailable?: (command: string) => boolean
 }

@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
+import { commandExists as defaultCommandExists } from '#runtime/command-exists.js'
 
 export const CLAUDE_PLUGIN_ID = 'agent-kit@webpresso'
 
@@ -26,11 +27,6 @@ export type EnsureClaudePluginResult =
       step: 'marketplace-add' | 'plugin-install' | 'plugin-update'
       exitCode: number
     }
-
-function defaultCommandExists(command: string): boolean {
-  const result = spawnSync('which', [command], { stdio: 'ignore' })
-  return result.status === 0
-}
 
 function defaultRunCommand(command: string, args: readonly string[]): number {
   const result = spawnSync(command, [...args], {
