@@ -45,6 +45,7 @@ const outputSchema = createSummaryOutputSchema({
         minFilesToShard: z.number().optional(),
         targetFilesPerShard: z.number().optional(),
         maxShards: z.number().optional(),
+        concurrency: z.number().optional(),
         totalBudgetMs: z.number().optional(),
       })
       .optional(),

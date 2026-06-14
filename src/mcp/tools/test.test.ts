@@ -296,7 +296,10 @@ describe('wp_test tool', () => {
         .mockReturnValueOnce(fakeChild({ hang: true, killCapture }))
         .mockReturnValueOnce(fakeChild({ stdout: 'should-not-run\n', exitCode: 0 }))
 
-      const result = await wpTestTool.handler({ timeoutMs: 1 })
+      const result = await wpTestTool.handler({
+        timeoutMs: 10,
+        workspaceSharding: { concurrency: 2 },
+      })
       const payload = result.structuredContent as {
         passed: boolean
         summary: string
@@ -387,7 +390,10 @@ describe('wp_test tool', () => {
       const killCapture: { signal: NodeJS.Signals | null } = { signal: null }
       spawnMock.mockReturnValue(fakeChild({ hang: true, killCapture }))
 
-      const result = await wpTestTool.handler({ timeoutMs: 1 })
+      const result = await wpTestTool.handler({
+        timeoutMs: 10,
+        workspaceSharding: { concurrency: 2 },
+      })
       const payload = result.structuredContent as {
         passed: boolean
         summary: string
