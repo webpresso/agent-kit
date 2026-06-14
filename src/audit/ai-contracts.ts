@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 import { auditReferenceParityMatrix } from './reference-parity-matrix.js'
@@ -13,6 +13,7 @@ const MCP_DISCOVERY_PATH = 'src/mcp/auto-discover.ts'
 const MCP_INTEGRATION_TEST_PATH = 'src/mcp/server.integration.test.ts'
 const PUBLIC_README_PATH = 'README.md'
 const PUBLIC_CHANGELOG_PATH = 'CHANGELOG.md'
+const PENDING_CHANGESET_SURFACE_PATH = '.changeset/*.md'
 
 const REFERENCE_PARITY_EVIDENCE = [
   'docs/bench/reference-parity-matrix.md',
@@ -134,12 +135,23 @@ function auditReferenceParityPublicClaims(root: string, violations: RepoAuditVio
     })
   }
 
+  const pendingChangesetReleaseNotes = readPendingChangesetReleaseNotes(root)
+  if (pendingChangesetReleaseNotes) {
+    publicSurfaces.push({
+      path: PENDING_CHANGESET_SURFACE_PATH,
+      content: pendingChangesetReleaseNotes,
+    })
+  }
+
   for (const surface of publicSurfaces) {
     for (const evidencePath of REFERENCE_PARITY_EVIDENCE) {
       if (!surface.content.includes(evidencePath)) {
         violations.push({
           file: surface.path,
-          message: `Reference parity public claim gate must cite ${evidencePath}.`,
+          message:
+            surface.path === PENDING_CHANGESET_SURFACE_PATH
+              ? `Pending changeset release notes must cite ${evidencePath} before Changesets generates CHANGELOG.md.`
+              : `Reference parity public claim gate must cite ${evidencePath}.`,
         })
       }
     }
@@ -163,6 +175,22 @@ function auditReferenceParityPublicClaims(root: string, violations: RepoAuditVio
   }
 
   return checked
+}
+
+function readPendingChangesetReleaseNotes(root: string): string | null {
+  const changesetDirectory = resolve(root, '.changeset')
+  if (!existsSync(changesetDirectory)) return null
+
+  const changesetFiles = readdirSync(changesetDirectory, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.md') && entry.name !== 'README.md')
+    .map((entry) => entry.name)
+    .sort()
+
+  if (changesetFiles.length === 0) return null
+
+  return changesetFiles
+    .map((changesetFile) => readFileSync(resolve(changesetDirectory, changesetFile), 'utf8'))
+    .join('\n\n')
 }
 
 function readExistingFile(
