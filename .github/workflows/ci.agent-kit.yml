@@ -209,6 +209,11 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: latest
+      - uses: voidzero-dev/setup-vp@2dec1e33f4ab2c6d5bce1b0c4607961bb1a3f7a1 # v1.12.0
+        with:
+          node-version: '24.16.0'
+          cache: false
+          run-install: false
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Stage native runtime artifacts
@@ -241,7 +246,7 @@ jobs:
           # Install the checked-out package globally through Vite+ so the smoke
           # exercises the public consumer execution contract (`wp` on PATH)
           # against the candidate source, not the last published package.
-          pnpm exec vp install -g ../..
+          vp install -g ../..
 
           # Run wp setup --yes to avoid TTY prompts. Capture stdout + stderr.
           # Some delegated package-manager/plugin installers still emit ANSI even
