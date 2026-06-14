@@ -1,6 +1,8 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 
+import { escapeRegExp } from '#utils/string'
+
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 
 export interface ArchitectureDriftRule {
@@ -170,9 +172,6 @@ function normalizeRelPath(filePath: string): string {
   return filePath.split(path.sep).join('/')
 }
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[|\\{}()[\]^$+?.]/g, '\\$&')
-}
 
 function globToRegExp(pattern: string): RegExp {
   const normalized = pattern.replace(/\\/g, '/')

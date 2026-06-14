@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -9,6 +9,7 @@ import sessionSearchTool from './session-search.js'
 
 let tmpDir: string
 let previousIndexDb: string | undefined
+let previousClaudeProjectDir: string | undefined
 
 function payload(result: Awaited<ReturnType<typeof sessionExecuteTool.handler>>) {
   return result.structuredContent as {
@@ -28,12 +29,16 @@ function payload(result: Awaited<ReturnType<typeof sessionExecuteTool.handler>>)
 beforeEach(() => {
   tmpDir = mkdtempSync(join(tmpdir(), 'wp-session-execute-test-'))
   previousIndexDb = process.env.WP_SESSION_MEMORY_INDEX_DB
+  previousClaudeProjectDir = process.env.CLAUDE_PROJECT_DIR
   process.env.WP_SESSION_MEMORY_INDEX_DB = join(tmpDir, 'index.sqlite')
+  process.env.CLAUDE_PROJECT_DIR = tmpDir
 })
 
 afterEach(() => {
   if (previousIndexDb === undefined) delete process.env.WP_SESSION_MEMORY_INDEX_DB
   else process.env.WP_SESSION_MEMORY_INDEX_DB = previousIndexDb
+  if (previousClaudeProjectDir === undefined) delete process.env.CLAUDE_PROJECT_DIR
+  else process.env.CLAUDE_PROJECT_DIR = previousClaudeProjectDir
   rmSync(tmpDir, { recursive: true, force: true })
 })
 
@@ -71,7 +76,7 @@ describe('wp_session_execute', () => {
 
   it('returns an error envelope when execution fails while preserving indexed output', async () => {
     const result = await sessionExecuteTool.handler?.({
-      command: 'printf "%s\\n" "failure sentinel"; exit 42',
+      command: `${JSON.stringify(process.execPath)} -e "process.stdout.write('failure sentinel'); process.exit(42)"`,
       label: 'failure-label',
       query: 'failure sentinel',
       execute: true,
@@ -82,6 +87,35 @@ describe('wp_session_execute', () => {
     expect(result.isError).toBe(true)
     expect(data).toMatchObject({ passed: false, exitCode: 42 })
     expect(data.details.hits?.[0]?.content).toContain('failure sentinel')
+  })
+
+  it('rejects shell metacharacters and returns an error before spawning', async () => {
+    const markerPath = join(tmpDir, 'pwned-by-injection')
+    const result = await sessionExecuteTool.handler?.({
+      command: `printf "%s\n" "safe"; touch ${JSON.stringify(markerPath)}`,
+      execute: true,
+      cwd: tmpDir,
+    })
+
+    expect(result.isError).toBe(true)
+    expect(payload(result)).toMatchObject({ passed: false, exitCode: -1 })
+    expect(existsSync(markerPath)).toBe(false)
+  })
+
+  it('rejects cwd outside the trusted project root', async () => {
+    const outsideRoot = mkdtempSync(join(tmpdir(), 'wp-session-execute-outside-'))
+    try {
+      const result = await sessionExecuteTool.handler?.({
+        command: 'echo should-not-run',
+        execute: true,
+        cwd: outsideRoot,
+      })
+
+      expect(result.isError).toBe(true)
+      expect(payload(result)).toMatchObject({ passed: false, exitCode: -1 })
+    } finally {
+      rmSync(outsideRoot, { recursive: true, force: true })
+    }
   })
 
   it('requires explicit execute=true before running a shell command', async () => {

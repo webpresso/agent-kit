@@ -4,7 +4,18 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { FetchIndexError, fetchAndIndex } from './fetch-index.js'
+import { isInternalHost } from './ip-guard.js'
 import { SessionMemoryStore } from './store.js'
+
+vi.mock('./ip-guard.js', () => ({
+  isInternalHost: vi.fn(async (hostname: string) =>
+    ['169.254.169.254', '127.0.0.1', 'localhost', '192.168.1.1', 'private.example.com'].includes(
+      hostname,
+    ),
+  ),
+}))
+
+const isInternalHostMock = vi.mocked(isInternalHost)
 
 const dirs: string[] = []
 function store(): SessionMemoryStore {
@@ -17,10 +28,74 @@ function response(body: string, contentType: string, init: ResponseInit = {}): R
 }
 
 afterEach(() => {
+  isInternalHostMock.mockClear()
   while (dirs.length > 0) rmSync(dirs.pop()!, { recursive: true, force: true })
 })
 
 describe('fetchAndIndex', () => {
+  it('rejects internal metadata URLs before fetching', async () => {
+    const s = store()
+    const fetchImpl = vi.fn(async () => response('metadata', 'text/plain'))
+
+    await expect(
+      fetchAndIndex({
+        url: 'http://169.254.169.254/latest/meta-data/',
+        store: s,
+        fetchImpl,
+      }),
+    ).rejects.toMatchObject({ code: 'blocked_host' })
+
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(s.count()).toBe(0)
+    s.close()
+  })
+
+  it.each(['http://127.0.0.1/', 'http://localhost/', 'http://192.168.1.1/'])(
+    'rejects internal URL %s by default',
+    async (url) => {
+      const s = store()
+      await expect(
+        fetchAndIndex({
+          url,
+          store: s,
+          fetchImpl: vi.fn(async () => response('blocked', 'text/plain')),
+        }),
+      ).rejects.toMatchObject({ code: 'blocked_host' })
+      expect(s.count()).toBe(0)
+      s.close()
+    },
+  )
+
+  it('rejects hostnames that resolve to private addresses by default', async () => {
+    const s = store()
+    await expect(
+      fetchAndIndex({
+        url: 'https://private.example.com/docs',
+        store: s,
+        fetchImpl: vi.fn(async () => response('private docs', 'text/plain')),
+      }),
+    ).rejects.toMatchObject({ code: 'blocked_host' })
+    expect(s.count()).toBe(0)
+    s.close()
+  })
+
+  it('allows an explicitly allowlisted internal hostname', async () => {
+    const s = store()
+    const fetchImpl = vi.fn(async () => response('local docs', 'text/plain'))
+
+    const chunks = await fetchAndIndex({
+      url: 'http://localhost/path',
+      allowedHosts: ['localhost'],
+      store: s,
+      fetchImpl,
+    })
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(chunks).toHaveLength(1)
+    expect(s.search({ query: 'local', limit: 1 })[0]?.text).toContain('local docs')
+    s.close()
+  })
+
   it('fetches HTML, converts it to markdown-ish chunks, and indexes it', async () => {
     const s = store()
     await fetchAndIndex({

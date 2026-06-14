@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
+import { resolveProjectRoot } from './_shared/project-root.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 import { runSessionCommand, searchSessionCommandOutput } from './_session-command.js'
 import { defaultIndexDbPath } from './session-restore.js'
@@ -95,7 +96,6 @@ const tool: ToolDescriptor = {
   },
   handler: async (rawInput) => {
     const input = inputSchema.parse(rawInput)
-    const effectiveCwd = input.cwd ?? process.env['CLAUDE_PROJECT_DIR'] ?? process.cwd()
     if (!input.execute) {
       return createSummaryResult(
         {
@@ -133,6 +133,9 @@ const tool: ToolDescriptor = {
       )
     }
     try {
+      const trustedRootAnchor = process.env['CLAUDE_PROJECT_DIR'] ?? process.cwd()
+      const projectRoot = resolveProjectRoot({ cwd: trustedRootAnchor })
+      const effectiveCwd = input.cwd ?? trustedRootAnchor
       const dbPath = defaultIndexDbPath(effectiveCwd)
       const results = await mapWithConcurrency(
         input.commands,
@@ -143,6 +146,7 @@ const tool: ToolDescriptor = {
             label,
             timeoutMs: input.timeoutMs,
             cwd: effectiveCwd,
+            projectRoot,
             dbPath,
           }),
       )

@@ -272,20 +272,24 @@ describe('wp_test tool', () => {
 
     it('marks timed out test execution as isError: true with a timeout summary', async () => {
       spawnMock.mockReturnValue(fakeChild({ hang: true }))
+      const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_000_000)
+      try {
+        const result = await wpTestTool.handler({ packages: ['x'], timeoutMs: 1 })
+        const payload = result.structuredContent as {
+          passed: boolean
+          summary: string
+          timedOut?: boolean
+          failures?: Array<{ message: string }>
+        }
 
-      const result = await wpTestTool.handler({ packages: ['x'], timeoutMs: 1 })
-      const payload = result.structuredContent as {
-        passed: boolean
-        summary: string
-        timedOut?: boolean
-        failures?: Array<{ message: string }>
+        expect(result.isError).toBe(true)
+        expect(payload.passed).toBe(false)
+        expect(payload.summary).toBe('tests timed out for 1 package (package x)')
+        expect(payload.timedOut).toBe(true)
+        expect(payload.failures?.[0]?.message).toMatch(/timed out/i)
+      } finally {
+        nowSpy.mockRestore()
       }
-
-      expect(result.isError).toBe(true)
-      expect(payload.passed).toBe(false)
-      expect(payload.summary).toBe('tests timed out for 1 package (package x)')
-      expect(payload.timedOut).toBe(true)
-      expect(payload.failures?.[0]?.message).toMatch(/timed out/i)
     })
 
     it('surfaces timed out shard scope for root vitest workspace runs', async () => {

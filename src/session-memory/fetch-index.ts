@@ -1,10 +1,12 @@
 import { createHash } from 'node:crypto'
 
+import { isInternalHost } from './ip-guard.js'
 import { SessionMemoryStore } from './store.js'
 import type { SessionMemoryChunk } from './types.js'
 
 export type FetchIndexErrorCode =
   | 'invalid_url'
+  | 'blocked_host'
   | 'http_error'
   | 'invalid_json'
   | 'empty_content'
@@ -42,11 +44,25 @@ export interface FetchAndIndexOptions {
   maxChunks?: number
   signal?: AbortSignal
   fetchImpl?: typeof fetch
+  allowedHosts?: string[]
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000
 const DEFAULT_MAX_FETCH_BYTES = 256 * 1024
 const DEFAULT_MAX_CHUNKS = 100
+
+function normalizeHostForPolicy(hostname: string): string {
+  const trimmed = hostname.trim().toLowerCase()
+  const withoutBrackets =
+    trimmed.startsWith('[') && trimmed.endsWith(']') ? trimmed.slice(1, -1) : trimmed
+  return withoutBrackets.endsWith('.') ? withoutBrackets.slice(0, -1) : withoutBrackets
+}
+
+function isAllowedHost(hostname: string, allowedHosts: readonly string[] | undefined): boolean {
+  if (!allowedHosts || allowedHosts.length === 0) return false
+  const normalized = normalizeHostForPolicy(hostname)
+  return allowedHosts.some((allowedHost) => normalizeHostForPolicy(allowedHost) === normalized)
+}
 
 function normalizeUrl(url: string): string {
   let parsed: URL
@@ -182,8 +198,10 @@ function wireAbortSignals(
 
 export async function fetchAndIndex(options: FetchAndIndexOptions): Promise<SessionMemoryChunk[]> {
   const normalized = normalizeUrl(options.url)
+  const parsed = new URL(normalized)
   const maxBytes = normalizePositiveInt(options.maxBytes, DEFAULT_MAX_FETCH_BYTES)
   const maxChunks = normalizePositiveInt(options.maxChunks, DEFAULT_MAX_CHUNKS)
+  const timeoutMs = normalizePositiveInt(options.timeoutMs, DEFAULT_TIMEOUT_MS)
   const controller = new AbortController()
   let timedOut = false
   const unwire = wireAbortSignals(controller, options.signal)
@@ -192,10 +210,20 @@ export async function fetchAndIndex(options: FetchAndIndexOptions): Promise<Sess
       timedOut = true
       controller.abort()
     },
-    normalizePositiveInt(options.timeoutMs, DEFAULT_TIMEOUT_MS),
+    timeoutMs,
   )
 
   try {
+    if (
+      !isAllowedHost(parsed.hostname, options.allowedHosts) &&
+      (await isInternalHost(parsed.hostname, { signal: controller.signal, timeoutMs }))
+    ) {
+      throw new FetchIndexError(
+        'blocked_host',
+        'url host is blocked because it is or resolves to an internal address',
+      )
+    }
+
     const response = await (options.fetchImpl ?? fetch)(normalized, { signal: controller.signal })
     if (!response.ok) {
       throw new FetchIndexError('http_error', `fetch failed with HTTP ${response.status}`, {

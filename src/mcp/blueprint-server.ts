@@ -44,222 +44,27 @@ import { resolveProjectRoot } from '#mcp/tools/_shared/project-root.js'
 import { maybeHint } from './_tail-hints.js'
 import type { ToolHandlerResult, ToolRegistrar } from './auto-discover.js'
 
-// ---------------------------------------------------------------------------
-// Platform-first sync adapter (injectable for tests, Task 2.1)
-// ---------------------------------------------------------------------------
+import {
+  resolveSyncAdapter,
+  runPlatformMutationSync,
+  _setSyncAdapterFactory,
+  type SyncAdapter,
+} from '#mcp/blueprint/_shared/sync'
+import { err, finishPayload, jsonContent, parseStructuredJson } from '#mcp/blueprint/_shared/errors'
+import { bytes, sortKeys, toStr } from '#mcp/blueprint/_shared/payload'
+import {
+  nextActionOutputSchema,
+  summaryEnvelopeOutputSchema,
+} from '#mcp/blueprint/_shared/schema'
+import { readVt, writeVt } from '#mcp/blueprint/_shared/validation-timestamp'
 
-/**
- * Minimal platform sync surface needed by blueprint-server handlers.
- *
- * The production factory creates a BlueprintSyncClient + ReplicaManager pair.
- * Tests inject a mock via `_setSyncAdapterFactory`.
- *
- * Keeping this interface here (rather than importing BlueprintPlatformClient
- * directly) avoids coupling blueprint-server to the client implementation and
- * keeps the module testable without live credentials.
- */
-export interface SyncAdapter {
-  pushEvent(
-    event:
-      | {
-          readonly eventId: string
-          readonly repoId: string
-          readonly occurredAt: string
-          readonly type: 'task.status_changed'
-          readonly payload: {
-            readonly type: 'task.status_changed'
-            readonly blueprintSlug: string
-            readonly taskId: string
-            readonly fromStatus: string
-            readonly toStatus: string
-          }
-        }
-      | {
-          readonly eventId: string
-          readonly repoId: string
-          readonly occurredAt: string
-          readonly type: 'blueprint.status_changed'
-          readonly payload: {
-            readonly type: 'blueprint.status_changed'
-            readonly slug: string
-            readonly fromStatus: string
-            readonly toStatus: string
-          }
-        }
-      | {
-          readonly eventId: string
-          readonly repoId: string
-          readonly occurredAt: string
-          readonly type: 'blueprint.finalized'
-          readonly payload: {
-            readonly type: 'blueprint.finalized'
-            readonly slug: string
-          }
-        }
-      | {
-          readonly eventId: string
-          readonly repoId: string
-          readonly occurredAt: string
-          readonly type: 'blueprint.created'
-          readonly payload: {
-            readonly type: 'blueprint.created'
-            readonly slug: string
-            readonly title: string
-            readonly complexity: string
-            readonly status: string
-          }
-        },
-  ): Promise<void>
-  ensureFresh(opts?: { readonly slug?: string }): Promise<void>
-}
-
-type SyncAdapterFactory = () => SyncAdapter | null
-
-/**
- * Module-level factory.  `null` = use the production default (loadSyncCredentials
- * from auth.ts + BlueprintSyncClient + ReplicaManager — lazy-imported so that
- * blueprint-server.ts never statically depends on the HTTP client).
- */
-let _syncAdapterFactory: SyncAdapterFactory | null = null
-
-/**
- * Override the adapter factory — for tests only.
- * Pass `null` to restore the production default.
- *
- * @internal
- */
-export function _setSyncAdapterFactory(factory: SyncAdapterFactory | null): void {
-  _syncAdapterFactory = factory
-}
-
-/**
- * Resolve the sync adapter for the current request.
- *
- * Iron rule: returns `null` when `WP_BLUEPRINT_PLATFORM_DISABLED=1` regardless
- * of any injected factory — the caller must skip all platform operations.
- *
- * @param cwd - repo working directory, used to locate the replica DB file.
- */
-async function resolveSyncAdapter(cwd: string): Promise<SyncAdapter | null> {
-  if (process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] === '1') return null
-
-  if (_syncAdapterFactory !== null) {
-    return _syncAdapterFactory()
-  }
-
-  // Production default: lazy-import to avoid coupling the module to the HTTP client.
-  // #sync/* resolves via the fallback "#*" → "./src/blueprint/*.ts" mapping.
-  const [
-    { BlueprintSyncClient },
-    { loadSyncCredentials },
-    { ReplicaManager },
-    { openDb: openDbForReplica },
-  ] = await Promise.all([
-    import('#sync/client.js'),
-    import('#sync/auth.js'),
-    import('#sync/replica.js'),
-    import('#db/connection.js'),
-  ])
-
-  const creds = loadSyncCredentials()
-  if (creds === null) return null
-
-  const client = new BlueprintSyncClient(creds)
-
-  // ReplicaManager needs a db handle; store the replica DB in the state root.
-  const { getSurfacePath, NotInGitRepoError } = await import('#paths/state-root.js')
-  const replicaDbPath = (() => {
-    try {
-      return getSurfacePath('blueprints/replica.db', 'repo', cwd)
-    } catch (err) {
-      if (err instanceof NotInGitRepoError) return path.join(cwd, '.agent', '.replica.db')
-      throw err
-    }
-  })()
-  const conn = openDbForReplica(replicaDbPath)
-  const manager = new ReplicaManager({ client, db: conn.db })
-
-  return {
-    pushEvent: (event) => client.pushEvent(event),
-    ensureFresh: (opts) => manager.ensureFresh(opts),
-  }
-}
-
-const DEFAULT_PLATFORM_MUTATION_TIMEOUT_MS = 5_000
-
-function todayIsoDate(): string {
-  return new Date().toISOString().split('T')[0] ?? new Date().toISOString()
-}
-
-function formatBlueprintProgress(
-  totalTasks: number,
-  doneTasks: number,
-  blockedTasks: number,
-): string {
-  const percent = totalTasks === 0 ? 0 : Math.round((doneTasks / totalTasks) * 100)
-  return `${percent}% (${doneTasks}/${totalTasks} tasks done, ${blockedTasks} blocked, updated ${todayIsoDate()})`
-}
-
-function readPlatformMutationTimeoutMs(): number {
-  const parsed = Number.parseInt(
-    process.env['WP_BLUEPRINT_PLATFORM_MUTATION_TIMEOUT_MS'] ??
-      String(DEFAULT_PLATFORM_MUTATION_TIMEOUT_MS),
-    10,
-  )
-  return Math.max(1, Number.isFinite(parsed) ? parsed : DEFAULT_PLATFORM_MUTATION_TIMEOUT_MS)
-}
-
-async function awaitPlatformMutationStep(
-  promise: Promise<void>,
-  label: string,
-  timeoutMs: number,
-): Promise<void> {
-  await Promise.race([
-    promise,
-    new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs)
-    }),
-  ])
-}
-
-async function runPlatformMutationSync(
-  adapter: SyncAdapter | null,
-  options: {
-    readonly label: string
-    readonly event?: Parameters<SyncAdapter['pushEvent']>[0]
-    readonly ensureFreshSlug?: string
-  },
-): Promise<void> {
-  if (adapter === null) return
-
-  const timeoutMs = readPlatformMutationTimeoutMs()
-  try {
-    if (options.event) {
-      await awaitPlatformMutationStep(
-        adapter.pushEvent(options.event),
-        `${options.label} pushEvent`,
-        timeoutMs,
-      )
-    }
-    if (options.ensureFreshSlug) {
-      await awaitPlatformMutationStep(
-        adapter.ensureFresh({ slug: options.ensureFreshSlug }),
-        `${options.label} ensureFresh`,
-        timeoutMs,
-      )
-    }
-  } catch (error) {
-    throw new Error(
-      `${options.label} platform sync failed: ${error instanceof Error ? error.message : toStr(error)}`,
-    )
-  }
-}
+export { _setSyncAdapterFactory }
+export type { SyncAdapter }
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const VALIDATE_TS_FILE = '.validate-timestamps.json'
 const ROWS_CAP = 200
 const DEFAULT_ROOTS_FETCH_TIMEOUT_MS = 750
 const DEFAULT_PROJECT_DISCOVERY_TIMEOUT_MS = 1_500
@@ -302,15 +107,24 @@ last_updated: {DATE}
 - [ ] <criterion>
 `
 
+function todayIsoDate(): string {
+  return new Date().toISOString().split('T')[0] ?? new Date().toISOString()
+}
+
+function formatBlueprintProgress(
+  totalTasks: number,
+  doneTasks: number,
+  blockedTasks: number,
+): string {
+  const percent = totalTasks === 0 ? 0 : Math.round((doneTasks / totalTasks) * 100)
+  return `${percent}% (${doneTasks}/${totalTasks} tasks done, ${blockedTasks} blocked, updated ${todayIsoDate()})`
+}
+
 // ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
 
 const dbPath = (cwd: string) => resolveBlueprintProjectionDbPath(cwd)
-const vtPath = (cwd: string) => path.join(cwd, '.agent', VALIDATE_TS_FILE)
-const bytes = (s: string) => Buffer.byteLength(s, 'utf8')
-const toStr = (e: unknown) => (e instanceof Error ? e.message : String(e))
-
 function readBoundedTimeoutMs(envKey: string, fallback: number): number {
   const parsed = Number.parseInt(process.env[envKey] ?? String(fallback), 10)
   return Math.max(1, Number.isFinite(parsed) ? parsed : fallback)
@@ -332,44 +146,6 @@ async function awaitBounded<T>(
   } finally {
     if (timeoutId) clearTimeout(timeoutId)
   }
-}
-
-function jsonContent(payload: unknown, isError = false): ToolHandlerResult {
-  return {
-    content: [{ type: 'text', text: JSON.stringify(payload) }],
-    structuredContent: payload as Record<string, unknown>,
-    isError,
-  }
-}
-
-function parseStructuredJson(result: ToolHandlerResult): Record<string, unknown> {
-  if (result.structuredContent && typeof result.structuredContent === 'object') {
-    return result.structuredContent as Record<string, unknown>
-  }
-  const text = result.content.find((item) => item.type === 'text')
-  if (!text || typeof text.text !== 'string') return {}
-  try {
-    return JSON.parse(text.text) as Record<string, unknown>
-  } catch {
-    return {}
-  }
-}
-
-function err(summary: string, error: string): ToolHandlerResult {
-  return jsonContent({ summary, failures: [error], bytes: 0, tokensSaved: 0 }, true)
-}
-
-function readVt(cwd: string): Record<string, number> {
-  try {
-    return JSON.parse(readFileSync(vtPath(cwd), 'utf8')) as Record<string, number>
-  } catch {
-    return {}
-  }
-}
-
-function writeVt(cwd: string, d: Record<string, number>): void {
-  mkdirSync(path.dirname(vtPath(cwd)), { recursive: true })
-  writeFileSync(vtPath(cwd), JSON.stringify(d, null, 2), 'utf8')
 }
 
 function titleToSlug(t: string): string {
@@ -533,11 +309,6 @@ async function resolveToolProject(
   return projectDisambiguationError(resolved.summary, resolved.hint, resolved.candidates)
 }
 
-function finishPayload(payload: Record<string, unknown>): ToolHandlerResult {
-  payload['bytes'] = bytes(JSON.stringify(payload))
-  return jsonContent(payload)
-}
-
 type MutationToolName =
   | 'wp_blueprint_create'
   | 'wp_blueprint_put'
@@ -548,19 +319,6 @@ type MutationToolName =
 type MutationRequestLedgerRow = {
   payload_hash: string
   response_json: string
-}
-
-function sortKeys(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(sortKeys)
-  if (value !== null && typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
-      a < b ? -1 : a > b ? 1 : 0,
-    )
-    const out: Record<string, unknown> = {}
-    for (const [key, nested] of entries) out[key] = sortKeys(nested)
-    return out
-  }
-  return value
 }
 
 function hashMutationPayload(payload: unknown): string {
@@ -2552,26 +2310,6 @@ async function handleBlueprintCreate(
 // ---------------------------------------------------------------------------
 // Registration
 // ---------------------------------------------------------------------------
-
-const nextActionOutputSchema = {
-  type: 'object',
-  properties: {
-    kind: { type: 'string' },
-    hint: { type: 'string' },
-  },
-  required: ['kind', 'hint'],
-} as const
-
-const summaryEnvelopeOutputSchema = {
-  type: 'object',
-  properties: {
-    summary: { type: 'string' },
-    failures: { type: 'array', items: { type: 'string' } },
-    bytes: { type: 'number' },
-    tokensSaved: { type: 'number' },
-  },
-  required: ['summary', 'failures', 'bytes', 'tokensSaved'],
-} as const
 
 export async function registerBlueprintTools(
   registrar: ToolRegistrar,
