@@ -6,7 +6,7 @@ status: planned
 complexity: XL
 created: '2026-06-15'
 last_updated: '2026-06-15'
-progress: '0% (planned; refined with agent-kit:plan-refine on 2026-06-15)'
+progress: '0% (planned; refined with agent-kit:plan-refine and autoresearch parity matrix on 2026-06-15)'
 depends_on:
   - 2026-06-13-session-continuity-and-resume-parity
   - 2026-06-13-sandboxed-knowledge-tool-surface-parity
@@ -45,7 +45,7 @@ first-choice path without reintroducing a second public namespace or a daemon.
 - Parity target: `WP-native full parity` — use context-mode as behavior evidence,
   but expose and enforce only `wp_session_*` public names.
 - Complexity: `XL`
-- Output path: `blueprints/planned/2026-06-15-wp-session-enforcement-parity.md`
+- Output path: `blueprints/planned/2026-06-15-wp-session-enforcement-parity/_overview.md`
 - Refinement scope: this blueprint only; related blueprints are alignment inputs.
 - Execution rule: before implementation, verify whether sibling planned
   blueprints have already landed in code and reconcile lifecycle state instead
@@ -95,6 +95,36 @@ SessionStart / AGENTS / host rules
 | Capture | Existing `post-tool`, `guard-switch`, `precompact`, `sessionstart` hooks | Expand event coverage with byte caps and redaction; capture failures remain no-op. |
 | MCP tools | Existing `wp_session_*` descriptors | Registry/routing tests prove every tool named in guidance is registered. |
 | Public package | README, docs, hook fixtures, package manifest/tarball | Run package-surface and secret/path gates before claim language ships. |
+
+## Autoresearch Parity Matrix (2026-06-15)
+
+`$autoresearch` produced the detailed supporting matrix in
+[`parity-matrix.md`](./parity-matrix.md)
+and compared the local agent-kit/context-mode behavior against the
+relevant memory/context ecosystem: context-mode, Claude-Mem, Hindsight, Mem0,
+Zep/Graphiti, Cognee, Redis Agent Memory Server, OpenAI Agents SDK Sessions,
+LangMem/LangGraph, LlamaIndex Memory, AutoGen memory, and Letta/MemGPT-style
+stateful agents.
+
+| Capability axis | Closest comparators | Blueprint target |
+| ---------------- | ------------------- | ---------------- |
+| Hook-enforced coding-agent routing | context-mode | `wp_session_*` routing guidance is injected into supported host sessions and generated instruction surfaces. |
+| Raw-output prevention before transcript pollution | context-mode | PreToolUse redirects high-volume `Bash`, `Read`, `Grep`, `WebFetch`, `Agent`, and MCP flows to concrete `wp_session_*` tools where each host supports matching. |
+| Broad continuity capture | context-mode, Claude-Mem, Hindsight | PostToolUse/UserPromptSubmit/PreCompact capture bounded summaries of edits, reads, searches, commands, tool failures, decisions, and task state. |
+| Progressive disclosure | Claude-Mem, context-mode, Mem0/Zep/Cognee patterns | `wp_session_search`/`restore` return compact previews and stable references; detailed content is fetched only by narrow query/reference. |
+| Diagnostics and proof gates | context-mode doctor/stats, agent-kit audits | `wp_session_doctor`, host-smoke fixtures, reference-parity rows, package/tarball checks, and docs gates prove claims before release language changes. |
+| Long-term semantic/graph learning | Mem0, Zep/Graphiti, Cognee, Letta | Explicit non-goal for this blueprint; no graph memory, hosted memory API, LLM extraction, personalization, or autonomous reflection is added here. |
+
+**Parity boundary:** agent-kit should match context-mode on the **coding-agent
+context-window enforcement** axis, not on every broader memory-platform feature.
+Framework/platform memory systems inform vocabulary and future options, but the
+current implementation should stay local, hook-driven, and WP-native.
+
+**Research-driven blueprint additions:** keep the SSRF dependency for
+`wp_session_fetch_and_index`; separate proof axes for tool existence, routing
+text, matcher coverage, guard behavior, capture behavior, and package surface;
+and require raw-output prevention tests to prove the guard fires before large
+outputs enter the transcript.
 
 ## Cross-Plan Alignment
 
