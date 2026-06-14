@@ -18,10 +18,19 @@ describe('test budget contract', () => {
   it('accepts a valid aligned timeout and total budget', () => {
     const result = schema.safeParse({
       timeoutMs: 5_000,
-      workspaceSharding: { totalBudgetMs: 5_000 },
+      workspaceSharding: { totalBudgetMs: 5_000, concurrency: 2 },
     })
 
     expect(result.success).toBe(true)
+  })
+
+  it('rejects invalid shard concurrency', () => {
+    const result = schema.safeParse({
+      workspaceSharding: { concurrency: 0 },
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.path).toEqual(['workspaceSharding', 'concurrency'])
   })
 
   it('rejects total budget above timeout', () => {

@@ -30,6 +30,10 @@ export default mergeConfig(
         // spawns the real oxlint binary against the built dist config; gated on
         // build artifacts and not meaningful under Stryker's source-only run
         'src/config/oxlint/oxlintrc.integration.test.ts',
+        // spawns real `git` (init/commit) + calls ingestAll to exercise projection
+        // freshness recovery; subprocess + filesystem scan exceed the forks-pool
+        // unit-test timeout
+        'src/cli/commands/blueprint/db-commands.integration.test.ts',
       ],
     },
   }),

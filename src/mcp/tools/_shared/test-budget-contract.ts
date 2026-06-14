@@ -8,6 +8,7 @@ export const workspaceShardingInputSchema = z
     minFilesToShard: z.number().int().min(2).max(10_000).optional(),
     targetFilesPerShard: z.number().int().min(1).max(10_000).optional(),
     maxShards: z.number().int().min(2).max(128).optional(),
+    concurrency: z.number().int().min(1).max(32).optional(),
     totalBudgetMs: z.number().int().min(1_000).max(MCP_SAFE_TEST_BUDGET_MS).optional(),
   })
   .strict()

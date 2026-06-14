@@ -1,7 +1,6 @@
-import type { CliCommand } from '@webpresso/cli-contract'
-
 import { runNoLegacyCliBinAudit } from '#cli/bundle/audits/no-legacy-cli-bin.js'
 import { placeholderCommand, placeholderGroup } from '#cli/bundle/commands/helpers.js'
+import type { CliCommand } from '#cli/bundle/contract.js'
 
 const SCOPE = 'Agent'
 

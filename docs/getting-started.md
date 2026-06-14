@@ -39,8 +39,7 @@ for those commands.
 
 No private registry setup is required.
 
-If `vp` is not already on PATH, install Vite+ first (for example
-`npm install -g vite-plus`), then continue.
+If `vp` is not already on PATH, install Vite+ first (`curl -fsSL https://viteplus.dev/install.sh | bash` on Linux/macOS; in CI use `voidzero-dev/setup-vp@v1`), then continue.
 
 For committed/team repos, pin `@webpresso/agent-kit` in `devDependencies` with
 a published semver range, then rerun global `wp setup`. The package pin is for

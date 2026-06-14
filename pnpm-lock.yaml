@@ -26,7 +26,6 @@ catalogs:
       version: 4.1.7
 
 overrides:
-  '@webpresso/cli-contract': link:../monorepo/packages/cli/contract
   qs: 6.15.2
   esbuild: 0.28.1
 
@@ -46,9 +45,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.0.2
         version: 6.0.2(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.1)(tsx@4.22.4)(yaml@2.9.0))
-      '@webpresso/cli-contract':
-        specifier: link:../monorepo/packages/cli/contract
-        version: link:../monorepo/packages/cli/contract
       better-sqlite3:
         specifier: ^12.10.0
         version: 12.10.0
@@ -165,27 +161,6 @@ importers:
       wrangler:
         specifier: ^4.50.0
         version: 4.95.0
-
-  ../monorepo/packages/cli/contract:
-    devDependencies:
-      '@arethetypeswrong/cli':
-        specifier: 'catalog:'
-        version: 0.18.3
-      '@types/node':
-        specifier: 'catalog:'
-        version: 25.9.1
-      publint:
-        specifier: 'catalog:'
-        version: 0.3.21
-      typescript:
-        specifier: 'catalog:'
-        version: 6.0.3
-      vite-plus:
-        specifier: 'catalog:'
-        version: 0.1.22(@arethetypeswrong/core@0.18.3)(@types/node@25.9.1)(esbuild@0.28.1)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.1)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
-      vitest:
-        specifier: 'catalog:'
-        version: 4.1.7(@types/node@25.9.1)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.1)(tsx@4.22.4)(yaml@2.9.0))
 
 packages:
 

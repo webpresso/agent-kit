@@ -1,7 +1,6 @@
-import type { CliBundle } from '@webpresso/cli-contract'
-
 import { agentCommands } from '#cli/bundle/commands/agent.js'
 import { blueprintCommands } from '#cli/bundle/commands/blueprint.js'
+import type { CliBundle } from '#cli/bundle/contract.js'
 
 import {
   AGENT_COMMAND_INVENTORY,

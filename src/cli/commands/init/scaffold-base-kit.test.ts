@@ -26,7 +26,6 @@ describe('scaffoldBaseKit', () => {
     expect(actions).not.toContain('skipped-dry')
 
     expect(existsSync(join(repoRoot, '.gitignore'))).toBe(true)
-    expect(existsSync(join(repoRoot, 'Brewfile'))).toBe(true)
     expect(existsSync(join(repoRoot, '.node-version'))).toBe(true)
     expect(existsSync(join(repoRoot, '.nvmrc'))).toBe(true)
     expect(existsSync(join(repoRoot, '.actrc'))).toBe(true)
@@ -72,7 +71,6 @@ describe('scaffoldBaseKit', () => {
     expect(workflow).not.toContain('\n  wp-audits:\n')
     expect(workflow).not.toContain('\n  deploy-contract:\n')
 
-    expect(readFileSync(join(repoRoot, 'Brewfile'), 'utf8')).toContain('brew "node@24"')
     expect(readFileSync(join(repoRoot, '.node-version'), 'utf8').trim()).toBe('24.16.0')
     expect(readFileSync(join(repoRoot, '.nvmrc'), 'utf8').trim()).toBe('24.16.0')
   })

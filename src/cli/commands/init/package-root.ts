@@ -1,6 +1,25 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { isAbsolute, join, posix, win32 } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+// The compiled `wp` runtime ships as a native sub-dependency named
+// `@webpresso/agent-kit-runtime-<os>-<cpu>`. It legitimately carries a native
+// `bin/wp` payload but is NOT the agent-kit package root: it has no
+// `.claude-plugin/plugin.json` and its `bin/wp` is not the JS selector. Reject
+// it so resolution walks up to the real `@webpresso/agent-kit` package instead
+// of stopping one level too early.
+const RUNTIME_PAYLOAD_NAME_PATTERN = /^@webpresso\/agent-kit-runtime-/u
+
+function isRuntimePayloadPackage(dir: string): boolean {
+  try {
+    const parsed = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')) as {
+      readonly name?: unknown
+    }
+    return typeof parsed.name === 'string' && RUNTIME_PAYLOAD_NAME_PATTERN.test(parsed.name)
+  } catch {
+    return false
+  }
+}
 
 export interface ResolveAgentKitPackageRootOptions {
   readonly moduleUrl?: string
@@ -77,6 +96,7 @@ export function isAgentKitPackageRoot(
 ): boolean {
   if (!existsSync(join(dir, 'package.json'))) return false
   if (options.requireCatalog === true && !existsSync(join(dir, 'catalog'))) return false
+  if (isRuntimePayloadPackage(dir)) return false
 
   return (
     existsSync(join(dir, 'bin', 'wp')) ||

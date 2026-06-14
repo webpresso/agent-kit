@@ -20,14 +20,10 @@ import path from 'node:path'
 
 import { parseBlueprint } from '#core/parser'
 import { openDb } from '#db/connection.js'
-import { ingestAll } from '#db/ingester.js'
-import {
-  resolveBlueprintProjectionDbPath,
-  withMarkdownWriteLock,
-  withProjectionDbWriteLock,
-} from '#db/paths.js'
+import { resolveBlueprintProjectionDbPath, withMarkdownWriteLock } from '#db/paths.js'
 import { type BlueprintShape, getBlueprintDocumentPaths } from '#utils/document-paths.js'
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
+import { reIngestProjection } from '#projection-ready.js'
 import { assertAllTasksHaveCanonicalPassingEvidence } from '#verification.js'
 
 // ---------------------------------------------------------------------------
@@ -213,18 +209,12 @@ function atomicWriteFile(targetPath: string, content: string): void {
 }
 
 async function reIngestDb(cwd: string): Promise<void> {
-  const target = dbPath(cwd)
-  if (!existsSync(target)) return
-  // F9/R7: projection DB writes serialize via the worktree-scoped lock. Throws
-  // LockTimeoutError on contention rather than silently proceeding.
-  await withProjectionDbWriteLock(cwd, async () => {
-    const conn = openDb(target)
-    try {
-      await ingestAll({ db: conn.db, cwd })
-    } finally {
-      conn.close()
-    }
-  })
+  // Skip when no projection exists yet — a mutation must not *create* one.
+  // Otherwise delegate to `reIngestProjection`, the single owner of the
+  // persistent reingest sequence (prune → write-lock → ingest → record freshness
+  // metadata), so the freshness sidecar HEAD stamp stays current.
+  if (!existsSync(dbPath(cwd))) return
+  await reIngestProjection(cwd)
 }
 
 /**

@@ -17,41 +17,38 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v5
+      - uses: voidzero-dev/setup-vp@v1
         with:
           node-version: '24.16.0'
-          cache: pnpm
+          cache: true
+          run-install: false
       - uses: ./.github/actions/setup-webpresso
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run verify:secrets
-      - run: pnpm run audit:secret-provider-quarantine
+      - run: vp install --frozen-lockfile
+      - run: vp run verify:secrets
+      - run: vp run audit:secret-provider-quarantine
       - name: Run wp audit guardrails
-        run: |
-          WP="$(pwd)/node_modules/.bin/wp"
-          [ -x "$WP" ] || WP=wp
-          "$WP" audit guardrails
-      - run: pnpm run typecheck
-      - run: pnpm run lint
-      - run: pnpm run test
+        run: wp audit guardrails
+      - run: vp run typecheck
+      - run: vp run lint
+      - run: vp run test
 
   e2e:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v5
+      - uses: voidzero-dev/setup-vp@v1
         with:
           node-version: '24.16.0'
-          cache: pnpm
+          cache: true
+          run-install: false
       - uses: ./.github/actions/setup-webpresso
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - run: pnpm install --frozen-lockfile
+      - run: vp install --frozen-lockfile
       - name: Run e2e when Playwright bootstrap is present
         run: |
           if [ ! -f playwright.config.ts ]; then
@@ -59,42 +56,39 @@ jobs:
             exit 0
           fi
 
-          pnpm run e2e
+          vp run e2e
 
   architecture-drift:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v5
+      - uses: voidzero-dev/setup-vp@v1
         with:
           node-version: '24.16.0'
-          cache: pnpm
+          cache: true
+          run-install: false
       - uses: ./.github/actions/setup-webpresso
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - run: pnpm install --frozen-lockfile
+      - run: vp install --frozen-lockfile
       - name: Check architecture drift contract
-        run: |
-          WP="$(pwd)/node_modules/.bin/wp"
-          [ -x "$WP" ] || WP=wp
-          "$WP" audit architecture-drift --root .
+        run: wp audit architecture-drift --root .
 
   deploy-verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v5
+      - uses: voidzero-dev/setup-vp@v1
         with:
           node-version: '24.16.0'
-          cache: pnpm
+          cache: true
+          run-install: false
       - uses: ./.github/actions/setup-webpresso
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - run: pnpm install --frozen-lockfile
+      - run: vp install --frozen-lockfile
       - name: Verify deploy-contract gate when production release metadata is present
         run: |
           set -euo pipefail
@@ -113,4 +107,4 @@ jobs:
             exit 1
           fi
 
-          pnpm run verify:deploy-contract
+          vp run verify:deploy-contract

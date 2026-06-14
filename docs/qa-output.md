@@ -48,6 +48,25 @@ end. During the middle loop, use scoped leaves (`wp_lint`, `wp_typecheck`,
 `wp_test`, or their repo-owned wrappers) so the agent receives compact evidence
 instead of full logs.
 
+## Full QA under MCP time budgets
+
+`wp_qa` runs lint, typecheck, and test leaves in parallel. `wp_test` also shards
+large Vitest workspaces by file and runs those shards with bounded concurrency,
+so a large test set does not depend on one long sequential command fitting under
+the MCP-safe test budget. Configure it with:
+
+- `workspaceSharding.enabled` — keep enabled for broad workspace test runs.
+- `workspaceSharding.targetFilesPerShard` / `maxShards` — control shard size.
+- `workspaceSharding.concurrency` — cap concurrent shard processes. Omit it for
+  the conservative default based on Node's available parallelism.
+- `workspaceSharding.totalBudgetMs` — global wall-clock budget for the test
+  leaf; it must stay at or below `timeoutMs`.
+
+When several Vitest shard processes run at once, agent-kit also caps each
+process with Vitest `--maxWorkers` to avoid CPU oversubscription. Unit and
+integration suite selections are shardable; integration/e2e shards keep
+`--no-file-parallelism` and the longer suite timeout.
+
 When an external repo such as ingest-lens wants to validate the budget, set
 `INGEST_LENS_PATH=/path/to/ingest-lens` for the optional integration test. The
 test is skipped when the variable is absent, so CI remains safe by default.

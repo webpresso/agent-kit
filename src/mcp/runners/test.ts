@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, statSync } from 'node:fs'
+import { availableParallelism } from 'node:os'
 import { join } from 'node:path'
 import { globSync } from 'glob'
 
@@ -14,6 +15,7 @@ const DEFAULT_TEST_TOTAL_BUDGET_MS = 90_000
 const WORKSPACE_SHARD_MIN_FILES = 6
 const WORKSPACE_TARGET_FILES_PER_SHARD = 5
 const WORKSPACE_MAX_SHARDS = 8
+const WORKSPACE_MAX_DEFAULT_CONCURRENCY = 4
 // Integration/e2e tests are small in bytes but expensive at runtime; use a
 // fixed high weight so the greedy balancer distributes them evenly.
 const INTEGRATION_E2E_SHARD_WEIGHT = 200_000
@@ -54,6 +56,7 @@ export interface WorkspaceShardingInput {
   readonly minFilesToShard?: number
   readonly targetFilesPerShard?: number
   readonly maxShards?: number
+  readonly concurrency?: number
   readonly totalBudgetMs?: number
 }
 
@@ -62,6 +65,7 @@ interface ResolvedWorkspaceSharding {
   readonly minFilesToShard: number
   readonly targetFilesPerShard: number
   readonly maxShards: number
+  readonly concurrency: number
   readonly totalBudgetMs: number
 }
 
@@ -95,7 +99,7 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
     if (usesVitest(cwd)) {
       const fileShardRuns = createVitestShardRunsFromFiles(cwd, input.files, workspaceSharding)
       if (fileShardRuns && fileShardRuns.length > 0) {
-        return runScopedSequence(cwd, fileShardRuns, input, workspaceSharding)
+        return runScopedConcurrent(cwd, fileShardRuns, input, workspaceSharding)
       }
       const result = await runCommand(
         'vp',
@@ -113,12 +117,16 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
   }
 
   if (input.suite) {
+    const suiteShardRuns = createWorkspaceSuiteShardRuns(cwd, input.suite, workspaceSharding)
+    if (suiteShardRuns && suiteShardRuns.length > 0) {
+      return runScopedConcurrent(cwd, suiteShardRuns, input, workspaceSharding)
+    }
     return runScopedSequence(cwd, createWorkspaceSuiteRuns(input.suite), input, workspaceSharding)
   }
 
   const workspaceShardRuns = createWorkspaceVitestShardRuns(cwd, workspaceSharding)
   if (workspaceShardRuns && workspaceShardRuns.length > 0) {
-    return runScopedSequence(cwd, workspaceShardRuns, input, workspaceSharding)
+    return runScopedConcurrent(cwd, workspaceShardRuns, input, workspaceSharding)
   }
 
   if (shouldBypassWorkspaceTestScript(cwd)) {
@@ -272,6 +280,114 @@ async function runScopedSequence(
   }
 }
 
+async function runScopedConcurrent(
+  cwd: string,
+  runs: readonly ScopedRun[],
+  input: TestRunInput,
+  workspaceSharding: ResolvedWorkspaceSharding,
+): Promise<TestResult> {
+  if (runs.length <= 1 || workspaceSharding.concurrency <= 1) {
+    return runScopedSequence(cwd, runs, input, workspaceSharding)
+  }
+
+  const budget = createRunBudget(workspaceSharding.totalBudgetMs)
+  const results: TestResult[] = []
+  let nextIndex = 0
+  const workerCount = Math.min(workspaceSharding.concurrency, runs.length)
+
+  function claimNextIndex(): number | undefined {
+    if (nextIndex >= runs.length) return undefined
+    const remainingMs = getRemainingBudgetMs(budget)
+    if (remainingMs > 0) {
+      const claimed = nextIndex
+      nextIndex += 1
+      return claimed
+    }
+
+    for (let index = nextIndex; index < runs.length; index += 1) {
+      results[index] = {
+        passed: false,
+        output: `Global test budget exhausted before ${runs[index]!.scope}.`,
+        exitCode: 124,
+        timedOut: true,
+        failureScope: 'overall test budget',
+      }
+    }
+    nextIndex = runs.length
+    return undefined
+  }
+
+  async function worker(): Promise<void> {
+    while (true) {
+      const index = claimNextIndex()
+      if (index === undefined) return
+      const run = runs[index]!
+      const remainingMs = getRemainingBudgetMs(budget)
+      const result = await runCommand('vp', run.args, {
+        cwd,
+        signal: input.signal,
+        timeoutMs: getScopedCommandTimeoutMs(input, remainingMs),
+      })
+      results[index] = result
+      if (result.aborted) {
+        for (let pending = nextIndex; pending < runs.length; pending += 1) {
+          results[pending] = {
+            passed: false,
+            output: `Test run aborted before ${runs[pending]!.scope}.`,
+            exitCode: 130,
+            aborted: true,
+            failureScope: 'client abort',
+          }
+        }
+        nextIndex = runs.length
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: workerCount }, () => worker()))
+  return aggregateScopedResults(runs, results)
+}
+
+function aggregateScopedResults(
+  runs: readonly ScopedRun[],
+  results: readonly (TestResult | undefined)[],
+): TestResult {
+  let combinedOutput = ''
+  let firstFailure = 0
+  let timedOut = false
+  let aborted = false
+  let failureScope: string | undefined
+
+  for (const [index, run] of runs.entries()) {
+    const result =
+      results[index] ??
+      ({
+        passed: false,
+        output: `Test run did not start for ${run.scope}.`,
+        exitCode: 124,
+        timedOut: true,
+        failureScope: 'overall test budget',
+      } satisfies TestResult)
+
+    combinedOutput += formatScopedOutput(run.scope, result.output)
+    if (!result.passed && firstFailure === 0) {
+      firstFailure = result.exitCode
+      failureScope = result.failureScope ?? run.scope
+    }
+    if (result.timedOut) timedOut = true
+    if (result.aborted) aborted = true
+  }
+
+  return {
+    passed: firstFailure === 0,
+    output: combinedOutput,
+    exitCode: firstFailure,
+    timedOut,
+    aborted,
+    failureScope,
+  }
+}
+
 function createRunBudget(totalBudgetMs: number): RunBudget {
   return { deadlineMs: Date.now() + totalBudgetMs }
 }
@@ -293,8 +409,14 @@ function resolveWorkspaceSharding(
     minFilesToShard: input?.minFilesToShard ?? WORKSPACE_SHARD_MIN_FILES,
     targetFilesPerShard: input?.targetFilesPerShard ?? WORKSPACE_TARGET_FILES_PER_SHARD,
     maxShards: input?.maxShards ?? WORKSPACE_MAX_SHARDS,
+    concurrency: resolveShardConcurrency(input),
     totalBudgetMs: input?.totalBudgetMs ?? explicitTimeoutMs ?? DEFAULT_TEST_TOTAL_BUDGET_MS,
   }
+}
+
+function resolveShardConcurrency(input?: WorkspaceShardingInput): number {
+  if (input?.concurrency !== undefined) return input.concurrency
+  return Math.max(1, Math.min(WORKSPACE_MAX_DEFAULT_CONCURRENCY, availableParallelism()))
 }
 
 function formatScopedOutput(scope: string, output: string): string {
@@ -323,12 +445,56 @@ function createWorkspaceVitestShardRuns(
 
   return shards.map((filesInShard, index) => ({
     scope: `shard ${index + 1}/${shardTotal} (${filesInShard.length} files)`,
-    args: ['exec', '--', 'vitest', 'run', '--reporter=json', '--no-color', ...filesInShard],
+    args: createVitestShardArgs(filesInShard, workspaceSharding, shardTotal),
   }))
 }
 
 function createWorkspaceSuiteRuns(suite: TestSuiteName): ScopedRun[] {
   return createVitestScopedRuns(suite, ['exec', '--', 'vitest'], 'workspace')
+}
+
+function createWorkspaceSuiteShardRuns(
+  cwd: string,
+  suite: TestSuiteName,
+  workspaceSharding: ResolvedWorkspaceSharding,
+): ScopedRun[] | undefined {
+  if (!workspaceSharding.enabled) return undefined
+  if (!hasRootVitestTestScript(cwd)) return undefined
+
+  const files = discoverVitestFiles(cwd)
+  const runs = resolveTestSuiteRuns(suite, ['--reporter=json', '--no-color']).flatMap(
+    (suiteRun) => {
+      const suiteFiles = filterFilesForSuite(files, suiteRun.suite)
+      if (suiteFiles.length < workspaceSharding.minFilesToShard) {
+        return [
+          {
+            scope: `workspace (${suiteRun.label})`,
+            args: ['exec', '--', 'vitest', ...suiteRun.vitestArgs],
+          },
+        ]
+      }
+
+      const shards = buildBalancedShards(cwd, suiteFiles, workspaceSharding)
+      const shardTotal = shards.length
+      if (shardTotal <= 1) {
+        return [
+          {
+            scope: `workspace (${suiteRun.label})`,
+            args: ['exec', '--', 'vitest', ...suiteRun.vitestArgs],
+          },
+        ]
+      }
+
+      const suiteArgs =
+        suiteRun.suite === 'integration' ? ['--no-file-parallelism', '--testTimeout', '30000'] : []
+      return shards.map((filesInShard, index) => ({
+        scope: `workspace (${suiteRun.label}) shard ${index + 1}/${shardTotal} (${filesInShard.length} files)`,
+        args: createVitestShardArgs(filesInShard, workspaceSharding, shardTotal, suiteArgs),
+      }))
+    },
+  )
+
+  return runs.length > 0 ? runs : undefined
 }
 
 function createVitestShardRunsFromFiles(
@@ -344,7 +510,7 @@ function createVitestShardRunsFromFiles(
 
   return shards.map((filesInShard, index) => ({
     scope: `file shard ${index + 1}/${shardTotal} (${filesInShard.length} files)`,
-    args: ['exec', '--', 'vitest', 'run', '--reporter=json', '--no-color', ...filesInShard],
+    args: createVitestShardArgs(filesInShard, workspaceSharding, shardTotal),
   }))
 }
 
@@ -381,6 +547,46 @@ function discoverVitestFiles(cwd: string): string[] {
     nodir: true,
     ignore: [...VITEST_DEFAULT_IGNORE],
   }).sort((left, right) => left.localeCompare(right))
+}
+
+function filterFilesForSuite(
+  files: readonly string[],
+  suite: Exclude<TestSuiteName, 'all'>,
+): string[] {
+  return files.filter((file) =>
+    suite === 'integration'
+      ? INTEGRATION_E2E_FILE_PATTERN.test(file)
+      : !INTEGRATION_E2E_FILE_PATTERN.test(file),
+  )
+}
+
+function createVitestShardArgs(
+  filesInShard: readonly string[],
+  workspaceSharding: ResolvedWorkspaceSharding,
+  shardTotal: number,
+  extraArgs: readonly string[] = [],
+): readonly string[] {
+  return [
+    'exec',
+    '--',
+    'vitest',
+    'run',
+    '--reporter=json',
+    '--no-color',
+    ...extraArgs,
+    ...createWorkerCapArgs(workspaceSharding, shardTotal),
+    ...filesInShard,
+  ]
+}
+
+function createWorkerCapArgs(
+  workspaceSharding: ResolvedWorkspaceSharding,
+  shardTotal: number,
+): readonly string[] {
+  const concurrency = Math.min(workspaceSharding.concurrency, shardTotal)
+  if (concurrency <= 1) return []
+  const maxWorkers = Math.max(1, Math.floor(availableParallelism() / concurrency))
+  return ['--maxWorkers', String(maxWorkers)]
 }
 
 function buildBalancedShards(

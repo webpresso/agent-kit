@@ -46,6 +46,19 @@ Prompt budget contract:
 - Keep the generated default `AGENTS.md` under 8 KB.
 - Move handbook prose to docs; keep only durable rules and command contracts here.
 
+Codex routing instruction surface:
+<wp_instruction_surface host="codex" artifact="AGENTS.md" source="wp_routing">
+  <host_contract>
+    <native_tool_names>wp_test, wp_e2e, wp_lint, wp_typecheck, wp_qa, wp_audit, wp_ci_act, wp_worker_tail</native_tool_names>
+    <stdout_noop>Codex hook commands with no action write {} on stdout; durable guidance belongs in AGENTS.md.</stdout_noop>
+    <lifecycle_notes>
+    <note>Codex reads repository instruction files for durable guidance.</note>
+    <note>Unsupported managed lifecycle names are documented in the host capability matrix, not emulated here.</note>
+    </lifecycle_notes>
+    <public_support>Public support: first-class Codex instruction artifact.</public_support>
+  </host_contract>
+</wp_instruction_surface>
+
 ## Plan
 
 Use blueprints for non-trivial work. Specs live in
@@ -119,7 +132,7 @@ Record durable architecture decisions in the repo's ADR/planning surface if one 
 - Do not create or persist secret-bearing files like `.env`, `.env.local`, `.env.*.local`, `.dev.vars`, or `.dev.vars.example`.
 - Route secret-scoped commands through the repo contract (`wp config secrets` + `with-secrets -- <cmd>`).
 - Keep secret/path checks on shared audit surfaces when available.
-- Do not commit agent surfaces (`.agent/`, `.agents/`, `.gemini/`, `.cursor/`, `.windsurf/`, `.omx/`, `.omc/`, `.codex/`, `.opencode/`).
+- Do not commit agent surfaces (`.agent/`, `.agents/`, `.cursor/`, `.omx/`, `.omc/`, `.codex/`, `.opencode/`).
 - Do not hand-edit generated or derived surfaces; edit the catalog in agent-kit.
 - Do not push directly to `main`; use PRs and keep CI green.
 - Do not bypass hooks or verification gates.
@@ -163,7 +176,6 @@ Full details: `.agent/rules/package-conventions.md`
 ## Repository map
 
 - `@webpresso/agent-kit` — `.`
-- `@webpresso/cli-contract` — `../monorepo/packages/cli/contract`
 
 ## Tech stack
 

@@ -69,6 +69,10 @@ function writeTestFiles(root: string, count: number): string[] {
   return files
 }
 
+function testFileArgs(args: readonly string[]): string[] {
+  return args.filter((arg) => /\.test\.[jt]sx?$/.test(arg))
+}
+
 let defaultRoot: string | undefined
 
 beforeEach(() => {
@@ -384,6 +388,62 @@ describe('test runner', () => {
     ])
   })
 
+  it('shards selected workspace suites by discovered matching test files', async () => {
+    writeVitestWorkspace(defaultRoot!)
+    const unitFiles = writeTestFiles(defaultRoot!, 6)
+    writeFileSync(join(defaultRoot!, 'src/slow.integration.test.ts'), 'tiny integration')
+    spawnMock.mockReturnValue(fakeChild({ stdout: '{}\n', exitCode: 0 }))
+
+    await runTests({
+      suite: 'unit',
+      workspaceSharding: {
+        minFilesToShard: 2,
+        targetFilesPerShard: 2,
+        maxShards: 3,
+        concurrency: 1,
+      },
+    })
+
+    expect(spawnMock).toHaveBeenCalledTimes(3)
+    const shardCalls = spawnMock.mock.calls.map((call) => call[1] as string[])
+    const executedFiles = shardCalls.flatMap((args) => testFileArgs(args)).sort()
+    expect(executedFiles).toEqual(unitFiles.sort())
+    expect(executedFiles).not.toContain('src/slow.integration.test.ts')
+  })
+
+  it('keeps unsharded sibling suite runs when suite=all partially shards', async () => {
+    writeVitestWorkspace(defaultRoot!)
+    writeTestFiles(defaultRoot!, 6)
+    writeFileSync(join(defaultRoot!, 'src/one.integration.test.ts'), 'tiny integration')
+    spawnMock.mockReturnValue(fakeChild({ stdout: '{}\n', exitCode: 0 }))
+
+    await runTests({
+      suite: 'all',
+      workspaceSharding: {
+        minFilesToShard: 2,
+        targetFilesPerShard: 2,
+        maxShards: 3,
+        concurrency: 1,
+      },
+    })
+
+    expect(spawnMock).toHaveBeenCalledTimes(4)
+    const shardCalls = spawnMock.mock.calls.map((call) => call[1] as string[])
+    expect(shardCalls.at(-1)).toEqual([
+      'exec',
+      '--',
+      'vitest',
+      'run',
+      '--no-file-parallelism',
+      '.integration.test.ts',
+      '.e2e.test.ts',
+      '--testTimeout',
+      '30000',
+      '--reporter=json',
+      '--no-color',
+    ])
+  })
+
   it('rejects combining suite selection with file targets', async () => {
     await expect(runTests({ suite: 'unit', files: ['a.test.ts'] })).rejects.toThrow(
       /--suite cannot be combined with file targets/i,
@@ -411,7 +471,7 @@ describe('test runner', () => {
       ])
     }
 
-    const executedFiles = shardCalls.flatMap((args) => args.slice(6)).sort()
+    const executedFiles = shardCalls.flatMap((args) => testFileArgs(args)).sort()
     expect(executedFiles).toEqual(files.sort())
   })
 
@@ -435,7 +495,7 @@ describe('test runner', () => {
       ])
     }
 
-    const executedFiles = shardCalls.flatMap((args) => args.slice(6)).sort()
+    const executedFiles = shardCalls.flatMap((args) => testFileArgs(args)).sort()
     expect(executedFiles).toEqual(files.sort())
   })
 
@@ -462,26 +522,31 @@ describe('test runner', () => {
         minFilesToShard: 2,
         targetFilesPerShard: 2,
         maxShards: 3,
+        concurrency: 2,
       },
     })
 
     expect(spawnMock).toHaveBeenCalledTimes(3)
     const shardCalls = spawnMock.mock.calls.map((call) => call[1] as string[])
-    const executedFiles = shardCalls.flatMap((args) => args.slice(6)).sort()
+    expect(shardCalls.every((args) => args.includes('--maxWorkers'))).toBe(true)
+    const executedFiles = shardCalls.flatMap((args) => testFileArgs(args)).sort()
     expect(executedFiles).toEqual(files.sort())
   })
 
-  it('fails with timed out shard scope when a workspace vitest shard hangs', async () => {
+  it('runs workspace vitest shards concurrently and reports a timed out shard scope', async () => {
     writeVitestWorkspace(defaultRoot!)
     writeTestFiles(defaultRoot!, 6)
     const killCapture: { signal: NodeJS.Signals | null } = { signal: null }
     spawnMock
       .mockReturnValueOnce(fakeChild({ hang: true, killCapture }))
-      .mockReturnValueOnce(fakeChild({ stdout: 'should-not-run\n', exitCode: 0 }))
+      .mockReturnValueOnce(fakeChild({ stdout: '{}\n', exitCode: 0 }))
 
-    const result = await runTests({ timeoutMs: 1 })
+    const result = await runTests({
+      timeoutMs: 1,
+      workspaceSharding: { totalBudgetMs: 1_000, concurrency: 2 },
+    })
 
-    expect(spawnMock).toHaveBeenCalledTimes(1)
+    expect(spawnMock).toHaveBeenCalledTimes(2)
     expect(killCapture.signal).toBe('SIGTERM')
     expect(result.passed).toBe(false)
     expect(result.timedOut).toBe(true)
@@ -507,7 +572,7 @@ describe('test runner', () => {
     }
   })
 
-  it('uses explicit timeoutMs as the default total budget for shard sequences', async () => {
+  it('uses explicit timeoutMs as the default total budget for sequential shard sequences', async () => {
     writeVitestWorkspace(defaultRoot!)
     writeTestFiles(defaultRoot!, 6)
     spawnMock.mockReturnValue(fakeChild({ stdout: '{}\n', exitCode: 0 }))
@@ -516,7 +581,7 @@ describe('test runner', () => {
     nowSpy.mockReturnValueOnce(1_000_000)
     nowSpy.mockReturnValueOnce(1_090_001)
     try {
-      const result = await runTests({ timeoutMs: 120_000 })
+      const result = await runTests({ timeoutMs: 120_000, workspaceSharding: { concurrency: 1 } })
 
       expect(spawnMock).toHaveBeenCalledTimes(2)
       expect(result.passed).toBe(true)

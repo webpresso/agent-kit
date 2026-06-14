@@ -7,8 +7,7 @@ last_updated: '2026-06-13'
 
 Start here:
 
-- First-time machine? Install Vite+ so `vp` is on PATH (for example
-  `npm install -g vite-plus`).
+- First-time machine? Install Vite+ so `vp` is on PATH (`curl -fsSL https://viteplus.dev/install.sh | bash` on Linux/macOS; in CI use `voidzero-dev/setup-vp@v1`).
 - Install from the public npm registry with Node.js 24+ via vp:
   `vp install -g @webpresso/agent-kit && wp setup`
 - [Getting started](./getting-started.md)

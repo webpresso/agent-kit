@@ -1,8 +1,8 @@
 name: Set up Webpresso tooling
 description: >
   Install shared Webpresso CLIs needed by the base-kit workflow surface.
-  Resolves @webpresso/agent-kit from package.json and installs vite-plus only
-  when the consumer repo explicitly catalogs it.
+  Requires Vite+ (`vp`) on PATH and installs @webpresso/agent-kit through
+  `vp install -g` from the repo's published semver pin.
 runs:
   using: composite
   steps:
@@ -11,11 +11,21 @@ runs:
       run: |
         set -euo pipefail
 
-        AGENT_KIT_VERSION="$(node -e "const pkg=require('./package.json'); console.log(pkg.devDependencies?.['@webpresso/agent-kit'] || pkg.dependencies?.['@webpresso/agent-kit'] || 'latest')")"
-        VITE_PLUS_VERSION="$(node -e "const fs=require('fs'); const text=fs.existsSync('pnpm-workspace.yaml') ? fs.readFileSync('pnpm-workspace.yaml','utf8') : ''; const match=text.match(/^\\s*vite-plus:\\s*(.+)$/m); console.log(match ? match[1].trim() : '')")"
-
-        if [[ -n "${VITE_PLUS_VERSION}" ]]; then
-          npm install -g "vite-plus@${VITE_PLUS_VERSION}" "@webpresso/agent-kit@${AGENT_KIT_VERSION}"
-        else
-          npm install -g "@webpresso/agent-kit@${AGENT_KIT_VERSION}"
+        if ! command -v vp >/dev/null 2>&1; then
+          echo "::error::vp is not on PATH. Add voidzero-dev/setup-vp@v1 before setup-webpresso, then rerun."
+          exit 1
         fi
+
+        AGENT_KIT_VERSION="$(node -e "const pkg=require('./package.json'); console.log(pkg.devDependencies?.['@webpresso/agent-kit'] || pkg.dependencies?.['@webpresso/agent-kit'] || '')")"
+
+        if [[ -z "${AGENT_KIT_VERSION}" ]]; then
+          echo "::error::Missing @webpresso/agent-kit dependency pin in package.json. Consumer repos must pin a published semver range."
+          exit 1
+        fi
+
+        if [[ "${AGENT_KIT_VERSION}" == "latest" || "${AGENT_KIT_VERSION}" == workspace:* || "${AGENT_KIT_VERSION}" == file:* || "${AGENT_KIT_VERSION}" == link:* ]]; then
+          echo "::error::Invalid @webpresso/agent-kit pin '${AGENT_KIT_VERSION}'. Use a published semver range, not latest/workspace:/file:/link:."
+          exit 1
+        fi
+
+        vp install -g "@webpresso/agent-kit@${AGENT_KIT_VERSION}"

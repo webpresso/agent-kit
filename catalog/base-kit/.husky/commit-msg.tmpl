@@ -1,7 +1,3 @@
 #!/usr/bin/env sh
 set -eu
-# Prefer local node_modules/.bin/wp; fall back to global wp for repos
-# that rely on the global install (no local webpresso devDep).
-WP="$(git rev-parse --show-toplevel)/node_modules/.bin/wp"
-[ -x "$WP" ] || WP=wp
-"$WP" audit commit-message --message-file "$1"
+wp audit commit-message --message-file "$1"

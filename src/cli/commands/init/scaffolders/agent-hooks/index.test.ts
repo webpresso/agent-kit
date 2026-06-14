@@ -13,7 +13,6 @@ import { spawn, spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { resolveRuntimeTarget, runtimePackageDirName } from '#build/runtime-targets.js'
 import { CLAUDE_PLUGIN_ID } from '#cli/commands/init/scaffolders/claude-plugin/index.js'
 import { buildCursorHooksConfig } from './emitters/cursor.js'
 
@@ -38,7 +37,7 @@ function codexBinCommand(repoRoot: string, name: string): string {
     return `[ -x ${binPath} ] && ${binPath} || printf '%s\\n' '{}'`
   }
   if (name === 'wp-pretool-guard') {
-    return `[ -x ${binPath} ] && ${binPath} || printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install @webpresso/agent-kit globally and re-run wp setup."}}'`
+    return `[ -x ${binPath} ] && ${binPath} || printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with vp install -g @webpresso/agent-kit and re-run wp setup."}}'`
   }
   return `[ -x ${binPath} ] && ${binPath} || true`
 }
@@ -49,7 +48,7 @@ function claudeBinCommand(name: string): string {
     return `[ -x "${binPath}" ] && "${binPath}" || printf '%s\\n' '{}'`
   }
   if (name === 'wp-pretool-guard') {
-    return `[ -x "${binPath}" ] && "${binPath}" || printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install @webpresso/agent-kit globally and re-run wp setup."}}'`
+    return `[ -x "${binPath}" ] && "${binPath}" || printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with vp install -g @webpresso/agent-kit and re-run wp setup."}}'`
   }
   return `[ -x "${binPath}" ] && "${binPath}" || true`
 }
@@ -102,14 +101,14 @@ async function runShellCommand(
   })
 }
 
-describe('hookSubcommandFor (compiled-wp dispatch gate)', () => {
+describe('hookSubcommandFor (managed-launcher dispatch gate)', () => {
   it('returns the wp hook subcommand for dispatchable managed hooks', () => {
     expect(hookSubcommandFor('wp-pretool-guard')).toStrictEqual('pretool-guard')
     expect(hookSubcommandFor('wp-sessionstart-routing')).toStrictEqual('sessionstart-routing')
     expect(hookSubcommandFor('wp-precompact-snapshot')).toStrictEqual('precompact-snapshot')
   })
 
-  it('returns undefined for a non-dispatchable bin (no wp hook handler) so its launcher stays node-only', () => {
+  it('returns undefined for a non-dispatchable bin (no wp hook handler)', () => {
     expect(hookSubcommandFor('wp-not-a-real-hook')).toStrictEqual(undefined)
     expect(hookSubcommandFor('some-third-party-hook')).toStrictEqual(undefined)
   })
@@ -355,43 +354,27 @@ describe('scaffoldAgentHooks', () => {
     }
   })
 
-  it('prefers the compiled wp binary in managed launchers when the runtime package is installed', async () => {
-    const runtimeTarget = resolveRuntimeTarget()
-    if (!runtimeTarget) return
-
-    const wpFilename = process.platform === 'win32' ? 'wp.exe' : 'wp'
-    const runtimeBinDir = join(
-      repoRoot,
-      'node_modules',
-      '@webpresso',
-      runtimePackageDirName(runtimeTarget.packageName),
-      'bin',
-    )
-    mkdirSync(runtimeBinDir, { recursive: true })
-    const compiledWp = join(runtimeBinDir, wpFilename)
-    writeFileSync(compiledWp, '#!/bin/sh\nexit 0\n', 'utf8')
-    chmodSync(compiledWp, 0o755)
-
+  it('uses global wp directly in managed hook launchers', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
 
     const guardLauncher = readFileSync(
       join(repoRoot, '.claude', 'hooks', 'managed', 'wp-pretool-guard.sh'),
       'utf8',
     )
-    // Dispatchable hook: prefers the compiled binary via `wp hook <sub>` …
-    expect(guardLauncher).toContain(`WP_BIN='${compiledWp}'`)
-    expect(guardLauncher).toContain('exec "$WP_BIN" hook pretool-guard "$@"')
     expect(guardLauncher).toContain('if command -v wp >/dev/null 2>&1; then')
+    expect(guardLauncher).toContain('exec wp hook pretool-guard "$@"')
+    expect(guardLauncher).not.toContain('WP_BIN=')
+    expect(guardLauncher).not.toContain('node_modules')
 
     const sessionLauncher = readFileSync(
       join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh'),
       'utf8',
     )
-    expect(sessionLauncher).toContain(`WP_BIN='${compiledWp}'`)
-    expect(sessionLauncher).toContain('exec "$WP_BIN" hook sessionstart-routing "$@"')
+    expect(sessionLauncher).toContain('exec wp hook sessionstart-routing "$@"')
+    expect(sessionLauncher).not.toContain('WP_BIN=')
   })
 
-  it('omits the compiled-wp preamble when no runtime package is installed', async () => {
+  it('does not render local runtime or node_modules preambles', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
     const guardLauncher = readFileSync(
       join(repoRoot, '.claude', 'hooks', 'managed', 'wp-pretool-guard.sh'),

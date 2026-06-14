@@ -1,6 +1,5 @@
 packages:
   - .
-  - ../monorepo/packages/cli/contract
   - apps/*
 
 preferWorkspacePackages: true
@@ -28,6 +27,5 @@ allowBuilds:
   workerd: true
 
 overrides:
-  "@webpresso/cli-contract": link:../monorepo/packages/cli/contract
   qs: 6.15.2
   esbuild: 0.28.1

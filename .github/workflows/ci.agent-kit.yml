@@ -11,8 +11,6 @@ permissions:
   packages: read
 
 env:
-  GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN || github.token }}
-  WEBPRESSO_CLI_CONTRACT_REF: wp-first-blueprints-20260530
   # Opt the workflow's JavaScript actions into Node.js 24 ahead of the
   # 2026-06-02 GitHub default switch (replaces the deprecation warning
   # surfaced by actions/checkout@v4, actions/setup-node@v4, and
@@ -94,10 +92,6 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/checkout-cli-contract
-        with:
-          ref: ${{ env.WEBPRESSO_CLI_CONTRACT_REF }}
-          token: ${{ env.GH_PACKAGES_TOKEN }}
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
@@ -123,10 +117,6 @@ jobs:
     if: ${{ needs.auth-preflight.outputs.repo_access_ok == 'true' && needs.auth-preflight.outputs.action_downloads_ok == 'true' && needs.auth-preflight.outputs.packages_token_ok == 'true' }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-      - uses: ./.github/actions/checkout-cli-contract
-        with:
-          ref: ${{ env.WEBPRESSO_CLI_CONTRACT_REF }}
-          token: ${{ env.GH_PACKAGES_TOKEN }}
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
@@ -162,10 +152,6 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/checkout-cli-contract
-        with:
-          ref: ${{ env.WEBPRESSO_CLI_CONTRACT_REF }}
-          token: ${{ env.GH_PACKAGES_TOKEN }}
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
@@ -197,10 +183,6 @@ jobs:
     if: ${{ needs.auth-preflight.outputs.repo_access_ok == 'true' && needs.auth-preflight.outputs.action_downloads_ok == 'true' && needs.auth-preflight.outputs.packages_token_ok == 'true' }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-      - uses: ./.github/actions/checkout-cli-contract
-        with:
-          ref: ${{ env.WEBPRESSO_CLI_CONTRACT_REF }}
-          token: ${{ env.GH_PACKAGES_TOKEN }}
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
@@ -209,6 +191,11 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: latest
+      - uses: voidzero-dev/setup-vp@2dec1e33f4ab2c6d5bce1b0c4607961bb1a3f7a1 # v1.12.0
+        with:
+          node-version: '24.16.0'
+          cache: false
+          run-install: false
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Stage native runtime artifacts
@@ -238,10 +225,10 @@ jobs:
 
           node -e "const fs=require('fs'); const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); pkg.devDependencies={...(pkg.devDependencies||{}), '@webpresso/agent-kit': '^' + process.argv[1]}; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');" "$PACKAGE_VERSION"
 
-          # Install the checked-out package globally so the smoke exercises the
-          # public consumer execution contract (`wp` on PATH) against the
-          # candidate source, not the last published package.
-          npm install -g ../..
+          # Install the checked-out package globally through Vite+ so the smoke
+          # exercises the public consumer execution contract (`wp` on PATH)
+          # against the candidate source, not the last published package.
+          vp install -g ../..
 
           # Run wp setup --yes to avoid TTY prompts. Capture stdout + stderr.
           # Some delegated package-manager/plugin installers still emit ANSI even
@@ -258,14 +245,20 @@ jobs:
           echo "--- wp setup output ---"
           echo "$RAW_OUTPUT"
 
+          # Assert via here-strings, never `echo "$OUTPUT" | grep -q`: under
+          # `set -o pipefail`, grep -q closes the pipe on first match while echo
+          # is still writing, so echo takes SIGPIPE (141) and pipefail turns a
+          # successful match into a false failure. The race only trips on large
+          # output (e.g. when the codex-hook-trust warning is present in CI).
+
           # Assert 1: lane-4 framing printed (Task 1.6 requirement)
-          echo "$OUTPUT" | grep -qF 'Lane 1 wp_*' || {
+          grep -qF 'Lane 1 wp_*' <<<"$OUTPUT" || {
             echo "FAIL: lane framing missing — expected 'Lane 1 wp_*' in output"
             exit 1
           }
 
           # Assert 2: next-steps block printed
-          echo "$OUTPUT" | grep -qF 'Setup complete' || {
+          grep -qF 'Setup complete' <<<"$OUTPUT" || {
             echo "FAIL: next-steps missing — expected 'Setup complete' in output"
             exit 1
           }

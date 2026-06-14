@@ -169,7 +169,9 @@ export function registerSyncCommand(cli: CAC): void {
         )
         const pruned = pruneInactiveSkillDirs(repoRoot, activeSkillDirs, false)
         if (pruned.length > 0) {
-          console.log(`wp sync: pruned ${pruned.length} stale skill symlink(s) from plugin-host dirs.`)
+          console.log(
+            `wp sync: pruned ${pruned.length} stale skill symlink(s) from plugin-host dirs.`,
+          )
         }
       }
 

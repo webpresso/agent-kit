@@ -53,7 +53,6 @@ export const DIRECT_RUNTIME_BIN_ARGS = {
   'wp-sessionstart-routing': ['hook', 'sessionstart-routing'],
   'wp-precompact-snapshot': ['hook', 'precompact-snapshot'],
   'wp-test-quality-check': ['hook', 'test-quality-check'],
-  'wp-check-dev-link': ['hook', 'check-dev-link'],
 }
 
 export const COMMAND_LANE_TABLE = {

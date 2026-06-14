@@ -3,6 +3,30 @@ import { join, relative, resolve } from 'node:path'
 
 const FULL_SHA_PATTERN = /^[a-f0-9]{40}$/i
 const DIGEST_PATTERN = /@sha256:[a-f0-9]{64}$/i
+const PACKAGE_MANAGER_BINS = new Set([
+  'pnpm',
+  'pnpx',
+  'npm',
+  'npx',
+  'yarn',
+  'yarnpkg',
+  'bun',
+  'bunx',
+])
+const EXEC_SUBCOMMANDS = new Set(['exec', 'dlx', 'x'])
+const OPTION_VALUE_FLAGS = new Set([
+  '--cache',
+  '--config',
+  '--cwd',
+  '--dir',
+  '--filter',
+  '--package',
+  '--workspace',
+  '-C',
+  '-F',
+  '-p',
+  '-w',
+])
 
 interface Violation {
   readonly file: string
@@ -13,6 +37,77 @@ interface Violation {
 
 function stripInlineComment(value: string): string {
   return value.replace(/\s+#.*$/u, '').trim()
+}
+
+function shellTokens(value: string): string[] {
+  return value.match(/"[^"]*"|'[^']*'|[^\s]+/gu) ?? []
+}
+
+function normalizeToken(token: string): string {
+  return token.replace(/^[;&|({`$]+|[;&|)}`]+$/gu, '').replace(/^['"]|['"]$/gu, '')
+}
+
+function normalizePackageManager(token: string): string {
+  const normalized = normalizeToken(token)
+  if (normalized === 'corepack') return normalized
+  return normalized.replace(/@[^@\s]+$/u, '')
+}
+
+function isOption(token: string): boolean {
+  return token.startsWith('-') && token !== '-'
+}
+
+function nextNonOptionToken(tokens: readonly string[], start: number): number {
+  let index = start
+  while (index < tokens.length) {
+    const token = normalizeToken(tokens[index] ?? '')
+    if (!token) {
+      index += 1
+      continue
+    }
+    if (token === '--') {
+      index += 1
+      continue
+    }
+    if (isOption(token)) {
+      const optionName = token.split('=', 1)[0] ?? token
+      index += 1
+      if (!token.includes('=') && OPTION_VALUE_FLAGS.has(optionName) && index < tokens.length) {
+        index += 1
+      }
+      continue
+    }
+    return index
+  }
+  return -1
+}
+
+function containsWrappedVpInvocation(value: string): boolean {
+  const tokens = shellTokens(value)
+  for (let index = 0; index < tokens.length; index += 1) {
+    const manager = normalizePackageManager(tokens[index] ?? '')
+    if (!PACKAGE_MANAGER_BINS.has(manager)) continue
+
+    if (manager === 'npx' || manager === 'pnpx' || manager === 'bunx') {
+      const commandIndex = nextNonOptionToken(tokens, index + 1)
+      if (normalizeToken(tokens[commandIndex] ?? '') === 'vp') return true
+      continue
+    }
+
+    const subcommandIndex = nextNonOptionToken(tokens, index + 1)
+    const subcommand = normalizeToken(tokens[subcommandIndex] ?? '')
+    const allowedSubcommands =
+      manager === 'bun'
+        ? new Set(['x'])
+        : manager === 'npm'
+          ? new Set(['exec', 'x'])
+          : EXEC_SUBCOMMANDS
+    if (!allowedSubcommands.has(subcommand)) continue
+
+    const commandIndex = nextNonOptionToken(tokens, subcommandIndex + 1)
+    if (normalizeToken(tokens[commandIndex] ?? '') === 'vp') return true
+  }
+  return false
 }
 
 function normalizeUsesValue(raw: string): string {
@@ -42,18 +137,29 @@ function scanWorkflow(file: string, root: string): Violation[] {
   const lines = text.split('\n')
   for (const [index, line] of lines.entries()) {
     const match = /^\s*(?:-\s*)?uses:\s*(.+?)\s*$/u.exec(line)
-    if (!match?.[1]) continue
+    if (match?.[1]) {
+      const ref = normalizeUsesValue(match[1])
+      const reason = validateUsesRef(ref)
+      if (reason) {
+        violations.push({
+          file: relative(root, file),
+          line: index + 1,
+          ref,
+          reason,
+        })
+      }
+    }
 
-    const ref = normalizeUsesValue(match[1])
-    const reason = validateUsesRef(ref)
-    if (!reason) continue
-
-    violations.push({
-      file: relative(root, file),
-      line: index + 1,
-      ref,
-      reason,
-    })
+    const commandLine = stripInlineComment(line)
+    if (containsWrappedVpInvocation(commandLine)) {
+      violations.push({
+        file: relative(root, file),
+        line: index + 1,
+        ref: commandLine.trim(),
+        reason:
+          'Do not invoke vp through a package-manager wrapper. Use the global `vp` binary directly; set it up in CI with SHA-pinned voidzero-dev/setup-vp first.',
+      })
+    }
   }
   return violations
 }

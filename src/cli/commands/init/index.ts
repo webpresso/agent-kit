@@ -881,7 +881,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
 
     // Self-update the globally-distributed agent-kit install that backs PATH
     // `wp`, mirroring omx/omc/codex/claude. Non-fatal: a failed refresh never
-    // fails consumer setup, and it skips cleanly on a source/git clone, on
+    // fails consumer setup, and it skips cleanly in explicit source mode, on
     // `WP_SKIP_AUTO_INSTALL=1`, and in CI.
     if (isCiEnvironment) {
       console.log('  agent-kit global: - skipped (CI environment)')
@@ -897,10 +897,8 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         case 'agent-kit-global-skipped-opt-out':
           console.log('  agent-kit global: skipped (WP_SKIP_AUTO_INSTALL=1)')
           break
-        case 'agent-kit-global-skipped-source-clone':
-          console.log(
-            `  agent-kit global: - skipped (running from source clone ${agentKitGlobalResult.repoRoot})`,
-          )
+        case 'agent-kit-global-skipped-source-mode':
+          console.log('  agent-kit global: - skipped (WP_FORCE_SOURCE=1 source mode)')
           break
         case 'agent-kit-global-skipped-no-vp':
           console.warn(`  agent-kit global: ⚠ ${agentKitGlobalResult.hint}`)

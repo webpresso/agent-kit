@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+import { globSync } from 'glob'
 import { describe, expect, it } from 'vitest'
 
 import agentBundle, {
@@ -6,6 +10,8 @@ import agentBundle, {
   agentBundles,
   blueprintBundle,
 } from '#cli/bundle/index.js'
+
+const repoRoot = join(import.meta.dirname, '..', '..', '..')
 
 function findDuplicateBundleRoots(
   bundles: readonly { name: string; config: { namespaceRoots: readonly string[] } }[],
@@ -48,6 +54,34 @@ async function listCommandPaths(
 }
 
 describe('agent-kit CLI bundles', () => {
+  it('keeps bundle source and manifests independent from unpublished workspace-only contract packages', () => {
+    const bundleSources = globSync('src/cli/bundle/**/*.ts', {
+      cwd: repoRoot,
+      ignore: ['src/cli/bundle/**/*.test.ts'],
+    })
+
+    expect(bundleSources.length).toBeGreaterThan(0)
+    for (const sourcePath of bundleSources) {
+      expect(readFileSync(join(repoRoot, sourcePath), 'utf8')).not.toContain(
+        '@webpresso/cli-contract',
+      )
+    }
+
+    for (const manifestPath of ['package.json', 'pnpm-workspace.yaml']) {
+      expect(readFileSync(join(repoRoot, manifestPath), 'utf8')).not.toContain(
+        '@webpresso/cli-contract',
+      )
+    }
+
+    const workflowSources = globSync('.github/{workflows,actions}/**/*.yml', { cwd: repoRoot })
+    for (const sourcePath of workflowSources) {
+      const source = readFileSync(join(repoRoot, sourcePath), 'utf8')
+      expect(source).not.toContain('checkout-cli-contract')
+      expect(source).not.toContain('WEBPRESSO_CLI_CONTRACT_REF')
+      expect(source).not.toContain('monorepo/packages/cli/contract')
+    }
+  })
+
   it('keeps the compatibility inventory metadata pointed at the public host', () => {
     expect(AGENT_BUNDLE.bundleId).toBe('agent-kit')
     expect(AGENT_BUNDLE.commandRoot).toBe('agent')

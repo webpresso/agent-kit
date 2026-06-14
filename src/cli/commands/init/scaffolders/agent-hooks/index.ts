@@ -9,6 +9,7 @@
  *
  * Runs by default on every `wp setup`.
  */
+import { spawnSync } from 'node:child_process'
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -38,7 +39,6 @@ import {
   type SkillHook,
 } from './skill-hooks.js'
 import type { HooksManifest } from './manifest.js'
-import { resolveRuntimeTarget, runtimePackageDirName } from '#build/runtime-targets.js'
 import { buildClaudeHookGroups } from './emitters/claude.js'
 import {
   DIRECT_CLAUDE_NODE_MODULES_BIN_PATTERN,
@@ -71,7 +71,7 @@ export type { MatcherSet } from './ir.js'
 // - pretool guard: fail-closed (explicit deny JSON) so policy cannot silently
 //   bypass when the guard binary is missing/non-executable.
 const PRETOOL_GUARD_BIN = 'wp-pretool-guard'
-const PRETOOL_GUARD_MISSING_DENY = `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install @webpresso/agent-kit globally and re-run wp setup."}}'`
+const PRETOOL_GUARD_MISSING_DENY = `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with vp install -g @webpresso/agent-kit and re-run wp setup."}}'`
 const JSON_ONLY_HOOK_FALLBACK = `printf '%s\\n' '{}'`
 const CLAUDE_MANAGED_HOOK_SUBDIR = '.claude/hooks/managed'
 const CODEX_MANAGED_HOOK_SUBDIR = '.codex/managed-hooks'
@@ -193,7 +193,7 @@ function materializeClaudeSkillCommand(skillHook: SkillHook): string {
     const args = skillHook.command.slice(3)
     const stdoutPolicy = skillHook.event === 'Stop' ? ' >/dev/null' : ''
     const verb = args.split(/\s+/u)[0]?.replaceAll(/[^\w-]/gu, '') || 'hook'
-    return `if command -v wp >/dev/null 2>&1; then wp ${args}${stdoutPolicy}; else echo "webpresso: skill hook (wp ${verb}) skipped: global wp not found; install @webpresso/agent-kit globally and re-run wp setup" >&2; fi ${tag}`
+    return `if command -v wp >/dev/null 2>&1; then wp ${args}${stdoutPolicy}; else echo "webpresso: skill hook (wp ${verb}) skipped: global wp not found; install with vp install -g @webpresso/agent-kit and re-run wp setup" >&2; fi ${tag}`
   }
   return `${skillHook.command} ${tag}`
 }
@@ -585,9 +585,23 @@ export async function trustCodexPresetHooksForUser(input: ScaffoldAgentHooksInpu
   }
 }
 
+function defaultCommandExists(command: string): boolean {
+  const result = spawnSync('which', [command], { stdio: 'ignore' })
+  return result.status === 0
+}
+
+function isCodexCliAvailable(input: ScaffoldAgentHooksInput): boolean {
+  const commandExists =
+    input.codexAvailable ?? (input.createCodexAppServer ? () => true : defaultCommandExists)
+  return commandExists('codex')
+}
+
 function shouldSkipCodexTrustSync(input: ScaffoldAgentHooksInput): boolean {
   if (input.options.dryRun || process.env.WP_SKIP_CODEX_TRUST_SYNC === '1') return true
-  return process.env.VITEST === 'true' && !input.createCodexAppServer
+  if (process.env.VITEST === 'true' && !input.createCodexAppServer && !input.codexAvailable) {
+    return true
+  }
+  return !isCodexCliAvailable(input)
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -598,6 +612,12 @@ export interface ScaffoldAgentHooksInput {
   createCodexAppServer?: CodexAppServerFactory
   onCodexTrustSyncWarning?: (warning: CodexTrustSyncWarning) => void
   trustCodexHooks?: boolean
+  /**
+   * Injectable PATH probe for the `codex` binary. Defaults to a real `which`
+   * check. When a `createCodexAppServer` factory is injected (tests), codex is
+   * assumed available unless this is set explicitly.
+   */
+  codexAvailable?: (command: string) => boolean
 }
 
 export interface ScaffoldAgentHooksResult {
@@ -820,28 +840,6 @@ export function resolvePackageRootForHookLaunchers(
   )
 }
 
-function compiledRuntimePackageDir(): string | undefined {
-  const target = resolveRuntimeTarget()
-  return target ? runtimePackageDirName(target.packageName) : undefined
-}
-
-/**
- * Absolute path to the consumer's self-contained compiled `wp` binary, when the
- * platform runtime package (`@webpresso/agent-kit-runtime-<platform>`) is
- * installed. The compiled binary bundles its own runtime, so preferring it makes
- * the hook launcher survive node-path staleness — an nvm/version change
- * invalidates the captured absolute node path but not a self-contained binary.
- * Returns undefined when no compiled runtime is installed (today's default), so
- * the launcher keeps its absolute-node fallback unchanged.
- */
-function resolveCompiledWpBinary(repoRoot: string): string | undefined {
-  const packageDir = compiledRuntimePackageDir()
-  if (!packageDir) return undefined
-  const filename = process.platform === 'win32' ? 'wp.exe' : 'wp'
-  const candidate = join(repoRoot, 'node_modules', '@webpresso', packageDir, 'bin', filename)
-  return existsSync(candidate) ? candidate : undefined
-}
-
 /**
  * The `wp hook <sub>` subcommand a managed launcher should dispatch to. The
  * names map 1:1 by stripping the `wp-` prefix; `isHookName` is the single
@@ -852,8 +850,8 @@ export function hookSubcommandFor(binName: string): string | undefined {
   return isHookName(sub) ? sub : undefined
 }
 
-function renderManagedWebpressoHookLauncher(repoRoot: string, binName: string): string {
-  const missingRuntimeWarning = `echo "webpresso hook ${binName} skipped: global wp not found; install @webpresso/agent-kit globally and re-run wp setup" >&2`
+function renderManagedWebpressoHookLauncher(_repoRoot: string, binName: string): string {
+  const missingRuntimeWarning = `echo "webpresso hook ${binName} skipped: global wp not found; install with vp install -g @webpresso/agent-kit and re-run wp setup" >&2`
   // Guard fails closed (explicit deny JSON); json-only hooks keep Codex stdout
   // parseable; every other hook warns on stderr instead of silently exiting — a
   // silently-disabled hook hid the broken node pin for weeks (2026-06 audit).
@@ -865,19 +863,9 @@ function renderManagedWebpressoHookLauncher(repoRoot: string, binName: string): 
       : missingRuntimeWarning
 
   const hookSub = hookSubcommandFor(binName)
-  const compiledWp = hookSub ? resolveCompiledWpBinary(repoRoot) : undefined
-  const compiledPreamble =
-    compiledWp !== undefined
-      ? `WP_BIN=${quoteShell(compiledWp)}
-if [ -x "$WP_BIN" ]; then
-  exec "$WP_BIN" hook ${hookSub} "$@"
-fi
-
-`
-      : ''
 
   return `#!/bin/sh
-${compiledPreamble}if command -v wp >/dev/null 2>&1; then
+if command -v wp >/dev/null 2>&1; then
   exec wp hook ${hookSub} "$@"
 fi
 
