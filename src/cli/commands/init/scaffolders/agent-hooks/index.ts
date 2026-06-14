@@ -9,6 +9,7 @@
  *
  * Runs by default on every `wp setup`.
  */
+import { spawnSync } from 'node:child_process'
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -584,9 +585,23 @@ export async function trustCodexPresetHooksForUser(input: ScaffoldAgentHooksInpu
   }
 }
 
+function defaultCommandExists(command: string): boolean {
+  const result = spawnSync('which', [command], { stdio: 'ignore' })
+  return result.status === 0
+}
+
+function isCodexCliAvailable(input: ScaffoldAgentHooksInput): boolean {
+  const commandExists =
+    input.codexAvailable ?? (input.createCodexAppServer ? () => true : defaultCommandExists)
+  return commandExists('codex')
+}
+
 function shouldSkipCodexTrustSync(input: ScaffoldAgentHooksInput): boolean {
   if (input.options.dryRun || process.env.WP_SKIP_CODEX_TRUST_SYNC === '1') return true
-  return process.env.VITEST === 'true' && !input.createCodexAppServer
+  if (process.env.VITEST === 'true' && !input.createCodexAppServer && !input.codexAvailable) {
+    return true
+  }
+  return !isCodexCliAvailable(input)
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -597,6 +612,12 @@ export interface ScaffoldAgentHooksInput {
   createCodexAppServer?: CodexAppServerFactory
   onCodexTrustSyncWarning?: (warning: CodexTrustSyncWarning) => void
   trustCodexHooks?: boolean
+  /**
+   * Injectable PATH probe for the `codex` binary. Defaults to a real `which`
+   * check. When a `createCodexAppServer` factory is injected (tests), codex is
+   * assumed available unless this is set explicitly.
+   */
+  codexAvailable?: (command: string) => boolean
 }
 
 export interface ScaffoldAgentHooksResult {

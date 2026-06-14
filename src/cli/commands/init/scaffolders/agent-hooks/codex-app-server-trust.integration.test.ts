@@ -141,4 +141,27 @@ describe('codex app-server trust integration', () => {
 
     expect(batchWrites).toHaveLength(1)
   })
+
+  it('skips codex trust sync silently when codex is not installed (no spawn, no warning)', async () => {
+    const repoRoot = tempRepo()
+    let factoryCalls = 0
+    const warnings: CodexTrustSyncWarning[] = []
+
+    await scaffoldAgentHooks({
+      repoRoot,
+      options: {},
+      // codex binary not on PATH: the trust step cannot run, so it must skip
+      // cleanly rather than spawning the app-server and surfacing an ENOENT
+      // transport error to the consumer.
+      codexAvailable: () => false,
+      createCodexAppServer: async () => {
+        factoryCalls += 1
+        throw new Error('codex app-server must not be started when codex is absent')
+      },
+      onCodexTrustSyncWarning: (warning) => warnings.push(warning),
+    })
+
+    expect(factoryCalls).toBe(0)
+    expect(warnings).toStrictEqual([])
+  })
 })
