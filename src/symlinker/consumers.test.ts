@@ -89,7 +89,6 @@ describe('Claude consumer contracts', () => {
     expect(fallback?.host).toStrictEqual('claude')
     expect(fallback?.pluginHost).toBe(true)
   })
-
 })
 
 // ---------------------------------------------------------------------------

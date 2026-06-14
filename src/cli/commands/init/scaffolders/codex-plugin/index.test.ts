@@ -1,4 +1,12 @@
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
@@ -42,7 +50,10 @@ describe('buildCodexStagingMarketplace', () => {
 
     const marketplace = JSON.parse(
       readFileSync(join(stagingRoot, '.agents', 'plugins', 'marketplace.json'), 'utf8'),
-    ) as { name: string; plugins: Array<{ name: string; source: { source: string; path: string } }> }
+    ) as {
+      name: string
+      plugins: Array<{ name: string; source: { source: string; path: string } }>
+    }
     expect(marketplace.name).toBe('webpresso')
     expect(marketplace.plugins[0]?.source).toStrictEqual({
       source: 'local',

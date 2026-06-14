@@ -40,7 +40,13 @@ const EXPECTED_BLUEPRINT_SCHEMA_VERSIONS = EXPECTED_BLUEPRINT_MIGRATION_SQL_FILE
 )
 const ORIGINAL_PACKAGE_JSON_TEXT = readFileSync(PACKAGE_JSON_PATH, 'utf8')
 const PACK_LOCK_DIRECTORY = join(tmpdir(), 'webpresso-agent-kit-npm-pack.lock')
-const CLI_CONTRACT_WORKSPACE_ROOT = join(dirname(REPO_ROOT), 'monorepo', 'packages', 'cli', 'contract')
+const CLI_CONTRACT_WORKSPACE_ROOT = join(
+  dirname(REPO_ROOT),
+  'monorepo',
+  'packages',
+  'cli',
+  'contract',
+)
 
 function getCliContractInstallSpec(): string {
   if (!existsSync(join(CLI_CONTRACT_WORKSPACE_ROOT, 'package.json'))) {
@@ -51,7 +57,6 @@ function getCliContractInstallSpec(): string {
 
   return pathToFileURL(CLI_CONTRACT_WORKSPACE_ROOT).href
 }
-
 
 function acquirePackLock(): () => void {
   const started = Date.now()
@@ -274,12 +279,22 @@ describe('tooling umbrella package integration contract', () => {
       execFileSync('git', ['init', '-q'], { cwd: tmpRoot, encoding: 'utf8' })
       execFileSync('git', ['init', '-q'], { cwd: launcherRoot, encoding: 'utf8' })
       execFileSync('tar', ['-xzf', tarballPath, '-C', launcherRoot], { encoding: 'utf8' })
-      execFileSync('npm', ['install', getCliContractInstallSpec(), '--omit=dev', '--ignore-scripts'], {
-        cwd: packedPackageRoot,
-        encoding: 'utf8',
-        env: { ...process.env, HUSKY: '0' },
-        stdio: ['ignore', 'pipe', 'pipe'],
-      })
+      execFileSync(
+        'npm',
+        [
+          'install',
+          getCliContractInstallSpec(),
+          '--omit=dev',
+          '--omit=optional',
+          '--ignore-scripts',
+        ],
+        {
+          cwd: packedPackageRoot,
+          encoding: 'utf8',
+          env: { ...process.env, HUSKY: '0' },
+          stdio: ['ignore', 'pipe', 'pipe'],
+        },
+      )
       writeFileSync(
         join(tmpRoot, 'package.json'),
         JSON.stringify(
@@ -349,12 +364,16 @@ describe('tooling umbrella package integration contract', () => {
         join(tmpRoot, 'package.json'),
         JSON.stringify({ name: 'packed-migration-smoke', private: true }, null, 2) + '\n',
       )
-      execFileSync('npm', ['install', getCliContractInstallSpec(), tarballPath], {
-        cwd: tmpRoot,
-        encoding: 'utf8',
-        env: { ...process.env, HUSKY: '0' },
-        stdio: ['ignore', 'pipe', 'pipe'],
-      })
+      execFileSync(
+        'npm',
+        ['install', getCliContractInstallSpec(), tarballPath, '--omit=optional'],
+        {
+          cwd: tmpRoot,
+          encoding: 'utf8',
+          env: { ...process.env, HUSKY: '0' },
+          stdio: ['ignore', 'pipe', 'pipe'],
+        },
+      )
 
       const packageRoot = join(tmpRoot, 'node_modules', '@webpresso', 'agent-kit')
       const smokeOutput = execFileSync(

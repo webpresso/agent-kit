@@ -43,11 +43,7 @@ export interface ScaffoldAgentRulesResult {
 
 export const WEBPRESSO_ROUTING_RULE_FILENAME = 'webpresso-routing.md'
 
-const RULE_IGNORE_PATTERNS = [
-  '.agent/rules/',
-  '.cursor/rules/',
-  '.claude/rules/',
-] as const
+const RULE_IGNORE_PATTERNS = ['.agent/rules/', '.cursor/rules/', '.claude/rules/'] as const
 
 export function scaffoldAgentRules(opts: ScaffoldAgentRulesOptions): ScaffoldAgentRulesResult {
   const { cwd, dryRun, overwrite } = opts

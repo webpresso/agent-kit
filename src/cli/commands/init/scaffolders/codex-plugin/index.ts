@@ -90,7 +90,8 @@ export function buildCodexStagingMarketplace(stagingRoot: string, packageRoot: s
         name: 'agent-kit',
         source: { source: 'local', path: './plugins/agent-kit' },
         policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
-        description: 'Webpresso agent-kit: blueprints, skills, lore commit protocol, tech-debt lifecycle',
+        description:
+          'Webpresso agent-kit: blueprints, skills, lore commit protocol, tech-debt lifecycle',
         category: 'Productivity',
       },
     ],
