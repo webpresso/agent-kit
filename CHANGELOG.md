@@ -1,5 +1,93 @@
 # Changelog
 
+## 1.1.0
+
+### Minor Changes
+
+- 86eb253: feat(test): parallelize `wp test` across workspace shards
+
+  `wp test` (and the `wp_test` MCP tool) now accepts an optional
+  `workspaceSharding` input (`enabled`, `maxShards`, `minFilesToShard`,
+  `targetFilesPerShard`, `totalBudgetMs`) that splits a workspace test run into
+  parallel shards under a shared time budget. Existing single-run behavior is
+  unchanged when the option is omitted.
+
+  Release claims remain gated by `docs/bench/reference-parity-matrix.md`,
+  `src/__integration__/reference-parity-host-smoke.integration.test.ts`,
+  `src/__integration__/reference-parity-tool-surface.integration.test.ts`, and
+  `docs/bench/session-memory-methodology.md`.
+
+### Patch Changes
+
+- 86eb253: fix(blueprint): `wp blueprint db build` and CLI mutations now refresh the projection freshness stamp
+
+  The blueprint projection's freshness gate refuses cached MCP reads when git HEAD
+  has moved since ingest. The documented recovery — `wp blueprint db build` — did
+  not clear it: `dbBuild` and the CLI mutation reingest hand-rolled the ingest
+  sequence and omitted `recordProjectionMetadata`, so the freshness sidecar HEAD
+  was never refreshed and the projection stayed permanently stale after any commit.
+
+  Both now delegate to `reIngestProjection`, the single owner of the persistent
+  reingest sequence (prune → write-lock → ingest → record metadata), which now
+  returns the ingest counts. This removes the duplication that let the copies
+  diverge and makes `wp blueprint db build` a true recovery for a stale
+  (`reingest_project`) projection.
+
+  Release claims remain gated by `docs/bench/reference-parity-matrix.md`,
+  `src/__integration__/reference-parity-host-smoke.integration.test.ts`,
+  `src/__integration__/reference-parity-tool-surface.integration.test.ts`, and
+  `docs/bench/session-memory-methodology.md`.
+
+- 86eb253: fix(setup): skip Codex hook trust sync when the `codex` CLI is unavailable
+
+  `wp setup` now checks for the optional `codex` binary before starting the Codex
+  app-server trust sync. When `codex` is not installed but `.codex/hooks.json`
+  exists, setup skips the trust-sync step silently instead of surfacing a raw
+  transport warning such as "Executable not found in $PATH: codex". Tests can
+  inject the availability probe, and existing app-server injection paths remain
+  unchanged.
+
+  Release claims remain gated by `docs/bench/reference-parity-matrix.md`,
+  `src/__integration__/reference-parity-host-smoke.integration.test.ts`,
+  `src/__integration__/reference-parity-tool-surface.integration.test.ts`, and
+  `docs/bench/session-memory-methodology.md`.
+
+- 86eb253: fix(doctor): resolve agent-kit root past the native runtime-payload package
+
+  `wp hooks doctor`, invoked through the compiled native `wp` runtime, reported
+  false-negative failures on `plugin.json integrity`, `root launcher contract`,
+  and `native plugin runtime`. `resolveAgentKitPackageRoot()` walked up from the
+  running module path and stopped at the runtime-payload sub-package
+  (`@webpresso/agent-kit-runtime-<os>-<cpu>`), which ships a native `bin/wp` but
+  no `.claude-plugin/plugin.json`. `isAgentKitPackageRoot()` now rejects
+  runtime-payload packages (by `package.json#name`), so resolution continues up
+  to the real `@webpresso/agent-kit` package. Fixes every resolver caller, not
+  just the doctor.
+
+  Release claims remain gated by `docs/bench/reference-parity-matrix.md`,
+  `src/__integration__/reference-parity-host-smoke.integration.test.ts`,
+  `src/__integration__/reference-parity-tool-surface.integration.test.ts`, and
+  `docs/bench/session-memory-methodology.md`.
+
+- 86eb253: fix(release): build and install `@webpresso/agent-kit` from a standalone checkout
+
+  Release builds previously depended on the unpublished `@webpresso/cli-contract`
+  workspace package, so a packed tarball could not be built or installed outside
+  the source workspace. The small CLI bundle contract types are now inlined into
+  `src/cli/bundle/contract.ts`, and the `@webpresso/cli-contract` dependency was
+  removed from `package.json`, `pnpm-workspace.yaml`, and the lockfile. The Vite
+  Plus install contract was hardcut to match, and the stale
+  `.github/actions/checkout-cli-contract` composite action plus its workflow
+  invocations were removed so CI no longer clones the unpublished workspace. A
+  bundle-independence guard scans `src/cli/bundle/**/*.ts`, `package.json`, and
+  `pnpm-workspace.yaml` to prevent the workspace-only contract package from being
+  reintroduced.
+
+  Release claims remain gated by `docs/bench/reference-parity-matrix.md`,
+  `src/__integration__/reference-parity-host-smoke.integration.test.ts`,
+  `src/__integration__/reference-parity-tool-surface.integration.test.ts`, and
+  `docs/bench/session-memory-methodology.md`.
+
 ## 1.0.0
 
 ### Major Changes
