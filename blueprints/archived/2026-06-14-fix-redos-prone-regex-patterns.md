@@ -2,7 +2,7 @@
 type: blueprint
 title: Fix ReDoS-prone regex patterns
 owner: ozby
-status: planned
+status: archived
 complexity: M
 created: '2026-06-14'
 last_updated: '2026-06-14'
@@ -19,6 +19,8 @@ worktree_owner_branch: ''
 refined: true
 refinement_parallelization_score: A
 ---
+
+> **Archived 2026-06-14 (plan-refine fact-check).** Every flagged pattern is linear-time safe (<1.3ms on 100KB hostile input); occurrence counts were stale (34/19, not "38/15+"); the planned timing tests pass on unmodified code. This is a verified no-op — do not execute. Findings preserved for reference.
 
 ## Product wedge anchor
 

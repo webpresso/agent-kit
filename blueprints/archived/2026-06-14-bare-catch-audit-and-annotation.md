@@ -2,7 +2,7 @@
 type: blueprint
 title: Bare catch audit and annotation
 owner: ozby
-status: planned
+status: archived
 complexity: M
 created: '2026-06-14'
 last_updated: '2026-06-14'
@@ -18,6 +18,8 @@ tags:
 worktree_owner_id: ''
 worktree_owner_branch: ''
 ---
+
+> **Archived 2026-06-14 (plan-refine fact-check).** The "298 bare catch blocks" premise is false: `grep "catch\\s*{"` counts catch-block opening braces, not empty/swallowing catches. The real empty-catch count is 1. Executing this would rewrite ~298 already-correct error handlers (a net regression). Fix the single empty catch directly instead.
 
 # Bare catch audit and annotation
 
