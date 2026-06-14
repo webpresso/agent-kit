@@ -12,8 +12,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { join } from 'node:path'
 
 import { afterAll, describe, expect, it } from 'vitest'
 
@@ -40,23 +39,6 @@ const EXPECTED_BLUEPRINT_SCHEMA_VERSIONS = EXPECTED_BLUEPRINT_MIGRATION_SQL_FILE
 )
 const ORIGINAL_PACKAGE_JSON_TEXT = readFileSync(PACKAGE_JSON_PATH, 'utf8')
 const PACK_LOCK_DIRECTORY = join(tmpdir(), 'webpresso-agent-kit-npm-pack.lock')
-const CLI_CONTRACT_WORKSPACE_ROOT = join(
-  dirname(REPO_ROOT),
-  'monorepo',
-  'packages',
-  'cli',
-  'contract',
-)
-
-function getCliContractInstallSpec(): string {
-  if (!existsSync(join(CLI_CONTRACT_WORKSPACE_ROOT, 'package.json'))) {
-    throw new Error(
-      `@webpresso/cli-contract is not published yet; expected local CI workspace at ${CLI_CONTRACT_WORKSPACE_ROOT}`,
-    )
-  }
-
-  return pathToFileURL(CLI_CONTRACT_WORKSPACE_ROOT).href
-}
 
 function acquirePackLock(): () => void {
   const started = Date.now()
@@ -279,22 +261,12 @@ describe('tooling umbrella package integration contract', () => {
       execFileSync('git', ['init', '-q'], { cwd: tmpRoot, encoding: 'utf8' })
       execFileSync('git', ['init', '-q'], { cwd: launcherRoot, encoding: 'utf8' })
       execFileSync('tar', ['-xzf', tarballPath, '-C', launcherRoot], { encoding: 'utf8' })
-      execFileSync(
-        'npm',
-        [
-          'install',
-          getCliContractInstallSpec(),
-          '--omit=dev',
-          '--omit=optional',
-          '--ignore-scripts',
-        ],
-        {
-          cwd: packedPackageRoot,
-          encoding: 'utf8',
-          env: { ...process.env, HUSKY: '0' },
-          stdio: ['ignore', 'pipe', 'pipe'],
-        },
-      )
+      execFileSync('npm', ['install', '--omit=dev', '--omit=optional', '--ignore-scripts'], {
+        cwd: packedPackageRoot,
+        encoding: 'utf8',
+        env: { ...process.env, HUSKY: '0' },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
       writeFileSync(
         join(tmpRoot, 'package.json'),
         JSON.stringify(
@@ -364,16 +336,12 @@ describe('tooling umbrella package integration contract', () => {
         join(tmpRoot, 'package.json'),
         JSON.stringify({ name: 'packed-migration-smoke', private: true }, null, 2) + '\n',
       )
-      execFileSync(
-        'npm',
-        ['install', getCliContractInstallSpec(), tarballPath, '--omit=optional'],
-        {
-          cwd: tmpRoot,
-          encoding: 'utf8',
-          env: { ...process.env, HUSKY: '0' },
-          stdio: ['ignore', 'pipe', 'pipe'],
-        },
-      )
+      execFileSync('npm', ['install', tarballPath, '--omit=optional'], {
+        cwd: tmpRoot,
+        encoding: 'utf8',
+        env: { ...process.env, HUSKY: '0' },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
 
       const packageRoot = join(tmpRoot, 'node_modules', '@webpresso', 'agent-kit')
       const smokeOutput = execFileSync(

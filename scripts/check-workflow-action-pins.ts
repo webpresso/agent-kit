@@ -3,7 +3,16 @@ import { join, relative, resolve } from 'node:path'
 
 const FULL_SHA_PATTERN = /^[a-f0-9]{40}$/i
 const DIGEST_PATTERN = /@sha256:[a-f0-9]{64}$/i
-const PACKAGE_MANAGER_BINS = new Set(['pnpm', 'pnpx', 'npm', 'npx', 'yarn', 'yarnpkg', 'bun', 'bunx'])
+const PACKAGE_MANAGER_BINS = new Set([
+  'pnpm',
+  'pnpx',
+  'npm',
+  'npx',
+  'yarn',
+  'yarnpkg',
+  'bun',
+  'bunx',
+])
 const EXEC_SUBCOMMANDS = new Set(['exec', 'dlx', 'x'])
 const OPTION_VALUE_FLAGS = new Set([
   '--cache',
@@ -88,7 +97,11 @@ function containsWrappedVpInvocation(value: string): boolean {
     const subcommandIndex = nextNonOptionToken(tokens, index + 1)
     const subcommand = normalizeToken(tokens[subcommandIndex] ?? '')
     const allowedSubcommands =
-      manager === 'bun' ? new Set(['x']) : manager === 'npm' ? new Set(['exec', 'x']) : EXEC_SUBCOMMANDS
+      manager === 'bun'
+        ? new Set(['x'])
+        : manager === 'npm'
+          ? new Set(['exec', 'x'])
+          : EXEC_SUBCOMMANDS
     if (!allowedSubcommands.has(subcommand)) continue
 
     const commandIndex = nextNonOptionToken(tokens, subcommandIndex + 1)
