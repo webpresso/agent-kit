@@ -16,6 +16,7 @@ export const AUDIT_KINDS = [
   'reference-parity-matrix',
   'docs-frontmatter',
   'blueprint-readme-drift',
+  'blueprint-pr-coverage',
   'blueprint-lifecycle',
   'architecture-drift',
   'cloudflare-deploy-contract',

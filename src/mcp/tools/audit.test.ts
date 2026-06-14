@@ -33,6 +33,10 @@ const blueprintReadmeDriftMock = {
   auditBlueprintReadmeDrift: vi.fn(),
 }
 
+const blueprintPrCoverageMock = {
+  auditBlueprintPrCoverage: vi.fn(),
+}
+
 const agentsAuditMock = {
   auditAgents: vi.fn(),
 }
@@ -79,6 +83,7 @@ const viteLocalMock = {
 
 vi.mock('#audit/repo-guardrails', () => repoGuardrailsMock)
 vi.mock('#audit/blueprint-readme-drift', () => blueprintReadmeDriftMock)
+vi.mock('#audit/blueprint-pr-coverage', () => blueprintPrCoverageMock)
 vi.mock('#audit/blueprint-lifecycle-sql', () => blueprintLifecycleSqlMock)
 vi.mock('#audit/agents', () => agentsAuditMock)
 vi.mock('#audit/reference-parity-matrix', () => referenceParityMatrixMock)
@@ -131,6 +136,7 @@ beforeEach(() => {
   absolutePathPolicyMock.auditAbsolutePathPolicy.mockReset()
   noFirstPartyMjsMock.auditNoFirstPartyMjs.mockReset()
   blueprintReadmeDriftMock.auditBlueprintReadmeDrift.mockReset()
+  blueprintPrCoverageMock.auditBlueprintPrCoverage.mockReset()
   blueprintLifecycleSqlMock.auditBlueprintLifecycleSql.mockReset()
   toolchainIsolationMock.auditToolchainIsolation.mockReset()
   openSourceLicensesMock.auditOpenSourceLicenses.mockReset()
@@ -172,6 +178,19 @@ describe('wp_audit tool', () => {
       blueprintReadmeDriftMock.auditBlueprintReadmeDrift.mockReturnValue(passingAudit())
       const result = await akAuditTool.handler({ kind: 'blueprint-readme-drift' })
       expect(blueprintReadmeDriftMock.auditBlueprintReadmeDrift).toHaveBeenCalledTimes(1)
+      expect(parsePayload(result).passed).toBe(true)
+    })
+
+    it('blueprint-pr-coverage -> auditBlueprintPrCoverage with baseRef', async () => {
+      blueprintPrCoverageMock.auditBlueprintPrCoverage.mockReturnValue(passingAudit())
+      const result = await akAuditTool.handler({
+        kind: 'blueprint-pr-coverage',
+        cwd: '/repo',
+        baseRef: 'abc123',
+      })
+      expect(blueprintPrCoverageMock.auditBlueprintPrCoverage).toHaveBeenCalledWith('/repo', {
+        baseRef: 'abc123',
+      })
       expect(parsePayload(result).passed).toBe(true)
     })
 

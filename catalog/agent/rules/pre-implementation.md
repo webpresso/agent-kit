@@ -72,6 +72,25 @@ wp blueprint promote {slug}
 - An in-progress or planned blueprint already tracks this exact change — update
   it instead of creating a duplicate.
 
+## PR-level blueprint coverage gate
+
+Pull requests are checked by `wp audit blueprint-pr-coverage` in CI. The PR
+gate is deliberately stricter and easier to inspect than the local
+pre-implementation judgment:
+
+- PRs whose changed files are **all `*.md`** are exempt.
+- Any PR with at least one non-`*.md` changed file must include a changed file
+  under `blueprints/`.
+- Truly trivial non-`*.md` PRs may use an explicit commit-message trailer:
+  `Blueprint-exempt: <reason>`.
+
+The exemption trailer is intentionally git-inspectable and must include a real
+reason. Do not use it for features, behavioral fixes, refactors, security
+changes, CI changes, dependency changes, generated-code churn, or anything that
+would benefit from durable task/evidence tracking. If a branch starts with a
+trivial exempt commit and grows, add or update a blueprint before opening the
+PR.
+
 **Why:** Plans disappear when context resets or is compacted. Blueprints
 persist across sessions, accumulate verification evidence, and are auditable
 via `wp blueprint audit`. A plan without a blueprint is institutional knowledge
