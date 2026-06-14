@@ -1,5 +1,50 @@
 # Changelog
 
+## 1.0.0
+
+### Major Changes
+
+- 4dec3f5: Remove the public `archiveBlueprint` validation bypass from `webpresso/blueprint/local`.
+
+  `archiveBlueprint(slug, projectPath)` now always validates blueprint task completion before archiving. The previous third argument is no longer part of the API and truthy extra arguments from untyped JavaScript callers no longer allow incomplete blueprints to archive.
+
+### Minor Changes
+
+- 4f94fb2: Expose runnable agent and blueprint CLI bundles through `@webpresso/agent-kit/bundle` and harden package-surface scanning to use the agent-kit-owned secret scanner.
+- 4f94fb2: Deliver agent-kit skills through exactly one channel per host. Skill-dir
+  projection is now host-gated by `hosts.selected`: Claude and Codex receive
+  skills from their native plugins (no `.claude/skills` / `.agents/skills`
+  symlinks, which previously double-showed every skill alongside the plugin), and
+  OpenCode receives them at its primary `.opencode/skills` root. The opt-out
+  fallbacks (`WP_SKIP_CLAUDE_PLUGIN=1` / `WP_SKIP_CODEX_PLUGIN=1`) re-enable the
+  respective skill dir.
+
+  Adds a first-class Codex plugin channel: ships `.codex-plugin/plugin.json`
+  (version-locked with the Claude manifest) and a `codex-plugin` setup scaffolder.
+  Because Codex (verified against codex-cli 0.139.0) only exposes plugins that live
+  in a subdirectory of the marketplace root via an object `source`, the scaffolder
+  builds a small staging marketplace under `~/.webpresso/cache/agent-kit/` whose
+  `plugins/agent-kit` is a symlink to the installed package, then runs
+  `codex plugin marketplace add` + `codex plugin add agent-kit@webpresso` (skipped
+  in CI and via `WP_SKIP_CODEX_PLUGIN=1`).
+
+  `wp setup`/`wp sync` prune leftover skill symlinks from dirs that are no longer
+  projection targets, and the host-visibility audit is now plugin-aware for Claude
+  and Codex.
+
+### Patch Changes
+
+- f0ef03e: Harden the AI contracts audit so pending Changesets release notes must carry
+  the reference-parity release-claim gate before the generated Version Packages PR
+  updates `CHANGELOG.md`.
+
+  Release claims remain gated by `docs/bench/reference-parity-matrix.md`,
+  `src/__integration__/reference-parity-host-smoke.integration.test.ts`,
+  `src/__integration__/reference-parity-tool-surface.integration.test.ts`, and
+  `docs/bench/session-memory-methodology.md`.
+
+- e130873: Add measured session-memory benchmark recall scoring, report recall reason/error details, allow local single-workspace smoke runs to use an already logged-in Claude CLI via `BENCH_AUTH_MODE=claude-login`, have setup-generated gitignore rules cover Stryker mutation artifacts, and keep toolchain audits out of generated Windsurf/Gemini surfaces.
+
 ## Unreleased
 
 ### Release claim gate

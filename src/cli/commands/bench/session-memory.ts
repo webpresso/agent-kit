@@ -64,10 +64,17 @@ type Scenario = {
   }>
 }
 
+type TranscriptRecallScore = {
+  recall_at_5: number
+  recall_reason?: string
+  recall_error?: string
+}
+
 type WorkspaceConfig = {
   mode: 'isolated' | 'single-workspace'
   cacheDisclaimer: string | null
   keyEnvNames: string[]
+  authMode: 'api-key' | 'claude-login'
   adminVerification: 'required-for-proof' | 'operator-asserted' | 'not-applicable'
 }
 
@@ -95,6 +102,8 @@ type SessionMemoryReport = {
     status: 'ok' | 'rate_limit' | 'spawn_failed'
     cost_usd: number
     recall_at_5: number
+    recall_reason?: string
+    recall_error?: string
     wall_sec: number
   }>
   threshold_report?: SessionMemoryThresholdReport
@@ -168,7 +177,13 @@ type RuntimeModules = {
     cwd?: string
     outputRoot?: string
     apiKeys?: Record<string, string | undefined>
+    authMode?: WorkspaceConfig['authMode']
+    claudeHome?: string
   }) => Promise<RunResult>
+  scoreTranscriptRecall: (input: {
+    transcriptPath: string
+    qrels: Scenario['qrels']
+  }) => TranscriptRecallScore
   validateKnownAnthropicWorkspaces: (
     identities: WorkspaceIdentity[],
     adminKey: string,
@@ -188,6 +203,7 @@ const BENCH_RUNTIME_MODULE_PATHS = [
   ['scripts', 'bench', 'lib', 'cost-aggregator.ts'],
   ['scripts', 'bench', 'lib', 'variant-runner.ts'],
   ['scripts', 'bench', 'lib', 'report-writer.ts'],
+  ['scripts', 'bench', 'lib', 'transcript-scorer.ts'],
 ] as const
 
 export function isBunSingleFileUrl(fromUrl: string): boolean {
@@ -365,16 +381,22 @@ export function buildSessionMemoryThresholdReport(input: {
   readonly dryRun: boolean
   readonly averageLatencyMs?: number
   readonly averageRecallAt5?: number
+  readonly recallStatusValue?: number
+  readonly recallFailure?: boolean
 }): SessionMemoryThresholdReport {
   const latencyObserved = input.dryRun ? null : (input.averageLatencyMs ?? 0)
   const recallObserved = input.dryRun ? null : (input.averageRecallAt5 ?? 0)
+  const recallStatusValue = input.dryRun
+    ? null
+    : (input.recallStatusValue ?? input.averageRecallAt5 ?? 0)
   const latencyStatus = (threshold: number): SessionMemoryThresholdAxis['status'] => {
     if (input.dryRun) return 'schema-valid'
     return (latencyObserved ?? Number.POSITIVE_INFINITY) <= threshold ? 'passed' : 'failed'
   }
   const recallStatus = (threshold: number): SessionMemoryThresholdAxis['status'] => {
     if (input.dryRun) return 'schema-valid'
-    return (recallObserved ?? 0) >= threshold ? 'passed' : 'failed'
+    if (input.recallFailure) return 'failed'
+    return (recallStatusValue ?? 0) >= threshold ? 'passed' : 'failed'
   }
 
   return {
@@ -417,7 +439,7 @@ export function buildSessionMemoryThresholdReport(input: {
 }
 
 async function loadRuntimeModules(repoRoot = resolveBenchRuntimeRoot()): Promise<RuntimeModules> {
-  const [manifestModule, scenarioModule, costModule, runnerModule, reportModule] =
+  const [manifestModule, scenarioModule, costModule, runnerModule, reportModule, scorerModule] =
     await Promise.all([
       import(pathToFileURL(resolve(repoRoot, 'scripts', 'bench', 'lib', 'manifest.ts')).href),
       import(pathToFileURL(resolve(repoRoot, 'scripts', 'bench', 'scenarios', '_schema.ts')).href),
@@ -426,6 +448,9 @@ async function loadRuntimeModules(repoRoot = resolveBenchRuntimeRoot()): Promise
       ),
       import(pathToFileURL(resolve(repoRoot, 'scripts', 'bench', 'lib', 'variant-runner.ts')).href),
       import(pathToFileURL(resolve(repoRoot, 'scripts', 'bench', 'lib', 'report-writer.ts')).href),
+      import(
+        pathToFileURL(resolve(repoRoot, 'scripts', 'bench', 'lib', 'transcript-scorer.ts')).href
+      ),
     ])
 
   return {
@@ -437,6 +462,7 @@ async function loadRuntimeModules(repoRoot = resolveBenchRuntimeRoot()): Promise
     resolveWorkspaceConfig: manifestModule.resolveWorkspaceConfig,
     resolveWorkspaceIdentitiesFromEnv: manifestModule.resolveWorkspaceIdentitiesFromEnv,
     runCell: runnerModule.runCell,
+    scoreTranscriptRecall: scorerModule.scoreTranscriptRecall,
     validateKnownAnthropicWorkspaces: manifestModule.validateKnownAnthropicWorkspaces,
     validateWorkspaceKeyPresence: manifestModule.validateWorkspaceKeyPresence,
     verifyManifest: manifestModule.verifyManifest,
@@ -448,7 +474,10 @@ async function runWorkspacePreflight(
   runtime: RuntimeModules,
   workspaceConfig: WorkspaceConfig,
   env: NodeJS.ProcessEnv,
-  options: { readonly requireApiKeys: boolean } = { requireApiKeys: true },
+  options: { readonly requireApiKeys: boolean; readonly allowAdminVerification: boolean } = {
+    requireApiKeys: true,
+    allowAdminVerification: true,
+  },
 ): Promise<void> {
   if (options.requireApiKeys) {
     runtime.validateWorkspaceKeyPresence(workspaceConfig, env)
@@ -461,6 +490,7 @@ async function runWorkspacePreflight(
   const identities = runtime.resolveWorkspaceIdentitiesFromEnv(env)
   const adminKey = env.ANTHROPIC_ADMIN_KEY
   if (
+    options.allowAdminVerification &&
     workspaceConfig.adminVerification === 'required-for-proof' &&
     typeof adminKey === 'string' &&
     adminKey.length > 0
@@ -510,7 +540,10 @@ export async function runBenchSessionMemoryCommand(
   const workspaceConfig = resolveWorkspaceConfigForRun(runtime, env, {
     dryRun: Boolean(input.dryRun),
   })
-  await runWorkspacePreflight(runtime, workspaceConfig, env, { requireApiKeys: !input.dryRun })
+  await runWorkspacePreflight(runtime, workspaceConfig, env, {
+    requireApiKeys: !input.dryRun,
+    allowAdminVerification: !input.dryRun,
+  })
 
   const allScenarios = runtime.loadAllScenarios()
   const scenarios = resolveSelectedScenarios(allScenarios, input)
@@ -535,6 +568,8 @@ export async function runBenchSessionMemoryCommand(
   const model = input.model ?? pinned.model ?? DEFAULT_MODEL
   const apiKeys = apiKeyMapFromEnv(env)
   const cells: SessionMemoryReport['cells'] = []
+  const thresholdRecallValues: number[] = []
+  let recallFailure = false
 
   for (const scenario of scenarios) {
     for (const variant of variants) {
@@ -552,6 +587,8 @@ export async function runBenchSessionMemoryCommand(
             cwd,
             outputRoot,
             apiKeys,
+            authMode: workspaceConfig.authMode,
+            claudeHome: env.BENCH_CLAUDE_HOME ?? env.HOME,
           }),
         )
       }
@@ -580,6 +617,34 @@ export async function runBenchSessionMemoryCommand(
               ).toFixed(6),
             )
           : 0
+      const recallScores = results.map((result): TranscriptRecallScore => {
+        if (!result.ok) {
+          return {
+            recall_at_5: 0,
+            recall_error: result.error,
+          }
+        }
+
+        return runtime.scoreTranscriptRecall({
+          transcriptPath: result.transcript_path,
+          qrels: scenario.qrels,
+        })
+      })
+      const averageRecallAt5 =
+        recallScores.length > 0
+          ? recallScores.reduce((sum, score) => sum + score.recall_at_5, 0) / recallScores.length
+          : 0
+      const recallError = recallScores.find((score) => score.recall_error)?.recall_error
+      thresholdRecallValues.push(averageRecallAt5)
+      if (failed || recallError) {
+        recallFailure = true
+      }
+      const recallReason = recallError
+        ? undefined
+        : recallScores
+            .map((score) => score.recall_reason)
+            .filter((reason): reason is string => typeof reason === 'string' && reason.length > 0)
+            .join('; ')
 
       cells.push({
         scenario_id: scenario.scenario_id,
@@ -587,26 +652,32 @@ export async function runBenchSessionMemoryCommand(
         trials,
         status: failed?.error ?? 'ok',
         cost_usd: costSummary.total,
-        recall_at_5: 0,
+        recall_at_5: Number(averageRecallAt5.toFixed(6)),
+        ...(recallError ? { recall_error: recallError } : {}),
+        ...(recallReason ? { recall_reason: recallReason } : {}),
         wall_sec: wallSec,
       })
     }
   }
 
   const reportPath = resolve(outputRoot, runId, 'report.md')
-  const measuredCells = cells.filter((cell) => cell.status === 'ok')
+  const successfulCells = cells.filter((cell) => cell.status === 'ok')
   const averageWallMs =
-    measuredCells.length > 0
-      ? (measuredCells.reduce((sum, cell) => sum + cell.wall_sec, 0) / measuredCells.length) * 1000
+    successfulCells.length > 0
+      ? (successfulCells.reduce((sum, cell) => sum + cell.wall_sec, 0) / successfulCells.length) *
+        1000
       : 0
   const averageRecallAt5 =
-    measuredCells.length > 0
-      ? measuredCells.reduce((sum, cell) => sum + cell.recall_at_5, 0) / measuredCells.length
+    thresholdRecallValues.length > 0
+      ? thresholdRecallValues.reduce((sum, recall) => sum + recall, 0) /
+        thresholdRecallValues.length
       : 0
   const thresholdReport = buildSessionMemoryThresholdReport({
     dryRun: false,
     averageLatencyMs: Number(averageWallMs.toFixed(6)),
     averageRecallAt5: Number(averageRecallAt5.toFixed(6)),
+    recallStatusValue: averageRecallAt5,
+    recallFailure,
   })
   runtime.writeReport(
     {

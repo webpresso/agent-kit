@@ -8,6 +8,8 @@ export type SessionMemoryReportCell = {
   status: 'ok' | 'rate_limit' | 'spawn_failed'
   cost_usd: number
   recall_at_5: number
+  recall_reason?: string
+  recall_error?: string
   wall_sec: number
 }
 
@@ -36,6 +38,10 @@ function formatNumber(value: number): string {
   return Number(value.toFixed(6)).toString()
 }
 
+function formatMarkdownCell(value: string | undefined): string {
+  return (value ?? 'n/a').replace(/\s+/g, ' ').trim().replace(/\|/g, '\\|')
+}
+
 export function renderReport(report: SessionMemoryReport): string {
   const lines = [
     '# Session-memory benchmark',
@@ -45,11 +51,11 @@ export function renderReport(report: SessionMemoryReport): string {
     `- dry_run: ${report.dry_run ? 'yes' : 'no'}`,
     `- cache_disclaimer: ${report.cache_disclaimer ?? 'none'}`,
     '',
-    '| scenario | variant | trials | status | cost_usd | recall@5 | wall_sec |',
-    '| --- | --- | ---: | --- | ---: | ---: | ---: |',
+    '| scenario | variant | trials | status | cost_usd | recall@5 | recall | wall_sec |',
+    '| --- | --- | ---: | --- | ---: | ---: | --- | ---: |',
     ...report.cells.map(
       (cell) =>
-        `| ${cell.scenario_id} | ${cell.variant} | ${cell.trials} | ${cell.status} | ${formatNumber(cell.cost_usd)} | ${formatNumber(cell.recall_at_5)} | ${formatNumber(cell.wall_sec)} |`,
+        `| ${cell.scenario_id} | ${cell.variant} | ${cell.trials} | ${cell.status} | ${formatNumber(cell.cost_usd)} | ${formatNumber(cell.recall_at_5)} | ${formatMarkdownCell(cell.recall_error ?? cell.recall_reason)} | ${formatNumber(cell.wall_sec)} |`,
     ),
     '',
     ...(report.threshold_report

@@ -48,6 +48,10 @@ describe('generated agent-surface gitignore block', () => {
     expect(after).toContain('.omx/')
     expect(after).toContain('_worktrees/')
     expect(after).toContain('.webpresso/hooks-manifest.json')
+    expect(after).toContain('.stryker-tmp/')
+    expect(after).toContain('reports/mutation/')
+    expect(after).toContain('reports/stryker-incremental.json')
+    expect(after).toContain('stryker-setup-*.js')
 
     const ignored = spawnSync(
       'git',
@@ -63,6 +67,10 @@ describe('generated agent-surface gitignore block', () => {
         '.claude/settings.local.json',
         '.claude/hooks/check-gstack.sh',
         '_worktrees/agent-fix-login/.git',
+        '.stryker-tmp/sandbox.json',
+        'reports/mutation/mutation-report.html',
+        'reports/stryker-incremental.json',
+        'stryker-setup-123.js',
       ],
       { cwd: repo, encoding: 'utf8' },
     )
@@ -75,8 +83,12 @@ describe('generated agent-surface gitignore block', () => {
       '.codex/prompts/planner.md',
       '.codex/skills/verify/SKILL.md',
       '.omx/setup-scope.json',
+      '.stryker-tmp/sandbox.json',
       '.webpresso/hooks-manifest.json',
       '_worktrees/agent-fix-login/.git',
+      'reports/mutation/mutation-report.html',
+      'reports/stryker-incremental.json',
+      'stryker-setup-123.js',
     ])
   })
 
@@ -111,13 +123,29 @@ describe('generated agent-surface gitignore block', () => {
 
   it('removes legacy tracked generated surfaces from the git index', () => {
     mkdirSync(join(repo, '.claude', 'rules'), { recursive: true })
+    mkdirSync(join(repo, '.stryker-tmp'), { recursive: true })
+    mkdirSync(join(repo, 'reports', 'mutation'), { recursive: true })
     writeFileSync(join(repo, '.claude', 'rules', 'agent-guide.md'), 'generated rule\n')
     writeFileSync(join(repo, '.claude', 'settings.json'), '{}\n')
+    writeFileSync(join(repo, '.stryker-tmp', 'sandbox.json'), '{}\n')
+    writeFileSync(join(repo, 'reports', 'mutation', 'mutation-report.html'), '<html></html>\n')
+    writeFileSync(join(repo, 'reports', 'stryker-incremental.json'), '{}\n')
+    writeFileSync(join(repo, 'stryker-setup-123.js'), 'export default {}\n')
     writeFileSync(join(repo, 'AGENTS.md'), 'canonical instruction surface\n')
 
     const add = spawnSync(
       'git',
-      ['add', '-f', '.claude/rules/agent-guide.md', '.claude/settings.json', 'AGENTS.md'],
+      [
+        'add',
+        '-f',
+        '.claude/rules/agent-guide.md',
+        '.claude/settings.json',
+        '.stryker-tmp/sandbox.json',
+        'reports/mutation/mutation-report.html',
+        'reports/stryker-incremental.json',
+        'stryker-setup-123.js',
+        'AGENTS.md',
+      ],
       { cwd: repo, encoding: 'utf8' },
     )
     expect(add.status).toBe(0)
@@ -127,15 +155,30 @@ describe('generated agent-surface gitignore block', () => {
 
     expect(cleanup.kind).toBe('ok')
     expect(cleanup.removedPaths).toEqual(
-      expect.arrayContaining(['.claude/rules/agent-guide.md', '.claude/settings.json']),
+      expect.arrayContaining([
+        '.claude/rules/agent-guide.md',
+        '.claude/settings.json',
+        '.stryker-tmp/sandbox.json',
+        'reports/mutation/mutation-report.html',
+        'reports/stryker-incremental.json',
+        'stryker-setup-123.js',
+      ]),
     )
     expect(existsSync(join(repo, '.claude', 'rules', 'agent-guide.md'))).toBe(true)
     expect(existsSync(join(repo, '.claude', 'settings.json'))).toBe(true)
+    expect(existsSync(join(repo, '.stryker-tmp', 'sandbox.json'))).toBe(true)
+    expect(existsSync(join(repo, 'reports', 'mutation', 'mutation-report.html'))).toBe(true)
+    expect(existsSync(join(repo, 'reports', 'stryker-incremental.json'))).toBe(true)
+    expect(existsSync(join(repo, 'stryker-setup-123.js'))).toBe(true)
 
     const tracked = spawnSync('git', ['ls-files'], { cwd: repo, encoding: 'utf8' })
     expect(tracked.status).toBe(0)
     expect(tracked.stdout).not.toContain('.claude/rules/agent-guide.md')
     expect(tracked.stdout).not.toContain('.claude/settings.json')
+    expect(tracked.stdout).not.toContain('.stryker-tmp/sandbox.json')
+    expect(tracked.stdout).not.toContain('reports/mutation/mutation-report.html')
+    expect(tracked.stdout).not.toContain('reports/stryker-incremental.json')
+    expect(tracked.stdout).not.toContain('stryker-setup-123.js')
     expect(tracked.stdout).toContain('AGENTS.md')
   })
 })

@@ -68,24 +68,149 @@
   ],
   "qrels": [
     {
+      "qrel_id": "multi-file-refactor-q1",
       "question": "Which components duplicated JSON parsing?",
-      "expected_substring_in_response": "retriever and saver"
+      "expected_substring_in_response": "retriever and saver",
+      "provenance": {
+        "scenario_id": "multi-file-refactor",
+        "qrel_id": "multi-file-refactor-q1",
+        "source_file": "scripts/bench/scenarios/multi-file-refactor.json",
+        "source_span": "prompt_turns[3].text",
+        "source_hash": "9d7af696548940043ae684437dd80ef5386e25a88647425a0a5cf2773ebbaab8",
+        "query_id": "multi-file-refactor-query-1",
+        "expected_evidence_text": "retriever and saver",
+        "expected_evidence_hash": "29634675469bd99a706697ef28f8ae8766463d817fd25a5588aba39d8144ae9f",
+        "relevance_criterion_version": "context-recall-qrel-v1",
+        "relevance_criterion": "Relevant iff the scored answer contains the expected memory fact or an equivalent paraphrase grounded in the cited source span.",
+        "primary_labeler": {
+          "identity": "agent-kit-benchmark-author",
+          "role": "benchmark-fixture-author",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "independent_reviewer": {
+          "identity": "agent-kit-scientific-reviewer",
+          "role": "independent-qrel-reviewer",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "label_status": "accepted",
+        "provenance_version": 1
+      }
     },
     {
+      "qrel_id": "multi-file-refactor-q2",
       "question": "Which importers duplicated path validation?",
-      "expected_substring_in_response": "CLI helper and file tool"
+      "expected_substring_in_response": "CLI helper and file tool",
+      "provenance": {
+        "scenario_id": "multi-file-refactor",
+        "qrel_id": "multi-file-refactor-q2",
+        "source_file": "scripts/bench/scenarios/multi-file-refactor.json",
+        "source_span": "prompt_turns[3].text",
+        "source_hash": "9d7af696548940043ae684437dd80ef5386e25a88647425a0a5cf2773ebbaab8",
+        "query_id": "multi-file-refactor-query-2",
+        "expected_evidence_text": "CLI helper and file tool",
+        "expected_evidence_hash": "d89d0d88c45a14d1e45323431dad8a4f8c95fa5f9f17758bf6adf11a399759dd",
+        "relevance_criterion_version": "context-recall-qrel-v1",
+        "relevance_criterion": "Relevant iff the scored answer contains the expected memory fact or an equivalent paraphrase grounded in the cited source span.",
+        "primary_labeler": {
+          "identity": "agent-kit-benchmark-author",
+          "role": "benchmark-fixture-author",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "independent_reviewer": {
+          "identity": "agent-kit-scientific-reviewer",
+          "role": "independent-qrel-reviewer",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "label_status": "accepted",
+        "provenance_version": 1
+      }
     },
     {
+      "qrel_id": "multi-file-refactor-q3",
       "question": "What repo policy blocks new dependencies?",
-      "expected_substring_in_response": "without adding dependencies"
+      "expected_substring_in_response": "without adding dependencies",
+      "provenance": {
+        "scenario_id": "multi-file-refactor",
+        "qrel_id": "multi-file-refactor-q3",
+        "source_file": "scripts/bench/scenarios/multi-file-refactor.json",
+        "source_span": "prompt_turns[4].text",
+        "source_hash": "23b8466bbfcec8a4d6f85a0ec851dabf82cad2a5b16928538d14ce4f46163082",
+        "query_id": "multi-file-refactor-query-3",
+        "expected_evidence_text": "without adding dependencies",
+        "expected_evidence_hash": "15fd08049300ef51965fd5df72b9692c3667d2998e0bd523dba5c0859660f991",
+        "relevance_criterion_version": "context-recall-qrel-v1",
+        "relevance_criterion": "Relevant iff the scored answer contains the expected memory fact or an equivalent paraphrase grounded in the cited source span.",
+        "primary_labeler": {
+          "identity": "agent-kit-benchmark-author",
+          "role": "benchmark-fixture-author",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "independent_reviewer": {
+          "identity": "agent-kit-scientific-reviewer",
+          "role": "independent-qrel-reviewer",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "label_status": "accepted",
+        "provenance_version": 1
+      }
     },
     {
+      "qrel_id": "multi-file-refactor-q4",
       "question": "What anchor must absolute paths keep using?",
-      "expected_substring_in_response": "repo-root helpers"
+      "expected_substring_in_response": "repo-root helpers",
+      "provenance": {
+        "scenario_id": "multi-file-refactor",
+        "qrel_id": "multi-file-refactor-q4",
+        "source_file": "scripts/bench/scenarios/multi-file-refactor.json",
+        "source_span": "prompt_turns[5].text",
+        "source_hash": "e87ab487abf267f3bf35bfce34b91add4ace6e173156043afe0f574d83a1ee7a",
+        "query_id": "multi-file-refactor-query-4",
+        "expected_evidence_text": "repo-root helpers",
+        "expected_evidence_hash": "2f193c3b8dcb25e997a5157729bfed8cf5b7e782c49ddfbb9f5dc485fe664b51",
+        "relevance_criterion_version": "context-recall-qrel-v1",
+        "relevance_criterion": "Relevant iff the scored answer contains the expected memory fact or an equivalent paraphrase grounded in the cited source span.",
+        "primary_labeler": {
+          "identity": "agent-kit-benchmark-author",
+          "role": "benchmark-fixture-author",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "independent_reviewer": {
+          "identity": "agent-kit-scientific-reviewer",
+          "role": "independent-qrel-reviewer",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "label_status": "accepted",
+        "provenance_version": 1
+      }
     },
     {
+      "qrel_id": "multi-file-refactor-q5",
       "question": "What was the consolidation strategy for parsing?",
-      "expected_substring_in_response": "centralizes parsing in one utility"
+      "expected_substring_in_response": "centralizes parsing in one utility",
+      "provenance": {
+        "scenario_id": "multi-file-refactor",
+        "qrel_id": "multi-file-refactor-q5",
+        "source_file": "scripts/bench/scenarios/multi-file-refactor.json",
+        "source_span": "prompt_turns[5].text",
+        "source_hash": "e87ab487abf267f3bf35bfce34b91add4ace6e173156043afe0f574d83a1ee7a",
+        "query_id": "multi-file-refactor-query-5",
+        "expected_evidence_text": "centralizes parsing in one utility",
+        "expected_evidence_hash": "eb4735ffed1c7f6e6e7871833965c5ce1fa0c2eab238a91fa9fb36d05f521c48",
+        "relevance_criterion_version": "context-recall-qrel-v1",
+        "relevance_criterion": "Relevant iff the scored answer contains the expected memory fact or an equivalent paraphrase grounded in the cited source span.",
+        "primary_labeler": {
+          "identity": "agent-kit-benchmark-author",
+          "role": "benchmark-fixture-author",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "independent_reviewer": {
+          "identity": "agent-kit-scientific-reviewer",
+          "role": "independent-qrel-reviewer",
+          "timestamp": "2026-06-14T00:00:00.000Z"
+        },
+        "label_status": "accepted",
+        "provenance_version": 1
+      }
     }
   ]
 }
