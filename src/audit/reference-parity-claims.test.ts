@@ -231,4 +231,35 @@ describe('reference parity public claim gate', () => {
       'Reference parity public claim gate must cite docs/bench/reference-parity-matrix.md.',
     )
   })
+
+  it('requires pending changeset release notes to cite the gate before the version PR is generated', () => {
+    const root = tempRoot()
+    seedAiContractSurfaces(root)
+    seedReferenceParityProof(root)
+    seedPublicSurfaces(root)
+    write(
+      root,
+      '.changeset/host-lifecycle-claim.md',
+      [
+        '---',
+        '"@webpresso/agent-kit": minor',
+        '---',
+        '',
+        'Deliver agent-kit skills through exactly one channel per host.',
+      ].join('\n'),
+    )
+
+    const result = auditAiContracts(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: '.changeset/*.md',
+          message:
+            'Pending changeset release notes must cite docs/bench/reference-parity-matrix.md before Changesets generates CHANGELOG.md.',
+        }),
+      ]),
+    )
+  })
 })
