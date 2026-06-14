@@ -13,3 +13,8 @@ no `.claude-plugin/plugin.json`. `isAgentKitPackageRoot()` now rejects
 runtime-payload packages (by `package.json#name`), so resolution continues up
 to the real `@webpresso/agent-kit` package. Fixes every resolver caller, not
 just the doctor.
+
+Release claims remain gated by `docs/bench/reference-parity-matrix.md`,
+`src/__integration__/reference-parity-host-smoke.integration.test.ts`,
+`src/__integration__/reference-parity-tool-surface.integration.test.ts`, and
+`docs/bench/session-memory-methodology.md`.

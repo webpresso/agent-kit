@@ -15,3 +15,8 @@ invocations were removed so CI no longer clones the unpublished workspace. A
 bundle-independence guard scans `src/cli/bundle/**/*.ts`, `package.json`, and
 `pnpm-workspace.yaml` to prevent the workspace-only contract package from being
 reintroduced.
+
+Release claims remain gated by `docs/bench/reference-parity-matrix.md`,
+`src/__integration__/reference-parity-host-smoke.integration.test.ts`,
+`src/__integration__/reference-parity-tool-surface.integration.test.ts`, and
+`docs/bench/session-memory-methodology.md`.

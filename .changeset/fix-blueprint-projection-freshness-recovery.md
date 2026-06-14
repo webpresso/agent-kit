@@ -15,3 +15,8 @@ reingest sequence (prune → write-lock → ingest → record metadata), which n
 returns the ingest counts. This removes the duplication that let the copies
 diverge and makes `wp blueprint db build` a true recovery for a stale
 (`reingest_project`) projection.
+
+Release claims remain gated by `docs/bench/reference-parity-matrix.md`,
+`src/__integration__/reference-parity-host-smoke.integration.test.ts`,
+`src/__integration__/reference-parity-tool-surface.integration.test.ts`, and
+`docs/bench/session-memory-methodology.md`.
