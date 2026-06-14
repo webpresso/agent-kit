@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { DEBUG_QRELS_FILE, loadAllScenarios, loadDebugRecallFile, SCENARIO_FILES } from './_schema'
+import {
+  DEBUG_QRELS_FILE,
+  loadAllScenarios,
+  loadDebugRecallFile,
+  SCENARIO_FILES,
+  validateScenarioQrelProvenance,
+} from './_schema'
 
 describe('bench scenario schema', () => {
   it('validates all scenario fixtures and their compaction-oriented metadata', () => {
@@ -22,6 +28,32 @@ describe('bench scenario schema', () => {
       'size',
       2,
     )
+  })
+
+  it('requires auditable independent qrel ground-truth provenance for the fixed suite', () => {
+    const scenarios = loadAllScenarios()
+    const qrels = scenarios.flatMap((scenario) => scenario.qrels)
+
+    expect(qrels).toHaveLength(15)
+    for (const scenario of scenarios) {
+      expect(() => validateScenarioQrelProvenance(scenario)).not.toThrow()
+    }
+
+    for (const qrel of qrels) {
+      expect(qrel.provenance).toMatchObject({
+        scenario_id: expect.any(String),
+        qrel_id: qrel.qrel_id,
+        source_file: expect.stringMatching(/^scripts\/bench\/scenarios\//),
+        source_span: expect.stringMatching(/^prompt_turns\[\d+\]\.text$/),
+        query_id: expect.any(String),
+        relevance_criterion_version: 'context-recall-qrel-v1',
+        label_status: 'accepted',
+        provenance_version: 1,
+      })
+      expect(qrel.provenance.primary_labeler.identity).not.toBe(
+        qrel.provenance.independent_reviewer.identity,
+      )
+    }
   })
 
   it('keeps the standalone debug recall file in sync with the inline debug scenario qrels', () => {

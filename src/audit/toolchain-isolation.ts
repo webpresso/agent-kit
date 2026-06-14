@@ -136,6 +136,8 @@ function shouldSkipDirectory(name: string): boolean {
     '.wrangler',
     '.agent',
     '.agents',
+    '.gemini',
+    '.windsurf',
     '.omx',
     '.omc',
     '.codex',

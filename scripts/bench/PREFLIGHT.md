@@ -35,16 +35,26 @@ Expectations:
 
 Use this when you only have one Anthropic workspace.
 
-Required environment:
+Required environment, using an API key:
 
 ```bash
 export BENCH_WORKSPACE_MODE=single-workspace
 export ANTHROPIC_API_KEY=...
 ```
 
+Alternative local smoke auth, using an already logged-in Claude CLI:
+
+```bash
+export BENCH_WORKSPACE_MODE=single-workspace
+export BENCH_AUTH_MODE=claude-login
+# optional when the logged-in Claude home is not the current HOME
+export BENCH_CLAUDE_HOME=$HOME
+```
+
 Expectations:
 
 - runs must be tagged as `cache-disabled baseline`
+- `BENCH_AUTH_MODE=claude-login` is for local single-workspace smoke runs only; it reuses local Claude CLI auth instead of copying credentials into the benchmark run directory
 - results are directional only for cache-sensitive comparisons
 
 ## Why this matters

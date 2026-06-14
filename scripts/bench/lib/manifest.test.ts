@@ -307,6 +307,23 @@ describe('manifest capture and validation', () => {
       cacheDisclaimer:
         'cache-disabled baseline: single-workspace mode cannot claim clean cross-variant cache isolation.',
       keyEnvNames: ['ANTHROPIC_API_KEY'],
+      authMode: 'api-key',
+      adminVerification: 'not-applicable',
+    })
+  })
+
+  it('single-workspace mode can use local Claude CLI login without API key env', () => {
+    expect(
+      resolveWorkspaceConfig({
+        BENCH_WORKSPACE_MODE: 'single-workspace',
+        BENCH_AUTH_MODE: 'claude-login',
+      }),
+    ).toStrictEqual({
+      mode: 'single-workspace',
+      cacheDisclaimer:
+        'cache-disabled baseline: single-workspace mode uses local Claude CLI login and cannot claim clean cross-variant cache isolation.',
+      keyEnvNames: [],
+      authMode: 'claude-login',
       adminVerification: 'not-applicable',
     })
   })
@@ -321,6 +338,7 @@ describe('manifest capture and validation', () => {
       cacheDisclaimer:
         'operator-asserted workspace isolation: distinct Anthropic workspace IDs supplied, but not admin-verified.',
       keyEnvNames: ['ANTHROPIC_API_KEY_BASELINE', 'ANTHROPIC_API_KEY_V1', 'ANTHROPIC_API_KEY_V2'],
+      authMode: 'api-key',
       adminVerification: 'operator-asserted',
     })
   })
@@ -335,6 +353,7 @@ describe('manifest capture and validation', () => {
       mode: 'isolated',
       cacheDisclaimer: null,
       keyEnvNames: ['ANTHROPIC_API_KEY_BASELINE', 'ANTHROPIC_API_KEY_V1', 'ANTHROPIC_API_KEY_V2'],
+      authMode: 'api-key',
       adminVerification: 'required-for-proof',
     })
   })

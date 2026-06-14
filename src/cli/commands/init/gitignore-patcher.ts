@@ -88,6 +88,11 @@ export const GENERATED_PATHS_BLOCK: GitignoreBlock = {
     '.agent/.blueprints.lock',
     '.agent/.blueprints.snapshot.sql',
     '.agent/.tail-hint-history.jsonl',
+    '# Stryker writes these mutation-test artifacts beside consumer source trees.',
+    '.stryker-tmp/',
+    'reports/mutation/',
+    'reports/stryker-incremental.json',
+    'stryker-setup-*.js',
   ],
 }
 

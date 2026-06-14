@@ -35,7 +35,7 @@ Each run writes `scripts/bench/runs/<run-id>/report.md`.
 | `trials` | Number of executions per cell |
 | `status` | `ok`, `rate_limit`, or `spawn_failed` |
 | `cost_usd` | Aggregated USD cost for the cell |
-| `recall@5` | Recall score placeholder for scenario qrels |
+| `recall@5` | Recall score computed from scenario qrels |
 | `wall_sec` | Mean wall-clock time in seconds |
 
 The CLI also prints a compact JSON summary with `runId`, `dryRun`, `reportPath`,
@@ -56,7 +56,7 @@ verification gate targets a smoke cost below `$1` for that one-cell path.
 
 | Symptom | Likely cause | Fix |
 | ------- | ------------ | --- |
-| `Missing workspace API keys` | Required env vars are not set | Follow [`./PREFLIGHT.md`](./PREFLIGHT.md) exactly for your workspace mode |
+| `Missing workspace API keys` | Required API-key env vars are not set | Follow [`./PREFLIGHT.md`](./PREFLIGHT.md), or use `BENCH_AUTH_MODE=claude-login` for a local single-workspace smoke run with an already logged-in Claude CLI |
 | `Workspace mode unspecified` | `BENCH_WORKSPACE_MODE` is missing | Export `BENCH_WORKSPACE_MODE=isolated` or `BENCH_WORKSPACE_MODE=single-workspace` |
 | `rate_limit` in the report | Anthropic throttled the cell | Re-run later or reduce the number of cells/trials |
 | `spawn_failed` in the report | `claude` failed before a valid transcript was recorded | Verify local Claude CLI auth and plugin path |

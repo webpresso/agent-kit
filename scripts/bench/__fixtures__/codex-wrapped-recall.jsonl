@@ -1,0 +1,2 @@
+{"event_id":"codex-evt-1","turn_idx":0,"event":{"msg":{"type":"agent_message","message":"planning"}}}
+{"event_id":"codex-evt-2","turn_idx":1,"event":{"type":"agent_message","message":"queue-runner.ts before the final checkpoint write sync-state.ts retry regression test queue replay"}}

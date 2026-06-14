@@ -119,7 +119,7 @@ Record durable architecture decisions in the repo's ADR/planning surface if one 
 - Do not create or persist secret-bearing files like `.env`, `.env.local`, `.env.*.local`, `.dev.vars`, or `.dev.vars.example`.
 - Route secret-scoped commands through the repo contract (`wp config secrets` + `with-secrets -- <cmd>`).
 - Keep secret/path checks on shared audit surfaces when available.
-- Do not commit agent surfaces (`.agent/`, `.agents/`, `.cursor/`, `.omx/`, `.omc/`, `.codex/`, `.opencode/`).
+- Do not commit agent surfaces (`.agent/`, `.agents/`, `.gemini/`, `.cursor/`, `.windsurf/`, `.omx/`, `.omc/`, `.codex/`, `.opencode/`).
 - Do not hand-edit generated or derived surfaces; edit the catalog in agent-kit.
 - Do not push directly to `main`; use PRs and keep CI green.
 - Do not bypass hooks or verification gates.
@@ -163,6 +163,7 @@ Full details: `.agent/rules/package-conventions.md`
 ## Repository map
 
 - `@webpresso/agent-kit` — `.`
+- `@webpresso/cli-contract` — `../monorepo/packages/cli/contract`
 
 ## Tech stack
 
