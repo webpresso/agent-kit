@@ -30,8 +30,7 @@ plan, test, and keep a repo correct.
 
 Requires Node.js 24 or newer. No private registry setup is required.
 
-First-time machine? Install Vite+ so `vp` is on PATH first (for example
-`npm install -g vite-plus`).
+First-time machine? Install Vite+ so `vp` is on PATH first (`curl -fsSL https://viteplus.dev/install.sh | bash` on Linux/macOS; in CI use `voidzero-dev/setup-vp@v1`).
 
 ```bash
 vp install -g @webpresso/agent-kit && wp setup

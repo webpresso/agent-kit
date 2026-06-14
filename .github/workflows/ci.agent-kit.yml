@@ -238,10 +238,10 @@ jobs:
 
           node -e "const fs=require('fs'); const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); pkg.devDependencies={...(pkg.devDependencies||{}), '@webpresso/agent-kit': '^' + process.argv[1]}; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');" "$PACKAGE_VERSION"
 
-          # Install the checked-out package globally so the smoke exercises the
-          # public consumer execution contract (`wp` on PATH) against the
-          # candidate source, not the last published package.
-          npm install -g ../..
+          # Install the checked-out package globally through Vite+ so the smoke
+          # exercises the public consumer execution contract (`wp` on PATH)
+          # against the candidate source, not the last published package.
+          pnpm exec vp install -g ../..
 
           # Run wp setup --yes to avoid TTY prompts. Capture stdout + stderr.
           # Some delegated package-manager/plugin installers still emit ANSI even

@@ -15,9 +15,8 @@
  *   - `--dry-run` (no writes anywhere),
  *   - `WP_SKIP_AUTO_INSTALL=1` (the documented opt-out, surfaced in the update
  *     banner),
- *   - the running binary resolves into a webpresso source/git clone — a global
- *     install would clobber the developer's working clone with a published
- *     tarball (`detectGitInstall`),
+ *   - `WP_FORCE_SOURCE=1` (explicit source/JIT development mode inside the
+ *     agent-kit checkout),
  *   - `vp` is not on PATH (nothing to install with).
  *
  * A failed refresh is reported but NEVER fails consumer setup: keeping the
@@ -34,11 +33,7 @@ import {
   resolveAgentKitPackageRoot,
 } from '#cli/commands/init/package-root'
 import { makeNoopSpinnerFactory, type SpinnerFactory } from '#cli/commands/init/scaffolders/spinner'
-import {
-  buildVpGlobalInstallCommand,
-  detectGitInstall,
-  PUBLIC_PACKAGE_NAME,
-} from '#cli/auto-update/detect-pm.js'
+import { buildVpGlobalInstallCommand, PUBLIC_PACKAGE_NAME } from '#cli/auto-update/detect-pm.js'
 import {
   formatRootLauncherContractFailure,
   expectedRootWpBinRelativePath,
@@ -53,10 +48,8 @@ export interface EnsureAgentKitGlobalInput {
   spawn?: typeof spawnSync
   /** DI seam for environment-backed opt-out. */
   env?: NodeJS.ProcessEnv
-  /** The running binary path (defaults to process.argv[1]). Used for source-clone detection. */
+  /** The running binary path (defaults to process.argv[1]). Used for package-root repair. */
   argv1?: string
-  /** DI seam for source/git-clone detection. */
-  detectGit?: (argv1: string) => string | null
   /** DI seam for tests/global installs; defaults to the package root owning argv1/import. */
   packageRoot?: string
   /** DI seam for staging-root fallback when argv1 cannot be mapped back to the owning package. */
@@ -69,7 +62,7 @@ export type EnsureAgentKitGlobalResult =
   | { kind: 'agent-kit-global-updated'; command: readonly string[]; repairedLauncher?: string }
   | { kind: 'agent-kit-global-skipped-dry-run' }
   | { kind: 'agent-kit-global-skipped-opt-out' }
-  | { kind: 'agent-kit-global-skipped-source-clone'; repoRoot: string }
+  | { kind: 'agent-kit-global-skipped-source-mode' }
   | { kind: 'agent-kit-global-skipped-no-vp'; hint: string }
   | { kind: 'agent-kit-global-failed'; exitCode: number; command: readonly string[] }
   | { kind: 'agent-kit-global-repair-failed'; reason: string; command: readonly string[] }
@@ -113,13 +106,11 @@ export function ensureAgentKitGlobal(input: EnsureAgentKitGlobalInput): EnsureAg
     return { kind: 'agent-kit-global-skipped-opt-out' }
   }
 
-  const argv1 = input.argv1 ?? process.argv[1] ?? ''
-  const detectGit = input.detectGit ?? detectGitInstall
-  const sourceCloneRoot = argv1.length > 0 ? detectGit(argv1) : null
-  if (sourceCloneRoot !== null) {
-    return { kind: 'agent-kit-global-skipped-source-clone', repoRoot: sourceCloneRoot }
+  if (env.WP_FORCE_SOURCE === '1') {
+    return { kind: 'agent-kit-global-skipped-source-mode' }
   }
 
+  const argv1 = input.argv1 ?? process.argv[1] ?? ''
   const spawn = input.spawn ?? spawnSync
   const spinner = (input.spinnerFactory ?? makeNoopSpinnerFactory())('agent-kit-global')
 

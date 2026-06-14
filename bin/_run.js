@@ -21,8 +21,6 @@ export const BIN_ENTRYPOINTS = {
   'wp-test-quality-check': 'src/hooks/test-quality-check.ts',
   'wp-sessionstart-routing': 'src/hooks/sessionstart/index.ts',
   'wp-precompact-snapshot': 'src/hooks/precompact/index.ts',
-  'wp-check-dev-link': 'src/hooks/check-dev-link/index.ts',
-  'wp-restore-dev-links': 'src/dev/restore-dev-links/index.ts',
   'docs-check-internal-links': 'src/config/docs-lint/cli/check-internal-links.ts',
   'docs-check-refs': 'src/config/docs-lint/cli/check-refs.ts',
   'docs-check-stale': 'src/config/docs-lint/cli/check-stale.ts',
@@ -38,7 +36,6 @@ const LATENCY_SENSITIVE_BUILT_BINS = new Set([
   'wp-test-quality-check',
   'wp-sessionstart-routing',
   'wp-precompact-snapshot',
-  'wp-check-dev-link',
 ])
 
 function resolvePackageRoot() {

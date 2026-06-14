@@ -61,7 +61,6 @@ function installFakeAgentKitBins(repoRoot: string): void {
   mkdirSync(binDir, { recursive: true })
   for (const name of [
     'wp-sessionstart-routing',
-    'wp-check-dev-link',
     'wp-pretool-guard',
     'wp-post-tool',
     'wp-guard-switch',
@@ -207,7 +206,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       // Default-on base-kit: minimum bootstrap artifacts should exist even when
       // --with is omitted.
       expect(existsSync(path.join(repo, '.actrc'))).toBe(true)
-      expect(existsSync(path.join(repo, 'Brewfile'))).toBe(true)
+      expect(existsSync(path.join(repo, 'Brewfile'))).toBe(false)
       expect(existsSync(path.join(repo, '.node-version'))).toBe(true)
       expect(existsSync(path.join(repo, '.nvmrc'))).toBe(true)
       expect(existsSync(path.join(repo, '.husky', 'pre-commit'))).toBe(true)
@@ -253,7 +252,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(existsSync(path.join(repo, '.husky', 'pre-commit'))).toBe(true)
       expect(existsSync(path.join(repo, '.husky', 'commit-msg'))).toBe(true)
       expect(existsSync(path.join(repo, '.actrc'))).toBe(true)
-      expect(existsSync(path.join(repo, 'Brewfile'))).toBe(true)
+      expect(existsSync(path.join(repo, 'Brewfile'))).toBe(false)
       expect(existsSync(path.join(repo, '.node-version'))).toBe(true)
       expect(existsSync(path.join(repo, '.nvmrc'))).toBe(true)
       expect(existsSync(path.join(repo, 'test', '.gitkeep'))).toBe(true)

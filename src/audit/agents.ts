@@ -381,18 +381,7 @@ function checkAgentKitDevDependency(
   const devDependencies = (packageJson.devDependencies ?? {}) as Record<string, unknown>
   const packageName = typeof packageJson.name === 'string' ? packageJson.name : ''
   const version = devDependencies['@webpresso/agent-kit']
-  const scripts = (packageJson.scripts ?? {}) as Record<string, unknown>
-  const setupAgent = typeof scripts['setup:agent'] === 'string' ? scripts['setup:agent'] : ''
-  const postinstall = typeof scripts.postinstall === 'string' ? scripts.postinstall : ''
-
-  const usesGlobalWpConsumerMode =
-    setupAgent === 'wp setup' && postinstall.includes('wp-restore-dev-links')
-
   if (packageName === '@webpresso/agent-kit') {
-    return
-  }
-
-  if (usesGlobalWpConsumerMode) {
     return
   }
 
@@ -400,7 +389,7 @@ function checkAgentKitDevDependency(
     violations.push({
       file: 'package.json',
       message:
-        'Missing devDependency `@webpresso/agent-kit`. Run `vp install -D @webpresso/agent-kit` then `vp install`.',
+        'Missing devDependency `@webpresso/agent-kit`. Pin a published semver range, run `vp install`, then use global `wp setup`.',
     })
   }
 }

@@ -256,43 +256,49 @@ export function discoverWorkspacePackages(
 }
 
 /**
- * Soft warning when the running CLI does not resolve to the consumer's local
- * `webpresso` install. Catches the global-install / pnpm-link / npx
- * case where `wp setup` succeeds against the executing CLI's catalog but
- * produces a non-reproducible `.agents/skills/` tree (symlinks point outside
- * the project tree; lockfile irrelevant). Repo-local symlink/dev-link installs
- * still count as local via realpath comparison. Self-mode short-circuits when
- * the consumer is `@webpresso/agent-kit` (running setup from agent-kit's own
- * checkout).
- *
- * Non-blocking: prints to stderr and returns. The bc88-class failure
- * (catalog truly missing) is caught by the catch-wrap in `runInit` via
- * `loadContent`'s throw — this is the orthogonal silent-non-determinism
- * class that the catch-wrap doesn't surface.
+ * Soft warning for the published-consumer install contract. Consumers run the
+ * global Vite+ `wp` binary and pin `@webpresso/agent-kit` to a published semver
+ * range in package.json. Source/JIT mode is reserved for this repo via
+ * `WP_FORCE_SOURCE=1`.
  */
 export function warnIfNonLocalCli(repoRoot: string, cliUrl: string = import.meta.url): void {
   const ourPkg = readPackageJson(repoRoot).info
   if (ourPkg?.name !== undefined && AGENT_KIT_PACKAGE_NAMES.has(ourPkg.name)) return
+
   let cliPath: string
   try {
     cliPath = fileURLToPath(cliUrl)
   } catch {
     return
   }
-  if (isLocalAgentKitCli(repoRoot, cliPath)) return
 
-  const pinnedDepName =
-    (ourPkg?.dependencies['@webpresso/agent-kit'] ??
-      ourPkg?.devDependencies['@webpresso/agent-kit']) !== undefined
-      ? '@webpresso/agent-kit'
-      : null
+  const pinnedVersion =
+    ourPkg?.dependencies['@webpresso/agent-kit'] ??
+    ourPkg?.devDependencies['@webpresso/agent-kit'] ??
+    null
 
-  console.error(
-    `warning: wp running from a non-local install (${cliPath}). ` +
-      (pinnedDepName !== null
-        ? `Global \`wp\` must satisfy this repo's pinned \`${pinnedDepName}\` version range before rerunning \`wp setup\`.`
-        : 'Pin `@webpresso/agent-kit` in package.json with a published semver range so global `wp` can be validated against it.'),
-  )
+  if (isLocalAgentKitCli(repoRoot, cliPath)) {
+    console.error(
+      `warning: wp is running from this repo's node_modules (${cliPath}). ` +
+        'Consumers must use the global Vite+ install: `vp install -g @webpresso/agent-kit`, then run `wp setup`.',
+    )
+    return
+  }
+
+  if (typeof pinnedVersion !== 'string' || !isPublishedAgentKitRange(pinnedVersion)) {
+    console.error(
+      'warning: missing or invalid @webpresso/agent-kit dependency pin. ' +
+        'Consumers must pin a published semver range in package.json, run `vp install`, then use global `wp setup`.',
+    )
+  }
+}
+
+function isPublishedAgentKitRange(value: string): boolean {
+  const trimmed = value.trim()
+  if (trimmed.length === 0) return false
+  if (trimmed === 'latest') return false
+  if (/^(workspace|file|link):/u.test(trimmed)) return false
+  return /^(?:[~^]?\d+\.\d+\.\d+|[><=]|\*)/u.test(trimmed)
 }
 
 /**

@@ -433,7 +433,6 @@ describe('bin launcher', () => {
       'wp-sessionstart-routing',
       'wp-precompact-snapshot',
       'wp-test-quality-check',
-      'wp-check-dev-link',
     ])
     expect(getWpCommandLane(['mcp'])).toBe(RUNTIME_LANE)
     for (const command of PHASE2_RUNTIME_WP_COMMANDS) {
@@ -533,27 +532,6 @@ describe('bin launcher', () => {
         runtimeManager: null,
       }),
     ).toThrow(/pins Node 24\.16\.0/)
-  })
-
-  it('falls back to bun + source in a source checkout when dist is absent', () => {
-    expect(
-      buildLaunchPlan({
-        binName: 'wp-check-dev-link',
-        repoRoot: '/repo',
-        forwardedArgs: [],
-        builtExists: false,
-        sourceExists: true,
-        nodeExecPath: '/usr/bin/node',
-        currentNodeVersion: 'v24.16.0',
-        pinnedNodeVersion: '24.16.0',
-        runtimeManager: null,
-      }),
-    ).toEqual({
-      mode: 'source',
-      runtime: 'bun',
-      args: ['/repo/src/hooks/check-dev-link/index.ts'],
-      entrypoint: '/repo/src/hooks/check-dev-link/index.ts',
-    })
   })
 
   it('throws a repair-oriented error when neither dist nor source exists', () => {

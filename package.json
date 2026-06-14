@@ -550,7 +550,6 @@
     "stage:plugin-runtime": "bun scripts/stage-plugin-runtime-artifacts.ts",
     "postbuild": "vp run generate-skills && vp run sync-doc-templates",
     "chmod-bins": "bun scripts/chmod-bins.ts",
-    "dev:link": "bun scripts/link-edge-local.ts",
     "prepack": "bun src/build/package-manifest.ts prepare",
     "postpack": "bun src/build/package-manifest.ts restore",
     "generate-skills": "bun src/build/generate-skills-dir.ts",

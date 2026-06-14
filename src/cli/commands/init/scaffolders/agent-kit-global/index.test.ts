@@ -39,8 +39,7 @@ describe('ensureAgentKitGlobal', () => {
       options: { overwrite: false, dryRun: true },
       spawn,
       env: {},
-      argv1: '/usr/local/bin/wp',
-      detectGit: () => null,
+      argv1: '/Users/me/.vite-plus/bin/wp',
     })
     expect(result).toStrictEqual({ kind: 'agent-kit-global-skipped-dry-run' })
     expect(calls).toStrictEqual([])
@@ -52,26 +51,21 @@ describe('ensureAgentKitGlobal', () => {
       options: WRITE_OPTIONS,
       spawn,
       env: { WP_SKIP_AUTO_INSTALL: '1' },
-      argv1: '/usr/local/bin/wp',
-      detectGit: () => null,
+      argv1: '/Users/me/.vite-plus/bin/wp',
     })
     expect(result).toStrictEqual({ kind: 'agent-kit-global-skipped-opt-out' })
     expect(calls).toStrictEqual([])
   })
 
-  it('skips on a source/git clone so a global install never clobbers a dev checkout', () => {
+  it('skips in explicit source mode so a global install never clobbers source/JIT development', () => {
     const { spawn, calls } = makeSpawn()
     const result = ensureAgentKitGlobal({
       options: WRITE_OPTIONS,
       spawn,
-      env: {},
+      env: { WP_FORCE_SOURCE: '1' },
       argv1: '/Users/dev/repos/webpresso/agent-kit/bin/wp',
-      detectGit: () => '/Users/dev/repos/webpresso/agent-kit',
     })
-    expect(result).toStrictEqual({
-      kind: 'agent-kit-global-skipped-source-clone',
-      repoRoot: '/Users/dev/repos/webpresso/agent-kit',
-    })
+    expect(result).toStrictEqual({ kind: 'agent-kit-global-skipped-source-mode' })
     expect(calls).toStrictEqual([])
   })
 
@@ -81,8 +75,7 @@ describe('ensureAgentKitGlobal', () => {
       options: WRITE_OPTIONS,
       spawn,
       env: {},
-      argv1: '/usr/local/bin/wp',
-      detectGit: () => null,
+      argv1: '/Users/me/.vite-plus/bin/wp',
     })
     expect(result.kind).toBe('agent-kit-global-skipped-no-vp')
     // Only the probe ran; no install attempted.
@@ -95,8 +88,7 @@ describe('ensureAgentKitGlobal', () => {
       options: WRITE_OPTIONS,
       spawn,
       env: {},
-      argv1: '/usr/local/bin/wp',
-      detectGit: () => null,
+      argv1: '/Users/me/.vite-plus/bin/wp',
       resolvePackageRootForStaging: () => null,
     })
     expect(result).toStrictEqual({
@@ -128,7 +120,6 @@ describe('ensureAgentKitGlobal', () => {
         spawn,
         env: {},
         argv1: join(root, 'bin', 'wp'),
-        detectGit: () => null,
         packageRoot: root,
       })
 
@@ -161,8 +152,7 @@ describe('ensureAgentKitGlobal', () => {
         options: WRITE_OPTIONS,
         spawn,
         env: {},
-        argv1: '/usr/local/bin/wp',
-        detectGit: () => null,
+        argv1: '/Users/me/.vite-plus/bin/wp',
         resolvePackageRootForStaging: () => root,
       })
 
@@ -193,8 +183,7 @@ describe('ensureAgentKitGlobal', () => {
         options: WRITE_OPTIONS,
         spawn,
         env: {},
-        argv1: '/usr/local/bin/wp',
-        detectGit: () => null,
+        argv1: '/Users/me/.vite-plus/bin/wp',
         resolvePackageRootForStaging: () => root,
       })
 
@@ -214,8 +203,7 @@ describe('ensureAgentKitGlobal', () => {
       options: WRITE_OPTIONS,
       spawn,
       env: {},
-      argv1: '/usr/local/bin/wp',
-      detectGit: () => null,
+      argv1: '/Users/me/.vite-plus/bin/wp',
     })
     expect(result).toStrictEqual({
       kind: 'agent-kit-global-failed',
