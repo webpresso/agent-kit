@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { escapeRegExp } from '#utils/string'
+
 type PackageImports = Record<string, string>
 
 type PackageManifest = {
@@ -17,9 +19,6 @@ const moduleDir = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(moduleDir, '../..')
 const ROOT_PACKAGE_JSON = resolve(REPO_ROOT, 'package.json')
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
-}
 
 function replaceWildcards(value: string): string {
   let captureIndex = 0

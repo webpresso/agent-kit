@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { mkdirSync } from 'node:fs'
-import { dirname } from 'node:path'
+import { mkdirSync, realpathSync } from 'node:fs'
+import { dirname, sep } from 'node:path'
 
 import { SessionMemoryStore } from '#session-memory/store.js'
 import type { SearchHit } from '#session-memory/types.js'
@@ -22,6 +22,7 @@ interface RunSessionCommandOptions {
   readonly command: string
   readonly label: string
   readonly cwd: string
+  readonly projectRoot: string
   readonly timeoutMs: number
   readonly dbPath?: string
 }
@@ -45,6 +46,84 @@ function summarizeOutput(output: string, timedOut: boolean): string {
   return normalized.length > 2_000 ? `${normalized.slice(0, 2_000)}…` : normalized
 }
 
+function isPathInside(child: string, parent: string): boolean {
+  if (child === parent) return true
+  const parentPrefix = parent.endsWith(sep) ? parent : `${parent}${sep}`
+  return child.startsWith(parentPrefix)
+}
+
+function isEscaped(command: string, index: number): boolean {
+  let backslashes = 0
+  for (let i = index - 1; i >= 0 && command[i] === '\\'; i -= 1) {
+    backslashes += 1
+  }
+  return backslashes % 2 === 1
+}
+
+function disallowedShellSyntax(command: string): string | null {
+  let inSingleQuote = false
+  let inDoubleQuote = false
+
+  for (let index = 0; index < command.length; index += 1) {
+    const char = command[index]
+    if (!char) continue
+
+    if (inSingleQuote) {
+      if (char === "'") inSingleQuote = false
+      continue
+    }
+
+    if (inDoubleQuote) {
+      if (char === '"' && !isEscaped(command, index)) inDoubleQuote = false
+      continue
+    }
+
+    if (char === "'") {
+      inSingleQuote = true
+      continue
+    }
+    if (char === '"' && !isEscaped(command, index)) {
+      inDoubleQuote = true
+      continue
+    }
+    if (char === '\\') {
+      index += 1
+      continue
+    }
+
+    if (char === '$' && (command[index + 1] === '(' || command[index + 1] === '{')) {
+      return command.slice(index, index + 2)
+    }
+    if (char === '!' && /\S/u.test(command[index + 1] ?? '')) return char
+    if (char === '\n' || char === '\r') return 'newline'
+    if (
+      char === ';' ||
+      char === '&' ||
+      char === '|' ||
+      char === '`' ||
+      char === '>' ||
+      char === '<'
+    ) {
+      return char
+    }
+  }
+
+  return null
+}
+
+export function validateCommand(command: string, cwd: string, projectRoot: string): void {
+  const realProjectRoot = realpathSync(projectRoot)
+  const realCwd = realpathSync(cwd)
+  if (!isPathInside(realCwd, realProjectRoot)) {
+    throw new Error(`cwd ${cwd} resolves outside trusted project root ${projectRoot}`)
+  }
+
+  const syntax = disallowedShellSyntax(command)
+  if (syntax) {
+    throw new Error(`disallowed shell syntax ${JSON.stringify(syntax)} in session command`)
+  }
+}
+
 function commandChunkId(label: string, command: string, output: string): string {
   return createHash('sha256')
     .update(label)
@@ -60,9 +139,11 @@ export async function runSessionCommand({
   command,
   label,
   cwd,
+  projectRoot,
   timeoutMs,
   dbPath = defaultIndexDbPath(cwd),
 }: RunSessionCommandOptions): Promise<SessionCommandResult> {
+  validateCommand(command, cwd, projectRoot)
   mkdirSync(dirname(dbPath), { recursive: true })
   const captured: Buffer[] = []
   let totalOutputBytes = 0

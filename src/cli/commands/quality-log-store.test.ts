@@ -1,10 +1,28 @@
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync } from 'node:fs'
+import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const stateRoot = vi.hoisted(() => ({ path: '' }))
+const fsMocks = vi.hoisted(() => ({
+  createWriteStream: vi.fn(),
+  openSync: vi.fn(),
+  actualCreateWriteStream: undefined as undefined | typeof import('node:fs')['createWriteStream'],
+  actualOpenSync: undefined as undefined | typeof import('node:fs')['openSync'],
+}))
+
+vi.mock('node:fs', async () => {
+  const actual = await vi.importActual<typeof import('node:fs')>('node:fs')
+  fsMocks.actualCreateWriteStream = actual.createWriteStream
+  fsMocks.actualOpenSync = actual.openSync
+  return {
+    ...actual,
+    createWriteStream: fsMocks.createWriteStream,
+    openSync: fsMocks.openSync,
+  }
+})
 
 vi.mock('#paths/state-root.js', () => ({
   getSurfacePath: vi.fn((name: string, _scope: 'repo' | 'worktree' | 'user') =>
@@ -17,6 +35,13 @@ import { createCliLogSink, readCliLogEntries, readCliLogEntry } from './quality-
 describe('quality log store', () => {
   beforeEach(() => {
     stateRoot.path = mkdtempSync(join(tmpdir(), 'wp-cli-logs-'))
+    if (!fsMocks.actualCreateWriteStream || !fsMocks.actualOpenSync) {
+      throw new Error('node:fs mock was not initialized')
+    }
+    fsMocks.createWriteStream.mockReset()
+    fsMocks.openSync.mockReset()
+    fsMocks.createWriteStream.mockImplementation(fsMocks.actualCreateWriteStream)
+    fsMocks.openSync.mockImplementation(fsMocks.actualOpenSync)
   })
 
   afterEach(() => {
@@ -41,6 +66,19 @@ describe('quality log store', () => {
     const sink = createCliLogSink('audit')
 
     expect(existsSync(sink.absoluteLogPath)).toBe(true)
+  })
+
+  it('observes stream errors before finalize is called', async () => {
+    const stream = new FakeWriteStream()
+    fsMocks.openSync.mockReturnValue(123)
+    fsMocks.createWriteStream.mockReturnValue(stream)
+
+    const sink = createCliLogSink('lint')
+    const error = new Error('write fd failed')
+
+    expect(stream.listenerCount('error')).toBe(1)
+    expect(() => stream.emit('error', error)).not.toThrow()
+    await expect(sink.finalize({ exitCode: 1 })).rejects.toThrow(error)
   })
 
   it('does not remove another active sink before it finalizes', async () => {
@@ -168,3 +206,14 @@ describe('quality log store', () => {
     expect(() => readFileSync(oldestPath, 'utf8')).toThrow()
   })
 })
+
+class FakeWriteStream extends EventEmitter {
+  write(): boolean {
+    return true
+  }
+
+  end(callback?: () => void): this {
+    callback?.()
+    return this
+  }
+}

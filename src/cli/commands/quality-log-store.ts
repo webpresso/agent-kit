@@ -71,6 +71,12 @@ export function createCliLogSink(command: CliLogCommandName, cwd = process.cwd()
     flags: 'a',
     autoClose: true,
   })
+  let streamError: Error | undefined
+  let rejectPendingFinalize: ((error: Error) => void) | undefined
+  stream.on('error', (error: Error) => {
+    streamError = error
+    rejectPendingFinalize?.(error)
+  })
 
   return {
     command,
@@ -82,8 +88,19 @@ export function createCliLogSink(command: CliLogCommandName, cwd = process.cwd()
     },
     async finalize(metadata): Promise<CliLogEntry> {
       await new Promise<void>((resolve, reject) => {
-        stream.on('error', reject)
-        stream.end(() => resolve())
+        if (streamError) {
+          reject(streamError)
+          return
+        }
+        rejectPendingFinalize = reject
+        stream.end(() => {
+          rejectPendingFinalize = undefined
+          if (streamError) {
+            reject(streamError)
+            return
+          }
+          resolve()
+        })
       })
       const entry: CliLogEntry = {
         id,

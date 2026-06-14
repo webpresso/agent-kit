@@ -4,6 +4,8 @@ import type { AgentTool, ChunkMetadata, SearchMatch, ToolContext, ToolResult } f
 
 import { isValidRelativePath } from './shared/validate-path.js'
 
+const MAX_REGEX_PATTERN_LENGTH = 4096
+
 async function performSemanticSearch(
   pattern: string,
   maxResults: number,
@@ -183,7 +185,16 @@ export const searchFilesTool: AgentTool = {
       return performSemanticSearch(pattern, maxResults, context)
     }
 
+    if (pattern.length > MAX_REGEX_PATTERN_LENGTH) {
+      return Promise.resolve({
+        success: false,
+        output: `Search pattern is too long: maximum ${MAX_REGEX_PATTERN_LENGTH} characters`,
+        error: `The search pattern must be ${MAX_REGEX_PATTERN_LENGTH} characters or fewer`,
+      })
+    }
+
     try {
+      // Compile only to validate regex syntax; matching is delegated to storage.searchFiles.
       const regex = new RegExp(pattern, caseSensitive ? '' : 'i')
       void regex
     } catch {

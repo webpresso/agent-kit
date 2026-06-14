@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { escapeRegExp } from '#utils/string'
+
 export interface PackageJsonLike {
   readonly scripts?: Record<string, unknown>
   readonly dependencies?: Record<string, unknown>
@@ -67,8 +69,4 @@ function stripLeadingEnvAssignments(input: string): string {
     if (next === remaining) return remaining.trim()
     remaining = next
   }
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
 }

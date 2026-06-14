@@ -4,7 +4,16 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import sessionFetchAndIndexTool, { handleSessionFetchAndIndex } from './session-fetch-and-index.js'
+import { isInternalHost } from '../../session-memory/ip-guard.js'
 import { SessionMemoryStore } from '../../session-memory/store.js'
+
+vi.mock('../../session-memory/ip-guard.js', () => ({
+  isInternalHost: vi.fn(async (hostname: string) =>
+    ['169.254.169.254', '127.0.0.1', 'localhost', '192.168.1.1'].includes(hostname),
+  ),
+}))
+
+const isInternalHostMock = vi.mocked(isInternalHost)
 
 const dirs: string[] = []
 
@@ -33,10 +42,56 @@ function payload(result: Awaited<ReturnType<typeof sessionFetchAndIndexTool.hand
 }
 
 afterEach(() => {
+  isInternalHostMock.mockClear()
   while (dirs.length > 0) rmSync(dirs.pop()!, { recursive: true, force: true })
 })
 
 describe('wp_session_fetch_and_index tool', () => {
+  it('returns a meaningful blocked-host warning for internal metadata URLs', async () => {
+    const fetchImpl = vi.fn(async () => response('metadata', 'text/plain'))
+    const result = await handleSessionFetchAndIndex(
+      { dbPath: tmpDbPath(), url: 'http://169.254.169.254/latest/meta-data/' },
+      undefined,
+      { fetchImpl },
+    )
+    const data = payload(result)
+
+    expect(result.isError).toBe(true)
+    expect(data.passed).toBe(false)
+    expect(data.counts).toEqual({ indexedChunks: 0, warningCount: 1 })
+    expect(data.warnings[0]).toMatch(/blocked|internal/i)
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it.each(['http://127.0.0.1/', 'http://localhost/', 'http://192.168.1.1/'])(
+    'returns an error for internal URL %s',
+    async (url) => {
+      const result = await handleSessionFetchAndIndex(
+        { dbPath: tmpDbPath(), url },
+        undefined,
+        { fetchImpl: vi.fn(async () => response('blocked', 'text/plain')) },
+      )
+      const data = payload(result)
+
+      expect(result.isError).toBe(true)
+      expect(data.passed).toBe(false)
+      expect(data.warnings[0]).toMatch(/blocked|internal/i)
+    },
+  )
+
+  it('still indexes allowed external URLs through the tool', async () => {
+    const result = await handleSessionFetchAndIndex(
+      { dbPath: tmpDbPath(), url: 'https://example.com/docs' },
+      undefined,
+      { fetchImpl: vi.fn(async () => response('external docs', 'text/plain')) },
+    )
+    const data = payload(result)
+
+    expect(result.isError).not.toBe(true)
+    expect(data.passed).toBe(true)
+    expect(data.counts.indexedChunks).toBe(1)
+  })
+
   it('exposes a first-class bounded descriptor', () => {
     expect(sessionFetchAndIndexTool.name).toBe('wp_session_fetch_and_index')
     expect(typeof sessionFetchAndIndexTool.handler).toBe('function')

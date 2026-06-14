@@ -5,7 +5,6 @@ import { createHash } from 'node:crypto'
 import {
   existsSync,
   mkdtempSync,
-  openSync,
   readFileSync,
   readdirSync,
   renameSync,
@@ -187,7 +186,7 @@ export async function runCompile(options: {
 
   // Atomic lock via O_EXCL — fails if another compile is running
   try {
-    writeFileSync(openSync(lockPath, 'ax'), String(process.pid))
+    writeFileSync(lockPath, String(process.pid), { flag: 'ax' })
   } catch {
     return {
       ok: false,

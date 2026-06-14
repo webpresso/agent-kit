@@ -1,5 +1,6 @@
 import type { ToolInput, ValidationResult } from '#hooks/shared/types'
 
+import { escapeRegex } from '#utils/string'
 import { readConfig } from '#cli/commands/init/config'
 import {
   getLegalLifecycleTargets,
@@ -148,9 +149,6 @@ export const BLOCKED_RAW_NODE_MODULE_TOOLS: BlockedRawNodeModulesToolSpec[] = [
   { modulePath: 'oxlint/bin/oxlint', category: 'lint', suggestion: LINT_HINT },
 ]
 
-function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
 
 function buildToolPattern(prefix: string, tool: string): RegExp {
   const escaped = prefix ? `${escapeRegex(prefix)} ${escapeRegex(tool)}` : escapeRegex(tool)

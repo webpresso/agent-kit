@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -9,6 +9,7 @@ import sessionSearchTool from './session-search.js'
 
 let tmpDir: string
 let previousIndexDb: string | undefined
+let previousClaudeProjectDir: string | undefined
 
 function payload(result: Awaited<ReturnType<typeof sessionBatchExecuteTool.handler>>) {
   return result.structuredContent as {
@@ -23,12 +24,16 @@ function payload(result: Awaited<ReturnType<typeof sessionBatchExecuteTool.handl
 beforeEach(() => {
   tmpDir = mkdtempSync(join(tmpdir(), 'wp-session-batch-test-'))
   previousIndexDb = process.env.WP_SESSION_MEMORY_INDEX_DB
+  previousClaudeProjectDir = process.env.CLAUDE_PROJECT_DIR
   process.env.WP_SESSION_MEMORY_INDEX_DB = join(tmpDir, 'index.sqlite')
+  process.env.CLAUDE_PROJECT_DIR = tmpDir
 })
 
 afterEach(() => {
   if (previousIndexDb === undefined) delete process.env.WP_SESSION_MEMORY_INDEX_DB
   else process.env.WP_SESSION_MEMORY_INDEX_DB = previousIndexDb
+  if (previousClaudeProjectDir === undefined) delete process.env.CLAUDE_PROJECT_DIR
+  else process.env.CLAUDE_PROJECT_DIR = previousClaudeProjectDir
   rmSync(tmpDir, { recursive: true, force: true })
 })
 
@@ -71,13 +76,57 @@ describe('wp_session_batch_execute', () => {
 
   it('surfaces failures when any command fails', async () => {
     const result = await sessionBatchExecuteTool.handler?.({
-      commands: [{ label: 'cmd', command: 'exit 42' }],
+      commands: [
+        {
+          label: 'cmd',
+          command: `${JSON.stringify(process.execPath)} -e "process.exit(42)"`,
+        },
+      ],
       concurrency: 1,
       execute: true,
       cwd: tmpDir,
     })
     expect(result.isError).toBe(true)
-    expect(payload(result)).toMatchObject({ passed: false })
+    expect(payload(result)).toMatchObject({
+      passed: false,
+      details: { results: [{ label: 'cmd', exitCode: 42 }] },
+    })
+  })
+
+  it('rejects batch containing metacharacter commands', async () => {
+    const markerPath = join(tmpDir, 'pwned-by-batch-injection')
+    const result = await sessionBatchExecuteTool.handler?.({
+      commands: [
+        {
+          label: 'malicious',
+          command: `printf "%s\n" "safe"; touch ${JSON.stringify(markerPath)}`,
+        },
+      ],
+      concurrency: 1,
+      execute: true,
+      cwd: tmpDir,
+    })
+
+    expect(result.isError).toBe(true)
+    expect(payload(result)).toMatchObject({ passed: false, details: { results: [] } })
+    expect(existsSync(markerPath)).toBe(false)
+  })
+
+  it('rejects batch with cwd outside the trusted project root', async () => {
+    const outsideRoot = mkdtempSync(join(tmpdir(), 'wp-session-batch-outside-'))
+    try {
+      const result = await sessionBatchExecuteTool.handler?.({
+        commands: [{ label: 'cmd', command: 'echo should-not-run' }],
+        concurrency: 1,
+        execute: true,
+        cwd: outsideRoot,
+      })
+
+      expect(result.isError).toBe(true)
+      expect(payload(result)).toMatchObject({ passed: false, details: { results: [] } })
+    } finally {
+      rmSync(outsideRoot, { recursive: true, force: true })
+    }
   })
 
   it('rejects duplicate labels in one batch', async () => {

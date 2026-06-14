@@ -125,6 +125,8 @@ function warningFor(error: FetchIndexError): string {
   switch (error.code) {
     case 'invalid_url':
       return 'url must be absolute http(s)'
+    case 'blocked_host':
+      return 'url host is blocked because it is or resolves to an internal address'
     case 'http_error':
       return error.status === undefined
         ? 'fetch returned an HTTP error'
@@ -175,7 +177,9 @@ export async function handleSessionFetchAndIndex(
     const summary =
       fetchError.code === 'invalid_url'
         ? 'session fetch/index rejected invalid URL'
-        : fetchError.code === 'timed_out'
+        : fetchError.code === 'blocked_host'
+          ? 'session fetch/index rejected blocked host'
+          : fetchError.code === 'timed_out'
           ? 'session fetch/index timed out'
           : fetchError.code === 'aborted'
             ? 'session fetch/index aborted'

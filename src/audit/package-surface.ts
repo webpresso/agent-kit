@@ -15,6 +15,7 @@ import { createRequire } from 'node:module'
 
 import { syncBlueprintMigrationSqlAssets } from '#build/blueprint-migration-assets.js'
 import { createPackedManifest, readWorkspaceCatalogs } from '#build/package-manifest.js'
+import { escapeRegExp } from '#utils/string'
 
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 import {
@@ -1030,6 +1031,7 @@ function parseSlashRegex(pattern: string): RegExp | undefined {
   const source = pattern.slice(1, lastSlash)
   const flags = pattern.slice(lastSlash + 1)
   try {
+    // Intentional user-configured /source/flags regex; this validation seam must not escape source.
     return new RegExp(source, flags)
   } catch {
     return undefined
@@ -1074,9 +1076,6 @@ function relativePath(root: string, file: string): string {
   return relative(root, file).split('\\').join('/')
 }
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message
