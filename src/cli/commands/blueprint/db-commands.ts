@@ -5,9 +5,9 @@ import path from 'node:path'
 
 import { coldStartIfNeeded } from '#db/cold-start.js'
 import { openDb } from '#db/connection.js'
-import { ingestAll } from '#db/ingester.js'
-import { resolveBlueprintProjectionDbPath, withProjectionDbWriteLock } from '#db/paths.js'
+import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
 import { runTemplate } from '#db/template-runner.js'
+import { reIngestProjection } from '#projection-ready.js'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -61,37 +61,21 @@ export interface DbQueryResult {
 
 /**
  * Always rebuilds the canonical blueprint projection DB from all markdown
- * files. Never deletes the DB — always calls ingestAll on a fresh connection.
+ * files. Delegates to `reIngestProjection` — the single owner of the persistent
+ * reingest sequence (prune → write-lock → ingest → record freshness metadata) —
+ * so `wp blueprint db build` refreshes the freshness sidecar and is a true
+ * recovery for a stale (`reingest_project`) projection.
  */
 export async function dbBuild(projectRoot: string): Promise<DbBuildResult> {
   const start = Date.now()
-  const dbPath = agentDbPath(projectRoot)
-  const agentDir = path.dirname(dbPath)
+  const result = await reIngestProjection(projectRoot)
 
-  mkdirSync(agentDir, { recursive: true })
-
-  // F9/R7: write path goes through the worktree-scoped projection lock. Throws
-  // LockTimeoutError on contention — no silent "proceeds anyway" escape.
-  return withProjectionDbWriteLock(projectRoot, async () => {
-    const conn = openDb(dbPath)
-    let blueprintsCount = 0
-    let techDebtCount = 0
-
-    try {
-      const result = await ingestAll({ db: conn.db, cwd: projectRoot })
-      blueprintsCount = result.blueprintsIngested
-      techDebtCount = result.techDebtIngested
-    } finally {
-      conn.close()
-    }
-
-    return {
-      durationMs: Date.now() - start,
-      blueprintsCount,
-      techDebtCount,
-      dbPath,
-    }
-  })
+  return {
+    durationMs: Date.now() - start,
+    blueprintsCount: result.blueprintsIngested,
+    techDebtCount: result.techDebtIngested,
+    dbPath: agentDbPath(projectRoot),
+  }
 }
 
 // ---------------------------------------------------------------------------
