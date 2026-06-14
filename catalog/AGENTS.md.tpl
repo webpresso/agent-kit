@@ -55,6 +55,8 @@ Use blueprints for non-trivial work. Specs live in
 [`{{BLUEPRINTS_DIR}}/`](./{{BLUEPRINTS_DIR}}/) with lifecycle directories such as
 `planned/`, `in-progress/`, and `completed/`. Keep tasks, dependencies,
 verification commands, and acceptance criteria current before execution.
+PRs with any non-`*.md` changes must include a changed blueprint, unless a
+commit carries `Blueprint-exempt: <reason>` for a genuinely trivial exception.
 
 Catalog-owned surfaces:
 - `.agent/commands/` — slash-command sources

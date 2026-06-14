@@ -179,6 +179,23 @@ describe('runAuditDispatch', () => {
     })
   })
 
+  describe('blueprint-pr-coverage', () => {
+    test('runs as a standalone special repo-result and forwards --base/--root', async () => {
+      const result = await runAuditDispatch(
+        'blueprint-pr-coverage',
+        [],
+        { root: '/not-a-git-repo', base: 'origin/main' },
+        makeDeps({ root: '/repo' }),
+      )
+
+      expect(result.kind).toBe('repo-result')
+      if (result.kind !== 'repo-result') return
+      expect(result.name).toBe('blueprint-pr-coverage')
+      expect(result.result.ok).toBe(true)
+      expect(result.result.violations[0]?.message).toContain('[warn]')
+    })
+  })
+
   describe('mutation', () => {
     test('calls runStryker, returns script-exit with code', async () => {
       const deps = makeDeps()

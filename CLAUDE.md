@@ -8,7 +8,10 @@ wp blueprint new "<concise goal>" --complexity <XS|S|M|L|XL>
 ```
 
 Plans evaporate on `/clear` or context compaction. Blueprints persist.
-Skip only for typos, renames, one-line fixes, or doc-only changes.
+Skip local blueprint creation only for typos, renames, one-line fixes, or
+doc-only changes. PRs with any non-`*.md` changes must include a changed
+blueprint, unless a commit carries `Blueprint-exempt: <reason>` for a genuinely
+trivial exception.
 Full rule: `.agent/rules/pre-implementation.md` § Blueprint gate.
 
 ## Supported agent CLIs

@@ -203,6 +203,7 @@ const SCRIPT_AUDIT_KINDS = ['tph', 'tph-e2e'] as const
 const SPECIAL_AUDIT_KINDS = [
   'bundle-budget',
   'commit-message',
+  'blueprint-pr-coverage',
   'mutation',
   'guardrails',
   'quality',
@@ -210,9 +211,9 @@ const SPECIAL_AUDIT_KINDS = [
 
 const AUDIT_KINDS = [
   ...SCRIPT_AUDIT_KINDS,
-  ...SPECIAL_AUDIT_KINDS.slice(0, 2),
+  ...SPECIAL_AUDIT_KINDS.slice(0, 3),
   ...REPO_AUDIT_KINDS,
-  ...SPECIAL_AUDIT_KINDS.slice(2),
+  ...SPECIAL_AUDIT_KINDS.slice(3),
 ]
 
 const AUDIT_KIND_LIST = AUDIT_KINDS.join(', ')
@@ -257,6 +258,7 @@ export function registerAuditCommand(cli: CAC): void {
     .option('--docs-root <dir>', 'Docs directory for docs-frontmatter')
     .option('--draft-tech-debt', 'Draft a tech-debt item for supported audit findings')
     .option('--message-file <file>', 'Commit message file for commit-message')
+    .option('--base <ref>', 'Base ref/SHA for PR-scoped audits such as blueprint-pr-coverage')
     .option('--require-lore', 'Require Lore trailers (hard-fail on missing/malformed trailers)')
     .option(
       '--lore-warn',

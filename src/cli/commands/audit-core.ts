@@ -5,6 +5,7 @@ export type AuditKind =
   | 'tph-e2e'
   | 'bundle-budget'
   | 'commit-message'
+  | 'blueprint-pr-coverage'
   | 'blueprint-readme-drift'
   | 'blueprint-lifecycle'
   | 'roadmap-links'
@@ -76,6 +77,8 @@ export interface AuditActionOptions {
   maxHtmlEagerJsTotalBytes?: string
   maxJsAssetBytes?: string
   messageFile?: string
+  base?: string
+  baseRef?: string
   requireLore?: boolean
   root?: string
   staged?: boolean
@@ -176,6 +179,13 @@ export async function runAuditDispatch(
       }
       const result = await deps.runCommitMessageAudit(messageFile, options)
       return { kind: 'repo-result', name: 'commit-message', result }
+    }
+    case 'blueprint-pr-coverage': {
+      const { auditBlueprintPrCoverage } = await import('#audit/blueprint-pr-coverage')
+      const root = options.root ?? target ?? deps.root
+      const baseRef = options.baseRef ?? options.base
+      const result = auditBlueprintPrCoverage(root, { baseRef })
+      return { kind: 'repo-result', name: 'blueprint-pr-coverage', result }
     }
     case 'mutation': {
       const cwd = options.root ?? target ?? deps.root

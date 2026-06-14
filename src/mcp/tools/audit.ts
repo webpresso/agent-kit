@@ -28,6 +28,7 @@ const inputSchema = z.object({
   cwd: z.string().optional(),
   directory: z.string().optional(),
   messageFile: z.string().optional(),
+  baseRef: z.string().optional(),
   strict: z.boolean().optional(),
 })
 
@@ -147,6 +148,18 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
     case 'blueprint-readme-drift': {
       const { auditBlueprintReadmeDrift } = await import('#audit/blueprint-readme-drift')
       const auditResult = auditBlueprintReadmeDrift(input.cwd ?? input.directory ?? process.cwd())
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
+    }
+    case 'blueprint-pr-coverage': {
+      const { auditBlueprintPrCoverage } = await import('#audit/blueprint-pr-coverage')
+      const auditResult = auditBlueprintPrCoverage(input.cwd ?? input.directory ?? process.cwd(), {
+        baseRef: input.baseRef,
+      })
       return {
         passed: auditResult.ok,
         summary: summarizeRepoAudit(kind, auditResult),
