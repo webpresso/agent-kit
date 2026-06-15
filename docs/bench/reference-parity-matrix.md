@@ -30,6 +30,6 @@ being present does not mean the release claim is green: required rows must be
 | posttool broad capture | PostToolUse metadata capture | full | src/hooks/post-tool/lint-after-edit.test.ts | yes | passed |
 | registry/routing consistency | MCP registry plus routing source | full | src/mcp/tools/_registry.test.ts | yes | passed |
 | repair path evidence | hook doctor repair path | full | src/hooks/doctor.test.ts | yes | passed |
-| host setup smoke | Claude | full | src/__integration__/reference-parity-host-smoke.integration.test.ts | yes | passed |
+| host setup smoke | Claude, Codex, Cursor, OpenCode | degraded | src/__integration__/reference-parity-host-smoke.integration.test.ts | yes | passed |
 | benchmark thresholds | continuity and search benchmarks | degraded | docs/bench/session-memory-methodology.md | yes | open |
 | release claim gating | public docs and release audits | full | src/audit/reference-parity-claims.test.ts | yes | passed |
