@@ -1,4 +1,4 @@
-import type { CliCommand } from '#cli/bundle/contract.js'
+import type { CliCommand } from '@webpresso/cli-contract'
 
 function notImplementedMessage(scope: string, name: string): string {
   return `${scope} bundle command "${name}" is not implemented yet.`

@@ -1,12 +1,12 @@
 import { spawn } from 'node:child_process'
 
 import { placeholderCommand, placeholderGroup } from '#cli/bundle/commands/helpers.js'
-import type { CliCommand } from '#cli/bundle/contract.js'
+import type { CliCommand } from '@webpresso/cli-contract'
 
 const SCOPE = 'Blueprint'
 
 function getRawArgs(context: Parameters<NonNullable<CliCommand['run']>>[0]): readonly string[] {
-  return context.rawArgs ?? []
+  return (context as { rawArgs?: readonly string[] }).rawArgs ?? []
 }
 
 function hasFlag(args: readonly string[], flag: string): boolean {

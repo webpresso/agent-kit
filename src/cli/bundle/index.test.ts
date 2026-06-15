@@ -54,32 +54,21 @@ async function listCommandPaths(
 }
 
 describe('agent-kit CLI bundles', () => {
-  it('keeps bundle source and manifests independent from unpublished workspace-only contract packages', () => {
-    const bundleSources = globSync('src/cli/bundle/**/*.ts', {
+  it('keeps bundle source and manifests aligned to the published shared contract package', () => {
+    const contractConsumerSources = globSync('src/cli/bundle/{index.ts,commands/**/*.ts}', {
       cwd: repoRoot,
       ignore: ['src/cli/bundle/**/*.test.ts'],
     })
 
-    expect(bundleSources.length).toBeGreaterThan(0)
-    for (const sourcePath of bundleSources) {
-      expect(readFileSync(join(repoRoot, sourcePath), 'utf8')).not.toContain(
+    expect(contractConsumerSources.length).toBeGreaterThan(0)
+    for (const sourcePath of contractConsumerSources) {
+      expect(readFileSync(join(repoRoot, sourcePath), 'utf8')).toContain(
         '@webpresso/cli-contract',
       )
     }
 
-    for (const manifestPath of ['package.json', 'pnpm-workspace.yaml']) {
-      expect(readFileSync(join(repoRoot, manifestPath), 'utf8')).not.toContain(
-        '@webpresso/cli-contract',
-      )
-    }
-
-    const workflowSources = globSync('.github/{workflows,actions}/**/*.yml', { cwd: repoRoot })
-    for (const sourcePath of workflowSources) {
-      const source = readFileSync(join(repoRoot, sourcePath), 'utf8')
-      expect(source).not.toContain('checkout-cli-contract')
-      expect(source).not.toContain('WEBPRESSO_CLI_CONTRACT_REF')
-      expect(source).not.toContain('monorepo/packages/cli/contract')
-    }
+    expect(readFileSync(join(repoRoot, 'package.json'), 'utf8')).toContain('@webpresso/cli-contract')
+    expect(globSync('src/cli/bundle/contract.ts', { cwd: repoRoot })).toEqual([])
   })
 
   it('keeps the compatibility inventory metadata pointed at the public host', () => {
@@ -105,21 +94,21 @@ describe('agent-kit CLI bundles', () => {
       config: {
         apiVersion: 1,
         distributionProfiles: ['public', 'agent'],
-        hostRange: '^0.1.0',
+        hostRange: '^0.2.0',
         namespaceRoots: ['agent'],
       },
       name: 'agent',
-      version: '0.1.0',
+      version: '0.2.0',
     })
     expect(blueprintBundle).toMatchObject({
       config: {
         apiVersion: 1,
         distributionProfiles: ['public', 'agent'],
-        hostRange: '^0.1.0',
+        hostRange: '^0.2.0',
         namespaceRoots: ['blueprint'],
       },
       name: 'blueprint',
-      version: '0.1.0',
+      version: '0.2.0',
     })
   })
 
