@@ -73,6 +73,9 @@ describe('scaffoldBaseKit', () => {
 
     expect(readFileSync(join(repoRoot, '.node-version'), 'utf8').trim()).toBe('24.16.0')
     expect(readFileSync(join(repoRoot, '.nvmrc'), 'utf8').trim()).toBe('24.16.0')
+    const preCommit = readFileSync(join(repoRoot, '.husky', 'pre-commit'), 'utf8')
+    expect(preCommit).toContain("grep -q '^blueprints/'")
+    expect(preCommit).toContain('wp audit blueprint-readme-drift')
   })
 
   it('dry-run does not write files', () => {

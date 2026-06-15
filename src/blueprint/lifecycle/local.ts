@@ -3,6 +3,7 @@ import type { BlueprintLifecycleIntent, BlueprintLifecycleResult } from './engin
 import { mkdir, readFile, readdir, rename, rmdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
+import { refreshBlueprintReadmeIndex } from '#audit/blueprint-readme-drift'
 import { applyBlueprintLifecycle } from '#lifecycle/engine'
 import { scanBlueprintDirectory } from '#service/scanner'
 import { resolveBlueprintRoot } from '#utils/blueprint-root'
@@ -143,6 +144,7 @@ export async function applyBlueprintLifecycleToFile(
   }
 
   await writeFile(targetPath, mutation.markdown, 'utf-8')
+  refreshBlueprintReadmeIndex(projectRoot)
 
   return {
     ...mutation,

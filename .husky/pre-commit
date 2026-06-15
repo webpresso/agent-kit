@@ -2,6 +2,9 @@
 set -eu
 
 ROOT="$(git rev-parse --show-toplevel)"
+if git diff --cached --name-only --diff-filter=ACMR | grep -q '^blueprints/'; then
+  "$ROOT/bin/wp" audit blueprint-readme-drift
+fi
 "$ROOT/bin/wp" audit guardrails
 # agent-kit audit hooks (staged mode — fast)
 # webpresso audit hooks (staged mode — fast)
