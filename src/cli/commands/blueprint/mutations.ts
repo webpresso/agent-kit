@@ -403,6 +403,11 @@ async function promoteBlueprintLocked(
   if (toState === 'completed') {
     const markdown = readFileSync(currentDocumentPath, 'utf8')
     const blueprint = parseBlueprint(markdown, slug)
+    if (blueprint.tasks.length === 0) {
+      throw new Error(
+        `Cannot promote "${slug}" to completed: zero-task blueprints cannot complete through the public lifecycle surface`,
+      )
+    }
     const unfinished = blueprint.tasks.filter(
       (task) => task.status !== 'done' && task.status !== 'dropped',
     )

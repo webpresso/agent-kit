@@ -58,7 +58,9 @@ Each subdirectory represents a lifecycle state:
 - `draft → planned`: the spec passes the plan-audit checklist
   (`.agent/guides/plan-audit-checklist.md`).
 - `planned → in-progress`: work has started in a worktree or a lane.
+- `planned → completed`: allowed for one-PR completion when every task is already terminal and verification is attached.
 - `in-progress → completed`: all acceptance criteria verified.
+- `completed → in-progress`: explicit reopen path when follow-up work is discovered after closeout.
 - Any state → `archived`: when the work is dropped or replaced.
 
 Move files with `git mv` so history follows the spec through its lifecycle.

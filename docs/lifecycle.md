@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-05-29'
+last_updated: '2026-06-15'
 ---
 
 # Blueprint lifecycle
@@ -23,8 +23,10 @@ it have lots of transitions.
 
 ## Transitions
 
-Read it as: a blueprint is born in `draft`, gets refined to `planned`, runs as
-`in-progress`, and ends in `completed` → `archived`. `parked` is the side track
+Read it as: a blueprint is born in `draft`, gets refined to `planned`, usually runs as
+`in-progress`, and ends in `completed` → `archived`. A one-PR fast path from
+`planned` directly to `completed` is also legal when the work is fully done before
+an intermediate lane transition would add no value. `parked` is the side track
 for work paused mid-flight.
 
 ```mermaid
@@ -33,7 +35,9 @@ stateDiagram-v2
     [*] --> draft : wp blueprint new
     draft --> planned : move (audit-gated)
     planned --> inprog : start
+    planned --> completed : direct finish (all tasks done + evidenced)
     inprog --> completed : finalize (all tasks done)
+    completed --> inprog : reopen
     completed --> archived : move
     planned --> parked : park
     inprog --> parked : park
@@ -47,10 +51,12 @@ Rules:
 
 - **`draft → planned`** requires the plan pass format audit (`wp blueprint audit <slug> --strict`) and ideally `/plan-refine`. Enforced by `wp blueprint move <slug> planned` — the move command refuses if the audit fails.
 - **`planned → in-progress`** is automatic on `wp blueprint start <slug>` or when an agent calls `wp blueprint task <slug> <task-id> start`. Don't manually move between these two states.
+- **`planned → completed`** is allowed for one-PR / one-lane execution when every task is already terminal (`done` or `dropped`), acceptance is verified, and the blueprint is not a zero-task placeholder. This is enforced by the lifecycle engine and SQL audit.
 - **`in-progress → completed`** requires every task's checklist ticked and frontmatter `status: completed` set. `wp blueprint finalize <slug>` validates and transitions.
+- **`completed → in-progress`** is the explicit reopen path when follow-up work is discovered after closeout. Reopening is intentional; don't use it to skip verification.
 - **`completed → archived`** is manual (`wp blueprint move <slug> archived`) and signals "this historical record should stay but isn't referenced by active work."
 - **`→ parked`** can happen from `planned` or `in-progress` (`wp blueprint move <slug> parked`). Frontmatter gains a `parked_reason:` field.
-- **`parked → planned`** / **`parked → in-progress`** is the resume path. `completed` and `archived` are terminal — the lifecycle engine refuses to move out of them.
+- **`parked → planned`** / **`parked → in-progress`** is the resume path. `archived` remains terminal.
 
 ## Frontmatter fields
 

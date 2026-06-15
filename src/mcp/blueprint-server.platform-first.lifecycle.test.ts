@@ -10,6 +10,28 @@ import {
   resetPlatformFirstTestState,
 } from './blueprint-server.platform-first.test-harness.js'
 
+
+const PROMOTE_TO_COMPLETED_ZERO_TASK_BLUEPRINT = `---
+type: blueprint
+title: Promote Completed Zero Task Blueprint
+status: planned
+complexity: S
+owner: tester
+created: '2026-01-01'
+last_updated: '2026-05-01'
+---
+
+## Product wedge anchor
+
+- **Stage outcome:** Phase 1 — complete promote feature
+- **Consuming surface:** /promote route
+- **New user-visible capability:** Users can promote blueprints to completed.
+
+## Summary
+
+Blueprint used to test zero-task completed promotion rejection.
+`
+
 describe('wp_blueprint_promote — platform-first', () => {
   const tempDirs: string[] = []
   const promoteSlug = 'promote-test-blueprint'
@@ -100,6 +122,28 @@ describe('wp_blueprint_promote — platform-first', () => {
 
     expect(result.isError).toStrictEqual(true)
     expect(result.content[0]?.text).toMatch(/missing task-local canonical verification evidence/i)
+    expect(pushEvent).not.toHaveBeenCalled()
+    expect(ensureFresh).not.toHaveBeenCalled()
+  })
+
+  it('refuses to promote a zero-task planned blueprint to completed', async () => {
+    const { pushEvent, ensureFresh } = installMockSyncAdapter()
+    const harness = await makePlatformBlueprintHarness({
+      prefix: 'wp-bs-prm-comp-zero-task-',
+      stateDir: 'planned',
+      slug: 'promote-completed-zero-task-blueprint',
+      content: PROMOTE_TO_COMPLETED_ZERO_TASK_BLUEPRINT,
+      validate: true,
+    })
+    tempDirs.push(harness.tmpDir)
+
+    const result = await callTool(harness.tools, 'wp_blueprint_promote', {
+      slug: 'promote-completed-zero-task-blueprint',
+      to_state: 'completed',
+    })
+
+    expect(result.isError).toStrictEqual(true)
+    expect(result.content[0]?.text).toMatch(/zero-task|0 tasks|no tasks/i)
     expect(pushEvent).not.toHaveBeenCalled()
     expect(ensureFresh).not.toHaveBeenCalled()
   })
