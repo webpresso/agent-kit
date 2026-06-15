@@ -50,6 +50,12 @@ describe('auth preflight package probes', () => {
 })
 
 describe('release workflow publish path', () => {
+  it('routes the release workflow through the Ubicloud managed runner label', () => {
+    const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
+    expect(workflow).toContain('runs-on: ubicloud-standard-2')
+    expect(workflow).not.toContain('runs-on: ubuntu-latest')
+  })
+
   it('publishes with npm public/provenance flow instead of legacy changeset or GitHub Packages publish', () => {
     const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
     expect(workflow.includes('pnpm changeset publish')).toBe(false)

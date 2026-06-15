@@ -1,6 +1,6 @@
 import { agentCommands } from '#cli/bundle/commands/agent.js'
 import { blueprintCommands } from '#cli/bundle/commands/blueprint.js'
-import type { CliBundle } from '#cli/bundle/contract.js'
+import type { CliBundle } from '@webpresso/cli-contract'
 
 import {
   AGENT_COMMAND_INVENTORY,
@@ -26,8 +26,8 @@ export interface AgentBundleDefinition {
 const sharedConfig = {
   apiVersion: 1,
   distributionProfiles: ['public', 'agent'],
-  hostRange: '^0.1.0',
-  version: '0.1.0',
+  hostRange: '^0.2.0',
+  version: '0.2.0',
 } as const
 
 export const agentBundle: CliBundle = {

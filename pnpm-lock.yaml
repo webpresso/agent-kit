@@ -45,6 +45,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.0.2
         version: 6.0.2(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.1)(tsx@4.22.4)(yaml@2.9.0))
+      '@webpresso/cli-contract':
+        specifier: ^0.2.0
+        version: 0.2.0
       better-sqlite3:
         specifier: ^12.10.0
         version: 12.10.0
@@ -2025,6 +2028,9 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
+
+  '@webpresso/cli-contract@0.2.0':
+    resolution: {integrity: sha512-ZAXpY1zWsz9iXVHQXxMCjxgO+2ZE3M+st9wmj4nAoIPwPZr1XGbK+VA6ov2Yyv4Cs4ayBtT785sSG/LP17O9yA==}
 
   abbrev@2.0.0:
     resolution: {integrity: sha512-6/mh1E2u2YgEsCHdY0Yx5oW+61gZU+1vXaoiHHrpKeuRNNgFvS+/jrwHiQhB5apAf5oB7UB7E19ol2R2LKH8hQ==}
@@ -6322,6 +6328,8 @@ snapshots:
 
   '@voidzero-dev/vite-plus-win32-x64-msvc@0.1.22':
     optional: true
+
+  '@webpresso/cli-contract@0.2.0': {}
 
   abbrev@2.0.0: {}
 
