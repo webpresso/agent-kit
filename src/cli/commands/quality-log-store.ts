@@ -14,6 +14,8 @@ import {
 import { dirname, join } from 'node:path'
 
 import { getSurfacePath } from '#paths/state-root.js'
+import { readTrustedJsonFile } from '#shared-utils/read-json-file.js'
+import { writeJsonFile } from '#shared-utils/write-json-file.js'
 
 export const CLI_LOG_COMMANDS = [
   'test',
@@ -142,7 +144,7 @@ export function readCliLogEntries(
 ): readonly CliLogEntry[] {
   const indexPath = getCommandIndexPath(command, cwd)
   try {
-    const parsed = JSON.parse(readFileSync(indexPath, 'utf8')) as CliLogIndex
+    const parsed = readTrustedJsonFile<CliLogIndex>(indexPath)
     return Array.isArray(parsed.entries) ? parsed.entries : []
   } catch {
     return []
@@ -215,7 +217,7 @@ function withCommandIndexLock<T>(command: CliLogCommandName, cwd: string, fn: ()
 
 function writeIndexAtomically(indexPath: string, index: CliLogIndex): void {
   const tmpPath = `${indexPath}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`
-  writeFileSync(tmpPath, `${JSON.stringify(index, null, 2)}\n`, 'utf8')
+  writeJsonFile(tmpPath, index)
   renameSync(tmpPath, indexPath)
 }
 

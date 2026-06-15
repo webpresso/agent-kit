@@ -2,11 +2,11 @@
 type: blueprint
 title: Type-safe SQLite and JSON parsing
 owner: ozby
-status: planned
+status: parked
 complexity: L
 created: '2026-06-14'
-last_updated: '2026-06-14'
-progress: '0% (0/7 tasks done, 0 blocked)'
+last_updated: '2026-06-15'
+progress: "Implemented in PR #139; parked for legal lifecycle transition from planned pending finalization"
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -20,6 +20,12 @@ worktree_owner_branch: ''
 
 # Type-safe SQLite and JSON parsing
 
+## Implementation Update (2026-06-15)
+
+Implemented in PR #139 on branch `work/ultragoal-9-blueprints-20260614221933`.
+Task status and acceptance checkboxes below were reconciled from the landed code paths and focused verification evidence in this PR. The file is parked because CI enforces the legal first transition from `planned`; finalization can move parked/resumed work through the lifecycle after merge.
+
+
 **Goal:** Replace unsafe `as unknown as` casts and unvalidated `JSON.parse` calls with Zod schemas so corrupt data fails loudly at runtime.
 
 ## Product wedge anchor
@@ -30,7 +36,7 @@ worktree_owner_branch: ''
 
 ### Why Zod (DRY / YAGNI justification)
 
-Zod is **not yet used anywhere in `src/`** — `zod` is declared in `package.json` (`^4.4.3`) but `rg "from 'zod'"` over `src/` (including tests) returns zero hits. This blueprint therefore introduces a **net-new runtime-validation pattern**, not an existing utility. That choice is scoped deliberately:
+Zod is already a repo-standard validation dependency across `src/` (for example MCP tools, blueprint schemas, docs-lint schemas, and `src/blueprint/db/enums.ts`). This blueprint therefore does **not** introduce a new dependency; it extends the existing validation pattern to unsafe SQLite/JSON parse sites that still cast untrusted data. That choice remains scoped deliberately:
 
 - **Where Zod is justified (genuinely unsafe, zero validation today):** the `blueprint-server.ts` row reads (F1), the Cloudflare release-metadata parse (F2), the `compile.ts` manifest at line 147 (F6), and the `sqlite-store.ts` JSON columns (F7). These have no shape check at all — a corrupt column today produces silently-wrong typed data.
 - **Where Zod is NOT mandated (keep existing guards):** `auto-update/run.ts` `readCache` already has manual `typeof` guards (F8) — keep the guard; do not add a speculative schema there beyond aligning the cast removal. Third-party `package.json` reads (E4, `compile.ts` 32/72/337) stay as `Record<string, unknown>` + type guards.
@@ -48,7 +54,7 @@ Zod is **not yet used anywhere in `src/`** — `zod` is declared in `package.jso
 | F6 | MEDIUM | `compile.ts` has 1 JSON.parse site. | Actually has 4 sites (lines 32, 72, 147, 337). Lines 32/72/337 read `package.json` with type guards — lower priority. Line 147 (`CompileManifest`) has NO shape validation. |
 | F7 | MEDIUM | `sqlite-store.ts` has 2 JSON.parse sites. | Actually has 3 sites at lines **295 (`state_json`), 297 (`metadata_json`, already passes a `(_key, value) => value` reviver), and 311 (`embedding_json` → `as number[]`)**. There is NO site at line 318. All three cast to imported types with zero shape validation. |
 | F8 | LOW | `auto-update/run.ts` `readCache` is unsound. | It uses manual `typeof` guards (lines 42-45) before the `as UpdateCache` cast, making it safer than most sites. Keep the guard; Zod here is optional consistency, not a fix. |
-| F9 | MEDIUM | `compile.test.ts` exists. | `src/cli/commands/compile.test.ts` does NOT exist. Must be created for Task 3.2. |
+| F9 | MEDIUM | `compile.test.ts` exists. | **Corrected 2026-06-14:** `src/cli/commands/compile.test.ts` exists and now contains resource-leak regression coverage. Task 3.2 must extend the existing test file, not create it, and must preserve the no-`openSync` lock regression from `2026-06-14-fix-stream-resource-leaks`. |
 | F10 | LOW | `code-safety.ts` exists for oxlint rules. | Confirmed: `src/config/oxlint/code-safety.ts` exists. |
 | F11 | CRITICAL | A global `as unknown as` lint ban is safe to land. | **FALSE.** `rg "as unknown as" src/` finds **102 sites across 31 files** (e.g. `src/blueprint/db/sqlite.ts:69`, `src/audit/architecture-drift.ts:122,166`, plus dozens of legitimate test-mock casts like `src/audit/run-stryker.test.ts:27`). A global ban would emit ~96+ violations the instant it lands, failing `wp lint` repo-wide and self-contradicting Task 5.1's acceptance. Task 5.1 is rescoped to the `JSON.parse(...) as <NonRecordType>` surface only. |
 
@@ -68,11 +74,28 @@ Zod is **not yet used anywhere in `src/`** — `zod` is declared in `package.jso
 | Risk | Severity | Mitigation |
 | ---- | -------- | ---------- |
 | Zod schemas drift from DB schema | HIGH | Add parity test comparing schema keys to DB column names (Task 1.2 acceptance). |
-| Net-new dependency in hot path | MEDIUM | Zod is unused in `src/` today (see "Why Zod"); scope to genuinely unsafe sites; keep existing `typeof` guards (F8); measure per-row cost (E6). |
+| Runtime validation in hot path | MEDIUM | Zod is already used in `src/`, but these target JSON/SQLite sites are new validation points; scope to genuinely unsafe sites, keep existing `typeof` guards (F8), and measure per-row cost (E6). |
 | Performance hit on large `.all()` results | LOW | Validate shape only (loose objects); benchmark with 1000-row payload against the < 5 ms target. |
 | `TaskRow` merge breaks existing usage | MEDIUM | Audit all 6 call sites before merging; use `.pick()` for the second variant. |
-| New `compile.test.ts` misses edge cases | MEDIUM | Test both valid and malformed manifests; include missing-key and wrong-type fixtures. |
+| Extending `compile.test.ts` weakens existing regression coverage | MEDIUM | Add valid/malformed manifest fixtures while preserving the existing no-`openSync` lock regression owned by `2026-06-14-fix-stream-resource-leaks`. |
 | Task 5.1 lint ban scoped too broadly | HIGH | Ban only `JSON.parse(...) as <NonRecordType>` — NOT a global `as unknown as` ban (102 pre-existing sites would fail `wp lint`, F11). |
+
+
+## Cross-Plan Alignment Notes
+
+- **2026-06-14 alignment:** `2026-06-14-fix-stream-resource-leaks` verified that
+  `src/cli/commands/compile.test.ts` already exists and protects the no-raw-fd
+  lock acquisition behavior. Task 3.2 in this blueprint must extend that file
+  in place and keep the resource-leak regression intact.
+- Coordinate implementation with `2026-06-14-shared-filesystem-io-utilities`,
+  which also touches `src/cli/commands/compile.ts`. Prefer serializing the
+  `compile.ts` edits or landing one plan's tests before the other changes the
+  same file.
+- Coordinate implementation with `2026-06-14-shared-filesystem-io-utilities`,
+  which also touches `src/mcp/blueprint-server.ts`. This blueprint owns SQLite
+  row schemas/casts and unsafe value validation; the filesystem utility plan owns
+  only eligible filesystem JSON I/O. Serialize `blueprint-server.ts` edits or
+  split them by file region after tests are in place.
 
 ## Quick Reference (Execution Waves)
 
@@ -98,7 +121,7 @@ Zod is **not yet used anywhere in `src/`** — `zod` is declared in `package.jso
 
 #### Task 1.1: Create shared DB row types with Zod schemas
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -123,18 +146,18 @@ Create `src/blueprint/db/types.ts` with Zod schemas for `TaskRow` and `BpRow`. M
 
 **Acceptance:**
 
-- [ ] `src/blueprint/db/types.ts` exports `TaskRowSchema`, `TaskRowCompactSchema`, `BpRowSchema`
-- [ ] All schemas use Zod v4 loose objects (`z.looseObject` / `.loose()`), NOT the removed `.passthrough()`
-- [ ] Schemas reuse `src/blueprint/db/enums.ts` for status/lane unions (no duplicate enum literals)
-- [ ] Tests cover valid rows, missing-required-key rows, and wrong-type rows
-- [ ] `./bin/wp typecheck` passes
-- [ ] `./bin/wp lint` passes
+- [x] `src/blueprint/db/types.ts` exports `TaskRowSchema`, `TaskRowCompactSchema`, `BpRowSchema`
+- [x] All schemas use Zod v4 loose objects (`z.looseObject` / `.loose()`), NOT the removed `.passthrough()`
+- [x] Schemas reuse `src/blueprint/db/enums.ts` for status/lane unions (no duplicate enum literals)
+- [x] Tests cover valid rows, missing-required-key rows, and wrong-type rows
+- [x] `./bin/wp typecheck` passes
+- [x] `./bin/wp lint` passes
 
 ---
 
 #### Task 2.1: Replace non-null assertion in lint-after-edit
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -159,16 +182,16 @@ Replace `input.tool_input!.file_path as string` at `src/hooks/post-tool/lint-aft
 
 **Acceptance:**
 
-- [ ] No `tool_input!` or `as string` remains for `file_path`
-- [ ] `processPostToolUse` returns `false` when `tool_input` is absent or `file_path` is not a string
-- [ ] Existing tests pass; new test covers malformed input
-- [ ] `./bin/wp typecheck` passes
+- [x] No `tool_input!` or `as string` remains for `file_path`
+- [x] `processPostToolUse` returns `false` when `tool_input` is absent or `file_path` is not a string
+- [x] Existing tests pass; new test covers malformed input
+- [x] `./bin/wp typecheck` passes
 
 ---
 
 #### Task 3.1: Add Zod validation to JSON.parse in auto-update + cloudflare-deploy-contract
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -194,30 +217,30 @@ Add a Zod schema for `ProductionReleaseMetadata` (in `src/audit/cloudflare-deplo
 
 **Acceptance:**
 
-- [ ] `readProductionMetadata` validates with Zod; malformed JSON throws clear error
-- [ ] `readCache` keeps its `typeof` guard and replaces the final cast with a Zod `safeParse`
-- [ ] All existing tests pass
-- [ ] `./bin/wp typecheck` passes
+- [x] `readProductionMetadata` validates with Zod; malformed JSON throws clear error
+- [x] `readCache` keeps its `typeof` guard and replaces the final cast with a Zod `safeParse`
+- [x] All existing tests pass
+- [x] `./bin/wp typecheck` passes
 
 ---
 
 #### Task 3.2: Add Zod validation to JSON.parse in compile.ts
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
-Add a Zod schema for `CompileManifest` and validate the JSON.parse at line 147. Lines 32, 72, and 337 read third-party `package.json` files — keep those as `Record<string, unknown>` + type guards (E4). Create a new test file since `src/cli/commands/compile.test.ts` does not exist (F9).
+Add a Zod schema for `CompileManifest` and validate the JSON.parse at line 147. Lines 32, 72, and 337 read third-party `package.json` files — keep those as `Record<string, unknown>` + type guards (E4). Extend the existing `src/cli/commands/compile.test.ts` file (F9); do not replace or weaken its existing lock-acquisition regression coverage.
 
 **Files:**
 
 - Modify: `src/cli/commands/compile.ts`
-- Create: `src/cli/commands/compile.test.ts`
+- Modify: `src/cli/commands/compile.test.ts`
 
 **Steps (TDD):**
 
-1. Write `compile.test.ts` with test for valid + malformed manifests
-2. Run: `./bin/wp test --file src/cli/commands/compile.test.ts` — verify FAIL (manifest schema not yet added)
+1. Add valid + malformed manifest tests to the existing `compile.test.ts`, preserving the current no-`openSync` lock regression test
+2. Run: `./bin/wp test --file src/cli/commands/compile.test.ts` — verify the new manifest-shape test FAILS while existing lock-regression tests still PASS
 3. Implement `CompileManifestSchema`:
    ```ts
    const CompileManifestSchema = z.object({
@@ -233,16 +256,16 @@ Add a Zod schema for `CompileManifest` and validate the JSON.parse at line 147. 
 
 **Acceptance:**
 
-- [ ] `readCompileManifest` returns `null` on shape mismatch (not just JSON parse failure)
-- [ ] `compile.test.ts` created with valid+invalid manifest fixtures
-- [ ] Lines 32/72/337 (`package.json` reads) unchanged
-- [ ] `./bin/wp typecheck` passes
+- [x] `readCompileManifest` returns `null` on shape mismatch (not just JSON parse failure)
+- [x] Existing `compile.test.ts` is extended with valid+invalid manifest fixtures
+- [x] Lines 32/72/337 (`package.json` reads) unchanged
+- [x] `./bin/wp typecheck` passes
 
 ---
 
 #### Task 4.1: Add Zod validation to JSON.parse in sqlite-store.ts
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -268,17 +291,17 @@ Add Zod schemas for `CheckpointState`, `CheckpointMetadata`, and the `number[]` 
 
 **Acceptance:**
 
-- [ ] `CheckpointStateSchema`, `CheckpointMetadataSchema`, and `EmbeddingSchema` exported from types module
-- [ ] `mapCheckpoint` validates `state_json` (295) and `metadata_json` (297, reviver preserved) with Zod; corrupt JSON throws clear error
-- [ ] `mapFact` validates `embedding_json` (311) with Zod
-- [ ] Existing tests pass
-- [ ] `./bin/wp typecheck` passes
+- [x] `CheckpointStateSchema`, `CheckpointMetadataSchema`, and `EmbeddingSchema` exported from types module
+- [x] `mapCheckpoint` validates `state_json` (295) and `metadata_json` (297, reviver preserved) with Zod; corrupt JSON throws clear error
+- [x] `mapFact` validates `embedding_json` (311) with Zod
+- [x] Existing tests pass
+- [x] `./bin/wp typecheck` passes
 
 ---
 
 #### Task 1.2: Replace unsafe casts + JSON.parse in blueprint-server.ts
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1
 
@@ -307,19 +330,19 @@ Replace the 4 `as unknown as` casts (lines 946, 1588, 1619, 1750) plus the 4 add
 
 **Acceptance:**
 
-- [ ] Zero `as unknown as` casts remain in `blueprint-server.ts`
-- [ ] Zero unchecked `as TaskRow[]` / `as BpRow[]` casts remain (incl. line 1982)
-- [ ] Targeted JSON.parse results (352, 364, 632) validated through Zod; line 432 left unchanged
-- [ ] Corrupt rows throw `ZodError` instead of silently producing wrong data
-- [ ] 1000-row `.all()` parse adds < 5 ms over the raw read (E6 benchmark)
-- [ ] Existing tests pass
-- [ ] `./bin/wp typecheck` passes
+- [x] Zero `as unknown as` casts remain in `blueprint-server.ts`
+- [x] Zero unchecked `as TaskRow[]` / `as BpRow[]` casts remain (incl. line 1982)
+- [x] Targeted JSON.parse results (352, 364, 632) validated through Zod; line 432 left unchanged
+- [x] Corrupt rows throw `ZodError` instead of silently producing wrong data
+- [x] 1000-row `.all()` parse adds < 5 ms over the raw read (E6 benchmark)
+- [x] Existing tests pass
+- [x] `./bin/wp typecheck` passes
 
 ---
 
 #### Task 5.1: Add lint rule against unvalidated JSON.parse casts
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -346,12 +369,12 @@ Add an oxlint/audit rule in `src/config/oxlint/code-safety.ts` that flags the **
 
 **Acceptance:**
 
-- [ ] Unvalidated `JSON.parse(...) as SpecificType` is flagged by oxlint
-- [ ] `JSON.parse(...) as Record<string, unknown>` is allowed
-- [ ] No global `as unknown as` ban is introduced (102 pre-existing sites stay green)
-- [ ] `./bin/wp lint` passes on entire repo
-- [ ] `./bin/wp audit ai-contracts` passes
-- [ ] `.agent/rules/no-timeout-as-fix.md` is not violated (no timeouts raised for lint perf)
+- [x] Unvalidated `JSON.parse(...) as SpecificType` is flagged by oxlint
+- [x] `JSON.parse(...) as Record<string, unknown>` is allowed
+- [x] No global `as unknown as` ban is introduced (102 pre-existing sites stay green)
+- [x] `./bin/wp lint` passes on entire repo
+- [x] `./bin/wp audit ai-contracts` passes
+- [x] `.agent/rules/no-timeout-as-fix.md` is not violated (no timeouts raised for lint perf)
 
 ---
 
@@ -398,12 +421,12 @@ Add an oxlint/audit rule in `src/config/oxlint/code-safety.ts` that flags the **
 
 1. **F11 — Task 5.1 rescoped (CRITICAL).** The original "ban `as unknown as` globally" would fail `wp lint` repo-wide: 102 sites across 31 files exist today. Task 5.1 now flags only `JSON.parse(...) as <NonRecordType>` and the global ban is moved to Non-goals.
 2. **F7/E5/Task 4.1 — corrected `sqlite-store.ts` line numbers.** Actual sites are 295, 297 (with a reviver), 311 — not 295/311/318. Line 318 does not exist; line 297's reviver must be preserved.
-3. **Why Zod justification added.** Zod is used in zero `src/` files today; the overview now states the DRY/YAGNI rationale, names the genuinely-unsafe sites, and keeps existing `typeof` guards (F8) rather than over-building schemas.
+3. **Why Zod justification corrected.** Zod is already used broadly in `src/`; the overview now states the DRY/YAGNI rationale for extending the existing validation pattern only to genuinely-unsafe sites and keeps existing `typeof` guards (F8) rather than over-building schemas.
 4. **Product wedge anchor added.** Names the `wp blueprint list/get/query` verbs (and `wp_blueprint_*` MCP tools) backed by `blueprint-server.ts` reads, plus the `wp audit ai-contracts` gate, as the consuming surface.
 5. **F5 — corrected field count + reuse note.** Line 925 `TaskRow` is 7 fields (not 8). `src/blueprint/db/` already exists; Task 1.1 reuses its `enums.ts` instead of redefining status/lane unions.
 6. **F2/Task 1.2 — target sites corrected.** Dropped already-guarded line 432; added missing `as TaskRow[]` at line 1982.
 7. **Zod v4 API.** `.passthrough()` is removed in Zod v4 — switched all loose-object schemas to `z.looseObject` / `.loose()` and updated acceptance bullets accordingly.
 8. **F6 — expanded `compile.ts` scope.** 4 JSON.parse sites found (not 1). Three are low-priority `package.json` reads kept as-is.
-9. **F9 — new test file needed.** `src/cli/commands/compile.test.ts` does not exist. Task 3.2 creates it.
+9. **F9 — existing test file must be preserved.** `src/cli/commands/compile.test.ts` exists and contains resource-leak regression coverage. Task 3.2 extends it instead of creating/replacing it.
 10. **F10 — confirmed `code-safety.ts` exists.** Path verified.
 11. **Task granularity improved.** Original Task 1.2 (5 files, M) split into 3 independent tasks (3.1, 3.2, 4.1) for parallel execution; E6 now carries a concrete < 5 ms benchmark target.

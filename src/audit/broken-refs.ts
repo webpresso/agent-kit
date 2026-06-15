@@ -14,9 +14,10 @@
  * Uses `remark` + `remark-validate-links` to find unresolved relative links.
  */
 import { execSync } from 'node:child_process'
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
+import { walkDirectory } from '#shared-utils/walk-directory.js'
 import type { RepoAuditViolation } from './repo-guardrails.js'
 
 export interface BrokenRefViolation extends RepoAuditViolation {
@@ -52,22 +53,13 @@ function isGeneratedRef(ref: string): boolean {
   return GENERATED_PATH_PATTERNS.some((pat) => pat.test(normalized))
 }
 
-function walkMdFiles(dir: string): string[] {
+function listMarkdownFiles(dir: string): string[] {
   if (!existsSync(dir)) return []
-  const files: string[] = []
   try {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const fullPath = path.join(dir, entry.name)
-      if (entry.isDirectory()) {
-        files.push(...walkMdFiles(fullPath))
-      } else if (entry.isFile() && entry.name.endsWith('.md')) {
-        files.push(fullPath)
-      }
-    }
+    return walkDirectory(dir, { extensions: ['.md'] })
   } catch {
-    // ignore unreadable dirs
+    return []
   }
-  return files.sort()
 }
 
 function getStagedFiles(cwd: string): Set<string> | null {
@@ -147,7 +139,7 @@ export function auditBrokenRefs(cwd: string, options: BrokenRefsOptions = {}): B
   // Collect candidate files
   const agentDir = path.join(cwd, '.agent')
   const candidateFiles: string[] = [
-    ...walkMdFiles(agentDir),
+    ...listMarkdownFiles(agentDir),
     path.join(cwd, 'AGENTS.md'),
     path.join(cwd, 'CLAUDE.md'),
   ].filter((f) => existsSync(f))

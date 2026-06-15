@@ -44,7 +44,10 @@ export function auditBlueprintPrCoverage(
 
   const exemption = findBlueprintExemption(rootDirectory, options)
   if (exemption) {
-    return passWithWarning(`[warn] Blueprint-exempt trailer present: ${exemption}`, changedFiles.length)
+    return passWithWarning(
+      `[warn] Blueprint-exempt trailer present: ${exemption}`,
+      changedFiles.length,
+    )
   }
 
   return {
@@ -78,7 +81,8 @@ function resolveChangedFiles(
   if (!baseRef) {
     return {
       files: [],
-      warning: '[warn] blueprint-pr-coverage skipped: provide --base <ref> or changedFiles in PR contexts',
+      warning:
+        '[warn] blueprint-pr-coverage skipped: provide --base <ref> or changedFiles in PR contexts',
     }
   }
 
@@ -106,10 +110,7 @@ function resolveChangedFiles(
   return { files: splitLines(result.stdout) }
 }
 
-function findBlueprintExemption(
-  cwd: string,
-  options: BlueprintPrCoverageOptions,
-): string | null {
+function findBlueprintExemption(cwd: string, options: BlueprintPrCoverageOptions): string | null {
   const messages = options.commitMessages ?? readCommitMessages(cwd, options.baseRef)
   for (const message of messages) {
     const match = BLUEPRINT_EXEMPT_PATTERN.exec(message)

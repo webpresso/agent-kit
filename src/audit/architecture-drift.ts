@@ -172,7 +172,6 @@ function normalizeRelPath(filePath: string): string {
   return filePath.split(path.sep).join('/')
 }
 
-
 function globToRegExp(pattern: string): RegExp {
   const normalized = pattern.replace(/\\/g, '/')
   let out = '^'

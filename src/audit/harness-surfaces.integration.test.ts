@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
 import { runAuditDispatch } from '../cli/commands/audit-core.js'
+import { isMCPAuditKind } from '../mcp/tools/_shared/audit-kinds.js'
 import { auditHarnessSurfaces } from './harness-surfaces.js'
 
 describe('wp audit harness-surfaces dispatch', () => {
+  it('exposes harness-surfaces through the shared MCP audit-kind list', () => {
+    expect(isMCPAuditKind('harness-surfaces')).toBe(true)
+  })
+
   it('routes through the repo audit registry contract', async () => {
     const outcome = await runAuditDispatch(
       'harness-surfaces',
@@ -27,7 +32,7 @@ describe('wp audit harness-surfaces dispatch', () => {
     if (outcome.kind === 'repo-result') {
       expect(outcome.name).toBe('harness-surfaces')
       expect(outcome.result.ok).toBe(true)
-      expect(outcome.result.checked).toBe(6)
+      expect(outcome.result.checked).toBe(8)
     }
   })
 })

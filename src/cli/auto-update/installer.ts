@@ -23,11 +23,12 @@
  *     from a successful CLI run.
  */
 
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync } from 'node:fs'
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import { dirname } from 'node:path'
 
 import { getSurfacePath } from '#paths/state-root.js'
+import { writeJsonFile } from '#shared-utils/write-json-file.js'
 import { logUpdateError } from './log.js'
 
 /**
@@ -119,7 +120,7 @@ export function clearInstallTombstone(): void {
     if (current === null) return
     const next: Record<string, unknown> = { ...readRaw(configPath) }
     delete next.autoInstallInProgress
-    writeFileSync(configPath, JSON.stringify(next))
+    writeJsonFile(configPath, next, { indent: 0, trailingNewline: false })
   } catch {
     // Best-effort — no caller waits on this.
   }
@@ -245,7 +246,7 @@ function writeTombstone(configPath: string, tombstone: Tombstone): void {
   const dir = dirname(configPath)
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
   const merged = { ...readRaw(configPath), ...tombstone }
-  writeFileSync(configPath, JSON.stringify(merged))
+  writeJsonFile(configPath, merged, { indent: 0, trailingNewline: false })
 }
 
 function openLogForAppend(logPath: string): number {

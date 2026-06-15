@@ -25,6 +25,16 @@ import { setBlueprintFrontmatterFields } from '#lifecycle/engine'
 import { openDb } from '#db/connection.js'
 import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
 import { findTemplate } from '#db/templates.js'
+import {
+  BpDetailRowSchema,
+  BpRowSchema,
+  TaskRowCompactSchema,
+  TaskRowSchema,
+  type BpDetailRow,
+  type BpRow,
+  type TaskRow as DbTaskRow,
+  type TaskRowCompact,
+} from '#db/types.js'
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
 import { getBlueprintDocumentPaths } from '#utils/document-paths.js'
 import type { BlueprintStatus } from '#utils/document-paths.js'
@@ -52,10 +62,7 @@ import {
 } from '#mcp/blueprint/_shared/sync'
 import { err, finishPayload, jsonContent, parseStructuredJson } from '#mcp/blueprint/_shared/errors'
 import { bytes, sortKeys, toStr } from '#mcp/blueprint/_shared/payload'
-import {
-  nextActionOutputSchema,
-  summaryEnvelopeOutputSchema,
-} from '#mcp/blueprint/_shared/schema'
+import { nextActionOutputSchema, summaryEnvelopeOutputSchema } from '#mcp/blueprint/_shared/schema'
 import { readVt, writeVt } from '#mcp/blueprint/_shared/validation-timestamp'
 
 export { _setSyncAdapterFactory }
@@ -68,6 +75,45 @@ export type { SyncAdapter }
 const ROWS_CAP = 200
 const DEFAULT_ROOTS_FETCH_TIMEOUT_MS = 750
 const DEFAULT_PROJECT_DISCOVERY_TIMEOUT_MS = 1_500
+
+function describeZodIssues(error: z.ZodError): string {
+  return error.issues
+    .slice(0, 3)
+    .map((issue) => `${issue.path.join('.') || '<row>'}: ${issue.message}`)
+    .join('; ')
+}
+
+function parseProjectionRows<T>(
+  schema: z.ZodType<T>,
+  rows: readonly unknown[],
+  failures: string[],
+  label: string,
+): T[] {
+  const parsed: T[] = []
+  rows.forEach((row, index) => {
+    const result = schema.safeParse(row)
+    if (result.success) {
+      parsed.push(result.data)
+      return
+    }
+    failures.push(`${label} row ${index + 1} skipped: ${describeZodIssues(result.error)}`)
+  })
+  return parsed
+}
+
+function parseProjectionRow<T>(
+  schema: z.ZodType<T>,
+  row: unknown,
+  failures: string[],
+  label: string,
+): T | null {
+  if (row === null || row === undefined) return null
+  const result = schema.safeParse(row)
+  if (result.success) return result.data
+  failures.push(`${label} skipped: ${describeZodIssues(result.error)}`)
+  return null
+}
+
 const LIFECYCLE_ADVICE =
   'After creating: /plan-refine to harden; /plan-eng-review to validate; ' +
   'wp_blueprint_promote draft→planned when ready; /pll for parallel execution; ' +
@@ -680,28 +726,20 @@ async function handleTaskNext(
   }
   try {
     const conn = openDb(target)
-    interface TaskRow {
-      id: number
-      blueprint_slug: string
-      task_id: string
-      wave: string | null
-      lane: string | null
-      title: string
-      status: string
-    }
+    type ReadyTaskRow = DbTaskRow
     const sc = blueprint ? 'AND t.blueprint_slug = ?' : ''
     const readySql = `SELECT t.id, t.blueprint_slug, t.task_id, t.wave, t.lane, t.title, t.status FROM tasks t WHERE t.status = 'todo' ${sc} AND NOT EXISTS (SELECT 1 FROM task_dependencies td JOIN tasks dep ON dep.id = td.depends_on_task_id WHERE td.task_id = t.id AND dep.status != 'done') ORDER BY t.wave, t.id LIMIT 1`
     const w0Sql = `SELECT COUNT(*) as cnt FROM tasks t WHERE t.status = 'todo' AND t.wave = '0' ${sc} AND NOT EXISTS (SELECT 1 FROM task_dependencies td JOIN tasks dep ON dep.id = td.depends_on_task_id WHERE td.task_id = t.id AND dep.status != 'done')`
-    let task: TaskRow | null
+    let task: ReadyTaskRow | null
     let w0cnt: number
     let files: Array<{ file_path: string; op: string }>
     try {
-      const args = blueprint ? [blueprint] : []
       task =
-        (
-          (blueprint
-            ? conn.db.prepare(readySql).all(blueprint)
-            : conn.db.prepare(readySql).all()) as unknown as TaskRow[]
+        parseProjectionRows(
+          TaskRowSchema,
+          blueprint ? conn.db.prepare(readySql).all(blueprint) : conn.db.prepare(readySql).all(),
+          failures,
+          'ready tasks projection',
         )[0] ?? null
       w0cnt =
         (
@@ -716,7 +754,6 @@ async function handleTaskNext(
             )
             .all(task.id) as Array<{ file_path: string; op: string }>)
         : []
-      void args
     } finally {
       conn.close()
     }
@@ -1326,24 +1363,18 @@ const listSchema = ReadTarget.extend({
   limit: z.number().int().min(1).max(500).default(100),
 })
 
-type BpRow = {
-  slug: string
-  title: string
-  status: string
-  complexity: string | null
-  owner: string | null
-  last_updated: string | null
-  content_hash: string
-  ingested_at: number
-  file_path: string
-  [key: string]: unknown
-}
-
-const listBpReader: ProjectReader<BpRow> = ({ db }) => {
-  // Reader used by both single-project and aggregate paths.
-  // Callers layer on status/limit filters after the fact when using aggregate.
-  const sql = `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints ORDER BY ingested_at DESC LIMIT 500`
-  return db.prepare(sql).all() as unknown as BpRow[]
+function createListBpReader(failures: string[]): ProjectReader<BpRow> {
+  return ({ db, project }) => {
+    // Reader used by both single-project and aggregate paths.
+    // Callers layer on status/limit filters after the fact when using aggregate.
+    const sql = `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints ORDER BY ingested_at DESC LIMIT 500`
+    return parseProjectionRows(
+      BpRowSchema,
+      db.prepare(sql).all(),
+      failures,
+      `blueprints projection ${project.project_id}`,
+    )
+  }
 }
 
 function staleProjectionResponse(
@@ -1364,6 +1395,7 @@ function staleProjectionResponse(
 function listCurrentProjectBlueprintRows(
   cwd: string,
   options: { readonly status?: string; readonly limit: number },
+  failures: string[] = [],
 ): BpRow[] {
   const target = dbPath(cwd)
   if (!existsSync(target)) return []
@@ -1372,9 +1404,14 @@ function listCurrentProjectBlueprintRows(
     const sql = options.status
       ? `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints WHERE status = ? ORDER BY ingested_at DESC LIMIT ?`
       : `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints ORDER BY ingested_at DESC LIMIT ?`
-    return (options.status
-      ? conn.db.prepare(sql).all(options.status, options.limit)
-      : conn.db.prepare(sql).all(options.limit)) as unknown as BpRow[]
+    return parseProjectionRows(
+      BpRowSchema,
+      options.status
+        ? conn.db.prepare(sql).all(options.status, options.limit)
+        : conn.db.prepare(sql).all(options.limit),
+      failures,
+      'blueprints projection',
+    )
   } finally {
     conn.close()
   }
@@ -1383,23 +1420,33 @@ function listCurrentProjectBlueprintRows(
 function getCurrentProjectBlueprint(
   cwd: string,
   slug: string,
+  failures: string[] = [],
 ): { blueprint: BpDetailRow | null; tasks: TaskRow[] } {
   const target = dbPath(cwd)
   if (!existsSync(target)) return { blueprint: null, tasks: [] }
   const conn = openDb(target)
   try {
-    const blueprint =
+    const blueprint = parseProjectionRow(
+      BpDetailRowSchema,
       conn.db
         .prepare<[string], BpDetailRow>(
           `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints WHERE slug = ?`,
         )
-        .get(slug) ?? null
+        .get(slug) ?? null,
+      failures,
+      `blueprint ${slug}`,
+    )
     const tasks = blueprint
-      ? (conn.db
-          .prepare<[string], TaskRow>(
-            `SELECT task_id, title, status, wave, lane FROM tasks WHERE blueprint_slug = ? ORDER BY id`,
-          )
-          .all(slug) as TaskRow[])
+      ? parseProjectionRows(
+          TaskRowCompactSchema,
+          conn.db
+            .prepare<[string], TaskRowCompact>(
+              `SELECT task_id, title, status, wave, lane FROM tasks WHERE blueprint_slug = ? ORDER BY id`,
+            )
+            .all(slug),
+          failures,
+          `tasks for ${slug}`,
+        )
       : []
     return { blueprint, tasks }
   } finally {
@@ -1424,10 +1471,11 @@ async function handleBlueprintList(
       const target: { scope: typeof scope; project_id?: string } = { scope }
       if (project_id) target.project_id = project_id
 
+      const rowFailures: string[] = []
       const timed = await awaitBounded(
         aggregateBlueprintRows<BpRow>({
           target,
-          read: listBpReader,
+          read: createListBpReader(rowFailures),
           resolveOptions: { cwd },
         }),
         readBoundedTimeoutMs(
@@ -1437,12 +1485,12 @@ async function handleBlueprintList(
       )
       if (timed.timedOut) {
         const fallbackCwd = resolveFallbackProjectCwd(cwd)
-        const rows = listCurrentProjectBlueprintRows(fallbackCwd, { status, limit })
+        const rows = listCurrentProjectBlueprintRows(fallbackCwd, { status, limit }, rowFailures)
         const b = bytes(JSON.stringify(rows))
         return jsonContent({
           summary: `Project discovery timed out; returning ${rows.length} blueprint(s) from the current project only`,
           blueprints: rows,
-          failures: ['project_discovery_timeout'],
+          failures: ['project_discovery_timeout', ...rowFailures],
           duplicate_slugs: [],
           freshness_ok: false,
           bytes: b,
@@ -1451,7 +1499,7 @@ async function handleBlueprintList(
       }
       const result = timed.value
 
-      let rows = result.rows as Array<BpRow & { project_id: string }>
+      let rows = result.rows
       if (status) rows = rows.filter((r) => r.status === status)
       rows = rows.slice(0, limit)
 
@@ -1459,9 +1507,9 @@ async function handleBlueprintList(
       return jsonContent({
         summary: `Found ${rows.length} blueprint(s)${status ? ` with status "${status}"` : ''} across ${result.projects.length} project(s)`,
         blueprints: rows,
-        failures: result.failures,
+        failures: [...result.failures, ...rowFailures],
         duplicate_slugs: result.duplicate_slugs,
-        freshness_ok: result.failures.length === 0,
+        freshness_ok: result.failures.length === 0 && rowFailures.length === 0,
         bytes: b,
         tokensSaved: 0,
       })
@@ -1497,15 +1545,19 @@ async function handleBlueprintList(
   }
 
   try {
+    const failures: string[] = []
     const conn = openDb(target)
     let rows: BpRow[]
     try {
       const sql = status
         ? `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints WHERE status = ? ORDER BY ingested_at DESC LIMIT ?`
         : `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints ORDER BY ingested_at DESC LIMIT ?`
-      rows = (status
-        ? conn.db.prepare(sql).all(status, limit)
-        : conn.db.prepare(sql).all(limit)) as unknown as BpRow[]
+      rows = parseProjectionRows(
+        BpRowSchema,
+        status ? conn.db.prepare(sql).all(status, limit) : conn.db.prepare(sql).all(limit),
+        failures,
+        'blueprints projection',
+      )
     } finally {
       conn.close()
     }
@@ -1515,8 +1567,8 @@ async function handleBlueprintList(
       summary: `Found ${rows.length} blueprint(s)${status ? ` with status "${status}"` : ''}`,
       blueprints: rows,
       project_id: resolvedProject.project_id ?? projectCwd,
-      freshness_ok: true,
-      failures: [],
+      freshness_ok: failures.length === 0,
+      failures,
       bytes: b,
       tokensSaved: 0,
     })
@@ -1527,26 +1579,7 @@ async function handleBlueprintList(
 
 const getSchema = ReadTarget.extend({ slug: z.string() })
 
-type BpDetailRow = {
-  slug: string
-  title: string
-  status: string
-  complexity: string | null
-  owner: string | null
-  last_updated: string | null
-  content_hash: string
-  ingested_at: number
-  file_path: string
-  [key: string]: unknown
-}
-
-interface TaskRow {
-  task_id: string
-  title: string
-  status: string
-  wave: string | null
-  lane: string | null
-}
+type TaskRow = TaskRowCompact
 
 async function handleBlueprintGet(
   projectResolver: ProjectResolver,
@@ -1563,17 +1596,22 @@ async function handleBlueprintGet(
     try {
       const readTarget: { scope: typeof scope; project_id?: string } = { scope }
       if (project_id) readTarget.project_id = project_id
+      const rowFailures: string[] = []
 
       const timed = await awaitBounded(
         aggregateBlueprintRows<BpDetailRow>({
           target: readTarget,
-          read: ({ db }) => {
-            const row = db
-              .prepare<[string], BpDetailRow>(
-                `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints WHERE slug = ?`,
-              )
-              .get(slug)
-            return row ? [row] : []
+          read: ({ db, project }) => {
+            return parseProjectionRows(
+              BpDetailRowSchema,
+              db
+                .prepare<[string], BpDetailRow>(
+                  `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints WHERE slug = ?`,
+                )
+                .all(slug),
+              rowFailures,
+              `blueprints projection ${project.project_id}`,
+            )
           },
           resolveOptions: { cwd },
         }),
@@ -1584,7 +1622,7 @@ async function handleBlueprintGet(
       )
       if (timed.timedOut) {
         const fallbackCwd = resolveFallbackProjectCwd(cwd)
-        const { blueprint, tasks } = getCurrentProjectBlueprint(fallbackCwd, slug)
+        const { blueprint, tasks } = getCurrentProjectBlueprint(fallbackCwd, slug, rowFailures)
         if (!blueprint) {
           return jsonContent({
             summary: `Project discovery timed out before "${slug}" could be searched outside the current project`,
@@ -1597,7 +1635,7 @@ async function handleBlueprintGet(
               'disambiguate_slug',
               'Project discovery timed out. Retry with an explicit project_id or a narrower scope.',
             ),
-            failures: ['project_discovery_timeout'],
+            failures: ['project_discovery_timeout', ...rowFailures],
             bytes: 0,
             tokensSaved: 0,
           })
@@ -1611,7 +1649,7 @@ async function handleBlueprintGet(
           ingested_at: blueprint.ingested_at,
           head_at_ingest: readProjectionMetadata(dbPath(fallbackCwd))?.head_at_ingest ?? null,
           project_id: fallbackCwd,
-          failures: ['project_discovery_timeout'],
+          failures: ['project_discovery_timeout', ...rowFailures],
           bytes: b,
           tokensSaved: 0,
         })
@@ -1633,7 +1671,7 @@ async function handleBlueprintGet(
             ),
             candidates,
           },
-          failures: result.failures,
+          failures: [...result.failures, ...rowFailures],
           bytes: 0,
           tokensSaved: 0,
         })
@@ -1648,7 +1686,7 @@ async function handleBlueprintGet(
             'disambiguate_slug',
             `No blueprint with slug "${slug}" found. Check the slug or re-ingest.`,
           ),
-          failures: result.failures,
+          failures: [...result.failures, ...rowFailures],
           bytes: 0,
           tokensSaved: 0,
         })
@@ -1662,11 +1700,16 @@ async function handleBlueprintGet(
         if (existsSync(owningDbPath)) {
           const conn = openDb(owningDbPath)
           try {
-            tasks = conn.db
-              .prepare<[string], TaskRow>(
-                `SELECT task_id, title, status, wave, lane FROM tasks WHERE blueprint_slug = ? ORDER BY id`,
-              )
-              .all(slug) as TaskRow[]
+            tasks = parseProjectionRows(
+              TaskRowCompactSchema,
+              conn.db
+                .prepare<[string], TaskRow>(
+                  `SELECT task_id, title, status, wave, lane FROM tasks WHERE blueprint_slug = ? ORDER BY id`,
+                )
+                .all(slug),
+              rowFailures,
+              `tasks for ${slug}`,
+            )
           } finally {
             conn.close()
           }
@@ -1685,7 +1728,7 @@ async function handleBlueprintGet(
         ingested_at: found.ingested_at,
         head_at_ingest: headAtIngest,
         project_id: found.project_id,
-        failures: result.failures,
+        failures: [...result.failures, ...rowFailures],
         bytes: b,
         tokensSaved: 0,
       })
@@ -1722,22 +1765,32 @@ async function handleBlueprintGet(
   }
 
   try {
+    const failures: string[] = []
     const conn = openDb(target)
     let blueprint: BpDetailRow | null
     let tasks: TaskRow[]
     try {
-      blueprint =
+      blueprint = parseProjectionRow(
+        BpDetailRowSchema,
         conn.db
           .prepare<[string], BpDetailRow>(
             `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints WHERE slug = ?`,
           )
-          .get(slug) ?? null
+          .get(slug) ?? null,
+        failures,
+        `blueprint ${slug}`,
+      )
       tasks = blueprint
-        ? (conn.db
-            .prepare<[string], TaskRow>(
-              `SELECT task_id, title, status, wave, lane FROM tasks WHERE blueprint_slug = ? ORDER BY id`,
-            )
-            .all(slug) as TaskRow[])
+        ? parseProjectionRows(
+            TaskRowCompactSchema,
+            conn.db
+              .prepare<[string], TaskRow>(
+                `SELECT task_id, title, status, wave, lane FROM tasks WHERE blueprint_slug = ? ORDER BY id`,
+              )
+              .all(slug),
+            failures,
+            `tasks for ${slug}`,
+          )
         : []
     } finally {
       conn.close()
@@ -1751,7 +1804,7 @@ async function handleBlueprintGet(
           'disambiguate_slug',
           `No blueprint with slug "${slug}" found in the DB. Check the slug or re-ingest.`,
         ),
-        failures: [`Blueprint "${slug}" not found`],
+        failures: [...failures, `Blueprint "${slug}" not found`],
         bytes: 0,
         tokensSaved: 0,
       })
@@ -1767,7 +1820,7 @@ async function handleBlueprintGet(
       ingested_at: blueprint.ingested_at,
       head_at_ingest: headAtIngest,
       project_id: resolvedProject.project_id ?? projectCwd,
-      failures: [],
+      failures,
       bytes: b,
       tokensSaved: 0,
     })

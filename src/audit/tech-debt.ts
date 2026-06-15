@@ -6,12 +6,13 @@
  * - Each file lives in the directory matching its `status` frontmatter
  * - Critical severity items have weekly cadence (schema refinement)
  */
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import matter from 'gray-matter'
 
+import { walkDirectory } from '#shared-utils/walk-directory.js'
 import { techDebtFrontmatterSchema } from '#tech-debt/schema'
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 
@@ -21,22 +22,13 @@ function relativePath(root: string, filePath: string): string {
   return path.relative(root, filePath)
 }
 
-function walkMdFiles(dir: string): string[] {
+function listMarkdownFiles(dir: string): string[] {
   if (!existsSync(dir)) return []
-  const files: string[] = []
   try {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const fullPath = path.join(dir, entry.name)
-      if (entry.isDirectory()) {
-        files.push(...walkMdFiles(fullPath))
-      } else if (entry.isFile() && entry.name.endsWith('.md')) {
-        files.push(fullPath)
-      }
-    }
+    return walkDirectory(dir, { extensions: ['.md'] })
   } catch {
-    // ignore unreadable dirs
+    return []
   }
-  return files.sort()
 }
 
 /**
@@ -53,7 +45,7 @@ export function auditTechDebt(root: string): RepoAuditResult {
     const dir = path.join(root, statusDir)
     if (!existsSync(dir)) continue
 
-    const files = walkMdFiles(dir)
+    const files = listMarkdownFiles(dir)
     for (const filePath of files) {
       checked++
       const rel = relativePath(root, filePath)
