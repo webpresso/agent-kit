@@ -1,13 +1,13 @@
 import { spawn } from 'node:child_process'
 
-import { placeholderCommand, placeholderGroup } from '#cli/bundle/commands/helpers.js'
+import {
+  getCommandRawArgs,
+  placeholderCommand,
+  placeholderGroup,
+} from '#cli/bundle/commands/helpers.js'
 import type { CliCommand } from '@webpresso/cli-contract'
 
 const SCOPE = 'Blueprint'
-
-function getRawArgs(context: Parameters<NonNullable<CliCommand['run']>>[0]): readonly string[] {
-  return (context as { rawArgs?: readonly string[] }).rawArgs ?? []
-}
 
 function hasFlag(args: readonly string[], flag: string): boolean {
   return args.includes(flag)
@@ -17,7 +17,7 @@ function createBlueprintAuditCommand(): CliCommand {
   return {
     meta: { description: 'Audit blueprints', name: 'audit' },
     run: async (context) => {
-      const rawArgs = getRawArgs(context)
+      const rawArgs = getCommandRawArgs(context)
       const asJson = hasFlag(rawArgs, '--json')
       const args = ['blueprint', 'audit', '--cwd', process.cwd()]
       if (hasFlag(rawArgs, '--all')) args.push('--all')
