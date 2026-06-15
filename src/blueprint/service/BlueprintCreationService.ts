@@ -6,6 +6,7 @@ import { mkdtemp, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:f
 import path from 'node:path'
 
 import { type Blueprint, parseBlueprint } from '#core/parser'
+import { refreshBlueprintReadmeIndex } from '#audit/blueprint-readme-drift'
 import { scanBlueprintDirectory } from '#service/scanner'
 import { resolveBlueprintRoot } from '#utils/blueprint-root'
 import { getBlueprintDocumentPaths } from '#utils/document-paths.js'
@@ -327,6 +328,7 @@ export class BlueprintCreationService {
       }
 
       await rename(tempPath, finalPath)
+      refreshBlueprintReadmeIndex(this.projectRoot)
       await rm(tempDir, { force: true, recursive: true })
 
       return {

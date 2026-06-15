@@ -109,4 +109,46 @@ describe('auditBlueprintReadmeDrift', () => {
     expect(result.ok).toBe(true)
     expect(result.violations).toHaveLength(0)
   })
+
+  it('supports repos whose canonical blueprint root is webpresso/blueprints', () => {
+    rmSync(path.join(cwd, 'blueprints'), { recursive: true, force: true })
+    mkdirSync(path.join(cwd, 'webpresso', 'blueprints'), { recursive: true })
+    writeFileSync(path.join(cwd, 'webpresso', 'config.yaml'), 'project:\n  name: test\n', 'utf8')
+
+    const nestedBlueprint = path.join(cwd, 'webpresso', 'blueprints', 'planned', 'one.md')
+    mkdirSync(path.dirname(nestedBlueprint), { recursive: true })
+    writeFileSync(
+      nestedBlueprint,
+      [
+        '---',
+        'type: blueprint',
+        'title: Example',
+        'owner: test',
+        'status: planned',
+        'complexity: S',
+        "created: '2026-06-04'",
+        "last_updated: '2026-06-04'",
+        '---',
+        '',
+        '# Example',
+        '',
+        '#### Task 1.1: Example',
+        '',
+        '**Status:** todo',
+        '',
+        '**Acceptance:**',
+        '',
+        '- [ ] Example',
+        '',
+      ].join('\n'),
+      'utf8',
+    )
+
+    const readmePath = path.join(cwd, 'webpresso', 'blueprints', 'README.md')
+    writeFileSync(readmePath, ['# Blueprints', '', '## Authoring', '', 'Keep this prose.', ''].join('\n'), 'utf8')
+
+    const result = auditBlueprintReadmeDrift(cwd, { fix: true })
+    expect(result.ok).toBe(true)
+    expect(readFileSync(readmePath, 'utf8')).toContain('| `planned/` | 1 |')
+  })
 })

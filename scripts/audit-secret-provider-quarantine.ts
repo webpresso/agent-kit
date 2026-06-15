@@ -36,7 +36,7 @@ const BANNED_PATTERNS: Array<{ pattern: RegExp; message: string }> = [
   },
   {
     pattern: /runtime\/process\/secret-runner/,
-    message: 'use `@webpresso/webpresso/runtime/env` instead of secret-runner',
+    message: 'use `@webpresso/framework/runtime/env` instead of secret-runner',
   },
 ]
 

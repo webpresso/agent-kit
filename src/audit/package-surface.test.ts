@@ -113,7 +113,7 @@ describe('package-surface audit', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'packages', 'bad'), { recursive: true })
     writeJson(join(root, 'package-surface.json'), {
-      allowedPublicPackages: ['@webpresso/webpresso'],
+      allowedPublicPackages: ['@webpresso/framework'],
       compatibilityPublicPackages: [],
     })
     writeJson(join(root, 'packages', 'bad', 'package.json'), {
@@ -164,7 +164,7 @@ describe('package-surface audit', () => {
   test('flags forbidden vendor package names in public docs', () => {
     const root = tempRepo()
     writeJson(join(root, 'package.json'), {
-      name: '@webpresso/webpresso',
+      name: '@webpresso/framework',
       version: '0.1.0',
       private: false,
     })
@@ -188,14 +188,14 @@ describe('package-surface audit', () => {
     const root = tempRepo()
     writeJson(join(root, 'package-surface.json'), {
       referenceConsumerBaselines: {
-        '@webpresso/webpresso': '0.3.6',
+        '@webpresso/framework': '0.3.6',
       },
     })
     writeFileSync(
       join(root, 'pnpm-workspace.yaml'),
-      ['catalog:', '  "@webpresso/webpresso": ^0.1.1', ''].join('\n'),
+      ['catalog:', '  "@webpresso/framework": ^0.1.1', ''].join('\n'),
     )
-    writeFileSync(join(root, 'pnpm-lock.yaml'), "'@webpresso/webpresso@0.1.1':\n")
+    writeFileSync(join(root, 'pnpm-lock.yaml'), "'@webpresso/framework@0.1.1':\n")
 
     const result = auditPackageSurface(root, fastFixtureAudit)
 
@@ -210,10 +210,10 @@ describe('package-surface audit', () => {
     )
   })
 
-  test('does not carry a default @webpresso/webpresso reference-consumer baseline', () => {
+  test('does not carry a default @webpresso/framework reference-consumer baseline', () => {
     const root = tempRepo()
     writeJson(join(root, 'package-surface.json'), {})
-    writeFileSync(join(root, 'pnpm-lock.yaml'), "'@webpresso/webpresso@0.1.1':\n")
+    writeFileSync(join(root, 'pnpm-lock.yaml'), "'@webpresso/framework@0.1.1':\n")
 
     const result = auditPackageSurface(root, fastFixtureAudit)
 
@@ -221,7 +221,7 @@ describe('package-surface audit', () => {
       expect.arrayContaining([
         expect.objectContaining({
           file: 'pnpm-lock.yaml',
-          message: expect.stringContaining('@webpresso/webpresso resolves to 0.1.1'),
+          message: expect.stringContaining('@webpresso/framework resolves to 0.1.1'),
         }),
       ]),
     )
@@ -244,14 +244,14 @@ describe('package-surface audit', () => {
     )
   })
 
-  test('does not match unscoped webpresso baseline inside a scoped @webpresso/webpresso lock entry', () => {
+  test('does not match unscoped webpresso baseline inside a scoped @webpresso/framework lock entry', () => {
     const root = tempRepo()
     writeJson(join(root, 'package-surface.json'), {
       referenceConsumerBaselines: {
         webpresso: '0.18.18',
       },
     })
-    writeFileSync(join(root, 'pnpm-lock.yaml'), "'@webpresso/webpresso@0.3.8':\n")
+    writeFileSync(join(root, 'pnpm-lock.yaml'), "'@webpresso/framework@0.3.8':\n")
 
     const result = auditPackageSurface(root, fastFixtureAudit)
 
@@ -273,7 +273,7 @@ describe('package-surface audit', () => {
       version: '0.1.0',
       private: false,
     })
-    writeFileSync(join(root, 'README.md'), 'Use @webpresso/webpresso/runtime.\n')
+    writeFileSync(join(root, 'README.md'), 'Use @webpresso/framework/runtime.\n')
 
     expect(auditPackageSurface(root, fastFixtureAudit).ok).toBe(true)
   })
@@ -316,7 +316,7 @@ describe('package-surface audit', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'docs', 'research'), { recursive: true })
     writeJson(join(root, 'package.json'), {
-      name: '@webpresso/webpresso',
+      name: '@webpresso/framework',
       version: '0.1.0',
       private: false,
       files: ['docs', 'README.md'],
@@ -350,12 +350,12 @@ describe('package-surface audit', () => {
   test('regex forbidden-content patterns reject matching packed text', () => {
     const root = tempRepo()
     writeJson(join(root, 'package-surface.json'), {
-      allowedPublicPackages: ['@webpresso/webpresso'],
+      allowedPublicPackages: ['@webpresso/framework'],
       compatibilityPublicPackages: [],
       tarball: { forbiddenContentPatterns: ['/ozby\\/ingest-lens/'] },
     })
     writeJson(join(root, 'package.json'), {
-      name: '@webpresso/webpresso',
+      name: '@webpresso/framework',
       version: '0.1.0',
       private: false,
       files: ['README.md'],
@@ -378,7 +378,7 @@ describe('package-surface audit', () => {
   test('flags secretlint findings in packed files', () => {
     const root = tempRepo()
     writeJson(join(root, 'package.json'), {
-      name: '@webpresso/webpresso',
+      name: '@webpresso/framework',
       version: '0.1.0',
       private: false,
       files: ['README.md'],
@@ -405,7 +405,7 @@ describe('package-surface audit', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'node_modules', '.bin'), { recursive: true })
     writeJson(join(root, 'package.json'), {
-      name: '@webpresso/webpresso',
+      name: '@webpresso/framework',
       version: '0.1.0',
       private: false,
       files: ['README.md'],
@@ -441,7 +441,7 @@ describe('package-surface audit', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'node_modules', '.bin'), { recursive: true })
     writeJson(join(root, 'package.json'), {
-      name: '@webpresso/webpresso',
+      name: '@webpresso/framework',
       version: '0.1.0',
       private: false,
       files: ['README.md'],
@@ -484,7 +484,7 @@ describe('package-surface audit', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'dist'), { recursive: true })
     writeJson(join(root, 'package.json'), {
-      name: '@webpresso/webpresso',
+      name: '@webpresso/framework',
       version: '0.1.0',
       private: false,
       files: ['dist'],
@@ -504,7 +504,7 @@ describe('package-surface audit', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'generated-docs'), { recursive: true })
     writeJson(join(root, 'package.json'), {
-      name: '@webpresso/webpresso',
+      name: '@webpresso/framework',
       version: '0.1.0',
       private: false,
       files: ['generated-docs'],
@@ -531,7 +531,7 @@ describe('package-surface audit', () => {
     const destination = join(root, '.packed-surface')
     mkdirSync(join(root, 'docs'), { recursive: true })
     writeJson(join(root, 'package.json'), {
-      name: '@webpresso/webpresso',
+      name: '@webpresso/framework',
       version: '0.1.0',
       private: false,
       files: ['README.md', 'docs'],

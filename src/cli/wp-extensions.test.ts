@@ -17,7 +17,7 @@ describe('registerWpExtensions', () => {
     const register = vi.fn()
     loadWpExtensions.mockResolvedValueOnce([
       {
-        packageName: '@webpresso/webpresso',
+        packageName: '@webpresso/framework',
         compatible: true,
         detected: true,
         warnings: [],

@@ -107,21 +107,21 @@ describe('wp extension runtime helpers', () => {
         if (path === '/repo/package.json') {
           return {
             webpresso: { wpExtensions: true },
-            dependencies: { '@webpresso/webpresso': 'workspace:*' },
+            dependencies: { '@webpresso/framework': 'workspace:*' },
           }
         }
         if (path === '/deps/framework/package.json') {
-          return { webpresso: { wpExtension: '@webpresso/webpresso/wp-extension' } }
+          return { webpresso: { wpExtension: '@webpresso/framework/wp-extension' } }
         }
         return undefined
       },
       resolveFrom: (from, specifier) => {
-        if (from === '/repo/package.json' && specifier === '@webpresso/webpresso/package.json') {
+        if (from === '/repo/package.json' && specifier === '@webpresso/framework/package.json') {
           return '/deps/framework/package.json'
         }
         if (
           from === '/deps/framework/package.json' &&
-          specifier === '@webpresso/webpresso/wp-extension'
+          specifier === '@webpresso/framework/wp-extension'
         ) {
           return '/deps/framework/wp-extension.js'
         }
@@ -135,7 +135,7 @@ describe('wp extension runtime helpers', () => {
 
     expect(loaded).toHaveLength(1)
     expect(loaded[0]).toMatchObject({
-      packageName: '@webpresso/webpresso',
+      packageName: '@webpresso/framework',
       compatible: true,
       detected: true,
       warnings: [],

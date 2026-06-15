@@ -72,7 +72,7 @@ at runtime rather than hard-coding it.
 - Provider-specific flags passed to `with-secrets` (e.g. `--doppler`,
   `--infisical`) instead of the provider-neutral form
 - Direct provider `secrets download` calls
-- Imports of the deprecated internal secret-runner runtime path (use `@webpresso/webpresso/runtime/env` instead)
+- Imports of the deprecated internal secret-runner runtime path (use `@webpresso/framework/runtime/env` instead)
 
 ```bash
 wp audit secret-provider-quarantine

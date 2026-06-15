@@ -54,268 +54,268 @@ export interface PackageImportRuleOptions {
 const GENERIC_SHARED_FUNCTIONS: SharedFunction[] = []
 
 const WEBPRESSO_SHARED_FUNCTIONS: SharedFunction[] = [
-  // String utilities (@webpresso/webpresso/runtime/format/string)
+  // String utilities (@webpresso/framework/runtime/format/string)
   {
     name: 'capitalize',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/string',
     category: 'string',
   },
   {
     name: 'truncate',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/string',
     category: 'string',
   },
   {
     name: 'slugify',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/string',
     category: 'string',
   },
   {
     name: 'toTitleCase',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/string',
     category: 'string',
   },
   {
     name: 'toKebabCase',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/string',
     category: 'string',
   },
   {
     name: 'toCamelCase',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/string',
     category: 'string',
   },
   {
     name: 'toSnakeCase',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/string',
     category: 'string',
   },
   {
     name: 'removeSpecialChars',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/string',
     category: 'string',
   },
   {
     name: 'getInitials',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/string',
     category: 'string',
   },
   {
     name: 'maskEmail',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/string',
     category: 'string',
   },
   {
     name: 'countWords',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/string',
     category: 'string',
   },
   {
     name: 'containsIgnoreCase',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/string',
     category: 'string',
   },
   {
     name: 'randomString',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/string',
     category: 'string',
   },
   {
     name: 'levenshteinDistance',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/string',
     category: 'string',
   },
   {
     name: 'closestMatch',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/string',
     category: 'string',
   },
   {
     name: 'findClosestMatch',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/string',
     category: 'string',
   },
   {
     name: 'escapeRegex',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/string',
     category: 'string',
   },
 
-  // Date utilities (@webpresso/webpresso/runtime/format/date)
+  // Date utilities (@webpresso/framework/runtime/format/date)
   {
     name: 'formatDate',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/date',
     category: 'date',
   },
   {
     name: 'formatRelativeTime',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/date',
     category: 'date',
   },
   {
     name: 'isToday',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/date',
     category: 'date',
   },
   {
     name: 'isWithinDays',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/date',
     category: 'date',
   },
   {
     name: 'addDays',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/date',
     category: 'date',
   },
   {
     name: 'subtractDays',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/date',
     category: 'date',
   },
   {
     name: 'startOfDay',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/date',
     category: 'date',
   },
   {
     name: 'endOfDay',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/date',
     category: 'date',
   },
 
-  // Duration utilities (@webpresso/webpresso/runtime/format/duration)
+  // Duration utilities (@webpresso/framework/runtime/format/duration)
   {
     name: 'formatDuration',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/duration',
     category: 'duration',
   },
   {
     name: 'formatDurationSeconds',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/duration',
     category: 'duration',
   },
 
-  // Format utilities (@webpresso/webpresso/runtime/format/format)
+  // Format utilities (@webpresso/framework/runtime/format/format)
   {
     name: 'formatNumber',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/format',
     category: 'format',
   },
   {
     name: 'formatPercentage',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/format',
     category: 'format',
   },
   {
     name: 'formatCompactNumber',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/format',
     category: 'format',
   },
   {
     name: 'formatBytes',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/format',
     category: 'format',
   },
   {
     name: 'formatPhoneNumber',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/format',
     category: 'format',
   },
 
-  // ID utilities (@webpresso/webpresso/runtime/utils/id)
+  // ID utilities (@webpresso/framework/runtime/utils/id)
   {
     name: 'generateId',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/utils/id',
     category: 'id',
   },
   {
     name: 'generateSlug',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/utils/id',
     category: 'id',
   },
   {
     name: 'generateSlugUnderscore',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/utils/id',
     category: 'id',
   },
 
-  // Error utilities (@webpresso/webpresso/runtime/format/errors)
+  // Error utilities (@webpresso/framework/runtime/format/errors)
   {
     name: 'createErrorContext',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/errors',
     category: 'error',
   },
   {
     name: 'getErrorMessage',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/errors',
     category: 'error',
   },
   {
     name: 'isRetryableError',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/errors',
     category: 'error',
   },
   {
     name: 'serializeError',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/errors',
     category: 'error',
   },
   {
     name: 'serializeUnknownError',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/errors',
     category: 'error',
   },
   {
     name: 'toError',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/format/errors',
     category: 'error',
   },
 
-  // Validation utilities (@webpresso/webpresso/runtime/validation/validation)
+  // Validation utilities (@webpresso/framework/runtime/validation/validation)
   {
     name: 'validateProjectName',
-    package: '@webpresso/webpresso',
+    package: '@webpresso/framework',
     source: 'runtime/validation/validation',
     category: 'validation',
   },

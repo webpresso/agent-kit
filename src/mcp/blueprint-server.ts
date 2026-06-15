@@ -21,6 +21,7 @@ import matter from 'gray-matter'
 import { z } from 'zod'
 
 import { parseBlueprint } from '#core/parser'
+import { refreshBlueprintReadmeIndex } from '#audit/blueprint-readme-drift'
 import { setBlueprintFrontmatterFields } from '#lifecycle/engine'
 import { openDb } from '#db/connection.js'
 import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
@@ -220,6 +221,7 @@ async function persistBlueprintMarkdown(input: {
   mkdirSync(path.dirname(blueprintPath), { recursive: true })
   parseBlueprint(markdown, slug)
   writeFileSync(blueprintPath, markdown, 'utf8')
+  refreshBlueprintReadmeIndex(projectCwd)
   await reIngest(projectCwd)
   const refreshed = getCurrentProjectBlueprint(projectCwd, slug)
   if (!refreshed.blueprint) {
