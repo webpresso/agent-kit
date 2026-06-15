@@ -143,6 +143,8 @@ function warningFor(error: FetchIndexError): string {
       return 'fetched content produced no indexable chunks'
     case 'fetch_failed':
       return 'fetch failed'
+    case 'too_many_redirects':
+      return 'fetch exceeded the redirect limit'
   }
 }
 
@@ -154,16 +156,18 @@ export async function handleSessionFetchAndIndex(
   const input = inputSchema.parse(raw ?? {})
   const store = new SessionMemoryStore(input.dbPath ?? defaultDbPath(input.cwd))
   try {
-    const chunks = await fetchAndIndex({
-      url: input.url,
-      source: input.source,
-      store,
-      timeoutMs: input.timeoutMs,
-      maxBytes: input.maxBytes,
-      maxChunks: input.maxChunks,
-      signal: extra?.signal,
-      fetchImpl: deps.fetchImpl,
-    })
+    const chunks = await fetchAndIndex(
+      {
+        url: input.url,
+        source: input.source,
+        store,
+        timeoutMs: input.timeoutMs,
+        maxBytes: input.maxBytes,
+        maxChunks: input.maxChunks,
+        signal: extra?.signal,
+      },
+      { fetchImpl: deps.fetchImpl },
+    )
     if (chunks.length === 0) {
       const result = payloadFor(input, chunks, ['fetched content produced no indexable chunks'])
       return createSummaryResult(result, { isError: true })
@@ -180,10 +184,10 @@ export async function handleSessionFetchAndIndex(
         : fetchError.code === 'blocked_host'
           ? 'session fetch/index rejected blocked host'
           : fetchError.code === 'timed_out'
-          ? 'session fetch/index timed out'
-          : fetchError.code === 'aborted'
-            ? 'session fetch/index aborted'
-            : 'session fetch/index failed'
+            ? 'session fetch/index timed out'
+            : fetchError.code === 'aborted'
+              ? 'session fetch/index aborted'
+              : 'session fetch/index failed'
     const result = payloadFor(input, [], [warningFor(fetchError)], {
       passed: false,
       summary,

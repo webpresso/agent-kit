@@ -84,6 +84,12 @@ function assertTaskExists(blueprint: Blueprint, taskId: string) {
 }
 
 function assertTaskDoneRequirements(markdown: string, blueprint: Blueprint): void {
+  if (blueprint.tasks.length === 0) {
+    throw new Error(
+      `Blueprint ${blueprint.name} cannot finalize: zero-task blueprints cannot complete through the public lifecycle surface`,
+    )
+  }
+
   const tasksRequiringEvidence: string[] = []
 
   for (const task of blueprint.tasks) {

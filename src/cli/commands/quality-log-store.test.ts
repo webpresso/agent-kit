@@ -9,8 +9,8 @@ const stateRoot = vi.hoisted(() => ({ path: '' }))
 const fsMocks = vi.hoisted(() => ({
   createWriteStream: vi.fn(),
   openSync: vi.fn(),
-  actualCreateWriteStream: undefined as undefined | typeof import('node:fs')['createWriteStream'],
-  actualOpenSync: undefined as undefined | typeof import('node:fs')['openSync'],
+  actualCreateWriteStream: undefined as undefined | (typeof import('node:fs'))['createWriteStream'],
+  actualOpenSync: undefined as undefined | (typeof import('node:fs'))['openSync'],
 }))
 
 vi.mock('node:fs', async () => {

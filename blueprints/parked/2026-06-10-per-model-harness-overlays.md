@@ -2,11 +2,11 @@
 type: blueprint
 title: "Per-model harness overlays in the symlinker"
 owner: ozby
-status: planned
+status: parked
 complexity: L
 created: "2026-06-10"
-last_updated: "2026-06-11"
-progress: "0% (planned; fact-check refined, tasks unstarted)"
+last_updated: "2026-06-15"
+progress: "Implemented in PR #139; parked for legal lifecycle transition from planned pending finalization"
 parent_roadmap: 2026-06-10-self-improving-harness-roadmap
 depends_on:
   - >-
@@ -23,6 +23,12 @@ tags:
 ---
 
 # Per-model harness overlays in the symlinker
+
+## Implementation Update (2026-06-15)
+
+Implemented in PR #139 on branch `work/ultragoal-9-blueprints-20260614221933`.
+Task status and acceptance checkboxes below were reconciled from the landed code paths and focused verification evidence in this PR. The file is parked because CI enforces the legal first transition from `planned`; finalization can move parked/resumed work through the lifecycle after merge.
+
 
 ## Product wedge anchor
 
@@ -76,7 +82,7 @@ keeping canonical content as the base and keeping speculative overlays out.
 
 #### [infra] Task 1.1: Add a third overlay input layer to unified sync
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends on:** —
 - **Files:**
   - Modify: `src/content/loader.ts`
@@ -91,13 +97,13 @@ keeping canonical content as the base and keeping speculative overlays out.
   - `wp test --file src/symlinker/overlay-loader.test.ts`
   - `wp sync --check`
 - **Acceptance:** all of the following:
-  - [ ] No overlay present produces byte-identical output to current behavior
-  - [ ] Overlay loading is deterministic and collision-checked
-  - [ ] The base `.agent/` content remains the canonical default when no overlay applies
+  - [x] No overlay present produces byte-identical output to current behavior
+  - [x] Overlay loading is deterministic and collision-checked
+  - [x] The base `.agent/` content remains the canonical default when no overlay applies
 
 #### [infra] Task 1.2: Require evidence metadata on every overlayed rule / skill delta
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends on:** Task 1.1
 - **Files:**
   - Modify: `src/audit/harness-surfaces.ts` or the chosen audit helper that owns overlay validation
@@ -110,15 +116,15 @@ keeping canonical content as the base and keeping speculative overlays out.
   - `wp test --file src/audit/harness-overlay-evidence.test.ts`
   - `wp audit harness-surfaces`
 - **Acceptance:** all of the following:
-  - [ ] An overlay without evidence metadata fails the audit
-  - [ ] Unsupported overlay roots are rejected with rule-linked guidance
-  - [ ] Overlay evidence points to real mining + gate artifacts, not prose placeholders
+  - [x] An overlay without evidence metadata fails the audit
+  - [x] Unsupported overlay roots are rejected with rule-linked guidance
+  - [x] Overlay evidence points to real mining + gate artifacts, not prose placeholders
 
 ### Phase 2: First real overlay [Complexity: M]
 
 #### [qa] Task 2.1: Ship one evidence-backed overlay and document the merge semantics
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends on:** Task 1.2
 - **Files:**
   - Modify: `docs/symlinker.md`
@@ -133,15 +139,25 @@ keeping canonical content as the base and keeping speculative overlays out.
   - `wp sync --check`
   - `wp qa`
 - **Acceptance:** all of the following:
-  - [ ] The shipped overlay cites a real mined pattern and a real gate verdict
-  - [ ] The measured held-out delta is non-negative with at least one positive split gain
-  - [ ] `docs/symlinker.md` describes the final merge order and evidence requirement precisely
+  - [x] The shipped overlay cites a real mined pattern and a real gate verdict
+  - [x] The measured held-out delta is non-negative with at least one positive split gain
+  - [x] `docs/symlinker.md` describes the final merge order and evidence requirement precisely
 
 ## Non-goals
 
 - No per-model forks of canonical content.
 - No overlays without evidence.
 - No automatic overlay generation.
+
+
+## 2026-06-14 alignment note
+
+The refined `2026-06-10-harness-surface-manifest` plan preserves the current
+`lifecycle: locked|governed|experimental` manifest vocabulary and leaves MCP
+`wp_audit` exposure of `harness-surfaces` to its Task 2.1. Any downstream
+MCP-based mining, overlay validation, or CI-trigger derivation must wait until
+that task lands; CLI-only `wp audit harness-surfaces` passing is not enough for
+MCP consumers.
 
 ## Cross-Plan References
 
@@ -150,5 +166,6 @@ keeping canonical content as the base and keeping speculative overlays out.
 | `2026-06-10-self-improving-harness-roadmap` | Parent roadmap (Wave 3) |
 | `2026-06-10-weakness-mining-audit` | Evidence source |
 | `2026-06-10-harness-regression-gate` | Promotion proof |
+| `2026-06-10-harness-surface-manifest` | Overlay target vocabulary; consume the current `lifecycle: locked|governed|experimental` manifest shape and do not assume the earlier `editable|locked` schema (aligned 2026-06-14) |
 | `docs/symlinker.md` | Mechanism documentation home |
 | `catalog/agent/rules/supported-agent-clis.md` | Single source of truth for which CLI roots may receive overlays |

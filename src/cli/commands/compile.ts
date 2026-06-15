@@ -15,6 +15,7 @@ import {
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { createRequire } from 'node:module'
+import { z } from 'zod'
 
 import { flattenAgentDir, writeFlattenedAssets } from '#compiler/flatten'
 
@@ -56,6 +57,13 @@ export interface CompileManifest {
   readonly sourceHash: string
   readonly outputHashes: Readonly<Record<string, string>>
 }
+
+const CompileManifestSchema = z.object({
+  version: z.number(),
+  timestamp: z.string(),
+  sourceHash: z.string(),
+  outputHashes: z.record(z.string(), z.string()),
+})
 
 function resolveRulesyncBin(cwd: string): string | null {
   // Prefer consumer-local install (supports overrides), fall back to webpresso's bundled copy.
@@ -143,7 +151,7 @@ function hashFile(filePath: string): string {
 function readCompileManifest(manifestPath: string): CompileManifest | null {
   if (!existsSync(manifestPath)) return null
   try {
-    return JSON.parse(readFileSync(manifestPath, 'utf-8')) as CompileManifest
+    return CompileManifestSchema.parse(JSON.parse(readFileSync(manifestPath, 'utf-8')))
   } catch {
     return null
   }

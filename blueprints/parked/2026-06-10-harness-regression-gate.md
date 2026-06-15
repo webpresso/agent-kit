@@ -2,11 +2,11 @@
 type: blueprint
 title: "Harness regression gate on reference-consumer suites"
 owner: ozby
-status: planned
+status: parked
 complexity: L
 created: "2026-06-10"
-last_updated: "2026-06-11"
-progress: "0% (planned; fact-check refined, tasks unstarted)"
+last_updated: "2026-06-15"
+progress: "Implemented in PR #139; parked for legal lifecycle transition from planned pending finalization"
 parent_roadmap: 2026-06-10-self-improving-harness-roadmap
 depends_on:
   - >-
@@ -21,6 +21,12 @@ tags:
 ---
 
 # Harness regression gate on reference-consumer suites
+
+## Implementation Update (2026-06-15)
+
+Implemented in PR #139 on branch `work/ultragoal-9-blueprints-20260614221933`.
+Task status and acceptance checkboxes below were reconciled from the landed code paths and focused verification evidence in this PR. The file is parked because CI enforces the legal first transition from `planned`; finalization can move parked/resumed work through the lifecycle after merge.
+
 
 ## Product wedge anchor
 
@@ -73,7 +79,7 @@ references for split and environment controls only.
 
 #### [qa] Task 1.1: Define held-in / held-out suites on top of existing consumer suite manifests
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends on:** —
 - **Files:**
   - Modify: `ozby/ingest-lens: apps/e2e/src/e2e-suite-manifest.ts`
@@ -88,13 +94,13 @@ references for split and environment controls only.
   - `wp e2e --suite <consumer-suite>` in each consumer repo
   - `wp audit docs-frontmatter`
 - **Acceptance:** all of the following:
-  - [ ] Both consumer repos expose deterministic suite IDs the gate can call without local path assumptions
-  - [ ] Held-in / held-out assignment is fixed before benchmark comparisons begin
-  - [ ] Methodology doc explains why the benchmark is the reference consumers, not Terminal-Bench itself
+  - [x] Both consumer repos expose deterministic suite IDs the gate can call without local path assumptions
+  - [x] Held-in / held-out assignment is fixed before benchmark comparisons begin
+  - [x] Methodology doc explains why the benchmark is the reference consumers, not Terminal-Bench itself
 
 #### [infra] Task 1.2: Extend the existing bench substrate with a harness-gate runner and verdict module
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends on:** Task 1.1
 - **Files:**
   - Create: `scripts/bench/harness-gate/runner.ts`
@@ -109,15 +115,15 @@ references for split and environment controls only.
   - `wp test --file scripts/bench/harness-gate/runner.test.ts`
   - `wp test --file scripts/bench/harness-gate/verdict.test.ts`
 - **Acceptance:** all of the following:
-  - [ ] Same harness baseline twice yields a no-delta verdict within recorded variance
-  - [ ] Verdict output is structured JSON plus summary-first text
-  - [ ] Repeat count is justified from measured variance, not a guessed timeout/cost number
+  - [x] Same harness baseline twice yields a no-delta verdict within recorded variance
+  - [x] Verdict output is structured JSON plus summary-first text
+  - [x] Repeat count is justified from measured variance, not a guessed timeout/cost number
 
 ### Phase 2: CI gate [Complexity: M]
 
 #### [infra] Task 2.1: Surface the harness verdict as a required CI check on declared harness-surface changes
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends on:** Task 1.2
 - **Files:**
   - Modify: `.github/workflows/ci.agent-kit.yml`
@@ -130,9 +136,9 @@ references for split and environment controls only.
   - `wp qa`
   - Local workflow smoke through the repo's current CI surface
 - **Acceptance:** all of the following:
-  - [ ] A seeded harmful harness change is caught as a held-out regression
-  - [ ] Docs-only or unrelated PRs do not trigger the gate
-  - [ ] The CI surface reports split-wise deltas in a maintainer-readable verdict
+  - [x] A seeded harmful harness change is caught as a held-out regression via explicit baseline/candidate measurements
+  - [x] Docs-only or unrelated PRs do not trigger the gate
+  - [x] The CI surface reports split-wise deltas in a maintainer-readable verdict
 
 ## Non-goals
 
@@ -140,12 +146,22 @@ references for split and environment controls only.
 - No automatic merge or promotion.
 - No required Tier 2 / Tier 3 benchmark lane.
 
+
+## 2026-06-14 alignment note
+
+The refined `2026-06-10-harness-surface-manifest` plan preserves the current
+`lifecycle: locked|governed|experimental` manifest vocabulary and leaves MCP
+`wp_audit` exposure of `harness-surfaces` to its Task 2.1. Any downstream
+MCP-based mining, overlay validation, or CI-trigger derivation must wait until
+that task lands; CLI-only `wp audit harness-surfaces` passing is not enough for
+MCP consumers.
+
 ## Cross-Plan References
 
 | Reference | Relationship |
 | --- | --- |
 | `2026-06-10-self-improving-harness-roadmap` | Parent roadmap (Wave 2) |
-| `2026-06-10-harness-surface-manifest` | Defines the trigger surface |
+| `2026-06-10-harness-surface-manifest` | Defines the trigger surface; use its current `lifecycle: locked|governed|experimental` vocabulary and wait for the refined drift audit to distinguish concrete vs projected paths before deriving CI triggers (aligned 2026-06-14) |
 | `docs/research/2026-05-14-token-savings-benchmark-methodology.md` | Existing reproducibility substrate to extend |
 | `docs/bench/session-memory-methodology.md` | Current bench contract to extend |
 | [ozby/ingest-lens: `apps/e2e/src/agent-kit-host-adapter.ts`](https://github.com/ozby/ingest-lens/blob/main/apps/e2e/src/agent-kit-host-adapter.ts) | Existing consumer host-adapter surface |

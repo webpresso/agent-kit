@@ -14,14 +14,12 @@ Each subdirectory represents a lifecycle state:
 | State | Count | Description |
 | ----- | ----: | ----------- |
 | `draft/` | 3 | early-stage sketches. Expect churn; move to `planned/` once scoped. |
-| `planned/` | 24 | committed-to specs, ready to pick up. |
+| `planned/` | 15 | committed-to specs, ready to pick up. |
 | `in-progress/` | 0 | actively being executed. At most 3 active blueprints per lane. |
-| `completed/` | 46 | execution finished and verified. Kept for reference. |
-| `parked/` | 2 | intentionally paused. Include a reason in the spec's frontmatter. |
+| `completed/` | 47 | execution finished and verified. Kept for reference. |
+| `parked/` | 11 | intentionally paused. Include a reason in the spec's frontmatter. |
 | `archived/` | 4 | superseded or abandoned. Not deleted — the record matters. |
 <!-- END: blueprint-index -->
-
-
 
 
 
@@ -60,7 +58,9 @@ Each subdirectory represents a lifecycle state:
 - `draft → planned`: the spec passes the plan-audit checklist
   (`.agent/guides/plan-audit-checklist.md`).
 - `planned → in-progress`: work has started in a worktree or a lane.
+- `planned → completed`: allowed for one-PR completion when every task is already terminal and verification is attached.
 - `in-progress → completed`: all acceptance criteria verified.
+- `completed → in-progress`: explicit reopen path when follow-up work is discovered after closeout.
 - Any state → `archived`: when the work is dropped or replaced.
 
 Move files with `git mv` so history follows the spec through its lifecycle.

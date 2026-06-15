@@ -377,6 +377,7 @@ function apiKeyMapFromEnv(env: NodeJS.ProcessEnv): Record<string, string | undef
   }
 }
 
+
 export function buildSessionMemoryThresholdReport(input: {
   readonly dryRun: boolean
   readonly averageLatencyMs?: number
@@ -398,7 +399,6 @@ export function buildSessionMemoryThresholdReport(input: {
     if (input.recallFailure) return 'failed'
     return (recallStatusValue ?? 0) >= threshold ? 'passed' : 'failed'
   }
-
   return {
     mode: input.dryRun ? 'dry-run' : 'measured',
     axes: [

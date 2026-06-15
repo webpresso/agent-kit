@@ -1,6 +1,22 @@
 import { createHash } from 'node:crypto'
+import type { LookupAddress } from 'node:dns'
+import { request as httpRequest } from 'node:http'
+import type {
+  IncomingHttpHeaders,
+  IncomingMessage,
+  RequestOptions as HttpRequestOptions,
+} from 'node:http'
+import { request as httpsRequest } from 'node:https'
+import type { RequestOptions as HttpsRequestOptions } from 'node:https'
+import { isIP } from 'node:net'
+import { Readable } from 'node:stream'
 
-import { isInternalHost } from './ip-guard.js'
+import {
+  isInternalAddress,
+  isInternalHost,
+  normalizeHostname,
+  resolveHostAddresses,
+} from './ip-guard.js'
 import { SessionMemoryStore } from './store.js'
 import type { SessionMemoryChunk } from './types.js'
 
@@ -14,6 +30,7 @@ export type FetchIndexErrorCode =
   | 'timed_out'
   | 'aborted'
   | 'fetch_failed'
+  | 'too_many_redirects'
 
 export class FetchIndexError extends Error {
   readonly code: FetchIndexErrorCode
@@ -43,25 +60,19 @@ export interface FetchAndIndexOptions {
   maxBytes?: number
   maxChunks?: number
   signal?: AbortSignal
-  fetchImpl?: typeof fetch
-  allowedHosts?: string[]
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000
 const DEFAULT_MAX_FETCH_BYTES = 256 * 1024
 const DEFAULT_MAX_CHUNKS = 100
+const MAX_REDIRECTS = 5
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308])
 
-function normalizeHostForPolicy(hostname: string): string {
-  const trimmed = hostname.trim().toLowerCase()
-  const withoutBrackets =
-    trimmed.startsWith('[') && trimmed.endsWith(']') ? trimmed.slice(1, -1) : trimmed
-  return withoutBrackets.endsWith('.') ? withoutBrackets.slice(0, -1) : withoutBrackets
-}
-
-function isAllowedHost(hostname: string, allowedHosts: readonly string[] | undefined): boolean {
-  if (!allowedHosts || allowedHosts.length === 0) return false
-  const normalized = normalizeHostForPolicy(hostname)
-  return allowedHosts.some((allowedHost) => normalizeHostForPolicy(allowedHost) === normalized)
+function blockedHostError(): FetchIndexError {
+  return new FetchIndexError(
+    'blocked_host',
+    'url host is blocked because it is or resolves to an internal address',
+  )
 }
 
 function normalizeUrl(url: string): string {
@@ -147,11 +158,186 @@ function isAbortError(error: unknown): boolean {
   )
 }
 
+type FetchAccessOptions = {
+  signal: AbortSignal
+  timeoutMs: number
+  allowedHosts?: readonly string[]
+}
+
+function normalizedAllowedHosts(hosts: readonly string[] | undefined): Set<string> {
+  const normalized = new Set<string>()
+  for (const host of hosts ?? []) {
+    const value = normalizeHostname(host).replace(/\.$/u, '')
+    if (value.length > 0) normalized.add(value)
+  }
+  return normalized
+}
+
+function isAllowedFetchHost(url: URL, options: Pick<FetchAccessOptions, 'allowedHosts'>): boolean {
+  if (!options.allowedHosts || options.allowedHosts.length === 0) return false
+  return normalizedAllowedHosts(options.allowedHosts).has(
+    normalizeHostname(url.hostname).replace(/\.$/u, ''),
+  )
+}
+
+async function resolveFetchAddress(url: URL, options: FetchAccessOptions): Promise<LookupAddress> {
+  const allowed = isAllowedFetchHost(url, options)
+  if (
+    !allowed &&
+    (await isInternalHost(url.hostname, { signal: options.signal, timeoutMs: options.timeoutMs }))
+  ) {
+    throw blockedHostError()
+  }
+
+  let addresses: LookupAddress[]
+  try {
+    addresses = await resolveHostAddresses(url.hostname, {
+      signal: options.signal,
+      timeoutMs: options.timeoutMs,
+    })
+  } catch (error) {
+    throw new FetchIndexError('blocked_host', 'url host could not be safely resolved', {
+      cause: error,
+    })
+  }
+
+  if (addresses.length === 0) {
+    throw new FetchIndexError('blocked_host', 'url host did not resolve to any address')
+  }
+  if (!allowed && addresses.some((entry) => isInternalAddress(entry.address))) {
+    throw blockedHostError()
+  }
+  const firstAddress = addresses[0]
+  if (!firstAddress) {
+    throw new FetchIndexError('blocked_host', 'url host did not resolve to any address')
+  }
+  return firstAddress
+}
+
+function responseHeaders(headers: IncomingHttpHeaders): Headers {
+  const result = new Headers()
+  for (const [name, value] of Object.entries(headers)) {
+    if (Array.isArray(value)) {
+      for (const item of value) result.append(name, item)
+    } else if (value !== undefined) {
+      result.set(name, String(value))
+    }
+  }
+  return result
+}
+
+function hostHeader(url: URL): string {
+  const normalized = normalizeHostname(url.hostname)
+  const host =
+    normalized.includes(':') && !normalized.startsWith('[') ? `[${normalized}]` : normalized
+  return url.port ? `${host}:${url.port}` : host
+}
+
+function responseFromIncomingMessage(message: IncomingMessage): Response {
+  const body = Readable.toWeb(message) as ReadableStream<Uint8Array>
+  return new Response(body, {
+    status: message.statusCode ?? 599,
+    statusText: message.statusMessage,
+    headers: responseHeaders(message.headers),
+  })
+}
+
+async function nativeFetchResolved(
+  url: URL,
+  address: LookupAddress,
+  signal: AbortSignal,
+): Promise<Response> {
+  const request = url.protocol === 'https:' ? httpsRequest : httpRequest
+  const isHttps = url.protocol === 'https:'
+  const hostname = normalizeHostname(url.hostname)
+  const requestOptions: HttpRequestOptions & HttpsRequestOptions = {
+    protocol: url.protocol,
+    host: address.address,
+    family: address.family,
+    port: url.port ? Number.parseInt(url.port, 10) : isHttps ? 443 : 80,
+    method: 'GET',
+    path: `${url.pathname}${url.search}`,
+    headers: {
+      host: hostHeader(url),
+      'user-agent': 'webpresso-agent-kit/session-fetch-index',
+      accept: 'text/html,application/json,text/plain;q=0.9,*/*;q=0.8',
+    },
+    signal,
+  }
+  if (isHttps && isIP(hostname) === 0) requestOptions.servername = hostname
+
+  return await new Promise<Response>((resolve, reject) => {
+    const req = request(requestOptions, (message) => resolve(responseFromIncomingMessage(message)))
+    req.on('error', reject)
+    req.end()
+  })
+}
+
+function redirectLocation(response: Response, currentUrl: URL): URL | undefined {
+  if (!REDIRECT_STATUSES.has(response.status)) return undefined
+  const location = response.headers.get('location')
+  if (!location) return undefined
+  try {
+    return new URL(location, currentUrl)
+  } catch (error) {
+    throw new FetchIndexError('invalid_url', 'redirect location must be a valid http(s) URL', {
+      cause: error,
+    })
+  }
+}
+
+async function cancelResponseBody(response: Response): Promise<void> {
+  try {
+    await response.body?.cancel()
+  } catch {
+    // Best-effort socket/stream cleanup; preserve the primary fetch error.
+  }
+}
+
+async function safeFetch(
+  normalizedUrl: string,
+  options: FetchAccessOptions & {
+    fetchImpl?: typeof fetch
+  },
+): Promise<Response> {
+  let currentUrl = new URL(normalizedUrl)
+  for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
+    if (currentUrl.protocol !== 'http:' && currentUrl.protocol !== 'https:') {
+      throw new FetchIndexError('invalid_url', 'redirect location must be absolute http(s)')
+    }
+
+    const address = await resolveFetchAddress(currentUrl, options)
+    const fetchImpl = options.fetchImpl
+    const response = fetchImpl
+      ? await fetchImpl(currentUrl.toString(), {
+          signal: options.signal,
+          redirect: 'manual',
+        })
+      : await nativeFetchResolved(currentUrl, address, options.signal)
+
+    let nextUrl: URL | undefined
+    try {
+      nextUrl = redirectLocation(response, currentUrl)
+    } catch (error) {
+      await cancelResponseBody(response)
+      throw error
+    }
+    if (!nextUrl) return response
+    await cancelResponseBody(response)
+    if (redirectCount === MAX_REDIRECTS) {
+      throw new FetchIndexError('too_many_redirects', 'fetch exceeded the redirect limit')
+    }
+    currentUrl = nextUrl
+  }
+  throw new FetchIndexError('too_many_redirects', 'fetch exceeded the redirect limit')
+}
+
 async function readResponseText(response: Response, maxBytes: number): Promise<string> {
   const declaredLength = response.headers.get('content-length')
   if (declaredLength) {
     const parsed = Number.parseInt(declaredLength, 10)
     if (Number.isFinite(parsed) && parsed > maxBytes) {
+      await cancelResponseBody(response)
       throw new FetchIndexError('body_too_large', `response body exceeds ${maxBytes} bytes`)
     }
   }
@@ -174,6 +360,7 @@ async function readResponseText(response: Response, maxBytes: number): Promise<s
       if (next.done) break
       bytes += next.value.byteLength
       if (bytes > maxBytes) {
+        await reader.cancel()
         throw new FetchIndexError('body_too_large', `response body exceeds ${maxBytes} bytes`)
       }
       chunks.push(decoder.decode(next.value, { stream: true }))
@@ -196,36 +383,35 @@ function wireAbortSignals(
   return () => signal.removeEventListener('abort', abort)
 }
 
-export async function fetchAndIndex(options: FetchAndIndexOptions): Promise<SessionMemoryChunk[]> {
+export async function fetchAndIndex(
+  options: FetchAndIndexOptions,
+  deps: {
+    readonly fetchImpl?: typeof fetch
+    /** Internal/test-only escape hatch for loopback fixtures; never exposed in CLI/MCP input. */
+    readonly allowedHosts?: readonly string[]
+  } = {},
+): Promise<SessionMemoryChunk[]> {
   const normalized = normalizeUrl(options.url)
-  const parsed = new URL(normalized)
   const maxBytes = normalizePositiveInt(options.maxBytes, DEFAULT_MAX_FETCH_BYTES)
   const maxChunks = normalizePositiveInt(options.maxChunks, DEFAULT_MAX_CHUNKS)
   const timeoutMs = normalizePositiveInt(options.timeoutMs, DEFAULT_TIMEOUT_MS)
   const controller = new AbortController()
   let timedOut = false
   const unwire = wireAbortSignals(controller, options.signal)
-  const timeout = setTimeout(
-    () => {
-      timedOut = true
-      controller.abort()
-    },
-    timeoutMs,
-  )
+  const timeout = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, timeoutMs)
 
   try {
-    if (
-      !isAllowedHost(parsed.hostname, options.allowedHosts) &&
-      (await isInternalHost(parsed.hostname, { signal: controller.signal, timeoutMs }))
-    ) {
-      throw new FetchIndexError(
-        'blocked_host',
-        'url host is blocked because it is or resolves to an internal address',
-      )
-    }
-
-    const response = await (options.fetchImpl ?? fetch)(normalized, { signal: controller.signal })
+    const response = await safeFetch(normalized, {
+      fetchImpl: deps.fetchImpl,
+      allowedHosts: deps.allowedHosts,
+      signal: controller.signal,
+      timeoutMs,
+    })
     if (!response.ok) {
+      await cancelResponseBody(response)
       throw new FetchIndexError('http_error', `fetch failed with HTTP ${response.status}`, {
         status: response.status,
       })

@@ -185,7 +185,9 @@ export function processPostToolUse(
 ): boolean {
   capturePostToolUse(input, projectDir, env, deps)
   if (!shouldLintFile(input)) return false
-  const filePath = input.tool_input!.file_path as string
+  const toolInput = input.tool_input
+  if (!toolInput || typeof toolInput.file_path !== 'string') return false
+  const filePath = toolInput.file_path
   return lintFile(filePath, projectDir)
 }
 

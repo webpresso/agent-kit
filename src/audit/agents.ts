@@ -2,6 +2,7 @@ import { existsSync, lstatSync, readFileSync, readdirSync, readlinkSync } from '
 import { basename, dirname, join, relative, resolve } from 'node:path'
 
 import { readConfig } from '#cli/commands/init/config'
+import { readTrustedJsonFile } from '#shared-utils/read-json-file.js'
 
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 
@@ -32,7 +33,7 @@ export function auditAgents(rootDirectory: string = process.cwd()): RepoAuditRes
   const violations: RepoAuditViolation[] = []
   let checked = 0
 
-  const packageJson = readJsonFile<Record<string, unknown>>(join(root, 'package.json'))
+  const packageJson = readTrustedJsonFile<Record<string, unknown>>(join(root, 'package.json'))
   const packageName = typeof packageJson.name === 'string' ? packageJson.name : undefined
   const isSelfHost = packageName === '@webpresso/agent-kit'
   const config = readConfig(root)
@@ -238,7 +239,7 @@ function checkClaudeWorktree(root: string, violations: RepoAuditViolation[]): vo
   const settingsPath = join(root, CLAUDE_SETTINGS_PATH)
   if (!existsSync(settingsPath)) return
 
-  const parsed = readJsonFile<Record<string, unknown>>(settingsPath)
+  const parsed = readTrustedJsonFile<Record<string, unknown>>(settingsPath)
   const worktree = parsed.worktree as Record<string, unknown> | undefined
   const symlinkDirectories = Array.isArray(worktree?.symlinkDirectories)
     ? worktree?.symlinkDirectories
@@ -406,10 +407,6 @@ function parseHooks(raw: string, host: 'claude' | 'codex'): HooksMap {
   const hooks = parsed.hooks
   if (hooks && typeof hooks === 'object') return hooks as HooksMap
   return host === 'codex' ? (parsed as HooksMap) : {}
-}
-
-function readJsonFile<T>(path: string): T {
-  return JSON.parse(readFileSync(path, 'utf8')) as T
 }
 
 function readJsonContent<T>(source: string): T {

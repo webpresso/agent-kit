@@ -6,7 +6,7 @@
 export const WP_ROUTING_BLOCK: string = `<wp_routing>
   <description>
     Use the wp_* MCP tools for all test, lint, typecheck, qa, audit, local CI act,
-    and Cloudflare Worker tail operations.
+    Cloudflare Worker tail, and session-memory context-window protection operations.
     If a wp_* MCP tool is stale or unavailable, use the matching direct wp CLI command.
     Never invoke wp through package-manager wrappers such as bun run wp, pnpm run wp,
     npm run wp, yarn wp, or vp run wp.
@@ -55,6 +55,41 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
       <tool>Use the matching wp_* MCP tool first; otherwise run direct wp</tool>
     </row>
   </decision_table>
+
+
+  <wp_session_context>
+    <description>
+      Context-window protection is mandatory for large-context work. Use wp_session_* MCP tools before raw reads, searches, shell output, network fetches, or compaction-sensitive continuity events can flood the transcript. Use restore/search first when resuming or recalling prior work.
+    </description>
+    <hierarchy>
+      <rule>restore/search first: use wp_session_restore for bounded continuity restore and wp_session_search for indexed chunks or event recall.</rule>
+      <rule>read-to-analyze: use wp_session_execute_file for local file metadata or bounded read_text previews instead of raw full-file dumps.</rule>
+      <rule>shell gathering: use wp_session_batch_execute for planned multi-command evidence gathering, or wp_session_execute for one explicit bounded command.</rule>
+      <rule>network fetches: use wp_session_fetch_and_index for absolute http(s) fetches so SSRF checks, byte caps, indexing, and warnings apply.</rule>
+      <rule>manual continuity: use wp_session_capture for decisions/constraints and wp_session_snapshot before risky operations, branch switches, or compaction.</rule>
+      <rule>diagnostics: use wp_session_stats and wp_session_doctor before changing storage behavior.</rule>
+      <rule>reset: use wp_session_purge only for an explicit reset; dry-run first and require confirmation for deletion.</rule>
+    </hierarchy>
+    <tools>
+      <tool name="wp_session_restore"><category>session-memory</category><trigger>resume, restore, recover context, compacted session continuity</trigger></tool>
+      <tool name="wp_session_search"><category>session-memory</category><trigger>search prior indexed evidence, recall decisions, find session references</trigger></tool>
+      <tool name="wp_session_execute_file"><category>session-memory</category><trigger>read-to-analyze, inspect large files, local file metadata, bounded file preview</trigger></tool>
+      <tool name="wp_session_execute"><category>session-memory</category><trigger>single bounded shell command whose output may be large or useful later</trigger></tool>
+      <tool name="wp_session_batch_execute"><category>session-memory</category><trigger>shell gathering, multiple bounded evidence commands, grep/find/git log batches</trigger></tool>
+      <tool name="wp_session_fetch_and_index"><category>session-memory</category><trigger>network fetches, WebFetch-like evidence, curl/wget replacement</trigger></tool>
+      <tool name="wp_session_index"><category>session-memory</category><trigger>index caller-provided chunks or externally summarized evidence</trigger></tool>
+      <tool name="wp_session_capture"><category>session-memory</category><trigger>manual continuity capture for decisions, constraints, task state, or rejected approaches</trigger></tool>
+      <tool name="wp_session_snapshot"><category>session-memory</category><trigger>snapshot before compaction, risky changes, branch switch, or handoff</trigger></tool>
+      <tool name="wp_session_stats"><category>session-memory</category><trigger>read-only local session-memory counts and source diagnostics</trigger></tool>
+      <tool name="wp_session_doctor"><category>session-memory</category><trigger>diagnose local session-memory stores, locks, corruption, and repair hints</trigger></tool>
+      <tool name="wp_session_purge"><category>session-memory</category><trigger>explicit dry-run reset or confirmed scoped deletion</trigger></tool>
+    </tools>
+    <safety>
+      <rule>Never store raw full payloads or secrets; prefer bounded previews, provenance ids, warnings, and indexed references.</rule>
+      <rule>If the Webpresso MCP surface is not loaded, load it or use the direct wp session command where available; do not default to raw large output.</rule>
+    </safety>
+  </wp_session_context>
+
 
   <tools>
     <tool name="wp_test">

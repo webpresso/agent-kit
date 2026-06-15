@@ -194,17 +194,61 @@ const SAFE_PASSTHROUGH_PREFIXES = [
 ]
 
 const SANDBOX_PREFIXES: Array<{ prefix: string; guidance: string }> = [
-  { prefix: 'grep', guidance: 'Use a bounded repo search tool for large outputs' },
-  { prefix: 'find', guidance: 'Use a bounded repo search tool for large outputs' },
-  { prefix: 'cat', guidance: 'Use bounded file reads for large outputs' },
-  { prefix: 'tail', guidance: 'Use bounded file reads for large outputs' },
-  { prefix: 'head', guidance: 'Use bounded file reads for large outputs' },
-  { prefix: 'curl', guidance: 'Use a bounded fetch path' },
-  { prefix: 'wget', guidance: 'Use a bounded fetch path' },
-  { prefix: 'git log', guidance: 'Use a bounded diff/log path' },
-  { prefix: 'git diff', guidance: 'Use a bounded diff/log path' },
-  { prefix: 'git show', guidance: 'Use a bounded diff/log path' },
-  { prefix: 'vp run build', guidance: 'Use a bounded build-output path' },
+  {
+    prefix: 'grep',
+    guidance:
+      'Use wp_session_batch_execute for bounded shell gathering/search commands so output is capped, indexed, and recallable instead of flooding the transcript',
+  },
+  {
+    prefix: 'find',
+    guidance:
+      'Use wp_session_batch_execute for bounded shell gathering/search commands so output is capped, indexed, and recallable instead of flooding the transcript',
+  },
+  {
+    prefix: 'cat',
+    guidance:
+      'Use wp_session_execute_file for read-to-analyze file inspection with bounded previews and optional indexing instead of raw full-file output',
+  },
+  {
+    prefix: 'tail',
+    guidance:
+      'Use wp_session_execute_file for read-to-analyze file inspection with bounded previews and optional indexing instead of raw file output',
+  },
+  {
+    prefix: 'head',
+    guidance:
+      'Use wp_session_execute_file for read-to-analyze file inspection with bounded previews and optional indexing instead of raw file output',
+  },
+  {
+    prefix: 'curl',
+    guidance:
+      'Use wp_session_fetch_and_index for network fetches so SSRF checks, byte caps, indexing, and bounded warnings apply',
+  },
+  {
+    prefix: 'wget',
+    guidance:
+      'Use wp_session_fetch_and_index for network fetches so SSRF checks, byte caps, indexing, and bounded warnings apply',
+  },
+  {
+    prefix: 'git log',
+    guidance:
+      'Use wp_session_batch_execute for bounded git log shell gathering so output is capped, indexed, and recallable',
+  },
+  {
+    prefix: 'git diff',
+    guidance:
+      'Use wp_session_batch_execute or wp_session_execute for bounded git diff gathering instead of raw large diffs',
+  },
+  {
+    prefix: 'git show',
+    guidance:
+      'Use wp_session_batch_execute or wp_session_execute for bounded git show gathering instead of raw large output',
+  },
+  {
+    prefix: 'vp run build',
+    guidance:
+      'Use wp_session_execute for bounded build-output capture when no dedicated wp_* quality tool exists',
+  },
 ]
 
 const VP_SCOPE_FLAG_PREFIX =
@@ -727,15 +771,121 @@ function extractInlineCommands(code: string): string[] {
   return commands
 }
 
-function isCtxTool(toolName: unknown): boolean {
+function isSessionSandboxTool(toolName: unknown): boolean {
   if (typeof toolName !== 'string') return false
-  const names = new Set(['ctx_execute', 'ctx_batch_execute'])
+  const names = new Set(['wp_session_execute', 'wp_session_batch_execute'])
   if (names.has(toolName)) return true
 
   // Codex/App/plugin MCP tool names are host-generated and may include plugin
-  // prefixes around a stable ctx_* suffix.
-  // Match the stable operation suffix instead of enumerating every provider.
-  return /(?:^|[._-]|__)ctx_(?:batch_)?execute$/u.test(toolName)
+  // prefixes around a stable wp_session_* suffix. Keep loop identity WP-only so
+  // the public routing model does not keep a second ctx_* dialect alive.
+  return /(?:^|[._-]|__)wp_session_(?:batch_)?execute$/u.test(toolName)
+}
+
+
+function toolNameFromInput(input: {
+  tool_name?: string
+  toolName?: string
+  tool?: string
+  name?: string
+}): string | undefined {
+  return input.tool_name ?? input.toolName ?? input.tool ?? input.name
+}
+
+function normalizedToolName(toolName: string): string {
+  const parts = toolName.split(/(?:__|[._-])/u).filter(Boolean)
+  return parts.at(-1) ?? toolName
+}
+
+function isWpSessionToolName(toolName: string): boolean {
+  return /(?:^|[._-]|__)wp_session_[a-z_]+$/u.test(toolName)
+}
+
+function isCanonicalWebpressoMcpToolName(toolName: string): boolean {
+  return /(?:^|__)wp_[a-z_]+$/u.test(toolName) || /^mcp__webpresso__wp_[a-z_]+$/u.test(toolName)
+}
+
+function toolInputFromInput(input: {
+  tool_input?: Record<string, unknown>
+  toolInput?: Record<string, unknown>
+  input?: Record<string, unknown>
+  arguments?: Record<string, unknown>
+}): Record<string, unknown> | undefined {
+  return input.tool_input ?? input.toolInput ?? input.input ?? input.arguments
+}
+
+function extractStringField(record: Record<string, unknown> | undefined, keys: readonly string[]): string | null {
+  if (!record) return null
+  for (const key of keys) {
+    const value = record[key]
+    if (typeof value === 'string' && value.trim().length > 0) return value.trim()
+  }
+  return null
+}
+
+function sessionSandboxDecision(tool: string, guidance: string): RouteDecision {
+  return { action: { action: 'sandbox', guidance: `Use ${tool} instead — ${guidance}` } }
+}
+
+const MAX_SAFE_GREP_HEAD_LIMIT = 100
+
+function numericField(record: Record<string, unknown> | undefined, keys: readonly string[]): number | null {
+  if (!record) return null
+  for (const key of keys) {
+    const value = record[key]
+    if (typeof value === 'number' && Number.isFinite(value)) return value
+    if (typeof value === 'string' && /^\d+$/u.test(value)) return Number(value)
+  }
+  return null
+}
+
+function wantsUnboundedContentSearch(toolInput: Record<string, unknown> | undefined): boolean {
+  const outputMode = extractStringField(toolInput, ['output_mode', 'outputMode'])
+  if (outputMode !== 'content') return false
+  const headLimit = numericField(toolInput, ['head_limit', 'headLimit'])
+  return headLimit === null || headLimit > MAX_SAFE_GREP_HEAD_LIMIT
+}
+
+export function routeToolInputToSessionMemory(input: {
+  tool_name?: string
+  toolName?: string
+  tool?: string
+  name?: string
+  tool_input?: Record<string, unknown>
+  toolInput?: Record<string, unknown>
+  input?: Record<string, unknown>
+  arguments?: Record<string, unknown>
+}): RouteDecision | null {
+  const toolName = toolNameFromInput(input)
+  if (typeof toolName !== 'string' || toolName.length === 0) return null
+  if (isWpSessionToolName(toolName) || isCanonicalWebpressoMcpToolName(toolName)) return null
+
+  const toolInput = toolInputFromInput(input)
+  const normalized = normalizedToolName(toolName).toLowerCase()
+
+  if (normalized === 'read') {
+    // Native host Read is already bounded by the host and remains available as
+    // the fallback when MCP tools are not loaded. Raw shell file reads (`cat`,
+    // `tail`, `head`) are still redirected by routeCommand() before they can
+    // dump full content into the transcript.
+    return null
+  }
+
+  if (normalized === 'grep') {
+    if (!wantsUnboundedContentSearch(toolInput)) return null
+    return sessionSandboxDecision(
+      'wp_session_batch_execute',
+      `${toolName} content search without a small head_limit can be large; run it through bounded shell gathering so results are capped, indexed, and recallable`,
+    )
+  }
+
+  // Plain Glob/Ls/WebFetch/WebSearch/Task/third-party MCP calls stay usable.
+  // The guard only redirects tool inputs when the caller explicitly requests a
+  // context-heavy payload shape that can be inferred before execution. Raw shell
+  // commands such as `cat`, recursive `grep`, `curl`, and `git diff` remain
+  // routed by routeCommand() below.
+
+  return null
 }
 
 export function extractRoutableCommandsFromToolInput(input: {
@@ -748,9 +898,9 @@ export function extractRoutableCommandsFromToolInput(input: {
   input?: Record<string, unknown>
   arguments?: Record<string, unknown>
 }): string[] {
-  const toolName = input.tool_name ?? input.toolName ?? input.tool ?? input.name
-  if (!isCtxTool(toolName)) return []
-  const toolInput = input.tool_input ?? input.toolInput ?? input.input ?? input.arguments
+  const toolName = toolNameFromInput(input)
+  if (!isSessionSandboxTool(toolName)) return []
+  const toolInput = toolInputFromInput(input)
   if (!toolInput || typeof toolInput !== 'object') return []
 
   const commands: string[] = []

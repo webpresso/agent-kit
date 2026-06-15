@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ToolInput } from '#hooks/shared/types'
 
-import { SessionMemorySessionStore } from '../../session-memory/session.js'
+import { SessionMemorySessionStore } from '#session-memory/session.js'
 import {
   capturePostToolUse,
   lintFile,
@@ -81,6 +81,37 @@ describe('lint-after-edit', () => {
   it('returns false for ineligible files', () => {
     expect(
       processPostToolUse(makeWriteInput('/tmp/example.md'), process.cwd(), {}, noOpCaptureDeps),
+    ).toBe(false)
+  })
+
+  it('returns false when lintable tool input is absent or malformed', () => {
+    expect(
+      processPostToolUse(
+        {
+          session_id: 'test-session',
+          cwd: '/tmp',
+          hook_event_name: 'PostToolUse',
+          tool_name: 'Write',
+        },
+        process.cwd(),
+        {},
+        noOpCaptureDeps,
+      ),
+    ).toBe(false)
+
+    expect(
+      processPostToolUse(
+        {
+          session_id: 'test-session',
+          cwd: '/tmp',
+          hook_event_name: 'PostToolUse',
+          tool_name: 'Write',
+          tool_input: { file_path: 123 },
+        } as unknown as ToolInput,
+        process.cwd(),
+        {},
+        noOpCaptureDeps,
+      ),
     ).toBe(false)
   })
 

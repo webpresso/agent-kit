@@ -5,8 +5,8 @@ owner: ozby
 status: planned
 complexity: XL
 created: "2026-06-10"
-last_updated: "2026-06-11"
-progress: "0% (planned; child blueprints refined, ready for execution)"
+last_updated: "2026-06-15"
+progress: "child execution implemented in PR #139 and parked for legal lifecycle finalization; parent roadmap remains planned for deferred proposal stage"
 depends_on:
   - 2026-06-10-harness-surface-manifest
   - 2026-06-10-weakness-mining-audit
@@ -45,8 +45,7 @@ has no declared editable-surface manifest, only one durable hook log today,
 no behavioral regression gate on harness PRs, and no model-specific overlay
 layer in `wp sync`.
 
-This roadmap keeps every child in `planned/` while the architecture is hardened
-in evidence order:
+This roadmap now records the four child execution blueprints in `parked/` after PR #139 hardened the architecture in evidence order:
 
 ```text
 manifest (what may change)
@@ -64,9 +63,9 @@ of this roadmap.
 
 | Wave | Blueprints | Dependencies |
 | --- | --- | --- |
-| **Wave 1** | `planned/2026-06-10-harness-surface-manifest.md`, `planned/2026-06-10-weakness-mining-audit.md` | None |
-| **Wave 2** | `planned/2026-06-10-harness-regression-gate.md` | `planned/2026-06-10-harness-surface-manifest.md` |
-| **Wave 3** | `planned/2026-06-10-per-model-harness-overlays.md` | `planned/2026-06-10-weakness-mining-audit.md`, `planned/2026-06-10-harness-regression-gate.md` |
+| **Wave 1** | `parked/2026-06-10-harness-surface-manifest.md`, `parked/2026-06-10-weakness-mining-audit.md` | None |
+| **Wave 2** | `parked/2026-06-10-harness-regression-gate.md` | `parked/2026-06-10-harness-surface-manifest.md` |
+| **Wave 3** | `parked/2026-06-10-per-model-harness-overlays.md` | `parked/2026-06-10-weakness-mining-audit.md`, `parked/2026-06-10-harness-regression-gate.md` |
 
 ## Fact-Check Summary
 
@@ -81,21 +80,21 @@ of this roadmap.
 
 ### Wave 1 — explicit boundary and mineable evidence
 
-- [`planned/2026-06-10-harness-surface-manifest.md`](./2026-06-10-harness-surface-manifest.md)
+- [`parked/2026-06-10-harness-surface-manifest.md`](../parked/2026-06-10-harness-surface-manifest.md)
   declares the editable/locked boundary and adds the validating audit.
-- [`planned/2026-06-10-weakness-mining-audit.md`](./2026-06-10-weakness-mining-audit.md)
+- [`parked/2026-06-10-weakness-mining-audit.md`](../parked/2026-06-10-weakness-mining-audit.md)
   turns current hook/session evidence into ranked failure clusters and optional
   draft tech-debt outputs.
 
 ### Wave 2 — behavioral promotion gate
 
-- [`planned/2026-06-10-harness-regression-gate.md`](./2026-06-10-harness-regression-gate.md)
+- [`parked/2026-06-10-harness-regression-gate.md`](../parked/2026-06-10-harness-regression-gate.md)
   extends the existing benchmark substrate to score harness changes on the
   reference consumers.
 
 ### Wave 3 — evidence-backed model-specific overlays
 
-- [`planned/2026-06-10-per-model-harness-overlays.md`](./2026-06-10-per-model-harness-overlays.md)
+- [`parked/2026-06-10-per-model-harness-overlays.md`](../parked/2026-06-10-per-model-harness-overlays.md)
   adds minimal, audited overlay deltas only after mining and gate evidence
   exist.
 
@@ -108,7 +107,7 @@ of this roadmap.
 - Adopting Terminal-Bench or Harbor as our benchmark — the reference
   consumers are the benchmark.
 - Editing locked surfaces by any automated path, ever.
-- Promoting these blueprints beyond `planned/` before execution evidence exists.
+- Agent-proposed edit automation without at least one release cycle of evidence from the parked manifest/mining/gate/overlay loop.
 
 ## Cross-Plan References
 

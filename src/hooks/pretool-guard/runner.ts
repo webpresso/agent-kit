@@ -12,7 +12,7 @@ import {
 } from '#hooks/shared/types'
 
 import { logRun } from './logger.js'
-import { extractRoutableCommandsFromToolInput, routeCommand } from './dev-routing.js'
+import { extractRoutableCommandsFromToolInput, routeCommand, routeToolInputToSessionMemory } from './dev-routing.js'
 import { VALIDATORS } from './validators/index.js'
 import { isDirectEntrypoint } from '#hooks/shared/direct-entrypoint'
 
@@ -133,6 +133,12 @@ export function processValidation(inputJson: string): void {
     })),
   ]
 
+  const toolInputDecision = routeToolInputToSessionMemory(input)
+  if (toolInputDecision?.action.action === 'sandbox') {
+    writeDenyDecision(toolInputDecision.action.guidance)
+    process.exit(0)
+  }
+
   for (const routedCommand of routableCommands) {
     const decision = routeCommand(routedCommand.command)
     if (decision !== null) {
@@ -141,9 +147,9 @@ export function processValidation(inputJson: string): void {
         writeDenyDecision(decision.action.guidance)
         process.exit(0)
       } else if (decision.action.action === 'sandbox' && !routedCommand.alreadySandboxed) {
-        // Phase 2: ctx sandbox routing — fire only for raw tool calls.
-        // Commands already inside ctx_execute/ctx_batch_execute are already in
-        // the requested sandbox; re-denying them creates a ctx_execute loop.
+        // Phase 2: session-memory sandbox routing — fire only for raw tool calls.
+        // Commands already inside wp_session_execute/wp_session_batch_execute are already in
+        // the requested sandbox; re-denying them creates a session-tool loop.
         writeDenyDecision(decision.action.guidance)
         process.exit(0)
       }

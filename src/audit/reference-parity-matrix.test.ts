@@ -19,6 +19,11 @@ const EXPECTED_REQUIRED_REFERENCE_PARITY_CAPABILITIES = [
   'resume injection',
   'tool discovery',
   'indexed search',
+  'routing injection',
+  'pretool session redirect',
+  'posttool broad capture',
+  'registry/routing consistency',
+  'repair path evidence',
   'host setup smoke',
   'benchmark thresholds',
   'release claim gating',
@@ -43,18 +48,24 @@ function write(root: string, relativePath: string, content: string): void {
 }
 
 function seedArtifacts(root: string): void {
-  for (const artifact of [
-    'src/session-memory/session.test.ts',
-    'src/hooks/sessionstart/index.test.ts',
-    'src/mcp/server.integration.test.ts',
-    'src/session-memory/store.test.ts',
-    'src/__integration__/reference-parity-host-smoke.integration.test.ts',
-    'src/cli/commands/init/host-smoke.e2e.test.ts',
-    'src/cli/commands/bench/session-memory.test.ts',
-    'docs/bench/session-memory-methodology.md',
-    'src/audit/reference-parity-claims.test.ts',
-  ]) {
-    write(root, artifact, 'proof artifact placeholder')
+  const artifacts: Record<string, string> = {
+    'src/session-memory/session.test.ts': 'describe SessionMemorySessionStore captureEvent restore',
+    'src/hooks/sessionstart/index.test.ts': 'SessionStart WP_ROUTING_BLOCK additionalContext',
+    'src/mcp/server.integration.test.ts': 'tools/list wp_session_execute wp_session_search',
+    'src/session-memory/store.test.ts': 'SessionMemoryStore searchUnified restore context',
+    'src/hooks/shared/routing-block.test.ts': '<wp_session_context> wp_session_batch_execute wp_session_execute_file',
+    'src/hooks/pretool-guard/dev-routing.test.ts': 'routeToolInputToSessionMemory wp_session_batch_execute routeCommand',
+    'src/hooks/post-tool/lint-after-edit.test.ts': 'PostToolUse capturePostToolUse byte-caps',
+    'src/mcp/tools/_registry.test.ts': 'COMPILED_TOOL_REGISTRY wp_session_batch_execute wp_session_doctor',
+    'src/hooks/doctor.test.ts': 'runHooksDoctor wp-pretool-guard restore',
+    'src/__integration__/reference-parity-host-smoke.integration.test.ts': 'referenceParityHostSmokeFixtures collectContinuityLifecycleProofs degraded',
+    'src/cli/commands/init/host-smoke.e2e.test.ts': 'host smoke placeholder',
+    'src/cli/commands/bench/session-memory.test.ts': 'buildSessionMemoryThresholdReport search_quality_recall_at_5 dry-run',
+    'docs/bench/session-memory-methodology.md': 'live measured benchmark methodology',
+    'src/audit/reference-parity-claims.test.ts': 'reference-parity-matrix reference-parity release',
+  }
+  for (const [artifact, content] of Object.entries(artifacts)) {
+    write(root, artifact, content)
   }
 }
 
@@ -89,13 +100,18 @@ function row(
 
 function passingRows(): string[] {
   return [
-    row('lifecycle capture', 'src/session-memory/session.test.ts'),
-    row('resume injection', 'src/hooks/sessionstart/index.test.ts'),
-    row('tool discovery', 'src/mcp/server.integration.test.ts'),
-    row('indexed search', 'src/session-memory/store.test.ts'),
-    row('host setup smoke', 'src/__integration__/reference-parity-host-smoke.integration.test.ts'),
-    row('benchmark thresholds', 'src/cli/commands/bench/session-memory.test.ts'),
-    row('release claim gating', 'src/audit/reference-parity-claims.test.ts'),
+    row('lifecycle capture', 'src/session-memory/session.test.ts', { hostScope: 'session memory store' }),
+    row('resume injection', 'src/hooks/sessionstart/index.test.ts', { hostScope: 'Claude SessionStart and instruction surfaces' }),
+    row('tool discovery', 'src/mcp/server.integration.test.ts', { hostScope: 'MCP session tools' }),
+    row('indexed search', 'src/session-memory/store.test.ts', { hostScope: 'session memory store' }),
+    row('routing injection', 'src/hooks/shared/routing-block.test.ts', { hostScope: 'Claude SessionStart and generated instruction surfaces' }),
+    row('pretool session redirect', 'src/hooks/pretool-guard/dev-routing.test.ts', { hostScope: 'Claude PreToolUse' }),
+    row('posttool broad capture', 'src/hooks/post-tool/lint-after-edit.test.ts', { hostScope: 'PostToolUse metadata capture' }),
+    row('registry/routing consistency', 'src/mcp/tools/_registry.test.ts', { hostScope: 'MCP registry plus routing source' }),
+    row('repair path evidence', 'src/hooks/doctor.test.ts', { hostScope: 'hook doctor repair path' }),
+    row('host setup smoke', 'src/__integration__/reference-parity-host-smoke.integration.test.ts', { hostScope: 'Claude' }),
+    row('benchmark thresholds', 'src/cli/commands/bench/session-memory.test.ts', { hostScope: 'continuity and search benchmarks' }),
+    row('release claim gating', 'src/audit/reference-parity-claims.test.ts', { hostScope: 'public docs and release audits' }),
   ]
 }
 
@@ -107,7 +123,7 @@ describe('auditReferenceParityMatrix', () => {
   it('fails closed when full rows exceed the canonical host capability crosswalk', () => {
     const root = tempRoot()
     seedArtifacts(root)
-    write(root, 'docs/bench/reference-parity-matrix.md', matrix(passingRows()))
+    write(root, 'docs/bench/reference-parity-matrix.md', matrix(passingRows().map((r) => r.startsWith('| lifecycle capture |') ? row('lifecycle capture', 'src/session-memory/session.test.ts', { hostScope: 'Claude, Codex, Cursor, OpenCode' }) : r)))
 
     const result = auditReferenceParityMatrix(root)
 
@@ -117,7 +133,7 @@ describe('auditReferenceParityMatrix', () => {
       ...EXPECTED_REQUIRED_REFERENCE_PARITY_CAPABILITIES,
     ])
     expect(result.violations.map((violation) => violation.message)).toContain(
-      'Replacement parity row "lifecycle capture" cannot claim full support because canonical host lifecycle support is degraded.',
+      'Replacement parity row "lifecycle capture" cannot claim full support because canonical host lifecycle support for claude, codex, cursor, opencode is degraded.',
     )
   })
 
@@ -155,27 +171,27 @@ describe('auditReferenceParityMatrix', () => {
     )
   })
 
+  it('rejects empty placeholder test files as full passed proof', () => {
+    const root = tempRoot()
+    seedArtifacts(root)
+    write(root, 'src/hooks/pretool-guard/dev-routing.test.ts', '')
+    write(root, 'docs/bench/reference-parity-matrix.md', matrix(passingRows()))
+
+    const result = auditReferenceParityMatrix(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations.map((violation) => violation.message)).toContain(
+      'Full passed replacement parity row "pretool session redirect" proof artifact is too weak; missing evidence marker(s): routeToolInputToSessionMemory, wp_session_batch_execute, routeCommand.',
+    )
+  })
+
   it('does not turn open or blocked required rows into green replacement parity claims', () => {
     const root = tempRoot()
     seedArtifacts(root)
     write(
       root,
       'docs/bench/reference-parity-matrix.md',
-      matrix([
-        row('lifecycle capture', 'src/session-memory/session.test.ts', { status: 'open' }),
-        row('resume injection', 'src/hooks/sessionstart/index.test.ts', { support: 'degraded' }),
-        row('tool discovery', 'src/mcp/server.integration.test.ts'),
-        row('indexed search', 'src/session-memory/store.test.ts'),
-        row(
-          'host setup smoke',
-          'src/__integration__/reference-parity-host-smoke.integration.test.ts',
-          {
-            support: 'degraded',
-          },
-        ),
-        row('benchmark thresholds', 'src/cli/commands/bench/session-memory.test.ts'),
-        row('release claim gating', 'src/audit/reference-parity-claims.test.ts'),
-      ]),
+      matrix(passingRows().map((r) => r.startsWith('| lifecycle capture |') ? row('lifecycle capture', 'src/session-memory/session.test.ts', { status: 'open', hostScope: 'session memory store' }) : r.startsWith('| resume injection |') ? row('resume injection', 'src/hooks/sessionstart/index.test.ts', { support: 'degraded', hostScope: 'Claude SessionStart and instruction surfaces' }) : r)),
     )
 
     const result = auditReferenceParityMatrix(root)
@@ -190,21 +206,7 @@ describe('auditReferenceParityMatrix', () => {
     write(
       root,
       'docs/bench/reference-parity-matrix.md',
-      matrix([
-        row('lifecycle capture', 'src/session-memory/session.test.ts', { status: 'open' }),
-        row('resume injection', 'src/hooks/sessionstart/index.test.ts', { support: 'degraded' }),
-        row('tool discovery', 'src/mcp/server.integration.test.ts'),
-        row('indexed search', 'src/session-memory/store.test.ts'),
-        row(
-          'host setup smoke',
-          'src/__integration__/reference-parity-host-smoke.integration.test.ts',
-          {
-            support: 'degraded',
-          },
-        ),
-        row('benchmark thresholds', 'src/cli/commands/bench/session-memory.test.ts'),
-        row('release claim gating', 'src/audit/reference-parity-claims.test.ts'),
-      ]),
+      matrix(passingRows().map((r) => r.startsWith('| lifecycle capture |') ? row('lifecycle capture', 'src/session-memory/session.test.ts', { status: 'open', hostScope: 'session memory store' }) : r.startsWith('| resume injection |') ? row('resume injection', 'src/hooks/sessionstart/index.test.ts', { support: 'degraded', hostScope: 'Claude SessionStart and instruction surfaces' }) : r)),
     )
 
     const result = auditReferenceParityMatrix(root, undefined, { requireReleaseReady: true })
@@ -268,9 +270,15 @@ describe('auditReferenceParityMatrix', () => {
       ...EXPECTED_REQUIRED_REFERENCE_PARITY_CAPABILITIES,
     ])
     expect(result.releaseClaimGateReady).toBe(false)
+    expect(result.rows.find((row) => row.capability === 'benchmark thresholds')).toMatchObject({
+      proofArtifact: 'docs/bench/session-memory-methodology.md',
+      supportLevel: 'degraded',
+      status: 'open',
+    })
     expect(result.rows.find((row) => row.capability === 'host setup smoke')).toMatchObject({
       proofArtifact: 'src/__integration__/reference-parity-host-smoke.integration.test.ts',
-      supportLevel: 'degraded',
+      hostScope: 'Claude',
+      supportLevel: 'full',
       status: 'passed',
     })
   })

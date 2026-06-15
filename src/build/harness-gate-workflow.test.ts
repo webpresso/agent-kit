@@ -12,8 +12,8 @@ describe('harness gate workflow runner contract', () => {
       'utf8',
     )
 
-    expect(workflow).toContain('name: Harness Gate (planned-only)')
-    expect(workflow).toContain('name: Planned-only harness gate verdict')
+    expect(workflow).toContain('name: Harness Selection Gate (planned-only)')
+    expect(workflow).toContain('name: Planned-only harness selection verdict')
     expect(workflow).toContain('runs-on: ubicloud-standard-2')
     expect(workflow).not.toContain('runs-on: ubuntu-latest')
   })

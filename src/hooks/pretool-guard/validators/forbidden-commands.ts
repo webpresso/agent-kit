@@ -8,7 +8,7 @@ import {
   parseLifecycleBlueprintStatus,
 } from '#lifecycle/transition-matrix.js'
 import { getCommand, isBashInput } from '#hooks/shared/types'
-import { AUDIT_KINDS } from '#mcp/tools/_shared/audit-kinds'
+import { MCP_AUDIT_KINDS } from '#mcp/tools/_shared/audit-kinds'
 import { createSkipResult } from './skip-result.js'
 import { buildRedirectMessage, type MCPRedirectConfig } from './mcp-redirect.js'
 
@@ -148,7 +148,6 @@ export const BLOCKED_RAW_NODE_MODULE_TOOLS: BlockedRawNodeModulesToolSpec[] = [
   { modulePath: 'typescript/bin/tsc', category: 'typecheck', suggestion: TYPECHECK_HINT },
   { modulePath: 'oxlint/bin/oxlint', category: 'lint', suggestion: LINT_HINT },
 ]
-
 
 function buildToolPattern(prefix: string, tool: string): RegExp {
   const escaped = prefix ? `${escapeRegex(prefix)} ${escapeRegex(tool)}` : escapeRegex(tool)
@@ -580,7 +579,7 @@ export function createAuditResult(
   }
 }
 
-const AUDIT_KIND_SET: ReadonlySet<string> = new Set(AUDIT_KINDS)
+const AUDIT_KIND_SET: ReadonlySet<string> = new Set(MCP_AUDIT_KINDS)
 const WP_AUDIT_RE = /^wp\s+audit\s+([a-z0-9-]+)\b/u
 const SCRIPT_INVOCATION_RE = /^(?:pnpm run|vp run|npm run|pnpm|npm)\s+([A-Za-z0-9:_-]+)/u
 const RAW_PM_RE = /^(?:pnpm|npm)\b/u

@@ -278,6 +278,40 @@ describe('package-surface audit', () => {
     expect(auditPackageSurface(root, fastFixtureAudit).ok).toBe(true)
   })
 
+  test('flags publishable packages that run wp setup during install lifecycle', () => {
+    const root = tempRepo()
+    writeJson(join(root, 'package.json'), {
+      name: '@webpresso/agent-kit',
+      version: '0.1.0',
+      private: false,
+      scripts: {
+        postinstall: 'wp setup',
+        prepare: 'husky',
+      },
+      files: ['README.md'],
+    })
+    writeFileSync(join(root, 'README.md'), 'hello\n')
+
+    const result = auditPackageSurface(root, fastFixtureAudit)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: 'package.json',
+          message: expect.stringContaining('must not run "wp setup" from postinstall'),
+        }),
+      ]),
+    )
+    expect(result.violations).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: expect.stringContaining('prepare'),
+        }),
+      ]),
+    )
+  })
+
   test('flags forbidden packed tarball paths and content', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'docs', 'research'), { recursive: true })

@@ -12,8 +12,8 @@ describe('buildClaudeHookGroups (byte-parity)', () => {
   const resolveBin = (name: string) =>
     `[ -x "/repo/.claude/hooks/managed/${name}.sh" ] && "/repo/.claude/hooks/managed/${name}.sh" || true`
   const matchers = {
-    preToolUse: 'Bash|Write|Edit|MultiEdit',
-    postToolUse: 'Write|Edit|MultiEdit',
+    preToolUse: 'Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*',
+    postToolUse: 'Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*',
   }
 
   it('produces identical output to buildWebpressoHookGroups (golden parity)', () => {
@@ -31,14 +31,14 @@ describe('buildClaudeHookGroups (byte-parity)', () => {
   it('produces the expected PreToolUse structure with matcher', () => {
     const result = buildClaudeHookGroups({ resolveBin, matchers })
     expect(result['PreToolUse']).toHaveLength(1)
-    expect(result['PreToolUse']?.[0]?.matcher).toStrictEqual('Bash|Write|Edit|MultiEdit')
+    expect(result['PreToolUse']?.[0]?.matcher).toStrictEqual('Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*')
     expect(result['PreToolUse']?.[0]?.hooks[0]?.command).toContain('wp-pretool-guard')
   })
 
   it('produces the expected PostToolUse structure with matcher', () => {
     const result = buildClaudeHookGroups({ resolveBin, matchers })
     expect(result['PostToolUse']).toHaveLength(1)
-    expect(result['PostToolUse']?.[0]?.matcher).toStrictEqual('Write|Edit|MultiEdit')
+    expect(result['PostToolUse']?.[0]?.matcher).toStrictEqual('Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*')
     expect(result['PostToolUse']?.[0]?.hooks[0]?.command).toContain('wp-post-tool')
     expect(result['PostToolUse']?.[0]?.hooks[0]?.timeout).toStrictEqual(15)
   })
@@ -62,6 +62,7 @@ describe('buildClaudeHookGroups (byte-parity)', () => {
     expect(events).toContain('SessionStart')
     expect(events).toContain('PreToolUse')
     expect(events).toContain('PostToolUse')
+    expect(events).not.toContain('PostToolBatch')
     expect(events).toContain('UserPromptSubmit')
     expect(events).toContain('Stop')
   })

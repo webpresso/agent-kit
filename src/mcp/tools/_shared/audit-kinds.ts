@@ -1,13 +1,16 @@
 /**
- * Canonical list of `wp_audit` kinds — single source of truth.
+ * MCP/pretool-supported `wp_audit` kinds.
  *
  * Imported by the `wp_audit` MCP tool (for its `kind` enum + dispatch) and by
  * the pretool-guard (to validate repo `guard.scriptRoutes` targets and to
- * redirect `wp audit <kind>` CLI calls to the MCP tool). Kept as a tiny
- * dependency-free module so the hook runtime, which runs on every tool call,
- * doesn't pull in the whole audit tool graph.
+ * redirect MCP-ready `wp audit <kind>` CLI calls to the MCP tool).
+ *
+ * This is intentionally narrower than the full CLI `AuditKind` union: some CLI
+ * audits are script aggregators or local-only checks that are not exposed as MCP
+ * tools. Keep this module dependency-free so the hook runtime, which runs on
+ * every tool call, doesn't pull in the whole audit tool graph.
  */
-export const AUDIT_KINDS = [
+export const MCP_AUDIT_KINDS = [
   'tph',
   'tph-e2e',
   'agents',
@@ -27,6 +30,9 @@ export const AUDIT_KINDS = [
   'commit-message',
   'tech-debt',
   'hook-surface',
+  'harness-surfaces',
+  'weakness-mining',
+  'harness-overlay-evidence',
   'ai-contracts',
   'no-relative-package-scripts',
   'toolchain-isolation',
@@ -38,8 +44,8 @@ export const AUDIT_KINDS = [
   'session-memory-hardcut',
 ] as const
 
-export type AuditKind = (typeof AUDIT_KINDS)[number]
+export type MCPAuditKind = (typeof MCP_AUDIT_KINDS)[number]
 
-export function isAuditKind(value: string): value is AuditKind {
-  return (AUDIT_KINDS as readonly string[]).includes(value)
+export function isMCPAuditKind(value: string): value is MCPAuditKind {
+  return (MCP_AUDIT_KINDS as readonly string[]).includes(value)
 }

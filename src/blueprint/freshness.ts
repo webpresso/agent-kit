@@ -23,8 +23,9 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 
+import { writeJsonFile } from '#shared-utils/write-json-file.js'
 import { makeNextAction, type NextAction } from './next-action.js'
 
 // ---------------------------------------------------------------------------
@@ -128,7 +129,7 @@ export function recordProjectionMetadata(input: RecordProjectionMetadataInput): 
     ingested_at: input.ingestedAt,
     worktree_path: input.cwd,
   }
-  writeFileSync(sidecarPath(input.dbPath), JSON.stringify(metadata, null, 2) + '\n', 'utf8')
+  writeJsonFile(sidecarPath(input.dbPath), metadata)
   return metadata
 }
 

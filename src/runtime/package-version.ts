@@ -1,6 +1,8 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+import { readTrustedJsonFile } from '#shared-utils/read-json-file.js'
 
 const ACCEPTED_PACKAGE_PREFIXES = ['@webpresso/agent-kit'] as const
 const MAX_UPWARD_LEVELS = 8
@@ -18,10 +20,10 @@ function readVersionFromDir(startDir: string): string | null {
     const candidate = path.join(dir, 'package.json')
     if (existsSync(candidate)) {
       try {
-        const parsed = JSON.parse(readFileSync(candidate, 'utf8')) as {
+        const parsed = readTrustedJsonFile<{
           name?: string
           version?: string
-        }
+        }>(candidate)
         if (matchesOwnedPackageName(parsed.name) && typeof parsed.version === 'string') {
           return parsed.version
         }

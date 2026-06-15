@@ -8,7 +8,11 @@ consumers:
       - codex-hooks
       - claude-hooks
       - generated-agent-surfaces
+      - permission-policy
+      - secret-gate
+      - omx-runtime-state
       - harness-regression-gate
+      - agent-overlays
     heldInSuites:
       - ingest-lens.agent-setup-smoke
       - ingest-lens.e2e-smoke
@@ -22,7 +26,11 @@ consumers:
       - codex-hooks
       - claude-hooks
       - generated-agent-surfaces
+      - permission-policy
+      - secret-gate
+      - omx-runtime-state
       - harness-regression-gate
+      - agent-overlays
     heldInSuites:
       - edge-matte.agent-setup-smoke
       - edge-matte.e2e-smoke

@@ -24,6 +24,18 @@ describe('instruction surface renderer', () => {
 
   it('derives native tool names from the routing block without a second tool list', () => {
     expect(routingToolNamesFromSource(WP_ROUTING_BLOCK)).toStrictEqual([
+      'wp_session_restore',
+      'wp_session_search',
+      'wp_session_execute_file',
+      'wp_session_execute',
+      'wp_session_batch_execute',
+      'wp_session_fetch_and_index',
+      'wp_session_index',
+      'wp_session_capture',
+      'wp_session_snapshot',
+      'wp_session_stats',
+      'wp_session_doctor',
+      'wp_session_purge',
       'wp_test',
       'wp_e2e',
       'wp_lint',
@@ -52,12 +64,14 @@ describe('instruction surface renderer', () => {
       includeRoutingContent: true,
     })
 
+    const tools = routingToolNamesFromSource(WP_ROUTING_BLOCK).join(', ')
+
     expect(surface).toEqual({
       host: 'claude',
       artifactName: 'SessionStart.additionalContext',
       content: `<wp_instruction_surface host="claude" artifact="SessionStart.additionalContext" source="wp_routing">
   <host_contract>
-    <native_tool_names>wp_test, wp_e2e, wp_lint, wp_typecheck, wp_qa, wp_audit, wp_ci_act, wp_worker_tail</native_tool_names>
+    <native_tool_names>${tools}</native_tool_names>
     <stdout_noop>SessionStart always writes a JSON additionalContext envelope; an empty project routing file still emits the shared routing source.</stdout_noop>
     <lifecycle_notes>
     <note>SessionStart is context injection only and cannot block tool calls.</note>

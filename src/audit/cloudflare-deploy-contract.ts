@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
+import { z } from 'zod'
 
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 import { loadWebpressoConfigSafe } from '#e2e/load-host-adapter'
@@ -15,8 +16,15 @@ type ProductionReleaseMetadata = {
   requiredChecks?: unknown
 }
 
+const ProductionReleaseMetadataSchema = z.looseObject({
+  releaseKind: z.unknown().optional(),
+  durableObjectMigration: z.unknown().optional(),
+  rolloutMode: z.unknown().optional(),
+  requiredChecks: z.unknown().optional(),
+})
+
 function readProductionMetadata(metadataPath: string): ProductionReleaseMetadata {
-  return JSON.parse(readFileSync(metadataPath, 'utf8')) as ProductionReleaseMetadata
+  return ProductionReleaseMetadataSchema.parse(JSON.parse(readFileSync(metadataPath, 'utf8')))
 }
 
 export async function auditCloudflareDeployContract(root: string): Promise<RepoAuditResult> {
