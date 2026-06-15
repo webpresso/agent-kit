@@ -9,27 +9,10 @@ import {
   resetPlatformFirstTestState,
 } from './blueprint-server.platform-first.test-harness.js'
 
-
-const FINALIZE_ZERO_TASK_BLUEPRINT = `---
-type: blueprint
-title: Finalize Zero Task Blueprint
-status: in-progress
-complexity: S
-owner: tester
-created: '2026-01-01'
-last_updated: '2026-05-01'
----
-
-## Product wedge anchor
-
-- **Stage outcome:** Phase 1 — ship finalize feature
-- **Consuming surface:** /finalize route
-- **New user-visible capability:** Users can finalize blueprints.
-
-## Summary
-
-Blueprint used to test zero-task finalize rejection.
-`
+const FINALIZE_ZERO_TASK_BLUEPRINT = FINALIZE_BLUEPRINT.replace(
+  /\n#### Task 1\.1:[\s\S]*$/u,
+  '',
+).replace('Blueprint used to test finalize.', 'Blueprint used to test zero-task finalize rejection.')
 
 describe('wp_blueprint_finalize — platform-first', () => {
   const tempDirs: string[] = []
