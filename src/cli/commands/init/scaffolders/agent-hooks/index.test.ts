@@ -868,7 +868,7 @@ describe('scaffoldAgentHooks', () => {
     ])
   })
 
-  it('uses MultiEdit in Claude PreToolUse and PostToolUse matchers', async () => {
+  it('uses broad Claude context-heavy PreToolUse/PostToolUse matchers', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {} })
 
     const settings = JSON.parse(
@@ -881,11 +881,12 @@ describe('scaffoldAgentHooks', () => {
     }
 
     expect(
-      settings.hooks.PreToolUse.some((group) => group.matcher === 'Bash|Write|Edit|MultiEdit'),
+      settings.hooks.PreToolUse.some((group) => group.matcher === 'Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*'),
     ).toBe(true)
     expect(
-      settings.hooks.PostToolUse.some((group) => group.matcher === 'Write|Edit|MultiEdit'),
+      settings.hooks.PostToolUse.some((group) => group.matcher === 'Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*'),
     ).toBe(true)
+    expect('PostToolBatch' in settings.hooks).toBe(false)
   })
 
   it('merges verify skill Stop hooks alongside the global Stop hook', async () => {
@@ -1000,7 +1001,7 @@ hooks:
       .map((hook) => hook.command)
       .find((candidate) => candidate.includes('# from-skill: verify'))
 
-    expect(command).toBeDefined()
+    expect(command).toContain('# from-skill: verify')
     const result = spawnSync('sh', ['-c', command ?? ''], {
       cwd: repoRoot,
       env: { ...process.env, CLAUDE_PROJECT_DIR: repoRoot },
@@ -1204,7 +1205,7 @@ hooks:
     expect(allCommands).toContain('echo keep-codex-session')
     expect(allCommands).toContain('./node_modules/.bin/not-webpresso')
     expect(customCommands).toStrictEqual([codexBinCommand(repoRoot, 'wp-pretool-guard'), 42])
-    expect(codex.hooks.LegacyOnlyCustomEvent).toBeUndefined()
+    expect(codex.hooks.LegacyOnlyCustomEvent).toBe(undefined)
     expect(
       allCommands.filter(
         (command) => command === codexBinCommand(repoRoot, 'wp-sessionstart-routing'),
@@ -1260,8 +1261,8 @@ hooks:
       groups.flatMap((group) => group.hooks.map((hook) => hook.command)),
     )
 
-    expect(codex.SessionStart).toBeUndefined()
-    expect(codex.PreToolUse).toBeUndefined()
+    expect(codex.SessionStart).toBe(undefined)
+    expect(codex.PreToolUse).toBe(undefined)
     expect(allCommands.filter((command) => command.includes('node_modules/.bin/ak-'))).toEqual([])
     expect(
       allCommands.filter(
@@ -1730,7 +1731,7 @@ hooks:
       })
 
     const preTool = commandByEvent.PreToolUse[0]
-    expect(preTool).toBeTypeOf('string')
+    expect(preTool).toContain('wp-pretool-guard')
     const preToolResult = runFromSibling(preTool ?? '')
     expect(preToolResult.status, preTool).toBe(0)
     expect(preToolResult.stdout).toContain('"hookEventName":"PreToolUse"')
@@ -2047,7 +2048,7 @@ describe('plugin-native invariants — .claude/settings.json', () => {
     }
   })
 
-  it('generated settings.json PreToolUse matchers cover only Bash|Write|Edit|MultiEdit and Skill — not Read, Grep, WebFetch, or Agent', async () => {
+  it('generated settings.json PreToolUse matchers cover context-heavy Read, Grep, WebFetch, Agent, and MCP tools', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {} })
 
     const settings = JSON.parse(
@@ -2058,9 +2059,8 @@ describe('plugin-native invariants — .claude/settings.json', () => {
       group.matcher ? group.matcher.split('|') : [],
     )
 
-    const forbidden = ['Read', 'Grep', 'WebFetch', 'Agent']
-    for (const term of forbidden) {
-      expect(matchers).not.toContain(term)
+    for (const term of ['Bash', 'Read', 'Grep', 'WebFetch', 'Agent', 'Write', 'Edit', 'MultiEdit', 'mcp__.*']) {
+      expect(matchers).toContain(term)
     }
   })
 })
@@ -2096,7 +2096,7 @@ describe('buildWebpressoHookGroups', () => {
     expect(result.PreCompact?.[0]?.hooks[0]?.command).toBe(
       './node_modules/.bin/wp-precompact-snapshot',
     )
-    expect(result.PreCompact?.[0]?.matcher).toBeUndefined()
+    expect(result.PreCompact?.[0]?.matcher).toBe(undefined)
   })
 
   it('substitutes the Claude bin resolver for guarded $CLAUDE_PROJECT_DIR commands', async () => {
@@ -2152,7 +2152,7 @@ describe('BP1 hotfix: launcher chain, node fallback, gstack stdin scoping, stop-
     const stopCommand = settings.hooks.Stop.flatMap((group) =>
       group.hooks.map((hook) => hook.command),
     ).find((command) => command.includes('# from-skill: verify'))
-    expect(stopCommand).toBeDefined()
+    expect(stopCommand).toContain('# from-skill: verify')
     expect(stopCommand).toContain('if command -v wp >/dev/null 2>&1; then')
     expect(stopCommand).toContain('wp audit agents >/dev/null')
     // Skipped runs warn on stderr instead of silently succeeding.

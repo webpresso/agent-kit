@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { auditReferenceParityMatrix } from '../audit/reference-parity-matrix.js'
-import { COMPILED_TOOL_REGISTRY } from '../mcp/tools/_registry.js'
+import { auditReferenceParityMatrix } from '#audit/reference-parity-matrix.js'
+import { COMPILED_TOOL_REGISTRY } from '#mcp/tools/_registry.js'
 
 const REPLACEMENT_CRITICAL_MCP_TOOLS = [
   'wp_audit',
@@ -66,15 +66,15 @@ describe('reference parity MCP tool-surface smoke', () => {
     ])
   })
 
-  it('ties the tool discovery parity row to this smoke proof and prevents green false positives', () => {
+  it('ties the tool discovery parity row to the implemented server proof and release gate', () => {
     const result = auditReferenceParityMatrix()
     const row = result.rows.find((candidate) => candidate.capability === 'tool discovery')
 
     expect(row).toMatchObject({
       capability: 'tool discovery',
-      proofArtifact: 'src/__integration__/reference-parity-tool-surface.integration.test.ts',
-      supportLevel: 'degraded',
-      status: 'open',
+      proofArtifact: 'src/mcp/server.integration.test.ts',
+      supportLevel: 'full',
+      status: 'passed',
       requiredForRelease: true,
     })
     expect(result.releaseClaimGateReady).toBe(false)

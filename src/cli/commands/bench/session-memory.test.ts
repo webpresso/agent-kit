@@ -258,6 +258,7 @@ describe('wp bench session-memory', () => {
     })
   })
 
+
   it('validates threshold schema in dry-run mode without API credentials', async () => {
     const runCell = vi.fn()
     const deps = makeDeps({ onRunCell: runCell })
@@ -275,7 +276,7 @@ describe('wp bench session-memory', () => {
     expect(result.exitCode).toBe(0)
     expect(result.thresholdReport.mode).toBe('dry-run')
     expect(result.thresholdReport.axes.every((axis) => axis.status === 'schema-valid')).toBe(true)
-    expect(deps.resolveWorkspaceConfig).toHaveBeenCalled()
+    expect(deps.resolveWorkspaceConfig).toHaveBeenCalledTimes(1)
     expect(deps.validateWorkspaceKeyPresence).not.toHaveBeenCalled()
     expect(runCell).not.toHaveBeenCalled()
   })
@@ -393,7 +394,7 @@ describe('wp bench session-memory', () => {
       deps,
     )
 
-    expect(deps.validateWorkspaceKeyPresence).toHaveBeenCalled()
+    expect(deps.validateWorkspaceKeyPresence).toHaveBeenCalledTimes(1)
     expect(runCell).toHaveBeenCalledWith(
       expect.objectContaining({
         authMode: 'claude-login',

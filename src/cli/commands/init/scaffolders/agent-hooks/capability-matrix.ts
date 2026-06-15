@@ -225,32 +225,45 @@ export function replacementParitySupportCeiling(
   return 'degraded'
 }
 
-function hostScopeCoversCrosswalkHosts(
+function hostsMentionedInScope(
   hostScope: string,
   hosts: readonly CapabilityMatrixHost[],
-): boolean {
+): CapabilityMatrixHost[] {
   const normalized = hostScope.toLowerCase()
-  return hosts.some((host) => normalized.includes(host))
+  return hosts.filter((host) => normalized.includes(host))
 }
 
 export function validateReplacementParityCapabilityCrosswalk(
   rows: readonly ReplacementParityRowLike[],
   crosswalks: readonly ReplacementParityCapabilityCrosswalk[] = REPLACEMENT_PARITY_CAPABILITY_CROSSWALK,
 ): ReplacementParityCrosswalkViolation[] {
-  const rowsByCapability = new Map(rows.map((row) => [row.capability.toLowerCase(), row]))
   const violations: ReplacementParityCrosswalkViolation[] = []
 
   for (const crosswalk of crosswalks) {
-    const row = rowsByCapability.get(crosswalk.capability)
-    if (!row) continue
-    if (row.status !== undefined && row.status !== 'passed') continue
-    if (!hostScopeCoversCrosswalkHosts(row.hostScope, crosswalk.hosts)) continue
-    const ceiling = replacementParitySupportCeiling(crosswalk)
-    if (row.supportLevel === 'full' && ceiling !== 'full') {
-      violations.push({
-        capability: row.capability,
-        message: `Replacement parity row "${row.capability}" cannot claim full support because canonical host lifecycle support is ${ceiling}.`,
-      })
+    for (const row of rows.filter(
+      (candidate) => candidate.capability.toLowerCase() === crosswalk.capability.toLowerCase(),
+    )) {
+      if (row.status !== undefined && row.status !== 'passed') continue
+      if (row.supportLevel !== 'full') continue
+
+      const scopedHosts = hostsMentionedInScope(row.hostScope, crosswalk.hosts)
+      if (scopedHosts.length === 0) {
+        if (/\b(?:host|hosts|tiered|surface|surfaces)\b/u.test(row.hostScope.toLowerCase())) {
+          violations.push({
+            capability: row.capability,
+            message: `Replacement parity row "${row.capability}" cannot claim full support without naming the covered canonical host(s).`,
+          })
+        }
+        continue
+      }
+
+      const ceiling = replacementParitySupportCeiling({ ...crosswalk, hosts: scopedHosts })
+      if (ceiling !== 'full') {
+        violations.push({
+          capability: row.capability,
+          message: `Replacement parity row "${row.capability}" cannot claim full support because canonical host lifecycle support for ${scopedHosts.join(', ')} is ${ceiling}.`,
+        })
+      }
     }
   }
 

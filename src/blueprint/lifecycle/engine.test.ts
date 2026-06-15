@@ -14,6 +14,29 @@ const PASSING_EVIDENCE = [
   },
 ] satisfies readonly Evidence[]
 
+
+const ZERO_TASK_BLUEPRINT = `---
+type: blueprint
+status: planned
+complexity: S
+owner: tester
+created: '2026-01-01'
+last_updated: '2026-05-01'
+---
+
+# Zero Task Blueprint
+
+## Product wedge anchor
+
+- **Stage outcome:** Phase 1 — prove lifecycle behavior
+- **Consuming surface:** /lifecycle route
+- **New user-visible capability:** Users can finalize blueprints safely.
+
+## Summary
+
+Blueprint used to test zero-task finalize rejection.
+`
+
 const BASE_BLUEPRINT = `---
 type: blueprint
 status: planned
@@ -177,6 +200,14 @@ describe('applyBlueprintLifecycle', () => {
     expect(finalized.targetStatus).toBe('completed')
     expect(finalized.markdown).toContain('status: completed')
     expect(finalized.markdown).toContain('completed_at:')
+  })
+
+  it('rejects finalize for a zero-task blueprint', () => {
+    expect(() =>
+      applyBlueprintLifecycle(ZERO_TASK_BLUEPRINT, 'planned/zero-task-blueprint', {
+        type: 'finalize',
+      }),
+    ).toThrow(/zero-task|0 tasks|no tasks/i)
   })
 
   it('rejects finalize when done tasks lack task-local evidence', () => {

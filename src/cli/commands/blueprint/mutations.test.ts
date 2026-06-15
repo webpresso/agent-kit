@@ -84,6 +84,25 @@ ${TASK_VERIFICATION_BLOCK}
 - [x] Did that too
 `
 
+
+const OVERVIEW_ZERO_TASK = `---
+type: blueprint
+status: planned
+complexity: S
+owner: alice
+created: '2026-01-01'
+last_updated: '2026-01-01'
+tags: []
+depends_on: []
+---
+
+# Zero Task Blueprint
+
+## Summary
+
+A blueprint with no tasks.
+`
+
 const OVERVIEW_MIXED_STATUS = `---
 type: blueprint
 status: in-progress
@@ -253,6 +272,26 @@ describe('advanceTask', () => {
     const task12Idx = lines.findIndex((l) => l.includes('Task 1.2:'))
     const statusLine = lines.slice(task12Idx + 1).find((l) => l.startsWith('**Status:**'))
     expect(statusLine).toBe('**Status:** blocked')
+  })
+
+  it('refuses to complete a zero-task blueprint through promote', async () => {
+    tmpRepoDir = makeRepo('zero-task', OVERVIEW_ZERO_TASK, 'planned')
+
+    await expect(promoteBlueprint(tmpRepoDir, 'zero-task', 'completed')).rejects.toThrow(
+      /zero-task|0 tasks|no tasks/i,
+    )
+  })
+
+  it('refuses to complete a zero-task blueprint through finalize', async () => {
+    tmpRepoDir = makeRepo(
+      'zero-task-finalize',
+      OVERVIEW_ZERO_TASK.replace('status: planned', 'status: in-progress'),
+      'in-progress',
+    )
+
+    await expect(finalizeBlueprint(tmpRepoDir, 'zero-task-finalize')).rejects.toThrow(
+      /zero-task|0 tasks|no tasks/i,
+    )
   })
 
   it('throws when blueprint slug is not found', async () => {

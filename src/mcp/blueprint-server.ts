@@ -1259,6 +1259,11 @@ async function handleFinalize(
 function assertBlueprintCanComplete(overviewPath: string, slug: string): void {
   const markdown = readFileSync(overviewPath, 'utf8')
   const blueprint = parseBlueprint(markdown, slug)
+  if (blueprint.tasks.length === 0) {
+    throw new Error(
+      `Cannot complete "${slug}": zero-task blueprints cannot move to completed through the public lifecycle surface`,
+    )
+  }
   const unfinished = blueprint.tasks.filter(
     (task) => task.status !== 'done' && task.status !== 'dropped',
   )

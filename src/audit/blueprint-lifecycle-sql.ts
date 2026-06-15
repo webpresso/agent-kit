@@ -106,6 +106,15 @@ function hasHistoricalVerificationGapWaiver(markdown: string): boolean {
   return /^historical_verification_gap_waiver:\s*true\s*$/m.test(frontmatterBody)
 }
 
+function hasHistoricalZeroTaskWaiver(markdown: string): boolean {
+  const frontmatterBody = readFrontmatterBody(markdown)
+  if (!frontmatterBody) return false
+  return (
+    /^historical_zero_task_waiver:\s*true\s*$/m.test(frontmatterBody) &&
+    /^historical_zero_task_rationale:\s*\S.+$/m.test(frontmatterBody)
+  )
+}
+
 interface GitHistoryEntry {
   readonly revision: string
   readonly filePath: string
@@ -440,7 +449,26 @@ export async function auditBlueprintLifecycleSql(
         if (!previousRaw) continue
         const previousStatus = parseLifecycleBlueprintStatus(previousRaw)
         if (!previousStatus) continue
-        if (isLegalLifecycleTransition(previousStatus, currentStatus)) continue
+        if (isLegalLifecycleTransition(previousStatus, currentStatus)) {
+          if (
+            previousStatus === 'planned' &&
+            currentStatus === 'completed' &&
+            !hasHistoricalZeroTaskWaiver(currentMarkdown)
+          ) {
+            const taskCount = db
+              .prepare<[string], { total: number }>(
+                `SELECT COUNT(*) AS total FROM tasks WHERE blueprint_slug = ?`,
+              )
+              .get(row.slug)?.total ?? 0
+            if (taskCount === 0) {
+              violations.push({
+                file: row.file_path,
+                message: `Blueprint '${row.slug}' moved directly from planned to completed with 0 tasks — add tasks or an explicit historical zero-task waiver and rationale`,
+              })
+            }
+          }
+          continue
+        }
 
         violations.push({
           file: row.file_path,

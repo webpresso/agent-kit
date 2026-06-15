@@ -12,6 +12,28 @@ import {
 } from './blueprint-server.test-harness.js'
 
 const TRANSITION_SLUG = 'transition-test-blueprint'
+
+const TRANSITION_ZERO_TASK_BLUEPRINT = `---
+type: blueprint
+title: Transition Zero Task Blueprint
+status: planned
+complexity: S
+owner: tester
+created: '2026-01-01'
+last_updated: '2026-05-01'
+---
+
+## Product wedge anchor
+
+- **Stage outcome:** Phase 1 — prove transition behavior
+- **Consuming surface:** /transition route
+- **New user-visible capability:** Users can transition blueprints safely.
+
+## Summary
+
+Blueprint used to test zero-task completed transition rejection.
+`
+
 const TRANSITION_BLUEPRINT = `---
 type: blueprint
 title: Transition Test Blueprint
@@ -183,6 +205,32 @@ describe('wp_blueprint_transition', () => {
     expect(result.isError).toStrictEqual(true)
     const data = parseResult(result) as { failures: string[] }
     expect(data.failures.some((f) => /not done/i.test(f))).toBe(true)
+  })
+
+  it('refuses to transition a zero-task planned blueprint directly to completed', async () => {
+    const harness = await makeProjectionBackedBlueprintHarness('wp-bs-transition-zero-task-', [
+      { stateDir: 'planned', slug: 'transition-zero-task-blueprint', content: TRANSITION_ZERO_TASK_BLUEPRINT },
+    ])
+    try {
+      const getResult = await callTool(harness.tools, 'wp_blueprint_get', {
+        project_id: harness.tmpDir,
+        slug: 'transition-zero-task-blueprint',
+      })
+      const before = parseResult(getResult) as { content_hash: string }
+
+      const result = await callTool(harness.tools, 'wp_blueprint_transition', {
+        project_id: harness.tmpDir,
+        slug: 'transition-zero-task-blueprint',
+        to_state: 'completed',
+        expected_version: before.content_hash,
+      })
+
+      expect(result.isError).toStrictEqual(true)
+      const data = parseResult(result) as { failures: string[] }
+      expect(data.failures.some((f) => /zero-task|0 tasks|no tasks/i.test(f))).toBe(true)
+    } finally {
+      cleanupTempDir(harness.tmpDir)
+    }
   })
 
   it('allows transitioning to completed when all remaining tasks are dropped', async () => {

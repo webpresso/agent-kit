@@ -12,6 +12,11 @@ export const REQUIRED_REFERENCE_PARITY_CAPABILITIES = [
   'resume injection',
   'tool discovery',
   'indexed search',
+  'routing injection',
+  'pretool session redirect',
+  'posttool broad capture',
+  'registry/routing consistency',
+  'repair path evidence',
   'host setup smoke',
   'benchmark thresholds',
   'release claim gating',
@@ -59,6 +64,21 @@ type RawMarkdownRow = Record<ReferenceParityColumn, string>
 const SUPPORT_LEVELS = new Set<ReferenceParitySupportLevel>(['full', 'degraded', 'unsupported'])
 const STATUSES = new Set<ReferenceParityStatus>(['passed', 'open', 'blocked'])
 
+const FULL_PASSED_PROOF_MARKERS: Readonly<Record<ReferenceParityCapability, readonly string[]>> = {
+  'lifecycle capture': ['SessionMemorySessionStore', 'captureEvent', 'restore'],
+  'resume injection': ['SessionStart', 'WP_ROUTING_BLOCK', 'additionalContext'],
+  'tool discovery': ['tools/list', 'wp_session_execute', 'wp_session_search'],
+  'indexed search': ['SessionMemoryStore', 'searchUnified', 'restore context'],
+  'routing injection': ['<wp_session_context>', 'wp_session_batch_execute', 'wp_session_execute_file'],
+  'pretool session redirect': ['routeToolInputToSessionMemory', 'wp_session_batch_execute', 'routeCommand'],
+  'posttool broad capture': ['PostToolUse', 'capturePostToolUse', 'byte-caps'],
+  'registry/routing consistency': ['COMPILED_TOOL_REGISTRY', 'wp_session_batch_execute', 'wp_session_doctor'],
+  'repair path evidence': ['runHooksDoctor', 'wp-pretool-guard', 'restore'],
+  'host setup smoke': ['referenceParityHostSmokeFixtures', 'collectContinuityLifecycleProofs', 'degraded'],
+  'benchmark thresholds': ['buildSessionMemoryThresholdReport', 'search_quality_recall_at_5', 'dry-run'],
+  'release claim gating': ['reference-parity-matrix', 'reference-parity', 'release'],
+}
+
 export function auditReferenceParityMatrix(
   rootDirectory: string = process.cwd(),
   relativePath: string = REFERENCE_PARITY_MATRIX_PATH,
@@ -89,7 +109,7 @@ export function auditReferenceParityMatrix(
   validateRequiredRows(rows, relativePath, violations)
   validateProofArtifacts(rows, root, relativePath, violations)
   validateReleaseCriticalRows(rows, relativePath, violations)
-  validateFullPassedProofStrength(rows, relativePath, violations)
+  validateFullPassedProofStrength(rows, root, relativePath, violations)
   validateHostCapabilityCrosswalk(rows, relativePath, violations)
 
   const releaseClaimGateReady =
@@ -294,6 +314,7 @@ function validateReleaseCriticalRows(
 
 function validateFullPassedProofStrength(
   rows: ReferenceParityRow[],
+  root: string,
   file: string,
   violations: RepoAuditViolation[],
 ): void {
@@ -307,6 +328,19 @@ function validateFullPassedProofStrength(
       violations.push({
         file,
         message: `Full passed replacement parity row "${row.capability}" must point to a concrete repo test or audit proof artifact.`,
+      })
+      continue
+    }
+
+    const capability = row.capability as ReferenceParityCapability
+    const markers = FULL_PASSED_PROOF_MARKERS[capability]
+    if (!markers) continue
+    const content = existsSync(resolve(root, artifact)) ? readFileSync(resolve(root, artifact), 'utf8') : ''
+    const missingMarkers = markers.filter((marker) => !content.includes(marker))
+    if (missingMarkers.length > 0) {
+      violations.push({
+        file,
+        message: `Full passed replacement parity row "${row.capability}" proof artifact is too weak; missing evidence marker(s): ${missingMarkers.join(', ')}.`,
       })
     }
   }

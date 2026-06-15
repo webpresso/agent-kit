@@ -9,6 +9,11 @@ import {
   resetPlatformFirstTestState,
 } from './blueprint-server.platform-first.test-harness.js'
 
+const FINALIZE_ZERO_TASK_BLUEPRINT = FINALIZE_BLUEPRINT.replace(
+  /\n#### Task 1\.1:[\s\S]*$/u,
+  '',
+).replace('Blueprint used to test finalize.', 'Blueprint used to test zero-task finalize rejection.')
+
 describe('wp_blueprint_finalize — platform-first', () => {
   const tempDirs: string[] = []
   const finalizeSlug = 'finalize-test-blueprint'
@@ -64,6 +69,26 @@ describe('wp_blueprint_finalize — platform-first', () => {
     expect(result.isError).toStrictEqual(false)
     expect(data.slug).toStrictEqual(finalizeSlug)
     expect(data.failures).toHaveLength(0)
+    expect(pushEvent).not.toHaveBeenCalled()
+    expect(ensureFresh).not.toHaveBeenCalled()
+  })
+
+  it('refuses finalize for a zero-task blueprint', async () => {
+    const { pushEvent, ensureFresh } = installMockSyncAdapter()
+    const harness = await makePlatformBlueprintHarness({
+      prefix: 'wp-bs-fin-zero-task-',
+      stateDir: 'in-progress',
+      slug: 'finalize-zero-task-blueprint',
+      content: FINALIZE_ZERO_TASK_BLUEPRINT,
+    })
+    tempDirs.push(harness.tmpDir)
+
+    const result = await callTool(harness.tools, 'wp_blueprint_finalize', {
+      slug: 'finalize-zero-task-blueprint',
+    })
+
+    expect(result.isError).toStrictEqual(true)
+    expect(result.content[0]?.text).toMatch(/zero-task|0 tasks|no tasks/i)
     expect(pushEvent).not.toHaveBeenCalled()
     expect(ensureFresh).not.toHaveBeenCalled()
   })
