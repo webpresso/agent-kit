@@ -2,11 +2,11 @@
 type: blueprint
 title: "Weakness-mining audit over hook logs and session evidence"
 owner: ozby
-status: planned
+status: parked
 complexity: L
 created: "2026-06-10"
-last_updated: "2026-06-11"
-progress: "0% (planned; fact-check refined, tasks unstarted)"
+last_updated: "2026-06-15"
+progress: "Implemented in PR #139; parked for legal lifecycle transition from planned pending finalization"
 parent_roadmap: 2026-06-10-self-improving-harness-roadmap
 depends_on:
   - >-
@@ -21,6 +21,12 @@ tags:
 ---
 
 # Weakness-mining audit over hook logs and session evidence
+
+## Implementation Update (2026-06-15)
+
+Implemented in PR #139 on branch `work/ultragoal-9-blueprints-20260614221933`.
+Task status and acceptance checkboxes below were reconciled from the landed code paths and focused verification evidence in this PR. The file is parked because CI enforces the legal first transition from `planned`; finalization can move parked/resumed work through the lifecycle after merge.
+
 
 ## Product wedge anchor
 
@@ -74,7 +80,7 @@ full multi-hook schema already exists.
 
 #### [infra] Task 1.1: Read the current pretool log format and publish the record contract
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends on:** —
 - **Files:**
   - Create: `src/audit/weakness-mining/read-pretool-log.ts`
@@ -87,13 +93,13 @@ full multi-hook schema already exists.
 - **Verify:**
   - `wp test --file src/audit/weakness-mining/read-pretool-log.test.ts`
 - **Acceptance:** all of the following:
-  - [ ] Reader parses the current PASS/BLOCK/WARN/ERROR pretool format from fixtures
-  - [ ] Unparseable lines are counted and surfaced, never fatal
-  - [ ] The doc comment for the record contract names exactly which Self-Harness signature fields are still missing
+  - [x] Reader parses the current PASS/BLOCK/WARN/ERROR pretool format from fixtures
+  - [x] Unparseable lines are counted and surfaced, never fatal
+  - [x] The doc comment for the record contract names exactly which Self-Harness signature fields are still missing
 
 #### [infra] Task 1.2: Add only the minimal extra evidence needed for clustering
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends on:** Task 1.1
 - **Files:**
   - Modify: `src/hooks/pretool-guard/logger.ts` (only if more pretool fields are required)
@@ -107,15 +113,15 @@ full multi-hook schema already exists.
   - `wp test --file src/audit/weakness-mining/evidence-gap.test.ts`
   - `wp qa`
 - **Acceptance:** all of the following:
-  - [ ] The mining input captures enough structure to label verifier/gate, contributing behavior, and implicated mechanism
-  - [ ] Older logs still parse with degrade-to-warning behavior
-  - [ ] No new timeout/retry behavior is introduced to hook execution
+  - [x] The mining input captures enough structure to label verifier/gate, contributing behavior, and implicated mechanism
+  - [x] Older logs still parse with degrade-to-warning behavior
+  - [x] No new timeout/retry behavior is introduced to hook execution
 
 ### Phase 2: Mining report [Complexity: M]
 
 #### [infra] Task 2.1: Cluster, rank, and expose `wp audit weakness-mining`
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends on:** Task 1.2
 - **Files:**
   - Create: `src/audit/weakness-mining/index.ts`
@@ -130,15 +136,15 @@ full multi-hook schema already exists.
   - `wp test --file src/audit/weakness-mining/index.test.ts`
   - `wp audit weakness-mining`
 - **Acceptance:** all of the following:
-  - [ ] Same input yields identical clusters and ordering
-  - [ ] Output includes machine-readable JSON and human-readable summary text
-  - [ ] `wp_audit` exposes `weakness-mining` as a first-class audit kind
+  - [x] Same input yields identical clusters and ordering
+  - [x] Output includes machine-readable JSON and human-readable summary text
+  - [x] `wp_audit` exposes `weakness-mining` as a first-class audit kind
 
 ### Phase 3: Optional draft tech-debt output [Complexity: S]
 
 #### [infra] Task 3.1: Extend the existing `--from-audit` autofile path for `--draft-tech-debt`
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends on:** Task 2.1
 - **Files:**
   - Modify: `src/cli/commands/tech-debt/router-dispatch.ts`
@@ -151,9 +157,9 @@ full multi-hook schema already exists.
   - `wp test --file src/cli/commands/tech-debt/router-dispatch.weakness-mining.test.ts`
   - `wp audit tech-debt`
 - **Acceptance:** all of the following:
-  - [ ] Re-running the autofile path creates zero duplicate items for the same cluster signature
-  - [ ] Drafted items carry a stable idempotency key tied to the mining output
-  - [ ] The autofile path remains compatible with existing `--from-audit` callers
+  - [x] Re-running the autofile path creates zero duplicate items for the same cluster signature
+  - [x] Drafted items carry a stable idempotency key tied to the mining output
+  - [x] The autofile path remains compatible with existing `--from-audit` callers
 
 ## Non-goals
 
@@ -161,11 +167,21 @@ full multi-hook schema already exists.
 - No assumption that all hooks already emit rich evidence.
 - No cross-repo aggregation yet.
 
+
+## 2026-06-14 alignment note
+
+The refined `2026-06-10-harness-surface-manifest` plan preserves the current
+`lifecycle: locked|governed|experimental` manifest vocabulary and leaves MCP
+`wp_audit` exposure of `harness-surfaces` to its Task 2.1. Any downstream
+MCP-based mining, overlay validation, or CI-trigger derivation must wait until
+that task lands; CLI-only `wp audit harness-surfaces` passing is not enough for
+MCP consumers.
+
 ## Cross-Plan References
 
 | Reference | Relationship |
 | --- | --- |
 | `2026-06-10-self-improving-harness-roadmap` | Parent roadmap (Wave 1) |
-| `2026-06-10-harness-surface-manifest` | Provides the surface-tag vocabulary |
+| `2026-06-10-harness-surface-manifest` | Provides the `lifecycle: locked|governed|experimental` surface vocabulary and must expose `harness-surfaces` through both CLI and `wp_audit` before MCP-based weakness mining treats surface tags as complete (aligned 2026-06-14) |
 | `docs/research/papers/2026-self-harness.md` | Clustering-signature source |
 | `docs/research/papers/2026-meta-harness.md` | Preserve raw evidence instead of over-compressing it |

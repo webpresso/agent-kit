@@ -1,8 +1,9 @@
 import { mkdirSync } from 'node:fs'
-import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 
 import { getSurfacePath, NotInGitRepoError } from '#paths/state-root.js'
+import { readTrustedJsonFile } from '#shared-utils/read-json-file.js'
+import { writeJsonFile } from '#shared-utils/write-json-file.js'
 
 export function getStateFilePath(): string {
   try {
@@ -16,7 +17,7 @@ export function getStateFilePath(): string {
 export function isGuardEnabled(): boolean {
   try {
     const stateFile = getStateFilePath()
-    const data = JSON.parse(readFileSync(stateFile, 'utf-8'))
+    const data = readTrustedJsonFile<{ guardEnabled?: unknown }>(stateFile)
     return data.guardEnabled !== false
   } catch {
     return true
@@ -26,5 +27,5 @@ export function isGuardEnabled(): boolean {
 export function setGuardEnabled(enabled: boolean): void {
   const stateFile = getStateFilePath()
   mkdirSync(dirname(stateFile), { recursive: true })
-  writeFileSync(stateFile, JSON.stringify({ guardEnabled: enabled }))
+  writeJsonFile(stateFile, { guardEnabled: enabled }, { indent: 0, trailingNewline: false })
 }

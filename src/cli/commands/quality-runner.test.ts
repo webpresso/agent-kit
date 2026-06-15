@@ -80,7 +80,8 @@ describe('quality runner', () => {
     expect(defaultWrites.join('')).toContain('typecheck failed (exit 1)')
     expect(defaultWrites.join('')).toContain('TS2322')
     expect(defaultWrites.join('')).toContain('Full log: wp logs typecheck')
-    expect(fullWrites.join('')).toContain('error TS2322: boom')
+    expect(fullWrites.join('')).toBe(readText(result.entry.logPath))
+    expect(fullWrites.join('')).toBe('src/example.test.ts:3:5 - error TS2322: boom\n')
     expect(fullWrites.join('')).not.toContain('Full log: wp logs typecheck')
   })
 

@@ -6,13 +6,18 @@ surfaces:
     kind: hook
     lifecycle: locked
     paths:
-      - catalog/agent/hooks/codex
-      - src/hooks
-      - bin/wp-pretool-guard
-      - bin/wp-post-tool
-      - bin/wp-stop-qa
-      - bin/wp-guard-switch
-      - bin/wp-sessionstart-routing
+      - path: src/hooks
+        status: concrete
+      - path: bin/wp-pretool-guard
+        status: projected
+      - path: bin/wp-post-tool
+        status: projected
+      - path: bin/wp-stop-qa
+        status: projected
+      - path: bin/wp-guard-switch
+        status: projected
+      - path: bin/wp-sessionstart-routing
+        status: projected
     triggers:
       - wp setup
       - wp hooks doctor
@@ -26,29 +31,39 @@ surfaces:
     kind: hook
     lifecycle: locked
     paths:
-      - catalog/agent/hooks/claude
-      - src/hooks
-      - bin/wp-pretool-guard
-      - bin/wp-post-tool
-      - bin/wp-stop-qa
-      - bin/wp-guard-switch
-      - bin/wp-sessionstart-routing
+      - path: src/hooks
+        status: concrete
+      - path: bin/wp-pretool-guard
+        status: projected
+      - path: bin/wp-post-tool
+        status: projected
+      - path: bin/wp-stop-qa
+        status: projected
+      - path: bin/wp-guard-switch
+        status: projected
+      - path: bin/wp-sessionstart-routing
+        status: projected
     triggers:
       - wp setup
       - wp hooks doctor
       - wp audit hook-vendor-drift
     evidence:
       - src/audit/hook-vendor-drift.ts
+      - src/hooks/doctor.ts
   - id: generated-agent-surfaces
     title: Generated agent instructions and skills
     owner: agent-kit
     kind: generated-surface
     lifecycle: locked
     paths:
-      - catalog/AGENTS.md.tpl
-      - catalog/agent/agents
-      - catalog/agent/rules
-      - catalog/agent/skills
+      - path: catalog/AGENTS.md.tpl
+        status: concrete
+      - path: catalog/agent/agents
+        status: concrete
+      - path: catalog/agent/rules
+        status: concrete
+      - path: catalog/agent/skills
+        status: concrete
     triggers:
       - wp setup
       - wp sync
@@ -56,15 +71,57 @@ surfaces:
     evidence:
       - src/audit/agents.ts
       - src/symlinker/index.ts
+  - id: permission-policy
+    title: Permission and deny policy behavior
+    owner: agent-kit
+    kind: policy
+    lifecycle: locked
+    paths:
+      - path: src/hooks/pretool-guard
+        status: concrete
+      - path: src/hooks/pretool-guard/validators/dangerous-commands.ts
+        status: concrete
+      - path: src/hooks/pretool-guard/validators/forbidden-commands.ts
+        status: concrete
+    triggers:
+      - wp setup
+      - wp audit hook-surface
+      - wp_test src/hooks/pretool-guard
+    evidence:
+      - src/hooks/pretool-guard/runner.ts
+      - src/hooks/pretool-guard/dev-routing.ts
+  - id: secret-gate
+    title: Secret handling and with-secrets execution
+    owner: agent-kit
+    kind: secret-gate
+    lifecycle: locked
+    paths:
+      - path: src/secret-gate
+        status: concrete
+      - path: src/runtime/with-secrets-cli.ts
+        status: concrete
+      - path: bin/with-secrets
+        status: concrete
+    triggers:
+      - with-secrets -- <cmd>
+      - wp config secrets
+      - wp audit secrets-policy
+    evidence:
+      - src/secret-gate/runner.ts
+      - src/runtime/with-secrets-cli.ts
+      - src/audit/secrets-policy.ts
   - id: omx-runtime-state
     title: OMX runtime and workflow state
     owner: oh-my-codex
     kind: runtime-state
     lifecycle: governed
     paths:
-      - .omx/state
-      - .omx/ultragoal
-      - src/blueprint/execution/progress-bridge.ts
+      - path: .omx/state
+        status: projected
+      - path: .omx/ultragoal
+        status: projected
+      - path: src/blueprint/execution/progress-bridge.ts
+        status: concrete
     triggers:
       - omx ultragoal checkpoint
       - omx team status
@@ -76,21 +133,28 @@ surfaces:
     kind: regression-gate
     lifecycle: governed
     paths:
-      - scripts/bench/harness-gate
-      - .github/workflows
+      - path: catalog/agent/harness-gate
+        status: concrete
+      - path: scripts/bench/harness-gate
+        status: concrete
+      - path: .github/workflows
+        status: concrete
     triggers:
       - wp audit harness-surfaces
       - bun scripts/bench/harness-gate/index.ts
     evidence:
       - catalog/agent/harness-surfaces.yaml
+      - scripts/bench/harness-gate/index.ts
   - id: agent-overlays
     title: Evidence-backed agent overlays
     owner: agent-kit
     kind: overlay
     lifecycle: experimental
     paths:
-      - agent-overlays
-      - src/symlinker
+      - path: agent-overlays
+        status: projected
+      - path: src/symlinker
+        status: concrete
     triggers:
       - wp sync
       - wp audit harness-overlay-evidence

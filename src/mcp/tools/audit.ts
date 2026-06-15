@@ -17,10 +17,10 @@
 import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
-import { AUDIT_KINDS } from './_shared/audit-kinds.js'
+import { MCP_AUDIT_KINDS } from './_shared/audit-kinds.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 
-const KINDS = AUDIT_KINDS
+const KINDS = MCP_AUDIT_KINDS
 
 const inputSchema = z.object({
   kind: z.enum(KINDS),
@@ -398,6 +398,36 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
             message: v.reason,
           })),
         },
+      }
+    }
+    case 'harness-surfaces': {
+      const { auditHarnessSurfaces } = await import('#audit/harness-surfaces')
+      const auditResult = auditHarnessSurfaces(input.cwd ?? input.directory ?? process.cwd())
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
+    }
+    case 'weakness-mining': {
+      const { auditWeaknessMining } = await import('#audit/weakness-mining/index')
+      const auditResult = await auditWeaknessMining(input.cwd ?? input.directory ?? process.cwd())
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
+    }
+    case 'harness-overlay-evidence': {
+      const { auditHarnessOverlayEvidence } = await import('#audit/harness-overlay-evidence')
+      const auditResult = auditHarnessOverlayEvidence(input.cwd ?? input.directory ?? process.cwd())
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
       }
     }
     case 'no-relative-package-scripts': {

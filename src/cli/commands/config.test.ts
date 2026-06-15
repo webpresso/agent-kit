@@ -1,6 +1,6 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 let runSecretsConfigCommand: typeof import('./config.js').runSecretsConfigCommand
@@ -106,6 +106,18 @@ describe('wp config secrets', () => {
       configured: true,
       path: configPath,
       config: { manager: 'infisical', projectId: 'shell-worker' },
+    })
+  })
+
+  it('reports invalid persisted secrets config with a path-specific command error', async () => {
+    const root = makeRepo()
+    const configPath = join(root, '.git', 'webpresso', 'secrets.json')
+    mkdirSync(dirname(configPath), { recursive: true })
+    writeFileSync(configPath, JSON.stringify({ manager: 'unknown', projectId: 'x' }), 'utf8')
+
+    await expect(runSecretsConfigCommand('show', [], { cwd: root })).rejects.toMatchObject({
+      message: `Invalid secret manager config at ${configPath}`,
+      exitCode: 1,
     })
   })
 

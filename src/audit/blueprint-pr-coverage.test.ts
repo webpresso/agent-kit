@@ -38,14 +38,15 @@ describe('auditBlueprintPrCoverage', () => {
   test('passes non-doc changes with an auditable Blueprint-exempt trailer', () => {
     const result = auditBlueprintPrCoverage('/repo', {
       changedFiles: ['src/runtime/example.ts'],
-      commitMessages: ['fix: tiny typo in generated string\n\nBlueprint-exempt: one-line generated output typo'],
+      commitMessages: [
+        'fix: tiny typo in generated string\n\nBlueprint-exempt: one-line generated output typo',
+      ],
     })
 
     expect(result.ok).toBe(true)
     expect(result.violations).toStrictEqual([
       {
-        message:
-          '[warn] Blueprint-exempt trailer present: one-line generated output typo',
+        message: '[warn] Blueprint-exempt trailer present: one-line generated output typo',
       },
     ])
   })

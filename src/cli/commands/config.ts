@@ -1,7 +1,11 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import type { CAC } from 'cac'
+import { z } from 'zod'
+
+import { readJsonFileWithSchema } from '#shared-utils/read-json-file.js'
+import { writeJsonFile } from '#shared-utils/write-json-file.js'
 
 type OutputWriter = Pick<NodeJS.WriteStream, 'write'>
 
@@ -12,6 +16,12 @@ export interface SecretsConfig {
   readonly projectId: string
   readonly projectLabel?: string
 }
+
+const SecretsConfigSchema = z.object({
+  manager: z.enum(['doppler', 'infisical']),
+  projectId: z.string(),
+  projectLabel: z.string().optional(),
+})
 
 interface SecretManagerAvailability {
   readonly available: boolean
@@ -67,9 +77,14 @@ export interface SecretsConfigCommandDeps {
   readonly stderr?: OutputWriter
 }
 
-function commandError(message: string, exitCode = 1): Error & { exitCode: number } {
-  const error = new Error(message) as Error & { exitCode: number }
+function commandError(
+  message: string,
+  exitCode = 1,
+  cause?: unknown,
+): Error & { exitCode: number } {
+  const error = new Error(message) as Error & { exitCode: number; cause?: unknown }
   error.exitCode = exitCode
+  if (cause !== undefined) error.cause = cause
   return error
 }
 
@@ -126,9 +141,11 @@ function getSecretsConfigPath(cwd: string = process.cwd()): string {
 function readSecretsConfig(cwd?: string): SecretsConfig | null {
   const path = getSecretsConfigPath(cwd)
   if (!existsSync(path)) return null
-  const parsed = JSON.parse(readFileSync(path, 'utf8')) as Partial<SecretsConfig>
-  if (!isSecretManagerName(parsed.manager) || typeof parsed.projectId !== 'string') {
-    throw commandError(`Invalid secret manager config at ${path}`)
+  let parsed: z.infer<typeof SecretsConfigSchema>
+  try {
+    parsed = readJsonFileWithSchema(path, SecretsConfigSchema)
+  } catch (error) {
+    throw commandError(`Invalid secret manager config at ${path}`, 1, error)
   }
   return {
     manager: parsed.manager,
@@ -140,7 +157,7 @@ function readSecretsConfig(cwd?: string): SecretsConfig | null {
 function writeSecretsConfig(config: SecretsConfig, cwd?: string): void {
   const path = getSecretsConfigPath(cwd)
   mkdirSync(dirname(path), { recursive: true })
-  writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 })
+  writeJsonFile(path, config, { writeFileOptions: { mode: 0o600 } })
 }
 
 function findConfigRoot(cwd: string): string {

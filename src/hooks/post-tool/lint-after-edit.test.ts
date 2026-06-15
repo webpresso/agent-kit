@@ -84,6 +84,37 @@ describe('lint-after-edit', () => {
     ).toBe(false)
   })
 
+  it('returns false when lintable tool input is absent or malformed', () => {
+    expect(
+      processPostToolUse(
+        {
+          session_id: 'test-session',
+          cwd: '/tmp',
+          hook_event_name: 'PostToolUse',
+          tool_name: 'Write',
+        },
+        process.cwd(),
+        {},
+        noOpCaptureDeps,
+      ),
+    ).toBe(false)
+
+    expect(
+      processPostToolUse(
+        {
+          session_id: 'test-session',
+          cwd: '/tmp',
+          hook_event_name: 'PostToolUse',
+          tool_name: 'Write',
+          tool_input: { file_path: 123 },
+        } as unknown as ToolInput,
+        process.cwd(),
+        {},
+        noOpCaptureDeps,
+      ),
+    ).toBe(false)
+  })
+
   it('captures write/edit/read/bash PostToolUse events as typed bounded continuity events', () => {
     const dbPath = ':memory:'
     const store = new SessionMemorySessionStore(dbPath)

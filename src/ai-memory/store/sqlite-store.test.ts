@@ -8,6 +8,12 @@ import type { Fact } from '#ai-memory/facts/types.js'
 import { createHierarchicalRetriever } from '#ai-memory/hierarchy/retriever.js'
 import { SqliteAiMemoryStore } from './sqlite-store.js'
 
+type UnsafeStoreDb = {
+  prepare: (sql: string) => {
+    run: (...args: unknown[]) => unknown
+  }
+}
+
 const tempRoots: string[] = []
 
 function createTempDbPath(): string {
@@ -131,6 +137,41 @@ describe('SqliteAiMemoryStore', () => {
   it('load returns null for an unknown checkpoint id', async () => {
     const store = new SqliteAiMemoryStore(createTempDbPath())
     expect(await store.load('ckpt_missing')).toBeNull()
+    store.close()
+  })
+
+  it('throws a clear validation error for corrupt checkpoint state JSON', async () => {
+    const store = new SqliteAiMemoryStore(createTempDbPath())
+    const saved = await store.save({ threadId: 'thread-1' }, { messages: [] })
+    const unsafe = store as unknown as { db: UnsafeStoreDb }
+    unsafe.db
+      .prepare('UPDATE ai_checkpoints SET state_json = ? WHERE id = ?')
+      .run(JSON.stringify({ messages: 'not-an-array' }), saved.checkpointId)
+
+    await expect(store.load(saved.checkpointId!)).rejects.toThrow(/messages/i)
+    store.close()
+  })
+
+  it('throws a clear validation error for corrupt fact embedding JSON', async () => {
+    const store = new SqliteAiMemoryStore(createTempDbPath())
+    await store.insert({
+      id: 'fact-corrupt',
+      threadId: 'thread-1',
+      category: 'context',
+      content: 'corrupt embedding',
+      confidence: 'high',
+      embedding: [0.1, 0.2, 0.3],
+      accessCount: 0,
+      lastAccessedAt: new Date('2026-01-01T00:00:00.000Z'),
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      invalidated: false,
+    })
+    const unsafe = store as unknown as { db: UnsafeStoreDb }
+    unsafe.db
+      .prepare('UPDATE ai_facts SET embedding_json = ? WHERE id = ?')
+      .run(JSON.stringify(['not-a-number']), 'fact-corrupt')
+
+    await expect(store.findByThread('thread-1')).rejects.toThrow(/number/i)
     store.close()
   })
 

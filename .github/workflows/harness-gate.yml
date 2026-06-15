@@ -1,14 +1,24 @@
-name: Harness Gate (planned-only)
+name: Harness Selection Gate (planned-only)
 
 on:
   pull_request:
     paths:
       - 'catalog/agent/harness-surfaces.yaml'
       - 'catalog/agent/harness-gate/**'
+      - 'catalog/AGENTS.md.tpl'
+      - 'catalog/agent/agents/**'
+      - 'catalog/agent/rules/**'
+      - 'catalog/agent/skills/**'
+      - 'AGENTS.md'
+      - 'src/audit/**'
+      - 'src/secret-gate/**'
+      - 'src/runtime/with-secrets-cli.ts'
+      - 'bin/with-secrets'
+      - 'src/blueprint/execution/progress-bridge.ts'
       - 'src/hooks/**'
       - 'src/symlinker/**'
       - 'scripts/bench/harness-gate/**'
-      - '.github/workflows/harness-gate.yml'
+      - '.github/workflows/**'
 
 permissions:
   contents: read
@@ -16,10 +26,12 @@ permissions:
 
 jobs:
   verdict:
-    name: Planned-only harness gate verdict
+    name: Planned-only harness selection verdict
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
@@ -29,5 +41,9 @@ jobs:
         with:
           bun-version: latest
       - run: pnpm install --frozen-lockfile
-      - name: Produce planned-only harness gate verdict
-        run: bun scripts/bench/harness-gate/index.ts --json --changed-file catalog/agent/harness-surfaces.yaml
+      - name: Produce planned-only harness selection verdict
+        run: >-
+          bun scripts/bench/harness-gate/index.ts --json
+          --changed-files-from-git
+          --base-ref origin/${{ github.base_ref }}
+          --head-ref HEAD

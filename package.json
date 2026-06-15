@@ -170,6 +170,8 @@
     "#types/execution-backend": "./src/blueprint/types/execution-backend.ts",
     "#types/execution-backend.js": "./src/blueprint/types/execution-backend.ts",
     "#*.js": "./src/blueprint/*.ts",
+    "#shared-utils/*.js": "./src/utils/*.ts",
+    "#shared-utils/*": "./src/utils/*.ts",
     "#*": "./src/blueprint/*.ts",
     "#deploy/*.js": "./src/deploy/*.ts",
     "#deploy/*": "./src/deploy/*.ts"

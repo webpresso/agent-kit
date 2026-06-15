@@ -151,7 +151,6 @@ export interface FetchIndexOptions {
   readonly url: string
   readonly dbPath: string
   readonly cacheTtlMs?: number
-  readonly fetchImpl?: typeof fetch
 }
 
 export interface FetchIndexResult {

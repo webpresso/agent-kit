@@ -160,6 +160,25 @@ describe('runUpdateFlow — no update available', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
     expect(scheduleDeferredInstallMock).not.toHaveBeenCalled()
   })
+
+  it('ignores malformed cache JSON and refetches release metadata', async () => {
+    readFileMock.mockResolvedValue(
+      JSON.stringify({
+        latest: '1.0.0',
+        current: '1.0.0',
+        lastUpdateCheck: 'not-a-number',
+      }) as unknown as Uint8Array,
+    )
+    const fetchSpy = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ 'dist-tags': { latest: '1.0.0' } }) })
+    vi.stubGlobal('fetch', fetchSpy)
+
+    await runUpdateFlow('1.0.0')
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(scheduleDeferredInstallMock).not.toHaveBeenCalled()
+  })
 })
 
 // ─── runUpdateFlow — update available + WP_SKIP_AUTO_INSTALL=1 ───────────────

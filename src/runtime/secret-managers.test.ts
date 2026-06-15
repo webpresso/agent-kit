@@ -101,9 +101,7 @@ describe('parseJsonSecrets', () => {
   })
 
   it('rejects secret-like invalid JSON without echoing stdout snippets', () => {
-    const message = thrownMessage(() =>
-      parseJsonSecrets('Doppler', 'SECRET_VALUE_DO_NOT_LEAK'),
-    )
+    const message = thrownMessage(() => parseJsonSecrets('Doppler', 'SECRET_VALUE_DO_NOT_LEAK'))
 
     expect(message).toContain('returned invalid JSON')
     expect(message).not.toContain('SECRET_VALUE_DO_NOT_LEAK')

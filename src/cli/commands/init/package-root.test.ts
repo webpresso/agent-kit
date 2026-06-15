@@ -7,7 +7,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { isAgentKitPackageRoot, resolveAgentKitPackageRoot } from './package-root.js'
 
-const JS_SELECTOR_BIN_WP = "#!/usr/bin/env node\n\nimport { runNamedBin } from './_run.js'\n\nrunNamedBin('wp')\n"
+const JS_SELECTOR_BIN_WP =
+  "#!/usr/bin/env node\n\nimport { runNamedBin } from './_run.js'\n\nrunNamedBin('wp')\n"
 
 type RuntimePayloadFixture = {
   readonly agentKitDir: string

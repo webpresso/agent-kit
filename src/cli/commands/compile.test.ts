@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -53,6 +53,30 @@ describe('compile command', () => {
 
     expect(result).toMatchObject({ ok: true, noOp: true })
     expect(fsMocks.openSync).not.toHaveBeenCalled()
+    expect(existsSync(join(agentDir, '.compile.lock'))).toBe(false)
+  })
+
+  it('treats malformed compile manifests as cache misses instead of typed manifests', async () => {
+    mkdirSync(join(cwd, 'node_modules', '.bin'), { recursive: true })
+    const rulesyncBin = join(cwd, 'node_modules', '.bin', 'rulesync')
+    writeFileSync(rulesyncBin, '#!/bin/sh\nexit 0\n', 'utf8')
+    chmodSync(rulesyncBin, 0o755)
+    writeFileSync(join(cwd, 'package.json'), JSON.stringify({ version: '1.2.3' }), 'utf8')
+    const agentDir = join(cwd, '.agent')
+    mkdirSync(agentDir, { recursive: true })
+    writeFileSync(
+      join(agentDir, '.compile-manifest.json'),
+      JSON.stringify({
+        version: 1,
+        timestamp: new Date(0).toISOString(),
+        outputHashes: {},
+      }),
+      'utf8',
+    )
+
+    const result = await runCompile({ cwd, targets: 'codex' })
+
+    expect(result).toMatchObject({ ok: true, noOp: false })
     expect(existsSync(join(agentDir, '.compile.lock'))).toBe(false)
   })
 })
