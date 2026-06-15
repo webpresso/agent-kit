@@ -77,6 +77,18 @@ const openSourceLicensesMock = {
   auditOpenSourceLicenses: vi.fn(),
 }
 
+const harnessSurfacesMock = {
+  auditHarnessSurfaces: vi.fn(),
+}
+
+const weaknessMiningMock = {
+  auditWeaknessMining: vi.fn(),
+}
+
+const harnessOverlayEvidenceMock = {
+  auditHarnessOverlayEvidence: vi.fn(),
+}
+
 const viteLocalMock = {
   runBundleBudgetCli: vi.fn(),
 }
@@ -95,6 +107,9 @@ vi.mock('#audit/absolute-path-policy', () => absolutePathPolicyMock)
 vi.mock('#audit/no-first-party-mjs', () => noFirstPartyMjsMock)
 vi.mock('#audit/toolchain-isolation', () => toolchainIsolationMock)
 vi.mock('#audit/open-source-licenses', () => openSourceLicensesMock)
+vi.mock('#audit/harness-surfaces', () => harnessSurfacesMock)
+vi.mock('#audit/weakness-mining/index', () => weaknessMiningMock)
+vi.mock('#audit/harness-overlay-evidence', () => harnessOverlayEvidenceMock)
 vi.mock('../../vite/local.js', () => viteLocalMock)
 vi.mock('#audit/audit-tph-runner', () => tphRunnerMock)
 vi.mock('#audit/audit-tph-e2e-runner', () => tphE2eRunnerMock)
@@ -140,6 +155,9 @@ beforeEach(() => {
   blueprintLifecycleSqlMock.auditBlueprintLifecycleSql.mockReset()
   toolchainIsolationMock.auditToolchainIsolation.mockReset()
   openSourceLicensesMock.auditOpenSourceLicenses.mockReset()
+  harnessSurfacesMock.auditHarnessSurfaces.mockReset()
+  weaknessMiningMock.auditWeaknessMining.mockReset()
+  harnessOverlayEvidenceMock.auditHarnessOverlayEvidence.mockReset()
   viteLocalMock.runBundleBudgetCli.mockReset()
   tphRunnerMock.runTphAudit.mockReset()
   tphE2eRunnerMock.runTphE2eAudit.mockReset()
@@ -313,6 +331,39 @@ describe('wp_audit tool', () => {
       const payload = parsePayload(result)
       expect(payload.passed).toBe(true)
       expect(payload.kind).toBe('open-source-licenses')
+    })
+
+    it('harness-surfaces -> auditHarnessSurfaces', async () => {
+      harnessSurfacesMock.auditHarnessSurfaces.mockReturnValue(passingAudit())
+      const result = await akAuditTool.handler({ kind: 'harness-surfaces', cwd: '/repo' })
+      expect(harnessSurfacesMock.auditHarnessSurfaces).toHaveBeenCalledWith('/repo')
+      const payload = parsePayload(result)
+      expect(payload.passed).toBe(true)
+      expect(payload.kind).toBe('harness-surfaces')
+      expect(payload.summary).toBe('harness-surfaces audit passed (1 checked)')
+    })
+
+    it('weakness-mining -> auditWeaknessMining', async () => {
+      weaknessMiningMock.auditWeaknessMining.mockResolvedValue(passingAudit())
+      const result = await akAuditTool.handler({ kind: 'weakness-mining', cwd: '/repo' })
+      expect(weaknessMiningMock.auditWeaknessMining).toHaveBeenCalledWith('/repo')
+      const payload = parsePayload(result)
+      expect(payload.passed).toBe(true)
+      expect(payload.kind).toBe('weakness-mining')
+      expect(payload.summary).toBe('weakness-mining audit passed (1 checked)')
+    })
+
+    it('harness-overlay-evidence -> auditHarnessOverlayEvidence', async () => {
+      harnessOverlayEvidenceMock.auditHarnessOverlayEvidence.mockReturnValue(passingAudit())
+      const result = await akAuditTool.handler({
+        kind: 'harness-overlay-evidence',
+        cwd: '/repo',
+      })
+      expect(harnessOverlayEvidenceMock.auditHarnessOverlayEvidence).toHaveBeenCalledWith('/repo')
+      const payload = parsePayload(result)
+      expect(payload.passed).toBe(true)
+      expect(payload.kind).toBe('harness-overlay-evidence')
+      expect(payload.summary).toBe('harness-overlay-evidence audit passed (1 checked)')
     })
 
     it('bundle-budget -> runBundleBudgetCli with directory arg', async () => {

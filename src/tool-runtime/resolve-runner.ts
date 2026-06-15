@@ -1,7 +1,9 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { createRequire } from 'node:module'
 import { spawnSync } from 'node:child_process'
+
+import { readTrustedJsonFile } from '#shared-utils/read-json-file.js'
 
 export interface ManagedRunnerResolution {
   readonly tool: string
@@ -145,9 +147,9 @@ function resolveManagedTool(tool: string, spec: ManagedToolSpec): ManagedRunnerR
 function resolvePackageBin(packageName: string, binName: string): string | null {
   try {
     const packageJsonPath = require.resolve(`${packageName}/package.json`)
-    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as {
+    const packageJson = readTrustedJsonFile<{
       bin?: string | Record<string, string>
-    }
+    }>(packageJsonPath)
     const relativeBin =
       typeof packageJson.bin === 'string' ? packageJson.bin : packageJson.bin?.[binName]
     if (!relativeBin) return null

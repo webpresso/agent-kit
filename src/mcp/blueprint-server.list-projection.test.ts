@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
+import { openDb } from '#db/connection.js'
 import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
 
 import {
@@ -88,6 +89,33 @@ describe('wp_blueprint_list — read/projection contract', () => {
     for (const blueprint of data.blueprints) {
       expect(blueprint.status).toBe('draft')
     }
+  })
+
+  it('skips malformed projection rows and reports row-level failures', async () => {
+    const { tmpDir: localTmpDir, tools: localTools } = await makeSingleBlueprintHarness(
+      'wp-bs-list-malformed-',
+      'malformed-row',
+    )
+    const conn = openDb(resolveBlueprintProjectionDbPath(localTmpDir))
+    try {
+      conn.db
+        .prepare(`UPDATE blueprints SET ingested_at = 'not-an-integer' WHERE slug = ?`)
+        .run('malformed-row')
+    } finally {
+      conn.close()
+    }
+
+    const result = await callTool(localTools, 'wp_blueprint_list', {})
+    const data = parseResult<{
+      blueprints: Array<{ slug: string }>
+      failures: string[]
+      freshness_ok: boolean
+    }>(result)
+
+    expect(result.isError).toStrictEqual(false)
+    expect(data.blueprints.some((blueprint) => blueprint.slug === 'malformed-row')).toBe(false)
+    expect(data.failures.join('\n')).toContain('blueprints projection row 1 skipped')
+    expect(data.freshness_ok).toBe(false)
   })
 
   it('returns next_action reingest_project when HEAD changed after ingest on single-project path', async () => {

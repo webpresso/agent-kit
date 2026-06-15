@@ -2,7 +2,26 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+const qualityRunnerMocks = vi.hoisted(() => ({
+  runCliCommandSequence: vi.fn(async () => ({
+    exitCode: 0,
+    timedOut: false,
+    aborted: false,
+    entry: {
+      id: 'test-log',
+      command: 'test',
+      timestamp: '2026-06-14T00:00:00.000Z',
+      exitCode: 0,
+      logPath: '/tmp/test-log',
+      summary: 'test passed',
+    },
+  })),
+  emitCliCommandOutput: vi.fn(),
+}))
+
+vi.mock('./quality-runner.js', () => qualityRunnerMocks)
 
 import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
 import { isCommandSequenceConfig } from '#test'
@@ -10,16 +29,26 @@ import { createAkTestCommandConfig, registerTestCommand, TEST_COMMAND_HELP } fro
 
 function buildFakeCli() {
   const options: string[] = []
+  const optionDescriptions = new Map<string, string>()
+  let capturedAction:
+    | ((targets: string[] | string | undefined, flags: Record<string, unknown>) => unknown)
+    | undefined
   const chain = {
-    option: (name: string) => {
+    option: (name: string, description: string) => {
       options.push(name)
+      optionDescriptions.set(name, description)
       return chain
     },
-    action: (_fn: unknown) => chain,
+    action: (fn: typeof capturedAction) => {
+      capturedAction = fn
+      return chain
+    },
   }
   return {
     command: () => chain,
     getOptions: () => options,
+    getOptionDescriptions: () => optionDescriptions,
+    getAction: () => capturedAction,
   }
 }
 
@@ -29,6 +58,8 @@ installManagedRunnerHermeticHooks()
 
 afterEach(() => {
   while (tempDirs.length > 0) rmSync(tempDirs.pop()!, { recursive: true, force: true })
+  qualityRunnerMocks.runCliCommandSequence.mockClear()
+  qualityRunnerMocks.emitCliCommandOutput.mockClear()
 })
 
 describe('wp test command helpers', () => {
@@ -109,5 +140,33 @@ describe('wp test command helpers', () => {
     const cli = buildFakeCli()
     registerTestCommand(cli as never)
     expect(cli.getOptions()).toContain('--full')
+    expect(cli.getOptionDescriptions().get('--full')).toMatch(/full raw output/i)
+    expect(cli.getOptionDescriptions().get('--full')).toMatch(/summary-first/i)
+  })
+
+  it('threads --full through to the shared summary-first renderer as a boolean opt-out', async () => {
+    const cli = buildFakeCli()
+    registerTestCommand(cli as never)
+    const action = cli.getAction()
+    expect(action).toBeTypeOf('function')
+
+    await action?.([], { full: true })
+
+    expect(qualityRunnerMocks.emitCliCommandOutput).toHaveBeenCalledWith(
+      expect.objectContaining({
+        full: true,
+        toolName: 'wp_test',
+      }),
+    )
+
+    qualityRunnerMocks.emitCliCommandOutput.mockClear()
+    await action?.([], {})
+
+    expect(qualityRunnerMocks.emitCliCommandOutput).toHaveBeenCalledWith(
+      expect.objectContaining({
+        full: false,
+        toolName: 'wp_test',
+      }),
+    )
   })
 })

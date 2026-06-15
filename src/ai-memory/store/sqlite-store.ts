@@ -1,11 +1,11 @@
 import { Database } from '#db/sqlite.js'
 
 import { BaseCheckpointSaver } from '#ai-memory/checkpoint/saver.js'
+import { CheckpointMetadataSchema, CheckpointStateSchema } from '#ai-memory/checkpoint/types.js'
 import type {
   Checkpoint,
   CheckpointConfig,
   CheckpointId,
-  CheckpointMetadata,
   CheckpointResult,
   CheckpointState,
   ListCheckpointsOptions,
@@ -14,6 +14,7 @@ import type {
 import type { FactDatabase } from '#ai-memory/facts/consolidator.js'
 import type { Fact, FactId, FactRetrievalOptions, RetrievedFact } from '#ai-memory/facts/types.js'
 import type { MemoryStore } from '#ai-memory/hierarchy/retriever.js'
+import { z } from 'zod'
 
 type CheckpointRow = {
   id: string
@@ -68,6 +69,8 @@ CREATE TABLE IF NOT EXISTS ai_facts (
 CREATE INDEX IF NOT EXISTS idx_ai_facts_thread_created
   ON ai_facts(thread_id, created_at DESC);
 `
+
+const EmbeddingSchema = z.array(z.number())
 
 export class SqliteAiMemoryStore extends BaseCheckpointSaver implements FactDatabase, MemoryStore {
   private readonly db: Database
@@ -292,9 +295,9 @@ export class SqliteAiMemoryStore extends BaseCheckpointSaver implements FactData
       id: row.id,
       threadId: row.thread_id,
       parentId: row.parent_id ?? undefined,
-      state: JSON.parse(row.state_json) as CheckpointState,
+      state: CheckpointStateSchema.parse(JSON.parse(row.state_json)),
       metadata: row.metadata_json
-        ? (JSON.parse(row.metadata_json, (_key, value) => value) as CheckpointMetadata)
+        ? CheckpointMetadataSchema.parse(JSON.parse(row.metadata_json, (_key, value) => value))
         : undefined,
       createdAt: new Date(row.created_at),
     }
@@ -308,7 +311,9 @@ export class SqliteAiMemoryStore extends BaseCheckpointSaver implements FactData
       content: row.content,
       confidence: row.confidence,
       sourceId: row.source_id ?? undefined,
-      embedding: row.embedding_json ? (JSON.parse(row.embedding_json) as number[]) : undefined,
+      embedding: row.embedding_json
+        ? EmbeddingSchema.parse(JSON.parse(row.embedding_json))
+        : undefined,
       accessCount: row.access_count,
       lastAccessedAt: new Date(row.last_accessed_at),
       createdAt: new Date(row.created_at),

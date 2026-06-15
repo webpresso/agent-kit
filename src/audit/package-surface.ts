@@ -53,6 +53,7 @@ interface PackageRecord {
   private?: boolean
   bin?: string | Record<string, string>
   main?: string
+  scripts?: Record<string, string>
 }
 
 const DEFAULT_ALLOWED_PUBLIC_PACKAGES = ['@webpresso/webpresso', '@webpresso/agent-kit']
@@ -90,6 +91,7 @@ const DEFAULT_REFERENCE_BASELINES: Readonly<Record<string, string>> = {
   '@webpresso/db-branching': '0.2.4',
   '@webpresso/db-branching-neon': '0.2.4',
 }
+const INSTALL_TIME_LIFECYCLE_SCRIPTS = ['preinstall', 'install', 'postinstall'] as const
 
 const SKIP_DIRECTORIES = new Set([
   '.git',
@@ -231,6 +233,7 @@ export function auditPackageSurface(
     if (!pkg.name?.startsWith('@webpresso/')) continue
     checked += 1
     if (pkg.private === true) continue
+    checked += auditInstallTimeSetupScripts(root, packageFile, pkg, violations)
     if (allowedPackages.has(pkg.name) || compatibilityPackages.has(pkg.name)) continue
     violations.push({
       file: relativePath(root, packageFile),
@@ -295,6 +298,26 @@ export function stagePublishableTarballSurface(
     fileCount += packedFiles.length
   }
   return { packageCount: packages.length, fileCount }
+}
+
+function auditInstallTimeSetupScripts(
+  root: string,
+  packageFile: string,
+  pkg: PackageRecord,
+  violations: RepoAuditViolation[],
+): number {
+  let checked = 0
+  for (const scriptName of INSTALL_TIME_LIFECYCLE_SCRIPTS) {
+    const command = pkg.scripts?.[scriptName]
+    if (!command) continue
+    checked += 1
+    if (!/\bwp\s+setup\b/u.test(command)) continue
+    violations.push({
+      file: relativePath(root, packageFile),
+      message: `${pkg.name} must not run "wp setup" from ${scriptName}; keep agent-surface setup explicit via vp run setup:agent or wp setup.`,
+    })
+  }
+  return checked
 }
 
 function loadPackageSurfaceContract(root: string): {
@@ -1075,7 +1098,6 @@ function readText(file: string): string | undefined {
 function relativePath(root: string, file: string): string {
   return relative(root, file).split('\\').join('/')
 }
-
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message

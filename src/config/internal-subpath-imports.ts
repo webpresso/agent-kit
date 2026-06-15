@@ -1,7 +1,7 @@
-import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { readTrustedJsonFile } from '#shared-utils/read-json-file.js'
 import { escapeRegExp } from '#utils/string'
 
 type PackageImports = Record<string, string>
@@ -18,7 +18,6 @@ export type VitestAliasEntry = {
 const moduleDir = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(moduleDir, '../..')
 const ROOT_PACKAGE_JSON = resolve(REPO_ROOT, 'package.json')
-
 
 function replaceWildcards(value: string): string {
   let captureIndex = 0
@@ -43,7 +42,7 @@ function compareImportSpecificity(
 export function readCanonicalPackageImports(
   packageJsonPath: string = ROOT_PACKAGE_JSON,
 ): PackageImports {
-  const manifest = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as PackageManifest
+  const manifest = readTrustedJsonFile<PackageManifest>(packageJsonPath)
   return manifest.imports ?? {}
 }
 

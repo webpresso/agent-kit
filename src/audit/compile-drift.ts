@@ -1,7 +1,8 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { hashAgentDir } from '#cli/commands/compile'
+import { readTrustedJsonFile } from '#shared-utils/read-json-file.js'
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 
 interface StoredManifest {
@@ -14,7 +15,7 @@ interface StoredManifest {
 function readManifest(manifestPath: string): StoredManifest | null {
   if (!existsSync(manifestPath)) return null
   try {
-    return JSON.parse(readFileSync(manifestPath, 'utf-8')) as StoredManifest
+    return readTrustedJsonFile<StoredManifest>(manifestPath)
   } catch {
     return null
   }

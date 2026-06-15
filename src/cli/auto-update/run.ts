@@ -17,6 +17,7 @@
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
+import { z } from 'zod'
 
 import { getStateRoot } from '#paths/state-root.js'
 
@@ -35,16 +36,24 @@ interface UpdateCache {
   lastUpdateCheck: number
 }
 
+const UpdateCacheSchema = z.object({
+  latest: z.string(),
+  current: z.string(),
+  lastUpdateCheck: z.number(),
+})
+
 async function readCache(cachePath: string): Promise<UpdateCache | null> {
   try {
     const raw = await readFile(cachePath, 'utf-8')
-    const parsed = JSON.parse(raw) as Partial<UpdateCache>
+    const parsedUnknown: unknown = JSON.parse(raw)
+    const parsed = parsedUnknown as Partial<UpdateCache>
     if (
       typeof parsed.latest === 'string' &&
       typeof parsed.current === 'string' &&
       typeof parsed.lastUpdateCheck === 'number'
     ) {
-      return parsed as UpdateCache
+      const result = UpdateCacheSchema.safeParse(parsedUnknown)
+      return result.success ? result.data : null
     }
     return null
   } catch {

@@ -1,6 +1,8 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from 'node:fs'
+import { mkdirSync, renameSync, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
+import { readTrustedJsonFile } from '#shared-utils/read-json-file.js'
+import { writeJsonFile } from '#shared-utils/write-json-file.js'
 import { resolveManagedWorktreeRoot } from './location.js'
 
 export type ManagedWorktreeKind = 'owner' | 'scratch'
@@ -43,7 +45,7 @@ export function readWorktreeRegistry(options: RegistryOptions = {}): WorktreeReg
   if (!existsSync(path)) return emptyRegistry()
 
   try {
-    const parsed = JSON.parse(readFileSync(path, 'utf8')) as Partial<WorktreeRegistry>
+    const parsed = readTrustedJsonFile<Partial<WorktreeRegistry>>(path)
     if (parsed.version !== 1 || !Array.isArray(parsed.entries)) return emptyRegistry()
     return {
       version: 1,
@@ -75,7 +77,7 @@ export function writeWorktreeRegistry(
   const path = registryPath(options.root)
   mkdirSync(dirname(path), { recursive: true })
   const tmpPath = `${path}.${process.pid}.${Date.now()}.tmp`
-  writeFileSync(tmpPath, `${JSON.stringify(registry, null, 2)}\n`, 'utf8')
+  writeJsonFile(tmpPath, registry)
   renameSync(tmpPath, path)
 }
 
