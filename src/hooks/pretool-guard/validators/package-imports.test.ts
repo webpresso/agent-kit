@@ -31,7 +31,7 @@ describe('validatePackageImports', () => {
     expect(result).toMatchObject({
       validator: 'package-imports',
       functionName: 'capitalize',
-      package: '@webpresso/webpresso',
+      package: '@webpresso/framework',
       source: 'runtime/format/string',
     })
   })

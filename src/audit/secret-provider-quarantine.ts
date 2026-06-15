@@ -43,7 +43,7 @@ const BANNED_PATTERNS: readonly BannedPattern[] = [
   },
   {
     pattern: /runtime\/process\/secret-runner/u,
-    message: 'use `@webpresso/webpresso/runtime/env` instead of secret-runner',
+    message: 'use `@webpresso/framework/runtime/env` instead of secret-runner',
   },
 ]
 

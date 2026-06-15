@@ -950,12 +950,12 @@ created: 2026-01-01
 ---
 # @feature
 
-#### Task 1.1: Add tests for @webpresso/webpresso
+#### Task 1.1: Add tests for @webpresso/framework
 **Status:** todo
 **Depends:** None
-`
+      `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0]!.targetPackage).toBe('webpresso')
+      expect(result.tasks[0]!.targetPackage).toBe('framework')
     })
 
     it('should extract target package from "in pkg-name" pattern without @ prefix', () => {

@@ -178,7 +178,7 @@ describe('wp config secrets', () => {
   it('guards against reintroducing a required framework runtime import', () => {
     const commandSource = readFileSync(resolve(import.meta.dirname, 'config.ts'), 'utf8')
 
-    expect(commandSource).not.toContain('@webpresso/webpresso/runtime/env')
-    expect(commandSource).not.toContain("import('@webpresso/webpresso")
+    expect(commandSource).not.toContain('@webpresso/framework/runtime/env')
+    expect(commandSource).not.toContain("import('@webpresso/framework")
   })
 })

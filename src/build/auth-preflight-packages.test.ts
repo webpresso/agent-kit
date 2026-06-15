@@ -27,10 +27,10 @@ describe('auth preflight package probes', () => {
     const manifest = readPackageManifest()
 
     expect(manifest.dependencies?.['@webpresso/runtime']).toBeUndefined()
-    expect(manifest.dependencies?.['@webpresso/webpresso']).toBeUndefined()
+    expect(manifest.dependencies?.['@webpresso/framework']).toBeUndefined()
     expect(manifest.dependencies?.['webpresso']).toBeUndefined()
     expect(manifest.devDependencies?.['@webpresso/runtime']).toBeUndefined()
-    expect(manifest.devDependencies?.['@webpresso/webpresso']).toBeUndefined()
+    expect(manifest.devDependencies?.['@webpresso/framework']).toBeUndefined()
     expect(manifest.devDependencies?.['webpresso']).toBeUndefined()
 
     for (const workflowPath of authPreflightWorkflowPaths) {
@@ -38,8 +38,8 @@ describe('auth preflight package probes', () => {
       expect(workflow.includes('packages: read')).toBe(true)
       expect(workflow.includes('npm view @webpresso/agent-kit@latest')).toBe(false)
       expect(workflow.includes('npm pack @webpresso/agent-kit@latest')).toBe(false)
-      expect(workflow.includes('npm view @webpresso/webpresso@latest')).toBe(false)
-      expect(workflow.includes('npm pack @webpresso/webpresso@latest')).toBe(false)
+      expect(workflow.includes('npm view @webpresso/framework@latest')).toBe(false)
+      expect(workflow.includes('npm pack @webpresso/framework@latest')).toBe(false)
       expect(workflow.includes('package_type=npm&per_page=1')).toBe(false)
       expect(workflow.includes('echo "packages_token_ok=true" >> "$GITHUB_OUTPUT"')).toBe(true)
       expect(workflow.includes('agent-kit intentionally avoids an install-time dependency')).toBe(

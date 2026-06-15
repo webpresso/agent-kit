@@ -34,7 +34,7 @@ The bundle surface has already moved off the local contract copy and onto the pu
 
 - `agent-kit` bundle code now imports `@webpresso/cli-contract` directly.
 - `src/cli/bundle/contract.ts` is deleted on the `cli-contract-adoption` branch.
-- `agent-kit` still contains policy/test references to `@webpresso/webpresso`.
+- `agent-kit` still contains policy/test references to `@webpresso/framework`.
 - These references are mostly package-surface, policy, and quality-engine classification surfaces, not the primary runtime bundle implementation.
 
 ## Scope
@@ -44,7 +44,7 @@ The bundle surface has already moved off the local contract copy and onto the pu
 - Prevent local contract copies from reappearing.
 
 ### Phase 2 — framework rename alignment
-- Once the framework package rename plan is executed, update relevant policy/test/package-surface references from `@webpresso/webpresso` to the final framework package name.
+- Once the framework package rename plan is executed, update relevant policy/test/package-surface references from `@webpresso/framework` to the final framework package name.
 - Keep this narrowly scoped to real references; do not broaden the agent-kit public surface.
 
 ## Non-goals
