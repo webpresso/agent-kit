@@ -277,8 +277,8 @@ describe('auditReferenceParityMatrix', () => {
     })
     expect(result.rows.find((row) => row.capability === 'host setup smoke')).toMatchObject({
       proofArtifact: 'src/__integration__/reference-parity-host-smoke.integration.test.ts',
-      hostScope: 'Claude',
-      supportLevel: 'full',
+      hostScope: 'Claude, Codex, Cursor, OpenCode',
+      supportLevel: 'degraded',
       status: 'passed',
     })
   })
