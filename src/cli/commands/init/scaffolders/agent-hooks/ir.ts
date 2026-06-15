@@ -24,6 +24,7 @@ export const HOOK_EVENT_NAMES = [
   'SessionStart',
   'PreToolUse',
   'PostToolUse',
+  'PostToolBatch',
   'PostToolUseFailure',
   'UserPromptSubmit',
   'Stop',
@@ -38,6 +39,7 @@ export const HOOK_EVENT_NAMES = [
 export type MatcherSet = {
   preToolUse: string
   postToolUse: string
+  postToolBatch: string
 }
 
 /**
@@ -53,7 +55,7 @@ export type HookSpec = {
   readonly event: (typeof HOOK_EVENT_NAMES)[number]
   readonly bin: string
   readonly hookName: string
-  readonly matcher?: 'preToolUse' | 'postToolUse'
+  readonly matcher?: 'preToolUse' | 'postToolUse' | 'postToolBatch'
   readonly timeout: number
   readonly jsonOnly?: boolean
 }
@@ -84,6 +86,13 @@ export const WP_HOOK_SPECS: readonly HookSpec[] = [
     bin: 'wp-post-tool',
     hookName: 'post-tool',
     matcher: 'postToolUse',
+    timeout: 15,
+  },
+  {
+    event: 'PostToolBatch',
+    bin: 'wp-post-tool',
+    hookName: 'post-tool',
+    matcher: 'postToolBatch',
     timeout: 15,
   },
   { event: 'UserPromptSubmit', bin: 'wp-guard-switch', hookName: 'guard-switch', timeout: 5 },

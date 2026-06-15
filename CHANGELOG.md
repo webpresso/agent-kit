@@ -19,6 +19,14 @@
 
 ### Patch Changes
 
+- pending: feat(session-memory): enforce WP-native context-window routing parity
+
+  SessionStart/instruction surfaces now publish a `wp_session_*` routing
+  hierarchy, PreToolUse redirects raw large-context commands to concrete
+  session-memory tools, Claude emits broad context-heavy matchers plus
+  PostToolBatch capture, and post-tool capture stores bounded redacted batch
+  summaries. Reference parity and benchmark gates now include enforcement axes.
+
 - 86eb253: fix(blueprint): `wp blueprint db build` and CLI mutations now refresh the projection freshness stamp
 
   The blueprint projection's freshness gate refuses cached MCP reads when git HEAD

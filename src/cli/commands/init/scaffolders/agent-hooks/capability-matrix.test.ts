@@ -22,7 +22,7 @@ describe('CAPABILITY_MATRIX', () => {
     const managedEvents = new Set(MANAGED_HOOK_EVENT_NAMES)
     for (const event of HOOK_EVENT_NAMES) {
       const entry = CAPABILITY_MATRIX.find((c) => c.event === event)
-      expect(entry).toBeDefined()
+      expect(entry?.event).toBe(event)
       expect(entry?.claude === 'full').toStrictEqual(managedEvents.has(event))
     }
   })
@@ -62,7 +62,7 @@ describe('CAPABILITY_MATRIX', () => {
   it('pins Cursor emitted lifecycle support without claiming PreCompact parity', () => {
     const config = buildCursorHooksConfig({
       resolveBin: (name) => `./node_modules/.bin/${name}`,
-      matchers: { preToolUse: 'Bash|Write|Edit', postToolUse: 'Write|Edit' },
+      matchers: { preToolUse: 'Bash|Write|Edit', postToolUse: 'Write|Edit', postToolBatch: 'Write|Edit' },
     })
 
     expect(Object.keys(config).sort()).toStrictEqual(
@@ -106,6 +106,7 @@ describe('CAPABILITY_MATRIX', () => {
       'PreCompact',
     ])
     expect(OPENCODE_HOOK_SUPPORT_BOUNDARY.unsupportedManagedEvents).toStrictEqual([
+      'PostToolBatch',
       'PostToolUseFailure',
       'UserPromptSubmit',
       'Stop',
@@ -156,6 +157,7 @@ describe('CAPABILITY_MATRIX', () => {
 
   it('opencode column: UserPromptSubmit/Stop/SubagentStart/SubagentStop/SessionEnd/PostCompact are unsupported', () => {
     const degraded = [
+      'PostToolBatch',
       'UserPromptSubmit',
       'Stop',
       'SubagentStart',
@@ -218,7 +220,7 @@ describe('CAPABILITY_MATRIX', () => {
 
     expect(lifecycleCapture).toStrictEqual({
       capability: 'lifecycle capture',
-      events: ['PostToolUse', 'UserPromptSubmit', 'Stop', 'PreCompact'],
+      events: ['PostToolUse', 'PostToolBatch', 'UserPromptSubmit', 'Stop', 'PreCompact'],
       hosts: ['claude', 'codex', 'cursor', 'opencode'],
       notes:
         'Host lifecycle capture is degraded until every covered host/event is full; store-only rows may remain scoped outside host parity.',
@@ -251,7 +253,27 @@ describe('CAPABILITY_MATRIX', () => {
       {
         capability: 'lifecycle capture',
         message:
-          'Replacement parity row "lifecycle capture" cannot claim full support because canonical host lifecycle support is degraded.',
+          'Replacement parity row "lifecycle capture" cannot claim full support because canonical host lifecycle support for claude, codex, cursor, opencode is degraded.',
+      },
+    ])
+  })
+
+
+
+  it('rejects generic full replacement parity rows that do not name canonical hosts', () => {
+    const violations = validateReplacementParityCapabilityCrosswalk([
+      {
+        capability: 'host setup smoke',
+        hostScope: 'tiered host smoke surfaces',
+        supportLevel: 'full',
+      },
+    ])
+
+    expect(violations).toEqual([
+      {
+        capability: 'host setup smoke',
+        message:
+          'Replacement parity row "host setup smoke" cannot claim full support without naming the covered canonical host(s).',
       },
     ])
   })

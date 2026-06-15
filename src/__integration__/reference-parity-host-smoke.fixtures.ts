@@ -44,6 +44,7 @@ export interface ContinuityLifecycleProof {
 const MATCHERS = {
   preToolUse: 'Bash|Write|Edit|MultiEdit|mcp__.*',
   postToolUse: 'Bash|Write|Edit|MultiEdit|mcp__.*',
+  postToolBatch: 'Bash|Write|Edit|MultiEdit|mcp__.*',
 } as const
 
 const CLAUDE_HOOKS = buildClaudeHookGroups({

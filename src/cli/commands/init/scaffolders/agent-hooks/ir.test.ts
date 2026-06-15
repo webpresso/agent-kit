@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { HOOK_EVENT_NAMES, WP_HOOK_SPECS } from './ir.js'
 
 describe('WP_HOOK_SPECS', () => {
-  it('has 6 specs (1 each for SessionStart, PreToolUse, PostToolUse, UserPromptSubmit, Stop, PreCompact)', () => {
-    expect(WP_HOOK_SPECS).toHaveLength(6)
+  it('has 7 specs including Claude PostToolBatch capture', () => {
+    expect(WP_HOOK_SPECS).toHaveLength(7)
 
     const byEvent = WP_HOOK_SPECS.reduce<Record<string, number>>((acc, spec) => {
       acc[spec.event] = (acc[spec.event] ?? 0) + 1
@@ -14,6 +14,7 @@ describe('WP_HOOK_SPECS', () => {
     expect(byEvent['SessionStart']).toStrictEqual(1)
     expect(byEvent['PreToolUse']).toStrictEqual(1)
     expect(byEvent['PostToolUse']).toStrictEqual(1)
+    expect(byEvent['PostToolBatch']).toStrictEqual(1)
     expect(byEvent['UserPromptSubmit']).toStrictEqual(1)
     expect(byEvent['Stop']).toStrictEqual(1)
     expect(byEvent['PreCompact']).toStrictEqual(1)
@@ -29,6 +30,7 @@ describe('WP_HOOK_SPECS', () => {
   it('HOOK_EVENT_NAMES includes the wider documented lifecycle used by dispatch/demo tooling', () => {
     expect(HOOK_EVENT_NAMES).toEqual(
       expect.arrayContaining([
+        'PostToolBatch',
         'PostToolUseFailure',
         'PermissionRequest',
         'SubagentStart',
@@ -41,7 +43,7 @@ describe('WP_HOOK_SPECS', () => {
   })
 
   it('specs with matcher reference valid MatcherSet keys', () => {
-    const validMatcherKeys = new Set<string>(['preToolUse', 'postToolUse'])
+    const validMatcherKeys = new Set<string>(['preToolUse', 'postToolUse', 'postToolBatch'])
     for (const spec of WP_HOOK_SPECS) {
       if (spec.matcher !== undefined) {
         expect(validMatcherKeys.has(spec.matcher)).toStrictEqual(true)
@@ -55,6 +57,7 @@ describe('WP_HOOK_SPECS', () => {
       'wp-sessionstart-routing',
       'wp-pretool-guard',
       'wp-post-tool',
+      'wp-post-tool',
       'wp-guard-switch',
       'wp-stop-qa',
       'wp-precompact-snapshot',
@@ -65,6 +68,7 @@ describe('WP_HOOK_SPECS', () => {
     expect(WP_HOOK_SPECS.map((s) => s.hookName)).toStrictEqual([
       'sessionstart-routing',
       'pretool-guard',
+      'post-tool',
       'post-tool',
       'guard-switch',
       'stop-qa',
@@ -79,7 +83,7 @@ describe('WP_HOOK_SPECS', () => {
       bin: 'wp-precompact-snapshot',
       hookName: 'precompact-snapshot',
     })
-    expect(preCompact?.matcher).toBeUndefined()
+    expect(preCompact?.matcher).toBe(undefined)
   })
 
   it('pretool-guard has preToolUse matcher', () => {
@@ -87,9 +91,12 @@ describe('WP_HOOK_SPECS', () => {
     expect(pretool?.matcher).toStrictEqual('preToolUse')
   })
 
-  it('post-tool has postToolUse matcher', () => {
-    const postTool = WP_HOOK_SPECS.find((s) => s.bin === 'wp-post-tool')
-    expect(postTool?.matcher).toStrictEqual('postToolUse')
+  it('post-tool has PostToolUse and PostToolBatch matchers', () => {
+    const postToolSpecs = WP_HOOK_SPECS.filter((s) => s.bin === 'wp-post-tool')
+    expect(postToolSpecs.map((s) => [s.event, s.matcher])).toEqual([
+      ['PostToolUse', 'postToolUse'],
+      ['PostToolBatch', 'postToolBatch'],
+    ])
   })
 
   it('all timeouts are positive integers', () => {

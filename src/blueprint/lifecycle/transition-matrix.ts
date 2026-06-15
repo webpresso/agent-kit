@@ -4,7 +4,7 @@ import type { LifecycleBlueprintStatus } from '#core/schema.js'
 
 const LEGAL_TRANSITIONS = {
   draft: ['planned', 'archived'],
-  planned: ['in-progress', 'parked', 'archived'],
+  planned: ['in-progress', 'completed', 'parked', 'archived'],
   'in-progress': ['completed', 'parked', 'archived'],
   parked: ['in-progress', 'planned', 'archived'],
   completed: ['in-progress', 'archived'],

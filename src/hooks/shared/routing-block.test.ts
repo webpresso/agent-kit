@@ -1,10 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { existsSync, readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
 
 import { WP_ROUTING_BLOCK } from '#hooks/shared/routing-block'
 
-const repoRoot = resolve(import.meta.dirname, '../../..')
+function findRepoRoot(start: string): string {
+  let current = start
+  while (!existsSync(resolve(current, 'package.json'))) {
+    const parent = dirname(current)
+    if (parent === current) throw new Error('Unable to find repo root')
+    current = parent
+  }
+  return current
+}
+
+const repoRoot = findRepoRoot(import.meta.dirname)
 
 describe('WP_ROUTING_BLOCK', () => {
   it('is a non-empty string', () => {
@@ -15,6 +25,41 @@ describe('WP_ROUTING_BLOCK', () => {
   it('has matching <wp_routing> open and close tags', () => {
     expect(WP_ROUTING_BLOCK).toContain('<wp_routing>')
     expect(WP_ROUTING_BLOCK).toContain('</wp_routing>')
+  })
+
+
+  it('includes wp_session context-window protection guidance for every public session-memory tool', () => {
+    expect(WP_ROUTING_BLOCK).toContain('<wp_session_context>')
+    expect(WP_ROUTING_BLOCK).toContain('context-window protection')
+    for (const tool of [
+      'wp_session_batch_execute',
+      'wp_session_capture',
+      'wp_session_doctor',
+      'wp_session_execute',
+      'wp_session_execute_file',
+      'wp_session_fetch_and_index',
+      'wp_session_index',
+      'wp_session_purge',
+      'wp_session_restore',
+      'wp_session_search',
+      'wp_session_snapshot',
+      'wp_session_stats',
+    ]) {
+      expect(WP_ROUTING_BLOCK).toContain(tool)
+    }
+  })
+
+  it('maps large-context operations to concrete wp_session tools without public ctx_* guidance', () => {
+    expect(WP_ROUTING_BLOCK).toContain('read-to-analyze')
+    expect(WP_ROUTING_BLOCK).toContain('wp_session_execute_file')
+    expect(WP_ROUTING_BLOCK).toContain('shell gathering')
+    expect(WP_ROUTING_BLOCK).toContain('wp_session_batch_execute')
+    expect(WP_ROUTING_BLOCK).toContain('network fetches')
+    expect(WP_ROUTING_BLOCK).toContain('wp_session_fetch_and_index')
+    expect(WP_ROUTING_BLOCK).toContain('restore/search first')
+    expect(WP_ROUTING_BLOCK).toContain('wp_session_restore')
+    expect(WP_ROUTING_BLOCK).toContain('wp_session_search')
+    expect(WP_ROUTING_BLOCK).not.toMatch(/\bctx_(?:execute|batch_execute|search|restore)\b/u)
   })
 
   it('mentions wp_test MCP tool', () => {

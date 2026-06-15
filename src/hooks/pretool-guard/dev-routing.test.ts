@@ -350,6 +350,81 @@ describe('routeCommand', () => {
     }
   })
 
+
+
+  it('routes raw host context-heavy tool inputs to concrete wp_session tools', async () => {
+    const { routeToolInputToSessionMemory } = await import('./dev-routing.js')
+    for (const [tool_name, tool_input, expectedTool] of [
+      ['Read', { file_path: 'src/large.ts' }, 'wp_session_execute_file'],
+      ['Grep', { pattern: 'wp_session', path: 'src' }, 'wp_session_batch_execute'],
+      ['WebFetch', { url: 'https://example.com/docs' }, 'wp_session_fetch_and_index'],
+      ['Agent', { prompt: 'summarize a huge subsystem' }, 'wp_session_capture'],
+      ['mcp__example__expensive_lookup', { query: 'large result' }, 'wp_session_search or wp_session_capture'],
+    ] as const) {
+      const result = routeToolInputToSessionMemory({ tool_name, tool_input })
+      expect(result?.action.action, tool_name).toBe('sandbox')
+      if (result?.action.action === 'sandbox') expect(result.action.guidance).toContain(expectedTool)
+    }
+  })
+
+
+  it('does not sandbox canonical Webpresso wp MCP tools', async () => {
+    const { routeToolInputToSessionMemory } = await import('./dev-routing.js')
+    for (const tool_name of [
+      'mcp__webpresso__wp_test',
+      'mcp__webpresso__wp_lint',
+      'mcp__webpresso__wp_typecheck',
+      'mcp__webpresso__wp_session_search',
+    ]) {
+      expect(routeToolInputToSessionMemory({ tool_name, tool_input: {} }), tool_name).toBeNull()
+    }
+  })
+
+  it('does not recurse on raw wp_session tool inputs', async () => {
+    const { routeToolInputToSessionMemory } = await import('./dev-routing.js')
+    expect(
+      routeToolInputToSessionMemory({
+        tool_name: 'mcp__webpresso__wp_session_execute_file',
+        tool_input: { file_path: 'src/large.ts' },
+      }),
+    ).toBeNull()
+  })
+
+  it('routes raw large-context commands to concrete wp_session tools', async () => {
+    const routeCommand = await getRoute()
+    for (const [command, tool] of [
+      ['cat src/hooks/shared/routing-block.ts', 'wp_session_execute_file'],
+      ['grep -R "wp_session" src', 'wp_session_batch_execute'],
+      ['find src -name "*.ts"', 'wp_session_batch_execute'],
+      ['git log --oneline -50', 'wp_session_batch_execute'],
+      ['curl https://example.com/large-doc.md', 'wp_session_fetch_and_index'],
+      ['wget https://example.com/large-doc.md', 'wp_session_fetch_and_index'],
+    ] as const) {
+      const result = routeCommand(command)
+      expect(result?.action.action, command).toBe('sandbox')
+      if (result?.action.action === 'sandbox') {
+        expect(result.action.guidance, command).toContain(tool)
+        expect(result.action.guidance, command).not.toMatch(/\bctx_/u)
+      }
+    }
+  })
+
+  it('extracts routable commands only from WP session sandbox MCP tools', async () => {
+    const { extractRoutableCommandsFromToolInput } = await import('./dev-routing.js')
+    expect(
+      extractRoutableCommandsFromToolInput({
+        tool_name: 'mcp__webpresso__wp_session_batch_execute',
+        tool_input: { commands: [{ command: 'grep -R wp_session src' }] },
+      }),
+    ).toStrictEqual(['grep -R wp_session src'])
+    expect(
+      extractRoutableCommandsFromToolInput({
+        tool_name: 'ctx_batch_execute',
+        tool_input: { commands: [{ command: 'grep -R wp_session src' }] },
+      }),
+    ).toStrictEqual([])
+  })
+
   it('legacy ak_* tool names are not accepted as routable replacements', async () => {
     const routeCommand = await getRoute()
     for (const command of ['ak_test', 'ak_lint', 'ak_worker_tail', 'ak_ci_act']) {
@@ -469,10 +544,10 @@ describe('routeCommand', () => {
     expect(second?.action.action).toBe('deny')
   })
 
-  it('extracts vp test commands embedded inside ctx_execute code', async () => {
+  it('extracts vp test commands embedded inside wp_session_execute code', async () => {
     const { extractRoutableCommandsFromToolInput, routeCommand } = await import('./dev-routing.js')
     const commands = extractRoutableCommandsFromToolInput({
-      tool_name: 'ctx_execute',
+      tool_name: 'wp_session_execute',
       tool_input: {
         language: 'javascript',
         code: "execFileSync('vp',['run','--filter=webpresso','test','src/audit/gitignore-agent-surfaces.test.ts'])",
@@ -489,7 +564,7 @@ describe('routeCommand', () => {
     }
   })
 
-  it('extracts shell ctx_execute commands and routes them to matching MCP tools', async () => {
+  it('extracts shell wp_session_execute commands and routes them to matching MCP tools', async () => {
     const { extractRoutableCommandsFromToolInput, routeCommand } = await import('./dev-routing.js')
     for (const [code, expectedCommand, expectedTool] of [
       [
@@ -539,7 +614,7 @@ describe('routeCommand', () => {
       ],
     ] as const) {
       const commands = extractRoutableCommandsFromToolInput({
-        tool_name: 'ctx_execute',
+        tool_name: 'wp_session_execute',
         tool_input: {
           language: 'shell',
           code,
@@ -555,10 +630,10 @@ describe('routeCommand', () => {
     }
   })
 
-  it('extracts direct tool paths embedded inside ctx_execute process calls', async () => {
+  it('extracts direct tool paths embedded inside wp_session_execute process calls', async () => {
     const { extractRoutableCommandsFromToolInput, routeCommand } = await import('./dev-routing.js')
     const commands = extractRoutableCommandsFromToolInput({
-      tool_name: 'ctx_execute',
+      tool_name: 'wp_session_execute',
       tool_input: {
         language: 'javascript',
         code: "execFileSync('../../node_modules/.bin/vitest',['run','src/routes/ci-stack.test.ts'])",
@@ -573,10 +648,10 @@ describe('routeCommand', () => {
     }
   })
 
-  it('extracts routed commands from ctx_batch_execute command entries', async () => {
+  it('extracts routed commands from wp_session_batch_execute command entries', async () => {
     const { extractRoutableCommandsFromToolInput, routeCommand } = await import('./dev-routing.js')
     const commands = extractRoutableCommandsFromToolInput({
-      tool_name: 'ctx_batch_execute',
+      tool_name: 'wp_session_batch_execute',
       tool_input: {
         commands: [{ label: 'tests', command: 'vp run --filter=webpresso test' }],
       },
@@ -593,7 +668,7 @@ describe('routeCommand', () => {
   it('extracts routed commands from Codex MCP alias payload fields', async () => {
     const { extractRoutableCommandsFromToolInput } = await import('./dev-routing.js')
     const commands = extractRoutableCommandsFromToolInput({
-      toolName: 'ctx_execute',
+      toolName: 'wp_session_execute',
       toolInput: {
         language: 'shell',
         code: 'vp run build 2>&1 | tail -160',
@@ -603,10 +678,10 @@ describe('routeCommand', () => {
     expect(commands).toContain('vp run build 2>&1 | tail -160')
   })
 
-  it('extracts routed commands from plugin-prefixed ctx MCP tool names', async () => {
+  it('extracts routed commands from plugin-prefixed wp_session MCP tool names', async () => {
     const { extractRoutableCommandsFromToolInput, routeCommand } = await import('./dev-routing.js')
     const commands = extractRoutableCommandsFromToolInput({
-      tool_name: 'mcp__plugin_example__ctx_execute',
+      tool_name: 'mcp__plugin_example__wp_session_execute',
       tool_input: {
         language: 'shell',
         code: 'tsc --noEmit --pretty false',

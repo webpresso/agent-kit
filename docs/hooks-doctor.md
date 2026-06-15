@@ -134,3 +134,12 @@ notes. `npm pack --dry-run --json`, `vp run lint:pkg`,
 `vp run verify:secrets`, the four `wp audit secret*`/`no-dev-vars` gates, and
 `vp run verify:paths` are prerequisites for hook-bin or public docs release
 claims.
+
+
+## session-memory enforcement repair
+
+`wp hooks doctor` verifies that managed launchers for SessionStart, PreToolUse,
+PostToolUse, PreCompact, and the Claude PostToolBatch-capable post-tool path are
+present and executable. If the fail-closed PreToolUse launcher is missing, setup
+and doctor guidance point operators back to `wp setup` / `wp hooks doctor --fix`
+so raw large-context operations cannot silently bypass `wp_session_*` routing.

@@ -1,7 +1,7 @@
 ---
 title: Session-memory benchmark methodology
 type: guide
-last_updated: 2026-06-13
+last_updated: 2026-06-15
 ---
 
 # Session-memory benchmark methodology
@@ -93,6 +93,10 @@ every required reference parity axis:
 | `post_tool_capture_latency_ms` | observed average is at or below `750` |
 | `precompact_snapshot_latency_ms` | observed average is at or below `1000` |
 | `startup_resume_injection_latency_ms` | observed average is at or below `750` |
+| `routing_injection_coverage` | required routing-injection evidence is present (`1.0`) |
+| `pretool_session_redirect_coverage` | required PreToolUse session redirect evidence is present (`1.0`) |
+| `posttoolbatch_summary_coverage` | required PostToolBatch bounded-summary evidence is present (`1.0`) |
+| `repair_path_coverage` | required hook doctor repair-path evidence is present (`1.0`) |
 | `search_quality_recall_at_5` | observed recall@5 is at or above `0.8` |
 
 A replacement parity claim should cite the live `report.md`, pinned manifest

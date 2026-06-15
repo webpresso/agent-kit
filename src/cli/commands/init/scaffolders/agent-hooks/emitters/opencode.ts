@@ -14,6 +14,7 @@ export const OPENCODE_HOOK_SUPPORT_BOUNDARY = {
   fullManagedEvents: ['SessionStart', 'PreToolUse', 'PostToolUse'],
   degradedNativeCallbacks: ['PermissionRequest', 'PreCompact'],
   unsupportedManagedEvents: [
+    'PostToolBatch',
     'PostToolUseFailure',
     'UserPromptSubmit',
     'Stop',

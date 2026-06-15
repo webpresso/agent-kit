@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ToolInput } from '#hooks/shared/types'
 
-import { SessionMemorySessionStore } from '../../session-memory/session.js'
+import { SessionMemorySessionStore } from '#session-memory/session.js'
 import {
   capturePostToolUse,
   lintFile,

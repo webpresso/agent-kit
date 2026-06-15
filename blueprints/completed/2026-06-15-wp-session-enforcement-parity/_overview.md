@@ -2,11 +2,11 @@
 type: blueprint
 title: "WP-native session-memory enforcement parity"
 owner: ozby
-status: planned
+status: completed
 complexity: XL
 created: '2026-06-15'
 last_updated: '2026-06-15'
-progress: '0% (planned; refined with agent-kit:plan-refine, autoresearch parity matrix, and eng-review hardening on 2026-06-15)'
+progress: '100% (implemented and verified on 2026-06-15)'
 depends_on:
   - 2026-06-13-session-continuity-and-resume-parity
   - 2026-06-13-sandboxed-knowledge-tool-surface-parity
@@ -48,7 +48,7 @@ a daemon, hosted memory, graph memory, or LLM-extracted personalization.
   `wp_session_*` names.
 - Complexity: `XL`
 - Output path:
-  `blueprints/planned/2026-06-15-wp-session-enforcement-parity/_overview.md`
+  `blueprints/completed/2026-06-15-wp-session-enforcement-parity/_overview.md`
 - Refinement scope: this blueprint plus lifecycle/alignment notes in related
   blueprints when source truth proves they are stale.
 - Execution rule: verify source and security prerequisites first; never promote
@@ -173,7 +173,7 @@ plan can run with 5 agents without same-file conflicts.
 
 #### [preflight] Task 0.1: Verify `wp_session_*` source and registry truth
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -203,7 +203,7 @@ lifecycle drift instead of recreating files. (F5, F8)
 
 #### [preflight] Task 0.2: Verify command sandboxing and fetch/index safety gates
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -233,7 +233,7 @@ SessionStart guidance. (F8)
 
 #### [preflight] Task 0.3: Verify typed continuity and capture contract
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -264,7 +264,7 @@ small. (F4, F11, F15)
 
 #### [routing] Task 1.1: Add `wp_session_*` context-window routing guidance
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 0.1
 
@@ -303,7 +303,7 @@ to call legacy context-mode names. (F1, F7, F9)
 
 #### [hooks] Task 1.2: Broaden host hook matchers and managed lifecycle specs
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 0.1
 
@@ -342,7 +342,7 @@ instead of silently emitted as invalid config. (F2, F6, F10, F16)
 
 #### [guard] Task 1.3: Route raw large-context operations to concrete `wp_session_*` tools
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 0.1, Task 0.2
 
@@ -381,7 +381,7 @@ host-prefixed MCP variants. Dev-workflow tools keep priority. (F3, F8, F9)
 
 #### [capture] Task 1.4: Broaden PostToolUse continuity capture by reusing existing storage
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 0.3
 
@@ -416,7 +416,7 @@ storage only if a focused test proves a contract gap. (F4, F11, F15)
 
 #### [capture] Task 1.5: Add bounded PostToolBatch result summaries
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 0.3
 
@@ -455,7 +455,7 @@ batch handler and summarizer. Integration proof happens in Task 2.1. (F10, F15)
 
 #### [smoke] Task 2.1: Add host-smoke and repair-path coverage for enforced routing
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1, Task 1.2, Task 1.3, Task 1.4, Task 1.5
 
@@ -492,7 +492,7 @@ the capability matrix. (F2, F6, F7, F14, F16)
 
 #### [qa] Task 2.2: Extend reference parity and session-memory benchmark gates
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1, Task 1.2, Task 1.3, Task 1.4, Task 1.5
 
@@ -531,7 +531,7 @@ F14)
 
 #### [docs] Task 3.1: Publish claim-safe docs and package-surface proof
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 2.1, Task 2.2
 
@@ -612,3 +612,16 @@ language lands. (F5, F7, F12)
 | Max parallel agents | 5 |
 | Total tasks | 11 |
 | Blueprint compliant | 11/11 |
+
+
+## Completion Evidence (2026-06-15)
+
+Implemented in PR #137 on branch `blueprint/session-memory-100-parity`:
+
+- SessionStart/instruction routing includes a `wp_session_*` context-window-protection hierarchy.
+- PreToolUse redirects representative raw large-context commands to concrete `wp_session_*` tools and treats WP session tools as the only loop identity.
+- Claude managed hooks broaden context-heavy matchers and emit PostToolBatch through the bounded post-tool path; Codex/Cursor/OpenCode remain host-truthful/degraded where unsupported.
+- PostToolUse and PostToolBatch capture bounded, redacted continuity summaries without shellouts or storage rewrites.
+- Reference parity and benchmark gates include enforcement axes and strict release readiness.
+
+Fresh verification included focused tests for routing, pretool routing, hook emission, host smoke, post-tool capture, batch summaries, reference parity, benchmark dry-run, `wp typecheck`, scoped `wp lint`, and strict public package audits.

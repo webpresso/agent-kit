@@ -2,7 +2,7 @@
  * Integration tests for the coordinated 3-phase pretool-guard pipeline.
  *
  * Phase 1: Dev-workflow routing (deny → wp_* tools)
- * Phase 2: Sandbox routing (rewrite Bash → ctx_execute for data-heavy commands)
+ * Phase 2: Sandbox routing (rewrite Bash → wp_session_* for data-heavy commands)
  * Phase 3: Security validators (block dangerous/forbidden commands)
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -25,7 +25,7 @@ function makeEditInput(filePath: string): string {
 
 function makeContextExecuteInput(code: string): string {
   return JSON.stringify({
-    tool_name: 'ctx_execute',
+    tool_name: 'wp_session_execute',
     tool_input: { language: 'javascript', code },
   })
 }
@@ -132,6 +132,41 @@ describe('coordinated routing pipeline', () => {
     }
   })
 
+
+  describe('Phase 2: raw host context-heavy tools → session-memory sandbox', () => {
+    for (const [tool_name, tool_input, expectedTool] of [
+      ['Read', { file_path: 'src/large.ts' }, 'wp_session_execute_file'],
+      ['Grep', { pattern: 'wp_session', path: 'src' }, 'wp_session_batch_execute'],
+      ['WebFetch', { url: 'https://example.com/docs' }, 'wp_session_fetch_and_index'],
+      ['Agent', { prompt: 'inspect a large subsystem' }, 'wp_session_capture'],
+    ] as const) {
+      it(`${tool_name} → ${expectedTool} guidance`, async () => {
+        const processValidation = await getRunner()
+        try {
+          processValidation(JSON.stringify({ tool_name, tool_input }))
+        } catch {
+          // process.exit throws
+        }
+        const parsed = JSON.parse(getLastOutput()) as {
+          hookSpecificOutput?: { permissionDecision?: string; permissionDecisionReason?: string }
+        }
+        expect(parsed.hookSpecificOutput?.permissionDecision).toBe('deny')
+        expect(parsed.hookSpecificOutput?.permissionDecisionReason).toContain(expectedTool)
+      })
+    }
+  })
+
+
+    it('canonical Webpresso MCP wp tools pass through raw tool-input session fallback', async () => {
+      const processValidation = await getRunner()
+      try {
+        processValidation(JSON.stringify({ tool_name: 'mcp__webpresso__wp_test', tool_input: {} }))
+      } catch {
+        // process.exit throws
+      }
+      expect(getLastOutput()).toBe('{}')
+    })
+
   // Category 3: Passthrough commands
   describe('Phase 3: safe commands → passthrough ({})', () => {
     const passthroughCommands = [
@@ -184,8 +219,8 @@ describe('coordinated routing pipeline', () => {
     })
   })
 
-  describe('ctx_execute dev-workflow commands → deny before execution', () => {
-    it('ctx_execute wrapping vp test → deny with wp_test guidance', async () => {
+  describe('wp_session_execute dev-workflow commands → deny before execution', () => {
+    it('wp_session_execute wrapping vp test → deny with wp_test guidance', async () => {
       const processValidation = await getRunner()
       try {
         processValidation(
@@ -208,7 +243,7 @@ describe('coordinated routing pipeline', () => {
       expect(parsed.hookSpecificOutput?.permissionDecisionReason).toContain('wp_test')
     })
 
-    it('ctx_execute shell code with env-prefixed vitest → deny with wp_test guidance', async () => {
+    it('wp_session_execute shell code with env-prefixed vitest → deny with wp_test guidance', async () => {
       const processValidation = await getRunner()
       try {
         processValidation(

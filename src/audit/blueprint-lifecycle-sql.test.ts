@@ -398,6 +398,25 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     expect(result.violations.some((v) => v.message.includes('ready-to-start'))).toBe(false)
   })
 
+  it('allows planned blueprints to complete directly when all tasks are terminal', async () => {
+    initGitRepo(cwd)
+    writeBlueprint(cwd, 'one-pr-finish', {
+      status: 'planned',
+      tasks: [
+        { id: '1.1', status: 'done' },
+        { id: '1.2', status: 'dropped' },
+      ],
+    })
+    commitAll(cwd, '2030-01-01T12:00:00Z')
+
+    transitionBlueprint(cwd, 'one-pr-finish', 'planned', 'completed')
+    commitAll(cwd, '2030-01-02T12:00:00Z')
+
+    const result = await auditBlueprintLifecycleSql(cwd)
+    expect(result.ok).toBe(true)
+    expect(result.violations.some((v) => v.message.includes('one-pr-finish'))).toBe(false)
+  })
+
   it('grandfathers historical transition gaps when the current blueprint declares the existing waiver', async () => {
     initGitRepo(cwd)
     writeBlueprint(cwd, 'legacy-gap', {
