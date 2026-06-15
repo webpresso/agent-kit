@@ -19,7 +19,7 @@ env:
 jobs:
   blueprint-gate:
     if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'changeset-release/')
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
@@ -37,7 +37,7 @@ jobs:
         run: ./bin/wp audit blueprint-pr-coverage --base "${{ github.event.pull_request.base.sha }}"
 
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
@@ -58,7 +58,7 @@ jobs:
       - run: pnpm run test
 
   e2e:
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
@@ -80,7 +80,7 @@ jobs:
           pnpm run e2e
 
   architecture-drift:
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
@@ -96,7 +96,7 @@ jobs:
         run: ./bin/wp audit architecture-drift --root .
 
   deploy-verify:
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
