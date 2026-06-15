@@ -1,7 +1,7 @@
 # Autoresearch parity matrix: session-memory / context-window libraries
 
 **Date:** 2026-06-15
-**Target blueprint:** `blueprints/planned/2026-06-15-wp-session-enforcement-parity/_overview.md`
+**Target blueprint:** `blueprints/completed/2026-06-15-wp-session-enforcement-parity/_overview.md`
 **Validation mode:** `prompt-architect-artifact`
 **Question:** which relevant memory/context libraries matter for agent-kit’s `wp_session_*` port, what do they do, how do they do it, what do they claim, and what parity should agent-kit target?
 
@@ -14,7 +14,7 @@ The relevant ecosystem splits into four buckets:
 3. **Framework memory primitives**: OpenAI Agents SDK Sessions, LangMem/LangGraph memory, LlamaIndex Memory, and AutoGen memory. These provide APIs for maintaining or retrieving conversational state inside agent applications; they do not enforce Claude/Codex/Cursor tool routing by themselves.
 4. **Runtime / agent-OS systems**: Letta/MemGPT-style stateful agents. These include explicit memory models and agent harnesses, but they are not a drop-in replacement for agent-kit hooks.
 
-**Conclusion:** “100% parity” for agent-kit should mean **WP-native parity on the coding-agent context-window axis**: SessionStart/routing injection, host-supported PreToolUse guard coverage before raw output reaches the transcript, broad PostToolUse/UserPromptSubmit/PreCompact/PostToolBatch continuity capture, concrete `wp_session_*` guidance, bounded preview/search/restore flows, diagnostics, and proof gates. Graph memory, LLM-extracted personalization, hosted memory APIs, and autonomous reflection should remain **non-goals** unless separately productized.
+**Conclusion:** Complete parity for agent-kit should mean **Claude-scoped/WP-native parity on the coding-agent context-window axis**: SessionStart/routing injection, host-supported PreToolUse guard coverage before raw output reaches the transcript, broad PostToolUse/UserPromptSubmit/PreCompact/continuity capture, concrete `wp_session_*` guidance, bounded preview/search/restore flows, diagnostics, and proof gates. Graph memory, LLM-extracted personalization, hosted memory APIs, autonomous reflection, and full Cursor/OpenCode host-lifecycle parity should remain **non-goals** unless separately productized.
 
 ## Local baseline evidence
 
@@ -84,7 +84,7 @@ Legend: ✅ direct / first-class; ◐ partial or adjacent; ❌ no evidence / not
 | Broaden host-supported PreToolUse | Claude includes `Read`, `Grep`, `WebFetch`, `Agent`, and relevant MCP matching using host-valid syntax where supported; Codex uses its own matcher reality such as `mcp__.*`. | context-mode `hooks.json`; agent-kit host scaffolder. |
 | Preserve no-loop behavior | Guard does not nudge calls that are already using `wp_session_*`, and does not block safe small output. | Current agent-kit guard loop-prevention behavior. |
 | Convert generic bounded shell guidance to concrete WP tools | Warnings/nudges say exactly which `wp_session_*` tool to use for file search, log reading, command output, fetch, and indexing. | context-mode `ctx_*` guidance; agent-kit `wp_session_*` docs. |
-| Capture broad continuity events | PostToolUse and PostToolBatch capture fires for edits, reads, grep/search, shell, user tasks, agent delegation, MCP calls, and batch results where available, storing bounded summaries only. | context-mode PostToolUse breadth; Claude-Mem observations. |
+| Capture broad continuity events | PostToolUse capture fires for edits, reads, grep/search, shell, user tasks, agent delegation, and MCP metadata where supported, storing bounded summaries only; no separate batch hook is claimed. | context-mode PostToolUse breadth; Claude-Mem observations. |
 | Add host smoke fixtures | Generated Claude/Codex fixtures prove routing block injection, matcher coverage, no invalid config, and doctor output. | context-mode doctor/install verification. |
 | Add package/release gates | Package tarball contains updated hooks/routing/docs and excludes local absolute paths/secrets. | agent-kit package-surface safety posture. |
 | Document out-of-scope memory features | Blueprint explicitly excludes graph memory, hosted memory APIs, LLM memory extraction, autonomous reflection, and personalization. | Mem0/Zep/Cognee/Letta distinction. |
@@ -95,7 +95,6 @@ Legend: ✅ direct / first-class; ◐ partial or adjacent; ❌ no evidence / not
 2. **Raw-output prevention test:** require tests proving guards fire before large `Bash`/`Read`/`Grep`/`WebFetch`/MCP output enters transcript.
 3. **Progressive disclosure:** incorporate Claude-Mem’s compact search → timeline/context → full-detail-by-ID pattern into `wp_session_search`/`restore` acceptance criteria.
 4. **Fetch safety dependency:** keep `wp_session_fetch_and_index` enforcement dependent on the SSRF-hardening blueprint.
-5. **Separate proof axes:** distinguish tool existence, routing guidance, matcher coverage, actual guard behavior, continuity capture, PostToolBatch summaries, repair-path evidence, and package surface checks.
 
 ## Sources
 

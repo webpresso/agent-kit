@@ -119,7 +119,7 @@ vp run verify:secrets
 vp run verify:paths
 ```
 
-The `reference-parity-matrix --json` gate validates the matrix and exposes `releaseClaimGateReady`; run `./bin/wp audit reference-parity-matrix --strict` only when promoting public replacement-parity claims, because it intentionally fails while release-required rows remain open or degraded.
+The `reference-parity-matrix --json` gate validates matrix shape and exposes `releaseClaimGateReady`; run `./bin/wp audit reference-parity-matrix --strict` only when promoting public replacement-parity claims, because it intentionally fails until the live measured benchmark row is full/passed.
 
 Use `--skip-mcp` for release proof when MCP visibility is separately covered by
 tool-surface smoke tests. The doctor row must agree with the hook matrix: SessionStart restore plus typed
@@ -139,7 +139,7 @@ claims.
 ## session-memory enforcement repair
 
 `wp hooks doctor` verifies that managed launchers for SessionStart, PreToolUse,
-PostToolUse, PreCompact, and the Claude PostToolBatch-capable post-tool path are
+PostToolUse and PreCompact are
 present and executable. If the fail-closed PreToolUse launcher is missing, setup
 and doctor guidance point operators back to `wp setup` / `wp hooks doctor --fix`
 so raw large-context operations cannot silently bypass `wp_session_*` routing.

@@ -136,10 +136,6 @@ export const DEFAULT_SESSION_MEMORY_THRESHOLDS = {
   postToolCaptureLatencyMs: 750,
   precompactSnapshotLatencyMs: 1000,
   startupResumeInjectionLatencyMs: 750,
-  routingInjectionCoverage: 1,
-  pretoolSessionRedirectCoverage: 1,
-  postToolBatchSummaryCoverage: 1,
-  repairPathCoverage: 1,
   searchQualityRecallAt5: 0.8,
 } as const
 
@@ -147,16 +143,12 @@ export type SessionMemoryThresholdAxisId =
   | 'post_tool_capture_latency_ms'
   | 'precompact_snapshot_latency_ms'
   | 'startup_resume_injection_latency_ms'
-  | 'routing_injection_coverage'
-  | 'pretool_session_redirect_coverage'
-  | 'posttoolbatch_summary_coverage'
-  | 'repair_path_coverage'
   | 'search_quality_recall_at_5'
 
 export type SessionMemoryThresholdAxis = {
   readonly id: SessionMemoryThresholdAxisId
   readonly label: string
-  readonly metric: 'latency_ms' | 'recall_at_5' | 'coverage_ratio'
+  readonly metric: 'latency_ms' | 'recall_at_5'
   readonly threshold: number
   readonly observed: number | null
   readonly status: 'schema-valid' | 'passed' | 'failed'
@@ -165,13 +157,6 @@ export type SessionMemoryThresholdAxis = {
 export type SessionMemoryThresholdReport = {
   readonly mode: 'dry-run' | 'measured'
   readonly axes: readonly SessionMemoryThresholdAxis[]
-}
-
-export type SessionMemoryEnforcementCoverage = {
-  readonly routingInjectionCoverage: number
-  readonly pretoolSessionRedirectCoverage: number
-  readonly postToolBatchSummaryCoverage: number
-  readonly repairPathCoverage: number
 }
 
 type RuntimeModules = {
@@ -393,64 +378,12 @@ function apiKeyMapFromEnv(env: NodeJS.ProcessEnv): Record<string, string | undef
 }
 
 
-function readRepoText(repoRoot: string, relativePath: string): string {
-  const filePath = resolve(repoRoot, relativePath)
-  return existsSync(filePath) ? readFileSync(filePath, 'utf8') : ''
-}
-
-function coverageRatio(checks: readonly boolean[]): number {
-  if (checks.length === 0) return 0
-  return checks.filter(Boolean).length / checks.length
-}
-
-export function assessSessionMemoryEnforcementCoverage(
-  repoRoot: string = resolveBenchRuntimeRoot(),
-): SessionMemoryEnforcementCoverage {
-  const routingBlock = readRepoText(repoRoot, 'src/hooks/shared/routing-block.ts')
-  const routingTests = readRepoText(repoRoot, 'src/hooks/shared/routing-block.test.ts')
-  const pretool = readRepoText(repoRoot, 'src/hooks/pretool-guard/dev-routing.ts')
-  const pretoolTests = readRepoText(repoRoot, 'src/hooks/pretool-guard/dev-routing.test.ts')
-  const batchSummary = readRepoText(repoRoot, 'src/hooks/post-tool/batch-summary.ts')
-  const batchHandler = readRepoText(repoRoot, 'src/hooks/post-tool/posttoolbatch.ts')
-  const batchTests = readRepoText(repoRoot, 'src/hooks/post-tool/posttoolbatch.test.ts')
-  const doctorTests = readRepoText(repoRoot, 'src/hooks/doctor.test.ts')
-  const hookScaffold = readRepoText(repoRoot, 'src/cli/commands/init/scaffolders/agent-hooks/index.ts')
-
-  return {
-    routingInjectionCoverage: coverageRatio([
-      routingBlock.includes('<wp_session_context>'),
-      routingBlock.includes('wp_session_execute_file'),
-      routingBlock.includes('wp_session_fetch_and_index'),
-      routingTests.includes('context-window protection'),
-    ]),
-    pretoolSessionRedirectCoverage: coverageRatio([
-      pretool.includes('routeToolInputToSessionMemory'),
-      pretool.includes('wp_session_execute_file'),
-      pretool.includes('wp_session_fetch_and_index'),
-      pretoolTests.includes('routes raw host context-heavy tool inputs'),
-    ]),
-    postToolBatchSummaryCoverage: coverageRatio([
-      hookScaffold.includes('PostToolBatch'),
-      batchSummary.includes('redactText'),
-      batchHandler.includes('post-tool-batch-hook'),
-      batchTests.includes('bounded fail-open'),
-    ]),
-    repairPathCoverage: coverageRatio([
-      doctorTests.includes('wp-pretool-guard'),
-      doctorTests.includes('doctor'),
-      hookScaffold.includes('PRETOOL_GUARD_MISSING_DENY'),
-      hookScaffold.includes('wp not found on PATH'),
-    ]),
-  }
-}
-
 export function buildSessionMemoryThresholdReport(input: {
   readonly dryRun: boolean
   readonly averageLatencyMs?: number
   readonly averageRecallAt5?: number
   readonly recallStatusValue?: number
   readonly recallFailure?: boolean
-  readonly enforcementCoverage?: SessionMemoryEnforcementCoverage
 }): SessionMemoryThresholdReport {
   const latencyObserved = input.dryRun ? null : (input.averageLatencyMs ?? 0)
   const recallObserved = input.dryRun ? null : (input.averageRecallAt5 ?? 0)
@@ -466,18 +399,6 @@ export function buildSessionMemoryThresholdReport(input: {
     if (input.recallFailure) return 'failed'
     return (recallStatusValue ?? 0) >= threshold ? 'passed' : 'failed'
   }
-  const coverageObserved = (key: keyof SessionMemoryEnforcementCoverage): number | null => {
-    if (input.dryRun) return null
-    return input.enforcementCoverage?.[key] ?? 0
-  }
-  const coverageStatus = (
-    key: keyof SessionMemoryEnforcementCoverage,
-    threshold: number,
-  ): SessionMemoryThresholdAxis['status'] => {
-    if (input.dryRun) return 'schema-valid'
-    return (input.enforcementCoverage?.[key] ?? 0) >= threshold ? 'passed' : 'failed'
-  }
-
   return {
     mode: input.dryRun ? 'dry-run' : 'measured',
     axes: [
@@ -504,50 +425,6 @@ export function buildSessionMemoryThresholdReport(input: {
         threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.startupResumeInjectionLatencyMs,
         observed: latencyObserved,
         status: latencyStatus(DEFAULT_SESSION_MEMORY_THRESHOLDS.startupResumeInjectionLatencyMs),
-      },
-      {
-        id: 'routing_injection_coverage',
-        label: 'Routing injection enforcement coverage',
-        metric: 'coverage_ratio',
-        threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.routingInjectionCoverage,
-        observed: coverageObserved('routingInjectionCoverage'),
-        status: coverageStatus(
-          'routingInjectionCoverage',
-          DEFAULT_SESSION_MEMORY_THRESHOLDS.routingInjectionCoverage,
-        ),
-      },
-      {
-        id: 'pretool_session_redirect_coverage',
-        label: 'PreToolUse session redirect coverage',
-        metric: 'coverage_ratio',
-        threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.pretoolSessionRedirectCoverage,
-        observed: coverageObserved('pretoolSessionRedirectCoverage'),
-        status: coverageStatus(
-          'pretoolSessionRedirectCoverage',
-          DEFAULT_SESSION_MEMORY_THRESHOLDS.pretoolSessionRedirectCoverage,
-        ),
-      },
-      {
-        id: 'posttoolbatch_summary_coverage',
-        label: 'PostToolBatch bounded summary coverage',
-        metric: 'coverage_ratio',
-        threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.postToolBatchSummaryCoverage,
-        observed: coverageObserved('postToolBatchSummaryCoverage'),
-        status: coverageStatus(
-          'postToolBatchSummaryCoverage',
-          DEFAULT_SESSION_MEMORY_THRESHOLDS.postToolBatchSummaryCoverage,
-        ),
-      },
-      {
-        id: 'repair_path_coverage',
-        label: 'Hook doctor repair-path coverage',
-        metric: 'coverage_ratio',
-        threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.repairPathCoverage,
-        observed: coverageObserved('repairPathCoverage'),
-        status: coverageStatus(
-          'repairPathCoverage',
-          DEFAULT_SESSION_MEMORY_THRESHOLDS.repairPathCoverage,
-        ),
       },
       {
         id: 'search_quality_recall_at_5',
@@ -801,7 +678,6 @@ export async function runBenchSessionMemoryCommand(
     averageRecallAt5: Number(averageRecallAt5.toFixed(6)),
     recallStatusValue: averageRecallAt5,
     recallFailure,
-    enforcementCoverage: assessSessionMemoryEnforcementCoverage(runtimeRoot ?? cwd),
   })
   runtime.writeReport(
     {

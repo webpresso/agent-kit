@@ -16,7 +16,6 @@ import {
   isFileWriteInput,
 } from '#hooks/shared/types'
 import { isDirectEntrypoint } from '#hooks/shared/direct-entrypoint'
-import { capturePostToolBatch } from './posttoolbatch.js'
 import { getSurfacePath, NotInGitRepoError } from '#paths/state-root.js'
 import { buildContinuityEvent } from '#session-memory/hook-capture.js'
 import { repoHashFromRoot } from '#session-memory/repo-hash.js'
@@ -184,7 +183,6 @@ export function processPostToolUse(
   env: EnvLike = process.env,
   deps: PostToolCaptureDeps = {},
 ): boolean {
-  if (input.hook_event_name === 'PostToolBatch') return capturePostToolBatch(input, projectDir, env, deps)
   capturePostToolUse(input, projectDir, env, deps)
   if (!shouldLintFile(input)) return false
   const toolInput = input.tool_input

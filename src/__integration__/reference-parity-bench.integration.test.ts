@@ -110,10 +110,6 @@ describe('reference parity bench dry-run integration', () => {
       'post_tool_capture_latency_ms',
       'precompact_snapshot_latency_ms',
       'startup_resume_injection_latency_ms',
-      'routing_injection_coverage',
-      'pretool_session_redirect_coverage',
-      'posttoolbatch_summary_coverage',
-      'repair_path_coverage',
       'search_quality_recall_at_5',
     ])
     expect(parsed.thresholdReport.axes.map((axis) => axis.status)).toEqual([
@@ -121,16 +117,8 @@ describe('reference parity bench dry-run integration', () => {
       'schema-valid',
       'schema-valid',
       'schema-valid',
-      'schema-valid',
-      'schema-valid',
-      'schema-valid',
-      'schema-valid',
     ])
     expect(parsed.thresholdReport.axes.map((axis) => axis.observed)).toEqual([
-      null,
-      null,
-      null,
-      null,
       null,
       null,
       null,

@@ -13,7 +13,6 @@ import { buildCodexHookGroups } from './codex.js'
 const TEST_MATCHERS = {
   preToolUse: 'Bash|Write|Edit',
   postToolUse: 'Bash|Write|Edit',
-  postToolBatch: 'Bash|Write|Edit',
 } as const
 
 describe('emitter performance', () => {

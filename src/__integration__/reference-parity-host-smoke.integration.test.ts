@@ -132,7 +132,6 @@ describe('reference parity host smoke fixtures', () => {
         'SessionStart',
         'PreToolUse',
         'PostToolUse',
-        'PostToolBatch',
         'UserPromptSubmit',
         'Stop',
         'PreCompact',

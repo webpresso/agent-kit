@@ -62,7 +62,7 @@ describe('CAPABILITY_MATRIX', () => {
   it('pins Cursor emitted lifecycle support without claiming PreCompact parity', () => {
     const config = buildCursorHooksConfig({
       resolveBin: (name) => `./node_modules/.bin/${name}`,
-      matchers: { preToolUse: 'Bash|Write|Edit', postToolUse: 'Write|Edit', postToolBatch: 'Write|Edit' },
+      matchers: { preToolUse: 'Bash|Write|Edit', postToolUse: 'Write|Edit' },
     })
 
     expect(Object.keys(config).sort()).toStrictEqual(
@@ -106,7 +106,6 @@ describe('CAPABILITY_MATRIX', () => {
       'PreCompact',
     ])
     expect(OPENCODE_HOOK_SUPPORT_BOUNDARY.unsupportedManagedEvents).toStrictEqual([
-      'PostToolBatch',
       'PostToolUseFailure',
       'UserPromptSubmit',
       'Stop',
@@ -157,7 +156,6 @@ describe('CAPABILITY_MATRIX', () => {
 
   it('opencode column: UserPromptSubmit/Stop/SubagentStart/SubagentStop/SessionEnd/PostCompact are unsupported', () => {
     const degraded = [
-      'PostToolBatch',
       'UserPromptSubmit',
       'Stop',
       'SubagentStart',
@@ -220,7 +218,7 @@ describe('CAPABILITY_MATRIX', () => {
 
     expect(lifecycleCapture).toStrictEqual({
       capability: 'lifecycle capture',
-      events: ['PostToolUse', 'PostToolBatch', 'UserPromptSubmit', 'Stop', 'PreCompact'],
+      events: ['PostToolUse', 'UserPromptSubmit', 'Stop', 'PreCompact'],
       hosts: ['claude', 'codex', 'cursor', 'opencode'],
       notes:
         'Host lifecycle capture is degraded until every covered host/event is full; store-only rows may remain scoped outside host parity.',

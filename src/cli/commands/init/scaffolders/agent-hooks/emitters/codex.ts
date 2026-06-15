@@ -26,7 +26,6 @@ export function buildCodexHookGroups(input: {
   const result: HooksMap = {}
 
   for (const spec of WP_HOOK_SPECS) {
-    if (spec.event === 'PostToolBatch') continue
     const group = {
       ...(spec.matcher !== undefined ? { matcher: matchers[spec.matcher] } : {}),
       hooks: [{ type: 'command', command: resolveForRepo(spec.bin), timeout: spec.timeout }],

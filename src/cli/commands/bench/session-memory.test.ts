@@ -7,8 +7,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getBenchSessionMemoryHelpText } from '#cli/commands/bench/index.js'
 import {
   DEFAULT_SESSION_MEMORY_THRESHOLDS,
-  assessSessionMemoryEnforcementCoverage,
-  buildSessionMemoryThresholdReport,
   assertBenchSessionMemorySupportedRuntime,
   assertBenchRuntimeAssets,
   createRunId,
@@ -249,10 +247,6 @@ describe('wp bench session-memory', () => {
       'post_tool_capture_latency_ms',
       'precompact_snapshot_latency_ms',
       'startup_resume_injection_latency_ms',
-      'routing_injection_coverage',
-      'pretool_session_redirect_coverage',
-      'posttoolbatch_summary_coverage',
-      'repair_path_coverage',
       'search_quality_recall_at_5',
     ])
     expect(result.thresholdReport.mode).toBe('dry-run')
@@ -264,41 +258,6 @@ describe('wp bench session-memory', () => {
     })
   })
 
-
-  it('does not hardcode enforcement coverage axes to pass in measured reports', () => {
-    const report = buildSessionMemoryThresholdReport({
-      dryRun: false,
-      averageLatencyMs: 10,
-      averageRecallAt5: 1,
-    })
-
-    expect(report.axes).toContainEqual({
-      id: 'routing_injection_coverage',
-      label: 'Routing injection enforcement coverage',
-      metric: 'coverage_ratio',
-      threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.routingInjectionCoverage,
-      observed: 0,
-      status: 'failed',
-    })
-    expect(report.axes).toContainEqual({
-      id: 'posttoolbatch_summary_coverage',
-      label: 'PostToolBatch bounded summary coverage',
-      metric: 'coverage_ratio',
-      threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.postToolBatchSummaryCoverage,
-      observed: 0,
-      status: 'failed',
-    })
-  })
-
-  it('derives enforcement coverage from source evidence instead of constants', () => {
-    const coverage = assessSessionMemoryEnforcementCoverage(process.cwd())
-    expect(coverage).toEqual({
-      routingInjectionCoverage: 1,
-      pretoolSessionRedirectCoverage: 1,
-      postToolBatchSummaryCoverage: 1,
-      repairPathCoverage: 1,
-    })
-  })
 
   it('validates threshold schema in dry-run mode without API credentials', async () => {
     const runCell = vi.fn()

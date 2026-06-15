@@ -827,6 +827,25 @@ function sessionSandboxDecision(tool: string, guidance: string): RouteDecision {
   return { action: { action: 'sandbox', guidance: `Use ${tool} instead — ${guidance}` } }
 }
 
+const MAX_SAFE_GREP_HEAD_LIMIT = 100
+
+function numericField(record: Record<string, unknown> | undefined, keys: readonly string[]): number | null {
+  if (!record) return null
+  for (const key of keys) {
+    const value = record[key]
+    if (typeof value === 'number' && Number.isFinite(value)) return value
+    if (typeof value === 'string' && /^\d+$/u.test(value)) return Number(value)
+  }
+  return null
+}
+
+function wantsUnboundedContentSearch(toolInput: Record<string, unknown> | undefined): boolean {
+  const outputMode = extractStringField(toolInput, ['output_mode', 'outputMode'])
+  if (outputMode !== 'content') return false
+  const headLimit = numericField(toolInput, ['head_limit', 'headLimit'])
+  return headLimit === null || headLimit > MAX_SAFE_GREP_HEAD_LIMIT
+}
+
 export function routeToolInputToSessionMemory(input: {
   tool_name?: string
   toolName?: string
@@ -845,41 +864,26 @@ export function routeToolInputToSessionMemory(input: {
   const normalized = normalizedToolName(toolName).toLowerCase()
 
   if (normalized === 'read') {
-    const filePath = extractStringField(toolInput, ['file_path', 'filePath', 'path'])
-    return sessionSandboxDecision(
-      'wp_session_execute_file',
-      `read-to-analyze file inspection${filePath ? ` for ${filePath}` : ''} should use bounded previews and optional indexing before raw content enters the transcript`,
-    )
+    // Native host Read is already bounded by the host and remains available as
+    // the fallback when MCP tools are not loaded. Raw shell file reads (`cat`,
+    // `tail`, `head`) are still redirected by routeCommand() before they can
+    // dump full content into the transcript.
+    return null
   }
 
-  if (normalized === 'grep' || normalized === 'glob' || normalized === 'ls') {
+  if (normalized === 'grep') {
+    if (!wantsUnboundedContentSearch(toolInput)) return null
     return sessionSandboxDecision(
       'wp_session_batch_execute',
-      `${toolName} search/listing output can be large; run it through bounded shell gathering so results are capped, indexed, and recallable`,
+      `${toolName} content search without a small head_limit can be large; run it through bounded shell gathering so results are capped, indexed, and recallable`,
     )
   }
 
-  if (normalized === 'webfetch' || normalized === 'websearch') {
-    const url = extractStringField(toolInput, ['url'])
-    return sessionSandboxDecision(
-      'wp_session_fetch_and_index',
-      `network fetches${url ? ` for ${url}` : ''} must use SSRF checks, byte caps, indexing, and bounded warnings`,
-    )
-  }
-
-  if (normalized === 'agent' || normalized === 'task') {
-    return sessionSandboxDecision(
-      'wp_session_capture',
-      'delegate/task handoffs should capture task intent and continuity metadata before large subagent context is produced',
-    )
-  }
-
-  if (toolName.startsWith('mcp__')) {
-    return sessionSandboxDecision(
-      'wp_session_search or wp_session_capture',
-      'generic MCP calls can return large payloads; restore/search existing context first or capture bounded continuity instead of allowing raw payload flooding',
-    )
-  }
+  // Plain Glob/Ls/WebFetch/WebSearch/Task/third-party MCP calls stay usable.
+  // The guard only redirects tool inputs when the caller explicitly requests a
+  // context-heavy payload shape that can be inferred before execution. Raw shell
+  // commands such as `cat`, recursive `grep`, `curl`, and `git diff` remain
+  // routed by routeCommand() below.
 
   return null
 }

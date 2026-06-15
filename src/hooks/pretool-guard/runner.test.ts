@@ -20,7 +20,20 @@ import { fileURLToPath } from 'node:url'
 import { dirname } from 'node:path'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const BINARY = join(__dirname, '../../../dist/esm/hooks/pretool-guard/index.js')
+
+function findRepoRoot(startDir: string): string {
+  let current = startDir
+  for (;;) {
+    if (existsSync(join(current, 'pnpm-workspace.yaml')) || existsSync(join(current, 'package.json'))) {
+      return current
+    }
+    const parent = dirname(current)
+    if (parent === current) return startDir
+    current = parent
+  }
+}
+
+const BINARY = join(findRepoRoot(__dirname), 'dist/esm/hooks/pretool-guard/index.js')
 const SENTINEL_KEY = `runner-test-${process.pid}`
 
 // Per-test isolated TMPDIR — the binary's sentinel reader scans tmpdir for any
@@ -158,7 +171,7 @@ describe.skipIf(!existsSync(BINARY))('pretool-guard binary integration', () => {
     const { stdout, status } = runBinary(payload)
     expect(status).toBe(0)
     const parsed = JSON.parse(stdout) as Record<string, unknown>
-    expect(parsed.hookSpecificOutput).toBeUndefined()
+    expect(parsed.hookSpecificOutput).toBe(undefined)
   })
 
   it('echo hello + MCP ready → exit 0, passthrough (no deny)', () => {

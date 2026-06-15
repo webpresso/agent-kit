@@ -417,6 +417,47 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     expect(result.violations.some((v) => v.message.includes('one-pr-finish'))).toBe(false)
   })
 
+  it('rejects direct planned-to-completed when tasks are still open', async () => {
+    initGitRepo(cwd)
+    writeBlueprint(cwd, 'one-pr-open-work', {
+      status: 'planned',
+      tasks: [{ id: '1.1', status: 'todo' }],
+    })
+    commitAll(cwd, '2030-01-01T12:00:00Z')
+
+    transitionBlueprint(cwd, 'one-pr-open-work', 'planned', 'completed')
+    commitAll(cwd, '2030-01-02T12:00:00Z')
+
+    const result = await auditBlueprintLifecycleSql(cwd)
+    expect(result.ok).toBe(false)
+    expect(
+      result.violations.some(
+        (v) =>
+          v.message.includes('one-pr-open-work') &&
+          v.message.includes('not done/dropped'),
+      ),
+    ).toBe(true)
+  })
+
+  it('rejects direct planned-to-completed when the blueprint has zero tasks', async () => {
+    initGitRepo(cwd)
+    writeBlueprint(cwd, 'one-pr-empty', { status: 'planned' })
+    commitAll(cwd, '2030-01-01T12:00:00Z')
+
+    transitionBlueprint(cwd, 'one-pr-empty', 'planned', 'completed')
+    commitAll(cwd, '2030-01-02T12:00:00Z')
+
+    const result = await auditBlueprintLifecycleSql(cwd)
+    expect(result.ok).toBe(false)
+    expect(
+      result.violations.some(
+        (v) =>
+          v.message.includes('one-pr-empty') &&
+          /zero-task|0 tasks|no tasks/i.test(v.message),
+      ),
+    ).toBe(true)
+  })
+
   it('grandfathers historical transition gaps when the current blueprint declares the existing waiver', async () => {
     initGitRepo(cwd)
     writeBlueprint(cwd, 'legacy-gap', {

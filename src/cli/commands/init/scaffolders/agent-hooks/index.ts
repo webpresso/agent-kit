@@ -337,7 +337,6 @@ const CLAUDE_CONTEXT_HEAVY_MATCHER = 'Bash|Read|Grep|WebFetch|Agent|Write|Edit|M
 const CLAUDE_MATCHERS: MatcherSet = {
   preToolUse: CLAUDE_CONTEXT_HEAVY_MATCHER,
   postToolUse: CLAUDE_CONTEXT_HEAVY_MATCHER,
-  postToolBatch: CLAUDE_CONTEXT_HEAVY_MATCHER,
 }
 
 function defaultClaudeUserSettingsPath(): string {
@@ -413,7 +412,6 @@ function withClaudeWorktreeSettings(
 const CODEX_MATCHERS: MatcherSet = {
   preToolUse: 'Bash|apply_patch|Edit|Write|mcp__.*',
   postToolUse: 'Bash|apply_patch|Edit|Write|mcp__.*',
-  postToolBatch: 'mcp__.*',
 }
 
 function patchCodexHooks(
@@ -462,12 +460,10 @@ function buildManagedClaudeHooks(skillHooks: readonly SkillHook[]): HooksMap {
 }
 
 function buildManagedCodexHooks(repoRoot: string): HooksMap {
-  const hooks = buildWebpressoHookGroups({
+  return buildWebpressoHookGroups({
     resolveBin: CODEX_BIN(repoRoot),
     matchers: CODEX_MATCHERS,
   })
-  const { PostToolBatch: _postToolBatch, ...codexHooks } = hooks
-  return codexHooks
 }
 
 function collectManagedCommandSet(hooks: HooksMap): ReadonlyMap<string, ReadonlySet<string>> {

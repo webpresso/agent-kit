@@ -868,7 +868,7 @@ describe('scaffoldAgentHooks', () => {
     ])
   })
 
-  it('uses broad Claude context-heavy PreToolUse/PostToolUse/PostToolBatch matchers', async () => {
+  it('uses broad Claude context-heavy PreToolUse/PostToolUse matchers', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {} })
 
     const settings = JSON.parse(
@@ -886,9 +886,7 @@ describe('scaffoldAgentHooks', () => {
     expect(
       settings.hooks.PostToolUse.some((group) => group.matcher === 'Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*'),
     ).toBe(true)
-    expect(
-      settings.hooks.PostToolBatch?.some((group) => group.matcher === 'Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*'),
-    ).toBe(true)
+    expect('PostToolBatch' in settings.hooks).toBe(false)
   })
 
   it('merges verify skill Stop hooks alongside the global Stop hook', async () => {
@@ -1659,7 +1657,7 @@ hooks:
     }
     const cursor = buildCursorHooksConfig({
       resolveBin: (name) => `./node_modules/.bin/${name}`,
-      matchers: { preToolUse: 'Bash|Write|Edit', postToolUse: 'Write|Edit', postToolBatch: 'Write|Edit' },
+      matchers: { preToolUse: 'Bash|Write|Edit', postToolUse: 'Write|Edit' },
     }) as Record<string, unknown>
 
     const claudePreCompactCommands = (claude.hooks.PreCompact ?? []).flatMap((group) =>
@@ -2068,15 +2066,14 @@ describe('plugin-native invariants — .claude/settings.json', () => {
 })
 
 describe('buildWebpressoHookGroups', () => {
-  it('returns the canonical 7 wp-* event groups with the supplied bin resolver', async () => {
+  it('returns the canonical 6 wp-* event groups with the supplied bin resolver', async () => {
     const result = buildWebpressoHookGroups({
       resolveBin: (name) => `./node_modules/.bin/${name}`,
-      matchers: { preToolUse: 'Bash|Edit|Write', postToolUse: 'Edit|Write', postToolBatch: 'Edit|Write' },
+      matchers: { preToolUse: 'Bash|Edit|Write', postToolUse: 'Edit|Write' },
     })
 
     expect(Object.keys(result).sort()).toStrictEqual(
       [
-        'PostToolBatch',
         'PostToolUse',
         'PreCompact',
         'PreToolUse',
@@ -2092,8 +2089,6 @@ describe('buildWebpressoHookGroups', () => {
     expect(result.PreToolUse?.[0]?.hooks[0]?.command).toBe('./node_modules/.bin/wp-pretool-guard')
     expect(result.PostToolUse?.[0]?.matcher).toBe('Edit|Write')
     expect(result.PostToolUse?.[0]?.hooks[0]?.command).toBe('./node_modules/.bin/wp-post-tool')
-    expect(result.PostToolBatch?.[0]?.matcher).toBe('Edit|Write')
-    expect(result.PostToolBatch?.[0]?.hooks[0]?.command).toBe('./node_modules/.bin/wp-post-tool')
     expect(result.UserPromptSubmit?.[0]?.hooks[0]?.command).toBe(
       './node_modules/.bin/wp-guard-switch',
     )
@@ -2108,7 +2103,7 @@ describe('buildWebpressoHookGroups', () => {
     const result = buildWebpressoHookGroups({
       resolveBin: (name) =>
         `[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/${name}" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/${name}" || true`,
-      matchers: { preToolUse: 'Bash|Write|Edit|MultiEdit', postToolUse: 'Write|Edit|MultiEdit', postToolBatch: 'Write|Edit|MultiEdit' },
+      matchers: { preToolUse: 'Bash|Write|Edit|MultiEdit', postToolUse: 'Write|Edit|MultiEdit' },
     })
 
     expect(result.SessionStart?.[0]?.hooks[0]?.command).toContain('$CLAUDE_PROJECT_DIR')
@@ -2225,7 +2220,7 @@ describe('BP1 hotfix: launcher chain, node fallback, gstack stdin scoping, stop-
   it('emits a measured timeout for the wp-stop-qa Stop hook', () => {
     const groups = buildWebpressoHookGroups({
       resolveBin: (name) => name,
-      matchers: { preToolUse: 'Bash', postToolUse: 'Write', postToolBatch: 'Write' },
+      matchers: { preToolUse: 'Bash', postToolUse: 'Write' },
     })
     const stopEntry = groups.Stop?.flatMap((group) => group.hooks).find((hook) =>
       hook.command.includes('wp-stop-qa'),

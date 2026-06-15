@@ -86,20 +86,16 @@ HEAD. It is not replacement parity evidence.
 Replacement parity evidence requires an operator-triggered live run that writes
 a measured `scripts/bench/runs/<run-id>/report.md`. The threshold report must
 use `mode: measured`, include numeric `observed` values, and show `passed` for
-every required reference parity axis:
+every measured benchmark axis:
 
 | axis | pass condition |
 | --- | --- |
 | `post_tool_capture_latency_ms` | observed average is at or below `750` |
 | `precompact_snapshot_latency_ms` | observed average is at or below `1000` |
 | `startup_resume_injection_latency_ms` | observed average is at or below `750` |
-| `routing_injection_coverage` | required routing-injection evidence is present (`1.0`) |
-| `pretool_session_redirect_coverage` | required PreToolUse session redirect evidence is present (`1.0`) |
-| `posttoolbatch_summary_coverage` | required PostToolBatch bounded-summary evidence is present (`1.0`) |
-| `repair_path_coverage` | required hook doctor repair-path evidence is present (`1.0`) |
 | `search_quality_recall_at_5` | observed recall@5 is at or above `0.8` |
 
-A replacement parity claim should cite the live `report.md`, pinned manifest
+A replacement parity claim should cite focused hook/audit proof plus the live `report.md`, pinned manifest
 hash, workspace mode, scenario id, variant set, trial count, and threshold rows
 used for the reference parity decision.
 

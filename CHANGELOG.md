@@ -24,8 +24,7 @@
   SessionStart/instruction surfaces now publish a `wp_session_*` routing
   hierarchy, PreToolUse redirects raw large-context commands to concrete
   session-memory tools, Claude emits broad context-heavy matchers plus
-  PostToolBatch capture, and post-tool capture stores bounded redacted batch
-  summaries. Reference parity and benchmark gates now include enforcement axes.
+  capture, and post-tool capture remains bounded/redacted/fail-open for supported metadata. Reference parity now separates implemented hook proof from the still-open live benchmark release gate.
 
 - 86eb253: fix(blueprint): `wp blueprint db build` and CLI mutations now refresh the projection freshness stamp
 
@@ -151,7 +150,7 @@
   `src/__integration__/reference-parity-tool-surface.integration.test.ts`, and
   `docs/bench/session-memory-methodology.md`. Current release notes must
   distinguish proven support from open or degraded rows until the strict
-  reference-parity gate is green.
+  reference-parity gate passes.
 
 ## 0.34.5
 

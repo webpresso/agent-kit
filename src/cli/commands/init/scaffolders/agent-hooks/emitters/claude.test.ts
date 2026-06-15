@@ -14,7 +14,6 @@ describe('buildClaudeHookGroups (byte-parity)', () => {
   const matchers = {
     preToolUse: 'Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*',
     postToolUse: 'Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*',
-    postToolBatch: 'Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*',
   }
 
   it('produces identical output to buildWebpressoHookGroups (golden parity)', () => {
@@ -44,13 +43,6 @@ describe('buildClaudeHookGroups (byte-parity)', () => {
     expect(result['PostToolUse']?.[0]?.hooks[0]?.timeout).toStrictEqual(15)
   })
 
-  it('produces the expected PostToolBatch structure with matcher', () => {
-    const result = buildClaudeHookGroups({ resolveBin, matchers })
-    expect(result['PostToolBatch']).toHaveLength(1)
-    expect(result['PostToolBatch']?.[0]?.matcher).toStrictEqual('Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*')
-    expect(result['PostToolBatch']?.[0]?.hooks[0]?.command).toContain('wp-post-tool')
-  })
-
   it('produces the expected UserPromptSubmit structure', () => {
     const result = buildClaudeHookGroups({ resolveBin, matchers })
     expect(result['UserPromptSubmit']).toHaveLength(1)
@@ -70,7 +62,7 @@ describe('buildClaudeHookGroups (byte-parity)', () => {
     expect(events).toContain('SessionStart')
     expect(events).toContain('PreToolUse')
     expect(events).toContain('PostToolUse')
-    expect(events).toContain('PostToolBatch')
+    expect(events).not.toContain('PostToolBatch')
     expect(events).toContain('UserPromptSubmit')
     expect(events).toContain('Stop')
   })

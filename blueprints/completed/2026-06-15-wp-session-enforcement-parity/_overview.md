@@ -61,7 +61,7 @@ SessionStart / AGENTS / host rules
   -> combined wp_routing + wp_session context-window-protection guidance
   -> PreToolUse guard before raw context-heavy output enters the transcript
   -> wp_session_* MCP tools for bounded execution, indexing, search, restore
-  -> PostToolUse/UserPromptSubmit/PreCompact/PostToolBatch continuity capture
+  -> PostToolUse/UserPromptSubmit/PreCompact/continuity capture
   -> reference-parity + host-smoke + hook-doctor + package-safety gates
 ```
 
@@ -74,16 +74,16 @@ SessionStart / AGENTS / host rules
 | F3 | HIGH | PreToolUse already points data-heavy commands to shipped session-memory tools. | `src/hooks/pretool-guard/dev-routing.ts` emits generic bounded guidance for `cat`, `grep`, `find`, `curl`, `git log`, and build output; loop detection still references `ctx_execute` compatibility. | Task 1.3 changes guidance to concrete `wp_session_*` tools and makes loop identity WP-only. |
 | F4 | MEDIUM | PostToolUse capture is broad enough once handlers exist. | `src/hooks/post-tool/lint-after-edit.ts` already classifies reads/edits/commands, but installed matchers and result-summary handling are narrower than the intended behavior. | Task 1.4 reuses existing capture and expands bounded metadata-first summaries. |
 | F5 | HIGH | Existing planned sibling blueprints can be used as-is. | Several sibling plans are still `planned` even though source files already contain some intended artifacts. | Wave -1 verifies source truth and reconciles stale lifecycle notes before implementation duplicates work. |
-| F6 | MEDIUM | Codex and Claude can share identical hook semantics. | Codex and Claude matcher grammars differ; Claude docs confirm native `Read`, `Grep`, `WebFetch`, `Agent`, MCP matching, `PostToolUse`, and `PostToolBatch`, while Codex has its own matcher reality. | Task 1.2 keeps host-specific matchers and documents degraded paths instead of emitting invalid config. |
+| F6 | MEDIUM | Codex and Claude can share identical hook semantics. | Codex and Claude matcher grammars differ; Claude supports native `Read`, `Grep`, `WebFetch`, `Agent`, MCP matching, and `PostToolUse`, while Codex has its own matcher reality. | Task 1.2 keeps host-specific matchers and documents degraded paths instead of emitting invalid config. |
 | F7 | HIGH | Public replacement claims are docs-only. | README, docs, hook matrices, generated fixtures, and package tarballs are public/package surfaces. | Task 3.1 serializes docs and release-claim language behind parity, package-surface, secret, path, and tarball gates. |
 | F8 | HIGH | Wave 0 can start with a soft note about concrete tools/lifecycle. | Command execution and fetch/index are security-sensitive; related blueprints are dependencies, not background notes. | Add Wave -1 preflight gates for tool/source, command/fetch safety, and typed capture contracts. |
 | F9 | HIGH | Existing `ctx_*` sandbox loop detection can remain as compatibility. | Public values require one namespace; compatibility names in routing logic would keep a second dialect alive. | Use a WP-only `isSessionSandboxTool` predicate for `wp_session_execute`, `wp_session_batch_execute`, and host-prefixed MCP variants. |
-| F10 | HIGH | PostToolBatch can remain deferred. | Claude Code exposes `PostToolBatch` after a batch of parallel tool calls and includes successful tool response payloads in hook schemas. | Include bounded PostToolBatch result summaries now; never store raw full outputs or secrets. |
+| F10 | HIGH | A separate parallel tool batch hook exists and should ship now. | No local/context-mode evidence proved a managed `PostToolBatch` event; independent Claude review flagged it as likely fabricated. | Drop the separate batch hook claim/files; rely on documented bounded `PostToolUse` capture until a real host event is proven. |
 | F11 | MEDIUM | Capture requires a storage rewrite. | Existing `buildContinuityEvent`, store, provenance, and preview caps already provide most behavior. | Reuse existing capture/storage; touch `hook-capture` only for missing tests or redaction gaps. |
 | F12 | MEDIUM | Verification can use legacy `vp run` commands. | Current routing contract requires wp MCP/direct `./bin/wp`; `vp run` wrappers are explicitly forbidden for wp workflows. | Replace stale `vp run ...` verification with `./bin/wp audit ...`, `./bin/wp lint`, and `npm pack --dry-run --json`. |
 | F13 | LOW | File action verbs can drift. | Existing blueprint task inventories mix future edits and stale wording. | Normalize task file inventories to `Create` and `Modify` only. |
 | F14 | HIGH | Missing launcher blast radius is already covered by fail-closed PreToolUse. | Fail-closed protects policy, but users need a repair path that proves setup/doctor can restore hook health. | Host smoke must include missing-launcher denial plus `wp hooks doctor`/`--fix` repair evidence. |
-| F15 | MEDIUM | Broad capture is safe by default. | PostToolUse/PostToolBatch fire on hot paths; shellouts or large payload persistence would add latency and leak risk. | Add no-shellout, byte-cap, redaction, fail-open, and burst-latency acceptance. |
+| F15 | MEDIUM | Broad capture is safe by default. | PostToolUse fire on hot paths; shellouts or large payload persistence would add latency and leak risk. | Add no-shellout, byte-cap, redaction, fail-open, and burst-latency acceptance. |
 | F16 | MEDIUM | Literal context-mode `mcp__` matcher syntax can be copied. | Host matcher syntaxes differ; Claude supports MCP tool-name matching, while current Codex config uses `mcp__.*`. | Use host-valid MCP matchers and test emitted fixtures per host. |
 
 ## Key Decisions
@@ -94,7 +94,6 @@ SessionStart / AGENTS / host rules
 | Enforcement style | Deny or explicit nudge before raw context enters the host | Session tools are valuable only when the model is routed before large output is read. |
 | Host parity | Maximize per host, document degradations | Claude, Codex, Cursor, and OpenCode differ; generated config must stay valid per host. |
 | Storage/runtime | Reuse existing session-memory stores and MCP handlers | No new daemon, dependency, graph store, or parallel memory layer. |
-| Capture scope | Metadata-first PostToolUse plus bounded PostToolBatch summaries | Capture enough continuity to resume/reason without storing raw full payloads or secrets. |
 | Sandbox identity | WP-only `wp_session_*` loop detection | Keep the public and internal mental model clean after the port. |
 | Safety posture | Fail open for capture, fail closed for missing policy guard | Preserve agent operation while preventing silent bypass of mandatory routing. |
 | Package posture | Treat routing docs, hook matchers, and parity claims as public package surfaces | Requires package-surface, tarball, secret, and path checks before release claims. |
@@ -104,7 +103,7 @@ SessionStart / AGENTS / host rules
 | Area | Choice | Safety / verification note |
 | ---- | ------ | -------------------------- |
 | Routing source | `src/hooks/shared/routing-block.ts` remains canonical | Add a `wp_session_*` hierarchy and tests; avoid generated-surface hand edits. |
-| Hook setup | Existing `WP_HOOK_SPECS` + host matcher sets | Keep one IR with host-specific matcher strings; add PostToolBatch only where host-supported. |
+| Hook setup | Existing `WP_HOOK_SPECS` + host matcher sets | Keep one IR with host-specific matcher strings; add only where host-supported. |
 | PreToolUse guard | Existing `dev-routing.ts` / runner pipeline | Add session-memory redirects before raw-output validators; preserve dev-workflow priority. |
 | Capture | Existing `post-tool`, `guard-switch`, `precompact`, `sessionstart`, and session-memory store | Reuse typed events, byte caps, and previews; capture failures remain no-op. |
 | MCP tools | Existing `wp_session_*` descriptors | Registry/routing tests prove every tool named in guidance is registered. |
@@ -124,7 +123,7 @@ stateful agents.
 | ---------------- | ------------------- | ---------------- |
 | Hook-enforced coding-agent routing | context-mode | `wp_session_*` routing guidance is injected into supported host sessions and generated instruction surfaces. |
 | Raw-output prevention before transcript pollution | context-mode | PreToolUse redirects high-volume `Bash`, `Read`, `Grep`, `WebFetch`, `Agent`, and MCP flows to concrete `wp_session_*` tools where each host supports matching. |
-| Broad continuity capture | context-mode, Claude-Mem, Hindsight | PostToolUse/UserPromptSubmit/PreCompact/PostToolBatch capture bounded summaries of edits, reads, searches, commands, tool failures, decisions, and task state. |
+| Broad continuity capture | context-mode, Claude-Mem, Hindsight | PostToolUse/UserPromptSubmit/PreCompact/capture bounded summaries of edits, reads, searches, commands, tool failures, decisions, and task state. |
 | Progressive disclosure | Claude-Mem, context-mode, Mem0/Zep/Cognee patterns | `wp_session_search`/`restore` return compact previews and stable references; detailed content is fetched only by narrow query/reference. |
 | Diagnostics and proof gates | context-mode doctor/stats, agent-kit audits | `wp_session_doctor`, `wp hooks doctor`, host-smoke fixtures, reference-parity rows, package/tarball checks, and docs gates prove claims before release language changes. |
 | Long-term semantic/graph learning | Mem0, Zep/Graphiti, Cognee, Letta | Explicit non-goal; no graph memory, hosted memory API, LLM extraction, personalization, or autonomous reflection is added here. |
@@ -166,7 +165,7 @@ current implementation stays local, hook-driven, and WP-native.
 
 **Refinement delta:** Wave -1 turns source/security assumptions into explicit
 preflight gates. Wave 0 stays file-clustered by routing, host matcher setup,
-PreToolUse redirects, PostToolUse capture, and a separate PostToolBatch handler so the
+PreToolUse redirects, PostToolUse capture, and a separate handler so the
 plan can run with 5 agents without same-file conflicts.
 
 ## Wave -1: preflight gates [Complexity: M]
@@ -309,7 +308,7 @@ to call legacy context-mode names. (F1, F7, F9)
 
 Replace the current Claude anti-parity matcher expectation with positive,
 host-valid coverage. Claude should route supported context-heavy tools through
-PreToolUse, broad PostToolUse, and PostToolBatch capture. Codex should retain its
+PreToolUse, broad PostToolUse, capture. Codex should retain its
 host-realistic matcher set and generic MCP coverage. Cursor/OpenCode capability
 rows must describe the same behavior truthfully, with degraded paths documented
 instead of silently emitted as invalid config. (F2, F6, F10, F16)
@@ -325,7 +324,7 @@ instead of silently emitted as invalid config. (F2, F6, F10, F16)
 
 **Steps (TDD):**
 
-1. Write failing tests that Claude generated settings include host-valid `Read`, `Grep`, `WebFetch`, `Agent`, MCP matching, broad PostToolUse, and PostToolBatch where supported.
+1. Write failing tests that Claude generated settings include host-valid `Read`, `Grep`, `WebFetch`, `Agent`, MCP matching, broad PostToolUse, where supported.
 2. Write failing tests that Codex/Cursor/OpenCode capability rows remain host-accurate and do not copy invalid Claude matcher syntax.
 3. Run: `./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/index.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/emitters/claude.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts` — verify FAIL.
 4. Update matcher constants, managed hook specs, launcher generation, and capability notes; do not modify generated local `.claude` or `.codex` files by hand.
@@ -335,7 +334,7 @@ instead of silently emitted as invalid config. (F2, F6, F10, F16)
 **Acceptance:**
 
 - [ ] Claude PreToolUse covers context-heavy native tools and generic MCP calls with valid matcher syntax.
-- [ ] Claude PostToolUse and PostToolBatch are emitted only where the host supports them.
+- [ ] Claude PostToolUse are emitted only where the host supports them.
 - [ ] Codex, Cursor, and OpenCode rows remain truthful about supported/degraded lifecycles.
 - [ ] The old test asserting absence of `Read`, `Grep`, `WebFetch`, and `Agent` is replaced by positive parity coverage.
 - [ ] Focused tests, lint, and typecheck pass.
@@ -414,42 +413,31 @@ storage only if a focused test proves a contract gap. (F4, F11, F15)
 - [ ] Hot-path code performs no shellouts.
 - [ ] Focused tests, lint, and typecheck pass.
 
-#### [capture] Task 1.5: Add bounded PostToolBatch result summaries
+#### [capture] Task 1.5: Drop unverified batch-hook summaries
 
-**Status:** done
+**Status:** dropped
 
 **Depends:** Task 0.3
 
-Add a bounded, PostToolBatch-specific handler path so parallel tool batches
-produce durable continuity without storing raw full results. Summaries should
-record tool names, success/failure counts, result sizes, truncation metadata, and
-safe previews only. Keep this file cluster independent from the PostToolUse
-`lint-after-edit.*` files; Task 1.2 owns host hook emission, Task 1.5 owns the
-batch handler and summarizer. Integration proof happens in Task 2.1. (F10, F15)
+Dropped after independent Claude review found no local or context-mode evidence
+for a real managed Claude `PostToolBatch` lifecycle event. The shipped surface
+keeps broad bounded PostToolUse continuity capture and does not emit or claim a
+separate batch hook until a real host event is proven. This avoids green release
+claims backed only by synthetic inputs. (F10, F15)
 
 **Files:**
 
-- Create: `src/hooks/post-tool/posttoolbatch.ts`
-- Create: `src/hooks/post-tool/posttoolbatch.test.ts`
-- Create: `src/hooks/post-tool/batch-summary.ts`
-- Create: `src/hooks/post-tool/batch-summary.test.ts`
-- Modify: `src/hooks/shared/types.ts`
-
-**Steps (TDD):**
-
-1. Write failing tests for `PostToolBatch` inputs containing multiple successful and failed tool results.
-2. Write negative tests proving raw `stdout`, web payloads, MCP text, and secret-like strings are not persisted beyond configured preview caps.
-3. Run: `./bin/wp test --file src/hooks/post-tool/batch-summary.test.ts --file src/hooks/post-tool/posttoolbatch.test.ts` — verify FAIL.
-4. Implement a small batch summarizer plus a dedicated PostToolBatch hook handler; Task 1.2 wires host emission independently.
-5. Run the same focused tests — verify PASS.
-6. Run: `./bin/wp lint src/hooks/post-tool/posttoolbatch.ts src/hooks/post-tool/posttoolbatch.test.ts src/hooks/post-tool/batch-summary.ts src/hooks/post-tool/batch-summary.test.ts src/hooks/shared/types.ts` and `./bin/wp typecheck`.
+- Removed: `src/hooks/post-tool/batch-summary.ts`
+- Removed: `src/hooks/post-tool/batch-summary.test.ts`
+- Removed: `src/hooks/post-tool/posttoolbatch.ts`
+- Removed: `src/hooks/post-tool/posttoolbatch.test.ts`
 
 **Acceptance:**
 
-- [ ] PostToolBatch continuity captures bounded result metadata and safe previews.
-- [ ] Raw full payloads, large outputs, and secrets are not persisted.
-- [ ] Batch capture remains fail-open and no-shellout.
-- [ ] Focused tests, lint, and typecheck pass.
+- [x] No managed hook config emits an unverified `PostToolBatch` event.
+- [x] Reference parity, benchmark, docs, and hook status surfaces do not claim
+      separate batch-hook support.
+- [x] PostToolUse capture remains bounded, redacted, fail-open, and tested.
 
 ## Wave 1: replacement proof [Complexity: L]
 
@@ -457,12 +445,12 @@ batch handler and summarizer. Integration proof happens in Task 2.1. (F10, F15)
 
 **Status:** done
 
-**Depends:** Task 1.1, Task 1.2, Task 1.3, Task 1.4, Task 1.5
+**Depends:** Task 1.1, Task 1.2, Task 1.3, Task 1.4
 
 Extend existing host smoke fixtures so replacement behavior is exercised through
 the same setup paths users run. The smoke must prove generated Claude/Codex
 surfaces contain session-memory routing, PreToolUse catches representative raw
-large-context operations, PostToolUse/PostToolBatch capture remains bounded, and
+large-context operations, PostToolUse capture remains bounded, and
 a missing policy launcher fails closed with a discoverable `wp hooks doctor` or
 `wp hooks doctor --fix` repair path. Cursor and OpenCode expectations must match
 the capability matrix. (F2, F6, F7, F14, F16)
@@ -494,14 +482,14 @@ the capability matrix. (F2, F6, F7, F14, F16)
 
 **Status:** done
 
-**Depends:** Task 1.1, Task 1.2, Task 1.3, Task 1.4, Task 1.5
+**Depends:** Task 1.1, Task 1.2, Task 1.3, Task 1.4
 
-Promote enforcement to a measured replacement axis. The reference parity matrix
+Promote enforcement to an explicit replacement-proof axis. The reference parity matrix
 and benchmark dry-run should distinguish “tool exists” from “agent is routed to
-it before context flooding.” Add rows/threshold fields for routing injection,
-PreToolUse session redirect, PostToolUse broad capture, PostToolBatch bounded
-summaries, registry/routing consistency, and repair-path evidence. (F1, F7, F10,
-F14)
+it before context flooding,” while the live measured benchmark row remains open
+until an operator-generated report exists. Add rows for routing injection,
+PreToolUse session redirect, PostToolUse broad capture, registry/routing
+consistency, and repair-path evidence. (F1, F7, F10, F14)
 
 **Files:**
 
@@ -516,15 +504,15 @@ F14)
 
 1. Write failing parity/audit/bench tests for enforcement axes and release-claim blocking when any axis is open or degraded.
 2. Run: `./bin/wp test --file src/audit/reference-parity-matrix.test.ts --file src/cli/commands/bench/session-memory.test.ts --file src/__integration__/reference-parity-bench.integration.test.ts` — verify FAIL.
-3. Add enforcement rows and dry-run report fields without introducing live API or credential requirements.
+3. Add enforcement rows and dry-run schema validation without treating source-grep or dry-run output as live benchmark evidence.
 4. Run the same focused tests — verify PASS.
 5. Run: `./bin/wp bench session-memory --dry-run`, `./bin/wp audit reference-parity-matrix --json`, `./bin/wp lint docs/bench/reference-parity-matrix.md src/audit/reference-parity-matrix.ts src/audit/reference-parity-matrix.test.ts src/cli/commands/bench/session-memory.ts src/cli/commands/bench/session-memory.test.ts src/__integration__/reference-parity-bench.integration.test.ts`, and `./bin/wp typecheck`.
 
 **Acceptance:**
 
-- [ ] Reference parity distinguishes availability, enforcement, capture, batch summaries, repairability, and host support.
+- [ ] Reference parity distinguishes availability, enforcement, capture, repairability, and host support.
 - [ ] Release-ready parity claims fail closed when enforcement evidence is missing.
-- [ ] Benchmark dry-run reports enforcement axes without live credentials.
+- [ ] Benchmark dry-run validates threshold schema without claiming live replacement evidence.
 - [ ] Focused tests, bench dry-run, audit, lint, and typecheck pass.
 
 ## Wave 2: docs, public package, and lifecycle readiness [Complexity: M]
@@ -554,16 +542,16 @@ language lands. (F5, F7, F12)
 **Steps (TDD):**
 
 1. Write or update docs/audit expectations so docs cannot claim full parity while reference-parity enforcement rows are open.
-2. Run: `./bin/wp audit reference-parity-matrix --strict` — verify it fails before enforcement evidence is complete, or document the expected open rows in the task notes.
+2. Run: `./bin/wp audit reference-parity-matrix --strict` — verify it fails until the live measured benchmark row is full/passed, and document that expected open row in the task notes.
 3. Update public docs and changelog language to match the proven host support matrix.
-4. Run: `./bin/wp audit docs-frontmatter`, `./bin/wp audit blueprint-lifecycle`, `./bin/wp audit reference-parity-matrix --strict`, `./bin/wp audit package-surface`, `./bin/wp audit secrets-policy`, `./bin/wp audit absolute-path-policy`, `./bin/wp audit hook-surface`, `./bin/wp audit hook-vendor-drift`, `npm pack --dry-run --json`, and `./bin/wp lint README.md docs/guides/session-memory.md docs/hook-matrix.md docs/hooks-doctor.md docs/bench/session-memory-methodology.md CHANGELOG.md`.
+4. Run: `./bin/wp audit docs-frontmatter`, `./bin/wp audit blueprint-lifecycle`, `./bin/wp audit reference-parity-matrix --json`, expected-failing `./bin/wp audit reference-parity-matrix --strict`, `./bin/wp audit package-surface`, `./bin/wp audit secrets-policy`, `./bin/wp audit absolute-path-policy`, `./bin/wp audit hook-surface`, `./bin/wp audit hook-vendor-drift`, `npm pack --dry-run --json`, and `./bin/wp lint README.md docs/guides/session-memory.md docs/hook-matrix.md docs/hooks-doctor.md docs/bench/session-memory-methodology.md CHANGELOG.md`.
 5. If any public-package or secret/path gate fails, fix the root cause before marking the task done.
 
 **Acceptance:**
 
 - [ ] Public docs name only `wp_session_*` for session-memory context-saving guidance.
 - [ ] Docs accurately separate full, partial, degraded, and unsupported host behavior.
-- [ ] Reference parity strict gate backs any full-parity claim.
+- [ ] Reference parity strict gate fails closed until the live measured benchmark row backs any public full-parity claim.
 - [ ] Package tarball, package-surface, secret, path, hook, docs, blueprint, and lint gates pass.
 
 ## Edge Cases
@@ -574,10 +562,10 @@ language lands. (F5, F7, F12)
 | E2 | PreToolUse sees a command already inside `wp_session_execute` or `wp_session_batch_execute` | Guard passes through to avoid recursion. | HIGH | F3, F9 |
 | E3 | Claude supports a matcher that Codex does not | Matcher sets diverge by host; capability matrix records the difference. | MEDIUM | F6, F16 |
 | E4 | PostToolUse receives a huge MCP/web payload | Capture stores bounded metadata and safe previews only, with truncation metadata. | HIGH | F4, F15 |
-| E5 | PostToolBatch receives multiple large successful results | Batch capture records counts, tool names, sizes, warnings, and capped previews only. | HIGH | F10, F15 |
+| E5 | A separate parallel batch hook is assumed from synthetic fixtures | No managed `PostToolBatch` hook is emitted or claimed; bounded `PostToolUse` capture remains the supported path until a real host event is proven. | HIGH | F10, F15 |
 | E6 | Web fetch target may be internal/private | Routing points to `wp_session_fetch_and_index` only after SSRF hardening proof is green. | HIGH | F8 |
 | E7 | Existing sibling blueprint lifecycle is stale relative to source | Implementation verifies source artifacts first and reconciles lifecycle rather than recreating files. | MEDIUM | F5, F8 |
-| E8 | Full parity docs are updated before proof is green | Reference parity strict gate fails closed. | HIGH | F7, F12 |
+| E8 | Public full-parity docs are updated before live benchmark proof exists | Reference parity strict gate fails closed while the live measured benchmark row is open. | HIGH | F7, F12 |
 | E9 | PreToolUse launcher is missing or non-executable | Guard fails closed with a concise denial and hook doctor provides a repair path. | HIGH | F14 |
 | E10 | Broad capture adds latency to every tool call | Capture code has no shellouts, uses byte caps, and has focused burst/hot-path tests. | MEDIUM | F15 |
 
@@ -589,7 +577,7 @@ language lands. (F5, F7, F12)
 | PreToolUse creates sandbox echo loops | Agents get stuck retrying the same denied operation | WP-only already-sandboxed pass-through tests in Task 1.3. | F3, F9 |
 | Shell/fetch routing ships before security gates | Unsafe command or network behavior becomes recommended path | Wave -1 security preflight blocks unsafe subsections. | F8 |
 | Capture leaks raw payloads or secrets | Public trust and local privacy regress | Negative payload/secret tests, byte caps, redaction, and package-safety gates. | F10, F15 |
-| Docs outrun implementation | Public replacement claim becomes false | Serialize docs/package task after host smoke and reference parity pass. | F7, F12 |
+| Docs outrun implementation | Public replacement claim becomes false | Public full-parity language stays behind strict reference parity, which remains blocked until live benchmark proof exists. | F7, F12 |
 | Duplicate sibling-plan work | Rework and file conflicts | Entry gate verifies current source and treats stale planned blueprints as lifecycle drift. | F5 |
 | Missing launcher silently disables enforcement | Users think routing is active while policy is bypassed | Fail-closed missing-guard denial plus hook doctor repair smoke. | F14 |
 | New routing mentions unregistered tools | Agents follow broken guidance | Registry/routing consistency test in Task 1.1. | F1 |
@@ -620,8 +608,8 @@ Implemented in PR #137 on branch `blueprint/session-memory-100-parity`:
 
 - SessionStart/instruction routing includes a `wp_session_*` context-window-protection hierarchy.
 - PreToolUse redirects representative raw large-context commands to concrete `wp_session_*` tools and treats WP session tools as the only loop identity.
-- Claude managed hooks broaden context-heavy matchers and emit PostToolBatch through the bounded post-tool path; Codex/Cursor/OpenCode remain host-truthful/degraded where unsupported.
-- PostToolUse and PostToolBatch capture bounded, redacted continuity summaries without shellouts or storage rewrites.
-- Reference parity and benchmark gates include enforcement axes and strict release readiness.
+- Claude managed hooks broaden context-heavy PreToolUse/PostToolUse matchers and emit only documented managed lifecycle events; Codex/Cursor/OpenCode remain host-truthful/degraded where unsupported.
+- PostToolUse capture bounded, redacted continuity summaries without shellouts or storage rewrites.
+- Reference parity gates include enforcement proof rows and intentionally keep `releaseClaimGateReady=false` until live measured benchmark evidence exists.
 
-Fresh verification included focused tests for routing, pretool routing, hook emission, host smoke, post-tool capture, batch summaries, reference parity, benchmark dry-run, `wp typecheck`, scoped `wp lint`, and strict public package audits.
+Fresh verification included focused tests for routing, pretool routing, hook emission, host smoke, post-tool capture, reference parity, benchmark dry-run, `wp typecheck`, scoped `wp lint`, package/public-surface audits, and an expected-failing strict reference-parity gate for the open live benchmark row.

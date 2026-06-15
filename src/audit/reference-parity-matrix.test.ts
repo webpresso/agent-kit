@@ -22,7 +22,6 @@ const EXPECTED_REQUIRED_REFERENCE_PARITY_CAPABILITIES = [
   'routing injection',
   'pretool session redirect',
   'posttool broad capture',
-  'posttoolbatch summaries',
   'registry/routing consistency',
   'repair path evidence',
   'host setup smoke',
@@ -49,24 +48,24 @@ function write(root: string, relativePath: string, content: string): void {
 }
 
 function seedArtifacts(root: string): void {
-  for (const artifact of [
-    'src/session-memory/session.test.ts',
-    'src/hooks/sessionstart/index.test.ts',
-    'src/mcp/server.integration.test.ts',
-    'src/session-memory/store.test.ts',
-    'src/__integration__/reference-parity-host-smoke.integration.test.ts',
-    'src/hooks/shared/routing-block.test.ts',
-    'src/hooks/pretool-guard/dev-routing.test.ts',
-    'src/hooks/post-tool/lint-after-edit.test.ts',
-    'src/hooks/post-tool/posttoolbatch.test.ts',
-    'src/mcp/tools/_registry.test.ts',
-    'src/hooks/doctor.test.ts',
-    'src/cli/commands/init/host-smoke.e2e.test.ts',
-    'src/cli/commands/bench/session-memory.test.ts',
-    'docs/bench/session-memory-methodology.md',
-    'src/audit/reference-parity-claims.test.ts',
-  ]) {
-    write(root, artifact, 'proof artifact placeholder')
+  const artifacts: Record<string, string> = {
+    'src/session-memory/session.test.ts': 'describe SessionMemorySessionStore captureEvent restore',
+    'src/hooks/sessionstart/index.test.ts': 'SessionStart WP_ROUTING_BLOCK additionalContext',
+    'src/mcp/server.integration.test.ts': 'tools/list wp_session_execute wp_session_search',
+    'src/session-memory/store.test.ts': 'SessionMemoryStore searchUnified restore context',
+    'src/hooks/shared/routing-block.test.ts': '<wp_session_context> wp_session_batch_execute wp_session_execute_file',
+    'src/hooks/pretool-guard/dev-routing.test.ts': 'routeToolInputToSessionMemory wp_session_batch_execute routeCommand',
+    'src/hooks/post-tool/lint-after-edit.test.ts': 'PostToolUse capturePostToolUse byte-caps',
+    'src/mcp/tools/_registry.test.ts': 'COMPILED_TOOL_REGISTRY wp_session_batch_execute wp_session_doctor',
+    'src/hooks/doctor.test.ts': 'runHooksDoctor wp-pretool-guard restore',
+    'src/__integration__/reference-parity-host-smoke.integration.test.ts': 'referenceParityHostSmokeFixtures collectContinuityLifecycleProofs degraded',
+    'src/cli/commands/init/host-smoke.e2e.test.ts': 'host smoke placeholder',
+    'src/cli/commands/bench/session-memory.test.ts': 'buildSessionMemoryThresholdReport search_quality_recall_at_5 dry-run',
+    'docs/bench/session-memory-methodology.md': 'live measured benchmark methodology',
+    'src/audit/reference-parity-claims.test.ts': 'reference-parity-matrix reference-parity release',
+  }
+  for (const [artifact, content] of Object.entries(artifacts)) {
+    write(root, artifact, content)
   }
 }
 
@@ -108,7 +107,6 @@ function passingRows(): string[] {
     row('routing injection', 'src/hooks/shared/routing-block.test.ts', { hostScope: 'Claude SessionStart and generated instruction surfaces' }),
     row('pretool session redirect', 'src/hooks/pretool-guard/dev-routing.test.ts', { hostScope: 'Claude PreToolUse' }),
     row('posttool broad capture', 'src/hooks/post-tool/lint-after-edit.test.ts', { hostScope: 'PostToolUse metadata capture' }),
-    row('posttoolbatch summaries', 'src/hooks/post-tool/posttoolbatch.test.ts', { hostScope: 'Claude PostToolBatch' }),
     row('registry/routing consistency', 'src/mcp/tools/_registry.test.ts', { hostScope: 'MCP registry plus routing source' }),
     row('repair path evidence', 'src/hooks/doctor.test.ts', { hostScope: 'hook doctor repair path' }),
     row('host setup smoke', 'src/__integration__/reference-parity-host-smoke.integration.test.ts', { hostScope: 'Claude' }),
@@ -170,6 +168,20 @@ describe('auditReferenceParityMatrix', () => {
     expect(result.ok).toBe(false)
     expect(result.violations.some((violation) => violation.message.includes('missing-proof'))).toBe(
       true,
+    )
+  })
+
+  it('rejects empty placeholder test files as full passed proof', () => {
+    const root = tempRoot()
+    seedArtifacts(root)
+    write(root, 'src/hooks/pretool-guard/dev-routing.test.ts', '')
+    write(root, 'docs/bench/reference-parity-matrix.md', matrix(passingRows()))
+
+    const result = auditReferenceParityMatrix(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations.map((violation) => violation.message)).toContain(
+      'Full passed replacement parity row "pretool session redirect" proof artifact is too weak; missing evidence marker(s): routeToolInputToSessionMemory, wp_session_batch_execute, routeCommand.',
     )
   })
 
@@ -257,7 +269,12 @@ describe('auditReferenceParityMatrix', () => {
     expect(result.rows.map((entry) => entry.capability)).toEqual([
       ...EXPECTED_REQUIRED_REFERENCE_PARITY_CAPABILITIES,
     ])
-    expect(result.releaseClaimGateReady).toBe(true)
+    expect(result.releaseClaimGateReady).toBe(false)
+    expect(result.rows.find((row) => row.capability === 'benchmark thresholds')).toMatchObject({
+      proofArtifact: 'docs/bench/session-memory-methodology.md',
+      supportLevel: 'degraded',
+      status: 'open',
+    })
     expect(result.rows.find((row) => row.capability === 'host setup smoke')).toMatchObject({
       proofArtifact: 'src/__integration__/reference-parity-host-smoke.integration.test.ts',
       hostScope: 'Claude',

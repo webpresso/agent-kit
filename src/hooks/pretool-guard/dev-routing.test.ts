@@ -352,18 +352,32 @@ describe('routeCommand', () => {
 
 
 
-  it('routes raw host context-heavy tool inputs to concrete wp_session tools', async () => {
+  it('routes unbounded content-search host tool inputs to concrete wp_session tools', async () => {
     const { routeToolInputToSessionMemory } = await import('./dev-routing.js')
-    for (const [tool_name, tool_input, expectedTool] of [
-      ['Read', { file_path: 'src/large.ts' }, 'wp_session_execute_file'],
-      ['Grep', { pattern: 'wp_session', path: 'src' }, 'wp_session_batch_execute'],
-      ['WebFetch', { url: 'https://example.com/docs' }, 'wp_session_fetch_and_index'],
-      ['Agent', { prompt: 'summarize a huge subsystem' }, 'wp_session_capture'],
-      ['mcp__example__expensive_lookup', { query: 'large result' }, 'wp_session_search or wp_session_capture'],
+    const result = routeToolInputToSessionMemory({
+      tool_name: 'Grep',
+      tool_input: { pattern: 'wp_session', path: 'src', output_mode: 'content' },
+    })
+    expect(result?.action.action).toBe('sandbox')
+    if (result?.action.action === 'sandbox') {
+      expect(result.action.guidance).toContain('wp_session_batch_execute')
+    }
+  })
+
+  it('does not sandbox safe small host tool inputs or third-party MCP tools', async () => {
+    const { routeToolInputToSessionMemory } = await import('./dev-routing.js')
+    for (const [tool_name, tool_input] of [
+      ['Read', { file_path: 'src/small.ts', limit: 80 }],
+      ['Read', { file_path: 'src/large.ts' }],
+      ['Grep', { pattern: 'wp_session', path: 'src', output_mode: 'files_with_matches' }],
+      ['Glob', { pattern: '**/*.ts' }],
+      ['LS', { path: 'src' }],
+      ['WebFetch', { url: 'https://example.com/docs' }],
+      ['WebSearch', { query: 'Claude hooks' }],
+      ['Task', { prompt: 'inspect a subsystem' }],
+      ['mcp__github__get_pull_request', { owner: 'webpresso', repo: 'agent-kit' }],
     ] as const) {
-      const result = routeToolInputToSessionMemory({ tool_name, tool_input })
-      expect(result?.action.action, tool_name).toBe('sandbox')
-      if (result?.action.action === 'sandbox') expect(result.action.guidance).toContain(expectedTool)
+      expect(routeToolInputToSessionMemory({ tool_name, tool_input }), tool_name).toBeNull()
     }
   })
 

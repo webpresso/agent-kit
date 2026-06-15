@@ -80,15 +80,6 @@ export const CAPABILITY_MATRIX: readonly VendorCapability[] = [
     notes: 'Cursor emits postToolUse; OpenCode bridges via tool.execute.after',
   },
   {
-    event: 'PostToolBatch',
-    claude: 'full',
-    codex: 'unsupported',
-    cursor: 'unsupported',
-    opencode: 'unsupported',
-    notes:
-      'Claude emits managed bounded batch summaries after parallel tool calls; Codex/Cursor/OpenCode do not emit a managed PostToolBatch hook.',
-  },
-  {
     event: 'PostToolUseFailure',
     claude: 'partial',
     codex: 'unsupported',
@@ -175,7 +166,7 @@ export const REPLACEMENT_PARITY_CAPABILITY_CROSSWALK: readonly ReplacementParity
   [
     {
       capability: 'lifecycle capture',
-      events: ['PostToolUse', 'PostToolBatch', 'UserPromptSubmit', 'Stop', 'PreCompact'],
+      events: ['PostToolUse', 'UserPromptSubmit', 'Stop', 'PreCompact'],
       hosts: ['claude', 'codex', 'cursor', 'opencode'],
       notes:
         'Host lifecycle capture is degraded until every covered host/event is full; store-only rows may remain scoped outside host parity.',
@@ -192,7 +183,6 @@ export const REPLACEMENT_PARITY_CAPABILITY_CROSSWALK: readonly ReplacementParity
         'SessionStart',
         'PreToolUse',
         'PostToolUse',
-        'PostToolBatch',
         'UserPromptSubmit',
         'Stop',
         'PreCompact',
