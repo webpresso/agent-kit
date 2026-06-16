@@ -1,8 +1,21 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { buildCiActCommand, runCiActCommand, validateCiActCommand } from './ci'
+import {
+  DEFAULT_CI_ACT_TIMEOUT_MS,
+  MAX_CI_ACT_TIMEOUT_MS,
+  buildCiActCommand,
+  normalizeCiActTimeoutMs,
+  parseCiActTimeoutMs,
+  runCiActCommand,
+  validateCiActCommand,
+} from './ci'
 
 describe('wp ci command', () => {
+  it('exports a dedicated ci act timeout budget above the generic runner default', () => {
+    expect(DEFAULT_CI_ACT_TIMEOUT_MS).toBe(20 * 60_000)
+    expect(MAX_CI_ACT_TIMEOUT_MS).toBe(60 * 60_000)
+  })
+
   it('builds a public secret-gate act command by default', () => {
     const command = buildCiActCommand({ workflow: 'ci-e2e' }, '/repo')
 
@@ -132,7 +145,7 @@ describe('wp ci command', () => {
       cwd: '/repo',
       envProfile: undefined,
       command: 'act',
-      timeoutMs: undefined,
+      timeoutMs: DEFAULT_CI_ACT_TIMEOUT_MS,
       args: [
         'pull_request',
         '-W',
@@ -144,6 +157,53 @@ describe('wp ci command', () => {
         'linux/amd64',
       ],
     })
+  })
+
+  it('honors an explicit ci act timeout override', async () => {
+    const run = vi.fn(async () => ({
+      exitCode: 0,
+      signal: null,
+      timedOut: false,
+      aborted: false,
+      stdout: '',
+      stderr: '',
+    }))
+
+    await runCiActCommand(
+      { workflow: 'ci-e2e', execute: true, timeoutMs: 45_000 },
+      {
+        cwd: '/repo',
+        run,
+      },
+    )
+
+    expect(run).toHaveBeenCalledWith(
+      expect.objectContaining({
+        timeoutMs: 45_000,
+      }),
+    )
+  })
+
+  it('rejects invalid ci act timeout values at the CLI and programmatic boundary', async () => {
+    expect(parseCiActTimeoutMs('45000')).toBe(45_000)
+    expect(() => parseCiActTimeoutMs('0')).toThrow('--timeout-ms must be a positive integer')
+    expect(() => parseCiActTimeoutMs('not-a-number')).toThrow(
+      '--timeout-ms must be a positive integer',
+    )
+    expect(() => parseCiActTimeoutMs(String(MAX_CI_ACT_TIMEOUT_MS + 1))).toThrow(
+      `--timeout-ms must be <= ${MAX_CI_ACT_TIMEOUT_MS}`,
+    )
+    expect(() => normalizeCiActTimeoutMs(0)).toThrow('--timeout-ms must be a positive integer')
+
+    await expect(
+      runCiActCommand(
+        { workflow: 'ci-e2e', execute: true, timeoutMs: MAX_CI_ACT_TIMEOUT_MS + 1 },
+        {
+          cwd: '/repo',
+          run: vi.fn(),
+        },
+      ),
+    ).rejects.toThrow(`--timeout-ms must be <= ${MAX_CI_ACT_TIMEOUT_MS}`)
   })
 
   it('returns nonzero when the child is terminated by signal', async () => {

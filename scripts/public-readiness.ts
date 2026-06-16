@@ -26,6 +26,13 @@ interface CheckResult {
   readonly detail: string
 }
 
+export interface RepoVisibilityReadinessInput {
+  readonly repoAlreadyPublic: boolean
+  readonly historyClassification: string
+  readonly publicHistoryTaskStatus: string | null
+  readonly publicHistoryTaskId?: string
+}
+
 interface RuntimeManifestRecord {
   readonly binaryName?: string
   readonly targets?: Array<{ id?: string; os?: string; bunTarget?: string; packageName?: string }>
@@ -40,8 +47,9 @@ const REQUIRE_REPO_VISIBILITY = process.argv.includes('--require-repo-visibility
 const HISTORY_AUDIT_PATH = resolve(ROOT, 'docs/research/2026-05-28-agent-kit-history-audit.md')
 const BLUEPRINT_PATH = resolve(
   ROOT,
-  'blueprints/completed/2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md',
+  'blueprints/completed/agent-kit-public-release-scrub/_overview.md',
 )
+const PUBLIC_HISTORY_TASK_ID = '1.5'
 
 const DENIED_PACKED_RUNTIME_PREFIXES = [
   'bin/runtime/',
@@ -82,6 +90,42 @@ function pass(name: string, detail: string): CheckResult {
 
 function blocked(name: string, detail: string): CheckResult {
   return { name, status: 'BLOCKED', detail }
+}
+
+export function evaluateRepoVisibilityReadiness(
+  input: RepoVisibilityReadinessInput,
+): CheckResult {
+  const publicHistoryTaskId = input.publicHistoryTaskId ?? PUBLIC_HISTORY_TASK_ID
+  if (input.repoAlreadyPublic) {
+    return pass(
+      'repo-visibility-readiness',
+      'repository already public; snapshot strategy superseded by operator override',
+    )
+  }
+
+  if (input.historyClassification === 'forward-only-acceptable') {
+    return pass('repo-visibility-readiness', 'forward-only-acceptable')
+  }
+
+  if (
+    (input.historyClassification === 'clean-public-snapshot-preferred' ||
+      input.historyClassification === 'rewrite-required') &&
+    input.publicHistoryTaskStatus === 'done'
+  ) {
+    return pass('repo-visibility-readiness', `${input.historyClassification} executed`)
+  }
+
+  if (
+    input.historyClassification === 'clean-public-snapshot-preferred' ||
+    input.historyClassification === 'rewrite-required'
+  ) {
+    return blocked(
+      'repo-visibility-readiness',
+      `${input.historyClassification}; public history Task ${publicHistoryTaskId} still pending`,
+    )
+  }
+
+  return fail('repo-visibility-readiness', 'missing or invalid history strategy evidence')
 }
 
 export function listMissingRuntimeOptionalDependencies(
@@ -498,7 +542,7 @@ if (import.meta.main) {
   const historyClassification =
     results.find((r) => r.name === 'history-audit-artifact' && r.status === 'PASS')?.detail ??
     'missing'
-  const task43 = blueprintTaskStatus('4.3')
+  const publicHistoryTask = blueprintTaskStatus(PUBLIC_HISTORY_TASK_ID)
   const repoView = run('gh', ['repo', 'view', '--json', 'isPrivate,nameWithOwner'])
   let repoAlreadyPublic = false
   if (repoView.ok) {
@@ -510,31 +554,13 @@ if (import.meta.main) {
     }
   }
 
-  if (repoAlreadyPublic) {
-    results.push(
-      pass(
-        'repo-visibility-readiness',
-        'repository already public; snapshot strategy superseded by operator override',
-      ),
-    )
-  } else if (historyClassification === 'forward-only-acceptable') {
-    results.push(pass('repo-visibility-readiness', 'forward-only-acceptable'))
-  } else if (
-    (historyClassification === 'clean-public-snapshot-preferred' ||
-      historyClassification === 'rewrite-required') &&
-    task43 === 'done'
-  ) {
-    results.push(pass('repo-visibility-readiness', `${historyClassification} executed`))
-  } else if (
-    historyClassification === 'clean-public-snapshot-preferred' ||
-    historyClassification === 'rewrite-required'
-  ) {
-    results.push(
-      blocked('repo-visibility-readiness', `${historyClassification}; Task 4.3 still pending`),
-    )
-  } else {
-    results.push(fail('repo-visibility-readiness', 'missing or invalid history strategy evidence'))
-  }
+  results.push(
+    evaluateRepoVisibilityReadiness({
+      repoAlreadyPublic,
+      historyClassification,
+      publicHistoryTaskStatus: publicHistoryTask,
+    }),
+  )
 
   const packageFailures = results.filter(
     (r) => ['FAIL'].includes(r.status) && r.name !== 'repo-visibility-readiness',

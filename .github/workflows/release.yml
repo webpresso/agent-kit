@@ -19,6 +19,9 @@
 #   - npm trusted publishing is required for this workflow.
 #   - The publish job uses OIDC (`id-token: write`) and expects npm-side trusted
 #     publisher configuration for this repository/workflow/package tuple.
+#   - npm provenance verification requires a GitHub-hosted runner. The publish
+#     path passes `--provenance`, so this workflow intentionally uses
+#     `ubuntu-latest` instead of the repo's Ubicloud CI runner label.
 #   - Do not add `NPM_TOKEN` or `NODE_AUTH_TOKEN` fallbacks; token publishing is
 #     intentionally disabled for Webpresso repos.
 #
@@ -50,7 +53,7 @@ env:
 jobs:
   release:
     name: Release
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write

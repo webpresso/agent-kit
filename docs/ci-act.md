@@ -27,6 +27,18 @@ builder.
 Bare workflow ids resolve to `.github/workflows/<id>.yml`. Dry-run is the
 default and returns a redacted command preview.
 
+## Timeout contract
+
+- `wp ci act --execute` uses a dedicated **20 minute** default timeout.
+- `wp_ci_act` uses the same default.
+- Override with `--timeout-ms <ms>` / `timeoutMs` when a specific workflow needs
+  a different budget.
+- Overrides are capped at **60 minutes** so hung local `act` runs fail loudly.
+
+This avoids inheriting the generic short-lived command timeout used by the
+shared secret-gate runner, which is too small for first-run Docker image pulls
+and full local CI rehearsal.
+
 ## Forbidden public inputs
 
 The public helper does not accept secret-bearing or mutation-oriented argv:

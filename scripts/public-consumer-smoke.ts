@@ -238,6 +238,7 @@ try {
       HOME: home,
       WP_SKIP_AUTO_INSTALL: '1',
       WP_SKIP_CLAUDE_PLUGIN: '1',
+      WP_SKIP_CODEX_PLUGIN: '1',
       WP_SKIP_GSTACK: '1',
       WP_SKIP_RTK: '1',
       WP_SKIP_UPDATE_CHECK: '1',
@@ -245,7 +246,7 @@ try {
     results.push(
       run(
         'npm',
-        ['exec', '--yes', '--package', tarball, '--', 'wp', 'setup', '--yes', '--host', 'none'],
+        ['exec', '--yes', '--package', tarball, '--', 'wp', 'setup', '--yes', '--host', 'all'],
         repo,
         setupEnv,
       ),
