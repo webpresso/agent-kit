@@ -121,6 +121,21 @@ function makeIsolatedFakeHome(): string {
   return dir
 }
 
+function writePluginCacheVersion(
+  homeDir: string,
+  rootParts: readonly string[],
+  marketplace: string,
+  version: string,
+): string {
+  const dir = path.join(homeDir, ...rootParts, marketplace, 'agent-kit', version)
+  mkdirSync(path.join(dir, 'skills', 'fix'), { recursive: true })
+  writeFileSync(
+    path.join(dir, 'skills', 'fix', 'SKILL.md'),
+    `---\nname: fix\nversion: ${version}\n---\n`,
+  )
+  return dir
+}
+
 /** A PATH that contains only the omx-ok fixture, no real omx. */
 function pathWithFakeOmxOk(): string {
   return `${OMX_OK_BIN}:/usr/bin:/bin`
@@ -228,6 +243,63 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(r.stdout).toContain(
         'Do not blanket-remove devDependencies just because wp can execute the tool.',
       )
+    })
+
+    it('--prune removes stale agent-kit plugin cache versions from every existing supported cache root', () => {
+      const oldClaude = writePluginCacheVersion(
+        fakeHome,
+        ['.claude', 'plugins', 'cache'],
+        'webpresso',
+        '0.34.5',
+      )
+      const currentClaude = writePluginCacheVersion(
+        fakeHome,
+        ['.claude', 'plugins', 'cache'],
+        'webpresso',
+        '1.1.0',
+      )
+      const oldCodex = writePluginCacheVersion(
+        fakeHome,
+        ['.codex', 'plugins', 'cache'],
+        'webpresso',
+        '0.34.5',
+      )
+      const currentCodex = writePluginCacheVersion(
+        fakeHome,
+        ['.codex', 'plugins', 'cache'],
+        'webpresso',
+        '1.1.0',
+      )
+      const oldOpenCode = writePluginCacheVersion(
+        fakeHome,
+        ['.config', 'opencode', 'plugins', 'cache'],
+        'webpresso',
+        '0.34.5',
+      )
+      const currentOpenCode = writePluginCacheVersion(
+        fakeHome,
+        ['.config', 'opencode', 'plugins', 'cache'],
+        'webpresso',
+        '1.1.0',
+      )
+
+      const r = runAk(['setup', '--yes', '--prune', '--cwd', repo], {
+        PATH: pathWithFakeOmxOk(),
+        HOME: fakeHome,
+        WP_SKIP_GSTACK: '1',
+      })
+
+      expect(r.code).toBe(0)
+      expect(r.stdout).toContain('plugin cache prune: removed 3 outdated cache version(s)')
+      expect(r.stdout).toContain('claude: removed 1; kept 1.1.0')
+      expect(r.stdout).toContain('codex: removed 1; kept 1.1.0')
+      expect(r.stdout).toContain('opencode: removed 1; kept 1.1.0')
+      expect(existsSync(oldClaude)).toBe(false)
+      expect(existsSync(oldCodex)).toBe(false)
+      expect(existsSync(oldOpenCode)).toBe(false)
+      expect(existsSync(currentClaude)).toBe(true)
+      expect(existsSync(currentCodex)).toBe(true)
+      expect(existsSync(currentOpenCode)).toBe(true)
     })
 
     it('bootstrap: --with base-kit on an empty repo creates docs/hooks/scripts/act/test/e2e/ci scaffolds', () => {

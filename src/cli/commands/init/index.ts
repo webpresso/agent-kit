@@ -67,6 +67,10 @@ import {
   summarizeHostSetupSurfaceVisibility,
   summarizeHostVisibility,
 } from './host-visibility.js'
+import {
+  pruneOutdatedAgentKitPluginCaches,
+  summarizePluginCachePrune,
+} from './plugin-cache-prune.js'
 import { WP_HOOK_SPECS } from './scaffolders/agent-hooks/ir.js'
 import {
   buildProposedHooksMapFromSpecs,
@@ -148,6 +152,7 @@ export interface InitFlags {
   overwrite?: boolean
   'dry-run'?: boolean
   dryRun?: boolean
+  prune?: boolean
   'restore-hooks'?: boolean
   restoreHooks?: boolean
   'disable-hooks'?: string
@@ -394,6 +399,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
 
   const catalogDir = resolveCatalogDir()
   const packageRoot = dirname(catalogDir)
+  const packageVersion = readPackageVersion(import.meta.url)
   const options: MergeOptions = {
     overwrite: flags.overwrite ?? false,
     dryRun: flags.dryRun ?? flags['dry-run'] ?? false,
@@ -979,6 +985,16 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
       }
     }
 
+    if (flags.prune === true) {
+      const pruneResult = pruneOutdatedAgentKitPluginCaches({
+        currentVersion: packageVersion,
+        dryRun: options.dryRun,
+      })
+      for (const line of summarizePluginCachePrune(consumer.repoRoot, pruneResult)) {
+        console.log(line)
+      }
+    }
+
     let gstackFailure: 'clone-failed' | 'pull-failed' | 'setup-failed' | null = null
     if (process.env.WP_SKIP_GSTACK === '1') {
       console.warn(
@@ -1352,6 +1368,10 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
       'Force full-file replacement for eligible managed files (default: reconcile owned content and preserve divergent consumer files)',
     )
     .option('--dry-run', 'Show what would change without writing anything')
+    .option(
+      '--prune',
+      'Remove outdated agent-kit plugin cache versions for supported hosts before visibility checks',
+    )
     .option(
       '--restore-hooks',
       'Restore managed Claude/Codex hook config from .webpresso/hooks-manifest.json',
