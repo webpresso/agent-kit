@@ -9,6 +9,9 @@ import {
 import { redactText } from '#mcp/tools/_shared/redact.js'
 import { runSecretGateCommand } from '#secret-gate/runner.js'
 
+export const DEFAULT_CI_ACT_TIMEOUT_MS = 20 * 60_000
+export const MAX_CI_ACT_TIMEOUT_MS = 60 * 60_000
+
 export const CI_COMMAND_HELP = [
   'Run repository CI helpers through the portable, secret-safe wp surface.',
   'Configure secret access with `wp config secrets ...`; execution shells through `with-secrets -- <cmd>`.',
@@ -57,6 +60,10 @@ export function registerCiCommand(cli: CAC): void {
     .option('--env-profile <profile>', 'Secret-gate env profile', { default: 'secrets-only' })
     .option('--container-architecture <arch>', 'act container architecture override')
     .option('--platform-image <image>', 'act runner image for ubicloud-standard-2')
+    .option(
+      '--timeout-ms <ms>',
+      `act execution timeout in milliseconds (default: ${DEFAULT_CI_ACT_TIMEOUT_MS})`,
+    )
     .option('--execute', 'Run act; default is a redacted dry-run preview')
     .option('--dry-run', 'Print the resolved command without executing it')
     .action((action: string, flags: Record<string, unknown>) => {
@@ -75,6 +82,7 @@ export function registerCiCommand(cli: CAC): void {
         platformImage: flags.platformImage as string | undefined,
         eventPath: flags.eventPath as string | undefined,
         execute: Boolean(flags.execute) && !flags.dryRun,
+        timeoutMs: parseCiActTimeoutMs(flags.timeoutMs),
       })
     })
 }
@@ -111,11 +119,33 @@ export async function runCiActCommand(
     envProfile: options.envProfile,
     command: 'act',
     args: command.actArgs,
-    timeoutMs: options.timeoutMs,
+    timeoutMs: normalizeCiActTimeoutMs(options.timeoutMs),
   })
   const stdout = redactText(result.stdout) ?? ''
   const stderr = redactText(result.stderr) ?? ''
   if (stdout) (deps.stdout ?? process.stdout).write(stdout)
   if (stderr) (deps.stderr ?? process.stderr).write(stderr)
   return result.exitCode
+}
+
+export function normalizeCiActTimeoutMs(value: number | undefined): number {
+  const timeoutMs = value ?? DEFAULT_CI_ACT_TIMEOUT_MS
+  if (!Number.isInteger(timeoutMs) || timeoutMs <= 0) {
+    throw new Error('--timeout-ms must be a positive integer')
+  }
+  if (timeoutMs > MAX_CI_ACT_TIMEOUT_MS) {
+    throw new Error(`--timeout-ms must be <= ${MAX_CI_ACT_TIMEOUT_MS}`)
+  }
+  return timeoutMs
+}
+
+export function parseCiActTimeoutMs(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === '') return undefined
+  const parsed =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number.parseInt(value, 10)
+        : Number.NaN
+  return normalizeCiActTimeoutMs(parsed)
 }

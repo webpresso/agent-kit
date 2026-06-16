@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import {
+  evaluateRepoVisibilityReadiness,
   evaluatePluginNativeLauncherPolicy,
   listPackedRuntimePayloadLeaks,
   listMissingPackedRuntimePaths,
@@ -107,5 +108,66 @@ describe('public-readiness runtime policy helpers', () => {
 
     expect(source).toContain('tarball-session-memory-local-store')
     expect(source).not.toContain('requiredNativePaths = [')
+  })
+})
+
+describe('public release readiness gate wiring', () => {
+  const repositoryRoot = join(import.meta.dirname, '..')
+
+  it('exercises host fallback skill projection in the packed consumer smoke', () => {
+    const source = readFileSync(join(repositoryRoot, 'scripts', 'public-consumer-smoke.ts'), 'utf8')
+
+    expect(source).toContain("WP_SKIP_CLAUDE_PLUGIN: '1'")
+    expect(source).toContain("WP_SKIP_CODEX_PLUGIN: '1'")
+    expect(source).toContain("'--host', 'all'")
+    expect(source).not.toContain("'--host', 'none'")
+  })
+
+  it('evaluates public repository visibility from explicit history evidence', () => {
+    expect(
+      evaluateRepoVisibilityReadiness({
+        repoAlreadyPublic: false,
+        historyClassification: 'clean-public-snapshot-preferred',
+        publicHistoryTaskStatus: 'done',
+      }),
+    ).toEqual({
+      name: 'repo-visibility-readiness',
+      status: 'PASS',
+      detail: 'clean-public-snapshot-preferred executed',
+    })
+
+    expect(
+      evaluateRepoVisibilityReadiness({
+        repoAlreadyPublic: false,
+        historyClassification: 'clean-public-snapshot-preferred',
+        publicHistoryTaskStatus: 'planned',
+      }),
+    ).toEqual({
+      name: 'repo-visibility-readiness',
+      status: 'BLOCKED',
+      detail: 'clean-public-snapshot-preferred; public history Task 1.5 still pending',
+    })
+
+    expect(
+      evaluateRepoVisibilityReadiness({
+        repoAlreadyPublic: true,
+        historyClassification: 'missing',
+        publicHistoryTaskStatus: null,
+      }),
+    ).toEqual({
+      name: 'repo-visibility-readiness',
+      status: 'PASS',
+      detail: 'repository already public; snapshot strategy superseded by operator override',
+    })
+  })
+
+  it('loads public-repository history evidence from the public-release scrub task', () => {
+    const source = readFileSync(join(repositoryRoot, 'scripts', 'public-readiness.ts'), 'utf8')
+
+    expect(source).toContain(
+      "'blueprints/completed/agent-kit-public-release-scrub/_overview.md'",
+    )
+    expect(source).toContain("const PUBLIC_HISTORY_TASK_ID = '1.5'")
+    expect(source).not.toContain('2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md')
   })
 })

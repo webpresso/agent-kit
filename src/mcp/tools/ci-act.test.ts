@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { buildCiActCommand } from '#cli/commands/ci'
+import { DEFAULT_CI_ACT_TIMEOUT_MS, MAX_CI_ACT_TIMEOUT_MS } from '#cli/commands/ci'
 
 import tool from './ci-act.js'
 
@@ -97,6 +98,7 @@ describe('wp_ci_act tool', () => {
     const call = runSecretGateCommandMock.mock.calls[0]![0]
     expect(call.command).toBe('act')
     expect(call.envProfile).toBe('secrets-only')
+    expect(call.timeoutMs).toBe(DEFAULT_CI_ACT_TIMEOUT_MS)
     expect(call.args).not.toContain('--secret-file')
     expect(call.args.join(' ')).not.toContain('--chef-token')
     expect(call.args.join(' ')).not.toContain('--bind')
@@ -105,6 +107,41 @@ describe('wp_ci_act tool', () => {
     const details = payload.details as { command: { command: string; args: string[] } }
     expect(details.command.command).toBe('with-secrets')
     expect(details.command.args.join(' ')).not.toContain('--secret-file')
+  })
+
+  it('honors an explicit timeout override', async () => {
+    runSecretGateCommandMock.mockResolvedValue({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      timedOut: false,
+      aborted: false,
+      signal: null,
+    })
+
+    await tool.handler({
+      workflowPath: '.github/workflows/ci.yml',
+      execute: true,
+      timeoutMs: 45_000,
+    })
+
+    expect(runSecretGateCommandMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        timeoutMs: 45_000,
+      }),
+    )
+  })
+
+  it('rejects timeout overrides above the documented execution cap', async () => {
+    await expect(
+      tool.handler({
+        workflowPath: '.github/workflows/ci.yml',
+        execute: true,
+        timeoutMs: MAX_CI_ACT_TIMEOUT_MS + 1,
+      }),
+    ).rejects.toThrow()
+
+    expect(runSecretGateCommandMock).not.toHaveBeenCalled()
   })
 
   it('redacts seeded fake secrets from execute output and metadata', async () => {

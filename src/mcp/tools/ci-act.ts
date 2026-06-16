@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
 
+import { DEFAULT_CI_ACT_TIMEOUT_MS, MAX_CI_ACT_TIMEOUT_MS } from '#cli/commands/ci'
 import { buildPublicCiActCommand, sanitizePublicCiActArgv } from '#ci/act-runner.js'
 import { runSecretGateCommand } from '#secret-gate/runner.js'
 import { clipRawOutput, createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
@@ -22,9 +23,9 @@ const inputSchema = z
       .number()
       .int()
       .positive()
-      .max(5 * 60_000)
+      .max(MAX_CI_ACT_TIMEOUT_MS)
       .optional()
-      .default(120_000),
+      .default(DEFAULT_CI_ACT_TIMEOUT_MS),
     containerArchitecture: z.string().optional(),
     platformImage: z.string().optional().default('ghcr.io/catthehacker/ubuntu:full-latest'),
     execute: z.boolean().optional().default(false),
