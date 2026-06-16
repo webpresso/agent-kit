@@ -1,5 +1,47 @@
 # Changelog
 
+## 1.1.1
+
+### Patch Changes
+
+- 5c22708: Add `wp audit blueprint-pr-coverage`, a reusable PR-scoped gate that requires a blueprint change for non-`.md` PRs unless a commit carries an auditable `Blueprint-exempt: <reason>` trailer. Agent-kit CI now runs this gate on pull requests, and bootstrapped agent instructions document the same blueprint coverage rule.
+- 9b8c808: fix(setup): cross-platform command detection (Windows) + codex-trust polish
+
+  `wp setup` detected installed CLIs (codex, claude) by shelling out to
+  `spawnSync('which', [cmd])` across five copy-pasted helpers. `which` is POSIX-only
+  (Windows uses `where`), so on Windows every check returned false and codex/claude
+  integration silently never ran. All five now share one zero-dependency,
+  cross-platform `commandExists` util (`#runtime/command-exists`) that scans
+  `PATH` + `PATHEXT` directly — no subprocess — and requires a runnable executable
+  (posix exec-bit), matching `which`'s semantics so a directory or non-executable
+  file named like the command is not a false positive.
+
+  Also: `wp setup` now prints an info notice when codex is absent instead of
+  silently skipping codex hook trust, and the codex-trust warning references
+  `.codex/hooks.json` instead of a malformed placeholder path.
+
+  Release claims remain gated by `docs/bench/reference-parity-matrix.md`,
+  `src/__integration__/reference-parity-host-smoke.integration.test.ts`,
+  `src/__integration__/reference-parity-tool-surface.integration.test.ts`, and
+  `docs/bench/session-memory-methodology.md`.
+
+- 1814e42: Adopt the published `@webpresso/cli-contract` package for the CLI bundle surface instead of carrying a local contract copy.
+- 68b63f4: fix: harden session fetch, command execution, secrets, and blueprint MCP internals
+
+  This release ships six coordinated blueprint lanes:
+
+  - `session-fetch-and-index` now blocks internal/localhost/private hosts by default, with explicit host allowlisting for trusted fetches.
+  - session command execution now validates commands and cwd containment before the existing `sh -c` path runs.
+  - secret-manager failures redact/truncate stderr details and no longer surface stdout snippets that may contain secret payloads.
+  - stream/resource cleanup removes a compile lock fd leak and observes quality-log stream errors from creation time.
+  - dynamic RegExp helper usage is consolidated onto the canonical string utility and regex syntax validation is length-bounded.
+  - blueprint MCP server decomposition begins with shared sync/payload/error/schema helpers while preserving public tool contracts.
+
+  Release claims remain gated by `docs/bench/reference-parity-matrix.md`,
+  `src/__integration__/reference-parity-host-smoke.integration.test.ts`,
+  `src/__integration__/reference-parity-tool-surface.integration.test.ts`, and
+  `docs/bench/session-memory-methodology.md`.
+
 ## 1.1.0
 
 ### Minor Changes
