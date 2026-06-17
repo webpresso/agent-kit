@@ -40,6 +40,7 @@ describe('ensureAgentKitGlobal', () => {
       spawn,
       env: {},
       argv1: '/Users/me/.vite-plus/bin/wp',
+      resolveVpCommand: () => 'vp',
     })
     expect(result).toStrictEqual({ kind: 'agent-kit-global-skipped-dry-run' })
     expect(calls).toStrictEqual([])
@@ -52,6 +53,7 @@ describe('ensureAgentKitGlobal', () => {
       spawn,
       env: { WP_SKIP_AUTO_INSTALL: '1' },
       argv1: '/Users/me/.vite-plus/bin/wp',
+      resolveVpCommand: () => 'vp',
     })
     expect(result).toStrictEqual({ kind: 'agent-kit-global-skipped-opt-out' })
     expect(calls).toStrictEqual([])
@@ -76,10 +78,10 @@ describe('ensureAgentKitGlobal', () => {
       spawn,
       env: {},
       argv1: '/Users/me/.vite-plus/bin/wp',
+      resolveVpCommand: () => null,
     })
     expect(result.kind).toBe('agent-kit-global-skipped-no-vp')
-    // Only the probe ran; no install attempted.
-    expect(calls).toStrictEqual([{ cmd: 'vp', args: ['--version'] }])
+    expect(calls).toStrictEqual([])
   })
 
   it('fails loudly when install succeeds but no package root can be resolved for launcher repair', () => {
@@ -89,6 +91,7 @@ describe('ensureAgentKitGlobal', () => {
       spawn,
       env: {},
       argv1: '/Users/me/.vite-plus/bin/wp',
+      resolveVpCommand: () => 'vp',
       resolvePackageRootForStaging: () => null,
     })
     expect(result).toStrictEqual({
@@ -96,10 +99,7 @@ describe('ensureAgentKitGlobal', () => {
       reason: 'could not resolve the owning @webpresso/agent-kit package root for launcher repair',
       command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
     })
-    expect(calls).toStrictEqual([
-      { cmd: 'vp', args: ['--version'] },
-      { cmd: 'vp', args: ['install', '-g', '@webpresso/agent-kit'] },
-    ])
+    expect(calls).toStrictEqual([{ cmd: 'vp', args: ['install', '-g', '@webpresso/agent-kit'] }])
   })
 
   it('repairs a mutated root bin/wp back to the JS selector after refresh', () => {
@@ -120,6 +120,7 @@ describe('ensureAgentKitGlobal', () => {
         spawn,
         env: {},
         argv1: join(root, 'bin', 'wp'),
+        resolveVpCommand: () => 'vp',
         packageRoot: root,
       })
 
@@ -153,6 +154,7 @@ describe('ensureAgentKitGlobal', () => {
         spawn,
         env: {},
         argv1: '/Users/me/.vite-plus/bin/wp',
+        resolveVpCommand: () => 'vp',
         resolvePackageRootForStaging: () => root,
       })
 
@@ -184,6 +186,7 @@ describe('ensureAgentKitGlobal', () => {
         spawn,
         env: {},
         argv1: '/Users/me/.vite-plus/bin/wp',
+        resolveVpCommand: () => 'vp',
         resolvePackageRootForStaging: () => root,
       })
 
@@ -204,6 +207,7 @@ describe('ensureAgentKitGlobal', () => {
       spawn,
       env: {},
       argv1: '/Users/me/.vite-plus/bin/wp',
+      resolveVpCommand: () => 'vp',
     })
     expect(result).toStrictEqual({
       kind: 'agent-kit-global-failed',

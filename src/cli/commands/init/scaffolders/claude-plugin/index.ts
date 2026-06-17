@@ -24,7 +24,7 @@ export type EnsureClaudePluginResult =
       kind: 'claude-plugin-failed'
       packageRoot: string
       pluginId: string
-      step: 'marketplace-add' | 'plugin-install' | 'plugin-update'
+      step: 'marketplace-add' | 'plugin-install'
       exitCode: number
     }
 
@@ -69,10 +69,6 @@ export function ensureClaudeCodeUserPlugin(
     {
       step: 'plugin-install' as const,
       args: ['plugin', 'install', '--scope', 'user', CLAUDE_PLUGIN_ID],
-    },
-    {
-      step: 'plugin-update' as const,
-      args: ['plugin', 'update', '--scope', 'user', CLAUDE_PLUGIN_ID],
     },
   ]
 

@@ -24,7 +24,7 @@ afterEach(() => {
 })
 
 describe('ensureClaudeCodeUserPlugin', () => {
-  it('runs marketplace add, install, and update at user scope', () => {
+  it('runs marketplace add and install at user scope', () => {
     const packageRoot = makePackageRoot()
     const calls: Array<{ command: string; args: readonly string[] }> = []
 
@@ -51,10 +51,6 @@ describe('ensureClaudeCodeUserPlugin', () => {
       {
         command: 'claude',
         args: ['plugin', 'install', '--scope', 'user', CLAUDE_PLUGIN_ID],
-      },
-      {
-        command: 'claude',
-        args: ['plugin', 'update', '--scope', 'user', CLAUDE_PLUGIN_ID],
       },
     ])
   })
