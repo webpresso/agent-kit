@@ -1,10 +1,10 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "display": "React Library",
-  "extends": "@webpresso/agent-kit/tsconfig/library.json",
+  "display": "React Router v7",
+  "extends": "@webpresso/agent-config/tsconfig/react-library.json",
   "compilerOptions": {
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
-    "types": ["react", "react-dom"]
+    "types": ["vite/client"]
   }
 }

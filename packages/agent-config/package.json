@@ -1,0 +1,94 @@
+{
+  "name": "@webpresso/agent-config",
+  "version": "0.0.1",
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webpresso/agent-kit.git"
+  },
+  "homepage": "https://github.com/webpresso/agent-kit#readme",
+  "bugs": {
+    "url": "https://github.com/webpresso/agent-kit/issues"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "description": "Shared vitest, tsconfig, stryker, and workers-test config for webpresso consumers. Binary-free — pure test/config tooling.",
+  "license": "Elastic-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist/esm",
+    "!dist/**/*.map",
+    "!dist/**/*.test.*",
+    "LICENSE",
+    "README.md"
+  ],
+  "exports": {},
+  "scripts": {
+    "build": "tshy",
+    "prepublishOnly": "vp run build",
+    "typecheck": "tsc --noEmit",
+    "lint:pkg": "publint && attw --pack ."
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^6.0.2",
+    "vite": "^8.0.14",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "@cloudflare/vitest-pool-workers": "*",
+    "@playwright/test": "*",
+    "@stryker-mutator/core": "*",
+    "@stryker-mutator/typescript-checker": "*",
+    "@stryker-mutator/vitest-runner": "*",
+    "better-sqlite3": "*",
+    "wrangler": "*"
+  },
+  "peerDependenciesMeta": {
+    "@cloudflare/vitest-pool-workers": { "optional": true },
+    "@playwright/test": { "optional": true },
+    "@stryker-mutator/core": { "optional": true },
+    "@stryker-mutator/typescript-checker": { "optional": true },
+    "@stryker-mutator/vitest-runner": { "optional": true },
+    "better-sqlite3": { "optional": true },
+    "wrangler": { "optional": true }
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "catalog:",
+    "@types/node": "catalog:",
+    "better-sqlite3": "^12.10.0",
+    "publint": "catalog:",
+    "tshy": "^4.1.2",
+    "typescript": "catalog:"
+  },
+  "tshy": {
+    "dialects": ["esm"],
+    "exclude": [
+      "src/**/*.test.ts",
+      "src/**/__fixtures__/**"
+    ],
+    "exports": {
+      "./tsconfig/base.json": "./src/tsconfig/base.json",
+      "./tsconfig/cloudflare.json": "./src/tsconfig/cloudflare.json",
+      "./tsconfig/library.json": "./src/tsconfig/library.json",
+      "./tsconfig/react-library.json": "./src/tsconfig/react-library.json",
+      "./tsconfig/react-router.json": "./src/tsconfig/react-router.json",
+      "./vitest/node": "./src/vitest/node.ts",
+      "./vitest/react": "./src/vitest/react.ts",
+      "./vitest/react-router": "./src/vitest/react-router.ts",
+      "./vitest/workers": "./src/vitest/workers.ts",
+      "./vitest/react-setup": "./src/vitest/react-setup.ts",
+      "./vitest/react-setup.ts": "./src/vitest/react-setup.ts",
+      "./vitest/flakiness-reporter": "./src/vitest/flakiness-reporter.ts",
+      "./stryker": "./src/stryker/index.ts",
+      "./workers-test": "./src/workers-test/index.ts"
+    },
+    "selfLink": false
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
