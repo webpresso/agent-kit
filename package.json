@@ -14,7 +14,7 @@
     "registry": "https://registry.npmjs.org/",
     "access": "public"
   },
-  "description": "TypeScript infrastructure for AI-agent-driven development: the `wp` CLI + MCP server give agents planning (blueprints), tests, mutation, e2e, CI, docs, and tech-debt \u2014 summary-first so they keep context, and enforced as pre-commit/CI contracts. Manages AGENTS.md / CLAUDE.md and per-agent surfaces.",
+  "description": "TypeScript infrastructure for AI-agent-driven development: the `wp` CLI + MCP server give agents planning (blueprints), tests, mutation, e2e, CI, docs, and tech-debt — summary-first so they keep context, and enforced as pre-commit/CI contracts. Manages AGENTS.md / CLAUDE.md and per-agent surfaces.",
   "keywords": [
     "agent",
     "webpresso",
@@ -500,8 +500,8 @@
     "@manypkg/find-root": "^3.1.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@secretlint/secretlint-rule-preset-recommend": "^13.0.2",
-    "@vitejs/plugin-react": "^6.0.2",
-    "better-sqlite3": "^12.10.0",
+    "@vitejs/plugin-react": "catalog:",
+    "better-sqlite3": "catalog:",
     "cac": "^7.0.0",
     "env-paths": "^4.0.0",
     "glob": "^13.0.6",
@@ -523,7 +523,7 @@
     "vitest": "catalog:",
     "oxlint": "^1.67.0",
     "oxfmt": "^0.48.0",
-    "vite": "^8.0.14",
+    "vite": "catalog:",
     "tsx": "^4.21.0"
   },
   "devDependencies": {
@@ -535,8 +535,7 @@
     "@types/node": "catalog:",
     "husky": "^9.1.7",
     "publint": "catalog:",
-    "tshy": "^4.1.2",
-    "@webpresso/agent-config": "workspace:*"
+    "tshy": "catalog:"
   },
   "tshy": {
     "dialects": [

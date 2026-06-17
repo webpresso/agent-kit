@@ -114,6 +114,25 @@ describe('auditToolchainIsolation', () => {
     expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 })
   })
 
+  it('exempts the published @webpresso/agent-config package from repo-level toolchain ownership rules', () => {
+    mkdirSync(join(root, 'packages', 'agent-config'), { recursive: true })
+    writePackage(join(root, 'packages', 'agent-config'), {
+      name: '@webpresso/agent-config',
+      dependencies: { vite: '^8.0.0', vitest: '^4.0.0' },
+      devDependencies: { typescript: '^6.0.0' },
+      peerDependencies: {
+        '@playwright/test': '*',
+        '@stryker-mutator/core': '*',
+        '@stryker-mutator/typescript-checker': '*',
+        '@stryker-mutator/vitest-runner': '*',
+        wrangler: '*',
+      },
+      scripts: { typecheck: 'tsc --noEmit' },
+    })
+
+    expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 })
+  })
+
   // Regression: the walk descended into the gitignored Claude Code agent
   // surface (.claude/worktrees/* agent scratch carries vendored package
   // manifests that are not the repo's own packages), producing false positives
