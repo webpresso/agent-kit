@@ -535,7 +535,6 @@
     "@types/node": "catalog:",
     "husky": "^9.1.7",
     "publint": "catalog:",
-    "tshy": "catalog:"
     "tshy": "catalog:",
     "@webpresso/agent-config": "workspace:*"
   },
