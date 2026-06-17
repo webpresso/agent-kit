@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.1
+
+### Patch Changes
+
+- 78609ea: Harden scaffolded setup/bootstrap helpers and local hook defaults so consumers catch Lore and secret-audit regressions earlier, while keeping the public package contract aligned with `docs/bench/reference-parity-matrix.md`, `docs/bench/session-memory-methodology.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, and `src/__integration__/reference-parity-tool-surface.integration.test.ts`.
+- 5ea718a: Harden the AI contracts audit so pending Changesets notes fail before release generation when emphasis-sensitive evidence paths are not protected as inline code; the release claim gate remains tied to `docs/bench/reference-parity-matrix.md`, `docs/bench/session-memory-methodology.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, and `src/__integration__/reference-parity-tool-surface.integration.test.ts`.
+
 ## 2.0.0
 
 ### Major Changes
