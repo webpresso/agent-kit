@@ -1,12 +1,24 @@
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 
 import { auditOpenSourceLicenses } from './open-source-licenses.js'
 import { createPackedManifest, readWorkspaceCatalogs } from '#build/package-manifest.js'
 
-const repoRoot = join(import.meta.dirname, '..', '..')
+const repoRoot = findRepoRoot(import.meta.dirname)
+
+function findRepoRoot(startDir: string): string {
+  let current = startDir
+  while (true) {
+    if (existsSync(join(current, 'pnpm-workspace.yaml'))) return current
+    const parent = dirname(current)
+    if (parent === current) {
+      throw new Error(`Could not locate pnpm-workspace.yaml from ${startDir}`)
+    }
+    current = parent
+  }
+}
 
 function writeJson(path: string, value: unknown) {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`)
@@ -24,6 +36,11 @@ function makeAuditFixture(): string {
   cpSync(join(repoRoot, 'catalog', 'agent', 'skills'), join(root, 'catalog', 'agent', 'skills'), {
     recursive: true,
   })
+  cpSync(
+    join(repoRoot, 'packages', 'agent-config', 'package.json'),
+    join(root, 'packages', 'agent-config', 'package.json'),
+    { recursive: true },
+  )
   return root
 }
 

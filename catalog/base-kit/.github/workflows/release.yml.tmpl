@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   release:
-    uses: webpresso/github-actions/.github/workflows/changesets-release.yml@22f93ddf4f58ed253e29c81d3e0a1d3fcdc6f3e3
+    uses: webpresso/github-actions/.github/workflows/changesets-release.yml@3f0136f88a488bc0894ab81ab3c8544b2e8dabf2
     with:
       install_command: pnpm install --frozen-lockfile
       version_command: pnpm run version

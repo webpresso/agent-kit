@@ -14,7 +14,7 @@
     "registry": "https://registry.npmjs.org/",
     "access": "public"
   },
-  "description": "Shared vitest, tsconfig, stryker, and workers-test config for webpresso consumers. Binary-free — pure test/config tooling.",
+  "description": "Shared vitest, tsconfig, stryker, and workers-test config for webpresso consumers. Binary-free \u2014 pure test/config tooling.",
   "license": "Elastic-2.0",
   "type": "module",
   "sideEffects": false,
@@ -48,13 +48,27 @@
     "wrangler": "*"
   },
   "peerDependenciesMeta": {
-    "@cloudflare/vitest-pool-workers": { "optional": true },
-    "@playwright/test": { "optional": true },
-    "@stryker-mutator/core": { "optional": true },
-    "@stryker-mutator/typescript-checker": { "optional": true },
-    "@stryker-mutator/vitest-runner": { "optional": true },
-    "better-sqlite3": { "optional": true },
-    "wrangler": { "optional": true }
+    "@cloudflare/vitest-pool-workers": {
+      "optional": true
+    },
+    "@playwright/test": {
+      "optional": true
+    },
+    "@stryker-mutator/core": {
+      "optional": true
+    },
+    "@stryker-mutator/typescript-checker": {
+      "optional": true
+    },
+    "@stryker-mutator/vitest-runner": {
+      "optional": true
+    },
+    "better-sqlite3": {
+      "optional": true
+    },
+    "wrangler": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",
@@ -65,7 +79,9 @@
     "typescript": "catalog:"
   },
   "tshy": {
-    "dialects": ["esm"],
+    "dialects": [
+      "esm"
+    ],
     "exclude": [
       "src/**/*.test.ts",
       "src/**/__fixtures__/**"
