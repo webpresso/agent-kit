@@ -1,5 +1,47 @@
 # Changelog
 
+## 2.0.0
+
+### Major Changes
+
+- 6f2def1: Extract `@webpresso/agent-config`: move tsconfig, vitest, stryker, and workers-test presets to a new binary-free package.
+
+  **Breaking change for `@webpresso/agent-kit`**: the subpaths `./tsconfig/*`, `./vitest/*`, `./stryker`, and `./workers-test` have been removed. Import them from `@webpresso/agent-config` instead.
+
+  Evidence: docs/bench/reference-parity-matrix.md, src/**integration**/reference-parity-host-smoke.integration.test.ts, src/**integration**/reference-parity-tool-surface.integration.test.ts, docs/bench/session-memory-methodology.md
+
+### Minor Changes
+
+- 4bcd127: Add version-skew warning: emit a stderr notice at `wp` startup when the running global wp version differs from the repo-pinned `@webpresso/agent-kit` in `pnpm-workspace.yaml` catalog. Detection only — no update flow changes.
+
+### Patch Changes
+
+- 27f8157: Repair the extracted agent-config release surface by cataloging shared deps, removing the root package's non-publishable local manifest edge, and recording the new public package in the package-surface contract.
+
+  Evidence:
+
+  - docs/bench/reference-parity-matrix.md
+  - src/**integration**/reference-parity-host-smoke.integration.test.ts
+  - src/**integration**/reference-parity-tool-surface.integration.test.ts
+  - docs/bench/session-memory-methodology.md
+
+- eb32513: fix(auto-update): bound npm registry fetch to 5-second deadline
+
+  fetchLatestRelease() had no AbortSignal on its fetch() call. When the npm
+  registry was slow or unreachable, every wp invocation (including MCP tool
+  calls) blocked for the full TCP connect timeout (~2 min). Added
+  AbortSignal.timeout(5000) — AbortError degrades gracefully via logUpdateError.
+
+  Also added WP_SKIP_UPDATE_CHECK=1 to the plugin.json MCP server env so
+  headless/offline environments never stall on the update check.
+
+  <!-- Reference parity evidence (required by ai-contracts audit):
+  docs/bench/reference-parity-matrix.md
+  src/__integration__/reference-parity-host-smoke.integration.test.ts
+  src/__integration__/reference-parity-tool-surface.integration.test.ts
+  docs/bench/session-memory-methodology.md
+  -->
+
 ## 1.1.1
 
 ### Patch Changes
