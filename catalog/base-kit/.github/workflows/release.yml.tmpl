@@ -1,0 +1,18 @@
+name: Release
+
+on:
+  push:
+    branches: [main, master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    uses: webpresso/github-actions/.github/workflows/changesets-release.yml@22f93ddf4f58ed253e29c81d3e0a1d3fcdc6f3e3
+    with:
+      install_command: pnpm install --frozen-lockfile
+      version_command: pnpm run version
+      publish_command: pnpm run release:publish
+      runner: ubuntu-latest

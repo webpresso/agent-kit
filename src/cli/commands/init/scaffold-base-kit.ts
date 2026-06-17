@@ -22,6 +22,7 @@ interface PackageJsonLike {
 }
 
 const AUTHORING_TIME_DEPENDENCIES = [
+  '@changesets/cli',
   'vitest',
   '@playwright/test',
   '@testing-library/jest-dom',
@@ -58,16 +59,21 @@ const TEMPLATE_MAP: Array<[string, string]> = [
   ['.editorconfig.tmpl', '.editorconfig'],
   ['.secretlintrc.json.tmpl', '.secretlintrc.json'],
   ['.actrc.tmpl', '.actrc'],
+  ['.changeset/config.json.tmpl', '.changeset/config.json'],
+  ['.changeset/README.md.tmpl', '.changeset/README.md'],
   ['commitlint.config.ts.tmpl', 'commitlint.config.ts'],
   ['scripts/check-no-dev-vars.ts.tmpl', 'scripts/check-no-dev-vars.ts'],
   [
     'scripts/audit-secret-provider-quarantine.ts.tmpl',
     'scripts/audit-secret-provider-quarantine.ts',
   ],
+  ['scripts/sync-release-metadata-version.ts.tmpl', 'scripts/sync-release-metadata-version.ts'],
+  ['scripts/release-publish.ts.tmpl', 'scripts/release-publish.ts'],
   ['.husky/pre-commit.tmpl', '.husky/pre-commit'],
   ['.husky/commit-msg.tmpl', '.husky/commit-msg'],
   ['.github/actions/setup-webpresso/action.yml.tmpl', '.github/actions/setup-webpresso/action.yml'],
   ['.github/workflows/ci.yml.tmpl', '.github/workflows/ci.yml'],
+  ['.github/workflows/release.yml.tmpl', '.github/workflows/release.yml'],
   ['test/.gitkeep.tmpl', 'test/.gitkeep'],
   ['e2e/.gitkeep.tmpl', 'e2e/.gitkeep'],
 ]
@@ -156,6 +162,10 @@ function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult 
   const hasTypecheckScript = typeof scripts['typecheck'] === 'string'
   const hasTestScript =
     typeof scripts['test'] === 'string' && !isNpmInitPlaceholderTestScript(scripts['test'])
+  const hasChangesetScript = typeof scripts['changeset'] === 'string'
+  const hasChangesetStatusScript = typeof scripts['changeset:status'] === 'string'
+  const hasVersionScript = typeof scripts['version'] === 'string'
+  const hasReleasePublishScript = typeof scripts['release:publish'] === 'string'
   const hasMutationScript = typeof scripts['mutation'] === 'string'
   const hasTestMutationScript = typeof scripts['test:mutation'] === 'string'
   const hasE2eScript = typeof scripts['e2e'] === 'string'
@@ -166,6 +176,10 @@ function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult 
   const lintScript = 'wp lint src e2e *.config.ts'
   const typecheckScript = 'wp typecheck'
   const testScript = 'wp test --file vitest.config.ts'
+  const changesetScript = 'changeset'
+  const changesetStatusScript = 'changeset status'
+  const versionScript = 'changeset version && bun scripts/sync-release-metadata-version.ts'
+  const releasePublishScript = 'bun scripts/release-publish.ts'
   const mutationScript = 'wp test --mutation'
   const testMutationScript = 'stryker run stryker.config.ts'
   const e2eScript = 'wp e2e --config playwright.config.ts'
@@ -181,6 +195,7 @@ function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult 
   const hasAgentKitDevDep = typeof devDeps['@webpresso/agent-kit'] === 'string'
   const shouldSkipSelfInstall = isSelfPackageName(packageName)
   const requiredAuthoringDeps: Record<string, string> = {
+    '@changesets/cli': 'latest',
     '@playwright/test': 'latest',
     '@stryker-mutator/core': 'latest',
     '@stryker-mutator/typescript-checker': 'latest',
@@ -203,6 +218,10 @@ function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult 
     hasLintScript &&
     hasTypecheckScript &&
     hasTestScript &&
+    hasChangesetScript &&
+    hasChangesetStatusScript &&
+    hasVersionScript &&
+    hasReleasePublishScript &&
     hasMutationScript &&
     hasTestMutationScript &&
     hasE2eScript &&
@@ -214,6 +233,7 @@ function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult 
   pkg['engines'] = { ...existing, node: engines.node }
   if (!alreadyHasPm) pkg['packageManager'] = packageManager
   if (typeof pkg['type'] !== 'string') pkg['type'] = 'module'
+  if (typeof pkg['version'] !== 'string') pkg['version'] = '0.0.0'
 
   // Ensure husky is in devDependencies so `vp exec husky init` works
   if (!devDeps['husky']) {
@@ -255,6 +275,18 @@ function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult 
   }
   if (!hasTestScript) {
     scripts['test'] = testScript
+  }
+  if (!hasChangesetScript) {
+    scripts['changeset'] = changesetScript
+  }
+  if (!hasChangesetStatusScript) {
+    scripts['changeset:status'] = changesetStatusScript
+  }
+  if (!hasVersionScript) {
+    scripts['version'] = versionScript
+  }
+  if (!hasReleasePublishScript) {
+    scripts['release:publish'] = releasePublishScript
   }
   if (!hasMutationScript) {
     scripts['mutation'] = mutationScript
