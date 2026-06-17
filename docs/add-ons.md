@@ -40,7 +40,6 @@ Use the same `--with` flow for non-default Webpresso skills such as
 | Name | Default behavior | Adds | License |
 | --- | --- | --- | --- |
 | [`playwright-mcp`](https://github.com/microsoft/playwright-mcp) | Opt-in. | Browser automation for agent QA. | Apache-2.0 |
-| `lore-commits` | Opt-in. | Structured commit-message enforcement. | MIT (this repo) |
 | `example-skill` | Opt-in. | A tiny hello-world skill for smoke tests. | MIT (this repo) |
 | [`omx`](https://oh-my-codex.dev/docs.html) | In the default preset set; skipped in CI. | Codex-side orchestration helpers. | MIT |
 | [`omc`](https://github.com/Yeachan-Heo/oh-my-claudecode) | In the default preset set; skipped when `WP_SKIP_OMC=1` or the `claude` CLI is unavailable. | Claude-side orchestration helpers. | MIT |

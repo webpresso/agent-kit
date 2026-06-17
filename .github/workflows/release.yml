@@ -257,7 +257,7 @@ jobs:
           fi
 
           HUSKY=0 git commit -m "chore: release v${version} [dist]"
-          git push origin "HEAD:refs/heads/${branch}"
+          HUSKY=0 git push origin "HEAD:refs/heads/${branch}"
           echo "status=created" >> "$GITHUB_OUTPUT"
 
       - name: Build native runtime binaries for the GitHub Release
