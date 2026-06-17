@@ -129,6 +129,17 @@ describe('release workflow publish path', () => {
     expect(afterChangesetsAction).toContain('gh release view "$tag" --json url,assets')
   })
 
+  it('does not run local Husky hooks for the generated compatibility branch push', () => {
+    const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
+    const branchStep = workflow.slice(
+      workflow.indexOf('- name: Create marketplace compatibility branch'),
+      workflow.indexOf('- name: Build native runtime binaries for the GitHub Release'),
+    )
+
+    expect(branchStep).toContain('HUSKY=0 git commit')
+    expect(branchStep).toContain('HUSKY=0 git push origin "HEAD:refs/heads/${branch}"')
+  })
+
   it('builds every native runtime target and attaches them to a GitHub Release in the publish path', () => {
     const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
     const changesetsActionIndex = workflow.indexOf('uses: changesets/action@')

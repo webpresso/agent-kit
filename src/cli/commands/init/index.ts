@@ -109,7 +109,6 @@ import {
 } from './scaffolders/codex-mcp/index.js'
 import { scaffoldExampleSkill } from './scaffolders/example-skill/index.js'
 import { ensureGstack } from './scaffolders/gstack/index.js'
-import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
 import { ensureOmx } from './scaffolders/omx/index.js'
 import { ensureOmc, OMC_SETUP_COMMAND } from './scaffolders/omc/index.js'
 import { scaffoldOpencodePlugin } from './scaffolders/opencode-plugin/index.js'
@@ -123,7 +122,6 @@ import { scaffoldWorkspaceConfig } from './scaffolders/workspace-config/index.js
 const PRESETS = [
   'example-skill',
   'gstack',
-  'lore-commits',
   'omc',
   'omx',
   'playwright-mcp',
@@ -628,9 +626,6 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
 
     // Apply scaffolder presets
     const presetResults = []
-    if (presets.includes('lore-commits')) {
-      presetResults.push(scaffoldLoreCommits({ repoRoot: consumer.repoRoot, options }))
-    }
 
     if (presets.includes('example-skill') && !options.dryRun) {
       await scaffoldExampleSkill(consumer.repoRoot)

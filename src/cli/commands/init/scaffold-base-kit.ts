@@ -66,8 +66,6 @@ const TEMPLATE_MAP: Array<[string, string]> = [
   ['scripts/sync-release-metadata-version.ts.tmpl', 'scripts/sync-release-metadata-version.ts'],
   ['scripts/release-publish.ts.tmpl', 'scripts/release-publish.ts'],
   ['.husky/pre-commit.tmpl', '.husky/pre-commit'],
-  ['.husky/commit-msg.tmpl', '.husky/commit-msg'],
-  ['.husky/pre-push.tmpl', '.husky/pre-push'],
   ['.github/actions/setup-webpresso/action.yml.tmpl', '.github/actions/setup-webpresso/action.yml'],
   ['.github/workflows/ci.yml.tmpl', '.github/workflows/ci.yml'],
   ['.github/workflows/release.yml.tmpl', '.github/workflows/release.yml'],

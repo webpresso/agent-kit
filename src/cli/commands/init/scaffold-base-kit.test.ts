@@ -34,8 +34,8 @@ describe('scaffoldBaseKit', () => {
     expect(existsSync(join(repoRoot, '.secretlintrc.json'))).toBe(true)
     expect(existsSync(join(repoRoot, 'commitlint.config.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, '.husky', 'pre-commit'))).toBe(true)
-    expect(existsSync(join(repoRoot, '.husky', 'commit-msg'))).toBe(true)
-    expect(existsSync(join(repoRoot, '.husky', 'pre-push'))).toBe(true)
+    expect(existsSync(join(repoRoot, '.husky', 'commit-msg'))).toBe(false)
+    expect(existsSync(join(repoRoot, '.husky', 'pre-push'))).toBe(false)
     expect(existsSync(join(repoRoot, '.github', 'actions', 'setup-webpresso', 'action.yml'))).toBe(
       true,
     )
@@ -89,16 +89,14 @@ describe('scaffoldBaseKit', () => {
     expect(readFileSync(join(repoRoot, '.node-version'), 'utf8').trim()).toBe('24.16.0')
     expect(readFileSync(join(repoRoot, '.nvmrc'), 'utf8').trim()).toBe('24.16.0')
     const preCommit = readFileSync(join(repoRoot, '.husky', 'pre-commit'), 'utf8')
-    const commitMsg = readFileSync(join(repoRoot, '.husky', 'commit-msg'), 'utf8')
-    const prePush = readFileSync(join(repoRoot, '.husky', 'pre-push'), 'utf8')
     const setupAction = readFileSync(
       join(repoRoot, '.github', 'actions', 'setup-webpresso', 'action.yml'),
       'utf8',
     )
     expect(preCommit).toContain("grep -q '^blueprints/'")
     expect(preCommit).toContain('wp audit blueprint-readme-drift')
-    expect(commitMsg).toContain('wp audit commit-message --require-lore --message-file "$1"')
-    expect(prePush).toContain('audit commit-message --require-lore --message-file /tmp/commit-msg.txt')
+    expect(existsSync(join(repoRoot, '.husky', 'commit-msg'))).toBe(false)
+    expect(existsSync(join(repoRoot, '.husky', 'pre-push'))).toBe(false)
     expect(setupAction).toContain('node ./scripts/resolve-webpresso-cli-versions.js')
   })
 
