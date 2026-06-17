@@ -407,7 +407,7 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     const tsconfigJson = JSON.parse(readFileSync(join(repo, 'tsconfig.json'), 'utf8')) as {
       extends?: string
     }
-    expect(tsconfigJson.extends).toBe('@webpresso/agent-kit/tsconfig/base.json')
+    expect(tsconfigJson.extends).toBe('@webpresso/agent-config/tsconfig/base.json')
     const packageJson = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')) as {
       scripts: Record<string, string>
       devDependencies: Record<string, string>
