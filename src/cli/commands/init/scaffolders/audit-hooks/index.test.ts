@@ -32,9 +32,9 @@ describe('scaffoldAuditHooks', () => {
     const content = await readFile(preCommitPath(tmpDir), 'utf8')
     expect(content).toContain('#!/bin/sh')
     expect(content).toContain('# webpresso audit hooks (staged mode — fast)')
-    expect(content).toContain('bun scripts/check-no-dev-vars.ts')
+    expect(content).toContain('wp audit no-dev-vars')
     expect(content).toContain('wp audit absolute-path-policy --root .')
-    expect(content).toContain('bun scripts/audit-secret-provider-quarantine.ts')
+    expect(content).toContain('wp audit secret-provider-quarantine')
     expect(content).not.toContain('skill-sizes')
     expect(content).not.toContain('broken-refs')
   })
@@ -43,7 +43,7 @@ describe('scaffoldAuditHooks', () => {
     await mkdir(path.join(tmpDir, '.husky'), { recursive: true })
     await writeFile(
       preCommitPath(tmpDir),
-      '#!/bin/sh\n# webpresso audit hooks (staged mode — fast)\nbun scripts/check-no-dev-vars.ts\nwp audit absolute-path-policy --root .\nbun scripts/audit-secret-provider-quarantine.ts\n',
+      '#!/bin/sh\n# webpresso audit hooks (staged mode — fast)\nwp audit no-dev-vars\nwp audit absolute-path-policy --root .\nwp audit secret-provider-quarantine\n',
       'utf8',
     )
 
@@ -61,9 +61,9 @@ describe('scaffoldAuditHooks', () => {
     const content = await readFile(preCommitPath(tmpDir), 'utf8')
     expect(content).toContain('pnpm lint')
     expect(content).toContain('# webpresso audit hooks (staged mode — fast)')
-    expect(content).toContain('bun scripts/check-no-dev-vars.ts')
+    expect(content).toContain('wp audit no-dev-vars')
     expect(content).toContain('wp audit absolute-path-policy --root .')
-    expect(content).toContain('bun scripts/audit-secret-provider-quarantine.ts')
+    expect(content).toContain('wp audit secret-provider-quarantine')
   })
 
   it('is idempotent on a file that had the old dead verbs — does not add them again', async () => {
@@ -83,9 +83,9 @@ describe('scaffoldAuditHooks', () => {
     // Dead verbs remain as-is from the existing file; the new check line is added once.
     const headerCount = (content.match(/# webpresso audit hooks/g) ?? []).length
     expect(headerCount).toStrictEqual(1)
-    expect(content).toContain('bun scripts/check-no-dev-vars.ts')
+    expect(content).toContain('wp audit no-dev-vars')
     expect(content).toContain('wp audit absolute-path-policy --root .')
-    expect(content).toContain('bun scripts/audit-secret-provider-quarantine.ts')
+    expect(content).toContain('wp audit secret-provider-quarantine')
   })
 
   it('skips writes in dry-run mode', async () => {

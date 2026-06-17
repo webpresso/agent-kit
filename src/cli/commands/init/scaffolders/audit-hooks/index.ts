@@ -26,9 +26,9 @@ export interface ScaffoldAuditHooksResult {
  */
 const AUDIT_HOOK_LINES = [
   '# webpresso audit hooks (staged mode — fast)',
-  'bun scripts/check-no-dev-vars.ts',
+  'wp audit no-dev-vars',
   'wp audit absolute-path-policy --root .',
-  'bun scripts/audit-secret-provider-quarantine.ts',
+  'wp audit secret-provider-quarantine',
 ] as const
 
 const SHEBANG = '#!/bin/sh\n'
@@ -38,10 +38,10 @@ function hasEquivalentLine(existingContent: string, line: string): boolean {
 
   if (line === '# webpresso audit hooks (staged mode — fast)') {
     return (
-      existingContent.includes('check-no-dev-vars.ts') &&
+      (existingContent.includes('check-no-dev-vars.ts') || existingContent.includes('wp audit no-dev-vars')) &&
       (existingContent.includes('wp audit absolute-path-policy --root .') ||
         existingContent.includes('"$WP" audit absolute-path-policy --root .')) &&
-      existingContent.includes('audit-secret-provider-quarantine.ts')
+      (existingContent.includes('audit-secret-provider-quarantine.ts') || existingContent.includes('wp audit secret-provider-quarantine'))
     )
   }
 

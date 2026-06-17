@@ -8,6 +8,6 @@ fi
 "$ROOT/bin/wp" audit guardrails
 # agent-kit audit hooks (staged mode — fast)
 # webpresso audit hooks (staged mode — fast)
-bun "$ROOT/scripts/check-no-dev-vars.ts"
+"$ROOT/bin/wp" audit no-dev-vars
 "$ROOT/bin/wp" audit absolute-path-policy --root "$ROOT"
-bun "$ROOT/scripts/audit-secret-provider-quarantine.ts"
+"$ROOT/bin/wp" audit secret-provider-quarantine

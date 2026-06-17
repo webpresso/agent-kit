@@ -225,7 +225,11 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(existsSync(path.join(repo, '.node-version'))).toBe(true)
       expect(existsSync(path.join(repo, '.nvmrc'))).toBe(true)
       expect(existsSync(path.join(repo, '.husky', 'pre-commit'))).toBe(true)
-      expect(existsSync(path.join(repo, 'scripts', 'check-no-dev-vars.ts'))).toBe(true)
+      expect(existsSync(path.join(repo, '.husky', 'pre-push'))).toBe(true)
+      expect(existsSync(path.join(repo, 'scripts', 'check-no-dev-vars.ts'))).toBe(false)
+      expect(existsSync(path.join(repo, 'scripts', 'resolve-webpresso-cli-versions.js'))).toBe(
+        true,
+      )
 
       // Future-proof guard: PreToolUse should be fail-closed (deny JSON
       // fallback), not silent fail-open `|| true`.
@@ -317,12 +321,16 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(existsSync(path.join(repo, '.webpressorc.json'))).toBe(true)
 
       expect(existsSync(path.join(repo, 'docs', 'templates', 'blueprint.md'))).toBe(true)
-      expect(existsSync(path.join(repo, 'scripts', 'check-no-dev-vars.ts'))).toBe(true)
+      expect(existsSync(path.join(repo, 'scripts', 'check-no-dev-vars.ts'))).toBe(false)
       expect(existsSync(path.join(repo, 'scripts', 'audit-secret-provider-quarantine.ts'))).toBe(
+        false,
+      )
+      expect(existsSync(path.join(repo, 'scripts', 'resolve-webpresso-cli-versions.js'))).toBe(
         true,
       )
       expect(existsSync(path.join(repo, '.husky', 'pre-commit'))).toBe(true)
       expect(existsSync(path.join(repo, '.husky', 'commit-msg'))).toBe(true)
+      expect(existsSync(path.join(repo, '.husky', 'pre-push'))).toBe(true)
       expect(existsSync(path.join(repo, '.actrc'))).toBe(true)
       expect(existsSync(path.join(repo, 'Brewfile'))).toBe(false)
       expect(existsSync(path.join(repo, '.node-version'))).toBe(true)

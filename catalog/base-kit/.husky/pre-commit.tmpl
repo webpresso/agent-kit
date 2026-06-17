@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 set -eu
-bun scripts/check-no-dev-vars.ts
+wp audit no-dev-vars
 wp audit absolute-path-policy --root .
-bun scripts/audit-secret-provider-quarantine.ts
+wp audit secret-provider-quarantine
 if git diff --cached --name-only --diff-filter=ACMR | grep -q '^blueprints/'; then
   wp audit blueprint-readme-drift
 fi

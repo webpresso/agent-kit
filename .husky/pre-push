@@ -1,0 +1,36 @@
+#!/usr/bin/env sh
+set -eu
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+if [ -f "$ROOT/.git" ]; then
+  GITDIR=$(sed 's/^gitdir: //' "$ROOT/.git")
+  GIT="git --git-dir=$GITDIR --work-tree=$ROOT"
+else
+  GIT="git -C $ROOT"
+fi
+BASE=$($GIT symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
+if [ -z "${BASE}" ]; then
+  if $GIT rev-parse --verify origin/main >/dev/null 2>&1; then
+    BASE="main"
+  elif $GIT rev-parse --verify origin/master >/dev/null 2>&1; then
+    BASE="master"
+  else
+    BASE="main"
+  fi
+fi
+$GIT fetch origin "${BASE}" --depth=50 2>/dev/null || true
+COMMITS=$($GIT rev-list --no-merges "origin/${BASE}..HEAD" 2>/dev/null || $GIT rev-list --no-merges "${BASE}..HEAD" 2>/dev/null || true)
+if [ -n "${COMMITS}" ]; then
+  FAIL=0
+  for SHA in ${COMMITS}; do
+    $GIT log -1 --format="%B" "${SHA}" > /tmp/commit-msg.txt
+    "$ROOT/bin/wp" audit commit-message --require-lore --message-file /tmp/commit-msg.txt || FAIL=1
+  done
+  [ "${FAIL}" -eq 0 ] || exit "${FAIL}"
+fi
+
+"$ROOT/bin/wp" test \
+  --file src/cli/commands/init/scaffold-base-kit.test.ts \
+  --file src/cli/commands/init/scaffolders/audit-hooks/index.test.ts \
+  --file scripts/public-readiness.test.ts
+
+"$ROOT/bin/wp" audit blueprint-pr-coverage --base origin/main

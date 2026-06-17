@@ -35,6 +35,7 @@ describe('scaffoldBaseKit', () => {
     expect(existsSync(join(repoRoot, 'commitlint.config.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, '.husky', 'pre-commit'))).toBe(true)
     expect(existsSync(join(repoRoot, '.husky', 'commit-msg'))).toBe(true)
+    expect(existsSync(join(repoRoot, '.husky', 'pre-push'))).toBe(true)
     expect(existsSync(join(repoRoot, '.github', 'actions', 'setup-webpresso', 'action.yml'))).toBe(
       true,
     )
@@ -42,8 +43,9 @@ describe('scaffoldBaseKit', () => {
     expect(existsSync(join(repoRoot, '.github', 'workflows', 'release.yml'))).toBe(true)
     expect(existsSync(join(repoRoot, '.changeset', 'config.json'))).toBe(true)
     expect(existsSync(join(repoRoot, '.changeset', 'README.md'))).toBe(true)
-    expect(existsSync(join(repoRoot, 'scripts', 'check-no-dev-vars.ts'))).toBe(true)
-    expect(existsSync(join(repoRoot, 'scripts', 'audit-secret-provider-quarantine.ts'))).toBe(true)
+    expect(existsSync(join(repoRoot, 'scripts', 'check-no-dev-vars.ts'))).toBe(false)
+    expect(existsSync(join(repoRoot, 'scripts', 'audit-secret-provider-quarantine.ts'))).toBe(false)
+    expect(existsSync(join(repoRoot, 'scripts', 'resolve-webpresso-cli-versions.js'))).toBe(true)
     expect(existsSync(join(repoRoot, 'scripts', 'sync-release-metadata-version.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'scripts', 'release-publish.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'tsconfig.json'))).toBe(true)
@@ -87,8 +89,17 @@ describe('scaffoldBaseKit', () => {
     expect(readFileSync(join(repoRoot, '.node-version'), 'utf8').trim()).toBe('24.16.0')
     expect(readFileSync(join(repoRoot, '.nvmrc'), 'utf8').trim()).toBe('24.16.0')
     const preCommit = readFileSync(join(repoRoot, '.husky', 'pre-commit'), 'utf8')
+    const commitMsg = readFileSync(join(repoRoot, '.husky', 'commit-msg'), 'utf8')
+    const prePush = readFileSync(join(repoRoot, '.husky', 'pre-push'), 'utf8')
+    const setupAction = readFileSync(
+      join(repoRoot, '.github', 'actions', 'setup-webpresso', 'action.yml'),
+      'utf8',
+    )
     expect(preCommit).toContain("grep -q '^blueprints/'")
     expect(preCommit).toContain('wp audit blueprint-readme-drift')
+    expect(commitMsg).toContain('wp audit commit-message --require-lore --message-file "$1"')
+    expect(prePush).toContain('audit commit-message --require-lore --message-file /tmp/commit-msg.txt')
+    expect(setupAction).toContain('node ./scripts/resolve-webpresso-cli-versions.js')
   })
 
   it('dry-run does not write files', () => {
@@ -175,10 +186,10 @@ describe('scaffoldBaseKit', () => {
       'wp audit absolute-path-policy --root .',
     )
     expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
-      'bun scripts/check-no-dev-vars.ts',
+      'wp audit no-dev-vars',
     )
     expect((pkg['scripts'] as Record<string, string>)['audit:secret-provider-quarantine']).toBe(
-      'bun scripts/audit-secret-provider-quarantine.ts',
+      'wp audit secret-provider-quarantine',
     )
     expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
   })
@@ -213,10 +224,10 @@ describe('scaffoldBaseKit', () => {
       'wp audit absolute-path-policy --root .',
     )
     expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
-      'bun scripts/check-no-dev-vars.ts',
+      'wp audit no-dev-vars',
     )
     expect((pkg['scripts'] as Record<string, string>)['audit:secret-provider-quarantine']).toBe(
-      'bun scripts/audit-secret-provider-quarantine.ts',
+      'wp audit secret-provider-quarantine',
     )
     expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
     expect((pkg['scripts'] as Record<string, string>)['test']).toBe('vitest')
@@ -274,10 +285,10 @@ describe('scaffoldBaseKit', () => {
       'wp audit absolute-path-policy --root .',
     )
     expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
-      'bun scripts/check-no-dev-vars.ts',
+      'wp audit no-dev-vars',
     )
     expect((pkg['scripts'] as Record<string, string>)['audit:secret-provider-quarantine']).toBe(
-      'bun scripts/audit-secret-provider-quarantine.ts',
+      'wp audit secret-provider-quarantine',
     )
     expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
     expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
@@ -311,7 +322,7 @@ describe('scaffoldBaseKit', () => {
       'echo custom secret check',
     )
     expect((pkg['scripts'] as Record<string, string>)['audit:secret-provider-quarantine']).toBe(
-      'bun scripts/audit-secret-provider-quarantine.ts',
+      'wp audit secret-provider-quarantine',
     )
   })
 
@@ -340,10 +351,10 @@ describe('scaffoldBaseKit', () => {
       'wp audit absolute-path-policy --root .',
     )
     expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
-      'bun scripts/check-no-dev-vars.ts',
+      'wp audit no-dev-vars',
     )
     expect((pkg['scripts'] as Record<string, string>)['audit:secret-provider-quarantine']).toBe(
-      'bun scripts/audit-secret-provider-quarantine.ts',
+      'wp audit secret-provider-quarantine',
     )
     expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
   })

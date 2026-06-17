@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 set -eu
 ROOT="$(git rev-parse --show-toplevel)"
-"$ROOT/bin/wp" audit commit-message --message-file "$1"
+"$ROOT/bin/wp" audit commit-message --require-lore --message-file "$1"

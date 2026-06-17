@@ -62,15 +62,12 @@ const TEMPLATE_MAP: Array<[string, string]> = [
   ['.changeset/config.json.tmpl', '.changeset/config.json'],
   ['.changeset/README.md.tmpl', '.changeset/README.md'],
   ['commitlint.config.ts.tmpl', 'commitlint.config.ts'],
-  ['scripts/check-no-dev-vars.ts.tmpl', 'scripts/check-no-dev-vars.ts'],
-  [
-    'scripts/audit-secret-provider-quarantine.ts.tmpl',
-    'scripts/audit-secret-provider-quarantine.ts',
-  ],
+  ['scripts/resolve-webpresso-cli-versions.js.tmpl', 'scripts/resolve-webpresso-cli-versions.js'],
   ['scripts/sync-release-metadata-version.ts.tmpl', 'scripts/sync-release-metadata-version.ts'],
   ['scripts/release-publish.ts.tmpl', 'scripts/release-publish.ts'],
   ['.husky/pre-commit.tmpl', '.husky/pre-commit'],
   ['.husky/commit-msg.tmpl', '.husky/commit-msg'],
+  ['.husky/pre-push.tmpl', '.husky/pre-push'],
   ['.github/actions/setup-webpresso/action.yml.tmpl', '.github/actions/setup-webpresso/action.yml'],
   ['.github/workflows/ci.yml.tmpl', '.github/workflows/ci.yml'],
   ['.github/workflows/release.yml.tmpl', '.github/workflows/release.yml'],
@@ -171,8 +168,8 @@ function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult 
   const hasE2eScript = typeof scripts['e2e'] === 'string'
   const hasQaScript = typeof scripts['qa'] === 'string'
   const verifyPathsScript = 'wp audit absolute-path-policy --root .'
-  const verifySecretsScript = 'bun scripts/check-no-dev-vars.ts'
-  const secretQuarantineAuditScript = 'bun scripts/audit-secret-provider-quarantine.ts'
+  const verifySecretsScript = 'wp audit no-dev-vars'
+  const secretQuarantineAuditScript = 'wp audit secret-provider-quarantine'
   const lintScript = 'wp lint src e2e *.config.ts'
   const typecheckScript = 'wp typecheck'
   const testScript = 'wp test --file vitest.config.ts'

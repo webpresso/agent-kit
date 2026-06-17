@@ -5,8 +5,8 @@ owner: ozby
 status: planned
 complexity: L
 created: '2026-06-13'
-last_updated: '2026-06-13'
-progress: '0% (planned; plan-refine + codex outside-voice + eng-review complete, tasks unstarted)'
+last_updated: '2026-06-17'
+progress: '20% (legacy helper-script removal in progress; setup-action helper centralization and local hook hardening started)'
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -73,6 +73,12 @@ ozby-dev shipped a **consumer-side interim workaround** (CI runs
 `src/ci-governance-contract.test.ts` pins it). This blueprint fixes the defects
 at the agent-kit source so no consumer needs that workaround.
 
+**Additional recurrence discovered during closeout (2026-06-17):**
+generated setup actions still rely on brittle inline version-resolution shell
+logic. `ingest-lens` proved this can fail in CI before any test logic starts.
+That bootstrap logic must move into a deterministic scaffold-owned helper so the
+regression is caught at the generator boundary, not patched per consumer.
+
 ## Architecture Overview — Option D (committed deterministic hook contract)
 
 Industry convention (Husky/Lefthook/pre-commit all **commit** their hook config)
@@ -114,6 +120,7 @@ choice.
 | F9 | MEDIUM | Committing the host configs is gitignore-safe. | `gitignore-patcher.ts:55` ignores generated paths and cleanup untracks them; `.gitignore:102` ignores `.claude/settings.json`. Un-ignoring + a managed-region drift gate is required so consumer-added hooks are preserved. | T3.2, T3.3 |
 | F10 | MEDIUM | (eng-review) T1.3 migration is safe to clobber generated values. | Risk: a consumer may have hand-edited the script value. Migration must match webpresso-owned exact values only and leave divergent content untouched, with a test for the hand-edited case. | T1.3, T4.3 |
 | F11 | LOW | (eng-review) T4.2 clean-checkout reproduces D3 by deleting `.sh` files. | It must delete the committed `.claude/settings.json` / `.codex/hooks.json` from the fixture's working set too — `checkHookFile` reads those, not the `.sh` bodies — or it won't reproduce the real failure. (Post-Option-D, the committed files are present, so the fixture instead asserts they exist + drift gate passes.) | T4.2 |
+| F12 | HIGH | Scaffolded setup actions can safely keep inline version-resolution shell logic. | False. `catalog/base-kit/.github/actions/setup-webpresso/action.yml.tmpl` currently shells inline version-resolution logic, while `ingest-lens` already needed a dedicated `scripts/resolve-webpresso-cli-versions.js` helper after CI parsing failed before tests started. The helper belongs in scaffold output so consumers share one deterministic bootstrap path. | T1.5, T4.4 |
 
 ## Key Decisions
 
@@ -126,6 +133,7 @@ choice.
 | Scope | One blueprint covering D1+D2+D3 | User decision 2026-06-13: single publish + catalog bump fixes everything and retires the ozby-dev interim sooner. |
 | ozby-dev interim | Keep `wp setup --restore-hooks` CI step + `ci-governance-contract.test.ts` until this ships | No consumer regression during the change + publish cycle. |
 | Legacy scripts | Stop generating; migrate existing consumers to `wp audit no-dev-vars` / `wp audit secret-provider-quarantine`; remove stale generated files | Already superseded (completed blueprint `centralize-consumer-governance-scripts-as-wp-audit-subcommands`). |
+| Setup bootstrap helper | Generate a repo-local helper for catalog-aware `@webpresso/agent-kit` / `vite-plus` resolution and call it from scaffolded setup actions | Prevents per-consumer shell drift and lets local hooks/tests catch bootstrap regressions before consumer CI. |
 | Recurrence gate | Meta integration test: `wp setup` → full `guardrails` == 0 failures, across fresh / clean-checkout / migration fixtures, each with a valid `.webpresso/secrets.config.json` | Converts CI-only discovery into a pre-publish unit test (F6). |
 
 ## Tasks
@@ -228,6 +236,39 @@ Keep agent-kit building: update its own `package.json` scripts and
 **Acceptance:**
 - [ ] No agent-kit source invokes the legacy bun scripts
 - [ ] `public-readiness` passes
+
+#### [scaffold] Task 1.5: Generate a deterministic setup-action version helper
+
+**Status:** todo
+
+**Depends:** None
+
+Add a scaffold-owned helper template (for example
+`scripts/resolve-webpresso-cli-versions.js`) that resolves
+`@webpresso/agent-kit` and `vite-plus` from consumer-owned dependency metadata,
+including catalog-aware pins, and update the scaffolded `setup-webpresso`
+action to call it instead of inline shell parsing.
+
+**Files:**
+- Create: `catalog/base-kit/scripts/resolve-webpresso-cli-versions.js.tmpl`
+- Create: `catalog/base-kit/.husky/pre-push.tmpl`
+- Modify: `catalog/base-kit/.github/actions/setup-webpresso/action.yml.tmpl`
+- Modify: `catalog/base-kit/.husky/commit-msg.tmpl`
+- Modify: `src/cli/commands/init/scaffold-base-kit.ts`
+- Modify: `src/cli/commands/init/scaffold-base-kit.test.ts`
+- Modify: `src/cli/commands/init/init.e2e.test.ts`
+
+**Steps (TDD):**
+1. Failing test: fresh scaffold emits the helper file + `.husky/pre-push`, and
+   the generated `setup-webpresso` action references the helper.
+2. `./bin/wp test --file src/cli/commands/init/scaffold-base-kit.test.ts --file src/cli/commands/init/init.e2e.test.ts` — FAIL.
+3. Implement helper + template wiring.
+4. Re-run — PASS. lint + typecheck.
+
+**Acceptance:**
+- [ ] Fresh scaffold emits the helper file and `.husky/pre-push`
+- [ ] Generated `setup-webpresso` action calls the helper
+- [ ] Generated `commit-msg` hook requires Lore trailers
 
 #### [skill] Task 2.1: SKILL.md.tpl full frontmatter + deterministic date render
 
