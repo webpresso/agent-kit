@@ -44,4 +44,31 @@ describe('release-publish runtime lane', () => {
     expect(source).toContain("rootPublishState = 'published'")
     expect(source).toContain("rootPublishState = 'already-published'")
   })
+
+  it('publishes non-root public workspace packages before the special root package flow', () => {
+    const source = readFileSync(join(import.meta.dirname, 'release-publish.ts'), 'utf8')
+
+    expect(source).toContain('function discoverWorkspacePackages')
+    expect(source).toContain('function publishSimpleWorkspacePackage')
+    expect(source).toContain("for (const workspacePackage of discoverWorkspacePackages(packageRoot))")
+    expect(source.indexOf('publishSimpleWorkspacePackage(workspacePackage)')).toBeLessThan(
+      source.indexOf("const buildResult = run('pnpm', ['run', 'build'])"),
+    )
+  })
+
+  it('fails before publish when a local package manifest is behind npm latest', () => {
+    const source = readFileSync(join(import.meta.dirname, 'release-publish.ts'), 'utf8')
+
+    expect(source).toContain('function assertNotBehindRegistry')
+    expect(source).toContain('npmLatestVersion(pkg.name)')
+    expect(source).toContain('is behind npm latest')
+    expect(source).toContain('Sync the local package manifest to the published baseline')
+  })
+
+  it('skips root publish when the root package version is already published and unchanged', () => {
+    const source = readFileSync(join(import.meta.dirname, 'release-publish.ts'), 'utf8')
+
+    expect(source).toContain('manifestVersionChangedSinceFirstParent(rootPackage)')
+    expect(source).toContain('already published and unchanged; skipping root publish')
+  })
 })

@@ -194,16 +194,16 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx' })
       expect(code).toBe(EXIT_SUCCESS)
       const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
-      const vpUpgradeCalls = spawnSyncMock.mock.calls.filter(
-        (c) => c[0] === 'vp' && JSON.stringify(c[1]) === JSON.stringify(['upgrade']),
+      const vpUpdateCalls = spawnSyncMock.mock.calls.filter(
+        (c) => c[0] === 'vp' && JSON.stringify(c[1]) === JSON.stringify(['update']),
       )
       const omxUpdateCalls = spawnSyncMock.mock.calls.filter(
         (c) =>
           c[0] === 'vp' && JSON.stringify(c[1]) === JSON.stringify(['update', '-g', 'oh-my-codex']),
       )
       expect(omxCalls).toHaveLength(2)
-      expect(vpUpgradeCalls).toHaveLength(1)
-      expect(omxUpdateCalls).toHaveLength(1)
+      expect(vpUpdateCalls).toHaveLength(0)
+      expect(omxUpdateCalls).toHaveLength(0)
       expect(omxCalls[0]?.[1]).toEqual(['--version'])
       expect(omxCalls[1]?.[1]).toEqual(['setup', '--yes', '--scope', 'user'])
       expect(omxCalls[1]?.[2]).toMatchObject({
@@ -565,25 +565,25 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       // Assert the contract-critical calls instead of a brittle total; adding a
       // new preflight should not require this integration test to count every
       // internal vp probe by hand.
-      expect(vpCalls.length).toBeGreaterThanOrEqual(5)
+      expect(vpCalls.length).toBeGreaterThanOrEqual(2)
       expect(actionlintCalls).toHaveLength(1)
       expect(codexCalls[0]?.[1]).toEqual(['--version'])
       expect(bunCalls[0]?.[1]).toEqual(['--version'])
-      expect(vpCalls.some((call) => JSON.stringify(call[1]) === JSON.stringify(['upgrade']))).toBe(
-        true,
+      expect(vpCalls.some((call) => JSON.stringify(call[1]) === JSON.stringify(['update']))).toBe(
+        false,
       )
       expect(
         vpCalls.some(
           (call) => JSON.stringify(call[1]) === JSON.stringify(['update', '-g', 'oh-my-codex']),
         ),
-      ).toBe(true)
+      ).toBe(false)
       expect(
         vpCalls.some(
           (call) =>
             JSON.stringify(call[1]) ===
             JSON.stringify(['update', '-g', '--latest', '@openai/codex']),
         ),
-      ).toBe(true)
+      ).toBe(false)
       expect(
         vpCalls.filter((call) => JSON.stringify(call[1]) === JSON.stringify(['--version'])).length,
       ).toBeGreaterThanOrEqual(2)

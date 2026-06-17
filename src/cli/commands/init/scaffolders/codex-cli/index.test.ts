@@ -25,6 +25,7 @@ describe('ensureCodexCli', () => {
     const result = ensureCodexCli({
       options: { overwrite: false, dryRun: false },
       spawn,
+      resolveVpCommand: () => 'vp',
     })
 
     expect(result).toEqual({ kind: 'codex-cli-ok', installed: false })
@@ -43,6 +44,7 @@ describe('ensureCodexCli', () => {
     const result = ensureCodexCli({
       options: { overwrite: false, dryRun: false },
       spawn,
+      resolveVpCommand: () => 'vp',
     })
 
     expect(result).toEqual({ kind: 'codex-cli-ok', installed: true })
@@ -79,9 +81,24 @@ describe('ensureCodexCli', () => {
     const result = ensureCodexCli({
       options: { overwrite: false, dryRun: false },
       spawn,
+      resolveVpCommand: () => 'vp',
     })
 
     expect(result.kind).toBe('codex-cli-unavailable')
+  })
+
+
+
+  it('skips global Codex refresh when only a repo-local vp is available', () => {
+    const spawn = makeSpawn([{ status: 0 }])
+    const result = ensureCodexCli({
+      options: { overwrite: false, dryRun: false },
+      spawn,
+      resolveVpCommand: () => null,
+    })
+
+    expect(result).toEqual({ kind: 'codex-cli-ok', installed: false })
+    expect(spawn).toHaveBeenCalledTimes(1)
   })
 
   it('skips work in dry-run mode', () => {
