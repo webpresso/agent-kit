@@ -38,9 +38,12 @@ describe('release-publish runtime lane', () => {
     expect(source).toContain(
       "const RELEASE_PUBLISH_RESULT_FILE_ENV = 'RELEASE_PUBLISH_RESULT_FILE'",
     )
-    expect(source).toContain('function writePublishResultFile(state: PublishState)')
-    expect(source).toContain('publishState: state')
-    expect(source).toContain('writePublishResultFile(rootPublishState)')
+    expect(source).toContain('interface PublishedPackage')
+    expect(source).toContain('function writePublishResultFile(packages: readonly PublishedPackage[])')
+    expect(source).toContain('publishState: primaryPackage.publishState')
+    expect(source).toContain('packages,')
+    expect(source).toContain('publishedPackages.push(toPublishedPackage(rootPackage, rootPublishState))')
+    expect(source).toContain('writePublishResultFile(publishedPackages)')
     expect(source).toContain("rootPublishState = 'published'")
     expect(source).toContain("rootPublishState = 'already-published'")
   })
@@ -70,5 +73,17 @@ describe('release-publish runtime lane', () => {
 
     expect(source).toContain('manifestVersionChangedSinceFirstParent(rootPackage)')
     expect(source).toContain('already published and unchanged; skipping root publish')
+    expect(source).toContain('writePublishResultFile(publishedPackages)')
+  })
+
+  it('keeps already-published changed workspace packages in the release handoff for finalization reruns', () => {
+    const source = readFileSync(join(import.meta.dirname, 'release-publish.ts'), 'utf8')
+
+    const workspacePublish = source.slice(
+      source.indexOf('function publishSimpleWorkspacePackage'),
+      source.indexOf('function toPublishedPackage'),
+    )
+    expect(workspacePublish).toContain('manifestVersionChangedSinceFirstParent(pkg)')
+    expect(workspacePublish).toContain("return 'already-published'")
   })
 })
