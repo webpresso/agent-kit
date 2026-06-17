@@ -37,7 +37,49 @@ const EXECUTION_ONLY_REVIEW_DEPENDENCIES = [
   'stryker',
 ] as const
 
-const DEFAULT_AGENT_KIT_RANGE = `^${readPackageVersion(import.meta.url)}`
+const DEFAULT_AGENT_CONFIG_RANGE = `^${readAgentConfigVersion(import.meta.url)}`
+
+export function readAgentConfigVersion(metaUrl: string): string {
+  const packageVersion = readPackageVersion(metaUrl)
+  let current = dirname(new URL(metaUrl).pathname)
+
+  for (let depth = 0; depth < 12; depth += 1) {
+    const packagePath = join(current, 'package.json')
+    if (existsSync(packagePath)) {
+      try {
+        const pkg = JSON.parse(readFileSync(packagePath, 'utf8')) as {
+          name?: unknown
+          webpresso?: { agentConfigVersion?: unknown }
+        }
+        if (pkg.name === '@webpresso/agent-kit') {
+          const packagedVersion = pkg.webpresso?.agentConfigVersion
+          if (typeof packagedVersion === 'string' && packagedVersion.length > 0) {
+            return packagedVersion
+          }
+
+          const sourcePackagePath = join(current, 'packages', 'agent-config', 'package.json')
+          if (existsSync(sourcePackagePath)) {
+            const sourcePkg = JSON.parse(readFileSync(sourcePackagePath, 'utf8')) as {
+              version?: unknown
+            }
+            if (typeof sourcePkg.version === 'string' && sourcePkg.version.length > 0) {
+              return sourcePkg.version
+            }
+          }
+        }
+      } catch {
+        // Keep walking: unrelated parent/package fixture directories can be
+        // malformed, but they must not make us pin agent-config to the
+        // agent-kit package version.
+      }
+    }
+    const parent = dirname(current)
+    if (parent === current) break
+    current = parent
+  }
+
+  return packageVersion
+}
 
 export function collectRuntimeContractGuidance(
   packageJson: PackageJsonLike | null | undefined,
@@ -187,7 +229,7 @@ function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult 
   ].join(' && ')
 
   const devDeps = (pkg['devDependencies'] ?? {}) as Record<string, string>
-  const hasAgentKitDevDep = typeof devDeps['@webpresso/agent-kit'] === 'string'
+  const hasAgentConfigDevDep = typeof devDeps['@webpresso/agent-config'] === 'string'
   const shouldSkipSelfInstall = isSelfPackageName(packageName)
   const requiredAuthoringDeps: Record<string, string> = {
     '@changesets/cli': 'latest',
@@ -203,7 +245,7 @@ function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult 
   if (
     alreadyHasEngines &&
     alreadyHasPm &&
-    (shouldSkipSelfInstall || hasAgentKitDevDep) &&
+    (shouldSkipSelfInstall || hasAgentConfigDevDep) &&
     Object.keys(requiredAuthoringDeps).every((name) => typeof devDeps[name] === 'string') &&
     (shouldSkipSelfInstall || hasSetupAgent) &&
     (shouldSkipSelfInstall || hasVerifyPaths) &&
@@ -234,11 +276,10 @@ function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult 
   if (!devDeps['husky']) {
     devDeps['husky'] = '^9.0.0'
   }
-  if (!shouldSkipSelfInstall && !hasAgentKitDevDep) {
-    // Keep consumers on the currently published dist-tag rather than a
-    // repo-internal path. Do not wire this through `prepare`: `wp` is not
-    // reliably on PATH during `vp install`, so `setup:agent` stays opt-in.
-    devDeps['@webpresso/agent-kit'] = DEFAULT_AGENT_KIT_RANGE
+  if (!shouldSkipSelfInstall && !hasAgentConfigDevDep) {
+    // Consumers use the global `wp` launcher for execution. Local config
+    // presets come from the binary-free agent-config package only.
+    devDeps['@webpresso/agent-config'] = DEFAULT_AGENT_CONFIG_RANGE
   }
   for (const [name, version] of Object.entries(requiredAuthoringDeps)) {
     if (!devDeps[name]) {

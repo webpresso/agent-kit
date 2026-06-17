@@ -223,26 +223,6 @@
       }
     },
     "./catalog/*": "./catalog/*",
-    "./tsconfig/base.json": {
-      "import": "./tsconfig/base.json",
-      "default": "./tsconfig/base.json"
-    },
-    "./tsconfig/cloudflare.json": {
-      "import": "./tsconfig/cloudflare.json",
-      "default": "./tsconfig/cloudflare.json"
-    },
-    "./tsconfig/library.json": {
-      "import": "./tsconfig/library.json",
-      "default": "./tsconfig/library.json"
-    },
-    "./tsconfig/react-library.json": {
-      "import": "./tsconfig/react-library.json",
-      "default": "./tsconfig/react-library.json"
-    },
-    "./tsconfig/react-router.json": {
-      "import": "./tsconfig/react-router.json",
-      "default": "./tsconfig/react-router.json"
-    },
     "./dev": {
       "import": {
         "types": "./dist/esm/dev/index.d.ts",
@@ -510,7 +490,7 @@
     "hooks:doctor:ci": "./bin/wp hooks doctor --skip-mcp",
     "qa": "vp run build && vp run typecheck && vp run lint && vp run format && vp run test && vp run lint:pkg && vp run audits:check",
     "changeset": "changeset",
-    "changeset:status": "changeset status",
+    "changeset:status": "GIT_WORK_TREE=$PWD changeset status",
     "verify:paths": "./bin/wp audit absolute-path-policy --root .",
     "prepare": "husky",
     "mutation": "./bin/wp test --mutation",
@@ -632,5 +612,8 @@
     "@stryker-mutator/typescript-checker": "^9.6.1",
     "@playwright/test": "^1.55.0",
     "wrangler": "^4.50.0"
+  },
+  "webpresso": {
+    "agentConfigVersion": "0.1.5"
   }
 }

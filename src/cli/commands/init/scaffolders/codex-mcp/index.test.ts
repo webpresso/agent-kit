@@ -397,9 +397,9 @@ describe('ensureClaudePlaywrightMcp', () => {
 })
 
 function makeFakeWebpressoInstall(root: string): string {
-  const entry = join(root, 'src', 'mcp', 'cli.ts')
-  mkdirSync(join(root, 'src', 'mcp'), { recursive: true })
-  writeFileSync(entry, '#!/usr/bin/env bun\n', 'utf8')
+  const entry = join(root, 'bin', process.platform === 'win32' ? 'wp.cmd' : 'wp')
+  mkdirSync(join(root, 'bin'), { recursive: true })
+  writeFileSync(entry, '#!/usr/bin/env node\n', 'utf8')
   return entry
 }
 
@@ -411,7 +411,7 @@ describe('findWebpressoMcpEntry', () => {
     dir = null
   })
 
-  it('returns the first candidate that contains src/mcp/cli.ts', () => {
+  it('returns the first candidate that contains bin/wp', () => {
     dir = mkdtempSync(join(tmpdir(), 'wp-find-'))
     const goodRoot = join(dir, 'good')
     const badRoot = join(dir, 'missing')
@@ -449,18 +449,19 @@ describe('findWebpressoMcpEntry', () => {
 })
 
 describe('agentKitMcpBlock + upsertWebpressoMcpServer', () => {
-  it('renders bun + absolute path in the block', () => {
-    const block = agentKitMcpBlock('/abs/path/src/mcp/cli.ts')
+  it('renders absolute bin/wp + mcp args in the block', () => {
+    const block = agentKitMcpBlock('/abs/path/bin/wp')
     expect(block).toContain(WEBPRESSO_MCP_HEADER)
-    expect(block).toContain('command = "bun"')
-    expect(block).toContain('args = ["/abs/path/src/mcp/cli.ts"]')
+    expect(block).toContain('command = "/abs/path/bin/wp"')
+    expect(block).toContain('args = ["mcp"]')
     expect(block).toContain('enabled = true')
   })
 
   it('appends to an empty config', () => {
-    const next = upsertWebpressoMcpServer('', '/abs/path/src/mcp/cli.ts')
+    const next = upsertWebpressoMcpServer('', '/abs/path/bin/wp')
     expect(next).toContain(WEBPRESSO_MCP_HEADER)
-    expect(next).toContain('args = ["/abs/path/src/mcp/cli.ts"]')
+    expect(next).toContain('command = "/abs/path/bin/wp"')
+    expect(next).toContain('args = ["mcp"]')
   })
 
   it('replaces an existing webpresso block without touching following tables', () => {
@@ -472,10 +473,11 @@ args = ["old"]
 [mcp_servers.playwright]
 command = "vp"
 `,
-      '/new/path/src/mcp/cli.ts',
+      '/new/path/bin/wp',
     )
 
-    expect(next).toContain('args = ["/new/path/src/mcp/cli.ts"]')
+    expect(next).toContain('command = "/new/path/bin/wp"')
+    expect(next).toContain('args = ["mcp"]')
     expect(next).not.toContain('command = "old"')
     expect(next).toContain('[mcp_servers.playwright]\ncommand = "vp"')
     expect(next.match(/\[mcp_servers\.webpresso\]/g)).toHaveLength(1)
@@ -483,7 +485,7 @@ command = "vp"
 
   it('coexists with the playwright block when both upserts run on the same config', () => {
     const withPlaywright = upsertPlaywrightMcpServer('model = "gpt-5.4"\n')
-    const withBoth = upsertWebpressoMcpServer(withPlaywright, '/abs/src/mcp/cli.ts')
+    const withBoth = upsertWebpressoMcpServer(withPlaywright, '/abs/bin/wp')
 
     expect(withBoth).toContain(PLAYWRIGHT_MCP_HEADER)
     expect(withBoth).toContain(WEBPRESSO_MCP_HEADER)
@@ -512,7 +514,8 @@ describe('ensureCodexWebpressoMcp', () => {
     })
 
     expect(result).toEqual({ kind: 'codex-webpresso-mcp-written', path: configPath, entryPath })
-    expect(readFileSync(configPath, 'utf8')).toContain(`args = ["${entryPath}"]`)
+    expect(readFileSync(configPath, 'utf8')).toContain(`command = "${entryPath}"`)
+    expect(readFileSync(configPath, 'utf8')).toContain('args = ["mcp"]')
   })
 
   it('is idempotent on a second invocation', () => {
