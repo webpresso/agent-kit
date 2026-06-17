@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.3
+
+### Patch Changes
+
+- 5f801a1: Create GitHub Releases for public non-root workspace packages published by the custom release path. The release handoff now records every published package, so `@webpresso/agent-config` publishes produce discoverable package release entries instead of only the root `@webpresso/agent-kit` runtime release. Release claim gating remains tied to `docs/bench/reference-parity-matrix.md`, `docs/bench/session-memory-methodology.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, and `src/__integration__/reference-parity-tool-surface.integration.test.ts`.
+- 669c3d4: Hard-cut consumer setup and hook runtime contracts to the global `wp` launcher: consumer scaffolds now depend on `@webpresso/agent-config`, managed hooks execute absolute `bin/wp hook ...`, Codex MCP setup writes absolute `bin/wp mcp`, `wp setup` no longer self-updates the global install by default, and `wp update` now updates only global `@webpresso/agent-kit` unless `--tools` or `--deps` is specified.
+
 ## 2.0.2
 
 ### Patch Changes
