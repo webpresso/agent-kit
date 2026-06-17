@@ -143,7 +143,11 @@ export function createPackedManifest(
     packedManifest[section] = Object.fromEntries(
       Object.entries(dependencies).map(([dependencyName, version]) => {
         const resolvedVersion = resolveCatalogSpecifier(dependencyName, version, workspaceCatalogs)
-        assertPublishableDependencySpecifier(section, dependencyName, resolvedVersion)
+        // devDependencies are stripped from the consumer install and never published
+        // as a runtime dependency — workspace: specifiers in devDeps are safe to skip.
+        if (section !== 'devDependencies') {
+          assertPublishableDependencySpecifier(section, dependencyName, resolvedVersion)
+        }
         return [dependencyName, resolvedVersion]
       }),
     )

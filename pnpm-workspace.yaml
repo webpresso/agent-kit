@@ -13,6 +13,10 @@ catalog:
   typescript: ^6.0.3
   vite-plus: ^0.1.22
   vitest: ^4.1.7
+  '@vitejs/plugin-react': ^6.0.2
+  better-sqlite3: ^12.10.0
+  tshy: ^4.1.2
+  vite: ^8.0.14
 
 confirmModulesPurge: false
 verifyDepsBeforeRun: warn
