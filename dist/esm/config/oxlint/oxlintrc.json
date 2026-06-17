@@ -1,0 +1,46 @@
+{
+  "jsPlugins": [
+    "./code-safety.js",
+    "./foundation-purity.js",
+    "./graphql-conventions.js",
+    "./import-hygiene.js",
+    "./monorepo-paths.js",
+    "./query-patterns.js",
+    "./testing-quality.js",
+    "./tier-boundaries.js"
+  ],
+  "rules": {
+    "webpresso-safety/as-any-audit": "error",
+    "webpresso-safety/no-swallowed-errors": "error",
+    "webpresso-foundation-purity/no-framework-imports": "error",
+    "webpresso-graphql/no-singular-graphql-fields": "error",
+    "webpresso-graphql/no-inline-graphql-in-app": "error",
+    "webpresso-imports/no-relative-parent-imports": "error",
+    "webpresso-imports/no-src-path-imports": "error",
+    "webpresso-imports/no-relative-mock-paths": "error",
+    "webpresso-imports/no-forbidden-package-imports": "error",
+    "webpresso-monorepo/no-hardcoded-repo-root": "error",
+    "webpresso-monorepo/no-cross-package-paths": "error",
+    "webpresso-query-patterns/no-adhoc-useQuery": "error",
+    "webpresso-query-patterns/no-isLoading-on-queries": "error",
+    "webpresso-testing/no-weak-assertions": "error",
+    "webpresso-testing/no-bare-spy-assertions": "error",
+    "webpresso-testing/no-internal-mocks": "error",
+    "webpresso-testing/no-real-timers-in-tests": "error",
+    "webpresso-testing/no-cold-dynamic-import": "error",
+    "webpresso-tier-boundaries/no-higher-tier-imports": "error"
+  },
+  "ignorePatterns": [
+    "dist",
+    "node_modules",
+    "reports",
+    ".stryker-tmp",
+    ".agent",
+    ".agents",
+    ".claude",
+    ".codex",
+    ".cursor",
+    ".opencode",
+    ".omx"
+  ]
+}
