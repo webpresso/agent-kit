@@ -1,0 +1,203 @@
+import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { mkdirSync, realpathSync } from 'node:fs';
+import { dirname, sep } from 'node:path';
+import { SessionMemoryStore } from '#session-memory/store.js';
+import { defaultIndexDbPath } from './session-restore.js';
+const MAX_CAPTURE_BYTES = 1024 * 1024;
+const DEFAULT_SEARCH_LIMIT = 10;
+function appendBounded(parts, chunk, currentBytes) {
+    const nextBytes = currentBytes + chunk.length;
+    if (currentBytes >= MAX_CAPTURE_BYTES)
+        return nextBytes;
+    const remaining = MAX_CAPTURE_BYTES - currentBytes;
+    parts.push(chunk.length <= remaining ? chunk : chunk.subarray(0, remaining));
+    return nextBytes;
+}
+function summarizeOutput(output, timedOut) {
+    const normalized = output
+        .split(/\r?\n/u)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .slice(0, 6)
+        .join('\n');
+    if (!normalized)
+        return timedOut ? 'command timed out with no captured output' : 'no output';
+    return normalized.length > 2_000 ? `${normalized.slice(0, 2_000)}…` : normalized;
+}
+function isPathInside(child, parent) {
+    if (child === parent)
+        return true;
+    const parentPrefix = parent.endsWith(sep) ? parent : `${parent}${sep}`;
+    return child.startsWith(parentPrefix);
+}
+function isEscaped(command, index) {
+    let backslashes = 0;
+    for (let i = index - 1; i >= 0 && command[i] === '\\'; i -= 1) {
+        backslashes += 1;
+    }
+    return backslashes % 2 === 1;
+}
+function disallowedShellSyntax(command) {
+    let inSingleQuote = false;
+    let inDoubleQuote = false;
+    for (let index = 0; index < command.length; index += 1) {
+        const char = command[index];
+        if (!char)
+            continue;
+        if (inSingleQuote) {
+            if (char === "'")
+                inSingleQuote = false;
+            continue;
+        }
+        if (inDoubleQuote) {
+            if (char === '"' && !isEscaped(command, index))
+                inDoubleQuote = false;
+            continue;
+        }
+        if (char === "'") {
+            inSingleQuote = true;
+            continue;
+        }
+        if (char === '"' && !isEscaped(command, index)) {
+            inDoubleQuote = true;
+            continue;
+        }
+        if (char === '\\') {
+            index += 1;
+            continue;
+        }
+        if (char === '$' && (command[index + 1] === '(' || command[index + 1] === '{')) {
+            return command.slice(index, index + 2);
+        }
+        if (char === '!' && /\S/u.test(command[index + 1] ?? ''))
+            return char;
+        if (char === '\n' || char === '\r')
+            return 'newline';
+        if (char === ';' ||
+            char === '&' ||
+            char === '|' ||
+            char === '`' ||
+            char === '>' ||
+            char === '<') {
+            return char;
+        }
+    }
+    return null;
+}
+export function validateCommand(command, cwd, projectRoot) {
+    const realProjectRoot = realpathSync(projectRoot);
+    const realCwd = realpathSync(cwd);
+    if (!isPathInside(realCwd, realProjectRoot)) {
+        throw new Error(`cwd ${cwd} resolves outside trusted project root ${projectRoot}`);
+    }
+    const syntax = disallowedShellSyntax(command);
+    if (syntax) {
+        throw new Error(`disallowed shell syntax ${JSON.stringify(syntax)} in session command`);
+    }
+}
+function commandChunkId(label, command, output) {
+    return createHash('sha256')
+        .update(label)
+        .update('\0')
+        .update(command)
+        .update('\0')
+        .update(output)
+        .digest('hex')
+        .slice(0, 32);
+}
+export async function runSessionCommand({ command, label, cwd, projectRoot, timeoutMs, dbPath = defaultIndexDbPath(cwd), }) {
+    validateCommand(command, cwd, projectRoot);
+    mkdirSync(dirname(dbPath), { recursive: true });
+    const captured = [];
+    let totalOutputBytes = 0;
+    let timedOut = false;
+    const exitCode = await new Promise((resolve, reject) => {
+        const child = spawn('sh', ['-c', command], {
+            cwd,
+            env: process.env,
+            stdio: ['ignore', 'pipe', 'pipe'],
+        });
+        const timer = setTimeout(() => {
+            timedOut = true;
+            child.kill('SIGTERM');
+            setTimeout(() => {
+                if (!child.killed)
+                    child.kill('SIGKILL');
+            }, 1_000).unref();
+        }, timeoutMs);
+        child.stdout.on('data', (chunk) => {
+            totalOutputBytes = appendBounded(captured, chunk, totalOutputBytes);
+        });
+        child.stderr.on('data', (chunk) => {
+            totalOutputBytes = appendBounded(captured, chunk, totalOutputBytes);
+        });
+        child.on('error', (error) => {
+            clearTimeout(timer);
+            reject(error);
+        });
+        child.on('close', (code, signal) => {
+            clearTimeout(timer);
+            if (timedOut) {
+                resolve(124);
+                return;
+            }
+            if (code !== null) {
+                resolve(code);
+                return;
+            }
+            resolve(signal ? 128 : -1);
+        });
+    });
+    const output = Buffer.concat(captured).toString('utf8');
+    const truncated = totalOutputBytes > Buffer.byteLength(output, 'utf8');
+    const summary = `${summarizeOutput(output, timedOut)}${truncated ? '\n[output truncated before indexing]' : ''}`;
+    const indexed = output.trim().length > 0;
+    if (indexed) {
+        const store = new SessionMemoryStore(dbPath);
+        try {
+            store.indexChunk({
+                id: `command:${commandChunkId(label, command, output)}`,
+                source: label,
+                text: output,
+                metadata: {
+                    command,
+                    cwd,
+                    exitCode,
+                    outputBytes: totalOutputBytes,
+                    truncated,
+                    kind: 'session_command_output',
+                },
+            });
+        }
+        finally {
+            store.close();
+        }
+    }
+    return { label, exitCode, outputBytes: totalOutputBytes, indexed, summary };
+}
+export function searchSessionCommandOutput(dbPath, labels, query, limit = DEFAULT_SEARCH_LIMIT) {
+    const store = new SessionMemoryStore(dbPath);
+    try {
+        const hits = labels.flatMap((label) => store
+            .search({ query, limit, source: label })
+            .filter((hit) => hit.source === label)
+            .map((hit, index) => ({
+            content: hit.text,
+            source: hit.source,
+            rank: index + 1,
+            tier: hit.tier,
+        })));
+        const deduped = new Map();
+        for (const hit of hits) {
+            const key = `${hit.source}\0${hit.content}`;
+            if (!deduped.has(key))
+                deduped.set(key, hit);
+        }
+        return [...deduped.values()].slice(0, limit);
+    }
+    finally {
+        store.close();
+    }
+}
+//# sourceMappingURL=_session-command.js.map
