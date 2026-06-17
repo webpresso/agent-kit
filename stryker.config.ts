@@ -1,9 +1,4 @@
-import { resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
-
-const { baseConfig } = await import(
-  pathToFileURL(resolve(process.cwd(), 'src/config/stryker/index.ts')).href
-)
+import { baseConfig } from '@webpresso/agent-config/stryker'
 
 function parseMutationFilesFromEnv(value: string | undefined): string[] | null {
   const files =

@@ -1,12 +1,12 @@
 /**
- * Shared Vitest configuration for React Router apps (pages)
+ * Shared Vitest configuration for React packages
  *
  * Usage in vitest.config.ts:
  * ```ts
- * import { reactRouterConfig } from '@webpresso/agent-kit/vitest/react-router'
+ * import { reactConfig } from '@webpresso/agent-config/vitest/react'
  * import { defineConfig, mergeConfig } from 'vite-plus/test/config'
  *
- * export default mergeConfig(reactRouterConfig, defineConfig({
+ * export default mergeConfig(reactConfig, defineConfig({
  *   test: {
  *     setupFiles: ['./test/setup.ts'],
  *     env: {
@@ -32,9 +32,9 @@ import {
 } from './pool-defaults.js'
 import { assertNonWorkersVitest4 } from './version-guard.js'
 
-assertNonWorkersVitest4({ caller: 'reactRouterConfig' })
+assertNonWorkersVitest4({ caller: 'reactConfig' })
 
-export const reactRouterConfig = defineConfig({
+export const reactConfig = defineConfig({
   plugins: [react()],
   resolve: {
     alias: [...generatedRuntimeAliases],
@@ -43,21 +43,23 @@ export const reactRouterConfig = defineConfig({
   },
   test: {
     globals: true,
-    // happy-dom is ~40% faster than jsdom
+    restoreAllMocks: true,
     environment: 'happy-dom',
+    setupFiles: [],
+    onConsoleLog: () => false, // Suppress all console output
     pool: resolvedPool,
     maxWorkers: resolvedMaxWorkers,
     minWorkers: resolvedMinWorkers,
+    // Cap each fork worker's V8 heap to 2GB (Node 24 default is 4.2GB).
     execArgv: resolvedExecArgv,
-    // React Router apps use app/ directory
-    include: ['app/**/*.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'src/**/__tests__/**/*.{ts,tsx}'],
     exclude: ['**/.stryker-tmp/**', 'node_modules/**'],
     reporters: ['default', createFlakinessReporter()],
     retry: process.env.CI ? 2 : 0,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
-      include: ['app/**/*.{ts,tsx}'],
+      include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'node_modules/',
         'test/',
@@ -66,29 +68,29 @@ export const reactRouterConfig = defineConfig({
         '**/mockData',
         'build/',
         'dist/',
-        '.react-router/',
         '**/*.test.{ts,tsx}',
         '**/*.spec.{ts,tsx}',
-        '**/index.{ts,tsx}',
+        '**/index.{ts,tsx}', // Common exclusion for barrel exports
         '**/types.ts',
         '**/types.tsx',
         '**/types/**',
-        // React Router specific
-        'app/routes.ts',
-        'app/entry.*.tsx',
-        'app/root.tsx',
       ],
+      // Industry-standard 80% coverage thresholds (Atlassian recommendation)
+      // 80% catches critical gaps without excessive build failures
+      // Branches at 75% as they're harder to cover comprehensively
       thresholds: {
-        lines: 95,
-        branches: 90,
-        functions: 95,
-        statements: 95,
+        lines: 80,
+        branches: 75,
+        functions: 80,
+        statements: 80,
       },
     },
   },
+  // Pre-optimize React dependencies to prevent first-run failures
+  // See: https://github.com/storybookjs/storybook/issues/32049
   optimizeDeps: {
     include: ['react', 'react-dom', 'react/jsx-runtime', 'react/jsx-dev-runtime'],
   },
 } as unknown as ViteUserConfigExport)
 
-export default reactRouterConfig
+export default reactConfig

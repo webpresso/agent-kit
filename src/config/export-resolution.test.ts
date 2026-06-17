@@ -7,11 +7,7 @@ import { describe, expect, it } from 'vitest'
 const repositoryRoot = process.cwd()
 
 const requiredSubpaths = [
-  '@webpresso/agent-kit/tsconfig/base.json',
-  '@webpresso/agent-kit/vitest/node',
-  '@webpresso/agent-kit/stryker',
   '@webpresso/agent-kit/oxlint',
-  '@webpresso/agent-kit/workers-test',
   '@webpresso/agent-kit/docs-lint',
   '@webpresso/agent-kit/launch',
   '@webpresso/agent-kit/test-preset',
@@ -20,19 +16,6 @@ const requiredSubpaths = [
 ] as const
 
 const exportSourceTargets: Record<string, string> = {
-  './tsconfig/base.json': './src/config/tsconfig/base.json',
-  './tsconfig/cloudflare.json': './src/config/tsconfig/cloudflare.json',
-  './tsconfig/library.json': './src/config/tsconfig/library.json',
-  './tsconfig/react-library.json': './src/config/tsconfig/react-library.json',
-  './tsconfig/react-router.json': './src/config/tsconfig/react-router.json',
-  './vitest/node': './src/config/vitest/node.ts',
-  './vitest/react': './src/config/vitest/react.ts',
-  './vitest/react-router': './src/config/vitest/react-router.ts',
-  './vitest/workers': './src/config/vitest/workers.ts',
-  './vitest/react-setup': './src/config/vitest/react-setup.ts',
-  './vitest/react-setup.ts': './src/config/vitest/react-setup.ts',
-  './vitest/flakiness-reporter': './src/config/vitest/flakiness-reporter.ts',
-  './stryker': './src/config/stryker/index.ts',
   './oxlint': './src/config/oxlint/index.ts',
   './oxlint/import-hygiene': './src/config/oxlint/import-hygiene.ts',
   './oxlint/monorepo-paths': './src/config/oxlint/monorepo-paths.ts',
@@ -42,7 +25,6 @@ const exportSourceTargets: Record<string, string> = {
   './oxlint/graphql-conventions': './src/config/oxlint/graphql-conventions.ts',
   './oxlint/testing-quality': './src/config/oxlint/testing-quality.ts',
   './oxlint/code-safety': './src/config/oxlint/code-safety.ts',
-  './workers-test': './src/config/workers-test/index.ts',
   './docs-lint': './src/config/docs-lint/index.ts',
   './docs-lint/schemas': './src/config/docs-lint/schemas/index.ts',
   './docs-lint/generator': './src/config/docs-lint/generator/index.ts',
@@ -106,7 +88,7 @@ describe('@webpresso/agent-kit package exports', () => {
     expect(packageJson.files).toContain('bin/*.js')
   })
 
-  it('exposes default targets for tsconfig json exports so tsconfig extends can resolve them', async () => {
+  it('no longer exposes tsconfig subpaths — moved to @webpresso/agent-config', async () => {
     const packageJson = await readCanonicalPackageJson()
     for (const subpath of [
       './tsconfig/base.json',
@@ -115,9 +97,7 @@ describe('@webpresso/agent-kit package exports', () => {
       './tsconfig/react-library.json',
       './tsconfig/react-router.json',
     ] as const) {
-      expect(exportedDefaultTarget(packageJson.exports?.[subpath])).toMatch(
-        /^\.\/dist\/esm\/config\/tsconfig\/.+\.json$/u,
-      )
+      expect(packageJson.exports).not.toHaveProperty(subpath)
     }
   })
 

@@ -3,7 +3,7 @@
  *
  * Usage in vitest.config.ts:
  * ```ts
- * import { nodeConfig } from '@webpresso/agent-kit/vitest/node'
+ * import { nodeConfig } from '@webpresso/agent-config/vitest/node'
  * import { defineConfig, mergeConfig } from 'vite-plus/test/config'
  *
  * export default mergeConfig(nodeConfig, defineConfig({
@@ -36,7 +36,7 @@ const bunSqliteAlias = [
   },
 ] as const
 
-// Force @webpresso/agent-kit through Vite's transform so the bun:sqlite alias applies even when imported from node_modules.
+// Force @webpresso/* packages through Vite's transform so the bun:sqlite alias applies even when imported from node_modules.
 const webpressoInline = {
   deps: { inline: [/webpresso/] },
 } as const
@@ -56,7 +56,7 @@ export interface CreateNodeProjectsOptions {
  *
  * Usage in vitest.config.ts:
  * ```ts
- * import { nodeConfig, createNodeProjects } from '@webpresso/agent-kit/vitest/node'
+ * import { nodeConfig, createNodeProjects } from '@webpresso/agent-config/vitest/node'
  * import { mergeConfig } from 'vite-plus/test/config'
  *
  * export default mergeConfig(nodeConfig, {
