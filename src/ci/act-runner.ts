@@ -24,7 +24,32 @@ export interface PublicCiActCommand {
 }
 
 const DEFAULT_WORKFLOW = 'ci-e2e'
-const DEFAULT_PLATFORM_IMAGE = 'ghcr.io/catthehacker/ubuntu:full-latest'
+export const DEFAULT_PLATFORM_IMAGE = 'ghcr.io/catthehacker/ubuntu:full-latest'
+const DEFAULT_PLATFORM_IMAGE_SUPPORTED_ARCHITECTURES = new Set(['linux/amd64', 'linux/arm64'])
+
+export function resolveDefaultContainerArchitecture(
+  platform = process.platform,
+  arch = process.arch,
+): string {
+  return platform === 'darwin' && arch === 'arm64' ? 'linux/arm64' : 'linux/amd64'
+}
+
+export function assertSupportedDefaultPlatformImageArchitecture(
+  platformImage: string,
+  containerArchitecture: string,
+): void {
+  if (platformImage !== DEFAULT_PLATFORM_IMAGE) {
+    return
+  }
+
+  if (DEFAULT_PLATFORM_IMAGE_SUPPORTED_ARCHITECTURES.has(containerArchitecture)) {
+    return
+  }
+
+  throw new Error(
+    `Unsupported container architecture "${containerArchitecture}" for default act image ${DEFAULT_PLATFORM_IMAGE}. Supported architectures: linux/amd64, linux/arm64.`,
+  )
+}
 
 export function resolveCiActWorkflowPath(options: PublicCiActOptions = {}): string {
   if (options.workflowPath && options.workflowPath.trim().length > 0) return options.workflowPath
@@ -36,18 +61,24 @@ export function resolveCiActWorkflowPath(options: PublicCiActOptions = {}): stri
 
 export function buildPublicCiActArgs(options: PublicCiActOptions = {}): string[] {
   const cwd = options.cwd ?? process.cwd()
+  const platformImage = options.platformImage ?? DEFAULT_PLATFORM_IMAGE
+  const containerArchitecture =
+    options.containerArchitecture ?? resolveDefaultContainerArchitecture()
+
+  assertSupportedDefaultPlatformImageArchitecture(platformImage, containerArchitecture)
+
   const args = [
     options.eventName ?? 'pull_request',
     '-W',
     resolve(cwd, resolveCiActWorkflowPath(options)),
     '-P',
-    `ubicloud-standard-2=${options.platformImage ?? DEFAULT_PLATFORM_IMAGE}`,
+    `ubicloud-standard-2=${platformImage}`,
     '--rm',
   ]
 
   pushOption(args, '-j', options.job)
   pushOption(args, '-e', options.eventPath ? resolve(cwd, options.eventPath) : undefined)
-  pushOption(args, '--container-architecture', options.containerArchitecture ?? 'linux/amd64')
+  pushOption(args, '--container-architecture', containerArchitecture)
   return args
 }
 

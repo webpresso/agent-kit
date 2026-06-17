@@ -60,11 +60,33 @@ describe('ci act helper', () => {
     expect(renderSecretsFile({ BETA: 'two', ALPHA: 'one' })).toBe('ALPHA="one"\nBETA="two"')
   })
 
-  it('injects linux/amd64 default for Apple Silicon', () => {
+  it('injects linux/arm64 default for Apple Silicon', () => {
     expect(injectDefaultActArgs(['-l'], 'darwin', 'arm64')).toEqual([
+      '--container-architecture',
+      'linux/arm64',
+      '-l',
+    ])
+  })
+
+  it('injects linux/amd64 default for Intel macOS', () => {
+    expect(injectDefaultActArgs(['-l'], 'darwin', 'x64')).toEqual([
       '--container-architecture',
       'linux/amd64',
       '-l',
     ])
+  })
+
+  it('injects linux/amd64 default for Linux arm64', () => {
+    expect(injectDefaultActArgs(['-l'], 'linux', 'arm64')).toEqual([
+      '--container-architecture',
+      'linux/amd64',
+      '-l',
+    ])
+  })
+
+  it('does not override an explicit container architecture', () => {
+    expect(
+      injectDefaultActArgs(['--container-architecture', 'linux/amd64', '-l'], 'darwin', 'arm64'),
+    ).toEqual(['--container-architecture', 'linux/amd64', '-l'])
   })
 })

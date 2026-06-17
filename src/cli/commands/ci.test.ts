@@ -11,6 +11,9 @@ import {
 } from './ci'
 
 describe('wp ci command', () => {
+  const defaultArchitecture =
+    process.platform === 'darwin' && process.arch === 'arm64' ? 'linux/arm64' : 'linux/amd64'
+
   it('exports a dedicated ci act timeout budget above the generic runner default', () => {
     expect(DEFAULT_CI_ACT_TIMEOUT_MS).toBe(20 * 60_000)
     expect(MAX_CI_ACT_TIMEOUT_MS).toBe(60 * 60_000)
@@ -32,7 +35,7 @@ describe('wp ci command', () => {
       'ubicloud-standard-2=ghcr.io/catthehacker/ubuntu:full-latest',
       '--rm',
       '--container-architecture',
-      'linux/amd64',
+      defaultArchitecture,
     ])
   })
 
@@ -89,7 +92,7 @@ describe('wp ci command', () => {
       'ubicloud-standard-2=ghcr.io/catthehacker/ubuntu:full-latest',
       '--rm',
       '--container-architecture',
-      'linux/amd64',
+      defaultArchitecture,
     ])
   })
 
@@ -154,7 +157,7 @@ describe('wp ci command', () => {
         'ubicloud-standard-2=ghcr.io/catthehacker/ubuntu:full-latest',
         '--rm',
         '--container-architecture',
-        'linux/amd64',
+        defaultArchitecture,
       ],
     })
   })

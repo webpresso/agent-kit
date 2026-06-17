@@ -72,6 +72,9 @@ async function writeCache(cachePath: string, data: UpdateCache): Promise<void> {
 
 export async function fetchLatestRelease(): Promise<string | null> {
   const res = await fetch(PUBLIC_NPM_URL, {
+    // Bound the registry probe — an unbounded fetch blocks every wp invocation
+    // for the full TCP connect timeout (~2 min) when the registry is slow.
+    signal: AbortSignal.timeout(5000),
     headers: {
       Accept: 'application/json',
     },

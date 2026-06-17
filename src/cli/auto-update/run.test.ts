@@ -116,6 +116,12 @@ describe('fetchLatestRelease', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }))
     expect(await fetchLatestRelease()).toStrictEqual(null)
   })
+
+  it('propagates AbortError when the 5s deadline fires', async () => {
+    const abortError = new DOMException('signal timed out', 'TimeoutError')
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(abortError))
+    await expect(fetchLatestRelease()).rejects.toThrow('signal timed out')
+  })
 })
 
 // ─── runUpdateFlow — no update available ─────────────────────────────────────
@@ -258,6 +264,17 @@ describe('runUpdateFlow — fetch throws', () => {
 
     expect(logUpdateErrorMock).toHaveBeenCalledOnce()
     expect(logUpdateErrorMock).toHaveBeenCalledWith(fetchError)
+    expect(scheduleDeferredInstallMock).not.toHaveBeenCalled()
+  })
+
+  it('swallows AbortError (5s deadline) and resolves without installing', async () => {
+    const abortError = new DOMException('signal timed out', 'TimeoutError')
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(abortError))
+
+    await expect(runUpdateFlow('1.0.0')).resolves.toBeUndefined()
+
+    expect(logUpdateErrorMock).toHaveBeenCalledOnce()
+    expect(logUpdateErrorMock).toHaveBeenCalledWith(abortError)
     expect(scheduleDeferredInstallMock).not.toHaveBeenCalled()
   })
 })
