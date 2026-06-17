@@ -4,11 +4,17 @@ import { describe, expect, it } from 'vitest'
 
 const ROOT = join(import.meta.dirname, '..')
 
-function readPkg(): { exports?: Record<string, unknown>; name?: string; bin?: unknown } {
+function readPkg(): {
+  exports?: Record<string, unknown>
+  name?: string
+  bin?: unknown
+  tshy?: { exports?: Record<string, unknown> }
+} {
   return JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as {
     exports?: Record<string, unknown>
     name?: string
     bin?: unknown
+    tshy?: { exports?: Record<string, unknown> }
   }
 }
 
@@ -32,7 +38,7 @@ describe('@webpresso/agent-config export isolation', () => {
 
   it('exports all four config groups', () => {
     const pkg = readPkg()
-    const exports = pkg.exports ?? {}
+    const exports = pkg.tshy?.exports ?? pkg.exports ?? {}
 
     // tsconfig group
     expect(exports).toHaveProperty('./tsconfig/base.json')

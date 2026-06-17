@@ -1,5 +1,11 @@
 # @webpresso/agent-config
 
+## 0.1.4
+
+### Patch Changes
+
+- Synchronize the local package manifest with the already-published npm baseline so the next Changesets patch release advances from `0.1.4` instead of attempting a stale `0.1.1` publish.
+
 ## 0.1.0
 
 ### Minor Changes
