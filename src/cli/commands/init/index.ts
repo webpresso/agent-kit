@@ -160,6 +160,8 @@ export interface InitFlags {
   strict?: boolean
   project?: boolean
   sourceMaintenance?: boolean
+  'repair-global'?: boolean
+  repairGlobal?: boolean
 }
 
 export const EXIT_SUCCESS = 0
@@ -880,13 +882,11 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         break
     }
 
-    // Self-update the globally-distributed agent-kit install that backs PATH
-    // `wp`, mirroring omx/omc/codex/claude. Non-fatal: a failed refresh never
-    // fails consumer setup, and it skips cleanly in explicit source mode, on
-    // `WP_SKIP_AUTO_INSTALL=1`, and in CI.
-    if (isCiEnvironment) {
-      console.log('  agent-kit global: - skipped (CI environment)')
-    } else {
+    // `wp setup` is reconcile/repair for repo surfaces by default. Global package
+    // updates are explicit (`wp setup --repair-global` or `wp update`) so setup
+    // is safe to run from postinstall and consumer bootstrap flows.
+    const repairGlobal = flags.repairGlobal ?? flags['repair-global'] ?? false
+    if (repairGlobal) {
       const agentKitGlobalResult = ensureAgentKitGlobal({ options })
       switch (agentKitGlobalResult.kind) {
         case 'agent-kit-global-updated':
@@ -907,7 +907,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         case 'agent-kit-global-failed':
           console.warn(
             `  agent-kit global: ⚠ \`${agentKitGlobalResult.command.join(' ')}\` exited with ${agentKitGlobalResult.exitCode}; ` +
-              'the existing global binary is unchanged. Re-run `wp setup` once the registry is reachable.',
+              'the existing global binary is unchanged. Re-run `wp setup --repair-global` once the registry is reachable.',
           )
           break
         case 'agent-kit-global-repair-failed':
@@ -1363,6 +1363,7 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
       'Force full-file replacement for eligible managed files (default: reconcile owned content and preserve divergent consumer files)',
     )
     .option('--dry-run', 'Show what would change without writing anything')
+    .option('--repair-global', 'Explicitly refresh/repair the global @webpresso/agent-kit install')
     .option(
       '--prune',
       'Remove outdated agent-kit plugin cache versions for supported hosts before visibility checks',

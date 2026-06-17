@@ -11,7 +11,6 @@
  */
 import { spawnSync } from 'node:child_process'
 import {
-  chmodSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -56,22 +55,6 @@ interface RunResult {
   stderr: string
 }
 
-function installFakeAgentKitBins(repoRoot: string): void {
-  const binDir = path.join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'bin')
-  mkdirSync(binDir, { recursive: true })
-  for (const name of [
-    'wp-sessionstart-routing',
-    'wp-pretool-guard',
-    'wp-post-tool',
-    'wp-guard-switch',
-    'wp-stop-qa',
-  ]) {
-    const binPath = path.join(binDir, `${name}.js`)
-    writeFileSync(binPath, '#!/usr/bin/env node\nprocess.exit(0)\n', 'utf8')
-    chmodSync(binPath, 0o755)
-  }
-}
-
 function runAk(args: string[], extraEnv: Record<string, string> = {}): RunResult {
   // Prefer running source via `bun` (matches every other repo-owned script);
   // fall back to the built dist CLI under `node` if the source isn't there.
@@ -93,6 +76,10 @@ function runAk(args: string[], extraEnv: Record<string, string> = {}): RunResult
       // packaged in this fixture PATH — skip unless a test explicitly opts in.
       WP_SKIP_RTK: '1',
       WP_SKIP_OMC: '1',
+      // The e2e runner invokes source through Bun while hook launchers must
+      // hard-target Node. Keep the generated launcher contract independent of
+      // the fixture PATH that intentionally hides node.
+      WP_HOOK_NODE_PATH: process.execPath,
       ...extraEnv,
     },
   })
@@ -413,7 +400,6 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(sessionCommands.every((cmd) => !cmd.includes('node_modules/.bin'))).toBe(true)
       expect(stopCommands.every((cmd) => !cmd.includes('node_modules/.bin'))).toBe(true)
 
-      installFakeAgentKitBins(repo)
       const siblingCwd = mkdtempSync(path.join(repo, 'codex-runtime-'))
       const allCommands = ['SessionStart', 'PreToolUse', 'PostToolUse', 'UserPromptSubmit', 'Stop']
         .flatMap((event) =>
@@ -427,7 +413,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
           encoding: 'utf8',
           env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
         })
-        expect(result.status, command).toBe(0)
+        expect(result.status, `${command}\n${result.stderr}`).toBe(0)
       }
     })
 

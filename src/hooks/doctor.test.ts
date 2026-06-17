@@ -1196,7 +1196,14 @@ describe('hooks/doctor', () => {
         if (String(path) === join(repoRoot, 'bin', 'runtime-manifest.json')) {
           return JSON.stringify({
             binaryName: 'wp',
-            targets: [{ id: hostTargetId, os: 'linux', cpu: process.arch }],
+            targets: [
+              {
+                id: hostTargetId,
+                os: 'linux',
+                cpu: process.arch,
+                packageName: `@webpresso/agent-kit-runtime-${hostTargetId}`,
+              },
+            ],
           })
         }
         throw new Error(`unexpected read: ${String(path)}`)
@@ -1236,7 +1243,14 @@ describe('hooks/doctor', () => {
         if (String(path) === runtimeManifestPath) {
           return JSON.stringify({
             binaryName: 'wp',
-            targets: [{ id: hostTargetId, os: 'linux', cpu: process.arch }],
+            targets: [
+              {
+                id: hostTargetId,
+                os: 'linux',
+                cpu: process.arch,
+                packageName: `@webpresso/agent-kit-runtime-${hostTargetId}`,
+              },
+            ],
           })
         }
         throw new Error(`unexpected read: ${String(path)}`)
@@ -1275,7 +1289,14 @@ describe('hooks/doctor', () => {
         if (String(path) === runtimeManifestPath) {
           return JSON.stringify({
             binaryName: 'wp',
-            targets: [{ id: hostTargetId, os: 'linux', cpu: process.arch }],
+            targets: [
+              {
+                id: hostTargetId,
+                os: 'linux',
+                cpu: process.arch,
+                packageName: `@webpresso/agent-kit-runtime-${hostTargetId}`,
+              },
+            ],
           })
         }
         if (String(path) === stagedBinPath) {
@@ -1289,8 +1310,57 @@ describe('hooks/doctor', () => {
 
       expect(result.ok).toBe(false)
       expect(result.detail).toContain('launchMode=native')
-      expect(result.detail).toContain(`targetBin=${runtimeTargetPath}`)
-      expect(result.detail).toContain('reason=target runtime binary missing')
+      expect(result.detail).toContain(`candidates=`)
+      expect(result.detail).toContain(runtimeTargetPath)
+      expect(result.detail).toContain('reason=native runtime payload missing')
+    })
+
+    it('derives runtime package candidates for old manifests that omit packageName', async () => {
+      const hostTargetId = `linux-${process.arch}`
+      const runtimeManifestPath = join(repoRoot, 'bin', 'runtime-manifest.json')
+      const stagedBinPath = join(repoRoot, 'bin', 'wp')
+      const runtimeTargetPath = join(repoRoot, 'bin', 'runtime', hostTargetId, 'wp')
+      const nestedRuntimePath = join(
+        repoRoot,
+        'node_modules',
+        '@webpresso',
+        `agent-kit-runtime-${hostTargetId}`,
+        'bin',
+        'wp',
+      )
+      const knownPaths = new Set([pkgJson, pluginJson, runtimeManifestPath, stagedBinPath])
+
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === pkgJson) return JSON.stringify({ bin: { wp: './bin/wp' } })
+        if (String(path) === pluginJson) {
+          return JSON.stringify({
+            version: '0.28.0',
+            mcpServers: { webpresso: { command: '${CLAUDE_PLUGIN_ROOT}/bin/wp', args: ['mcp'] } },
+          })
+        }
+        if (String(path) === runtimeManifestPath) {
+          return JSON.stringify({
+            binaryName: 'wp',
+            targets: [{ id: hostTargetId, os: 'linux', cpu: process.arch }],
+          })
+        }
+        if (String(path) === stagedBinPath) {
+          return "#!/usr/bin/env node\n\nimport { runNamedBin } from './_run.js'\n\nrunNamedBin('wp')\n"
+        }
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+
+      const { checkNativePluginRuntime } = await import('#hooks/doctor')
+      const result = checkNativePluginRuntime()
+
+      expect(result.ok).toBe(false)
+      expect(result.detail).toContain(runtimeTargetPath)
+      expect(result.detail).toContain(nestedRuntimePath)
+      expect(result.detail).toContain('reason=native runtime payload missing')
     })
 
     it('skips unstaged source checkouts instead of warning about a missing target runtime binary', async () => {
@@ -1327,7 +1397,14 @@ describe('hooks/doctor', () => {
         if (String(path) === runtimeManifestPath) {
           return JSON.stringify({
             binaryName: 'wp',
-            targets: [{ id: hostTargetId, os: 'linux', cpu: process.arch }],
+            targets: [
+              {
+                id: hostTargetId,
+                os: 'linux',
+                cpu: process.arch,
+                packageName: `@webpresso/agent-kit-runtime-${hostTargetId}`,
+              },
+            ],
           })
         }
         if (String(path) === stagedBinPath) {
@@ -1370,7 +1447,14 @@ describe('hooks/doctor', () => {
         if (String(path) === runtimeManifestPath) {
           return JSON.stringify({
             binaryName: 'wp',
-            targets: [{ id: hostTargetId, os: 'linux', cpu: process.arch }],
+            targets: [
+              {
+                id: hostTargetId,
+                os: 'linux',
+                cpu: process.arch,
+                packageName: `@webpresso/agent-kit-runtime-${hostTargetId}`,
+              },
+            ],
           })
         }
         if (String(path) === stagedBinPath) {
@@ -1383,7 +1467,7 @@ describe('hooks/doctor', () => {
       const result = checkNativePluginRuntime()
 
       expect(result.ok).toBe(false)
-      expect(result.detail).toContain('reason=target runtime binary missing')
+      expect(result.detail).toContain('reason=native runtime payload missing')
     })
 
     it('does not let the root JS selector mask a stale node-launcher plugin manifest', async () => {
@@ -1412,7 +1496,14 @@ describe('hooks/doctor', () => {
         if (String(path) === runtimeManifestPath) {
           return JSON.stringify({
             binaryName: 'wp',
-            targets: [{ id: hostTargetId, os: 'linux', cpu: process.arch }],
+            targets: [
+              {
+                id: hostTargetId,
+                os: 'linux',
+                cpu: process.arch,
+                packageName: `@webpresso/agent-kit-runtime-${hostTargetId}`,
+              },
+            ],
           })
         }
         if (String(path) === stagedBinPath) {
@@ -1426,8 +1517,9 @@ describe('hooks/doctor', () => {
 
       expect(result.ok).toBe(false)
       expect(result.detail).toContain('launchMode=stale-node-launcher')
-      expect(result.detail).toContain(`targetBin=${runtimeTargetPath}`)
-      expect(result.detail).toContain('reason=target runtime binary missing')
+      expect(result.detail).toContain(`candidates=`)
+      expect(result.detail).toContain(runtimeTargetPath)
+      expect(result.detail).toContain('reason=native runtime payload missing')
     })
   })
 

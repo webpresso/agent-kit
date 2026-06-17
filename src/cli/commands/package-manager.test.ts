@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
 
@@ -9,6 +9,10 @@ import {
 } from './package-manager.js'
 
 installManagedRunnerHermeticHooks()
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 describe('wp package-manager commands', () => {
   function spawnResult(status: number | null, error?: Error) {
@@ -52,7 +56,7 @@ describe('wp package-manager commands', () => {
     })
   })
 
-  it('runs tooling refresh by default inside a package root', () => {
+  it('updates only global agent-kit by default inside a package root', () => {
     const run = vi.fn(() => spawnResult(0))
 
     expect(
@@ -67,8 +71,8 @@ describe('wp package-manager commands', () => {
       }),
     ).toBe(0)
 
-    expect(run).toHaveBeenNthCalledWith(1, 'vp', ['update', '-g', '--latest', '@openai/codex'])
-    expect(run).toHaveBeenNthCalledWith(7, 'vp', ['install', '-g', '@webpresso/agent-kit'])
+    expect(run).toHaveBeenCalledTimes(1)
+    expect(run).toHaveBeenCalledWith('vp', ['install', '-g', '@webpresso/agent-kit'])
   })
 
   it('runs local verbs from the nearest package root when invoked in a nested directory', () => {
@@ -140,19 +144,21 @@ describe('wp package-manager commands', () => {
     })
   })
 
-  it('rejects --deps with --global', () => {
+  it('rejects removed --global even with --deps', () => {
     const run = vi.fn(() => spawnResult(0))
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     expect(
       runPackageManagerCommand('update', {
         argv: ['node', 'wp', 'update', '--deps', '--global'],
+        cwd: '/repo/packages/agent-kit',
+        exists: (target) => String(target) === '/repo/packages/agent-kit/package.json',
         run,
       }),
     ).toBe(1)
 
     expect(run).not.toHaveBeenCalled()
-    expect(error.mock.calls.join('\n')).toContain('--deps cannot be combined with --global')
+    expect(error.mock.calls.join('\n')).toContain('unrecognized option(s): --global')
   })
 
   it('rejects --deps outside any package root instead of refreshing tooling', () => {
@@ -172,6 +178,21 @@ describe('wp package-manager commands', () => {
     expect(error.mock.calls.join('\n')).toContain('no package root found')
   })
 
+  it('rejects removed --global tooling mode without running anything', () => {
+    const run = vi.fn(() => spawnResult(0))
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    expect(
+      runPackageManagerCommand('update', {
+        argv: ['node', 'wp', 'update', '--global'],
+        run,
+      }),
+    ).toBe(1)
+
+    expect(run).not.toHaveBeenCalled()
+    expect(error.mock.calls.join('\n')).toContain('unrecognized option(s): --global')
+  })
+
   it('rejects typoed update control flags instead of silently refreshing tooling', () => {
     const run = vi.fn(() => spawnResult(0))
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -184,16 +205,16 @@ describe('wp package-manager commands', () => {
     ).toBe(1)
 
     expect(run).not.toHaveBeenCalled()
-    expect(error.mock.calls.join('\n')).toContain('unrecognized tooling option')
+    expect(error.mock.calls.join('\n')).toContain('unrecognized option(s): --dep')
     expect(error.mock.calls.join('\n')).toContain('wp update --deps --dep')
   })
 
-  it('runs the global update refresh pipeline in order', () => {
+  it('runs the toolchain refresh pipeline in order with --tools', () => {
     const run = vi.fn(() => spawnResult(0))
 
     expect(
       runPackageManagerCommand('update', {
-        argv: ['node', 'wp', 'update', '--global'],
+        argv: ['node', 'wp', 'update', '--tools'],
         exists: () => true,
         gstackRoot: '/fake-home/.claude/skills/gstack',
         run,
@@ -231,7 +252,7 @@ describe('wp package-manager commands', () => {
 
     expect(
       runPackageManagerCommand('update', {
-        argv: ['node', 'wp', 'update', '--global'],
+        argv: ['node', 'wp', 'update', '--tools'],
         exists: () => true,
         gstackRoot: '/fake-home/.claude/skills/gstack',
         run,
@@ -248,7 +269,7 @@ describe('wp package-manager commands', () => {
 
     expect(
       runPackageManagerCommand('update', {
-        argv: ['node', 'wp', 'update', '--global'],
+        argv: ['node', 'wp', 'update', '--tools'],
         exists: (target) => String(target) !== '/fake-home/.claude/skills/gstack/.git',
         gstackRoot: '/fake-home/.claude/skills/gstack',
         mkdir,
@@ -275,7 +296,7 @@ describe('wp package-manager commands', () => {
 
     expect(
       runPackageManagerCommand('update', {
-        argv: ['node', 'wp', 'update', '-g'],
+        argv: ['node', 'wp', 'update', '--tools'],
         exists: () => true,
         gstackRoot: '/fake-home/.claude/skills/gstack',
         run,
@@ -286,7 +307,7 @@ describe('wp package-manager commands', () => {
     expect(error.mock.calls.join('\n')).toContain('omc')
     expect(error.mock.calls.join('\n')).toContain('exit 3')
     expect(error.mock.calls.join('\n')).toContain('wp update: omc failed')
-    expect(error.mock.calls.join('\n')).not.toContain('wp update --global')
+    expect(error.mock.calls.join('\n')).not.toContain('wp update --tools')
   })
 
   it('reports missing global tools without throwing', () => {
@@ -298,7 +319,7 @@ describe('wp package-manager commands', () => {
 
     expect(
       runPackageManagerCommand('update', {
-        argv: ['node', 'wp', 'update', '--global'],
+        argv: ['node', 'wp', 'update', '--tools'],
         exists: () => true,
         gstackRoot: '/fake-home/.claude/skills/gstack',
         run,

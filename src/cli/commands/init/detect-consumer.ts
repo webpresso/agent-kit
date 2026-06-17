@@ -257,9 +257,8 @@ export function discoverWorkspacePackages(
 
 /**
  * Soft warning for the published-consumer install contract. Consumers run the
- * global Vite+ `wp` binary and pin `@webpresso/agent-kit` to a published semver
- * range in package.json. Source/JIT mode is reserved for this repo via
- * `WP_FORCE_SOURCE=1`.
+ * global Vite+ `wp` binary and depend on `@webpresso/agent-config` for local
+ * presets. Source/JIT mode is reserved for this repo via `WP_FORCE_SOURCE=1`.
  */
 export function warnIfNonLocalCli(repoRoot: string, cliUrl: string = import.meta.url): void {
   const ourPkg = readPackageJson(repoRoot).info
@@ -272,9 +271,13 @@ export function warnIfNonLocalCli(repoRoot: string, cliUrl: string = import.meta
     return
   }
 
-  const pinnedVersion =
+  const localAgentKitVersion =
     ourPkg?.dependencies['@webpresso/agent-kit'] ??
     ourPkg?.devDependencies['@webpresso/agent-kit'] ??
+    null
+  const configVersion =
+    ourPkg?.dependencies['@webpresso/agent-config'] ??
+    ourPkg?.devDependencies['@webpresso/agent-config'] ??
     null
 
   if (isLocalAgentKitCli(repoRoot, cliPath)) {
@@ -285,15 +288,22 @@ export function warnIfNonLocalCli(repoRoot: string, cliUrl: string = import.meta
     return
   }
 
-  if (typeof pinnedVersion !== 'string' || !isPublishedAgentKitRange(pinnedVersion)) {
+  if (typeof localAgentKitVersion === 'string') {
     console.error(
-      'warning: missing or invalid @webpresso/agent-kit dependency pin. ' +
+      'warning: unsupported consumer-local @webpresso/agent-kit dependency. ' +
+        'Use the global `wp` install and keep only @webpresso/agent-config as the local preset dependency.',
+    )
+  }
+
+  if (typeof configVersion !== 'string' || !isPublishedSemverRange(configVersion)) {
+    console.error(
+      'warning: missing or invalid @webpresso/agent-config dependency pin. ' +
         'Consumers must pin a published semver range in package.json, run `vp install`, then use global `wp setup`.',
     )
   }
 }
 
-function isPublishedAgentKitRange(value: string): boolean {
+function isPublishedSemverRange(value: string): boolean {
   const trimmed = value.trim()
   if (trimmed.length === 0) return false
   if (trimmed === 'latest') return false

@@ -21,6 +21,7 @@ import {
   classifyWebpressoHookBin,
   hoistTopLevelEvents,
   hookSubcommandFor,
+  resolveNodeRuntimeForHookLaunchers,
   resolvePackageRootForHookLaunchers,
   scaffoldAgentHooks,
   trustCodexWebpressoHooksForRepo,
@@ -35,15 +36,28 @@ function guardedHookCommand(binPath: string, fallback: string): string {
   return `if [ -x ${binPath} ]; then ${binPath}; else ${fallback}; fi`
 }
 
+function pretoolDeny(reason: string): string {
+  return `printf '%s\\n' '${JSON.stringify({
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      permissionDecision: 'deny',
+      permissionDecisionReason: reason,
+    },
+  })}'`
+}
+
 function codexBinCommand(repoRoot: string, name: string): string {
-  const binPath = quoteShell(join(repoRoot, '.codex', 'managed-hooks', `${name}.sh`))
+  const rawBinPath = join(repoRoot, '.codex', 'managed-hooks', `${name}.sh`)
+  const binPath = quoteShell(rawBinPath)
   if (name === 'wp-stop-qa' || name === 'wp-precompact-snapshot') {
     return guardedHookCommand(binPath, `printf '%s\\n' '{}'`)
   }
   if (name === 'wp-pretool-guard') {
     return guardedHookCommand(
       binPath,
-      `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with vp install -g @webpresso/agent-kit and re-run wp setup."}}'`,
+      pretoolDeny(
+        `managed hook launcher missing or not executable at ${rawBinPath}; run wp setup --restore-hooks or wp setup`,
+      ),
     )
   }
   return guardedHookCommand(binPath, 'true')
@@ -57,7 +71,9 @@ function claudeBinCommand(name: string): string {
   if (name === 'wp-pretool-guard') {
     return guardedHookCommand(
       `"${binPath}"`,
-      `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with vp install -g @webpresso/agent-kit and re-run wp setup."}}'`,
+      pretoolDeny(
+        `managed hook launcher missing or not executable at ${binPath}; run wp setup --restore-hooks or wp setup`,
+      ),
     )
   }
   return guardedHookCommand(`"${binPath}"`, 'true')
@@ -135,6 +151,7 @@ describe('scaffoldAgentHooks', () => {
     previousHome = process.env.HOME
     process.env.HOME = join(repoRoot, '.home')
     process.env.CODEX_HOME = join(repoRoot, '.codex-home')
+    spawnSync('git', ['init'], { cwd: repoRoot, stdio: 'ignore' })
   })
 
   afterEach(async () => {
@@ -307,10 +324,10 @@ describe('scaffoldAgentHooks', () => {
         join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh'),
         'utf8',
       ),
-    ).toContain('bin/wp-sessionstart-routing.js')
+    ).toContain(' hook sessionstart-routing')
     expect(
       readFileSync(join(repoRoot, '.codex', 'managed-hooks', 'wp-sessionstart-routing.sh'), 'utf8'),
-    ).toContain('bin/wp-sessionstart-routing.js')
+    ).toContain(' hook sessionstart-routing')
   })
 
   it('repairs managed hook launcher execute bits on repeated setup', async () => {
@@ -324,7 +341,7 @@ describe('scaffoldAgentHooks', () => {
     expect(() => accessSync(launcherPath, constants.X_OK)).not.toThrow()
   })
 
-  it('uses direct managed hook binaries instead of shelling through global wp', async () => {
+  it('uses the single global wp launcher instead of consumer node_modules hook bins', async () => {
     mkdirSync(join(repoRoot, 'node_modules', '.bin'), { recursive: true })
     const shimPath = join(repoRoot, 'node_modules', '.bin', 'wp-guard-switch')
     writeFileSync(shimPath, '#!/bin/sh\nexit 42\n', 'utf8')
@@ -336,8 +353,11 @@ describe('scaffoldAgentHooks', () => {
       join(repoRoot, '.codex', 'managed-hooks', 'wp-guard-switch.sh'),
       'utf8',
     )
-    expect(launcher).toContain('bin/wp-guard-switch.js')
-    expect(launcher).not.toContain('exec wp hook guard-switch')
+    expect(launcher).toContain('/bin/wp')
+    expect(launcher).toContain('exec ')
+    expect(launcher).toContain(' hook guard-switch')
+    expect(launcher).not.toContain('node_modules/.bin')
+    expect(launcher).not.toContain('bin/wp-guard-switch.js')
   })
 
   it('resolves the packaged hook-launcher root from PATH when moduleUrl is virtual', () => {
@@ -364,23 +384,43 @@ describe('scaffoldAgentHooks', () => {
     }
   })
 
-  it('uses direct bin entrypoints in managed hook launchers', async () => {
+  it('uses global bin/wp dispatch in managed hook launchers', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
 
     const guardLauncher = readFileSync(
       join(repoRoot, '.claude', 'hooks', 'managed', 'wp-pretool-guard.sh'),
       'utf8',
     )
-    expect(guardLauncher).toContain('bin/wp-pretool-guard.js')
+    expect(guardLauncher).toContain('/bin/wp')
     expect(guardLauncher).toContain('exec ')
-    expect(guardLauncher).not.toContain('exec wp hook pretool-guard')
+    expect(guardLauncher).toContain(' hook pretool-guard')
+    expect(guardLauncher).not.toContain('bin/wp-pretool-guard.js')
 
     const sessionLauncher = readFileSync(
       join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh'),
       'utf8',
     )
-    expect(sessionLauncher).toContain('bin/wp-sessionstart-routing.js')
-    expect(sessionLauncher).not.toContain('exec wp hook sessionstart-routing')
+    expect(sessionLauncher).toContain('/bin/wp')
+    expect(sessionLauncher).toContain(' hook sessionstart-routing')
+    expect(sessionLauncher).not.toContain('bin/wp-sessionstart-routing.js')
+  })
+
+  it('uses an explicit Node runtime for hook launchers when setup itself runs under Bun', () => {
+    expect(
+      resolveNodeRuntimeForHookLaunchers({
+        execPath: '/opt/homebrew/bin/bun',
+        env: { PATH: '', WP_HOOK_NODE_PATH: process.execPath },
+      }),
+    ).toBe(process.execPath)
+  })
+
+  it('returns null instead of fabricating a Node path when no executable Node is discoverable', () => {
+    expect(
+      resolveNodeRuntimeForHookLaunchers({
+        execPath: '/opt/homebrew/bin/bun',
+        env: { PATH: '' },
+      }),
+    ).toBeNull()
   })
 
   it('does not render local runtime or node_modules preambles', async () => {
@@ -390,7 +430,8 @@ describe('scaffoldAgentHooks', () => {
       'utf8',
     )
     expect(guardLauncher).not.toContain('WP_BIN=')
-    expect(guardLauncher).toContain('bin/wp-pretool-guard.js')
+    expect(guardLauncher).toContain('/bin/wp')
+    expect(guardLauncher).not.toContain('bin/wp-pretool-guard.js')
   })
 
   it('dedupes pre-existing wrapped script hooks against the raw incoming form', async () => {
@@ -933,7 +974,7 @@ hooks:
     expect(
       stopCommands.some(
         (command) =>
-          command.includes('wp audit agents') && command.includes('# from-skill: verify'),
+          command.includes('audit agents') && command.includes('# from-skill: verify'),
       ),
     ).toBe(true)
     expect(stopCommands.some((command) => command.includes('# from-skill: verify'))).toBe(true)
@@ -1691,10 +1732,10 @@ hooks:
         join(repoRoot, '.claude', 'hooks', 'managed', 'wp-precompact-snapshot.sh'),
         'utf8',
       ),
-    ).toContain('bin/wp-precompact-snapshot.js')
+    ).toContain(' hook precompact-snapshot')
     expect(
       readFileSync(join(repoRoot, '.codex', 'managed-hooks', 'wp-precompact-snapshot.sh'), 'utf8'),
-    ).toContain('bin/wp-precompact-snapshot.js')
+    ).toContain(' hook precompact-snapshot')
 
     // Cursor has no supported PreCompact/project-hook equivalent today. The
     // Cursor emitter must degrade explicitly by omitting the managed
@@ -1745,7 +1786,7 @@ hooks:
     expect(preToolResult.status, preTool).toBe(0)
     expect(preToolResult.stdout).toContain('"hookEventName":"PreToolUse"')
     expect(preToolResult.stdout).toContain('"permissionDecision":"deny"')
-    expect(preToolResult.stdout).toContain('"wp not found on PATH.')
+    expect(preToolResult.stdout).toContain('managed hook launcher missing or not executable at')
 
     const stopResults = await Promise.all(
       commandByEvent.Stop.map(async (command) => ({
@@ -1807,7 +1848,7 @@ hooks:
     })
 
     expect(result.status).toBe(2)
-    expect(result.stdout).not.toContain('wp not found on PATH')
+    expect(result.stdout).not.toContain('managed hook launcher missing')
     expect(result.stderr).toContain('actual guard failure')
   })
 
@@ -1827,9 +1868,37 @@ hooks:
     })
 
     expect(result.status).toBe(0)
-    expect(result.stderr).toContain('webpresso hook wp-stop-qa skipped: global wp not found')
+    expect(result.stderr).toContain('webpresso hook wp-stop-qa skipped: global bin/wp launcher or Node runtime missing at')
     expect(result.stdout).toBe('{}\n')
     expect(() => JSON.parse(result.stdout)).not.toThrow()
+  })
+
+  it('managed Codex PreToolUse launcher fails closed when the project root is missing', async () => {
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+
+    const pretoolLauncher = join(repoRoot, '.codex', 'managed-hooks', 'wp-pretool-guard.sh')
+    const preservedLauncher = join(tmpdir(), `wp-pretool-guard-missing-root-${Date.now()}.sh`)
+    writeFileSync(preservedLauncher, readFileSync(pretoolLauncher, 'utf8'), 'utf8')
+    chmodSync(preservedLauncher, 0o755)
+    rmSync(repoRoot, { recursive: true, force: true })
+
+    const result = spawnSync('sh', [preservedLauncher], {
+      cwd: tmpdir(),
+      encoding: 'utf8',
+      env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+    })
+
+    expect(result.status).toBe(0)
+    const parsed = JSON.parse(result.stdout) as {
+      hookSpecificOutput?: {
+        hookEventName?: string
+        permissionDecision?: string
+        permissionDecisionReason?: string
+      }
+    }
+    expect(parsed.hookSpecificOutput?.hookEventName).toBe('PreToolUse')
+    expect(parsed.hookSpecificOutput?.permissionDecision).toBe('deny')
+    expect(parsed.hookSpecificOutput?.permissionDecisionReason).toContain('project root missing')
   })
 
   it('keeps Codex hook commands executable from a sibling cwd instead of failing with 127', async () => {
@@ -2188,11 +2257,12 @@ describe('BP1 hotfix: launcher chain, node fallback, gstack stdin scoping, stop-
       group.hooks.map((hook) => hook.command),
     ).find((command) => command.includes('# from-skill: verify'))
     expect(stopCommand).toContain('# from-skill: verify')
-    expect(stopCommand).toContain('if command -v wp >/dev/null 2>&1; then')
-    expect(stopCommand).toContain('wp audit agents >/dev/null')
+    expect(stopCommand).toContain('bin/wp')
+    expect(stopCommand).toContain('audit agents')
+    expect(stopCommand).toContain('>/dev/null')
     // Skipped runs warn on stderr instead of silently succeeding.
     expect(stopCommand).toContain('>&2')
-    expect(stopCommand).not.toContain('|| true')
+    expect(stopCommand).not.toContain('audit agents || true')
   })
 
   it('renders shim launchers with direct-bin execution and no duplicated exit 0', async () => {
@@ -2202,7 +2272,9 @@ describe('BP1 hotfix: launcher chain, node fallback, gstack stdin scoping, stop-
         join(repoRoot, '.claude', 'hooks', 'managed', `${bin}.sh`),
         'utf8',
       )
-      expect(launcher).toContain(`bin/${bin}.js`)
+      expect(launcher).toContain('bin/wp')
+      expect(launcher).toContain(`hook ${hookSubcommandFor(bin)}`)
+      expect(launcher).not.toContain(`bin/${bin}.js`)
       expect(launcher).not.toMatch(/exit 0\s+exit 0/u)
     }
     // Non-guard hooks warn on stderr (never silently skip); guard stays fail-closed.
