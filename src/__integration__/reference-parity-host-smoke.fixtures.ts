@@ -59,7 +59,7 @@ function codexFixtureCommand(name: string): string {
       : WP_HOOK_SPECS.find((spec) => spec.bin === name)?.jsonOnly === true
         ? "printf '%s\\n' '{}'"
         : 'true'
-  return `[ -x ${binPath} ] && ${binPath} || ${fallback}`
+  return `if [ -x ${binPath} ]; then ${binPath}; else ${fallback}; fi`
 }
 
 const CODEX_HOOKS = buildCodexHookGroups({

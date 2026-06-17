@@ -312,7 +312,7 @@ describe('tooling umbrella package integration contract', () => {
       expect(output).toContain('Runtime-owned tooling contract:')
       expect(output).toContain('wp now owns execution for test, e2e, lint, format, and typecheck.')
       expect(output).toContain(
-        'Keep local authoring deps when imported directly: vitest, @playwright/test',
+        'Keep local authoring deps when imported directly: @changesets/cli, vitest, @playwright/test, typescript',
       )
       expect(output).toContain(
         'Review execution-only deps for removal if they only powered local binaries: oxlint, oxfmt',

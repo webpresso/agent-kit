@@ -33,6 +33,13 @@ on:
   push:
     branches:
       - main
+    paths:
+      - '.changeset/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'CHANGELOG.md'
+      - 'scripts/release-publish.ts'
+      - '.github/workflows/release.yml'
   workflow_dispatch:
     inputs:
       dry-run:

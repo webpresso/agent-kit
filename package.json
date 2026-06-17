@@ -27,7 +27,6 @@
     "skills"
   ],
   "license": "Elastic-2.0",
-  "preferGlobal": true,
   "bin": {
     "wp": "bin/wp",
     "docs-check-internal-links": "bin/docs-check-internal-links.js",
@@ -46,7 +45,6 @@
     "!dist/**/__integration__/**",
     "!dist/**/__mocks__/**",
     "!dist/**/runners/evals/**",
-    "tsconfig",
     "catalog",
     "just",
     "skills",
@@ -88,16 +86,8 @@
     "#build/*": "./src/build/*.ts",
     "#docs-linter/*.js": "./src/docs-linter/*.ts",
     "#docs-linter/*": "./src/docs-linter/*.ts",
-    "#config/tsconfig/*.js": "./src/config/tsconfig/*",
-    "#config/tsconfig/*": "./src/config/tsconfig/*",
-    "#config/vitest/*.js": "./src/config/vitest/*.ts",
-    "#config/vitest/*": "./src/config/vitest/*.ts",
-    "#config/stryker/*.js": "./src/config/stryker/*.ts",
-    "#config/stryker/*": "./src/config/stryker/*.ts",
     "#config/oxlint/*.js": "./src/config/oxlint/*.ts",
     "#config/oxlint/*": "./src/config/oxlint/*.ts",
-    "#config/workers-test/*.js": "./src/config/workers-test/*.ts",
-    "#config/workers-test/*": "./src/config/workers-test/*.ts",
     "#config/docs-lint/*.js": "./src/config/docs-lint/*.ts",
     "#config/docs-lint/*": "./src/config/docs-lint/*.ts",
     "#config/launch/*.js": "./src/config/launch/*.ts",
@@ -250,84 +240,6 @@
         "default": "./dist/esm/e2e/index.js"
       }
     },
-    "./tsconfig/base.json": {
-      "import": {
-        "default": "./dist/esm/config/tsconfig/base.json"
-      },
-      "default": "./dist/esm/config/tsconfig/base.json"
-    },
-    "./tsconfig/cloudflare.json": {
-      "import": {
-        "default": "./dist/esm/config/tsconfig/cloudflare.json"
-      },
-      "default": "./dist/esm/config/tsconfig/cloudflare.json"
-    },
-    "./tsconfig/library.json": {
-      "import": {
-        "default": "./dist/esm/config/tsconfig/library.json"
-      },
-      "default": "./dist/esm/config/tsconfig/library.json"
-    },
-    "./tsconfig/react-library.json": {
-      "import": {
-        "default": "./dist/esm/config/tsconfig/react-library.json"
-      },
-      "default": "./dist/esm/config/tsconfig/react-library.json"
-    },
-    "./tsconfig/react-router.json": {
-      "import": {
-        "default": "./dist/esm/config/tsconfig/react-router.json"
-      },
-      "default": "./dist/esm/config/tsconfig/react-router.json"
-    },
-    "./vitest/node": {
-      "import": {
-        "types": "./dist/esm/config/vitest/node.d.ts",
-        "default": "./dist/esm/config/vitest/node.js"
-      }
-    },
-    "./vitest/react": {
-      "import": {
-        "types": "./dist/esm/config/vitest/react.d.ts",
-        "default": "./dist/esm/config/vitest/react.js"
-      }
-    },
-    "./vitest/react-router": {
-      "import": {
-        "types": "./dist/esm/config/vitest/react-router.d.ts",
-        "default": "./dist/esm/config/vitest/react-router.js"
-      }
-    },
-    "./vitest/workers": {
-      "import": {
-        "types": "./dist/esm/config/vitest/workers.d.ts",
-        "default": "./dist/esm/config/vitest/workers.js"
-      }
-    },
-    "./vitest/react-setup": {
-      "import": {
-        "types": "./dist/esm/config/vitest/react-setup.d.ts",
-        "default": "./dist/esm/config/vitest/react-setup.js"
-      }
-    },
-    "./vitest/react-setup.ts": {
-      "import": {
-        "types": "./dist/esm/config/vitest/react-setup.d.ts",
-        "default": "./dist/esm/config/vitest/react-setup.js"
-      }
-    },
-    "./vitest/flakiness-reporter": {
-      "import": {
-        "types": "./dist/esm/config/vitest/flakiness-reporter.d.ts",
-        "default": "./dist/esm/config/vitest/flakiness-reporter.js"
-      }
-    },
-    "./stryker": {
-      "import": {
-        "types": "./dist/esm/config/stryker/index.d.ts",
-        "default": "./dist/esm/config/stryker/index.js"
-      }
-    },
     "./mutation": {
       "import": {
         "types": "./dist/esm/mutation/affected.d.ts",
@@ -386,12 +298,6 @@
       "import": {
         "types": "./dist/esm/config/oxlint/code-safety.d.ts",
         "default": "./dist/esm/config/oxlint/code-safety.js"
-      }
-    },
-    "./workers-test": {
-      "import": {
-        "types": "./dist/esm/config/workers-test/index.d.ts",
-        "default": "./dist/esm/config/workers-test/index.js"
       }
     },
     "./docs-lint": {
@@ -594,8 +500,8 @@
     "@manypkg/find-root": "^3.1.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@secretlint/secretlint-rule-preset-recommend": "^13.0.2",
-    "@vitejs/plugin-react": "^6.0.2",
-    "better-sqlite3": "^12.10.0",
+    "@vitejs/plugin-react": "catalog:",
+    "better-sqlite3": "catalog:",
     "cac": "^7.0.0",
     "env-paths": "^4.0.0",
     "glob": "^13.0.6",
@@ -617,7 +523,7 @@
     "vitest": "catalog:",
     "oxlint": "^1.67.0",
     "oxfmt": "^0.48.0",
-    "vite": "^8.0.14",
+    "vite": "catalog:",
     "tsx": "^4.21.0"
   },
   "devDependencies": {
@@ -629,7 +535,8 @@
     "@types/node": "catalog:",
     "husky": "^9.1.7",
     "publint": "catalog:",
-    "tshy": "^4.1.2"
+    "tshy": "catalog:",
+    "@webpresso/agent-config": "workspace:*"
   },
   "tshy": {
     "dialects": [
@@ -656,19 +563,6 @@
       "./dev": "./src/dev/index.ts",
       "./docs-linter": "./src/docs-linter/index.ts",
       "./e2e": "./src/e2e/index.ts",
-      "./tsconfig/base.json": "./src/config/tsconfig/base.json",
-      "./tsconfig/cloudflare.json": "./src/config/tsconfig/cloudflare.json",
-      "./tsconfig/library.json": "./src/config/tsconfig/library.json",
-      "./tsconfig/react-library.json": "./src/config/tsconfig/react-library.json",
-      "./tsconfig/react-router.json": "./src/config/tsconfig/react-router.json",
-      "./vitest/node": "./src/config/vitest/node.ts",
-      "./vitest/react": "./src/config/vitest/react.ts",
-      "./vitest/react-router": "./src/config/vitest/react-router.ts",
-      "./vitest/workers": "./src/config/vitest/workers.ts",
-      "./vitest/react-setup": "./src/config/vitest/react-setup.ts",
-      "./vitest/react-setup.ts": "./src/config/vitest/react-setup.ts",
-      "./vitest/flakiness-reporter": "./src/config/vitest/flakiness-reporter.ts",
-      "./stryker": "./src/config/stryker/index.ts",
       "./mutation": "./src/mutation/affected.ts",
       "./oxlint": "./src/config/oxlint/index.ts",
       "./oxlint/import-hygiene": "./src/config/oxlint/import-hygiene.ts",
@@ -679,7 +573,6 @@
       "./oxlint/graphql-conventions": "./src/config/oxlint/graphql-conventions.ts",
       "./oxlint/testing-quality": "./src/config/oxlint/testing-quality.ts",
       "./oxlint/code-safety": "./src/config/oxlint/code-safety.ts",
-      "./workers-test": "./src/config/workers-test/index.ts",
       "./docs-lint": "./src/config/docs-lint/index.ts",
       "./docs-lint/schemas": "./src/config/docs-lint/schemas/index.ts",
       "./docs-lint/generator": "./src/config/docs-lint/generator/index.ts",

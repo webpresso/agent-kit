@@ -6,14 +6,17 @@
  *      so those always work outside a git repo.
  *   2. Hard-fail outside a git repo — propagates NotInGitRepoError to cli.ts
  *      for formatted error output + exit 2.
- *   3. Skip auto-update when env/argv say so (CI, mcp, WP_SKIP_UPDATE_CHECK).
- *   4. Fire-and-forget runUpdateFlow — errors sink to logUpdateError (D13).
+ *   3. Warn on version skew between global wp and the repo-pinned
+ *      @webpresso/agent-kit in pnpm-workspace.yaml catalog.
+ *   4. Skip auto-update when env/argv say so (CI, mcp, WP_SKIP_UPDATE_CHECK).
+ *   5. Fire-and-forget runUpdateFlow — errors sink to logUpdateError (D13).
  */
 
 import { NotInGitRepoError, getRepoKey } from '#paths/state-root.js'
 import { logUpdateError } from '#cli/auto-update/log.js'
 import { shouldSkipUpdateCheck } from '#cli/auto-update/skip.js'
 import { runUpdateFlow } from '#cli/auto-update/run.js'
+import { checkVersionSkew } from '#cli/auto-update/version-skew.js'
 
 export { NotInGitRepoError }
 
@@ -48,6 +51,12 @@ export async function bootstrapAk(version: string, argv: string[] = process.argv
 
   // D8 — skip update check when in CI, mcp mode, or explicitly opted out.
   if (shouldSkipUpdateCheck(process.env, argv)) return
+
+  // Warn when global wp version differs from the repo-pinned @webpresso/agent-kit.
+  const skewWarning = checkVersionSkew(version)
+  if (skewWarning !== null) {
+    process.stderr.write(`${skewWarning}\n`)
+  }
 
   // D13 — awaited so cache write + deferred install spawn complete before exit.
   try {

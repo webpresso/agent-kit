@@ -81,6 +81,20 @@ describe('auditToolchainIsolation', () => {
     expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 })
   })
 
+
+  it('exempts the published @webpresso/agent-config tooling package', () => {
+    mkdirSync(join(root, 'packages', 'agent-config'), { recursive: true })
+    writePackage(join(root, 'packages', 'agent-config'), {
+      name: '@webpresso/agent-config',
+      dependencies: { vite: '^8.0.0', vitest: '^4.0.0' },
+      peerDependencies: { '@playwright/test': '*' },
+      devDependencies: { typescript: '^6.0.0' },
+      scripts: { typecheck: 'tsc --noEmit' },
+    })
+
+    expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 })
+  })
+
   it('walks workspace package.json files while skipping node_modules', () => {
     mkdirSync(join(root, 'apps', 'client'), { recursive: true })
     mkdirSync(join(root, 'node_modules', 'vite'), { recursive: true })
@@ -109,6 +123,25 @@ describe('auditToolchainIsolation', () => {
     writePackage(templateRoot, {
       scripts: { build: 'vite build', lint: 'oxlint .' },
       devDependencies: { typescript: '^6.0.0', vite: '^8.0.0', oxlint: '^1.0.0' },
+    })
+
+    expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 })
+  })
+
+  it('exempts the published @webpresso/agent-config package from repo-level toolchain ownership rules', () => {
+    mkdirSync(join(root, 'packages', 'agent-config'), { recursive: true })
+    writePackage(join(root, 'packages', 'agent-config'), {
+      name: '@webpresso/agent-config',
+      dependencies: { vite: '^8.0.0', vitest: '^4.0.0' },
+      devDependencies: { typescript: '^6.0.0' },
+      peerDependencies: {
+        '@playwright/test': '*',
+        '@stryker-mutator/core': '*',
+        '@stryker-mutator/typescript-checker': '*',
+        '@stryker-mutator/vitest-runner': '*',
+        wrangler: '*',
+      },
+      scripts: { typecheck: 'tsc --noEmit' },
     })
 
     expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 })

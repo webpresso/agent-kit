@@ -1,15 +1,20 @@
 packages:
   - .
   - apps/*
+  - packages/*
 
 preferWorkspacePackages: true
 cleanupUnusedCatalogs: true
 
 catalog:
+  '@vitejs/plugin-react': ^6.0.2
   '@arethetypeswrong/cli': ^0.18.3
   '@types/node': ^25.9.1
+  better-sqlite3: ^12.10.0
   publint: ^0.3.21
+  tshy: ^4.1.2
   typescript: ^6.0.3
+  vite: ^8.0.14
   vite-plus: ^0.1.22
   vitest: ^4.1.7
 

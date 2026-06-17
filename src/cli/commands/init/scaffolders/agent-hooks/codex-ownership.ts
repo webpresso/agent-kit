@@ -15,6 +15,8 @@ const MANAGED_LAUNCHER_PATTERN =
   /^(?:["']?)((?:\.\/|\/.*\/)?\.codex\/managed-hooks\/(wp-[\w-]+)\.sh)(?:["']?)$/u
 const GUARDED_MANAGED_LAUNCHER_PATTERN =
   /^\[ -x (["']?)((?:\.\/|\/.*\/)?\.codex\/managed-hooks\/(wp-[\w-]+)\.sh)\1 \] && \1\2\1 \|\| (?:true|printf .+)$/u
+const IF_GUARDED_MANAGED_LAUNCHER_PATTERN =
+  /^if \[ -x (["']?)((?:\.\/|\/.*\/)?\.codex\/managed-hooks\/(wp-[\w-]+)\.sh)\1 \]; then \1\2\1; else (?:true|printf .+); fi$/u
 
 export interface CodexHookOwnershipMetadata {
   readonly isManaged?: unknown
@@ -64,5 +66,8 @@ function extractDirectNodeModulesBin(command: string): string | null {
   if (managedLauncherMatch?.[2]) return managedLauncherMatch[2]
 
   const guardedManagedLauncherMatch = GUARDED_MANAGED_LAUNCHER_PATTERN.exec(command.trim())
-  return guardedManagedLauncherMatch?.[3] ?? null
+  if (guardedManagedLauncherMatch?.[3]) return guardedManagedLauncherMatch[3]
+
+  const ifGuardedManagedLauncherMatch = IF_GUARDED_MANAGED_LAUNCHER_PATTERN.exec(command.trim())
+  return ifGuardedManagedLauncherMatch?.[3] ?? null
 }

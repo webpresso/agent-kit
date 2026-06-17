@@ -1,4 +1,7 @@
 {
+  "allowedPublicPackages": [
+    "@webpresso/agent-config"
+  ],
   "referenceConsumerBaselines": {
     "@webpresso/db-branching": "0.2.4",
     "@webpresso/db-branching-neon": "0.2.4"
@@ -29,5 +32,8 @@
     "internalHooks": [
       "wp-precompact-snapshot"
     ]
-  }
+  },
+  "allowedPublicPackages": [
+    "@webpresso/agent-config"
+  ]
 }

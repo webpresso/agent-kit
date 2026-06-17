@@ -71,20 +71,8 @@
       "#docs-linter/*": [
         "./src/docs-linter/*.ts"
       ],
-      "#config/tsconfig/*": [
-        "./src/config/tsconfig/*"
-      ],
-      "#config/vitest/*": [
-        "./src/config/vitest/*.ts"
-      ],
-      "#config/stryker/*": [
-        "./src/config/stryker/*.ts"
-      ],
       "#config/oxlint/*": [
         "./src/config/oxlint/*.ts"
-      ],
-      "#config/workers-test/*": [
-        "./src/config/workers-test/*.ts"
       ],
       "#config/docs-lint/*": [
         "./src/config/docs-lint/*"
