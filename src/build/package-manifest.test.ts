@@ -10,7 +10,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
 import { beforeAll, describe, expect, it } from 'vitest'
 
@@ -20,8 +20,19 @@ import {
   restorePackedManifest,
 } from './package-manifest.js'
 
-// Repo root anchored via import.meta.dirname so the test is cwd-independent.
-const repoRoot = join(import.meta.dirname, '..', '..')
+const repoRoot = findRepoRoot(import.meta.dirname)
+
+function findRepoRoot(startDir: string): string {
+  let current = startDir
+  while (true) {
+    if (existsSync(join(current, 'pnpm-workspace.yaml'))) return current
+    const parent = dirname(current)
+    if (parent === current) {
+      throw new Error(`Could not locate pnpm-workspace.yaml from ${startDir}`)
+    }
+    current = parent
+  }
+}
 
 const packLockDirectory = join(tmpdir(), 'webpresso-agent-kit-npm-pack.lock')
 
@@ -230,6 +241,37 @@ describe('createPackedManifest', () => {
     expect(result).toHaveProperty('dependencies', { react: '^18.0.0' })
   })
 
+  it('rewrites publishable workspace package specifiers to local workspace versions before packing', () => {
+    const manifest = createPackedManifest(
+      {
+        devDependencies: { '@webpresso/agent-config': 'workspace:*' },
+        peerDependencies: { '@webpresso/agent-config': 'workspace:^' },
+      },
+      {
+        catalog: {},
+        workspacePackages: {
+          '@webpresso/agent-config': '0.0.1',
+        },
+      },
+    )
+
+    expect(manifest.devDependencies?.['@webpresso/agent-config']).toBe(undefined)
+    expect(manifest.peerDependencies?.['@webpresso/agent-config']).toBe('^0.0.1')
+  })
+
+  it('omits devDependencies from the packed manifest install surface', () => {
+    const manifest = createPackedManifest(
+      {
+        devDependencies: { vitest: 'catalog:' },
+      },
+      {
+        catalog: { vitest: '^4.1.5' },
+      },
+    )
+
+    expect(manifest.devDependencies).toBe(undefined)
+  })
+
   it('rejects non-publishable local dependency protocols resolved from catalogs', () => {
     const linkUrlSpecifier = `${'link:'}//../local`
 
@@ -324,7 +366,7 @@ describe('createPackedManifest', () => {
       wp: 'bin/wp',
       'with-secrets': 'bin/with-secrets',
     })
-    expect(manifest.bin?.['wp-precompact-snapshot']).toBeUndefined()
+    expect(manifest.bin?.['wp-precompact-snapshot']).toBe(undefined)
   })
 
   it('classifies precompact snapshot as an internal hook bin rather than a public CLI', () => {
@@ -395,7 +437,7 @@ describe('createPackedManifest', () => {
       tarball?: { forbiddenContentPatterns?: string[] }
     }
 
-    expect(contract.staleLinks).toBeUndefined()
+    expect(contract.staleLinks).toBe(undefined)
     expect(contract.tarball?.forbiddenContentPatterns).toEqual(
       expect.arrayContaining(['/ozby\\/ingest-lens/', '/webpresso\\/monorepo/']),
     )

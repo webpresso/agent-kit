@@ -87,10 +87,7 @@ export function auditToolchainIsolation(root: string): RepoAuditResult {
 }
 
 function isExemptPackage(root: string, packagePath: string, pkg: PackageJson): boolean {
-  if (pkg.name === '@webpresso/agent-kit') return true
-  // agent-config is the toolchain publisher itself — it legitimately ships the
-  // packages that consumers are told to route through wp.
-  if (pkg.name === '@webpresso/agent-config') return true
+  if (pkg.name === '@webpresso/agent-kit' || pkg.name === '@webpresso/agent-config') return true
 
   const relativePath = path.relative(root, packagePath).split(path.sep).join('/')
   // Catalog skill templates are sample project manifests shipped by agent-kit,

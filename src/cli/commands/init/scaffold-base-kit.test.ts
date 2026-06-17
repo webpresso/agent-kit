@@ -80,7 +80,7 @@ describe('scaffoldBaseKit', () => {
     expect(workflow).not.toContain('\n  test:\n')
     expect(workflow).not.toContain('\n  wp-audits:\n')
     expect(workflow).not.toContain('\n  deploy-contract:\n')
-    expect(releaseWorkflow).toContain('changesets-release.yml@22f93ddf4f58ed253e29c81d3e0a1d3fcdc6f3e3')
+    expect(releaseWorkflow).toContain('changesets-release.yml@3f0136f88a488bc0894ab81ab3c8544b2e8dabf2')
     expect(releaseWorkflow).toContain('version_command: pnpm run version')
     expect(releaseWorkflow).toContain('publish_command: pnpm run release:publish')
 
