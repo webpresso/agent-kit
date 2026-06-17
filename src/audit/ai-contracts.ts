@@ -14,7 +14,6 @@ const MCP_INTEGRATION_TEST_PATH = 'src/mcp/server.integration.test.ts'
 const PUBLIC_README_PATH = 'README.md'
 const PUBLIC_CHANGELOG_PATH = 'CHANGELOG.md'
 const PENDING_CHANGESET_SURFACE_PATH = '.changeset/*.md'
-const INLINE_CODE_DELIMITER = '`'
 
 const REFERENCE_PARITY_EVIDENCE = [
   'docs/bench/reference-parity-matrix.md',
@@ -196,27 +195,7 @@ function hasMarkdownEmphasisRisk(evidencePath: string): boolean {
 }
 
 function hasInlineCodeCitation(content: string, evidencePath: string): boolean {
-  let searchStart = 0
-  while (true) {
-    const index = content.indexOf(evidencePath, searchStart)
-    if (index === -1) return false
-    if (isInsideInlineCode(content, index)) return true
-    searchStart = index + evidencePath.length
-  }
-}
-
-function isInsideInlineCode(content: string, index: number): boolean {
-  const lineStart = content.lastIndexOf('\n', index - 1) + 1
-  const lineEnd = content.indexOf('\n', index)
-  const line = content.slice(lineStart, lineEnd === -1 ? content.length : lineEnd)
-  const column = index - lineStart
-  let insideCode = false
-
-  for (let cursor = 0; cursor < column; cursor += 1) {
-    if (line[cursor] === INLINE_CODE_DELIMITER) insideCode = !insideCode
-  }
-
-  return insideCode
+  return content.includes(`\`${evidencePath}\``)
 }
 
 function readPendingChangesetReleaseNotes(root: string): string | null {
