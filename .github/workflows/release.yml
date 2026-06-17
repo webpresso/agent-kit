@@ -19,8 +19,9 @@
 #   - npm trusted publishing is required for this workflow.
 #   - The publish job uses OIDC (`id-token: write`) and expects npm-side trusted
 #     publisher configuration for this repository/workflow/package tuple.
-#   - npm provenance uses GitHub-hosted runners here so the public release path
-#     stays on the default GitHub-hosted OIDC-backed surface.
+#   - npm provenance verification requires a GitHub-hosted runner: npm's registry
+#     rejects provenance bundles from runners that report environment "self-hosted"
+#     (including Ubicloud), even when OIDC tokens are present.
 #   - Do not add `NPM_TOKEN` or `NODE_AUTH_TOKEN` fallbacks; token publishing is
 #     intentionally disabled for Webpresso repos.
 #

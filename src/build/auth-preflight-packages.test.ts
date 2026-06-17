@@ -65,7 +65,7 @@ describe('release workflow publish path', () => {
   it('runs the provenance-backed release publish path on a GitHub-hosted runner', () => {
     const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
     expect(workflow).toContain('runs-on: ubuntu-latest')
-    expect(workflow).toContain('npm provenance uses GitHub-hosted runners here')
+    expect(workflow).toContain('npm provenance verification requires a GitHub-hosted runner')
   })
 
 
