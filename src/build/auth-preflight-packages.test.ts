@@ -1,12 +1,24 @@
-import { readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { existsSync, readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { RUNTIME_TARGETS } from '#build/runtime-targets.js'
 
-const repositoryRoot = resolve(import.meta.dirname, '..', '..')
+const repositoryRoot = findRepoRoot(import.meta.dirname)
 const authPreflightWorkflowPaths = [
   join(repositoryRoot, '.github', 'workflows', 'ci.agent-kit.yml'),
 ] as const
+
+function findRepoRoot(startDir: string): string {
+  let current = startDir
+  while (true) {
+    if (existsSync(join(current, 'pnpm-workspace.yaml'))) return current
+    const parent = dirname(current)
+    if (parent === current) {
+      throw new Error(`Could not locate pnpm-workspace.yaml from ${startDir}`)
+    }
+    current = parent
+  }
+}
 
 function readWorkflow(path: string): string {
   return readFileSync(path, 'utf8')
@@ -26,12 +38,12 @@ describe('auth preflight package probes', () => {
   it('skips package registry probing when agent-kit has no install-time framework package dependency', () => {
     const manifest = readPackageManifest()
 
-    expect(manifest.dependencies?.['@webpresso/runtime']).toBeUndefined()
-    expect(manifest.dependencies?.['@webpresso/framework']).toBeUndefined()
-    expect(manifest.dependencies?.['webpresso']).toBeUndefined()
-    expect(manifest.devDependencies?.['@webpresso/runtime']).toBeUndefined()
-    expect(manifest.devDependencies?.['@webpresso/framework']).toBeUndefined()
-    expect(manifest.devDependencies?.['webpresso']).toBeUndefined()
+    expect(manifest.dependencies?.['@webpresso/runtime']).toBe(undefined)
+    expect(manifest.dependencies?.['@webpresso/framework']).toBe(undefined)
+    expect(manifest.dependencies?.['webpresso']).toBe(undefined)
+    expect(manifest.devDependencies?.['@webpresso/runtime']).toBe(undefined)
+    expect(manifest.devDependencies?.['@webpresso/framework']).toBe(undefined)
+    expect(manifest.devDependencies?.['webpresso']).toBe(undefined)
 
     for (const workflowPath of authPreflightWorkflowPaths) {
       const workflow = readWorkflow(workflowPath)
