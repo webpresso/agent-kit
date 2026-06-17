@@ -143,9 +143,11 @@ export function createPackedManifest(
     packedManifest[section] = Object.fromEntries(
       Object.entries(dependencies).map(([dependencyName, version]) => {
         const resolvedVersion = resolveCatalogSpecifier(dependencyName, version, workspaceCatalogs)
-        // devDependencies are stripped from the consumer install and never published
-        // as a runtime dependency — workspace: specifiers in devDeps are safe to skip.
-        if (section !== 'devDependencies') {
+        // workspace: in devDependencies is safe — npm consumers never install devDependencies
+        // from published packages, so the specifier never reaches downstream resolvers.
+        // file: and link: still throw in all sections: they are local paths that npm
+        // cannot resolve regardless of which dependency section they appear in.
+        if (!(section === 'devDependencies' && resolvedVersion.startsWith('workspace:'))) {
           assertPublishableDependencySpecifier(section, dependencyName, resolvedVersion)
         }
         return [dependencyName, resolvedVersion]
