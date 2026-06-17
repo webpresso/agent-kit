@@ -52,16 +52,18 @@ describe('tooling umbrella package contract', () => {
     const exports = pkg.exports ?? {}
 
     expect(exports).toHaveProperty('./bundle')
-    expect(exports).toHaveProperty('./vitest/node')
-    expect(exports).toHaveProperty('./vitest/react')
-    expect(exports).toHaveProperty('./vitest/workers')
-    expect(exports).toHaveProperty('./tsconfig/base.json')
-    expect(exports).toHaveProperty('./tsconfig/cloudflare.json')
-    expect(exports).toHaveProperty('./tsconfig/react-library.json')
-    expect(exports).toHaveProperty('./tsconfig/react-router.json')
-    expect(exports).toHaveProperty('./stryker')
-    expect(exports).toHaveProperty('./workers-test')
     expect(exports).toHaveProperty('./wp-extension')
+
+    // The 4 config groups have moved to @webpresso/agent-config
+    expect(exports).not.toHaveProperty('./vitest/node')
+    expect(exports).not.toHaveProperty('./vitest/react')
+    expect(exports).not.toHaveProperty('./vitest/workers')
+    expect(exports).not.toHaveProperty('./tsconfig/base.json')
+    expect(exports).not.toHaveProperty('./tsconfig/cloudflare.json')
+    expect(exports).not.toHaveProperty('./tsconfig/react-library.json')
+    expect(exports).not.toHaveProperty('./tsconfig/react-router.json')
+    expect(exports).not.toHaveProperty('./stryker')
+    expect(exports).not.toHaveProperty('./workers-test')
   })
 
   it('never advertises non-declaration files as export type targets', () => {

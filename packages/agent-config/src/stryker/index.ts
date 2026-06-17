@@ -4,7 +4,7 @@
  * Import and extend this in package-root `stryker.config.mjs` files:
  *
  * @example
- * import { baseConfig } from '@webpresso/agent-kit/stryker'
+ * import { baseConfig } from '@webpresso/agent-config/stryker'
  *
  * export default {
  *   ...baseConfig,
@@ -106,7 +106,7 @@ export const baseConfig = {
  * Use this in any TypeScript package instead of baseConfig directly.
  *
  * @example
- * import { typescriptBaseConfig } from '@webpresso/agent-kit/stryker'
+ * import { typescriptBaseConfig } from '@webpresso/agent-config/stryker'
  *
  * export default { ...typescriptBaseConfig }
  * // or, for packages with a CF-pool vitest config:
@@ -125,7 +125,7 @@ export const typescriptBaseConfig = {
  * and excludes any tests that require CF runtime globals (cloudflare:test).
  *
  * @example
- * import { typescriptWorkersBaseConfig } from '@webpresso/agent-kit/stryker'
+ * import { typescriptWorkersBaseConfig } from '@webpresso/agent-config/stryker'
  *
  * export default { ...typescriptWorkersBaseConfig }
  */

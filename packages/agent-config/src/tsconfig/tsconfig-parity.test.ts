@@ -67,9 +67,9 @@ describe('bundled tsconfig JSON files', () => {
       ),
     ) as { extends?: string }
 
-    expect(library.extends).toBe('@webpresso/agent-kit/tsconfig/base.json')
-    expect(reactLibrary.extends).toBe('@webpresso/agent-kit/tsconfig/library.json')
-    expect(cloudflare.extends).toBe('@webpresso/agent-kit/tsconfig/base.json')
-    expect(reactRouter.extends).toBe('@webpresso/agent-kit/tsconfig/react-library.json')
+    expect(library.extends).toBe('@webpresso/agent-config/tsconfig/base.json')
+    expect(reactLibrary.extends).toBe('@webpresso/agent-config/tsconfig/library.json')
+    expect(cloudflare.extends).toBe('@webpresso/agent-config/tsconfig/base.json')
+    expect(reactRouter.extends).toBe('@webpresso/agent-config/tsconfig/react-library.json')
   })
 })
