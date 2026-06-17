@@ -1,0 +1,45 @@
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+const RELEASE_PUBLISH_RESULT_FILE_ENV = 'RELEASE_PUBLISH_RESULT_FILE'
+const root = process.cwd()
+const packageJson = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
+  name?: unknown
+  version?: unknown
+}
+
+if (typeof packageJson.name !== 'string' || packageJson.name.length === 0) {
+  throw new Error('package.json must declare a name before release preparation')
+}
+if (typeof packageJson.version !== 'string' || packageJson.version.length === 0) {
+  throw new Error('package.json must declare a version before release preparation')
+}
+
+const metadataPath = join(root, 'infra', 'release-metadata.production.json')
+if (existsSync(metadataPath)) {
+  const metadata = JSON.parse(readFileSync(metadataPath, 'utf8')) as { releaseVersion?: unknown }
+  if (metadata.releaseVersion !== packageJson.version) {
+    throw new Error(
+      `infra/release-metadata.production.json releaseVersion (${String(metadata.releaseVersion)}) does not match package.json version (${packageJson.version})`,
+    )
+  }
+}
+
+const resultPath = process.env[RELEASE_PUBLISH_RESULT_FILE_ENV]
+if (resultPath) {
+  writeFileSync(
+    resultPath,
+    JSON.stringify(
+      {
+        packageName: packageJson.name,
+        version: packageJson.version,
+        publishState: 'prepared',
+      },
+      null,
+      2,
+    ) + '\n',
+    'utf8',
+  )
+}
+
+console.log(`[release:publish] prepared ${packageJson.name}@${packageJson.version}`)
