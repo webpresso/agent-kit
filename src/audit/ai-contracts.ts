@@ -14,6 +14,7 @@ const MCP_INTEGRATION_TEST_PATH = 'src/mcp/server.integration.test.ts'
 const PUBLIC_README_PATH = 'README.md'
 const PUBLIC_CHANGELOG_PATH = 'CHANGELOG.md'
 const PENDING_CHANGESET_SURFACE_PATH = '.changeset/*.md'
+const INLINE_CODE_DELIMITER = '`'
 
 const REFERENCE_PARITY_EVIDENCE = [
   'docs/bench/reference-parity-matrix.md',
@@ -122,7 +123,7 @@ function auditReferenceParityPublicClaims(root: string, violations: RepoAuditVio
   const matrix = auditReferenceParityMatrix(root, undefined, { requireReleaseReady: true })
   let checked = 0
 
-  const publicSurfaces: Array<{ path: string; content: string }> = []
+  const publicSurfaces: Array<{ path: string; content: string; pendingChangeset?: boolean }> = []
   for (const relativePath of [PUBLIC_README_PATH, PUBLIC_CHANGELOG_PATH]) {
     const content = readExistingFile(root, relativePath, violations, {
       message: 'Reference parity claim gate requires the public disclosure surface to exist.',
@@ -140,6 +141,7 @@ function auditReferenceParityPublicClaims(root: string, violations: RepoAuditVio
     publicSurfaces.push({
       path: PENDING_CHANGESET_SURFACE_PATH,
       content: pendingChangesetReleaseNotes,
+      pendingChangeset: true,
     })
   }
 
@@ -152,6 +154,18 @@ function auditReferenceParityPublicClaims(root: string, violations: RepoAuditVio
             surface.path === PENDING_CHANGESET_SURFACE_PATH
               ? `Pending changeset release notes must cite ${evidencePath} before Changesets generates CHANGELOG.md.`
               : `Reference parity public claim gate must cite ${evidencePath}.`,
+        })
+        continue
+      }
+
+      if (
+        surface.pendingChangeset &&
+        hasMarkdownEmphasisRisk(evidencePath) &&
+        !hasInlineCodeCitation(surface.content, evidencePath)
+      ) {
+        violations.push({
+          file: surface.path,
+          message: `Pending changeset release notes must cite ${evidencePath} as inline code so Changesets preserves the literal path in CHANGELOG.md.`,
         })
       }
     }
@@ -175,6 +189,34 @@ function auditReferenceParityPublicClaims(root: string, violations: RepoAuditVio
   }
 
   return checked
+}
+
+function hasMarkdownEmphasisRisk(evidencePath: string): boolean {
+  return evidencePath.includes('__')
+}
+
+function hasInlineCodeCitation(content: string, evidencePath: string): boolean {
+  let searchStart = 0
+  while (true) {
+    const index = content.indexOf(evidencePath, searchStart)
+    if (index === -1) return false
+    if (isInsideInlineCode(content, index)) return true
+    searchStart = index + evidencePath.length
+  }
+}
+
+function isInsideInlineCode(content: string, index: number): boolean {
+  const lineStart = content.lastIndexOf('\n', index - 1) + 1
+  const lineEnd = content.indexOf('\n', index)
+  const line = content.slice(lineStart, lineEnd === -1 ? content.length : lineEnd)
+  const column = index - lineStart
+  let insideCode = false
+
+  for (let cursor = 0; cursor < column; cursor += 1) {
+    if (line[cursor] === INLINE_CODE_DELIMITER) insideCode = !insideCode
+  }
+
+  return insideCode
 }
 
 function readPendingChangesetReleaseNotes(root: string): string | null {
