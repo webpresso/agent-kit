@@ -62,7 +62,8 @@ describe('scaffoldBaseKit', () => {
     expect(existsSync(join(repoRoot, 'e2e', '.gitkeep'))).toBe(true)
 
     const workflow = readFileSync(join(repoRoot, '.github', 'workflows', 'ci.yml'), 'utf8')
-    expect(workflow).toContain('\n  check:\n')
+    expect(workflow).toContain('\n  wp-check:\n')
+    expect(workflow).toContain('name: wp-check')
     expect(workflow).toContain('\n  e2e:\n')
     expect(workflow).toContain('\n  architecture-drift:\n')
     expect(workflow).toContain('\n  deploy-verify:\n')
@@ -363,7 +364,7 @@ describe('scaffoldBaseKit', () => {
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
     expect(
       (pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit'],
-    ).toBeUndefined()
+    ).toBe(undefined)
     expect((pkg['scripts'] as Record<string, string>)['test']).toBe(
       'wp test --file vitest.config.ts',
     )

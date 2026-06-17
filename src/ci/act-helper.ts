@@ -2,6 +2,8 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 
+import { resolveDefaultContainerArchitecture } from './act-runner.js'
+
 export type CiActSecretProfileId = 'none' | 'github-api' | 'neon-control-plane'
 
 export interface CiActSecretProfile {
@@ -128,8 +130,8 @@ export function injectDefaultActArgs(
   arch = process.arch,
 ): string[] {
   const hasArchitectureFlag = args.includes('--container-architecture')
-  if (platform === 'darwin' && arch === 'arm64' && !hasArchitectureFlag) {
-    return ['--container-architecture', 'linux/amd64', ...args]
+  if (!hasArchitectureFlag) {
+    return ['--container-architecture', resolveDefaultContainerArchitecture(platform, arch), ...args]
   }
   return args
 }
