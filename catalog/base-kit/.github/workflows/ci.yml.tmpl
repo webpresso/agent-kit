@@ -13,7 +13,8 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
-  check:
+  quality:
+    name: quality
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -108,3 +109,34 @@ jobs:
           fi
 
           vp run verify:deploy-contract
+
+
+  wp-check:
+    name: wp-check
+    if: ${{ always() }}
+    needs:
+      - quality
+      - e2e
+      - architecture-drift
+      - deploy-verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce aggregate branch-protection gate
+        env:
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+          ARCHITECTURE_DRIFT_RESULT: ${{ needs.architecture-drift.result }}
+          DEPLOY_VERIFY_RESULT: ${{ needs.deploy-verify.result }}
+        run: |
+          set -euo pipefail
+
+          for result in \
+            "$QUALITY_RESULT" \
+            "$E2E_RESULT" \
+            "$ARCHITECTURE_DRIFT_RESULT" \
+            "$DEPLOY_VERIFY_RESULT"; do
+            if [ "$result" != 'success' ]; then
+              echo "::error::A required CI job finished with result: $result"
+              exit 1
+            fi
+          done
