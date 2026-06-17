@@ -145,14 +145,12 @@ describe('createPackedManifest', () => {
     const manifest = createPackedManifest(
       {
         dependencies: { vite: 'catalog:' },
-        devDependencies: { vitest: 'catalog:' },
         optionalDependencies: { zod: 'catalog:' },
         peerDependencies: { react: 'catalog:react18' },
       },
       {
         catalog: {
           vite: '^8.0.11',
-          vitest: '^4.1.5',
           zod: '^4.4.3',
         },
         catalogs: {
@@ -164,9 +162,9 @@ describe('createPackedManifest', () => {
     )
 
     expect(manifest.dependencies?.vite).toBe('^8.0.11')
-    expect(manifest.devDependencies?.vitest).toBe('^4.1.5')
     expect(manifest.optionalDependencies?.zod).toBe('^4.4.3')
     expect(manifest.peerDependencies?.react).toBe('^18.3.1')
+    // devDependencies are stripped from the packed manifest (see dedicated test below)
   })
 
   it('fails loudly when a catalog entry is missing', () => {
@@ -215,6 +213,21 @@ describe('createPackedManifest', () => {
     ).toThrow(
       'Cannot pack devDependencies.local with non-publishable file: specifier "file:../local"',
     )
+  })
+
+  it('strips devDependencies from the packed manifest so npm does not reject workspace: specifiers', () => {
+    // workspace: specifiers in devDependencies are legitimate in monorepo self-hosting
+    // but npm rejects them even with --omit=dev, so devDependencies are stripped entirely.
+    const result = createPackedManifest(
+      {
+        name: 'pkg',
+        dependencies: { react: '^18.0.0' },
+        devDependencies: { '@webpresso/agent-config': 'workspace:*', vitest: 'catalog:' },
+      },
+      { catalog: { vitest: '^4.1.5' } },
+    )
+    expect(result).not.toHaveProperty('devDependencies')
+    expect(result).toHaveProperty('dependencies', { react: '^18.0.0' })
   })
 
   it('rejects non-publishable local dependency protocols resolved from catalogs', () => {

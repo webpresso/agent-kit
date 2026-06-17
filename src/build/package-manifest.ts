@@ -140,16 +140,26 @@ export function createPackedManifest(
   for (const section of DEPENDENCY_SECTIONS) {
     const dependencies = manifest[section]
     if (!dependencies) continue
+
+    if (section === 'devDependencies') {
+      // Validate devDependencies but strip them from the packed manifest.
+      // npm validates all specifiers even with --omit=dev, so workspace: specifiers
+      // from monorepo self-hosting would cause npm to reject the tarball. file: and
+      // link: still throw — they are local paths that indicate a configuration mistake.
+      for (const [dependencyName, version] of Object.entries(dependencies)) {
+        const resolvedVersion = resolveCatalogSpecifier(dependencyName, version, workspaceCatalogs)
+        if (!resolvedVersion.startsWith('workspace:')) {
+          assertPublishableDependencySpecifier(section, dependencyName, resolvedVersion)
+        }
+      }
+      delete packedManifest.devDependencies
+      continue
+    }
+
     packedManifest[section] = Object.fromEntries(
       Object.entries(dependencies).map(([dependencyName, version]) => {
         const resolvedVersion = resolveCatalogSpecifier(dependencyName, version, workspaceCatalogs)
-        // workspace: in devDependencies is safe — npm consumers never install devDependencies
-        // from published packages, so the specifier never reaches downstream resolvers.
-        // file: and link: still throw in all sections: they are local paths that npm
-        // cannot resolve regardless of which dependency section they appear in.
-        if (!(section === 'devDependencies' && resolvedVersion.startsWith('workspace:'))) {
-          assertPublishableDependencySpecifier(section, dependencyName, resolvedVersion)
-        }
+        assertPublishableDependencySpecifier(section, dependencyName, resolvedVersion)
         return [dependencyName, resolvedVersion]
       }),
     )
