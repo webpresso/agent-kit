@@ -1,5 +1,11 @@
 # @webpresso/agent-config
 
+## 0.1.5
+
+### Patch Changes
+
+- 317b7fd: Repair the `@webpresso/agent-config` release baseline and publish path so the package advances from the already-published `0.1.4` version instead of attempting a stale downlevel publish. Release claim gating remains tied to `docs/bench/reference-parity-matrix.md`, `docs/bench/session-memory-methodology.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, and `src/__integration__/reference-parity-tool-surface.integration.test.ts`.
+
 ## 0.1.4
 
 ### Patch Changes
