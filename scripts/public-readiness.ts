@@ -198,12 +198,12 @@ if (import.meta.main) {
 
   // 1) Existing gate commands
   for (const [name, command, args, env] of [
-    ['forbidden-env-files', 'bun', ['scripts/check-no-dev-vars.ts'], process.env] as const,
+    ['forbidden-env-files', './bin/wp', ['audit', 'no-dev-vars'], { ...process.env, WP_SKIP_UPDATE_CHECK: '1' }] as const,
     [
       'secret-provider-quarantine',
-      'bun',
-      ['scripts/audit-secret-provider-quarantine.ts'],
-      process.env,
+      './bin/wp',
+      ['audit', 'secret-provider-quarantine'],
+      { ...process.env, WP_SKIP_UPDATE_CHECK: '1' },
     ] as const,
     [
       'package-surface-audit',

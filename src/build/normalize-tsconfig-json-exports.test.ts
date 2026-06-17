@@ -8,8 +8,8 @@ describe('normalizeTsconfigJsonExports', () => {
       exports: {
         './tsconfig/base.json': {
           import: {
-            types: './dist/esm/config/tsconfig/base.json',
-            default: './dist/esm/config/tsconfig/base.json',
+            types: './tsconfig/base.json',
+            default: './tsconfig/base.json',
           },
         },
         './vitest/node': {
@@ -25,9 +25,9 @@ describe('normalizeTsconfigJsonExports', () => {
       exports: {
         './tsconfig/base.json': {
           import: {
-            default: './dist/esm/config/tsconfig/base.json',
+            default: './tsconfig/base.json',
           },
-          default: './dist/esm/config/tsconfig/base.json',
+          default: './tsconfig/base.json',
         },
         './vitest/node': {
           import: {
@@ -44,10 +44,10 @@ describe('normalizeTsconfigJsonExports', () => {
       exports: {
         './tsconfig/cloudflare.json': {
           import: {
-            types: './dist/esm/config/tsconfig/cloudflare.json',
-            default: './dist/esm/config/tsconfig/cloudflare.json',
+            types: './tsconfig/cloudflare.json',
+            default: './tsconfig/cloudflare.json',
           },
-          default: './dist/esm/config/tsconfig/cloudflare.json',
+          default: './tsconfig/cloudflare.json',
         },
       },
     }
@@ -56,9 +56,9 @@ describe('normalizeTsconfigJsonExports', () => {
       exports: {
         './tsconfig/cloudflare.json': {
           import: {
-            default: './dist/esm/config/tsconfig/cloudflare.json',
+            default: './tsconfig/cloudflare.json',
           },
-          default: './dist/esm/config/tsconfig/cloudflare.json',
+          default: './tsconfig/cloudflare.json',
         },
       },
     })

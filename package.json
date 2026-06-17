@@ -46,6 +46,7 @@
     "!dist/**/__mocks__/**",
     "!dist/**/runners/evals/**",
     "catalog",
+    "tsconfig",
     "just",
     "skills",
     "commands",
@@ -222,6 +223,26 @@
       }
     },
     "./catalog/*": "./catalog/*",
+    "./tsconfig/base.json": {
+      "import": "./tsconfig/base.json",
+      "default": "./tsconfig/base.json"
+    },
+    "./tsconfig/cloudflare.json": {
+      "import": "./tsconfig/cloudflare.json",
+      "default": "./tsconfig/cloudflare.json"
+    },
+    "./tsconfig/library.json": {
+      "import": "./tsconfig/library.json",
+      "default": "./tsconfig/library.json"
+    },
+    "./tsconfig/react-library.json": {
+      "import": "./tsconfig/react-library.json",
+      "default": "./tsconfig/react-library.json"
+    },
+    "./tsconfig/react-router.json": {
+      "import": "./tsconfig/react-router.json",
+      "default": "./tsconfig/react-router.json"
+    },
     "./dev": {
       "import": {
         "types": "./dist/esm/dev/index.d.ts",
@@ -479,8 +500,8 @@
     "catalog:check": "./bin/wp audit catalog-drift",
     "license:check": "./bin/wp audit open-source-licenses",
     "imports:check": "./bin/wp audit no-relative-parent-imports",
-    "verify:secrets": "bun scripts/check-no-dev-vars.ts",
-    "audit:secret-provider-quarantine": "bun scripts/audit-secret-provider-quarantine.ts",
+    "verify:secrets": "./bin/wp audit no-dev-vars",
+    "audit:secret-provider-quarantine": "./bin/wp audit secret-provider-quarantine",
     "workflow-actions:check": "bun scripts/check-workflow-action-pins.ts",
     "public:consumer-smoke": "bun scripts/public-consumer-smoke.ts",
     "public:readiness": "bun scripts/public-readiness.ts",

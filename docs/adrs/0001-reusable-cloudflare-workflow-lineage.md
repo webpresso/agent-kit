@@ -12,7 +12,7 @@ last_updated: 2026-06-11
 ## Context
 
 `ingest-lens`, `edge-matte`, and `ozby-dev` already consume
-`webpresso/agent-kit/.github/workflows/cloudflare-preview.yml` and
+`webpresso/github-actions/.github/workflows/cloudflare-preview.yml` and
 `cloudflare-production.yml` by immutable commit SHA.
 
 The downstream repos currently pin the lineage introduced at:
