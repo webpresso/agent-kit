@@ -13,6 +13,9 @@ import {
   GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN,
   GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN,
   GUARDED_NODE_MODULES_BIN_PATTERN,
+  IF_GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN,
+  IF_GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN,
+  IF_GUARDED_NODE_MODULES_BIN_PATTERN,
   stripSingleShellQuotePair,
 } from './shell-identity.js'
 
@@ -34,12 +37,18 @@ function extractAgentKitBinName(command: string): string | null {
   if (directManagedLauncherMatch !== null) return directManagedLauncherMatch[2] ?? null
   const guardedBinMatch = GUARDED_NODE_MODULES_BIN_PATTERN.exec(command.trim())
   if (guardedBinMatch !== null) return guardedBinMatch[3] ?? null
+  const ifGuardedBinMatch = IF_GUARDED_NODE_MODULES_BIN_PATTERN.exec(command.trim())
+  if (ifGuardedBinMatch !== null) return ifGuardedBinMatch[3] ?? null
   const directClaudeBinMatch = DIRECT_CLAUDE_NODE_MODULES_BIN_PATTERN.exec(normalizedCommand)
   if (directClaudeBinMatch !== null) return directClaudeBinMatch[1] ?? null
   const guardedClaudeBinMatch = GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN.exec(command.trim())
   if (guardedClaudeBinMatch !== null) return guardedClaudeBinMatch[2] ?? null
+  const ifGuardedClaudeBinMatch = IF_GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN.exec(command.trim())
+  if (ifGuardedClaudeBinMatch !== null) return ifGuardedClaudeBinMatch[2] ?? null
   const guardedManagedLauncherMatch = GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(command.trim())
   if (guardedManagedLauncherMatch !== null) return guardedManagedLauncherMatch[3] ?? null
+  const ifGuardedManagedLauncherMatch = IF_GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(command.trim())
+  if (ifGuardedManagedLauncherMatch !== null) return ifGuardedManagedLauncherMatch[3] ?? null
   return null
 }
 

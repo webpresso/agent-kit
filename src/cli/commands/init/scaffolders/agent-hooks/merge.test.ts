@@ -86,6 +86,33 @@ describe('ensureGroup', () => {
     // but timeout updated from incoming
     expect(result[0]?.hooks[0]?.timeout).toStrictEqual(10)
   })
+
+  it('dedupes legacy and if/then guarded launcher forms for the same hook target', () => {
+    const existing: HookGroup = {
+      hooks: [
+        {
+          type: 'command',
+          command:
+            '[ -x "/repo/.codex/managed-hooks/wp-stop-qa.sh" ] && "/repo/.codex/managed-hooks/wp-stop-qa.sh" || true',
+        },
+      ],
+    }
+    const incoming: HookGroup = {
+      hooks: [
+        {
+          type: 'command',
+          command:
+            'if [ -x "/new-repo/.codex/managed-hooks/wp-stop-qa.sh" ]; then "/new-repo/.codex/managed-hooks/wp-stop-qa.sh"; else true; fi',
+          timeout: 10,
+        },
+      ],
+    }
+
+    const result = ensureGroup([existing], incoming)
+    expect(result).toHaveLength(1)
+    expect(result[0]?.hooks[0]?.command).toStrictEqual(existing.hooks[0]?.command)
+    expect(result[0]?.hooks[0]?.timeout).toBe(10)
+  })
 })
 
 describe('mergeAgentKitGroups', () => {
