@@ -1,4 +1,4 @@
-import { baseConfig } from '@webpresso/agent-config/stryker'
+import { baseConfig } from './packages/agent-config/src/stryker/index.ts'
 
 function parseMutationFilesFromEnv(value: string | undefined): string[] | null {
   const files =

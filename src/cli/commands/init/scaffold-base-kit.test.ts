@@ -39,8 +39,13 @@ describe('scaffoldBaseKit', () => {
       true,
     )
     expect(existsSync(join(repoRoot, '.github', 'workflows', 'ci.yml'))).toBe(true)
+    expect(existsSync(join(repoRoot, '.github', 'workflows', 'release.yml'))).toBe(true)
+    expect(existsSync(join(repoRoot, '.changeset', 'config.json'))).toBe(true)
+    expect(existsSync(join(repoRoot, '.changeset', 'README.md'))).toBe(true)
     expect(existsSync(join(repoRoot, 'scripts', 'check-no-dev-vars.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'scripts', 'audit-secret-provider-quarantine.ts'))).toBe(true)
+    expect(existsSync(join(repoRoot, 'scripts', 'sync-release-metadata-version.ts'))).toBe(true)
+    expect(existsSync(join(repoRoot, 'scripts', 'release-publish.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'tsconfig.json'))).toBe(true)
     expect(existsSync(join(repoRoot, 'vitest.config.ts'))).toBe(true)
     // Tier-1 DRY: no oxlint.config.ts is scaffolded — `wp lint` injects the
@@ -62,6 +67,7 @@ describe('scaffoldBaseKit', () => {
     expect(existsSync(join(repoRoot, 'e2e', '.gitkeep'))).toBe(true)
 
     const workflow = readFileSync(join(repoRoot, '.github', 'workflows', 'ci.yml'), 'utf8')
+    const releaseWorkflow = readFileSync(join(repoRoot, '.github', 'workflows', 'release.yml'), 'utf8')
     expect(workflow).toContain('\n  quality:\n')
     expect(workflow).toContain('name: quality')
     expect(workflow).toContain('\n  wp-check:\n')
@@ -74,6 +80,9 @@ describe('scaffoldBaseKit', () => {
     expect(workflow).not.toContain('\n  test:\n')
     expect(workflow).not.toContain('\n  wp-audits:\n')
     expect(workflow).not.toContain('\n  deploy-contract:\n')
+    expect(releaseWorkflow).toContain('changesets-release.yml@22f93ddf4f58ed253e29c81d3e0a1d3fcdc6f3e3')
+    expect(releaseWorkflow).toContain('version_command: pnpm run version')
+    expect(releaseWorkflow).toContain('publish_command: pnpm run release:publish')
 
     expect(readFileSync(join(repoRoot, '.node-version'), 'utf8').trim()).toBe('24.16.0')
     expect(readFileSync(join(repoRoot, '.nvmrc'), 'utf8').trim()).toBe('24.16.0')
@@ -127,6 +136,7 @@ describe('scaffoldBaseKit', () => {
     expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toMatch(
       /^\^\d+\.\d+\.\d+/u,
     )
+    expect((pkg['devDependencies'] as Record<string, string>)['@changesets/cli']).toBe('latest')
     expect((pkg['devDependencies'] as Record<string, string>)['typescript']).toBe('latest')
     expect((pkg['devDependencies'] as Record<string, string>)['vitest']).toBe('latest')
     expect((pkg['devDependencies'] as Record<string, string>)['@playwright/test']).toBe('latest')
@@ -136,7 +146,16 @@ describe('scaffoldBaseKit', () => {
     expect(
       (pkg['devDependencies'] as Record<string, string>)['@stryker-mutator/typescript-checker'],
     ).toBe('latest')
+    expect(pkg['version']).toBe('0.0.0')
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
+    expect((pkg['scripts'] as Record<string, string>)['changeset']).toBe('changeset')
+    expect((pkg['scripts'] as Record<string, string>)['changeset:status']).toBe('changeset status')
+    expect((pkg['scripts'] as Record<string, string>)['version']).toBe(
+      'changeset version && bun scripts/sync-release-metadata-version.ts',
+    )
+    expect((pkg['scripts'] as Record<string, string>)['release:publish']).toBe(
+      'bun scripts/release-publish.ts',
+    )
     expect((pkg['scripts'] as Record<string, string>)['lint']).toBe('wp lint src e2e *.config.ts')
     expect((pkg['scripts'] as Record<string, string>)['typecheck']).toBe('wp typecheck')
     expect((pkg['scripts'] as Record<string, string>)['test']).toBe(
@@ -180,7 +199,16 @@ describe('scaffoldBaseKit', () => {
     expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
       '^0.2.0',
     )
+    expect(pkg['version']).toBe('0.0.0')
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
+    expect((pkg['scripts'] as Record<string, string>)['changeset']).toBe('changeset')
+    expect((pkg['scripts'] as Record<string, string>)['changeset:status']).toBe('changeset status')
+    expect((pkg['scripts'] as Record<string, string>)['version']).toBe(
+      'changeset version && bun scripts/sync-release-metadata-version.ts',
+    )
+    expect((pkg['scripts'] as Record<string, string>)['release:publish']).toBe(
+      'bun scripts/release-publish.ts',
+    )
     expect((pkg['scripts'] as Record<string, string>)['verify:paths']).toBe(
       'wp audit absolute-path-policy --root .',
     )
@@ -232,7 +260,16 @@ describe('scaffoldBaseKit', () => {
     scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
+    expect(pkg['version']).toBe('0.0.0')
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
+    expect((pkg['scripts'] as Record<string, string>)['changeset']).toBe('changeset')
+    expect((pkg['scripts'] as Record<string, string>)['changeset:status']).toBe('changeset status')
+    expect((pkg['scripts'] as Record<string, string>)['version']).toBe(
+      'changeset version && bun scripts/sync-release-metadata-version.ts',
+    )
+    expect((pkg['scripts'] as Record<string, string>)['release:publish']).toBe(
+      'bun scripts/release-publish.ts',
+    )
     expect((pkg['scripts'] as Record<string, string>)['verify:paths']).toBe(
       'wp audit absolute-path-policy --root .',
     )
@@ -289,7 +326,16 @@ describe('scaffoldBaseKit', () => {
     expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toMatch(
       /^\^\d+\.\d+\.\d+/,
     )
+    expect(pkg['version']).toBe('0.0.0')
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
+    expect((pkg['scripts'] as Record<string, string>)['changeset']).toBe('changeset')
+    expect((pkg['scripts'] as Record<string, string>)['changeset:status']).toBe('changeset status')
+    expect((pkg['scripts'] as Record<string, string>)['version']).toBe(
+      'changeset version && bun scripts/sync-release-metadata-version.ts',
+    )
+    expect((pkg['scripts'] as Record<string, string>)['release:publish']).toBe(
+      'bun scripts/release-publish.ts',
+    )
     expect((pkg['scripts'] as Record<string, string>)['verify:paths']).toBe(
       'wp audit absolute-path-policy --root .',
     )
