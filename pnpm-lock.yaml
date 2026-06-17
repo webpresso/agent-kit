@@ -151,6 +151,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.9.1
+      '@webpresso/agent-config':
+        specifier: workspace:*
+        version: link:packages/agent-config
       husky:
         specifier: ^9.1.7
         version: 9.1.7

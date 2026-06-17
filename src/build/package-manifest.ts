@@ -26,6 +26,7 @@ type PackageManifest = Record<string, unknown> &
 type WorkspaceCatalogs = {
   catalog?: Record<string, string>
   catalogs?: Record<string, Record<string, string>>
+  workspacePackages?: Record<string, string>
 }
 
 const DEPENDENCY_SECTIONS = [
@@ -73,6 +74,7 @@ function normalizePackedBinField(value: unknown): unknown {
 
 export function readWorkspaceCatalogs(workspacePath: string): WorkspaceCatalogs {
   const parsed = parseYaml(readFileSync(workspacePath, 'utf8')) as {
+    packages?: unknown
     catalog?: unknown
     catalogs?: unknown
   }
@@ -87,10 +89,53 @@ export function readWorkspaceCatalogs(workspacePath: string): WorkspaceCatalogs 
         )
       : undefined
 
+  const workspacePackages = readWorkspacePackageVersions(dirname(workspacePath), parsed.packages)
+
   return {
     catalog: catalogs,
     catalogs: namedCatalogs,
+    workspacePackages,
   }
+}
+
+function readWorkspacePackageVersions(
+  repoRoot: string,
+  packageGlobs: unknown,
+): Record<string, string> | undefined {
+  if (!Array.isArray(packageGlobs)) return undefined
+
+  const versions: Record<string, string> = {}
+
+  for (const pattern of packageGlobs) {
+    if (typeof pattern !== 'string') continue
+    if (pattern.includes('!')) continue
+
+    if (pattern.endsWith('/*')) {
+      const parentDir = join(repoRoot, pattern.slice(0, -2))
+      if (!existsSync(parentDir)) continue
+      for (const child of readdirSync(parentDir)) {
+        collectWorkspacePackageVersion(join(parentDir, child), versions)
+      }
+      continue
+    }
+
+    collectWorkspacePackageVersion(join(repoRoot, pattern), versions)
+  }
+
+  return Object.keys(versions).length > 0 ? versions : undefined
+}
+
+function collectWorkspacePackageVersion(dirPath: string, versions: Record<string, string>) {
+  const packageJsonPath = join(dirPath, 'package.json')
+  if (!existsSync(packageJsonPath)) return
+
+  const parsed = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as {
+    name?: unknown
+    version?: unknown
+  }
+  if (typeof parsed.name !== 'string' || typeof parsed.version !== 'string') return
+
+  versions[parsed.name] = parsed.version
 }
 
 export function resolveCatalogSpecifier(
@@ -98,6 +143,16 @@ export function resolveCatalogSpecifier(
   version: string,
   workspaceCatalogs: WorkspaceCatalogs,
 ): string {
+  if (version.startsWith('workspace:')) {
+    const localVersion = workspaceCatalogs.workspacePackages?.[dependencyName]
+    if (!localVersion) return version
+
+    const workspaceRange = version.slice('workspace:'.length)
+    if (workspaceRange === '*' || workspaceRange.length === 0) return localVersion
+    if (workspaceRange === '^' || workspaceRange === '~') return `${workspaceRange}${localVersion}`
+    return workspaceRange
+  }
+
   if (!version.startsWith('catalog:')) return version
 
   const catalogName = version.slice('catalog:'.length)
@@ -152,6 +207,12 @@ export function createPackedManifest(
   if ('bin' in packedManifest) {
     packedManifest.bin = normalizePackedBinField(packedManifest.bin)
   }
+
+  // Published tarballs should not require repo-local authoring tools at
+  // install time. Keep devDependency validation above (so obviously broken
+  // local protocols still fail loudly while authoring), but strip the
+  // devDependencies section from the packed manifest entirely.
+  delete packedManifest.devDependencies
 
   if (typeof manifest.version === 'string') {
     packedManifest.optionalDependencies = {

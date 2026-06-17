@@ -32,5 +32,8 @@
     "internalHooks": [
       "wp-precompact-snapshot"
     ]
-  }
+  },
+  "allowedPublicPackages": [
+    "@webpresso/agent-config"
+  ]
 }

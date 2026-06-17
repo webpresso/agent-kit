@@ -164,7 +164,7 @@ describe('createPackedManifest', () => {
     )
 
     expect(manifest.dependencies?.vite).toBe('^8.0.11')
-    expect(manifest.devDependencies?.vitest).toBe('^4.1.5')
+    expect(manifest.devDependencies?.vitest).toBeUndefined()
     expect(manifest.optionalDependencies?.zod).toBe('^4.4.3')
     expect(manifest.peerDependencies?.react).toBe('^18.3.1')
   })
@@ -215,6 +215,37 @@ describe('createPackedManifest', () => {
     ).toThrow(
       'Cannot pack devDependencies.local with non-publishable file: specifier "file:../local"',
     )
+  })
+
+  it('rewrites publishable workspace package specifiers to local workspace versions before packing', () => {
+    const manifest = createPackedManifest(
+      {
+        devDependencies: { '@webpresso/agent-config': 'workspace:*' },
+        peerDependencies: { '@webpresso/agent-config': 'workspace:^' },
+      },
+      {
+        catalog: {},
+        workspacePackages: {
+          '@webpresso/agent-config': '0.0.1',
+        },
+      },
+    )
+
+    expect(manifest.devDependencies?.['@webpresso/agent-config']).toBeUndefined()
+    expect(manifest.peerDependencies?.['@webpresso/agent-config']).toBe('^0.0.1')
+  })
+
+  it('omits devDependencies from the packed manifest install surface', () => {
+    const manifest = createPackedManifest(
+      {
+        devDependencies: { vitest: 'catalog:' },
+      },
+      {
+        catalog: { vitest: '^4.1.5' },
+      },
+    )
+
+    expect(manifest.devDependencies).toBeUndefined()
   })
 
   it('rejects non-publishable local dependency protocols resolved from catalogs', () => {

@@ -57,6 +57,17 @@ describe('release workflow publish path', () => {
     expect(workflow).toContain('npm provenance verification requires a GitHub-hosted runner')
   })
 
+
+  it('limits GitHub-hosted release execution to real release-surface changes on main', () => {
+    const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
+    expect(workflow).toContain("paths:")
+    expect(workflow).toContain("- '.changeset/**'")
+    expect(workflow).toContain("- 'package.json'")
+    expect(workflow).toContain("- 'pnpm-lock.yaml'")
+    expect(workflow).toContain("- 'CHANGELOG.md'")
+    expect(workflow).toContain("- 'scripts/release-publish.ts'")
+  })
+
   it('publishes with npm public/provenance flow instead of legacy changeset or GitHub Packages publish', () => {
     const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
     expect(workflow.includes('pnpm changeset publish')).toBe(false)
