@@ -47,6 +47,9 @@ import {
   GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN,
   GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN,
   GUARDED_NODE_MODULES_BIN_PATTERN,
+  IF_GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN,
+  IF_GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN,
+  IF_GUARDED_NODE_MODULES_BIN_PATTERN,
   stripSingleShellQuotePair,
 } from './shell-identity.js'
 import {
@@ -107,7 +110,7 @@ function missingLauncherFallbackCommand(name: string): string {
 
 function buildGuardedHookCommand(binPath: string, name: string): string {
   const quotedBinPath = quoteHookCommandPath(binPath)
-  return `[ -x ${quotedBinPath} ] && ${quotedBinPath} || ${missingLauncherFallbackCommand(name)}`
+  return `if [ -x ${quotedBinPath} ]; then ${quotedBinPath}; else ${missingLauncherFallbackCommand(name)}; fi`
 }
 
 const CC_BIN = (name: string) => buildGuardedHookCommand(claudeManagedHookLauncherPath(name), name)
@@ -147,8 +150,12 @@ function extractAgentKitCodexBinName(command: string): string | null {
   if (directManagedLauncherMatch !== null) return directManagedLauncherMatch[2] ?? null
   const guardedBinMatch = GUARDED_NODE_MODULES_BIN_PATTERN.exec(command.trim())
   if (guardedBinMatch !== null) return guardedBinMatch[3] ?? null
+  const ifGuardedBinMatch = IF_GUARDED_NODE_MODULES_BIN_PATTERN.exec(command.trim())
+  if (ifGuardedBinMatch !== null) return ifGuardedBinMatch[3] ?? null
   const guardedManagedLauncherMatch = GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(command.trim())
   if (guardedManagedLauncherMatch !== null) return guardedManagedLauncherMatch[3] ?? null
+  const ifGuardedManagedLauncherMatch = IF_GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(command.trim())
+  if (ifGuardedManagedLauncherMatch !== null) return ifGuardedManagedLauncherMatch[3] ?? null
   return null
 }
 
@@ -160,8 +167,12 @@ function extractClaudeBinName(command: string): string | null {
   if (directManagedLauncherMatch !== null) return directManagedLauncherMatch[2] ?? null
   const guardedBinMatch = GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN.exec(command.trim())
   if (guardedBinMatch !== null) return guardedBinMatch[2] ?? null
+  const ifGuardedBinMatch = IF_GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN.exec(command.trim())
+  if (ifGuardedBinMatch !== null) return ifGuardedBinMatch[2] ?? null
   const guardedManagedLauncherMatch = GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(command.trim())
   if (guardedManagedLauncherMatch !== null) return guardedManagedLauncherMatch[3] ?? null
+  const ifGuardedManagedLauncherMatch = IF_GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(command.trim())
+  if (ifGuardedManagedLauncherMatch !== null) return ifGuardedManagedLauncherMatch[3] ?? null
   return null
 }
 
@@ -853,9 +864,10 @@ export function resolvePackageRootForHookLaunchers(
 }
 
 /**
- * The `wp hook <sub>` subcommand a managed launcher should dispatch to. The
- * names map 1:1 by stripping the `wp-` prefix; `isHookName` is the single
- * source of truth.
+ * The `wp hook <sub>` subcommand historically matched the `wp-*` managed hook
+ * bins 1:1 by stripping the `wp-` prefix. Keep it exported while the bin names
+ * still track the hook names even though managed launchers now execute the
+ * compiled hook bins directly.
  */
 export function hookSubcommandFor(binName: string): string | undefined {
   const sub = binName.startsWith('wp-') ? binName.slice(3) : binName
@@ -874,11 +886,12 @@ function renderManagedWebpressoHookLauncher(_repoRoot: string, binName: string):
       ? PRETOOL_GUARD_MISSING_DENY
       : missingRuntimeWarning
 
-  const hookSub = hookSubcommandFor(binName)
+  const packageRoot = resolvePackageRootForHookLaunchers()
+  const hookBinPath = quoteShell(join(packageRoot, 'bin', `${binName}.js`))
 
   return `#!/bin/sh
-if command -v wp >/dev/null 2>&1; then
-  exec wp hook ${hookSub} "$@"
+if [ -x ${hookBinPath} ]; then
+  exec ${hookBinPath} "$@"
 fi
 
 ${missingFallback}

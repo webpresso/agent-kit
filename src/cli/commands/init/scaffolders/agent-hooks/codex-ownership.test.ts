@@ -66,6 +66,18 @@ describe('isWebpressoOwnedCodexHook', () => {
     ).toBe(true)
   })
 
+  it('accepts if/then guarded managed launcher commands', () => {
+    expect(
+      isWebpressoOwnedCodexHook(
+        ownedHook({
+          command:
+            'if [ -x "/repo/.codex/managed-hooks/wp-post-tool.sh" ]; then "/repo/.codex/managed-hooks/wp-post-tool.sh"; else printf "%s\\n" "{}"; fi',
+        }),
+        EXPECTED_SOURCE_PATHS,
+      ),
+    ).toBe(true)
+  })
+
   it('rejects arbitrary Bash and Python hook commands', () => {
     expect(
       isWebpressoOwnedCodexHook(
