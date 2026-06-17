@@ -35,6 +35,12 @@ interface PublishablePackage {
   manifestPath: string
 }
 
+interface PublishedPackage {
+  packageName: string
+  version: string
+  publishState: PublishState
+}
+
 function run(command: string, args: string[], cwd = process.cwd()) {
   const result = spawnSync(command, args, {
     cwd,
@@ -142,13 +148,15 @@ function manifestVersionChangedSinceFirstParent(pkg: PublishablePackage): boolea
   }
 }
 
-function shouldPublishPackage(pkg: PublishablePackage): boolean {
-  assertNotBehindRegistry(pkg)
-  return !npmVersionExists(pkg.name, pkg.version)
-}
-
 function publishSimpleWorkspacePackage(pkg: PublishablePackage): PublishState | null {
-  if (!shouldPublishPackage(pkg)) {
+  assertNotBehindRegistry(pkg)
+  if (npmVersionExists(pkg.name, pkg.version)) {
+    if (manifestVersionChangedSinceFirstParent(pkg)) {
+      process.stdout.write(
+        `[release:publish] ${pkg.name}@${pkg.version} already published; treating as success\n`,
+      )
+      return 'already-published'
+    }
     process.stdout.write(`[release:publish] ${pkg.name}@${pkg.version} already published; skipping\n`)
     return null
   }
@@ -167,25 +175,34 @@ function publishSimpleWorkspacePackage(pkg: PublishablePackage): PublishState | 
   process.exit(exitCode(publishResult))
 }
 
-function writePublishResultFile(state: PublishState) {
+function toPublishedPackage(pkg: PublishablePackage, publishState: PublishState): PublishedPackage {
+  return {
+    packageName: pkg.name,
+    version: pkg.version,
+    publishState,
+  }
+}
+
+function writePublishResultFile(packages: readonly PublishedPackage[]) {
   const resultPath = process.env[RELEASE_PUBLISH_RESULT_FILE_ENV]
   if (!resultPath) return
+  if (packages.length === 0) return
 
-  const packageName = process.env.npm_package_name
-  const version = process.env.npm_package_version
-  if (!packageName || !version) {
-    throw new Error(
-      `${RELEASE_PUBLISH_RESULT_FILE_ENV} is set, but npm_package_name/version are unavailable.`,
-    )
+  const primaryPackage =
+    packages.find((publishedPackage) => publishedPackage.packageName === ROOT_PACKAGE_NAME) ??
+    packages[0]
+  if (!primaryPackage) {
+    return
   }
 
   writeFileSync(
     resultPath,
     JSON.stringify(
       {
-        packageName,
-        version,
-        publishState: state,
+        packageName: primaryPackage.packageName,
+        version: primaryPackage.version,
+        publishState: primaryPackage.publishState,
+        packages,
       },
       null,
       2,
@@ -201,9 +218,13 @@ if (!rootPackage || rootPackage.name !== ROOT_PACKAGE_NAME) {
   throw new Error(`release-publish must run from ${ROOT_PACKAGE_NAME}`)
 }
 
+const publishedPackages: PublishedPackage[] = []
 for (const workspacePackage of discoverWorkspacePackages(packageRoot)) {
   if (workspacePackage.name === ROOT_PACKAGE_NAME) continue
-  publishSimpleWorkspacePackage(workspacePackage)
+  const publishState = publishSimpleWorkspacePackage(workspacePackage)
+  if (publishState) {
+    publishedPackages.push(toPublishedPackage(workspacePackage, publishState))
+  }
 }
 
 const rootVersionExists = npmVersionExists(rootPackage.name, rootPackage.version)
@@ -212,6 +233,7 @@ if (rootVersionExists && !rootVersionChanged) {
   process.stdout.write(
     `[release:publish] ${rootPackage.name}@${rootPackage.version} already published and unchanged; skipping root publish\n`,
   )
+  writePublishResultFile(publishedPackages)
   process.exit(0)
 }
 assertNotBehindRegistry(rootPackage)
@@ -295,7 +317,8 @@ try {
 }
 
 if (publishExitCode === 0 && rootPublishState) {
-  writePublishResultFile(rootPublishState)
+  publishedPackages.push(toPublishedPackage(rootPackage, rootPublishState))
+  writePublishResultFile(publishedPackages)
 }
 
 process.exit(publishExitCode)

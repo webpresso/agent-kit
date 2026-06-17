@@ -74,8 +74,10 @@ describe('release workflow publish path', () => {
     expect(workflow).toContain("paths:")
     expect(workflow).toContain("- '.changeset/**'")
     expect(workflow).toContain("- 'package.json'")
+    expect(workflow).toContain("- 'packages/*/package.json'")
     expect(workflow).toContain("- 'pnpm-lock.yaml'")
     expect(workflow).toContain("- 'CHANGELOG.md'")
+    expect(workflow).toContain("- 'packages/*/CHANGELOG.md'")
     expect(workflow).toContain("- 'scripts/release-publish.ts'")
   })
 
@@ -123,10 +125,50 @@ describe('release workflow publish path', () => {
     expect(afterChangesetsAction).toContain(
       "steps.publish_result.outputs.should_finalize == 'true'",
     )
+    expect(afterChangesetsAction).toContain('packages_json=$(')
+    expect(afterChangesetsAction).toContain('root_package_published=$(')
+    expect(afterChangesetsAction).toContain('non_root_package_count=$(')
     expect(afterChangesetsAction).not.toContain("steps.publish_probe.outputs.published == 'true'")
     expect(afterChangesetsAction).toContain('id: registry_visibility')
     expect(afterChangesetsAction).toContain('Assert release finalization contract')
     expect(afterChangesetsAction).toContain('gh release view "$tag" --json url,assets')
+  })
+
+  it('creates GitHub Releases for non-root workspace packages published by the custom release path', () => {
+    const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
+    const workspaceReleaseStep = workflow.slice(
+      workflow.indexOf('- name: Publish workspace package GitHub Releases'),
+      workflow.indexOf('- name: Build native runtime binaries for the GitHub Release'),
+    )
+
+    expect(workspaceReleaseStep).toContain(
+      "steps.publish_result.outputs.non_root_package_count != '0'",
+    )
+    expect(workspaceReleaseStep).toContain("pkg.packageName !== '@webpresso/agent-kit'")
+    expect(workspaceReleaseStep).toContain('const tag = `${pkg.packageName}@${pkg.version}`')
+    expect(workspaceReleaseStep).toContain("execFileSync('gh', [")
+    expect(workspaceReleaseStep).toContain("'release',")
+    expect(workspaceReleaseStep).toContain("'create',")
+    expect(workspaceReleaseStep).toContain('urls=${urls.join')
+  })
+
+  it('runs root runtime release finalization only when the root package was published', () => {
+    const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
+    const rootOnlySteps = [
+      '- name: Resolve published version for artifacts',
+      '- name: Create mainline release tag when missing',
+      '- name: Verify tag points at the published mainline commit',
+      '- name: Create marketplace compatibility branch',
+      '- name: Build native runtime binaries for the GitHub Release',
+      '- name: Publish GitHub Release with native runtime binaries',
+      '- name: Verify GitHub Release assets',
+    ]
+
+    for (const stepName of rootOnlySteps) {
+      const start = workflow.indexOf(stepName)
+      const step = workflow.slice(start, workflow.indexOf('\n      - name:', start + 1))
+      expect(step).toContain("steps.publish_result.outputs.root_package_published == 'true'")
+    }
   })
 
   it('does not run local Husky hooks for the generated compatibility branch push', () => {
