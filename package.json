@@ -46,6 +46,7 @@
     "!dist/**/__mocks__/**",
     "!dist/**/runners/evals/**",
     "catalog",
+    "tsconfig",
     "just",
     "skills",
     "commands",
@@ -222,6 +223,26 @@
       }
     },
     "./catalog/*": "./catalog/*",
+    "./tsconfig/base.json": {
+      "import": "./tsconfig/base.json",
+      "default": "./tsconfig/base.json"
+    },
+    "./tsconfig/cloudflare.json": {
+      "import": "./tsconfig/cloudflare.json",
+      "default": "./tsconfig/cloudflare.json"
+    },
+    "./tsconfig/library.json": {
+      "import": "./tsconfig/library.json",
+      "default": "./tsconfig/library.json"
+    },
+    "./tsconfig/react-library.json": {
+      "import": "./tsconfig/react-library.json",
+      "default": "./tsconfig/react-library.json"
+    },
+    "./tsconfig/react-router.json": {
+      "import": "./tsconfig/react-router.json",
+      "default": "./tsconfig/react-router.json"
+    },
     "./dev": {
       "import": {
         "types": "./dist/esm/dev/index.d.ts",
