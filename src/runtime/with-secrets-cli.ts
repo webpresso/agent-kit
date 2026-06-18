@@ -10,14 +10,15 @@ interface ParsedCommand {
   readonly command: string
   readonly args: string[]
   readonly profile?: string
+  readonly environment?: string
 }
 
 function usage(): string {
   return [
-    'Usage: with-secrets [--env-profile <profile>] [--runtime-profile <profile>] -- <command> [args...]',
+    'Usage: with-secrets [--env-profile <profile>] [--runtime-profile <profile>] [--secret-env-profile <profile>] -- <command> [args...]',
     '',
-    'Runtime profiles: none, secrets-only, service-runtime, database, full',
-    'Non-canonical profiles are forwarded as provider-specific environment selectors (for example: prd).',
+    'Runtime profiles: none, public, secrets-only, service-runtime, database, full',
+    'Provider environment/config selectors use --secret-env-profile <profile> (legacy non-canonical --env-profile values still resolve as provider selectors).',
   ].join('\n')
 }
 
@@ -27,6 +28,7 @@ export function parseWithSecretsArgs(argv: readonly string[]): ParsedCommand | n
 
   let separatorIndex = args.indexOf('--')
   let profile: string | undefined
+  let environment: string | undefined
   const preamble = separatorIndex === -1 ? args : args.slice(0, separatorIndex)
   const commandArgs = separatorIndex === -1 ? args : args.slice(separatorIndex + 1)
 
@@ -49,11 +51,27 @@ export function parseWithSecretsArgs(argv: readonly string[]): ParsedCommand | n
       profile = arg.slice('--runtime-profile='.length)
       continue
     }
+
+    if (arg === '--secret-env-profile' || arg === '--provider-env-profile') {
+      environment = preamble[i + 1]
+      i += 1
+      continue
+    }
+
+    if (arg.startsWith('--secret-env-profile=')) {
+      environment = arg.slice('--secret-env-profile='.length)
+      continue
+    }
+
+    if (arg.startsWith('--provider-env-profile=')) {
+      environment = arg.slice('--provider-env-profile='.length)
+      continue
+    }
   }
 
   const [command, ...commandRest] = commandArgs
   if (!command) return null
-  return { command, args: commandRest, profile }
+  return { command, args: commandRest, profile, environment }
 }
 
 export function runWithSecretsCli(argv: readonly string[] = process.argv.slice(2)): number {
@@ -72,6 +90,7 @@ export function runWithSecretsCli(argv: readonly string[] = process.argv.slice(2
     command: parsed.command,
     args: parsed.args,
     profile: selector,
+    environment: parsed.environment,
     stdio: 'inherit',
   })
 

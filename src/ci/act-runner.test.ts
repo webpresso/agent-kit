@@ -76,7 +76,28 @@ describe('public ci act runner contract', () => {
     const command = buildPublicCiActCommand({ cwd: '/repo', workflow: 'ci-e2e' })
 
     expect(command.command).toBe('with-secrets')
-    expect(command.args.slice(0, 4)).toEqual(['--env-profile', 'secrets-only', '--', 'act'])
+    expect(command.args.slice(0, 4)).toEqual(['--runtime-profile', 'secrets-only', '--', 'act'])
+  })
+
+
+
+  it('keeps provider environment selectors separate from runtime profiles', () => {
+    const command = buildPublicCiActCommand({
+      cwd: '/repo',
+      workflow: 'ci-e2e',
+      envProfile: 'secrets-only',
+      secretEnvProfile: 'dev',
+    })
+
+    expect(command.command).toBe('with-secrets')
+    expect(command.args.slice(0, 6)).toEqual([
+      '--runtime-profile',
+      'secrets-only',
+      '--secret-env-profile',
+      'dev',
+      '--',
+      'act',
+    ])
   })
 
   it('uses direct act invocation for no-secret profiles', () => {

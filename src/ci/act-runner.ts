@@ -12,6 +12,7 @@ export interface PublicCiActOptions {
   readonly eventName?: CiActEventName
   readonly eventPath?: string
   readonly envProfile?: string
+  readonly secretEnvProfile?: string
   readonly containerArchitecture?: string
   readonly platformImage?: string
   readonly execute?: boolean
@@ -87,6 +88,7 @@ export function buildPublicCiActCommand(options: PublicCiActOptions = {}): Publi
   const wrapped: SecretGateCommand = buildSecretGateCommand({
     runner: 'with-secrets',
     envProfile: options.envProfile ?? 'secrets-only',
+    secretEnvProfile: options.secretEnvProfile,
     command: 'act',
     args: actArgs,
   })

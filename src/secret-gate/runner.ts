@@ -11,6 +11,7 @@ export interface SecretGateCommandOptions {
   readonly maxOutputBytes?: number
   readonly runner?: string
   readonly envProfile?: string
+  readonly secretEnvProfile?: string
   readonly command: string
   readonly args?: readonly string[]
   readonly cwd?: string
@@ -35,17 +36,42 @@ const SIGNAL_TO_EXIT_CODE: Readonly<Partial<Record<NodeJS.Signals, number>>> = {
   SIGTERM: 15,
 }
 
+const SECRET_GATE_RUNTIME_PROFILES = [
+  'none',
+  'public',
+  'secrets-only',
+  'service-runtime',
+  'database',
+  'full',
+] as const
+
 const DIRECT_ENV_PROFILES = new Set(['none', 'public'])
+
+export function isSecretGateRuntimeProfile(value: string | undefined): boolean {
+  return SECRET_GATE_RUNTIME_PROFILES.includes(
+    value as (typeof SECRET_GATE_RUNTIME_PROFILES)[number],
+  )
+}
 
 export function buildSecretGateCommand(options: SecretGateCommandOptions): SecretGateCommand {
   const runner = options.runner?.trim() || 'with-secrets'
   const envProfile = options.envProfile?.trim()
+  const secretEnvProfile = options.secretEnvProfile?.trim()
+  if (envProfile && !isSecretGateRuntimeProfile(envProfile)) {
+    throw new Error(
+      `Unsupported secret-gate envProfile "${envProfile}". Use one of: ${SECRET_GATE_RUNTIME_PROFILES.join(', ')}. Pass provider-specific Doppler/Infisical selectors via secretEnvProfile.`,
+    )
+  }
   if (runner === 'with-secrets' && envProfile && DIRECT_ENV_PROFILES.has(envProfile)) {
     return { command: options.command, args: [...(options.args ?? [])] }
   }
-  const args = envProfile
-    ? ['--env-profile', envProfile, '--', options.command, ...(options.args ?? [])]
-    : ['--', options.command, ...(options.args ?? [])]
+  const args = [
+    ...(envProfile ? ['--runtime-profile', envProfile] : []),
+    ...(secretEnvProfile ? ['--secret-env-profile', secretEnvProfile] : []),
+    '--',
+    options.command,
+    ...(options.args ?? []),
+  ]
   return { command: runner, args }
 }
 

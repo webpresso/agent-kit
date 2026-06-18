@@ -14,6 +14,7 @@ export interface RuntimeEnvCache {
 export interface ResolveRuntimeEnvironmentOptions {
   readonly cwd?: string
   readonly profile?: RuntimeSelector
+  readonly environment?: string
   readonly env?: NodeJS.ProcessEnv
   readonly cache?: RuntimeEnvCache
 }
@@ -21,6 +22,7 @@ export interface ResolveRuntimeEnvironmentOptions {
 export interface RuntimeSpawnOptions {
   readonly cwd?: string
   readonly profile?: RuntimeSelector
+  readonly environment?: string
   readonly env?: NodeJS.ProcessEnv
   readonly cache?: RuntimeEnvCache
 }
@@ -66,7 +68,17 @@ function isCanonicalSecretProfile(
   return profile !== undefined && isRuntimeProfile(profile) && profile !== 'none'
 }
 
-function resolveEnvironmentSelector(profile: string | undefined): string | undefined {
+function normalizeEnvironmentSelector(environment: string | undefined): string | undefined {
+  const trimmed = environment?.trim()
+  return trimmed && trimmed.length > 0 ? trimmed : undefined
+}
+
+function resolveEnvironmentSelector(
+  profile: string | undefined,
+  environment: string | undefined,
+): string | undefined {
+  const explicitEnvironment = normalizeEnvironmentSelector(environment)
+  if (explicitEnvironment) return explicitEnvironment
   if (!profile) return undefined
   return isCanonicalSecretProfile(profile) ? undefined : profile
 }
@@ -88,7 +100,7 @@ export function resolveRuntimeEnvironment(
   }
 
   const cache = options.cache ?? createRuntimeEnvCache()
-  const environmentSelector = resolveEnvironmentSelector(profile)
+  const environmentSelector = resolveEnvironmentSelector(profile, options.environment)
   const cacheKey = `${cwd}::${config.manager}::${config.projectId}::${environmentSelector ?? '<default>'}`
   const cached = cache.values.get(cacheKey)
   if (cached) return { ...cached }
@@ -108,6 +120,7 @@ export function buildRuntimeSpawnOptions(options: RuntimeSpawnOptions = {}): {
   const resolvedEnv = resolveRuntimeEnvironment({
     cwd,
     profile: options.profile,
+    environment: options.environment,
     env: options.env,
     cache,
   })

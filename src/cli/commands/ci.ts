@@ -29,6 +29,7 @@ export interface CiActOptions {
   readonly eventName?: CiActEventName
   readonly eventPath?: string
   readonly envProfile?: string
+  readonly secretEnvProfile?: string
   readonly containerArchitecture?: string
   readonly platformImage?: string
   readonly execute?: boolean
@@ -57,7 +58,11 @@ export function registerCiCommand(cli: CAC): void {
     .option('--job <id>', 'Workflow job id')
     .option('--event-name <name>', 'act event name: pull_request | push | workflow_dispatch')
     .option('--event-path <path>', 'Use an existing event JSON file')
-    .option('--env-profile <profile>', 'Secret-gate env profile', { default: 'secrets-only' })
+    .option('--env-profile <profile>', 'Secret-gate runtime profile', { default: 'secrets-only' })
+    .option(
+      '--secret-env-profile <profile>',
+      'Provider-specific secret manager environment/config selector',
+    )
     .option('--container-architecture <arch>', 'act container architecture override')
     .option('--platform-image <image>', 'act runner image for ubicloud-standard-2')
     .option(
@@ -78,6 +83,7 @@ export function registerCiCommand(cli: CAC): void {
         job: flags.job as string | undefined,
         eventName: flags.eventName as CiActEventName | undefined,
         envProfile: flags.envProfile as string | undefined,
+        secretEnvProfile: flags.secretEnvProfile as string | undefined,
         containerArchitecture: flags.containerArchitecture as string | undefined,
         platformImage: flags.platformImage as string | undefined,
         eventPath: flags.eventPath as string | undefined,
@@ -117,6 +123,7 @@ export async function runCiActCommand(
   const result = await (deps.run ?? runSecretGateCommand)({
     cwd,
     envProfile: options.envProfile,
+    secretEnvProfile: options.secretEnvProfile,
     command: 'act',
     args: command.actArgs,
     timeoutMs: normalizeCiActTimeoutMs(options.timeoutMs),

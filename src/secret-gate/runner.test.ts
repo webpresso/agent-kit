@@ -27,18 +27,37 @@ describe('secret-gate runner', () => {
     expect(result.stdout).toContain('output truncated')
   })
 
-  it('supports custom runner and env profile', () => {
+  it('supports custom runner with separate runtime and provider environment profiles', () => {
     const command = buildSecretGateCommand({
       runner: 'wp-secret-runner',
       envProfile: 'database',
+      secretEnvProfile: 'dev',
       command: 'wrangler',
       args: ['tail', 'api-worker'],
     })
 
     expect(command).toEqual({
       command: 'wp-secret-runner',
-      args: ['--env-profile', 'database', '--', 'wrangler', 'tail', 'api-worker'],
+      args: [
+        '--runtime-profile',
+        'database',
+        '--secret-env-profile',
+        'dev',
+        '--',
+        'wrangler',
+        'tail',
+        'api-worker',
+      ],
     })
+  })
+
+  it('rejects provider-specific selectors in envProfile', () => {
+    expect(() =>
+      buildSecretGateCommand({
+        envProfile: 'e2e-runtime',
+        command: 'act',
+      }),
+    ).toThrow('Use one of')
   })
 
   it('bypasses the with-secrets wrapper for no-secret profiles', () => {

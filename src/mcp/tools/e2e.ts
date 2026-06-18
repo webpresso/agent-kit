@@ -17,6 +17,7 @@ import {
   runCommandConfigs,
 } from '#e2e/execution'
 import { formatMcpToolOutput } from './_shared/full-output.js'
+import { resolveProjectRoot } from './_shared/project-root.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 
 const inputSchema = z.object({
@@ -112,6 +113,7 @@ const tool: ToolDescriptor = {
   },
   handler: async (raw, extra) => {
     const input = inputSchema.parse(raw ?? {})
+    const cwd = resolveProjectRoot(input.cwd ? { cwd: input.cwd } : {})
     const groups = await createE2eExecutionPlan(
       {
         suite: input.suite,
@@ -126,10 +128,10 @@ const tool: ToolDescriptor = {
         testList: input.testList,
         passthrough: input.passthrough,
       },
-      input.cwd,
+      cwd,
     )
     const commands = plannedGroupsToCommandConfigs(groups)
-    const result = await runCommandConfigs(commands, { signal: extra?.signal })
+    const result = await runCommandConfigs(commands, { cwd, signal: extra?.signal })
     const suiteIds = collectSuiteIds(groups)
 
     const payload = {

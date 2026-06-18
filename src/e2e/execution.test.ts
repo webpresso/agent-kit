@@ -1,4 +1,8 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { mkdtempSync, realpathSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const loadConfiguredHostAdapter = vi.hoisted(() => vi.fn())
 const planGenericE2eRun = vi.hoisted(() => vi.fn())
@@ -13,7 +17,25 @@ vi.mock('./run-planner.js', () => ({
   planE2eRun,
 }))
 
-import { createE2eExecutionPlan, plannedGroupsToCommandConfigs } from './execution.js'
+import {
+  createE2eExecutionPlan,
+  plannedGroupsToCommandConfigs,
+  runCommandConfigs,
+} from './execution.js'
+
+const tempDirs: string[] = []
+
+afterEach(() => {
+  for (const dir of tempDirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+function tempDir(): string {
+  const root = mkdtempSync(join(tmpdir(), 'wp-e2e-run-cwd-'))
+  tempDirs.push(root)
+  return root
+}
 
 beforeEach(() => {
   loadConfiguredHostAdapter.mockReset()
@@ -124,6 +146,23 @@ describe('e2e execution helpers', () => {
       }),
     )
     expect(result).toBe(groups)
+  })
+
+
+  it('uses the caller cwd as the execution cwd when a planned command has no cwd', async () => {
+    const cwd = tempDir()
+
+    const result = await runCommandConfigs(
+      [
+        {
+          command: process.execPath,
+          args: ['-e', 'process.stdout.write(process.cwd())'],
+        },
+      ],
+      { cwd },
+    )
+
+    expect(result).toEqual({ passed: true, exitCode: 0, output: realpathSync(cwd) })
   })
 
   it('merges group and run env when flattening planned commands', () => {

@@ -1,4 +1,8 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const createE2eExecutionPlan = vi.hoisted(() => vi.fn())
 const plannedGroupsToCommandConfigs = vi.hoisted(() => vi.fn())
@@ -21,6 +25,33 @@ function parsePayload(result: {
   content: ReadonlyArray<{ type: string; text?: string }>
 }) {
   return result.structuredContent as Record<string, unknown>
+}
+
+const tempDirs: string[] = []
+const originalClaudeProjectDir = process.env.CLAUDE_PROJECT_DIR
+
+afterEach(() => {
+  if (originalClaudeProjectDir === undefined) {
+    delete process.env.CLAUDE_PROJECT_DIR
+  } else {
+    process.env.CLAUDE_PROJECT_DIR = originalClaudeProjectDir
+  }
+
+  for (const dir of tempDirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+function tempProjectRoot(): string {
+  const root = mkdtempSync(join(tmpdir(), 'wp-e2e-mcp-root-'))
+  tempDirs.push(root)
+  writeFileSync(join(root, 'pnpm-workspace.yaml'), 'packages: []\n')
+  mkdirSync(join(root, '.webpresso'), { recursive: true })
+  writeFileSync(
+    join(root, '.webpresso', 'secrets.config.json'),
+    JSON.stringify({ manager: 'doppler', projectId: 'node-pubsub' }),
+  )
+  return root
 }
 
 beforeEach(() => {
@@ -75,10 +106,13 @@ describe('wp_e2e tool', () => {
         files: ['tests/smoke.spec.ts'],
         headed: true,
       }),
-      undefined,
+      process.cwd(),
     )
     expect(plannedGroupsToCommandConfigs).toHaveBeenCalledWith(groups)
-    expect(runCommandConfigs).toHaveBeenCalledWith(commands, { signal: undefined })
+    expect(runCommandConfigs).toHaveBeenCalledWith(commands, {
+      cwd: process.cwd(),
+      signal: undefined,
+    })
 
     const payload = parsePayload(result)
     expect(payload).toMatchObject({
@@ -94,6 +128,36 @@ describe('wp_e2e tool', () => {
     })
     expect((result.content[0] as { text: string }).text).toBe('e2e passed: 1 suite, 1 command')
     expect((payload.details as { commands: unknown[] }).commands).toEqual(commands)
+  })
+
+
+  it('resolves the MCP project root for planning and command execution', async () => {
+    const root = tempProjectRoot()
+    process.env.CLAUDE_PROJECT_DIR = root
+    const groups = [
+      {
+        batchKey: 'smoke',
+        runs: [
+          {
+            suiteId: 'smoke',
+            batchKey: 'smoke',
+            runner: 'command',
+            logName: 'smoke',
+            command: 'vp',
+            args: ['run', 'e2e'],
+          },
+        ],
+      },
+    ]
+    const commands = [{ command: 'vp', args: ['run', 'e2e'] }]
+    createE2eExecutionPlan.mockResolvedValue(groups)
+    plannedGroupsToCommandConfigs.mockReturnValue(commands)
+    runCommandConfigs.mockResolvedValue({ passed: true, exitCode: 0, output: 'ok\n' })
+
+    await akE2eTool.handler({ suite: 'smoke' })
+
+    expect(createE2eExecutionPlan).toHaveBeenCalledWith(expect.any(Object), root)
+    expect(runCommandConfigs).toHaveBeenCalledWith(commands, { cwd: root, signal: undefined })
   })
 
   it('propagates non-zero execution as passed=false with command metadata intact', async () => {

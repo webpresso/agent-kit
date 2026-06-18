@@ -7,9 +7,8 @@ last_updated: '2026-05-24'
 
 `wp ci act` is the public CLI contract for local GitHub Actions reproduction.
 `wp_ci_act` is the matching MCP tool. Both surfaces use the provider-neutral
-secret gate (`with-secrets --env-profile ...` or
-`with-secrets --runtime-profile ...`) and the shared webpresso CI act argv
-builder.
+secret gate (`with-secrets --runtime-profile ...` plus optional
+`--secret-env-profile ...`) and the shared webpresso CI act argv builder.
 
 ## Allowed public inputs
 
@@ -17,12 +16,13 @@ builder.
 - job id
 - event name (`pull_request`, `push`, or `workflow_dispatch`)
 - event payload path
-- secret-gate env profile
-  (`none`, `secrets-only`, `service-runtime`, `database`, `full`)
+- secret-gate runtime profile
+  (`none`, `public`, `secrets-only`, `service-runtime`, `database`, `full`)
 - runner image and container architecture
 - execute vs dry-run
-- `--runtime-profile` passthrough (provider-specific names such as `prd` are
-  accepted and forwarded to the provider adapter)
+- provider-specific secret-manager environment/config selector via
+  `secretEnvProfile` / `--secret-env-profile` (for example Doppler `dev` or
+  Infisical environment slug)
 
 Bare workflow ids resolve to `.github/workflows/<id>.yml`. Dry-run is the
 default and returns a redacted command preview.
@@ -59,6 +59,9 @@ removed after the call.
 
 ## Secret handling
 
-Secrets must arrive through approved env/profile channels, not argv. Returned
-stdout, stderr, raw output, JSON content, and structured metadata are redacted
-before they are exposed to the agent.
+Secrets must arrive through approved runtime/profile channels, not argv.
+`envProfile` is intentionally runtime-only; do not pass Doppler/Infisical
+config names there. Use `secretEnvProfile` / `--secret-env-profile` for
+provider-specific selectors. Returned stdout, stderr, raw output, JSON
+content, and structured metadata are redacted before they are exposed to the
+agent.
