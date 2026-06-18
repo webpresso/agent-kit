@@ -473,7 +473,6 @@
     "lint": "./bin/wp lint",
     "lint:fix": "./bin/wp lint --fix",
     "format": "./bin/wp format",
-    "format:check": "./bin/wp format --check",
     "lint:pkg": "publint && attw --pack . && (command -v claude >/dev/null 2>&1 && claude plugin validate . || true)",
     "blueprints:check": "./bin/wp audit blueprint-lifecycle",
     "docs:check": "./bin/wp audit docs-frontmatter",
