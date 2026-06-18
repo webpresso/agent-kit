@@ -25,6 +25,7 @@ describe('ensureCodexCli', () => {
     const result = ensureCodexCli({
       options: { overwrite: false, dryRun: false },
       spawn,
+      env: {},
     })
 
     expect(result).toEqual({ kind: 'codex-cli-ok', installed: false })
@@ -43,6 +44,7 @@ describe('ensureCodexCli', () => {
     const result = ensureCodexCli({
       options: { overwrite: false, dryRun: false },
       spawn,
+      env: {},
     })
 
     expect(result).toEqual({ kind: 'codex-cli-ok', installed: true })
@@ -53,22 +55,15 @@ describe('ensureCodexCli', () => {
 
   it('skips the global Codex refresh when WP_SKIP_UPDATE_CHECK=1', () => {
     const spawn = makeSpawn([{ status: 0 }])
-    const previous = process.env.WP_SKIP_UPDATE_CHECK
-    process.env.WP_SKIP_UPDATE_CHECK = '1'
+    const result = ensureCodexCli({
+      options: { overwrite: false, dryRun: false },
+      spawn,
+      env: { WP_SKIP_UPDATE_CHECK: '1' },
+    })
 
-    try {
-      const result = ensureCodexCli({
-        options: { overwrite: false, dryRun: false },
-        spawn,
-      })
-
-      expect(result).toEqual({ kind: 'codex-cli-ok', installed: false })
-      expect(spawn).toHaveBeenCalledTimes(1)
-      expect(spawn).toHaveBeenNthCalledWith(1, 'codex', ['--version'], { encoding: 'utf8' })
-    } finally {
-      if (previous === undefined) delete process.env.WP_SKIP_UPDATE_CHECK
-      else process.env.WP_SKIP_UPDATE_CHECK = previous
-    }
+    expect(result).toEqual({ kind: 'codex-cli-ok', installed: false })
+    expect(spawn).toHaveBeenCalledTimes(1)
+    expect(spawn).toHaveBeenNthCalledWith(1, 'codex', ['--version'], { encoding: 'utf8' })
   })
 
   it('skips all Codex global operations inside a package lifecycle environment', () => {
@@ -91,6 +86,7 @@ describe('ensureCodexCli', () => {
     const result = ensureCodexCli({
       options: { overwrite: false, dryRun: false },
       spawn,
+      env: {},
     })
 
     expect(result.kind).toBe('codex-cli-unavailable')
@@ -101,6 +97,7 @@ describe('ensureCodexCli', () => {
     const result = ensureCodexCli({
       options: { overwrite: false, dryRun: true },
       spawn,
+      env: {},
     })
 
     expect(result).toEqual({ kind: 'codex-cli-skipped-dry-run' })
