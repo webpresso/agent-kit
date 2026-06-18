@@ -1,0 +1,357 @@
+import { createHash } from 'node:crypto';
+import { request as httpRequest } from 'node:http';
+import { request as httpsRequest } from 'node:https';
+import { isIP } from 'node:net';
+import { Readable } from 'node:stream';
+import { isInternalAddress, isInternalHost, normalizeHostname, resolveHostAddresses, } from './ip-guard.js';
+import { SessionMemoryStore } from './store.js';
+export class FetchIndexError extends Error {
+    code;
+    status;
+    constructor(code, message, options = {}) {
+        super(message);
+        this.name = 'FetchIndexError';
+        this.code = code;
+        if (options.status !== undefined)
+            this.status = options.status;
+        if (options.cause !== undefined) {
+            ;
+            this.cause = options.cause;
+        }
+    }
+}
+const DEFAULT_TIMEOUT_MS = 10_000;
+const DEFAULT_MAX_FETCH_BYTES = 256 * 1024;
+const DEFAULT_MAX_CHUNKS = 100;
+const MAX_REDIRECTS = 5;
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+function blockedHostError() {
+    return new FetchIndexError('blocked_host', 'url host is blocked because it is or resolves to an internal address');
+}
+function normalizeUrl(url) {
+    let parsed;
+    try {
+        parsed = new URL(url);
+    }
+    catch (error) {
+        throw new FetchIndexError('invalid_url', 'url must be absolute http(s)', { cause: error });
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        throw new FetchIndexError('invalid_url', 'url must be absolute http(s)');
+    }
+    if (parsed.username || parsed.password) {
+        throw new FetchIndexError('invalid_url', 'url must not contain credentials');
+    }
+    parsed.hash = '';
+    return parsed.toString();
+}
+function htmlToMarkdown(html) {
+    return html
+        .replace(/<script[\s\S]*?<\/script>/giu, '')
+        .replace(/<style[\s\S]*?<\/style>/giu, '')
+        .replace(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/giu, (_match, level, text) => `${'#'.repeat(Number(level))} ${stripTags(text)}\n`)
+        .replace(/<li[^>]*>([\s\S]*?)<\/li>/giu, (_match, text) => `- ${stripTags(text)}\n`)
+        .replace(/<p[^>]*>([\s\S]*?)<\/p>/giu, (_match, text) => `${stripTags(text)}\n\n`)
+        .replace(/<br\s*\/?>/giu, '\n')
+        .replace(/<[^>]+>/gu, ' ')
+        .replace(/&nbsp;/gu, ' ')
+        .replace(/&amp;/gu, '&')
+        .replace(/&lt;/gu, '<')
+        .replace(/&gt;/gu, '>')
+        .replace(/[ \t]+/gu, ' ')
+        .replace(/\n{3,}/gu, '\n\n')
+        .trim();
+}
+function stripTags(html) {
+    return html
+        .replace(/<[^>]+>/gu, ' ')
+        .replace(/[ \t\n]+/gu, ' ')
+        .trim();
+}
+function toIndexableText(body, contentType) {
+    if (contentType.includes('text/html'))
+        return htmlToMarkdown(body);
+    if (contentType.includes('application/json')) {
+        try {
+            return JSON.stringify(JSON.parse(body), null, 2);
+        }
+        catch (error) {
+            throw new FetchIndexError('invalid_json', 'response body is not valid JSON', { cause: error });
+        }
+    }
+    return body.trim();
+}
+function chunkText(text, source, maxChunks) {
+    const paragraphs = text
+        .split(/\n{2,}/u)
+        .map((part) => part.trim())
+        .filter(Boolean);
+    if (paragraphs.length === 0)
+        return [];
+    return paragraphs.slice(0, maxChunks).map((part, index) => ({
+        id: createHash('sha256').update(`${source}\n${index}\n${part}`).digest('hex').slice(0, 24),
+        source,
+        text: part,
+        metadata: { url: source, index },
+    }));
+}
+function normalizePositiveInt(value, fallback) {
+    if (value === undefined || !Number.isFinite(value) || value <= 0)
+        return fallback;
+    return Math.trunc(value);
+}
+function isAbortError(error) {
+    return ((error instanceof DOMException && error.name === 'AbortError') ||
+        (error instanceof Error && error.name === 'AbortError'));
+}
+function normalizedAllowedHosts(hosts) {
+    const normalized = new Set();
+    for (const host of hosts ?? []) {
+        const value = normalizeHostname(host).replace(/\.$/u, '');
+        if (value.length > 0)
+            normalized.add(value);
+    }
+    return normalized;
+}
+function isAllowedFetchHost(url, options) {
+    if (!options.allowedHosts || options.allowedHosts.length === 0)
+        return false;
+    return normalizedAllowedHosts(options.allowedHosts).has(normalizeHostname(url.hostname).replace(/\.$/u, ''));
+}
+async function resolveFetchAddress(url, options) {
+    const allowed = isAllowedFetchHost(url, options);
+    if (!allowed &&
+        (await isInternalHost(url.hostname, { signal: options.signal, timeoutMs: options.timeoutMs }))) {
+        throw blockedHostError();
+    }
+    let addresses;
+    try {
+        addresses = await resolveHostAddresses(url.hostname, {
+            signal: options.signal,
+            timeoutMs: options.timeoutMs,
+        });
+    }
+    catch (error) {
+        throw new FetchIndexError('blocked_host', 'url host could not be safely resolved', {
+            cause: error,
+        });
+    }
+    if (addresses.length === 0) {
+        throw new FetchIndexError('blocked_host', 'url host did not resolve to any address');
+    }
+    if (!allowed && addresses.some((entry) => isInternalAddress(entry.address))) {
+        throw blockedHostError();
+    }
+    const firstAddress = addresses[0];
+    if (!firstAddress) {
+        throw new FetchIndexError('blocked_host', 'url host did not resolve to any address');
+    }
+    return firstAddress;
+}
+function responseHeaders(headers) {
+    const result = new Headers();
+    for (const [name, value] of Object.entries(headers)) {
+        if (Array.isArray(value)) {
+            for (const item of value)
+                result.append(name, item);
+        }
+        else if (value !== undefined) {
+            result.set(name, String(value));
+        }
+    }
+    return result;
+}
+function hostHeader(url) {
+    const normalized = normalizeHostname(url.hostname);
+    const host = normalized.includes(':') && !normalized.startsWith('[') ? `[${normalized}]` : normalized;
+    return url.port ? `${host}:${url.port}` : host;
+}
+function responseFromIncomingMessage(message) {
+    const body = Readable.toWeb(message);
+    return new Response(body, {
+        status: message.statusCode ?? 599,
+        statusText: message.statusMessage,
+        headers: responseHeaders(message.headers),
+    });
+}
+async function nativeFetchResolved(url, address, signal) {
+    const request = url.protocol === 'https:' ? httpsRequest : httpRequest;
+    const isHttps = url.protocol === 'https:';
+    const hostname = normalizeHostname(url.hostname);
+    const requestOptions = {
+        protocol: url.protocol,
+        host: address.address,
+        family: address.family,
+        port: url.port ? Number.parseInt(url.port, 10) : isHttps ? 443 : 80,
+        method: 'GET',
+        path: `${url.pathname}${url.search}`,
+        headers: {
+            host: hostHeader(url),
+            'user-agent': 'webpresso-agent-kit/session-fetch-index',
+            accept: 'text/html,application/json,text/plain;q=0.9,*/*;q=0.8',
+        },
+        signal,
+    };
+    if (isHttps && isIP(hostname) === 0)
+        requestOptions.servername = hostname;
+    return await new Promise((resolve, reject) => {
+        const req = request(requestOptions, (message) => resolve(responseFromIncomingMessage(message)));
+        req.on('error', reject);
+        req.end();
+    });
+}
+function redirectLocation(response, currentUrl) {
+    if (!REDIRECT_STATUSES.has(response.status))
+        return undefined;
+    const location = response.headers.get('location');
+    if (!location)
+        return undefined;
+    try {
+        return new URL(location, currentUrl);
+    }
+    catch (error) {
+        throw new FetchIndexError('invalid_url', 'redirect location must be a valid http(s) URL', {
+            cause: error,
+        });
+    }
+}
+async function cancelResponseBody(response) {
+    try {
+        await response.body?.cancel();
+    }
+    catch {
+        // Best-effort socket/stream cleanup; preserve the primary fetch error.
+    }
+}
+async function safeFetch(normalizedUrl, options) {
+    let currentUrl = new URL(normalizedUrl);
+    for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
+        if (currentUrl.protocol !== 'http:' && currentUrl.protocol !== 'https:') {
+            throw new FetchIndexError('invalid_url', 'redirect location must be absolute http(s)');
+        }
+        const address = await resolveFetchAddress(currentUrl, options);
+        const fetchImpl = options.fetchImpl;
+        const response = fetchImpl
+            ? await fetchImpl(currentUrl.toString(), {
+                signal: options.signal,
+                redirect: 'manual',
+            })
+            : await nativeFetchResolved(currentUrl, address, options.signal);
+        let nextUrl;
+        try {
+            nextUrl = redirectLocation(response, currentUrl);
+        }
+        catch (error) {
+            await cancelResponseBody(response);
+            throw error;
+        }
+        if (!nextUrl)
+            return response;
+        await cancelResponseBody(response);
+        if (redirectCount === MAX_REDIRECTS) {
+            throw new FetchIndexError('too_many_redirects', 'fetch exceeded the redirect limit');
+        }
+        currentUrl = nextUrl;
+    }
+    throw new FetchIndexError('too_many_redirects', 'fetch exceeded the redirect limit');
+}
+async function readResponseText(response, maxBytes) {
+    const declaredLength = response.headers.get('content-length');
+    if (declaredLength) {
+        const parsed = Number.parseInt(declaredLength, 10);
+        if (Number.isFinite(parsed) && parsed > maxBytes) {
+            await cancelResponseBody(response);
+            throw new FetchIndexError('body_too_large', `response body exceeds ${maxBytes} bytes`);
+        }
+    }
+    if (!response.body) {
+        const text = await response.text();
+        if (Buffer.byteLength(text, 'utf8') > maxBytes) {
+            throw new FetchIndexError('body_too_large', `response body exceeds ${maxBytes} bytes`);
+        }
+        return text;
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    const chunks = [];
+    let bytes = 0;
+    try {
+        for (;;) {
+            const next = await reader.read();
+            if (next.done)
+                break;
+            bytes += next.value.byteLength;
+            if (bytes > maxBytes) {
+                await reader.cancel();
+                throw new FetchIndexError('body_too_large', `response body exceeds ${maxBytes} bytes`);
+            }
+            chunks.push(decoder.decode(next.value, { stream: true }));
+        }
+        chunks.push(decoder.decode());
+        return chunks.join('');
+    }
+    finally {
+        reader.releaseLock();
+    }
+}
+function wireAbortSignals(controller, signal) {
+    if (!signal)
+        return () => { };
+    if (signal.aborted)
+        controller.abort(signal.reason);
+    const abort = () => controller.abort(signal.reason);
+    signal.addEventListener('abort', abort, { once: true });
+    return () => signal.removeEventListener('abort', abort);
+}
+export async function fetchAndIndex(options, deps = {}) {
+    const normalized = normalizeUrl(options.url);
+    const maxBytes = normalizePositiveInt(options.maxBytes, DEFAULT_MAX_FETCH_BYTES);
+    const maxChunks = normalizePositiveInt(options.maxChunks, DEFAULT_MAX_CHUNKS);
+    const timeoutMs = normalizePositiveInt(options.timeoutMs, DEFAULT_TIMEOUT_MS);
+    const controller = new AbortController();
+    let timedOut = false;
+    const unwire = wireAbortSignals(controller, options.signal);
+    const timeout = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+    }, timeoutMs);
+    try {
+        const response = await safeFetch(normalized, {
+            fetchImpl: deps.fetchImpl,
+            allowedHosts: deps.allowedHosts,
+            signal: controller.signal,
+            timeoutMs,
+        });
+        if (!response.ok) {
+            await cancelResponseBody(response);
+            throw new FetchIndexError('http_error', `fetch failed with HTTP ${response.status}`, {
+                status: response.status,
+            });
+        }
+        const body = await readResponseText(response, maxBytes);
+        const text = toIndexableText(body, response.headers.get('content-type') ?? 'text/plain');
+        if (!text.trim())
+            return [];
+        const source = options.source ?? normalized;
+        const chunks = chunkText(text, source, maxChunks);
+        if (chunks.length === 0)
+            return [];
+        options.store.indexChunks(chunks);
+        return chunks;
+    }
+    catch (error) {
+        if (error instanceof FetchIndexError)
+            throw error;
+        if (timedOut)
+            throw new FetchIndexError('timed_out', 'fetch timed out', { cause: error });
+        if (isAbortError(error) || options.signal?.aborted) {
+            throw new FetchIndexError('aborted', 'fetch aborted', { cause: error });
+        }
+        throw new FetchIndexError('fetch_failed', 'fetch failed', { cause: error });
+    }
+    finally {
+        clearTimeout(timeout);
+        unwire();
+    }
+}
+//# sourceMappingURL=fetch-index.js.map
