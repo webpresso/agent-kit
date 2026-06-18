@@ -169,3 +169,43 @@ describe('SessionMemoryStore operator helpers', () => {
     s.close()
   })
 })
+
+
+describe('SessionMemoryStore gain aggregation', () => {
+  it('aggregates exact UTF-8 byte gain rows by tool without SQLite text length math', () => {
+    const s = store()
+    s.recordGainEvent({
+      toolName: 'wp_session_index',
+      rawBasisBytes: Buffer.byteLength('abc😀', 'utf8'),
+      returnedToolResultBytes: 2,
+      gainBytes: 5,
+      approxTokensSaved: 1,
+      precision: 'exact_utf8_bytes_approx_tokens',
+      rawBytesBasis: 'index_accepted_text',
+      createdAt: '2026-06-18T00:00:00.000Z',
+    })
+    s.recordGainEvent({
+      toolName: 'wp_session_execute',
+      rawBasisBytes: 1,
+      returnedToolResultBytes: 20,
+      gainBytes: 0,
+      approxTokensSaved: 0,
+      precision: 'exact_utf8_bytes_approx_tokens',
+      rawBytesBasis: 'command_output_total',
+      createdAt: '2026-06-18T00:00:01.000Z',
+    })
+
+    expect(s.gainStats()).toMatchObject({
+      eventCount: 2,
+      rawBasisBytes: 8,
+      returnedToolResultBytes: 22,
+      gainBytes: 5,
+      approxTokensSaved: 1,
+      byTool: [
+        { toolName: 'wp_session_index', eventCount: 1, rawBasisBytes: 7, gainBytes: 5 },
+        { toolName: 'wp_session_execute', eventCount: 1, rawBasisBytes: 1, gainBytes: 0 },
+      ],
+    })
+    s.close()
+  })
+})

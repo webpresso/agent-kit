@@ -14,6 +14,7 @@ let previousClaudeProjectDir: string | undefined
 function payload(result: Awaited<ReturnType<typeof sessionBatchExecuteTool.handler>>) {
   return result.structuredContent as {
     passed: boolean
+    gain?: { rawBasisBytes: number; rawBytesBasis: string; gainBytes: number }
     details: {
       results: Array<{ label: string; exitCode: number; indexed: boolean; summary: string }>
       queryHits?: Record<string, Array<{ content: string; source: string; rank: number }>>
@@ -72,6 +73,30 @@ describe('wp_session_batch_execute', () => {
       limit: 1,
     })
     expect(JSON.stringify(search.structuredContent)).toContain('shared batch sentinel beta')
+  })
+
+
+  it('records one batch-level gain event without child command gain rows', async () => {
+    const result = await sessionBatchExecuteTool.handler?.({
+      commands: [
+        { label: 'a', command: 'printf abc' },
+        { label: 'b', command: 'printf defg' },
+      ],
+      execute: true,
+      timeoutMs: 5_000,
+      cwd: tmpDir,
+    })
+    const data = payload(result)
+
+    expect(data.gain).toMatchObject({ rawBasisBytes: 7, rawBytesBasis: 'batch_command_output_total' })
+
+    const { SessionMemoryStore } = await import('../../session-memory/store.js')
+    const store = new SessionMemoryStore(process.env.WP_SESSION_MEMORY_INDEX_DB!)
+    expect(store.gainStats()).toMatchObject({
+      eventCount: 1,
+      byTool: [{ toolName: 'wp_session_batch_execute', eventCount: 1 }],
+    })
+    store.close()
   })
 
   it('surfaces failures when any command fails', async () => {

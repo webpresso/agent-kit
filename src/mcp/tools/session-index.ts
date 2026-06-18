@@ -10,6 +10,7 @@ import { getSurfacePath, NotInGitRepoError } from '#paths/state-root.js'
 import { SessionMemoryStore } from '#session-memory/store.js'
 import type { SessionMemoryChunk } from '#session-memory/types.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
+import { createGainSummaryResult } from './_session-gain.js'
 
 const MAX_CHUNKS_PER_CALL = 100
 const MAX_CHUNK_BYTES = 64 * 1024
@@ -166,13 +167,19 @@ const tool: ToolDescriptor = {
       const payload = boundedPayload(input, chunks, warnings)
       return createSummaryResult(payload, { isError: true })
     }
-    const store = new SessionMemoryStore(input.dbPath ?? defaultDbPath(input.cwd))
+    const dbPath = input.dbPath ?? defaultDbPath(input.cwd)
+    const store = new SessionMemoryStore(dbPath)
     try {
       store.indexChunks(chunks)
     } finally {
       store.close()
     }
-    return createSummaryResult(boundedPayload(input, chunks, warnings))
+    return createGainSummaryResult(boundedPayload(input, chunks, warnings), {}, {
+      toolName: tool.name,
+      dbPath,
+      rawBasisBytes: chunks.reduce((sum, chunk) => sum + byteLength(chunk.text), 0),
+      rawBytesBasis: 'index_accepted_text',
+    })
   },
 }
 

@@ -15,6 +15,7 @@ function payload(result: Awaited<ReturnType<typeof sessionExecuteTool.handler>>)
   return result.structuredContent as {
     passed: boolean
     exitCode: number
+    gain?: { rawBasisBytes: number; returnedToolResultBytes: number; gainBytes: number; approxTokensSaved: number; precision: string; rawBytesBasis: string }
     details: {
       label: string
       exitCode: number
@@ -72,6 +73,39 @@ describe('wp_session_execute', () => {
       limit: 1,
     })
     expect(JSON.stringify(search.structuredContent)).toContain('indexed needle from command')
+  })
+
+
+  it('records exact command-output gain using total stdout/stderr bytes', async () => {
+    const result = await sessionExecuteTool.handler?.({
+      command: `${JSON.stringify(process.execPath)} -e "process.stdout.write('x'.repeat(12000))"`,
+      label: 'gain-large',
+      execute: true,
+      timeoutMs: 5_000,
+      cwd: tmpDir,
+    })
+    const data = payload(result)
+
+    expect(data.gain).toMatchObject({
+      rawBasisBytes: 12000,
+      precision: 'exact_utf8_bytes_approx_tokens',
+      rawBytesBasis: 'command_output_total',
+    })
+    expect(data.gain?.gainBytes).toBeGreaterThan(0)
+    expect(data.gain?.approxTokensSaved).toBe(Math.floor((data.gain?.gainBytes ?? 0) / 4))
+  })
+
+  it('records a zero-gain event for tiny command output', async () => {
+    const result = await sessionExecuteTool.handler?.({
+      command: 'printf x',
+      label: 'gain-tiny',
+      execute: true,
+      timeoutMs: 5_000,
+      cwd: tmpDir,
+    })
+    const data = payload(result)
+
+    expect(data.gain).toMatchObject({ rawBasisBytes: 1, gainBytes: 0 })
   })
 
   it('returns an error envelope when execution fails while preserving indexed output', async () => {

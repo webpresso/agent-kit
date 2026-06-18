@@ -52,6 +52,29 @@ The compiled MCP registry exposes these tested session-memory tools:
 | `wp_session_purge` | Dry-run or explicitly confirm scoped local purge operations. | Dry-run by default; scoped deletion requires `confirm: true`; unscoped deletion also requires `allowGlobal: true`. |
 | `wp_session_doctor` | Report bounded local diagnostics for continuity and index stores. | Read-only; corrupt or locked stores become bounded warnings instead of transport hangs. |
 
+## Gain reporting
+
+Instrumented session-memory tools report exact UTF-8 byte gains for a declared
+raw byte basis. The canonical token number is an approximation only:
+`Math.floor(gainBytes / 4)`.
+
+The `structuredContent.gain` object contains:
+
+- `rawBasisBytes` — exact UTF-8 bytes in the declared raw basis.
+- `returnedToolResultBytes` — exact UTF-8 bytes of the final MCP tool result
+  object, including `content`, `structuredContent`, and gain telemetry.
+- `gainBytes` — `Math.max(0, rawBasisBytes - returnedToolResultBytes)`.
+- `approxTokensSaved` — `Math.floor(gainBytes / 4)`.
+- `precision` — `exact_utf8_bytes_approx_tokens`.
+- `rawBytesBasis` — one of `command_output_total`,
+  `batch_command_output_total`, `file_read_buffer`, `index_accepted_text`, or
+  `fetch_indexed_text`.
+
+`wp_session_stats` reports current-worktree Webpresso gain totals from the
+session-memory index DB. `wp gain` prints those Webpresso totals and then prints
+RTK `gain --format json` totals in a separate section; the two sources are never
+merged.
+
 ## Examples
 
 Index direct notes:

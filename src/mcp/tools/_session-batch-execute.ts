@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { ToolDescriptor } from '#mcp/auto-discover'
 import { resolveProjectRoot } from './_shared/project-root.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
+import { createGainSummaryResult } from './_session-gain.js'
 import { runSessionCommand, searchSessionCommandOutput } from './_session-command.js'
 import { defaultIndexDbPath } from './session-restore.js'
 import type { SearchHit } from '#session-memory/types'
@@ -167,7 +168,7 @@ const tool: ToolDescriptor = {
       }
 
       const failedCount = results.filter((result) => result.exitCode !== 0).length
-      return createSummaryResult(
+      return createGainSummaryResult(
         {
           passed: failedCount === 0,
           summary:
@@ -180,6 +181,12 @@ const tool: ToolDescriptor = {
           },
         },
         failedCount === 0 ? {} : { isError: true },
+        {
+          toolName: tool.name,
+          dbPath,
+          rawBasisBytes: results.reduce((sum, result) => sum + result.outputBytes, 0),
+          rawBytesBasis: 'batch_command_output_total',
+        },
       )
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
