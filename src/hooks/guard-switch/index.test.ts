@@ -19,7 +19,7 @@ function tempDb(): string {
 }
 
 describe('processGuardSwitchInput', () => {
-  it('preserves guard off state mutation and intentional exit semantics', () => {
+  it('preserves guard off state mutation with a host-safe JSON block decision', () => {
     const states: boolean[] = []
     const captured: unknown[] = []
     const result = processGuardSwitchInput(
@@ -39,14 +39,14 @@ describe('processGuardSwitchInput', () => {
     )
 
     expect(result).toStrictEqual({
-      exitCode: 2,
-      stderr: '🛡️ Guard disabled — pretool validators will be skipped',
+      decision: 'block',
+      reason: '🛡️ Guard disabled — pretool validators will be skipped',
     })
     expect(states).toStrictEqual([false])
     expect(captured).toStrictEqual([])
   })
 
-  it('preserves guard on state mutation and intentional exit semantics', () => {
+  it('preserves guard on state mutation with a host-safe JSON block decision', () => {
     const states: boolean[] = []
     const result = processGuardSwitchInput(
       { prompt: 'GUARD ON' },
@@ -56,8 +56,8 @@ describe('processGuardSwitchInput', () => {
     )
 
     expect(result).toStrictEqual({
-      exitCode: 2,
-      stderr: '🛡️ Guard enabled — pretool validators active',
+      decision: 'block',
+      reason: '🛡️ Guard enabled — pretool validators active',
     })
     expect(states).toStrictEqual([true])
   })

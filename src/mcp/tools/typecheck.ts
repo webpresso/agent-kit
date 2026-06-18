@@ -16,21 +16,18 @@ import { globSync } from 'glob'
 import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
-import { applyOutputTransform } from '#output-transforms/index'
 import { getManagedRunner } from '#tool-runtime'
 
+import { formatMcpToolOutput } from './_shared/full-output.js'
 import { resolveProjectRoot } from './_shared/project-root.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
-import {
-  boundRunnerFailureEvidence,
-  isRunnerFailure,
-  stripTransform,
-} from './_shared/runner-failure.js'
+import { boundRunnerFailureEvidence, isRunnerFailure } from './_shared/runner-failure.js'
 import { isRunFailure, runCommand, type RunResult } from './_shared/run-command.js'
 
 const inputSchema = z.object({
   cwd: z.string().optional(),
   packages: z.array(z.string()).optional(),
+  full: z.boolean().optional().default(false),
 })
 
 export type AkTypecheckInput = z.infer<typeof inputSchema>
@@ -227,9 +224,11 @@ const tool: ToolDescriptor = {
       output: combinedOutput,
     })
 
-    const compact = failedWithoutDiagnostics
-      ? boundRunnerFailureEvidence(combinedOutput, 'wp_typecheck')
-      : stripTransform(applyOutputTransform(combinedOutput, { toolName: 'wp_typecheck' }))
+    const compact = input.full
+      ? formatMcpToolOutput(combinedOutput, { toolName: 'wp_typecheck', full: true })
+      : failedWithoutDiagnostics
+        ? boundRunnerFailureEvidence(combinedOutput, 'wp_typecheck')
+        : formatMcpToolOutput(combinedOutput, { toolName: 'wp_typecheck' })
 
     const payload = {
       passed,

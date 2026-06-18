@@ -24,7 +24,9 @@ type GuardSwitchInput = {
   readonly turn_id?: string
 }
 
-export type GuardSwitchResult = Record<string, never> | { exitCode: 2; stderr: string }
+export type GuardSwitchResult =
+  | Record<string, never>
+  | { readonly decision: 'block'; readonly reason: string }
 
 export interface GuardSwitchDeps {
   readonly createStore?: (
@@ -138,11 +140,17 @@ export function processGuardSwitchInput(
   const setEnabled = deps.setGuardEnabled ?? setGuardEnabled
   if (normalized === 'guard off') {
     setEnabled(false)
-    return { exitCode: 2, stderr: '🛡️ Guard disabled — pretool validators will be skipped' }
+    return {
+      decision: 'block',
+      reason: '🛡️ Guard disabled — pretool validators will be skipped',
+    }
   }
   if (normalized === 'guard on') {
     setEnabled(true)
-    return { exitCode: 2, stderr: '🛡️ Guard enabled — pretool validators active' }
+    return {
+      decision: 'block',
+      reason: '🛡️ Guard enabled — pretool validators active',
+    }
   }
 
   try {
@@ -157,13 +165,9 @@ export async function main(): Promise<void> {
   await runHook(
     (input) => {
       const result = processGuardSwitchInput(input, process.cwd(), process.env)
-      if ('exitCode' in result) {
-        console.error(result.stderr)
-        process.exit(result.exitCode)
-      }
-      return null
+      return 'decision' in result ? result : null
     },
-    () => '{}',
+    (result) => JSON.stringify(result),
   )
 }
 

@@ -161,4 +161,33 @@ describe('wp_e2e tool', () => {
     expect(payload.truncated).toBe(true)
     expect(payload.logPath).toMatch(/^logs\//)
   })
+
+  it('returns full E2E output when full is true', async () => {
+    const groups = [
+      {
+        batchKey: 'smoke',
+        runs: [
+          {
+            suiteId: 'smoke',
+            batchKey: 'smoke',
+            runner: 'playwright',
+            logName: 'smoke',
+            command: 'vp',
+            args: ['exec', 'playwright', 'test'],
+          },
+        ],
+      },
+    ]
+    const commands = [{ command: 'vp', args: ['exec', 'playwright', 'test'] }]
+    const output = 'x'.repeat(5_000)
+    createE2eExecutionPlan.mockResolvedValue(groups)
+    plannedGroupsToCommandConfigs.mockReturnValue(commands)
+    runCommandConfigs.mockResolvedValue({ passed: false, exitCode: 1, output })
+
+    const result = await akE2eTool.handler({ suite: 'smoke', full: true })
+    const payload = parsePayload(result)
+    expect(payload.rawOutput).toBe(output)
+    expect(payload.truncated).toBeUndefined()
+    expect(payload.logPath).toBeUndefined()
+  })
 })

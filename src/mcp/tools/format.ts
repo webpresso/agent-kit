@@ -20,14 +20,15 @@ import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
 import { runFormat } from '#format/index'
-import { applyOutputTransform } from '#output-transforms/index'
 
+import { formatMcpToolOutput } from './_shared/full-output.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 
 const inputSchema = z.object({
   check: z.boolean().optional().default(false),
   cwd: z.string().optional(),
   files: z.array(z.string()).optional(),
+  full: z.boolean().optional().default(false),
 })
 
 export type AkFormatInput = z.infer<typeof inputSchema>
@@ -77,8 +78,9 @@ const tool: ToolDescriptor = {
     }
 
     const combined = formatResult.output
-    const { transform: _transform, ...compact } = applyOutputTransform(combined, {
+    const compact = formatMcpToolOutput(combined, {
       toolName: 'wp_format',
+      full: input.full,
     })
 
     const payload = {

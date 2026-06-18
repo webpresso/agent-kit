@@ -153,16 +153,7 @@ describe('wp_qa tool', () => {
       exitCode: 0,
       failures: [],
     })
-    expect(testHandler).toHaveBeenCalledWith(
-      expect.objectContaining({
-        cwd: undefined,
-        files: undefined,
-        packages: undefined,
-        timeoutMs: undefined,
-        workspaceSharding: undefined,
-      }),
-      undefined,
-    )
+    expect(testHandler).toHaveBeenCalledWith({}, undefined)
   })
 
   it('preserves the qa envelope while carrying additive compact-output leaf metadata', async () => {
@@ -249,6 +240,47 @@ describe('wp_qa tool', () => {
     expect(payload.details.typecheck).not.toHaveProperty('rawOutput')
     expect(payload.details.test).not.toHaveProperty('details')
     expect(payload.details.test).not.toHaveProperty('rawOutput')
+  })
+
+  it('forwards full to sub-tools and preserves leaf raw output when requested', async () => {
+    lintHandler.mockReset()
+    typecheckHandler.mockReset()
+    testHandler.mockReset()
+
+    lintHandler.mockResolvedValue(
+      wrapPayload({ passed: true, summary: 'lint passed', rawOutput: 'full lint' }),
+    )
+    typecheckHandler.mockResolvedValue(
+      wrapPayload({ passed: true, summary: 'typecheck passed', rawOutput: 'full typecheck' }),
+    )
+    testHandler.mockResolvedValue(
+      wrapPayload({ passed: true, summary: 'tests passed', rawOutput: 'full tests' }),
+    )
+
+    const result = await wpQaTool.handler({ full: true, cwd: '/repo', files: ['a.ts'] })
+    const payload = result.structuredContent as {
+      details: {
+        lint: { rawOutput?: string }
+        typecheck: { rawOutput?: string }
+        test: { rawOutput?: string }
+      }
+    }
+
+    expect(lintHandler).toHaveBeenCalledWith(
+      expect.objectContaining({ cwd: '/repo', files: ['a.ts'], full: true }),
+      undefined,
+    )
+    expect(typecheckHandler).toHaveBeenCalledWith(
+      expect.objectContaining({ cwd: '/repo', full: true }),
+      undefined,
+    )
+    expect(testHandler).toHaveBeenCalledWith(
+      expect.objectContaining({ cwd: '/repo', files: ['a.ts'], full: true }),
+      undefined,
+    )
+    expect(payload.details.lint.rawOutput).toBe('full lint')
+    expect(payload.details.typecheck.rawOutput).toBe('full typecheck')
+    expect(payload.details.test.rawOutput).toBe('full tests')
   })
 
   it('caps oversized nested failure lists to a bounded excerpt set', async () => {
