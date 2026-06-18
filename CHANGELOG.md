@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.1.0
+
+### Minor Changes
+
+- 680e35b: Add exact UTF-8 byte gain telemetry for Webpresso session tools, expose current-worktree gain totals in `wp_session_stats`, and show Webpresso and RTK gain totals separately in `wp gain`.
+
+  Reference parity/session-memory coverage: `docs/bench/reference-parity-matrix.md`, `docs/bench/session-memory-methodology.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, and `src/__integration__/reference-parity-tool-surface.integration.test.ts`.
+
+### Patch Changes
+
+- 909a9ae: Remove the `format:check` package script; `format` remains the write/fix formatter entrypoint.
+
+  AI contract evidence: `docs/bench/reference-parity-matrix.md`, `docs/bench/session-memory-methodology.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, and `src/__integration__/reference-parity-tool-surface.integration.test.ts`.
+
+- 909a9ae: Surface actionable diagnostics when `wp_test` file filters match zero Vitest tests.
+
+  AI contract evidence: `docs/bench/reference-parity-matrix.md`, `docs/bench/session-memory-methodology.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, and `src/__integration__/reference-parity-tool-surface.integration.test.ts`.
+
 ## 2.0.5
 
 ### Patch Changes
