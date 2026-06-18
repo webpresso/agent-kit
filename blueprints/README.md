@@ -21,48 +21,6 @@ Each subdirectory represents a lifecycle state:
 | `archived/` | 4 | superseded or abandoned. Not deleted — the record matters. |
 <!-- END: blueprint-index -->
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ## Authoring
 
 - Use `docs/templates/blueprint.md` as the starting point.
@@ -81,7 +39,6 @@ Each subdirectory represents a lifecycle state:
 - Any state → `archived`: when the work is dropped or replaced.
 
 Move files with `git mv` so history follows the spec through its lifecycle.
-
 
 ## Active work (2026-06-13)
 

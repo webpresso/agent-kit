@@ -71,6 +71,7 @@ describe('session gain telemetry', () => {
     )
 
     expect(result.structuredContent?.gain).toBeUndefined()
+    expect(measured).toBe(5)
     expect(result.structuredContent?.warnings).toEqual([
       'gain telemetry sizing did not converge after 5 iterations; omitted gain for this call',
     ])

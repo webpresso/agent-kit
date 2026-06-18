@@ -22,6 +22,8 @@ function payload(result: Awaited<ReturnType<typeof sessionPurgeTool.handler>>) {
       deletedEventCount: number
       matchedChunkCount: number
       deletedChunkCount: number
+      matchedGainEventCount: number
+      deletedGainEventCount: number
       warningCount: number
     }
     warnings: string[]
@@ -62,6 +64,8 @@ describe('wp_session_purge tool', () => {
         deletedEventCount: 0,
         matchedChunkCount: 1,
         deletedChunkCount: 0,
+        matchedGainEventCount: 0,
+        deletedGainEventCount: 0,
       },
     })
 

@@ -40,6 +40,8 @@ export interface SessionMemoryIndexPurgeResult {
   dryRun: boolean
   matchedCount: number
   deletedCount: number
+  matchedGainEventCount: number
+  deletedGainEventCount: number
   source?: string
   warnings: string[]
 }
@@ -279,22 +281,35 @@ export class SessionMemoryStore {
 
   recordGainEvent(event: SessionGainEventInput): string {
     const createdAt = event.createdAt ?? new Date().toISOString()
-    const id = createHash('sha256')
+    const baseId = createHash('sha256')
       .update(event.toolName)
       .update('\0')
       .update(createdAt)
       .update('\0')
-      .update(String(Math.random()))
+      .update(String(event.rawBasisBytes))
+      .update('\0')
+      .update(String(event.returnedToolResultBytes))
+      .update('\0')
+      .update(String(event.gainBytes))
+      .update('\0')
+      .update(String(event.approxTokensSaved))
+      .update('\0')
+      .update(event.rawBytesBasis)
+      .update('\0')
+      .update(event.precision)
       .digest('hex')
       .slice(0, 32)
-    this.db
-      .prepare<[string, string, number, number, number, number, string, string, string]>(
-        `INSERT INTO session_memory_gain_events
-           (id, tool_name, raw_basis_bytes, returned_tool_result_bytes, gain_bytes,
-            approx_tokens_saved, raw_bytes_basis, precision, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
+    const insert = this.db.prepare<
+      [string, string, number, number, number, number, string, string, string]
+    >(
+      `INSERT OR IGNORE INTO session_memory_gain_events
+         (id, tool_name, raw_basis_bytes, returned_tool_result_bytes, gain_bytes,
+          approx_tokens_saved, raw_bytes_basis, precision, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    for (let suffix = 0; suffix < 1_000; suffix += 1) {
+      const id = suffix === 0 ? baseId : `${baseId}-${suffix}`
+      const result = insert.run(
         id,
         event.toolName,
         event.rawBasisBytes,
@@ -305,7 +320,9 @@ export class SessionMemoryStore {
         event.precision,
         createdAt,
       )
-    return id
+      if (result.changes > 0) return id
+    }
+    throw new Error('unable to allocate session gain event id')
   }
 
   gainStats(): SessionGainStats {
@@ -382,17 +399,27 @@ export class SessionMemoryStore {
           .prepare<[], { id: string }>('SELECT id FROM session_memory_chunks ORDER BY id ASC')
           .all()
     const matchedCount = ids.length
+    const matchedGainEventCount = options.source ? 0 : this.gainStats().eventCount
     const dryRun = options.confirm !== true
     const warnings: string[] = []
     if (options.confirm === true && !options.source && options.allowGlobal !== true) {
       warnings.push('global purge requires allowGlobal=true')
-      return { dryRun: true, matchedCount, deletedCount: 0, warnings }
+      return {
+        dryRun: true,
+        matchedCount,
+        deletedCount: 0,
+        matchedGainEventCount,
+        deletedGainEventCount: 0,
+        warnings,
+      }
     }
-    if (dryRun || matchedCount === 0) {
+    if (dryRun || (matchedCount === 0 && matchedGainEventCount === 0)) {
       return {
         dryRun,
         matchedCount,
         deletedCount: 0,
+        matchedGainEventCount,
+        deletedGainEventCount: 0,
         ...(options.source ? { source: options.source } : {}),
         warnings,
       }
@@ -404,12 +431,17 @@ export class SessionMemoryStore {
         this.db.prepare<[string]>('DELETE FROM session_memory_chunks_tri WHERE id = ?').run(row.id)
         this.db.prepare<[string]>('DELETE FROM session_memory_chunks WHERE id = ?').run(row.id)
       }
+      if (!options.source) {
+        this.db.prepare('DELETE FROM session_memory_gain_events').run()
+      }
     })
     tx(ids)
     return {
       dryRun: false,
       matchedCount,
       deletedCount: matchedCount,
+      matchedGainEventCount,
+      deletedGainEventCount: options.source ? 0 : matchedGainEventCount,
       ...(options.source ? { source: options.source } : {}),
       warnings,
     }

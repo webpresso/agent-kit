@@ -336,11 +336,8 @@ const tool: ToolDescriptor = {
     const dbPath = input.dbPath ?? defaultIndexDbPath(repoRoot)
     mkdirSync(dirname(dbPath), { recursive: true })
     const store = new SessionMemoryStore(dbPath)
-    let storeClosed = false
     try {
       const runtimeResult = await runFileOperation(input, repoRoot, store)
-      store.close()
-      storeClosed = true
       const payload = payloadFrom(runtimeResult)
       const resultOptions = runtimeResult.passed ? {} : { isError: true }
       if (runtimeResult.passed && runtimeResult.operation === 'read_text') {
@@ -349,11 +346,12 @@ const tool: ToolDescriptor = {
           dbPath,
           rawBasisBytes: runtimeResult.rawBasisBytes ?? 0,
           rawBytesBasis: 'file_read_buffer',
+          recordGainEvent: (gain) => store.recordGainEvent({ ...gain, toolName: tool.name }),
         })
       }
       return createSummaryResult(payload, resultOptions)
     } finally {
-      if (!storeClosed) store.close()
+      store.close()
     }
   },
 }

@@ -161,7 +161,6 @@ export async function handleSessionFetchAndIndex(
   const input = inputSchema.parse(raw ?? {})
   const dbPath = input.dbPath ?? defaultDbPath(input.cwd)
   const store = new SessionMemoryStore(dbPath)
-  let storeClosed = false
   try {
     const chunks = await fetchAndIndex(
       {
@@ -179,13 +178,12 @@ export async function handleSessionFetchAndIndex(
       const result = payloadFor(input, chunks, ['fetched content produced no indexable chunks'])
       return createSummaryResult(result, { isError: true })
     }
-    store.close()
-    storeClosed = true
     return createGainSummaryResult(payloadFor(input, chunks, []), {}, {
       toolName: tool.name,
       dbPath,
       rawBasisBytes: chunkTextBytes(chunks),
       rawBytesBasis: 'fetch_indexed_text',
+      recordGainEvent: (gain) => store.recordGainEvent({ ...gain, toolName: tool.name }),
     })
   } catch (error) {
     const fetchError =
@@ -210,7 +208,7 @@ export async function handleSessionFetchAndIndex(
     })
     return createSummaryResult(result, { isError: true })
   } finally {
-    if (!storeClosed) store.close()
+    store.close()
   }
 }
 

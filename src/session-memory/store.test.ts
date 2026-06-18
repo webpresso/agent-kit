@@ -156,12 +156,16 @@ describe('SessionMemoryStore operator helpers', () => {
       dryRun: true,
       matchedCount: 1,
       deletedCount: 0,
+      matchedGainEventCount: 0,
+      deletedGainEventCount: 0,
     })
     expect(s.count()).toBe(2)
     expect(s.purge({ source: 'web:a', confirm: true })).toMatchObject({
       dryRun: false,
       matchedCount: 1,
       deletedCount: 1,
+      matchedGainEventCount: 0,
+      deletedGainEventCount: 0,
     })
     expect(s.searchUnified({ query: 'one', source: 'web:a', limit: 1 })).toEqual([])
     expect(s.stats()).toMatchObject({ chunkCount: 1, sourceCount: 1, sources: ['web:b'] })
@@ -172,6 +176,27 @@ describe('SessionMemoryStore operator helpers', () => {
 
 
 describe('SessionMemoryStore gain aggregation', () => {
+  it('records gain rows with deterministic IDs without dropping duplicate events', () => {
+    const s = store()
+    const event = {
+      toolName: 'wp_session_execute',
+      rawBasisBytes: 10,
+      returnedToolResultBytes: 20,
+      gainBytes: 0,
+      approxTokensSaved: 0,
+      precision: 'exact_utf8_bytes_approx_tokens' as const,
+      rawBytesBasis: 'command_output_total' as const,
+      createdAt: '2026-06-18T00:00:00.000Z',
+    }
+
+    const firstId = s.recordGainEvent(event)
+    const secondId = s.recordGainEvent(event)
+
+    expect(secondId).toBe(`${firstId}-1`)
+    expect(s.gainStats()).toMatchObject({ eventCount: 2, rawBasisBytes: 20 })
+    s.close()
+  })
+
   it('aggregates exact UTF-8 byte gain rows by tool without SQLite text length math', () => {
     const s = store()
     s.recordGainEvent({
@@ -206,6 +231,46 @@ describe('SessionMemoryStore gain aggregation', () => {
         { toolName: 'wp_session_execute', eventCount: 1, rawBasisBytes: 1, gainBytes: 0 },
       ],
     })
+    s.close()
+  })
+
+  it('purges gain rows only on confirmed global purge', () => {
+    const s = store()
+    s.indexChunk({ id: 'a', source: 'web:a', text: 'operator memory one' })
+    s.recordGainEvent({
+      toolName: 'wp_session_index',
+      rawBasisBytes: 100,
+      returnedToolResultBytes: 80,
+      gainBytes: 20,
+      approxTokensSaved: 5,
+      precision: 'exact_utf8_bytes_approx_tokens',
+      rawBytesBasis: 'index_accepted_text',
+      createdAt: '2026-06-18T00:00:00.000Z',
+    })
+
+    expect(s.purge()).toMatchObject({
+      dryRun: true,
+      matchedCount: 1,
+      deletedCount: 0,
+      matchedGainEventCount: 1,
+      deletedGainEventCount: 0,
+    })
+    expect(s.purge({ source: 'web:a', confirm: true })).toMatchObject({
+      dryRun: false,
+      matchedCount: 1,
+      deletedCount: 1,
+      matchedGainEventCount: 0,
+      deletedGainEventCount: 0,
+    })
+    expect(s.gainStats().eventCount).toBe(1)
+    expect(s.purge({ confirm: true, allowGlobal: true })).toMatchObject({
+      dryRun: false,
+      matchedCount: 0,
+      deletedCount: 0,
+      matchedGainEventCount: 1,
+      deletedGainEventCount: 1,
+    })
+    expect(s.gainStats().eventCount).toBe(0)
     s.close()
   })
 })

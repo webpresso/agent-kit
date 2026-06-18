@@ -17,6 +17,7 @@ export interface SessionGainOptions {
   readonly rawBasisBytes: number
   readonly rawBytesBasis: RawBytesBasis
   readonly measureResultBytes?: (result: ToolHandlerResult) => number
+  readonly recordGainEvent?: (gain: SessionGainTelemetry) => void
 }
 
 export function utf8ByteLength(value: string): number {
@@ -34,29 +35,17 @@ export function createGainSummaryResult<TPayload extends SummaryFirstPayload>(
 ): ToolHandlerResult {
   const rawBasisBytes = normalizeBytes(gainOptions.rawBasisBytes)
   let returnedToolResultBytes = 0
-  let lastResult: ToolHandlerResult | undefined
-  let lastGain: SessionGainTelemetry | undefined
   const measure = gainOptions.measureResultBytes ?? measureToolResultBytes
 
   for (let iteration = 0; iteration < MAX_GAIN_SIZING_ITERATIONS; iteration += 1) {
     const gain = telemetryFor(rawBasisBytes, returnedToolResultBytes, gainOptions.rawBytesBasis)
     const candidate = createSummaryResult({ ...payload, gain }, resultOptions)
     const measuredBytes = measure(candidate)
-    lastResult = candidate
-    lastGain = gain
     if (measuredBytes === returnedToolResultBytes) {
       recordGainEvent(gainOptions, gain)
       return candidate
     }
     returnedToolResultBytes = measuredBytes
-  }
-
-  if (lastResult && lastGain) {
-    const measuredBytes = measure(lastResult)
-    if (measuredBytes === lastGain.returnedToolResultBytes) {
-      recordGainEvent(gainOptions, lastGain)
-      return lastResult
-    }
   }
 
   return createSummaryResult(withWarning(payload, NON_CONVERGENCE_WARNING), resultOptions)
@@ -94,6 +83,10 @@ function withWarning<TPayload extends SummaryFirstPayload>(
 }
 
 function recordGainEvent(gainOptions: SessionGainOptions, gain: SessionGainTelemetry): void {
+  if (gainOptions.recordGainEvent) {
+    gainOptions.recordGainEvent(gain)
+    return
+  }
   const store = new SessionMemoryStore(gainOptions.dbPath)
   try {
     store.recordGainEvent({ ...gain, toolName: gainOptions.toolName })

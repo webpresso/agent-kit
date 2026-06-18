@@ -171,15 +171,16 @@ const tool: ToolDescriptor = {
     const store = new SessionMemoryStore(dbPath)
     try {
       store.indexChunks(chunks)
+      return createGainSummaryResult(boundedPayload(input, chunks, warnings), {}, {
+        toolName: tool.name,
+        dbPath,
+        rawBasisBytes: chunks.reduce((sum, chunk) => sum + byteLength(chunk.text), 0),
+        rawBytesBasis: 'index_accepted_text',
+        recordGainEvent: (gain) => store.recordGainEvent({ ...gain, toolName: tool.name }),
+      })
     } finally {
       store.close()
     }
-    return createGainSummaryResult(boundedPayload(input, chunks, warnings), {}, {
-      toolName: tool.name,
-      dbPath,
-      rawBasisBytes: chunks.reduce((sum, chunk) => sum + byteLength(chunk.text), 0),
-      rawBytesBasis: 'index_accepted_text',
-    })
   },
 }
 
