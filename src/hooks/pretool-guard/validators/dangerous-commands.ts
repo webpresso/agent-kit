@@ -12,7 +12,7 @@ interface DangerousPattern {
 
 const DANGEROUS_PATTERNS: DangerousPattern[] = [
   {
-    pattern: /\bgit\s+push\s+.*--force\b/,
+    pattern: /\bgit\s+push\s+.*--force(?:\s|=|$)/,
     description: 'git push --force can overwrite remote history',
   },
   { pattern: /\bgit\s+push\s+-f\b/, description: 'git push -f can overwrite remote history' },

@@ -18,8 +18,8 @@ import { z } from 'zod'
 
 import { sharedOxlintConfigArgs } from '#config/oxlint/shared-config-path'
 import type { ToolDescriptor } from '#mcp/auto-discover'
-import { applyOutputTransform } from '#output-transforms/index'
 
+import { formatMcpToolOutput } from './_shared/full-output.js'
 import { resolveProjectRoot } from './_shared/project-root.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 import { isRunFailure, runCommand } from './_shared/run-command.js'
@@ -28,6 +28,7 @@ const inputSchema = z.object({
   cwd: z.string().optional(),
   files: z.array(z.string()).optional(),
   fix: z.boolean().optional().default(false),
+  full: z.boolean().optional().default(false),
 })
 
 export type AkLintInput = z.infer<typeof inputSchema>
@@ -230,12 +231,10 @@ const tool: ToolDescriptor = {
 
     if (!isRunFailure(vpOutcome)) {
       const { issues, parseError } = parseOxlintIssues(vpOutcome.stdout)
-      const { transform: _transform, ...compact } = applyOutputTransform(
-        vpOutcome.stdout || vpOutcome.stderr,
-        {
-          toolName: 'wp_lint-vp',
-        },
-      )
+      const compact = formatMcpToolOutput(vpOutcome.stdout || vpOutcome.stderr, {
+        toolName: 'wp_lint-vp',
+        full: input.full,
+      })
       const payload = {
         passed: vpOutcome.exitCode === 0,
         summary: summarizeLintResult({

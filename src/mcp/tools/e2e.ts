@@ -16,7 +16,7 @@ import {
   plannedGroupsToCommandConfigs,
   runCommandConfigs,
 } from '#e2e/execution'
-import { applyOutputTransform } from '#output-transforms/index'
+import { formatMcpToolOutput } from './_shared/full-output.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 
 const inputSchema = z.object({
@@ -32,6 +32,7 @@ const inputSchema = z.object({
   workers: z.union([z.number(), z.string()]).optional(),
   testList: z.string().optional(),
   passthrough: z.array(z.string()).optional(),
+  full: z.boolean().optional().default(false),
 })
 
 export type AkE2eInput = z.infer<typeof inputSchema>
@@ -144,7 +145,7 @@ const tool: ToolDescriptor = {
         suiteIds,
         runnerSummary: summarizeRunners(groups),
       },
-      ...applyOutputTransform(result.output, { toolName: 'wp_e2e' }),
+      ...formatMcpToolOutput(result.output, { toolName: 'wp_e2e', full: input.full }),
     }
 
     return createSummaryResult(payload)

@@ -173,5 +173,15 @@ describe('wp_typecheck tool', () => {
       expect(payload.rawOutput).toHaveLength(4_000)
       expect(payload.truncated).toBe(true)
     })
+
+    it('returns full raw typecheck output when full is true', async () => {
+      spawnMock.mockReturnValue(fakeChild({ stdout: 'x'.repeat(5_000), exitCode: 0 }))
+
+      const result = await akTypecheckTool.handler({ full: true })
+      const payload = result.structuredContent as { rawOutput?: string; truncated?: boolean }
+
+      expect(payload.rawOutput).toHaveLength(5_000)
+      expect(payload.truncated).toBeUndefined()
+    })
   })
 })

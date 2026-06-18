@@ -268,4 +268,15 @@ describe('wp_lint tool', () => {
     const result = await akLintTool.handler({})
     expect(result.isError).toBeUndefined()
   })
+
+  it('returns full lint output when full is true', async () => {
+    const output = 'x'.repeat(5_000)
+    spawnMock.mockReturnValue(fakeChild({ stdout: output, exitCode: 1 }))
+
+    const result = await akLintTool.handler({ full: true })
+    const payload = result.structuredContent as { rawOutput?: string; truncated?: boolean }
+
+    expect(payload.rawOutput).toBe(output)
+    expect(payload.truncated).toBeUndefined()
+  })
 })

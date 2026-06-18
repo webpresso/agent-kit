@@ -252,6 +252,21 @@ describe('wp_test tool', () => {
       expect(payload.logPath).toMatch(/^logs\//)
     })
 
+    it('returns full raw test output when full is true', async () => {
+      spawnMock.mockReturnValue(fakeChild({ stdout: 'x'.repeat(5_000), exitCode: 1 }))
+
+      const result = await wpTestTool.handler({ packages: ['x'], full: true })
+      const payload = result.structuredContent as {
+        rawOutput?: string
+        truncated?: boolean
+        logPath?: string
+      }
+
+      expect(payload.rawOutput).toBe(`[scope: package x]\n${'x'.repeat(5_000)}\n`)
+      expect(payload.truncated).toBeUndefined()
+      expect(payload.logPath).toBeUndefined()
+    })
+
     it('threads MCP cancellation into the underlying test process', async () => {
       const killCapture: { signal: NodeJS.Signals | null } = { signal: null }
       spawnMock.mockReturnValue(fakeChild({ hang: true, killCapture }))

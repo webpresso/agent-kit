@@ -29,6 +29,8 @@ describe('validateDangerousCommands', () => {
   describe('existing dangerous patterns', () => {
     it.each([
       ['git push --force', 'force-push'],
+      ['git push --force=true origin main', 'force-push long with value'],
+      ['git push --force --force-with-lease origin main', 'plain force still blocks'],
       ['git push -f origin main', 'force-push short'],
       ['rm -rf /', 'rm -rf root'],
       ['rm -rf ~', 'rm -rf home'],
@@ -39,6 +41,17 @@ describe('validateDangerousCommands', () => {
       const result = validateDangerousCommands(bash(cmd))
       expect(result.passed).toBe(false)
       expect(result.message).toContain(cmd)
+    })
+
+    it.each([
+      ['git push --force-with-lease origin main', 'lease-protected force push'],
+      ['git push origin main --force-with-lease', 'lease-protected force push after refspec'],
+      [
+        'git push --force-with-lease=refs/heads/main origin main',
+        'lease-protected force push with ref',
+      ],
+    ])('allows: %s (%s)', (cmd) => {
+      expect(validateDangerousCommands(bash(cmd)).passed).toBe(true)
     })
   })
 

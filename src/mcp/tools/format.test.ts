@@ -112,6 +112,20 @@ describe('wp_format tool', () => {
     expect(payload.truncated).toBe(true)
   })
 
+  it('returns full formatter output when full is true', async () => {
+    const output = `WARN ${'y'.repeat(5_000)}`
+    spawnMock.mockReturnValue(fakeChild({ stderr: output, exitCode: 1 }))
+
+    const result = await akFormatTool.handler({ check: true, full: true })
+    const payload = result.structuredContent as {
+      rawOutput?: string
+      truncated?: boolean
+    }
+
+    expect(payload.rawOutput).toBe(output)
+    expect(payload.truncated).toBeUndefined()
+  })
+
   it('forwards explicit file targets to the formatter backend', async () => {
     const cwd = mkdtempSync(join(tmpdir(), 'wp-format-tool-md-'))
     writeFileSync(join(cwd, 'README.md'), '# Test\n\n* one\n')

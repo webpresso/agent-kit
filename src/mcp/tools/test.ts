@@ -9,10 +9,10 @@ import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
 import * as testRunner from '#mcp/runners/test'
-import { applyOutputTransform } from '#output-transforms/index'
 import { TEST_SUITE_VALUES, normalizeTestSuiteName } from '#test'
 
 import { resolveProjectRoot } from './_shared/project-root.js'
+import { formatMcpToolOutput } from './_shared/full-output.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 import {
   MCP_SAFE_TEST_BUDGET_MS,
@@ -28,6 +28,7 @@ const inputSchema = z
     files: z.array(z.string()).optional(),
     timeoutMs: z.number().int().positive().max(MCP_SAFE_TEST_BUDGET_MS).optional(),
     workspaceSharding: workspaceShardingInputSchema.optional(),
+    full: z.boolean().optional().default(false),
   })
   .superRefine(refineTestBudgetContract)
   .strict()
@@ -104,8 +105,9 @@ const tool: ToolDescriptor = {
       timeoutMs: input.timeoutMs,
       workspaceSharding: input.workspaceSharding,
     })
-    const { transform: _transform, ...compact } = applyOutputTransform(result.output, {
+    const compact = formatMcpToolOutput(result.output, {
       toolName: 'wp_test',
+      full: input.full,
     })
     const payload = {
       passed: result.passed,

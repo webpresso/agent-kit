@@ -49,6 +49,7 @@ const inputSchema = z
     // budget contract without widening lint/typecheck inputs.
     timeoutMs: z.number().int().positive().max(MCP_SAFE_TEST_BUDGET_MS).optional(),
     workspaceSharding: workspaceShardingInputSchema.optional(),
+    full: z.boolean().optional().default(false),
   })
   .superRefine(refineTestBudgetContract)
 
@@ -63,6 +64,9 @@ const qaLeafSchema = z
     tier: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
     bytes: z.number().optional(),
     tokensSaved: z.number().optional(),
+    rawOutput: z.string().optional(),
+    truncated: z.boolean().optional(),
+    logPath: z.string().optional(),
     timedOut: z.boolean().optional(),
     aborted: z.boolean().optional(),
     unwrapError: z.string().optional(),
@@ -90,6 +94,9 @@ interface CompactLeafResult {
   readonly tier?: number
   readonly bytes?: number
   readonly tokensSaved?: number
+  readonly rawOutput?: string
+  readonly truncated?: boolean
+  readonly logPath?: string
   readonly timedOut?: boolean
   readonly aborted?: boolean
   readonly unwrapError?: string
@@ -159,7 +166,10 @@ function normalizeFailureEntry(
   return { message: fallbackMessage }
 }
 
-function toCompactLeaf(result: SubResultShape): CompactLeafResult {
+function toCompactLeaf(
+  result: SubResultShape,
+  options: { readonly full?: boolean } = {},
+): CompactLeafResult {
   const details = result.details
   const failures: unknown[] = Array.isArray(result.failures)
     ? result.failures
@@ -190,6 +200,13 @@ function toCompactLeaf(result: SubResultShape): CompactLeafResult {
     ...(typeof result.tier === 'number' ? { tier: result.tier } : {}),
     ...(typeof result.bytes === 'number' ? { bytes: result.bytes } : {}),
     ...(typeof result.tokensSaved === 'number' ? { tokensSaved: result.tokensSaved } : {}),
+    ...(options.full && typeof result.rawOutput === 'string'
+      ? { rawOutput: result.rawOutput }
+      : {}),
+    ...(options.full && typeof result.truncated === 'boolean'
+      ? { truncated: result.truncated }
+      : {}),
+    ...(options.full && typeof result.logPath === 'string' ? { logPath: result.logPath } : {}),
     ...(typeof result.timedOut === 'boolean' ? { timedOut: result.timedOut } : {}),
     ...(typeof result.aborted === 'boolean' ? { aborted: result.aborted } : {}),
     ...(typeof result.unwrapError === 'string' ? { unwrapError: result.unwrapError } : {}),
@@ -197,6 +214,12 @@ function toCompactLeaf(result: SubResultShape): CompactLeafResult {
 }
 
 const UI_QA_HINT = 'Static QA passed. For visual/UX QA, run /qa (gstack).'
+
+function withDefinedValues<T extends Record<string, unknown>>(input: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(input).filter(([, value]) => value !== undefined && value !== false),
+  ) as Partial<T>
+}
 
 function summarizeQa(
   lint: CompactLeafResult,
@@ -229,23 +252,30 @@ const tool: ToolDescriptor = {
     const input = inputSchema.parse(raw ?? {})
 
     const [lintResult, typecheckResult, testResult] = await Promise.all([
-      lintTool.handler({ cwd: input.cwd, files: input.files }, extra),
-      typecheckTool.handler({ cwd: input.cwd, packages: input.packages }, extra),
+      lintTool.handler(
+        withDefinedValues({ cwd: input.cwd, files: input.files, full: input.full }),
+        extra,
+      ),
+      typecheckTool.handler(
+        withDefinedValues({ cwd: input.cwd, packages: input.packages, full: input.full }),
+        extra,
+      ),
       testTool.handler(
-        {
+        withDefinedValues({
           cwd: input.cwd,
           files: input.files,
           packages: input.packages,
           timeoutMs: input.timeoutMs,
           workspaceSharding: input.workspaceSharding,
-        },
+          full: input.full,
+        }),
         extra,
       ),
     ])
 
-    const lint = toCompactLeaf(unwrap(lintResult))
-    const typecheck = toCompactLeaf(unwrap(typecheckResult))
-    const test = toCompactLeaf(unwrap(testResult))
+    const lint = toCompactLeaf(unwrap(lintResult), { full: input.full })
+    const typecheck = toCompactLeaf(unwrap(typecheckResult), { full: input.full })
+    const test = toCompactLeaf(unwrap(testResult), { full: input.full })
 
     const passed = lint.passed === true && typecheck.passed === true && test.passed === true
     // `isError: true` only fires when we couldn't even READ a sub-tool's
