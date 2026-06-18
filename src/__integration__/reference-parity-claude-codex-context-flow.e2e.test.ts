@@ -60,7 +60,7 @@ function expectFullHostFixture(host: FullContextHost): void {
 
 describe('Claude and Codex replacement-critical context flow', () => {
   it.each<FullContextHost>(['claude', 'codex'])(
-    '%s captures prompt/tool/stop/compact context and restores it through SessionStart',
+    '%s captures prompt/tool/stop/compact context, rejects secret leakage, and restores it through SessionStart',
     (host) => {
       expectFullHostFixture(host)
 

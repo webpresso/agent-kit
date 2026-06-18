@@ -20,6 +20,27 @@ describe('detectTphE2eViolations', () => {
     expect(result.infoCount).toBe(0)
   })
 
+
+
+  it('recognizes table-driven it.each titles as coverage signals', () => {
+    const result = detectTphE2eViolations([
+      {
+        path: 'src/example.e2e.test.ts',
+        contents: `
+          describe('example', () => {
+            it.each(['claude', 'codex'])(
+              '%s rejects invalid secret leakage with graceful recovery',
+              () => {},
+            )
+          })
+        `,
+      },
+    ])
+
+    expect(result.errorCount).toBe(0)
+    expect(result.infoCount).toBe(0)
+  })
+
   it('flags missing error and mixed coverage heuristics', () => {
     const result = detectTphE2eViolations([
       {
