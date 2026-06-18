@@ -37,6 +37,6 @@ helper, and a generic shared release workflow wrapper.
 
 ## Verification
 
-- `./bin/wp lint src/cli/commands/init/scaffold-base-kit.ts src/cli/commands/init/scaffold-base-kit.test.ts`
+- `./bin/wp lint --file src/cli/commands/init/scaffold-base-kit.ts --file src/cli/commands/init/scaffold-base-kit.test.ts`
 - `./bin/wp typecheck`
 - `./bin/wp test --file src/cli/commands/init/scaffold-base-kit.test.ts`

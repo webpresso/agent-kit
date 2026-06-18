@@ -261,5 +261,5 @@ framework-specific implementation details.
 - Added downstream contract documentation in `docs/wp-extension-runtime.md` and
   linked it from `docs/README.md`.
 - Verification on 2026-05-31:
-  - `wp test src/wp-extension/index.test.ts src/wp-extension/export-isolation.test.ts src/cli/wp-extensions.test.ts src/audit/package-surface.test.ts src/config/export-resolution.test.ts` — pass.
-  - `wp lint src/wp-extension/index.test.ts src/wp-extension/export-isolation.test.ts src/audit/package-surface.test.ts docs/README.md docs/wp-extension-runtime.md` — pass.
+  - `wp test --file src/wp-extension/index.test.ts --file src/wp-extension/export-isolation.test.ts --file src/cli/wp-extensions.test.ts --file src/audit/package-surface.test.ts --file src/config/export-resolution.test.ts` — pass.
+  - `wp lint --file src/wp-extension/index.test.ts --file src/wp-extension/export-isolation.test.ts --file src/audit/package-surface.test.ts --file docs/README.md --file docs/wp-extension-runtime.md` — pass.

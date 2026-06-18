@@ -35,7 +35,7 @@ curated through squash commits.
 
 ## Verification
 
-- `./bin/wp lint ...`
+- `./bin/wp lint --file ...`
 - `./bin/wp typecheck`
 - `pnpm exec vitest run src/cli/commands/init/scaffold-base-kit.test.ts src/cli/commands/init/init.e2e.test.ts`
 - `./bin/wp audit blueprint-lifecycle`

@@ -387,7 +387,7 @@ does not pretend to complete the cross-repo public-bin removal here.
 **Verification:**
 
 ```webpresso-evidence-v1
-[{"agent":"codex","command":"wp test src/cli/bundle/index.test.ts src/cli/bundle/agent-command-inventory.test.ts src/config/export-resolution.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-29T19:06:00Z"},{"actor":"codex","allow_manual":true,"description":"Verified the repo-local completion boundary: agent-kit now exports a host-neutral bundle prep surface, but the actual public-bin cutover still belongs to the external CLI host lane.","kind":"manual","log_excerpt":"Added src/cli/bundle/index.ts plus ./bundle package exports and tests. Kept current wp bin ownership unchanged because this repo does not contain the monorepo host package that will own the public webpresso command.","result":"pass","ts":"2026-05-29T19:06:00Z"}]
+[{"agent":"codex","command":"wp test --file src/cli/bundle/index.test.ts --file src/cli/bundle/agent-command-inventory.test.ts --file src/config/export-resolution.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-29T19:06:00Z"},{"actor":"codex","allow_manual":true,"description":"Verified the repo-local completion boundary: agent-kit now exports a host-neutral bundle prep surface, but the actual public-bin cutover still belongs to the external CLI host lane.","kind":"manual","log_excerpt":"Added src/cli/bundle/index.ts plus ./bundle package exports and tests. Kept current wp bin ownership unchanged because this repo does not contain the monorepo host package that will own the public webpresso command.","result":"pass","ts":"2026-05-29T19:06:00Z"}]
 ```
 
 **Acceptance:**
@@ -417,7 +417,7 @@ has already shipped.
 **Verification:**
 
 ```webpresso-evidence-v1
-[{"agent":"codex","command":"wp test src/cli/auto-update/detect-pm.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-29T19:06:00Z"},{"actor":"codex","allow_manual":true,"description":"Verified the changelog and diagnostics describe this repo-local step as preparation for the future webpresso agent cutover rather than claiming the public host mount is already complete.","kind":"manual","log_excerpt":"detect-pm now exposes exact future replacement messages and CHANGELOG.md records the new local bundle export plus the remaining external host-mounted cutover boundary.","result":"pass","ts":"2026-05-29T19:06:00Z"}]
+[{"agent":"codex","command":"wp test --file src/cli/auto-update/detect-pm.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-29T19:06:00Z"},{"actor":"codex","allow_manual":true,"description":"Verified the changelog and diagnostics describe this repo-local step as preparation for the future webpresso agent cutover rather than claiming the public host mount is already complete.","kind":"manual","log_excerpt":"detect-pm now exposes exact future replacement messages and CHANGELOG.md records the new local bundle export plus the remaining external host-mounted cutover boundary.","result":"pass","ts":"2026-05-29T19:06:00Z"}]
 ```
 
 **Acceptance:**
@@ -448,7 +448,7 @@ faked from this repo alone.
 **Verification:**
 
 ```webpresso-evidence-v1
-[{"agent":"codex","command":"wp test src/cli/commands/init/scaffold-agents-md.test.ts src/cli/bundle/index.test.ts src/cli/bundle/agent-command-inventory.test.ts src/audit/no-legacy-cli-bin.test.ts src/cli/auto-update/detect-pm.test.ts src/config/export-resolution.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-29T19:06:00Z"},{"agent":"codex","command":"wp typecheck","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-29T19:06:20Z"},{"actor":"codex","allow_manual":true,"description":"Confirmed the bundle-smoke fixture now models the future host-mounted setup shape while explicitly documenting that the real host-mounted execution gate lives outside this repo.","kind":"manual","log_excerpt":"test-fixtures/bundle-smoke/package.json uses @repo/cli plus @webpresso/agent-kit and setup:agent -> webpresso agent setup. README.md labels wp-* helpers as internal/current-state only. No detached host runtime exists in this repo to run the final public-host e2e truthfully.","result":"pass","ts":"2026-05-29T19:06:20Z"}]
+[{"agent":"codex","command":"wp test --file src/cli/commands/init/scaffold-agents-md.test.ts --file src/cli/bundle/index.test.ts --file src/cli/bundle/agent-command-inventory.test.ts --file src/audit/no-legacy-cli-bin.test.ts --file src/cli/auto-update/detect-pm.test.ts --file src/config/export-resolution.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-29T19:06:00Z"},{"agent":"codex","command":"wp typecheck","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-29T19:06:20Z"},{"actor":"codex","allow_manual":true,"description":"Confirmed the bundle-smoke fixture now models the future host-mounted setup shape while explicitly documenting that the real host-mounted execution gate lives outside this repo.","kind":"manual","log_excerpt":"test-fixtures/bundle-smoke/package.json uses @repo/cli plus @webpresso/agent-kit and setup:agent -> webpresso agent setup. README.md labels wp-* helpers as internal/current-state only. No detached host runtime exists in this repo to run the final public-host e2e truthfully.","result":"pass","ts":"2026-05-29T19:06:20Z"}]
 ```
 
 **Acceptance:**

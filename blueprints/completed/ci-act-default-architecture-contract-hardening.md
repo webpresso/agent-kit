@@ -64,8 +64,8 @@ Add explicit Apple Silicon macOS, Intel macOS, Linux arm64, override-wins, and s
 
 | Gate | Command | Status |
 | --- | --- | --- |
-| Focused tests | `./bin/wp test --file src/ci/act-runner.test.ts src/ci/act-helper.test.ts src/cli/commands/ci.test.ts` | passed |
-| Focused lint | `./bin/wp lint src/ci/act-runner.ts src/ci/act-runner.test.ts src/ci/act-helper.ts src/ci/act-helper.test.ts src/cli/commands/ci.test.ts` | passed |
+| Focused tests | `./bin/wp test --file src/ci/act-runner.test.ts --file src/ci/act-helper.test.ts --file src/cli/commands/ci.test.ts` | passed |
+| Focused lint | `./bin/wp lint --file src/ci/act-runner.ts --file src/ci/act-runner.test.ts --file src/ci/act-helper.ts --file src/ci/act-helper.test.ts --file src/cli/commands/ci.test.ts` | passed |
 | Typecheck | `./bin/wp typecheck` | passed |
 | CLI dry-run | `./bin/wp ci act --workflow ci-e2e --dry-run` | passed |
 

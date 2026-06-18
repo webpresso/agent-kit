@@ -76,7 +76,7 @@ not claim generalized quality, release readiness, or hook/plugin correctness.
 Focused benchmark suite:
 
 ```bash
-./bin/wp test --file scripts/bench/scenarios/_schema.test.ts \
+./bin/wp test --file scripts/bench/scenarios/_schema.test.ts --file \
   --file scripts/bench/lib/manifest.test.ts \
   --file scripts/bench/lib/variant-runner.test.ts \
   --file scripts/bench/lib/report-writer.test.ts \
@@ -95,7 +95,7 @@ Additional gates:
 
 ```bash
 ./bin/wp typecheck
-./bin/wp lint scripts/bench/scenarios/_schema.ts scripts/bench/scenarios/_schema.test.ts \
+./bin/wp lint --file scripts/bench/scenarios/_schema.ts --file scripts/bench/scenarios/_schema.test.ts --file \
   scripts/bench/lib/recall-policy.ts scripts/bench/lib/recall-policy.test.ts \
   scripts/bench/lib/claim-ledger.ts scripts/bench/lib/claim-ledger.test.ts \
   scripts/bench/lib/schema-envelope.ts scripts/bench/lib/schema-envelope.test.ts \

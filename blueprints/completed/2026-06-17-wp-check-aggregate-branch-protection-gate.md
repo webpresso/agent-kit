@@ -33,6 +33,6 @@ require one stable GitHub check without losing coverage from sibling CI lanes.
 
 ## Verification
 
-- `./bin/wp lint src/cli/commands/init/scaffold-base-kit.test.ts`
+- `./bin/wp lint --file src/cli/commands/init/scaffold-base-kit.test.ts`
 - `./bin/wp typecheck`
 - `pnpm exec vitest run src/cli/commands/init/scaffold-base-kit.test.ts`

@@ -121,7 +121,7 @@ repo-owned parity matrix
 **Verification:**
 
 ```webpresso-evidence-v1
-[{"agent":"codex","command":"./bin/wp test --file src/audit/reference-parity-matrix.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"},{"agent":"codex","command":"./bin/wp lint docs/bench/reference-parity-matrix.md src/audit/reference-parity-matrix.ts src/audit/reference-parity-matrix.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"}]
+[{"agent":"codex","command":"./bin/wp test --file src/audit/reference-parity-matrix.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"},{"agent":"codex","command":"./bin/wp lint --file docs/bench/reference-parity-matrix.md --file src/audit/reference-parity-matrix.ts --file src/audit/reference-parity-matrix.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"}]
 ```
 
 **Depends:** None
@@ -147,7 +147,7 @@ informational. (F4, F5, F8)
 2. Run: `./bin/wp test --file src/audit/reference-parity-matrix.test.ts` — verify FAIL.
 3. Implement the smallest parser/checker in `src/audit/reference-parity-matrix.ts` and create `docs/bench/reference-parity-matrix.md` with explicit proof-artifact links and host applicability columns.
 4. Run: `./bin/wp test --file src/audit/reference-parity-matrix.test.ts` — verify PASS.
-5. Run: `./bin/wp lint docs/bench/reference-parity-matrix.md src/audit/reference-parity-matrix.ts src/audit/reference-parity-matrix.test.ts` and `./bin/wp typecheck`.
+5. Run: `./bin/wp lint --file docs/bench/reference-parity-matrix.md --file src/audit/reference-parity-matrix.ts --file src/audit/reference-parity-matrix.test.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -156,7 +156,7 @@ informational. (F4, F5, F8)
 - [x] Matrix parser/checker fails closed when a required row or proof artifact is missing.
 - [x] Open or blocked rows prevent full replacement claims from turning green in Task 3.1.
 - [x] `./bin/wp test --file src/audit/reference-parity-matrix.test.ts` passes.
-- [x] `./bin/wp lint docs/bench/reference-parity-matrix.md src/audit/reference-parity-matrix.ts src/audit/reference-parity-matrix.test.ts` passes.
+- [x] `./bin/wp lint --file docs/bench/reference-parity-matrix.md --file src/audit/reference-parity-matrix.ts --file src/audit/reference-parity-matrix.test.ts` passes.
 - [x] `./bin/wp typecheck` passes.
 #### [host] Task 1.2: Crosswalk replacement rows to the canonical host capability matrix
 
@@ -165,7 +165,7 @@ informational. (F4, F5, F8)
 **Verification:**
 
 ```webpresso-evidence-v1
-[{"agent":"codex","command":"./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"},{"agent":"codex","command":"./bin/wp lint src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.ts src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts docs/hook-matrix.md","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"}]
+[{"agent":"codex","command":"./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"},{"agent":"codex","command":"./bin/wp lint --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file docs/hook-matrix.md","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"}]
 ```
 
 **Depends:** Task 1.1
@@ -187,7 +187,7 @@ source of truth. This task prevents docs from claiming host parity when
 2. Run: `./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts` — verify FAIL.
 3. Add minimal crosswalk metadata or helpers to `capability-matrix.ts` and update `docs/hook-matrix.md` to explain the replacement-claim relationship.
 4. Run: `./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts` — verify PASS.
-5. Run: `./bin/wp lint src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.ts src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts docs/hook-matrix.md` and `./bin/wp typecheck`.
+5. Run: `./bin/wp lint --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file docs/hook-matrix.md` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -195,7 +195,7 @@ source of truth. This task prevents docs from claiming host parity when
 - [x] `docs/hook-matrix.md` points readers to the replacement parity matrix without duplicating unsupported claims.
 - [x] No generated agent/runtime surface is edited.
 - [x] `./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts` passes.
-- [x] `./bin/wp lint src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.ts src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts docs/hook-matrix.md` passes.
+- [x] `./bin/wp lint --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file docs/hook-matrix.md` passes.
 - [x] `./bin/wp typecheck` passes.
 
 ## Phase 2: host smoke + benchmark gates [Complexity: L]
@@ -206,7 +206,7 @@ source of truth. This task prevents docs from claiming host parity when
 **Verification:**
 
 ```webpresso-evidence-v1
-[{"agent":"codex","command":"./bin/wp test --file src/__integration__/reference-parity-host-smoke.integration.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts","exit_code":0,"kind":"integration","result":"pass","target_files":["src/__integration__/reference-parity-host-smoke.integration.test.ts","src/cli/commands/init/host-smoke.e2e.test.ts"],"ts":"2026-06-13T20:12:49.519Z"},{"agent":"codex","command":"./bin/wp lint src/__integration__/reference-parity-host-smoke.fixtures.ts src/__integration__/reference-parity-host-smoke.integration.test.ts src/cli/commands/init/host-smoke.e2e.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"}]
+[{"agent":"codex","command":"./bin/wp test --file src/__integration__/reference-parity-host-smoke.integration.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts","exit_code":0,"kind":"integration","result":"pass","target_files":["src/__integration__/reference-parity-host-smoke.integration.test.ts","src/cli/commands/init/host-smoke.e2e.test.ts"],"ts":"2026-06-13T20:12:49.519Z"},{"agent":"codex","command":"./bin/wp lint --file src/__integration__/reference-parity-host-smoke.fixtures.ts --file src/__integration__/reference-parity-host-smoke.integration.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"}]
 ```
 
 **Depends:** None
@@ -231,7 +231,7 @@ binaries are unavailable. (F3, F7, F8)
 2. Run: `./bin/wp test --file src/__integration__/reference-parity-host-smoke.integration.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts` — verify FAIL.
 3. Implement bounded fixture helpers and tighten `host-smoke.e2e.test.ts` assertions so skipped optional hosts are explicit and required hosts fail closed.
 4. Run: `./bin/wp test --file src/__integration__/reference-parity-host-smoke.integration.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts` — verify PASS.
-5. Run: `./bin/wp lint src/__integration__/reference-parity-host-smoke.fixtures.ts src/__integration__/reference-parity-host-smoke.integration.test.ts src/cli/commands/init/host-smoke.e2e.test.ts` and `./bin/wp typecheck`.
+5. Run: `./bin/wp lint --file src/__integration__/reference-parity-host-smoke.fixtures.ts --file src/__integration__/reference-parity-host-smoke.integration.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -241,7 +241,7 @@ binaries are unavailable. (F3, F7, F8)
 - [x] Default CI still runs fixture-backed parity assertions for every named host even when live host binaries are absent.
 - [x] No timeout increase is used as the fix for slow or flaky smoke.
 - [x] `./bin/wp test --file src/__integration__/reference-parity-host-smoke.integration.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts` passes.
-- [x] `./bin/wp lint src/__integration__/reference-parity-host-smoke.fixtures.ts src/__integration__/reference-parity-host-smoke.integration.test.ts src/cli/commands/init/host-smoke.e2e.test.ts` passes.
+- [x] `./bin/wp lint --file src/__integration__/reference-parity-host-smoke.fixtures.ts --file src/__integration__/reference-parity-host-smoke.integration.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts` passes.
 - [x] `./bin/wp typecheck` passes.
 #### [mcp] Task 2.2: Add tool-surface smoke for replacement-critical MCP discovery
 
@@ -250,7 +250,7 @@ binaries are unavailable. (F3, F7, F8)
 **Verification:**
 
 ```webpresso-evidence-v1
-[{"agent":"codex","command":"./bin/wp test --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/mcp/server.integration.test.ts","exit_code":0,"kind":"integration","result":"pass","target_files":["src/__integration__/reference-parity-tool-surface.integration.test.ts","src/mcp/server.integration.test.ts"],"ts":"2026-06-13T20:12:49.519Z"},{"agent":"codex","command":"./bin/wp lint src/__integration__/reference-parity-tool-surface.integration.test.ts src/mcp/server.integration.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"}]
+[{"agent":"codex","command":"./bin/wp test --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/mcp/server.integration.test.ts","exit_code":0,"kind":"integration","result":"pass","target_files":["src/__integration__/reference-parity-tool-surface.integration.test.ts","src/mcp/server.integration.test.ts"],"ts":"2026-06-13T20:12:49.519Z"},{"agent":"codex","command":"./bin/wp lint --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/mcp/server.integration.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-13T20:12:49.519Z"}]
 ```
 
 **Depends:** None
@@ -272,7 +272,7 @@ must show as pending matrix gaps, not as implied success. (F4, F6)
 2. Run: `./bin/wp test --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/mcp/server.integration.test.ts` — verify FAIL.
 3. Implement the smallest test helpers/assertions needed; if a dependency-owned tool is not yet implemented, mark the matrix row as blocked/open rather than editing dependency-owned code in this task.
 4. Run: `./bin/wp test --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/mcp/server.integration.test.ts` — verify PASS.
-5. Run: `./bin/wp lint src/__integration__/reference-parity-tool-surface.integration.test.ts src/mcp/server.integration.test.ts` and `./bin/wp typecheck`.
+5. Run: `./bin/wp lint --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/mcp/server.integration.test.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -280,7 +280,7 @@ must show as pending matrix gaps, not as implied success. (F4, F6)
 - [x] Missing dependency-owned tools produce actionable open gaps, not green false positives.
 - [x] The test names the exact missing or misadvertised MCP surface.
 - [x] `./bin/wp test --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/mcp/server.integration.test.ts` passes.
-- [x] `./bin/wp lint src/__integration__/reference-parity-tool-surface.integration.test.ts src/mcp/server.integration.test.ts` passes.
+- [x] `./bin/wp lint --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/mcp/server.integration.test.ts` passes.
 - [x] `./bin/wp typecheck` passes.
 #### [bench] Task 2.3: Add dry-run regression thresholds for continuity latency and search quality
 
@@ -323,7 +323,7 @@ command/runtime integration smoke with no injected benchmark runtime deps.
 5. Run: `./bin/wp test --file src/cli/commands/bench/session-memory.test.ts --file src/__integration__/reference-parity-bench.integration.test.ts` — verify PASS.
 6. Run: `./bin/wp bench session-memory --dry-run` to verify real manifest/scenario/report wiring.
 7. Document threshold semantics and manifest/repin semantics in `docs/bench/session-memory-methodology.md`.
-8. Run: `./bin/wp lint src/cli/commands/bench/session-memory.ts src/cli/commands/bench/session-memory.test.ts scripts/bench/lib/manifest.ts scripts/bench/lib/manifest.test.ts src/__integration__/reference-parity-bench.integration.test.ts docs/bench/session-memory-methodology.md` and `./bin/wp typecheck`.
+8. Run: `./bin/wp lint --file src/cli/commands/bench/session-memory.ts --file src/cli/commands/bench/session-memory.test.ts --file scripts/bench/lib/manifest.ts --file scripts/bench/lib/manifest.test.ts --file src/__integration__/reference-parity-bench.integration.test.ts --file docs/bench/session-memory-methodology.md` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -337,7 +337,7 @@ command/runtime integration smoke with no injected benchmark runtime deps.
 - [x] No timeout budget is raised to mask benchmark slowness.
 - [x] `./bin/wp test --file src/cli/commands/bench/session-memory.test.ts --file src/__integration__/reference-parity-bench.integration.test.ts` passes.
 - [x] `./bin/wp bench session-memory --dry-run` passes.
-- [x] `./bin/wp lint src/cli/commands/bench/session-memory.ts src/cli/commands/bench/session-memory.test.ts scripts/bench/lib/manifest.ts scripts/bench/lib/manifest.test.ts src/__integration__/reference-parity-bench.integration.test.ts docs/bench/session-memory-methodology.md` passes.
+- [x] `./bin/wp lint --file src/cli/commands/bench/session-memory.ts --file src/cli/commands/bench/session-memory.test.ts --file scripts/bench/lib/manifest.ts --file scripts/bench/lib/manifest.test.ts --file src/__integration__/reference-parity-bench.integration.test.ts --file docs/bench/session-memory-methodology.md` passes.
 - [x] `./bin/wp typecheck` passes.
 
 ## Phase 3: release and claim gate [Complexity: S]
@@ -373,7 +373,7 @@ that fail closed on unsupported or unproven full-parity wording. (F5, F6)
 3. Implement the smallest audit rule in `src/audit/ai-contracts.ts` and update README/CHANGELOG wording to evidence-backed language that points to the parity matrix.
 4. Run: `./bin/wp test --file src/audit/ai-contracts.test.ts --file src/audit/reference-parity-claims.test.ts` — verify PASS.
 5. Run: `npm pack --dry-run --json`, `vp run lint:pkg`, `vp run public:readiness`, and `vp run verify:secrets` to verify public package safety.
-6. Run: `./bin/wp lint README.md CHANGELOG.md src/audit/ai-contracts.ts src/audit/ai-contracts.test.ts src/audit/reference-parity-claims.test.ts` and `./bin/wp typecheck`.
+6. Run: `./bin/wp lint --file README.md --file CHANGELOG.md --file src/audit/ai-contracts.ts --file src/audit/ai-contracts.test.ts --file src/audit/reference-parity-claims.test.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -383,7 +383,7 @@ that fail closed on unsupported or unproven full-parity wording. (F5, F6)
 - [x] Public package dry-run and package-surface checks pass with no denied content.
 - [x] `./bin/wp test --file src/audit/ai-contracts.test.ts --file src/audit/reference-parity-claims.test.ts` passes.
 - [x] `npm pack --dry-run --json`, `vp run lint:pkg`, `vp run public:readiness`, and `vp run verify:secrets` pass.
-- [x] `./bin/wp lint README.md CHANGELOG.md src/audit/ai-contracts.ts src/audit/ai-contracts.test.ts src/audit/reference-parity-claims.test.ts` passes.
+- [x] `./bin/wp lint --file README.md --file CHANGELOG.md --file src/audit/ai-contracts.ts --file src/audit/ai-contracts.test.ts --file src/audit/reference-parity-claims.test.ts` passes.
 - [x] `./bin/wp typecheck` passes.
 
 ### Phase 4: Lifecycle closeout [Complexity: XS]
@@ -429,7 +429,7 @@ after the legal intermediate state exists on the base branch.
 | ---- | ------- | ---------------- |
 | Blueprint lifecycle | `./bin/wp audit blueprint-lifecycle` | Target blueprint remains lifecycle-valid. |
 | Type safety | `./bin/wp typecheck` | Zero errors. |
-| Lint | `./bin/wp lint docs/bench/reference-parity-matrix.md docs/bench/session-memory-methodology.md docs/hook-matrix.md src/audit/reference-parity-matrix.ts src/audit/reference-parity-matrix.test.ts src/audit/ai-contracts.ts src/audit/ai-contracts.test.ts src/audit/reference-parity-claims.test.ts src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.ts src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts src/cli/commands/init/host-smoke.e2e.test.ts src/cli/commands/bench/session-memory.ts src/cli/commands/bench/session-memory.test.ts scripts/bench/lib/manifest.ts src/__integration__/reference-parity-host-smoke.fixtures.ts src/__integration__/reference-parity-host-smoke.integration.test.ts src/__integration__/reference-parity-tool-surface.integration.test.ts src/__integration__/reference-parity-bench.integration.test.ts src/mcp/server.integration.test.ts README.md CHANGELOG.md` | Zero violations. |
+| Lint | `./bin/wp lint --file docs/bench/reference-parity-matrix.md --file docs/bench/session-memory-methodology.md --file docs/hook-matrix.md --file src/audit/reference-parity-matrix.ts --file src/audit/reference-parity-matrix.test.ts --file src/audit/ai-contracts.ts --file src/audit/ai-contracts.test.ts --file src/audit/reference-parity-claims.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts --file src/cli/commands/bench/session-memory.ts --file src/cli/commands/bench/session-memory.test.ts --file scripts/bench/lib/manifest.ts --file src/__integration__/reference-parity-host-smoke.fixtures.ts --file src/__integration__/reference-parity-host-smoke.integration.test.ts --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/__integration__/reference-parity-bench.integration.test.ts --file src/mcp/server.integration.test.ts --file README.md --file CHANGELOG.md` | Zero violations. |
 | Focused tests | `./bin/wp test --file src/audit/reference-parity-matrix.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file src/__integration__/reference-parity-host-smoke.integration.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/mcp/server.integration.test.ts --file src/cli/commands/bench/session-memory.test.ts --file src/__integration__/reference-parity-bench.integration.test.ts --file src/audit/ai-contracts.test.ts --file src/audit/reference-parity-claims.test.ts` | All pass. |
 | Bench dry-run | `./bin/wp bench session-memory --dry-run` | Manifest, scenarios, threshold schema, and report wiring validate without API calls. |
 | Public package safety | `npm pack --dry-run --json && vp run lint:pkg && vp run public:readiness && vp run verify:secrets` | Public tarball/package surface includes only intentional files and no denied content. |

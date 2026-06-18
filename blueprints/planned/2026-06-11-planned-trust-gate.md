@@ -143,7 +143,7 @@ None.
 Promotion Gates are proof commands, not a general shell escape hatch:
 
 - Allowed commands are repo `wp` facade commands only, such as `wp audit <kind>`,
-  `wp test ...`, `wp typecheck`, `wp lint`, and `wp sync --check`.
+  `wp test --file ...`, `wp typecheck`, `wp lint`, and `wp sync --check`.
 - The runner parses commands to argv and executes without a shell.
 - Reject environment assignments, pipes, redirects, `&&`, `||`, semicolons,
   command substitution, `--fix`, unknown binaries, and unknown `wp` subcommands.

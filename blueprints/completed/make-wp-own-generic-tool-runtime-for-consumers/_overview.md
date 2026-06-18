@@ -152,11 +152,11 @@ or PATH binaries as the primary contract.
 **Steps (TDD):**
 1. Add failing unit tests for runner resolution, cache behavior, and fallback
    rules.
-2. Run: `wp test --file src/tool-runtime/index.test.ts src/tool-runtime/resolve-runner.test.ts`
+2. Run: `wp test --file src/tool-runtime/index.test.ts --file src/tool-runtime/resolve-runner.test.ts`
    — verify FAIL.
 3. Implement the minimal runtime core and resolution API.
 4. Re-run the same targeted tests — verify PASS.
-5. Run: `wp lint src/tool-runtime/index.ts src/tool-runtime/resolve-runner.ts src/tool-runtime/index.test.ts src/tool-runtime/resolve-runner.test.ts`
+5. Run: `wp lint --file src/tool-runtime/index.ts --file src/tool-runtime/resolve-runner.ts --file src/tool-runtime/index.test.ts --file src/tool-runtime/resolve-runner.test.ts`
 6. Run: `wp typecheck`
 
 **Acceptance:**
@@ -222,7 +222,7 @@ flag shape.
 2. Run: `wp test --file src/cli/commands/test.test.ts` — verify FAIL.
 3. Integrate the runtime core into test command planning/execution.
 4. Re-run: `wp test --file src/cli/commands/test.test.ts` — verify PASS.
-5. Run: `wp lint src/test/command-builder.ts src/cli/commands/test.ts src/cli/commands/test.test.ts`
+5. Run: `wp lint --file src/test/command-builder.ts --file src/cli/commands/test.ts --file src/cli/commands/test.test.ts`
 6. Run: `wp typecheck`
 
 **Acceptance:**
@@ -254,11 +254,11 @@ runner execution while preserving suite-aware and host-adapter behavior.
 **Steps (TDD):**
 1. Add failing tests proving generic and host-adapter-backed E2E plans use the
    managed runtime boundary.
-2. Run: `wp test --file src/cli/commands/e2e.test.ts src/cli/commands/e2e.host-adapter.test.ts`
+2. Run: `wp test --file src/cli/commands/e2e.test.ts --file src/cli/commands/e2e.host-adapter.test.ts`
    — verify FAIL.
 3. Integrate the runtime core into E2E command planning/execution.
 4. Re-run the same targeted tests — verify PASS.
-5. Run: `wp lint src/e2e/command-builder.ts src/cli/commands/e2e.ts src/cli/commands/e2e.test.ts src/cli/commands/e2e.host-adapter.test.ts`
+5. Run: `wp lint --file src/e2e/command-builder.ts --file src/cli/commands/e2e.ts --file src/cli/commands/e2e.test.ts --file src/cli/commands/e2e.host-adapter.test.ts`
 6. Run: `wp typecheck`
 
 **Acceptance:**
@@ -290,11 +290,11 @@ including `vp lint`, `oxfmt`, and `tsc`/`check-types` assumptions.
 
 **Steps (TDD):**
 1. Add failing tests for runtime-backed lint/format/typecheck invocation.
-2. Run: `wp test --file src/cli/commands/typecheck.test.ts src/cli/commands/format.ts src/cli/commands/lint.ts`
+2. Run: `wp test --file src/cli/commands/typecheck.test.ts --file src/cli/commands/format.ts --file src/cli/commands/lint.ts`
    — verify FAIL where new assertions were added.
 3. Integrate the runtime core into lint/format/typecheck flows.
 4. Re-run targeted tests — verify PASS.
-5. Run: `wp lint src/lint/index.ts src/format/index.ts src/cli/commands/typecheck.ts src/cli/commands/lint.ts src/cli/commands/format.ts`
+5. Run: `wp lint --file src/lint/index.ts --file src/format/index.ts --file src/cli/commands/typecheck.ts --file src/cli/commands/lint.ts --file src/cli/commands/format.ts`
 6. Run: `wp typecheck`
 
 **Acceptance:**
@@ -328,7 +328,7 @@ imports them directly.
 2. Run targeted init/setup tests — verify FAIL.
 3. Implement the minimal migration diagnostics and setup messaging.
 4. Re-run targeted init/setup tests — verify PASS.
-5. Run: `wp lint src/cli/commands/init/scaffold-base-kit.ts src/cli/commands/init/index.ts`
+5. Run: `wp lint --file src/cli/commands/init/scaffold-base-kit.ts --file src/cli/commands/init/index.ts`
 6. Run: `wp typecheck`
 
 **Acceptance:**

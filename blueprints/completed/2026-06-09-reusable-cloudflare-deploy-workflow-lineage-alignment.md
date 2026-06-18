@@ -49,4 +49,4 @@ and publish an ADR naming the authoritative immutable lineage.
 
 - `wp test --file src/build/reusable-cloudflare-workflows.test.ts`
 - `wp test --file src/audit/cloudflare-deploy-contract.test.ts`
-- `wp lint docs/github-action.md docs/reusable-cloudflare-deploy-workflows.md docs/adrs/0001-reusable-cloudflare-workflow-lineage.md`
+- `wp lint --file docs/github-action.md --file docs/reusable-cloudflare-deploy-workflows.md --file docs/adrs/0001-reusable-cloudflare-workflow-lineage.md`
