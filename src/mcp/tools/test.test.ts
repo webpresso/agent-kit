@@ -234,6 +234,31 @@ describe('wp_test tool', () => {
       expect(spawnMock).not.toHaveBeenCalled()
     })
 
+    it('surfaces zero-test file-filter failures with diagnostics', async () => {
+      spawnMock.mockReturnValue(
+        fakeChild({
+          stdout: JSON.stringify({
+            success: false,
+            numTotalTests: 0,
+            numTotalTestSuites: 0,
+            testResults: [],
+          }),
+          exitCode: 1,
+        }),
+      )
+
+      const result = await wpTestTool.handler({ files: ['src/mcp/runners/test.ts'] })
+      const payload = result.structuredContent as {
+        passed: boolean
+        rawOutput?: string
+        failures?: Array<{ message: string }>
+      }
+
+      expect(payload.passed).toBe(false)
+      expect(payload.rawOutput).toContain('Vitest exited unsuccessfully but reported 0 tests')
+      expect(payload.failures?.[0]?.message).toContain('file filter')
+    })
+
     it('clips long raw test output and marks it truncated', async () => {
       spawnMock.mockReturnValue(fakeChild({ stdout: 'x'.repeat(5_000), exitCode: 1 }))
 

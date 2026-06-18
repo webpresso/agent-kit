@@ -17,6 +17,11 @@ export function vitestTransform(
   const parsed = parseJsonish(rawOutput)
   if (parsed !== undefined) {
     const failures = collectFailures(parsed)
+    if (failures.length > 0) return compact(rawOutput, context, failures, 1)
+
+    const diagnostic = summarizeUnsuccessfulJsonRun(parsed)
+    if (diagnostic) return compact(rawOutput, context, [diagnostic], 1)
+
     return compact(rawOutput, context, failures, 1)
   }
 
@@ -68,6 +73,28 @@ function collectFailures(value: unknown): VitestFailure[] {
   const failures: VitestFailure[] = []
   visit(value, undefined, failures)
   return failures
+}
+
+function summarizeUnsuccessfulJsonRun(value: unknown): VitestFailure | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
+
+  const record = value as Record<string, unknown>
+  if (record.success !== false) return undefined
+
+  const totalTests = numericField(record.numTotalTests)
+  const totalSuites = numericField(record.numTotalTestSuites)
+  const testResults = Array.isArray(record.testResults) ? record.testResults : undefined
+  if (totalTests !== 0 && totalSuites !== 0 && testResults?.length !== 0) return undefined
+
+  return {
+    name: '<vitest>',
+    message:
+      'Vitest exited unsuccessfully but reported 0 tests. Check that the requested file filter matches a Vitest-included test file.',
+  }
+}
+
+function numericField(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
 
 function visit(value: unknown, inheritedFile: string | undefined, failures: VitestFailure[]): void {
