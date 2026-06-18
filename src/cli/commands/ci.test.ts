@@ -24,7 +24,7 @@ describe('wp ci command', () => {
 
     expect(command.command).toBe('with-secrets')
     expect(command.args).toEqual([
-      '--env-profile',
+      '--runtime-profile',
       'secrets-only',
       '--',
       'act',
@@ -46,7 +46,8 @@ describe('wp ci command', () => {
         execute: true,
         job: 'webpresso',
         eventName: 'workflow_dispatch',
-        envProfile: 'ci-local',
+        envProfile: 'secrets-only',
+        secretEnvProfile: 'ci-local',
         containerArchitecture: 'linux/arm64',
         platformImage: 'image',
         eventPath: 'event.json',
@@ -55,7 +56,9 @@ describe('wp ci command', () => {
     )
 
     expect(command.args).toEqual([
-      '--env-profile',
+      '--runtime-profile',
+      'secrets-only',
+      '--secret-env-profile',
       'ci-local',
       '--',
       'act',
@@ -147,6 +150,7 @@ describe('wp ci command', () => {
     expect(run).toHaveBeenCalledWith({
       cwd: '/repo',
       envProfile: undefined,
+      secretEnvProfile: undefined,
       command: 'act',
       timeoutMs: DEFAULT_CI_ACT_TIMEOUT_MS,
       args: [

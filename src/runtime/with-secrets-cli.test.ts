@@ -10,6 +10,7 @@ describe('parseWithSecretsArgs', () => {
       command: 'pnpm',
       args: ['run', 'dev'],
       profile: 'service-runtime',
+      environment: undefined,
     })
   })
 
@@ -18,6 +19,7 @@ describe('parseWithSecretsArgs', () => {
       command: 'wrangler',
       args: ['deploy'],
       profile: 'prd',
+      environment: undefined,
     })
   })
 
@@ -26,6 +28,25 @@ describe('parseWithSecretsArgs', () => {
       command: 'pnpm',
       args: ['run', 'build'],
       profile: undefined,
+      environment: undefined,
+    })
+  })
+
+  it('parses provider environment separately from runtime profile', () => {
+    expect(
+      parseWithSecretsArgs([
+        '--runtime-profile',
+        'secrets-only',
+        '--secret-env-profile',
+        'dev',
+        '--',
+        'act',
+      ]),
+    ).toEqual({
+      command: 'act',
+      args: [],
+      profile: 'secrets-only',
+      environment: 'dev',
     })
   })
 })

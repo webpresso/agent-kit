@@ -112,7 +112,7 @@ export interface CommandExecutionSummary {
 
 export async function runCommandConfigs(
   commands: readonly CommandConfig[],
-  options: { signal?: AbortSignal } = {},
+  options: { signal?: AbortSignal; cwd?: string } = {},
 ): Promise<CommandExecutionSummary> {
   let combinedOutput = ''
 
@@ -138,10 +138,10 @@ export async function runCommandConfigs(
 
 async function runCommand(
   command: CommandConfig,
-  options: { signal?: AbortSignal },
+  options: { signal?: AbortSignal; cwd?: string },
 ): Promise<{ exitCode: number; output: string }> {
   return new Promise((resolve) => {
-    const cwd = command.cwd ?? process.cwd()
+    const cwd = command.cwd ?? options.cwd ?? process.cwd()
     const resolvedEnv = resolveRuntimeEnvironment({
       cwd,
       profile: command.runtimeProfile,

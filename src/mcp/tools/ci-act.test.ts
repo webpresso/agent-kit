@@ -1,3 +1,7 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { buildCiActCommand } from '#cli/commands/ci'
@@ -8,6 +12,8 @@ import tool from './ci-act.js'
 const TEST_REDACTABLE_SECRET = 'TESTTOKENABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABCDE'
 
 const runSecretGateCommandMock = vi.hoisted(() => vi.fn())
+const tempDirs: string[] = []
+const originalClaudeProjectDir = process.env.CLAUDE_PROJECT_DIR
 
 vi.mock('#secret-gate/runner.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('#secret-gate/runner.js')>()),
@@ -17,14 +23,32 @@ vi.mock('#secret-gate/runner.js', async (importOriginal) => ({
 afterEach(() => {
   runSecretGateCommandMock.mockReset()
   vi.unstubAllEnvs()
+  if (originalClaudeProjectDir === undefined) {
+    delete process.env.CLAUDE_PROJECT_DIR
+  } else {
+    process.env.CLAUDE_PROJECT_DIR = originalClaudeProjectDir
+  }
+  for (const dir of tempDirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true })
+  }
 })
+
+function tempProjectRoot(): string {
+  const root = mkdtempSync(join(tmpdir(), 'wp-ci-act-root-'))
+  tempDirs.push(root)
+  writeFileSync(join(root, 'pnpm-workspace.yaml'), 'packages: []\n')
+  mkdirSync(join(root, '.github', 'workflows'), { recursive: true })
+  writeFileSync(join(root, '.github', 'workflows', 'ci.yml'), 'name: ci\n')
+  return root
+}
 
 describe('wp_ci_act tool', () => {
   it('returns the same canonical with-secrets dry-run command as the CLI', async () => {
     vi.stubEnv('GITHUB_PAT', TEST_REDACTABLE_SECRET)
+    const root = tempProjectRoot()
     const result = await tool.handler({
       workflowPath: '.github/workflows/ci.yml',
-      cwd: '/repo',
+      cwd: root,
     })
 
     expect(runSecretGateCommandMock).not.toHaveBeenCalled()
@@ -32,11 +56,14 @@ describe('wp_ci_act tool', () => {
     expect(payload.passed).toBe(true)
     expect(payload.summary).toContain('dry-run')
     const details = payload.details as { command: { command: string; args: string[] } }
-    expect(details.command).toEqual(
-      buildCiActCommand({ workflowPath: '.github/workflows/ci.yml' }, '/repo'),
-    )
+    expect(details.command).toEqual(buildCiActCommand({ workflowPath: '.github/workflows/ci.yml' }, root))
     expect(details.command.command).toBe('with-secrets')
-    expect(details.command.args.slice(0, 4)).toEqual(['--env-profile', 'secrets-only', '--', 'act'])
+    expect(details.command.args.slice(0, 4)).toEqual([
+      '--runtime-profile',
+      'secrets-only',
+      '--',
+      'act',
+    ])
     expect(details.command.args.join(' ')).not.toContain('--secret-file')
     expect(JSON.stringify(payload)).not.toContain(TEST_REDACTABLE_SECRET)
     expect(JSON.stringify(payload)).not.toMatch(/wp-ci-act-[^" ]+secrets\.env/u)
@@ -77,6 +104,44 @@ describe('wp_ci_act tool', () => {
         allowHostMutation: true,
       }),
     ).rejects.toThrow()
+  })
+
+
+
+  it('rejects provider selectors in envProfile and directs callers to secretEnvProfile', async () => {
+    await expect(
+      tool.handler({
+        workflowPath: '.github/workflows/ci.yml',
+        envProfile: 'e2e-runtime',
+      }),
+    ).rejects.toThrow('Use secretEnvProfile')
+  })
+
+  it('resolves the MCP project root and forwards secretEnvProfile separately', async () => {
+    const root = tempProjectRoot()
+    process.env.CLAUDE_PROJECT_DIR = root
+    runSecretGateCommandMock.mockResolvedValue({
+      exitCode: 0,
+      stdout: 'ok',
+      stderr: '',
+      timedOut: false,
+      aborted: false,
+      signal: null,
+    })
+
+    await tool.handler({
+      workflowPath: '.github/workflows/ci.yml',
+      execute: true,
+      secretEnvProfile: 'dev',
+    })
+
+    expect(runSecretGateCommandMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cwd: root,
+        envProfile: 'secrets-only',
+        secretEnvProfile: 'dev',
+      }),
+    )
   })
 
   it('executes through the canonical secret gate without internal secret-file fallbacks', async () => {
