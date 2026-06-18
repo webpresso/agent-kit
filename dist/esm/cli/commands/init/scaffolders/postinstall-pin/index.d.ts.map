@@ -1,0 +1,1 @@
+{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../../../../../../src/cli/commands/init/scaffolders/postinstall-pin/index.ts"],"names":[],"mappings":"AAaA,OAAO,EAAE,KAAK,YAAY,EAAE,KAAK,WAAW,EAAiB,MAAM,0BAA0B,CAAA;AAI7F,MAAM,WAAW,2BAA2B;IAC1C,QAAQ,EAAE,MAAM,CAAA;IAChB,OAAO,EAAE,YAAY,CAAA;CACtB;AAED,wBAAgB,sBAAsB,CAAC,KAAK,EAAE,2BAA2B,GAAG,WAAW,CAkBtF"}
