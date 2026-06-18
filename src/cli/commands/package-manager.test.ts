@@ -1,6 +1,11 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
+import {
+  claimProjectOwnedTool,
+  claimUserOwnedTool,
+  defaultToolingOwnershipState,
+} from '#cli/tooling-ownership'
 
 import {
   buildPackageManagerCommand,
@@ -9,10 +14,6 @@ import {
 } from './package-manager.js'
 
 installManagedRunnerHermeticHooks()
-
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('wp package-manager commands', () => {
   function spawnResult(status: number | null, error?: Error) {
@@ -56,13 +57,14 @@ describe('wp package-manager commands', () => {
     })
   })
 
-  it('updates only global agent-kit by default inside a package root', () => {
+  it('runs tooling refresh by default inside a package root', () => {
     const run = vi.fn(() => spawnResult(0))
 
     expect(
       runPackageManagerCommand('update', {
         argv: ['node', 'wp', 'update'],
         cwd: '/repo/packages/agent-kit',
+        ownershipState: defaultToolingOwnershipState(),
         exists: (target) =>
           String(target) === '/repo/packages/agent-kit/package.json' ||
           String(target) === '/fake-home/.claude/skills/gstack/.git',
@@ -72,7 +74,7 @@ describe('wp package-manager commands', () => {
     ).toBe(0)
 
     expect(run).toHaveBeenCalledTimes(1)
-    expect(run).toHaveBeenCalledWith('vp', ['install', '-g', '@webpresso/agent-kit'])
+    expect(run).toHaveBeenNthCalledWith(1, 'vp', ['install', '-g', '@webpresso/agent-kit'])
   })
 
   it('runs local verbs from the nearest package root when invoked in a nested directory', () => {
@@ -144,21 +146,19 @@ describe('wp package-manager commands', () => {
     })
   })
 
-  it('rejects removed --global even with --deps', () => {
+  it('rejects --deps with --global', () => {
     const run = vi.fn(() => spawnResult(0))
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     expect(
       runPackageManagerCommand('update', {
         argv: ['node', 'wp', 'update', '--deps', '--global'],
-        cwd: '/repo/packages/agent-kit',
-        exists: (target) => String(target) === '/repo/packages/agent-kit/package.json',
         run,
       }),
     ).toBe(1)
 
     expect(run).not.toHaveBeenCalled()
-    expect(error.mock.calls.join('\n')).toContain('unrecognized option(s): --global')
+    expect(error.mock.calls.join('\n')).toContain('--deps cannot be combined with --global')
   })
 
   it('rejects --deps outside any package root instead of refreshing tooling', () => {
@@ -178,21 +178,6 @@ describe('wp package-manager commands', () => {
     expect(error.mock.calls.join('\n')).toContain('no package root found')
   })
 
-  it('rejects removed --global tooling mode without running anything', () => {
-    const run = vi.fn(() => spawnResult(0))
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-    expect(
-      runPackageManagerCommand('update', {
-        argv: ['node', 'wp', 'update', '--global'],
-        run,
-      }),
-    ).toBe(1)
-
-    expect(run).not.toHaveBeenCalled()
-    expect(error.mock.calls.join('\n')).toContain('unrecognized option(s): --global')
-  })
-
   it('rejects typoed update control flags instead of silently refreshing tooling', () => {
     const run = vi.fn(() => spawnResult(0))
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -205,33 +190,36 @@ describe('wp package-manager commands', () => {
     ).toBe(1)
 
     expect(run).not.toHaveBeenCalled()
-    expect(error.mock.calls.join('\n')).toContain('unrecognized option(s): --dep')
+    expect(error.mock.calls.join('\n')).toContain('unrecognized tooling option')
     expect(error.mock.calls.join('\n')).toContain('wp update --deps --dep')
   })
 
-  it('runs the toolchain refresh pipeline in order with --tools', () => {
+  it('runs wp-managed optional integration refreshes in ownership order', () => {
     const run = vi.fn(() => spawnResult(0))
+    let ownershipState = defaultToolingOwnershipState()
+    ownershipState = claimUserOwnedTool(ownershipState, 'omx')
+    ownershipState = claimUserOwnedTool(ownershipState, 'omc')
+    ownershipState = claimUserOwnedTool(ownershipState, 'gstack')
 
     expect(
       runPackageManagerCommand('update', {
-        argv: ['node', 'wp', 'update', '--tools'],
+        argv: ['node', 'wp', 'update', '--global'],
+        ownershipState,
         exists: () => true,
         gstackRoot: '/fake-home/.claude/skills/gstack',
         run,
       }),
     ).toBe(0)
 
-    expect(run).toHaveBeenNthCalledWith(1, 'vp', ['update', '-g', '--latest', '@openai/codex'])
-    expect(run).toHaveBeenNthCalledWith(2, 'tmux', ['-V'])
-    expect(run).toHaveBeenNthCalledWith(3, 'vp', ['update', '-g', 'oh-my-codex'])
-    expect(run).toHaveBeenNthCalledWith(4, 'claude', [
+    expect(run).toHaveBeenNthCalledWith(1, 'vp', ['update', '-g', 'oh-my-codex'])
+    expect(run).toHaveBeenNthCalledWith(2, 'claude', [
       'plugin',
       'update',
-      '-s',
+      '--scope',
       'user',
       'oh-my-claudecode',
     ])
-    expect(run).toHaveBeenNthCalledWith(5, 'git', [
+    expect(run).toHaveBeenNthCalledWith(3, 'git', [
       '-C',
       '/fake-home/.claude/skills/gstack',
       'pull',
@@ -239,37 +227,71 @@ describe('wp package-manager commands', () => {
       'origin',
       'main',
     ])
-    expect(run).toHaveBeenNthCalledWith(6, './setup', ['--team'], {
+    expect(run).toHaveBeenNthCalledWith(4, './setup', ['--team'], {
       cwd: '/fake-home/.claude/skills/gstack',
     })
-    expect(run).toHaveBeenNthCalledWith(7, 'vp', ['install', '-g', '@webpresso/agent-kit'])
+    expect(run).toHaveBeenNthCalledWith(5, 'vp', ['install', '-g', '@webpresso/agent-kit'])
   })
 
-  it('installs tmux through Homebrew when tmux is missing', () => {
-    const run = vi.fn((command: string) =>
-      command === 'tmux' ? spawnResult(null, new Error('spawn tmux ENOENT')) : spawnResult(0),
-    )
+  it('updates project-scoped OMC only when the current repo owns it', () => {
+    const run = vi.fn(() => spawnResult(0))
+    let ownershipState = defaultToolingOwnershipState()
+    ownershipState = claimProjectOwnedTool(ownershipState, 'omc', 'repo-123')
 
     expect(
       runPackageManagerCommand('update', {
-        argv: ['node', 'wp', 'update', '--tools'],
-        exists: () => true,
-        gstackRoot: '/fake-home/.claude/skills/gstack',
+        argv: ['node', 'wp', 'update', '--global'],
+        ownershipState,
+        repoKey: 'repo-123',
         run,
       }),
     ).toBe(0)
 
-    expect(run).toHaveBeenNthCalledWith(2, 'tmux', ['-V'])
-    expect(run).toHaveBeenNthCalledWith(3, 'brew', ['install', 'tmux'])
+    expect(run).toHaveBeenNthCalledWith(1, 'claude', [
+      'plugin',
+      'update',
+      '--scope',
+      'project',
+      'oh-my-claudecode',
+    ])
+    expect(run).toHaveBeenNthCalledWith(2, 'vp', ['install', '-g', '@webpresso/agent-kit'])
   })
 
-  it('clones gstack when the canonical checkout is missing', () => {
+  it('updates omx only once when both user and project ownership exist', () => {
     const run = vi.fn(() => spawnResult(0))
-    const mkdir = vi.fn()
+    let ownershipState = defaultToolingOwnershipState()
+    ownershipState = claimUserOwnedTool(ownershipState, 'omx')
+    ownershipState = claimProjectOwnedTool(ownershipState, 'omx', 'repo-123')
 
     expect(
       runPackageManagerCommand('update', {
-        argv: ['node', 'wp', 'update', '--tools'],
+        argv: ['node', 'wp', 'update'],
+        ownershipState,
+        repoKey: 'repo-123',
+        run,
+      }),
+    ).toBe(0)
+
+    expect(
+      run.mock.calls.filter(
+        ([command, args]) =>
+          command === 'vp' &&
+          Array.isArray(args) &&
+          args.join(' ') === 'update -g oh-my-codex',
+      ),
+    ).toHaveLength(1)
+  })
+
+  it('clones gstack when the canonical checkout is missing and wp owns gstack', () => {
+    const run = vi.fn(() => spawnResult(0))
+    const mkdir = vi.fn()
+    let ownershipState = defaultToolingOwnershipState()
+    ownershipState = claimUserOwnedTool(ownershipState, 'gstack')
+
+    expect(
+      runPackageManagerCommand('update', {
+        argv: ['node', 'wp', 'update', '--global'],
+        ownershipState,
         exists: (target) => String(target) !== '/fake-home/.claude/skills/gstack/.git',
         gstackRoot: '/fake-home/.claude/skills/gstack',
         mkdir,
@@ -293,21 +315,26 @@ describe('wp package-manager commands', () => {
   it('continues global update steps after a failure and exits non-zero', () => {
     const run = vi.fn((command: string) => spawnResult(command === 'claude' ? 3 : 0))
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    let ownershipState = defaultToolingOwnershipState()
+    ownershipState = claimUserOwnedTool(ownershipState, 'omx')
+    ownershipState = claimUserOwnedTool(ownershipState, 'omc')
+    ownershipState = claimUserOwnedTool(ownershipState, 'gstack')
 
     expect(
       runPackageManagerCommand('update', {
-        argv: ['node', 'wp', 'update', '--tools'],
+        argv: ['node', 'wp', 'update', '-g'],
+        ownershipState,
         exists: () => true,
         gstackRoot: '/fake-home/.claude/skills/gstack',
         run,
       }),
     ).toBe(1)
 
-    expect(run).toHaveBeenCalledTimes(7)
+    expect(run).toHaveBeenCalledTimes(5)
     expect(error.mock.calls.join('\n')).toContain('omc')
     expect(error.mock.calls.join('\n')).toContain('exit 3')
     expect(error.mock.calls.join('\n')).toContain('wp update: omc failed')
-    expect(error.mock.calls.join('\n')).not.toContain('wp update --tools')
+    expect(error.mock.calls.join('\n')).not.toContain('wp update --global')
   })
 
   it('reports missing global tools without throwing', () => {
@@ -316,18 +343,19 @@ describe('wp package-manager commands', () => {
       throw new Error(`spawn ${command} ENOENT`)
     })
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    let ownershipState = defaultToolingOwnershipState()
+    ownershipState = claimUserOwnedTool(ownershipState, 'omx')
+    ownershipState = claimUserOwnedTool(ownershipState, 'omc')
 
     expect(
       runPackageManagerCommand('update', {
-        argv: ['node', 'wp', 'update', '--tools'],
-        exists: () => true,
-        gstackRoot: '/fake-home/.claude/skills/gstack',
+        argv: ['node', 'wp', 'update', '--global'],
+        ownershipState,
         run,
       }),
     ).toBe(1)
 
-    expect(run).toHaveBeenCalledTimes(6)
-    expect(error.mock.calls.join('\n')).toContain('codex')
+    expect(run).toHaveBeenCalledTimes(3)
     expect(error.mock.calls.join('\n')).toContain('spawn vp ENOENT')
     expect(error.mock.calls.join('\n')).toContain('omc')
     expect(error.mock.calls.join('\n')).toContain('spawn claude ENOENT')

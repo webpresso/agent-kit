@@ -9,6 +9,7 @@ import { parseBlueprintForDb } from '#db/parser/blueprint-db-parser'
 import { blueprintToSpecKit } from '#export/spec-kit/index'
 
 import { getProjectRoot } from '#cli/utils'
+import { commandExists as defaultCommandExists } from '#runtime/command-exists.js'
 import {
   clearBlueprintWorktreeOwnership,
   ensureBlueprintOwnerWorktree,
@@ -186,6 +187,14 @@ export interface ExecuteBlueprintResult {
   status: string
   teamStateRoot?: string
 }
+
+let blueprintExecCommandExists: (command: string) => boolean = defaultCommandExists
+let blueprintExecStarter:
+  | ((
+      slug: string,
+      options: BlueprintMoveOptions,
+    ) => Promise<BlueprintLifecycleMutationResult>)
+  | null = null
 
 function assertBlueprintCanMoveToStatus(blueprint: Blueprint, nextStatus: BlueprintStatus): void {
   if (nextStatus !== 'completed') {
@@ -391,12 +400,24 @@ function normalizeBlueprintType(type?: string): BlueprintDocumentType {
   throw new Error(`Invalid blueprint type: ${type}. Valid types: blueprint, parent-roadmap`)
 }
 
+function assertBlueprintExecutionPrereqs(): void {
+  if (blueprintExecCommandExists('omx')) return
+  throw new Error(
+    [
+      'Blueprint execution requires OMX, but `omx` is not available on PATH.',
+      'OMX is optional for wp overall.',
+      'Enable it with `wp setup --with omx` or install it separately upstream, then retry `wp blueprint exec`.',
+    ].join(' '),
+  )
+}
+
 export async function executeBlueprint(
   slug: string,
   options: BlueprintMoveOptions = {},
 ): Promise<ExecuteBlueprintResult> {
   const projectRoot = resolveProjectRoot(options.projectRoot)
-  const started = await startBlueprint(slug, { projectRoot })
+  assertBlueprintExecutionPrereqs()
+  const started = await (blueprintExecStarter ?? startBlueprint)(slug, { projectRoot })
   const location = await resolveBlueprintLocation(started.slug, projectRoot)
   const relativeBlueprintPath = path.relative(projectRoot, location.path).replace(/\\/g, '/')
   const launchSpec = buildBlueprintLaunchSpec({
@@ -850,4 +871,21 @@ export function registerBlueprintRouter(cli: CAC): void {
         }
       },
     )
+}
+
+export function _setBlueprintExecCommandExistsForTests(
+  probe: ((command: string) => boolean) | null,
+): void {
+  blueprintExecCommandExists = probe ?? defaultCommandExists
+}
+
+export function _setBlueprintExecStarterForTests(
+  starter:
+    | ((
+        slug: string,
+        options: BlueprintMoveOptions,
+      ) => Promise<BlueprintLifecycleMutationResult>)
+    | null,
+): void {
+  blueprintExecStarter = starter
 }

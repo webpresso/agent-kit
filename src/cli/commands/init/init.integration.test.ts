@@ -407,18 +407,17 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     const tsconfigJson = JSON.parse(readFileSync(join(repo, 'tsconfig.json'), 'utf8')) as {
       extends?: string
     }
-    expect(tsconfigJson.extends).toBe('@webpresso/agent-config/tsconfig/base.json')
+    expect(tsconfigJson.extends).toBe('@webpresso/agent-kit/tsconfig/base.json')
     const packageJson = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')) as {
       scripts: Record<string, string>
       devDependencies: Record<string, string>
     }
-    expect(packageJson.scripts.lint).toBe('wp lint src e2e *.config.ts')
+    expect(packageJson.scripts.lint).toBe('wp lint --file src --file e2e --file *.config.ts')
     expect(packageJson.scripts.typecheck).toBe('wp typecheck')
     expect(packageJson.scripts.test).toBe('wp test --file vitest.config.ts')
     expect(packageJson.scripts.mutation).toBe('wp test --mutation')
     expect(packageJson.scripts.e2e).toBe('wp e2e --config playwright.config.ts')
-    expect(packageJson.devDependencies['@webpresso/agent-kit']).toBeUndefined()
-    expect(packageJson.devDependencies['@webpresso/agent-config']).toMatch(/^\^\d+\.\d+\.\d+/u)
+    expect(packageJson.devDependencies['@webpresso/agent-kit']).toMatch(/^\^\d+\.\d+\.\d+/u)
     expect(packageJson.devDependencies['@stryker-mutator/typescript-checker']).toBe('latest')
 
     // Blueprints
@@ -648,7 +647,7 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     expect(
       stopCommands.some(
         (command) =>
-          command.includes('audit agents') && command.includes('# from-skill: verify'),
+          command.includes('wp audit agents') && command.includes('# from-skill: verify'),
       ),
     ).toBe(true)
     expect(stopCommands.some((command) => command.includes('# from-skill: verify'))).toBe(true)
@@ -828,7 +827,50 @@ describe('DX output: lane framing and next-steps block', { timeout: 15_000 }, ()
     const allOutput = logLines.join('\n')
     expect(allOutput).toContain('wp_*')
     expect(allOutput).toContain('rtk')
-    expect(allOutput).toContain('gstack')
+    expect(allOutput).toContain('external tools')
+  })
+
+  it('does not replay remembered external integrations on plain reruns', async () => {
+    writeFileSync(
+      join(repo, '.webpressorc.json'),
+      JSON.stringify(
+        {
+          version: '1',
+          installed: { tier3Skills: ['base-kit'] },
+          integrations: {
+            omx: { enabled: true, scope: 'user' },
+            omc: { enabled: true, scope: 'user' },
+            gstack: { enabled: true },
+          },
+          rules: { overrides: [] },
+          scripts: {},
+          durablePlanningRoot: '.agent/planning/',
+        },
+        null,
+        2,
+      ),
+    )
+
+    await runInit({ cwd: repo, yes: true }, { stdout: silentStdout })
+
+    const allOutput = logLines.join('\n')
+    const omxCalls = spawnSyncMock.mock.calls.filter((call) => call[0] === 'omx')
+    const omcCalls = spawnSyncMock.mock.calls.filter(
+      (call) =>
+        call[0] === 'claude' &&
+        Array.isArray(call[1]) &&
+        ['plugin', 'marketplace'].includes(String(call[1][0])),
+    )
+    const gstackCalls = spawnMock.mock.calls.filter(
+      (call) => call[0] === 'git' || call[0] === './setup',
+    )
+    const rewritten = readJsonFile<Record<string, unknown>>(join(repo, '.webpressorc.json'))
+
+    expect(omxCalls).toHaveLength(0)
+    expect(omcCalls).toHaveLength(0)
+    expect(gstackCalls).toHaveLength(0)
+    expect(allOutput).toContain('wp setup no longer remembers them across reruns')
+    expect(rewritten.integrations ?? {}).toEqual({})
   })
 
   it('prints the canonical next-steps block on non-dry-run', async () => {
@@ -846,15 +888,17 @@ describe('DX output: lane framing and next-steps block', { timeout: 15_000 }, ()
     expect(allOutput).toContain('agent-kit@webpresso')
   })
 
-  it('reports OMC setup status through the default setup preset', async () => {
+  it('does not report OMC setup status unless OMC is explicitly requested', async () => {
     await runInit({ cwd: repo, yes: true }, { stdout: silentStdout })
     const allOutput = logLines.join('\n')
+    expect(allOutput).not.toContain('omc plugin:')
+  })
+
+  it('reports OMC setup status when OMC is explicitly requested', async () => {
+    await runInit({ cwd: repo, yes: true, with: 'omc' }, { stdout: silentStdout })
+    const allOutput = logLines.join('\n')
     expect(allOutput).toContain('omc plugin:')
-    if (process.env.CI) {
-      expect(allOutput).toContain('skipped (CI environment)')
-    } else {
-      expect(allOutput).toContain('oh-my-claudecode')
-    }
+    expect(allOutput).toContain('oh-my-claudecode')
   })
 
   it('omits next-steps block in --dry-run mode', async () => {
@@ -893,7 +937,7 @@ describe('warnIfNonLocalCli (DX2)', () => {
     rmSync(repo, { recursive: true, force: true })
   })
 
-  it('warns when a consumer repo has no published @webpresso/agent-config pin', async () => {
+  it('warns when a consumer repo has no published @webpresso/agent-kit pin', async () => {
     const { warnIfNonLocalCli } = await import('./detect-consumer.js')
 
     warnIfNonLocalCli(repo, 'file:///Users/me/.vite-plus/bin/wp')
@@ -901,7 +945,7 @@ describe('warnIfNonLocalCli (DX2)', () => {
     expect(
       captured.some(
         (line) =>
-          line.includes('warning: missing or invalid @webpresso/agent-config dependency pin') &&
+          line.includes('warning: missing or invalid @webpresso/agent-kit dependency pin') &&
           line.includes('published semver range') &&
           line.includes('global `wp setup`'),
       ),
@@ -936,7 +980,7 @@ describe('warnIfNonLocalCli (DX2)', () => {
       JSON.stringify({
         name: '@acme/demo',
         private: true,
-        devDependencies: { '@webpresso/agent-config': '^1.2.3' },
+        devDependencies: { '@webpresso/agent-kit': '^1.2.3' },
       }),
     )
 
@@ -954,14 +998,14 @@ describe('warnIfNonLocalCli (DX2)', () => {
         JSON.stringify({
           name: '@acme/demo',
           private: true,
-          devDependencies: { '@webpresso/agent-config': version },
+          devDependencies: { '@webpresso/agent-kit': version },
         }),
       )
 
       warnIfNonLocalCli(repo, 'file:///Users/me/.vite-plus/bin/wp')
 
       expect(captured.join('\n')).toContain(
-        'missing or invalid @webpresso/agent-config dependency pin',
+        'missing or invalid @webpresso/agent-kit dependency pin',
       )
     }
   })

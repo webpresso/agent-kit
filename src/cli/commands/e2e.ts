@@ -79,7 +79,7 @@ export async function createAkE2eExecutionPlan(
 
 export function registerE2eCommand(cli: CAC): void {
   cli
-    .command('e2e [...files]', E2E_COMMAND_HELP)
+    .command('e2e', E2E_COMMAND_HELP)
     .option('--suite <name>', 'Host-provided suite id')
     .option('--runner <kind>', 'Runner kind: playwright, vitest, or command')
     .option('--config <path>', 'Runner config path')
@@ -92,12 +92,13 @@ export function registerE2eCommand(cli: CAC): void {
     .option('--test-list <path>', 'Forward a Playwright test-list file')
     .option('--full', 'Print the full raw output instead of the default summary-first view')
     .option('--print-command', 'Print the resolved command instead of executing it')
-    .action(async (files: string[] | string | undefined, flags: Record<string, unknown>) => {
+    .action(async (flags: Record<string, unknown>) => {
+      const files = toArray(flags.file as string | string[] | undefined)
       const groups = await createAkE2eExecutionPlan({
         suite: flags.suite as string | undefined,
         runner: flags.runner as E2eRunnerKind | undefined,
         config: flags.config as string | undefined,
-        file: [...toArray(flags.file as string | string[] | undefined), ...toArray(files ?? [])],
+        file: files,
         headed: Boolean(flags.headed),
         debug: Boolean(flags.debug),
         reuseReset: Boolean(flags.reuseReset),
@@ -120,7 +121,7 @@ export function registerE2eCommand(cli: CAC): void {
         metadataOptions: {
           suite: flags.suite as string | undefined,
           runner: flags.runner as string | undefined,
-          file: [...toArray(flags.file as string | string[] | undefined), ...toArray(files ?? [])],
+          file: files,
         },
         summary: ({ exitCode, timedOut, aborted }) => {
           if (timedOut) return 'e2e timed out'

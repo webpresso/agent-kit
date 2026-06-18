@@ -9,9 +9,9 @@ import {
 
 describe('detectWrappedWpCommand', () => {
   it('detects run-script wrappers around wp', () => {
-    expect(detectWrappedWpCommand('pnpm run wp test src/foo.test.ts')).toStrictEqual({
+    expect(detectWrappedWpCommand('pnpm run wp test --file src/foo.test.ts')).toStrictEqual({
       manager: 'pnpm',
-      wpArgs: ['test', 'src/foo.test.ts'],
+      wpArgs: ['test', '--file', 'src/foo.test.ts'],
     })
     expect(detectWrappedWpCommand('bun run wp lint')).toStrictEqual({
       manager: 'bun',

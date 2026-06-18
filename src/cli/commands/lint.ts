@@ -9,17 +9,20 @@ export const LINT_COMMAND_HELP = [
   '',
   'Examples:',
   '  wp lint',
+  '  wp lint --file src/index.ts',
   '  wp lint --fix',
 ].join('\n')
 
 export function registerLintCommand(cli: CAC): void {
   cli
-    .command('lint [...files]', LINT_COMMAND_HELP)
+    .command('lint', LINT_COMMAND_HELP)
+    .option('--file <path>', 'Lint a file or path target (repeatable)')
     .option('--fix', 'Apply autofixes via vp lint --fix')
     .option('--full', 'Print the full raw output instead of the default summary-first view')
-    .action(async (files: string[] | undefined, flags: Record<string, unknown>) => {
+    .action(async (flags: Record<string, unknown>) => {
+      const files = toArray(flags.file as string | string[] | undefined)
       const command = buildLintCommand({
-        files: files && files.length > 0 ? files : undefined,
+        files: files.length > 0 ? files : undefined,
         fix: Boolean(flags.fix),
         cwd: process.cwd(),
       })
@@ -29,7 +32,7 @@ export function registerLintCommand(cli: CAC): void {
         cwd: process.cwd(),
         metadataOptions: {
           fix: Boolean(flags.fix),
-          files: files && files.length > 0 ? files : undefined,
+          files: files.length > 0 ? files : undefined,
         },
         summary: ({ exitCode, timedOut, aborted }) => {
           if (timedOut) return 'lint timed out via vp lint'
@@ -69,4 +72,9 @@ export function buildLintCommand(
     command: resolution.command,
     args: [...resolution.args, ...args],
   }
+}
+
+function toArray(value: readonly string[] | string | undefined): string[] {
+  if (value === undefined) return []
+  return typeof value === 'string' ? [value] : [...value]
 }

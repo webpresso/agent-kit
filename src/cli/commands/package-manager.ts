@@ -6,6 +6,13 @@ import { existsSync, mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import path from 'node:path'
 
+import {
+  isProjectOwnedTool,
+  isUserOwnedTool,
+  readToolingOwnershipState,
+  tryReadRepoKey,
+  type ToolingOwnershipState,
+} from '#cli/tooling-ownership'
 import { getManagedRunner } from '#tool-runtime'
 
 export const PACKAGE_MANAGER_VERBS = ['install', 'add', 'remove', 'update', 'exec', 'run'] as const
@@ -27,6 +34,8 @@ export interface PackageManagerCommandDeps {
   readonly exists?: typeof existsSync
   readonly gstackRoot?: string
   readonly mkdir?: typeof mkdirSync
+  readonly ownershipState?: ToolingOwnershipState
+  readonly repoKey?: string | null
   readonly run?: (
     command: string,
     args: readonly string[],
@@ -39,45 +48,12 @@ const HELP_BY_VERB: Readonly<Record<PackageManagerVerb, string>> = {
   add: 'Add dependencies through the managed vp facade.',
   remove: 'Remove dependencies through the managed vp facade.',
   update:
-    'Update the global @webpresso/agent-kit install. Use --tools for the broader codex/tmux/omx/omc/gstack refresh, or --deps for local dependency updates.',
+    'Refresh wp and any optional OMX/OMC/gstack integrations previously installed by wp; use --deps for local dependency updates through the managed vp facade.',
   exec: 'Run a binary through the managed vp facade.',
   run: 'Run a package script through the managed vp facade.',
 }
 
 const GSTACK_REPO = 'https://github.com/garrytan/gstack.git'
-
-const AGENT_KIT_UPDATE_STEP: GlobalUpdateStep = {
-  id: 'wp',
-  command: 'vp',
-  args: ['install', '-g', '@webpresso/agent-kit'],
-}
-
-const TOOLCHAIN_UPDATE_STEPS: readonly GlobalUpdateStep[] = [
-  {
-    id: 'codex',
-    command: 'vp',
-    args: ['update', '-g', '--latest', '@openai/codex'],
-  },
-  {
-    id: 'tmux',
-    run: ensureTmux,
-  },
-  {
-    id: 'omx',
-    command: 'vp',
-    args: ['update', '-g', 'oh-my-codex'],
-  },
-  {
-    id: 'omc',
-    command: 'claude',
-    args: ['plugin', 'update', '-s', 'user', 'oh-my-claudecode'],
-  },
-  {
-    id: 'gstack',
-    run: refreshGstack,
-  },
-  AGENT_KIT_UPDATE_STEP,
-]
 
 interface PackageManagerCommandConfigWithId extends PackageManagerCommandConfig {
   readonly id: string
@@ -94,6 +70,8 @@ interface RequiredGlobalUpdateDeps {
   readonly exists: typeof existsSync
   readonly gstackRoot: string
   readonly mkdir: typeof mkdirSync
+  readonly ownershipState: ToolingOwnershipState
+  readonly repoKey: string | null
   readonly run: (
     command: string,
     args: readonly string[],
@@ -105,7 +83,7 @@ export function registerPackageManagerCommand(cli: CAC, verb: PackageManagerVerb
   const command = cli.command(`${verb} [...args]`, HELP_BY_VERB[verb])
   if (verb === 'update') {
     command.option('--deps', 'Update local dependencies through managed vp update.')
-    command.option('--tools', 'Refresh codex, tmux, omx, omc, gstack, and wp.')
+    command.option('-g, --global', 'Compatibility alias for the default tooling refresh.')
   }
 
   command.allowUnknownOptions().action(() => runPackageManagerCommand(verb))
@@ -137,8 +115,7 @@ export function runPackageManagerCommand(
   if (verb === 'update') {
     const mode = parseUpdateMode(extractVerbArgs(verb, argv))
     if (mode.kind === 'error') return failUsage(mode.message)
-    if (mode.kind === 'agent-kit') return runAgentKitUpdateCommand(deps)
-    if (mode.kind === 'tools') return runToolchainUpdateCommand(deps)
+    if (mode.kind === 'tooling') return runGlobalUpdateCommand(deps)
 
     const packageRoot = resolveNearestPackageRoot(cwd, deps.exists ?? existsSync)
     if (packageRoot === null) {
@@ -162,24 +139,17 @@ export function runPackageManagerCommand(
   return typeof result.status === 'number' ? result.status : 1
 }
 
-function runAgentKitUpdateCommand(deps: PackageManagerCommandDeps): number {
-  return runUpdateSteps([AGENT_KIT_UPDATE_STEP], deps)
-}
-
-function runToolchainUpdateCommand(deps: PackageManagerCommandDeps): number {
-  return runUpdateSteps(TOOLCHAIN_UPDATE_STEPS, deps)
-}
-
-function runUpdateSteps(
-  steps: readonly GlobalUpdateStep[],
-  deps: PackageManagerCommandDeps,
-): number {
+function runGlobalUpdateCommand(deps: PackageManagerCommandDeps): number {
+  const cwd = deps.cwd ?? process.cwd()
   const globalDeps: RequiredGlobalUpdateDeps = {
     exists: deps.exists ?? existsSync,
     gstackRoot: deps.gstackRoot ?? defaultGstackRoot(),
     mkdir: deps.mkdir ?? mkdirSync,
+    ownershipState: deps.ownershipState ?? readToolingOwnershipState(),
+    repoKey: deps.repoKey ?? tryReadRepoKey(cwd),
     run: deps.run ?? defaultRun,
   }
+  const steps = buildGlobalUpdateSteps(globalDeps)
   let failed = false
 
   for (const step of steps) {
@@ -198,18 +168,60 @@ function runUpdateSteps(
   return failed ? 1 : 0
 }
 
+function buildGlobalUpdateSteps(
+  deps: Pick<RequiredGlobalUpdateDeps, 'ownershipState' | 'repoKey'>,
+): readonly GlobalUpdateStep[] {
+  const steps: GlobalUpdateStep[] = []
+
+  if (
+    isUserOwnedTool(deps.ownershipState, 'omx') ||
+    isProjectOwnedTool(deps.ownershipState, 'omx', deps.repoKey)
+  ) {
+    steps.push({
+      id: 'omx',
+      command: 'vp',
+      args: ['update', '-g', 'oh-my-codex'],
+    })
+  }
+
+  if (isUserOwnedTool(deps.ownershipState, 'omc')) {
+    steps.push({
+      id: 'omc',
+      command: 'claude',
+      args: ['plugin', 'update', '--scope', 'user', 'oh-my-claudecode'],
+    })
+  }
+
+  if (isProjectOwnedTool(deps.ownershipState, 'omc', deps.repoKey)) {
+    steps.push({
+      id: 'omc-project',
+      command: 'claude',
+      args: ['plugin', 'update', '--scope', 'project', 'oh-my-claudecode'],
+    })
+  }
+
+  if (isUserOwnedTool(deps.ownershipState, 'gstack')) {
+    steps.push({
+      id: 'gstack',
+      run: refreshGstack,
+    })
+  }
+
+  steps.push({
+    id: 'wp',
+    command: 'vp',
+    args: ['install', '-g', '@webpresso/agent-kit'],
+  })
+
+  return steps
+}
+
 function runGlobalUpdateStep(
   step: GlobalUpdateStep,
   deps: RequiredGlobalUpdateDeps,
 ): SpawnSyncReturns<string> {
   if ('command' in step) return deps.run(step.command, step.args)
   return step.run(deps)
-}
-
-function ensureTmux(deps: RequiredGlobalUpdateDeps): SpawnSyncReturns<string> {
-  const probe = deps.run('tmux', ['-V'])
-  if (probe.status === 0) return probe
-  return deps.run('brew', ['install', 'tmux'])
 }
 
 function refreshGstack(deps: RequiredGlobalUpdateDeps): SpawnSyncReturns<string> {
@@ -247,63 +259,50 @@ function extractVerbArgs(verb: PackageManagerVerb, argv: readonly string[]): str
 }
 
 type UpdateMode =
-  | { readonly kind: 'agent-kit' }
-  | { readonly kind: 'tools' }
+  | { readonly kind: 'tooling' }
   | { readonly kind: 'deps' }
   | { readonly kind: 'error'; readonly message: string }
 
 function parseUpdateMode(args: readonly string[]): UpdateMode {
   const hasDeps = args.includes('--deps')
-  const hasToolchain = hasToolsFlag(args)
+  const hasGlobal = hasGlobalFlag(args)
+  const hasPositional = hasDependencyPositional(args)
 
-  if (hasDeps && hasToolchain) {
+  if (hasDeps && hasGlobal) {
     return {
       kind: 'error',
       message:
-        'wp update: --deps cannot be combined with --tools; choose dependency updates or tooling refresh.',
+        'wp update: --deps cannot be combined with --global; choose dependency updates or tooling refresh.',
     }
   }
 
-  const removedGlobalFlags = args.filter((arg) => arg === '--global' || arg === '-g')
-  if (removedGlobalFlags.length > 0) {
+  if (hasGlobal && hasPositional) {
     return {
       kind: 'error',
-      message: `wp update: unrecognized option(s): ${removedGlobalFlags.join(
-        ', ',
-      )}. Bare \`wp update\` updates global @webpresso/agent-kit; use \`wp update --tools\` for the broad tooling refresh.`,
+      message:
+        'wp update: package arguments imply --deps and cannot be combined with --global; use `wp update --deps ...` for dependency updates.',
     }
   }
 
-  if (hasDeps) return { kind: 'deps' }
+  if (hasDeps || hasPositional) return { kind: 'deps' }
 
-  const unknownFlags = args.filter((arg) => arg.startsWith('-') && !isToolchainFlag(arg))
+  const unknownFlags = args.filter((arg) => !isGlobalFlag(arg))
   if (unknownFlags.length > 0) {
     return {
       kind: 'error',
-      message: `wp update: unrecognized option(s): ${unknownFlags.join(
+      message: `wp update: unrecognized tooling option(s): ${unknownFlags.join(
         ', ',
-      )}. Bare \`wp update\` updates global @webpresso/agent-kit; use \`wp update --tools\` for the broad tooling refresh or \`wp update --deps ${unknownFlags.join(
+      )}. Bare \`wp update\` refreshes tooling; use \`wp update --deps ${unknownFlags.join(
         ' ',
       )}\` to pass dependency-update options.`,
     }
   }
 
-  const hasPositional = hasDependencyPositional(args)
-  if (hasToolchain && hasPositional) {
-    return {
-      kind: 'error',
-      message:
-        'wp update: package arguments imply --deps and cannot be combined with --tools; use `wp update --deps ...` for dependency updates.',
-    }
-  }
-
-  if (hasPositional) return { kind: 'deps' }
-
-  return hasToolchain ? { kind: 'tools' } : { kind: 'agent-kit' }
+  return { kind: 'tooling' }
 }
 
 function stripWpUpdateControlFlags(args: readonly string[]): string[] {
-  return args.filter((arg) => arg !== '--deps' && !isToolchainFlag(arg))
+  return args.filter((arg) => arg !== '--deps' && !isGlobalFlag(arg))
 }
 
 function hasDependencyPositional(args: readonly string[]): boolean {
@@ -319,12 +318,12 @@ function hasDependencyPositional(args: readonly string[]): boolean {
   return false
 }
 
-function hasToolsFlag(args: readonly string[]): boolean {
-  return args.includes('--tools')
+function hasGlobalFlag(args: readonly string[]): boolean {
+  return args.some(isGlobalFlag)
 }
 
-function isToolchainFlag(arg: string): boolean {
-  return arg === '--tools'
+function isGlobalFlag(arg: string): boolean {
+  return arg === '--global' || arg === '-g'
 }
 
 function failUsage(message: string): number {

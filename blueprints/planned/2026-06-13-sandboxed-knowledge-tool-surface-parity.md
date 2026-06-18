@@ -50,7 +50,7 @@ agent request
 | F2 | HIGH | `src/mcp/tools/session-execute-file.ts` already exists. | It does not exist. Current session-memory files are `fetch-index.ts`, `repo-hash.ts`, `session.ts`, `store.ts`, and `types.ts`. | Treat the runtime owner as a new file with tests in the execution task. |
 | F3 | MEDIUM | Existing `session-restore.ts` and `session-search.ts` tools can be modified. | No session MCP tool files are currently present; only non-session compiled tools are registered. | Split tool creation from store semantics and add registry wiring only after handlers exist. |
 | F4 | MEDIUM | Focused test commands use repeated `--files`. | `./bin/wp test --help` shows singular repeated `--file <path>`. | Use `./bin/wp test --file ... --file ...` in tasks and gates. |
-| F5 | MEDIUM | `./bin/wp lint --file ...` is valid. | `./bin/wp lint` accepts positional file/directory arguments, not `--file`. | Use `./bin/wp lint <paths...>` in task TDD steps and gates. |
+| F5 | MEDIUM | `./bin/wp lint --file ...` is valid. | `./bin/wp lint` accepts positional file/directory arguments, not `--file`. | Use `./bin/wp lint --file <paths...>` in task TDD steps and gates. |
 | F6 | HIGH | Multiple parallel tasks can edit `docs/guides/session-memory.md`, `README.md`, and `_registry.ts`. | Same-wave edits would create file conflicts and block parallel execution. | Move docs and registry/package proof into serialized integration tasks. |
 | F7 | HIGH | Operator tools can be documented as public without package-surface proof. | This plan touches README/docs and the shipped MCP registry; public-package safety requires package/tarball surface checks and denied-content review. | Add explicit public-package safety notes and a package-surface proof task. |
 | F8 | MEDIUM | Upstream continuity can be represented as only Task 1.1. | The upstream blueprint changes both storage schema and capture/restore semantics across multiple tasks. | Treat upstream blueprint readiness as the entry condition; do not start execution until storage/event shape is stable. |
@@ -147,7 +147,7 @@ or full indexed text. (F3, F7)
 3. Implement minimal tool descriptors and handlers over the existing store/fetch substrate.
 4. Run: `./bin/wp test --file src/mcp/tools/session-index.test.ts --file src/mcp/tools/session-fetch-and-index.test.ts --file src/session-memory/fetch-index.test.ts` — verify PASS.
 5. Refactor only if needed; keep handler complexity small and avoid shared abstractions until a second concrete caller requires them.
-6. Run: `./bin/wp lint src/mcp/tools/session-index.ts src/mcp/tools/session-fetch-and-index.ts src/session-memory/fetch-index.ts` and `./bin/wp typecheck`.
+6. Run: `./bin/wp lint --file src/mcp/tools/session-index.ts --file src/mcp/tools/session-fetch-and-index.ts --file src/session-memory/fetch-index.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -189,7 +189,7 @@ belongs in this task. (F1, F2, F7)
 3. Implement the smallest runtime contract and handler needed for local file analysis without broad shell-generalization.
 4. Run: `./bin/wp test --file src/session-memory/session-execute-file.test.ts --file src/mcp/tools/session-execute-file.test.ts` — verify PASS.
 5. Refactor only to remove duplication with existing path validation utilities; do not create unused adapters.
-6. Run: `./bin/wp lint src/session-memory/session-execute-file.ts src/mcp/tools/session-execute-file.ts src/session-memory/types.ts` and `./bin/wp typecheck`.
+6. Run: `./bin/wp lint --file src/session-memory/session-execute-file.ts --file src/mcp/tools/session-execute-file.ts --file src/session-memory/types.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -234,7 +234,7 @@ records accidentally. (F3, F6)
 3. Implement unified result semantics in the existing store classes without creating a second database or parallel search engine.
 4. Run: `./bin/wp test --file src/session-memory/session.test.ts --file src/session-memory/store.test.ts` — verify PASS.
 5. Refactor only around shared type/mapper code that has concrete use in both stores.
-6. Run: `./bin/wp lint src/session-memory/session.ts src/session-memory/store.ts src/session-memory/types.ts` and `./bin/wp typecheck`.
+6. Run: `./bin/wp lint --file src/session-memory/session.ts --file src/session-memory/store.ts --file src/session-memory/types.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -272,7 +272,7 @@ source filters, result limits, provenance, and bounded previews consistently.
 3. Implement minimal handlers over the unified store/session APIs from Task 2.1.
 4. Run: `./bin/wp test --file src/mcp/tools/session-restore.test.ts --file src/mcp/tools/session-search.test.ts` — verify PASS.
 5. Refactor only if descriptor/response boilerplate duplicates concrete patterns from Task 1.1.
-6. Run: `./bin/wp lint src/mcp/tools/session-restore.ts src/mcp/tools/session-search.ts` and `./bin/wp typecheck`.
+6. Run: `./bin/wp lint --file src/mcp/tools/session-restore.ts --file src/mcp/tools/session-search.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -311,7 +311,7 @@ explicit, dry-run capable, scoped where possible, and safe by default. (F6, F7)
 3. Implement minimal store/session helper methods and tool handlers; prefer explicit local SQL over a new operations framework.
 4. Run: `./bin/wp test --file src/mcp/tools/session-stats.test.ts --file src/mcp/tools/session-purge.test.ts --file src/mcp/tools/session-doctor.test.ts --file src/session-memory/session.test.ts --file src/session-memory/store.test.ts` — verify PASS.
 5. Refactor only to remove confirmed duplication between stats/doctor/purge helpers.
-6. Run: `./bin/wp lint src/mcp/tools/session-stats.ts src/mcp/tools/session-purge.ts src/mcp/tools/session-doctor.ts src/session-memory/session.ts src/session-memory/store.ts` and `./bin/wp typecheck`.
+6. Run: `./bin/wp lint --file src/mcp/tools/session-stats.ts --file src/mcp/tools/session-purge.ts --file src/mcp/tools/session-doctor.ts --file src/session-memory/session.ts --file src/session-memory/store.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -347,7 +347,7 @@ same-file conflicts. (F3, F6, F7)
 3. Import and register the completed descriptors in `COMPILED_TOOL_REGISTRY`.
 4. Run: `./bin/wp test --file src/mcp/tools/_registry.test.ts --file src/mcp/server.integration.test.ts` — verify PASS.
 5. Refactor only to preserve the existing registry pattern.
-6. Run: `./bin/wp lint src/mcp/tools/_registry.ts src/mcp/tools/_registry.test.ts src/mcp/server.integration.test.ts` and `./bin/wp typecheck`.
+6. Run: `./bin/wp lint --file src/mcp/tools/_registry.ts --file src/mcp/tools/_registry.test.ts --file src/mcp/server.integration.test.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -379,7 +379,7 @@ internal-only roadmap rationale, and unproven replacement claims. (F4, F5, F7)
 3. Update docs with tested tool names, bounded response examples, safety notes, and explicit non-goals.
 4. Run: `./bin/wp audit docs-frontmatter` and `./bin/wp test --file src/mcp/tools/_registry.test.ts` — verify PASS.
 5. Review changed docs for denied public-package content: secrets, absolute local paths, private repo aliases, raw generated surfaces, or untested claims.
-6. Run: `./bin/wp lint docs/guides/session-memory.md README.md` and `./bin/wp typecheck`.
+6. Run: `./bin/wp lint --file docs/guides/session-memory.md --file README.md` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -410,7 +410,7 @@ change outside this task's files. (F4, F5, F7)
 3. Implement the smallest package-manifest test updates needed to pin the intended public surface; report any required package config change rather than editing it in this task.
 4. Run: `./bin/wp test --file src/build/package-manifest.test.ts` — verify PASS.
 5. Run dry package checks: `npm pack --dry-run --json` and review the file list for denied public-package content.
-6. Run: `./bin/wp audit package-surface`, `./bin/wp audit blueprint-lifecycle`, `./bin/wp lint src/build/package-manifest.test.ts`, and `./bin/wp typecheck`.
+6. Run: `./bin/wp audit package-surface`, `./bin/wp audit blueprint-lifecycle`, `./bin/wp lint --file src/build/package-manifest.test.ts`, and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -424,7 +424,7 @@ change outside this task's files. (F4, F5, F7)
 | Gate | Command | Success Criteria |
 | ---- | ------- | ---------------- |
 | Type safety | `./bin/wp typecheck` | Zero errors |
-| Lint | `./bin/wp lint src/mcp/tools src/session-memory docs/guides/session-memory.md README.md src/build/package-manifest.test.ts` | Zero violations |
+| Lint | `./bin/wp lint --file src/mcp/tools --file src/session-memory --file docs/guides/session-memory.md --file README.md --file src/build/package-manifest.test.ts` | Zero violations |
 | Focused tests | `./bin/wp test --file src/mcp/tools/_registry.test.ts --file src/mcp/server.integration.test.ts --file src/session-memory/store.test.ts --file src/session-memory/session.test.ts --file src/session-memory/fetch-index.test.ts --file src/build/package-manifest.test.ts` | All pass |
 | Package surface | `./bin/wp audit package-surface` and `npm pack --dry-run --json` | Audit passes and tarball file list contains only intentional public files |
 | Secret/path safety | `vp run verify:secrets` and `vp run verify:paths` | No secret-bearing or hardcoded local-path leaks |

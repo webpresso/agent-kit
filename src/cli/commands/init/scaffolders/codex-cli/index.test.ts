@@ -25,7 +25,6 @@ describe('ensureCodexCli', () => {
     const result = ensureCodexCli({
       options: { overwrite: false, dryRun: false },
       spawn,
-      resolveVpCommand: () => 'vp',
     })
 
     expect(result).toEqual({ kind: 'codex-cli-ok', installed: false })
@@ -44,7 +43,6 @@ describe('ensureCodexCli', () => {
     const result = ensureCodexCli({
       options: { overwrite: false, dryRun: false },
       spawn,
-      resolveVpCommand: () => 'vp',
     })
 
     expect(result).toEqual({ kind: 'codex-cli-ok', installed: true })
@@ -73,6 +71,18 @@ describe('ensureCodexCli', () => {
     }
   })
 
+  it('skips all Codex global operations inside a package lifecycle environment', () => {
+    const spawn = makeSpawn([])
+    const result = ensureCodexCli({
+      options: { overwrite: false, dryRun: false },
+      spawn,
+      env: { npm_lifecycle_event: 'postinstall' },
+    })
+
+    expect(result).toEqual({ kind: 'codex-cli-skipped-package-lifecycle' })
+    expect(spawn).not.toHaveBeenCalled()
+  })
+
   it('returns unavailable when install fails', () => {
     const spawn = makeSpawn([
       { status: null, error: Object.assign(new Error('ENOENT'), { code: 'ENOENT' }) },
@@ -81,24 +91,9 @@ describe('ensureCodexCli', () => {
     const result = ensureCodexCli({
       options: { overwrite: false, dryRun: false },
       spawn,
-      resolveVpCommand: () => 'vp',
     })
 
     expect(result.kind).toBe('codex-cli-unavailable')
-  })
-
-
-
-  it('skips global Codex refresh when only a repo-local vp is available', () => {
-    const spawn = makeSpawn([{ status: 0 }])
-    const result = ensureCodexCli({
-      options: { overwrite: false, dryRun: false },
-      spawn,
-      resolveVpCommand: () => null,
-    })
-
-    expect(result).toEqual({ kind: 'codex-cli-ok', installed: false })
-    expect(spawn).toHaveBeenCalledTimes(1)
   })
 
   it('skips work in dry-run mode', () => {

@@ -184,7 +184,7 @@ summary-first violations instead of retrying or raising broad timeouts.
    unbounded filesystem traversal.
 4. Run: `./bin/wp test --file src/audit/harness-surfaces.test.ts` — verify PASS
 5. Run: `./bin/wp audit harness-surfaces` — verify PASS on the real repo.
-6. Run: `./bin/wp lint --file src/audit/harness-surfaces.ts src/audit/harness-surfaces.test.ts` and `./bin/wp typecheck`.
+6. Run: `./bin/wp lint --file src/audit/harness-surfaces.ts --file src/audit/harness-surfaces.test.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 

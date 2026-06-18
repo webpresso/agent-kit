@@ -120,7 +120,7 @@ The seam is `_syncAdapterFactory` (line 123), `resolveSyncAdapter` (line 143), t
 2. Re-export `_setSyncAdapterFactory` from `blueprint-server.ts` so existing tests that call the test seam keep their import path working.
 3. Write `sync.test.ts` covering: default factory resolution, the `_setSyncAdapterFactory` override seam, and `runPlatformMutationSync` invoking the resolved adapter (mock the adapter).
 4. Run: `./bin/wp test --file src/mcp/blueprint/_shared/sync.test.ts` — verify PASS.
-5. Run: `./bin/wp lint src/mcp/blueprint/_shared/sync.ts` — verify zero violations (imports use `#*` subpaths, not `../`).
+5. Run: `./bin/wp lint --file src/mcp/blueprint/_shared/sync.ts` — verify zero violations (imports use `#*` subpaths, not `../`).
 6. Run: `./bin/wp typecheck` — verify zero errors.
 
 **Acceptance:**
@@ -178,7 +178,7 @@ Extract standalone helper functions from `blueprint-server.ts` into `src/mcp/blu
 2. Create co-located test file importing from the new module; verify existing test coverage transfers.
 3. Run: `./bin/wp test --file src/mcp/blueprint/_shared/<module>.test.ts` — verify PASS.
 4. Repeat for all 8 modules.
-5. Run: `./bin/wp lint src/mcp/blueprint/_shared/` — verify zero violations (no `../` imports).
+5. Run: `./bin/wp lint --file src/mcp/blueprint/_shared/` — verify zero violations (no `../` imports).
 6. Run: `./bin/wp typecheck` — verify zero errors.
 
 **Acceptance:**
@@ -188,7 +188,7 @@ Extract standalone helper functions from `blueprint-server.ts` into `src/mcp/blu
 - [ ] `projection.ts` houses the three projection-read helpers so `db.ts`'s `persistBlueprintMarkdown` imports them from `_shared/`, not from a handler (no `_shared/ → handlers/` back-edge).
 - [ ] All imports use `#mcp/blueprint/_shared/*` subpaths; zero `../` parent-relative imports.
 - [ ] Zero logic changes from original `blueprint-server.ts` code.
-- [ ] `./bin/wp lint src/mcp/blueprint/_shared/` passes.
+- [ ] `./bin/wp lint --file src/mcp/blueprint/_shared/` passes.
 - [ ] `./bin/wp typecheck` passes.
 
 ---
@@ -227,7 +227,7 @@ Extract the 4 read-only (no-mutation) handlers into `src/mcp/blueprint/handlers/
 2. Write a test that calls the handler with a valid input and asserts the response shape.
 3. Run: `./bin/wp test --file src/mcp/blueprint/handlers/<name>.test.ts` — verify PASS.
 4. Repeat for all 4 handlers.
-5. Run: `./bin/wp lint src/mcp/blueprint/handlers/` — verify zero violations.
+5. Run: `./bin/wp lint --file src/mcp/blueprint/handlers/` — verify zero violations.
 
 **Acceptance:**
 
@@ -235,7 +235,7 @@ Extract the 4 read-only (no-mutation) handlers into `src/mcp/blueprint/handlers/
 - [ ] Each handler test passes with correct response envelope shape.
 - [ ] All `_shared` imports use `#mcp/blueprint/_shared/*` subpaths; zero `../` imports.
 - [ ] Zero logic changes from original code.
-- [ ] `./bin/wp lint src/mcp/blueprint/handlers/` passes.
+- [ ] `./bin/wp lint --file src/mcp/blueprint/handlers/` passes.
 
 ---
 
@@ -269,7 +269,7 @@ Extract the 3 projection-list handlers that query the SQLite blueprint projectio
 1. Extract each handler into its handler file; import the shared projection-read helpers from `#mcp/blueprint/_shared/projection` (do NOT re-house `getCurrentProjectBlueprint`/`listCurrentProjectBlueprintRows`/`staleProjectionResponse` inside a handler — they live in `_shared/projection.ts`).
 2. Write a test using a temp SQLite DB (or mock the projection reader) to verify handler output.
 3. Run: `./bin/wp test --file src/mcp/blueprint/handlers/<name>.test.ts` — verify PASS.
-4. Run: `./bin/wp lint src/mcp/blueprint/handlers/` — verify zero violations.
+4. Run: `./bin/wp lint --file src/mcp/blueprint/handlers/` — verify zero violations.
 
 **Acceptance:**
 
@@ -433,7 +433,7 @@ Rewrite `src/mcp/blueprint-server.ts` to import all handlers and helpers from `#
 3. In `registerBlueprintTools`, replace inline handler calls with imported handler functions; thread the resolved sync adapter into each mutation handler.
 4. Run: `./bin/wp test --file src/mcp/server.integration.test.ts` — verify PASS (all existing integration tests still work).
 5. Run: `wc -l src/mcp/blueprint-server.ts` — verify ≤ 300 lines.
-6. Run: `./bin/wp typecheck && ./bin/wp lint src/mcp/blueprint-server.ts`.
+6. Run: `./bin/wp typecheck && ./bin/wp lint --file src/mcp/blueprint-server.ts`.
 
 **Acceptance:**
 
@@ -442,7 +442,7 @@ Rewrite `src/mcp/blueprint-server.ts` to import all handlers and helpers from `#
 - [ ] No direct `#db/*`, `#core/*`, `#lifecycle/*`, `#utils/*`, `#evidence`, `#freshness`, `#projects`, `#aggregate`, `#projection-ready`, `#project-resolver`, `#next-action`, `#sync/*` imports remain in server file (all moved to handler/helper modules).
 - [ ] All handler/helper imports use `#mcp/blueprint/...` subpaths; only `./auto-discover.js` / `./_tail-hints.js` same-directory relatives remain.
 - [ ] `./bin/wp typecheck` — zero errors.
-- [ ] `./bin/wp lint src/mcp/blueprint-server.ts src/mcp/blueprint/` — zero violations.
+- [ ] `./bin/wp lint --file src/mcp/blueprint-server.ts --file src/mcp/blueprint/` — zero violations.
 
 ---
 
@@ -465,7 +465,7 @@ Add tests that verify every handler module is registered under the correct MCP t
 2. Add a test that parses `blueprint-server.ts` and asserts it imports from all 16 handler paths — fails if a handler is created but not wired.
 3. Add a line-budget assertion: fail if `blueprint-server.ts` > 300 lines on disk.
 4. Run: `./bin/wp test --file src/mcp/blueprint/handlers/index.test.ts` — verify PASS.
-5. Run: `./bin/wp lint src/mcp/blueprint/handlers/index.test.ts`.
+5. Run: `./bin/wp lint --file src/mcp/blueprint/handlers/index.test.ts`.
 
 **Acceptance:**
 
@@ -485,7 +485,7 @@ Add tests that verify every handler module is registered under the correct MCP t
 | Contract tests | `./bin/wp test --file src/mcp/blueprint/handlers/index.test.ts` | Pass |
 | All handler tests | `./bin/wp test --file src/mcp/blueprint/handlers/` | All pass |
 | Type safety | `./bin/wp typecheck` | Zero errors |
-| Lint | `./bin/wp lint src/mcp/blueprint-server.ts src/mcp/blueprint/` | Zero violations (incl. no `../` parent-relative imports) |
+| Lint | `./bin/wp lint --file src/mcp/blueprint-server.ts --file src/mcp/blueprint/` | Zero violations (incl. no `../` parent-relative imports) |
 | No dead imports | manual review of `blueprint-server.ts` imports | Only `#mcp/blueprint/_shared/*`, `#mcp/blueprint/handlers/*`, node builtins, and `./auto-discover.js` / `./_tail-hints.js` |
 
 ---

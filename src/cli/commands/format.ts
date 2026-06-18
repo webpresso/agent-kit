@@ -8,17 +8,19 @@ export const FORMAT_COMMAND_HELP = [
   '',
   'Examples:',
   '  wp format            # rewrite files in place',
+  '  wp format --file src/index.ts',
   '  wp format --check    # exit 1 on any unformatted file (no writes)',
 ].join('\n')
 
 export function registerFormatCommand(cli: CAC): void {
   cli
-    .command('format [...files]', FORMAT_COMMAND_HELP)
+    .command('format', FORMAT_COMMAND_HELP)
+    .option('--file <path>', 'Format a file or path target (repeatable)')
     .option('--check', 'Check formatting without writing changes; exit 1 on drift')
     .option('--full', 'Print the full raw output instead of the default summary-first view')
-    .action(async (files: string[] | undefined, flags: Record<string, unknown>) => {
+    .action(async (flags: Record<string, unknown>) => {
       const result = await runFormatSafely({
-        files: files && files.length > 0 ? files : undefined,
+        files: toArray(flags.file as string | string[] | undefined),
         check: Boolean(flags.check),
         cwd: process.cwd(),
       })
@@ -84,4 +86,9 @@ function buildFormatCommand(options: {
     command: resolution.command,
     args: [...resolution.args, ...args],
   }
+}
+
+function toArray(value: readonly string[] | string | undefined): string[] {
+  if (value === undefined) return []
+  return typeof value === 'string' ? [value] : [...value]
 }

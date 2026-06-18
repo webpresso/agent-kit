@@ -242,7 +242,7 @@ This task ALSO rewrites the two existing tests that relied on a top-level `;`/`e
 | Shell still gated, not removed | `grep -n "spawn('sh'" src/mcp/tools/_session-command.ts` | Exactly one match (the validated `sh -c` call), reached only after `validateCommand` |
 | Independent root anchor | `grep -n "resolveProjectRoot" src/mcp/tools/_session-execute.ts src/mcp/tools/_session-batch-execute.ts` | At least one match per file (root derived at handler boundary) |
 | Type safety | `wp typecheck` (or `wp_typecheck`) | Zero errors |
-| Lint | `wp lint --file src/mcp/tools/_session-command.ts src/mcp/tools/_session-execute.ts src/mcp/tools/_session-batch-execute.ts` | Zero violations |
+| Lint | `wp lint --file src/mcp/tools/_session-command.ts --file src/mcp/tools/_session-execute.ts --file src/mcp/tools/_session-batch-execute.ts` | Zero violations |
 
 ## Non-goals
 

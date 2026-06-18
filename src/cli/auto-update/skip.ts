@@ -82,7 +82,7 @@ function isCiEnvironment(env: NodeJS.ProcessEnv): boolean {
   return false
 }
 
-function isPackageLifecycleEnvironment(env: NodeJS.ProcessEnv): boolean {
+export function isPackageLifecycleEnvironment(env: NodeJS.ProcessEnv): boolean {
   const lifecycleEvent = env.npm_lifecycle_event
   const packageJsonPath = env.npm_package_json
   return Boolean(

@@ -140,7 +140,7 @@ plugin skills). Fix the stale `consumers.ts:143` comment. `runUnifiedSync`
 2. Run: `./bin/wp test --file src/symlinker/consumers.test.ts --file src/symlinker/unified-sync.test.ts` — verify FAIL.
 3. Implement host-gated consumer selection; remove `claude-skills`; add `opencode-skills`.
 4. Run the same `--file` test — verify PASS.
-5. Run: `./bin/wp typecheck` and `./bin/wp lint src/symlinker/consumers.ts src/symlinker/unified-sync.ts src/cli/commands/sync.ts`.
+5. Run: `./bin/wp typecheck` and `./bin/wp lint --file src/symlinker/consumers.ts --file src/symlinker/unified-sync.ts --file src/cli/commands/sync.ts`.
 
 **Acceptance:**
 - [ ] No skill-dir consumer is produced for a selected plugin host (claude/codex).
@@ -253,7 +253,7 @@ the `claude-plugin-*` cases. `log()` the visible-after-restart step; no silent c
 2. Run: `./bin/wp test --file src/cli/commands/init/scaffolders/codex-plugin/index.test.ts --file src/cli/commands/init/index.test.ts` — verify FAIL.
 3. Implement the scaffolder + init wiring.
 4. Run the same `--file` tests — verify PASS.
-5. Run: `./bin/wp lint src/cli/commands/init/scaffolders/codex-plugin/index.ts src/cli/commands/init/index.ts`.
+5. Run: `./bin/wp lint --file src/cli/commands/init/scaffolders/codex-plugin/index.ts --file src/cli/commands/init/index.ts`.
 
 **Acceptance:**
 - [ ] Non-interactive Codex install via marketplace add + plugin add, opt-out env, dry-run, not-on-PATH branches.
@@ -332,7 +332,7 @@ non-reproduction on 0.139.0). `vp run changeset` (minor), commit.
 | Gate | Command | Success |
 | ---- | ------- | ------- |
 | Type safety | `./bin/wp typecheck` | zero errors |
-| Lint | `./bin/wp lint src/symlinker src/compiler src/cli/commands/init src/cli/commands/sync.ts` | clean |
+| Lint | `./bin/wp lint --file src/symlinker --file src/compiler --file src/cli/commands/init --file src/cli/commands/sync.ts` | clean |
 | Focused tests | `./bin/wp test --file src/symlinker/consumers.test.ts --file src/symlinker/unified-sync.test.ts --file src/compiler/orphans.test.ts --file src/build/package-manifest.test.ts --file src/cli/commands/init/scaffolders/codex-plugin/index.test.ts --file src/cli/commands/init/host-visibility.test.ts` | all pass |
 | Package surface | `./bin/wp audit package-surface` + `vp run lint:pkg` | clean |
 | Full QA | `./bin/wp qa` | green |
