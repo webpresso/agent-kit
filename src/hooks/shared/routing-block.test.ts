@@ -167,9 +167,10 @@ describe('WP_ROUTING_BLOCK', () => {
     expect(WP_ROUTING_BLOCK).not.toContain('use just recipes directly')
   })
 
-  it('routes split agent config helpers through agent-kit and agent-config surfaces', () => {
+  it('routes folded agent config helpers through @webpresso/agent-kit subpath exports', () => {
+    expect(WP_ROUTING_BLOCK).toContain('@webpresso/agent-kit/* subpath exports')
     expect(WP_ROUTING_BLOCK).toContain('@webpresso/agent-kit/oxlint')
-    expect(WP_ROUTING_BLOCK).toContain('@webpresso/agent-config/workers-test')
+    expect(WP_ROUTING_BLOCK).toContain('@webpresso/agent-kit/workers-test')
     expect(WP_ROUTING_BLOCK).toContain('wp_* MCP tool names')
     expect(WP_ROUTING_BLOCK).toContain('wp-* hook bin names unchanged')
   })

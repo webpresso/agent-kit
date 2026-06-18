@@ -36,10 +36,8 @@ on:
     paths:
       - '.changeset/**'
       - 'package.json'
-      - 'packages/*/package.json'
       - 'pnpm-lock.yaml'
       - 'CHANGELOG.md'
-      - 'packages/*/CHANGELOG.md'
       - 'scripts/release-publish.ts'
       - '.github/workflows/release.yml'
   workflow_dispatch:
@@ -135,9 +133,6 @@ jobs:
               echo "published=false"
               echo "publish_state=missing"
               echo "should_finalize=false"
-              echo "root_package_published=false"
-              echo "non_root_package_count=0"
-              echo "packages_json=[]"
             } >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -145,9 +140,6 @@ jobs:
           package_name=$(node -e "const data = require(process.argv[1]); process.stdout.write(data.packageName)" "$result_file")
           version=$(node -e "const data = require(process.argv[1]); process.stdout.write(data.version)" "$result_file")
           publish_state=$(node -e "const data = require(process.argv[1]); process.stdout.write(data.publishState)" "$result_file")
-          packages_json=$(node -e "const data = require(process.argv[1]); const fallback = data.packageName && data.version && data.publishState ? [{ packageName: data.packageName, version: data.version, publishState: data.publishState }] : []; process.stdout.write(JSON.stringify(Array.isArray(data.packages) ? data.packages : fallback))" "$result_file")
-          root_package_published=$(node -e "const packages = JSON.parse(process.argv[1]); process.stdout.write(String(packages.some((pkg) => pkg.packageName === '@webpresso/agent-kit')))" "$packages_json")
-          non_root_package_count=$(node -e "const packages = JSON.parse(process.argv[1]); process.stdout.write(String(packages.filter((pkg) => pkg.packageName !== '@webpresso/agent-kit').length))" "$packages_json")
           should_finalize=false
           if [ "$publish_state" = "published" ]; then
             should_finalize=true
@@ -161,9 +153,6 @@ jobs:
             echo "version=$version"
             echo "publish_state=$publish_state"
             echo "should_finalize=$should_finalize"
-            echo "root_package_published=$root_package_published"
-            echo "non_root_package_count=$non_root_package_count"
-            echo "packages_json=$packages_json"
           } >> "$GITHUB_OUTPUT"
 
       - name: Probe published package version for artifact follow-up
@@ -172,26 +161,25 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          packages_json='${{ steps.publish_result.outputs.packages_json }}'
+          package_name='${{ steps.publish_result.outputs.package_name }}'
+          version='${{ steps.publish_result.outputs.version }}'
           visible=false
-          missing=()
           for delay in 0 5 15 30 60; do
             if [ "$delay" -gt 0 ]; then
               sleep "$delay"
             fi
-            mapfile -t missing < <(node -e "const { spawnSync } = require('node:child_process'); const packages = JSON.parse(process.argv[1] || '[]'); for (const pkg of packages) { const result = spawnSync('npm', ['view', pkg.packageName + '@' + pkg.version, 'version', '--json'], { encoding: 'utf8' }); if (result.status !== 0) console.log(pkg.packageName + '@' + pkg.version); }" "$packages_json")
-            if [ "${#missing[@]}" -eq 0 ]; then
+            if npm view "${package_name}@${version}" version --json >/dev/null 2>&1; then
               visible=true
               break
             fi
           done
           echo "visible=$visible" >> "$GITHUB_OUTPUT"
           if [ "$visible" != 'true' ]; then
-            echo "::warning::Custom publish reported success, but npm registry visibility did not converge for: ${missing[*]}."
+            echo "::warning::Custom publish reported success, but npm registry visibility did not converge for ${package_name}@${version}."
           fi
 
       - name: Resolve published version for artifacts
-        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' && steps.publish_result.outputs.root_package_published == 'true' }}
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' }}
         id: release_meta
         shell: bash
         run: |
@@ -206,7 +194,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Create mainline release tag when missing
-        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' && steps.publish_result.outputs.root_package_published == 'true' }}
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' }}
         id: release_tag
         shell: bash
         run: |
@@ -231,7 +219,7 @@ jobs:
           fi
 
       - name: Verify tag points at the published mainline commit
-        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' && steps.publish_result.outputs.root_package_published == 'true' }}
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' }}
         id: verify_release_tag
         shell: bash
         run: |
@@ -244,7 +232,7 @@ jobs:
           fi
 
       - name: Create marketplace compatibility branch
-        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' && steps.publish_result.outputs.root_package_published == 'true' }}
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' }}
         id: compatibility_branch
         shell: bash
         run: |
@@ -269,83 +257,11 @@ jobs:
           fi
 
           HUSKY=0 git commit -m "chore: release v${version} [dist]"
-          HUSKY=0 git push origin "HEAD:refs/heads/${branch}"
+          git push origin "HEAD:refs/heads/${branch}"
           echo "status=created" >> "$GITHUB_OUTPUT"
 
-      - name: Publish workspace package GitHub Releases
-        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' && steps.publish_result.outputs.non_root_package_count != '0' }}
-        id: workspace_github_releases
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PACKAGES_JSON: ${{ steps.publish_result.outputs.packages_json }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          node <<'NODE'
-          const { execFileSync } = require('node:child_process')
-          const { appendFileSync } = require('node:fs')
-
-          const packages = JSON.parse(process.env.PACKAGES_JSON || '[]').filter(
-            (pkg) => pkg.packageName !== '@webpresso/agent-kit',
-          )
-          const targetCommit = process.env.GITHUB_SHA
-          const urls = []
-
-          for (const pkg of packages) {
-            const tag = `${pkg.packageName}@${pkg.version}`
-            const title = tag
-            const notes =
-              `${pkg.packageName} v${pkg.version} is published to npm. ` +
-              `Install with \`pnpm add -D ${pkg.packageName}\`.`
-
-            execFileSync('git', ['tag', '-f', tag, targetCommit], { stdio: 'inherit' })
-            let remoteCommit = ''
-            try {
-              remoteCommit = execFileSync('git', [
-                'ls-remote',
-                '--exit-code',
-                '--tags',
-                'origin',
-                `refs/tags/${tag}`,
-              ], { encoding: 'utf8' }).trim().split(/\s+/u)[0] ?? ''
-            } catch {
-              remoteCommit = ''
-            }
-            if (remoteCommit !== targetCommit) {
-              execFileSync('git', ['push', '--force', 'origin', `refs/tags/${tag}`], {
-                stdio: 'inherit',
-              })
-            }
-
-            try {
-              execFileSync('gh', ['release', 'view', tag], { stdio: 'ignore' })
-              execFileSync('gh', ['release', 'edit', tag, '--title', title, '--notes', notes], {
-                stdio: 'inherit',
-              })
-            } catch {
-              execFileSync('gh', [
-                'release',
-                'create',
-                tag,
-                '--verify-tag',
-                '--title',
-                title,
-                '--notes',
-                notes,
-              ], { stdio: 'inherit' })
-            }
-            const releaseJson = execFileSync('gh', ['release', 'view', tag, '--json', 'url'], {
-              encoding: 'utf8',
-            })
-            urls.push(JSON.parse(releaseJson).url)
-          }
-
-          appendFileSync(process.env.GITHUB_OUTPUT, `count=${packages.length}\n`)
-          appendFileSync(process.env.GITHUB_OUTPUT, `urls=${urls.join(',')}\n`)
-          NODE
-
       - name: Build native runtime binaries for the GitHub Release
-        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' && steps.publish_result.outputs.root_package_published == 'true' }}
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' }}
         id: build_release_assets
         shell: bash
         run: |
@@ -371,7 +287,7 @@ jobs:
           ls -l "$assets"
 
       - name: Publish GitHub Release with native runtime binaries
-        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' && steps.publish_result.outputs.root_package_published == 'true' }}
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' }}
         id: publish_github_release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -393,7 +309,7 @@ jobs:
           fi
 
       - name: Verify GitHub Release assets
-        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' && steps.publish_result.outputs.root_package_published == 'true' }}
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' }}
         id: verify_github_release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -426,48 +342,35 @@ jobs:
             fi
           }
 
-          root_package_published='${{ steps.publish_result.outputs.root_package_published }}'
-          non_root_package_count='${{ steps.publish_result.outputs.non_root_package_count }}'
+          expect_success '${{ steps.release_meta.outcome }}' 'Release metadata resolution'
+          expect_success '${{ steps.release_tag.outcome }}' 'Release tag creation'
+          expect_success '${{ steps.verify_release_tag.outcome }}' 'Release tag verification'
+          expect_success '${{ steps.compatibility_branch.outcome }}' 'Compatibility branch step'
+          expect_success '${{ steps.build_release_assets.outcome }}' 'Runtime asset build'
+          expect_success '${{ steps.publish_github_release.outcome }}' 'GitHub Release publish'
+          expect_success '${{ steps.verify_github_release.outcome }}' 'GitHub Release verification'
 
-          if [ "$root_package_published" = 'true' ]; then
-            expect_success '${{ steps.release_meta.outcome }}' 'Release metadata resolution'
-            expect_success '${{ steps.release_tag.outcome }}' 'Release tag creation'
-            expect_success '${{ steps.verify_release_tag.outcome }}' 'Release tag verification'
-            expect_success '${{ steps.compatibility_branch.outcome }}' 'Compatibility branch step'
-            expect_success '${{ steps.build_release_assets.outcome }}' 'Runtime asset build'
-            expect_success '${{ steps.publish_github_release.outcome }}' 'Root GitHub Release publish'
-            expect_success '${{ steps.verify_github_release.outcome }}' 'Root GitHub Release verification'
+          branch_status='${{ steps.compatibility_branch.outputs.status }}'
+          case "$branch_status" in
+            created|existing|skipped-no-dist)
+              ;;
+            *)
+              echo "::error::Compatibility branch step did not record an allowed terminal status (got '${branch_status:-missing}')." >&2
+              failures=1
+              ;;
+          esac
 
-            branch_status='${{ steps.compatibility_branch.outputs.status }}'
-            case "$branch_status" in
-              created|existing|skipped-no-dist)
-                ;;
-              *)
-                echo "::error::Compatibility branch step did not record an allowed terminal status (got '${branch_status:-missing}')." >&2
-                failures=1
-                ;;
-            esac
-
-            if [ '${{ steps.build_release_assets.outputs.asset_count }}' != '5' ]; then
-              echo "::error::Expected 5 built release assets." >&2
-              failures=1
-            fi
-            if [ '${{ steps.verify_github_release.outputs.asset_count }}' != '5' ]; then
-              echo "::error::Expected 5 uploaded release assets." >&2
-              failures=1
-            fi
-            if [ -z '${{ steps.verify_github_release.outputs.release_url }}' ]; then
-              echo "::error::Root GitHub Release verification did not report a release URL." >&2
-              failures=1
-            fi
+          if [ '${{ steps.build_release_assets.outputs.asset_count }}' != '5' ]; then
+            echo "::error::Expected 5 built release assets." >&2
+            failures=1
           fi
-
-          if [ "${non_root_package_count:-0}" -gt 0 ]; then
-            expect_success '${{ steps.workspace_github_releases.outcome }}' 'Workspace package GitHub Release publish'
-            if [ '${{ steps.workspace_github_releases.outputs.count }}' != "$non_root_package_count" ]; then
-              echo "::error::Expected ${non_root_package_count} workspace package GitHub Release(s)." >&2
-              failures=1
-            fi
+          if [ '${{ steps.verify_github_release.outputs.asset_count }}' != '5' ]; then
+            echo "::error::Expected 5 uploaded release assets." >&2
+            failures=1
+          fi
+          if [ -z '${{ steps.verify_github_release.outputs.release_url }}' ]; then
+            echo "::error::GitHub Release verification did not report a release URL." >&2
+            failures=1
           fi
 
           if [ "$failures" -ne 0 ]; then
@@ -486,9 +389,7 @@ jobs:
             echo "- published: ${{ steps.publish_result.outputs.published || steps.changesets.outputs.published || 'false' }}"
             echo "- publish_state: ${{ steps.publish_result.outputs.publish_state || 'missing' }}"
             echo "- should_finalize: ${{ steps.publish_result.outputs.should_finalize || 'false' }}"
-            echo "- publishedPackages: ${{ steps.publish_result.outputs.packages_json || steps.changesets.outputs.publishedPackages || '[]' }}"
-            echo "- root_package_published: ${{ steps.publish_result.outputs.root_package_published || 'false' }}"
-            echo "- non_root_package_count: ${{ steps.publish_result.outputs.non_root_package_count || '0' }}"
+            echo "- publishedPackages: ${{ steps.changesets.outputs.publishedPackages || '[]' }}"
             echo "- registry_visible: ${{ steps.registry_visibility.outputs.visible || 'n/a' }}"
             echo "- version: ${{ steps.release_meta.outputs.version || 'n/a' }}"
             echo "- tag: ${{ steps.release_meta.outputs.tag || 'n/a' }}"
@@ -496,6 +397,4 @@ jobs:
             echo "- release_branch_status: ${{ steps.compatibility_branch.outputs.status || 'n/a' }}"
             echo "- release_asset_count: ${{ steps.verify_github_release.outputs.asset_count || 'n/a' }}"
             echo "- release_url: ${{ steps.verify_github_release.outputs.release_url || 'n/a' }}"
-            echo "- workspace_release_count: ${{ steps.workspace_github_releases.outputs.count || '0' }}"
-            echo "- workspace_release_urls: ${{ steps.workspace_github_releases.outputs.urls || 'n/a' }}"
           } >> "$GITHUB_STEP_SUMMARY"

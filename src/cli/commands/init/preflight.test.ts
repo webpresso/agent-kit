@@ -243,7 +243,7 @@ describe('runPreflight', () => {
   })
 
   describe('missing .agent/', () => {
-    it('returns score 4 with agent instruction surface warning', async () => {
+    it('returns score 4 with lore commit warning', async () => {
       mockExistsSync.mockImplementation((p) => {
         const s = String(p)
         return (
@@ -261,7 +261,6 @@ describe('runPreflight', () => {
       expect(result.ok).toStrictEqual(true)
       expect(result.score).toStrictEqual(4)
       expect(result.warnings[0]).toContain('.agent')
-      expect(result.warnings[0]).not.toContain('lore')
     })
   })
 

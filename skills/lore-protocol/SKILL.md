@@ -9,12 +9,12 @@ related: []
 created: '2026-05-07'
 last_reviewed: '2026-05-07'
 name: lore-protocol
-description: Use Lore commit-message trailers manually with `wp audit commit-message`; hook enforcement is intentionally not installed because PRs use squash commits.
+description: Enforce Lore commit-message trailers using `wp audit commit-message`, including setup guidance for lore-enabled commit hooks and the required trailer protocol.
 ---
 
 # lore-protocol
 
-Use Lore commit-message trailers manually with `wp audit commit-message`. Hook enforcement is intentionally not installed because this repo uses squash commits.
+Enforce Lore commit-message trailers using `wp audit commit-message`.
 
 Lore is a lightweight protocol for embedding decision context directly into
 commit messages — constraints, rejected alternatives, confidence, and
@@ -34,9 +34,18 @@ wp audit commit-message --message-file .git/COMMIT_EDITMSG --lore-warn
 # feat(auth): prevent silent session drops [lore]
 ```
 
-## Hook policy
+## Install the commit-msg hook
 
-Lore trailers are advisory/manual. Do not install commit-msg or pre-push hooks for Lore enforcement; squash commits are the durable review boundary.
+```bash
+wp setup --with lore-commits
+```
+
+This writes `.husky/commit-msg` containing:
+
+```sh
+#!/bin/sh
+wp audit commit-message --require-lore --message-file "$1"
+```
 
 ## Trailer format
 

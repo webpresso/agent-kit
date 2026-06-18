@@ -6,8 +6,7 @@ last_updated: 2026-06-11
 
 # Reusable Cloudflare deploy workflows
 
-`webpresso/github-actions` ships the reusable GitHub workflow shells that
-Webpresso consumer repos pin by immutable commit SHA:
+`agent-kit` ships two reusable GitHub workflow shells:
 
 - `.github/workflows/cloudflare-preview.yml`
 - `.github/workflows/cloudflare-production.yml`
@@ -18,7 +17,7 @@ They are intentionally **shell-only**. The caller repo still owns:
 - concurrency groups
 - lane resolution (`preview_main`, `preview_pr_<n>`, `prd`)
 - repo-specific verify/build/deploy/smoke commands
-- repo-local deploy scripts and adapters behind the caller commands
+- provider-specific deploy scripts behind `deploy.adapterModule`
 
 ## Secret bootstrap contract
 
@@ -106,18 +105,18 @@ Example:
 ```yaml
 jobs:
   deploy:
-    uses: webpresso/github-actions/.github/workflows/cloudflare-production.yml@<released-commit-sha>
+    uses: webpresso/agent-kit/.github/workflows/cloudflare-production.yml@<released-commit-sha>
     with:
       install_command: pnpm install --frozen-lockfile
       verify_command: pnpm run lint
       deploy_command: wp deploy --lane prd
     secrets:
-      ci_secret_provider_token: ${{ secrets.CI_SECRET_PROVIDER_TOKEN }}
+      ci_secret_provider_token: ${{ secrets.DOPPLER_SERVICE_TOKEN || secrets.DOPPLER_TOKEN }}
 ```
 
 When the shared shell changes:
 
-1. release or otherwise publish the `github-actions` commit
+1. release or otherwise publish the `agent-kit` commit
 2. update each caller repo to the new immutable SHA
 3. rerun the caller repo’s own verification/deploy proofs
 

@@ -13,7 +13,7 @@ last_reviewed: '2026-05-06'
 # TypeScript coding conventions
 
 Principal-level non-negotiables. Most are enforced via oxlint; the rest are
-enforced by review and the repo's quality gates.
+enforced by review and by the commit-msg + pre-push hooks.
 
 ## Type safety
 

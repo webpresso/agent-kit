@@ -72,7 +72,7 @@ const ROOT_HELP = [
   '  install               Install dependencies through the managed vp facade',
   '  add                   Add dependencies through the managed vp facade',
   '  remove                Remove dependencies through the managed vp facade',
-  '  update                Update global @webpresso/agent-kit; use --tools for toolchain refresh or --deps for local dependencies',
+  '  update                Refresh codex, tmux, omx, omc, gstack, and wp by default; use --deps for local dependencies (--global is an alias)',
   '  exec                  Run a binary through the managed vp facade',
   '  run                   Run a package script through the managed vp facade',
   '',

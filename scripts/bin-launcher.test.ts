@@ -48,7 +48,7 @@ afterEach(() => {
 describe('bin launcher', () => {
   it('maps known public bin names to source entrypoints', () => {
     expect(BIN_ENTRYPOINTS.wp).toBe('src/cli/cli.ts')
-    expect(BIN_ENTRYPOINTS['wp-pretool-guard']).toBeUndefined()
+    expect(BIN_ENTRYPOINTS['wp-pretool-guard']).toBe('src/hooks/pretool-guard/index.ts')
     expect(BIN_ENTRYPOINTS['docs-lint']).toBe('src/config/docs-lint/cli/validate.ts')
   })
 
@@ -205,11 +205,11 @@ describe('bin launcher', () => {
     expect(getWpCommandLane(['hooks', 'upgrade', '--workspace'])).toBe(JS_HOLDBACK_LANE)
   })
 
-  it('prefers staged compiled runtime artifacts for wp hook dispatch', () => {
+  it('prefers staged compiled runtime artifacts for runtime-owned hook bins', () => {
     const plan = buildLaunchPlan({
-      binName: 'wp',
+      binName: 'wp-pretool-guard',
       repoRoot: '/repo',
-      forwardedArgs: ['hook', 'pretool-guard', '--verbose'],
+      forwardedArgs: ['--verbose'],
       platform: 'linux',
       arch: 'x64',
       runtimeManifest: RUNTIME_MANIFEST,
@@ -256,9 +256,9 @@ describe('bin launcher', () => {
   it('keeps source-checkout fallback when a compiled runtime artifact is not present', () => {
     expect(
       buildLaunchPlan({
-        binName: 'wp',
+        binName: 'wp-stop-qa',
         repoRoot: '/repo',
-        forwardedArgs: ['hook', 'stop-qa'],
+        forwardedArgs: [],
         platform: 'linux',
         arch: 'x64',
         runtimeManifest: RUNTIME_MANIFEST,
@@ -273,8 +273,8 @@ describe('bin launcher', () => {
     ).toEqual({
       mode: 'source',
       runtime: 'bun',
-      args: ['/repo/src/cli/cli.ts', 'hook', 'stop-qa'],
-      entrypoint: '/repo/src/cli/cli.ts',
+      args: ['/repo/src/hooks/stop/qa-changed-files.ts'],
+      entrypoint: '/repo/src/hooks/stop/qa-changed-files.ts',
     })
   })
 
@@ -397,12 +397,12 @@ describe('bin launcher', () => {
     )
   })
 
-  it('hard-fails runtime-owned wp hook dispatch in published installs when runtime is missing', () => {
+  it('hard-fails runtime-owned direct hook bins in published installs when runtime is missing', () => {
     expect(() =>
       buildLaunchPlan({
-        binName: 'wp',
+        binName: 'wp-pretool-guard',
         repoRoot: '/repo',
-        forwardedArgs: ['hook', 'pretool-guard'],
+        forwardedArgs: [],
         platform: 'linux',
         arch: 'x64',
         runtimeManifest: RUNTIME_MANIFEST,
@@ -425,7 +425,15 @@ describe('bin launcher', () => {
       'status',
       'dispatch',
     ])
-    expect(COMMAND_LANE_TABLE.runtimeRequired.directBins).toEqual([])
+    expect(COMMAND_LANE_TABLE.runtimeRequired.directBins).toEqual([
+      'wp-pretool-guard',
+      'wp-post-tool',
+      'wp-stop-qa',
+      'wp-guard-switch',
+      'wp-sessionstart-routing',
+      'wp-precompact-snapshot',
+      'wp-test-quality-check',
+    ])
     expect(getWpCommandLane(['mcp'])).toBe(RUNTIME_LANE)
     for (const command of PHASE2_RUNTIME_WP_COMMANDS) {
       expect(getWpCommandLane([command]), command).toBe(PHASE2_RUNTIME_LANE)
@@ -458,20 +466,27 @@ describe('bin launcher', () => {
     })
   })
 
-  it('hard-cuts direct hook bins from the public launcher table', () => {
-    expect(() =>
+  it('keeps latency-sensitive hook bins on built dist even when source is newer', () => {
+    expect(
       buildLaunchPlan({
         binName: 'wp-guard-switch',
         repoRoot: '/repo',
         forwardedArgs: [],
         builtExists: true,
         sourceExists: true,
+        builtMtimeMs: 100,
+        sourceMtimeMs: 200,
         nodeExecPath: '/usr/bin/node',
         currentNodeVersion: 'v24.16.0',
         pinnedNodeVersion: '24.16.0',
         runtimeManager: null,
       }),
-    ).toThrow(/Unknown webpresso bin: wp-guard-switch/)
+    ).toEqual({
+      mode: 'built',
+      runtime: '/usr/bin/node',
+      args: ['/repo/dist/esm/hooks/guard-switch/index.js'],
+      entrypoint: '/repo/dist/esm/hooks/guard-switch/index.js',
+    })
   })
 
   it('re-execs through mise when the built package pins a different exact Node version', () => {
@@ -536,8 +551,12 @@ describe('bin launcher', () => {
   })
 
   it('resolves the invoked bin name from the executable basename', () => {
-    expect(resolveInvokedBinName(['/repo/bin/wp'])).toBe('wp')
-    expect(resolveInvokedBinName(['/repo/bin/docs-lint.js'])).toBe('docs-lint')
+    expect(resolveInvokedBinName(['/repo/node_modules/.bin/wp-pretool-guard'])).toBe(
+      'wp-pretool-guard',
+    )
+    expect(resolveInvokedBinName(['/repo/bin/wp-sessionstart-routing.js'])).toBe(
+      'wp-sessionstart-routing',
+    )
   })
 
   it('reads the pinned exact Node version from package metadata when present', () => {
@@ -614,11 +633,11 @@ describe('WP_FORCE_SOURCE sourceOverride', () => {
     expect(plan.mode).toStrictEqual('runtime')
   })
 
-  it('keeps wp hook dispatch on compiled binary even with sourceOverride', () => {
+  it('keeps latency-sensitive hook bins on compiled binary even with sourceOverride (F1)', () => {
     const plan = buildLaunchPlan({
-      binName: 'wp',
+      binName: 'wp-pretool-guard',
       repoRoot: '/repo',
-      forwardedArgs: ['hook', 'pretool-guard'],
+      forwardedArgs: [],
       sourceOverride: true,
       sourceExists: true,
       builtExists: false,

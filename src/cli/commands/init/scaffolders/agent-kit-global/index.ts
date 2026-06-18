@@ -32,7 +32,6 @@ import {
   findAgentKitPackageRoot,
   resolveAgentKitPackageRoot,
 } from '#cli/commands/init/package-root'
-import { resolveGlobalCapableVp } from '#cli/commands/init/scaffolders/vp-global.js'
 import { makeNoopSpinnerFactory, type SpinnerFactory } from '#cli/commands/init/scaffolders/spinner'
 import { buildVpGlobalInstallCommand, PUBLIC_PACKAGE_NAME } from '#cli/auto-update/detect-pm.js'
 import {
@@ -53,8 +52,6 @@ export interface EnsureAgentKitGlobalInput {
   argv1?: string
   /** DI seam for tests/global installs; defaults to the package root owning argv1/import. */
   packageRoot?: string
-  /** DI seam for resolving a global-capable vp binary. */
-  resolveVpCommand?: () => string | null
   /** DI seam for staging-root fallback when argv1 cannot be mapped back to the owning package. */
   resolvePackageRootForStaging?: (argv1: string) => string | null
   /** DI seam for spinner. Defaults to noop when !process.stdout.isTTY. */
@@ -117,13 +114,12 @@ export function ensureAgentKitGlobal(input: EnsureAgentKitGlobalInput): EnsureAg
   const spawn = input.spawn ?? spawnSync
   const spinner = (input.spinnerFactory ?? makeNoopSpinnerFactory())('agent-kit-global')
 
-  const vpCommand =
-    input.resolveVpCommand !== undefined ? input.resolveVpCommand() : resolveGlobalCapableVp(env.PATH)
-  if (vpCommand === null) {
+  const probe = spawn('vp', ['--version'], { encoding: 'utf8' })
+  if (probe.error || (probe.status !== null && probe.status !== 0)) {
     return { kind: 'agent-kit-global-skipped-no-vp', hint: NO_VP_HINT }
   }
 
-  const command = [vpCommand, ...buildVpGlobalInstallCommand().slice(1)] as [string, ...string[]]
+  const command = buildVpGlobalInstallCommand()
   spinner.start()
   const install = spawn(command[0], command.slice(1), { stdio: 'inherit' })
   if (install.status !== 0) {

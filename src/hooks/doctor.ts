@@ -54,20 +54,7 @@ interface NativePluginRuntimeStatus {
   readonly manifestPath?: string
   readonly stagedBinPath?: string
   readonly runtimeTargetPath?: string
-  readonly runtimeCandidates?: readonly string[]
   readonly reason?: string
-}
-
-interface RuntimeManifestTarget {
-  readonly id?: string
-  readonly os?: string
-  readonly cpu?: string
-  readonly packageName?: string
-}
-
-interface RuntimeManifestLike {
-  readonly binaryName?: string
-  readonly targets?: RuntimeManifestTarget[]
 }
 
 const RTK_REQUESTED_MARKER = join('.agent', '.rtk-requested')
@@ -504,9 +491,6 @@ function formatNativeRuntimeDetail(status: NativePluginRuntimeStatus): string {
     status.manifestPath ? `manifest=${status.manifestPath}` : null,
     status.stagedBinPath ? `stagedBin=${status.stagedBinPath}` : null,
     status.runtimeTargetPath ? `targetBin=${status.runtimeTargetPath}` : null,
-    status.runtimeCandidates && status.runtimeCandidates.length > 0
-      ? `candidates=${status.runtimeCandidates.join('|')}`
-      : null,
     status.reason ? `reason=${status.reason}` : null,
   ]
     .filter((value): value is string => value !== null)
@@ -519,37 +503,6 @@ function isSourceCheckoutWithRuntimeTooling(root: string): boolean {
     tryAccess(join(root, 'scripts', 'build-runtime-binaries.ts')) &&
     tryAccess(join(root, 'scripts', 'stage-plugin-runtime-artifacts.ts'))
   )
-}
-
-function runtimeBinaryFilename(manifest: RuntimeManifestLike, target: RuntimeManifestTarget): string {
-  const binaryName = typeof manifest.binaryName === 'string' ? manifest.binaryName : 'wp'
-  return target.os === 'win32' ? `${binaryName}.exe` : binaryName
-}
-
-function runtimePackageDirName(packageName: string): string {
-  return packageName.split('/').at(-1) ?? packageName
-}
-
-function runtimePackageNameForTarget(target: RuntimeManifestTarget): string | null {
-  if (target.packageName) return target.packageName
-  return target.id ? `@webpresso/agent-kit-runtime-${target.id}` : null
-}
-
-function resolveRuntimeBinaryCandidates(
-  root: string,
-  manifest: RuntimeManifestLike,
-  target: RuntimeManifestTarget,
-): string[] {
-  const packageName = runtimePackageNameForTarget(target)
-  if (!target.id || !packageName) return []
-  const filename = runtimeBinaryFilename(manifest, target)
-  const packageDir = runtimePackageDirName(packageName)
-  return [
-    join(root, 'bin', 'runtime', target.id, filename),
-    join(root, 'dist', 'runtime', target.id, filename),
-    join(root, '..', packageDir, 'bin', filename),
-    join(root, 'node_modules', '@webpresso', packageDir, 'bin', filename),
-  ]
 }
 
 export function checkRootLauncherContract(): DoctorCheck {
@@ -693,15 +646,21 @@ export function checkNativePluginRuntime(): DoctorCheck {
       }
     }
 
-    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as RuntimeManifestLike
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+      binaryName?: string
+      targets?: Array<{ id?: string; os?: string; cpu?: string }>
+    }
     const target = manifest.targets?.find(
       (candidate) => candidate.os === process.platform && candidate.cpu === process.arch,
     )
     const targetId = target?.id
-    const runtimeCandidates = target ? resolveRuntimeBinaryCandidates(root, manifest, target) : []
-    const runtimeTargetPath = runtimeCandidates.find((candidate) => tryAccess(candidate))
+    const targetFilename =
+      target?.os === 'win32' ? `${manifest.binaryName ?? 'wp'}.exe` : (manifest.binaryName ?? 'wp')
+    const runtimeTargetPath = targetId
+      ? join(root, 'bin', 'runtime', targetId, targetFilename)
+      : undefined
 
-    if (!targetId) {
+    if (!targetId || !runtimeTargetPath) {
       return {
         name: 'native plugin runtime',
         ok: false,
@@ -709,7 +668,6 @@ export function checkNativePluginRuntime(): DoctorCheck {
           launchMode,
           manifestPath,
           stagedBinPath,
-          runtimeCandidates,
           reason: `no runtime target for ${process.platform}/${process.arch}`,
         }),
       }
@@ -725,7 +683,6 @@ export function checkNativePluginRuntime(): DoctorCheck {
           manifestPath,
           stagedBinPath,
           runtimeTargetPath,
-          runtimeCandidates,
           reason: 'staged native launcher missing',
         }),
       }
@@ -741,13 +698,12 @@ export function checkNativePluginRuntime(): DoctorCheck {
           manifestPath,
           stagedBinPath,
           runtimeTargetPath,
-          runtimeCandidates,
           reason: 'staged native launcher is a symlink',
         }),
       }
     }
 
-    if (!runtimeTargetPath) {
+    if (!tryAccess(runtimeTargetPath)) {
       if (launchMode === 'native' && isSourceCheckoutWithRuntimeTooling(root)) {
         return {
           name: 'native plugin runtime',
@@ -757,7 +713,7 @@ export function checkNativePluginRuntime(): DoctorCheck {
             targetId,
             manifestPath,
             stagedBinPath,
-            runtimeCandidates,
+            runtimeTargetPath,
             reason:
               'skipped (source checkout runtime payload not staged; run build:runtime-binaries then stage:plugin-runtime to verify the plugin-native lane locally)',
           }),
@@ -772,8 +728,8 @@ export function checkNativePluginRuntime(): DoctorCheck {
           targetId,
           manifestPath,
           stagedBinPath,
-          runtimeCandidates,
-          reason: `native runtime payload missing; checked ${runtimeCandidates.join(', ')}`,
+          runtimeTargetPath,
+          reason: 'target runtime binary missing',
         }),
       }
     }
@@ -788,7 +744,6 @@ export function checkNativePluginRuntime(): DoctorCheck {
           manifestPath,
           stagedBinPath,
           runtimeTargetPath,
-          runtimeCandidates,
           reason: 'plugin manifest is not using the native launcher',
         }),
       }
@@ -803,7 +758,6 @@ export function checkNativePluginRuntime(): DoctorCheck {
         manifestPath,
         stagedBinPath,
         runtimeTargetPath,
-        runtimeCandidates,
       }),
     }
   } catch (error) {

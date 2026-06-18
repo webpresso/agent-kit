@@ -222,7 +222,8 @@ export function ensureClaudePlaywrightMcp(
 // Agent-kit MCP server registration
 // ────────────────────────────────────────────────────────────────────────────
 
-const WP_BIN_RELATIVE = join('bin', process.platform === 'win32' ? 'wp.cmd' : 'wp')
+const SOURCE_MCP_ENTRY_RELATIVE = join('src', 'mcp', 'cli.ts')
+const BUILT_MCP_ENTRY_RELATIVE = join('dist', 'esm', 'mcp', 'cli.js')
 
 export interface WebpressoInstallProbe {
   /** Test seam — override the candidate roots. Default: probe in fixed order. */
@@ -234,7 +235,7 @@ export interface WebpressoInstallProbe {
 }
 
 /**
- * Resolve the absolute path to webpresso's global `bin/wp` launcher on this machine. Probes
+ * Resolve the absolute path to webpresso's MCP entry on this machine. Probes
  * the locations consumers use to install webpresso, in order of stability:
  *
  *   1. the currently executing `@webpresso/agent-kit` package
@@ -244,15 +245,18 @@ export interface WebpressoInstallProbe {
  *   4. pnpm global — `$(pnpm root -g)/@webpresso/agent-kit/`
  *   5. npm global — `$(npm root -g)/@webpresso/agent-kit/`
  *
- * Returns `null` when none of the candidates contain `bin/wp`. The caller
- * surfaces a clear error rather than writing a broken codex config.
+ * Returns `null` when none of the candidates contain `src/mcp/cli.ts`. The
+ * caller surfaces a clear error in that case rather than writing a broken
+ * codex config.
  */
 export function findWebpressoMcpEntry(probe: WebpressoInstallProbe = {}): string | null {
   const candidates = probe.candidates ?? defaultCandidates(probe)
   for (const root of candidates) {
     if (!root) continue
-    const wpBin = join(root, WP_BIN_RELATIVE)
-    if (existsSync(wpBin)) return wpBin
+    const sourceEntry = join(root, SOURCE_MCP_ENTRY_RELATIVE)
+    if (existsSync(sourceEntry)) return sourceEntry
+    const builtEntry = join(root, BUILT_MCP_ENTRY_RELATIVE)
+    if (existsSync(builtEntry)) return builtEntry
   }
   return null
 }
@@ -322,10 +326,12 @@ function runQuiet(cmd: string, args: readonly string[]): string | null {
 }
 
 export function agentKitMcpLaunchCommand(entryPath: string): {
-  command: string
+  command: 'bun' | 'node'
   args: string[]
 } {
-  return { command: entryPath, args: ['mcp'] }
+  return entryPath.endsWith('.ts')
+    ? { command: 'bun', args: [entryPath] }
+    : { command: 'node', args: [entryPath] }
 }
 
 export function agentKitMcpBlock(entryPath: string): string {

@@ -1,15 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { resolveCatalogDir } from './index.js'
-import {
-  collectRuntimeContractGuidance,
-  readAgentConfigVersion,
-  scaffoldBaseKit,
-} from './scaffold-base-kit.js'
+import { collectRuntimeContractGuidance, scaffoldBaseKit } from './scaffold-base-kit.js'
 
 describe('scaffoldBaseKit', () => {
   let repoRoot: string
@@ -39,8 +34,7 @@ describe('scaffoldBaseKit', () => {
     expect(existsSync(join(repoRoot, '.secretlintrc.json'))).toBe(true)
     expect(existsSync(join(repoRoot, 'commitlint.config.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, '.husky', 'pre-commit'))).toBe(true)
-    expect(existsSync(join(repoRoot, '.husky', 'commit-msg'))).toBe(false)
-    expect(existsSync(join(repoRoot, '.husky', 'pre-push'))).toBe(false)
+    expect(existsSync(join(repoRoot, '.husky', 'commit-msg'))).toBe(true)
     expect(existsSync(join(repoRoot, '.github', 'actions', 'setup-webpresso', 'action.yml'))).toBe(
       true,
     )
@@ -48,9 +42,8 @@ describe('scaffoldBaseKit', () => {
     expect(existsSync(join(repoRoot, '.github', 'workflows', 'release.yml'))).toBe(true)
     expect(existsSync(join(repoRoot, '.changeset', 'config.json'))).toBe(true)
     expect(existsSync(join(repoRoot, '.changeset', 'README.md'))).toBe(true)
-    expect(existsSync(join(repoRoot, 'scripts', 'check-no-dev-vars.ts'))).toBe(false)
-    expect(existsSync(join(repoRoot, 'scripts', 'audit-secret-provider-quarantine.ts'))).toBe(false)
-    expect(existsSync(join(repoRoot, 'scripts', 'resolve-webpresso-cli-versions.js'))).toBe(true)
+    expect(existsSync(join(repoRoot, 'scripts', 'check-no-dev-vars.ts'))).toBe(true)
+    expect(existsSync(join(repoRoot, 'scripts', 'audit-secret-provider-quarantine.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'scripts', 'sync-release-metadata-version.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'scripts', 'release-publish.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'tsconfig.json'))).toBe(true)
@@ -94,15 +87,8 @@ describe('scaffoldBaseKit', () => {
     expect(readFileSync(join(repoRoot, '.node-version'), 'utf8').trim()).toBe('24.16.0')
     expect(readFileSync(join(repoRoot, '.nvmrc'), 'utf8').trim()).toBe('24.16.0')
     const preCommit = readFileSync(join(repoRoot, '.husky', 'pre-commit'), 'utf8')
-    const setupAction = readFileSync(
-      join(repoRoot, '.github', 'actions', 'setup-webpresso', 'action.yml'),
-      'utf8',
-    )
     expect(preCommit).toContain("grep -q '^blueprints/'")
     expect(preCommit).toContain('wp audit blueprint-readme-drift')
-    expect(existsSync(join(repoRoot, '.husky', 'commit-msg'))).toBe(false)
-    expect(existsSync(join(repoRoot, '.husky', 'pre-push'))).toBe(false)
-    expect(setupAction).toContain('node ./scripts/resolve-webpresso-cli-versions.js')
   })
 
   it('dry-run does not write files', () => {
@@ -147,8 +133,7 @@ describe('scaffoldBaseKit', () => {
     expect((pkg['engines'] as Record<string, string>)['node']).toBe('>=24')
     expect(pkg['type']).toBe('module')
     expect(pkg['packageManager']).toBe('pnpm@11.1.1')
-    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBeUndefined()
-    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-config']).toMatch(
+    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toMatch(
       /^\^\d+\.\d+\.\d+/u,
     )
     expect((pkg['devDependencies'] as Record<string, string>)['@changesets/cli']).toBe('latest')
@@ -198,28 +183,6 @@ describe('scaffoldBaseKit', () => {
     expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
   })
 
-  it('keeps walking past malformed unrelated package files when resolving agent-config version', () => {
-    const root = join(tmpdir(), `wp-agent-config-version-${Date.now()}`)
-    const malformedParent = join(root, 'malformed-parent')
-    const sourceDir = join(malformedParent, 'src')
-    mkdirSync(sourceDir, { recursive: true })
-    writeFileSync(
-      join(root, 'package.json'),
-      JSON.stringify({
-        name: '@webpresso/agent-kit',
-        version: '9.9.9',
-        webpresso: { agentConfigVersion: '1.2.3' },
-      }),
-    )
-    writeFileSync(join(malformedParent, 'package.json'), '{ not json', 'utf8')
-
-    try {
-      expect(readAgentConfigVersion(pathToFileURL(join(sourceDir, 'cli.ts')).href)).toBe('1.2.3')
-    } finally {
-      rmSync(root, { recursive: true, force: true })
-    }
-  })
-
   it('adds only missing bootstrap fields for consumers', () => {
     const pkgPath = join(repoRoot, 'package.json')
     const initial = {
@@ -235,9 +198,6 @@ describe('scaffoldBaseKit', () => {
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
     expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
       '^0.2.0',
-    )
-    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-config']).toMatch(
-      /^\^\d+\.\d+\.\d+/u,
     )
     expect(pkg['version']).toBe('0.0.0')
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
@@ -286,7 +246,7 @@ describe('scaffoldBaseKit', () => {
     )
   })
 
-  it('preserves consumer-owned setup:agent and adds agent-config without adding agent-kit', () => {
+  it('preserves consumer-owned setup:agent and existing agent-kit devDependency', () => {
     const pkgPath = join(repoRoot, 'package.json')
     mkdirSync(repoRoot, { recursive: true })
     const initial = {
@@ -323,9 +283,6 @@ describe('scaffoldBaseKit', () => {
     expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
       '^0.2.0',
     )
-    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-config']).toMatch(
-      /^\^\d+\.\d+\.\d+/u,
-    )
   })
 
   it('preserves a consumer-provided verify:secrets script', () => {
@@ -358,7 +315,7 @@ describe('scaffoldBaseKit', () => {
     )
   })
 
-  it('injects the agent-config package pin for ordinary consumer repos', () => {
+  it('injects the agent-kit package pin for ordinary consumer repos', () => {
     const pkgPath = join(repoRoot, 'package.json')
     writeFileSync(pkgPath, JSON.stringify({ name: 'consumer-app', private: true }, null, 2))
 
@@ -366,8 +323,7 @@ describe('scaffoldBaseKit', () => {
     scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
-    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBeUndefined()
-    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-config']).toMatch(
+    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toMatch(
       /^\^\d+\.\d+\.\d+/,
     )
     expect(pkg['version']).toBe('0.0.0')

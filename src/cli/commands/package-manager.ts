@@ -39,20 +39,14 @@ const HELP_BY_VERB: Readonly<Record<PackageManagerVerb, string>> = {
   add: 'Add dependencies through the managed vp facade.',
   remove: 'Remove dependencies through the managed vp facade.',
   update:
-    'Update the global @webpresso/agent-kit install. Use --tools for the broader codex/tmux/omx/omc/gstack refresh, or --deps for local dependency updates.',
+    'Refresh codex, tmux, omx, omc, gstack, and wp by default; use --deps for local dependency updates through the managed vp facade.',
   exec: 'Run a binary through the managed vp facade.',
   run: 'Run a package script through the managed vp facade.',
 }
 
 const GSTACK_REPO = 'https://github.com/garrytan/gstack.git'
 
-const AGENT_KIT_UPDATE_STEP: GlobalUpdateStep = {
-  id: 'wp',
-  command: 'vp',
-  args: ['install', '-g', '@webpresso/agent-kit'],
-}
-
-const TOOLCHAIN_UPDATE_STEPS: readonly GlobalUpdateStep[] = [
+const GLOBAL_UPDATE_STEPS: readonly GlobalUpdateStep[] = [
   {
     id: 'codex',
     command: 'vp',
@@ -76,7 +70,11 @@ const TOOLCHAIN_UPDATE_STEPS: readonly GlobalUpdateStep[] = [
     id: 'gstack',
     run: refreshGstack,
   },
-  AGENT_KIT_UPDATE_STEP,
+  {
+    id: 'wp',
+    command: 'vp',
+    args: ['install', '-g', '@webpresso/agent-kit'],
+  },
 ]
 
 interface PackageManagerCommandConfigWithId extends PackageManagerCommandConfig {
@@ -105,7 +103,7 @@ export function registerPackageManagerCommand(cli: CAC, verb: PackageManagerVerb
   const command = cli.command(`${verb} [...args]`, HELP_BY_VERB[verb])
   if (verb === 'update') {
     command.option('--deps', 'Update local dependencies through managed vp update.')
-    command.option('--tools', 'Refresh codex, tmux, omx, omc, gstack, and wp.')
+    command.option('-g, --global', 'Compatibility alias for the default tooling refresh.')
   }
 
   command.allowUnknownOptions().action(() => runPackageManagerCommand(verb))
@@ -137,8 +135,7 @@ export function runPackageManagerCommand(
   if (verb === 'update') {
     const mode = parseUpdateMode(extractVerbArgs(verb, argv))
     if (mode.kind === 'error') return failUsage(mode.message)
-    if (mode.kind === 'agent-kit') return runAgentKitUpdateCommand(deps)
-    if (mode.kind === 'tools') return runToolchainUpdateCommand(deps)
+    if (mode.kind === 'tooling') return runGlobalUpdateCommand(deps)
 
     const packageRoot = resolveNearestPackageRoot(cwd, deps.exists ?? existsSync)
     if (packageRoot === null) {
@@ -162,18 +159,7 @@ export function runPackageManagerCommand(
   return typeof result.status === 'number' ? result.status : 1
 }
 
-function runAgentKitUpdateCommand(deps: PackageManagerCommandDeps): number {
-  return runUpdateSteps([AGENT_KIT_UPDATE_STEP], deps)
-}
-
-function runToolchainUpdateCommand(deps: PackageManagerCommandDeps): number {
-  return runUpdateSteps(TOOLCHAIN_UPDATE_STEPS, deps)
-}
-
-function runUpdateSteps(
-  steps: readonly GlobalUpdateStep[],
-  deps: PackageManagerCommandDeps,
-): number {
+function runGlobalUpdateCommand(deps: PackageManagerCommandDeps): number {
   const globalDeps: RequiredGlobalUpdateDeps = {
     exists: deps.exists ?? existsSync,
     gstackRoot: deps.gstackRoot ?? defaultGstackRoot(),
@@ -182,7 +168,7 @@ function runUpdateSteps(
   }
   let failed = false
 
-  for (const step of steps) {
+  for (const step of GLOBAL_UPDATE_STEPS) {
     try {
       const result = runGlobalUpdateStep(step, globalDeps)
       if (result.status !== 0) {
@@ -247,63 +233,50 @@ function extractVerbArgs(verb: PackageManagerVerb, argv: readonly string[]): str
 }
 
 type UpdateMode =
-  | { readonly kind: 'agent-kit' }
-  | { readonly kind: 'tools' }
+  | { readonly kind: 'tooling' }
   | { readonly kind: 'deps' }
   | { readonly kind: 'error'; readonly message: string }
 
 function parseUpdateMode(args: readonly string[]): UpdateMode {
   const hasDeps = args.includes('--deps')
-  const hasToolchain = hasToolsFlag(args)
+  const hasGlobal = hasGlobalFlag(args)
+  const hasPositional = hasDependencyPositional(args)
 
-  if (hasDeps && hasToolchain) {
+  if (hasDeps && hasGlobal) {
     return {
       kind: 'error',
       message:
-        'wp update: --deps cannot be combined with --tools; choose dependency updates or tooling refresh.',
+        'wp update: --deps cannot be combined with --global; choose dependency updates or tooling refresh.',
     }
   }
 
-  const removedGlobalFlags = args.filter((arg) => arg === '--global' || arg === '-g')
-  if (removedGlobalFlags.length > 0) {
+  if (hasGlobal && hasPositional) {
     return {
       kind: 'error',
-      message: `wp update: unrecognized option(s): ${removedGlobalFlags.join(
-        ', ',
-      )}. Bare \`wp update\` updates global @webpresso/agent-kit; use \`wp update --tools\` for the broad tooling refresh.`,
+      message:
+        'wp update: package arguments imply --deps and cannot be combined with --global; use `wp update --deps ...` for dependency updates.',
     }
   }
 
-  if (hasDeps) return { kind: 'deps' }
+  if (hasDeps || hasPositional) return { kind: 'deps' }
 
-  const unknownFlags = args.filter((arg) => arg.startsWith('-') && !isToolchainFlag(arg))
+  const unknownFlags = args.filter((arg) => !isGlobalFlag(arg))
   if (unknownFlags.length > 0) {
     return {
       kind: 'error',
-      message: `wp update: unrecognized option(s): ${unknownFlags.join(
+      message: `wp update: unrecognized tooling option(s): ${unknownFlags.join(
         ', ',
-      )}. Bare \`wp update\` updates global @webpresso/agent-kit; use \`wp update --tools\` for the broad tooling refresh or \`wp update --deps ${unknownFlags.join(
+      )}. Bare \`wp update\` refreshes tooling; use \`wp update --deps ${unknownFlags.join(
         ' ',
       )}\` to pass dependency-update options.`,
     }
   }
 
-  const hasPositional = hasDependencyPositional(args)
-  if (hasToolchain && hasPositional) {
-    return {
-      kind: 'error',
-      message:
-        'wp update: package arguments imply --deps and cannot be combined with --tools; use `wp update --deps ...` for dependency updates.',
-    }
-  }
-
-  if (hasPositional) return { kind: 'deps' }
-
-  return hasToolchain ? { kind: 'tools' } : { kind: 'agent-kit' }
+  return { kind: 'tooling' }
 }
 
 function stripWpUpdateControlFlags(args: readonly string[]): string[] {
-  return args.filter((arg) => arg !== '--deps' && !isToolchainFlag(arg))
+  return args.filter((arg) => arg !== '--deps' && !isGlobalFlag(arg))
 }
 
 function hasDependencyPositional(args: readonly string[]): boolean {
@@ -319,12 +292,12 @@ function hasDependencyPositional(args: readonly string[]): boolean {
   return false
 }
 
-function hasToolsFlag(args: readonly string[]): boolean {
-  return args.includes('--tools')
+function hasGlobalFlag(args: readonly string[]): boolean {
+  return args.some(isGlobalFlag)
 }
 
-function isToolchainFlag(arg: string): boolean {
-  return arg === '--tools'
+function isGlobalFlag(arg: string): boolean {
+  return arg === '--global' || arg === '-g'
 }
 
 function failUsage(message: string): number {

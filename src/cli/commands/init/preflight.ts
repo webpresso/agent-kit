@@ -67,9 +67,9 @@ function checkBlueprintLifecycle(repoRoot: string): string | null {
   return null
 }
 
-function checkAgentInstructionSurface(repoRoot: string): string | null {
+function checkLoreCommitProtocol(repoRoot: string): string | null {
   if (!existsSync(join(repoRoot, '.agent'))) {
-    return '.agent/ directory not found — agent instruction surface missing (run `wp setup` to scaffold it)'
+    return '.agent/ directory not found — lore commit protocol required (run `wp setup --with lore-commits` to scaffold it)'
   }
   return null
 }
@@ -87,7 +87,7 @@ export async function runPreflight(repoRoot: string, strict: boolean): Promise<P
     () => checkVp(),
     () => checkWorkersOrVite(repoRoot),
     () => checkBlueprintLifecycle(repoRoot),
-    () => checkAgentInstructionSurface(repoRoot),
+    () => checkLoreCommitProtocol(repoRoot),
   ]
 
   const warnings: string[] = []

@@ -25,16 +25,15 @@ the package contract.
 - **No `../` parent-relative imports.** Use workspace package deps or subpath
   exports. `import { x } from '../../utils'` is always wrong; find the
   package that exports it and add it as a dep.
-- **Use the published Webpresso config surfaces, split by ownership.** Consumers
-  should add `@webpresso/agent-kit` for CLI/audit/tooling helpers such as
-  `@webpresso/agent-kit/oxlint`, `@webpresso/agent-kit/test-preset`,
-  `@webpresso/agent-kit/e2e-preset`, `@webpresso/agent-kit/docs-lint`, and
-  `@webpresso/agent-kit/launch`; and add `@webpresso/agent-config` for config
-  presets such as `@webpresso/agent-config/tsconfig/base.json`,
-  `@webpresso/agent-config/vitest/node`,
-  `@webpresso/agent-config/stryker`, and
-  `@webpresso/agent-config/workers-test`. Do not tell consumers to install
-  retired split `@webpresso/agent-*` config packages.
+- **Use `@webpresso/agent-kit/*` subpaths for folded agent config.** Consumers
+  should add `@webpresso/agent-kit` and import subpaths such as
+  `@webpresso/agent-kit/oxlint`, `@webpresso/agent-kit/vitest/node`,
+  `@webpresso/agent-kit/test-preset`, `@webpresso/agent-kit/e2e-preset`,
+  `@webpresso/agent-kit/tsconfig/base.json`,
+  `@webpresso/agent-kit/docs-lint`, `@webpresso/agent-kit/stryker`,
+  `@webpresso/agent-kit/launch`, and `@webpresso/agent-kit/workers-test`.
+  Do not tell consumers to install retired split `@webpresso/agent-*` config
+  packages.
 - **No `.mjs` source files.** Write `.ts` with a Bun/Node shebang or as a
   plain module. Never convert existing `.ts` to `.mjs`. Config files that a
   tool requires in `.mjs` are the only documented exception, and only when the

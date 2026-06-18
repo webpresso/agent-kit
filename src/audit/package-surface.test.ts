@@ -210,34 +210,6 @@ describe('package-surface audit', () => {
     )
   })
 
-  test('flags publishable workspace packages behind known published baselines', () => {
-    const root = tempRepo()
-    mkdirSync(join(root, 'packages', 'agent-config'), { recursive: true })
-    writeJson(join(root, 'package-surface.json'), {
-      allowedPublicPackages: ['@webpresso/agent-config'],
-      publishedPackageBaselines: {
-        '@webpresso/agent-config': '0.1.4',
-      },
-    })
-    writeJson(join(root, 'packages', 'agent-config', 'package.json'), {
-      name: '@webpresso/agent-config',
-      version: '0.1.0',
-      private: false,
-    })
-
-    const result = auditPackageSurface(root, fastFixtureAudit)
-
-    expect(result.ok).toBe(false)
-    expect(result.violations).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          file: 'packages/agent-config/package.json',
-          message: '@webpresso/agent-config local version 0.1.0 is behind published baseline 0.1.4',
-        }),
-      ]),
-    )
-  })
-
   test('does not carry a default @webpresso/framework reference-consumer baseline', () => {
     const root = tempRepo()
     writeJson(join(root, 'package-surface.json'), {})

@@ -44,7 +44,6 @@ interface PackageSurfaceContract {
   forbiddenPublicNamePatterns?: readonly string[]
   staleLinks?: readonly string[]
   referenceConsumerBaselines?: Readonly<Record<string, string>>
-  publishedPackageBaselines?: Readonly<Record<string, string>>
   tarball?: PackageSurfaceTarballContract
 }
 
@@ -91,9 +90,6 @@ const DEFAULT_STALE_LINKS: string[] = []
 const DEFAULT_REFERENCE_BASELINES: Readonly<Record<string, string>> = {
   '@webpresso/db-branching': '0.2.4',
   '@webpresso/db-branching-neon': '0.2.4',
-}
-const DEFAULT_PUBLISHED_PACKAGE_BASELINES: Readonly<Record<string, string>> = {
-  '@webpresso/agent-config': '0.1.4',
 }
 const INSTALL_TIME_LIFECYCLE_SCRIPTS = ['preinstall', 'install', 'postinstall'] as const
 
@@ -223,8 +219,6 @@ export function auditPackageSurface(
     contract.forbiddenPublicNamePatterns ?? DEFAULT_FORBIDDEN_PUBLIC_NAME_PATTERNS
   const staleLinks = contract.staleLinks ?? DEFAULT_STALE_LINKS
   const baselines = contract.referenceConsumerBaselines ?? DEFAULT_REFERENCE_BASELINES
-  const publishedBaselines =
-    contract.publishedPackageBaselines ?? DEFAULT_PUBLISHED_PACKAGE_BASELINES
 
   for (const packageFile of walkFiles(root, (file) => basename(file) === 'package.json')) {
     const pkg = readJsonObject<PackageRecord>(packageFile)
@@ -239,7 +233,6 @@ export function auditPackageSurface(
     if (!pkg.name?.startsWith('@webpresso/')) continue
     checked += 1
     if (pkg.private === true) continue
-    checked += auditPublishedPackageBaseline(root, packageFile, pkg, publishedBaselines, violations)
     checked += auditInstallTimeSetupScripts(root, packageFile, pkg, violations)
     if (allowedPackages.has(pkg.name) || compatibilityPackages.has(pkg.name)) continue
     violations.push({
@@ -955,24 +948,6 @@ function auditReferenceConsumerFreshness(
     }
   }
   return checked
-}
-
-function auditPublishedPackageBaseline(
-  root: string,
-  packageFile: string,
-  pkg: PackageRecord,
-  baselines: Readonly<Record<string, string>>,
-  violations: RepoAuditViolation[],
-): number {
-  const minimumVersion = baselines[pkg.name]
-  if (!minimumVersion) return 0
-  if (!pkg.version || compareVersions(pkg.version, minimumVersion) < 0) {
-    violations.push({
-      file: relativePath(root, packageFile),
-      message: `${pkg.name} local version ${pkg.version ?? 'missing'} is behind published baseline ${minimumVersion}`,
-    })
-  }
-  return 1
 }
 
 function findCatalogRange(workspaceText: string, packageName: string): string | undefined {

@@ -122,7 +122,7 @@ function auditReferenceParityPublicClaims(root: string, violations: RepoAuditVio
   const matrix = auditReferenceParityMatrix(root, undefined, { requireReleaseReady: true })
   let checked = 0
 
-  const publicSurfaces: Array<{ path: string; content: string; pendingChangeset?: boolean }> = []
+  const publicSurfaces: Array<{ path: string; content: string }> = []
   for (const relativePath of [PUBLIC_README_PATH, PUBLIC_CHANGELOG_PATH]) {
     const content = readExistingFile(root, relativePath, violations, {
       message: 'Reference parity claim gate requires the public disclosure surface to exist.',
@@ -140,7 +140,6 @@ function auditReferenceParityPublicClaims(root: string, violations: RepoAuditVio
     publicSurfaces.push({
       path: PENDING_CHANGESET_SURFACE_PATH,
       content: pendingChangesetReleaseNotes,
-      pendingChangeset: true,
     })
   }
 
@@ -153,18 +152,6 @@ function auditReferenceParityPublicClaims(root: string, violations: RepoAuditVio
             surface.path === PENDING_CHANGESET_SURFACE_PATH
               ? `Pending changeset release notes must cite ${evidencePath} before Changesets generates CHANGELOG.md.`
               : `Reference parity public claim gate must cite ${evidencePath}.`,
-        })
-        continue
-      }
-
-      if (
-        surface.pendingChangeset &&
-        hasMarkdownEmphasisRisk(evidencePath) &&
-        !hasInlineCodeCitation(surface.content, evidencePath)
-      ) {
-        violations.push({
-          file: surface.path,
-          message: `Pending changeset release notes must cite ${evidencePath} as inline code so Changesets preserves the literal path in CHANGELOG.md.`,
         })
       }
     }
@@ -188,14 +175,6 @@ function auditReferenceParityPublicClaims(root: string, violations: RepoAuditVio
   }
 
   return checked
-}
-
-function hasMarkdownEmphasisRisk(evidencePath: string): boolean {
-  return evidencePath.includes('__')
-}
-
-function hasInlineCodeCitation(content: string, evidencePath: string): boolean {
-  return content.includes(`\`${evidencePath}\``)
 }
 
 function readPendingChangesetReleaseNotes(root: string): string | null {

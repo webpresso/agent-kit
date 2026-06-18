@@ -37,7 +37,6 @@ describe('ensureOmx', () => {
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
       spawn,
-      resolveVpCommand: () => 'vp',
       configPath,
     })
     expect(result).toMatchObject({
@@ -47,7 +46,7 @@ describe('ensureOmx', () => {
       codexGlobalHooks: { repaired: false, targetPath: join(dir, 'hooks.json') },
     })
     expect(spawn).toHaveBeenCalledTimes(4)
-    expect(spawn).toHaveBeenNthCalledWith(1, 'vp', ['update'], { stdio: 'inherit' })
+    expect(spawn).toHaveBeenNthCalledWith(1, 'vp', ['upgrade'], { stdio: 'inherit' })
   })
 
   it('returns omx-skipped-dry-run without spawning anything', () => {
@@ -56,7 +55,6 @@ describe('ensureOmx', () => {
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: true },
       spawn,
-      resolveVpCommand: () => 'vp',
     })
     expect(result).toEqual({ kind: 'omx-skipped-dry-run' })
     expect(spawn).not.toHaveBeenCalled()
@@ -76,7 +74,6 @@ describe('ensureOmx', () => {
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
       spawn,
-      resolveVpCommand: () => 'vp',
       configPath,
     })
     expect(result).toMatchObject({
@@ -85,7 +82,7 @@ describe('ensureOmx', () => {
       removedProjectFiles: [],
       codexGlobalHooks: { repaired: false, targetPath: join(dir, 'hooks.json') },
     })
-    expect(spawn).toHaveBeenNthCalledWith(1, 'vp', ['update'], { stdio: 'inherit' })
+    expect(spawn).toHaveBeenNthCalledWith(1, 'vp', ['upgrade'], { stdio: 'inherit' })
     expect(spawn).toHaveBeenNthCalledWith(3, 'vp', ['install', '-g', 'oh-my-codex'], {
       stdio: 'inherit',
     })
@@ -141,7 +138,6 @@ describe('ensureOmx', () => {
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
       spawn,
-      resolveVpCommand: () => 'vp',
     })
     expect(result.kind).toBe('omx-not-found')
     if (result.kind === 'omx-not-found') {
@@ -155,7 +151,6 @@ describe('ensureOmx', () => {
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
       spawn,
-      resolveVpCommand: () => 'vp',
     })
     expect(result.kind).toBe('omx-not-found')
   })
@@ -166,7 +161,6 @@ describe('ensureOmx', () => {
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
       spawn,
-      resolveVpCommand: () => 'vp',
     })
     expect(result).toEqual({ kind: 'omx-spawn-failed', exitCode: 2 })
   })
@@ -177,7 +171,6 @@ describe('ensureOmx', () => {
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
       spawn,
-      resolveVpCommand: () => 'vp',
     })
     expect(spawn).toHaveBeenNthCalledWith(4, 'omx', ['setup', '--yes', '--scope', 'user'], {
       cwd: '/tmp/repo',
@@ -192,7 +185,6 @@ describe('ensureOmx', () => {
       options: { overwrite: false, dryRun: false },
       scope: 'project',
       spawn,
-      resolveVpCommand: () => 'vp',
     })
     expect(spawn).toHaveBeenNthCalledWith(4, 'omx', ['setup', '--yes', '--scope', 'project'], {
       cwd: '/tmp/repo',
@@ -214,7 +206,6 @@ describe('ensureOmx', () => {
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
       spawn,
-      resolveVpCommand: () => 'vp',
       configPath,
     })
 
@@ -406,27 +397,6 @@ describe('ensureOmx', () => {
   })
 })
 
-
-
-  it('skips vp refresh noise when only a repo-local vp is available', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'omx-local-vp-'))
-    const configPath = join(dir, 'config.toml')
-    const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
-    const result = ensureOmx({
-      repoRoot: '/tmp/repo',
-      options: { overwrite: false, dryRun: false },
-      spawn,
-      resolveVpCommand: () => null,
-      configPath,
-    })
-    expect(result).toMatchObject({ kind: 'omx-ok', installed: false })
-    expect(spawn).toHaveBeenCalledTimes(2)
-    expect(spawn).toHaveBeenNthCalledWith(1, 'omx', ['--version'], {
-      encoding: 'utf8',
-      timeout: 3000,
-    })
-  })
-
 describe('repairInstalledOmxPluginHooks', () => {
   it('rewrites only OMX plugin hook files with bare node commands', () => {
     const codexHome = mkdtempSync(join(tmpdir(), 'wp-omx-plugin-repair-'))
@@ -564,7 +534,6 @@ describe('ensureOmx — deduplication of legacy hook trust state', () => {
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
       spawn,
-      resolveVpCommand: () => 'vp',
       configPath,
     })
 

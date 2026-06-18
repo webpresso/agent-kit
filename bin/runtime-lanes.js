@@ -45,7 +45,15 @@ export const JS_HOLDBACK_WP_COMMANDS = [
   'run',
 ]
 
-export const DIRECT_RUNTIME_BIN_ARGS = {}
+export const DIRECT_RUNTIME_BIN_ARGS = {
+  'wp-pretool-guard': ['hook', 'pretool-guard'],
+  'wp-post-tool': ['hook', 'post-tool'],
+  'wp-stop-qa': ['hook', 'stop-qa'],
+  'wp-guard-switch': ['hook', 'guard-switch'],
+  'wp-sessionstart-routing': ['hook', 'sessionstart-routing'],
+  'wp-precompact-snapshot': ['hook', 'precompact-snapshot'],
+  'wp-test-quality-check': ['hook', 'test-quality-check'],
+}
 
 export const COMMAND_LANE_TABLE = {
   runtimeRequired: {

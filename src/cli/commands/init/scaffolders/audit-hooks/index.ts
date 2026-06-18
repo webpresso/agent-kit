@@ -38,10 +38,10 @@ function hasEquivalentLine(existingContent: string, line: string): boolean {
 
   if (line === '# webpresso audit hooks (staged mode — fast)') {
     return (
-      (existingContent.includes('check-no-dev-vars.ts') || existingContent.includes('wp audit no-dev-vars')) &&
+      existingContent.includes('wp audit no-dev-vars') &&
       (existingContent.includes('wp audit absolute-path-policy --root .') ||
         existingContent.includes('"$WP" audit absolute-path-policy --root .')) &&
-      (existingContent.includes('audit-secret-provider-quarantine.ts') || existingContent.includes('wp audit secret-provider-quarantine'))
+      existingContent.includes('wp audit secret-provider-quarantine')
     )
   }
 

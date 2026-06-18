@@ -185,56 +185,6 @@ describe('auditAiContracts', () => {
     expect(result.violations).toEqual([])
   })
 
-  it('fails when pending changeset evidence paths would be mangled by Markdown rendering', () => {
-    const root = mkdtempSync(path.join(os.tmpdir(), 'wp-ai-contracts-'))
-    tempDirs.push(root)
-    seedPassingFixture(root)
-    write(
-      root,
-      '.changeset/unsafe-reference-parity.md',
-      [
-        '---',
-        '"@webpresso/agent-kit": patch',
-        '---',
-        '',
-        'Release notes cite docs/bench/reference-parity-matrix.md, docs/bench/session-memory-methodology.md, src/__integration__/reference-parity-host-smoke.integration.test.ts, and src/__integration__/reference-parity-tool-surface.integration.test.ts.',
-      ].join('\n'),
-    )
-
-    const result = auditAiContracts(root)
-
-    expect(result.ok).toBe(false)
-    expect(
-      result.violations.some(
-        (v) =>
-          v.file === '.changeset/*.md' &&
-          v.message.includes('inline code') &&
-          v.message.includes('src/__integration__/reference-parity-host-smoke.integration.test.ts'),
-      ),
-    ).toBe(true)
-  })
-
-  it('accepts pending changeset evidence paths protected as inline code', () => {
-    const root = mkdtempSync(path.join(os.tmpdir(), 'wp-ai-contracts-'))
-    tempDirs.push(root)
-    seedPassingFixture(root)
-    write(
-      root,
-      '.changeset/safe-reference-parity.md',
-      [
-        '---',
-        '"@webpresso/agent-kit": patch',
-        '---',
-        '',
-        'Release notes cite `docs/bench/reference-parity-matrix.md`, `docs/bench/session-memory-methodology.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, and `src/__integration__/reference-parity-tool-surface.integration.test.ts`.',
-      ].join('\n'),
-    )
-
-    const result = auditAiContracts(root)
-
-    expect(result.ok).toBe(true)
-  })
-
   it('fails when the contract doc is missing', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'wp-ai-contracts-'))
     tempDirs.push(root)
