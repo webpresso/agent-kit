@@ -528,7 +528,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       // automatically surfaces in --help and docs/code can't drift
       // (the original gap that prompted docs/add-ons.md to exist).
       expect(r.stdout).toContain('Presets:')
-      expect(r.stdout).not.toContain('lore-commits')
+      expect(r.stdout).toContain('lore-commits')
       expect(r.stdout).toContain('omc')
       expect(r.stdout).toContain('omx')
       expect(r.stdout).toContain('playwright-mcp')

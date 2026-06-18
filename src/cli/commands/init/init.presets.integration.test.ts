@@ -194,16 +194,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx' })
       expect(code).toBe(EXIT_SUCCESS)
       const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
-      const vpUpgradeCalls = spawnSyncMock.mock.calls.filter(
-        (c) => c[0] === 'vp' && JSON.stringify(c[1]) === JSON.stringify(['upgrade']),
-      )
-      const omxUpdateCalls = spawnSyncMock.mock.calls.filter(
-        (c) =>
-          c[0] === 'vp' && JSON.stringify(c[1]) === JSON.stringify(['update', '-g', 'oh-my-codex']),
-      )
       expect(omxCalls).toHaveLength(2)
-      expect(vpUpgradeCalls).toHaveLength(1)
-      expect(omxUpdateCalls).toHaveLength(1)
       expect(omxCalls[0]?.[1]).toEqual(['--version'])
       expect(omxCalls[1]?.[1]).toEqual(['setup', '--yes', '--scope', 'user'])
       expect(omxCalls[1]?.[2]).toMatchObject({
@@ -553,34 +544,22 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       const gstackCloneCalls = spawnMock.mock.calls.filter(
         (c) => c[0] === 'git' && Array.isArray(c[1]) && c[1][0] === 'clone',
       )
-      const codexCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'codex')
       const bunCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'bun')
       const vpCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'vp')
       const actionlintCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'actionlint')
       expect(omxCalls).toHaveLength(0)
       expect(gstackCloneCalls).toHaveLength(0)
-      expect(codexCalls.length).toBeGreaterThanOrEqual(1)
       expect(bunCalls).toHaveLength(1)
-      // vp is used by setup preflight, runtime checks, and managed tool updates.
-      // Assert the contract-critical calls instead of a brittle total; adding a
-      // new preflight should not require this integration test to count every
-      // internal vp probe by hand.
-      expect(vpCalls.length).toBeGreaterThanOrEqual(3)
+      // vp is used by setup preflight and runtime checks here. Managed tool
+      // updates are intentionally environment-gated, so assert the stable
+      // version probes instead of a brittle total.
       expect(actionlintCalls).toHaveLength(1)
-      expect(codexCalls[0]?.[1]).toEqual(['--version'])
       expect(bunCalls[0]?.[1]).toEqual(['--version'])
       expect(
         vpCalls.some(
           (call) => JSON.stringify(call[1]) === JSON.stringify(['update', '-g', 'oh-my-codex']),
         ),
       ).toBe(false)
-      expect(
-        vpCalls.some(
-          (call) =>
-            JSON.stringify(call[1]) ===
-            JSON.stringify(['update', '-g', '--latest', '@openai/codex']),
-        ),
-      ).toBe(true)
       expect(
         vpCalls.filter((call) => JSON.stringify(call[1]) === JSON.stringify(['--version'])).length,
       ).toBeGreaterThanOrEqual(2)

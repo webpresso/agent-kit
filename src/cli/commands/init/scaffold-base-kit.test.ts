@@ -34,7 +34,7 @@ describe('scaffoldBaseKit', () => {
     expect(existsSync(join(repoRoot, '.secretlintrc.json'))).toBe(true)
     expect(existsSync(join(repoRoot, 'commitlint.config.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, '.husky', 'pre-commit'))).toBe(true)
-    expect(existsSync(join(repoRoot, '.husky', 'commit-msg'))).toBe(true)
+    expect(existsSync(join(repoRoot, '.husky', 'commit-msg'))).toBe(false)
     expect(existsSync(join(repoRoot, '.github', 'actions', 'setup-webpresso', 'action.yml'))).toBe(
       true,
     )
@@ -42,8 +42,8 @@ describe('scaffoldBaseKit', () => {
     expect(existsSync(join(repoRoot, '.github', 'workflows', 'release.yml'))).toBe(true)
     expect(existsSync(join(repoRoot, '.changeset', 'config.json'))).toBe(true)
     expect(existsSync(join(repoRoot, '.changeset', 'README.md'))).toBe(true)
-    expect(existsSync(join(repoRoot, 'scripts', 'check-no-dev-vars.ts'))).toBe(true)
-    expect(existsSync(join(repoRoot, 'scripts', 'audit-secret-provider-quarantine.ts'))).toBe(true)
+    expect(existsSync(join(repoRoot, 'scripts', 'check-no-dev-vars.ts'))).toBe(false)
+    expect(existsSync(join(repoRoot, 'scripts', 'audit-secret-provider-quarantine.ts'))).toBe(false)
     expect(existsSync(join(repoRoot, 'scripts', 'sync-release-metadata-version.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'scripts', 'release-publish.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'tsconfig.json'))).toBe(true)
@@ -133,7 +133,8 @@ describe('scaffoldBaseKit', () => {
     expect((pkg['engines'] as Record<string, string>)['node']).toBe('>=24')
     expect(pkg['type']).toBe('module')
     expect(pkg['packageManager']).toBe('pnpm@11.1.1')
-    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toMatch(
+    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBeUndefined()
+    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-config']).toMatch(
       /^\^\d+\.\d+\.\d+/u,
     )
     expect((pkg['devDependencies'] as Record<string, string>)['@changesets/cli']).toBe('latest')
@@ -177,10 +178,10 @@ describe('scaffoldBaseKit', () => {
       'wp audit absolute-path-policy --root .',
     )
     expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
-      'bun scripts/check-no-dev-vars.ts',
+      'wp audit no-dev-vars',
     )
     expect((pkg['scripts'] as Record<string, string>)['audit:secret-provider-quarantine']).toBe(
-      'bun scripts/audit-secret-provider-quarantine.ts',
+      'wp audit secret-provider-quarantine',
     )
     expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
   })
@@ -190,7 +191,7 @@ describe('scaffoldBaseKit', () => {
     const initial = {
       name: 'consumer-app',
       scripts: { test: 'vitest' },
-      devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
+      devDependencies: { '@webpresso/agent-config': '^0.2.0' },
     }
     writeFileSync(pkgPath, JSON.stringify(initial, null, 2))
 
@@ -198,7 +199,7 @@ describe('scaffoldBaseKit', () => {
     scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
-    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
+    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-config']).toBe(
       '^0.2.0',
     )
     expect(pkg['version']).toBe('0.0.0')
@@ -215,10 +216,10 @@ describe('scaffoldBaseKit', () => {
       'wp audit absolute-path-policy --root .',
     )
     expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
-      'bun scripts/check-no-dev-vars.ts',
+      'wp audit no-dev-vars',
     )
     expect((pkg['scripts'] as Record<string, string>)['audit:secret-provider-quarantine']).toBe(
-      'bun scripts/audit-secret-provider-quarantine.ts',
+      'wp audit secret-provider-quarantine',
     )
     expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
     expect((pkg['scripts'] as Record<string, string>)['test']).toBe('vitest')
@@ -250,13 +251,13 @@ describe('scaffoldBaseKit', () => {
     )
   })
 
-  it('preserves consumer-owned setup:agent and existing agent-kit devDependency', () => {
+  it('preserves consumer-owned setup:agent and existing agent-config devDependency', () => {
     const pkgPath = join(repoRoot, 'package.json')
     mkdirSync(repoRoot, { recursive: true })
     const initial = {
       name: 'consumer-app',
       scripts: { 'setup:agent': 'wp setup' },
-      devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
+      devDependencies: { '@webpresso/agent-config': '^0.2.0' },
     }
     writeFileSync(pkgPath, JSON.stringify(initial, null, 2))
 
@@ -278,13 +279,13 @@ describe('scaffoldBaseKit', () => {
       'wp audit absolute-path-policy --root .',
     )
     expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
-      'bun scripts/check-no-dev-vars.ts',
+      'wp audit no-dev-vars',
     )
     expect((pkg['scripts'] as Record<string, string>)['audit:secret-provider-quarantine']).toBe(
-      'bun scripts/audit-secret-provider-quarantine.ts',
+      'wp audit secret-provider-quarantine',
     )
     expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
-    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
+    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-config']).toBe(
       '^0.2.0',
     )
   })
@@ -299,7 +300,7 @@ describe('scaffoldBaseKit', () => {
         'verify:secrets': 'echo custom secret check',
         prepare: 'pnpm -C packages prebuild',
       },
-      devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
+      devDependencies: { '@webpresso/agent-config': '^0.2.0' },
     }
     writeFileSync(pkgPath, JSON.stringify(initial, null, 2))
 
@@ -315,11 +316,11 @@ describe('scaffoldBaseKit', () => {
       'echo custom secret check',
     )
     expect((pkg['scripts'] as Record<string, string>)['audit:secret-provider-quarantine']).toBe(
-      'bun scripts/audit-secret-provider-quarantine.ts',
+      'wp audit secret-provider-quarantine',
     )
   })
 
-  it('injects the agent-kit package pin for ordinary consumer repos', () => {
+  it('injects the agent-config package pin for ordinary consumer repos', () => {
     const pkgPath = join(repoRoot, 'package.json')
     writeFileSync(pkgPath, JSON.stringify({ name: 'consumer-app', private: true }, null, 2))
 
@@ -327,7 +328,8 @@ describe('scaffoldBaseKit', () => {
     scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
-    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toMatch(
+    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBeUndefined()
+    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-config']).toMatch(
       /^\^\d+\.\d+\.\d+/,
     )
     expect(pkg['version']).toBe('0.0.0')
@@ -344,10 +346,10 @@ describe('scaffoldBaseKit', () => {
       'wp audit absolute-path-policy --root .',
     )
     expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
-      'bun scripts/check-no-dev-vars.ts',
+      'wp audit no-dev-vars',
     )
     expect((pkg['scripts'] as Record<string, string>)['audit:secret-provider-quarantine']).toBe(
-      'bun scripts/audit-secret-provider-quarantine.ts',
+      'wp audit secret-provider-quarantine',
     )
     expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
   })
@@ -360,7 +362,7 @@ describe('scaffoldBaseKit', () => {
       packageManager: 'pnpm@11.5.0',
       engines: { node: '>=24' },
       scripts: { 'setup:agent': 'wp setup' },
-      devDependencies: { '@webpresso/agent-kit': '^0.18.0' },
+      devDependencies: { '@webpresso/agent-config': '^0.18.0' },
     }
     writeFileSync(pkgPath, JSON.stringify(initial, null, 2))
 

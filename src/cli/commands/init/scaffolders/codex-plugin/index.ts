@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
@@ -44,12 +44,6 @@ export interface EnsureCodexPluginInput {
 
 export type EnsureCodexPluginResult =
   | { kind: 'codex-plugin-installed'; packageRoot: string; pluginId: string; stagingRoot: string }
-  | {
-      kind: 'codex-plugin-already-configured'
-      packageRoot: string
-      pluginId: string
-      stagingRoot: string
-    }
   | { kind: 'codex-plugin-skipped-dry-run'; packageRoot: string }
   | { kind: 'codex-plugin-skipped-opt-out'; packageRoot: string }
   | { kind: 'codex-plugin-skipped-package-lifecycle'; packageRoot: string }
@@ -97,22 +91,6 @@ function defaultRunCommand(
 
 function defaultStagingRoot(): string {
   return join(homedir(), '.webpresso', 'cache', 'agent-kit', 'codex-marketplace')
-}
-
-function defaultCodexConfigPath(): string {
-  return join(process.env.CODEX_HOME ?? join(homedir(), '.codex'), 'config.toml')
-}
-
-function hasEnabledPluginBlock(configPath: string, pluginId: string): boolean {
-  if (!existsSync(configPath)) return false
-  const source = readFileSync(configPath, 'utf8')
-  const header = `[plugins."${pluginId}"]`
-  const start = source.indexOf(header)
-  if (start === -1) return false
-  const rest = source.slice(start + header.length)
-  const nextTable = rest.search(/\n\[/u)
-  const block = nextTable === -1 ? rest : rest.slice(0, nextTable)
-  return /^\s*enabled\s*=\s*true\s*$/mu.test(block)
 }
 
 /**
@@ -200,16 +178,6 @@ export function ensureCodexUserPlugin(input: EnsureCodexPluginInput): EnsureCode
         step,
         exitCode,
       }
-    }
-  }
-
-  const configPath = input.configPath ?? defaultCodexConfigPath()
-  if (hasEnabledPluginBlock(configPath, CODEX_PLUGIN_ID)) {
-    return {
-      kind: 'codex-plugin-already-configured',
-      packageRoot,
-      pluginId: CODEX_PLUGIN_ID,
-      stagingRoot,
     }
   }
 

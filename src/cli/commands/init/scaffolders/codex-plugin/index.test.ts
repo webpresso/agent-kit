@@ -227,7 +227,7 @@ describe('ensureCodexUserPlugin', () => {
     }
   })
 
-  it('treats an enabled config block as already configured and skips plugin add', () => {
+  it('refreshes plugin installation even when an enabled config block already exists', () => {
     const packageRoot = makePackageRoot()
     const stagingRoot = makeStagingRoot()
     const configPath = join(stagingRoot, 'config.toml')
@@ -248,7 +248,7 @@ describe('ensureCodexUserPlugin', () => {
     })
 
     expect(result).toEqual({
-      kind: 'codex-plugin-already-configured',
+      kind: 'codex-plugin-installed',
       packageRoot,
       pluginId: CODEX_PLUGIN_ID,
       stagingRoot,
@@ -256,6 +256,10 @@ describe('ensureCodexUserPlugin', () => {
     expect(calls).toEqual([
       { command: 'codex', args: ['plugin', 'marketplace', 'remove', 'webpresso', '--json'] },
       { command: 'codex', args: ['plugin', 'marketplace', 'add', stagingRoot, '--json'] },
+      {
+        command: 'codex',
+        args: ['plugin', 'add', 'agent-kit', '--marketplace', 'webpresso', '--json'],
+      },
     ])
   })
 

@@ -1095,7 +1095,6 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
       const codexPluginResult = ensureCodexUserPlugin({ options, packageRoot })
       switch (codexPluginResult.kind) {
         case 'codex-plugin-installed':
-        case 'codex-plugin-already-configured':
           console.log(
             `  codex plugin: ✓ marketplace + plugin ensured (${codexPluginResult.pluginId}) — restart Codex to load skills`,
           )
