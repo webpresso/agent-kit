@@ -5,7 +5,9 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import sessionExecuteTool from './_session-execute.js'
+import { measureToolResultBytes } from './_session-gain.js'
 import sessionSearchTool from './session-search.js'
+import { SessionMemoryStore } from '../../session-memory/store.js'
 
 let tmpDir: string
 let previousIndexDb: string | undefined
@@ -15,6 +17,7 @@ function payload(result: Awaited<ReturnType<typeof sessionExecuteTool.handler>>)
   return result.structuredContent as {
     passed: boolean
     exitCode: number
+    gain?: { rawBasisBytes: number; returnedToolResultBytes: number; gainBytes: number; approxTokensSaved: number; precision: string; rawBytesBasis: string }
     details: {
       label: string
       exitCode: number
@@ -72,6 +75,88 @@ describe('wp_session_execute', () => {
       limit: 1,
     })
     expect(JSON.stringify(search.structuredContent)).toContain('indexed needle from command')
+  })
+
+
+  it('records exact command-output gain using total stdout/stderr bytes', async () => {
+    const result = await sessionExecuteTool.handler?.({
+      command: `${JSON.stringify(process.execPath)} -e "process.stdout.write('x'.repeat(12000))"`,
+      label: 'gain-large',
+      execute: true,
+      timeoutMs: 5_000,
+      cwd: tmpDir,
+    })
+    const data = payload(result)
+
+    expect(data.gain).toMatchObject({
+      rawBasisBytes: 12000,
+      precision: 'exact_utf8_bytes_approx_tokens',
+      rawBytesBasis: 'command_output_total',
+    })
+    expect(data.gain?.gainBytes).toBeGreaterThan(0)
+    expect(data.gain?.approxTokensSaved).toBe(Math.floor((data.gain?.gainBytes ?? 0) / 4))
+  })
+
+  it('includes stderr bytes, query hits, and telemetry overhead in persisted gain totals', async () => {
+    const result = await sessionExecuteTool.handler?.({
+      command: `${JSON.stringify(process.execPath)} -e "process.stdout.write('out-needle'); process.stderr.write('err-needle')"`,
+      label: 'gain-with-hits',
+      query: 'needle',
+      execute: true,
+      timeoutMs: 5_000,
+      cwd: tmpDir,
+    })
+    const data = payload(result)
+
+    expect(data.details).toMatchObject({
+      outputBytes: 20,
+      hits: [
+        {
+          content: expect.stringMatching(/^(out-needleerr-needle|err-needleout-needle)$/u),
+          source: 'gain-with-hits',
+          rank: 1,
+        },
+      ],
+    })
+    expect(data.gain).toStrictEqual({
+      rawBasisBytes: 20,
+      returnedToolResultBytes: measureToolResultBytes(result),
+      gainBytes: 0,
+      approxTokensSaved: 0,
+      precision: 'exact_utf8_bytes_approx_tokens',
+      rawBytesBasis: 'command_output_total',
+    })
+
+    const store = new SessionMemoryStore(process.env.WP_SESSION_MEMORY_INDEX_DB!)
+    expect(store.gainStats()).toMatchObject({
+      eventCount: 1,
+      rawBasisBytes: 20,
+      returnedToolResultBytes: measureToolResultBytes(result),
+      gainBytes: 0,
+      approxTokensSaved: 0,
+      byTool: [
+        {
+          toolName: 'wp_session_execute',
+          eventCount: 1,
+          rawBasisBytes: 20,
+          returnedToolResultBytes: measureToolResultBytes(result),
+        },
+      ],
+    })
+    store.close()
+  })
+
+  it('records a zero-gain event for tiny command output', async () => {
+    const result = await sessionExecuteTool.handler?.({
+      command: 'printf x',
+      label: 'gain-tiny',
+      execute: true,
+      timeoutMs: 5_000,
+      cwd: tmpDir,
+    })
+    const data = payload(result)
+
+    expect(data.gain).toMatchObject({ rawBasisBytes: 1, gainBytes: 0 })
   })
 
   it('returns an error envelope when execution fails while preserving indexed output', async () => {

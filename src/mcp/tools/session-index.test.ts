@@ -18,6 +18,7 @@ function payload(result: Awaited<ReturnType<typeof sessionIndexTool.handler>>) {
   return result.structuredContent as {
     passed: boolean
     summary: string
+    gain?: { rawBasisBytes: number; rawBytesBasis: string; gainBytes: number; approxTokensSaved: number }
     counts: { inputChunks: number; indexedChunks: number; warningCount: number }
     sources: string[]
     chunkIds: string[]
@@ -60,6 +61,18 @@ describe('wp_session_index tool', () => {
     const store = new SessionMemoryStore(dbPath)
     expect(store.search({ query: 'needle-value', limit: 1 })[0]?.source).toBe('mcp:direct-test')
     store.close()
+  })
+
+
+  it('uses accepted trimmed chunk UTF-8 bytes as index gain basis', async () => {
+    const result = await sessionIndexTool.handler({
+      dbPath: tmpDbPath(),
+      source: 'mcp:utf8',
+      chunks: [{ text: '  abc😀  ' }, { text: '   ' }],
+    })
+    const data = payload(result)
+
+    expect(data.gain).toMatchObject({ rawBasisBytes: 7, rawBytesBasis: 'index_accepted_text' })
   })
 
   it('returns a deterministic bounded error for empty chunks', async () => {

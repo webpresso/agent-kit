@@ -10,6 +10,7 @@ import { FetchIndexError, fetchAndIndex } from '#session-memory/fetch-index.js'
 import { SessionMemoryStore } from '#session-memory/store.js'
 import type { SessionMemoryChunk } from '#session-memory/types.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
+import { createGainSummaryResult } from './_session-gain.js'
 
 const MAX_RETURNED_IDS = 100
 const MAX_URL_LENGTH = 2048
@@ -148,13 +149,18 @@ function warningFor(error: FetchIndexError): string {
   }
 }
 
+function chunkTextBytes(chunks: readonly SessionMemoryChunk[]): number {
+  return chunks.reduce((sum, chunk) => sum + Buffer.byteLength(chunk.text, 'utf8'), 0)
+}
+
 export async function handleSessionFetchAndIndex(
   raw: unknown,
   extra?: ToolHandlerExtra,
   deps: SessionFetchAndIndexDeps = {},
 ): Promise<ToolHandlerResult> {
   const input = inputSchema.parse(raw ?? {})
-  const store = new SessionMemoryStore(input.dbPath ?? defaultDbPath(input.cwd))
+  const dbPath = input.dbPath ?? defaultDbPath(input.cwd)
+  const store = new SessionMemoryStore(dbPath)
   try {
     const chunks = await fetchAndIndex(
       {
@@ -172,7 +178,13 @@ export async function handleSessionFetchAndIndex(
       const result = payloadFor(input, chunks, ['fetched content produced no indexable chunks'])
       return createSummaryResult(result, { isError: true })
     }
-    return createSummaryResult(payloadFor(input, chunks, []))
+    return createGainSummaryResult(payloadFor(input, chunks, []), {}, {
+      toolName: tool.name,
+      dbPath,
+      rawBasisBytes: chunkTextBytes(chunks),
+      rawBytesBasis: 'fetch_indexed_text',
+      recordGainEvent: (gain) => store.recordGainEvent({ ...gain, toolName: tool.name }),
+    })
   } catch (error) {
     const fetchError =
       error instanceof FetchIndexError

@@ -56,6 +56,7 @@ function payload(result: Awaited<ReturnType<typeof sessionFetchAndIndexTool.hand
   return result.structuredContent as {
     passed: boolean
     summary: string
+    gain?: { rawBasisBytes: number; rawBytesBasis: string; gainBytes: number }
     counts: { indexedChunks: number; warningCount: number }
     source: string
     url?: string
@@ -205,6 +206,18 @@ describe('wp_session_fetch_and_index tool', () => {
     )
     expect(payload(textResult).passed).toBe(true)
     expect(JSON.stringify(textResult)).not.toContain('plain text-memory')
+  })
+
+
+  it('uses indexed chunk text UTF-8 bytes as a conservative fetch gain basis', async () => {
+    const result = await handleSessionFetchAndIndex(
+      { dbPath: tmpDbPath(), url: 'https://example.com/fetch-basis' },
+      undefined,
+      { fetchImpl: vi.fn(async () => response('<p>abc😀</p>', 'text/html')) },
+    )
+    const data = payload(result)
+
+    expect(data.gain).toMatchObject({ rawBasisBytes: 7, rawBytesBasis: 'fetch_indexed_text' })
   })
 
   it('returns a deterministic bounded error for invalid URLs', async () => {

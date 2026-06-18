@@ -29,6 +29,8 @@ const outputSchema = createSummaryOutputSchema({
     deletedSnapshotCount: z.number(),
     matchedChunkCount: z.number(),
     deletedChunkCount: z.number(),
+    matchedGainEventCount: z.number(),
+    deletedGainEventCount: z.number(),
     warningCount: z.number(),
   }),
   details: z.object({
@@ -75,6 +77,8 @@ const tool: ToolDescriptor = {
           deletedSnapshotCount: 0,
           matchedChunkCount: 0,
           deletedChunkCount: 0,
+          matchedGainEventCount: 0,
+          deletedGainEventCount: 0,
           warningCount: warnings.length,
         },
         details: { dryRun: true, warnings },
@@ -116,6 +120,8 @@ const tool: ToolDescriptor = {
             dryRun: input.confirm !== true,
             matchedCount: 0,
             deletedCount: 0,
+            matchedGainEventCount: 0,
+            deletedGainEventCount: 0,
             warnings: [] as string[],
           }
       warnings.push(...sessionResult.warnings, ...indexResult.warnings)
@@ -123,11 +129,13 @@ const tool: ToolDescriptor = {
       const deletedTotal =
         sessionResult.deletedEventCount +
         sessionResult.deletedSnapshotCount +
-        indexResult.deletedCount
+        indexResult.deletedCount +
+        indexResult.deletedGainEventCount
       const matchedTotal =
         sessionResult.matchedEventCount +
         sessionResult.matchedSnapshotCount +
-        indexResult.matchedCount
+        indexResult.matchedCount +
+        indexResult.matchedGainEventCount
       const passed = warnings.length === 0 && (input.confirm ? deletedTotal > 0 : matchedTotal >= 0)
       const payload = {
         passed,
@@ -143,6 +151,8 @@ const tool: ToolDescriptor = {
           deletedSnapshotCount: sessionResult.deletedSnapshotCount,
           matchedChunkCount: indexResult.matchedCount,
           deletedChunkCount: indexResult.deletedCount,
+          matchedGainEventCount: indexResult.matchedGainEventCount,
+          deletedGainEventCount: indexResult.deletedGainEventCount,
           warningCount: warnings.length,
         },
         details: { dryRun, warnings },

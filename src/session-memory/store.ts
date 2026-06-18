@@ -12,6 +12,7 @@ import type {
   SearchOptions,
   SessionMemoryUnifiedResult,
 } from './types.js'
+import type { SessionGainEventInput, SessionGainStats, SessionGainToolStats } from './gain-types.js'
 
 type ChunkRow = {
   id: string
@@ -39,6 +40,8 @@ export interface SessionMemoryIndexPurgeResult {
   dryRun: boolean
   matchedCount: number
   deletedCount: number
+  matchedGainEventCount: number
+  deletedGainEventCount: number
   source?: string
   warnings: string[]
 }
@@ -68,6 +71,21 @@ CREATE VIRTUAL TABLE IF NOT EXISTS session_memory_chunks_fts
   USING fts5(id UNINDEXED, source UNINDEXED, text, tokenize='porter');
 CREATE VIRTUAL TABLE IF NOT EXISTS session_memory_chunks_tri
   USING fts5(id UNINDEXED, source UNINDEXED, text, tokenize='trigram');
+CREATE TABLE IF NOT EXISTS session_memory_gain_events (
+  id TEXT PRIMARY KEY,
+  tool_name TEXT NOT NULL,
+  raw_basis_bytes INTEGER NOT NULL,
+  returned_tool_result_bytes INTEGER NOT NULL,
+  gain_bytes INTEGER NOT NULL,
+  approx_tokens_saved INTEGER NOT NULL,
+  raw_bytes_basis TEXT NOT NULL,
+  precision TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_session_memory_gain_events_tool
+  ON session_memory_gain_events(tool_name);
+CREATE INDEX IF NOT EXISTS idx_session_memory_gain_events_created
+  ON session_memory_gain_events(created_at);
 `
 
 function byteLength(value: string): number {
@@ -261,6 +279,115 @@ export class SessionMemoryStore {
     return { chunkCount, sourceCount: sources.length, sources }
   }
 
+  recordGainEvent(event: SessionGainEventInput): string {
+    const createdAt = event.createdAt ?? new Date().toISOString()
+    const baseId = createHash('sha256')
+      .update(event.toolName)
+      .update('\0')
+      .update(createdAt)
+      .update('\0')
+      .update(String(event.rawBasisBytes))
+      .update('\0')
+      .update(String(event.returnedToolResultBytes))
+      .update('\0')
+      .update(String(event.gainBytes))
+      .update('\0')
+      .update(String(event.approxTokensSaved))
+      .update('\0')
+      .update(event.rawBytesBasis)
+      .update('\0')
+      .update(event.precision)
+      .digest('hex')
+      .slice(0, 32)
+    const insert = this.db.prepare<
+      [string, string, number, number, number, number, string, string, string]
+    >(
+      `INSERT OR IGNORE INTO session_memory_gain_events
+         (id, tool_name, raw_basis_bytes, returned_tool_result_bytes, gain_bytes,
+          approx_tokens_saved, raw_bytes_basis, precision, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    for (let suffix = 0; suffix < 1_000; suffix += 1) {
+      const id = suffix === 0 ? baseId : `${baseId}-${suffix}`
+      const result = insert.run(
+        id,
+        event.toolName,
+        event.rawBasisBytes,
+        event.returnedToolResultBytes,
+        event.gainBytes,
+        event.approxTokensSaved,
+        event.rawBytesBasis,
+        event.precision,
+        createdAt,
+      )
+      if (result.changes > 0) return id
+    }
+    throw new Error('unable to allocate session gain event id')
+  }
+
+  gainStats(): SessionGainStats {
+    const totals = this.db
+      .prepare<
+        [],
+        {
+          eventCount: number
+          rawBasisBytes: number | null
+          returnedToolResultBytes: number | null
+          gainBytes: number | null
+          approxTokensSaved: number | null
+        }
+      >(
+        `SELECT
+           COUNT(*) AS eventCount,
+           SUM(raw_basis_bytes) AS rawBasisBytes,
+           SUM(returned_tool_result_bytes) AS returnedToolResultBytes,
+           SUM(gain_bytes) AS gainBytes,
+           SUM(approx_tokens_saved) AS approxTokensSaved
+         FROM session_memory_gain_events`,
+      )
+      .get()
+    const byTool = this.db
+      .prepare<
+        [],
+        {
+          toolName: string
+          eventCount: number
+          rawBasisBytes: number | null
+          returnedToolResultBytes: number | null
+          gainBytes: number | null
+          approxTokensSaved: number | null
+        }
+      >(
+        `SELECT
+           tool_name AS toolName,
+           COUNT(*) AS eventCount,
+           SUM(raw_basis_bytes) AS rawBasisBytes,
+           SUM(returned_tool_result_bytes) AS returnedToolResultBytes,
+           SUM(gain_bytes) AS gainBytes,
+           SUM(approx_tokens_saved) AS approxTokensSaved
+         FROM session_memory_gain_events
+         GROUP BY tool_name
+         ORDER BY gainBytes DESC, tool_name ASC`,
+      )
+      .all()
+      .map((row): SessionGainToolStats => ({
+        toolName: row.toolName,
+        eventCount: row.eventCount,
+        rawBasisBytes: row.rawBasisBytes ?? 0,
+        returnedToolResultBytes: row.returnedToolResultBytes ?? 0,
+        gainBytes: row.gainBytes ?? 0,
+        approxTokensSaved: row.approxTokensSaved ?? 0,
+      }))
+    return {
+      eventCount: totals?.eventCount ?? 0,
+      rawBasisBytes: totals?.rawBasisBytes ?? 0,
+      returnedToolResultBytes: totals?.returnedToolResultBytes ?? 0,
+      gainBytes: totals?.gainBytes ?? 0,
+      approxTokensSaved: totals?.approxTokensSaved ?? 0,
+      byTool,
+    }
+  }
+
   purge(options: SessionMemoryIndexPurgeOptions = {}): SessionMemoryIndexPurgeResult {
     const ids = options.source
       ? this.db
@@ -272,17 +399,27 @@ export class SessionMemoryStore {
           .prepare<[], { id: string }>('SELECT id FROM session_memory_chunks ORDER BY id ASC')
           .all()
     const matchedCount = ids.length
+    const matchedGainEventCount = options.source ? 0 : this.gainStats().eventCount
     const dryRun = options.confirm !== true
     const warnings: string[] = []
     if (options.confirm === true && !options.source && options.allowGlobal !== true) {
       warnings.push('global purge requires allowGlobal=true')
-      return { dryRun: true, matchedCount, deletedCount: 0, warnings }
+      return {
+        dryRun: true,
+        matchedCount,
+        deletedCount: 0,
+        matchedGainEventCount,
+        deletedGainEventCount: 0,
+        warnings,
+      }
     }
-    if (dryRun || matchedCount === 0) {
+    if (dryRun || (matchedCount === 0 && matchedGainEventCount === 0)) {
       return {
         dryRun,
         matchedCount,
         deletedCount: 0,
+        matchedGainEventCount,
+        deletedGainEventCount: 0,
         ...(options.source ? { source: options.source } : {}),
         warnings,
       }
@@ -294,12 +431,17 @@ export class SessionMemoryStore {
         this.db.prepare<[string]>('DELETE FROM session_memory_chunks_tri WHERE id = ?').run(row.id)
         this.db.prepare<[string]>('DELETE FROM session_memory_chunks WHERE id = ?').run(row.id)
       }
+      if (!options.source) {
+        this.db.prepare('DELETE FROM session_memory_gain_events').run()
+      }
     })
     tx(ids)
     return {
       dryRun: false,
       matchedCount,
       deletedCount: matchedCount,
+      matchedGainEventCount,
+      deletedGainEventCount: options.source ? 0 : matchedGainEventCount,
       ...(options.source ? { source: options.source } : {}),
       warnings,
     }

@@ -3,6 +3,8 @@ import { join } from 'node:path'
 
 import { z } from 'zod'
 
+import { RAW_BYTES_BASIS_VALUES, GAIN_PRECISION } from '#session-memory/gain-types.js'
+
 const DEFAULT_RAW_OUTPUT_LIMIT = 4_000
 const DEFAULT_SUMMARY_TEXT_LIMIT = 240
 
@@ -20,6 +22,15 @@ export const transformMetadataSchema = z.object({
   rawBytes: z.number(),
 })
 
+export const gainTelemetrySchema = z.object({
+  rawBasisBytes: z.number(),
+  returnedToolResultBytes: z.number(),
+  gainBytes: z.number(),
+  approxTokensSaved: z.number(),
+  precision: z.literal(GAIN_PRECISION),
+  rawBytesBasis: z.enum(RAW_BYTES_BASIS_VALUES),
+})
+
 export const summaryFirstResultSchema = z.object({
   passed: z.boolean(),
   summary: z.string(),
@@ -35,6 +46,8 @@ export const summaryFirstResultSchema = z.object({
   tier: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
   bytes: z.number().optional(),
   tokensSaved: z.number().optional(),
+  gain: gainTelemetrySchema.optional(),
+  warnings: z.array(z.string()).optional(),
   transform: transformMetadataSchema.optional(),
 })
 

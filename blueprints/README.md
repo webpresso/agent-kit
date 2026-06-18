@@ -16,50 +16,10 @@ Each subdirectory represents a lifecycle state:
 | `draft/` | 4 | early-stage sketches. Expect churn; move to `planned/` once scoped. |
 | `planned/` | 18 | committed-to specs, ready to pick up. |
 | `in-progress/` | 0 | actively being executed. At most 3 active blueprints per lane. |
-| `completed/` | 65 | execution finished and verified. Kept for reference. |
+| `completed/` | 66 | execution finished and verified. Kept for reference. |
 | `parked/` | 11 | intentionally paused. Include a reason in the spec's frontmatter. |
 | `archived/` | 4 | superseded or abandoned. Not deleted — the record matters. |
 <!-- END: blueprint-index -->
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -81,7 +41,6 @@ Each subdirectory represents a lifecycle state:
 - Any state → `archived`: when the work is dropped or replaced.
 
 Move files with `git mv` so history follows the spec through its lifecycle.
-
 
 ## Active work (2026-06-13)
 
