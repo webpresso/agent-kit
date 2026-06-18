@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -67,6 +68,36 @@ describe('shared TypeScript session-memory store adapter', () => {
 function store(): SessionMemoryStore {
   const dir = mkdtempSync(join(tmpdir(), 'wp-session-store-test-'))
   return new SessionMemoryStore(join(dir, 'memory.sqlite'))
+}
+
+function expectedGainId(event: {
+  readonly toolName: string
+  readonly createdAt: string
+  readonly rawBasisBytes: number
+  readonly returnedToolResultBytes: number
+  readonly gainBytes: number
+  readonly approxTokensSaved: number
+  readonly rawBytesBasis: string
+  readonly precision: string
+}): string {
+  return createHash('sha256')
+    .update(event.toolName)
+    .update('\0')
+    .update(event.createdAt)
+    .update('\0')
+    .update(String(event.rawBasisBytes))
+    .update('\0')
+    .update(String(event.returnedToolResultBytes))
+    .update('\0')
+    .update(String(event.gainBytes))
+    .update('\0')
+    .update(String(event.approxTokensSaved))
+    .update('\0')
+    .update(event.rawBytesBasis)
+    .update('\0')
+    .update(event.precision)
+    .digest('hex')
+    .slice(0, 32)
 }
 
 // G017: unified recall semantics for indexed chunks.
@@ -192,8 +223,25 @@ describe('SessionMemoryStore gain aggregation', () => {
     const firstId = s.recordGainEvent(event)
     const secondId = s.recordGainEvent(event)
 
+    expect(firstId).toBe(expectedGainId(event))
     expect(secondId).toBe(`${firstId}-1`)
-    expect(s.gainStats()).toMatchObject({ eventCount: 2, rawBasisBytes: 20 })
+    expect(s.gainStats()).toStrictEqual({
+      eventCount: 2,
+      rawBasisBytes: 20,
+      returnedToolResultBytes: 40,
+      gainBytes: 0,
+      approxTokensSaved: 0,
+      byTool: [
+        {
+          toolName: 'wp_session_execute',
+          eventCount: 2,
+          rawBasisBytes: 20,
+          returnedToolResultBytes: 40,
+          gainBytes: 0,
+          approxTokensSaved: 0,
+        },
+      ],
+    })
     s.close()
   })
 
@@ -220,15 +268,29 @@ describe('SessionMemoryStore gain aggregation', () => {
       createdAt: '2026-06-18T00:00:01.000Z',
     })
 
-    expect(s.gainStats()).toMatchObject({
+    expect(s.gainStats()).toStrictEqual({
       eventCount: 2,
       rawBasisBytes: 8,
       returnedToolResultBytes: 22,
       gainBytes: 5,
       approxTokensSaved: 1,
       byTool: [
-        { toolName: 'wp_session_index', eventCount: 1, rawBasisBytes: 7, gainBytes: 5 },
-        { toolName: 'wp_session_execute', eventCount: 1, rawBasisBytes: 1, gainBytes: 0 },
+        {
+          toolName: 'wp_session_index',
+          eventCount: 1,
+          rawBasisBytes: 7,
+          returnedToolResultBytes: 2,
+          gainBytes: 5,
+          approxTokensSaved: 1,
+        },
+        {
+          toolName: 'wp_session_execute',
+          eventCount: 1,
+          rawBasisBytes: 1,
+          returnedToolResultBytes: 20,
+          gainBytes: 0,
+          approxTokensSaved: 0,
+        },
       ],
     })
     s.close()
@@ -261,6 +323,15 @@ describe('SessionMemoryStore gain aggregation', () => {
       deletedCount: 1,
       matchedGainEventCount: 0,
       deletedGainEventCount: 0,
+    })
+    expect(s.gainStats().eventCount).toBe(1)
+    expect(s.purge({ confirm: true })).toMatchObject({
+      dryRun: true,
+      matchedCount: 0,
+      deletedCount: 0,
+      matchedGainEventCount: 1,
+      deletedGainEventCount: 0,
+      warnings: ['global purge requires allowGlobal=true'],
     })
     expect(s.gainStats().eventCount).toBe(1)
     expect(s.purge({ confirm: true, allowGlobal: true })).toMatchObject({

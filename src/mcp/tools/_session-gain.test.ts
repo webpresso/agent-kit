@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -28,13 +28,55 @@ describe('session gain telemetry', () => {
     const result = createGainSummaryResult(
       { passed: true, summary: 'emoji ok 😀' },
       {},
-      { toolName: 'wp_session_index', dbPath: path, rawBasisBytes: 1_000, rawBytesBasis: 'index_accepted_text' },
+      {
+        toolName: 'wp_session_index',
+        dbPath: path,
+        rawBasisBytes: 1_000,
+        rawBytesBasis: 'index_accepted_text',
+      },
     )
-    const gain = result.structuredContent?.gain as { returnedToolResultBytes: number; gainBytes: number; approxTokensSaved: number }
+    const gain = result.structuredContent?.gain as {
+      rawBasisBytes: number
+      returnedToolResultBytes: number
+      gainBytes: number
+      approxTokensSaved: number
+      precision: string
+      rawBytesBasis: string
+    }
 
-    expect(gain.returnedToolResultBytes).toBe(measureToolResultBytes(result))
-    expect(gain.gainBytes).toBe(1_000 - gain.returnedToolResultBytes)
-    expect(gain.approxTokensSaved).toBe(Math.floor(gain.gainBytes / 4))
+    expect(gain).toStrictEqual({
+      rawBasisBytes: 1_000,
+      returnedToolResultBytes: measureToolResultBytes(result),
+      gainBytes: 1_000 - measureToolResultBytes(result),
+      approxTokensSaved: Math.floor((1_000 - measureToolResultBytes(result)) / 4),
+      precision: 'exact_utf8_bytes_approx_tokens',
+      rawBytesBasis: 'index_accepted_text',
+    })
+  })
+
+  it('converges across returned-byte digit boundaries without extra measurement', () => {
+    const measuredSizes = [9, 10, 10]
+    const result = createGainSummaryResult(
+      { passed: true, summary: 'digit boundary' },
+      {},
+      {
+        toolName: 'wp_session_index',
+        dbPath: dbPath(),
+        rawBasisBytes: 100,
+        rawBytesBasis: 'index_accepted_text',
+        measureResultBytes: () => measuredSizes.shift() ?? 10,
+      },
+    )
+
+    expect(result.structuredContent?.gain).toStrictEqual({
+      rawBasisBytes: 100,
+      returnedToolResultBytes: 10,
+      gainBytes: 90,
+      approxTokensSaved: 22,
+      precision: 'exact_utf8_bytes_approx_tokens',
+      rawBytesBasis: 'index_accepted_text',
+    })
+    expect(measuredSizes).toEqual([])
   })
 
   it('stores zero-gain events when telemetry overhead exceeds the raw basis', () => {
@@ -42,21 +84,86 @@ describe('session gain telemetry', () => {
     const result = createGainSummaryResult(
       { passed: true, summary: 'tiny' },
       {},
-      { toolName: 'wp_session_execute', dbPath: path, rawBasisBytes: 1, rawBytesBasis: 'command_output_total' },
+      {
+        toolName: 'wp_session_execute',
+        dbPath: path,
+        rawBasisBytes: 1,
+        rawBytesBasis: 'command_output_total',
+      },
     )
-    const gain = result.structuredContent?.gain as { gainBytes: number }
-    expect(gain.gainBytes).toBe(0)
+    const gain = result.structuredContent?.gain
+    expect(gain).toMatchObject({
+      rawBasisBytes: 1,
+      gainBytes: 0,
+      approxTokensSaved: 0,
+      rawBytesBasis: 'command_output_total',
+    })
 
     const store = new SessionMemoryStore(path)
-    expect(store.gainStats()).toMatchObject({ eventCount: 1, gainBytes: 0 })
+    expect(store.gainStats()).toMatchObject({
+      eventCount: 1,
+      rawBasisBytes: 1,
+      gainBytes: 0,
+      approxTokensSaved: 0,
+      byTool: [{ toolName: 'wp_session_execute', eventCount: 1, rawBasisBytes: 1 }],
+    })
     store.close()
+  })
+
+  it('normalizes invalid and fractional raw byte inputs before reporting gain', () => {
+    const fractional = createGainSummaryResult(
+      { passed: true, summary: 'fractional' },
+      {},
+      {
+        toolName: 'wp_session_index',
+        dbPath: dbPath(),
+        rawBasisBytes: 42.9,
+        rawBytesBasis: 'index_accepted_text',
+      },
+    )
+    const invalid = createGainSummaryResult(
+      { passed: true, summary: 'invalid' },
+      {},
+      {
+        toolName: 'wp_session_index',
+        dbPath: dbPath(),
+        rawBasisBytes: Number.POSITIVE_INFINITY,
+        rawBytesBasis: 'index_accepted_text',
+      },
+    )
+
+    expect(fractional.structuredContent?.gain).toMatchObject({ rawBasisBytes: 42 })
+    expect(invalid.structuredContent?.gain).toMatchObject({
+      rawBasisBytes: 0,
+      gainBytes: 0,
+      approxTokensSaved: 0,
+    })
+  })
+
+  it('uses an injected gain recorder instead of opening a second store', () => {
+    const missingParentDbPath = join(dbPath(), 'missing-parent', 'index.sqlite')
+    const recorded: unknown[] = []
+    const result = createGainSummaryResult(
+      { passed: true, summary: 'callback' },
+      {},
+      {
+        toolName: 'wp_session_index',
+        dbPath: missingParentDbPath,
+        rawBasisBytes: 1_000,
+        rawBytesBasis: 'index_accepted_text',
+        recordGainEvent: (gain) => recorded.push(gain),
+      },
+    )
+
+    expect(recorded).toStrictEqual([result.structuredContent?.gain])
+    expect(existsSync(missingParentDbPath)).toBe(false)
   })
 
   it('omits gain and returns a warning if fixed-point sizing does not converge', () => {
     const path = dbPath()
     let measured = 0
     const result = createGainSummaryResult(
-      { passed: true, summary: 'unstable' },
+      { passed: true, summary: 'unstable', warnings: ['preexisting warning'] },
       {},
       {
         toolName: 'wp_session_index',
@@ -73,6 +180,7 @@ describe('session gain telemetry', () => {
     expect(result.structuredContent?.gain).toBeUndefined()
     expect(measured).toBe(5)
     expect(result.structuredContent?.warnings).toEqual([
+      'preexisting warning',
       'gain telemetry sizing did not converge after 5 iterations; omitted gain for this call',
     ])
     const store = new SessionMemoryStore(path)

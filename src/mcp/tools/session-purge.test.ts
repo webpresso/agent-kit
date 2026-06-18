@@ -156,4 +156,45 @@ describe('wp_session_purge tool', () => {
     expect(remainingChunks.search({ query: 'unscoped', limit: 5 })).toHaveLength(1)
     remainingChunks.close()
   })
+
+  it('includes gain event counts in confirmed global indexed-chunk purge', async () => {
+    const { sessionDbPath, indexDbPath } = fixture()
+    const indexStore = new SessionMemoryStore(indexDbPath)
+    indexStore.indexChunk({ id: 'chunk-a', source: 'web:a', text: 'purge chunk a' })
+    indexStore.recordGainEvent({
+      toolName: 'wp_session_index',
+      rawBasisBytes: 100,
+      returnedToolResultBytes: 40,
+      gainBytes: 60,
+      approxTokensSaved: 15,
+      precision: 'exact_utf8_bytes_approx_tokens',
+      rawBytesBasis: 'index_accepted_text',
+    })
+    indexStore.close()
+
+    const result = payload(
+      await sessionPurgeTool.handler({
+        sessionDbPath,
+        indexDbPath,
+        target: 'indexed_chunks',
+        confirm: true,
+        allowGlobal: true,
+      }),
+    )
+
+    expect(result).toMatchObject({
+      passed: true,
+      dryRun: false,
+      counts: {
+        matchedChunkCount: 1,
+        deletedChunkCount: 1,
+        matchedGainEventCount: 1,
+        deletedGainEventCount: 1,
+      },
+    })
+    const remainingChunks = new SessionMemoryStore(indexDbPath)
+    expect(remainingChunks.stats()).toMatchObject({ chunkCount: 0 })
+    expect(remainingChunks.gainStats()).toMatchObject({ eventCount: 0 })
+    remainingChunks.close()
+  })
 })

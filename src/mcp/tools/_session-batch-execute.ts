@@ -11,7 +11,7 @@ import type { SearchHit } from '#session-memory/types'
 const MAX_CONCURRENCY = 8
 const DEFAULT_TIMEOUT_MS = 30_000
 
-function totalOutputBytes(results: ReadonlyArray<{ readonly outputBytes?: number }>): number {
+export function totalOutputBytes(results: ReadonlyArray<{ readonly outputBytes?: number }>): number {
   return results.reduce(
     (sum, result) =>
       sum + (Number.isFinite(result.outputBytes) ? Math.trunc(result.outputBytes ?? 0) : 0),

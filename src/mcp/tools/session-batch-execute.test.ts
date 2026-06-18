@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import sessionBatchExecuteTool from './_session-batch-execute.js'
+import sessionBatchExecuteTool, { totalOutputBytes } from './_session-batch-execute.js'
 import sessionSearchTool from './session-search.js'
 
 let tmpDir: string
@@ -39,6 +39,18 @@ afterEach(() => {
 })
 
 describe('wp_session_batch_execute', () => {
+  it('sums only finite integer child output bytes for the batch gain basis', () => {
+    expect(
+      totalOutputBytes([
+        { outputBytes: 3.9 },
+        { outputBytes: Number.NaN },
+        {},
+        { outputBytes: Number.POSITIVE_INFINITY },
+        { outputBytes: 4 },
+      ]),
+    ).toBe(7)
+  })
+
   it('runs multiple commands and aggregates query hits from the shared TypeScript store', async () => {
     const result = await sessionBatchExecuteTool.handler?.({
       commands: [
@@ -104,7 +116,7 @@ describe('wp_session_batch_execute', () => {
       commands: [
         {
           label: 'cmd',
-          command: `${JSON.stringify(process.execPath)} -e "process.exit(42)"`,
+          command: `${JSON.stringify(process.execPath)} -e "process.stdout.write('oops'); process.exit(42)"`,
         },
       ],
       concurrency: 1,
@@ -114,6 +126,7 @@ describe('wp_session_batch_execute', () => {
     expect(result.isError).toBe(true)
     expect(payload(result)).toMatchObject({
       passed: false,
+      gain: { rawBasisBytes: 4, rawBytesBasis: 'batch_command_output_total' },
       details: { results: [{ label: 'cmd', exitCode: 42 }] },
     })
   })
