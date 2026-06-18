@@ -42,4 +42,4 @@ and third-party integrations that WP previously installed or claimed.
 
 - `./bin/wp test --file src/cli/tooling-ownership.test.ts --file src/cli/commands/init/config.test.ts --file src/cli/commands/init/init.presets.integration.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/index.test.ts --file src/cli/commands/package-manager.test.ts --file src/cli/commands/blueprint/router.execute.test.ts`
 - `./bin/wp typecheck`
-- `./bin/wp lint src/cli/tooling-ownership.ts src/cli/commands/package-manager.ts src/cli/commands/init/index.ts src/cli/commands/init/scaffolders/agent-hooks/index.ts src/cli/commands/blueprint/router.ts`
+- `./bin/wp lint --file src/cli/tooling-ownership.ts --file src/cli/commands/package-manager.ts --file src/cli/commands/init/index.ts --file src/cli/commands/init/scaffolders/agent-hooks/index.ts --file src/cli/commands/blueprint/router.ts`
