@@ -31,12 +31,24 @@ const DRY_RUN_PATTERN = /dryRun\s*:\s*true|dry-run\s*.*true/g
 const ERROR_TITLE_PATTERN = /(error|invalid|reject|fail|unauthorized)/i
 const MIXED_TITLE_PATTERN = /(mixed|partial|graceful|degradation)/i
 
-function hasTitlePattern(content: string, pattern: RegExp): boolean {
-  const titleMatches = content.match(/\b(?:it|test)\s*\(\s*['"`][^'"`]+['"`]/g)
-  if (!titleMatches) {
-    return false
+function collectTestTitles(content: string): string[] {
+  const titles: string[] = []
+
+  for (const match of content.matchAll(/\b(?:it|test)\s*\(\s*(['"`])([^'"`]+)\1/gu)) {
+    titles.push(match[2] ?? '')
   }
-  return titleMatches.some((title) => pattern.test(title))
+
+  for (const match of content.matchAll(
+    /\b(?:it|test)\.each(?:<[^>]+>)?\s*\([\s\S]*?\)\s*\(\s*(['"`])([^'"`]+)\1/gu,
+  )) {
+    titles.push(match[2] ?? '')
+  }
+
+  return titles
+}
+
+function hasTitlePattern(content: string, pattern: RegExp): boolean {
+  return collectTestTitles(content).some((title) => pattern.test(title))
 }
 
 function auditFileContents(filePath: string, contents: string): Violation[] {

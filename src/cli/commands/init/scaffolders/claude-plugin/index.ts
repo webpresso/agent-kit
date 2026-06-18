@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
+import { isPackageLifecycleEnvironment } from '#cli/auto-update/skip.js'
 import { commandExists as defaultCommandExists } from '#runtime/command-exists.js'
 
 export const CLAUDE_PLUGIN_ID = 'agent-kit@webpresso'
@@ -10,6 +11,7 @@ export const CLAUDE_PLUGIN_ID = 'agent-kit@webpresso'
 export interface EnsureClaudePluginInput {
   options: MergeOptions
   packageRoot: string
+  env?: NodeJS.ProcessEnv
   commandExists?: (command: string) => boolean
   runCommand?: (command: string, args: readonly string[]) => number
 }
@@ -18,13 +20,14 @@ export type EnsureClaudePluginResult =
   | { kind: 'claude-plugin-installed'; packageRoot: string; pluginId: string }
   | { kind: 'claude-plugin-skipped-dry-run'; packageRoot: string }
   | { kind: 'claude-plugin-skipped-opt-out'; packageRoot: string }
+  | { kind: 'claude-plugin-skipped-package-lifecycle'; packageRoot: string }
   | { kind: 'claude-plugin-skipped-no-cli'; packageRoot: string }
   | { kind: 'claude-plugin-unavailable'; packageRoot: string }
   | {
       kind: 'claude-plugin-failed'
       packageRoot: string
       pluginId: string
-      step: 'marketplace-add' | 'plugin-install'
+      step: 'marketplace-add' | 'plugin-install' | 'plugin-update'
       exitCode: number
     }
 
@@ -51,7 +54,12 @@ export function ensureClaudeCodeUserPlugin(
     return { kind: 'claude-plugin-skipped-dry-run', packageRoot }
   }
 
-  if (process.env.WP_SKIP_CLAUDE_PLUGIN === '1') {
+  const env = input.env ?? process.env
+  if (isPackageLifecycleEnvironment(env)) {
+    return { kind: 'claude-plugin-skipped-package-lifecycle', packageRoot }
+  }
+
+  if (env.WP_SKIP_CLAUDE_PLUGIN === '1') {
     return { kind: 'claude-plugin-skipped-opt-out', packageRoot }
   }
 
@@ -69,6 +77,10 @@ export function ensureClaudeCodeUserPlugin(
     {
       step: 'plugin-install' as const,
       args: ['plugin', 'install', '--scope', 'user', CLAUDE_PLUGIN_ID],
+    },
+    {
+      step: 'plugin-update' as const,
+      args: ['plugin', 'update', '--scope', 'user', CLAUDE_PLUGIN_ID],
     },
   ]
 

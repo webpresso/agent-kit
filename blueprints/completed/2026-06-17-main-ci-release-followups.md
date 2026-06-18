@@ -38,7 +38,7 @@ from the published manifest.
 
 ## Verification
 
-- `./bin/wp lint src/build/package-manifest.ts src/build/package-manifest.test.ts src/build/auth-preflight-packages.test.ts src/cli/commands/init/scaffold-base-kit.test.ts .github/workflows/release.yml package.contract.integration.test.ts src/cli/commands/init/init.integration.test.ts`
+- `./bin/wp lint --file src/build/package-manifest.ts --file src/build/package-manifest.test.ts --file src/build/auth-preflight-packages.test.ts --file src/cli/commands/init/scaffold-base-kit.test.ts --file .github/workflows/release.yml --file package.contract.integration.test.ts --file src/cli/commands/init/init.integration.test.ts`
 - `./bin/wp typecheck`
 - `pnpm install --frozen-lockfile`
 - `pnpm exec vitest run src/build/package-manifest.test.ts src/build/auth-preflight-packages.test.ts src/cli/commands/init/scaffold-base-kit.test.ts package.contract.integration.test.ts src/cli/commands/init/init.integration.test.ts`

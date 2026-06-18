@@ -205,10 +205,10 @@ with thin-root assertions, using the staged thin-root measurement from Task 1.1.
    - verify tarball-size assertions use the measured staged thin-root size/unpacked size plus ≤10% headroom
 2. Run the scoped tests, including the tarball-size assertions in
    `scripts/public-readiness.test.ts` and `src/audit/package-surface.test.ts`:
-   `wp test --file scripts/public-readiness.test.ts src/audit/package-surface.test.ts src/build/package-manifest.test.ts`
+   `wp test --file scripts/public-readiness.test.ts --file src/audit/package-surface.test.ts --file src/build/package-manifest.test.ts`
 3. Implement only the proof-lane changes needed to pass.
 4. Re-run:
-   - `vp run build:runtime-binaries && vp run stage:plugin-runtime && wp test --file scripts/public-readiness.test.ts src/audit/package-surface.test.ts src/build/package-manifest.test.ts`
+   - `vp run build:runtime-binaries && vp run stage:plugin-runtime && wp test --file scripts/public-readiness.test.ts --file src/audit/package-surface.test.ts --file src/build/package-manifest.test.ts`
    - `vp run build:runtime-binaries && vp run stage:plugin-runtime && vp run public:readiness`
    - `vp run build:runtime-binaries && vp run stage:plugin-runtime && wp audit package-surface`
 
@@ -255,7 +255,7 @@ publish blocker is actually gone.
 | Gate | Command | Success Criteria |
 | --- | --- | --- |
 | Staged pack surface | `vp run build:runtime-binaries && vp run stage:plugin-runtime && npm pack --dry-run --json` | No packed `bin/runtime/**`, `dist/runtime/**`, or `dist/runtime-packages/**`; `bin/wp` present |
-| Scoped tests | `wp test --file scripts/public-readiness.test.ts src/audit/package-surface.test.ts src/build/package-manifest.test.ts` | All targeted tests pass |
+| Scoped tests | `wp test --file scripts/public-readiness.test.ts --file src/audit/package-surface.test.ts --file src/build/package-manifest.test.ts` | All targeted tests pass |
 | Public readiness | `vp run build:runtime-binaries && vp run stage:plugin-runtime && vp run public:readiness` | Thin-root readiness passes on staged tree |
 | Package surface | `vp run build:runtime-binaries && vp run stage:plugin-runtime && wp audit package-surface` | Thin-root package-surface audit passes on staged tree |
 | Hosted release | `gh run rerun <release-run-id>` | Root package publish completes without tarball/package-surface failure |

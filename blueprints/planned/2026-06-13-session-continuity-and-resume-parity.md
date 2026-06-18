@@ -58,7 +58,7 @@ host hook events
 | -- | -------- | -------------------------- | ------------------------ | ------------- |
 | F1 | HIGH | Session memory already captures enough structure for resume and can absorb typed events without migration design. | `src/session-memory/types.ts` and `src/session-memory/session.ts` currently persist `{ toolName, content }` into `session_events`; no typed event kind, priority, summary, or resume visibility exists, and the live SQLite + FTS layout needs an explicit schema-version / rebuild plan when rows gain new typed fields. | Task 1.1 now owns a hard-cut typed event envelope, schema-version guard, explicit rejection of untyped flat rows, and migration-safe tests including FTS rebuild coverage. |
 | F2 | HIGH | A managed pre-compaction hook can be added by creating only a hook file. | Managed hook ownership is derived from `WP_HOOK_SPECS`, launcher/runtime bin lists, doctor/status/audit expectations, and generated host emitters. | Task 1.2 now includes IR, launcher/runtime, status/doctor, audit, and direct-bin tests. |
-| F3 | MEDIUM | Verification commands using repeated `--files` are valid. | `./bin/wp test --help` exposes repeated `--file`; `./bin/wp lint --help` accepts positional files. | All task and gate commands now use `./bin/wp test --file ...` and `./bin/wp lint ...`. |
+| F3 | MEDIUM | Verification commands using repeated `--files` are valid. | `./bin/wp test --help` exposes repeated `--file`; `./bin/wp lint --help` exposes repeated `--file <path>` flags. | All task and gate commands now use `./bin/wp test --file ...` and `./bin/wp lint --file ...`. |
 | F4 | HIGH | Host parity can be claimed uniformly. | `src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.ts` marks `PreCompact` as partial for Claude/Codex/OpenCode and unsupported for Cursor; current managed `wp-*` surface does not install a dedicated hook. | Host tasks must degrade explicitly, update capability notes, and test no unsupported Cursor claim. |
 | F5 | MEDIUM | Post-tool, prompt, and stop hooks can share one implementation task. | Current hook files are independent hot paths: `src/hooks/post-tool/lint-after-edit.ts`, `src/hooks/guard-switch/index.ts`, and `src/hooks/stop/qa-changed-files.ts`. | Split into Tasks 2.1, 2.2, and 2.3 so agents can work without same-file conflicts. |
 | F6 | HIGH | Package safety is unaffected because hooks are internal. | Adding a managed hook bin touches generated launchers, direct runtime bin maps, docs, and possibly public package surface tests. | Task 1.2 and whole-plan gates now require bin-surface, dry tarball, and secret checks before release claims. |
@@ -148,7 +148,7 @@ the same repo database during upgrade.
 2. Run: `./bin/wp test --file src/session-memory/session.test.ts --file src/session-memory/session-failure.test.ts --file src/session-memory/hook-capture.test.ts --file src/session-memory/migration.test.ts` — verify FAIL.
 3. Implement the smallest schema/runtime changes and pure hook-capture helpers needed by later hook tasks; keep SQLite local and dependency-free.
 4. Run: `./bin/wp test --file src/session-memory/session.test.ts --file src/session-memory/session-failure.test.ts --file src/session-memory/hook-capture.test.ts --file src/session-memory/migration.test.ts` — verify PASS.
-5. Run: `./bin/wp lint src/session-memory/types.ts src/session-memory/session.ts src/session-memory/hook-capture.ts src/session-memory/session.test.ts src/session-memory/session-failure.test.ts src/session-memory/hook-capture.test.ts src/session-memory/migration.test.ts` and `./bin/wp typecheck`.
+5. Run: `./bin/wp lint --file src/session-memory/types.ts --file src/session-memory/session.ts --file src/session-memory/hook-capture.ts --file src/session-memory/session.test.ts --file src/session-memory/session-failure.test.ts --file src/session-memory/hook-capture.test.ts --file src/session-memory/migration.test.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -198,7 +198,7 @@ hosts where pre-compaction is unavailable.
 2. Run: `./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/ir.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/index.test.ts --file src/hooks/status/index.test.ts --file src/hooks/doctor.test.ts --file src/audit/agents.test.ts --file bin/_run.test.ts --file src/build/package-manifest.test.ts` — verify FAIL.
 3. Implement `wp-precompact-snapshot` as a bounded JSON-safe hook over Task 1.1 helpers; update launcher/runtime maps and status/doctor/audit surfaces.
 4. Run: `./bin/wp test --file src/hooks/precompact/index.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/ir.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/index.test.ts --file src/hooks/status/index.test.ts --file src/hooks/doctor.test.ts --file src/audit/agents.test.ts --file bin/_run.test.ts --file src/build/package-manifest.test.ts` — verify PASS.
-5. Run: `./bin/wp lint src/hooks/precompact src/cli/commands/init/scaffolders/agent-hooks src/hooks/status src/hooks/doctor.ts src/audit/agents.ts bin/_run.js bin/runtime-lanes.js src/build/package-manifest.test.ts` and `./bin/wp typecheck`.
+5. Run: `./bin/wp lint --file src/hooks/precompact --file src/cli/commands/init/scaffolders/agent-hooks --file src/hooks/status --file src/hooks/doctor.ts --file src/audit/agents.ts --file bin/_run.js --file bin/runtime-lanes.js --file src/build/package-manifest.test.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -235,7 +235,7 @@ payloads.
 2. Run: `./bin/wp test --file src/hooks/post-tool/lint-after-edit.test.ts --file src/hooks/bin-purity.test.ts` — verify FAIL.
 3. Implement minimal bounded capture using Task 1.1 helpers; preserve current lintable-file classification exports.
 4. Run: `./bin/wp test --file src/hooks/post-tool/lint-after-edit.test.ts --file src/hooks/bin-purity.test.ts` — verify PASS.
-5. Run: `./bin/wp lint src/hooks/post-tool/lint-after-edit.ts src/hooks/post-tool/lint-after-edit.test.ts src/hooks/bin-purity.test.ts` and `./bin/wp typecheck`.
+5. Run: `./bin/wp lint --file src/hooks/post-tool/lint-after-edit.ts --file src/hooks/post-tool/lint-after-edit.test.ts --file src/hooks/bin-purity.test.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -265,7 +265,7 @@ behavior, including state updates and intentional hook exit semantics.
 2. Run: `./bin/wp test --file src/hooks/guard-switch/index.test.ts` — verify FAIL.
 3. Implement prompt capture via Task 1.1 helpers without changing guard-toggle state semantics.
 4. Run: `./bin/wp test --file src/hooks/guard-switch/index.test.ts` — verify PASS.
-5. Run: `./bin/wp lint src/hooks/guard-switch/index.ts src/hooks/guard-switch/index.test.ts` and `./bin/wp typecheck`.
+5. Run: `./bin/wp lint --file src/hooks/guard-switch/index.ts --file src/hooks/guard-switch/index.test.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -296,7 +296,7 @@ current JSON-safe output and deferred-QA posture.
 2. Run: `./bin/wp test --file src/hooks/stop/qa-changed-files.test.ts` — verify FAIL.
 3. Implement minimal Stop continuity capture using Task 1.1 helpers; do not re-enable broad synchronous QA runs.
 4. Run: `./bin/wp test --file src/hooks/stop/qa-changed-files.test.ts` — verify PASS.
-5. Run: `./bin/wp lint src/hooks/stop/qa-changed-files.ts src/hooks/stop/qa-changed-files.test.ts` and `./bin/wp typecheck`.
+5. Run: `./bin/wp lint --file src/hooks/stop/qa-changed-files.ts --file src/hooks/stop/qa-changed-files.test.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -328,7 +328,7 @@ startup/resume/compact restore snippets from session memory.
 2. Run: `./bin/wp test --file src/hooks/sessionstart/index.test.ts --file src/hooks/sessionstart/update-banner.test.ts` — verify FAIL.
 3. Implement bounded resume injection over Task 1.1 restore/snapshot helpers; preserve existing output contract exactly.
 4. Run: `./bin/wp test --file src/hooks/sessionstart/index.test.ts --file src/hooks/sessionstart/update-banner.test.ts` — verify PASS.
-5. Run: `./bin/wp lint src/hooks/sessionstart/index.ts src/hooks/sessionstart/index.test.ts src/hooks/sessionstart/update-banner.test.ts` and `./bin/wp typecheck`.
+5. Run: `./bin/wp lint --file src/hooks/sessionstart/index.ts --file src/hooks/sessionstart/index.test.ts --file src/hooks/sessionstart/update-banner.test.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -366,7 +366,7 @@ must not invent support for unsupported lifecycle events.
 2. Run: `./bin/wp test --file src/hooks/dispatch/index.test.ts --file src/cli/commands/init/init.e2e.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/index.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/__fixtures__/vendor-io-conformance.test.ts` — verify FAIL.
 3. Tighten emitters/fixtures/capability notes until tests match actual host support and documented degradations.
 4. Run: `./bin/wp test --file src/hooks/dispatch/index.test.ts --file src/cli/commands/init/init.e2e.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/index.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/__fixtures__/vendor-io-conformance.test.ts` — verify PASS.
-5. Run: `./bin/wp lint src/hooks/dispatch src/cli/commands/init` and `./bin/wp typecheck`.
+5. Run: `./bin/wp lint --file src/hooks/dispatch --file src/cli/commands/init` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -413,7 +413,7 @@ secret checks.
 | Gate | Command | Success Criteria |
 | ---- | ------- | ---------------- |
 | Type safety | `./bin/wp typecheck` | Zero errors |
-| Lint | `./bin/wp lint src/hooks src/session-memory src/cli/commands/init src/audit docs/guides/session-memory.md docs/hook-matrix.md docs/hooks-doctor.md README.md` | Zero violations |
+| Lint | `./bin/wp lint --file src/hooks --file src/session-memory --file src/cli/commands/init --file src/audit --file docs/guides/session-memory.md --file docs/hook-matrix.md --file docs/hooks-doctor.md --file README.md` | Zero violations |
 | Focused tests | `./bin/wp test --file src/session-memory/session.test.ts --file src/session-memory/session-failure.test.ts --file src/session-memory/hook-capture.test.ts --file src/hooks/precompact/index.test.ts --file src/hooks/post-tool/lint-after-edit.test.ts --file src/hooks/guard-switch/index.test.ts --file src/hooks/stop/qa-changed-files.test.ts --file src/hooks/sessionstart/index.test.ts --file src/hooks/dispatch/index.test.ts` | All pass |
 | Hook scaffolder tests | `./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/ir.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/index.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/__fixtures__/vendor-io-conformance.test.ts` | Managed lifecycle and host fixture coverage pass |
 | Hook health | `./bin/wp hooks doctor --skip-mcp` | Reports installed lifecycle accurately |

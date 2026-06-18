@@ -203,7 +203,7 @@ shared matrix and public docs updates to dependent tasks to avoid file conflicts
 2. Run: `./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/emitters/cursor.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/schemas/schemas.test.ts` — verify FAIL.
 3. Implement minimal Cursor projection and schema changes required by the failing tests.
 4. Run: `./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/emitters/cursor.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/schemas/schemas.test.ts` — verify PASS.
-5. Run: `./bin/wp lint src/cli/commands/init/scaffolders/agent-hooks/emitters/cursor.ts src/cli/commands/init/scaffolders/agent-hooks/schemas/cursor-hooks.schema.ts`.
+5. Run: `./bin/wp lint --file src/cli/commands/init/scaffolders/agent-hooks/emitters/cursor.ts --file src/cli/commands/init/scaffolders/agent-hooks/schemas/cursor-hooks.schema.ts`.
 
 **Acceptance:**
 
@@ -236,7 +236,7 @@ README claims out of this task. (F7)
 2. Run: `./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/emitters/opencode.test.ts --file src/cli/commands/init/scaffolders/opencode-plugin/index.test.ts` — verify FAIL.
 3. Implement the smallest emitter/scaffolder changes required by the selected boundary.
 4. Run: `./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/emitters/opencode.test.ts --file src/cli/commands/init/scaffolders/opencode-plugin/index.test.ts` — verify PASS.
-5. Run: `./bin/wp lint src/cli/commands/init/scaffolders/agent-hooks/emitters/opencode.ts src/cli/commands/init/scaffolders/opencode-plugin/index.ts`.
+5. Run: `./bin/wp lint --file src/cli/commands/init/scaffolders/agent-hooks/emitters/opencode.ts --file src/cli/commands/init/scaffolders/opencode-plugin/index.ts`.
 
 **Acceptance:**
 
@@ -328,7 +328,7 @@ serialized in Task 4.2. (F8)
 2. Run: `./bin/wp test --file src/hooks/status/index.test.ts` — verify FAIL.
 3. Implement the smallest status-reporting changes required by the tests.
 4. Run: `./bin/wp test --file src/hooks/status/index.test.ts` — verify PASS.
-5. Run: `./bin/wp lint src/hooks/status/index.ts`.
+5. Run: `./bin/wp lint --file src/hooks/status/index.ts`.
 
 **Acceptance:**
 
@@ -362,7 +362,7 @@ knowledge. Keep public README/hook docs out of this task. (F2, F5, F7)
 2. Run: `./bin/wp test --file src/cli/commands/init/index.test.ts --file src/cli/commands/init/host-visibility.test.ts` — verify FAIL.
 3. Implement minimal setup/visibility changes that compose with existing Claude/Codex/Cursor/OpenCode scaffolders.
 4. Run: `./bin/wp test --file src/cli/commands/init/index.test.ts --file src/cli/commands/init/host-visibility.test.ts` — verify PASS.
-5. Run: `./bin/wp lint src/cli/commands/init/index.ts src/cli/commands/init/host-visibility.ts`.
+5. Run: `./bin/wp lint --file src/cli/commands/init/index.ts --file src/cli/commands/init/host-visibility.ts`.
 
 **Acceptance:**
 
@@ -409,7 +409,7 @@ docs are shared public surfaces. (F2, F3, F5)
 | Gate | Command | Success Criteria |
 | ---- | ------- | ---------------- |
 | Type safety | `./bin/wp typecheck` | Zero errors |
-| Lint | `./bin/wp lint src/hooks src/cli/commands/init/scaffolders/agent-hooks src/cli/commands/init` | Zero violations |
+| Lint | `./bin/wp lint --file src/hooks --file src/cli/commands/init/scaffolders/agent-hooks --file src/cli/commands/init` | Zero violations |
 | Focused tests | `./bin/wp test --file src/build/package-manifest.test.ts --file src/hooks/shared/instruction-surfaces.test.ts --file src/hooks/doctor.test.ts --file src/hooks/status/index.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/emitters/cursor.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/emitters/opencode.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file src/cli/commands/init/index.test.ts` | All pass |
 | Package surface | `./bin/wp audit package-surface` | Pass; denied content and unintended public files absent |
 | Tarball/package lint | `vp run lint:pkg` | `publint`, `attw --pack .`, and available plugin validation pass |

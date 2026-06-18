@@ -178,7 +178,7 @@ Keep the blueprint surface and generated repo surfaces in sync after the new pla
 ## Fresh verification evidence
 
 - `node bin/wp test --file src/cli/commands/init/host-visibility.test.ts --file src/cli/commands/init/prompts.test.ts --file src/cli/commands/init/config.test.ts --file src/cli/commands/init/scaffold-agents-md.test.ts --file src/cli/commands/init/init.integration.test.ts` ✅
-- `node bin/wp lint src/cli/commands/init/host-visibility.ts src/cli/commands/init/host-visibility.test.ts src/cli/commands/init/prompts.ts src/cli/commands/init/prompts.test.ts src/cli/commands/init/config.ts src/cli/commands/init/config.test.ts src/cli/commands/init/scaffold-agents-md.ts src/cli/commands/init/scaffold-agents-md.test.ts scripts/public-consumer-smoke.ts` ✅
+- `node bin/wp lint --file src/cli/commands/init/host-visibility.ts --file src/cli/commands/init/host-visibility.test.ts --file src/cli/commands/init/prompts.ts --file src/cli/commands/init/prompts.test.ts --file src/cli/commands/init/config.ts --file src/cli/commands/init/config.test.ts --file src/cli/commands/init/scaffold-agents-md.ts --file src/cli/commands/init/scaffold-agents-md.test.ts --file scripts/public-consumer-smoke.ts` ✅
 - `node bin/wp typecheck` ✅
 - `vp run build` ✅
 - `bun scripts/public-consumer-smoke.ts --setup-only --skip-build` ✅

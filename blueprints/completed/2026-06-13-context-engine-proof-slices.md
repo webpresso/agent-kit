@@ -321,7 +321,7 @@ outcome must be one of: `PoC failed`, `PoC passed but needs broader matrix`, or
 | ---- | ------- | ---------------- |
 | Focused tests | `./bin/wp test --file src/cli/commands/bench/session-memory.test.ts --file scripts/bench/lib/report-writer.test.ts --file scripts/bench/lib/transcript-scorer.test.ts` | All targeted tests pass. |
 | Dry-run proof | `./bin/wp bench session-memory --dry-run` | Exits 0; threshold axes are `schema-valid`; no API/model invocation. |
-| Lint | `./bin/wp lint src/cli/commands/bench/session-memory.ts src/cli/commands/bench/session-memory.test.ts scripts/bench/lib/report-writer.ts scripts/bench/lib/report-writer.test.ts scripts/bench/lib/transcript-scorer.ts scripts/bench/lib/transcript-scorer.test.ts` | Zero lint violations. |
+| Lint | `./bin/wp lint --file src/cli/commands/bench/session-memory.ts --file src/cli/commands/bench/session-memory.test.ts --file scripts/bench/lib/report-writer.ts --file scripts/bench/lib/report-writer.test.ts --file scripts/bench/lib/transcript-scorer.ts --file scripts/bench/lib/transcript-scorer.test.ts` | Zero lint violations. |
 | Typecheck | `./bin/wp typecheck` | Zero type errors. |
 | Measured PoC | `./bin/wp bench session-memory --scenario debug-long-session --variant baseline --trials 1` | Requires credentials/operator approval; generated `report.md` has non-placeholder `recall_at_5`, `recall_reason` or `recall_error`, and threshold pass/fail. |
 | Scope audit | `git diff --name-only` | Only benchmark/reporting files and this blueprint/handoff changed. |
@@ -504,7 +504,7 @@ Verification evidence recorded during execution:
 ```bash
 ./bin/wp test --file src/cli/commands/bench/session-memory.test.ts --file scripts/bench/lib/report-writer.test.ts --file scripts/bench/lib/transcript-scorer.test.ts
 ./bin/wp bench session-memory --dry-run
-./bin/wp lint src/cli/commands/bench/session-memory.ts src/cli/commands/bench/session-memory.test.ts scripts/bench/lib/report-writer.ts scripts/bench/lib/report-writer.test.ts scripts/bench/lib/transcript-scorer.ts scripts/bench/lib/transcript-scorer.test.ts
+./bin/wp lint --file src/cli/commands/bench/session-memory.ts --file src/cli/commands/bench/session-memory.test.ts --file scripts/bench/lib/report-writer.ts --file scripts/bench/lib/report-writer.test.ts --file scripts/bench/lib/transcript-scorer.ts --file scripts/bench/lib/transcript-scorer.test.ts
 ./bin/wp typecheck
 ./bin/wp audit blueprint-lifecycle
 vp run verify:paths

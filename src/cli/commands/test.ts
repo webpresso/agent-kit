@@ -28,7 +28,6 @@ export interface AkTestCommandInput extends TestCommandOptions {
   cwd?: string
   package?: readonly string[] | string
   file?: readonly string[] | string
-  targets?: readonly string[] | string
   passthrough?: readonly string[]
 }
 
@@ -36,7 +35,7 @@ export function createAkTestCommandConfig(input: AkTestCommandInput): CommandCon
   const target = resolveTestTarget({
     package: toArray(input.package),
     file: toArray(input.file),
-    positional: toArray(input.targets),
+    positional: [],
   })
 
   return buildTestCommand(target, { ...input, cwd: input.cwd })
@@ -44,7 +43,7 @@ export function createAkTestCommandConfig(input: AkTestCommandInput): CommandCon
 
 export function registerTestCommand(cli: CAC): void {
   cli
-    .command('test [...targets]', TEST_COMMAND_HELP)
+    .command('test', TEST_COMMAND_HELP)
     .option('--suite <name>', 'Run the all, unit, or integration suite')
     .option('--package <name>', 'Run tests for a package target')
     .option('--file <path>', 'Run tests for a file target')
@@ -60,13 +59,12 @@ export function registerTestCommand(cli: CAC): void {
     .option('--log <mode>', 'Forward vp log mode')
     .option('--full', 'Print the full raw output instead of the default summary-first view')
     .option('--print-command', 'Print the resolved command instead of executing it')
-    .action(async (targets: string[] | string | undefined, flags: Record<string, unknown>) => {
+    .action(async (flags: Record<string, unknown>) => {
       const rawArgv = process.argv.slice(2)
       const command = createAkTestCommandConfig({
         cwd: process.cwd(),
         package: flags.package as string | string[] | undefined,
         file: flags.file as string | string[] | undefined,
-        targets: targets ?? [],
         passthrough: getPassthroughArgs(rawArgv),
         suite: parseTestSuiteName(flags.suite as string | undefined),
         watch: Boolean(flags.watch),
@@ -95,7 +93,6 @@ export function registerTestCommand(cli: CAC): void {
           suite: parseTestSuiteName(flags.suite as string | undefined),
           package: toArray(flags.package as string | string[] | undefined),
           file: toArray(flags.file as string | string[] | undefined),
-          targets: toArray(targets ?? []),
         },
         summary: ({ exitCode, timedOut, aborted }) => {
           if (timedOut) return 'test timed out'

@@ -76,16 +76,19 @@ describe('ensureCodexUserPlugin', () => {
   it('builds the staging marketplace then runs marketplace add + plugin add', () => {
     const packageRoot = makePackageRoot()
     const stagingRoot = makeStagingRoot()
+    const configPath = join(stagingRoot, 'config.toml')
     const calls: Array<{ command: string; args: readonly string[] }> = []
 
     const result = ensureCodexUserPlugin({
       options: { dryRun: false, overwrite: false },
       packageRoot,
       stagingRoot,
+      configPath,
+      env: {},
       commandExists: () => true,
       runCommand: (command, args) => {
         calls.push({ command, args })
-        return 0
+        return { exitCode: 0 }
       },
     })
 
@@ -96,9 +99,12 @@ describe('ensureCodexUserPlugin', () => {
       stagingRoot,
     })
     expect(calls).toEqual([
-      { command: 'codex', args: ['plugin', 'marketplace', 'remove', 'webpresso'] },
-      { command: 'codex', args: ['plugin', 'marketplace', 'add', stagingRoot] },
-      { command: 'codex', args: ['plugin', 'add', CODEX_PLUGIN_ID] },
+      { command: 'codex', args: ['plugin', 'marketplace', 'remove', 'webpresso', '--json'] },
+      { command: 'codex', args: ['plugin', 'marketplace', 'add', stagingRoot, '--json'] },
+      {
+        command: 'codex',
+        args: ['plugin', 'add', 'agent-kit', '--marketplace', 'webpresso', '--json'],
+      },
     ])
     // staging artifacts were materialized
     expect(lstatSync(join(stagingRoot, 'plugins', 'agent-kit')).isSymbolicLink()).toBe(true)
@@ -111,6 +117,7 @@ describe('ensureCodexUserPlugin', () => {
     const result = ensureCodexUserPlugin({
       options: { dryRun: false, overwrite: false },
       packageRoot: root,
+      env: {},
       commandExists: () => true,
       runCommand: () => {
         throw new Error('should not run')
@@ -126,6 +133,7 @@ describe('ensureCodexUserPlugin', () => {
     const result = ensureCodexUserPlugin({
       options: { dryRun: true, overwrite: false },
       packageRoot,
+      env: {},
       commandExists: () => true,
       runCommand: () => {
         throw new Error('should not run')
@@ -141,6 +149,7 @@ describe('ensureCodexUserPlugin', () => {
     const result = ensureCodexUserPlugin({
       options: { dryRun: false, overwrite: false },
       packageRoot,
+      env: {},
       commandExists: () => false,
       runCommand: () => {
         throw new Error('should not run')
@@ -153,14 +162,19 @@ describe('ensureCodexUserPlugin', () => {
   it('returns a failing step when plugin add fails', () => {
     const packageRoot = makePackageRoot()
     const stagingRoot = makeStagingRoot()
+    const configPath = join(stagingRoot, 'config.toml')
 
     const result = ensureCodexUserPlugin({
       options: { dryRun: false, overwrite: false },
       packageRoot,
       stagingRoot,
+      configPath,
+      env: {},
       commandExists: () => true,
-      // 'remove' and 'marketplace add' succeed; 'plugin add' (args[1]==='add') fails.
-      runCommand: (_command, args) => (args[1] === 'add' ? 17 : 0),
+      // 'remove' and 'marketplace add' succeed; the plugin add command fails.
+      runCommand: (_command, args) => ({
+        exitCode: args[1] === 'add' && args[2] === 'agent-kit' ? 17 : 0,
+      }),
     })
 
     expect(result).toEqual({
@@ -180,6 +194,7 @@ describe('ensureCodexUserPlugin', () => {
     const result = ensureCodexUserPlugin({
       options: { dryRun: false, overwrite: false },
       packageRoot,
+      env: { WP_SKIP_CODEX_PLUGIN: '1' },
       commandExists: () => true,
       runCommand: () => {
         throw new Error('should not run')
@@ -187,5 +202,94 @@ describe('ensureCodexUserPlugin', () => {
     })
 
     expect(result).toEqual({ kind: 'codex-plugin-skipped-opt-out', packageRoot })
+  })
+
+  it('skips inside a package lifecycle environment', () => {
+    const packageRoot = makePackageRoot()
+    const previousLifecycle = process.env.npm_lifecycle_event
+    process.env.npm_lifecycle_event = 'postinstall'
+
+    try {
+      const result = ensureCodexUserPlugin({
+        options: { dryRun: false, overwrite: false },
+        packageRoot,
+        env: { npm_lifecycle_event: 'postinstall' },
+        commandExists: () => true,
+        runCommand: () => {
+          throw new Error('should not run')
+        },
+      })
+
+      expect(result).toEqual({ kind: 'codex-plugin-skipped-package-lifecycle', packageRoot })
+    } finally {
+      if (previousLifecycle === undefined) delete process.env.npm_lifecycle_event
+      else process.env.npm_lifecycle_event = previousLifecycle
+    }
+  })
+
+  it('refreshes plugin installation even when an enabled config block already exists', () => {
+    const packageRoot = makePackageRoot()
+    const stagingRoot = makeStagingRoot()
+    const configPath = join(stagingRoot, 'config.toml')
+    writeFileSync(configPath, '[plugins."agent-kit@webpresso"]\nenabled = true\n', 'utf8')
+    const calls: Array<{ command: string; args: readonly string[] }> = []
+
+    const result = ensureCodexUserPlugin({
+      options: { dryRun: false, overwrite: false },
+      packageRoot,
+      stagingRoot,
+      configPath,
+      env: {},
+      commandExists: () => true,
+      runCommand: (command, args) => {
+        calls.push({ command, args })
+        return { exitCode: 0 }
+      },
+    })
+
+    expect(result).toEqual({
+      kind: 'codex-plugin-installed',
+      packageRoot,
+      pluginId: CODEX_PLUGIN_ID,
+      stagingRoot,
+    })
+    expect(calls).toEqual([
+      { command: 'codex', args: ['plugin', 'marketplace', 'remove', 'webpresso', '--json'] },
+      { command: 'codex', args: ['plugin', 'marketplace', 'add', stagingRoot, '--json'] },
+      {
+        command: 'codex',
+        args: ['plugin', 'add', 'agent-kit', '--marketplace', 'webpresso', '--json'],
+      },
+    ])
+  })
+
+  it('returns a timeout result when plugin add stalls', () => {
+    const packageRoot = makePackageRoot()
+    const stagingRoot = makeStagingRoot()
+    const configPath = join(stagingRoot, 'config.toml')
+
+    const result = ensureCodexUserPlugin({
+      options: { dryRun: false, overwrite: false },
+      packageRoot,
+      stagingRoot,
+      configPath,
+      env: {},
+      commandExists: () => true,
+      runCommand: (_command, args) => {
+        if (args[0] === 'plugin' && args[1] === 'add') {
+          return { exitCode: 124, timedOut: true }
+        }
+        return { exitCode: 0 }
+      },
+    })
+
+    expect(result).toEqual({
+      kind: 'codex-plugin-timed-out',
+      packageRoot,
+      pluginId: CODEX_PLUGIN_ID,
+      stagingRoot,
+      step: 'plugin-add',
+      timeoutMs: 8000,
+    })
   })
 })

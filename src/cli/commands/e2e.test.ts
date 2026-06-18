@@ -101,6 +101,7 @@ describe('wp e2e command helpers', () => {
   it('exposes the summary-first --full escape hatch', () => {
     const cli = buildFakeCli()
     registerE2eCommand(cli as never)
+    expect(cli.getOptions()).toContain('--file <path>')
     expect(cli.getOptions()).toContain('--full')
   })
 })

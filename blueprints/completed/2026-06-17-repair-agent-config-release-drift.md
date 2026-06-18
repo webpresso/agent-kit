@@ -36,7 +36,7 @@ below known published baselines.
 
 - `npm view @webpresso/agent-config versions --json`
 - `./bin/wp audit ai-contracts`
-- `./bin/wp lint ...`
+- `./bin/wp lint --file ...`
 - `./bin/wp typecheck`
 - `pnpm exec vitest run scripts/release-publish.test.ts src/audit/package-surface.test.ts`
 - `./bin/wp audit package-surface`

@@ -4,6 +4,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
+import { isPackageLifecycleEnvironment } from '#cli/auto-update/skip.js'
 import { commandExists as defaultCommandExists } from '#runtime/command-exists.js'
 
 /**
@@ -31,16 +32,31 @@ export interface EnsureCodexPluginInput {
   packageRoot: string
   /** Stable dir where the staging marketplace is built. Defaults to a cache path. */
   stagingRoot?: string
+  configPath?: string
+  env?: NodeJS.ProcessEnv
   commandExists?: (command: string) => boolean
-  runCommand?: (command: string, args: readonly string[]) => number
+  runCommand?: (
+    command: string,
+    args: readonly string[],
+    options?: { timeoutMs?: number },
+  ) => { exitCode: number; timedOut?: boolean }
 }
 
 export type EnsureCodexPluginResult =
   | { kind: 'codex-plugin-installed'; packageRoot: string; pluginId: string; stagingRoot: string }
   | { kind: 'codex-plugin-skipped-dry-run'; packageRoot: string }
   | { kind: 'codex-plugin-skipped-opt-out'; packageRoot: string }
+  | { kind: 'codex-plugin-skipped-package-lifecycle'; packageRoot: string }
   | { kind: 'codex-plugin-skipped-no-cli'; packageRoot: string }
   | { kind: 'codex-plugin-unavailable'; packageRoot: string }
+  | {
+      kind: 'codex-plugin-timed-out'
+      packageRoot: string
+      pluginId: string
+      stagingRoot: string
+      step: 'plugin-add'
+      timeoutMs: number
+    }
   | {
       kind: 'codex-plugin-failed'
       packageRoot: string
@@ -50,14 +66,27 @@ export type EnsureCodexPluginResult =
       exitCode: number
     }
 
-function defaultRunCommand(command: string, args: readonly string[]): number {
+const CODEX_PLUGIN_ADD_TIMEOUT_MS = 8_000
+
+function defaultRunCommand(
+  command: string,
+  args: readonly string[],
+  options: { timeoutMs?: number } = {},
+): { exitCode: number; timedOut?: boolean } {
   const result = spawnSync(command, [...args], {
-    stdio: 'inherit',
+    stdio: 'pipe',
+    encoding: 'utf8',
     env: process.env,
+    timeout: options.timeoutMs,
   })
 
-  if (result.error) throw result.error
-  return result.status ?? 1
+  if (result.error) {
+    if ('code' in result.error && result.error.code === 'ETIMEDOUT') {
+      return { exitCode: 124, timedOut: true }
+    }
+    throw result.error
+  }
+  return { exitCode: result.status ?? 1 }
 }
 
 function defaultStagingRoot(): string {
@@ -109,7 +138,12 @@ export function ensureCodexUserPlugin(input: EnsureCodexPluginInput): EnsureCode
     return { kind: 'codex-plugin-skipped-dry-run', packageRoot }
   }
 
-  if (process.env.WP_SKIP_CODEX_PLUGIN === '1') {
+  const env = input.env ?? process.env
+  if (isPackageLifecycleEnvironment(env)) {
+    return { kind: 'codex-plugin-skipped-package-lifecycle', packageRoot }
+  }
+
+  if (env.WP_SKIP_CODEX_PLUGIN === '1') {
     return { kind: 'codex-plugin-skipped-opt-out', packageRoot }
   }
 
@@ -124,15 +158,17 @@ export function ensureCodexUserPlugin(input: EnsureCodexPluginInput): EnsureCode
   const runCommand = input.runCommand ?? defaultRunCommand
   // Best-effort: drop any stale `webpresso` marketplace (e.g. an earlier
   // registration that pointed at the package root) so the staging dir is used.
-  runCommand('codex', ['plugin', 'marketplace', 'remove', CODEX_MARKETPLACE_NAME])
+  runCommand('codex', ['plugin', 'marketplace', 'remove', CODEX_MARKETPLACE_NAME, '--json'])
 
   const steps = [
-    { step: 'marketplace-add' as const, args: ['plugin', 'marketplace', 'add', stagingRoot] },
-    { step: 'plugin-add' as const, args: ['plugin', 'add', CODEX_PLUGIN_ID] },
+    {
+      step: 'marketplace-add' as const,
+      args: ['plugin', 'marketplace', 'add', stagingRoot, '--json'],
+    },
   ]
 
   for (const { step, args } of steps) {
-    const exitCode = runCommand('codex', args)
+    const { exitCode } = runCommand('codex', args)
     if (exitCode !== 0) {
       return {
         kind: 'codex-plugin-failed',
@@ -142,6 +178,32 @@ export function ensureCodexUserPlugin(input: EnsureCodexPluginInput): EnsureCode
         step,
         exitCode,
       }
+    }
+  }
+
+  const pluginAdd = runCommand(
+    'codex',
+    ['plugin', 'add', 'agent-kit', '--marketplace', CODEX_MARKETPLACE_NAME, '--json'],
+    { timeoutMs: CODEX_PLUGIN_ADD_TIMEOUT_MS },
+  )
+  if (pluginAdd.timedOut) {
+    return {
+      kind: 'codex-plugin-timed-out',
+      packageRoot,
+      pluginId: CODEX_PLUGIN_ID,
+      stagingRoot,
+      step: 'plugin-add',
+      timeoutMs: CODEX_PLUGIN_ADD_TIMEOUT_MS,
+    }
+  }
+  if (pluginAdd.exitCode !== 0) {
+    return {
+      kind: 'codex-plugin-failed',
+      packageRoot,
+      pluginId: CODEX_PLUGIN_ID,
+      stagingRoot,
+      step: 'plugin-add',
+      exitCode: pluginAdd.exitCode,
     }
   }
 

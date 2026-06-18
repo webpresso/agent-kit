@@ -143,7 +143,7 @@ None.
 Promotion Gates are proof commands, not a general shell escape hatch:
 
 - Allowed commands are repo `wp` facade commands only, such as `wp audit <kind>`,
-  `wp test ...`, `wp typecheck`, `wp lint`, and `wp sync --check`.
+  `wp test --file ...`, `wp typecheck`, `wp lint`, and `wp sync --check`.
 - The runner parses commands to argv and executes without a shell.
 - Reject environment assignments, pipes, redirects, `&&`, `||`, semicolons,
   command substitution, `--fix`, unknown binaries, and unknown `wp` subcommands.
@@ -218,7 +218,7 @@ Do not chase an A score by registering the hard audit before backfill.
   wording from `**Depends on:**` to `**Depends:**`, and document evidence
   syntaxes: `repo:<path>`, `web:<url> (<YYYY-MM-DD>)`, and
   `derived:<claim-id>[,<claim-id>]`.
-- **Verify:** `wp audit blueprint-lifecycle`; `wp lint docs/blueprint-format.md`
+- **Verify:** `wp audit blueprint-lifecycle`; `wp lint --file docs/blueprint-format.md`
 - **Acceptance:**
   - [ ] The format spec lists the five dossier subsections.
   - [ ] `Residual Unknowns` must be exactly `None.` for planned/in-progress/completed blueprints.
@@ -240,7 +240,7 @@ Do not chase an A score by registering the hard audit before backfill.
   first-time scaffold README text so new repos learn that `planned/` is a hard
   trust state. Keep `.gitkeep` behavior unchanged. If template changes are
   catalog owned, update both catalog and projected docs template and verify sync.
-- **Verify:** `wp test src/cli/commands/init/init.integration.test.ts`; `wp sync --check`
+- **Verify:** `wp test --file src/cli/commands/init/init.integration.test.ts`; `wp sync --check`
 - **Acceptance:**
   - [ ] Newly scaffolded README text describes `planned/` as execution-ready.
   - [ ] Blueprint templates include a Trust Dossier placeholder or an explicit draft note explaining when the dossier becomes required.
@@ -401,7 +401,7 @@ Do not chase an A score by registering the hard audit before backfill.
   then move/re-ingest only if trust succeeds. Update help/output so public
   command guidance names `promote` consistently. Preserve the existing
   completion gate for `completed`.
-- **Verify:** `wp test --file src/cli/commands/blueprint/mutations.test.ts src/cli/commands/blueprint/router-output.test.ts`
+- **Verify:** `wp test --file src/cli/commands/blueprint/mutations.test.ts --file src/cli/commands/blueprint/router-output.test.ts`
 - **Acceptance:**
   - [ ] `draft → planned` fails before move when validation or any declared Promotion Gate fails.
   - [ ] Successful promotion writes verification metadata and re-ingests the projection DB.
@@ -438,7 +438,7 @@ Do not chase an A score by registering the hard audit before backfill.
   requests moving `draft → planned`, reuse the shared promotion trust service
   before local transition. Preserve stale revision checks, project resolution,
   projection ingest, and completed-state open-task validation.
-- **Verify:** `wp test --file src/mcp/blueprint-server.transition.test.ts src/mcp/blueprint-server.platform-first.lifecycle.test.ts src/mcp/blueprint-workflow.integration.test.ts`
+- **Verify:** `wp test --file src/mcp/blueprint-server.transition.test.ts --file src/mcp/blueprint-server.platform-first.lifecycle.test.ts --file src/mcp/blueprint-workflow.integration.test.ts`
 - **Acceptance:**
   - [ ] MCP promote and MCP transition refuse the same invalid dossiers and failing gates as CLI promotion.
   - [ ] MCP success responses include new revision/content hash after metadata is written and ingested.
@@ -456,7 +456,7 @@ Do not chase an A score by registering the hard audit before backfill.
   produce equivalent outcomes through CLI promotion, MCP promote, and MCP
   transition. Use valid dossier, missing dossier, malformed dossier, failing
   Promotion Gate, stale MCP revision, and recovery move fixtures.
-- **Verify:** `wp test --file src/cli/commands/blueprint/mutations.test.ts src/mcp/blueprint-workflow.integration.test.ts`
+- **Verify:** `wp test --file src/cli/commands/blueprint/mutations.test.ts --file src/mcp/blueprint-workflow.integration.test.ts`
 - **Acceptance:**
   - [ ] Same valid fixture succeeds through CLI and both MCP lifecycle tools.
   - [ ] Same invalid dossier fails with equivalent file/subsection evidence.
@@ -527,7 +527,7 @@ Do not chase an A score by registering the hard audit before backfill.
 - **Change:** Register `blueprint-trust` as a first-class hard audit kind in CLI
   and MCP only after backfill is complete. Keep outputs RepoAuditResult-shaped
   and ensure unknown-kind help lists include the new kind.
-- **Verify:** `wp test --file src/cli/commands/audit-core.test.ts src/mcp/tools/audit.test.ts`; `wp audit blueprint-trust`
+- **Verify:** `wp test --file src/cli/commands/audit-core.test.ts --file src/mcp/tools/audit.test.ts`; `wp audit blueprint-trust`
 - **Acceptance:**
   - [ ] `wp audit blueprint-trust` and MCP `wp_audit({ kind: "blueprint-trust" })` run the same validator.
   - [ ] Both surfaces return equivalent failure summaries for the same malformed dossier fixture.

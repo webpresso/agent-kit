@@ -12,6 +12,14 @@ export const CONFIG_VERSION = '1'
 export const CONFIG_FILENAME = '.webpressorc.json'
 export const LEGACY_CONFIG_FILENAME = '.agent-kitrc.json'
 export const DEFAULT_DURABLE_PLANNING_ROOT = '.agent/planning/'
+export const EXTERNAL_INTEGRATIONS = ['omx', 'omc', 'gstack'] as const
+export type ExternalIntegrationName = (typeof EXTERNAL_INTEGRATIONS)[number]
+export type ExternalIntegrationScope = 'user' | 'project'
+
+export interface ExternalIntegrationConfig {
+  enabled: true
+  scope?: ExternalIntegrationScope
+}
 
 function readOptionalString(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined
@@ -24,6 +32,7 @@ export interface AgentkitConfig {
   installed: {
     tier3Skills: string[]
   }
+  integrations?: Partial<Record<ExternalIntegrationName, ExternalIntegrationConfig>>
   audit?: {
     toolchainIsolation?: {
       allowDependencies?: string[]
@@ -81,6 +90,9 @@ function parseConfigFile(path: string): AgentkitConfig | null {
     const hosts = parsed.hosts as Partial<NonNullable<AgentkitConfig['hosts']>> | undefined
     const rules = parsed.rules as Partial<AgentkitConfig['rules']> | undefined
     const scripts = parsed.scripts as Partial<AgentkitConfig['scripts']> | undefined
+    const rawIntegrations = parsed.integrations as
+      | Partial<Record<ExternalIntegrationName, unknown>>
+      | undefined
     const tier3 = Array.isArray(installed?.tier3Skills) ? installed.tier3Skills : []
     const overrides = Array.isArray(rules?.overrides) ? rules.overrides : []
     const durablePlanningRoot = readOptionalString(parsed.durablePlanningRoot)
@@ -138,9 +150,24 @@ function parseConfigFile(path: string): AgentkitConfig | null {
       hosts?.visibility && typeof hosts.visibility === 'object'
         ? (hosts.visibility as Record<string, Record<string, VisibilityStatus>>)
         : undefined
+    const integrations = Object.fromEntries(
+      EXTERNAL_INTEGRATIONS.flatMap((name) => {
+        const raw = rawIntegrations?.[name]
+        if (raw === null || typeof raw !== 'object') return []
+        const record = raw as { enabled?: unknown; scope?: unknown }
+        if (record.enabled !== true) return []
+        const scope =
+          (name === 'omx' || name === 'omc') &&
+          (record.scope === 'user' || record.scope === 'project')
+            ? record.scope
+            : undefined
+        return [[name, { enabled: true as const, ...(scope ? { scope } : {}) }]]
+      }),
+    ) as NonNullable<AgentkitConfig['integrations']>
     return {
       version: typeof parsed.version === 'string' ? parsed.version : CONFIG_VERSION,
       installed: { tier3Skills: tier3.filter((s): s is string => typeof s === 'string') },
+      ...(Object.keys(integrations).length > 0 ? { integrations } : {}),
       hosts: {
         selected: selectedHosts,
         requiredCapabilities,
@@ -219,6 +246,11 @@ export function mergeConfig(
   return {
     version: incoming.version,
     installed: { tier3Skills: tier3 },
+    ...(incoming.integrations !== undefined
+      ? { integrations: incoming.integrations }
+      : existing.integrations !== undefined
+        ? { integrations: existing.integrations }
+        : {}),
     hosts: incoming.hosts ?? existing.hosts,
     ...(mergedAudit ? { audit: mergedAudit } : {}),
     ...(mergedMcp ? { mcp: mergedMcp } : {}),

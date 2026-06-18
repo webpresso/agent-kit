@@ -41,7 +41,7 @@ Add a small setup/scaffolder path that registers Context7's remote MCP server in
 - [x] Use `url = "https://mcp.context7.com/mcp"`, `http_headers = { "Accept" = "application/json, text/event-stream" }`, and `env_http_headers = { "CONTEXT7_API_KEY" = "CONTEXT7_API_KEY" }`.
 - [x] Preserve unrelated MCP servers and make repeated setup idempotent.
 
-**Verification:** `wp test src/cli/commands/init/scaffolders/codex-mcp/index.test.ts src/cli/commands/init/init.presets.integration.test.ts`
+**Verification:** `wp test --file src/cli/commands/init/scaffolders/codex-mcp/index.test.ts --file src/cli/commands/init/init.presets.integration.test.ts`
 
 #### Task 1.2: Integrate with `wp setup`
 
@@ -55,7 +55,7 @@ Add a small setup/scaffolder path that registers Context7's remote MCP server in
 - [x] Surface usage guidance that launch must happen through `with-secrets -- codex` when the key comes from the configured secret provider.
 - [x] Do not introduce provider-specific Doppler commands into generated runtime config.
 
-**Verification:** `wp test src/cli/commands/init/scaffolders/codex-mcp/index.test.ts src/cli/commands/init/init.presets.integration.test.ts`
+**Verification:** `wp test --file src/cli/commands/init/scaffolders/codex-mcp/index.test.ts --file src/cli/commands/init/init.presets.integration.test.ts`
 
 #### Task 1.3: Verification
 
@@ -68,7 +68,7 @@ Add a small setup/scaffolder path that registers Context7's remote MCP server in
 - [x] Add focused unit tests for empty config, replacement/idempotence, and preservation of existing servers.
 - [x] Run focused tests and typecheck or record blockers.
 
-**Verification:** `wp test src/cli/commands/init/scaffolders/codex-mcp/index.test.ts src/cli/commands/init/init.presets.integration.test.ts`; `wp typecheck`; `wp lint src/cli/commands/init/scaffolders/codex-mcp/index.ts src/cli/commands/init/scaffolders/codex-mcp/index.test.ts src/cli/commands/init/index.ts src/cli/commands/init/init.presets.integration.test.ts`
+**Verification:** `wp test --file src/cli/commands/init/scaffolders/codex-mcp/index.test.ts --file src/cli/commands/init/init.presets.integration.test.ts`; `wp typecheck`; `wp lint --file src/cli/commands/init/scaffolders/codex-mcp/index.ts --file src/cli/commands/init/scaffolders/codex-mcp/index.test.ts --file src/cli/commands/init/index.ts --file src/cli/commands/init/init.presets.integration.test.ts`
 
 ## Acceptance criteria
 

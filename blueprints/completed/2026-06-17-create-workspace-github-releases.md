@@ -36,7 +36,7 @@ creating the root `@webpresso/agent-kit` runtime release.
 
 - `gh release view '@webpresso/agent-config@0.1.5' --repo webpresso/agent-kit --json tagName,name,url,targetCommitish`
 - `./bin/wp audit ai-contracts`
-- `./bin/wp lint ...`
+- `./bin/wp lint --file ...`
 - `./bin/wp typecheck`
 - `pnpm exec vitest run scripts/release-publish.test.ts src/build/auth-preflight-packages.test.ts`
 - `./bin/wp audit blueprint-lifecycle`

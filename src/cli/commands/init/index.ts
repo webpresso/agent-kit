@@ -20,6 +20,9 @@ import { selectUnifiedConsumers } from '#symlinker/consumers'
 import { pruneInactiveSkillDirs } from '#compiler/orphans'
 import {
   type AgentkitConfig,
+  EXTERNAL_INTEGRATIONS,
+  type ExternalIntegrationConfig,
+  type ExternalIntegrationName,
   defaultConfig,
   mergeConfig,
   readConfig,
@@ -109,6 +112,7 @@ import {
 } from './scaffolders/codex-mcp/index.js'
 import { scaffoldExampleSkill } from './scaffolders/example-skill/index.js'
 import { ensureGstack } from './scaffolders/gstack/index.js'
+import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
 import { ensureOmx } from './scaffolders/omx/index.js'
 import { ensureOmc, OMC_SETUP_COMMAND } from './scaffolders/omc/index.js'
 import { scaffoldOpencodePlugin } from './scaffolders/opencode-plugin/index.js'
@@ -118,10 +122,19 @@ import { scaffoldSubagents } from './scaffolders/subagents/index.js'
 import { maybeRunVisionInterview } from './scaffolders/vision/interview.js'
 import { scaffoldVision } from './scaffolders/vision/index.js'
 import { scaffoldWorkspaceConfig } from './scaffolders/workspace-config/index.js'
+import {
+  claimProjectOwnedTool,
+  claimUserOwnedTool,
+  clearProjectOwnedTool,
+  readToolingOwnershipState,
+  tryReadRepoKey,
+  writeToolingOwnershipState,
+} from '#cli/tooling-ownership'
 
 const PRESETS = [
   'example-skill',
   'gstack',
+  'lore-commits',
   'omc',
   'omx',
   'playwright-mcp',
@@ -129,17 +142,108 @@ const PRESETS = [
   'vision',
 ] as const
 type Preset = (typeof PRESETS)[number]
-const DEFAULT_PRESETS: readonly Preset[] = ['omx', 'omc', 'gstack', 'vision', 'rtk']
+const DEFAULT_PRESETS: readonly Preset[] = ['vision', 'rtk']
+const USER_VISIBLE_PRESETS = PRESETS.filter(
+  (preset): preset is Exclude<Preset, 'gstack' | 'omc' | 'omx'> =>
+    preset !== 'gstack' && preset !== 'omc' && preset !== 'omx',
+)
 const RTK_REQUESTED_MARKER = join('.agent', '.rtk-requested')
 
-function parsePresets(withFlag: string | undefined): Preset[] {
-  const explicit = withFlag
-    ? withFlag
+function parseCsvFlag(value: string | undefined): string[] {
+  return value
+    ? value
         .split(',')
-        .map((s) => s.trim())
-        .filter((s): s is Preset => (PRESETS as readonly string[]).includes(s))
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0)
     : []
-  return [...new Set([...DEFAULT_PRESETS, ...explicit])]
+}
+
+function serializeCsvFlag(values: readonly string[]): string | undefined {
+  return values.length > 0 ? values.join(',') : undefined
+}
+
+function isPreset(value: string): value is Preset {
+  return (PRESETS as readonly string[]).includes(value)
+}
+
+function isExternalIntegrationName(value: string): value is ExternalIntegrationName {
+  return (EXTERNAL_INTEGRATIONS as readonly string[]).includes(value)
+}
+
+function resolveIntegrationConfig(
+  existingConfig: AgentkitConfig | null,
+  flags: InitFlags,
+): Partial<Record<ExternalIntegrationName, ExternalIntegrationConfig>> {
+  void existingConfig
+  const next: Partial<Record<ExternalIntegrationName, ExternalIntegrationConfig>> = {}
+
+  for (const entry of parseCsvFlag(flags.with)) {
+    if (!isExternalIntegrationName(entry)) continue
+    next[entry] = {
+      enabled: true,
+      ...((entry === 'omx' || entry === 'omc') && flags.project === true
+        ? { scope: 'project' as const }
+        : (entry === 'omx' || entry === 'omc')
+          ? { scope: 'user' as const }
+          : {}),
+    }
+  }
+
+  for (const entry of parseCsvFlag(flags.without)) {
+    if (!isExternalIntegrationName(entry)) continue
+    delete next[entry]
+  }
+
+  return Object.fromEntries(
+    EXTERNAL_INTEGRATIONS.flatMap((name) => {
+      const config = next[name]
+      return config?.enabled ? [[name, config]] : []
+    }),
+  ) as Partial<Record<ExternalIntegrationName, ExternalIntegrationConfig>>
+}
+
+function collectLegacyExternalIntegrationNames(
+  existingConfig: AgentkitConfig | null,
+  flags: InitFlags,
+): string[] {
+  const requested = new Set<string>()
+
+  for (const entry of parseCsvFlag(flags.with)) {
+    if (isExternalIntegrationName(entry)) requested.add(entry)
+  }
+  for (const entry of parseCsvFlag(flags.without)) {
+    if (isExternalIntegrationName(entry)) requested.add(entry)
+  }
+  for (const name of EXTERNAL_INTEGRATIONS) {
+    if (existingConfig?.integrations?.[name]?.enabled === true) requested.add(name)
+  }
+
+  return [...requested].toSorted()
+}
+
+function resolveSelectedPresets(
+  flags: InitFlags,
+  integrations: Partial<Record<ExternalIntegrationName, ExternalIntegrationConfig>>,
+): Preset[] {
+  const presets = new Set<Preset>(DEFAULT_PRESETS)
+
+  for (const explicit of parseCsvFlag(flags.with)) {
+    if (isPreset(explicit)) presets.add(explicit)
+  }
+
+  for (const name of EXTERNAL_INTEGRATIONS) {
+    if (integrations[name]?.enabled) presets.add(name)
+  }
+
+  for (const explicitWithout of parseCsvFlag(flags.without)) {
+    if (isExternalIntegrationName(explicitWithout)) presets.delete(explicitWithout)
+  }
+
+  return [...presets]
+}
+
+function stripPresetValuesFromFlag(value: string | undefined): string | undefined {
+  return serializeCsvFlag(parseCsvFlag(value).filter((entry) => !isPreset(entry)))
 }
 
 export interface InitFlags {
@@ -160,8 +264,6 @@ export interface InitFlags {
   strict?: boolean
   project?: boolean
   sourceMaintenance?: boolean
-  'repair-global'?: boolean
-  repairGlobal?: boolean
 }
 
 export const EXIT_SUCCESS = 0
@@ -416,7 +518,13 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
   const acceptDefaults = flags.yes ?? true
 
   const existingConfig = readConfig(consumer.repoRoot)
-  const presets = parsePresets(flags.with)
+  const integrations = resolveIntegrationConfig(existingConfig, flags)
+  const presets = resolveSelectedPresets(flags, integrations)
+  const legacyExternalIntegrations = collectLegacyExternalIntegrationNames(existingConfig, flags)
+  const repoKey = tryReadRepoKey(consumer.repoRoot)
+  let toolingOwnership = readToolingOwnershipState()
+  let toolingOwnershipChanged = false
+  const withoutEntries = parseCsvFlag(flags.without)
   let selectedHosts
   try {
     selectedHosts =
@@ -428,18 +536,14 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     return EXIT_SETUP_FAIL
   }
   // Extract tier3 skills portion of --with (non-preset values)
-  const withFlagWithoutPresets =
-    flags.with
-      ?.split(',')
-      .map((s) => s.trim())
-      .filter((s) => !(PRESETS as readonly string[]).includes(s))
-      .join(',') || undefined
+  const withFlagWithoutPresets = stripPresetValuesFromFlag(flags.with)
+  const withoutFlagWithoutPresets = stripPresetValuesFromFlag(flags.without)
 
   let tier3Selection: string[]
   try {
     const selection = await resolveTier3Selection({
       withFlag: withFlagWithoutPresets,
-      withoutFlag: flags.without,
+      withoutFlag: withoutFlagWithoutPresets,
       allFlag: flags.all,
       yesFlag: acceptDefaults,
       existing: existingConfig?.installed.tier3Skills,
@@ -462,6 +566,12 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
   console.log(
     `  opt-in skills: ${tier3Selection.length > 0 ? tier3Selection.join(', ') : '(none)'}`,
   )
+  if (legacyExternalIntegrations.length > 0) {
+    console.log(
+      `  external tools: ${legacyExternalIntegrations.join(', ')} are legacy compatibility presets only; ` +
+        'wp setup no longer remembers them across reruns, and native installers are preferred.',
+    )
+  }
 
   // Unconditional: workspace config is always needed for cross-repo correlation.
   if (!options.dryRun) {
@@ -571,6 +681,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         selected: selectedHosts,
         requiredCapabilities: [...REQUIRED_CORE_CAPABILITIES],
       },
+      integrations,
       ...(blueprintsDir ? { blueprintsDir } : {}),
     })
 
@@ -578,6 +689,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     let agentHooksResult = await scaffoldAgentHooks({
       repoRoot: consumer.repoRoot,
       options,
+      gstackEnabled: integrations.gstack?.enabled === true,
       trustCodexHooks: false,
     })
 
@@ -628,6 +740,9 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
 
     // Apply scaffolder presets
     const presetResults = []
+    if (presets.includes('lore-commits')) {
+      presetResults.push(scaffoldLoreCommits({ repoRoot: consumer.repoRoot, options }))
+    }
 
     if (presets.includes('example-skill') && !options.dryRun) {
       await scaffoldExampleSkill(consumer.repoRoot)
@@ -679,6 +794,9 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         case 'codex-cli-skipped-dry-run':
           console.log('  codex cli: skipped (--dry-run)')
           break
+        case 'codex-cli-skipped-package-lifecycle':
+          console.log('  codex cli: - skipped (package lifecycle environment)')
+          break
         case 'codex-cli-unavailable':
           console.warn(`  codex cli: ⚠ ${codexCliResult.hint}`)
           break
@@ -692,7 +810,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
       const omxResult = ensureOmx({
         repoRoot: consumer.repoRoot,
         options,
-        scope: flags.project ? 'project' : 'user',
+        scope: integrations.omx?.scope === 'project' ? 'project' : 'user',
       })
       switch (omxResult.kind) {
         case 'omx-ok':
@@ -707,6 +825,13 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
           console.log(
             `  omx codex hooks: ${omxResult.codexGlobalHooks.repaired ? '✓ path-stable' : 'already path-stable'} ${omxResult.codexGlobalHooks.targetPath}`,
           )
+          if (!options.dryRun) {
+            toolingOwnership =
+              integrations.omx?.scope === 'project' && repoKey !== null
+                ? claimProjectOwnedTool(toolingOwnership, 'omx', repoKey)
+                : claimUserOwnedTool(toolingOwnership, 'omx')
+            toolingOwnershipChanged = true
+          }
           break
         case 'omx-skipped-dry-run':
           console.log('  omx setup: skipped (--dry-run)')
@@ -764,6 +889,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
       agentHooksResult = await scaffoldAgentHooks({
         repoRoot: consumer.repoRoot,
         options,
+        gstackEnabled: integrations.gstack?.enabled === true,
         trustCodexHooks: false,
       })
     }
@@ -773,13 +899,20 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     } else if (presets.includes('omc')) {
       const omcResult = ensureOmc({
         options,
-        scope: flags.project ? 'project' : 'user',
+        scope: integrations.omc?.scope === 'project' ? 'project' : 'user',
       })
       switch (omcResult.kind) {
         case 'omc-installed':
           console.log(
             `  omc plugin: ✓ ${omcResult.scope}-scope plugin ensured (${omcResult.pluginId}); next in Claude Code: ${OMC_SETUP_COMMAND} --${omcResult.scope === 'project' ? 'local' : 'global'}`,
           )
+          if (!options.dryRun) {
+            toolingOwnership =
+              omcResult.scope === 'project' && repoKey !== null
+                ? claimProjectOwnedTool(toolingOwnership, 'omc', repoKey)
+                : claimUserOwnedTool(toolingOwnership, 'omc')
+            toolingOwnershipChanged = true
+          }
           break
         case 'omc-skipped-dry-run':
           console.log('  omc plugin: skipped (--dry-run)')
@@ -882,11 +1015,13 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         break
     }
 
-    // `wp setup` is reconcile/repair for repo surfaces by default. Global package
-    // updates are explicit (`wp setup --repair-global` or `wp update`) so setup
-    // is safe to run from postinstall and consumer bootstrap flows.
-    const repairGlobal = flags.repairGlobal ?? flags['repair-global'] ?? false
-    if (repairGlobal) {
+    // Self-update the globally-distributed agent-kit install that backs PATH
+    // `wp`, mirroring omx/omc/codex/claude. Non-fatal: a failed refresh never
+    // fails consumer setup, and it skips cleanly in explicit source mode, on
+    // `WP_SKIP_AUTO_INSTALL=1`, and in CI.
+    if (isCiEnvironment) {
+      console.log('  agent-kit global: - skipped (CI environment)')
+    } else {
       const agentKitGlobalResult = ensureAgentKitGlobal({ options })
       switch (agentKitGlobalResult.kind) {
         case 'agent-kit-global-updated':
@@ -898,6 +1033,9 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         case 'agent-kit-global-skipped-opt-out':
           console.log('  agent-kit global: skipped (WP_SKIP_AUTO_INSTALL=1)')
           break
+        case 'agent-kit-global-skipped-package-lifecycle':
+          console.log('  agent-kit global: - skipped (package lifecycle environment)')
+          break
         case 'agent-kit-global-skipped-source-mode':
           console.log('  agent-kit global: - skipped (WP_FORCE_SOURCE=1 source mode)')
           break
@@ -907,7 +1045,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         case 'agent-kit-global-failed':
           console.warn(
             `  agent-kit global: ⚠ \`${agentKitGlobalResult.command.join(' ')}\` exited with ${agentKitGlobalResult.exitCode}; ` +
-              'the existing global binary is unchanged. Re-run `wp setup --repair-global` once the registry is reachable.',
+              'the existing global binary is unchanged. Re-run `wp setup` once the registry is reachable.',
           )
           break
         case 'agent-kit-global-repair-failed':
@@ -934,6 +1072,9 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         break
       case 'claude-plugin-skipped-opt-out':
         console.log('  claude plugin: skipped (WP_SKIP_CLAUDE_PLUGIN=1)')
+        break
+      case 'claude-plugin-skipped-package-lifecycle':
+        console.log('  claude plugin: - skipped (package lifecycle environment)')
         break
       case 'claude-plugin-skipped-no-cli':
         console.log('  claude plugin: - skipped (claude not on PATH)')
@@ -964,11 +1105,21 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         case 'codex-plugin-skipped-opt-out':
           console.log('  codex plugin: skipped (WP_SKIP_CODEX_PLUGIN=1)')
           break
+        case 'codex-plugin-skipped-package-lifecycle':
+          console.log('  codex plugin: - skipped (package lifecycle environment)')
+          break
         case 'codex-plugin-skipped-no-cli':
           console.log('  codex plugin: - skipped (codex not on PATH)')
           break
         case 'codex-plugin-unavailable':
           console.log('  codex plugin: - skipped (plugin manifest unavailable in this install)')
+          break
+        case 'codex-plugin-timed-out':
+          console.warn(
+            `  codex plugin: ⚠ ${codexPluginResult.step} timed out after ${codexPluginResult.timeoutMs}ms; ` +
+              'marketplace was refreshed, but Codex stalled during local plugin install. ' +
+              'Repo-local .agent/skills remain scaffolded; restart Codex to reload project skills.',
+          )
           break
         case 'codex-plugin-failed':
           console.warn(
@@ -993,7 +1144,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     let gstackFailure: 'clone-failed' | 'pull-failed' | 'setup-failed' | null = null
     if (process.env.WP_SKIP_GSTACK === '1') {
       console.warn(
-        '  gstack: ⚠ WP_SKIP_GSTACK=1 — skipping. Most consumer repos treat gstack as a hard prerequisite.',
+        '  gstack: ⚠ WP_SKIP_GSTACK=1 — skipping optional gstack integration.',
       )
     } else if (isCiEnvironment && presets.includes('gstack')) {
       console.log('  gstack: - skipped (CI environment)')
@@ -1002,6 +1153,10 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
       switch (gstackResult.kind) {
         case 'gstack-installed':
           console.log(`  gstack: ✓ installed at ${gstackResult.root}`)
+          if (!options.dryRun) {
+            toolingOwnership = claimUserOwnedTool(toolingOwnership, 'gstack')
+            toolingOwnershipChanged = true
+          }
           switch (gstackResult.codex.kind) {
             case 'gstack-codex-installed':
               console.log(`  gstack (codex): ✓ installed at ${gstackResult.codex.skillsRoot}`)
@@ -1021,6 +1176,10 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
           break
         case 'gstack-updated':
           console.log(`  gstack: ✓ updated at ${gstackResult.root}`)
+          if (!options.dryRun) {
+            toolingOwnership = claimUserOwnedTool(toolingOwnership, 'gstack')
+            toolingOwnershipChanged = true
+          }
           switch (gstackResult.codex.kind) {
             case 'gstack-codex-installed':
               console.log(`  gstack (codex): ✓ installed at ${gstackResult.codex.skillsRoot}`)
@@ -1042,6 +1201,10 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
           console.log(
             `  gstack: already configured at ${gstackResult.root} (set WP_GSTACK_REFRESH=1 to refresh)`,
           )
+          if (!options.dryRun) {
+            toolingOwnership = claimUserOwnedTool(toolingOwnership, 'gstack')
+            toolingOwnershipChanged = true
+          }
           switch (gstackResult.codex.kind) {
             case 'gstack-codex-installed':
               console.log(`  gstack (codex): ✓ installed at ${gstackResult.codex.skillsRoot}`)
@@ -1096,6 +1259,29 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
           gstackFailure = 'setup-failed'
           break
       }
+    }
+
+    if (!options.dryRun && repoKey !== null) {
+      if (
+        withoutEntries.includes('omx') &&
+        existingConfig?.integrations?.omx?.enabled === true &&
+        existingConfig.integrations.omx.scope === 'project'
+      ) {
+        toolingOwnership = clearProjectOwnedTool(toolingOwnership, 'omx', repoKey)
+        toolingOwnershipChanged = true
+      }
+      if (
+        withoutEntries.includes('omc') &&
+        existingConfig?.integrations?.omc?.enabled === true &&
+        existingConfig.integrations.omc.scope === 'project'
+      ) {
+        toolingOwnership = clearProjectOwnedTool(toolingOwnership, 'omc', repoKey)
+        toolingOwnershipChanged = true
+      }
+    }
+
+    if (!options.dryRun && toolingOwnershipChanged) {
+      writeToolingOwnershipState(toolingOwnership)
     }
 
     let rtkFailure: 'not-found' | 'init-failed' | null = null
@@ -1301,7 +1487,9 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         'Ownership lanes:',
         '  Lane 1 wp_*   blueprint · audit · quality',
         '  Lane 2 rtk    shell-tool token filtering',
-        '  Lane 3 gstack interactive workflows',
+        integrations.gstack?.enabled === true
+          ? '  Lane 3 external tools (legacy compatibility preset requested this run)'
+          : '  Lane 3 external tools (self-managed; install OMX/OMC/gstack separately if desired)',
       ].join('\n'),
     )
 
@@ -1347,10 +1535,12 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
   // omx + gstack landed without surfacing in --help.
   const withHelp =
     `Comma-separated opt-in skills and/or presets to install ` +
-    `(non-interactive). Presets: ${PRESETS.join(', ')}. ` +
+    `(non-interactive). Presets: ${USER_VISIBLE_PRESETS.join(', ')}. ` +
+    `Legacy compatibility presets (omx, omc, gstack) are intentionally omitted; ` +
+    `install those tools with their native installers instead. ` +
     `Opt-in skills are listed by 'wp skill list'.`
   const withoutHelp =
-    `Comma-separated opt-in skills to opt out of. ` + `base-kit is default-on unless passed here.`
+    `Comma-separated opt-in skills and/or presets to opt out of for this run.`
 
   cli
     .command(commandName, description)
@@ -1363,7 +1553,6 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
       'Force full-file replacement for eligible managed files (default: reconcile owned content and preserve divergent consumer files)',
     )
     .option('--dry-run', 'Show what would change without writing anything')
-    .option('--repair-global', 'Explicitly refresh/repair the global @webpresso/agent-kit install')
     .option(
       '--prune',
       'Remove outdated agent-kit plugin cache versions for supported hosts before visibility checks',

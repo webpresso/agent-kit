@@ -25,7 +25,7 @@ describe('ensureCodexCli', () => {
     const result = ensureCodexCli({
       options: { overwrite: false, dryRun: false },
       spawn,
-      resolveVpCommand: () => 'vp',
+      env: {},
     })
 
     expect(result).toEqual({ kind: 'codex-cli-ok', installed: false })
@@ -44,7 +44,7 @@ describe('ensureCodexCli', () => {
     const result = ensureCodexCli({
       options: { overwrite: false, dryRun: false },
       spawn,
-      resolveVpCommand: () => 'vp',
+      env: {},
     })
 
     expect(result).toEqual({ kind: 'codex-cli-ok', installed: true })
@@ -55,22 +55,27 @@ describe('ensureCodexCli', () => {
 
   it('skips the global Codex refresh when WP_SKIP_UPDATE_CHECK=1', () => {
     const spawn = makeSpawn([{ status: 0 }])
-    const previous = process.env.WP_SKIP_UPDATE_CHECK
-    process.env.WP_SKIP_UPDATE_CHECK = '1'
+    const result = ensureCodexCli({
+      options: { overwrite: false, dryRun: false },
+      spawn,
+      env: { WP_SKIP_UPDATE_CHECK: '1' },
+    })
 
-    try {
-      const result = ensureCodexCli({
-        options: { overwrite: false, dryRun: false },
-        spawn,
-      })
+    expect(result).toEqual({ kind: 'codex-cli-ok', installed: false })
+    expect(spawn).toHaveBeenCalledTimes(1)
+    expect(spawn).toHaveBeenNthCalledWith(1, 'codex', ['--version'], { encoding: 'utf8' })
+  })
 
-      expect(result).toEqual({ kind: 'codex-cli-ok', installed: false })
-      expect(spawn).toHaveBeenCalledTimes(1)
-      expect(spawn).toHaveBeenNthCalledWith(1, 'codex', ['--version'], { encoding: 'utf8' })
-    } finally {
-      if (previous === undefined) delete process.env.WP_SKIP_UPDATE_CHECK
-      else process.env.WP_SKIP_UPDATE_CHECK = previous
-    }
+  it('skips all Codex global operations inside a package lifecycle environment', () => {
+    const spawn = makeSpawn([])
+    const result = ensureCodexCli({
+      options: { overwrite: false, dryRun: false },
+      spawn,
+      env: { npm_lifecycle_event: 'postinstall' },
+    })
+
+    expect(result).toEqual({ kind: 'codex-cli-skipped-package-lifecycle' })
+    expect(spawn).not.toHaveBeenCalled()
   })
 
   it('returns unavailable when install fails', () => {
@@ -81,24 +86,10 @@ describe('ensureCodexCli', () => {
     const result = ensureCodexCli({
       options: { overwrite: false, dryRun: false },
       spawn,
-      resolveVpCommand: () => 'vp',
+      env: {},
     })
 
     expect(result.kind).toBe('codex-cli-unavailable')
-  })
-
-
-
-  it('skips global Codex refresh when only a repo-local vp is available', () => {
-    const spawn = makeSpawn([{ status: 0 }])
-    const result = ensureCodexCli({
-      options: { overwrite: false, dryRun: false },
-      spawn,
-      resolveVpCommand: () => null,
-    })
-
-    expect(result).toEqual({ kind: 'codex-cli-ok', installed: false })
-    expect(spawn).toHaveBeenCalledTimes(1)
   })
 
   it('skips work in dry-run mode', () => {
@@ -106,6 +97,7 @@ describe('ensureCodexCli', () => {
     const result = ensureCodexCli({
       options: { overwrite: false, dryRun: true },
       spawn,
+      env: {},
     })
 
     expect(result).toEqual({ kind: 'codex-cli-skipped-dry-run' })

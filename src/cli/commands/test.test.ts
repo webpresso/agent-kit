@@ -30,9 +30,7 @@ import { createAkTestCommandConfig, registerTestCommand, TEST_COMMAND_HELP } fro
 function buildFakeCli() {
   const options: string[] = []
   const optionDescriptions = new Map<string, string>()
-  let capturedAction:
-    | ((targets: string[] | string | undefined, flags: Record<string, unknown>) => unknown)
-    | undefined
+  let capturedAction: ((flags: Record<string, unknown>) => unknown) | undefined
   const chain = {
     option: (name: string, description: string) => {
       options.push(name)
@@ -150,7 +148,7 @@ describe('wp test command helpers', () => {
     const action = cli.getAction()
     expect(action).toBeTypeOf('function')
 
-    await action?.([], { full: true })
+    await action?.({ full: true })
 
     expect(qualityRunnerMocks.emitCliCommandOutput).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -160,7 +158,7 @@ describe('wp test command helpers', () => {
     )
 
     qualityRunnerMocks.emitCliCommandOutput.mockClear()
-    await action?.([], {})
+    await action?.({})
 
     expect(qualityRunnerMocks.emitCliCommandOutput).toHaveBeenCalledWith(
       expect.objectContaining({

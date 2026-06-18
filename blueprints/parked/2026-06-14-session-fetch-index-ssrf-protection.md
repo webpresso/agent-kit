@@ -91,7 +91,7 @@ Strengthen the existing SSRF guard in `src/session-memory/ip-guard.ts`. The curr
 3. Run: `./bin/wp test --file src/session-memory/ip-guard.test.ts` — verify FAIL.
 4. Implement minimal parsing in `ip-guard.ts`: decode both dotted and hex IPv4-mapped IPv6 suffixes, then reuse the IPv4 range classifier; extend the IPv4 classifier for the tested special-use ranges. Do not add a new dependency unless manual parsing becomes materially more complex than the existing helper.
 5. Run: `./bin/wp test --file src/session-memory/ip-guard.test.ts` — verify PASS.
-6. Run: `./bin/wp lint src/session-memory/ip-guard.ts src/session-memory/ip-guard.test.ts` and `./bin/wp typecheck`.
+6. Run: `./bin/wp lint --file src/session-memory/ip-guard.ts --file src/session-memory/ip-guard.test.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -121,7 +121,7 @@ Extend `fetchAndIndex` coverage so the hardened address policy is proven at the 
 2. Add/keep a control test for `https://example.com/docs` to confirm legitimate external documentation fetching still indexes content.
 3. Run: `./bin/wp test --file src/session-memory/fetch-index.test.ts` — verify FAIL before Task 1.1 lands, then PASS after Task 1.1 lands.
 4. Confirm `allowedHosts` remains exact-host only: `allowedHosts: ['localhost']` bypasses `http://localhost/path`, but does not wildcard-match `sub.localhost` or unrelated private hosts.
-5. Run: `./bin/wp lint src/session-memory/fetch-index.test.ts` and `./bin/wp typecheck`.
+5. Run: `./bin/wp lint --file src/session-memory/fetch-index.test.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 

@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-06-08'
+last_updated: '2026-06-18'
 ---
 
 # Add-ons
@@ -13,9 +13,10 @@ bootstrap.
 - **Default shared Webpresso skills:** `fix`, `verify`, `testing-philosophy`,
   `plan-refine`, `pll`, and `best-practice-research` are projected into
   supported host-visible surfaces by default.
-- **Default workstation presets:** `omx`, `omc`, `gstack`, `vision`, and `rtk`
-  are requested by default and degrade when the matching host or auth is
-  missing.
+- **Default workstation presets:** `vision` and `rtk`.
+- **External tools:** OMX, OMC, and gstack are intentionally self-managed.
+  Install and update them with their native installers if you choose to use
+  them.
 
 Most repos should only run:
 
@@ -23,7 +24,7 @@ Most repos should only run:
 wp setup
 ```
 
-If a repo needs an opt-in integration, add it with:
+If a repo needs an opt-in Webpresso preset, add it with:
 
 ```bash
 wp setup --with <name>
@@ -41,11 +42,19 @@ Use the same `--with` flow for non-default Webpresso skills such as
 | --- | --- | --- | --- |
 | [`playwright-mcp`](https://github.com/microsoft/playwright-mcp) | Opt-in. | Browser automation for agent QA. | Apache-2.0 |
 | `example-skill` | Opt-in. | A tiny hello-world skill for smoke tests. | MIT (this repo) |
-| [`omx`](https://oh-my-codex.dev/docs.html) | In the default preset set; skipped in CI. | Codex-side orchestration helpers. | MIT |
-| [`omc`](https://github.com/Yeachan-Heo/oh-my-claudecode) | In the default preset set; skipped when `WP_SKIP_OMC=1` or the `claude` CLI is unavailable. | Claude-side orchestration helpers. | MIT |
-| [`gstack`](https://github.com/garrytan/gstack) | In the default preset set; skipped in CI or when `WP_SKIP_GSTACK=1`. | Extra workflow skills. | MIT |
-| [`rtk`](https://github.com/rtk-ai/rtk) | In the default preset set; skipped in CI or when `WP_SKIP_RTK=1`. | Shell-tool token filtering and routing/guard integration. | Apache-2.0 |
-| `vision` | In the default preset set. | Starter `VISION.md` and vision audit support. | MIT (this repo) |
+| [`rtk`](https://github.com/rtk-ai/rtk) | Default preset. Skipped in CI or when `WP_SKIP_RTK=1`. | Shell-tool token filtering and routing/guard integration. | Apache-2.0 |
+| `vision` | Default preset. | Starter `VISION.md` and vision audit support. | MIT (this repo) |
+
+## External tools managed outside `wp setup`
+
+These tools remain compatible with Webpresso, but `wp setup` no longer
+remembers or replays their installation on reruns:
+
+| Tool | Preferred install/update path | Source |
+| --- | --- | --- |
+| [`omx`](https://oh-my-codex.dev/docs.html) | `npm install -g oh-my-codex`, then `omx setup` / `omx update` | official OMX docs |
+| `omc` | Claude Code `/plugin` or `claude plugin` marketplace commands | [Claude Code plugin docs](https://code.claude.com/docs/en/settings) |
+| [`gstack`](https://github.com/garrytan/gstack) | Clone the repo and run `./setup` | upstream README |
 
 See [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) for vendored catalog skills and
 integration license notes.
@@ -61,6 +70,4 @@ Fresh repos default to `blueprints/`. Repos that need a different layout can
 override `.webpressorc.json#blueprintsDir` — for example
 `webpresso/blueprints` in a monorepo.
 
-Most users should never need to think about those pieces individually. When a
-row says “in the default preset set,” it means `wp setup` includes that preset
-without needing `--with <name>`.
+Most users should never need to think about those pieces individually.

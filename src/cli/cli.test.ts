@@ -51,7 +51,7 @@ describe('wp root command surface', () => {
       'install               Install dependencies through the managed vp facade',
     )
     expect(result.stdout.join('\n')).toContain(
-      'Update global @webpresso/agent-kit; use --tools for toolchain refresh or --deps for local dependencies',
+      'Refresh wp and any wp-managed optional OMX/OMC/gstack integrations by default; use --deps for local dependencies',
     )
     expect(result.stdout.join('\n')).not.toContain('Update local dependencies by default')
     expect(result.stdout.join('\n')).toContain(
@@ -81,23 +81,60 @@ describe('wp root command surface', () => {
     expect(result.stdout.join('\n')).toContain('--project')
   })
 
-  it('routes wp update to command-specific help with deps and tools mode options', async () => {
+  it('routes wp update to command-specific help with deps and global mode options', async () => {
     const result = await runAk(['update', '--help'])
 
     expect(result.code).toBe(0)
     expect(result.stdout.join('\n')).toContain('wp update')
     expect(result.stdout.join('\n')).toContain('--deps')
-    expect(result.stdout.join('\n')).toContain('--tools')
-    expect(result.stdout.join('\n')).not.toContain('--global')
+    expect(result.stdout.join('\n')).toContain('--global')
     expect(result.stdout.join('\n')).toContain(
       'Update local dependencies through managed vp update',
     )
     expect(result.stdout.join('\n')).toContain(
-      'Refresh codex, tmux, omx, omc, gstack, and wp.',
+      'Compatibility alias for the default tooling refresh',
     )
     expect(result.stdout.join('\n')).not.toContain(
       'Update local dependencies through the managed vp facade (default)',
     )
+  })
+
+  it('routes wp lint to command-specific help with standardized file targeting', async () => {
+    const result = await runAk(['lint', '--help'])
+
+    expect(result.code).toBe(0)
+    expect(result.stdout.join('\n')).toContain('wp lint')
+    expect(result.stdout.join('\n')).toContain('Usage:')
+    expect(result.stdout.join('\n')).not.toContain('[...files]')
+    expect(result.stdout.join('\n')).toContain('--file <path>')
+  })
+
+  it('routes wp format to command-specific help with standardized file targeting', async () => {
+    const result = await runAk(['format', '--help'])
+
+    expect(result.code).toBe(0)
+    expect(result.stdout.join('\n')).toContain('wp format')
+    expect(result.stdout.join('\n')).not.toContain('[...files]')
+    expect(result.stdout.join('\n')).toContain('--file <path>')
+  })
+
+  it('routes wp test to command-specific help without positional targets', async () => {
+    const result = await runAk(['test', '--help'])
+
+    expect(result.code).toBe(0)
+    expect(result.stdout.join('\n')).toContain('wp test')
+    expect(result.stdout.join('\n')).not.toContain('[...targets]')
+    expect(result.stdout.join('\n')).toContain('--file <path>')
+    expect(result.stdout.join('\n')).toContain('--package <name>')
+  })
+
+  it('routes wp e2e to command-specific help without positional files', async () => {
+    const result = await runAk(['e2e', '--help'])
+
+    expect(result.code).toBe(0)
+    expect(result.stdout.join('\n')).toContain('wp e2e')
+    expect(result.stdout.join('\n')).not.toContain('[...files]')
+    expect(result.stdout.join('\n')).toContain('--file <path>')
   })
 
   it('routes wp roadmap to roadmap help', async () => {

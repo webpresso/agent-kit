@@ -88,7 +88,7 @@ worktree_owner_branch: ''
 - [ ] `result.stdout` is never included in the error message body (verified by grep of the compiled line).
 - [ ] `result.stderr` is redacted, then truncated to first line ≤512 bytes (redaction precedes truncation).
 - [ ] Existing call sites (`fetchFromDoppler`, `fetchFromInfisical`) still throw informative errors.
-- [ ] `redactText` is imported via the `#mcp/tools/_shared/redact` subpath; `./bin/wp lint src/runtime/secret-managers.ts` passes.
+- [ ] `redactText` is imported via the `#mcp/tools/_shared/redact` subpath; `./bin/wp lint --file src/runtime/secret-managers.ts` passes.
 
 #### [secret-gate] Task 1.2: Add unit tests for `formatFailure` and `parseJsonSecrets`
 **Status:** todo
@@ -133,7 +133,7 @@ worktree_owner_branch: ''
 | ---- | ------- | ---------------- |
 | Type safety | `./bin/wp typecheck` | Zero errors. |
 | Unit tests | `./bin/wp test --file src/runtime/secret-managers.test.ts` | All pass. |
-| Lint | `./bin/wp lint src/runtime/secret-managers.ts` | Zero violations. |
+| Lint | `./bin/wp lint --file src/runtime/secret-managers.ts` | Zero violations. |
 | Audit: secrets-policy | `./bin/wp audit secrets-policy` | Passes (redact import is not a new secret carrier). |
 
 ## Non-goals

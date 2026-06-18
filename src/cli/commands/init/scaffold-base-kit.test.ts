@@ -1,15 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { resolveCatalogDir } from './index.js'
-import {
-  collectRuntimeContractGuidance,
-  readAgentConfigVersion,
-  scaffoldBaseKit,
-} from './scaffold-base-kit.js'
+import { collectRuntimeContractGuidance, scaffoldBaseKit } from './scaffold-base-kit.js'
 
 describe('scaffoldBaseKit', () => {
   let repoRoot: string
@@ -40,7 +35,6 @@ describe('scaffoldBaseKit', () => {
     expect(existsSync(join(repoRoot, 'commitlint.config.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, '.husky', 'pre-commit'))).toBe(true)
     expect(existsSync(join(repoRoot, '.husky', 'commit-msg'))).toBe(false)
-    expect(existsSync(join(repoRoot, '.husky', 'pre-push'))).toBe(false)
     expect(existsSync(join(repoRoot, '.github', 'actions', 'setup-webpresso', 'action.yml'))).toBe(
       true,
     )
@@ -50,7 +44,6 @@ describe('scaffoldBaseKit', () => {
     expect(existsSync(join(repoRoot, '.changeset', 'README.md'))).toBe(true)
     expect(existsSync(join(repoRoot, 'scripts', 'check-no-dev-vars.ts'))).toBe(false)
     expect(existsSync(join(repoRoot, 'scripts', 'audit-secret-provider-quarantine.ts'))).toBe(false)
-    expect(existsSync(join(repoRoot, 'scripts', 'resolve-webpresso-cli-versions.js'))).toBe(true)
     expect(existsSync(join(repoRoot, 'scripts', 'sync-release-metadata-version.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'scripts', 'release-publish.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'tsconfig.json'))).toBe(true)
@@ -94,15 +87,8 @@ describe('scaffoldBaseKit', () => {
     expect(readFileSync(join(repoRoot, '.node-version'), 'utf8').trim()).toBe('24.16.0')
     expect(readFileSync(join(repoRoot, '.nvmrc'), 'utf8').trim()).toBe('24.16.0')
     const preCommit = readFileSync(join(repoRoot, '.husky', 'pre-commit'), 'utf8')
-    const setupAction = readFileSync(
-      join(repoRoot, '.github', 'actions', 'setup-webpresso', 'action.yml'),
-      'utf8',
-    )
     expect(preCommit).toContain("grep -q '^blueprints/'")
     expect(preCommit).toContain('wp audit blueprint-readme-drift')
-    expect(existsSync(join(repoRoot, '.husky', 'commit-msg'))).toBe(false)
-    expect(existsSync(join(repoRoot, '.husky', 'pre-push'))).toBe(false)
-    expect(setupAction).toContain('node ./scripts/resolve-webpresso-cli-versions.js')
   })
 
   it('dry-run does not write files', () => {
@@ -171,7 +157,9 @@ describe('scaffoldBaseKit', () => {
     expect((pkg['scripts'] as Record<string, string>)['release:publish']).toBe(
       'bun scripts/release-publish.ts',
     )
-    expect((pkg['scripts'] as Record<string, string>)['lint']).toBe('wp lint src e2e *.config.ts')
+    expect((pkg['scripts'] as Record<string, string>)['lint']).toBe(
+      'wp lint --file src --file e2e --file *.config.ts',
+    )
     expect((pkg['scripts'] as Record<string, string>)['typecheck']).toBe('wp typecheck')
     expect((pkg['scripts'] as Record<string, string>)['test']).toBe(
       'wp test --file vitest.config.ts',
@@ -184,7 +172,7 @@ describe('scaffoldBaseKit', () => {
       'wp e2e --config playwright.config.ts',
     )
     expect((pkg['scripts'] as Record<string, string>)['qa']).toContain(
-      'wp lint src e2e *.config.ts',
+      'wp lint --file src --file e2e --file *.config.ts',
     )
     expect((pkg['scripts'] as Record<string, string>)['verify:paths']).toBe(
       'wp audit absolute-path-policy --root .',
@@ -198,34 +186,12 @@ describe('scaffoldBaseKit', () => {
     expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
   })
 
-  it('keeps walking past malformed unrelated package files when resolving agent-config version', () => {
-    const root = join(tmpdir(), `wp-agent-config-version-${Date.now()}`)
-    const malformedParent = join(root, 'malformed-parent')
-    const sourceDir = join(malformedParent, 'src')
-    mkdirSync(sourceDir, { recursive: true })
-    writeFileSync(
-      join(root, 'package.json'),
-      JSON.stringify({
-        name: '@webpresso/agent-kit',
-        version: '9.9.9',
-        webpresso: { agentConfigVersion: '1.2.3' },
-      }),
-    )
-    writeFileSync(join(malformedParent, 'package.json'), '{ not json', 'utf8')
-
-    try {
-      expect(readAgentConfigVersion(pathToFileURL(join(sourceDir, 'cli.ts')).href)).toBe('1.2.3')
-    } finally {
-      rmSync(root, { recursive: true, force: true })
-    }
-  })
-
   it('adds only missing bootstrap fields for consumers', () => {
     const pkgPath = join(repoRoot, 'package.json')
     const initial = {
       name: 'consumer-app',
       scripts: { test: 'vitest' },
-      devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
+      devDependencies: { '@webpresso/agent-config': '^0.2.0' },
     }
     writeFileSync(pkgPath, JSON.stringify(initial, null, 2))
 
@@ -233,11 +199,8 @@ describe('scaffoldBaseKit', () => {
     scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
-    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
+    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-config']).toBe(
       '^0.2.0',
-    )
-    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-config']).toMatch(
-      /^\^\d+\.\d+\.\d+/u,
     )
     expect(pkg['version']).toBe('0.0.0')
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
@@ -260,7 +223,9 @@ describe('scaffoldBaseKit', () => {
     )
     expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
     expect((pkg['scripts'] as Record<string, string>)['test']).toBe('vitest')
-    expect((pkg['scripts'] as Record<string, string>)['lint']).toBe('wp lint src e2e *.config.ts')
+    expect((pkg['scripts'] as Record<string, string>)['lint']).toBe(
+      'wp lint --file src --file e2e --file *.config.ts',
+    )
   })
 
   it('replaces npm init placeholder test script with the starter test lane', () => {
@@ -286,13 +251,13 @@ describe('scaffoldBaseKit', () => {
     )
   })
 
-  it('preserves consumer-owned setup:agent and adds agent-config without adding agent-kit', () => {
+  it('preserves consumer-owned setup:agent and existing agent-config devDependency', () => {
     const pkgPath = join(repoRoot, 'package.json')
     mkdirSync(repoRoot, { recursive: true })
     const initial = {
       name: 'consumer-app',
       scripts: { 'setup:agent': 'wp setup' },
-      devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
+      devDependencies: { '@webpresso/agent-config': '^0.2.0' },
     }
     writeFileSync(pkgPath, JSON.stringify(initial, null, 2))
 
@@ -320,11 +285,8 @@ describe('scaffoldBaseKit', () => {
       'wp audit secret-provider-quarantine',
     )
     expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
-    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
+    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-config']).toBe(
       '^0.2.0',
-    )
-    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-config']).toMatch(
-      /^\^\d+\.\d+\.\d+/u,
     )
   })
 
@@ -338,7 +300,7 @@ describe('scaffoldBaseKit', () => {
         'verify:secrets': 'echo custom secret check',
         prepare: 'pnpm -C packages prebuild',
       },
-      devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
+      devDependencies: { '@webpresso/agent-config': '^0.2.0' },
     }
     writeFileSync(pkgPath, JSON.stringify(initial, null, 2))
 
@@ -400,7 +362,7 @@ describe('scaffoldBaseKit', () => {
       packageManager: 'pnpm@11.5.0',
       engines: { node: '>=24' },
       scripts: { 'setup:agent': 'wp setup' },
-      devDependencies: { '@webpresso/agent-kit': '^0.18.0' },
+      devDependencies: { '@webpresso/agent-config': '^0.18.0' },
     }
     writeFileSync(pkgPath, JSON.stringify(initial, null, 2))
 

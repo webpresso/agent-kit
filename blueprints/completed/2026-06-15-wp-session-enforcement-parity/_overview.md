@@ -290,7 +290,7 @@ to call legacy context-mode names. (F1, F7, F9)
 2. Run: `./bin/wp test --file src/hooks/shared/routing-block.test.ts --file src/hooks/sessionstart/index.test.ts --file src/mcp/server.integration.test.ts` — verify FAIL.
 3. Implement the minimal routing/instruction-surface changes; keep the existing dev-workflow table intact.
 4. Run: `./bin/wp test --file src/hooks/shared/routing-block.test.ts --file src/hooks/sessionstart/index.test.ts --file src/mcp/server.integration.test.ts` — verify PASS.
-5. Run: `./bin/wp lint src/hooks/shared src/hooks/sessionstart/index.test.ts src/mcp/server.integration.test.ts` and `./bin/wp typecheck`.
+5. Run: `./bin/wp lint --file src/hooks/shared --file src/hooks/sessionstart/index.test.ts --file src/mcp/server.integration.test.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -329,7 +329,7 @@ instead of silently emitted as invalid config. (F2, F6, F10, F16)
 3. Run: `./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/index.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/emitters/claude.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts` — verify FAIL.
 4. Update matcher constants, managed hook specs, launcher generation, and capability notes; do not modify generated local `.claude` or `.codex` files by hand.
 5. Run the same focused tests — verify PASS.
-6. Run: `./bin/wp lint src/cli/commands/init/scaffolders/agent-hooks` and `./bin/wp typecheck`.
+6. Run: `./bin/wp lint --file src/cli/commands/init/scaffolders/agent-hooks` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -368,7 +368,7 @@ host-prefixed MCP variants. Dev-workflow tools keep priority. (F3, F8, F9)
 3. Run: `./bin/wp test --file src/hooks/pretool-guard/dev-routing.test.ts --file src/hooks/pretool-guard/coordinated-routing.test.ts --file src/hooks/pretool-guard/runner.test.ts` — verify FAIL.
 4. Implement the smallest routing changes; keep dev-workflow denials higher priority than session-memory nudges.
 5. Run the same focused tests — verify PASS.
-6. Run: `./bin/wp lint src/hooks/pretool-guard` and `./bin/wp typecheck`.
+6. Run: `./bin/wp lint --file src/hooks/pretool-guard` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -403,7 +403,7 @@ storage only if a focused test proves a contract gap. (F4, F11, F15)
 2. Run: `./bin/wp test --file src/hooks/post-tool/lint-after-edit.test.ts --file src/session-memory/hook-capture.test.ts` — verify FAIL.
 3. Implement minimal capture classification and summary generation without adding shellouts or a storage rewrite.
 4. Run the same focused tests — verify PASS.
-5. Run: `./bin/wp lint src/hooks/post-tool src/session-memory/hook-capture.test.ts` and `./bin/wp typecheck`.
+5. Run: `./bin/wp lint --file src/hooks/post-tool --file src/session-memory/hook-capture.test.ts` and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -468,7 +468,7 @@ the capability matrix. (F2, F6, F7, F14, F16)
 2. Run: `./bin/wp test --file src/__integration__/reference-parity-host-smoke.integration.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts --file src/hooks/doctor.test.ts` — verify FAIL.
 3. Update fixtures and setup/doctor expectations only; do not hand-edit generated runtime surfaces.
 4. Run the same focused tests — verify PASS.
-5. Run: `./bin/wp hooks doctor --skip-mcp`, `./bin/wp lint src/__integration__ src/cli/commands/init/host-smoke.e2e.test.ts src/hooks/doctor.test.ts`, and `./bin/wp typecheck`.
+5. Run: `./bin/wp hooks doctor --skip-mcp`, `./bin/wp lint --file src/__integration__ --file src/cli/commands/init/host-smoke.e2e.test.ts --file src/hooks/doctor.test.ts`, and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -506,7 +506,7 @@ consistency, and repair-path evidence. (F1, F7, F10, F14)
 2. Run: `./bin/wp test --file src/audit/reference-parity-matrix.test.ts --file src/cli/commands/bench/session-memory.test.ts --file src/__integration__/reference-parity-bench.integration.test.ts` — verify FAIL.
 3. Add enforcement rows and dry-run schema validation without treating source-grep or dry-run output as live benchmark evidence.
 4. Run the same focused tests — verify PASS.
-5. Run: `./bin/wp bench session-memory --dry-run`, `./bin/wp audit reference-parity-matrix --json`, `./bin/wp lint docs/bench/reference-parity-matrix.md src/audit/reference-parity-matrix.ts src/audit/reference-parity-matrix.test.ts src/cli/commands/bench/session-memory.ts src/cli/commands/bench/session-memory.test.ts src/__integration__/reference-parity-bench.integration.test.ts`, and `./bin/wp typecheck`.
+5. Run: `./bin/wp bench session-memory --dry-run`, `./bin/wp audit reference-parity-matrix --json`, `./bin/wp lint --file docs/bench/reference-parity-matrix.md --file src/audit/reference-parity-matrix.ts --file src/audit/reference-parity-matrix.test.ts --file src/cli/commands/bench/session-memory.ts --file src/cli/commands/bench/session-memory.test.ts --file src/__integration__/reference-parity-bench.integration.test.ts`, and `./bin/wp typecheck`.
 
 **Acceptance:**
 
@@ -544,7 +544,7 @@ language lands. (F5, F7, F12)
 1. Write or update docs/audit expectations so docs cannot claim full parity while reference-parity enforcement rows are open.
 2. Run: `./bin/wp audit reference-parity-matrix --strict` — verify it fails until the live measured benchmark row is full/passed, and document that expected open row in the task notes.
 3. Update public docs and changelog language to match the proven host support matrix.
-4. Run: `./bin/wp audit docs-frontmatter`, `./bin/wp audit blueprint-lifecycle`, `./bin/wp audit reference-parity-matrix --json`, expected-failing `./bin/wp audit reference-parity-matrix --strict`, `./bin/wp audit package-surface`, `./bin/wp audit secrets-policy`, `./bin/wp audit absolute-path-policy`, `./bin/wp audit hook-surface`, `./bin/wp audit hook-vendor-drift`, `npm pack --dry-run --json`, and `./bin/wp lint README.md docs/guides/session-memory.md docs/hook-matrix.md docs/hooks-doctor.md docs/bench/session-memory-methodology.md CHANGELOG.md`.
+4. Run: `./bin/wp audit docs-frontmatter`, `./bin/wp audit blueprint-lifecycle`, `./bin/wp audit reference-parity-matrix --json`, expected-failing `./bin/wp audit reference-parity-matrix --strict`, `./bin/wp audit package-surface`, `./bin/wp audit secrets-policy`, `./bin/wp audit absolute-path-policy`, `./bin/wp audit hook-surface`, `./bin/wp audit hook-vendor-drift`, `npm pack --dry-run --json`, and `./bin/wp lint --file README.md --file docs/guides/session-memory.md --file docs/hook-matrix.md --file docs/hooks-doctor.md --file docs/bench/session-memory-methodology.md --file CHANGELOG.md`.
 5. If any public-package or secret/path gate fails, fix the root cause before marking the task done.
 
 **Acceptance:**

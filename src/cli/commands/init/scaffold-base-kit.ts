@@ -210,7 +210,7 @@ function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult 
   const verifyPathsScript = 'wp audit absolute-path-policy --root .'
   const verifySecretsScript = 'wp audit no-dev-vars'
   const secretQuarantineAuditScript = 'wp audit secret-provider-quarantine'
-  const lintScript = 'wp lint src e2e *.config.ts'
+  const lintScript = 'wp lint --file src --file e2e --file *.config.ts'
   const typecheckScript = 'wp typecheck'
   const testScript = 'wp test --file vitest.config.ts'
   const changesetScript = 'changeset'
@@ -221,7 +221,7 @@ function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult 
   const testMutationScript = 'stryker run stryker.config.ts'
   const e2eScript = 'wp e2e --config playwright.config.ts'
   const qaScript = [
-    'wp lint src e2e *.config.ts',
+    'wp lint --file src --file e2e --file *.config.ts',
     'wp typecheck',
     'wp test --file vitest.config.ts',
     'wp test --mutation',
