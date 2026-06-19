@@ -256,8 +256,6 @@ describe('CAPABILITY_MATRIX', () => {
     ])
   })
 
-
-
   it('rejects generic full replacement parity rows that do not name canonical hosts', () => {
     const violations = validateReplacementParityCapabilityCrosswalk([
       {

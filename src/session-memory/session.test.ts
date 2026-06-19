@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { Database } from '#db/sqlite.js'
+
 import { SessionMemorySessionStore } from './session.js'
 
 const dirs: string[] = []
@@ -68,6 +70,144 @@ describe('SessionMemorySessionStore', () => {
     })
 
     store.close()
+  })
+
+  it('normalizes native integer timestamps when restoring unified events', () => {
+    const path = dbPath()
+    const db = new Database(path)
+    db.exec(`
+      PRAGMA user_version = 2;
+      CREATE TABLE sessions (
+        agent_id TEXT NOT NULL,
+        snapshot_id TEXT PRIMARY KEY,
+        repo_hash TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        content_json TEXT NOT NULL
+      );
+      CREATE TABLE session_events (
+        session_id TEXT NOT NULL,
+        event_id TEXT PRIMARY KEY,
+        repo_hash TEXT NOT NULL,
+        ts INTEGER NOT NULL,
+        event_type TEXT NOT NULL,
+        tool_name TEXT NOT NULL,
+        content TEXT NOT NULL,
+        summary TEXT,
+        priority INTEGER NOT NULL DEFAULT 50,
+        metadata_json TEXT NOT NULL DEFAULT '{}'
+      );
+      CREATE INDEX idx_session_events_repo_ts ON session_events(repo_hash, ts DESC);
+      CREATE VIRTUAL TABLE session_events_fts
+        USING fts5(session_id UNINDEXED, event_id UNINDEXED, repo_hash UNINDEXED, tool_name UNINDEXED, content, tokenize='porter');
+      INSERT INTO session_events(session_id, event_id, repo_hash, ts, event_type, tool_name, content, summary, priority, metadata_json)
+      VALUES('native-agent', 'native-event', 'repo123456789abcd', 1781824862, 'tool_command', 'Bash', 'native integer timestamp payload', NULL, 50, '{}');
+      INSERT INTO session_events_fts(session_id, event_id, repo_hash, tool_name, content)
+      VALUES('native-agent', 'native-event', 'repo123456789abcd', 'Bash', 'tool_command
+native integer timestamp payload');
+    `)
+    db.close()
+
+    const store = new SessionMemorySessionStore(path)
+    const [result] = store.restoreUnified({
+      repoHash: 'repo123456789abcd',
+      query: 'timestamp payload',
+      limit: 1,
+    })
+
+    expect(result).toMatchObject({
+      provenance: { eventId: 'native-event' },
+      timestamp: '1781824862',
+    })
+    store.close()
+  })
+
+  it('migrates legacy TypeScript session-memory rows instead of hard-cutting them', () => {
+    const path = dbPath()
+    const db = new Database(path)
+    db.exec(`
+      PRAGMA user_version = 1;
+      CREATE TABLE sessions (
+        agent_id TEXT NOT NULL,
+        snapshot_id TEXT PRIMARY KEY,
+        created_at TEXT NOT NULL,
+        content_json TEXT NOT NULL
+      );
+      CREATE TABLE session_events (
+        session_id TEXT NOT NULL,
+        event_id TEXT PRIMARY KEY,
+        ts TEXT NOT NULL,
+        tool_name TEXT NOT NULL,
+        content TEXT NOT NULL
+      );
+      CREATE VIRTUAL TABLE session_events_fts
+        USING fts5(session_id UNINDEXED, event_id UNINDEXED, repo_hash UNINDEXED, tool_name UNINDEXED, content, tokenize='porter');
+      INSERT INTO sessions(agent_id, snapshot_id, created_at, content_json)
+      VALUES('legacy-session', 'legacy-snapshot', '2026-06-19T00:00:00.000Z', '{"ok":true}');
+      INSERT INTO session_events(session_id, event_id, ts, tool_name, content)
+      VALUES('legacy-session', 'legacy-event', '2026-06-19T00:01:00.000Z', 'Bash', 'legacy migrated payload');
+    `)
+    db.close()
+
+    const store = new SessionMemorySessionStore(path)
+    const [event] = store.restore({ repoHash: 'legacy', query: 'migrated payload', limit: 1 })
+
+    expect(event).toMatchObject({
+      sessionId: 'legacy-session',
+      eventId: 'legacy-event',
+      eventType: 'tool_command',
+      toolName: 'Bash',
+      content: 'legacy migrated payload',
+      priority: 50,
+    })
+    store.close()
+
+    const migrated = new Database(path)
+    expect(migrated.prepare<[], { user_version: number }>('PRAGMA user_version').get()).toEqual({
+      user_version: 2,
+    })
+    expect(
+      migrated
+        .prepare<[], { count: number }>('SELECT COUNT(*) AS count FROM session_events_fts')
+        .get()?.count,
+    ).toBe(1)
+    expect(
+      migrated
+        .prepare<[], { repo_hash: string }>(
+          "SELECT repo_hash FROM session_events WHERE event_id = 'legacy-event'",
+        )
+        .get()?.repo_hash,
+    ).toBe('legacy')
+    migrated.close()
+  })
+
+  it('does not duplicate migrated FTS rows on reopen', () => {
+    const path = dbPath()
+    const db = new Database(path)
+    db.exec(`
+      PRAGMA user_version = 1;
+      CREATE TABLE session_events (
+        session_id TEXT NOT NULL,
+        event_id TEXT PRIMARY KEY,
+        ts TEXT NOT NULL,
+        tool_name TEXT NOT NULL,
+        content TEXT NOT NULL
+      );
+      INSERT INTO session_events(session_id, event_id, ts, tool_name, content)
+      VALUES('legacy-session', 'legacy-event', '2026-06-19T00:01:00.000Z', 'Bash', 'legacy fts payload');
+    `)
+    db.close()
+
+    new SessionMemorySessionStore(path).close()
+    new SessionMemorySessionStore(path).close()
+
+    const reopened = new Database(path)
+    expect(
+      reopened
+        .prepare<[], { count: number }>('SELECT COUNT(*) AS count FROM session_events_fts')
+        .get()?.count,
+    ).toBe(1)
+    reopened.close()
   })
 
   it('serializes bounded typed snapshot rows with priority filtering', () => {

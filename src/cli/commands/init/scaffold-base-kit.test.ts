@@ -67,12 +67,15 @@ describe('scaffoldBaseKit', () => {
     expect(existsSync(join(repoRoot, 'e2e', '.gitkeep'))).toBe(true)
 
     const workflow = readFileSync(join(repoRoot, '.github', 'workflows', 'ci.yml'), 'utf8')
-    const releaseWorkflow = readFileSync(join(repoRoot, '.github', 'workflows', 'release.yml'), 'utf8')
+    const releaseWorkflow = readFileSync(
+      join(repoRoot, '.github', 'workflows', 'release.yml'),
+      'utf8',
+    )
     expect(workflow).toContain('\n  quality:\n')
     expect(workflow).toContain('name: quality')
     expect(workflow).toContain('\n  wp-check:\n')
     expect(workflow).toContain('name: wp-check')
-    expect(workflow).toContain("needs:\n      - quality")
+    expect(workflow).toContain('needs:\n      - quality')
     expect(workflow).toContain('\n  e2e:\n')
     expect(workflow).toContain('\n  architecture-drift:\n')
     expect(workflow).toContain('\n  deploy-verify:\n')
@@ -80,7 +83,9 @@ describe('scaffoldBaseKit', () => {
     expect(workflow).not.toContain('\n  test:\n')
     expect(workflow).not.toContain('\n  wp-audits:\n')
     expect(workflow).not.toContain('\n  deploy-contract:\n')
-    expect(releaseWorkflow).toContain('changesets-release.yml@3f0136f88a488bc0894ab81ab3c8544b2e8dabf2')
+    expect(releaseWorkflow).toContain(
+      'changesets-release.yml@3f0136f88a488bc0894ab81ab3c8544b2e8dabf2',
+    )
     expect(releaseWorkflow).toContain('version_command: pnpm run version')
     expect(releaseWorkflow).toContain('publish_command: pnpm run release:publish')
 
@@ -90,6 +95,11 @@ describe('scaffoldBaseKit', () => {
     expect(preCommit).toContain('git diff --cached --name-only --diff-filter=ACMR')
     expect(preCommit).toContain("grep -Eq '^blueprints/(README\\.md|[^/]+/.*\\.md)$'")
     expect(preCommit).toContain('wp audit blueprint-readme-drift')
+    // The whole-repo guardrails suite is CI-owned, never run per-commit.
+    expect(preCommit).not.toContain('wp audit guardrails')
+    // Fast audits are gated on staged source/config — not run whole-repo every commit.
+    expect(preCommit).toContain('wp audit no-dev-vars')
+    expect(preCommit).toContain('(ts|tsx|js|jsx')
   })
 
   it('dry-run does not write files', () => {
@@ -134,7 +144,9 @@ describe('scaffoldBaseKit', () => {
     expect((pkg['engines'] as Record<string, string>)['node']).toBe('>=24')
     expect(pkg['type']).toBe('module')
     expect(pkg['packageManager']).toBe('pnpm@11.1.1')
-    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBeUndefined()
+    expect(
+      (pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit'],
+    ).toBeUndefined()
     expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-config']).toMatch(
       /^\^\d+\.\d+\.\d+/u,
     )
@@ -329,7 +341,9 @@ describe('scaffoldBaseKit', () => {
     scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
-    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBeUndefined()
+    expect(
+      (pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit'],
+    ).toBeUndefined()
     expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-config']).toMatch(
       /^\^\d+\.\d+\.\d+/,
     )
@@ -418,9 +432,9 @@ describe('scaffoldBaseKit', () => {
     scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
-    expect(
-      (pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit'],
-    ).toBe(undefined)
+    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
+      undefined,
+    )
     expect((pkg['scripts'] as Record<string, string>)['test']).toBe(
       'wp test --file vitest.config.ts',
     )

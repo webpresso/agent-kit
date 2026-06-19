@@ -73,5 +73,4 @@ describe('buildLaunchPlan', () => {
       args: ['/repo/src/cli/cli.ts', 'qa', '--print-command'],
     })
   })
-
 })

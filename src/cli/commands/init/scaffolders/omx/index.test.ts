@@ -76,15 +76,7 @@ describe('ensureOmx', () => {
     expect(spawn).toHaveBeenNthCalledWith(
       3,
       'C:\\Windows\\cmd.exe',
-      [
-        '/d',
-        '/s',
-        '/c',
-        'C:\\Users\\me\\.vite-plus\\bin\\vp.cmd',
-        'update',
-        '-g',
-        'oh-my-codex',
-      ],
+      ['/d', '/s', '/c', 'C:\\Users\\me\\.vite-plus\\bin\\vp.cmd', 'update', '-g', 'oh-my-codex'],
       { stdio: 'inherit' },
     )
   })
@@ -445,26 +437,24 @@ describe('ensureOmx', () => {
   })
 })
 
-
-
-  it('skips vp refresh noise when only a repo-local vp is available', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'omx-local-vp-'))
-    const configPath = join(dir, 'config.toml')
-    const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
-    const result = ensureOmx({
-      repoRoot: '/tmp/repo',
-      options: { overwrite: false, dryRun: false },
-      spawn,
-      resolveVpCommand: () => null,
-      configPath,
-    })
-    expect(result).toMatchObject({ kind: 'omx-ok', installed: false })
-    expect(spawn).toHaveBeenCalledTimes(2)
-    expect(spawn).toHaveBeenNthCalledWith(1, 'omx', ['--version'], {
-      encoding: 'utf8',
-      timeout: 3000,
-    })
+it('skips vp refresh noise when only a repo-local vp is available', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'omx-local-vp-'))
+  const configPath = join(dir, 'config.toml')
+  const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
+  const result = ensureOmx({
+    repoRoot: '/tmp/repo',
+    options: { overwrite: false, dryRun: false },
+    spawn,
+    resolveVpCommand: () => null,
+    configPath,
   })
+  expect(result).toMatchObject({ kind: 'omx-ok', installed: false })
+  expect(spawn).toHaveBeenCalledTimes(2)
+  expect(spawn).toHaveBeenNthCalledWith(1, 'omx', ['--version'], {
+    encoding: 'utf8',
+    timeout: 3000,
+  })
+})
 
 describe('repairInstalledOmxPluginHooks', () => {
   it('rewrites only OMX plugin hook files with bare node commands', () => {

@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, rmSync } from 'node:fs'
+import { performance } from 'node:perf_hooks'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -40,6 +41,7 @@ export type RunResult =
   | {
       ok: true
       usage: Usage
+      local_wall_ms: number
       tools: string[]
       transcript_path: string
       home_dir: string
@@ -48,6 +50,7 @@ export type RunResult =
       ok: false
       error: 'rate_limit' | 'spawn_failed'
       usage: null
+      local_wall_ms: number
       tools: []
       transcript_path: null
       home_dir: string
@@ -194,12 +197,14 @@ export async function runCell(input: RunCellInput): Promise<RunResult> {
     codexProfile: input.codexProfile,
   })
 
+  const start = performance.now()
   const result = await spawn(cmd, {
     cwd,
     env,
     stdout: 'pipe',
     stderr: 'pipe',
   })
+  const localWallMs = Number((performance.now() - start).toFixed(6))
 
   const combined = `${result.stdout}\n${result.stderr}`.trim()
   if (isRateLimit(combined)) {
@@ -211,6 +216,7 @@ export async function runCell(input: RunCellInput): Promise<RunResult> {
       ok: false,
       error: 'rate_limit',
       usage: null,
+      local_wall_ms: localWallMs,
       tools: ZERO_TOOLS,
       transcript_path: null,
       home_dir: homeDir,
@@ -222,6 +228,7 @@ export async function runCell(input: RunCellInput): Promise<RunResult> {
       ok: false,
       error: 'spawn_failed',
       usage: null,
+      local_wall_ms: localWallMs,
       tools: ZERO_TOOLS,
       transcript_path: null,
       home_dir: homeDir,
@@ -233,6 +240,7 @@ export async function runCell(input: RunCellInput): Promise<RunResult> {
   return {
     ok: true,
     usage: extractUsage(result.stdout),
+    local_wall_ms: localWallMs,
     tools: extractToolUses(result.stdout),
     transcript_path: transcriptPath,
     home_dir: homeDir,

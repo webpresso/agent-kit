@@ -132,7 +132,6 @@ describe('coordinated routing pipeline', () => {
     }
   })
 
-
   describe('Phase 2: raw host context-heavy tools → session-memory sandbox', () => {
     it('unbounded Grep content input → wp_session_batch_execute guidance', async () => {
       const processValidation = await getRunner()
@@ -150,14 +149,19 @@ describe('coordinated routing pipeline', () => {
         hookSpecificOutput?: { permissionDecision?: string; permissionDecisionReason?: string }
       }
       expect(parsed.hookSpecificOutput?.permissionDecision).toBe('deny')
-      expect(parsed.hookSpecificOutput?.permissionDecisionReason).toContain('wp_session_batch_execute')
+      expect(parsed.hookSpecificOutput?.permissionDecisionReason).toContain(
+        'wp_session_batch_execute',
+      )
     })
 
     it('safe host tools and third-party MCP calls pass through raw tool-input session fallback', async () => {
       const processValidation = await getRunner()
       for (const input of [
         { tool_name: 'Read', tool_input: { file_path: 'src/small.ts', limit: 80 } },
-        { tool_name: 'Grep', tool_input: { pattern: 'wp_session', output_mode: 'files_with_matches' } },
+        {
+          tool_name: 'Grep',
+          tool_input: { pattern: 'wp_session', output_mode: 'files_with_matches' },
+        },
         { tool_name: 'WebFetch', tool_input: { url: 'https://example.com/docs' } },
         { tool_name: 'Task', tool_input: { prompt: 'inspect a subsystem' } },
         { tool_name: 'mcp__github__get_pull_request', tool_input: { owner: 'webpresso' } },
@@ -172,16 +176,15 @@ describe('coordinated routing pipeline', () => {
     })
   })
 
-
-    it('canonical Webpresso MCP wp tools pass through raw tool-input session fallback', async () => {
-      const processValidation = await getRunner()
-      try {
-        processValidation(JSON.stringify({ tool_name: 'mcp__webpresso__wp_test', tool_input: {} }))
-      } catch {
-        // process.exit throws
-      }
-      expect(getLastOutput()).toBe('{}')
-    })
+  it('canonical Webpresso MCP wp tools pass through raw tool-input session fallback', async () => {
+    const processValidation = await getRunner()
+    try {
+      processValidation(JSON.stringify({ tool_name: 'mcp__webpresso__wp_test', tool_input: {} }))
+    } catch {
+      // process.exit throws
+    }
+    expect(getLastOutput()).toBe('{}')
+  })
 
   // Category 3: Passthrough commands
   describe('Phase 3: safe commands → passthrough ({})', () => {

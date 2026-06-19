@@ -9,6 +9,10 @@ import {
   PUBLISH_RUNTIME_MATRIX_ENV,
   shouldPublishRuntimeMatrix,
 } from '../src/build/release-policy.js'
+import {
+  SESSION_MEMORY_NATIVE_TARGETS,
+  sessionMemoryNativePackageDirName,
+} from '../src/session-memory/native-targets.js'
 
 const ALREADY_PUBLISHED_PATTERNS = [
   /cannot publish over the previously published version/i,
@@ -157,7 +161,9 @@ function publishSimpleWorkspacePackage(pkg: PublishablePackage): PublishState | 
       )
       return 'already-published'
     }
-    process.stdout.write(`[release:publish] ${pkg.name}@${pkg.version} already published; skipping\n`)
+    process.stdout.write(
+      `[release:publish] ${pkg.name}@${pkg.version} already published; skipping\n`,
+    )
     return null
   }
 
@@ -169,7 +175,21 @@ function publishSimpleWorkspacePackage(pkg: PublishablePackage): PublishState | 
 
   const combinedOutput = `${publishResult.stdout ?? ''}\n${publishResult.stderr ?? ''}`
   if (ALREADY_PUBLISHED_PATTERNS.some((pattern) => pattern.test(combinedOutput))) {
-    process.stdout.write(`[release:publish] ${pkg.name}@${pkg.version} already published; treating as success\n`)
+    process.stdout.write(
+      `[release:publish] ${pkg.name}@${pkg.version} already published; treating as success\n`,
+    )
+    return 'already-published'
+  }
+  process.exit(exitCode(publishResult))
+}
+
+function publishPreparedPackage(packageRoot: string, label: string): PublishState {
+  const publishResult = run('npm', ['publish', '--provenance', '--access', 'public'], packageRoot)
+  if (exitCode(publishResult) === 0) return 'published'
+
+  const combinedOutput = `${publishResult.stdout ?? ''}\n${publishResult.stderr ?? ''}`
+  if (ALREADY_PUBLISHED_PATTERNS.some((pattern) => pattern.test(combinedOutput))) {
+    process.stdout.write(`[release:publish] ${label} already published; treating as success\n`)
     return 'already-published'
   }
   process.exit(exitCode(publishResult))
@@ -209,6 +229,47 @@ function writePublishResultFile(packages: readonly PublishedPackage[]) {
     ),
     'utf8',
   )
+}
+
+function assertPreparedSessionMemoryNativePackage(
+  preparedPackageRoot: string,
+  packageName: string,
+  version: string,
+): PublishablePackage {
+  const manifestPath = resolve(preparedPackageRoot, 'package.json')
+  const artifactPath = resolve(preparedPackageRoot, 'session_memory_napi.node')
+  if (!existsSync(manifestPath)) {
+    throw new Error(`missing session-memory native package manifest: ${manifestPath}`)
+  }
+  if (!existsSync(artifactPath)) {
+    throw new Error(`missing session-memory native package artifact: ${artifactPath}`)
+  }
+  const manifest = readManifest(manifestPath)
+  if (manifest.name !== packageName) {
+    throw new Error(
+      `session-memory native package manifest mismatch: expected ${packageName}, got ${manifest.name ?? 'missing'}`,
+    )
+  }
+  if (manifest.version !== version) {
+    throw new Error(
+      `session-memory native package version mismatch for ${packageName}: expected ${version}, got ${manifest.version ?? 'missing'}`,
+    )
+  }
+  return { name: packageName, version, root: preparedPackageRoot, manifestPath }
+}
+
+function assertPreparedSessionMemoryNativePackages(
+  root: string,
+  version: string,
+): PublishablePackage[] {
+  return SESSION_MEMORY_NATIVE_TARGETS.map((target) => {
+    const packageDir = sessionMemoryNativePackageDirName(target.packageName)
+    return assertPreparedSessionMemoryNativePackage(
+      resolve(root, packageDir),
+      target.packageName,
+      version,
+    )
+  })
 }
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
@@ -257,24 +318,49 @@ if (shouldPublishRuntimeMatrix(process.env)) {
     process.exit(exitCode(runtimeStageResult))
   }
 
+  // Session-memory native packages are real NAPI artifacts, not single-runner
+  // cross-compiled launcher assets. The release job must provide every target
+  // artifact under dist/session-memory-native/<target>/ before this publish
+  // script runs. Stage all targets here and fail closed if any are missing.
+  const sessionMemoryNativeStageResult = run('pnpm', ['run', 'stage:session-memory-native'])
+  if (exitCode(sessionMemoryNativeStageResult) !== 0) {
+    process.exit(exitCode(sessionMemoryNativeStageResult))
+  }
+
   const runtimePackageRoot = resolve(packageRoot, 'dist', 'runtime-packages')
   for (const target of RUNTIME_TARGETS) {
     const runtimePackage = runtimePackageDirName(target.packageName)
-    const runtimePublishResult = run(
-      'npm',
-      ['publish', '--provenance', '--access', 'public'],
+    const publishState = publishPreparedPackage(
       resolve(runtimePackageRoot, runtimePackage),
+      runtimePackage,
     )
-    if (exitCode(runtimePublishResult) !== 0) {
-      const combinedOutput = `${runtimePublishResult.stdout ?? ''}\n${runtimePublishResult.stderr ?? ''}`
-      if (ALREADY_PUBLISHED_PATTERNS.some((pattern) => pattern.test(combinedOutput))) {
-        process.stdout.write(
-          `[release:publish] ${runtimePackage} already published; treating as success\n`,
-        )
-        continue
-      }
-      process.exit(exitCode(runtimePublishResult))
-    }
+    publishedPackages.push(
+      toPublishedPackage(
+        {
+          name: target.packageName,
+          version: rootPackage.version,
+          root: resolve(runtimePackageRoot, runtimePackage),
+          manifestPath: resolve(runtimePackageRoot, runtimePackage, 'package.json'),
+        },
+        publishState,
+      ),
+    )
+  }
+
+  const sessionMemoryNativePackageRoot = resolve(
+    packageRoot,
+    'dist',
+    'session-memory-native-packages',
+  )
+  for (const sessionMemoryNativePackage of assertPreparedSessionMemoryNativePackages(
+    sessionMemoryNativePackageRoot,
+    rootPackage.version,
+  )) {
+    const publishState = publishPreparedPackage(
+      sessionMemoryNativePackage.root,
+      sessionMemoryNativePackage.name,
+    )
+    publishedPackages.push(toPublishedPackage(sessionMemoryNativePackage, publishState))
   }
 } else {
   process.stdout.write(

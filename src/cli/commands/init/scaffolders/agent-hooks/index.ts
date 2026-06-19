@@ -934,7 +934,7 @@ function renderManagedWebpressoHookLauncher(repoRoot: string, binName: string): 
   const hookBinPath = quoteShell(join(packageRoot, 'bin', `${binName}.js`))
   const nodeBinary = quoteShell(resolveNodeBinaryForManagedHookLaunchers())
 
-return `#!/bin/sh
+  return `#!/bin/sh
 if [ -x ${nodeBinary} ] && [ -f ${hookBinPath} ]; then
   if cd ${repoRootPath}; then
     exec ${nodeBinary} ${hookBinPath} "$@"

@@ -208,7 +208,6 @@ describe('wp_session_fetch_and_index tool', () => {
     expect(JSON.stringify(textResult)).not.toContain('plain text-memory')
   })
 
-
   it('uses indexed chunk text UTF-8 bytes as a conservative fetch gain basis', async () => {
     const result = await handleSessionFetchAndIndex(
       { dbPath: tmpDbPath(), url: 'https://example.com/fetch-basis' },

@@ -92,9 +92,7 @@ describe('wp package-manager commands', () => {
     expect(refreshClaudePlugin).toHaveBeenCalledWith(
       '/global/lib/node_modules/@webpresso/agent-kit',
     )
-    expect(refreshCodexPlugin).toHaveBeenCalledWith(
-      '/global/lib/node_modules/@webpresso/agent-kit',
-    )
+    expect(refreshCodexPlugin).toHaveBeenCalledWith('/global/lib/node_modules/@webpresso/agent-kit')
     expect(refreshClaudePlugin.mock.invocationCallOrder[0]).toBeLessThan(
       refreshCodexPlugin.mock.invocationCallOrder[0] ?? 0,
     )
@@ -124,9 +122,7 @@ describe('wp package-manager commands', () => {
     expect(refreshClaudePlugin).toHaveBeenCalledWith(
       '/global/lib/node_modules/@webpresso/agent-kit',
     )
-    expect(refreshCodexPlugin).toHaveBeenCalledWith(
-      '/global/lib/node_modules/@webpresso/agent-kit',
-    )
+    expect(refreshCodexPlugin).toHaveBeenCalledWith('/global/lib/node_modules/@webpresso/agent-kit')
     expect(error.mock.calls.join('\n')).toContain('wp update: claude-plugin failed')
   })
 
@@ -154,9 +150,7 @@ describe('wp package-manager commands', () => {
     expect(refreshClaudePlugin).toHaveBeenCalledWith(
       '/global/lib/node_modules/@webpresso/agent-kit',
     )
-    expect(refreshCodexPlugin).toHaveBeenCalledWith(
-      '/global/lib/node_modules/@webpresso/agent-kit',
-    )
+    expect(refreshCodexPlugin).toHaveBeenCalledWith('/global/lib/node_modules/@webpresso/agent-kit')
     expect(error.mock.calls.join('\n')).toContain('wp update: codex-plugin failed')
   })
 
@@ -194,9 +188,7 @@ describe('wp package-manager commands', () => {
     expect(refreshClaudePlugin).toHaveBeenCalledWith(
       '/global/lib/node_modules/@webpresso/agent-kit',
     )
-    expect(refreshCodexPlugin).toHaveBeenCalledWith(
-      '/global/lib/node_modules/@webpresso/agent-kit',
-    )
+    expect(refreshCodexPlugin).toHaveBeenCalledWith('/global/lib/node_modules/@webpresso/agent-kit')
   })
 
   it('reports a missing global-capable vp before starting tooling refresh steps', () => {
@@ -383,9 +375,7 @@ describe('wp package-manager commands', () => {
     expect(refreshClaudePlugin).toHaveBeenCalledWith(
       '/global/lib/node_modules/@webpresso/agent-kit',
     )
-    expect(refreshCodexPlugin).toHaveBeenCalledWith(
-      '/global/lib/node_modules/@webpresso/agent-kit',
-    )
+    expect(refreshCodexPlugin).toHaveBeenCalledWith('/global/lib/node_modules/@webpresso/agent-kit')
   })
 
   it('updates project-scoped OMC only when the current repo owns it', () => {
@@ -418,9 +408,7 @@ describe('wp package-manager commands', () => {
     expect(refreshClaudePlugin).toHaveBeenCalledWith(
       '/global/lib/node_modules/@webpresso/agent-kit',
     )
-    expect(refreshCodexPlugin).toHaveBeenCalledWith(
-      '/global/lib/node_modules/@webpresso/agent-kit',
-    )
+    expect(refreshCodexPlugin).toHaveBeenCalledWith('/global/lib/node_modules/@webpresso/agent-kit')
   })
 
   it('updates omx only once when both user and project ownership exist', () => {
@@ -454,9 +442,7 @@ describe('wp package-manager commands', () => {
     expect(refreshClaudePlugin).toHaveBeenCalledWith(
       '/global/lib/node_modules/@webpresso/agent-kit',
     )
-    expect(refreshCodexPlugin).toHaveBeenCalledWith(
-      '/global/lib/node_modules/@webpresso/agent-kit',
-    )
+    expect(refreshCodexPlugin).toHaveBeenCalledWith('/global/lib/node_modules/@webpresso/agent-kit')
   })
 
   it('clones gstack when the canonical checkout is missing and wp owns gstack', () => {
@@ -495,9 +481,7 @@ describe('wp package-manager commands', () => {
     expect(refreshClaudePlugin).toHaveBeenCalledWith(
       '/global/lib/node_modules/@webpresso/agent-kit',
     )
-    expect(refreshCodexPlugin).toHaveBeenCalledWith(
-      '/global/lib/node_modules/@webpresso/agent-kit',
-    )
+    expect(refreshCodexPlugin).toHaveBeenCalledWith('/global/lib/node_modules/@webpresso/agent-kit')
   })
 
   it('continues global update steps after a failure and exits non-zero', () => {
@@ -527,9 +511,7 @@ describe('wp package-manager commands', () => {
     expect(refreshClaudePlugin).toHaveBeenCalledWith(
       '/global/lib/node_modules/@webpresso/agent-kit',
     )
-    expect(refreshCodexPlugin).toHaveBeenCalledWith(
-      '/global/lib/node_modules/@webpresso/agent-kit',
-    )
+    expect(refreshCodexPlugin).toHaveBeenCalledWith('/global/lib/node_modules/@webpresso/agent-kit')
     expect(error.mock.calls.join('\n')).toContain('omc')
     expect(error.mock.calls.join('\n')).toContain('exit 3')
     expect(error.mock.calls.join('\n')).toContain('wp update: omc failed')
@@ -563,9 +545,7 @@ describe('wp package-manager commands', () => {
     expect(refreshClaudePlugin).toHaveBeenCalledWith(
       '/global/lib/node_modules/@webpresso/agent-kit',
     )
-    expect(refreshCodexPlugin).toHaveBeenCalledWith(
-      '/global/lib/node_modules/@webpresso/agent-kit',
-    )
+    expect(refreshCodexPlugin).toHaveBeenCalledWith('/global/lib/node_modules/@webpresso/agent-kit')
     expect(error.mock.calls.join('\n')).toContain('spawn vp ENOENT')
     expect(error.mock.calls.join('\n')).toContain('omc')
     expect(error.mock.calls.join('\n')).toContain('spawn claude ENOENT')

@@ -34,12 +34,27 @@ Each run writes `scripts/bench/runs/<run-id>/report.md`.
 | `variant` | `baseline`, `v1`, or `v2` |
 | `trials` | Number of executions per cell |
 | `status` | `ok`, `rate_limit`, or `spawn_failed` |
-| `cost_usd` | Aggregated USD cost for the cell |
+| `cost_usd` | Aggregated USD cost for successful samples in the cell |
+| `cost_mean_usd` / `cost_std_usd` | Per-sample USD mean and population standard deviation |
+| `input_tokens` / `output_tokens` | Provider-reported input and output tokens summed across successful samples |
+| `cache_write_tokens` / `cache_read_tokens` | Provider-reported cache token categories summed across successful samples |
+| `total_tokens` | Sum of the provider token categories above; not a “tokens saved” field |
+| `provider_duration_ms_mean` / `provider_duration_ms_std` | Provider-reported duration summary |
+| `local_wall_ms_mean` / `local_wall_ms_std` | Local monotonic wall-clock summary around the spawned provider process |
 | `recall@5` | Recall score computed from scenario qrels |
-| `wall_sec` | Mean wall-clock time in seconds |
+| `wall_sec` | `local_wall_ms_mean / 1000`; not hook latency |
 
 The CLI also prints a compact JSON summary with `runId`, `dryRun`, `reportPath`,
-and `cellCount`.
+`cellCount`, and `thresholdReport`. Measured threshold failures return a nonzero
+exit code. Hook-specific latency axes report `not-instrumented` unless a run
+collects hook-specific latency observations separately from `wall_sec`.
+
+## Public result cards
+
+Numeric benchmark claims in public docs must cite checked-in first-party
+evidence. Use [`../../docs/bench/result-card-contract.md`](../../docs/bench/result-card-contract.md)
+for the required result-card fields before promoting latency, recall, cost, or
+speedup numbers.
 
 ## Cost cap
 

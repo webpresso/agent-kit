@@ -47,7 +47,9 @@ function extractAgentKitBinName(command: string): string | null {
   if (ifGuardedClaudeBinMatch !== null) return ifGuardedClaudeBinMatch[2] ?? null
   const guardedManagedLauncherMatch = GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(command.trim())
   if (guardedManagedLauncherMatch !== null) return guardedManagedLauncherMatch[3] ?? null
-  const ifGuardedManagedLauncherMatch = IF_GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(command.trim())
+  const ifGuardedManagedLauncherMatch = IF_GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(
+    command.trim(),
+  )
   if (ifGuardedManagedLauncherMatch !== null) return ifGuardedManagedLauncherMatch[3] ?? null
   return null
 }

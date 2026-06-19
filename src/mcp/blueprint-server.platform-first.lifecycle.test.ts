@@ -10,7 +10,6 @@ import {
   resetPlatformFirstTestState,
 } from './blueprint-server.platform-first.test-harness.js'
 
-
 const PROMOTE_TO_COMPLETED_ZERO_TASK_BLUEPRINT = `---
 type: blueprint
 title: Promote Completed Zero Task Blueprint

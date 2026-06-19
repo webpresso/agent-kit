@@ -39,10 +39,14 @@ describe('release-publish runtime lane', () => {
       "const RELEASE_PUBLISH_RESULT_FILE_ENV = 'RELEASE_PUBLISH_RESULT_FILE'",
     )
     expect(source).toContain('interface PublishedPackage')
-    expect(source).toContain('function writePublishResultFile(packages: readonly PublishedPackage[])')
+    expect(source).toContain(
+      'function writePublishResultFile(packages: readonly PublishedPackage[])',
+    )
     expect(source).toContain('publishState: primaryPackage.publishState')
     expect(source).toContain('packages,')
-    expect(source).toContain('publishedPackages.push(toPublishedPackage(rootPackage, rootPublishState))')
+    expect(source).toContain(
+      'publishedPackages.push(toPublishedPackage(rootPackage, rootPublishState))',
+    )
     expect(source).toContain('writePublishResultFile(publishedPackages)')
     expect(source).toContain("rootPublishState = 'published'")
     expect(source).toContain("rootPublishState = 'already-published'")
@@ -53,7 +57,9 @@ describe('release-publish runtime lane', () => {
 
     expect(source).toContain('function discoverWorkspacePackages')
     expect(source).toContain('function publishSimpleWorkspacePackage')
-    expect(source).toContain("for (const workspacePackage of discoverWorkspacePackages(packageRoot))")
+    expect(source).toContain(
+      'for (const workspacePackage of discoverWorkspacePackages(packageRoot))',
+    )
     expect(source.indexOf('publishSimpleWorkspacePackage(workspacePackage)')).toBeLessThan(
       source.indexOf("const buildResult = run('pnpm', ['run', 'build'])"),
     )
@@ -85,5 +91,22 @@ describe('release-publish runtime lane', () => {
     )
     expect(workspacePublish).toContain('manifestVersionChangedSinceFirstParent(pkg)')
     expect(workspacePublish).toContain("return 'already-published'")
+  })
+
+  it('fails closed unless every declared session-memory native package is pre-staged', () => {
+    const source = readFileSync(join(import.meta.dirname, 'release-publish.ts'), 'utf8')
+
+    expect(source).toContain('function assertPreparedSessionMemoryNativePackages')
+    expect(source).toContain('missing session-memory native package artifact')
+    expect(source).toContain('missing session-memory native package manifest')
+    expect(source).toContain('SESSION_MEMORY_NATIVE_TARGETS.map')
+    expect(source).toContain('session-memory native package version mismatch')
+    const nativePublishBlock = source.slice(
+      source.indexOf('const sessionMemoryNativePackageRoot'),
+      source.indexOf('} else {', source.indexOf('const sessionMemoryNativePackageRoot')),
+    )
+    expect(nativePublishBlock).not.toContain("'build:session-memory-native'")
+    expect(nativePublishBlock).not.toContain("'--target',\n    'host'")
+    expect(nativePublishBlock).not.toContain('existsSync(resolve(preparedPackageRoot')
   })
 })

@@ -23,7 +23,7 @@ export function runGain(options: RunGainOptions = {}): number {
   const webpressoStats = readWebpressoGainStats(dbPath)
   printWebpressoGain(webpressoStats, dbPath)
 
-  console.log('\n── RTK Token Savings ──────────────────────────────────────────')
+  console.log('\n── RTK Gain Totals ──────────────────────────────────────────')
   const rtk = spawnSync('rtk', ['gain', '--format', 'json'], { encoding: 'utf8' })
   if (rtk.error) {
     const err = rtk.error
@@ -46,7 +46,7 @@ export function runGain(options: RunGainOptions = {}): number {
 }
 
 export function registerGainCommand(cli: CAC): void {
-  cli.command('gain', 'Show Webpresso session gain and RTK token savings').action(() => runGain())
+  cli.command('gain', 'Show Webpresso session gain and separate RTK gain totals').action(() => runGain())
 }
 
 function readWebpressoGainStats(dbPath: string): SessionGainStats {
@@ -65,7 +65,7 @@ function printWebpressoGain(stats: SessionGainStats, dbPath: string): void {
   console.log(`  Raw basis bytes: ${stats.rawBasisBytes}`)
   console.log(`  Returned tool-result bytes: ${stats.returnedToolResultBytes}`)
   console.log(`  Exact UTF-8 gain bytes: ${stats.gainBytes}`)
-  console.log(`  Approx tokens saved (bytes/4): ${stats.approxTokensSaved}`)
+  console.log(`  Approx token proxy (bytes/4): ${stats.approxTokensSaved}`)
   if (stats.byTool.length === 0) {
     console.log('  By tool: none yet')
     return
@@ -88,7 +88,7 @@ function printRtkGain(stdout: string): void {
     const parsed = JSON.parse(trimmed) as RtkGainJson
     const tokens = parsed.tokens_saved ?? parsed.tokensSaved
     const bytes = parsed.bytes_saved ?? parsed.bytesSaved
-    if (typeof tokens === 'number') console.log(`  RTK tokens saved: ${tokens}`)
+    if (typeof tokens === 'number') console.log(`  RTK reported tokens saved: ${tokens}`)
     if (typeof bytes === 'number') console.log(`  RTK bytes saved: ${bytes}`)
     if (typeof tokens !== 'number' && typeof bytes !== 'number') {
       console.log(`  RTK JSON: ${trimmed}`)

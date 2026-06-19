@@ -38,7 +38,10 @@ function extractPinnedVersion(workspaceFile: string): string | null {
  * repo-pinned @webpresso/agent-kit in pnpm-workspace.yaml catalog.
  * Returns null when aligned or no pin can be resolved.
  */
-export function checkVersionSkew(runningVersion: string, cwd: string = process.cwd()): string | null {
+export function checkVersionSkew(
+  runningVersion: string,
+  cwd: string = process.cwd(),
+): string | null {
   const workspaceFile = findWorkspaceFile(cwd)
   if (workspaceFile === null) return null
 

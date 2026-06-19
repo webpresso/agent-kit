@@ -81,7 +81,6 @@ describe('auditToolchainIsolation', () => {
     expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 })
   })
 
-
   it('exempts the published @webpresso/agent-config tooling package', () => {
     mkdirSync(join(root, 'packages', 'agent-config'), { recursive: true })
     writePackage(join(root, 'packages', 'agent-config'), {

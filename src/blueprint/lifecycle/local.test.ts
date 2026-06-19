@@ -56,7 +56,9 @@ function writeFlatConsumerBlueprint(projectRoot: string, status: string, slug: s
 
 function writeBlueprintReadme(
   projectRoot: string,
-  counts: Partial<Record<'draft' | 'planned' | 'in-progress' | 'completed' | 'parked' | 'archived', number>>,
+  counts: Partial<
+    Record<'draft' | 'planned' | 'in-progress' | 'completed' | 'parked' | 'archived', number>
+  >,
 ): void {
   const all = {
     draft: 0,

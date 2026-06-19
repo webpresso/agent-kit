@@ -10,13 +10,27 @@ import sessionSearchTool from './session-search.js'
 let tmpDir: string
 let previousIndexDb: string | undefined
 let previousClaudeProjectDir: string | undefined
+let previousNativePath: string | undefined
+let previousBuildFromSource: string | undefined
 
 function payload(result: Awaited<ReturnType<typeof sessionBatchExecuteTool.handler>>) {
   return result.structuredContent as {
     passed: boolean
     gain?: { rawBasisBytes: number; rawBytesBasis: string; gainBytes: number }
     details: {
-      results: Array<{ label: string; exitCode: number; indexed: boolean; summary: string }>
+      results: Array<{
+        label: string
+        exitCode: number
+        indexed: boolean
+        summary: string
+        backend: 'native' | 'typescript'
+        fallbackReason?: string
+        truncated?: boolean
+        capturedBytes?: number
+        maxCaptureBytes?: number
+        timedOut?: boolean
+        signal?: string
+      }>
       queryHits?: Record<string, Array<{ content: string; source: string; rank: number }>>
     }
   }
@@ -26,8 +40,12 @@ beforeEach(() => {
   tmpDir = mkdtempSync(join(tmpdir(), 'wp-session-batch-test-'))
   previousIndexDb = process.env.WP_SESSION_MEMORY_INDEX_DB
   previousClaudeProjectDir = process.env.CLAUDE_PROJECT_DIR
+  previousNativePath = process.env.WP_NATIVE_SESSION_MEMORY_PATH
+  previousBuildFromSource = process.env.WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE
   process.env.WP_SESSION_MEMORY_INDEX_DB = join(tmpDir, 'index.sqlite')
   process.env.CLAUDE_PROJECT_DIR = tmpDir
+  process.env.WP_NATIVE_SESSION_MEMORY_PATH = join(tmpDir, 'missing-native.node')
+  delete process.env.WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE
 })
 
 afterEach(() => {
@@ -35,6 +53,11 @@ afterEach(() => {
   else process.env.WP_SESSION_MEMORY_INDEX_DB = previousIndexDb
   if (previousClaudeProjectDir === undefined) delete process.env.CLAUDE_PROJECT_DIR
   else process.env.CLAUDE_PROJECT_DIR = previousClaudeProjectDir
+  if (previousNativePath === undefined) delete process.env.WP_NATIVE_SESSION_MEMORY_PATH
+  else process.env.WP_NATIVE_SESSION_MEMORY_PATH = previousNativePath
+  if (previousBuildFromSource === undefined)
+    delete process.env.WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE
+  else process.env.WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE = previousBuildFromSource
   rmSync(tmpDir, { recursive: true, force: true })
 })
 
@@ -74,6 +97,18 @@ describe('wp_session_batch_execute', () => {
         ],
       },
     })
+    expect(data.details.results).toEqual([
+      expect.objectContaining({
+        label: 'cmd-a',
+        backend: 'typescript',
+        fallbackReason: expect.stringContaining('no prebuilt addon found'),
+      }),
+      expect.objectContaining({
+        label: 'cmd-b',
+        backend: 'typescript',
+        fallbackReason: expect.stringContaining('no prebuilt addon found'),
+      }),
+    ])
     expect(
       data.details.queryHits?.['shared batch sentinel']?.map((hit) => hit.source).sort(),
     ).toEqual(['cmd-a', 'cmd-b'])
@@ -87,7 +122,6 @@ describe('wp_session_batch_execute', () => {
     expect(JSON.stringify(search.structuredContent)).toContain('shared batch sentinel beta')
   })
 
-
   it('records one batch-level gain event without child command gain rows', async () => {
     const result = await sessionBatchExecuteTool.handler?.({
       commands: [
@@ -100,7 +134,10 @@ describe('wp_session_batch_execute', () => {
     })
     const data = payload(result)
 
-    expect(data.gain).toMatchObject({ rawBasisBytes: 7, rawBytesBasis: 'batch_command_output_total' })
+    expect(data.gain).toMatchObject({
+      rawBasisBytes: 7,
+      rawBytesBasis: 'batch_command_output_total',
+    })
 
     const { SessionMemoryStore } = await import('../../session-memory/store.js')
     const store = new SessionMemoryStore(process.env.WP_SESSION_MEMORY_INDEX_DB!)

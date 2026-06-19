@@ -14,7 +14,6 @@ const PASSING_EVIDENCE = [
   },
 ] satisfies readonly Evidence[]
 
-
 const ZERO_TASK_BLUEPRINT = `---
 type: blueprint
 status: planned

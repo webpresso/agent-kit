@@ -68,17 +68,49 @@ function createFlatSchemaDatabase(path: string, options: { seedFts?: boolean } =
 }
 
 describe('session-memory schema migration', () => {
-  it('rejects old flat event schemas instead of migrating them', () => {
+  it('migrates old flat event schemas into typed continuity rows', () => {
     const path = dbPath()
     const flatHandle = createFlatSchemaDatabase(path)
-
-    expect(() => new SessionMemorySessionStore(path)).toThrow(
-      /hard cut requires a fresh typed event schema/u,
-    )
-    expect(flatHandle.prepare<[], { user_version: number }>('PRAGMA user_version').get()).toEqual({
-      user_version: 0,
-    })
     flatHandle.close()
+
+    const store = new SessionMemorySessionStore(path)
+    expect(
+      store.restore({ repoHash: 'repo123456789abcd', query: 'searchable', limit: 1 })[0],
+    ).toMatchObject({
+      eventId: 'flat-event',
+      eventType: 'tool_command',
+      toolName: 'edit',
+      content: 'flat searchable continuity payload',
+      priority: 50,
+      metadata: {},
+    })
+    store.close()
+
+    const migrated = new Database(path)
+    expect(migrated.prepare<[], { user_version: number }>('PRAGMA user_version').get()).toEqual({
+      user_version: SESSION_MEMORY_SCHEMA_VERSION,
+    })
+    expect(
+      migrated
+        .prepare<[], { count: number }>(
+          "SELECT COUNT(*) AS count FROM session_events_fts WHERE event_id = 'flat-event'",
+        )
+        .get()?.count,
+    ).toBe(1)
+    expect(
+      migrated
+        .prepare<[], { name: string }>(
+          "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_session_events_repo_session_ts'",
+        )
+        .get()?.name,
+    ).toBe('idx_session_events_repo_session_ts')
+    migrated.close()
+
+    const reopened = new SessionMemorySessionStore(path)
+    expect(
+      reopened.restore({ repoHash: 'repo123456789abcd', query: 'searchable', limit: 1 }),
+    ).toHaveLength(1)
+    reopened.close()
   })
 
   it('opens current schema idempotently without rewriting user_version', () => {

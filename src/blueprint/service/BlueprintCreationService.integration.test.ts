@@ -9,7 +9,9 @@ import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
 
 function writeBlueprintReadme(
   projectRoot: string,
-  counts: Partial<Record<'draft' | 'planned' | 'in-progress' | 'completed' | 'parked' | 'archived', number>>,
+  counts: Partial<
+    Record<'draft' | 'planned' | 'in-progress' | 'completed' | 'parked' | 'archived', number>
+  >,
 ): void {
   const all = {
     draft: 0,
@@ -76,9 +78,9 @@ describe('BlueprintCreationService integration', () => {
     expect(created.path).toBe(
       path.join(projectRoot, 'webpresso', 'blueprints', 'draft', 'customer-runtime-contract.md'),
     )
-    expect(readFileSync(path.join(resolveBlueprintRoot(projectRoot), 'README.md'), 'utf8')).toContain(
-      '| `draft/` | 1 |',
-    )
+    expect(
+      readFileSync(path.join(resolveBlueprintRoot(projectRoot), 'README.md'), 'utf8'),
+    ).toContain('| `draft/` | 1 |')
   })
 
   it('cleans up temporary output when validation fails before rename', async () => {

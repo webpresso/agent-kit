@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -12,18 +12,35 @@ import { SessionMemoryStore } from '../../session-memory/store.js'
 let tmpDir: string
 let previousIndexDb: string | undefined
 let previousClaudeProjectDir: string | undefined
+let previousNativePath: string | undefined
+let previousBuildFromSource: string | undefined
 
 function payload(result: Awaited<ReturnType<typeof sessionExecuteTool.handler>>) {
   return result.structuredContent as {
     passed: boolean
+    summary: string
     exitCode: number
-    gain?: { rawBasisBytes: number; returnedToolResultBytes: number; gainBytes: number; approxTokensSaved: number; precision: string; rawBytesBasis: string }
+    gain?: {
+      rawBasisBytes: number
+      returnedToolResultBytes: number
+      gainBytes: number
+      approxTokensSaved: number
+      precision: string
+      rawBytesBasis: string
+    }
     details: {
       label: string
       exitCode: number
       outputBytes: number
       indexed: boolean
       summary: string
+      backend: 'native' | 'typescript'
+      fallbackReason?: string
+      truncated?: boolean
+      capturedBytes?: number
+      maxCaptureBytes?: number
+      timedOut?: boolean
+      signal?: string
       hits?: Array<{ content: string; source: string; rank: number; tier: string }>
     }
   }
@@ -33,8 +50,12 @@ beforeEach(() => {
   tmpDir = mkdtempSync(join(tmpdir(), 'wp-session-execute-test-'))
   previousIndexDb = process.env.WP_SESSION_MEMORY_INDEX_DB
   previousClaudeProjectDir = process.env.CLAUDE_PROJECT_DIR
+  previousNativePath = process.env.WP_NATIVE_SESSION_MEMORY_PATH
+  previousBuildFromSource = process.env.WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE
   process.env.WP_SESSION_MEMORY_INDEX_DB = join(tmpDir, 'index.sqlite')
   process.env.CLAUDE_PROJECT_DIR = tmpDir
+  process.env.WP_NATIVE_SESSION_MEMORY_PATH = join(tmpDir, 'missing-native.node')
+  delete process.env.WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE
 })
 
 afterEach(() => {
@@ -42,6 +63,11 @@ afterEach(() => {
   else process.env.WP_SESSION_MEMORY_INDEX_DB = previousIndexDb
   if (previousClaudeProjectDir === undefined) delete process.env.CLAUDE_PROJECT_DIR
   else process.env.CLAUDE_PROJECT_DIR = previousClaudeProjectDir
+  if (previousNativePath === undefined) delete process.env.WP_NATIVE_SESSION_MEMORY_PATH
+  else process.env.WP_NATIVE_SESSION_MEMORY_PATH = previousNativePath
+  if (previousBuildFromSource === undefined)
+    delete process.env.WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE
+  else process.env.WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE = previousBuildFromSource
   rmSync(tmpDir, { recursive: true, force: true })
 })
 
@@ -74,9 +100,163 @@ describe('wp_session_execute', () => {
       sourceTypes: ['indexed_chunk'],
       limit: 1,
     })
+    expect(data.details).toMatchObject({
+      backend: 'typescript',
+      fallbackReason: expect.stringContaining('no prebuilt addon found'),
+      truncated: false,
+      capturedBytes: data.details.outputBytes,
+      maxCaptureBytes: 1024 * 1024,
+    })
+    const store = new SessionMemoryStore(process.env.WP_SESSION_MEMORY_INDEX_DB!)
+    expect(
+      store.search({ query: 'indexed needle', source: 'label', limit: 1 })[0]?.metadata,
+    ).toMatchObject({
+      executionBackend: 'typescript',
+      fallbackReason: expect.stringContaining('no prebuilt addon found'),
+      maxCaptureBytes: 1024 * 1024,
+      truncated: false,
+    })
+    store.close()
     expect(JSON.stringify(search.structuredContent)).toContain('indexed needle from command')
   })
 
+  it('surfaces fallback truncation metadata for oversized command output', async () => {
+    const result = await sessionExecuteTool.handler?.({
+      command: `${JSON.stringify(process.execPath)} -e "process.stdout.write('x'.repeat(1048580))"`,
+      label: 'fallback-truncated',
+      execute: true,
+      timeoutMs: 5_000,
+      cwd: tmpDir,
+    })
+    const data = payload(result)
+
+    expect(data.details).toMatchObject({
+      backend: 'typescript',
+      outputBytes: 1_048_580,
+      capturedBytes: 1_048_576,
+      maxCaptureBytes: 1_048_576,
+      truncated: true,
+    })
+    expect(data.details.summary).toContain('[output truncated before indexing]')
+  })
+
+  it('replaces prior fallback output for the same label', async () => {
+    await sessionExecuteTool.handler?.({
+      command: 'printf "%s\\n" "old repeated label output"',
+      label: 'repeat-label',
+      execute: true,
+      timeoutMs: 5_000,
+      cwd: tmpDir,
+    })
+    const result = await sessionExecuteTool.handler?.({
+      command: 'printf "%s\\n" "new repeated label output"',
+      label: 'repeat-label',
+      query: 'repeated label output',
+      execute: true,
+      timeoutMs: 5_000,
+      cwd: tmpDir,
+    })
+    const data = payload(result)
+    const store = new SessionMemoryStore(process.env.WP_SESSION_MEMORY_INDEX_DB!)
+    try {
+      const newHits = store.search({ query: 'new repeated', source: 'repeat-label', limit: 5 })
+
+      expect(data.details.backend).toBe('typescript')
+      expect(store.stats()).toMatchObject({ chunkCount: 1, sources: ['repeat-label'] })
+      expect(newHits.map((hit) => hit.text).join('\n')).not.toContain('old repeated label output')
+      expect(newHits[0]?.text).toContain('new repeated label output')
+    } finally {
+      store.close()
+    }
+  })
+
+  it('clears prior fallback output for the same label when replacement output is empty', async () => {
+    await sessionExecuteTool.handler?.({
+      command: 'printf "%s\\n" "stale quiet replacement output"',
+      label: 'quiet-repeat-label',
+      execute: true,
+      timeoutMs: 5_000,
+      cwd: tmpDir,
+    })
+    const result = await sessionExecuteTool.handler?.({
+      command: 'true',
+      label: 'quiet-repeat-label',
+      query: 'stale quiet replacement',
+      execute: true,
+      timeoutMs: 5_000,
+      cwd: tmpDir,
+    })
+    const data = payload(result)
+    const store = new SessionMemoryStore(process.env.WP_SESSION_MEMORY_INDEX_DB!)
+    try {
+      expect(data.details).toMatchObject({
+        backend: 'typescript',
+        indexed: false,
+        outputBytes: 0,
+      })
+      expect(
+        store.search({ query: 'stale quiet replacement', source: 'quiet-repeat-label', limit: 5 }),
+      ).toEqual([])
+      expect(store.stats()).toMatchObject({ chunkCount: 0, sources: [] })
+    } finally {
+      store.close()
+    }
+  })
+
+  it('does not fallback when a configured native addon exists but fails to load', async () => {
+    const invalidAddon = join(tmpDir, 'invalid-native.node')
+    writeFileSync(invalidAddon, 'not a native addon')
+    process.env.WP_NATIVE_SESSION_MEMORY_PATH = invalidAddon
+
+    const result = await sessionExecuteTool.handler?.({
+      command: 'printf "%s\\n" "should not run"',
+      label: 'invalid-native',
+      execute: true,
+      timeoutMs: 5_000,
+      cwd: tmpDir,
+    })
+    const data = payload(result)
+
+    expect(data).toMatchObject({
+      passed: false,
+      exitCode: -1,
+      details: {
+        exitCode: -1,
+        indexed: false,
+        backend: 'typescript',
+      },
+    })
+    expect(data.summary).toContain('failed to load from')
+    expect(data.details.fallbackReason).toBeUndefined()
+  })
+
+  it('uses 124 for fallback timeouts and 128+n for signal exits', async () => {
+    const timeoutResult = await sessionExecuteTool.handler?.({
+      command: `${JSON.stringify(process.execPath)} -e "setTimeout(() => {}, 10000)"`,
+      label: 'fallback-timeout',
+      execute: true,
+      timeoutMs: 20,
+      cwd: tmpDir,
+    })
+    const signalResult = await sessionExecuteTool.handler?.({
+      command: `exec ${JSON.stringify(process.execPath)} -e "process.kill(process.pid, 'SIGTERM')"`,
+      label: 'fallback-signal',
+      execute: true,
+      timeoutMs: 5_000,
+      cwd: tmpDir,
+    })
+
+    expect(payload(timeoutResult).details).toMatchObject({
+      backend: 'typescript',
+      exitCode: 124,
+      timedOut: true,
+    })
+    expect(payload(signalResult).details).toMatchObject({
+      backend: 'typescript',
+      exitCode: 143,
+      signal: 'SIGTERM',
+    })
+  })
 
   it('records exact command-output gain using total stdout/stderr bytes', async () => {
     const result = await sessionExecuteTool.handler?.({

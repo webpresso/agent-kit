@@ -521,7 +521,10 @@ function isSourceCheckoutWithRuntimeTooling(root: string): boolean {
   )
 }
 
-function runtimeBinaryFilename(manifest: RuntimeManifestLike, target: RuntimeManifestTarget): string {
+function runtimeBinaryFilename(
+  manifest: RuntimeManifestLike,
+  target: RuntimeManifestTarget,
+): string {
   const binaryName = typeof manifest.binaryName === 'string' ? manifest.binaryName : 'wp'
   return target.os === 'win32' ? `${binaryName}.exe` : binaryName
 }

@@ -24,7 +24,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 function findRepoRoot(startDir: string): string {
   let current = startDir
   for (;;) {
-    if (existsSync(join(current, 'pnpm-workspace.yaml')) || existsSync(join(current, 'package.json'))) {
+    if (
+      existsSync(join(current, 'pnpm-workspace.yaml')) ||
+      existsSync(join(current, 'package.json'))
+    ) {
       return current
     }
     const parent = dirname(current)

@@ -10,6 +10,16 @@ import { syncBlueprintMigrationSqlAssets } from '../src/build/blueprint-migratio
 import { preparePackedManifest, restorePackedManifest } from '../src/build/package-manifest.js'
 import { AGENTS_MD_MAX_BYTES } from '../src/cli/commands/init/scaffold-agents-md.js'
 import { createInstalledBlueprintMigrationSmokeScript } from './packed-blueprint-migration-smoke.js'
+import {
+  computeOverallStatus,
+  summarizePhases,
+  type PhaseResult,
+  type PhaseStatus,
+  type PhaseSummary,
+} from './public-consumer-smoke-phases.js'
+
+export type { PhaseResult, PhaseStatus, PhaseSummary }
+export { computeOverallStatus, summarizePhases }
 
 const SHARED_FAVORITES = ['fix', 'verify', 'testing-philosophy', 'plan-refine', 'pll'] as const
 
@@ -32,6 +42,9 @@ const setupOnly = process.argv.includes('--setup-only')
 const keep = process.argv.includes('--keep')
 const includeMutation = process.argv.includes('--include-mutation')
 const skipBuild = process.argv.includes('--skip-build')
+const DEFAULT_PHASE_TIMEOUT_MS = 5 * 60 * 1000
+const PACK_TIMEOUT_MS = 2 * 60 * 1000
+const TARBALL_CONTRACT_TIMEOUT_MS = 30_000
 
 const requiredFiles = [
   'tsconfig.json',
@@ -58,7 +71,7 @@ function run(
   args: readonly string[],
   cwd: string,
   env: NodeJS.ProcessEnv = process.env,
-  timeoutMs = 5 * 60 * 1000,
+  timeoutMs = DEFAULT_PHASE_TIMEOUT_MS,
 ): RunResult {
   try {
     execFileSync(command, [...args], {
@@ -85,12 +98,15 @@ function runOrThrow(
   args: readonly string[],
   cwd: string,
   env: NodeJS.ProcessEnv = process.env,
+  timeoutMs = DEFAULT_PHASE_TIMEOUT_MS,
 ): string {
   return execFileSync(command, [...args], {
     cwd,
     env,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
+    timeout: timeoutMs,
+    killSignal: 'SIGTERM',
   })
 }
 
@@ -98,10 +114,12 @@ function ensurePackableNativeRuntime(): RunResult[] {
   return [
     run('bun', ['scripts/build-runtime-binaries.ts'], ROOT),
     run('bun', ['scripts/stage-plugin-runtime-artifacts.ts'], ROOT),
+    run('bun', ['scripts/build-session-memory-native-artifacts.ts', '--target', 'host'], ROOT),
+    run('bun', ['scripts/stage-session-memory-native-artifacts.ts', '--target', 'host'], ROOT),
   ]
 }
 
-function packCurrentArtifact(): string {
+function packCurrentArtifact(tempRoot: string): string {
   let raw: string
   try {
     syncBlueprintMigrationSqlAssets(ROOT)
@@ -113,6 +131,8 @@ function packCurrentArtifact(): string {
       'npm',
       ['pack', '--ignore-scripts', '--json', '--pack-destination', tempRoot],
       ROOT,
+      process.env,
+      PACK_TIMEOUT_MS,
     )
   } finally {
     restorePackedManifest(ROOT)
@@ -148,7 +168,7 @@ function assertSetupContract(repo: string): RunResult[] {
     })
   }
   for (const dep of [
-    '@webpresso/agent-kit',
+    '@webpresso/agent-config',
     'typescript',
     'vitest',
     '@playwright/test',
@@ -205,33 +225,165 @@ function pinPackedAgentKitDependency(repo: string, tarballPath: string): void {
   writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`)
 }
 
+function assertPackedSessionMemoryNativeContract(tarballPath: string): RunResult[] {
+  let entries: string[]
+  try {
+    entries = execFileSync('tar', ['-tf', tarballPath], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: TARBALL_CONTRACT_TIMEOUT_MS,
+      killSignal: 'SIGTERM',
+    })
+      .split('\n')
+      .filter(Boolean)
+      .map((entry) => entry.replace(/^package\//u, ''))
+  } catch (error) {
+    const failed = error as { status?: number; stdout?: string; stderr?: string }
+    const output = `${failed.stdout ?? ''}${failed.stderr ?? ''}`.trim()
+    return [
+      {
+        command: 'assert packed session-memory tarball contract',
+        ok: false,
+        detail: `tar exit ${failed.status ?? 1}${output ? `: ${output.slice(0, 800)}` : ''}`,
+      },
+    ]
+  }
+
+  const leakedRustSource = entries.filter(
+    (entry) =>
+      entry.startsWith('native/session-memory-engine/') ||
+      entry === 'Cargo.toml' ||
+      entry.endsWith('/Cargo.toml') ||
+      entry.endsWith('/Cargo.lock'),
+  )
+  return [
+    {
+      command: 'assert packed session-memory native loader exists',
+      ok: entries.includes('dist/esm/session-memory/native-runtime.js'),
+      detail: entries.includes('dist/esm/session-memory/native-runtime.js')
+        ? 'ok'
+        : 'missing dist/esm/session-memory/native-runtime.js',
+    },
+    {
+      command: 'assert packed session-memory Rust source absent',
+      ok: leakedRustSource.length === 0,
+      detail: leakedRustSource.length === 0 ? 'ok' : leakedRustSource.join(', '),
+    },
+  ]
+}
+
+function runResultsToPhaseResult(
+  phase: string,
+  startMs: number,
+  runResults: readonly RunResult[],
+): PhaseResult {
+  const failed = runResults.filter((r) => !r.ok)
+  const output = runResults
+    .map((r) => `[${r.ok ? 'PASS' : 'FAIL'}] ${r.command}: ${r.detail}`)
+    .join('\n')
+    .slice(0, 800)
+  return {
+    phase,
+    status: failed.length === 0 ? 'PASS' : 'FAIL',
+    durationMs: Date.now() - startMs,
+    capturedOutput: output,
+  }
+}
+
+function runSingleToPhaseResult(
+  phase: string,
+  startMs: number,
+  result: RunResult,
+): PhaseResult {
+  return {
+    phase,
+    status: result.ok ? 'PASS' : 'FAIL',
+    durationMs: Date.now() - startMs,
+    capturedOutput: `[${result.ok ? 'PASS' : 'FAIL'}] ${result.command}: ${result.detail}`.slice(
+      0,
+      800,
+    ),
+  }
+}
+
+function formatSummary(summary: PhaseSummary): string {
+  const lines: string[] = [`Public consumer smoke: ${summary.overall}`]
+  for (const p of summary.phases) {
+    lines.push(`[${p.status}] ${p.phase} (${p.durationMs}ms)`)
+    if (p.capturedOutput) lines.push(p.capturedOutput)
+    if (p.blockReason) lines.push(`  blocked: ${p.blockReason}`)
+  }
+  return lines.join('\n')
+}
+
 const tempRoot = mkdtempSync(join(tmpdir(), 'wp-public-consumer-smoke-'))
 const repo = join(tempRoot, 'repo')
 const home = join(tempRoot, 'home')
 let tarball = ''
-let canContinue = true
-const results: RunResult[] = []
+const phaseResults: PhaseResult[] = []
 
 try {
+  // Phase: build
   if (!skipBuild) {
-    const build = run('vp', ['run', 'build'], ROOT)
-    results.push(build)
-    if (!build.ok) {
-      canContinue = false
+    const t = Date.now()
+    const buildResult = run('vp', ['run', 'build'], ROOT)
+    phaseResults.push(runSingleToPhaseResult('build', t, buildResult))
+    if (!buildResult.ok) {
+      console.log(formatSummary(summarizePhases(phaseResults)))
+      if (!keep) rmSync(tempRoot, { recursive: true, force: true })
+      process.exit(1)
     }
   }
-  if (canContinue) {
-    const runtimePreparation = ensurePackableNativeRuntime()
-    results.push(...runtimePreparation)
-    if (runtimePreparation.some((result) => !result.ok)) {
-      canContinue = false
-    }
-  }
-  if (canContinue) {
-    tarball = packCurrentArtifact()
-    results.push(run('git', ['init', repo], tempRoot))
-    results.push(run('npm', ['init', '--yes'], repo))
 
+  // Phase: native-stage
+  {
+    const t = Date.now()
+    const nativeResults = ensurePackableNativeRuntime()
+    phaseResults.push(runResultsToPhaseResult('native-stage', t, nativeResults))
+    if (nativeResults.some((r) => !r.ok)) {
+      console.log(formatSummary(summarizePhases(phaseResults)))
+      if (!keep) rmSync(tempRoot, { recursive: true, force: true })
+      process.exit(1)
+    }
+  }
+
+  // Phase: pack
+  {
+    const t = Date.now()
+    try {
+      tarball = packCurrentArtifact(tempRoot)
+      phaseResults.push({
+        phase: 'pack',
+        status: 'PASS',
+        durationMs: Date.now() - t,
+        capturedOutput: `packed: ${tarball}`.slice(0, 800),
+      })
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      phaseResults.push({
+        phase: 'pack',
+        status: 'FAIL',
+        durationMs: Date.now() - t,
+        capturedOutput: msg.slice(0, 800),
+      })
+      console.log(formatSummary(summarizePhases(phaseResults)))
+      if (!keep) rmSync(tempRoot, { recursive: true, force: true })
+      process.exit(1)
+    }
+  }
+
+  // Phase: tarball-contract
+  {
+    const t = Date.now()
+    const contractResults = assertPackedSessionMemoryNativeContract(tarball)
+    phaseResults.push(runResultsToPhaseResult('tarball-contract', t, contractResults))
+  }
+
+  // Phase: setup
+  {
+    const t = Date.now()
+    const initGit = run('git', ['init', repo], tempRoot)
+    const initNpm = run('npm', ['init', '--yes'], repo)
     const setupEnv = {
       ...process.env,
       CI: 'true',
@@ -243,22 +395,32 @@ try {
       WP_SKIP_RTK: '1',
       WP_SKIP_UPDATE_CHECK: '1',
     }
-    results.push(
-      run(
-        'npm',
-        ['exec', '--yes', '--package', tarball, '--', 'wp', 'setup', '--yes', '--host', 'all'],
-        repo,
-        setupEnv,
-      ),
+    const setupResult = run(
+      'npm',
+      ['exec', '--yes', '--package', tarball, '--', 'wp', 'setup', '--yes', '--host', 'all'],
+      repo,
+      setupEnv,
     )
-    results.push(...assertSetupContract(repo))
+    phaseResults.push(runResultsToPhaseResult('setup', t, [initGit, initNpm, setupResult]))
+
+    // Phase: setup-contract
+    const tContract = Date.now()
+    const setupContractResults = assertSetupContract(repo)
+    phaseResults.push(runResultsToPhaseResult('setup-contract', tContract, setupContractResults))
 
     if (!setupOnly) {
       pinPackedAgentKitDependency(repo, tarball)
+
+      // Phase: install
+      const tInstall = Date.now()
       const install = run('npm', ['install'], repo, setupEnv, 10 * 60 * 1000)
-      results.push(install)
+      phaseResults.push(runSingleToPhaseResult('install', tInstall, install))
+
       if (install.ok) {
-        results.push(
+        // Phase: consume
+        const tConsume = Date.now()
+        const consumeResults: RunResult[] = []
+        consumeResults.push(
           run(
             'node',
             [
@@ -274,14 +436,15 @@ try {
             setupEnv,
           ),
         )
-        results.push(run('npm', ['run', 'lint'], repo, setupEnv))
-        results.push(run('npm', ['run', 'typecheck'], repo, setupEnv))
-        results.push(run('npm', ['run', 'test'], repo, setupEnv))
+        consumeResults.push(run('npm', ['run', 'lint'], repo, setupEnv))
+        consumeResults.push(run('npm', ['run', 'typecheck'], repo, setupEnv))
+        consumeResults.push(run('npm', ['run', 'test'], repo, setupEnv))
         if (includeMutation) {
-          results.push(run('npm', ['run', 'mutation'], repo, setupEnv, 10 * 60 * 1000))
+          consumeResults.push(run('npm', ['run', 'mutation'], repo, setupEnv, 10 * 60 * 1000))
         }
-        results.push(run('npm', ['run', 'e2e'], repo, setupEnv))
-        results.push(run('npm', ['run', 'qa'], repo, setupEnv))
+        consumeResults.push(run('npm', ['run', 'e2e'], repo, setupEnv))
+        consumeResults.push(run('npm', ['run', 'qa'], repo, setupEnv))
+        phaseResults.push(runResultsToPhaseResult('consume', tConsume, consumeResults))
       }
     }
   }
@@ -290,13 +453,10 @@ try {
   if (!keep) rmSync(tempRoot, { recursive: true, force: true })
 }
 
-const failed = results.filter((result) => !result.ok)
-console.log(`Public consumer smoke: ${failed.length === 0 ? 'PASS' : 'FAIL'}`)
-for (const result of results) {
-  console.log(`[${result.ok ? 'PASS' : 'FAIL'}] ${result.command}: ${result.detail}`)
-}
+const summary = summarizePhases(phaseResults)
+console.log(formatSummary(summary))
 
-if (failed.length > 0) {
+if (summary.overall === 'FAIL') {
   if (keep) console.log(`Kept smoke workspace: ${tempRoot}`)
   process.exit(1)
 }

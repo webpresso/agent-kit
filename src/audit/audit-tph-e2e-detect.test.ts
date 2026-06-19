@@ -20,8 +20,6 @@ describe('detectTphE2eViolations', () => {
     expect(result.infoCount).toBe(0)
   })
 
-
-
   it('recognizes table-driven it.each titles as coverage signals', () => {
     const result = detectTphE2eViolations([
       {

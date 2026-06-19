@@ -18,10 +18,7 @@ describe('checkVersionSkew', () => {
   it('returns null when versions are aligned', () => {
     const dir = makeTempDir()
     try {
-      writeWorkspace(
-        dir,
-        `catalog:\n  '@webpresso/agent-kit': ^0.30.3\n`,
-      )
+      writeWorkspace(dir, `catalog:\n  '@webpresso/agent-kit': ^0.30.3\n`)
       expect(checkVersionSkew('0.30.3', dir)).toStrictEqual(null)
     } finally {
       rmSync(dir, { recursive: true })
@@ -31,10 +28,7 @@ describe('checkVersionSkew', () => {
   it('returns a warning when global version is ahead of pin', () => {
     const dir = makeTempDir()
     try {
-      writeWorkspace(
-        dir,
-        `catalog:\n  '@webpresso/agent-kit': ^0.28.0\n`,
-      )
+      writeWorkspace(dir, `catalog:\n  '@webpresso/agent-kit': ^0.28.0\n`)
       const result = checkVersionSkew('0.30.3', dir)
       expect(result).toStrictEqual(
         '[wp] Version skew: global wp is 0.30.3 but this repo pins @webpresso/agent-kit@0.28.0. ' +
@@ -48,10 +42,7 @@ describe('checkVersionSkew', () => {
   it('returns a warning when global version is behind pin', () => {
     const dir = makeTempDir()
     try {
-      writeWorkspace(
-        dir,
-        `catalog:\n  '@webpresso/agent-kit': ^0.32.0\n`,
-      )
+      writeWorkspace(dir, `catalog:\n  '@webpresso/agent-kit': ^0.32.0\n`)
       const result = checkVersionSkew('0.30.3', dir)
       expect(result).not.toStrictEqual(null)
       expect(typeof result).toStrictEqual('string')
@@ -82,10 +73,7 @@ describe('checkVersionSkew', () => {
   it('returns null when @webpresso/agent-kit is not in the catalog', () => {
     const dir = makeTempDir()
     try {
-      writeWorkspace(
-        dir,
-        `catalog:\n  '@other/pkg': ^1.0.0\n`,
-      )
+      writeWorkspace(dir, `catalog:\n  '@other/pkg': ^1.0.0\n`)
       expect(checkVersionSkew('0.30.3', dir)).toStrictEqual(null)
     } finally {
       rmSync(dir, { recursive: true })
@@ -95,10 +83,7 @@ describe('checkVersionSkew', () => {
   it('resolves pnpm-workspace.yaml from a nested subdirectory', () => {
     const dir = makeTempDir()
     try {
-      writeWorkspace(
-        dir,
-        `catalog:\n  '@webpresso/agent-kit': ^0.28.0\n`,
-      )
+      writeWorkspace(dir, `catalog:\n  '@webpresso/agent-kit': ^0.28.0\n`)
       const nested = join(dir, 'packages', 'foo', 'src')
       mkdirSync(nested, { recursive: true })
       const result = checkVersionSkew('0.30.3', nested)
@@ -111,10 +96,7 @@ describe('checkVersionSkew', () => {
   it('strips tilde range prefix before comparing', () => {
     const dir = makeTempDir()
     try {
-      writeWorkspace(
-        dir,
-        `catalog:\n  '@webpresso/agent-kit': ~0.30.3\n`,
-      )
+      writeWorkspace(dir, `catalog:\n  '@webpresso/agent-kit': ~0.30.3\n`)
       expect(checkVersionSkew('0.30.3', dir)).toStrictEqual(null)
     } finally {
       rmSync(dir, { recursive: true })

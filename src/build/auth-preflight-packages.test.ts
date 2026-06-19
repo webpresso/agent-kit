@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { RUNTIME_TARGETS } from '#build/runtime-targets.js'
+import { SESSION_MEMORY_NATIVE_TARGETS } from '#session-memory/native-targets.js'
 
 const repositoryRoot = findRepoRoot(import.meta.dirname)
 const authPreflightWorkflowPaths = [
@@ -68,10 +69,9 @@ describe('release workflow publish path', () => {
     expect(workflow).toContain('npm provenance verification requires a GitHub-hosted runner')
   })
 
-
   it('limits GitHub-hosted release execution to real release-surface changes on main', () => {
     const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
-    expect(workflow).toContain("paths:")
+    expect(workflow).toContain('paths:')
     expect(workflow).toContain("- '.changeset/**'")
     expect(workflow).toContain("- 'package.json'")
     expect(workflow).toContain("- 'packages/*/package.json'")
@@ -203,10 +203,29 @@ describe('release workflow publish path', () => {
     expect(afterChangesetsAction).toContain('scripts/github-release-notes.ts')
     expect(afterChangesetsAction).toContain('--runtime-assets')
     expect(afterChangesetsAction).toContain('--notes-file "$notes_file"')
-    expect(afterChangesetsAction).toContain('gh release edit "$tag" --title "v${version}" --notes-file "$notes_file"')
+    expect(afterChangesetsAction).toContain(
+      'gh release edit "$tag" --title "v${version}" --notes-file "$notes_file"',
+    )
     expect(afterChangesetsAction).toContain('gh release create')
     expect(afterChangesetsAction).toContain('gh release upload')
     expect(afterChangesetsAction).toContain('echo "asset_count=$asset_count" >> "$GITHUB_OUTPUT"')
     expect(afterChangesetsAction).toContain('"$assets"/*')
+  })
+
+  it('fails closed unless every session-memory native optional package is staged for publish', () => {
+    const releasePublish = readFileSync(
+      join(repositoryRoot, 'scripts', 'release-publish.ts'),
+      'utf8',
+    )
+
+    expect(releasePublish).toContain('assertPreparedSessionMemoryNativePackages')
+    expect(releasePublish).toContain("run('pnpm', ['run', 'stage:session-memory-native'])")
+    expect(releasePublish).not.toContain(
+      "'build:session-memory-native',\n    '--',\n    '--target',\n    'host'",
+    )
+    expect(releasePublish).not.toContain(
+      "if (!existsSync(resolve(preparedPackageRoot, 'package.json'))) continue",
+    )
+    expect(SESSION_MEMORY_NATIVE_TARGETS).toHaveLength(6)
   })
 })
