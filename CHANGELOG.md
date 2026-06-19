@@ -443,7 +443,7 @@
 
   These replace the per-consumer `bun scripts/verify-secrets-policy.ts`, `bun scripts/check-no-dev-vars.ts`, and `bun scripts/audit-secret-provider-quarantine.ts` scripts. Consumer repos now call `wp audit <subcommand>` from pre-commit hooks and CI.
 
-  `secret-provider-quarantine` detects direct provider invocations (e.g. running the secret manager CLI directly or passing provider-specific flags) and requires the `with-secrets -- <cmd>` abstraction instead.
+  `secret-provider-quarantine` detects direct provider invocations (e.g. running the secret manager CLI directly or passing provider-specific flags) and requires the shared `wp secrets run --sink <sink> --profile <profile> -- <cmd>` abstraction instead.
 
   **Fix:** Removed `--maxWorkers 1` from `UNIT_SUITE_RUN` — this flag forced serial vitest execution across ~440 unit files (~133s wall-clock), exceeding the `wp_test` MCP tool's 110s cap. Parallel execution restores ~50s wall-clock.
 

@@ -41,9 +41,10 @@ No private registry setup is required.
 
 If `vp` is not already on PATH, install Vite+ first (`curl -fsSL https://viteplus.dev/install.sh | bash` on Linux/macOS; in CI use `voidzero-dev/setup-vp@v1`), then continue.
 
-For committed/team repos, pin `@webpresso/agent-kit` in `devDependencies` with
-a published semver range, then rerun global `wp setup`. The package pin is for
-version selection only; setup no longer relies on a repo-local CLI path.
+For committed/team repos, keep `@webpresso/agent-config` locally for presets
+and use the global `wp` install for CLI/setup behavior. Do not add
+`@webpresso/agent-kit` as a consumer project dependency; rerun global `wp setup`
+after updating the shared tooling install.
 
 If `wp setup` needs gstack tuning on a workstation with multiple agent CLIs
 installed, use:
@@ -103,7 +104,8 @@ writing the raw key. Codex uses a static `Accept` header plus
 `env_http_headers` in its global config, and Claude uses `${CONTEXT7_API_KEY}`
 in project `.mcp.json`. Launch the host through the wrapper so the selected
 provider injects the secret at runtime:
-`with-secrets -- codex` or `with-secrets -- claude`.
+`wp secrets run --sink dev-server --profile preview -- codex` or
+`wp secrets run --sink dev-server --profile preview -- claude`.
 
 Consecutive setup runs keep heavyweight integrations cheap by default. If the
 canonical gstack checkout and requested host skills already exist, setup reports

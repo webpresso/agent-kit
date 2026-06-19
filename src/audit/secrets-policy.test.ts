@@ -142,6 +142,19 @@ describe('auditSecretsPolicy', () => {
     expect(result.violations).toStrictEqual([])
   })
 
+
+  test('does not flag e2e file containing GraphQL pk field names', () => {
+    const root = tempRepo(true)
+    const e2eContent = 'query { projects_by_pk(id: "00000000-0000-0000-0000-000000000000") { id } }'
+    writeFileSync(join(root, 'flow.e2e.ts'), e2eContent)
+    execFileSync('git', ['add', 'flow.e2e.ts'], { cwd: root, stdio: 'ignore' })
+
+    const result = auditSecretsPolicy(root)
+
+    expect(result.ok).toBe(true)
+    expect(result.violations).toStrictEqual([])
+  })
+
   test('passes for clean git repo', () => {
     const root = tempRepo(true)
     writeFileSync(join(root, 'readme.md'), '# My project')

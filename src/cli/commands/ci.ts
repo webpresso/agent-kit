@@ -14,7 +14,7 @@ export const MAX_CI_ACT_TIMEOUT_MS = 60 * 60_000
 
 export const CI_COMMAND_HELP = [
   'Run repository CI helpers through the portable, secret-safe wp surface.',
-  'Configure secret access with `wp config secrets ...`; execution shells through `with-secrets -- <cmd>`.',
+  'Configure secret access with committed `.webpresso/secrets.config.json` metadata and validate with `wp secrets doctor --profile <profile> --json` before execution.',
   '',
   'Examples:',
   '  wp ci act --workflow ci-e2e',

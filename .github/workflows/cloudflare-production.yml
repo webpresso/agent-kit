@@ -48,6 +48,7 @@ jobs:
     permissions:
       contents: read
       packages: read
+      id-token: write
     env:
       DEPLOY_LANE: prd
       RELEASE_VERSION: ${{ inputs.release_version }}

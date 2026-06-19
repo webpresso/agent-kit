@@ -34,8 +34,8 @@ function extractPinnedVersion(workspaceFile: string): string | null {
 }
 
 /**
- * Returns a warning string when the running wp version differs from the
- * repo-pinned @webpresso/agent-kit in pnpm-workspace.yaml catalog.
+ * Returns a warning string when the running global wp version differs from the
+ * repo-pinned @webpresso/agent-kit catalog entry.
  * Returns null when aligned or no pin can be resolved.
  */
 export function checkVersionSkew(
@@ -51,8 +51,8 @@ export function checkVersionSkew(
   if (runningVersion === pinnedVersion) return null
 
   return (
-    `[wp] Version skew: global wp is ${runningVersion} but this repo pins ` +
-    `@webpresso/agent-kit@${pinnedVersion}. ` +
-    `Run \`vp install -g @webpresso/agent-kit@${pinnedVersion}\` to align.`
+    `[wp] Version skew: global wp is ${runningVersion} but this repo expects ` +
+    `@webpresso/agent-kit@${pinnedVersion} for the shared wp runtime. ` +
+    `Run \`vp install -g @webpresso/agent-kit@${pinnedVersion}\` to align the global CLI.`
   )
 }

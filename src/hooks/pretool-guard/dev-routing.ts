@@ -126,7 +126,7 @@ const ROUTING_RULES: RoutingRule[] = [
     ],
     guidanceType: 'qa',
     guidance:
-      'Use wp_worker_tail MCP tool instead — Worker tail output is bounded, redacted, and routed through the canonical `with-secrets -- wrangler tail ...` secret-gate contract',
+      'Use wp_worker_tail MCP tool instead — Worker tail output is bounded, redacted, and routed through `wp secrets run --sink deploy-wrangler --profile <profile> -- wrangler tail ...`',
     tool: 'wp_worker_tail',
   },
   {
@@ -141,7 +141,7 @@ const ROUTING_RULES: RoutingRule[] = [
     ],
     guidanceType: 'qa',
     guidance:
-      'Use wp_ci_act MCP tool instead — CI act execution is bounded and routed through the canonical `with-secrets -- act ...` secret-gate contract',
+      'Use wp_ci_act MCP tool instead — CI act execution is bounded and routed through `wp secrets run --sink act --profile <profile> -- act ...`',
     tool: 'wp_ci_act',
   },
   {
@@ -175,7 +175,7 @@ const SOURCE_ENTRYPOINT_RULES: SourceEntrypointRule[] = [
     scriptSuffixes: ['apps/scripts/src/ci/act.ts'],
     tool: 'wp_ci_act',
     guidance:
-      'Use wp_ci_act MCP tool instead — raw source execution bypasses MCP output bounds and the canonical `with-secrets -- act ...` secret-gate contract',
+      'Use wp_ci_act MCP tool instead — raw source execution bypasses MCP output bounds and `wp secrets run --sink act --profile <profile> -- act ...`',
   },
 ]
 

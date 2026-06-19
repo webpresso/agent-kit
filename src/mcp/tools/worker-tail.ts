@@ -37,6 +37,11 @@ const outputSchema = createSummaryOutputSchema({
   }),
 })
 
+function secretProfileForWorkerTail(input: z.infer<typeof inputSchema>): string {
+  const environment = input.environment?.trim().toLowerCase()
+  return environment === 'production' || environment === 'prd' ? 'production' : 'preview'
+}
+
 function buildWranglerTailArgs(input: z.infer<typeof inputSchema>): string[] {
   const args = ['tail', input.worker, '--format', input.format, '--status', input.status]
   if (input.environment) args.push('--env', input.environment)
@@ -82,7 +87,12 @@ const tool: ToolDescriptor = {
   handler: async (raw, extra) => {
     const input = inputSchema.parse(raw ?? {})
     const args = buildWranglerTailArgs(input)
-    const command = buildSecretGateCommand({ command: 'wrangler', args })
+    const command = buildSecretGateCommand({
+      sink: 'deploy-wrangler',
+      profile: secretProfileForWorkerTail(input),
+      command: 'wrangler',
+      args,
+    })
     if (!input.execute) {
       return createSummaryResult({
         passed: true,
@@ -94,6 +104,8 @@ const tool: ToolDescriptor = {
 
     const result = await runSecretGateCommand({
       cwd: input.cwd,
+      sink: 'deploy-wrangler',
+      profile: secretProfileForWorkerTail(input),
       command: 'wrangler',
       args,
       timeoutMs: input.timeoutMs,

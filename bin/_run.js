@@ -13,7 +13,6 @@ import {
 
 export const BIN_ENTRYPOINTS = {
   wp: 'src/cli/cli.ts',
-  'with-secrets': 'src/runtime/with-secrets-cli.ts',
   'docs-check-internal-links': 'src/config/docs-lint/cli/check-internal-links.ts',
   'docs-check-refs': 'src/config/docs-lint/cli/check-refs.ts',
   'docs-check-stale': 'src/config/docs-lint/cli/check-stale.ts',

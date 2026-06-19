@@ -281,7 +281,7 @@ describe('routeCommand', () => {
       if (result?.action.action === 'deny') {
         expect(result.action.tool).toBe('wp_ci_act')
         expect(result.action.guidance).toContain('wp_ci_act')
-        expect(result.action.guidance).toContain('with-secrets -- act')
+        expect(result.action.guidance).toContain('wp secrets run --sink act')
         expect(result.action.guidance).not.toMatch(/\bak_/u)
       }
     }
@@ -300,7 +300,7 @@ describe('routeCommand', () => {
       if (result?.action.action === 'deny') {
         expect(result.action.tool).toBe('wp_ci_act')
         expect(result.action.guidance).toContain('wp_ci_act')
-        expect(result.action.guidance).toContain('with-secrets -- act')
+        expect(result.action.guidance).toContain('wp secrets run --sink act')
         expect(result.action.guidance).not.toMatch(/\bak_/u)
       }
     }
@@ -320,7 +320,7 @@ describe('routeCommand', () => {
       if (result?.action.action === 'deny') {
         expect(result.action.tool).toBe('wp_worker_tail')
         expect(result.action.guidance).toContain('wp_worker_tail')
-        expect(result.action.guidance).toContain('with-secrets -- wrangler tail')
+        expect(result.action.guidance).toContain('wp secrets run --sink deploy-wrangler')
         expect(result.action.guidance).not.toMatch(/\bak_/u)
       }
     }

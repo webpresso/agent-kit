@@ -33,8 +33,7 @@
     "docs-check-refs": "bin/docs-check-refs.js",
     "docs-check-stale": "bin/docs-check-stale.js",
     "docs-lint": "bin/docs-lint.js",
-    "docs-migrate": "bin/docs-migrate.js",
-    "with-secrets": "bin/with-secrets"
+    "docs-migrate": "bin/docs-migrate.js"
   },
   "files": [
     "bin/wp",
@@ -113,6 +112,10 @@
     "#mcp/*": "./src/mcp/*.ts",
     "#content/*.js": "./src/content/*.ts",
     "#content/*": "./src/content/*.ts",
+    "#errors/*.js": "./src/errors/*.ts",
+    "#errors/*": "./src/errors/*.ts",
+    "#secrets/*.js": "./src/secrets/*.ts",
+    "#secrets/*": "./src/secrets/*.ts",
     "#tool-runtime": "./src/tool-runtime/index.ts",
     "#tool-runtime/*.js": "./src/tool-runtime/*.ts",
     "#tool-runtime/*": "./src/tool-runtime/*.ts",

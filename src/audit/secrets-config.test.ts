@@ -72,4 +72,35 @@ describe('auditSecretsConfig', () => {
     expect(result.checked).toBe(1)
     expect(result.violations).toStrictEqual([])
   })
+
+  test('passes for valid schemaVersion 1 config', () => {
+    const root = tempRepo()
+    writeFileSync(
+      join(root, '.webpresso', 'secrets.config.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        providers: {
+          default: {
+            type: 'doppler',
+            workspace: 'ozby',
+            workspaceId: '7abb07fb8507f57c2011',
+            project: 'edge-matte',
+          },
+        },
+        profiles: {
+          preview: { provider: 'default', environment: 'stg' },
+          production: { provider: 'default', environment: 'prd' },
+        },
+        sinks: {
+          'dev-server': { defaultProfile: 'preview', allowedOps: ['run'] },
+        },
+      }),
+    )
+
+    const result = auditSecretsConfig(root)
+
+    expect(result.ok).toBe(true)
+    expect(result.checked).toBe(1)
+    expect(result.violations).toStrictEqual([])
+  })
 })

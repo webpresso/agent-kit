@@ -107,6 +107,12 @@
       "#content/*": [
         "./src/content/*"
       ],
+      "#errors/*": [
+        "./src/errors/*.ts"
+      ],
+      "#secrets/*": [
+        "./src/secrets/*.ts"
+      ],
       "#runtime/*": [
         "./src/runtime/*.ts"
       ],

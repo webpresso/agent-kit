@@ -96,7 +96,9 @@ export function resolveRuntimeEnvironment(
   const config = readSecretsConfig(cwd)
   if (!config) {
     if (!profile) return {}
-    throw new Error('No secret manager configured.\nRun: wp config secrets setup')
+    throw new Error(
+      'No secret profile configured.\nCommit a valid .webpresso/secrets.config.json and run: wp secrets doctor --profile preview --json',
+    )
   }
 
   const cache = options.cache ?? createRuntimeEnvCache()

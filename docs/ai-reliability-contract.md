@@ -52,5 +52,5 @@ IngestLens is the reference consumer for the next layer of this contract, but
 it remains a `wp`-first thin consumer: provenance-bearing mapping suggestions,
 calibrated confidence buckets, structured replay/delivery failures, and
 traceability-backed AI claims should layer on top of the already-shipped
-`wp_*`, `wp ci act`, and secret-gated `with-secrets -- <cmd>` surfaces rather
+`wp_*`, `wp ci act`, and `wp secrets run --sink <sink> --profile <profile> -- <cmd>` surfaces rather
 than a bespoke CI or deploy stack.

@@ -27,15 +27,18 @@ const p = (parts: readonly string[]): RegExp => new RegExp(parts.join(''), 'u')
 const BANNED_PATTERNS: readonly BannedPattern[] = [
   {
     pattern: p([String.raw`\b`, 'doppler', ' run', String.raw`\b`]),
-    message: 'use `with-secrets -- <cmd>` instead of direct doppler invocation',
+    message:
+      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of direct doppler invocation',
   },
   {
     pattern: p([String.raw`\bwith-secrets\s+`, '--doppler', String.raw`\b`]),
-    message: 'use selected-manager `with-secrets -- <cmd>` instead of provider flags',
+    message:
+      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of provider flags',
   },
   {
     pattern: p([String.raw`\bwith-secrets\s+`, '--infisical', String.raw`\b`]),
-    message: 'use selected-manager `with-secrets -- <cmd>` instead of provider flags',
+    message:
+      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of provider flags',
   },
   {
     pattern: p([String.raw`\b`, 'doppler secrets' + ' download', String.raw`\b`]),

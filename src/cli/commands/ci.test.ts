@@ -22,10 +22,14 @@ describe('wp ci command', () => {
   it('builds a public secret-gate act command by default', () => {
     const command = buildCiActCommand({ workflow: 'ci-e2e' }, '/repo')
 
-    expect(command.command).toBe('with-secrets')
+    expect(command.command).toBe('wp')
     expect(command.args).toEqual([
-      '--runtime-profile',
-      'secrets-only',
+      'secrets',
+      'run',
+      '--sink',
+      'act',
+      '--profile',
+      'preview',
       '--',
       'act',
       'pull_request',
@@ -56,9 +60,11 @@ describe('wp ci command', () => {
     )
 
     expect(command.args).toEqual([
-      '--runtime-profile',
-      'secrets-only',
-      '--secret-env-profile',
+      'secrets',
+      'run',
+      '--sink',
+      'act',
+      '--profile',
       'ci-local',
       '--',
       'act',
@@ -123,7 +129,8 @@ describe('wp ci command', () => {
 
     expect(code).toBe(0)
     expect(run).not.toHaveBeenCalled()
-    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('with-secrets'))
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"command":"wp"'))
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('secrets'))
     expect(stdout).toHaveBeenCalledWith(expect.not.stringContaining('chef-token'))
   })
 

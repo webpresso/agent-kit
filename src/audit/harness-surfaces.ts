@@ -101,7 +101,6 @@ const BOUNDED_HARNESS_ROOTS: readonly {
   { path: 'catalog/agent/skills', surfaceId: 'generated-agent-surfaces' },
   { path: 'src/hooks/pretool-guard', surfaceId: 'permission-policy' },
   { path: 'src/secret-gate', surfaceId: 'secret-gate' },
-  { path: 'bin/with-secrets', surfaceId: 'secret-gate' },
   { path: 'catalog/agent/harness-gate', surfaceId: 'harness-regression-gate' },
   { path: 'scripts/bench/harness-gate', surfaceId: 'harness-regression-gate' },
   { path: 'src/symlinker', surfaceId: 'agent-overlays' },

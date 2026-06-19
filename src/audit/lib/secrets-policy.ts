@@ -9,7 +9,8 @@ export type SecretsConfigMetadata = {
   readonly projectLabel?: string
 }
 
-const ALLOWED_CONFIG_KEYS = new Set(['manager', 'projectId', 'projectLabel'])
+const LEGACY_ALLOWED_CONFIG_KEYS = new Set(['manager', 'projectId', 'projectLabel'])
+const V1_ALLOWED_CONFIG_KEYS = new Set(['schemaVersion', 'providers', 'profiles', 'sinks'])
 const FORBIDDEN_CONFIG_KEY =
   /(?:^|_)(?:token|secret|password|api[_-]?key|credential|private[_-]?key)(?:$|_)/iu
 const PROJECT_ID_PATTERN = /^[a-z0-9][a-z0-9_-]{0,62}$/u
@@ -63,13 +64,13 @@ export function isForbiddenGitPath(relativePath: string): boolean {
 }
 
 export function shouldScanGitFileForSecretValues(relativePath: string): boolean {
-  if (/\.(?:test|spec)\.(?:ts|tsx|js|jsx|mjs|cjs)$/iu.test(relativePath)) return false
+  if (/\.(?:test|spec|e2e)\.(?:ts|tsx|js|jsx|mjs|cjs)$/iu.test(relativePath)) return false
   return /\.(?:md|ts|tsx|js|mjs|cjs|json|ya?ml|toml|txt|sh)$/iu.test(relativePath)
 }
 
-function validateConfigKeys(obj: Record<string, unknown>, sourceLabel: string): void {
+function validateLegacyConfigKeys(obj: Record<string, unknown>, sourceLabel: string): void {
   for (const key of Object.keys(obj)) {
-    if (!ALLOWED_CONFIG_KEYS.has(key)) {
+    if (!LEGACY_ALLOWED_CONFIG_KEYS.has(key)) {
       throw new Error(`${sourceLabel}: unexpected key "${key}"`)
     }
     if (FORBIDDEN_CONFIG_KEY.test(key)) {
@@ -128,7 +129,38 @@ export function parseSecretsConfigMetadata(
   }
 
   const obj = parsed as Record<string, unknown>
-  validateConfigKeys(obj, sourceLabel)
+  if (obj.schemaVersion === 1) {
+    for (const key of Object.keys(obj)) {
+      if (!V1_ALLOWED_CONFIG_KEYS.has(key)) {
+        throw new Error(`${sourceLabel}: unexpected key "${key}"`)
+      }
+    }
+    const providers = obj.providers
+    if (typeof providers !== 'object' || providers === null || Array.isArray(providers)) {
+      throw new Error(`${sourceLabel}: "providers" must be an object`)
+    }
+    const defaultProvider = (providers as Record<string, unknown>).default
+    if (typeof defaultProvider !== 'object' || defaultProvider === null || Array.isArray(defaultProvider)) {
+      throw new Error(`${sourceLabel}: "providers.default" must be an object`)
+    }
+    const provider = defaultProvider as Record<string, unknown>
+    if (provider.type !== 'doppler' && provider.type !== 'infisical') {
+      throw new Error(`${sourceLabel}: "providers.default.type" must be "doppler" or "infisical"`)
+    }
+    if (typeof provider.project !== 'string' || provider.project.length === 0) {
+      throw new Error(`${sourceLabel}: "providers.default.project" must be a non-empty string`)
+    }
+    if (!PROJECT_ID_PATTERN.test(provider.project)) {
+      throw new Error(`${sourceLabel}: "providers.default.project" must be a valid project slug`)
+    }
+    return {
+      manager: provider.type,
+      projectId: provider.project,
+      projectLabel: typeof provider.project === 'string' ? provider.project : undefined,
+    }
+  }
+
+  validateLegacyConfigKeys(obj, sourceLabel)
   validateConfigValues(obj, sourceLabel)
   return buildConfigMetadata(obj, sourceLabel)
 }

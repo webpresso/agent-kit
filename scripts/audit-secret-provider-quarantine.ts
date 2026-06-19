@@ -21,14 +21,20 @@ const IGNORED_DIRS = new Set([
 const TEXT_FILE_PATTERN = /\.(md|ts|tsx|js|json|ya?ml|toml|txt)$/i
 
 const BANNED_PATTERNS: Array<{ pattern: RegExp; message: string }> = [
-  { pattern: /\bdoppler run\b/, message: 'use `with-secrets -- <cmd>` instead of `doppler run`' },
+  {
+    pattern: /\bdoppler run\b/,
+    message:
+      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of direct provider run wrappers',
+  },
   {
     pattern: /\bwith-secrets\s+--doppler\b/,
-    message: 'use selected-manager `with-secrets -- <cmd>` instead of provider flags',
+    message:
+      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of provider flags',
   },
   {
     pattern: /\bwith-secrets\s+--infisical\b/,
-    message: 'use selected-manager `with-secrets -- <cmd>` instead of provider flags',
+    message:
+      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of provider flags',
   },
   {
     pattern: /\bdoppler secrets download\b/,

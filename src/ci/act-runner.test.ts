@@ -72,11 +72,20 @@ describe('public ci act runner contract', () => {
     ).toThrow(`Unsupported container architecture "linux/s390x"`)
   })
 
-  it('wraps act through the provider-neutral secret gate', () => {
+  it('wraps act through wp secrets run', () => {
     const command = buildPublicCiActCommand({ cwd: '/repo', workflow: 'ci-e2e' })
 
-    expect(command.command).toBe('with-secrets')
-    expect(command.args.slice(0, 4)).toEqual(['--runtime-profile', 'secrets-only', '--', 'act'])
+    expect(command.command).toBe('wp')
+    expect(command.args.slice(0, 8)).toEqual([
+      'secrets',
+      'run',
+      '--sink',
+      'act',
+      '--profile',
+      'preview',
+      '--',
+      'act',
+    ])
   })
 
   it('keeps provider environment selectors separate from runtime profiles', () => {
@@ -87,11 +96,13 @@ describe('public ci act runner contract', () => {
       secretEnvProfile: 'dev',
     })
 
-    expect(command.command).toBe('with-secrets')
-    expect(command.args.slice(0, 6)).toEqual([
-      '--runtime-profile',
-      'secrets-only',
-      '--secret-env-profile',
+    expect(command.command).toBe('wp')
+    expect(command.args.slice(0, 8)).toEqual([
+      'secrets',
+      'run',
+      '--sink',
+      'act',
+      '--profile',
       'dev',
       '--',
       'act',

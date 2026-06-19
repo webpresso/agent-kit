@@ -1402,19 +1402,19 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     }
 
     // Context7 auth remains provider-owned: setup writes only the Codex
-    // env-header mapping, while `with-secrets -- codex` injects the actual
-    // CONTEXT7_API_KEY from the selected secret manager at runtime.
+    // env-header mapping, while the provider-backed launch environment injects
+    // the actual CONTEXT7_API_KEY at runtime.
     const context7McpResult = ensureCodexContext7Mcp({ options })
     switch (context7McpResult.action) {
       case 'created':
       case 'overwritten':
         console.log(
-          `  codex context7 mcp: ✓ ${context7McpResult.targetPath} (uses ${CONTEXT7_API_KEY_ENV} from with-secrets)`,
+          `  codex context7 mcp: ✓ ${context7McpResult.targetPath} (uses ${CONTEXT7_API_KEY_ENV} from your secret provider)`,
         )
         break
       case 'identical':
         console.log(
-          `  codex context7 mcp: already configured at ${context7McpResult.targetPath} (launch Codex with: with-secrets -- codex)`,
+          `  codex context7 mcp: already configured at ${context7McpResult.targetPath} (launch Codex from a provider-backed shell that exports CONTEXT7_API_KEY)`,
         )
         break
       case 'skipped-dry':
@@ -1425,7 +1425,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     // Claude Code expands `${CONTEXT7_API_KEY}` inside `.mcp.json` headers at
     // runtime. As with Codex, setup writes only the variable reference and the
     // selected secret provider injects the value when Claude is launched via
-    // `with-secrets -- claude`.
+    // the provider-backed launch environment.
     const claudeContext7McpResult = ensureClaudeContext7Mcp({
       options,
       repoRoot: consumer.repoRoot,
@@ -1433,12 +1433,12 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     switch (claudeContext7McpResult.kind) {
       case 'claude-context7-mcp-written':
         console.log(
-          `  claude context7 mcp: ✓ ${claudeContext7McpResult.path} (uses ${CONTEXT7_API_KEY_ENV} from with-secrets)`,
+          `  claude context7 mcp: ✓ ${claudeContext7McpResult.path} (uses ${CONTEXT7_API_KEY_ENV} from your secret provider)`,
         )
         break
       case 'claude-context7-mcp-unchanged':
         console.log(
-          `  claude context7 mcp: already configured at ${claudeContext7McpResult.path} (launch Claude with: with-secrets -- claude)`,
+          `  claude context7 mcp: already configured at ${claudeContext7McpResult.path} (launch Claude from a provider-backed shell that exports CONTEXT7_API_KEY)`,
         )
         break
       case 'claude-context7-mcp-skipped-dry-run':

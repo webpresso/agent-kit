@@ -127,7 +127,7 @@ function createCliDiagnosticAdapter(options: {
         authenticated: false,
         detail: [
           `${options.displayName} CLI is installed, but agent-kit does not inspect manager auth state or fetch secrets.`,
-          `Run the manager login flow, then verify execution with: with-secrets -- <cmd>`,
+          `Run the manager login flow, then verify execution with: wp secrets run --sink dev-server --profile preview -- <cmd>`,
         ].join(' '),
       }
     },
@@ -253,7 +253,7 @@ async function getStatus(
 
 function formatShowMessage(status: SecretsConfigStatus): string {
   if (!status.configured || !status.config) {
-    return `No secret manager configured.\nRun: wp config secrets setup`
+    return `No secret profile configured.\nCommit a valid .webpresso/secrets.config.json and run: wp secrets doctor --profile preview --json`
   }
   return [
     `manager: ${status.config.manager}`,
@@ -265,7 +265,7 @@ function formatShowMessage(status: SecretsConfigStatus): string {
 
 function formatStatusMessage(status: SecretsConfigStatus): string {
   if (!status.configured || !status.config) {
-    return `configured: no\npath: ${status.path}\naction: run 'wp config secrets setup'`
+    return `configured: no\npath: ${status.path}\naction: commit .webpresso/secrets.config.json and run 'wp secrets doctor --profile preview --json'`
   }
 
   return [

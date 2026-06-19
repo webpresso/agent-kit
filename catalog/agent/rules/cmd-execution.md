@@ -104,13 +104,11 @@ cd <repo-root> && ./node_modules/.bin/oxfmt --write --ignore-path .gitignore
   only as a last-resort compatibility fallback.
 - Secret-touching source entrypoints such as CI act runners and local command
   wrappers must go through a secret-aware MCP wrapper or the repo-provided
-  `with-secrets` launcher. They should reuse the repo secret-provider gate and
+  `wp secrets run` surface. They should reuse the repo secret-provider gate and
   must not ask agents to call `doppler` or `infisical` directly.
 
-  Use `with-secrets --env-profile <profile> -- <cmd>` for canonical profiles
-  (`secrets-only`, `service-runtime`, `database`, `full`) or
-  `--runtime-profile` when passing provider-specific selectors (for example:
-  `prd`).
+  Use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` for canonical
+  secret-touching operations.
 - Use the `WP_` environment variable namespace for webpresso CLI behavior. For
   update checks, the opt-out is `WP_SKIP_UPDATE_CHECK=1`.
 - The compiled `wp` binary is canonical for consumers, CI, and the installed plugin.

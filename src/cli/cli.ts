@@ -34,6 +34,10 @@ const SUPPORTED_COMMANDS = [
   'init',
   'dev',
   'deploy',
+  'preview',
+  'cleanup',
+  'migrate',
+  'secrets',
   'doctor',
   'err',
   'test',
@@ -95,6 +99,10 @@ const ROOT_HELP = [
   '  docs                  Documentation tooling (lint)',
   '  dev                   Run a manifest-backed development target',
   '  doctor                Run repo audit health checks (hook/plugin health stays under hooks doctor)',
+  '  secrets               Secret orchestration doctor/bootstrap surface',
+  '  preview               Plan or run preview deploys through the shared secret surface',
+  '  cleanup               Cleanup preview resources through the shared secret surface',
+  '  migrate               Emit secret-migration patch plans for consumer repos',
   '  err                   Run a command and show only failures (hooks + CI)',
   '  tech-debt             Manage tech-debt lifecycle (new, list, review)',
   '  worktree              Git worktree management with .agent/ seeding (new, list, remove)',
@@ -246,6 +254,26 @@ export async function main(): Promise<number> {
     case 'deploy': {
       const { registerDeployCommand } = await import('./commands/deploy.js')
       registerDeployCommand(cli)
+      break
+    }
+    case 'preview': {
+      const { registerPreviewCommand } = await import('./commands/preview.js')
+      registerPreviewCommand(cli)
+      break
+    }
+    case 'cleanup': {
+      const { registerCleanupCommand } = await import('./commands/cleanup.js')
+      registerCleanupCommand(cli)
+      break
+    }
+    case 'migrate': {
+      const { registerMigrateCommand } = await import('./commands/migrate.js')
+      registerMigrateCommand(cli)
+      break
+    }
+    case 'secrets': {
+      const { registerSecretsCommand } = await import('./commands/secrets.js')
+      registerSecretsCommand(cli)
       break
     }
     case 'doctor': {

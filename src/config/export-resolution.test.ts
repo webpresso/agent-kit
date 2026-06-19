@@ -125,7 +125,6 @@ describe('@webpresso/agent-kit package exports', () => {
 
     expect(packageJson.bin).toMatchObject({
       wp: 'bin/wp',
-      'with-secrets': 'bin/with-secrets',
       ...docsLintBins,
     })
   })

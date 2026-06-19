@@ -26,4 +26,3 @@ export {
   type SecretManagerName,
   type SecretsConfig,
 } from './secrets-config.js'
-export { runWithSecretsCli, parseWithSecretsArgs } from './with-secrets-cli.js'

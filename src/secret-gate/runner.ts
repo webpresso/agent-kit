@@ -9,7 +9,8 @@ export interface SecretGateCommand {
 
 export interface SecretGateCommandOptions {
   readonly maxOutputBytes?: number
-  readonly runner?: string
+  readonly sink?: string
+  readonly profile?: string
   readonly envProfile?: string
   readonly secretEnvProfile?: string
   readonly command: string
@@ -54,25 +55,32 @@ export function isSecretGateRuntimeProfile(value: string | undefined): boolean {
 }
 
 export function buildSecretGateCommand(options: SecretGateCommandOptions): SecretGateCommand {
-  const runner = options.runner?.trim() || 'with-secrets'
   const envProfile = options.envProfile?.trim()
-  const secretEnvProfile = options.secretEnvProfile?.trim()
   if (envProfile && !isSecretGateRuntimeProfile(envProfile)) {
     throw new Error(
       `Unsupported secret-gate envProfile "${envProfile}". Use one of: ${SECRET_GATE_RUNTIME_PROFILES.join(', ')}. Pass provider-specific Doppler/Infisical selectors via secretEnvProfile.`,
     )
   }
-  if (runner === 'with-secrets' && envProfile && DIRECT_ENV_PROFILES.has(envProfile)) {
+  if (envProfile && DIRECT_ENV_PROFILES.has(envProfile)) {
     return { command: options.command, args: [...(options.args ?? [])] }
   }
+  const sink = options.sink?.trim()
+  if (!sink) {
+    throw new Error('Secret-gate sink is required when secret resolution is enabled.')
+  }
+  const profile = options.profile?.trim() || options.secretEnvProfile?.trim() || 'preview'
   const args = [
-    ...(envProfile ? ['--runtime-profile', envProfile] : []),
-    ...(secretEnvProfile ? ['--secret-env-profile', secretEnvProfile] : []),
+    'secrets',
+    'run',
+    '--sink',
+    sink,
+    '--profile',
+    profile,
     '--',
     options.command,
     ...(options.args ?? []),
   ]
-  return { command: runner, args }
+  return { command: 'wp', args }
 }
 
 function exitCodeFromSignal(signal: NodeJS.Signals | null): number {

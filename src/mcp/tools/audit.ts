@@ -430,6 +430,16 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
         details: auditResult,
       }
     }
+    case 'github-actions-secrets': {
+      const { auditGitHubActionsSecrets } = await import('#audit/github-actions-secrets')
+      const auditResult = auditGitHubActionsSecrets(input.cwd ?? input.directory ?? process.cwd())
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
+    }
     case 'no-relative-package-scripts': {
       const { auditNoRelativePackageScripts } = await import('#audit/repo-guardrails')
       const auditResult = auditNoRelativePackageScripts(

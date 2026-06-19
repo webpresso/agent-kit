@@ -50,7 +50,7 @@ describe('wp config secrets', () => {
     )
 
     expect(exitCode).toBe(1)
-    expect(stdout.output()).toContain('Run: wp config secrets setup')
+    expect(stdout.output()).toContain('wp secrets doctor --profile preview --json')
   })
 
   it('writes an explicit manager/project selection', async () => {

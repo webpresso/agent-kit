@@ -57,7 +57,7 @@ function publicCommandDetails(input: z.infer<typeof inputSchema>, cwd: string) {
 const tool: ToolDescriptor = {
   name: 'wp_ci_act',
   description:
-    'Run local GitHub Actions workflows through `act` via the public secret contract (`wp config secrets ...`, then `with-secrets -- act ...`).',
+    'Run local GitHub Actions workflows through `act` via the public secret contract (`wp secrets doctor --profile <profile> --json`, then `wp secrets run --sink act --profile <profile> -- act ...`).',
   inputSchema,
   outputSchema,
   annotations: {
@@ -83,8 +83,9 @@ const tool: ToolDescriptor = {
 
     const result = await runSecretGateCommand({
       cwd,
+      sink: 'act',
+      profile: input.secretEnvProfile ?? 'preview',
       envProfile: input.envProfile,
-      secretEnvProfile: input.secretEnvProfile,
       command: 'act',
       args: command.actArgs,
       timeoutMs: input.timeoutMs,

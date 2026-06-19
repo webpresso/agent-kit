@@ -86,9 +86,9 @@ export function buildPublicCiActArgs(options: PublicCiActOptions = {}): string[]
 export function buildPublicCiActCommand(options: PublicCiActOptions = {}): PublicCiActCommand {
   const actArgs = buildPublicCiActArgs(options)
   const wrapped: SecretGateCommand = buildSecretGateCommand({
-    runner: 'with-secrets',
+    sink: 'act',
+    profile: options.secretEnvProfile ?? 'preview',
     envProfile: options.envProfile ?? 'secrets-only',
-    secretEnvProfile: options.secretEnvProfile,
     command: 'act',
     args: actArgs,
   })

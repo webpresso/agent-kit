@@ -38,7 +38,7 @@ The shared workflow then reads the caller repo’s committed
 This keeps CI aligned with the repo-local operator contract:
 
 - configure metadata with `wp config secrets ...`
-- run local secret-scoped commands through `with-secrets -- <cmd>`
+- run local secret-scoped commands through `wp secrets run --sink <sink> --profile <profile> -- <cmd>`
 
 ### Caller requirements
 
