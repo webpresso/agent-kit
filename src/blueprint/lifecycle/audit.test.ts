@@ -684,6 +684,34 @@ last_updated: 2026-04-02
     expect(result.ok).toBe(false)
   })
 
+  it('accepts compact inline status metadata when validating explicit task status', async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-inline-status-'))
+    tempDirs.push(projectRoot)
+
+    writeOverview(
+      projectRoot,
+      ['planned', 'inline-status', '_overview.md'],
+      `---
+type: blueprint
+status: planned
+complexity: S
+created: 2026-04-02
+last_updated: 2026-04-02
+---
+
+# inline-status
+
+#### [cli] Task 1.1: Compact metadata
+**Status:** todo **Depends:** None
+`,
+    )
+
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
+    expect(result.issues).not.toContainEqual(
+      expect.objectContaining({ message: expect.stringContaining('invalid status') }),
+    )
+  })
+
   it('errors when done task has incomplete acceptance criteria (checked < total)', async () => {
     const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-done-incomplete-acceptance-'))
     tempDirs.push(projectRoot)

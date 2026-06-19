@@ -60,7 +60,7 @@ worktree_owner_branch: ''
 
 ## Tasks
 
-### [code-smell] Task 1.1: Introduce `tryOrIgnore` safe-bypass helper
+#### [code-smell] Task 1.1: Introduce `tryOrIgnore` safe-bypass helper
 
 **Status:** todo
 
@@ -92,7 +92,7 @@ Create a lightweight helper for intentional error suppression with a required re
 - [ ] `./bin/wp lint` passes
 - [ ] `./bin/wp typecheck` passes
 
-### [error-handling] Task 1.2: Audit and fix high-concentration files
+#### [error-handling] Task 1.2: Audit and fix high-concentration files
 
 **Status:** todo
 
@@ -137,7 +137,7 @@ Target files (ranked by bare-catch count from top-20 sweep, excluding test files
 - [ ] `./bin/wp lint` passes
 - [ ] `./bin/wp typecheck` passes
 
-### [lint] Task 1.3: Add `no-bare-catch` lint rule to CI
+#### [lint] Task 1.3: Add `no-bare-catch` lint rule to CI
 
 **Status:** todo
 
@@ -169,7 +169,7 @@ The existing `no-swallowed-errors` rule in `src/config/oxlint/code-safety.ts` ex
 - [ ] `./bin/wp lint` correctly flags remaining bare catches
 - [ ] `./bin/wp typecheck` passes
 
-### [qa] Task 1.4: Repository-wide cleanup pass
+#### [qa] Task 1.4: Repository-wide cleanup pass
 
 **Status:** todo
 
@@ -198,7 +198,7 @@ Systematically replace remaining bare catches across all 153 affected files. The
 - [ ] `./bin/wp lint` passes (zero `no-bare-catch` violations)
 - [ ] `./bin/wp typecheck` passes
 
-### [qa] Task 1.5: Verification gate
+#### [qa] Task 1.5: Verification gate
 
 **Status:** todo
 

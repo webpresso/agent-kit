@@ -236,12 +236,87 @@ describe('wp init end-to-end', { timeout: 40_000 }, () => {
     rmSync(repo, { recursive: true, force: true })
   })
 
-  it('fails with code 1 if no git root is found', async () => {
+  it('falls back to user-only setup outside a git repo and configures Codex MCP', async () => {
     const badDir = join(tmpdir(), `wp-init-nogit-${Date.now()}`)
     mkdirSync(badDir, { recursive: true })
     try {
-      const code = await runInit({ cwd: badDir, yes: true })
+      const code = await runInit({ cwd: badDir, yes: true, host: 'none' })
+
+      expect(code).toBe(0)
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('is not inside a git repo; running user-only setup'),
+      )
+      expect(readFileSync(join(repo, '.codex-home', 'config.toml'), 'utf8')).toContain(
+        '[mcp_servers.webpresso]',
+      )
+      expect(existsSync(join(badDir, '.webpressorc.json'))).toBe(false)
+      expect(existsSync(join(badDir, '.agent'))).toBe(false)
+      expect(existsSync(join(badDir, 'AGENTS.md'))).toBe(false)
+    } finally {
+      rmSync(badDir, { recursive: true, force: true })
+    }
+  })
+
+  it('updates path-stable global Codex hooks from a non-git directory when OMX is requested', async () => {
+    const badDir = join(tmpdir(), `wp-init-nogit-omx-${Date.now()}`)
+    mkdirSync(badDir, { recursive: true })
+    mkdirSync(join(repo, '.codex-home'), { recursive: true })
+    writeFileSync(
+      join(repo, '.codex-home', 'hooks.json'),
+      JSON.stringify(
+        {
+          hooks: {
+            Stop: [
+              {
+                hooks: [
+                  {
+                    type: 'command',
+                    command: 'node "/tmp/oh-my-codex/dist/scripts/codex-native-hook.js"',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+    )
+
+    try {
+      const code = await runInit({ cwd: badDir, yes: true, with: 'omx', host: 'none' })
+
+      expect(code).toBe(0)
+      const hooks = readFileSync(join(repo, '.codex-home', 'hooks.json'), 'utf8')
+      expect(hooks).toContain('managed-hooks/wp-global-codex-omx-json-hook.sh')
+      expect(
+        existsSync(
+          join(repo, '.codex-home', 'managed-hooks', 'wp-global-codex-omx-json-hook.sh'),
+        ),
+      ).toBe(true)
+      expect(existsSync(join(badDir, '.webpressorc.json'))).toBe(false)
+      expect(existsSync(join(badDir, '.agent'))).toBe(false)
+    } finally {
+      rmSync(badDir, { recursive: true, force: true })
+    }
+  })
+
+  it.each([
+    ['--project-init', { projectInit: true }],
+    ['--restore-hooks', { restoreHooks: true }],
+    ['--disable-hooks', { disableHooks: 'codex' }],
+  ] as const)('rejects %s outside a git repo as project-only setup', async (_label, flags) => {
+    const badDir = join(tmpdir(), `wp-init-nogit-project-only-${Date.now()}`)
+    mkdirSync(badDir, { recursive: true })
+    try {
+      const code = await runInit({ cwd: badDir, yes: true, ...flags })
+
       expect(code).toBe(1)
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('requires a git working tree'),
+      )
+      expect(existsSync(join(badDir, '.webpressorc.json'))).toBe(false)
+      expect(existsSync(join(badDir, '.agent'))).toBe(false)
     } finally {
       rmSync(badDir, { recursive: true, force: true })
     }
