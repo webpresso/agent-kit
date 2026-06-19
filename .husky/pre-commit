@@ -2,7 +2,7 @@
 set -eu
 
 ROOT="$(git rev-parse --show-toplevel)"
-if git diff --cached --name-only --diff-filter=ACMR | grep -q '^blueprints/'; then
+if git diff --cached --name-only --diff-filter=ACMR | grep -Eq '^blueprints/(README\.md|[^/]+/.*\.md)$'; then
   "$ROOT/bin/wp" audit blueprint-readme-drift
 fi
 "$ROOT/bin/wp" audit guardrails

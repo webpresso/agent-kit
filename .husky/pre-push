@@ -1,6 +1,9 @@
 #!/usr/bin/env sh
 set -eu
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+if git diff --name-only origin/main...HEAD | grep -Eq '^blueprints/(README\.md|[^/]+/.*\.md)$'; then
+  "$ROOT/bin/wp" audit blueprint-readme-drift
+fi
 "$ROOT/bin/wp" test \
   --file src/cli/commands/init/scaffold-base-kit.test.ts \
   --file src/cli/commands/init/scaffolders/audit-hooks/index.test.ts \
