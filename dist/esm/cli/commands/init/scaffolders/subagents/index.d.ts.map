@@ -1,0 +1,1 @@
+{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../../../../../../src/cli/commands/init/scaffolders/subagents/index.ts"],"names":[],"mappings":"AAWA,OAAO,KAAK,EAAE,YAAY,EAAE,WAAW,EAAE,MAAM,0BAA0B,CAAA;AAIzE,MAAM,WAAW,sBAAsB;IACrC,QAAQ,EAAE,MAAM,CAAA;IAChB,OAAO,EAAE,YAAY,CAAA;CACtB;AAqDD,wBAAgB,iBAAiB,CAAC,KAAK,EAAE,sBAAsB,GAAG,WAAW,EAAE,CAgD9E"}
