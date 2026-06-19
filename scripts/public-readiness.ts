@@ -60,6 +60,12 @@ const BLUEPRINT_PATH = resolve(
 )
 const PUBLIC_HISTORY_TASK_ID = '1.5'
 
+export const DEFAULT_READINESS_COMMAND_TIMEOUT_MS = 60_000
+export const PACKED_CONSUMER_SMOKE_TIMEOUT_MS = 180_000
+export const NPM_PACK_TIMEOUT_MS = 120_000
+export const GIT_LS_FILES_TIMEOUT_MS = 15_000
+export const GH_REPO_VIEW_TIMEOUT_MS = 15_000
+
 const DENIED_PACKED_RUNTIME_PAYLOAD_PREFIXES = [
   'bin/runtime/',
   'dist/runtime/',
@@ -71,22 +77,96 @@ function isAllowedPackedNativeAddon(path: string): boolean {
   return path.endsWith('.node')
 }
 
-function run(
+type ExecFileSyncLike = (
   command: string,
-  args: string[],
+  args: readonly string[],
+  options: {
+    cwd: string
+    env: NodeJS.ProcessEnv
+    encoding: 'utf8'
+    stdio: ['ignore', 'pipe', 'pipe']
+    timeout: number
+    killSignal: NodeJS.Signals
+  },
+) => string | Buffer
+
+export interface ReadinessRunResult {
+  readonly stdout: string
+  readonly stderr: string
+  readonly ok: boolean
+  readonly code: number | null
+  readonly signal?: string
+  readonly timedOut: boolean
+  readonly timeoutMs: number
+}
+
+export interface ReadinessRunOptions {
+  readonly timeoutMs?: number
+  readonly execFileSyncImpl?: ExecFileSyncLike
+}
+
+function outputToString(output: string | Buffer | undefined): string {
+  return Buffer.isBuffer(output) ? output.toString('utf8') : String(output ?? '')
+}
+
+function tailForDetail(output: string, maxLength = 1000): string {
+  return output.trim().replace(/\s+/g, ' ').slice(-maxLength)
+}
+
+export function formatRunFailureDetail(result: ReadinessRunResult): string {
+  const status = result.timedOut
+    ? `timed out after ${result.timeoutMs}ms`
+    : result.signal
+      ? `signal ${result.signal}`
+      : `exit ${result.code ?? 1}`
+  const tail = tailForDetail(result.stderr) || tailForDetail(result.stdout)
+  return tail ? `${status}; ${tail}` : status
+}
+
+export function runReadinessCommand(
+  command: string,
+  args: readonly string[],
   env: NodeJS.ProcessEnv = process.env,
-): { readonly stdout: string; readonly ok: boolean; readonly code: number } {
+  options: ReadinessRunOptions = {},
+): ReadinessRunResult {
+  const timeoutMs = options.timeoutMs ?? DEFAULT_READINESS_COMMAND_TIMEOUT_MS
+  const execImpl = options.execFileSyncImpl ?? (execFileSync as ExecFileSyncLike)
   try {
-    const stdout = execFileSync(command, args, {
+    const stdout = execImpl(command, args, {
       cwd: ROOT,
       env,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: timeoutMs,
+      killSignal: 'SIGTERM',
     })
-    return { stdout, ok: true, code: 0 }
+    return {
+      stdout: outputToString(stdout),
+      stderr: '',
+      ok: true,
+      code: 0,
+      timedOut: false,
+      timeoutMs,
+    }
   } catch (error) {
-    const e = error as { stdout?: string; status?: number }
-    return { stdout: String(e.stdout ?? ''), ok: false, code: e.status ?? 1 }
+    const e = error as {
+      stdout?: string | Buffer
+      stderr?: string | Buffer
+      status?: number
+      signal?: NodeJS.Signals | string
+      message?: string
+    }
+    const message = e.message ?? ''
+    const timedOut = /ETIMEDOUT|timed out/i.test(message)
+    return {
+      stdout: outputToString(e.stdout),
+      stderr: outputToString(e.stderr),
+      ok: false,
+      code: typeof e.status === 'number' ? e.status : null,
+      signal: e.signal,
+      timedOut,
+      timeoutMs,
+    }
   }
 }
 
@@ -526,15 +606,16 @@ if (import.meta.main) {
       process.env,
     ] as const,
   ]) {
-    const r = run(command, args, env)
-    results.push(r.ok ? pass(name, 'ok') : fail(name, `exit ${r.code}`))
+    const r = runReadinessCommand(command, args, env)
+    results.push(r.ok ? pass(name, 'ok') : fail(name, formatRunFailureDetail(r)))
   }
 
   // G6: Run consumer smoke with phase-level reporting.
-  const smokeResult = run(
+  const smokeResult = runReadinessCommand(
     'bun',
     ['scripts/public-consumer-smoke.ts', '--setup-only', '--skip-build'],
     { ...process.env, WP_SKIP_UPDATE_CHECK: '1' },
+    { timeoutMs: PACKED_CONSUMER_SMOKE_TIMEOUT_MS },
   )
   const smokePhaseStatus: PhaseSummary['phases'][number]['status'] = smokeResult.ok ? 'PASS' : 'FAIL'
   const smokeSummary: PhaseSummary = {
@@ -549,7 +630,11 @@ if (import.meta.main) {
     overall: smokePhaseStatus,
   }
   console.log(formatPhaseSummary(smokeSummary))
-  results.push(smokeResult.ok ? pass('consumer-smoke-phases', 'ok') : fail('consumer-smoke-phases', `exit ${smokeResult.code}`))
+  results.push(
+    smokeResult.ok
+      ? pass('consumer-smoke-phases', 'ok')
+      : fail('consumer-smoke-phases', formatRunFailureDetail(smokeResult)),
+  )
 
   // 2) Package identity / metadata
   const pkg = JSON.parse(read('package.json')) as {
@@ -699,16 +784,25 @@ if (import.meta.main) {
   }
 
   // 3) Tarball surface
-  let pack: ReturnType<typeof run> = { code: 1, ok: false, stdout: '' }
+  let pack: ReadinessRunResult = {
+    code: 1,
+    ok: false,
+    stdout: '',
+    stderr: '',
+    timedOut: false,
+    timeoutMs: NPM_PACK_TIMEOUT_MS,
+  }
   try {
     syncBlueprintMigrationSqlAssets(ROOT)
     preparePackedManifest(ROOT)
-    pack = run('npm', ['pack', '--ignore-scripts', '--dry-run', '--json'])
+    pack = runReadinessCommand('npm', ['pack', '--ignore-scripts', '--dry-run', '--json'], process.env, {
+      timeoutMs: NPM_PACK_TIMEOUT_MS,
+    })
   } finally {
     restorePackedManifest(ROOT)
   }
   if (!pack.ok) {
-    results.push(fail('npm-pack', `exit ${pack.code}`))
+    results.push(fail('npm-pack', formatRunFailureDetail(pack)))
   } else {
     const parsed = JSON.parse(pack.stdout.match(/\[.*\]/s)?.[0] ?? '[]')[0] as
       | { files?: Array<{ path: string }>; size?: number; unpackedSize?: number }
@@ -847,7 +941,12 @@ if (import.meta.main) {
   results.push(evaluateCapabilityDocsGate(ROOT))
 
   // 7) Generated artifact regression
-  const testPlanFiles = run('git', ['ls-files', '.test-plan-service/**'])
+  const testPlanFiles = runReadinessCommand(
+    'git',
+    ['ls-files', '.test-plan-service/**'],
+    process.env,
+    { timeoutMs: GIT_LS_FILES_TIMEOUT_MS },
+  )
   results.push(
     testPlanFiles.stdout.trim() === ''
       ? pass('tracked-generated-artifacts', 'no tracked .test-plan-service artifacts')
@@ -879,7 +978,12 @@ if (import.meta.main) {
     results.find((r) => r.name === 'history-audit-artifact' && r.status === 'PASS')?.detail ??
     'missing'
   const publicHistoryTask = blueprintTaskStatus(PUBLIC_HISTORY_TASK_ID)
-  const repoView = run('gh', ['repo', 'view', '--json', 'isPrivate,nameWithOwner'])
+  const repoView = runReadinessCommand(
+    'gh',
+    ['repo', 'view', '--json', 'isPrivate,nameWithOwner'],
+    process.env,
+    { timeoutMs: GH_REPO_VIEW_TIMEOUT_MS },
+  )
   let repoAlreadyPublic = false
   if (repoView.ok) {
     try {

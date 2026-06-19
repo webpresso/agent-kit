@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -18,6 +18,8 @@ import {
   listMissingPackedRuntimePaths,
   listMissingRuntimeOptionalDependencies,
   listMissingSessionMemoryNativeOptionalDependencies,
+  runReadinessCommand,
+  formatRunFailureDetail,
 } from './public-readiness.js'
 import type { PhaseSummary } from './public-consumer-smoke-phases.js'
 import { computeOverallStatus } from './public-consumer-smoke-phases.js'
@@ -276,6 +278,36 @@ describe('public-readiness runtime policy helpers', () => {
     expect(packIndex).toBeGreaterThan(source.indexOf('preparePackedManifest(ROOT)'))
     expect(source.indexOf('restorePackedManifest(ROOT)', packIndex)).toBeGreaterThan(packIndex)
   })
+
+  it('runs readiness subprocesses with explicit bounded timeouts and diagnostic failure text', () => {
+    let receivedOptions: unknown
+    const result = runReadinessCommand(
+      'node',
+      ['slow.js'],
+      {},
+      {
+        timeoutMs: 123,
+        execFileSyncImpl: (_command, _args, options) => {
+          receivedOptions = options
+          const error = new Error('spawnSync node ETIMEDOUT') as Error & {
+            stdout?: string
+            stderr?: string
+            status?: number
+            signal?: string
+          }
+          error.stdout = 'partial stdout'
+          error.stderr = 'partial stderr'
+          error.signal = 'SIGTERM'
+          throw error
+        },
+      },
+    )
+
+    expect(receivedOptions).toMatchObject({ timeout: 123, killSignal: 'SIGTERM' })
+    expect(result).toMatchObject({ ok: false, timedOut: true, timeoutMs: 123 })
+    expect(formatRunFailureDetail(result)).toContain('timed out after 123ms')
+    expect(formatRunFailureDetail(result)).toContain('partial stderr')
+  })
 })
 
 describe('public release readiness gate wiring', () => {
@@ -334,6 +366,41 @@ describe('public release readiness gate wiring', () => {
     expect(source).toContain("'blueprints/completed/agent-kit-public-release-scrub/_overview.md'")
     expect(source).toContain("const PUBLIC_HISTORY_TASK_ID = '1.5'")
     expect(source).not.toContain('2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md')
+  })
+
+  it('keeps session execute public descriptions honest about native fallback', () => {
+    const executeSource = readFileSync(
+      join(repositoryRoot, 'src', 'mcp', 'tools', '_session-execute.ts'),
+      'utf8',
+    )
+    const batchSource = readFileSync(
+      join(repositoryRoot, 'src', 'mcp', 'tools', '_session-batch-execute.ts'),
+      'utf8',
+    )
+    const guide = readFileSync(join(repositoryRoot, 'docs', 'guides', 'session-memory.md'), 'utf8')
+
+    for (const surface of [executeSource, batchSource, guide]) {
+      expect(surface).toContain('native backend when available')
+      expect(surface).toContain('TypeScript fallback otherwise')
+      expect(surface).not.toContain('through the native session-memory engine')
+    }
+  })
+
+  it('does not keep inert nested native-engine GitHub workflows that root CI will not run', () => {
+    for (const workflow of ['bench.yml', 'check.yml', 'mutation.yml']) {
+      expect(
+        existsSync(
+          join(
+            repositoryRoot,
+            'native',
+            'session-memory-engine',
+            '.github',
+            'workflows',
+            workflow,
+          ),
+        ),
+      ).toBe(false)
+    }
   })
 })
 
