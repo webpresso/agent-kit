@@ -35,6 +35,7 @@ import {
   warnIfNonLocalCli,
 } from './detect-consumer.js'
 import { runPreflight, DOCS_URL } from './preflight.js'
+import { detectRepoCollectionRoot, isInitializedWebpressoProject } from './repo-collection-guard.js'
 import { type MergeOptions, type MergeResult, summarizeResults } from './merge.js'
 import { resolveTier3Selection } from './prompts.js'
 import {
@@ -264,6 +265,10 @@ export interface InitFlags {
   cwd?: string
   strict?: boolean
   project?: boolean
+  'user-only'?: boolean
+  userOnly?: boolean
+  'project-init'?: boolean
+  projectInit?: boolean
   sourceMaintenance?: boolean
 }
 
@@ -359,6 +364,367 @@ export function formatHostSetupSurfaceVisibility(input: {
 }): string {
   const lines = summarizeHostSetupSurfaceVisibility(input)
   return ['Host setup surfaces:', ...lines].join('\n')
+}
+
+async function runUserOnlySetup(input: {
+  readonly repoRoot: string
+  readonly packageRoot: string
+  readonly options: MergeOptions
+  readonly presets: readonly Preset[]
+  readonly integrations: Partial<Record<ExternalIntegrationName, ExternalIntegrationConfig>>
+  readonly selectedHosts: readonly string[]
+  readonly packageVersion: string
+  readonly pruneCaches: boolean
+  readonly reason: 'explicit' | 'repo-collection-root' | 'non-webpresso-project'
+  readonly startMs: number
+}): Promise<number> {
+  const {
+    repoRoot,
+    packageRoot,
+    options,
+    presets,
+    integrations,
+    selectedHosts,
+    packageVersion,
+    pruneCaches,
+    reason,
+    startMs,
+  } = input
+  const isCiEnvironment = process.env.CI === 'true' || process.env.CI === '1'
+
+  if (reason === 'explicit') {
+    console.log(`wp init: running explicit user-only setup for ${repoRoot}.`)
+  } else if (reason === 'repo-collection-root') {
+    console.log(`wp init: ${repoRoot} is a repo collection root; running user-only setup.`)
+  } else {
+    console.warn(
+      `wp init: ${repoRoot} does not look like an initialized Webpresso project; falling back to user-only setup.`,
+    )
+  }
+  console.log(
+    '  No repo files will be written here. Project scaffolding, repo hooks, and project .mcp.json entries are skipped.',
+  )
+  if (reason === 'non-webpresso-project') {
+    console.log('  Re-run with --project-init if you want to bootstrap this repo as a Webpresso project.')
+  }
+
+  if (!options.dryRun) {
+    const workspaceConfigResult = await scaffoldWorkspaceConfig()
+    if (workspaceConfigResult.action === 'created') {
+      console.log('  workspace config: ✓ created ~/.agent/workspace.yaml')
+    }
+  }
+
+  if (isCiEnvironment) {
+    console.log('  codex cli: - skipped (CI environment)')
+  } else {
+    const codexCliResult = ensureCodexCli({ options })
+    switch (codexCliResult.kind) {
+      case 'codex-cli-ok':
+        console.log(codexCliResult.installed ? '  codex cli: ✓ installed' : '  codex cli: ✓')
+        break
+      case 'codex-cli-skipped-dry-run':
+        console.log('  codex cli: skipped (--dry-run)')
+        break
+      case 'codex-cli-skipped-package-lifecycle':
+        console.log('  codex cli: - skipped (package lifecycle environment)')
+        break
+      case 'codex-cli-unavailable':
+        console.warn(`  codex cli: ⚠ ${codexCliResult.hint}`)
+        break
+    }
+  }
+
+  let omxFailure: 'not-found' | 'spawn-failed' | null = null
+  if (isCiEnvironment && presets.includes('omx')) {
+    console.log('  omx setup: - skipped (CI environment)')
+  } else if (presets.includes('omx')) {
+    if (integrations.omx?.scope === 'project') {
+      console.log('  omx setup: - project scope ignored in user-only mode; using user scope')
+    }
+    const omxResult = ensureOmx({
+      repoRoot,
+      options,
+      scope: 'user',
+    })
+    switch (omxResult.kind) {
+      case 'omx-ok':
+        console.log(omxResult.installed ? '  omx setup: ✓ installed + configured' : '  omx setup: ✓')
+        console.log(
+          `  omx codex hooks: ${omxResult.codexGlobalHooks.repaired ? '✓ path-stable' : 'already path-stable'} ${omxResult.codexGlobalHooks.targetPath}`,
+        )
+        break
+      case 'omx-skipped-dry-run':
+        console.log('  omx setup: skipped (--dry-run)')
+        break
+      case 'omx-not-found':
+        console.error(`  omx setup: ✗ ${omxResult.hint}`)
+        omxFailure = 'not-found'
+        break
+      case 'omx-spawn-failed':
+        console.error(`  omx setup: ✗ exited with ${omxResult.exitCode}`)
+        omxFailure = 'spawn-failed'
+        break
+    }
+  }
+
+  if (presets.includes('playwright-mcp') || presets.includes('omx')) {
+    const playwrightMcpResult = ensureCodexPlaywrightMcp({ options })
+    switch (playwrightMcpResult.kind) {
+      case 'codex-playwright-mcp-written':
+        console.log(`  codex playwright mcp: ✓ ${playwrightMcpResult.path}`)
+        break
+      case 'codex-playwright-mcp-unchanged':
+        console.log(`  codex playwright mcp: already configured at ${playwrightMcpResult.path}`)
+        break
+      case 'codex-playwright-mcp-skipped-dry-run':
+        console.log('  codex playwright mcp: skipped (--dry-run)')
+        break
+    }
+
+    console.log(
+      '  claude playwright mcp: - skipped (project .mcp.json is only written when setup runs inside a project repo)',
+    )
+  }
+
+  if (isCiEnvironment && presets.includes('omc')) {
+    console.log('  omc plugin: - skipped (CI environment)')
+  } else if (presets.includes('omc')) {
+    if (integrations.omc?.scope === 'project') {
+      console.log('  omc plugin: - project scope ignored in user-only mode; using user scope')
+    }
+    const omcResult = ensureOmc({ options, scope: 'user' })
+    switch (omcResult.kind) {
+      case 'omc-installed':
+        console.log(
+          `  omc plugin: ✓ user-scope plugin ensured (${omcResult.pluginId}); next in Claude Code: ${OMC_SETUP_COMMAND} --global`,
+        )
+        break
+      case 'omc-skipped-dry-run':
+        console.log('  omc plugin: skipped (--dry-run)')
+        break
+      case 'omc-skipped-opt-out':
+        console.log('  omc plugin: skipped (WP_SKIP_OMC=1)')
+        break
+      case 'omc-skipped-no-cli':
+        console.warn(
+          '  omc plugin: - skipped (claude not on PATH; OMC installs through Claude Code plugin marketplace only)',
+        )
+        break
+      case 'omc-failed':
+        console.warn(
+          `  omc plugin: ⚠ ${omcResult.step} exited with ${omcResult.exitCode}; ` +
+            `fallback: claude plugin marketplace add --scope ${omcResult.scope} https://github.com/Yeachan-Heo/oh-my-claudecode && ` +
+            `claude plugin install --scope ${omcResult.scope} ${omcResult.pluginId}`,
+        )
+        break
+    }
+  }
+
+  await trustCodexPresetHooksForUser({ repoRoot, options })
+
+  const webpressoMcpResult = ensureCodexWebpressoMcp({ options })
+  switch (webpressoMcpResult.kind) {
+    case 'codex-webpresso-mcp-written':
+      console.log(
+        `  codex webpresso mcp: ✓ ${webpressoMcpResult.path} → ${webpressoMcpResult.entryPath}`,
+      )
+      break
+    case 'codex-webpresso-mcp-unchanged':
+      console.log(`  codex webpresso mcp: already configured at ${webpressoMcpResult.path}`)
+      break
+    case 'codex-webpresso-mcp-skipped-dry-run':
+      console.log('  codex webpresso mcp: skipped (--dry-run)')
+      break
+    case 'codex-webpresso-mcp-not-installed':
+      console.log(
+        `  codex webpresso mcp: ⚠ no install root found (checked ${webpressoMcpResult.checked.length} paths). Install @webpresso/agent-kit globally (\`bun add -g @webpresso/agent-kit\`) or via the Claude plugin to wire up codex MCP.`,
+      )
+      break
+  }
+
+  const context7McpResult = ensureCodexContext7Mcp({ options })
+  switch (context7McpResult.action) {
+    case 'created':
+    case 'overwritten':
+      console.log(
+        `  codex context7 mcp: ✓ ${context7McpResult.targetPath} (uses ${CONTEXT7_API_KEY_ENV} from with-secrets)`,
+      )
+      break
+    case 'identical':
+      console.log(
+        `  codex context7 mcp: already configured at ${context7McpResult.targetPath} (launch Codex with: with-secrets -- codex)`,
+      )
+      break
+    case 'skipped-dry':
+      console.log('  codex context7 mcp: skipped (--dry-run)')
+      break
+  }
+
+  console.log(
+    '  claude context7 mcp: - skipped (project .mcp.json is only written when setup runs inside a project repo)',
+  )
+
+  if (isCiEnvironment) {
+    console.log('  agent-kit global: - skipped (CI environment)')
+  } else {
+    const agentKitGlobalResult = ensureAgentKitGlobal({ options })
+    switch (agentKitGlobalResult.kind) {
+      case 'agent-kit-global-updated':
+        console.log('  agent-kit global: ✓ refreshed via vp install -g')
+        break
+      case 'agent-kit-global-skipped-dry-run':
+        console.log('  agent-kit global: skipped (--dry-run)')
+        break
+      case 'agent-kit-global-skipped-opt-out':
+        console.log('  agent-kit global: skipped (WP_SKIP_AUTO_INSTALL=1)')
+        break
+      case 'agent-kit-global-skipped-package-lifecycle':
+        console.log('  agent-kit global: - skipped (package lifecycle environment)')
+        break
+      case 'agent-kit-global-skipped-source-mode':
+        console.log('  agent-kit global: - skipped (WP_FORCE_SOURCE=1 source mode)')
+        break
+      case 'agent-kit-global-skipped-no-vp':
+        console.warn(`  agent-kit global: ⚠ ${agentKitGlobalResult.hint}`)
+        break
+      case 'agent-kit-global-failed':
+        console.warn(
+          `  agent-kit global: ⚠ \`${agentKitGlobalResult.command.join(' ')}\` exited with ${agentKitGlobalResult.exitCode}; ` +
+            'the existing global binary is unchanged. Re-run `wp setup` once the registry is reachable.',
+        )
+        break
+      case 'agent-kit-global-repair-failed':
+        console.warn(
+          `  agent-kit global: ⚠ root bin/wp launcher repair failed (${agentKitGlobalResult.reason}); ` +
+            'the global install may be inconsistent until it is rebuilt or reinstalled.',
+        )
+        break
+    }
+  }
+
+  const claudePluginResult = ensureClaudeCodeUserPlugin({
+    options,
+    packageRoot,
+  })
+  switch (claudePluginResult.kind) {
+    case 'claude-plugin-installed':
+      console.log(
+        `  claude plugin: ✓ user-scope marketplace + plugin ensured (${claudePluginResult.pluginId})`,
+      )
+      break
+    case 'claude-plugin-skipped-dry-run':
+      console.log('  claude plugin: skipped (--dry-run)')
+      break
+    case 'claude-plugin-skipped-opt-out':
+      console.log('  claude plugin: skipped (WP_SKIP_CLAUDE_PLUGIN=1)')
+      break
+    case 'claude-plugin-skipped-package-lifecycle':
+      console.log('  claude plugin: - skipped (package lifecycle environment)')
+      break
+    case 'claude-plugin-skipped-no-cli':
+      console.log('  claude plugin: - skipped (claude not on PATH)')
+      break
+    case 'claude-plugin-unavailable':
+      console.log('  claude plugin: - skipped (plugin manifest unavailable in this install)')
+      break
+    case 'claude-plugin-failed':
+      console.warn(
+        `  claude plugin: ⚠ ${claudePluginResult.step} exited with ${claudePluginResult.exitCode}; ` +
+          `fallback: claude plugin marketplace add --scope user ${claudePluginResult.packageRoot} && ` +
+          `claude plugin install --scope user ${claudePluginResult.pluginId}`,
+      )
+      break
+  }
+
+  if (selectedHosts.includes('codex') && !isCiEnvironment) {
+    const codexPluginResult = ensureCodexUserPlugin({ options, packageRoot })
+    switch (codexPluginResult.kind) {
+      case 'codex-plugin-installed':
+        console.log(
+          `  codex plugin: ✓ marketplace + plugin ensured (${codexPluginResult.pluginId}) — restart Codex to load skills`,
+        )
+        break
+      case 'codex-plugin-skipped-dry-run':
+        console.log('  codex plugin: skipped (--dry-run)')
+        break
+      case 'codex-plugin-skipped-opt-out':
+        console.log('  codex plugin: skipped (WP_SKIP_CODEX_PLUGIN=1)')
+        break
+      case 'codex-plugin-skipped-package-lifecycle':
+        console.log('  codex plugin: - skipped (package lifecycle environment)')
+        break
+      case 'codex-plugin-skipped-no-cli':
+        console.log('  codex plugin: - skipped (codex not on PATH)')
+        break
+      case 'codex-plugin-unavailable':
+        console.log('  codex plugin: - skipped (plugin manifest unavailable in this install)')
+        break
+      case 'codex-plugin-timed-out':
+        console.warn(
+          `  codex plugin: ⚠ timed out after ${codexPluginResult.timeoutMs}ms while installing ${codexPluginResult.pluginId}; restart Codex and re-run if skills are missing`,
+        )
+        break
+      case 'codex-plugin-failed':
+        console.warn(
+          `  codex plugin: ⚠ ${codexPluginResult.step} exited with ${codexPluginResult.exitCode}; ` +
+            `fallback: codex plugin marketplace add ${codexPluginResult.stagingRoot} --json && ` +
+            `codex plugin add agent-kit --marketplace webpresso --json`,
+        )
+        break
+    }
+  }
+
+  if (integrations.gstack?.enabled === true) {
+    console.log(
+      '  gstack: - skipped in user-only mode (run `wp setup` inside a project repo when you need repo-local gstack integration)',
+    )
+  }
+
+  if (presets.includes('rtk')) {
+    console.log(
+      '  rtk: - skipped in user-only mode (RTK setup in this repo also records project-local markers and pins)',
+    )
+  }
+
+  if (pruneCaches) {
+    const pruneResult = pruneOutdatedAgentKitPluginCaches({
+      currentVersion: packageVersion,
+      dryRun: options.dryRun,
+    })
+    for (const line of summarizePluginCachePrune(repoRoot, pruneResult)) {
+      console.log(line)
+    }
+  }
+
+  if (!options.dryRun) {
+    const runtimes = checkRuntimes()
+    if (runtimes.length > 0) {
+      console.log('\nRuntime check:')
+      for (const r of runtimes) {
+        if (r.version) console.log(`  ${r.name}: ✓ ${r.version}`)
+        else console.log(`  ${r.name}: ✗ not on PATH — ${r.hint}`)
+      }
+    }
+  }
+
+  console.log('\nwp init: user-only setup finished.')
+  console.log('  Next: run `wp setup` inside an actual project repo when you want repo hooks or scaffolded project surfaces.')
+  if (omxFailure === 'not-found') return EXIT_SETUP_FAIL
+  if (omxFailure === 'spawn-failed') return EXIT_WRITE_FAIL
+
+  if (isTelemetryEnabled(process.env as Record<string, string | undefined>)) {
+    const payload = {
+      event: 'setup-complete' as const,
+      durationMs: Date.now() - startMs,
+      webpressoVersion: readPackageVersion(import.meta.url),
+      os: process.platform,
+      nodeVersion: process.version,
+    }
+    await Promise.race([reportTthw(payload), new Promise<void>((r) => setTimeout(r, 100))])
+  }
+
+  return EXIT_SUCCESS
 }
 
 function parseDisableHooksTarget(value: string | undefined): readonly ManagedHookVendor[] | null {
@@ -475,29 +841,55 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     return EXIT_SETUP_FAIL
   }
 
-  warnIfNonLocalCli(consumer.repoRoot)
+  const forceUserOnly = flags.userOnly ?? flags['user-only'] ?? false
+  const forceProjectInit = flags.projectInit ?? flags['project-init'] ?? false
+  if (forceUserOnly && forceProjectInit) {
+    console.error('wp setup: choose either --user-only or --project-init, not both.')
+    return EXIT_SETUP_FAIL
+  }
+
+  const repoCollectionDetection = detectRepoCollectionRoot(consumer.repoRoot)
+  const initializedWebpressoProject = isInitializedWebpressoProject(
+    consumer.repoRoot,
+    consumer.packageJson,
+  )
+  const userOnlyReason =
+    forceUserOnly
+      ? ('explicit' as const)
+      : repoCollectionDetection.isCollectionRoot
+        ? ('repo-collection-root' as const)
+        : !initializedWebpressoProject && !forceProjectInit && flags.sourceMaintenance !== true
+          ? ('non-webpresso-project' as const)
+          : null
+  const userOnlySetup = userOnlyReason !== null
+
+  if (!userOnlySetup) {
+    warnIfNonLocalCli(consumer.repoRoot)
+  }
 
   // Run the 5-point compatibility preflight before any scaffolders fire.
-  const preflightResult = await runPreflight(consumer.repoRoot, flags.strict ?? false)
-  if (preflightResult.warnings.length > 0) {
-    if (!preflightResult.ok) {
-      // strict mode: abort
-      for (const warning of preflightResult.warnings) {
-        console.error(`  preflight: ✗ ${warning}`)
+  if (!userOnlySetup) {
+    const preflightResult = await runPreflight(consumer.repoRoot, flags.strict ?? false)
+    if (preflightResult.warnings.length > 0) {
+      if (!preflightResult.ok) {
+        // strict mode: abort
+        for (const warning of preflightResult.warnings) {
+          console.error(`  preflight: ✗ ${warning}`)
+        }
+        console.error(
+          `\nwp setup: aborting — ${preflightResult.warnings.length} compatibility check(s) failed.\n` +
+            `See ${DOCS_URL}`,
+        )
+        return EXIT_SETUP_FAIL
       }
-      console.error(
-        `\nwp setup: aborting — ${preflightResult.warnings.length} compatibility check(s) failed.\n` +
-          `See ${DOCS_URL}`,
-      )
-      return EXIT_SETUP_FAIL
+      // non-strict: warn and continue
+      for (const warning of preflightResult.warnings) {
+        console.warn(`  preflight: ⚠ ${warning}`)
+      }
+      console.warn(`  See ${DOCS_URL}`)
+    } else {
+      console.log(`  preflight: ✓ all 5 compatibility checks passed`)
     }
-    // non-strict: warn and continue
-    for (const warning of preflightResult.warnings) {
-      console.warn(`  preflight: ⚠ ${warning}`)
-    }
-    console.warn(`  See ${DOCS_URL}`)
-  } else {
-    console.log(`  preflight: ✓ all 5 compatibility checks passed`)
   }
 
   const catalogDir = resolveCatalogDir()
@@ -539,6 +931,20 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
   // Extract tier3 skills portion of --with (non-preset values)
   const withFlagWithoutPresets = stripPresetValuesFromFlag(flags.with)
   const withoutFlagWithoutPresets = stripPresetValuesFromFlag(flags.without)
+  if (userOnlySetup) {
+    return runUserOnlySetup({
+      repoRoot: consumer.repoRoot,
+      packageRoot,
+      options,
+      presets,
+      integrations,
+      selectedHosts,
+      packageVersion,
+      pruneCaches: flags.prune === true,
+      reason: userOnlyReason,
+      startMs,
+    })
+  }
 
   let tier3Selection: string[]
   try {
@@ -1571,6 +1977,11 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
     .option('--yes', 'Accept defaults, skip interactive prompts (default behavior)')
     .option('--cwd <dir>', 'Working tree to scaffold into (default: process.cwd())')
     .option('--strict', 'Abort if any compatibility check fails (default: warn and continue)')
+    .option('--user-only', 'Skip repo-local writes and run only user/global setup')
+    .option(
+      '--project-init',
+      'Bootstrap repo-local Webpresso project files even when the repo is not initialized yet',
+    )
     .option('--project', 'Configure OMX/OMC in project scope instead of the default user scope')
     .option(
       '--source-maintenance',
