@@ -30,7 +30,10 @@ async fn test_execute_large_output_gets_indexed() {
     // Generate >2KB output with a comfortable margin and wider lines.
     let result = execute_and_index(
         &db_path,
-        "seq 1 600 | xargs -I{} echo 'large-output-line-{}-abcdefghijklmnopqrstuvwxyz'",
+        "python3 - <<'PY'
+for i in range(600):
+    print(f'large-output-line-{i}-abcdefghijklmnopqrstuvwxyz')
+PY",
         "seq-test",
         DEFAULT_TIMEOUT_MS,
         None,
@@ -86,7 +89,10 @@ async fn test_execute_indexed_content_searchable() {
     // Produce uniquely identifiable large output.
     let result = execute_and_index(
         &db_path,
-        "seq 1 600 | xargs -I{} echo 'uniquetoken-{}'",
+        "python3 - <<'PY'
+for i in range(600):
+    print(f'uniquetoken-{i}')
+PY",
         "search-test",
         DEFAULT_TIMEOUT_MS,
         None,
@@ -115,7 +121,7 @@ async fn test_execute_timeout_returns_failure_summary() {
         .unwrap();
 
     assert_eq!(result.exit_code, 124);
-    assert!(result.summary.contains("timeout"));
+    assert!(result.summary.contains("timed out"));
 }
 
 #[tokio::test]
@@ -151,7 +157,10 @@ async fn test_execute_replaces_prior_chunks_for_same_label() {
 
     let first = execute_and_index(
         &db_path,
-        "seq 1 600 | xargs -I{} echo 'OLDTOKEN-{}'",
+        "python3 - <<'PY'
+for i in range(600):
+    print(f'OLDTOKEN-{i}')
+PY",
         "repeat-label",
         DEFAULT_TIMEOUT_MS,
         None,
@@ -162,7 +171,10 @@ async fn test_execute_replaces_prior_chunks_for_same_label() {
 
     let second = execute_and_index(
         &db_path,
-        "seq 1 600 | xargs -I{} echo 'NEWTOKEN-{}'",
+        "python3 - <<'PY'
+for i in range(600):
+    print(f'NEWTOKEN-{i}')
+PY",
         "repeat-label",
         DEFAULT_TIMEOUT_MS,
         None,
@@ -238,4 +250,93 @@ async fn test_execute_preserves_utf8_split_across_stream_chunks() {
         hits.iter().all(|hit| !hit.content.contains('�')),
         "incremental UTF-8 decoding should not inject replacement chars at chunk boundaries"
     );
+}
+
+#[tokio::test]
+async fn test_execute_summary_matches_typescript_fallback_shape() {
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("test.db");
+
+    let result = execute_and_index(
+        &db_path,
+        "printf '\n  line one  \nline two\nline three\nline four\nline five\nline six\nline seven\n'",
+        "summary-parity-test",
+        DEFAULT_TIMEOUT_MS,
+        None,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(result.exit_code, 0);
+    assert_eq!(
+        result.summary,
+        "line one\nline two\nline three\nline four\nline five\nline six"
+    );
+    assert!(!result.truncated);
+}
+
+#[tokio::test]
+async fn test_execute_summary_reports_no_output_for_empty_success() {
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("test.db");
+
+    let result = execute_and_index(
+        &db_path,
+        "true",
+        "empty-summary-test",
+        DEFAULT_TIMEOUT_MS,
+        None,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(result.exit_code, 0);
+    assert_eq!(result.summary, "no output");
+    assert!(!result.indexed);
+    assert_eq!(result.captured_bytes, 0);
+}
+
+#[tokio::test]
+async fn test_execute_unbounded_output_caps_indexed_bytes_and_persists_truncation_metadata() {
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("test.db");
+
+    let result = execute_and_index(
+        &db_path,
+        "python3 - <<'PY'\nimport sys\nsys.stdout.write('A' * (1024 * 1024 + 4096))\nsys.stdout.write('TAIL_AFTER_CAP_TOKEN')\nPY",
+        "metadata-cap-test",
+        DEFAULT_TIMEOUT_MS,
+        None,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(result.exit_code, 0);
+    assert!(result.output_bytes > 1024 * 1024);
+    assert_eq!(result.captured_bytes, 1024 * 1024);
+    assert_eq!(result.max_capture_bytes, 1024 * 1024);
+    assert!(result.truncated);
+    assert!(
+        result
+            .summary
+            .contains("[output truncated before indexing]")
+    );
+
+    let conn = rusqlite::Connection::open(&db_path).unwrap();
+    let metadata_json: String = conn
+        .query_row(
+            "SELECT metadata_json FROM session_memory_chunks WHERE source = ?1 LIMIT 1",
+            rusqlite::params!["metadata-cap-test"],
+            |row| row.get(0),
+        )
+        .unwrap();
+    let metadata: serde_json::Value = serde_json::from_str(&metadata_json).unwrap();
+    assert_eq!(metadata["executionBackend"], "native");
+    assert_eq!(metadata["truncated"], true);
+    assert_eq!(
+        metadata["outputBytes"].as_u64().unwrap(),
+        result.output_bytes
+    );
+    assert_eq!(metadata["capturedBytes"], 1024 * 1024);
+    assert_eq!(metadata["maxCaptureBytes"], 1024 * 1024);
 }

@@ -12,6 +12,8 @@ import { dirname, join } from 'node:path'
 import { parse as parseYaml } from 'yaml'
 
 import { assertBuiltBlueprintMigrationSqlAssets } from './blueprint-migration-assets.js'
+import { SESSION_MEMORY_NATIVE_TARGETS } from '#session-memory/native-targets.js'
+
 import { RUNTIME_TARGETS } from './runtime-targets.js'
 
 type DependencySection =
@@ -235,6 +237,12 @@ export function createPackedManifest(
       ...packedManifest.optionalDependencies,
       ...Object.fromEntries(
         RUNTIME_TARGETS.map((target) => [target.packageName, manifest.version as string]),
+      ),
+      ...Object.fromEntries(
+        SESSION_MEMORY_NATIVE_TARGETS.map((target) => [
+          target.packageName,
+          manifest.version as string,
+        ]),
       ),
     }
   }

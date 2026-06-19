@@ -71,7 +71,9 @@ export function defaultToolingOwnershipPath(): string {
   return getSurfacePath(TOOLING_OWNERSHIP_FILENAME, 'user')
 }
 
-export function readToolingOwnershipState(path = defaultToolingOwnershipPath()): ToolingOwnershipState {
+export function readToolingOwnershipState(
+  path = defaultToolingOwnershipPath(),
+): ToolingOwnershipState {
   try {
     return normalizeToolingOwnershipState(JSON.parse(readFileSync(path, 'utf8')))
   } catch {
@@ -141,10 +143,7 @@ export function clearProjectOwnedTool(
   return { ...state, tools }
 }
 
-export function isUserOwnedTool(
-  state: ToolingOwnershipState,
-  tool: ManagedToolName,
-): boolean {
+export function isUserOwnedTool(state: ToolingOwnershipState, tool: ManagedToolName): boolean {
   return state.tools[tool]?.user?.managedBy === 'wp'
 }
 

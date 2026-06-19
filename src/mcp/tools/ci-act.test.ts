@@ -56,7 +56,9 @@ describe('wp_ci_act tool', () => {
     expect(payload.passed).toBe(true)
     expect(payload.summary).toContain('dry-run')
     const details = payload.details as { command: { command: string; args: string[] } }
-    expect(details.command).toEqual(buildCiActCommand({ workflowPath: '.github/workflows/ci.yml' }, root))
+    expect(details.command).toEqual(
+      buildCiActCommand({ workflowPath: '.github/workflows/ci.yml' }, root),
+    )
     expect(details.command.command).toBe('with-secrets')
     expect(details.command.args.slice(0, 4)).toEqual([
       '--runtime-profile',
@@ -105,8 +107,6 @@ describe('wp_ci_act tool', () => {
       }),
     ).rejects.toThrow()
   })
-
-
 
   it('rejects provider selectors in envProfile and directs callers to secretEnvProfile', async () => {
     await expect(

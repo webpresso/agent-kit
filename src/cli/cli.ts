@@ -66,7 +66,7 @@ const ROOT_HELP = [
   '  setup                 Scaffold a consumer repo with the agent surface',
   '  blueprint             Manage blueprints (list, new, show, exec, audit, ...)',
   '  config                Repo configuration (secrets set/show/status/setup)',
-  '  gain                  Show token savings from RTK — run after any AI session',
+  '  gain                  Show Webpresso gain metadata plus separate RTK gain totals',
   '  sync                  Sync agent rules + skills across IDE surfaces (--kind, --check)',
   '  bench                 Run the session-memory benchmark harness',
   '  install               Install dependencies through the managed vp facade',

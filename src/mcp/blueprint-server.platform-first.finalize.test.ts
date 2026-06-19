@@ -12,7 +12,10 @@ import {
 const FINALIZE_ZERO_TASK_BLUEPRINT = FINALIZE_BLUEPRINT.replace(
   /\n#### Task 1\.1:[\s\S]*$/u,
   '',
-).replace('Blueprint used to test finalize.', 'Blueprint used to test zero-task finalize rejection.')
+).replace(
+  'Blueprint used to test finalize.',
+  'Blueprint used to test zero-task finalize rejection.',
+)
 
 describe('wp_blueprint_finalize — platform-first', () => {
   const tempDirs: string[] = []

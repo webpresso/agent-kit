@@ -134,7 +134,9 @@ const tool: ToolDescriptor = {
             ...(result.fallbackReason ? { fallbackReason: result.fallbackReason } : {}),
             ...(result.truncated === undefined ? {} : { truncated: result.truncated }),
             ...(result.capturedBytes === undefined ? {} : { capturedBytes: result.capturedBytes }),
-            ...(result.maxCaptureBytes === undefined ? {} : { maxCaptureBytes: result.maxCaptureBytes }),
+            ...(result.maxCaptureBytes === undefined
+              ? {}
+              : { maxCaptureBytes: result.maxCaptureBytes }),
             ...(result.timedOut === undefined ? {} : { timedOut: result.timedOut }),
             ...(result.signal ? { signal: result.signal } : {}),
             ...(hits ? { hits: [...hits] } : {}),

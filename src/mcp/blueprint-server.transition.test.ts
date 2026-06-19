@@ -209,7 +209,11 @@ describe('wp_blueprint_transition', () => {
 
   it('refuses to transition a zero-task planned blueprint directly to completed', async () => {
     const harness = await makeProjectionBackedBlueprintHarness('wp-bs-transition-zero-task-', [
-      { stateDir: 'planned', slug: 'transition-zero-task-blueprint', content: TRANSITION_ZERO_TASK_BLUEPRINT },
+      {
+        stateDir: 'planned',
+        slug: 'transition-zero-task-blueprint',
+        content: TRANSITION_ZERO_TASK_BLUEPRINT,
+      },
     ])
     try {
       const getResult = await callTool(harness.tools, 'wp_blueprint_get', {

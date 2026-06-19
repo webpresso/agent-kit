@@ -205,7 +205,6 @@ describe('SessionMemoryStore operator helpers', () => {
   })
 })
 
-
 describe('SessionMemoryStore gain aggregation', () => {
   it('records gain rows with deterministic IDs without dropping duplicate events', () => {
     const s = store()

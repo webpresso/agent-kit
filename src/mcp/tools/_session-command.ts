@@ -56,6 +56,10 @@ function assertNativeExecuteResult(value: unknown): asserts value is {
   outputBytes: number
   indexed: boolean
   summary: string
+  truncated: boolean
+  capturedBytes: number
+  maxCaptureBytes: number
+  timedOut: boolean
 } {
   if (value instanceof Error) throw value
   if (typeof value !== 'object' || value === null) {
@@ -66,7 +70,11 @@ function assertNativeExecuteResult(value: unknown): asserts value is {
     typeof record.exitCode !== 'number' ||
     typeof record.outputBytes !== 'number' ||
     typeof record.indexed !== 'boolean' ||
-    typeof record.summary !== 'string'
+    typeof record.summary !== 'string' ||
+    typeof record.truncated !== 'boolean' ||
+    typeof record.capturedBytes !== 'number' ||
+    typeof record.maxCaptureBytes !== 'number' ||
+    typeof record.timedOut !== 'boolean'
   ) {
     throw new Error('native session-memory execute returned an invalid result shape')
   }
@@ -209,10 +217,7 @@ function exitCodeFromSignal(signal: NodeJS.Signals | null): number {
   return 128 + (COMMON_SIGNAL_NUMBERS[signal] ?? 15)
 }
 
-function terminateChildProcessTree(
-  child: ReturnType<typeof spawn>,
-  signal: NodeJS.Signals,
-): void {
+function terminateChildProcessTree(child: ReturnType<typeof spawn>, signal: NodeJS.Signals): void {
   if (process.platform !== 'win32' && child.pid) {
     try {
       process.kill(-child.pid, signal)
@@ -231,7 +236,10 @@ async function runTypeScriptSessionCommand({
   timeoutMs,
   dbPath,
   fallbackReason,
-}: RunSessionCommandOptions & { dbPath: string; fallbackReason: string }): Promise<SessionCommandResult> {
+}: RunSessionCommandOptions & {
+  dbPath: string
+  fallbackReason: string
+}): Promise<SessionCommandResult> {
   const captured: Buffer[] = []
   let totalOutputBytes = 0
   let timedOut = false
@@ -349,6 +357,10 @@ export async function runSessionCommand({
       indexed: result.indexed,
       summary: result.summary,
       backend: 'native',
+      truncated: result.truncated,
+      capturedBytes: result.capturedBytes,
+      maxCaptureBytes: result.maxCaptureBytes,
+      timedOut: result.timedOut,
     }
   } catch (error) {
     if (!(error instanceof NativeSessionMemoryUnavailableError)) {

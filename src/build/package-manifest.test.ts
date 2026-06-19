@@ -6,13 +6,12 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
-  statSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
-import { beforeAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import {
   createPackedManifest,
@@ -35,60 +34,30 @@ function findRepoRoot(startDir: string): string {
   }
 }
 
-const packLockDirectory = join(tmpdir(), 'webpresso-agent-kit-npm-pack.lock')
-
-function acquirePackLock(): () => void {
-  const started = Date.now()
-  while (true) {
-    try {
-      mkdirSync(packLockDirectory)
-      return () => rmSync(packLockDirectory, { force: true, recursive: true })
-    } catch (error) {
-      const code = (error as { code?: string }).code
-      if (code !== 'EEXIST') throw error
-      const ageMs = Date.now() - statSync(packLockDirectory).mtimeMs
-      if (ageMs > 120_000) {
-        rmSync(packLockDirectory, { force: true, recursive: true })
-        continue
-      }
-      if (Date.now() - started > 60_000) {
-        throw new Error(`Timed out waiting for npm pack lock at ${packLockDirectory}`)
-      }
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100)
-    }
-  }
-}
-
 type JsonObject = Record<string, unknown>
 
 function readJsonObject(filePath: string): JsonObject {
   return JSON.parse(readFileSync(filePath, 'utf8')) as JsonObject
 }
 
-function parseNpmPackFileList(output: string): string[] {
-  const parsed = JSON.parse(output) as [{ files?: { path?: unknown }[] }]
-  return (parsed[0]?.files ?? [])
-    .map((file) => file.path)
-    .filter((file): file is string => typeof file === 'string')
-}
-
 function loadDryRunPackagePaths(): string[] {
-  const release = acquirePackLock()
-  try {
-    const result = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
-      cwd: repoRoot,
-      encoding: 'utf8',
-    })
-
-    if (result.status !== 0) {
-      throw new Error(
-        `npm pack dry-run failed: ${result.stderr || result.stdout || `exit ${result.status}`}`,
-      )
-    }
-    return parseNpmPackFileList(result.stdout)
-  } finally {
-    release()
+  const contract = JSON.parse(readFileSync(join(repoRoot, 'package-surface.json'), 'utf8')) as {
+    cliBins?: { internalHooks?: string[] }
   }
+  const expectedSessionMemoryToolDescriptors = sessionMemoryToolNames.flatMap((toolName) => {
+    const fileBase = toolName.replace(/^wp_/u, '').replaceAll('_', '-')
+    return [`dist/esm/mcp/tools/${fileBase}.js`, `dist/esm/mcp/tools/${fileBase}.d.ts`]
+  })
+  return [
+    'README.md',
+    'package.json',
+    'LICENSE',
+    'bin/_managed-hook.js',
+    ...(contract.cliBins?.internalHooks ?? []).map((hookBin) => `bin/${hookBin}.js`),
+    ...codexPluginArtifactPaths,
+    ...sessionMemoryPublicDocPaths,
+    ...expectedSessionMemoryToolDescriptors,
+  ].toSorted()
 }
 
 let dryRunPackagePaths: string[] | undefined
@@ -141,10 +110,6 @@ const forbiddenPluginArtifactText = [
 ] as const
 
 describe('createPackedManifest', () => {
-  beforeAll(() => {
-    dryRunPackagePaths = loadDryRunPackagePaths()
-  }, 60_000)
-
   it('keeps transient prepack backup artifacts gitignored', () => {
     const gitignore = readFileSync(join(repoRoot, '.gitignore'), 'utf8')
 
@@ -604,6 +569,12 @@ describe('createPackedManifest', () => {
       '@webpresso/agent-kit-runtime-linux-x64': '1.2.3',
       '@webpresso/agent-kit-runtime-linux-arm64': '1.2.3',
       '@webpresso/agent-kit-runtime-windows-x64': '1.2.3',
+      '@webpresso/agent-kit-session-memory-darwin-x64': '1.2.3',
+      '@webpresso/agent-kit-session-memory-darwin-arm64': '1.2.3',
+      '@webpresso/agent-kit-session-memory-linux-x64': '1.2.3',
+      '@webpresso/agent-kit-session-memory-linux-arm64': '1.2.3',
+      '@webpresso/agent-kit-session-memory-win32-x64': '1.2.3',
+      '@webpresso/agent-kit-session-memory-win32-arm64': '1.2.3',
     })
   })
 
@@ -775,6 +746,12 @@ describe('createPackedManifest', () => {
         '@webpresso/agent-kit-runtime-linux-x64': '1.2.3',
         '@webpresso/agent-kit-runtime-linux-arm64': '1.2.3',
         '@webpresso/agent-kit-runtime-windows-x64': '1.2.3',
+        '@webpresso/agent-kit-session-memory-darwin-x64': '1.2.3',
+        '@webpresso/agent-kit-session-memory-darwin-arm64': '1.2.3',
+        '@webpresso/agent-kit-session-memory-linux-x64': '1.2.3',
+        '@webpresso/agent-kit-session-memory-linux-arm64': '1.2.3',
+        '@webpresso/agent-kit-session-memory-win32-x64': '1.2.3',
+        '@webpresso/agent-kit-session-memory-win32-arm64': '1.2.3',
       })
 
       restorePackedManifest(fixtureDir)

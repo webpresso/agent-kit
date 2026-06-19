@@ -131,7 +131,11 @@ export function injectDefaultActArgs(
 ): string[] {
   const hasArchitectureFlag = args.includes('--container-architecture')
   if (!hasArchitectureFlag) {
-    return ['--container-architecture', resolveDefaultContainerArchitecture(platform, arch), ...args]
+    return [
+      '--container-architecture',
+      resolveDefaultContainerArchitecture(platform, arch),
+      ...args,
+    ]
   }
   return args
 }

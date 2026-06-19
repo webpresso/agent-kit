@@ -178,13 +178,17 @@ export async function handleSessionFetchAndIndex(
       const result = payloadFor(input, chunks, ['fetched content produced no indexable chunks'])
       return createSummaryResult(result, { isError: true })
     }
-    return createGainSummaryResult(payloadFor(input, chunks, []), {}, {
-      toolName: tool.name,
-      dbPath,
-      rawBasisBytes: chunkTextBytes(chunks),
-      rawBytesBasis: 'fetch_indexed_text',
-      recordGainEvent: (gain) => store.recordGainEvent({ ...gain, toolName: tool.name }),
-    })
+    return createGainSummaryResult(
+      payloadFor(input, chunks, []),
+      {},
+      {
+        toolName: tool.name,
+        dbPath,
+        rawBasisBytes: chunkTextBytes(chunks),
+        rawBytesBasis: 'fetch_indexed_text',
+        recordGainEvent: (gain) => store.recordGainEvent({ ...gain, toolName: tool.name }),
+      },
+    )
   } catch (error) {
     const fetchError =
       error instanceof FetchIndexError

@@ -61,12 +61,14 @@ describe('runGain', () => {
     const result = runGain({ indexDbPath })
 
     expect(result).toStrictEqual(0)
-    expect(spawnSync).toHaveBeenCalledWith('rtk', ['gain', '--format', 'json'], { encoding: 'utf8' })
+    expect(spawnSync).toHaveBeenCalledWith('rtk', ['gain', '--format', 'json'], {
+      encoding: 'utf8',
+    })
     const logged = logSpy.mock.calls.map((call) => call.join(' ')).join('\n')
     expect(logged).toContain('Webpresso Session Gain')
     expect(logged).toContain('Exact UTF-8 gain bytes: 60')
-    expect(logged).toContain('RTK Token Savings')
-    expect(logged).toContain('RTK tokens saved: 25')
+    expect(logged).toContain('RTK Gain Totals')
+    expect(logged).toContain('RTK reported tokens saved: 25')
   })
 
   it('prints install hint and returns 0 when rtk is not found (ENOENT)', () => {

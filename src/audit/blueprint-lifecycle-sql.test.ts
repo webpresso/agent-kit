@@ -432,9 +432,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     expect(result.ok).toBe(false)
     expect(
       result.violations.some(
-        (v) =>
-          v.message.includes('one-pr-open-work') &&
-          v.message.includes('not done/dropped'),
+        (v) => v.message.includes('one-pr-open-work') && v.message.includes('not done/dropped'),
       ),
     ).toBe(true)
   })
@@ -451,9 +449,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     expect(result.ok).toBe(false)
     expect(
       result.violations.some(
-        (v) =>
-          v.message.includes('one-pr-empty') &&
-          /zero-task|0 tasks|no tasks/i.test(v.message),
+        (v) => v.message.includes('one-pr-empty') && /zero-task|0 tasks|no tasks/i.test(v.message),
       ),
     ).toBe(true)
   })

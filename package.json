@@ -503,7 +503,10 @@
     "native:session-memory:bench": "pnpm run native:session-memory:bench:compile",
     "native:session-memory:bench:compile": "cargo bench --manifest-path native/session-memory-engine/Cargo.toml --package session-memory-core --no-run",
     "native:session-memory:bench:run": "cargo bench --manifest-path native/session-memory-engine/Cargo.toml --package session-memory-core",
-    "native:session-memory:bench:gate": "native/session-memory-engine/scripts/check-bench-thresholds.sh"
+    "native:session-memory:bench:gate": "native/session-memory-engine/scripts/check-bench-thresholds.sh",
+    "build:session-memory-native": "bun scripts/build-session-memory-native-artifacts.ts",
+    "stage:session-memory-native": "bun scripts/stage-session-memory-native-artifacts.ts",
+    "native:session-memory:deny": "cargo deny --manifest-path native/session-memory-engine/Cargo.toml check"
   },
   "dependencies": {
     "@webpresso/cli-contract": "^0.2.0",

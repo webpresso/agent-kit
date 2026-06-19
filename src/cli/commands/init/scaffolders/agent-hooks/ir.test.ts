@@ -89,9 +89,7 @@ describe('WP_HOOK_SPECS', () => {
 
   it('post-tool has the PostToolUse matcher', () => {
     const postToolSpecs = WP_HOOK_SPECS.filter((s) => s.bin === 'wp-post-tool')
-    expect(postToolSpecs.map((s) => [s.event, s.matcher])).toEqual([
-      ['PostToolUse', 'postToolUse'],
-    ])
+    expect(postToolSpecs.map((s) => [s.event, s.matcher])).toEqual([['PostToolUse', 'postToolUse']])
   })
 
   it('all timeouts are positive integers', () => {

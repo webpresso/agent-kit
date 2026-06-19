@@ -55,7 +55,8 @@ afterEach(() => {
   else process.env.CLAUDE_PROJECT_DIR = previousClaudeProjectDir
   if (previousNativePath === undefined) delete process.env.WP_NATIVE_SESSION_MEMORY_PATH
   else process.env.WP_NATIVE_SESSION_MEMORY_PATH = previousNativePath
-  if (previousBuildFromSource === undefined) delete process.env.WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE
+  if (previousBuildFromSource === undefined)
+    delete process.env.WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE
   else process.env.WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE = previousBuildFromSource
   rmSync(tmpDir, { recursive: true, force: true })
 })
@@ -121,7 +122,6 @@ describe('wp_session_batch_execute', () => {
     expect(JSON.stringify(search.structuredContent)).toContain('shared batch sentinel beta')
   })
 
-
   it('records one batch-level gain event without child command gain rows', async () => {
     const result = await sessionBatchExecuteTool.handler?.({
       commands: [
@@ -134,7 +134,10 @@ describe('wp_session_batch_execute', () => {
     })
     const data = payload(result)
 
-    expect(data.gain).toMatchObject({ rawBasisBytes: 7, rawBytesBasis: 'batch_command_output_total' })
+    expect(data.gain).toMatchObject({
+      rawBasisBytes: 7,
+      rawBytesBasis: 'batch_command_output_total',
+    })
 
     const { SessionMemoryStore } = await import('../../session-memory/store.js')
     const store = new SessionMemoryStore(process.env.WP_SESSION_MEMORY_INDEX_DB!)

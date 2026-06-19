@@ -84,7 +84,6 @@ ${TASK_VERIFICATION_BLOCK}
 - [x] Did that too
 `
 
-
 const OVERVIEW_ZERO_TASK = `---
 type: blueprint
 status: planned

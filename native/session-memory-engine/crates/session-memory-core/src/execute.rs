@@ -21,8 +21,9 @@ use crate::store::{Store, StoreResult};
 const SANDBOX_THRESHOLD: usize = 2048;
 /// Max bytes of command output indexed into SQLite/FTS per execution.
 pub const INDEXED_OUTPUT_CAP_BYTES: u64 = 1024 * 1024;
-/// Max chars kept in the returned summary.
-const SUMMARY_MAX_CHARS: usize = 500;
+/// Max chars kept while deriving the returned TS-compatible summary.
+const SUMMARY_CAPTURE_MAX_CHARS: usize = 8 * 1024;
+const SUMMARY_OUTPUT_MAX_CHARS: usize = 2_000;
 /// Result returned by [`execute_and_index`].
 #[derive(Debug)]
 pub struct ExecuteResult {
@@ -32,8 +33,16 @@ pub struct ExecuteResult {
     pub output_bytes: u64,
     /// Whether any content was indexed into FTS5.
     pub indexed: bool,
-    /// First output text, truncated to `SUMMARY_MAX_CHARS`.
+    /// TypeScript-compatible bounded summary.
     pub summary: String,
+    /// Whether streamed output exceeded the indexed byte cap.
+    pub truncated: bool,
+    /// Bytes captured into SQLite/FTS for search.
+    pub captured_bytes: u64,
+    /// Max bytes allowed to be captured into SQLite/FTS.
+    pub max_capture_bytes: u64,
+    /// Whether the process timed out.
+    pub timed_out: bool,
 }
 
 fn spawn_reader<R>(mut reader: R, tx: mpsc::UnboundedSender<Vec<u8>>) -> tokio::task::JoinHandle<()>
@@ -96,7 +105,7 @@ pub async fn execute_and_index(
     let mut total_bytes: u64 = 0;
     let mut indexed_bytes: u64 = 0;
     let mut indexed = false;
-    let mut summary = String::new();
+    let mut summary_capture = String::new();
     let deadline = Instant::now() + Duration::from_millis(timeout_ms);
     let timeout = tokio::time::sleep_until(deadline);
     tokio::pin!(timeout);
@@ -118,10 +127,7 @@ pub async fn execute_and_index(
                 };
                 total_bytes = total_bytes.saturating_add(chunk.len() as u64);
                 let text = decode_incremental_utf8(&mut pending_utf8, &chunk, false);
-                if summary.chars().count() < SUMMARY_MAX_CHARS {
-                    let remaining = SUMMARY_MAX_CHARS - summary.chars().count();
-                    summary.extend(text.chars().take(remaining));
-                }
+                append_summary_capture(&mut summary_capture, &text);
                 append_indexable_text(&mut accumulated, &text, &mut indexed_bytes);
 
                 if accumulated.len() > SANDBOX_THRESHOLD {
@@ -149,10 +155,7 @@ pub async fn execute_and_index(
     let _ = stderr_task.await;
 
     let text = decode_incremental_utf8(&mut pending_utf8, &[], true);
-    if summary.chars().count() < SUMMARY_MAX_CHARS {
-        let remaining = SUMMARY_MAX_CHARS - summary.chars().count();
-        summary.extend(text.chars().take(remaining));
-    }
+    append_summary_capture(&mut summary_capture, &text);
     append_indexable_text(&mut accumulated, &text, &mut indexed_bytes);
 
     // Flush any remaining non-empty buffer so small command output is indexed
@@ -162,24 +165,77 @@ pub async fn execute_and_index(
         indexed = true;
     }
 
+    let final_exit_code = if timed_out {
+        124
+    } else {
+        exit_code.unwrap_or(-1)
+    };
+    let truncated = total_bytes > indexed_bytes;
+    if indexed {
+        let metadata = serde_json::json!({
+            "kind": "session_command_output",
+            "executionBackend": "native",
+            "engine": "native-session-memory",
+            "command": command,
+            "exitCode": final_exit_code,
+            "outputBytes": total_bytes,
+            "capturedBytes": indexed_bytes,
+            "maxCaptureBytes": INDEXED_OUTPUT_CAP_BYTES,
+            "truncated": truncated,
+            "timedOut": timed_out,
+        });
+        store.update_source_metadata(label, &metadata.to_string())?;
+    }
+
+    let mut summary = summarize_output(&summary_capture, timed_out);
+    if truncated {
+        summary.push_str("\n[output truncated before indexing]");
+    }
+
     Ok(ExecuteResult {
-        exit_code: if timed_out {
-            124
-        } else {
-            exit_code.unwrap_or(-1)
-        },
+        exit_code: final_exit_code,
         output_bytes: total_bytes,
         indexed,
-        summary: if timed_out {
-            if summary.is_empty() {
-                "[timeout] command exceeded execution budget".to_string()
-            } else {
-                format!("[timeout] {summary}")
-            }
-        } else {
-            summary
-        },
+        summary,
+        truncated,
+        captured_bytes: indexed_bytes,
+        max_capture_bytes: INDEXED_OUTPUT_CAP_BYTES,
+        timed_out,
     })
+}
+
+fn append_summary_capture(summary: &mut String, text: &str) {
+    if summary.chars().count() >= SUMMARY_CAPTURE_MAX_CHARS {
+        return;
+    }
+    let remaining = SUMMARY_CAPTURE_MAX_CHARS - summary.chars().count();
+    summary.extend(text.chars().take(remaining));
+}
+
+fn summarize_output(output: &str, timed_out: bool) -> String {
+    let normalized = output
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .take(6)
+        .collect::<Vec<_>>()
+        .join("\n");
+    if normalized.is_empty() {
+        return if timed_out {
+            "command timed out with no captured output".to_string()
+        } else {
+            "no output".to_string()
+        };
+    }
+    if normalized.chars().count() > SUMMARY_OUTPUT_MAX_CHARS {
+        let truncated = normalized
+            .chars()
+            .take(SUMMARY_OUTPUT_MAX_CHARS)
+            .collect::<String>();
+        format!("{truncated}…")
+    } else {
+        normalized
+    }
 }
 
 fn append_indexable_text(accumulated: &mut String, text: &str, indexed_bytes: &mut u64) {

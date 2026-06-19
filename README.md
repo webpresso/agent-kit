@@ -88,7 +88,7 @@ vp run public:consumer-smoke -- --setup-only
 | --- | --- | --- |
 | **`wp setup` onboarding** | Idempotent scaffolder for the base-kit quality config + `AGENTS.md` / `CLAUDE.md` wiring, with a curated shared-favorites default for host-visible Webpresso skills | [`src/cli/commands/init/`](src/cli/commands/init/), verified by [`scripts/public-consumer-smoke.ts`](scripts/public-consumer-smoke.ts) |
 | **Shared secret-aware command execution** | `with-secrets` injects shared runtime secrets/profile env for command execution, and shared deploy/e2e paths reuse that same runtime selector path | [`src/runtime/`](src/runtime/), [`src/deploy/`](src/deploy/), [`src/e2e/`](src/e2e/) |
-| **Summary-first `wp_*` MCP tools** | `wp_test` / `wp_typecheck` / `wp_lint` / `wp_qa` / `wp_e2e` / `wp_format` / `wp_ci_act` / `wp_audit` return JSON with `bytes` / `tokensSaved` budget metadata. Session-memory tools are registered and tested as `wp_session_batch_execute` / `wp_session_capture` / `wp_session_doctor` / `wp_session_execute` / `wp_session_execute_file` / `wp_session_fetch_and_index` / `wp_session_index` / `wp_session_purge` / `wp_session_restore` / `wp_session_search` / `wp_session_snapshot` / `wp_session_stats`; see [`docs/guides/session-memory.md`](docs/guides/session-memory.md) for local storage, bounded outputs, reset safety, enforcement hooks, and non-goals. | [`src/mcp/tools/`](src/mcp/tools/) (each with co-located `.test.ts`), [`src/mcp/server.integration.test.ts`](src/mcp/server.integration.test.ts) |
+| **Summary-first `wp_*` MCP tools** | `wp_test` / `wp_typecheck` / `wp_lint` / `wp_qa` / `wp_e2e` / `wp_format` / `wp_ci_act` / `wp_audit` return JSON with `bytes` / `tokensSaved` budget metadata. Session-memory tools are registered and tested as `wp_session_batch_execute` / `wp_session_capture` / `wp_session_doctor` / `wp_session_execute` / `wp_session_execute_file` / `wp_session_fetch_and_index` / `wp_session_index` / `wp_session_purge` / `wp_session_restore` / `wp_session_search` / `wp_session_snapshot` / `wp_session_stats`; see [`docs/guides/session-memory.md`](docs/guides/session-memory.md) for local storage, native optional-package fallback, bounded outputs, reset safety, enforcement hooks, platform support, and non-goals. | [`src/mcp/tools/`](src/mcp/tools/) (each with co-located `.test.ts`), [`src/mcp/server.integration.test.ts`](src/mcp/server.integration.test.ts) |
 | **MCP server + CLI surface** | Registers the tool set and exposes it to agents | [`src/mcp/server.ts`](src/mcp/server.ts), [`src/mcp/cli.ts`](src/mcp/cli.ts), [`src/mcp/cli.integration.test.ts`](src/mcp/cli.integration.test.ts) |
 | **Blueprint runtime** | Lifecycle states, dependency-aware task graph, structured authoring control plane (`wp_blueprint_depgraph` / `put` / `transition`) | [`src/mcp/blueprint-server.ts`](src/mcp/blueprint-server.ts), [`docs/lifecycle.md`](docs/lifecycle.md), [`docs/blueprint-format.md`](docs/blueprint-format.md) |
 | **Audit contract family** | `blueprint-lifecycle`, `blueprint-readme-drift`, `reference-parity-matrix`, `docs-frontmatter`, `catalog-drift`, `vision`, `architecture-drift`, `cloudflare-deploy-contract`, `harness-surfaces`, `weakness-mining`, `harness-overlay-evidence`, `bundle-budget`, `commit-message` (Lore), `tech-debt`, `absolute-path-policy`, `open-source-licenses`, **`secrets-policy`**, **`no-dev-vars`**, **`secret-provider-quarantine`**, **`secrets-config`** — each runs through the `wp audit` CLI surface; the `wp_audit` MCP tool exposes the common agent-safe subset and guardrails runs the repo-shaped gate | [`src/audit/`](src/audit/), [`src/mcp/tools/audit.ts`](src/mcp/tools/audit.ts), [`.github/workflows/ci.agent-kit.yml`](.github/workflows/ci.agent-kit.yml) |
@@ -191,7 +191,7 @@ These checks prove hook health, lifecycle state, reference parity gating, real
 pack tarball contents, package lint, the dev-var carrier check, secret-policy
 audits, and path safety for the public package. Session-continuity claims must
 stay scoped to typed continuity events, the tested capture/restore flow, and
-Cursor/OpenCode degraded host coverage documented in the hook matrix. Public numeric benchmark claims must also cite a checked-in first-party result card under `docs/bench/result-cards/`; see [the benchmark result-card contract](./docs/bench/result-card-contract.md).
+Cursor/OpenCode degraded host coverage documented in the hook matrix. Public numeric benchmark claims must also cite a checked-in first-party result card under `docs/bench/result-cards/`; see [the benchmark result-card contract](./docs/bench/result-card-contract.md). The native session-memory backend is optional for users: supported platforms resolve prebuilt NAPI packages when available, while the TypeScript fallback remains usable and visible in metadata when no compatible addon is installed.
 
 ## Defaults and opt-ins
 
@@ -231,6 +231,22 @@ binary (see `bin/_run.js`). Iterate on hook code with `bun src/hooks/…` direct
 - [CHANGELOG.md](./CHANGELOG.md) — release history (Changesets-managed).
 - [VISION.md](./VISION.md) — why this exists and where it's going.
 - [docs/markdown-fact-check.md](./docs/markdown-fact-check.md) — appendix: fact-check of current-state documentation claims and package references.
+
+## Benchmarks & Evidence
+
+**Conservative evidence policy:** no numeric performance claim ships without a
+first-party result card of the matching metric class checked into
+`docs/bench/result-cards/`. See [the benchmark result-card contract](./docs/bench/result-card-contract.md) for the required card format.
+
+**Current measured status:** see [`docs/bench/result-cards/`](./docs/bench/result-cards/) for
+checked-in evidence (currently establishing baseline). No numeric claim is made
+here until a checked-in first-party result card proves it.
+
+Deterministic byte-budget fields (`gainBytes`, `approxTokensSaved`) are exact
+UTF-8 byte accounting plus an approximate `/4` token proxy. They are not
+provider token, dollar, or global context-reduction measurements. Recall,
+latency, and native-speed claims require separate measured result cards before
+any public numeric claim can be made.
 
 ## Status
 

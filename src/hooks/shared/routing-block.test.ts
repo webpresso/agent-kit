@@ -27,7 +27,6 @@ describe('WP_ROUTING_BLOCK', () => {
     expect(WP_ROUTING_BLOCK).toContain('</wp_routing>')
   })
 
-
   it('includes wp_session context-window protection guidance for every public session-memory tool', () => {
     expect(WP_ROUTING_BLOCK).toContain('<wp_session_context>')
     expect(WP_ROUTING_BLOCK).toContain('context-window protection')

@@ -20,7 +20,14 @@ function payload(result: Awaited<ReturnType<typeof sessionExecuteTool.handler>>)
     passed: boolean
     summary: string
     exitCode: number
-    gain?: { rawBasisBytes: number; returnedToolResultBytes: number; gainBytes: number; approxTokensSaved: number; precision: string; rawBytesBasis: string }
+    gain?: {
+      rawBasisBytes: number
+      returnedToolResultBytes: number
+      gainBytes: number
+      approxTokensSaved: number
+      precision: string
+      rawBytesBasis: string
+    }
     details: {
       label: string
       exitCode: number
@@ -58,7 +65,8 @@ afterEach(() => {
   else process.env.CLAUDE_PROJECT_DIR = previousClaudeProjectDir
   if (previousNativePath === undefined) delete process.env.WP_NATIVE_SESSION_MEMORY_PATH
   else process.env.WP_NATIVE_SESSION_MEMORY_PATH = previousNativePath
-  if (previousBuildFromSource === undefined) delete process.env.WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE
+  if (previousBuildFromSource === undefined)
+    delete process.env.WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE
   else process.env.WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE = previousBuildFromSource
   rmSync(tmpDir, { recursive: true, force: true })
 })
@@ -100,7 +108,9 @@ describe('wp_session_execute', () => {
       maxCaptureBytes: 1024 * 1024,
     })
     const store = new SessionMemoryStore(process.env.WP_SESSION_MEMORY_INDEX_DB!)
-    expect(store.search({ query: 'indexed needle', source: 'label', limit: 1 })[0]?.metadata).toMatchObject({
+    expect(
+      store.search({ query: 'indexed needle', source: 'label', limit: 1 })[0]?.metadata,
+    ).toMatchObject({
       executionBackend: 'typescript',
       fallbackReason: expect.stringContaining('no prebuilt addon found'),
       maxCaptureBytes: 1024 * 1024,
@@ -184,7 +194,9 @@ describe('wp_session_execute', () => {
         indexed: false,
         outputBytes: 0,
       })
-      expect(store.search({ query: 'stale quiet replacement', source: 'quiet-repeat-label', limit: 5 })).toEqual([])
+      expect(
+        store.search({ query: 'stale quiet replacement', source: 'quiet-repeat-label', limit: 5 }),
+      ).toEqual([])
       expect(store.stats()).toMatchObject({ chunkCount: 0, sources: [] })
     } finally {
       store.close()
@@ -245,7 +257,6 @@ describe('wp_session_execute', () => {
       signal: 'SIGTERM',
     })
   })
-
 
   it('records exact command-output gain using total stdout/stderr bytes', async () => {
     const result = await sessionExecuteTool.handler?.({

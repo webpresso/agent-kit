@@ -101,7 +101,9 @@ jobs:
         with:
           bun-version: latest
       - name: Install Rust toolchain for native session-memory checks
-        run: rustup toolchain install 1.88.0 --profile minimal --component rustfmt,clippy
+        run: |
+          rustup toolchain install 1.88.0 --profile minimal --component rustfmt,clippy
+          cargo install cargo-deny --version 0.19.9 --locked
       - run: pnpm install --frozen-lockfile
       - name: Stage native runtime artifacts
         run: |
@@ -128,7 +130,9 @@ jobs:
         with:
           bun-version: latest
       - name: Install Rust toolchain for native session-memory checks
-        run: rustup toolchain install 1.88.0 --profile minimal --component rustfmt,clippy
+        run: |
+          rustup toolchain install 1.88.0 --profile minimal --component rustfmt,clippy
+          cargo install cargo-deny --version 0.19.9 --locked
       - run: pnpm install --frozen-lockfile
       - name: Stage native runtime artifacts
         run: |
@@ -138,6 +142,8 @@ jobs:
         run: pnpm run native:session-memory:fmt
       - name: Native session-memory clippy
         run: pnpm run native:session-memory:clippy
+      - name: Native session-memory cargo-deny
+        run: pnpm run native:session-memory:deny
       - name: Native session-memory test
         run: pnpm run native:session-memory:test
       - name: Native session-memory bench gate

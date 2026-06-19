@@ -9,6 +9,7 @@ import {
   DEFAULT_SESSION_MEMORY_THRESHOLDS,
   assertBenchSessionMemorySupportedRuntime,
   assertBenchRuntimeAssets,
+  createManifestDigest,
   createRunId,
   resolveBenchRuntimeRoot,
   resolveRepoRoot,
@@ -151,6 +152,7 @@ function makeDeps(
       mkdirSync(dirname(outPath), { recursive: true })
       writeFileSync(outPath, text, 'utf8')
     }),
+    writeArtifactJson: vi.fn(),
   }
 }
 
@@ -171,8 +173,30 @@ describe('wp bench session-memory', () => {
     )
   })
 
+  it('createManifestDigest is deterministic across two calls', () => {
+    expect(createManifestDigest(TEST_MANIFEST)).toStrictEqual(createManifestDigest(TEST_MANIFEST))
+  })
+
+  it('createRunId with injected clock produces unique ids for different clock values', () => {
+    const id1 = createRunId(TEST_MANIFEST, () => 1000)
+    const id2 = createRunId(TEST_MANIFEST, () => 2000)
+    expect(id1).not.toStrictEqual(id2)
+  })
+
+  it('createRunId with same manifest and same clock produces same id', () => {
+    const id1 = createRunId(TEST_MANIFEST, () => 42)
+    const id2 = createRunId(TEST_MANIFEST, () => 42)
+    expect(id1).toStrictEqual(id2)
+  })
+
+  it('createRunId differs from createManifestDigest for the same manifest', () => {
+    const digest = createManifestDigest(TEST_MANIFEST)
+    const runId = createRunId(TEST_MANIFEST, () => 0)
+    expect(runId).not.toStrictEqual(digest)
+  })
+
   it('creates deterministic run ids from the manifest hash', () => {
-    expect(createRunId(TEST_MANIFEST)).toBe(createRunId(TEST_MANIFEST))
+    expect(createRunId(TEST_MANIFEST, () => 1)).toStrictEqual(createRunId(TEST_MANIFEST, () => 1))
   })
 
   it('resolves the repo root from Bun single-file executable URLs using the fallback cwd', () => {
@@ -257,7 +281,6 @@ describe('wp bench session-memory', () => {
       mode: 'dry-run-current-checkout',
     })
   })
-
 
   it('validates threshold schema in dry-run mode without API credentials', async () => {
     const runCell = vi.fn()
@@ -450,6 +473,80 @@ describe('wp bench session-memory', () => {
     expect(report).toContain('Threshold report')
     expect(report).toContain('post_tool_capture_latency_ms')
     expect(report).toContain('| debug-long-session | baseline | 1 | ok |')
+  })
+
+  it('writes exact token, cache, cost, provider-duration, and local-wall aggregates for multi-trial cells', async () => {
+    dir = mkdtempSync(join(tmpdir(), 'bench-command-aggregates-'))
+    const runCell = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true as const,
+        usage: {
+          input_tokens: 100,
+          output_tokens: 20,
+          cache_creation_input_tokens: 10,
+          cache_read_input_tokens: 5,
+          duration_ms: 500,
+        },
+        local_wall_ms: 600,
+        tools: ['wp_session_search'],
+        transcript_path: '/tmp/transcript-1.jsonl',
+        home_dir: '/tmp/home-1',
+      })
+      .mockResolvedValueOnce({
+        ok: true as const,
+        usage: {
+          input_tokens: 300,
+          output_tokens: 10,
+          cache_creation_input_tokens: 20,
+          cache_read_input_tokens: 15,
+          duration_ms: 700,
+        },
+        local_wall_ms: 800,
+        tools: ['wp_session_search'],
+        transcript_path: '/tmp/transcript-2.jsonl',
+        home_dir: '/tmp/home-2',
+      })
+    const deps = makeDeps({ onRunCell: runCell })
+    deps.aggregateCosts = vi.fn(() => ({ mean: 0.15, std: 0.05, n: 2, total: 0.3 }))
+
+    const result = await runBenchSessionMemoryCommand(
+      {
+        scenario: 'debug-long-session',
+        variant: 'baseline',
+        trials: 2,
+        outputRoot: dir,
+        env: { BENCH_WORKSPACE_MODE: 'single-workspace', ANTHROPIC_API_KEY: 'test-key' },
+      },
+      deps,
+    )
+
+    expect(result.exitCode).toBe(0)
+    expect(deps.writeReport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cells: [
+          expect.objectContaining({
+            scenario_id: 'debug-long-session',
+            variant: 'baseline',
+            trials: 2,
+            cost_usd: 0.3,
+            cost_mean_usd: 0.15,
+            cost_std_usd: 0.05,
+            input_tokens: 400,
+            output_tokens: 30,
+            cache_creation_input_tokens: 30,
+            cache_read_input_tokens: 20,
+            total_tokens: 480,
+            duration_ms_mean: 600,
+            duration_ms_std: 100,
+            local_wall_ms_mean: 700,
+            local_wall_ms_std: 100,
+            wall_sec: 0.7,
+          }),
+        ],
+      }),
+      expect.stringMatching(/report\.md$/u),
+    )
   })
 
   it('runs two trials per cell when --all-variants is enabled', async () => {

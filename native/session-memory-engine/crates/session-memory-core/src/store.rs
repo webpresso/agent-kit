@@ -36,12 +36,17 @@ pub type StoreResult<T> = Result<T, StoreError>;
 pub fn open(path: &Path) -> StoreResult<Connection> {
     let conn = Connection::open(path)?;
     apply_pragmas(&conn)?;
+    let initial_user_version: i64 = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
     let had_session_events_table = table_exists(&conn, "session_events")?;
-    reject_legacy_flat_session_schema(&conn, had_session_events_table)?;
+    let had_sessions_table = table_exists(&conn, "sessions")?;
+    migrate_legacy_sessions_schema(&conn, had_sessions_table)?;
+    migrate_legacy_session_events_schema(&conn, had_session_events_table)?;
     apply_schema(&conn)?;
-    ensure_current_session_schema(&conn, had_session_events_table)?;
+    ensure_current_session_schema(&conn)?;
     migrate_legacy_time_columns(&conn)?;
-    migrate_legacy_chunk_tables(&conn)?;
+    if initial_user_version < 2 {
+        migrate_legacy_chunk_tables(&conn)?;
+    }
     Ok(conn)
 }
 
@@ -54,35 +59,212 @@ fn table_exists(conn: &Connection, table_name: &str) -> SqlResult<bool> {
     .map(|value| value != 0)
 }
 
-fn reject_legacy_flat_session_schema(
+fn table_columns(
+    conn: &Connection,
+    table_name: &str,
+) -> SqlResult<std::collections::HashSet<String>> {
+    conn.prepare(&format!("PRAGMA table_info({table_name})"))?
+        .query_map([], |row| row.get::<_, String>(1))?
+        .collect::<SqlResult<_>>()
+}
+
+fn commit_or_rollback(conn: &Connection, result: StoreResult<()>) -> StoreResult<()> {
+    match result {
+        Ok(()) => {
+            conn.execute_batch("COMMIT")?;
+            Ok(())
+        }
+        Err(error) => {
+            let _ = conn.execute_batch("ROLLBACK");
+            Err(error)
+        }
+    }
+}
+
+fn migrate_legacy_sessions_schema(conn: &Connection, had_sessions_table: bool) -> StoreResult<()> {
+    if !had_sessions_table {
+        return Ok(());
+    }
+
+    let columns = table_columns(conn, "sessions")?;
+    let required = [
+        "agent_id",
+        "snapshot_id",
+        "repo_hash",
+        "created_at",
+        "status",
+        "content_json",
+    ];
+    if required.iter().all(|column| columns.contains(*column)) {
+        return Ok(());
+    }
+    for required_identity_column in ["agent_id", "snapshot_id"] {
+        if !columns.contains(required_identity_column) {
+            return Err(StoreError::Schema(format!(
+                "cannot migrate legacy sessions table; missing required column: {required_identity_column}"
+            )));
+        }
+    }
+
+    conn.execute_batch("BEGIN IMMEDIATE")?;
+    let result = (|| -> StoreResult<()> {
+        conn.execute_batch(
+            "ALTER TABLE sessions RENAME TO sessions_legacy_migration;
+             CREATE TABLE sessions (
+                 agent_id     TEXT NOT NULL,
+                 snapshot_id  TEXT PRIMARY KEY,
+                 repo_hash    TEXT NOT NULL,
+                 created_at   INTEGER NOT NULL,
+                 status       TEXT NOT NULL DEFAULT 'active',
+                 content_json TEXT NOT NULL DEFAULT '{}'
+             );",
+        )?;
+
+        let repo_hash_expr = if columns.contains("repo_hash") {
+            "COALESCE(NULLIF(repo_hash, ''), 'legacy')".to_string()
+        } else {
+            "'legacy'".to_string()
+        };
+        let created_at_expr = if columns.contains("created_at") {
+            "COALESCE(CASE WHEN typeof(created_at) = 'text' AND created_at GLOB '????-??-??*' THEN CAST(strftime('%s', created_at) AS INTEGER) ELSE CAST(created_at AS INTEGER) END, 0)".to_string()
+        } else {
+            "0".to_string()
+        };
+        let status_expr = if columns.contains("status") {
+            "COALESCE(NULLIF(status, ''), 'active')".to_string()
+        } else {
+            "'active'".to_string()
+        };
+        let content_json_expr = if columns.contains("content_json") {
+            "COALESCE(NULLIF(content_json, ''), '{}')".to_string()
+        } else {
+            "'{}'".to_string()
+        };
+        conn.execute(
+            &format!(
+                "INSERT OR IGNORE INTO sessions(agent_id, snapshot_id, repo_hash, created_at, status, content_json)
+                 SELECT COALESCE(NULLIF(agent_id, ''), 'legacy-agent'),
+                        COALESCE(NULLIF(snapshot_id, ''), 'legacy-snapshot-' || rowid),
+                        {repo_hash_expr},
+                        {created_at_expr},
+                        {status_expr},
+                        {content_json_expr}
+                   FROM sessions_legacy_migration"
+            ),
+            [],
+        )?;
+        conn.execute_batch("DROP TABLE sessions_legacy_migration")?;
+        Ok(())
+    })();
+    commit_or_rollback(conn, result)
+}
+
+fn migrate_legacy_session_events_schema(
     conn: &Connection,
     had_session_events_table: bool,
 ) -> StoreResult<()> {
     if !had_session_events_table {
         return Ok(());
     }
-    let columns: std::collections::HashSet<String> = conn
-        .prepare("PRAGMA table_info(session_events)")?
-        .query_map([], |row| row.get::<_, String>(1))?
-        .collect::<SqlResult<_>>()?;
-    let required = ["event_type", "summary", "priority", "metadata_json"];
-    let missing_columns: Vec<&str> = required
-        .into_iter()
-        .filter(|column| !columns.contains(*column))
-        .collect();
-    if !missing_columns.is_empty() {
-        return Err(StoreError::Schema(format!(
-            "session-memory hard cut requires a fresh typed event schema; missing columns: {}",
-            missing_columns.join(", ")
-        )));
+
+    let columns = table_columns(conn, "session_events")?;
+    let required = [
+        "session_id",
+        "event_id",
+        "repo_hash",
+        "ts",
+        "event_type",
+        "tool_name",
+        "content",
+        "summary",
+        "priority",
+        "metadata_json",
+    ];
+    if required.iter().all(|column| columns.contains(*column)) {
+        return Ok(());
     }
-    Ok(())
+    for required_identity_column in ["session_id", "event_id", "ts", "tool_name", "content"] {
+        if !columns.contains(required_identity_column) {
+            return Err(StoreError::Schema(format!(
+                "cannot migrate legacy session_events table; missing required column: {required_identity_column}"
+            )));
+        }
+    }
+
+    conn.execute_batch("BEGIN IMMEDIATE")?;
+    let result = (|| -> StoreResult<()> {
+        conn.execute_batch(
+            "DROP TABLE IF EXISTS session_events_fts;
+             ALTER TABLE session_events RENAME TO session_events_legacy_migration;
+             CREATE TABLE session_events (
+                 session_id    TEXT NOT NULL,
+                 event_id      TEXT PRIMARY KEY,
+                 repo_hash     TEXT NOT NULL,
+                 ts            INTEGER NOT NULL,
+                 event_type    TEXT NOT NULL DEFAULT 'tool_command',
+                 tool_name     TEXT NOT NULL,
+                 content       TEXT NOT NULL,
+                 summary       TEXT,
+                 priority      INTEGER NOT NULL DEFAULT 50,
+                 metadata_json TEXT NOT NULL DEFAULT '{}'
+             );",
+        )?;
+
+        let repo_hash_expr = if columns.contains("repo_hash") {
+            "COALESCE(NULLIF(e.repo_hash, ''), 'legacy')".to_string()
+        } else if table_exists(conn, "sessions")?
+            && table_columns(conn, "sessions")?.contains("repo_hash")
+        {
+            "COALESCE((SELECT NULLIF(s.repo_hash, '') FROM sessions s WHERE s.agent_id = e.session_id ORDER BY s.created_at DESC LIMIT 1), 'legacy')".to_string()
+        } else {
+            "'legacy'".to_string()
+        };
+        let event_type_expr = if columns.contains("event_type") {
+            "COALESCE(NULLIF(e.event_type, ''), 'tool_command')".to_string()
+        } else {
+            "'tool_command'".to_string()
+        };
+        let summary_expr = if columns.contains("summary") {
+            "e.summary".to_string()
+        } else {
+            "NULL".to_string()
+        };
+        let priority_expr = if columns.contains("priority") {
+            "COALESCE(CAST(e.priority AS INTEGER), 50)".to_string()
+        } else {
+            "50".to_string()
+        };
+        let metadata_expr = if columns.contains("metadata_json") {
+            "COALESCE(NULLIF(e.metadata_json, ''), '{}')".to_string()
+        } else {
+            "'{}'".to_string()
+        };
+        conn.execute(
+            &format!(
+                "INSERT OR IGNORE INTO session_events(
+                     session_id, event_id, repo_hash, ts, event_type, tool_name, content, summary, priority, metadata_json
+                 )
+                 SELECT COALESCE(NULLIF(e.session_id, ''), 'legacy-session'),
+                        COALESCE(NULLIF(e.event_id, ''), 'legacy-event-' || e.rowid),
+                        {repo_hash_expr},
+                        COALESCE(CASE WHEN typeof(e.ts) = 'text' AND e.ts GLOB '????-??-??*' THEN CAST(strftime('%s', e.ts) AS INTEGER) ELSE CAST(e.ts AS INTEGER) END, 0),
+                        {event_type_expr},
+                        COALESCE(NULLIF(e.tool_name, ''), 'Unknown'),
+                        COALESCE(e.content, ''),
+                        {summary_expr},
+                        {priority_expr},
+                        {metadata_expr}
+                   FROM session_events_legacy_migration e"
+            ),
+            [],
+        )?;
+        conn.execute_batch("DROP TABLE session_events_legacy_migration")?;
+        Ok(())
+    })();
+    commit_or_rollback(conn, result)
 }
 
-fn ensure_current_session_schema(
-    conn: &Connection,
-    had_session_events_table: bool,
-) -> StoreResult<()> {
+fn ensure_current_session_schema(conn: &Connection) -> StoreResult<()> {
     const SESSION_MEMORY_SCHEMA_VERSION: i64 = 2;
     const REQUIRED_EVENT_COLUMNS: &[&str] = &[
         "session_id",
@@ -102,18 +284,15 @@ fn ensure_current_session_schema(
         return Ok(());
     }
 
-    let columns: std::collections::HashSet<String> = conn
-        .prepare("PRAGMA table_info(session_events)")?
-        .query_map([], |row| row.get::<_, String>(1))?
-        .collect::<SqlResult<_>>()?;
+    let columns = table_columns(conn, "session_events")?;
     let missing_columns: Vec<&str> = REQUIRED_EVENT_COLUMNS
         .iter()
         .copied()
         .filter(|column| !columns.contains(*column))
         .collect();
-    if had_session_events_table && !missing_columns.is_empty() {
+    if !missing_columns.is_empty() {
         return Err(StoreError::Schema(format!(
-            "session-memory hard cut requires a fresh typed event schema; missing columns: {}",
+            "session-memory schema migration failed; missing columns: {}",
             missing_columns.join(", ")
         )));
     }
@@ -206,6 +385,8 @@ fn apply_schema(conn: &Connection) -> SqlResult<()> {
          );
          CREATE INDEX IF NOT EXISTS idx_session_events_repo_ts
              ON session_events(repo_hash, ts DESC);
+         CREATE INDEX IF NOT EXISTS idx_session_events_repo_session_ts
+             ON session_events(repo_hash, session_id, ts DESC);
          CREATE INDEX IF NOT EXISTS idx_session_events_repo_priority_ts
              ON session_events(repo_hash, priority DESC, ts DESC);
          CREATE VIRTUAL TABLE IF NOT EXISTS session_events_fts
@@ -238,7 +419,12 @@ fn apply_schema(conn: &Connection) -> SqlResult<()> {
          CREATE INDEX IF NOT EXISTS idx_session_memory_gain_events_tool
              ON session_memory_gain_events(tool_name);
          CREATE INDEX IF NOT EXISTS idx_session_memory_gain_events_created
-             ON session_memory_gain_events(created_at);",
+             ON session_memory_gain_events(created_at);
+
+         CREATE TABLE IF NOT EXISTS session_memory_migrations (
+             name       TEXT PRIMARY KEY,
+             applied_at INTEGER NOT NULL
+         );",
     )
 }
 
@@ -255,17 +441,26 @@ fn migrate_legacy_time_columns(conn: &Connection) -> SqlResult<()> {
 }
 
 fn migrate_legacy_chunk_tables(conn: &Connection) -> StoreResult<()> {
-    let legacy_exists: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='session_memory_chunks'",
-        [],
-        |row| row.get(0),
-    )?;
-    if legacy_exists == 0 {
+    const MIGRATION_NAME: &str = "legacy-session-memory-chunks-to-native-fts";
+
+    let already_applied: bool = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM session_memory_migrations WHERE name = ?1)",
+        params![MIGRATION_NAME],
+        |row| row.get::<_, i64>(0),
+    )? != 0;
+    if already_applied {
         return Ok(());
     }
 
     let new_count: i64 = conn.query_row("SELECT COUNT(*) FROM chunks", [], |row| row.get(0))?;
     if new_count > 0 {
+        mark_migration_applied(conn, MIGRATION_NAME)?;
+        return Ok(());
+    }
+
+    let legacy_exists = table_exists(conn, "session_memory_chunks")?;
+    if !legacy_exists {
+        mark_migration_applied(conn, MIGRATION_NAME)?;
         return Ok(());
     }
 
@@ -275,39 +470,52 @@ fn migrate_legacy_chunk_tables(conn: &Connection) -> StoreResult<()> {
         .collect::<SqlResult<Vec<_>>>()?;
 
     if rows.is_empty() {
+        mark_migration_applied(conn, MIGRATION_NAME)?;
         return Ok(());
     }
 
-    let mut source_counts: std::collections::HashMap<String, i64> =
-        std::collections::HashMap::new();
-    let mut texts: Vec<String> = Vec::with_capacity(rows.len());
+    conn.execute_batch("BEGIN IMMEDIATE")?;
+    let result = (|| -> StoreResult<()> {
+        let mut source_counts: std::collections::HashMap<String, i64> =
+            std::collections::HashMap::new();
 
-    for (source, text) in &rows {
-        conn.execute(
-            "INSERT INTO chunks(content, source) VALUES (?1, ?2)",
-            params![text, source],
-        )?;
-        conn.execute(
-            "INSERT INTO chunks_trigram(content, source) VALUES (?1, ?2)",
-            params![text, source],
-        )?;
-        *source_counts.entry(source.clone()).or_insert(0) += 1;
-        texts.push(text.clone());
-    }
+        for (source, text) in &rows {
+            conn.execute(
+                "INSERT INTO chunks(content, source) VALUES (?1, ?2)",
+                params![text, source],
+            )?;
+            conn.execute(
+                "INSERT INTO chunks_trigram(content, source) VALUES (?1, ?2)",
+                params![text, source],
+            )?;
+            *source_counts.entry(source.clone()).or_insert(0) += 1;
+        }
 
-    let ts = now_unix();
-    for (source, chunk_count) in source_counts {
-        conn.execute(
-            "INSERT INTO sources(label, indexed_at, chunk_count)
-                 VALUES (?1, ?2, ?3)
-             ON CONFLICT(label) DO UPDATE SET
-                 indexed_at = excluded.indexed_at,
-                 chunk_count = excluded.chunk_count",
-            params![source, ts, chunk_count],
-        )?;
-    }
+        let ts = now_unix();
+        for (source, chunk_count) in source_counts {
+            conn.execute(
+                "INSERT INTO sources(label, indexed_at, chunk_count)
+                     VALUES (?1, ?2, ?3)
+                 ON CONFLICT(label) DO UPDATE SET
+                     indexed_at = excluded.indexed_at,
+                     chunk_count = excluded.chunk_count",
+                params![source, ts, chunk_count],
+            )?;
+        }
 
-    update_vocabulary(conn, &texts)?;
+        mark_migration_applied(conn, MIGRATION_NAME)?;
+        Ok(())
+    })();
+    commit_or_rollback(conn, result)?;
+
+    Ok(())
+}
+
+fn mark_migration_applied(conn: &Connection, name: &str) -> StoreResult<()> {
+    conn.execute(
+        "INSERT OR IGNORE INTO session_memory_migrations(name, applied_at) VALUES (?1, ?2)",
+        params![name, now_unix()],
+    )?;
     Ok(())
 }
 
@@ -340,35 +548,64 @@ pub fn insert_chunks(
     chunks: &[String],
     insert_counter: &mut u64,
 ) -> StoreResult<()> {
-    // Remove old chunks for this source first (idempotent re-index)
-    conn.execute(
-        "DELETE FROM chunks WHERE source = ?1",
-        params![source_label],
-    )?;
-    conn.execute(
-        "DELETE FROM chunks_trigram WHERE source = ?1",
-        params![source_label],
-    )?;
+    conn.execute_batch("BEGIN IMMEDIATE")?;
+    let mut next_counter = *insert_counter;
+    let result = (|| -> StoreResult<()> {
+        // Remove old chunks for this source first (idempotent re-index).
+        conn.execute(
+            "DELETE FROM chunks WHERE source = ?1",
+            params![source_label],
+        )?;
+        conn.execute(
+            "DELETE FROM chunks_trigram WHERE source = ?1",
+            params![source_label],
+        )?;
+        conn.execute(
+            "DELETE FROM session_memory_chunks_fts WHERE source = ?1",
+            params![source_label],
+        )?;
+        conn.execute(
+            "DELETE FROM session_memory_chunks_tri WHERE source = ?1",
+            params![source_label],
+        )?;
+        conn.execute(
+            "DELETE FROM session_memory_chunks WHERE source = ?1",
+            params![source_label],
+        )?;
 
-    for chunk in chunks {
-        conn.execute(
-            "INSERT INTO chunks(content, source) VALUES (?1, ?2)",
-            params![chunk, source_label],
-        )?;
-        conn.execute(
-            "INSERT INTO chunks_trigram(content, source) VALUES (?1, ?2)",
-            params![chunk, source_label],
-        )?;
-        let current_id = format!("native-index:{source_label}:{}", *insert_counter + 1);
-        insert_current_chunk(conn, &current_id, source_label, chunk)?;
-        *insert_counter += 1;
-        if (*insert_counter).is_multiple_of(OPTIMIZE_INTERVAL) {
-            conn.execute_batch("INSERT INTO chunks(chunks) VALUES('optimize');")?;
-            conn.execute_batch("INSERT INTO chunks_trigram(chunks_trigram) VALUES('optimize');")?;
+        for chunk in chunks {
+            conn.execute(
+                "INSERT INTO chunks(content, source) VALUES (?1, ?2)",
+                params![chunk, source_label],
+            )?;
+            conn.execute(
+                "INSERT INTO chunks_trigram(content, source) VALUES (?1, ?2)",
+                params![chunk, source_label],
+            )?;
+            let current_id = format!("native-index:{source_label}:{}", next_counter + 1);
+            insert_current_chunk(conn, &current_id, source_label, chunk)?;
+            next_counter += 1;
+            if next_counter.is_multiple_of(OPTIMIZE_INTERVAL) {
+                conn.execute_batch("INSERT INTO chunks(chunks) VALUES('optimize');")?;
+                conn.execute_batch(
+                    "INSERT INTO chunks_trigram(chunks_trigram) VALUES('optimize');",
+                )?;
+            }
+        }
+        Ok(())
+    })();
+
+    match result {
+        Ok(()) => {
+            conn.execute_batch("COMMIT")?;
+            *insert_counter = next_counter;
+            Ok(())
+        }
+        Err(error) => {
+            let _ = conn.execute_batch("ROLLBACK");
+            Err(error)
         }
     }
-    update_vocabulary(conn, chunks)?;
-    Ok(())
 }
 
 pub fn append_chunk(
@@ -401,7 +638,18 @@ pub fn append_chunk(
         conn.execute_batch("INSERT INTO chunks(chunks) VALUES('optimize');")?;
         conn.execute_batch("INSERT INTO chunks_trigram(chunks_trigram) VALUES('optimize');")?;
     }
-    update_vocabulary(conn, &[chunk.to_string()])?;
+    Ok(())
+}
+
+pub fn update_source_metadata(
+    conn: &Connection,
+    source_label: &str,
+    metadata_json: &str,
+) -> StoreResult<()> {
+    conn.execute(
+        "UPDATE session_memory_chunks SET metadata_json = ?1 WHERE source = ?2",
+        params![metadata_json, source_label],
+    )?;
     Ok(())
 }
 
@@ -470,37 +718,10 @@ fn insert_current_chunk(
     Ok(())
 }
 
-/// Update IDF scores in the vocabulary table for all terms in the given chunks.
-fn update_vocabulary(conn: &Connection, chunks: &[String]) -> StoreResult<()> {
-    // Simple IDF update: count document frequency across inserted chunks
-    let total = chunks.len() as f64;
-    if total == 0.0 {
-        return Ok(());
-    }
-    let mut term_doc_freq: std::collections::HashMap<String, u64> =
-        std::collections::HashMap::new();
-    for chunk in chunks {
-        let terms: std::collections::HashSet<String> =
-            chunk.split_whitespace().map(|t| t.to_lowercase()).collect();
-        for term in terms {
-            *term_doc_freq.entry(term).or_insert(0) += 1;
-        }
-    }
-    for (term, df) in &term_doc_freq {
-        let idf = ((total / (*df as f64 + 1.0)) + 1.0).ln();
-        conn.execute(
-            "INSERT INTO vocabulary(term, idf_score) VALUES(?1, ?2)
-             ON CONFLICT(term) DO UPDATE SET idf_score = excluded.idf_score",
-            params![term, idf],
-        )?;
-    }
-    Ok(())
-}
-
 /// Three-tier search:
 ///   1. Porter/unicode61 FTS5 BM25 (primary)
 ///   2. Trigram FTS5 (fallback when porter returns empty)
-///   3. IDF-weighted Levenshtein (last resort)
+///   3. Capped Levenshtein scan (last resort)
 ///
 /// Algorithm credit: ported from context-mode's `searchWithFallback` (different language, same algorithm).
 pub fn search(
@@ -537,14 +758,10 @@ fn search_porter(
     let escaped = escape_fts_query(query);
 
     if let Some(src) = source_filter {
-        if source_filter_matches_entire_store(conn, src)? {
-            return search_porter(conn, query, limit, None);
-        }
-
-        let sql = "SELECT content, source, bm25(chunks) AS rank
+        let sql = "SELECT content, source, 0.0 AS rank
              FROM chunks
              WHERE chunks MATCH ?1 AND source = ?2
-             ORDER BY rank ASC, rowid ASC
+             ORDER BY rowid ASC
              LIMIT ?3";
         let mut stmt = conn.prepare(sql)?;
         let hits = stmt
@@ -552,10 +769,10 @@ fn search_porter(
             .collect::<SqlResult<Vec<_>>>()?;
         Ok(hits)
     } else {
-        let sql = "SELECT content, source, bm25(chunks) AS rank
+        let sql = "SELECT content, source, 0.0 AS rank
              FROM chunks
              WHERE chunks MATCH ?1
-             ORDER BY rank ASC, rowid ASC
+             ORDER BY rowid ASC
              LIMIT ?2";
         let mut stmt = conn.prepare(sql)?;
         let hits = stmt
@@ -563,14 +780,6 @@ fn search_porter(
             .collect::<SqlResult<Vec<_>>>()?;
         Ok(hits)
     }
-}
-
-fn source_filter_matches_entire_store(conn: &Connection, source: &str) -> StoreResult<bool> {
-    let mut stmt = conn.prepare("SELECT label FROM sources LIMIT 2")?;
-    let labels = stmt
-        .query_map([], |row| row.get::<_, String>(0))?
-        .collect::<SqlResult<Vec<_>>>()?;
-    Ok(labels.len() == 1 && labels[0] == source)
 }
 
 fn search_trigram(
@@ -582,10 +791,10 @@ fn search_trigram(
     let escaped = escape_fts_query(query);
 
     if let Some(src) = source_filter {
-        let sql = "SELECT content, source, bm25(chunks_trigram) AS rank
+        let sql = "SELECT content, source, 0.0 AS rank
              FROM chunks_trigram
              WHERE chunks_trigram MATCH ?1 AND source = ?2
-             ORDER BY rank ASC, rowid ASC
+             ORDER BY rowid ASC
              LIMIT ?3";
         let mut stmt = conn.prepare(sql)?;
         let hits = stmt
@@ -600,10 +809,10 @@ fn search_trigram(
             .collect::<SqlResult<Vec<_>>>()?;
         Ok(hits)
     } else {
-        let sql = "SELECT content, source, bm25(chunks_trigram) AS rank
+        let sql = "SELECT content, source, 0.0 AS rank
              FROM chunks_trigram
              WHERE chunks_trigram MATCH ?1
-             ORDER BY rank ASC, rowid ASC
+             ORDER BY rowid ASC
              LIMIT ?2";
         let mut stmt = conn.prepare(sql)?;
         let hits = stmt
@@ -626,8 +835,7 @@ fn search_levenshtein(
     limit: usize,
     source_filter: Option<&str>,
 ) -> StoreResult<Vec<SearchHit>> {
-    // Pull all unique terms from vocabulary, find closest by Levenshtein distance,
-    // score using idf_score, then search via trigram for top candidate terms.
+    // Last-resort capped scan. Keep this bounded so typo fallback cannot dominate hot paths.
     const LEVENSHTEIN_SCAN_CAP: i64 = 1000;
     const MIN_LEVENSHTEIN_SCORE: f64 = 0.60;
 
@@ -796,5 +1004,9 @@ impl Store {
 
     pub fn clear(&mut self, label: &str) -> StoreResult<()> {
         clear_source(&self.conn, label)
+    }
+
+    pub fn update_source_metadata(&self, label: &str, metadata_json: &str) -> StoreResult<()> {
+        update_source_metadata(&self.conn, label, metadata_json)
     }
 }

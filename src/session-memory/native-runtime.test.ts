@@ -29,7 +29,8 @@ beforeEach(() => {
 afterEach(() => {
   if (previousNativePath === undefined) delete process.env.WP_NATIVE_SESSION_MEMORY_PATH
   else process.env.WP_NATIVE_SESSION_MEMORY_PATH = previousNativePath
-  if (previousBuildFromSource === undefined) delete process.env.WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE
+  if (previousBuildFromSource === undefined)
+    delete process.env.WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE
   else process.env.WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE = previousBuildFromSource
   rmSync(tmpDir, { recursive: true, force: true })
 })
@@ -37,9 +38,8 @@ afterEach(() => {
 describe('native session-memory runtime availability', () => {
   it('does not run cargo on first use when no prebuilt addon is available', async () => {
     process.env.WP_NATIVE_SESSION_MEMORY_PATH = join(tmpDir, 'missing.node')
-    const { loadNativeSessionMemoryEngine, NativeSessionMemoryUnavailableError } = await import(
-      './native-runtime.js'
-    )
+    const { loadNativeSessionMemoryEngine, NativeSessionMemoryUnavailableError } =
+      await import('./native-runtime.js')
 
     expect(() => loadNativeSessionMemoryEngine()).toThrow(NativeSessionMemoryUnavailableError)
     expect(() => loadNativeSessionMemoryEngine()).toThrow(/First-use cargo builds are disabled/u)
@@ -50,9 +50,8 @@ describe('native session-memory runtime availability', () => {
     const invalidAddon = join(tmpDir, 'invalid.node')
     writeFileSync(invalidAddon, 'not a native addon')
     process.env.WP_NATIVE_SESSION_MEMORY_PATH = invalidAddon
-    const { loadNativeSessionMemoryEngine, NativeSessionMemoryLoadError } = await import(
-      './native-runtime.js'
-    )
+    const { loadNativeSessionMemoryEngine, NativeSessionMemoryLoadError } =
+      await import('./native-runtime.js')
 
     expect(() => loadNativeSessionMemoryEngine()).toThrow(NativeSessionMemoryLoadError)
     expect(() => loadNativeSessionMemoryEngine()).toThrow(/failed to load from/u)
@@ -89,9 +88,8 @@ describe('native session-memory runtime availability', () => {
     }
 
     try {
-      const { loadNativeSessionMemoryEngine, NativeSessionMemoryUnavailableError } = await import(
-        './native-runtime.js'
-      )
+      const { loadNativeSessionMemoryEngine, NativeSessionMemoryUnavailableError } =
+        await import('./native-runtime.js')
 
       expect(() => loadNativeSessionMemoryEngine()).toThrow(NativeSessionMemoryUnavailableError)
       expect(() => loadNativeSessionMemoryEngine()).not.toThrow(/failed to load from/u)

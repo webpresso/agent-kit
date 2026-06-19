@@ -340,12 +340,13 @@ const tool: ToolDescriptor = {
       const runtimeResult = await runFileOperation(input, repoRoot, store)
       const payload = payloadFrom(runtimeResult)
       const resultOptions = runtimeResult.passed ? {} : { isError: true }
-      if (runtimeResult.passed && runtimeResult.operation === 'read_text') {
+      if (runtimeResult.passed && typeof runtimeResult.rawBasisBytes === 'number') {
         return createGainSummaryResult(payload, resultOptions, {
           toolName: tool.name,
           dbPath,
-          rawBasisBytes: runtimeResult.rawBasisBytes ?? 0,
-          rawBytesBasis: 'file_read_buffer',
+          rawBasisBytes: runtimeResult.rawBasisBytes,
+          rawBytesBasis:
+            runtimeResult.operation === 'metadata' ? 'file_metadata_buffer' : 'file_read_buffer',
           recordGainEvent: (gain) => store.recordGainEvent({ ...gain, toolName: tool.name }),
         })
       }

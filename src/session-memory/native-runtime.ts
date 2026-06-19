@@ -9,6 +9,11 @@ import { fileURLToPath } from 'node:url'
 import envPaths from 'env-paths'
 import lockfile from 'proper-lockfile'
 
+import {
+  SESSION_MEMORY_NATIVE_ADDON_FILENAME,
+  resolveSessionMemoryNativeTarget,
+} from './native-targets.js'
+
 export interface NativeSearchHit {
   readonly content: string
   readonly source: string
@@ -33,6 +38,10 @@ export interface NativeSessionEvent {
 export interface NativeExecuteResult {
   readonly exitCode: number
   readonly outputBytes: number
+  readonly truncated?: boolean
+  readonly capturedBytes?: number
+  readonly maxCaptureBytes?: number
+  readonly timedOut?: boolean
   readonly indexed: boolean
   readonly summary: string
 }
@@ -180,16 +189,29 @@ function compiledNodePath(): string {
   )
 }
 
+function optionalNativePackageCandidate(): string | null {
+  const target = resolveSessionMemoryNativeTarget()
+  if (!target) return null
+  try {
+    return requireFromHere.resolve(`${target.packageName}/${SESSION_MEMORY_NATIVE_ADDON_FILENAME}`)
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException | undefined)?.code
+    if (code === 'MODULE_NOT_FOUND' || code === 'ERR_PACKAGE_PATH_NOT_EXPORTED') return null
+    throw error
+  }
+}
+
 function packagedNativeCandidates(): string[] {
   const packageRoot = resolvePackageRoot()
   const moduleDir = dirname(fileURLToPath(import.meta.url))
   const platformArch = `${process.platform}-${process.arch}`
   return [
+    optionalNativePackageCandidate(),
     join(moduleDir, `${MODULE_BASENAME}.${platformArch}.node`),
     join(moduleDir, `${MODULE_BASENAME}.node`),
     join(packageRoot, 'prebuilds', platformArch, `${MODULE_BASENAME}.node`),
     join(packageRoot, 'native', 'prebuilds', platformArch, `${MODULE_BASENAME}.node`),
-  ]
+  ].filter((candidate): candidate is string => typeof candidate === 'string')
 }
 
 function resolvePrebuiltNativeModulePath(): string | null {

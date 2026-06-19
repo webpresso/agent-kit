@@ -7,8 +7,13 @@ const repositoryRoot = process.cwd()
 
 function expectNativeCiGate(workflow: string): void {
   expect(workflow).toContain('Install Rust toolchain for native session-memory checks')
+  expect(workflow).toMatch(
+    /name: Install Rust toolchain for native session-memory checks\n\s+run: \|\n\s+rustup toolchain install 1\.88\.0 --profile minimal --component rustfmt,clippy\n\s+cargo install cargo-deny --version 0\.19\.9 --locked/u,
+  )
   expect(workflow).toContain('pnpm run native:session-memory:fmt')
   expect(workflow).toContain('pnpm run native:session-memory:clippy')
+  expect(workflow).toContain('cargo install cargo-deny --version 0.19.9 --locked')
+  expect(workflow).toContain('pnpm run native:session-memory:deny')
   expect(workflow).toContain('pnpm run native:session-memory:test')
   expect(workflow).toContain('pnpm run native:session-memory:bench:run')
   expect(workflow).toContain('pnpm run native:session-memory:bench:gate')
@@ -27,8 +32,9 @@ describe('native session-memory CI warmup', () => {
     expect(pkg.scripts?.['native:session-memory:bench:compile']).toContain('--no-run')
     expect(pkg.scripts?.['native:session-memory:bench:run']).toContain('cargo bench')
     expect(pkg.scripts?.['native:session-memory:bench:run']).not.toContain('--no-run')
-    expect(pkg.scripts?.['native:session-memory:bench:gate']).toContain(
-      'check-bench-thresholds.sh',
+    expect(pkg.scripts?.['native:session-memory:bench:gate']).toContain('check-bench-thresholds.sh')
+    expect(pkg.scripts?.['native:session-memory:deny']).toBe(
+      'cargo deny --manifest-path native/session-memory-engine/Cargo.toml check',
     )
   })
 

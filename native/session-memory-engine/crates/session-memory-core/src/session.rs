@@ -192,12 +192,15 @@ pub fn restore(
         return Ok(events.into_iter().take(limit).collect());
     }
 
-    // Score events by content relevance to query using Levenshtein
+    // Score events by content relevance to query using a cheap exact-token fast path
+    // before bounded fuzzy matching.
     let query_terms: Vec<&str> = query.split_whitespace().collect();
+    let query_terms_lower: Vec<String> =
+        query_terms.iter().map(|term| term.to_lowercase()).collect();
     let mut scored: Vec<(f64, EventHit)> = events
         .into_iter()
         .map(|ev| {
-            let score = score_content(&ev.content, &query_terms);
+            let score = score_content(&ev.content, &query_terms_lower);
             (score, ev)
         })
         .filter(|(score, _)| *score > 0.0)
@@ -214,19 +217,22 @@ pub fn restore(
     Ok(scored.into_iter().map(|(_, ev)| ev).collect())
 }
 
-fn score_content(content: &str, query_terms: &[&str]) -> f64 {
-    let words: Vec<&str> = content.split_whitespace().collect();
+fn score_content(content: &str, query_terms_lower: &[String]) -> f64 {
+    let content_lower = content.to_lowercase();
+    let exact = query_terms_lower
+        .iter()
+        .filter(|term| content_lower.contains(term.as_str()))
+        .count();
+    if exact > 0 {
+        return exact as f64;
+    }
+
+    let words: Vec<&str> = content_lower.split_whitespace().collect();
     let mut total = 0.0f64;
-    for qt in query_terms {
-        let qt_lower = qt.to_lowercase();
+    for qt_lower in query_terms_lower {
         for word in &words {
-            let word_lower = word.to_lowercase();
-            if word_lower.contains(qt_lower.as_str()) {
-                total += 1.0;
-                continue;
-            }
-            let dist = levenshtein_distance(&qt_lower, &word_lower);
-            let max_len = qt.len().max(word.len()) as f64;
+            let dist = levenshtein_distance(qt_lower, word);
+            let max_len = qt_lower.len().max(word.len()) as f64;
             if max_len > 0.0 {
                 let sim = 1.0 - (dist as f64 / max_len);
                 if sim > 0.6 {

@@ -202,7 +202,7 @@ fn test_restore_unrelated_query_returns_no_hits() {
 }
 
 #[test]
-fn test_open_rejects_legacy_flat_text_timestamp_schema() {
+fn test_open_migrates_legacy_flat_text_timestamp_schema() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("legacy.db");
 
@@ -229,8 +229,52 @@ fn test_open_rejects_legacy_flat_text_timestamp_schema() {
         .unwrap();
     }
 
-    let err = open(&path).unwrap_err().to_string();
-    assert!(err.contains("hard cut requires a fresh typed event schema"));
+    {
+        let conn = rusqlite::Connection::open(&path).unwrap();
+        conn.execute(
+            "INSERT INTO sessions(agent_id, snapshot_id, repo_hash, created_at, status, content_json)
+             VALUES(?1, ?2, ?3, ?4, ?5, ?6)",
+            rusqlite::params![
+                "agent-legacy",
+                "snap-legacy",
+                "repo-legacy",
+                "2026-06-19T10:00:00.000Z",
+                "complete",
+                "{}"
+            ],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO session_events(session_id, event_id, repo_hash, ts, tool_name, content)
+             VALUES(?1, ?2, ?3, ?4, ?5, ?6)",
+            rusqlite::params![
+                "agent-legacy",
+                "evt-legacy",
+                "repo-legacy",
+                "2026-06-19T10:01:02.000Z",
+                "Bash",
+                "legacy searchable content"
+            ],
+        )
+        .unwrap();
+    }
+
+    let conn = open(&path).unwrap();
+    let version: i64 = conn
+        .query_row("PRAGMA user_version", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(version, 2);
+    let events = restore(&conn, "repo-legacy", "agent-legacy", "searchable", 10).unwrap();
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].event_id, "evt-legacy");
+    let fts_hits: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM session_events_fts WHERE session_events_fts MATCH 'searchable'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(fts_hits, 1, "migration should rebuild FTS exactly once");
 }
 
 #[test]
@@ -321,29 +365,75 @@ fn test_concurrent_capture_persists_exact_count() {
 }
 
 #[test]
-fn test_open_rejects_old_flat_session_event_schema() {
+fn test_open_migrates_old_flat_session_event_schema_once() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("old-flat.db");
 
     {
         let conn = rusqlite::Connection::open(&path).unwrap();
         conn.execute_batch(
-            "CREATE TABLE session_events (
+            "CREATE TABLE sessions (
+                agent_id TEXT NOT NULL,
+                snapshot_id TEXT NOT NULL,
+                repo_hash TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                status TEXT NOT NULL,
+                content_json TEXT NOT NULL
+            );
+            INSERT INTO sessions(agent_id, snapshot_id, repo_hash, created_at, status, content_json)
+            VALUES('agent-infer-repo', 'snap-infer-repo', 'repo-inferred', '2026-06-19T10:00:00.000Z', 'complete', '{}');
+            CREATE TABLE session_events (
                 session_id TEXT NOT NULL,
                 event_id TEXT NOT NULL,
-                repo_hash TEXT NOT NULL,
                 ts TEXT NOT NULL,
                 tool_name TEXT NOT NULL,
                 content TEXT NOT NULL
             );",
         )
         .unwrap();
+        conn.execute(
+            "INSERT INTO session_events(session_id, event_id, ts, tool_name, content)
+             VALUES(?1, ?2, ?3, ?4, ?5)",
+            rusqlite::params![
+                "agent-infer-repo",
+                "evt-infer-repo",
+                "2026-06-19T10:01:02.000Z",
+                "Bash",
+                "repo hash inferred legacy text"
+            ],
+        )
+        .unwrap();
     }
 
-    let err = open(&path).unwrap_err().to_string();
+    let conn = open(&path).unwrap();
+    drop(conn);
+    let conn = open(&path).unwrap();
+    let row: (String, String, i64, String, i64, String) = conn
+        .query_row(
+            "SELECT repo_hash, event_type, priority, metadata_json, ts, content FROM session_events WHERE event_id = 'evt-infer-repo'",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?)),
+        )
+        .unwrap();
+    assert_eq!(row.0, "repo-inferred");
+    assert_eq!(row.1, "tool_command");
+    assert_eq!(row.2, 50);
+    assert_eq!(row.3, "{}");
     assert!(
-        err.contains("hard cut requires a fresh typed event schema"),
-        "unexpected error: {err}"
+        row.4 > 0,
+        "text timestamp should be normalized to epoch seconds"
+    );
+    assert_eq!(row.5, "repo hash inferred legacy text");
+    let fts_hits: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM session_events_fts WHERE session_events_fts MATCH 'inferred'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(
+        fts_hits, 1,
+        "second open should not duplicate migrated FTS rows"
     );
 }
 

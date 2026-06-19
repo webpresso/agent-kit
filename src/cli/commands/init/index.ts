@@ -184,7 +184,7 @@ function resolveIntegrationConfig(
       enabled: true,
       ...((entry === 'omx' || entry === 'omc') && flags.project === true
         ? { scope: 'project' as const }
-        : (entry === 'omx' || entry === 'omc')
+        : entry === 'omx' || entry === 'omc'
           ? { scope: 'user' as const }
           : {}),
     }
@@ -1144,9 +1144,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
 
     let gstackFailure: 'clone-failed' | 'pull-failed' | 'setup-failed' | null = null
     if (process.env.WP_SKIP_GSTACK === '1') {
-      console.warn(
-        '  gstack: ⚠ WP_SKIP_GSTACK=1 — skipping optional gstack integration.',
-      )
+      console.warn('  gstack: ⚠ WP_SKIP_GSTACK=1 — skipping optional gstack integration.')
     } else if (isCiEnvironment && presets.includes('gstack')) {
       console.log('  gstack: - skipped (CI environment)')
     } else if (presets.includes('gstack')) {
@@ -1503,7 +1501,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
           '',
           '  Next: wp hooks doctor',
           '        Then ask Claude or Codex to run `wp_audit(kind="docs-frontmatter")`.',
-          '        wp gain          # token savings after your first session',
+          '        wp gain          # gain metadata after your first session',
         ].join('\n'),
       )
     }
@@ -1540,8 +1538,7 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
     `Legacy compatibility presets (omx, omc, gstack) are intentionally omitted; ` +
     `install those tools with their native installers instead. ` +
     `Opt-in skills are listed by 'wp skill list'.`
-  const withoutHelp =
-    `Comma-separated opt-in skills and/or presets to opt out of for this run.`
+  const withoutHelp = `Comma-separated opt-in skills and/or presets to opt out of for this run.`
 
   cli
     .command(commandName, description)

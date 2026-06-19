@@ -138,6 +138,77 @@ fn test_open_migrates_legacy_session_memory_chunks() {
         !hits.is_empty(),
         "legacy chunks should remain searchable after native open"
     );
+
+    let marker_count: i64 = store
+        .conn
+        .query_row(
+            "SELECT COUNT(*) FROM session_memory_migrations
+              WHERE name = 'legacy-session-memory-chunks-to-native-fts'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(
+        marker_count, 1,
+        "legacy chunk migration should be marked once"
+    );
+}
+
+#[test]
+fn test_legacy_chunk_migration_marker_prevents_repeated_open_work() {
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("current-chunks.db");
+
+    {
+        let mut store = Store::open(&path).unwrap();
+        store
+            .index("current-source", &["current mirror text".to_string()])
+            .unwrap();
+    }
+
+    {
+        let store = Store::open(&path).unwrap();
+        let marker_count: i64 = store
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM session_memory_migrations
+                  WHERE name = 'legacy-session-memory-chunks-to-native-fts'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(
+            marker_count, 1,
+            "current schema opens should record the one-time migration marker"
+        );
+    }
+
+    let store = Store::open(&path).unwrap();
+    let marker_count: i64 = store
+        .conn
+        .query_row(
+            "SELECT COUNT(*) FROM session_memory_migrations
+              WHERE name = 'legacy-session-memory-chunks-to-native-fts'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    let legacy_source_count: i64 = store
+        .conn
+        .query_row(
+            "SELECT COUNT(*) FROM sources WHERE label = 'current-source'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(
+        marker_count, 1,
+        "marker should stay idempotent across opens"
+    );
+    assert_eq!(
+        legacy_source_count, 1,
+        "reopen should not remigrate the live mirror table into legacy sources"
+    );
 }
 
 #[test]

@@ -1,14 +1,16 @@
 ---
 title: Session-memory benchmark methodology
 type: guide
-last_updated: 2026-06-15
+last_updated: 2026-06-19
 ---
 
 # Session-memory benchmark methodology
 
-This guide explains how `wp bench session-memory` turns the May 14, 2026
-research into a reproducible local benchmark surface for plugin authors and
-agent-kit maintainers.
+This guide explains how `wp bench session-memory` produces reproducible local
+benchmark evidence for plugin authors and agent-kit maintainers. The current
+public claim boundary is intentionally conservative: checked-in dry-run and unit
+gates prove the harness shape; public numeric savings, speedup, cost, recall, or
+latency claims require a measured report plus a valid result card.
 
 ## Research basis
 
@@ -17,12 +19,16 @@ assets under `scripts/bench/`.
 
 The research basis established three constraints that the harness keeps intact:
 
-1. **Two-turn `--print` runs do not measure session-memory value.** The useful
-   signal appears only after long sessions and compaction pressure.
+1. **Short prompts are not enough for session-memory value claims.** Useful
+   session-memory evidence needs long scenarios, explicit qrels, and compaction
+   or resumability pressure.
 2. **Reproducibility is non-negotiable.** Pinned manifests, deterministic
-   fixtures, and recorded transcripts are required for any credible result.
-3. **Agentic recall beats chatbot-style full-context stuffing.** The harness is
-   designed around multi-turn tool-using scenarios rather than short QA prompts.
+   fixtures, recorded transcripts, and checked-in result cards are required for
+   any public numeric claim.
+3. **Byte-budget proxy metrics are not provider-token savings.** `gainBytes` and
+   `approxTokensSaved` are deterministic UTF-8 accounting only. Provider token,
+   dollar, recall, latency, and native-speed claims require separate measured
+   evidence.
 
 ## Deterministic-by-construction properties
 
@@ -41,16 +47,16 @@ benchmark claims remain reproducible by another operator.
 
 ## Scenario design
 
-The benchmark does not use tiny prompts. Instead it uses versioned scenarios in
-`scripts/bench/scenarios/` with these constraints:
+The scenario fixtures live in `scripts/bench/scenarios/` and are schema-gated.
+They must document worst-case token counts, qrels, expected tool calls, and the
+session turns needed by the benchmark harness. A scenario file by itself is not a
+result: public claims require a measured run artifact and a result card.
 
-- each scenario documents a worst-case token count above `200000`
-- each scenario includes qrels for recall scoring
-- scenarios are written to force the baseline path into compaction territory
-- one scenario explicitly spans multiple sessions to test resumability
-
-This aligns the harness with the research conclusion that session memory should
-be measured across long-running, compaction-aware workflows.
+Current `wp bench session-memory` live cells are provider `--print` executions
+against selected variants. Treat those cells as reproducible provider-runner
+measurements, not as automatic proof of multi-session compaction benefit. A
+future compaction-specific claim must add a replay/compaction producer and a
+result-card metric row for that producer.
 
 ## Operational flow
 
@@ -58,10 +64,24 @@ be measured across long-running, compaction-aware workflows.
 2. Run `wp bench session-memory --dry-run` to validate manifest, scenarios, and
    workspace configuration without making API calls.
 3. Run a one-cell smoke before any full matrix execution.
-4. Inspect `scripts/bench/runs/<run-id>/report.md` for cost, recall, and wall
-   time summaries.
+4. Inspect `scripts/bench/runs/<run-id>/report.md` for cost, token, recall,
+   provider-duration, local-wall-time, and threshold summaries.
 5. Before publishing any numeric claim, check in a result card that follows
    [`result-card-contract.md`](./result-card-contract.md).
+
+## Measurement fields
+
+Measured report rows include:
+
+- provider usage categories: input, output, cache-write, cache-read, and total
+  tokens
+- per-cell USD cost total plus per-sample mean and standard deviation
+- provider-reported duration mean/std and local monotonic wall-clock mean/std
+- recall@5 from qrels
+- threshold status rows for hook latency and search quality
+
+`wall_sec` is derived from local monotonic wall time. It is still end-to-end cell
+duration and must not be reused as hook latency evidence.
 
 ## Regression thresholds
 
@@ -99,9 +119,10 @@ hook latency evidence:
 | `startup_resume_injection_latency_ms` | separately instrumented observed average is at or below `750`, otherwise `not-instrumented` |
 | `search_quality_recall_at_5` | observed recall@5 is at or above `0.8` |
 
-A replacement parity claim should cite focused hook/audit proof plus the live `report.md`, pinned manifest
-hash, workspace mode, scenario id, variant set, trial count, threshold rows, and
-checked-in result card used for the reference parity decision.
+A replacement parity claim should cite focused hook/audit proof plus the live
+`report.md`, pinned manifest hash, workspace mode, scenario id, variant set,
+trial count, threshold rows, and checked-in result card used for the reference
+parity decision.
 
 ## Why the workspace contract matters
 
@@ -112,6 +133,45 @@ workspace cache state. The harness therefore distinguishes:
 - `single-workspace` mode for directional-only cache-sensitive comparisons
 
 That is a methodological safeguard, not just an operator convenience.
+
+## Canonical Measurement Artifact: report.json
+
+`report.json` is the single source of truth (SSOT) for every benchmark run.
+Its schema includes:
+
+| Field | Role |
+| --- | --- |
+| `runId` | Per-run unique identifier: git commit SHA + dirty flag + ISO timestamp. Changes on every run, even for identical code. |
+| `manifestDigest` | Content-addressed digest of the pinned manifest. Used for deduplication: two runs with identical manifests and identical measured results share the same digest. |
+| `gitCommit` | Git commit SHA at time of the run. |
+| `gitDirty` | Boolean — `true` when the working tree had uncommitted changes at run time. A dirty run is directional evidence only, not public proof. |
+| `command` | Exact CLI command used to produce the run, including flags and workspace mode. |
+| `environment` | OS, Node.js version, Bun version, and relevant tool versions captured at run time. |
+| `redactionStatus` | Must be `'clean'` before the card can be used as public evidence. |
+| `metrics` | Array of metric rows, each with `class`, `name`, `threshold`, `observed`, and `status`. |
+
+`report.md` is generated from `report.json`. Do not edit `report.md` directly;
+it will be overwritten on the next run.
+
+### runId vs manifestDigest
+
+`runId` is per-run unique: it encodes `<gitCommit>[-dirty]-<timestamp>`, so
+every run produces a distinct `runId` even when the code has not changed.
+
+`manifestDigest` is content-addressed: it is derived from the locked manifest
+(`scripts/bench/manifest.lock.json`) and changes only when tool versions or
+plugin refs change. Two runs can share the same `manifestDigest` while having
+different `runId` values. The digest is used for caching and deduplication;
+the `runId` is used for provenance tracing.
+
+### Provenance fields
+
+`gitCommit` and `gitDirty` together establish the source state of the run.
+`command` records the exact invocation. `environment` records the runtime
+context. Together these four fields make a run reproducible: another operator
+with the same source state, command, and environment should be able to produce
+a matching result. When `gitDirty` is `true`, full reproducibility is not
+guaranteed — treat the run as directional evidence only.
 
 ## Related
 

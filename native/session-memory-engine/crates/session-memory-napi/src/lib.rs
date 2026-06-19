@@ -5,7 +5,8 @@
 //!
 //! ## Performance design
 //!
-//! Hot-path fns are sync — no tokio task spawn, no JS Promise overhead (~0.01ms FFI round-trip).
+//! Hot-path fns are sync — no tokio task spawn and no JS Promise scheduling overhead on the
+//! synchronous storage/search boundary.
 //!
 //! Connection caches (`STORE_CACHE`, `SESSION_CACHE`) use `thread_local!` storage so
 //! SQLite connections are never moved across threads (rusqlite `Connection: !Send`).
@@ -289,8 +290,16 @@ pub struct ExecuteResult {
     pub output_bytes: i64,
     /// Whether any content was indexed into FTS5.
     pub indexed: bool,
-    /// First output text, truncated to 500 chars.
+    /// TypeScript-compatible bounded summary.
     pub summary: String,
+    /// Whether streamed output exceeded the indexed byte cap.
+    pub truncated: bool,
+    /// Bytes captured into SQLite/FTS for search.
+    pub captured_bytes: i64,
+    /// Max bytes allowed to be captured into SQLite/FTS.
+    pub max_capture_bytes: i64,
+    /// Whether the process timed out.
+    pub timed_out: bool,
 }
 
 /// Run a shell command and index output into the FTS5 store.
@@ -325,5 +334,9 @@ pub async fn execute_sandboxed(
         output_bytes: result.output_bytes.min(9_007_199_254_740_991) as i64,
         indexed: result.indexed,
         summary: result.summary,
+        truncated: result.truncated,
+        captured_bytes: result.captured_bytes as i64,
+        max_capture_bytes: result.max_capture_bytes as i64,
+        timed_out: result.timed_out,
     })
 }
