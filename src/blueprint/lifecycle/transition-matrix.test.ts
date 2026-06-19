@@ -13,7 +13,7 @@ describe('transition-matrix', () => {
   })
 
   it('returns the legal targets for each lifecycle state', () => {
-    expect(getLegalLifecycleTargets('draft')).toStrictEqual(['planned', 'archived'])
+    expect(getLegalLifecycleTargets('draft')).toStrictEqual(['planned', 'completed', 'archived'])
     expect(getLegalLifecycleTargets('planned')).toStrictEqual([
       'in-progress',
       'completed',
@@ -26,9 +26,10 @@ describe('transition-matrix', () => {
 
   it('accepts only legal lifecycle transitions', () => {
     expect(isLegalLifecycleTransition('draft', 'planned')).toBe(true)
+    expect(isLegalLifecycleTransition('draft', 'completed')).toBe(true)
     expect(isLegalLifecycleTransition('completed', 'in-progress')).toBe(true)
     expect(isLegalLifecycleTransition('planned', 'completed')).toBe(true)
-    expect(isLegalLifecycleTransition('draft', 'completed')).toBe(false)
+    expect(isLegalLifecycleTransition('draft', 'in-progress')).toBe(false)
     expect(isLegalLifecycleTransition('archived', 'planned')).toBe(false)
   })
 })
