@@ -11,8 +11,11 @@ runs:
         set -euo pipefail
         eval "$(node ./scripts/resolve-webpresso-cli-versions.js)"
 
-        if [[ -n "${VITE_PLUS_VERSION}" ]]; then
-          npm install -g "vite-plus@${VITE_PLUS_VERSION}" "@webpresso/agent-kit@latest"
-        else
-          npm install -g "@webpresso/agent-kit@latest"
+        if ! command -v vp >/dev/null 2>&1; then
+          curl -fsSL https://vite.plus | bash
+          export PATH="$HOME/.vite-plus/bin:$PATH"
         fi
+        if [[ -n "${VITE_PLUS_VERSION}" ]]; then
+          vp install -g "vite-plus@${VITE_PLUS_VERSION}"
+        fi
+        vp install -g "@webpresso/agent-kit@latest"
