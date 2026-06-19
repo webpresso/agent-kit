@@ -1,10 +1,10 @@
 /**
  * Install-topology detection for the auto-update installer.
  *
- * Agent Kit is distributed as a published package installed by Vite+ (`vp`).
- * Auto-update intentionally has one supported consumer lane: refresh the global
- * Vite+ install with `vp install -g @webpresso/agent-kit`. Local dev/source
- * execution is explicit via `WP_FORCE_SOURCE=1` and is not an install topology.
+ * Agent Kit is distributed as a published package. Auto-update supports the
+ * historical Vite+ global lane and the npm global lane used by public install
+ * docs. Local dev/source execution is explicit via `WP_FORCE_SOURCE=1` and is
+ * not an install topology.
  */
 
 import { realpathSync } from 'node:fs'
@@ -16,8 +16,9 @@ import {
   type GlobalCapableVpCommandInput,
   resolveGlobalCapableVpCommand,
 } from '#cli/global-vp.js'
+import { getManagedRunner } from '#tool-runtime'
 
-export type InstallTopology = 'vp'
+export type InstallTopology = 'vp' | 'npm'
 
 export interface DetectSuccess {
   topology: InstallTopology
@@ -36,8 +37,9 @@ export const PUBLIC_NPM_REGISTRY = 'https://registry.npmjs.org'
 /**
  * Canonical global-install command for the public agent-kit.
  *
- * Vite+ is the supported package-manager surface for global Agent Kit
- * consumers. Do not reintroduce npm/pnpm/homebrew/local-bin variants here.
+ * Vite+ remains the historical global install surface. `wp` now bundles the
+ * Vite+ runner, so this command can be built from either a global `vp` or the
+ * managed package dependency.
  */
 export function buildVpGlobalInstallCommand(
   vpCommand: GlobalCapableVpCommandInput = 'vp',
@@ -45,10 +47,16 @@ export function buildVpGlobalInstallCommand(
   return appendGlobalCapableVpArgs(vpCommand, ['install', '-g', PUBLIC_PACKAGE_NAME])
 }
 
+export function buildNpmGlobalInstallCommand(npmCommand = 'npm'): [string, ...string[]] {
+  return [npmCommand, 'install', '-g', PUBLIC_PACKAGE_NAME]
+}
+
 function commandForTopology(
-  _topology: InstallTopology,
+  topology: InstallTopology,
   resolveVpCommand: () => GlobalCapableVpCommandInput | null,
+  resolveNpmCommand: () => string,
 ): string[] | null {
+  if (topology === 'npm') return buildNpmGlobalInstallCommand(resolveNpmCommand())
   const vpCommand = resolveVpCommand()
   return vpCommand === null ? null : buildVpGlobalInstallCommand(vpCommand)
 }
@@ -66,7 +74,8 @@ export function detect(
   env: NodeJS.ProcessEnv,
   argv0: string,
   resolveVpCommand: () => GlobalCapableVpCommandInput | null = () =>
-    resolveGlobalCapableVpCommand(env.PATH ?? ''),
+    resolveGlobalCapableVpCommand(env.PATH ?? '') ?? resolveBundledVpCommand(),
+  resolveNpmCommand: () => string = () => 'npm',
 ): DetectResult {
   if (env.WP_FORCE_SOURCE === '1') {
     return {
@@ -82,7 +91,7 @@ export function detect(
 
   if (isProjectLocalNodeModulesBin(realpath) || isProjectLocalNodeModulesBin(argv0)) {
     return {
-      abort: `${PUBLIC_PACKAGE_NAME} is running from a project-local node_modules tree (${realpath}); install the published package with \`vp install -g ${PUBLIC_PACKAGE_NAME}\` and run global \`wp\`.`,
+      abort: `${PUBLIC_PACKAGE_NAME} is running from a project-local node_modules tree (${realpath}); install the published package with \`npm install -g ${PUBLIC_PACKAGE_NAME}\` and run global \`wp\`.`,
     }
   }
 
@@ -90,9 +99,16 @@ export function detect(
   const fromUa = parseUserAgent(env.npm_config_user_agent ?? '')
 
   if (fromPath === 'vp' || fromUa === 'vp') {
-    const command = commandForTopology('vp', resolveVpCommand)
+    const command = commandForTopology('vp', resolveVpCommand, resolveNpmCommand)
     if (command === null) return { abort: globalVpUnavailableMessage() }
     return { topology: 'vp', command }
+  }
+
+  if (fromPath === 'npm' || fromUa === 'npm') {
+    return {
+      topology: 'npm',
+      command: commandForTopology('npm', resolveVpCommand, resolveNpmCommand) ?? [],
+    }
   }
 
   const shim = detectShim(realpath)
@@ -102,9 +118,9 @@ export function detect(
 }
 
 /**
- * Parse the `npm_config_user_agent` string. Only Vite+ (`vp`) is accepted as a
- * supported global-install topology. Other package managers may execute project
- * installs, but they do not own Agent Kit's global consumer install.
+ * Parse the `npm_config_user_agent` string for supported global install
+ * topologies. Other package managers may execute project installs, but they do
+ * not own Agent Kit's global consumer install.
  */
 export function parseUserAgent(userAgent: string): InstallTopology | null {
   const trimmed = userAgent.trim()
@@ -113,15 +129,19 @@ export function parseUserAgent(userAgent: string): InstallTopology | null {
   if (head === undefined) return null
   const slash = head.indexOf('/')
   const name = (slash === -1 ? head : head.slice(0, slash)).toLowerCase()
-  return name === 'vp' ? 'vp' : null
+  if (name === 'vp') return 'vp'
+  if (name === 'npm') return 'npm'
+  return null
 }
 
 /**
- * Look for the only supported global install store marker.
+ * Look for supported global install store markers.
  */
 export function matchStoreMarker(realpath: string): InstallTopology | null {
   const segments = splitPathSegments(realpath)
-  return segments.includes('.vite-plus') ? 'vp' : null
+  if (segments.includes('.vite-plus')) return 'vp'
+  if (isGlobalNodeModules(realpath)) return 'npm'
+  return null
 }
 
 /**
@@ -133,9 +153,6 @@ export function detectShim(realpath: string): string | null {
   if (segments.includes('.asdf')) return unsupportedManagerMessage('asdf', realpath)
   if (segments.includes('Cellar') || segments.includes('Homebrew')) {
     return unsupportedManagerMessage('Homebrew', realpath)
-  }
-  if (segments.includes('.npm-global') || isGlobalNodeModules(realpath)) {
-    return unsupportedManagerMessage('npm global', realpath)
   }
   if (segments.some((seg) => seg === '.pnpm' || seg === '.pnpm-store' || seg === 'pnpm-global')) {
     return unsupportedManagerMessage('pnpm global', realpath)
@@ -150,23 +167,34 @@ export function detectShim(realpath: string): string | null {
 }
 
 /**
- * Vite+ global installs are the only accepted consumer global topology.
+ * Supported consumer global topologies.
  * Exported for testability and for legacy callers that still ask the question.
  */
 export function confirmInstalledGlobally(realpath: string, _env: NodeJS.ProcessEnv): boolean {
-  return matchStoreMarker(realpath) === 'vp'
+  return matchStoreMarker(realpath) !== null
 }
 
 function unsupportedManagerMessage(manager: string, realpath: string): string {
-  return `${PUBLIC_PACKAGE_NAME} appears to be managed by ${manager} (${realpath}); reinstall with \`vp install -g ${PUBLIC_PACKAGE_NAME}\`. Source development uses WP_FORCE_SOURCE=1 from an agent-kit checkout.`
+  return `${PUBLIC_PACKAGE_NAME} appears to be managed by ${manager} (${realpath}); reinstall with \`npm install -g ${PUBLIC_PACKAGE_NAME}\`. Source development uses WP_FORCE_SOURCE=1 from an agent-kit checkout.`
 }
 
 function globalVpUnavailableMessage(): string {
-  return `Unable to resolve a global-capable vp executable on PATH for ${PUBLIC_PACKAGE_NAME}; auto-install disabled. Install Vite+ and ensure its user-global vp appears before project/runtime-local shims, then re-run.`
+  return `Unable to resolve the bundled Vite+ runner for ${PUBLIC_PACKAGE_NAME}; auto-install disabled. Reinstall ${PUBLIC_PACKAGE_NAME} without omitting dependencies, then re-run.`
 }
 
 function unableToDetectMessage(pathHint: string): string {
-  return `Unable to verify a Vite+ global install for ${PUBLIC_PACKAGE_NAME} at ${pathHint}; auto-install disabled. Install with \`vp install -g ${PUBLIC_PACKAGE_NAME}\` or use WP_FORCE_SOURCE=1 inside the agent-kit source repo.`
+  return `Unable to verify a supported global install for ${PUBLIC_PACKAGE_NAME} at ${pathHint}; auto-install disabled. Install with \`npm install -g ${PUBLIC_PACKAGE_NAME}\` or use WP_FORCE_SOURCE=1 inside the agent-kit source repo.`
+}
+
+export function resolveBundledVpCommand(): GlobalCapableVpCommandInput | null {
+  const resolution = getManagedRunner('vp', { outputPolicy: 'structured' })
+  if (resolution.source !== 'managed') return null
+  if (resolution.args.length === 0) return resolution.command
+  return {
+    command: resolution.command,
+    argsPrefix: resolution.args,
+    executable: resolution.args[0] ?? resolution.command,
+  }
 }
 
 function isProjectLocalNodeModulesBin(p: string): boolean {

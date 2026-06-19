@@ -7,9 +7,9 @@ last_updated: '2026-06-13'
 
 Start here:
 
-- First-time machine? Install Vite+ so `vp` is on PATH (`curl -fsSL https://viteplus.dev/install.sh | bash` on Linux/macOS; in CI use `voidzero-dev/setup-vp@v1`).
-- Install from the public npm registry with Node.js 24+ via vp:
-  `vp install -g @webpresso/agent-kit && wp setup`
+- Install from the public npm registry with Node.js 24+:
+  `npm install -g @webpresso/agent-kit && wp setup`
+- `wp` bundles the package/task facade it needs; a separate global `vp` install is not required.
 - [Getting started](./getting-started.md)
 - [Is webpresso for me?](./is-agent-kit-for-me.md)
 - [Add-ons](./add-ons.md)

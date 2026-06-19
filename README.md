@@ -30,10 +30,10 @@ plan, test, and keep a repo correct.
 
 Requires Node.js 24 or newer. No private registry setup is required.
 
-First-time machine? Install Vite+ so `vp` is on PATH first (`curl -fsSL https://viteplus.dev/install.sh | bash` on Linux/macOS; in CI use `voidzero-dev/setup-vp@v1`).
+Install the Webpresso CLI globally, then run setup from your repo root. `wp` bundles the package/task facade it needs, so a separate global `vp` install is not required.
 
 ```bash
-vp install -g @webpresso/agent-kit && wp setup
+npm install -g @webpresso/agent-kit && wp setup
 ```
 
 For repeatable consumer-repo setup, pin `@webpresso/agent-kit` in the repo

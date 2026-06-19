@@ -56,13 +56,13 @@ export interface PackageManagerCommandDeps {
 }
 
 const HELP_BY_VERB: Readonly<Record<PackageManagerVerb, string>> = {
-  install: 'Install dependencies through the managed vp facade.',
-  add: 'Add dependencies through the managed vp facade.',
-  remove: 'Remove dependencies through the managed vp facade.',
+  install: 'Install dependencies through the managed package/task facade.',
+  add: 'Add dependencies through the managed package/task facade.',
+  remove: 'Remove dependencies through the managed package/task facade.',
   update:
-    'Refresh wp and any optional OMX/OMC/gstack integrations previously installed by wp; use --deps for local dependency updates through the managed vp facade.',
-  exec: 'Run a binary through the managed vp facade.',
-  run: 'Run a package script through the managed vp facade.',
+    'Refresh wp and any optional OMX/OMC/gstack integrations previously installed by wp; use --deps for local dependency updates through the managed package/task facade.',
+  exec: 'Run a binary through the managed package/task facade.',
+  run: 'Run a package script through the managed package/task facade.',
 }
 
 const GSTACK_REPO = 'https://github.com/garrytan/gstack.git'
@@ -98,7 +98,7 @@ interface RequiredGlobalUpdateDeps {
 export function registerPackageManagerCommand(cli: CAC, verb: PackageManagerVerb): void {
   const command = cli.command(`${verb} [...args]`, HELP_BY_VERB[verb])
   if (verb === 'update') {
-    command.option('--deps', 'Update local dependencies through managed vp update.')
+    command.option('--deps', 'Update local dependencies through managed package/task update.')
     command.option('-g, --global', 'Compatibility alias for the default tooling refresh.')
   }
 
@@ -158,10 +158,12 @@ export function runPackageManagerCommand(
 function runGlobalUpdateCommand(deps: PackageManagerCommandDeps): number {
   const cwd = deps.cwd ?? process.cwd()
   const vpCommand =
-    deps.resolveVpCommand !== undefined ? deps.resolveVpCommand() : resolveGlobalCapableVpCommand()
+    deps.resolveVpCommand !== undefined
+      ? deps.resolveVpCommand()
+      : (resolveGlobalCapableVpCommand() ?? resolveBundledVpCommand())
   if (vpCommand === null) {
     return failUsage(
-      'wp update: no global-capable vp executable found on PATH; ensure the user-global Vite+ vp is installed and appears before project/runtime-local shims.',
+      'wp update: no bundled Vite+ runner found; reinstall @webpresso/agent-kit without omitting dependencies.',
     )
   }
 
@@ -197,6 +199,17 @@ function runGlobalUpdateCommand(deps: PackageManagerCommandDeps): number {
   }
 
   return failed ? 1 : 0
+}
+
+function resolveBundledVpCommand(): GlobalCapableVpCommandInput | null {
+  const resolution = getManagedRunner('vp', { outputPolicy: 'structured' })
+  if (resolution.source !== 'managed') return null
+  if (resolution.args.length === 0) return resolution.command
+  return {
+    command: resolution.command,
+    argsPrefix: resolution.args,
+    executable: resolution.args[0] ?? resolution.command,
+  }
 }
 
 function buildGlobalUpdateSteps(

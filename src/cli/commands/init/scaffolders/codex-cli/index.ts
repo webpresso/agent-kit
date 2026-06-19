@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
+import { resolveBundledVpCommand } from '#cli/auto-update/detect-pm.js'
 import { isPackageLifecycleEnvironment } from '#cli/auto-update/skip.js'
 import {
   appendGlobalCapableVpArgs,
@@ -22,7 +23,7 @@ export type EnsureCodexCliResult =
   | { kind: 'codex-cli-unavailable'; hint: string }
 
 const NOT_FOUND_HINT =
-  'codex is not on PATH after `vp install -g @openai/codex`. Install it manually and re-run.'
+  'codex is not on PATH after `wp install -g @openai/codex`. Install it manually and re-run.'
 
 function shouldSkipCodexRefresh(env: NodeJS.ProcessEnv = process.env): boolean {
   return env.WP_SKIP_UPDATE_CHECK === '1' || isPackageLifecycleEnvironment(env)
@@ -37,7 +38,7 @@ export function ensureCodexCli(input: EnsureCodexCliInput): EnsureCodexCliResult
   const vpCommand =
     input.resolveVpCommand !== undefined
       ? input.resolveVpCommand()
-      : resolveGlobalCapableVpCommand(env.PATH ?? '')
+      : (resolveGlobalCapableVpCommand(env.PATH ?? '') ?? resolveBundledVpCommand())
   let installed = false
 
   let probe = spawn('codex', ['--version'], { encoding: 'utf8' })
@@ -55,8 +56,8 @@ export function ensureCodexCli(input: EnsureCodexCliInput): EnsureCodexCliResult
   } else if (!shouldSkipCodexRefresh(env)) {
     // `--latest` ignores the recorded semver range so the global is pulled to
     // the absolute newest published release, matching the force-to-latest
-    // guarantee `vp install -g <bare>` gives the agent-kit self-update. Plain
-    // `vp update -g` is range-bound and can strand the global on an old major.
+    // guarantee the managed global install gives the agent-kit self-update. Plain
+    // managed `update -g` is range-bound and can strand the global on an old major.
     if (vpCommand !== null) {
       const updateCommand = appendGlobalCapableVpArgs(vpCommand, [
         'update',

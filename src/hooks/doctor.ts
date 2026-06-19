@@ -1682,7 +1682,7 @@ export async function printHooksDoctor(opts: RunHooksDoctorOptions = {}): Promis
     console.error('Repair hints:')
     console.error('  • Refresh local hook/plugin surfaces: `wp setup`')
     console.error(
-      '  • Consumers: run `vp install -g @webpresso/agent-kit && wp setup`; source checkout: enable `WP_FORCE_SOURCE=1` (direnv allow).',
+      '  • Consumers: run `npm install -g @webpresso/agent-kit && wp setup`; source checkout: enable `WP_FORCE_SOURCE=1` (direnv allow).',
     )
     console.error(
       '  • If install failed resolving @webpresso/agent-kit: make sure this repo uses the public npm registry, then rerun `vp install`',

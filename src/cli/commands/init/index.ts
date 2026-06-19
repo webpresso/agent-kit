@@ -579,7 +579,7 @@ async function runUserOnlySetup(input: {
     const agentKitGlobalResult = ensureAgentKitGlobal({ options })
     switch (agentKitGlobalResult.kind) {
       case 'agent-kit-global-updated':
-        console.log('  agent-kit global: ✓ refreshed via vp install -g')
+        console.log('  agent-kit global: ✓ refreshed global package')
         break
       case 'agent-kit-global-skipped-dry-run':
         console.log('  agent-kit global: skipped (--dry-run)')
@@ -1468,7 +1468,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
       const agentKitGlobalResult = ensureAgentKitGlobal({ options })
       switch (agentKitGlobalResult.kind) {
         case 'agent-kit-global-updated':
-          console.log('  agent-kit global: ✓ refreshed via vp install -g')
+          console.log('  agent-kit global: ✓ refreshed global package')
           break
         case 'agent-kit-global-skipped-up-to-date':
           console.log(

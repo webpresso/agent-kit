@@ -75,7 +75,7 @@ export type { MatcherSet } from './ir.js'
 // - pretool guard: fail-closed (explicit deny JSON) so policy cannot silently
 //   bypass when the guard binary is missing/non-executable.
 const PRETOOL_GUARD_BIN = 'wp-pretool-guard'
-const PRETOOL_GUARD_MISSING_DENY = `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with vp install -g @webpresso/agent-kit and re-run wp setup."}}'`
+const PRETOOL_GUARD_MISSING_DENY = `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with npm install -g @webpresso/agent-kit and re-run wp setup."}}'`
 const JSON_ONLY_HOOK_FALLBACK = `printf '%s\\n' '{}'`
 const CLAUDE_MANAGED_HOOK_SUBDIR = '.claude/hooks/managed'
 const CODEX_MANAGED_HOOK_SUBDIR = '.codex/managed-hooks'
@@ -209,7 +209,7 @@ function materializeClaudeSkillCommand(skillHook: SkillHook): string {
     const args = skillHook.command.slice(3)
     const stdoutPolicy = skillHook.event === 'Stop' ? ' >/dev/null' : ''
     const verb = args.split(/\s+/u)[0]?.replaceAll(/[^\w-]/gu, '') || 'hook'
-    return `if command -v wp >/dev/null 2>&1; then wp ${args}${stdoutPolicy}; else echo "webpresso: skill hook (wp ${verb}) skipped: global wp not found; install with vp install -g @webpresso/agent-kit and re-run wp setup" >&2; fi ${tag}`
+    return `if command -v wp >/dev/null 2>&1; then wp ${args}${stdoutPolicy}; else echo "webpresso: skill hook (wp ${verb}) skipped: global wp not found; install with npm install -g @webpresso/agent-kit and re-run wp setup" >&2; fi ${tag}`
   }
   return `${skillHook.command} ${tag}`
 }
@@ -918,7 +918,7 @@ export function resolveNodeBinaryForManagedHookLaunchers(): string {
 }
 
 function renderManagedWebpressoHookLauncher(repoRoot: string, binName: string): string {
-  const missingRuntimeWarning = `echo "webpresso hook ${binName} skipped: global wp not found; install with vp install -g @webpresso/agent-kit and re-run wp setup" >&2`
+  const missingRuntimeWarning = `echo "webpresso hook ${binName} skipped: global wp not found; install with npm install -g @webpresso/agent-kit and re-run wp setup" >&2`
   // Guard fails closed (explicit deny JSON); json-only hooks keep Codex stdout
   // parseable; every other hook warns on stderr instead of silently exiting — a
   // silently-disabled hook hid the broken node pin for weeks (2026-06 audit).

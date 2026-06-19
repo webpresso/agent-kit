@@ -9,6 +9,7 @@
 
 import type { ResolvedTarget } from './target-resolver.js'
 
+import { getManagedRunner } from '#tool-runtime'
 import { extractPackagePath } from './workspace-config.js'
 
 // =============================================================================
@@ -136,6 +137,15 @@ function appendVpRunOptions(args: string[], options: VpRunOptions): void {
   }
 }
 
+function buildVpCommand(args: string[], options: VpRunOptions): CommandConfig {
+  const resolution = getManagedRunner('vp')
+  return {
+    command: resolution.command,
+    args: [...resolution.args, ...args],
+    env: buildVpRunEnv(options),
+  }
+}
+
 function buildVpRunEnv(options: VpRunOptions): Record<string, string> | undefined {
   if (!options.concurrencyLimit) {
     return
@@ -164,11 +174,7 @@ export function buildTypecheckCommand(
   appendVpRunOptions(args, options)
   args.push('typecheck')
 
-  return {
-    command: 'vp',
-    args,
-    env: buildVpRunEnv(options),
-  }
+  return buildVpCommand(args, options)
 }
 
 /**
@@ -261,11 +267,7 @@ export function buildVpTestCommand(
     args.push(...extraArgs)
   }
 
-  return {
-    command: 'vp',
-    args,
-    env: buildVpRunEnv(options),
-  }
+  return buildVpCommand(args, options)
 }
 
 /**
@@ -373,11 +375,7 @@ export function buildCombinedVpCommand(
   appendVpRunOptions(args, options)
   args.push(task)
 
-  return {
-    command: 'vp',
-    args,
-    env: buildVpRunEnv(options),
-  }
+  return buildVpCommand(args, options)
 }
 
 // =============================================================================

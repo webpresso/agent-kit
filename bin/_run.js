@@ -194,6 +194,20 @@ function runtimeSourceRequiresSourceLaunch(sourceRootDir, builtRootDir) {
   return false
 }
 
+function wpSourceRequiresSourceLaunch(repoRoot) {
+  const sourceRoots = [
+    ['src', 'cli'],
+    ['src', 'tool-runtime'],
+  ]
+
+  return sourceRoots.some((segments) =>
+    runtimeSourceRequiresSourceLaunch(
+      join(repoRoot, ...segments),
+      join(repoRoot, 'dist', 'esm', ...segments.slice(1)),
+    ),
+  )
+}
+
 function buildRuntimeLaunchPlan({
   binName,
   repoRoot,
@@ -351,10 +365,7 @@ export function buildLaunchPlan({
     (!shouldPreferBuiltDist(binName) &&
       hasSource &&
       (binName === 'wp'
-        ? runtimeSourceRequiresSourceLaunch(
-            join(repoRoot, 'src', 'cli'),
-            join(repoRoot, 'dist', 'esm', 'cli'),
-          )
+        ? wpSourceRequiresSourceLaunch(repoRoot)
         : typeof sourceMtimeMs === 'number' && typeof resolvedBuiltMtimeMs === 'number'
           ? sourceMtimeMs > resolvedBuiltMtimeMs
           : hasBuilt && hasSource
