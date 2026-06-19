@@ -33,7 +33,7 @@ function createBenchToolFixtureBin(): string {
   )
   writeExecutable(
     join(tempDir, 'claude'),
-    '#!/usr/bin/env sh\nif [ "$1" = "--version" ]; then\n  echo "2.1.177 (Claude Code)"\n  exit 0\nfi\necho "unexpected claude invocation: $*" >&2\nexit 2\n',
+    '#!/usr/bin/env sh\nif [ "$1" = "--version" ]; then\n  echo "2.1.183 (Claude Code)"\n  exit 0\nfi\necho "unexpected claude invocation: $*" >&2\nexit 2\n',
   )
   writeExecutable(
     join(tempDir, 'git'),
@@ -101,7 +101,7 @@ describe('reference parity bench dry-run integration', () => {
     }
 
     expect(parsed.exitCode).toBe(0)
-    expect(parsed.runId).toMatch(/^[0-9a-f]{12}$/)
+    expect(parsed.runId).toMatch(/^[0-9a-f]{12}-[0-9a-z]+$/)
     expect(parsed.dryRun).toBe(true)
     expect(parsed.reportPath).toBeNull()
     expect(parsed.cellCount).toBe(3)

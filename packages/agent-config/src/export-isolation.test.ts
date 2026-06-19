@@ -71,7 +71,10 @@ describe('@webpresso/agent-config export isolation', () => {
       const lines = content.split('\n')
       for (const [i, line] of lines.entries()) {
         if (line.trim().startsWith('//') || line.trim().startsWith('*')) continue
-        if (line.includes("from '@webpresso/agent-kit'") || line.includes("'@webpresso/agent-kit/")) {
+        if (
+          line.includes("from '@webpresso/agent-kit'") ||
+          line.includes("'@webpresso/agent-kit/")
+        ) {
           violations.push(`${file}:${i + 1}: ${line.trim()}`)
         }
       }

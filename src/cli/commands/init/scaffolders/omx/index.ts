@@ -368,7 +368,9 @@ export function ensureOmx(input: EnsureOmxInput): EnsureOmxResult {
 
   const spawn = input.spawn ?? spawnSync
   const vpCommand =
-    input.resolveVpCommand !== undefined ? input.resolveVpCommand() : resolveGlobalCapableVpCommand()
+    input.resolveVpCommand !== undefined
+      ? input.resolveVpCommand()
+      : resolveGlobalCapableVpCommand()
   const configPath = input.configPath ?? defaultCodexConfigPath()
   const scope = input.scope ?? 'user'
   const previousScope = readPersistedOmxSetupScope(input.repoRoot)

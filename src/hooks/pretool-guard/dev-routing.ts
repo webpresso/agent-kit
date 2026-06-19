@@ -782,7 +782,6 @@ function isSessionSandboxTool(toolName: unknown): boolean {
   return /(?:^|[._-]|__)wp_session_(?:batch_)?execute$/u.test(toolName)
 }
 
-
 function toolNameFromInput(input: {
   tool_name?: string
   toolName?: string
@@ -814,7 +813,10 @@ function toolInputFromInput(input: {
   return input.tool_input ?? input.toolInput ?? input.input ?? input.arguments
 }
 
-function extractStringField(record: Record<string, unknown> | undefined, keys: readonly string[]): string | null {
+function extractStringField(
+  record: Record<string, unknown> | undefined,
+  keys: readonly string[],
+): string | null {
   if (!record) return null
   for (const key of keys) {
     const value = record[key]
@@ -829,7 +831,10 @@ function sessionSandboxDecision(tool: string, guidance: string): RouteDecision {
 
 const MAX_SAFE_GREP_HEAD_LIMIT = 100
 
-function numericField(record: Record<string, unknown> | undefined, keys: readonly string[]): number | null {
+function numericField(
+  record: Record<string, unknown> | undefined,
+  keys: readonly string[],
+): number | null {
   if (!record) return null
   for (const key of keys) {
     const value = record[key]

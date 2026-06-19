@@ -66,10 +66,15 @@ export function resolveChangelogPath(packageName: string, cwd = process.cwd()): 
 export function buildGithubReleaseNotes(options: BuildReleaseNotesOptions): string {
   const cwd = options.cwd ?? process.cwd()
   const changelogPath = resolveChangelogPath(options.packageName, cwd)
-  const section = extractChangesetVersionSection(readFileSync(changelogPath, 'utf8'), options.version)
+  const section = extractChangesetVersionSection(
+    readFileSync(changelogPath, 'utf8'),
+    options.version,
+  )
 
   if (section === null) {
-    throw new Error(`Could not find Changesets changelog section for ${options.packageName}@${options.version}`)
+    throw new Error(
+      `Could not find Changesets changelog section for ${options.packageName}@${options.version}`,
+    )
   }
 
   const lines = [

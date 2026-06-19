@@ -53,14 +53,19 @@ function seedArtifacts(root: string): void {
     'src/hooks/sessionstart/index.test.ts': 'SessionStart WP_ROUTING_BLOCK additionalContext',
     'src/mcp/server.integration.test.ts': 'tools/list wp_session_execute wp_session_search',
     'src/session-memory/store.test.ts': 'SessionMemoryStore searchUnified restore context',
-    'src/hooks/shared/routing-block.test.ts': '<wp_session_context> wp_session_batch_execute wp_session_execute_file',
-    'src/hooks/pretool-guard/dev-routing.test.ts': 'routeToolInputToSessionMemory wp_session_batch_execute routeCommand',
+    'src/hooks/shared/routing-block.test.ts':
+      '<wp_session_context> wp_session_batch_execute wp_session_execute_file',
+    'src/hooks/pretool-guard/dev-routing.test.ts':
+      'routeToolInputToSessionMemory wp_session_batch_execute routeCommand',
     'src/hooks/post-tool/lint-after-edit.test.ts': 'PostToolUse capturePostToolUse byte-caps',
-    'src/mcp/tools/_registry.test.ts': 'COMPILED_TOOL_REGISTRY wp_session_batch_execute wp_session_doctor',
+    'src/mcp/tools/_registry.test.ts':
+      'COMPILED_TOOL_REGISTRY wp_session_batch_execute wp_session_doctor',
     'src/hooks/doctor.test.ts': 'runHooksDoctor wp-pretool-guard restore',
-    'src/__integration__/reference-parity-host-smoke.integration.test.ts': 'referenceParityHostSmokeFixtures collectContinuityLifecycleProofs degraded',
+    'src/__integration__/reference-parity-host-smoke.integration.test.ts':
+      'referenceParityHostSmokeFixtures collectContinuityLifecycleProofs degraded',
     'src/cli/commands/init/host-smoke.e2e.test.ts': 'host smoke placeholder',
-    'src/cli/commands/bench/session-memory.test.ts': 'buildSessionMemoryThresholdReport search_quality_recall_at_5 dry-run',
+    'src/cli/commands/bench/session-memory.test.ts':
+      'buildSessionMemoryThresholdReport search_quality_recall_at_5 dry-run',
     'docs/bench/session-memory-methodology.md': 'live measured benchmark methodology',
     'src/audit/reference-parity-claims.test.ts': 'reference-parity-matrix reference-parity release',
   }
@@ -100,18 +105,40 @@ function row(
 
 function passingRows(): string[] {
   return [
-    row('lifecycle capture', 'src/session-memory/session.test.ts', { hostScope: 'session memory store' }),
-    row('resume injection', 'src/hooks/sessionstart/index.test.ts', { hostScope: 'Claude SessionStart and instruction surfaces' }),
+    row('lifecycle capture', 'src/session-memory/session.test.ts', {
+      hostScope: 'session memory store',
+    }),
+    row('resume injection', 'src/hooks/sessionstart/index.test.ts', {
+      hostScope: 'Claude SessionStart and instruction surfaces',
+    }),
     row('tool discovery', 'src/mcp/server.integration.test.ts', { hostScope: 'MCP session tools' }),
-    row('indexed search', 'src/session-memory/store.test.ts', { hostScope: 'session memory store' }),
-    row('routing injection', 'src/hooks/shared/routing-block.test.ts', { hostScope: 'Claude SessionStart and generated instruction surfaces' }),
-    row('pretool session redirect', 'src/hooks/pretool-guard/dev-routing.test.ts', { hostScope: 'Claude PreToolUse' }),
-    row('posttool broad capture', 'src/hooks/post-tool/lint-after-edit.test.ts', { hostScope: 'PostToolUse metadata capture' }),
-    row('registry/routing consistency', 'src/mcp/tools/_registry.test.ts', { hostScope: 'MCP registry plus routing source' }),
-    row('repair path evidence', 'src/hooks/doctor.test.ts', { hostScope: 'hook doctor repair path' }),
-    row('host setup smoke', 'src/__integration__/reference-parity-host-smoke.integration.test.ts', { hostScope: 'Claude' }),
-    row('benchmark thresholds', 'src/cli/commands/bench/session-memory.test.ts', { hostScope: 'continuity and search benchmarks' }),
-    row('release claim gating', 'src/audit/reference-parity-claims.test.ts', { hostScope: 'public docs and release audits' }),
+    row('indexed search', 'src/session-memory/store.test.ts', {
+      hostScope: 'session memory store',
+    }),
+    row('routing injection', 'src/hooks/shared/routing-block.test.ts', {
+      hostScope: 'Claude SessionStart and generated instruction surfaces',
+    }),
+    row('pretool session redirect', 'src/hooks/pretool-guard/dev-routing.test.ts', {
+      hostScope: 'Claude PreToolUse',
+    }),
+    row('posttool broad capture', 'src/hooks/post-tool/lint-after-edit.test.ts', {
+      hostScope: 'PostToolUse metadata capture',
+    }),
+    row('registry/routing consistency', 'src/mcp/tools/_registry.test.ts', {
+      hostScope: 'MCP registry plus routing source',
+    }),
+    row('repair path evidence', 'src/hooks/doctor.test.ts', {
+      hostScope: 'hook doctor repair path',
+    }),
+    row('host setup smoke', 'src/__integration__/reference-parity-host-smoke.integration.test.ts', {
+      hostScope: 'Claude',
+    }),
+    row('benchmark thresholds', 'src/cli/commands/bench/session-memory.test.ts', {
+      hostScope: 'continuity and search benchmarks',
+    }),
+    row('release claim gating', 'src/audit/reference-parity-claims.test.ts', {
+      hostScope: 'public docs and release audits',
+    }),
   ]
 }
 
@@ -123,7 +150,19 @@ describe('auditReferenceParityMatrix', () => {
   it('fails closed when full rows exceed the canonical host capability crosswalk', () => {
     const root = tempRoot()
     seedArtifacts(root)
-    write(root, 'docs/bench/reference-parity-matrix.md', matrix(passingRows().map((r) => r.startsWith('| lifecycle capture |') ? row('lifecycle capture', 'src/session-memory/session.test.ts', { hostScope: 'Claude, Codex, Cursor, OpenCode' }) : r)))
+    write(
+      root,
+      'docs/bench/reference-parity-matrix.md',
+      matrix(
+        passingRows().map((r) =>
+          r.startsWith('| lifecycle capture |')
+            ? row('lifecycle capture', 'src/session-memory/session.test.ts', {
+                hostScope: 'Claude, Codex, Cursor, OpenCode',
+              })
+            : r,
+        ),
+      ),
+    )
 
     const result = auditReferenceParityMatrix(root)
 
@@ -191,7 +230,21 @@ describe('auditReferenceParityMatrix', () => {
     write(
       root,
       'docs/bench/reference-parity-matrix.md',
-      matrix(passingRows().map((r) => r.startsWith('| lifecycle capture |') ? row('lifecycle capture', 'src/session-memory/session.test.ts', { status: 'open', hostScope: 'session memory store' }) : r.startsWith('| resume injection |') ? row('resume injection', 'src/hooks/sessionstart/index.test.ts', { support: 'degraded', hostScope: 'Claude SessionStart and instruction surfaces' }) : r)),
+      matrix(
+        passingRows().map((r) =>
+          r.startsWith('| lifecycle capture |')
+            ? row('lifecycle capture', 'src/session-memory/session.test.ts', {
+                status: 'open',
+                hostScope: 'session memory store',
+              })
+            : r.startsWith('| resume injection |')
+              ? row('resume injection', 'src/hooks/sessionstart/index.test.ts', {
+                  support: 'degraded',
+                  hostScope: 'Claude SessionStart and instruction surfaces',
+                })
+              : r,
+        ),
+      ),
     )
 
     const result = auditReferenceParityMatrix(root)
@@ -206,7 +259,21 @@ describe('auditReferenceParityMatrix', () => {
     write(
       root,
       'docs/bench/reference-parity-matrix.md',
-      matrix(passingRows().map((r) => r.startsWith('| lifecycle capture |') ? row('lifecycle capture', 'src/session-memory/session.test.ts', { status: 'open', hostScope: 'session memory store' }) : r.startsWith('| resume injection |') ? row('resume injection', 'src/hooks/sessionstart/index.test.ts', { support: 'degraded', hostScope: 'Claude SessionStart and instruction surfaces' }) : r)),
+      matrix(
+        passingRows().map((r) =>
+          r.startsWith('| lifecycle capture |')
+            ? row('lifecycle capture', 'src/session-memory/session.test.ts', {
+                status: 'open',
+                hostScope: 'session memory store',
+              })
+            : r.startsWith('| resume injection |')
+              ? row('resume injection', 'src/hooks/sessionstart/index.test.ts', {
+                  support: 'degraded',
+                  hostScope: 'Claude SessionStart and instruction surfaces',
+                })
+              : r,
+        ),
+      ),
     )
 
     const result = auditReferenceParityMatrix(root, undefined, { requireReleaseReady: true })

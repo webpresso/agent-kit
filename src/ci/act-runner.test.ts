@@ -79,8 +79,6 @@ describe('public ci act runner contract', () => {
     expect(command.args.slice(0, 4)).toEqual(['--runtime-profile', 'secrets-only', '--', 'act'])
   })
 
-
-
   it('keeps provider environment selectors separate from runtime profiles', () => {
     const command = buildPublicCiActCommand({
       cwd: '/repo',

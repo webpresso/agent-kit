@@ -11,7 +11,9 @@ import type { SearchHit } from '#session-memory/types'
 const MAX_CONCURRENCY = 8
 const DEFAULT_TIMEOUT_MS = 30_000
 
-export function totalOutputBytes(results: ReadonlyArray<{ readonly outputBytes?: number }>): number {
+export function totalOutputBytes(
+  results: ReadonlyArray<{ readonly outputBytes?: number }>,
+): number {
   return results.reduce(
     (sum, result) =>
       sum + (Number.isFinite(result.outputBytes) ? Math.trunc(result.outputBytes ?? 0) : 0),
@@ -73,6 +75,13 @@ const outputSchema = createSummaryOutputSchema({
         outputBytes: z.number(),
         indexed: z.boolean(),
         summary: z.string(),
+        backend: z.enum(['native', 'typescript']),
+        fallbackReason: z.string().optional(),
+        truncated: z.boolean().optional(),
+        capturedBytes: z.number().optional(),
+        maxCaptureBytes: z.number().optional(),
+        timedOut: z.boolean().optional(),
+        signal: z.string().optional(),
       }),
     ),
     queryHits: z
@@ -94,7 +103,7 @@ const outputSchema = createSummaryOutputSchema({
 const tool: ToolDescriptor = {
   name: 'wp_session_batch_execute',
   description:
-    'Run multiple shell commands and index bounded outputs into the local session-memory store, then optionally search the indexed results.',
+    'Run multiple shell commands through session-memory execution, using the native backend when available and TypeScript fallback otherwise; optionally search indexed results.',
   inputSchema,
   outputSchema,
   annotations: {

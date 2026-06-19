@@ -148,7 +148,6 @@ describe('e2e execution helpers', () => {
     expect(result).toBe(groups)
   })
 
-
   it('uses the caller cwd as the execution cwd when a planned command has no cwd', async () => {
     const cwd = tempDir()
 

@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import { HOOK_EVENT_NAMES } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
-import { buildOpencodeHookPluginContent, OPENCODE_HOOK_SUPPORT_BOUNDARY } from '#cli/commands/init/scaffolders/agent-hooks/emitters/opencode.js'
+import {
+  buildOpencodeHookPluginContent,
+  OPENCODE_HOOK_SUPPORT_BOUNDARY,
+} from '#cli/commands/init/scaffolders/agent-hooks/emitters/opencode.js'
 
 describe('buildOpencodeHookPluginContent', () => {
   it('pins OpenCode as a degraded plugin-bridge host, not a first-class declarative host', () => {

@@ -1,0 +1,5 @@
+/target
+/dist
+*.node
+mutants.out/
+mutants.out.old/

@@ -57,7 +57,11 @@ interface PackageRecord {
   scripts?: Record<string, string>
 }
 
-const DEFAULT_ALLOWED_PUBLIC_PACKAGES = ['@webpresso/framework', '@webpresso/agent-kit', '@webpresso/agent-config']
+const DEFAULT_ALLOWED_PUBLIC_PACKAGES = [
+  '@webpresso/framework',
+  '@webpresso/agent-kit',
+  '@webpresso/agent-config',
+]
 
 const DEFAULT_COMPATIBILITY_PUBLIC_PACKAGES = [
   '@webpresso/codegen-core',

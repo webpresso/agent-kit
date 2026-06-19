@@ -54,7 +54,7 @@ export async function auditAgentCost(cwd: string): Promise<RepoAuditResult> {
         'Missing .claudeignore — Claude Code will traverse node_modules, dist, and build ' +
         'artifacts during autonomous exploration. Create .claudeignore (gitignore syntax) ' +
         'with node_modules/, .webpresso/, .wrangler/, packages/*/dist/ etc. ' +
-        'Typical savings: 30–40% fewer input tokens per session.',
+        'Measure local impact with wp gain before making numeric savings claims.',
     })
   }
 

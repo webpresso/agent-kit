@@ -47,6 +47,18 @@ describe('auditAgentCost', () => {
     expect(result.violations.some((v) => v.file === '.claudeignore')).toBe(true)
   })
 
+  it('does not publish numeric token-savings advice without first-party benchmark evidence', async () => {
+    setup({
+      '.claude/settings.json': JSON.stringify({ effortLevel: 'medium' }),
+    })
+    const result = await auditAgentCost(TMP)
+    const claudeIgnore = result.violations.find((v) => v.file === '.claudeignore')
+
+    expect(claudeIgnore?.message).toContain('Measure local impact with wp gain')
+    expect(claudeIgnore?.message).not.toMatch(/\d+\s*[–-]\s*\d+\s*%/u)
+    expect(claudeIgnore?.message).not.toContain('fewer input tokens per session')
+  })
+
   it('reports violation when effortLevel is missing from project settings', async () => {
     setup({
       '.claudeignore': 'node_modules/\n',
