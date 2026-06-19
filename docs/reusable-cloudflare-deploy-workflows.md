@@ -112,7 +112,7 @@ jobs:
       verify_command: pnpm run lint
       deploy_command: wp deploy --lane prd
     secrets:
-      ci_secret_provider_token: ${{ secrets.CI_SECRET_PROVIDER_TOKEN }}
+      ci_secret_provider_token: ${{ secrets.CI_SECRET_PROVIDER_TOKEN_PRODUCTION }}
 ```
 
 When the shared shell changes:
