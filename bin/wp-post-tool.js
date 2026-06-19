@@ -1,5 +1,5 @@
 #!/usr/bin/env node
 
-import { runNamedBin } from './_run.js'
+import { runManagedHook } from './_managed-hook.js'
 
-runNamedBin('wp', ['hook', 'post-tool', ...process.argv.slice(2)])
+runManagedHook('wp-post-tool', 'post-tool')

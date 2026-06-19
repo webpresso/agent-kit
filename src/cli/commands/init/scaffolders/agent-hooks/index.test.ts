@@ -1921,6 +1921,42 @@ hooks:
     expect(() => JSON.parse(result.stdout)).not.toThrow()
   })
 
+  it('managed hook wrappers degrade when the native runtime is absent instead of using the built JS lane', async () => {
+    const packageRoot = mkdtempSync(join(repoRoot, 'runtime-absent-package-'))
+    mkdirSync(join(packageRoot, 'bin'), { recursive: true })
+    mkdirSync(join(packageRoot, 'dist', 'esm', 'cli'), { recursive: true })
+    for (const fileName of ['_run.js', 'runtime-lanes.js', '_managed-hook.js', 'wp-stop-qa.js']) {
+      writeFileSync(
+        join(packageRoot, 'bin', fileName),
+        readFileSync(join(resolvePackageRootForHookLaunchers(), 'bin', fileName), 'utf8'),
+        'utf8',
+      )
+    }
+    writeFileSync(
+      join(packageRoot, 'package.json'),
+      JSON.stringify({ name: '@webpresso/agent-kit', type: 'module' }),
+      'utf8',
+    )
+    writeFileSync(join(packageRoot, '.node-version'), '0.0.0', 'utf8')
+    writeFileSync(
+      join(packageRoot, 'dist', 'esm', 'cli', 'cli.js'),
+      'throw new Error("built lane should not execute")\n',
+      'utf8',
+    )
+
+    const result = spawnSync(process.execPath, [join(packageRoot, 'bin', 'wp-stop-qa.js')], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: { ...process.env, PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+    })
+
+    expect(result.status, result.stderr).toBe(0)
+    expect(result.stdout).toBe('{}\n')
+    expect(result.stderr).toContain('native hook runtime unavailable')
+    expect(result.stderr).not.toContain('current Node is')
+    expect(result.stderr).not.toContain('built lane should not execute')
+  })
+
   it('managed Codex launchers preserve event-specific fallbacks when repo root cannot be entered', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
 

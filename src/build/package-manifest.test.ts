@@ -403,6 +403,7 @@ describe('createPackedManifest', () => {
       cliBins?: { internalHooks?: string[] }
     }
 
+    expect(packedPaths).toContain('bin/_managed-hook.js')
     for (const hookBin of contract.cliBins?.internalHooks ?? []) {
       expect(packedPaths).toContain(`bin/${hookBin}.js`)
       expect(packageJson.bin).not.toHaveProperty(hookBin)

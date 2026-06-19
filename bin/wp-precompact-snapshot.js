@@ -1,5 +1,5 @@
 #!/usr/bin/env node
 
-import { runNamedBin } from './_run.js'
+import { runManagedHook } from './_managed-hook.js'
 
-runNamedBin('wp', ['hook', 'precompact-snapshot', ...process.argv.slice(2)])
+runManagedHook('wp-precompact-snapshot', 'precompact-snapshot')

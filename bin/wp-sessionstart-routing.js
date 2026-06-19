@@ -1,5 +1,5 @@
 #!/usr/bin/env node
 
-import { runNamedBin } from './_run.js'
+import { runManagedHook } from './_managed-hook.js'
 
-runNamedBin('wp', ['hook', 'sessionstart-routing', ...process.argv.slice(2)])
+runManagedHook('wp-sessionstart-routing', 'sessionstart-routing')
