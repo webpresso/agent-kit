@@ -19,6 +19,7 @@ import {
   preparePackedManifest,
   restorePackedManifest,
 } from './package-manifest.js'
+import { WP_HOOK_BIN_NAMES } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
 
 const repoRoot = findRepoRoot(import.meta.dirname)
 
@@ -381,12 +382,30 @@ describe('createPackedManifest', () => {
     }
 
     expect(contract.cliBins?.internalHooks ?? []).toContain('wp-precompact-snapshot')
+    expect([...(contract.cliBins?.internalHooks ?? [])].sort()).toEqual(
+      [...WP_HOOK_BIN_NAMES].sort(),
+    )
     expect(contract.cliBins?.public ?? []).not.toContain('wp-precompact-snapshot')
     expect(Object.keys(packageJson.bin ?? {}).sort()).toEqual(
       [...(contract.cliBins?.public ?? [])].sort(),
     )
     for (const internalHook of contract.cliBins?.internalHooks ?? []) {
       expect(packageJson.bin).not.toHaveProperty(internalHook)
+    }
+  })
+
+  it('packs internal managed hook wrapper files without exposing them as public package bins', () => {
+    const packedPaths = getDryRunPackagePaths()
+    const packageJson = readJsonObject(join(repoRoot, 'package.json')) as {
+      bin?: Record<string, string>
+    }
+    const contract = JSON.parse(readFileSync(join(repoRoot, 'package-surface.json'), 'utf8')) as {
+      cliBins?: { internalHooks?: string[] }
+    }
+
+    for (const hookBin of contract.cliBins?.internalHooks ?? []) {
+      expect(packedPaths).toContain(`bin/${hookBin}.js`)
+      expect(packageJson.bin).not.toHaveProperty(hookBin)
     }
   })
 

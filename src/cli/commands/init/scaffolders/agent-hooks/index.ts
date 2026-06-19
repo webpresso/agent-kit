@@ -154,7 +154,9 @@ function extractAgentKitCodexBinName(command: string): string | null {
   if (ifGuardedBinMatch !== null) return ifGuardedBinMatch[3] ?? null
   const guardedManagedLauncherMatch = GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(command.trim())
   if (guardedManagedLauncherMatch !== null) return guardedManagedLauncherMatch[3] ?? null
-  const ifGuardedManagedLauncherMatch = IF_GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(command.trim())
+  const ifGuardedManagedLauncherMatch = IF_GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(
+    command.trim(),
+  )
   if (ifGuardedManagedLauncherMatch !== null) return ifGuardedManagedLauncherMatch[3] ?? null
   return null
 }
@@ -171,7 +173,9 @@ function extractClaudeBinName(command: string): string | null {
   if (ifGuardedBinMatch !== null) return ifGuardedBinMatch[2] ?? null
   const guardedManagedLauncherMatch = GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(command.trim())
   if (guardedManagedLauncherMatch !== null) return guardedManagedLauncherMatch[3] ?? null
-  const ifGuardedManagedLauncherMatch = IF_GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(command.trim())
+  const ifGuardedManagedLauncherMatch = IF_GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(
+    command.trim(),
+  )
   if (ifGuardedManagedLauncherMatch !== null) return ifGuardedManagedLauncherMatch[3] ?? null
   return null
 }
@@ -905,7 +909,7 @@ export function hookSubcommandFor(binName: string): string | undefined {
   return isHookName(sub) ? sub : undefined
 }
 
-function renderManagedWebpressoHookLauncher(_repoRoot: string, binName: string): string {
+function renderManagedWebpressoHookLauncher(repoRoot: string, binName: string): string {
   const missingRuntimeWarning = `echo "webpresso hook ${binName} skipped: global wp not found; install with vp install -g @webpresso/agent-kit and re-run wp setup" >&2`
   // Guard fails closed (explicit deny JSON); json-only hooks keep Codex stdout
   // parseable; every other hook warns on stderr instead of silently exiting — a
@@ -918,11 +922,15 @@ function renderManagedWebpressoHookLauncher(_repoRoot: string, binName: string):
       : missingRuntimeWarning
 
   const packageRoot = resolvePackageRootForHookLaunchers()
+  const repoRootPath = quoteShell(repoRoot)
   const hookBinPath = quoteShell(join(packageRoot, 'bin', `${binName}.js`))
+  const nodeBinary = quoteShell(process.execPath)
 
-  return `#!/bin/sh
-if [ -x ${hookBinPath} ]; then
-  exec ${hookBinPath} "$@"
+return `#!/bin/sh
+if [ -x ${nodeBinary} ] && [ -f ${hookBinPath} ]; then
+  if cd ${repoRootPath}; then
+    exec ${nodeBinary} ${hookBinPath} "$@"
+  fi
 fi
 
 ${missingFallback}

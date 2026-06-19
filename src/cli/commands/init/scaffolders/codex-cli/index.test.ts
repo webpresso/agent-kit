@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { ensureCodexCli } from './index.js'
 
+const GLOBAL_VP = '/global/bin/vp'
+
 function makeSpawn(behaviors: Array<{ status: number | null; error?: Error }>) {
   let i = 0
   return vi.fn(() => {
@@ -26,13 +28,19 @@ describe('ensureCodexCli', () => {
       options: { overwrite: false, dryRun: false },
       spawn,
       env: {},
+      resolveVpCommand: () => GLOBAL_VP,
     })
 
     expect(result).toEqual({ kind: 'codex-cli-ok', installed: false })
     expect(spawn).toHaveBeenNthCalledWith(1, 'codex', ['--version'], { encoding: 'utf8' })
-    expect(spawn).toHaveBeenNthCalledWith(2, 'vp', ['update', '-g', '--latest', '@openai/codex'], {
-      stdio: 'inherit',
-    })
+    expect(spawn).toHaveBeenNthCalledWith(
+      2,
+      GLOBAL_VP,
+      ['update', '-g', '--latest', '@openai/codex'],
+      {
+        stdio: 'inherit',
+      },
+    )
   })
 
   it('installs Codex through vp when missing', () => {
@@ -45,10 +53,11 @@ describe('ensureCodexCli', () => {
       options: { overwrite: false, dryRun: false },
       spawn,
       env: {},
+      resolveVpCommand: () => GLOBAL_VP,
     })
 
     expect(result).toEqual({ kind: 'codex-cli-ok', installed: true })
-    expect(spawn).toHaveBeenNthCalledWith(2, 'vp', ['install', '-g', '@openai/codex'], {
+    expect(spawn).toHaveBeenNthCalledWith(2, GLOBAL_VP, ['install', '-g', '@openai/codex'], {
       stdio: 'inherit',
     })
   })
@@ -87,6 +96,7 @@ describe('ensureCodexCli', () => {
       options: { overwrite: false, dryRun: false },
       spawn,
       env: {},
+      resolveVpCommand: () => GLOBAL_VP,
     })
 
     expect(result.kind).toBe('codex-cli-unavailable')
@@ -98,6 +108,7 @@ describe('ensureCodexCli', () => {
       options: { overwrite: false, dryRun: true },
       spawn,
       env: {},
+      resolveVpCommand: () => GLOBAL_VP,
     })
 
     expect(result).toEqual({ kind: 'codex-cli-skipped-dry-run' })

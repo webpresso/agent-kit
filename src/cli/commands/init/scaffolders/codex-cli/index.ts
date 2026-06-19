@@ -2,11 +2,17 @@ import { spawnSync } from 'node:child_process'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
 import { isPackageLifecycleEnvironment } from '#cli/auto-update/skip.js'
+import {
+  appendGlobalCapableVpArgs,
+  type GlobalCapableVpCommandInput,
+  resolveGlobalCapableVpCommand,
+} from '#cli/global-vp.js'
 
 export interface EnsureCodexCliInput {
   options: MergeOptions
   spawn?: typeof spawnSync
   env?: NodeJS.ProcessEnv
+  resolveVpCommand?: () => GlobalCapableVpCommandInput | null
 }
 
 export type EnsureCodexCliResult =
@@ -28,11 +34,17 @@ export function ensureCodexCli(input: EnsureCodexCliInput): EnsureCodexCliResult
   if (isPackageLifecycleEnvironment(env)) return { kind: 'codex-cli-skipped-package-lifecycle' }
 
   const spawn = input.spawn ?? spawnSync
+  const vpCommand =
+    input.resolveVpCommand !== undefined
+      ? input.resolveVpCommand()
+      : resolveGlobalCapableVpCommand(env.PATH ?? '')
   let installed = false
 
   let probe = spawn('codex', ['--version'], { encoding: 'utf8' })
   if (probe.error || (probe.status !== null && probe.status !== 0)) {
-    const install = spawn('vp', ['install', '-g', '@openai/codex'], { stdio: 'inherit' })
+    if (vpCommand === null) return { kind: 'codex-cli-unavailable', hint: NOT_FOUND_HINT }
+    const installCommand = appendGlobalCapableVpArgs(vpCommand, ['install', '-g', '@openai/codex'])
+    const install = spawn(installCommand[0], installCommand.slice(1), { stdio: 'inherit' })
     if (install.status !== 0) return { kind: 'codex-cli-unavailable', hint: NOT_FOUND_HINT }
 
     installed = true
@@ -45,7 +57,15 @@ export function ensureCodexCli(input: EnsureCodexCliInput): EnsureCodexCliResult
     // the absolute newest published release, matching the force-to-latest
     // guarantee `vp install -g <bare>` gives the agent-kit self-update. Plain
     // `vp update -g` is range-bound and can strand the global on an old major.
-    spawn('vp', ['update', '-g', '--latest', '@openai/codex'], { stdio: 'inherit' })
+    if (vpCommand !== null) {
+      const updateCommand = appendGlobalCapableVpArgs(vpCommand, [
+        'update',
+        '-g',
+        '--latest',
+        '@openai/codex',
+      ])
+      spawn(updateCommand[0], updateCommand.slice(1), { stdio: 'inherit' })
+    }
   }
 
   return { kind: 'codex-cli-ok', installed }

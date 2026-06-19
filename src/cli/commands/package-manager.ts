@@ -13,6 +13,11 @@ import {
   tryReadRepoKey,
   type ToolingOwnershipState,
 } from '#cli/tooling-ownership'
+import {
+  appendGlobalCapableVpArgs,
+  type GlobalCapableVpCommandInput,
+  resolveGlobalCapableVpCommand,
+} from '#cli/global-vp.js'
 import { getManagedRunner } from '#tool-runtime'
 
 export const PACKAGE_MANAGER_VERBS = ['install', 'add', 'remove', 'update', 'exec', 'run'] as const
@@ -41,6 +46,7 @@ export interface PackageManagerCommandDeps {
     args: readonly string[],
     options?: PackageManagerRunOptions,
   ) => SpawnSyncReturns<string>
+  readonly resolveVpCommand?: () => GlobalCapableVpCommandInput | null
 }
 
 const HELP_BY_VERB: Readonly<Record<PackageManagerVerb, string>> = {
@@ -72,6 +78,7 @@ interface RequiredGlobalUpdateDeps {
   readonly mkdir: typeof mkdirSync
   readonly ownershipState: ToolingOwnershipState
   readonly repoKey: string | null
+  readonly vpCommand: GlobalCapableVpCommandInput
   readonly run: (
     command: string,
     args: readonly string[],
@@ -141,12 +148,21 @@ export function runPackageManagerCommand(
 
 function runGlobalUpdateCommand(deps: PackageManagerCommandDeps): number {
   const cwd = deps.cwd ?? process.cwd()
+  const vpCommand =
+    deps.resolveVpCommand !== undefined ? deps.resolveVpCommand() : resolveGlobalCapableVpCommand()
+  if (vpCommand === null) {
+    return failUsage(
+      'wp update: no global-capable vp executable found on PATH; ensure the user-global Vite+ vp is installed and appears before project/runtime-local shims.',
+    )
+  }
+
   const globalDeps: RequiredGlobalUpdateDeps = {
     exists: deps.exists ?? existsSync,
     gstackRoot: deps.gstackRoot ?? defaultGstackRoot(),
     mkdir: deps.mkdir ?? mkdirSync,
     ownershipState: deps.ownershipState ?? readToolingOwnershipState(),
     repoKey: deps.repoKey ?? tryReadRepoKey(cwd),
+    vpCommand,
     run: deps.run ?? defaultRun,
   }
   const steps = buildGlobalUpdateSteps(globalDeps)
@@ -169,7 +185,7 @@ function runGlobalUpdateCommand(deps: PackageManagerCommandDeps): number {
 }
 
 function buildGlobalUpdateSteps(
-  deps: Pick<RequiredGlobalUpdateDeps, 'ownershipState' | 'repoKey'>,
+  deps: Pick<RequiredGlobalUpdateDeps, 'ownershipState' | 'repoKey' | 'vpCommand'>,
 ): readonly GlobalUpdateStep[] {
   const steps: GlobalUpdateStep[] = []
 
@@ -177,10 +193,11 @@ function buildGlobalUpdateSteps(
     isUserOwnedTool(deps.ownershipState, 'omx') ||
     isProjectOwnedTool(deps.ownershipState, 'omx', deps.repoKey)
   ) {
+    const command = appendGlobalCapableVpArgs(deps.vpCommand, ['update', '-g', 'oh-my-codex'])
     steps.push({
       id: 'omx',
-      command: 'vp',
-      args: ['update', '-g', 'oh-my-codex'],
+      command: command[0],
+      args: command.slice(1),
     })
   }
 
@@ -207,10 +224,15 @@ function buildGlobalUpdateSteps(
     })
   }
 
+  const command = appendGlobalCapableVpArgs(deps.vpCommand, [
+    'install',
+    '-g',
+    '@webpresso/agent-kit',
+  ])
   steps.push({
     id: 'wp',
-    command: 'vp',
-    args: ['install', '-g', '@webpresso/agent-kit'],
+    command: command[0],
+    args: command.slice(1),
   })
 
   return steps

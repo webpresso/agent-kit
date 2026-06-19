@@ -8,6 +8,8 @@ import { rootWpSelectorSource } from '../../../../../launcher/root-contract.js'
 
 import { ensureAgentKitGlobal } from './index.js'
 
+const GLOBAL_VP = '/global/bin/vp'
+
 type SpawnReturn = { status: number | null; error?: Error; stdout?: string }
 
 /**
@@ -23,7 +25,7 @@ function makeSpawn(responses: { probe?: SpawnReturn; install?: SpawnReturn } = {
   const calls: Array<{ cmd: string; args: readonly string[] }> = []
   const spawn = vi.fn((cmd: string, args: readonly string[]) => {
     calls.push({ cmd, args })
-    const isProbe = cmd === 'vp' && args[0] === '--version'
+    const isProbe = cmd === GLOBAL_VP && args[0] === '--version'
     if (isProbe) return responses.probe ?? { status: 0, stdout: '1.0.0' }
     return responses.install ?? { status: 0 }
   }) as unknown as ScaffolderSpawn
@@ -39,6 +41,7 @@ describe('ensureAgentKitGlobal', () => {
       options: { overwrite: false, dryRun: true },
       spawn,
       env: {},
+      resolveVpCommand: () => GLOBAL_VP,
       argv1: '/Users/me/.vite-plus/bin/wp',
     })
     expect(result).toStrictEqual({ kind: 'agent-kit-global-skipped-dry-run' })
@@ -81,17 +84,17 @@ describe('ensureAgentKitGlobal', () => {
     expect(calls).toStrictEqual([])
   })
 
-  it('skips when vp is not on PATH', () => {
-    const { spawn, calls } = makeSpawn({ probe: { status: null, error: new Error('ENOENT') } })
+  it('skips when no global-capable vp is on PATH', () => {
+    const { spawn, calls } = makeSpawn()
     const result = ensureAgentKitGlobal({
       options: WRITE_OPTIONS,
       spawn,
       env: {},
+      resolveVpCommand: () => null,
       argv1: '/Users/me/.vite-plus/bin/wp',
     })
     expect(result.kind).toBe('agent-kit-global-skipped-no-vp')
-    // Only the probe ran; no install attempted.
-    expect(calls).toStrictEqual([{ cmd: 'vp', args: ['--version'] }])
+    expect(calls).toStrictEqual([])
   })
 
   it('fails loudly when install succeeds but no package root can be resolved for launcher repair', () => {
@@ -100,17 +103,18 @@ describe('ensureAgentKitGlobal', () => {
       options: WRITE_OPTIONS,
       spawn,
       env: {},
+      resolveVpCommand: () => GLOBAL_VP,
       argv1: '/Users/me/.vite-plus/bin/wp',
       resolvePackageRootForStaging: () => null,
     })
     expect(result).toStrictEqual({
       kind: 'agent-kit-global-repair-failed',
       reason: 'could not resolve the owning @webpresso/agent-kit package root for launcher repair',
-      command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
+      command: [GLOBAL_VP, 'install', '-g', '@webpresso/agent-kit'],
     })
     expect(calls).toStrictEqual([
-      { cmd: 'vp', args: ['--version'] },
-      { cmd: 'vp', args: ['install', '-g', '@webpresso/agent-kit'] },
+      { cmd: GLOBAL_VP, args: ['--version'] },
+      { cmd: GLOBAL_VP, args: ['install', '-g', '@webpresso/agent-kit'] },
     ])
   })
 
@@ -131,13 +135,14 @@ describe('ensureAgentKitGlobal', () => {
         options: WRITE_OPTIONS,
         spawn,
         env: {},
+        resolveVpCommand: () => GLOBAL_VP,
         argv1: join(root, 'bin', 'wp'),
         packageRoot: root,
       })
 
       expect(result).toStrictEqual({
         kind: 'agent-kit-global-updated',
-        command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
+        command: [GLOBAL_VP, 'install', '-g', '@webpresso/agent-kit'],
         repairedLauncher: join(root, 'bin', 'wp'),
       })
       expect(existsSync(join(root, 'bin', 'wp'))).toBe(true)
@@ -164,13 +169,14 @@ describe('ensureAgentKitGlobal', () => {
         options: WRITE_OPTIONS,
         spawn,
         env: {},
+        resolveVpCommand: () => GLOBAL_VP,
         argv1: '/Users/me/.vite-plus/bin/wp',
         resolvePackageRootForStaging: () => root,
       })
 
       expect(result).toStrictEqual({
         kind: 'agent-kit-global-updated',
-        command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
+        command: [GLOBAL_VP, 'install', '-g', '@webpresso/agent-kit'],
         repairedLauncher: join(root, 'bin', 'wp'),
       })
       expect(readFileSync(join(root, 'bin', 'wp'), 'utf8')).toBe(rootWpSelectorSource)
@@ -195,6 +201,7 @@ describe('ensureAgentKitGlobal', () => {
         options: WRITE_OPTIONS,
         spawn,
         env: {},
+        resolveVpCommand: () => GLOBAL_VP,
         argv1: '/Users/me/.vite-plus/bin/wp',
         resolvePackageRootForStaging: () => root,
       })
@@ -202,7 +209,7 @@ describe('ensureAgentKitGlobal', () => {
       expect(result).toStrictEqual({
         kind: 'agent-kit-global-repair-failed',
         reason: expect.stringContaining('EISDIR'),
-        command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
+        command: [GLOBAL_VP, 'install', '-g', '@webpresso/agent-kit'],
       })
     } finally {
       rmSync(root, { force: true, recursive: true })
@@ -215,12 +222,13 @@ describe('ensureAgentKitGlobal', () => {
       options: WRITE_OPTIONS,
       spawn,
       env: {},
+      resolveVpCommand: () => GLOBAL_VP,
       argv1: '/Users/me/.vite-plus/bin/wp',
     })
     expect(result).toStrictEqual({
       kind: 'agent-kit-global-failed',
       exitCode: 1,
-      command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
+      command: [GLOBAL_VP, 'install', '-g', '@webpresso/agent-kit'],
     })
   })
 })

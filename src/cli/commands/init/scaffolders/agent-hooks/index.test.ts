@@ -82,6 +82,15 @@ function installFakeWebpressoBins(repoRoot: string): void {
   }
 }
 
+function initGitRepo(root: string): void {
+  const result = spawnSync('git', ['init'], {
+    cwd: root,
+    encoding: 'utf8',
+    stdio: 'pipe',
+  })
+  expect(result.status, result.stderr).toBe(0)
+}
+
 async function runShellCommand(
   command: string,
   options: {
@@ -105,7 +114,17 @@ async function runShellCommand(
       stderr += chunk.toString()
     })
     child.on('error', reject)
+    const timeout = setTimeout(() => {
+      child.kill('SIGTERM')
+      resolve({
+        status: null,
+        stdout,
+        stderr: `${stderr}\nTimed out waiting for hook command to exit.`,
+        command,
+      })
+    }, 5000)
     child.on('close', (status) => {
+      clearTimeout(timeout)
       resolve({ status, stdout, stderr, command })
     })
   })
@@ -293,7 +312,9 @@ describe('scaffoldAgentHooks', () => {
       readFileSync(join(repoRoot, '.claude', 'hooks', 'check-gstack.sh'), 'utf8'),
     ).toThrow()
 
-    const settings = JSON.parse(readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8')) as {
+    const settings = JSON.parse(
+      readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8'),
+    ) as {
       hooks: {
         SessionStart?: Array<{ hooks: Array<{ command: string }> }>
         PreToolUse?: Array<{ hooks: Array<{ command: string }> }>
@@ -915,10 +936,14 @@ describe('scaffoldAgentHooks', () => {
     }
 
     expect(
-      settings.hooks.PreToolUse.some((group) => group.matcher === 'Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*'),
+      settings.hooks.PreToolUse.some(
+        (group) => group.matcher === 'Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*',
+      ),
     ).toBe(true)
     expect(
-      settings.hooks.PostToolUse.some((group) => group.matcher === 'Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*'),
+      settings.hooks.PostToolUse.some(
+        (group) => group.matcher === 'Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*',
+      ),
     ).toBe(true)
     expect('PostToolBatch' in settings.hooks).toBe(false)
   })
@@ -1825,7 +1850,11 @@ hooks:
 
     const siblingCwd = mkdtempSync(join(repoRoot, 'codex-failing-pretool-'))
     const pretoolLauncher = join(repoRoot, '.codex', 'managed-hooks', 'wp-pretool-guard.sh')
-    writeFileSync(pretoolLauncher, '#!/bin/sh\nprintf "actual guard failure\\n" >&2\nexit 2\n', 'utf8')
+    writeFileSync(
+      pretoolLauncher,
+      '#!/bin/sh\nprintf "actual guard failure\\n" >&2\nexit 2\n',
+      'utf8',
+    )
     chmodSync(pretoolLauncher, 0o755)
 
     const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
@@ -1867,7 +1896,44 @@ hooks:
     expect(() => JSON.parse(result.stdout)).not.toThrow()
   })
 
+  it('managed Codex launchers preserve event-specific fallbacks when repo root cannot be entered', async () => {
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+
+    const missingRepoRoot = join(repoRoot, 'missing-repo-root')
+    const preToolLauncherPath = join(repoRoot, '.codex', 'managed-hooks', 'wp-pretool-guard.sh')
+    const stopLauncherPath = join(repoRoot, '.codex', 'managed-hooks', 'wp-stop-qa.sh')
+    for (const launcherPath of [preToolLauncherPath, stopLauncherPath]) {
+      writeFileSync(
+        launcherPath,
+        readFileSync(launcherPath, 'utf8').replace(quoteShell(repoRoot), quoteShell(missingRepoRoot)),
+        'utf8',
+      )
+    }
+
+    const preTool = spawnSync('sh', [preToolLauncherPath], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+    })
+    const stop = spawnSync('sh', [stopLauncherPath], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+    })
+
+    expect(preTool.status).toBe(0)
+    expect(JSON.parse(preTool.stdout)).toMatchObject({
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'deny',
+      },
+    })
+    expect(stop.status).toBe(0)
+    expect(stop.stdout).toBe('{}\n')
+  })
+
   it('keeps Codex hook commands executable from a sibling cwd instead of failing with 127', async () => {
+    initGitRepo(repoRoot)
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
 
     const binPath = join(
@@ -1899,6 +1965,7 @@ hooks:
   })
 
   it('keeps the Codex Stop hook executable from a sibling cwd instead of failing with 127', async () => {
+    initGitRepo(repoRoot)
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
 
     const binPath = join(
@@ -1929,6 +1996,7 @@ hooks:
   })
 
   it('executes every generated Claude hook command successfully from outside repo root', async () => {
+    initGitRepo(repoRoot)
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
     installFakeWebpressoBins(repoRoot)
 
@@ -1958,6 +2026,7 @@ hooks:
             PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
             HOME: process.env.HOME,
             CLAUDE_PROJECT_DIR: repoRoot,
+            WP_SKIP_UPDATE_CHECK: '1',
           },
         }),
       ),
@@ -1969,6 +2038,7 @@ hooks:
   })
 
   it('executes every generated Codex hook command successfully from a sibling cwd', async () => {
+    initGitRepo(repoRoot)
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
     installFakeWebpressoBins(repoRoot)
 
@@ -1992,7 +2062,7 @@ hooks:
       commands.map((command) =>
         runShellCommand(command, {
           cwd: siblingCwd,
-          env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+          env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin', WP_SKIP_UPDATE_CHECK: '1' },
         }),
       ),
     )
@@ -2129,7 +2199,17 @@ describe('plugin-native invariants — .claude/settings.json', () => {
       group.matcher ? group.matcher.split('|') : [],
     )
 
-    for (const term of ['Bash', 'Read', 'Grep', 'WebFetch', 'Agent', 'Write', 'Edit', 'MultiEdit', 'mcp__.*']) {
+    for (const term of [
+      'Bash',
+      'Read',
+      'Grep',
+      'WebFetch',
+      'Agent',
+      'Write',
+      'Edit',
+      'MultiEdit',
+      'mcp__.*',
+    ]) {
       expect(matchers).toContain(term)
     }
   })

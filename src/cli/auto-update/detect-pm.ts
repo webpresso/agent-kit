@@ -11,6 +11,11 @@ import { realpathSync } from 'node:fs'
 import { delimiter, sep } from 'node:path'
 
 import { getLegacyAgentCommandReplacement } from '#cli/bundle/agent-command-inventory.js'
+import {
+  appendGlobalCapableVpArgs,
+  type GlobalCapableVpCommandInput,
+  resolveGlobalCapableVpCommand,
+} from '#cli/global-vp.js'
 
 export type InstallTopology = 'vp'
 
@@ -34,14 +39,18 @@ export const PUBLIC_NPM_REGISTRY = 'https://registry.npmjs.org'
  * Vite+ is the supported package-manager surface for global Agent Kit
  * consumers. Do not reintroduce npm/pnpm/homebrew/local-bin variants here.
  */
-export function buildVpGlobalInstallCommand(): [string, ...string[]] {
-  return ['vp', 'install', '-g', PUBLIC_PACKAGE_NAME]
+export function buildVpGlobalInstallCommand(
+  vpCommand: GlobalCapableVpCommandInput = 'vp',
+): [string, ...string[]] {
+  return appendGlobalCapableVpArgs(vpCommand, ['install', '-g', PUBLIC_PACKAGE_NAME])
 }
 
-const VP_INSTALL_COMMAND = buildVpGlobalInstallCommand()
-
-function commandForTopology(_topology: InstallTopology): string[] {
-  return VP_INSTALL_COMMAND
+function commandForTopology(
+  _topology: InstallTopology,
+  resolveVpCommand: () => GlobalCapableVpCommandInput | null,
+): string[] | null {
+  const vpCommand = resolveVpCommand()
+  return vpCommand === null ? null : buildVpGlobalInstallCommand(vpCommand)
 }
 
 export function formatLegacyCommandReplacementMessage(legacyCommand: string): string | null {
@@ -53,7 +62,12 @@ export function formatLegacyCommandReplacementMessage(legacyCommand: string): st
 /**
  * Detect the install topology that owns the running `wp` / agent-kit binary.
  */
-export function detect(env: NodeJS.ProcessEnv, argv0: string): DetectResult {
+export function detect(
+  env: NodeJS.ProcessEnv,
+  argv0: string,
+  resolveVpCommand: () => GlobalCapableVpCommandInput | null = () =>
+    resolveGlobalCapableVpCommand(env.PATH ?? ''),
+): DetectResult {
   if (env.WP_FORCE_SOURCE === '1') {
     return {
       abort:
@@ -76,7 +90,9 @@ export function detect(env: NodeJS.ProcessEnv, argv0: string): DetectResult {
   const fromUa = parseUserAgent(env.npm_config_user_agent ?? '')
 
   if (fromPath === 'vp' || fromUa === 'vp') {
-    return { topology: 'vp', command: commandForTopology('vp') }
+    const command = commandForTopology('vp', resolveVpCommand)
+    if (command === null) return { abort: globalVpUnavailableMessage() }
+    return { topology: 'vp', command }
   }
 
   const shim = detectShim(realpath)
@@ -143,6 +159,10 @@ export function confirmInstalledGlobally(realpath: string, _env: NodeJS.ProcessE
 
 function unsupportedManagerMessage(manager: string, realpath: string): string {
   return `${PUBLIC_PACKAGE_NAME} appears to be managed by ${manager} (${realpath}); reinstall with \`vp install -g ${PUBLIC_PACKAGE_NAME}\`. Source development uses WP_FORCE_SOURCE=1 from an agent-kit checkout.`
+}
+
+function globalVpUnavailableMessage(): string {
+  return `Unable to resolve a global-capable vp executable on PATH for ${PUBLIC_PACKAGE_NAME}; auto-install disabled. Install Vite+ and ensure its user-global vp appears before project/runtime-local shims, then re-run.`
 }
 
 function unableToDetectMessage(pathHint: string): string {

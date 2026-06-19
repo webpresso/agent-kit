@@ -29,7 +29,11 @@ import {
   resolveInstalledOmxHookScriptPath,
   resolveBinaryOnPath,
 } from '#cli/commands/init/scaffolders/agent-hooks/codex-global-normalize'
-import { resolveGlobalCapableVp } from '#cli/commands/init/scaffolders/vp-global.js'
+import {
+  appendGlobalCapableVpArgs,
+  type GlobalCapableVpCommandInput,
+  resolveGlobalCapableVpCommand,
+} from '#cli/commands/init/scaffolders/vp-global.js'
 
 export interface EnsureOmxInput {
   repoRoot: string
@@ -38,7 +42,7 @@ export interface EnsureOmxInput {
   /** Dependency-injection seam for tests; defaults to node's child_process.spawnSync. */
   spawn?: typeof spawnSync
   /** DI seam for resolving a global-capable vp binary. */
-  resolveVpCommand?: () => string | null
+  resolveVpCommand?: () => GlobalCapableVpCommandInput | null
   /** Test seam — override `$CODEX_HOME/config.toml` or `~/.codex/config.toml`. */
   configPath?: string
 }
@@ -364,7 +368,7 @@ export function ensureOmx(input: EnsureOmxInput): EnsureOmxResult {
 
   const spawn = input.spawn ?? spawnSync
   const vpCommand =
-    input.resolveVpCommand !== undefined ? input.resolveVpCommand() : resolveGlobalCapableVp()
+    input.resolveVpCommand !== undefined ? input.resolveVpCommand() : resolveGlobalCapableVpCommand()
   const configPath = input.configPath ?? defaultCodexConfigPath()
   const scope = input.scope ?? 'user'
   const previousScope = readPersistedOmxSetupScope(input.repoRoot)
@@ -381,13 +385,15 @@ export function ensureOmx(input: EnsureOmxInput): EnsureOmxResult {
 
   let installed = false
   if (!shouldSkipManagedToolRefresh() && vpCommand !== null) {
-    spawn(vpCommand, ['update'], { stdio: 'inherit' })
+    const command = appendGlobalCapableVpArgs(vpCommand, ['update'])
+    spawn(command[0], command.slice(1), { stdio: 'inherit' })
   }
 
   let probe = spawn('omx', ['--version'], { encoding: 'utf8', timeout: PROBE_TIMEOUT_MS })
   if (probe.error || (probe.status !== null && probe.status !== 0)) {
     if (vpCommand === null) return { kind: 'omx-not-found', hint: NOT_FOUND_HINT }
-    const install = spawn(vpCommand, ['install', '-g', 'oh-my-codex'], { stdio: 'inherit' })
+    const command = appendGlobalCapableVpArgs(vpCommand, ['install', '-g', 'oh-my-codex'])
+    const install = spawn(command[0], command.slice(1), { stdio: 'inherit' })
     if (install.status !== 0) {
       return { kind: 'omx-not-found', hint: NOT_FOUND_HINT }
     }
@@ -398,7 +404,8 @@ export function ensureOmx(input: EnsureOmxInput): EnsureOmxResult {
       return { kind: 'omx-not-found', hint: NOT_FOUND_HINT }
     }
   } else if (!shouldSkipManagedToolRefresh() && vpCommand !== null) {
-    spawn(vpCommand, ['update', '-g', 'oh-my-codex'], { stdio: 'inherit' })
+    const command = appendGlobalCapableVpArgs(vpCommand, ['update', '-g', 'oh-my-codex'])
+    spawn(command[0], command.slice(1), { stdio: 'inherit' })
   }
 
   const result = spawn('omx', ['setup', '--yes', '--scope', scope], {

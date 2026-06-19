@@ -43,12 +43,52 @@ describe('buildVpGlobalInstallCommand', () => {
     ])
   })
 
-  it('is the command surfaced by detect() for a Vite+ install', () => {
+  it('wraps Windows command-script vp launch plans before appending install args', () => {
+    expect(
+      buildVpGlobalInstallCommand({
+        command: 'C:\\Windows\\cmd.exe',
+        argsPrefix: ['/d', '/s', '/c', 'C:\\Users\\me\\.vite-plus\\bin\\vp.cmd'],
+        executable: 'C:\\Users\\me\\.vite-plus\\bin\\vp.cmd',
+      }),
+    ).toStrictEqual([
+      'C:\\Windows\\cmd.exe',
+      '/d',
+      '/s',
+      '/c',
+      'C:\\Users\\me\\.vite-plus\\bin\\vp.cmd',
+      'install',
+      '-g',
+      '@webpresso/agent-kit',
+    ])
+  })
+
+  it('is the absolute command surfaced by detect() for a Vite+ install', () => {
     realpathSyncMock.mockReturnValue(
       '/Users/me/.vite-plus/packages/@webpresso/agent-kit/lib/node_modules/@webpresso/agent-kit/bin/wp',
     )
-    const result = detect({ npm_config_user_agent: 'vp/0.1.24 node/v24' }, '/path/to/wp')
-    expect(result).toStrictEqual({ topology: 'vp', command: buildVpGlobalInstallCommand() })
+    const result = detect(
+      { npm_config_user_agent: 'vp/0.1.24 node/v24' },
+      '/path/to/wp',
+      () => '/Users/me/.vite-plus/bin/vp',
+    )
+    expect(result).toStrictEqual({
+      topology: 'vp',
+      command: buildVpGlobalInstallCommand('/Users/me/.vite-plus/bin/vp'),
+    })
+  })
+
+  it('aborts a Vite+ install when no global-capable vp executable can be resolved', () => {
+    realpathSyncMock.mockReturnValue(
+      '/Users/me/.vite-plus/packages/@webpresso/agent-kit/lib/node_modules/@webpresso/agent-kit/bin/wp',
+    )
+    const result = detect(
+      { npm_config_user_agent: 'vp/0.1.24 node/v24' },
+      '/path/to/wp',
+      () => null,
+    )
+    expect(result).toStrictEqual({
+      abort: expect.stringContaining('Unable to resolve a global-capable vp executable'),
+    })
   })
 })
 
@@ -146,19 +186,23 @@ describe('formatLegacyCommandReplacementMessage', () => {
 describe('detect', () => {
   it('detects Vite+ from the resolved path', () => {
     realpathSyncMock.mockReturnValue('/Users/me/.vite-plus/packages/@webpresso/agent-kit/bin/wp')
-    expect(detect({}, '/Users/me/.vite-plus/bin/wp')).toStrictEqual({
+    expect(detect({}, '/Users/me/.vite-plus/bin/wp', () => '/global/bin/vp')).toStrictEqual({
       topology: 'vp',
-      command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
+      command: ['/global/bin/vp', 'install', '-g', '@webpresso/agent-kit'],
     })
   })
 
   it('detects Vite+ from the user-agent after realpath succeeds', () => {
     realpathSyncMock.mockReturnValue('/Users/me/.local/bin/wp')
     expect(
-      detect({ npm_config_user_agent: 'vp/0.1.24 node/v24' }, '/Users/me/.local/bin/wp'),
+      detect(
+        { npm_config_user_agent: 'vp/0.1.24 node/v24' },
+        '/Users/me/.local/bin/wp',
+        () => '/global/bin/vp',
+      ),
     ).toStrictEqual({
       topology: 'vp',
-      command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
+      command: ['/global/bin/vp', 'install', '-g', '@webpresso/agent-kit'],
     })
   })
 
