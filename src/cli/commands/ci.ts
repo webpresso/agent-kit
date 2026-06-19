@@ -122,6 +122,7 @@ export async function runCiActCommand(
 
   const result = await (deps.run ?? runSecretGateCommand)({
     cwd,
+    sink: 'act',
     envProfile: options.envProfile,
     secretEnvProfile: options.secretEnvProfile,
     command: 'act',

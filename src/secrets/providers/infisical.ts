@@ -23,7 +23,7 @@ export function diagnoseInfisicalProvider(input: ProviderDoctorInput): ProviderD
     ok: true,
     code: 'WP_SECRETS_PROVIDER_READY',
     problem: `infisical profile "${input.profileName}" is configured.`,
-    fix: 'If auth drifts, refresh the Infisical login or OIDC machine identity.',
+    fix: 'If auth drifts, refresh the Infisical login or CI bootstrap token.',
     evidence: `provider=infisical project=${input.provider.project} environment=${input.environment}`,
   }
 }
@@ -39,9 +39,9 @@ export function fetchInfisicalProfile(
 
 export function planInfisicalBootstrap(input: ProviderBootstrapInput): ProviderBootstrapPlan {
   return {
-    mode: 'oidc',
+    mode: 'service-token',
     lanes: input.lanes,
-    requiredSecrets: [],
+    requiredSecrets: [...new Set(input.lanes.map((lane) => (lane === 'prd' ? 'CI_SECRET_PROVIDER_TOKEN_PRODUCTION' : 'CI_SECRET_PROVIDER_TOKEN_PREVIEW')))],
   }
 }
 
@@ -49,7 +49,7 @@ export const infisicalProviderPlugin: SecretProviderPlugin = {
   id: 'infisical',
   authModes: {
     local: 'cli-login',
-    ci: ['oidc'],
+    ci: ['service-token'],
   },
   capabilities: {
     profiles: ['preview', 'production'],

@@ -20,7 +20,7 @@ describe('infisical provider adapter', () => {
     })
   })
 
-  it('plans OIDC-first bootstrap', () => {
+  it('plans service-token bootstrap until CI OIDC support exists', () => {
     expect(
       planInfisicalBootstrap({
         provider: { type: 'infisical', project: 'edge-matte' },
@@ -29,14 +29,14 @@ describe('infisical provider adapter', () => {
         lanes: ['prd'],
       }),
     ).toEqual({
-      mode: 'oidc',
+      mode: 'service-token',
       lanes: ['prd'],
-      requiredSecrets: [],
+      requiredSecrets: ['CI_SECRET_PROVIDER_TOKEN_PRODUCTION'],
     })
   })
 
   it('exposes the built-in infisical plugin contract', () => {
     expect(infisicalProviderPlugin.id).toBe('infisical')
-    expect(infisicalProviderPlugin.authModes.ci).toEqual(['oidc'])
+    expect(infisicalProviderPlugin.authModes.ci).toEqual(['service-token'])
   })
 })

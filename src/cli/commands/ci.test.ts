@@ -156,6 +156,7 @@ describe('wp ci command', () => {
     expect(code).toBe(0)
     expect(run).toHaveBeenCalledWith({
       cwd: '/repo',
+      sink: 'act',
       envProfile: undefined,
       secretEnvProfile: undefined,
       command: 'act',
