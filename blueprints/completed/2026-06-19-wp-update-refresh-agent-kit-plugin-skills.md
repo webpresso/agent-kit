@@ -2,6 +2,8 @@
 type: blueprint
 title: wp update refreshes agent-kit plugin skills
 status: completed
+historical_zero_task_waiver: true
+historical_zero_task_rationale: 'Historical completed record created before strict task-block requirements; preserved as an audited zero-task completion note.'
 complexity: S
 owner: agent-kit
 created: '2026-06-19'

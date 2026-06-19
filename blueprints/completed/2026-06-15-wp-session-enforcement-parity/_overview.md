@@ -196,9 +196,9 @@ lifecycle drift instead of recreating files. (F5, F8)
 
 **Acceptance:**
 
-- [ ] Every `wp_session_*` tool referenced by this blueprint exists in source and is registered.
-- [ ] Missing or stale sibling lifecycle state is explicitly reconciled or documented.
-- [ ] No duplicate tool files are planned or created.
+- [x] Every `wp_session_*` tool referenced by this blueprint exists in source and is registered.
+- [x] Missing or stale sibling lifecycle state is explicitly reconciled or documented.
+- [x] No duplicate tool files are planned or created.
 
 #### [preflight] Task 0.2: Verify command sandboxing and fetch/index safety gates
 
@@ -226,9 +226,9 @@ SessionStart guidance. (F8)
 
 **Acceptance:**
 
-- [ ] Shell routing is allowed only after execute consent, cwd, and output-cap tests pass.
-- [ ] WebFetch/curl routing is allowed only after SSRF/fetch safety tests pass.
-- [ ] Failed preflight produces a clear blocked dependency, not partial unsafe guidance.
+- [x] Shell routing is allowed only after execute consent, cwd, and output-cap tests pass.
+- [x] WebFetch/curl routing is allowed only after SSRF/fetch safety tests pass.
+- [x] Failed preflight produces a clear blocked dependency, not partial unsafe guidance.
 
 #### [preflight] Task 0.3: Verify typed continuity and capture contract
 
@@ -255,9 +255,9 @@ small. (F4, F11, F15)
 
 **Acceptance:**
 
-- [ ] Capture work reuses existing typed continuity/store primitives.
-- [ ] Storage rewrite, new daemon, or new dependency is explicitly out of scope.
-- [ ] Hot-path constraints are recorded for Tasks 1.4 and 1.5.
+- [x] Capture work reuses existing typed continuity/store primitives.
+- [x] Storage rewrite, new daemon, or new dependency is explicitly out of scope.
+- [x] Hot-path constraints are recorded for Tasks 1.4 and 1.5.
 
 ## Wave 0: enforcement behavior [Complexity: XL]
 
@@ -294,11 +294,11 @@ to call legacy context-mode names. (F1, F7, F9)
 
 **Acceptance:**
 
-- [ ] SessionStart additional context includes both dev-workflow routing and `wp_session_*` context-window routing.
-- [ ] Every public `wp_session_*` name in the routing block is registered by the MCP server.
-- [ ] Routing maps raw file analysis, shell gathering, web fetch, restore/search, capture, snapshot, diagnostics, and purge to concrete tools.
-- [ ] No `ctx_*` names appear in public guidance.
-- [ ] Focused tests, lint, and typecheck pass.
+- [x] SessionStart additional context includes both dev-workflow routing and `wp_session_*` context-window routing.
+- [x] Every public `wp_session_*` name in the routing block is registered by the MCP server.
+- [x] Routing maps raw file analysis, shell gathering, web fetch, restore/search, capture, snapshot, diagnostics, and purge to concrete tools.
+- [x] No `ctx_*` names appear in public guidance.
+- [x] Focused tests, lint, and typecheck pass.
 
 #### [hooks] Task 1.2: Broaden host hook matchers and managed lifecycle specs
 
@@ -333,11 +333,11 @@ instead of silently emitted as invalid config. (F2, F6, F10, F16)
 
 **Acceptance:**
 
-- [ ] Claude PreToolUse covers context-heavy native tools and generic MCP calls with valid matcher syntax.
-- [ ] Claude PostToolUse are emitted only where the host supports them.
-- [ ] Codex, Cursor, and OpenCode rows remain truthful about supported/degraded lifecycles.
-- [ ] The old test asserting absence of `Read`, `Grep`, `WebFetch`, and `Agent` is replaced by positive parity coverage.
-- [ ] Focused tests, lint, and typecheck pass.
+- [x] Claude PreToolUse covers context-heavy native tools and generic MCP calls with valid matcher syntax.
+- [x] Claude PostToolUse are emitted only where the host supports them.
+- [x] Codex, Cursor, and OpenCode rows remain truthful about supported/degraded lifecycles.
+- [x] The old test asserting absence of `Read`, `Grep`, `WebFetch`, and `Agent` is replaced by positive parity coverage.
+- [x] Focused tests, lint, and typecheck pass.
 
 #### [guard] Task 1.3: Route raw large-context operations to concrete `wp_session_*` tools
 
@@ -372,11 +372,11 @@ host-prefixed MCP variants. Dev-workflow tools keep priority. (F3, F8, F9)
 
 **Acceptance:**
 
-- [ ] Data-heavy raw commands deny/nudge with a concrete `wp_session_*` tool name.
-- [ ] Already-WP-session-sandboxed calls do not recurse into a deny loop.
-- [ ] Legacy `ctx_*` names are not advertised as public loop identity.
-- [ ] Dev-workflow tools still route to `wp_test`, `wp_lint`, `wp_typecheck`, `wp_qa`, `wp_e2e`, `wp_ci_act`, and `wp_worker_tail` first.
-- [ ] Focused tests, lint, and typecheck pass.
+- [x] Data-heavy raw commands deny/nudge with a concrete `wp_session_*` tool name.
+- [x] Already-WP-session-sandboxed calls do not recurse into a deny loop.
+- [x] Legacy `ctx_*` names are not advertised as public loop identity.
+- [x] Dev-workflow tools still route to `wp_test`, `wp_lint`, `wp_typecheck`, `wp_qa`, `wp_e2e`, `wp_ci_act`, and `wp_worker_tail` first.
+- [x] Focused tests, lint, and typecheck pass.
 
 #### [capture] Task 1.4: Broaden PostToolUse continuity capture by reusing existing storage
 
@@ -407,11 +407,11 @@ storage only if a focused test proves a contract gap. (F4, F11, F15)
 
 **Acceptance:**
 
-- [ ] PostToolUse stores bounded continuity for reads, commands, edits, and MCP/web-style metadata where host payloads support it.
-- [ ] Capture never persists full raw large output or secrets.
-- [ ] Capture failures stay no-op and do not block host tool execution.
-- [ ] Hot-path code performs no shellouts.
-- [ ] Focused tests, lint, and typecheck pass.
+- [x] PostToolUse stores bounded continuity for reads, commands, edits, and MCP/web-style metadata where host payloads support it.
+- [x] Capture never persists full raw large output or secrets.
+- [x] Capture failures stay no-op and do not block host tool execution.
+- [x] Hot-path code performs no shellouts.
+- [x] Focused tests, lint, and typecheck pass.
 
 #### [capture] Task 1.5: Drop unverified batch-hook summaries
 
@@ -472,11 +472,11 @@ the capability matrix. (F2, F6, F7, F14, F16)
 
 **Acceptance:**
 
-- [ ] Host smoke proves enforced `wp_session_*` routing for Claude and Codex.
-- [ ] Degraded Cursor/OpenCode rows match capability matrix claims.
-- [ ] Missing PreToolUse launcher failure is explicit and repairable through hook doctor guidance.
-- [ ] Smoke remains fixture-backed and does not require live host credentials.
-- [ ] Focused tests, hook doctor, lint, and typecheck pass.
+- [x] Host smoke proves enforced `wp_session_*` routing for Claude and Codex.
+- [x] Degraded Cursor/OpenCode rows match capability matrix claims.
+- [x] Missing PreToolUse launcher failure is explicit and repairable through hook doctor guidance.
+- [x] Smoke remains fixture-backed and does not require live host credentials.
+- [x] Focused tests, hook doctor, lint, and typecheck pass.
 
 #### [qa] Task 2.2: Extend reference parity and session-memory benchmark gates
 
@@ -510,10 +510,10 @@ consistency, and repair-path evidence. (F1, F7, F10, F14)
 
 **Acceptance:**
 
-- [ ] Reference parity distinguishes availability, enforcement, capture, repairability, and host support.
-- [ ] Release-ready parity claims fail closed when enforcement evidence is missing.
-- [ ] Benchmark dry-run validates threshold schema without claiming live replacement evidence.
-- [ ] Focused tests, bench dry-run, audit, lint, and typecheck pass.
+- [x] Reference parity distinguishes availability, enforcement, capture, repairability, and host support.
+- [x] Release-ready parity claims fail closed when enforcement evidence is missing.
+- [x] Benchmark dry-run validates threshold schema without claiming live replacement evidence.
+- [x] Focused tests, bench dry-run, audit, lint, and typecheck pass.
 
 ## Wave 2: docs, public package, and lifecycle readiness [Complexity: M]
 
@@ -549,10 +549,10 @@ language lands. (F5, F7, F12)
 
 **Acceptance:**
 
-- [ ] Public docs name only `wp_session_*` for session-memory context-saving guidance.
-- [ ] Docs accurately separate full, partial, degraded, and unsupported host behavior.
-- [ ] Reference parity strict gate fails closed until the live measured benchmark row backs any public full-parity claim.
-- [ ] Package tarball, package-surface, secret, path, hook, docs, blueprint, and lint gates pass.
+- [x] Public docs name only `wp_session_*` for session-memory context-saving guidance.
+- [x] Docs accurately separate full, partial, degraded, and unsupported host behavior.
+- [x] Reference parity strict gate fails closed until the live measured benchmark row backs any public full-parity claim.
+- [x] Package tarball, package-surface, secret, path, hook, docs, blueprint, and lint gates pass.
 
 ## Edge Cases
 

@@ -83,10 +83,21 @@ function readTaskStatusLines(raw: string): Map<string, string | undefined> {
     const idMatch = block.match(/^(\d+(?:\.\d+)+):/)
     if (!idMatch?.[1]) continue
     const statusMatch = block.match(/\*\*Status:\*\*\s*(.+)/i)
-    result.set(idMatch[1], statusMatch?.[1]?.trim())
+    result.set(idMatch[1], normalizeInlineTaskStatus(statusMatch?.[1]))
   }
 
   return result
+}
+
+function normalizeInlineTaskStatus(rawStatus: string | undefined): string | undefined {
+  if (!rawStatus) return undefined
+  return (
+    rawStatus
+      .trim()
+      .split(/\s*\|\s*|\s+(?=\*\*(?:Status|Depends|Blocked|Wave|Files|Acceptance):\*\*)/i)[0]
+      ?.trim()
+      .replace(/\bin_progress\b/gi, 'in-progress') ?? ''
+  )
 }
 
 function validateTaskState(blueprint: Blueprint): BlueprintAuditIssue[] {

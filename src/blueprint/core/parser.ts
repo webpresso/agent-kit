@@ -191,15 +191,28 @@ function extractExplicitTaskStatus(section: string): BlueprintTaskStatus | undef
   const statusMatch = section.match(/\*\*Status:\*\*\s*(.+)/i)
   if (!statusMatch?.[1]) return undefined
 
-  const normalizedStatus = statusMatch[1].trim().replace(/\bin_progress\b/gi, 'in-progress')
+  const rawStatus = statusMatch[1].trim()
+  const normalizedStatus = extractInlineMetadataValue(rawStatus).replace(
+    /\bin_progress\b/gi,
+    'in-progress',
+  )
   const parsed = taskStatusSchema.safeParse(normalizedStatus)
   if (!parsed.success) {
     throw new Error(
-      `Invalid task status "${statusMatch[1].trim()}". Valid statuses: ${taskStatusSchema.options.join(', ')}`,
+      `Invalid task status "${rawStatus}". Valid statuses: ${taskStatusSchema.options.join(', ')}`,
     )
   }
 
   return parsed.data
+}
+
+function extractInlineMetadataValue(rawValue: string): string {
+  return (
+    rawValue
+      .trim()
+      .split(/\s*\|\s*|\s+(?=\*\*(?:Status|Depends|Blocked|Wave|Files|Acceptance):\*\*)/i)[0]
+      ?.trim() ?? ''
+  )
 }
 
 function findTaskSectionEnd(content: string, taskStart: number, nextTaskIndex: number): number {
