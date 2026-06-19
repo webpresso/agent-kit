@@ -3,6 +3,8 @@ type: blueprint
 title: Exact Webpresso Session Gain Reporting
 owner: webpresso
 status: completed
+historical_zero_task_waiver: true
+historical_zero_task_rationale: 'Historical completed record created before strict task-block requirements; preserved as an audited zero-task completion note.'
 complexity: M
 last_updated: 2026-06-18
 ---

@@ -3,6 +3,8 @@ type: blueprint
 title: "Fixed-suite scientific benchmark proof"
 owner: ozby
 status: completed
+historical_zero_task_waiver: true
+historical_zero_task_rationale: 'Historical completed record created before strict task-block requirements; preserved as an audited zero-task completion note.'
 completed_at: '2026-06-14'
 complexity: M
 created: '2026-06-14'

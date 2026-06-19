@@ -9,7 +9,7 @@ import type { CAC } from 'cac'
  * divergent files untouched unless `--overwrite` is passed.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { basename, dirname, join, relative } from 'node:path'
+import { basename, dirname, join, relative, resolve } from 'node:path'
 
 import { isTelemetryEnabled, reportTthw } from '#telemetry/setup-tthw'
 import { readPackageVersion } from '#cli/utils'
@@ -29,8 +29,10 @@ import {
   writeConfig,
 } from './config.js'
 import {
+  type ConsumerContext,
   detectConsumer,
   isAgentKitTemplateSourceRepo,
+  readPackageJson,
   setupCommandForRepo,
   warnIfNonLocalCli,
 } from './detect-consumer.js'
@@ -375,7 +377,7 @@ async function runUserOnlySetup(input: {
   readonly selectedHosts: readonly string[]
   readonly packageVersion: string
   readonly pruneCaches: boolean
-  readonly reason: 'explicit' | 'repo-collection-root' | 'non-webpresso-project'
+  readonly reason: 'explicit' | 'repo-collection-root' | 'non-webpresso-project' | 'non-git-directory'
   readonly startMs: number
 }): Promise<number> {
   const {
@@ -396,6 +398,8 @@ async function runUserOnlySetup(input: {
     console.log(`wp init: running explicit user-only setup for ${repoRoot}.`)
   } else if (reason === 'repo-collection-root') {
     console.log(`wp init: ${repoRoot} is a repo collection root; running user-only setup.`)
+  } else if (reason === 'non-git-directory') {
+    console.warn(`wp init: ${repoRoot} is not inside a git repo; running user-only setup.`)
   } else {
     console.warn(
       `wp init: ${repoRoot} does not look like an initialized Webpresso project; falling back to user-only setup.`,
@@ -406,6 +410,8 @@ async function runUserOnlySetup(input: {
   )
   if (reason === 'non-webpresso-project') {
     console.log('  Re-run with --project-init if you want to bootstrap this repo as a Webpresso project.')
+  } else if (reason === 'non-git-directory') {
+    console.log('  Run `git init` first if you want repo-local Webpresso project scaffolding.')
   }
 
   if (!options.dryRun) {
@@ -809,18 +815,44 @@ async function runHooksRecovery(
   return EXIT_SUCCESS
 }
 
+function detectPlainDirectoryConsumer(startDir: string): ConsumerContext {
+  const repoRoot = resolve(startDir)
+  const { path: packageJsonPath, info: packageJson } = readPackageJson(repoRoot)
+  return {
+    repoRoot,
+    packageJsonPath,
+    packageJson,
+    hasPnpmWorkspace: false,
+    workspacePackages: [],
+  }
+}
+
 export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Promise<number> {
   const stdout = deps.stdout ?? process.stdout
   const startMs = Date.now()
   const cwd = flags.cwd ?? process.cwd()
-  const consumer = detectConsumer(cwd)
-  if (!consumer) {
+  const detectedConsumer = detectConsumer(cwd)
+  const hasGitRoot = detectedConsumer !== null
+  const forceUserOnly = flags.userOnly ?? flags['user-only'] ?? false
+  const forceProjectInit = flags.projectInit ?? flags['project-init'] ?? false
+  if (forceUserOnly && forceProjectInit) {
+    console.error('wp setup: choose either --user-only or --project-init, not both.')
+    return EXIT_SETUP_FAIL
+  }
+
+  const hooksRecoveryRequested =
+    (flags.restoreHooks ?? flags['restore-hooks'] ?? false) ||
+    (flags.disableHooks ?? flags['disable-hooks']) !== undefined
+
+  if (!hasGitRoot && (forceProjectInit || hooksRecoveryRequested)) {
     console.error(
-      `wp init: could not find a git repo (walked up from ${cwd}).\n` +
-        `Run \`git init\` first, or pass --cwd pointing at a git working tree.`,
+      `wp setup: ${forceProjectInit ? '--project-init' : 'hook recovery'} requires a git working tree (walked up from ${cwd}).\n` +
+        'Run `git init` first, or re-run without project-only flags for user/global setup.',
     )
     return EXIT_SETUP_FAIL
   }
+
+  const consumer = detectedConsumer ?? detectPlainDirectoryConsumer(cwd)
 
   // Self-repo guard: agent-kit is the SOURCE of every agent-surface template
   // (catalog/, the tracked .agent/.claude surfaces). Scaffolding into its own
@@ -841,14 +873,9 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     return EXIT_SETUP_FAIL
   }
 
-  const forceUserOnly = flags.userOnly ?? flags['user-only'] ?? false
-  const forceProjectInit = flags.projectInit ?? flags['project-init'] ?? false
-  if (forceUserOnly && forceProjectInit) {
-    console.error('wp setup: choose either --user-only or --project-init, not both.')
-    return EXIT_SETUP_FAIL
-  }
-
-  const repoCollectionDetection = detectRepoCollectionRoot(consumer.repoRoot)
+  const repoCollectionDetection = hasGitRoot
+    ? detectRepoCollectionRoot(consumer.repoRoot)
+    : { isCollectionRoot: false }
   const initializedWebpressoProject = isInitializedWebpressoProject(
     consumer.repoRoot,
     consumer.packageJson,
@@ -856,11 +883,13 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
   const userOnlyReason =
     forceUserOnly
       ? ('explicit' as const)
-      : repoCollectionDetection.isCollectionRoot
-        ? ('repo-collection-root' as const)
-        : !initializedWebpressoProject && !forceProjectInit && flags.sourceMaintenance !== true
-          ? ('non-webpresso-project' as const)
-          : null
+      : !hasGitRoot
+        ? ('non-git-directory' as const)
+        : repoCollectionDetection.isCollectionRoot
+          ? ('repo-collection-root' as const)
+          : !initializedWebpressoProject && !forceProjectInit && flags.sourceMaintenance !== true
+            ? ('non-webpresso-project' as const)
+            : null
   const userOnlySetup = userOnlyReason !== null
 
   if (!userOnlySetup) {

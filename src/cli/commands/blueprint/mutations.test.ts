@@ -273,6 +273,24 @@ describe('advanceTask', () => {
     expect(statusLine).toBe('**Status:** blocked')
   })
 
+  it('updates compact bracketed task status lines without dropping inline dependencies', async () => {
+    tmpRepoDir = makeRepo(
+      'compact-feature',
+      OVERVIEW_WITH_TASKS.replace(
+        '#### Task 1.1: First task\n**Status:** todo',
+        '#### [infra] Task 1.1: First task\n**Status:** todo **Depends:** None',
+      ),
+      'planned',
+    )
+
+    const result = await advanceTask(tmpRepoDir, 'compact-feature', '1.1', 'in-progress')
+
+    expect(result.oldStatus).toBe('todo')
+    const content = readOverview(tmpRepoDir, 'compact-feature', 'planned')
+    expect(content).toContain('#### [infra] Task 1.1: First task')
+    expect(content).toContain('**Status:** in-progress **Depends:** None')
+  })
+
   it('refuses to complete a zero-task blueprint through promote', async () => {
     tmpRepoDir = makeRepo('zero-task', OVERVIEW_ZERO_TASK, 'planned')
 

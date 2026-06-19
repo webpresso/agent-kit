@@ -3,6 +3,8 @@ type: blueprint
 title: "wp setup / update third-party ownership rewrite"
 owner: codex
 status: completed
+historical_zero_task_waiver: true
+historical_zero_task_rationale: 'Historical completed record created before strict task-block requirements; preserved as an audited zero-task completion note.'
 complexity: M
 created: '2026-06-18'
 last_updated: '2026-06-18'

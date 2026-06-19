@@ -245,9 +245,9 @@ function upsertCompletedAt(content: string, isoDate: string): string {
 function findTaskStatusLine(
   lines: readonly string[],
   taskId: string,
-): { lineIndex: number; currentStatus: string } | null {
+): { lineIndex: number; currentStatus: string; prefix: string; suffix: string } | null {
   const escapedId = taskId.replace(/\./g, '\\.')
-  const taskPattern = new RegExp(`^####\\s+Task\\s+${escapedId}[:\\s]`)
+  const taskPattern = new RegExp(`^####\\s+(?:\\[[^\\]]+\\]\\s+)?Task\\s+${escapedId}[:\\s]`)
   let inBlock = false
 
   for (let i = 0; i < lines.length; i++) {
@@ -260,9 +260,14 @@ function findTaskStatusLine(
       // A new #### heading closes the block
       if (line.startsWith('#### ')) break
       if (line.startsWith('**Status:**')) {
-        const match = /^\*\*Status:\*\*\s+(.+)$/.exec(line)
-        const currentStatus = match?.[1]?.trim() ?? ''
-        return { lineIndex: i, currentStatus }
+        const match = /^(\*\*Status:\*\*\s+)([^|\s]+)(.*)$/.exec(line)
+        const currentStatus = match?.[2]?.trim().replace(/\bin_progress\b/gi, 'in-progress') ?? ''
+        return {
+          lineIndex: i,
+          currentStatus,
+          prefix: match?.[1] ?? '**Status:** ',
+          suffix: match?.[3] ?? '',
+        }
       }
     }
   }
@@ -311,7 +316,7 @@ async function advanceTaskLocked(
     throw new Error(`Task "${taskId}" not found in blueprint "${blueprintSlug}"`)
   }
 
-  const { lineIndex, currentStatus } = result
+  const { lineIndex, currentStatus, prefix, suffix } = result
 
   if (toStatus === 'done') {
     throw new Error('Use wp_blueprint_task_verify to mark tasks done with evidence')
@@ -350,7 +355,7 @@ async function advanceTaskLocked(
   // Always update local markdown + SQLite.
   // Platform-first: these become derived artifacts; disabled: these are canonical.
   const updatedLines = [...lines]
-  updatedLines[lineIndex] = `**Status:** ${toStatus}`
+  updatedLines[lineIndex] = `${prefix}${toStatus}${suffix}`
   const newContent = updatedLines.join('\n')
 
   atomicWriteFile(found.documentPath, newContent)

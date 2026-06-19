@@ -99,6 +99,40 @@ created: 2026-01-01
       expect(plan.tasks[1]!.depends).toEqual(['1.1'])
     })
 
+    it('parses compact inline task metadata without folding depends into status', () => {
+      const compactPlan = `---
+type: blueprint
+status: planned
+complexity: S
+last_updated: 2026-01-01
+created: 2026-01-01
+---
+# @feature
+
+#### [infra] Task 1.1: Scaffold package
+**Status:** todo **Depends:** None
+
+#### [cli] Task 2.1: Add command
+**Status:** in_progress | **Depends:** Task 1.1
+`
+
+      const plan = parseBlueprint(compactPlan, '@feature')
+
+      expect(plan.tasks).toHaveLength(2)
+      expect(plan.tasks[0]).toMatchObject({
+        id: '1.1',
+        status: 'todo',
+        statusExplicit: true,
+      })
+      expect(plan.tasks[0]!.depends).toBeUndefined()
+      expect(plan.tasks[1]).toMatchObject({
+        id: '2.1',
+        status: 'in-progress',
+        statusExplicit: true,
+        depends: ['1.1'],
+      })
+    })
+
     it('should extract multiple dependencies with various formats', () => {
       // Arrange - test "Tasks X.Y, X.Z" format and bare IDs
       const planWithMultipleDeps = `---
