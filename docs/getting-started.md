@@ -41,9 +41,21 @@ No private registry setup is required.
 
 `wp` bundles the package/task facade it needs, so a separate global `vp` install is not required.
 
-For committed/team repos, pin `@webpresso/agent-kit` in `devDependencies` with
-a published semver range, then rerun global `wp setup`. The package pin is for
-version selection only; setup no longer relies on a repo-local CLI path.
+For committed/team repos, keep the global `wp` install and keep only
+`@webpresso/agent-config` in local dependencies. If your repo carries an Agent
+Kit version pin, that pin is for global `wp` version selection only; setup no
+longer relies on a repo-local CLI path.
+
+After setup, the first trust loop should be:
+
+```bash
+wp hooks doctor
+wp secrets doctor
+wp preview --json
+```
+
+For the full operator path from repo checkout to preview URL, see
+[`docs/guides/repo-to-preview-url.md`](./repo-to-preview-url.md).
 
 If `wp setup` needs gstack tuning on a workstation with multiple agent CLIs
 installed, use:
