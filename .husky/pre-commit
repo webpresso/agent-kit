@@ -2,12 +2,21 @@
 set -eu
 
 ROOT="$(git rev-parse --show-toplevel)"
-if git diff --cached --name-only --diff-filter=ACMR | grep -Eq '^blueprints/(README\.md|[^/]+/.*\.md)$'; then
+STAGED="$(git diff --cached --name-only --diff-filter=ACMR)"
+
+# Fast, file-scoped audits — skip entirely on doc/blueprint-only commits.
+if printf '%s\n' "$STAGED" | grep -Eq '\.(ts|tsx|js|jsx|cjs|mjs|json|ya?ml|sh|tmpl)$|(^|/)\.env|\.dev\.vars$'; then
+  "$ROOT/bin/wp" audit no-dev-vars
+  "$ROOT/bin/wp" audit absolute-path-policy --root "$ROOT"
+  "$ROOT/bin/wp" audit secret-provider-quarantine
+fi
+
+# Blueprint index drift — only when blueprint markdown is staged.
+if printf '%s\n' "$STAGED" | grep -Eq '^blueprints/(README\.md|[^/]+/.*\.md)$'; then
   "$ROOT/bin/wp" audit blueprint-readme-drift
 fi
-"$ROOT/bin/wp" audit guardrails
-# agent-kit audit hooks (staged mode — fast)
-# webpresso audit hooks (staged mode — fast)
-"$ROOT/bin/wp" audit no-dev-vars
-"$ROOT/bin/wp" audit absolute-path-policy --root "$ROOT"
-"$ROOT/bin/wp" audit secret-provider-quarantine
+
+# NOTE: the whole-repo guardrails suite (catalog-drift, package-surface,
+# reference-parity, and ~42 other repo-wide audits) is intentionally NOT run
+# per-commit. It is a CI-grade gate owned by
+# .github/workflows/ci.agent-kit.yml (and ci.yml) and runs on every PR.

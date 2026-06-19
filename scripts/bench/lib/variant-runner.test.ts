@@ -132,6 +132,7 @@ describe('variant-runner', () => {
         cache_read_input_tokens: 5,
         duration_ms: 25,
       },
+      local_wall_ms: expect.any(Number),
       tools: ['wp_session_search'],
     })
 
@@ -159,6 +160,7 @@ describe('variant-runner', () => {
       ok: false,
       error: 'rate_limit',
       usage: null,
+      local_wall_ms: expect.any(Number),
       tools: [],
       transcript_path: null,
       home_dir: join(dir, 'adhoc', 'v2', 'debug', 'trial-2', 'home'),

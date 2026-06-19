@@ -12,7 +12,11 @@ import {
 } from '#hooks/shared/types'
 
 import { logRun } from './logger.js'
-import { extractRoutableCommandsFromToolInput, routeCommand, routeToolInputToSessionMemory } from './dev-routing.js'
+import {
+  extractRoutableCommandsFromToolInput,
+  routeCommand,
+  routeToolInputToSessionMemory,
+} from './dev-routing.js'
 import { VALIDATORS } from './validators/index.js'
 import { isDirectEntrypoint } from '#hooks/shared/direct-entrypoint'
 

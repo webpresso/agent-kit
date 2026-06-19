@@ -1989,7 +1989,10 @@ hooks:
     for (const launcherPath of [preToolLauncherPath, stopLauncherPath]) {
       writeFileSync(
         launcherPath,
-        readFileSync(launcherPath, 'utf8').replace(quoteShell(repoRoot), quoteShell(missingRepoRoot)),
+        readFileSync(launcherPath, 'utf8').replace(
+          quoteShell(repoRoot),
+          quoteShell(missingRepoRoot),
+        ),
         'utf8',
       )
     }

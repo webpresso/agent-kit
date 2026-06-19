@@ -24,7 +24,9 @@ let tools: ToolMap
 
 function writeBlueprintReadme(
   root: string,
-  counts: Partial<Record<'draft' | 'planned' | 'in-progress' | 'completed' | 'parked' | 'archived', number>>,
+  counts: Partial<
+    Record<'draft' | 'planned' | 'in-progress' | 'completed' | 'parked' | 'archived', number>
+  >,
 ): void {
   const all = {
     draft: 0,

@@ -18,7 +18,12 @@ function payload(result: Awaited<ReturnType<typeof sessionIndexTool.handler>>) {
   return result.structuredContent as {
     passed: boolean
     summary: string
-    gain?: { rawBasisBytes: number; rawBytesBasis: string; gainBytes: number; approxTokensSaved: number }
+    gain?: {
+      rawBasisBytes: number
+      rawBytesBasis: string
+      gainBytes: number
+      approxTokensSaved: number
+    }
     counts: { inputChunks: number; indexedChunks: number; warningCount: number }
     sources: string[]
     chunkIds: string[]
@@ -62,7 +67,6 @@ describe('wp_session_index tool', () => {
     expect(store.search({ query: 'needle-value', limit: 1 })[0]?.source).toBe('mcp:direct-test')
     store.close()
   })
-
 
   it('uses accepted trimmed chunk UTF-8 bytes as index gain basis', async () => {
     const result = await sessionIndexTool.handler({

@@ -33,6 +33,7 @@ type RunResult =
   | {
       ok: true
       usage: Usage
+      local_wall_ms?: number
       tools: string[]
       transcript_path: string
       home_dir: string
@@ -41,6 +42,7 @@ type RunResult =
       ok: false
       error: 'rate_limit' | 'spawn_failed'
       usage: null
+      local_wall_ms?: number
       tools: []
       transcript_path: null
       home_dir: string
@@ -90,6 +92,18 @@ type CostSummary = {
   total: number
 }
 
+type UsageSummary = {
+  input_tokens: number
+  output_tokens: number
+  cache_creation_input_tokens: number
+  cache_read_input_tokens: number
+  total_tokens: number
+  duration_ms_mean: number
+  duration_ms_std: number
+  local_wall_ms_mean: number
+  local_wall_ms_std: number
+}
+
 type SessionMemoryReport = {
   run_id: string
   model: string
@@ -101,6 +115,17 @@ type SessionMemoryReport = {
     trials: number
     status: 'ok' | 'rate_limit' | 'spawn_failed'
     cost_usd: number
+    cost_mean_usd: number
+    cost_std_usd: number
+    input_tokens: number
+    output_tokens: number
+    cache_creation_input_tokens: number
+    cache_read_input_tokens: number
+    total_tokens: number
+    duration_ms_mean: number
+    duration_ms_std: number
+    local_wall_ms_mean: number
+    local_wall_ms_std: number
     recall_at_5: number
     recall_reason?: string
     recall_error?: string
@@ -151,12 +176,47 @@ export type SessionMemoryThresholdAxis = {
   readonly metric: 'latency_ms' | 'recall_at_5'
   readonly threshold: number
   readonly observed: number | null
-  readonly status: 'schema-valid' | 'passed' | 'failed'
+  readonly status: 'schema-valid' | 'not-instrumented' | 'passed' | 'failed'
 }
 
 export type SessionMemoryThresholdReport = {
   readonly mode: 'dry-run' | 'measured'
   readonly axes: readonly SessionMemoryThresholdAxis[]
+}
+
+type ArtifactSample = {
+  readonly metricKey: string
+  readonly value: number
+  readonly unit: string
+}
+
+type ArtifactThreshold = {
+  readonly value: number
+  readonly unit: string
+  readonly pass: boolean
+}
+
+type ArtifactProvenance = {
+  readonly gitCommit: string
+  readonly gitDirty: boolean
+  readonly command: string
+  readonly environment: 'dry_run' | 'live' | 'ci'
+}
+
+type MeasurementArtifact = {
+  readonly schemaVersion: '1'
+  readonly runId: string
+  readonly manifestDigest: string
+  readonly provenance: ArtifactProvenance
+  readonly scenarioSet: string
+  readonly variantSet: string
+  readonly warmup: number
+  readonly repetitions: number
+  readonly samples: readonly ArtifactSample[]
+  readonly aggregates: Record<string, number>
+  readonly thresholds: Record<string, ArtifactThreshold>
+  readonly rawArtifactHashes: Record<string, string>
+  readonly redactionStatus: 'clean' | 'pending' | 'redacted'
 }
 
 type RuntimeModules = {
@@ -191,6 +251,7 @@ type RuntimeModules = {
   validateWorkspaceKeyPresence: (config: WorkspaceConfig, env?: NodeJS.ProcessEnv) => void
   verifyManifest: (captured: Manifest, pinned: Manifest, options?: VerifyManifestOptions) => void
   writeReport: (report: SessionMemoryReport, outPath: string) => void
+  writeArtifactJson: (artifact: MeasurementArtifact, outPath: string) => void
 }
 
 export type RunBenchSessionMemoryDeps = RuntimeModules
@@ -204,6 +265,7 @@ const BENCH_RUNTIME_MODULE_PATHS = [
   ['scripts', 'bench', 'lib', 'variant-runner.ts'],
   ['scripts', 'bench', 'lib', 'report-writer.ts'],
   ['scripts', 'bench', 'lib', 'transcript-scorer.ts'],
+  ['scripts', 'bench', 'lib', 'measurement-artifact.ts'],
 ] as const
 
 export function isBunSingleFileUrl(fromUrl: string): boolean {
@@ -308,8 +370,13 @@ function stableStringify(value: unknown): string {
   return JSON.stringify(value)
 }
 
-export function createRunId(manifest: Manifest): string {
+export function createManifestDigest(manifest: Manifest): string {
   return createHash('sha256').update(stableStringify(manifest)).digest('hex').slice(0, 12)
+}
+
+export function createRunId(manifest: Manifest, clock: () => number = Date.now): string {
+  const digest = createManifestDigest(manifest)
+  return `${digest}-${clock().toString(36)}`
 }
 
 function normalizeTrials(input: RunBenchSessionMemoryInput): number {
@@ -377,22 +444,67 @@ function apiKeyMapFromEnv(env: NodeJS.ProcessEnv): Record<string, string | undef
   }
 }
 
+function roundMetric(value: number, digits = 6): number {
+  return Number(value.toFixed(digits))
+}
+
+function meanAndStd(values: readonly number[]): { readonly mean: number; readonly std: number } {
+  const mean = values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : 0
+  const variance =
+    values.length > 0
+      ? values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length
+      : 0
+  return { mean: roundMetric(mean), std: roundMetric(Math.sqrt(variance)) }
+}
+
+function summarizeUsages(
+  usages: readonly Usage[],
+  localWallMsValues: readonly number[] = usages.map((usage) => usage.duration_ms),
+): UsageSummary {
+  const duration = meanAndStd(usages.map((usage) => usage.duration_ms))
+  const localWall = meanAndStd(localWallMsValues)
+  const inputTokens = usages.reduce((sum, usage) => sum + usage.input_tokens, 0)
+  const outputTokens = usages.reduce((sum, usage) => sum + usage.output_tokens, 0)
+  const cacheCreationTokens = usages.reduce(
+    (sum, usage) => sum + usage.cache_creation_input_tokens,
+    0,
+  )
+  const cacheReadTokens = usages.reduce((sum, usage) => sum + usage.cache_read_input_tokens, 0)
+
+  return {
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+    cache_creation_input_tokens: cacheCreationTokens,
+    cache_read_input_tokens: cacheReadTokens,
+    total_tokens: inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens,
+    duration_ms_mean: duration.mean,
+    duration_ms_std: duration.std,
+    local_wall_ms_mean: localWall.mean,
+    local_wall_ms_std: localWall.std,
+  }
+}
 
 export function buildSessionMemoryThresholdReport(input: {
   readonly dryRun: boolean
-  readonly averageLatencyMs?: number
+  readonly hookLatencyMs?: Partial<Record<SessionMemoryThresholdAxisId, number>>
   readonly averageRecallAt5?: number
   readonly recallStatusValue?: number
   readonly recallFailure?: boolean
 }): SessionMemoryThresholdReport {
-  const latencyObserved = input.dryRun ? null : (input.averageLatencyMs ?? 0)
+  const latencyObserved = (axisId: SessionMemoryThresholdAxisId): number | null =>
+    input.dryRun ? null : (input.hookLatencyMs?.[axisId] ?? null)
   const recallObserved = input.dryRun ? null : (input.averageRecallAt5 ?? 0)
   const recallStatusValue = input.dryRun
     ? null
     : (input.recallStatusValue ?? input.averageRecallAt5 ?? 0)
-  const latencyStatus = (threshold: number): SessionMemoryThresholdAxis['status'] => {
+  const latencyStatus = (
+    axisId: SessionMemoryThresholdAxisId,
+    threshold: number,
+  ): SessionMemoryThresholdAxis['status'] => {
     if (input.dryRun) return 'schema-valid'
-    return (latencyObserved ?? Number.POSITIVE_INFINITY) <= threshold ? 'passed' : 'failed'
+    const observed = latencyObserved(axisId)
+    if (observed === null) return 'not-instrumented'
+    return observed <= threshold ? 'passed' : 'failed'
   }
   const recallStatus = (threshold: number): SessionMemoryThresholdAxis['status'] => {
     if (input.dryRun) return 'schema-valid'
@@ -407,24 +519,33 @@ export function buildSessionMemoryThresholdReport(input: {
         label: 'PostToolUse capture latency',
         metric: 'latency_ms',
         threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.postToolCaptureLatencyMs,
-        observed: latencyObserved,
-        status: latencyStatus(DEFAULT_SESSION_MEMORY_THRESHOLDS.postToolCaptureLatencyMs),
+        observed: latencyObserved('post_tool_capture_latency_ms'),
+        status: latencyStatus(
+          'post_tool_capture_latency_ms',
+          DEFAULT_SESSION_MEMORY_THRESHOLDS.postToolCaptureLatencyMs,
+        ),
       },
       {
         id: 'precompact_snapshot_latency_ms',
         label: 'PreCompact snapshot latency',
         metric: 'latency_ms',
         threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.precompactSnapshotLatencyMs,
-        observed: latencyObserved,
-        status: latencyStatus(DEFAULT_SESSION_MEMORY_THRESHOLDS.precompactSnapshotLatencyMs),
+        observed: latencyObserved('precompact_snapshot_latency_ms'),
+        status: latencyStatus(
+          'precompact_snapshot_latency_ms',
+          DEFAULT_SESSION_MEMORY_THRESHOLDS.precompactSnapshotLatencyMs,
+        ),
       },
       {
         id: 'startup_resume_injection_latency_ms',
         label: 'SessionStart resume injection latency',
         metric: 'latency_ms',
         threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.startupResumeInjectionLatencyMs,
-        observed: latencyObserved,
-        status: latencyStatus(DEFAULT_SESSION_MEMORY_THRESHOLDS.startupResumeInjectionLatencyMs),
+        observed: latencyObserved('startup_resume_injection_latency_ms'),
+        status: latencyStatus(
+          'startup_resume_injection_latency_ms',
+          DEFAULT_SESSION_MEMORY_THRESHOLDS.startupResumeInjectionLatencyMs,
+        ),
       },
       {
         id: 'search_quality_recall_at_5',
@@ -467,6 +588,7 @@ async function loadRuntimeModules(repoRoot = resolveBenchRuntimeRoot()): Promise
     validateWorkspaceKeyPresence: manifestModule.validateWorkspaceKeyPresence,
     verifyManifest: manifestModule.verifyManifest,
     writeReport: reportModule.writeReport,
+    writeArtifactJson: reportModule.writeArtifactJson,
   }
 }
 
@@ -549,6 +671,7 @@ export async function runBenchSessionMemoryCommand(
   const scenarios = resolveSelectedScenarios(allScenarios, input)
   const variants = resolveVariants(input)
   const trials = normalizeTrials(input)
+  const manifestDigest = createManifestDigest(pinned)
   const runId = createRunId(pinned)
   const outputRoot =
     input.outputRoot ?? resolve(runtimeRoot ?? process.cwd(), 'scripts', 'bench', 'runs')
@@ -607,15 +730,13 @@ export async function runBenchSessionMemoryCommand(
               model || DEFAULT_MODEL,
             )
           : { mean: 0, std: 0, n: 0, total: 0 }
+      const usageSummary = summarizeUsages(
+        okResults.map((result) => result.usage),
+        okResults.map((result) => result.local_wall_ms ?? result.usage.duration_ms),
+      )
       const wallSec =
         okResults.length > 0
-          ? Number(
-              (
-                okResults.reduce((sum, result) => sum + result.usage.duration_ms, 0) /
-                okResults.length /
-                1000
-              ).toFixed(6),
-            )
+          ? roundMetric(usageSummary.local_wall_ms_mean / 1000)
           : 0
       const recallScores = results.map((result): TranscriptRecallScore => {
         if (!result.ok) {
@@ -652,6 +773,17 @@ export async function runBenchSessionMemoryCommand(
         trials,
         status: failed?.error ?? 'ok',
         cost_usd: costSummary.total,
+        cost_mean_usd: costSummary.mean,
+        cost_std_usd: costSummary.std,
+        input_tokens: usageSummary.input_tokens,
+        output_tokens: usageSummary.output_tokens,
+        cache_creation_input_tokens: usageSummary.cache_creation_input_tokens,
+        cache_read_input_tokens: usageSummary.cache_read_input_tokens,
+        total_tokens: usageSummary.total_tokens,
+        duration_ms_mean: usageSummary.duration_ms_mean,
+        duration_ms_std: usageSummary.duration_ms_std,
+        local_wall_ms_mean: usageSummary.local_wall_ms_mean,
+        local_wall_ms_std: usageSummary.local_wall_ms_std,
         recall_at_5: Number(averageRecallAt5.toFixed(6)),
         ...(recallError ? { recall_error: recallError } : {}),
         ...(recallReason ? { recall_reason: recallReason } : {}),
@@ -661,12 +793,7 @@ export async function runBenchSessionMemoryCommand(
   }
 
   const reportPath = resolve(outputRoot, runId, 'report.md')
-  const successfulCells = cells.filter((cell) => cell.status === 'ok')
-  const averageWallMs =
-    successfulCells.length > 0
-      ? (successfulCells.reduce((sum, cell) => sum + cell.wall_sec, 0) / successfulCells.length) *
-        1000
-      : 0
+  const artifactPath = resolve(outputRoot, runId, 'report.json')
   const averageRecallAt5 =
     thresholdRecallValues.length > 0
       ? thresholdRecallValues.reduce((sum, recall) => sum + recall, 0) /
@@ -674,7 +801,6 @@ export async function runBenchSessionMemoryCommand(
       : 0
   const thresholdReport = buildSessionMemoryThresholdReport({
     dryRun: false,
-    averageLatencyMs: Number(averageWallMs.toFixed(6)),
     averageRecallAt5: Number(averageRecallAt5.toFixed(6)),
     recallStatusValue: averageRecallAt5,
     recallFailure,
@@ -691,8 +817,60 @@ export async function runBenchSessionMemoryCommand(
     reportPath,
   )
 
+  const artifactSamples: ArtifactSample[] = cells.flatMap((cell) => [
+    { metricKey: `${cell.scenario_id}.${cell.variant}.cost_usd`, value: cell.cost_usd, unit: 'usd' },
+    { metricKey: `${cell.scenario_id}.${cell.variant}.input_tokens`, value: cell.input_tokens, unit: 'tokens' },
+    { metricKey: `${cell.scenario_id}.${cell.variant}.output_tokens`, value: cell.output_tokens, unit: 'tokens' },
+    { metricKey: `${cell.scenario_id}.${cell.variant}.total_tokens`, value: cell.total_tokens, unit: 'tokens' },
+    { metricKey: `${cell.scenario_id}.${cell.variant}.duration_ms_mean`, value: cell.duration_ms_mean, unit: 'ms' },
+    { metricKey: `${cell.scenario_id}.${cell.variant}.local_wall_ms_mean`, value: cell.local_wall_ms_mean, unit: 'ms' },
+    { metricKey: `${cell.scenario_id}.${cell.variant}.recall_at_5`, value: cell.recall_at_5, unit: 'ratio' },
+  ])
+
+  const artifactAggregates: Record<string, number> = {
+    average_recall_at_5: Number(averageRecallAt5.toFixed(6)),
+    total_cells: cells.length,
+  }
+
+  const artifactThresholds: Record<string, ArtifactThreshold> = {}
+  for (const axis of thresholdReport.axes) {
+    artifactThresholds[axis.id] = {
+      value: axis.threshold,
+      unit: axis.metric,
+      pass: axis.status === 'passed' || axis.status === 'schema-valid',
+    }
+  }
+
+  const scenarioIds = [...new Set(cells.map((cell) => cell.scenario_id))].sort().join(',')
+  const variantIds = [...new Set(cells.map((cell) => cell.variant))].sort().join(',')
+
+  const artifact: MeasurementArtifact = {
+    schemaVersion: '1',
+    runId,
+    manifestDigest,
+    provenance: {
+      gitCommit: pinned.claude,
+      gitDirty: false,
+      command: 'wp bench session-memory',
+      environment: 'live',
+    },
+    scenarioSet: scenarioIds,
+    variantSet: variantIds,
+    warmup: 0,
+    repetitions: trials,
+    samples: artifactSamples,
+    aggregates: artifactAggregates,
+    thresholds: artifactThresholds,
+    rawArtifactHashes: {},
+    redactionStatus: 'pending',
+  }
+
+  runtime.writeArtifactJson(artifact, artifactPath)
+
+  const thresholdFailed = thresholdReport.axes.some((axis) => axis.status === 'failed')
+
   return {
-    exitCode: 0,
+    exitCode: thresholdFailed ? 1 : 0,
     runId,
     dryRun: false,
     reportPath,

@@ -31,14 +31,18 @@ describe('buildClaudeHookGroups (byte-parity)', () => {
   it('produces the expected PreToolUse structure with matcher', () => {
     const result = buildClaudeHookGroups({ resolveBin, matchers })
     expect(result['PreToolUse']).toHaveLength(1)
-    expect(result['PreToolUse']?.[0]?.matcher).toStrictEqual('Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*')
+    expect(result['PreToolUse']?.[0]?.matcher).toStrictEqual(
+      'Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*',
+    )
     expect(result['PreToolUse']?.[0]?.hooks[0]?.command).toContain('wp-pretool-guard')
   })
 
   it('produces the expected PostToolUse structure with matcher', () => {
     const result = buildClaudeHookGroups({ resolveBin, matchers })
     expect(result['PostToolUse']).toHaveLength(1)
-    expect(result['PostToolUse']?.[0]?.matcher).toStrictEqual('Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*')
+    expect(result['PostToolUse']?.[0]?.matcher).toStrictEqual(
+      'Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*',
+    )
     expect(result['PostToolUse']?.[0]?.hooks[0]?.command).toContain('wp-post-tool')
     expect(result['PostToolUse']?.[0]?.hooks[0]?.timeout).toStrictEqual(15)
   })

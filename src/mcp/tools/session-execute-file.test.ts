@@ -73,7 +73,6 @@ describe('wp_session_execute_file tool', () => {
     store.close()
   })
 
-
   it('uses actual read Buffer bytes, not full stat size, as file read gain basis', async () => {
     const { root, dbPath } = fixture()
     writeFileSync(join(root, 'src', 'basis.txt'), '1234567890')
@@ -105,6 +104,10 @@ describe('wp_session_execute_file tool', () => {
 
     expect(data.passed).toBe(true)
     expect(data.preview).toBe('')
+    expect(data.gain).toMatchObject({
+      rawBasisBytes: Buffer.byteLength('one\ntwo\n', 'utf8'),
+      rawBytesBasis: 'file_metadata_buffer',
+    })
     expect(JSON.stringify(result)).not.toContain('one')
     expect(JSON.stringify(result)).not.toContain('two')
   })

@@ -34,7 +34,11 @@ describe('github release notes', () => {
 
   it('builds root release notes with Changesets information and runtime asset context', () => {
     const root = mkdtempSync(join(tmpdir(), 'wp-release-notes-'))
-    writeFileSync(join(root, 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }), 'utf8')
+    writeFileSync(
+      join(root, 'package.json'),
+      JSON.stringify({ name: '@webpresso/agent-kit' }),
+      'utf8',
+    )
     writeFileSync(
       join(root, 'CHANGELOG.md'),
       ['# Changelog', '', '## 3.0.0', '', '### Patch Changes', '', '- def456: Fix hooks.'].join(
@@ -61,7 +65,11 @@ describe('github release notes', () => {
     const root = mkdtempSync(join(tmpdir(), 'wp-release-notes-'))
     const packageDir = join(root, 'packages', 'agent-config')
     mkdirSync(packageDir, { recursive: true })
-    writeFileSync(join(root, 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }), 'utf8')
+    writeFileSync(
+      join(root, 'package.json'),
+      JSON.stringify({ name: '@webpresso/agent-kit' }),
+      'utf8',
+    )
     writeFileSync(
       join(packageDir, 'package.json'),
       JSON.stringify({ name: '@webpresso/agent-config' }),
@@ -69,9 +77,15 @@ describe('github release notes', () => {
     )
     writeFileSync(
       join(packageDir, 'CHANGELOG.md'),
-      ['# @webpresso/agent-config', '', '## 0.2.0', '', '### Minor Changes', '', '- abc111: Add preset.'].join(
-        '\n',
-      ),
+      [
+        '# @webpresso/agent-config',
+        '',
+        '## 0.2.0',
+        '',
+        '### Minor Changes',
+        '',
+        '- abc111: Add preset.',
+      ].join('\n'),
       'utf8',
     )
 
@@ -90,7 +104,11 @@ describe('github release notes', () => {
   it('writes notes through the CLI --out path', async () => {
     const root = mkdtempSync(join(tmpdir(), 'wp-release-notes-'))
     const out = join(root, 'notes.md')
-    writeFileSync(join(root, 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }), 'utf8')
+    writeFileSync(
+      join(root, 'package.json'),
+      JSON.stringify({ name: '@webpresso/agent-kit' }),
+      'utf8',
+    )
     writeFileSync(
       join(root, 'CHANGELOG.md'),
       ['# Changelog', '', '## 1.2.3', '', '### Patch Changes', '', '- abc123: CLI output.'].join(
@@ -99,17 +117,21 @@ describe('github release notes', () => {
       'utf8',
     )
 
-    const result = spawnSync('bun', [
-      join(process.cwd(), 'scripts', 'github-release-notes.ts'),
-      '--cwd',
-      root,
-      '--package',
-      '@webpresso/agent-kit',
-      '--version',
-      '1.2.3',
-      '--out',
-      out,
-    ], { encoding: 'utf8' })
+    const result = spawnSync(
+      'bun',
+      [
+        join(process.cwd(), 'scripts', 'github-release-notes.ts'),
+        '--cwd',
+        root,
+        '--package',
+        '@webpresso/agent-kit',
+        '--version',
+        '1.2.3',
+        '--out',
+        out,
+      ],
+      { encoding: 'utf8' },
+    )
 
     expect(result.status, result.stderr).toBe(0)
 

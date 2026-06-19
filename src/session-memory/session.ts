@@ -28,6 +28,14 @@ const REQUIRED_EVENT_COLUMNS = [
   'priority',
   'metadata_json',
 ] as const
+const REQUIRED_SESSION_COLUMNS = [
+  'agent_id',
+  'snapshot_id',
+  'repo_hash',
+  'created_at',
+  'status',
+  'content_json',
+] as const
 
 type EventRow = {
   session_id: string
@@ -109,6 +117,7 @@ CREATE TABLE IF NOT EXISTS session_events (
   metadata_json TEXT NOT NULL DEFAULT '{}'
 );
 CREATE INDEX IF NOT EXISTS idx_session_events_repo_ts ON session_events(repo_hash, ts DESC);
+CREATE INDEX IF NOT EXISTS idx_session_events_repo_session_ts ON session_events(repo_hash, session_id, ts DESC);
 CREATE VIRTUAL TABLE IF NOT EXISTS session_events_fts
   USING fts5(session_id UNINDEXED, event_id UNINDEXED, repo_hash UNINDEXED, tool_name UNINDEXED, content, tokenize='porter');
 `
@@ -204,15 +213,16 @@ function ftsContent(row: Pick<EventRow, 'content' | 'summary' | 'event_type'>): 
 }
 
 function rowToEnvelope(row: EventRow, maxEventBytes: number): EventEnvelope {
-  const metadata = parseMetadata(row.metadata_json)
-  const truncated = truncateUtf8(row.content, maxEventBytes)
+  const metadata = parseMetadata(String(row.metadata_json ?? '{}'))
+  const content = String(row.content ?? '')
+  const truncated = truncateUtf8(content, maxEventBytes)
   if (truncated.truncated) metadata.truncated = true
   return {
     sessionId: row.session_id,
     eventId: row.event_id,
-    ts: row.ts,
+    ts: String(row.ts),
     eventType: row.event_type,
-    toolName: row.tool_name,
+    toolName: String(row.tool_name),
     content: truncated.value,
     ...(row.summary ? { summary: row.summary } : {}),
     priority: normalizePriority(row.priority),
@@ -229,9 +239,14 @@ export class SessionMemorySessionStore {
       this.db.exec('PRAGMA journal_mode = WAL')
       this.db.exec('PRAGMA synchronous = NORMAL')
       this.db.exec('PRAGMA busy_timeout = 5000')
-      const hadSessionEventsTable = this.hasSessionEventsTable()
+      const currentVersion = this.userVersion()
+      const hadSessionsTable = this.tableExists('sessions')
+      const hadSessionEventsTable = this.tableExists('session_events')
+      if (currentVersion < SESSION_MEMORY_SCHEMA_VERSION) {
+        this.migrateLegacySchema(hadSessionsTable, hadSessionEventsTable)
+      }
       this.db.exec(SCHEMA_SQL)
-      this.ensureCurrentSchema(hadSessionEventsTable)
+      this.ensureCurrentSchema()
     } catch (error) {
       this.db.close()
       throw error
@@ -518,24 +533,177 @@ export class SessionMemorySessionStore {
     )
   }
 
-  private hasSessionEventsTable(): boolean {
+  private tableExists(tableName: string): boolean {
     return Boolean(
       this.db
-        .prepare<[], { name: string }>(
-          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'session_events'",
+        .prepare<[string], { name: string }>(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
         )
-        .get(),
+        .get(tableName),
     )
   }
 
-  private ensureCurrentSchema(hadSessionEventsTable: boolean): void {
-    const currentVersion =
+  private tableColumns(tableName: string): Set<string> {
+    return new Set(
+      this.db
+        .prepare<[], { name: string }>(`PRAGMA table_info(${tableName})`)
+        .all()
+        .map((column) => column.name),
+    )
+  }
+
+  private userVersion(): number {
+    return (
       this.db.prepare<[], { user_version: number }>('PRAGMA user_version').get()?.user_version ?? 0
+    )
+  }
+
+  private migrateLegacySchema(hadSessionsTable: boolean, hadSessionEventsTable: boolean): void {
+    this.migrateLegacySessionsSchema(hadSessionsTable)
+    this.migrateLegacySessionEventsSchema(hadSessionEventsTable)
+  }
+
+  private migrateLegacySessionsSchema(hadSessionsTable: boolean): void {
+    if (!hadSessionsTable) return
+    const columns = this.tableColumns('sessions')
+    if (REQUIRED_SESSION_COLUMNS.every((column) => columns.has(column))) return
+    for (const requiredIdentityColumn of ['agent_id', 'snapshot_id']) {
+      if (!columns.has(requiredIdentityColumn)) {
+        throw new Error(
+          `cannot migrate legacy sessions table; missing required column: ${requiredIdentityColumn}`,
+        )
+      }
+    }
+
+    this.db.exec('BEGIN IMMEDIATE')
+    try {
+      this.db.exec(`
+        DROP INDEX IF EXISTS idx_sessions_repo_created;
+        ALTER TABLE sessions RENAME TO sessions_legacy_migration;
+        CREATE TABLE sessions (
+          agent_id TEXT NOT NULL,
+          snapshot_id TEXT PRIMARY KEY,
+          repo_hash TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'active',
+          content_json TEXT NOT NULL DEFAULT '{}'
+        );
+      `)
+      const repoHashExpr = columns.has('repo_hash')
+        ? "COALESCE(NULLIF(repo_hash, ''), 'legacy')"
+        : "'legacy'"
+      const createdAtExpr = columns.has('created_at')
+        ? "COALESCE(NULLIF(CAST(created_at AS TEXT), ''), '1970-01-01T00:00:00.000Z')"
+        : "'1970-01-01T00:00:00.000Z'"
+      const statusExpr = columns.has('status')
+        ? "COALESCE(NULLIF(status, ''), 'active')"
+        : "'active'"
+      const contentJsonExpr = columns.has('content_json')
+        ? "COALESCE(NULLIF(content_json, ''), '{}')"
+        : "'{}'"
+      this.db
+        .prepare<[], void>(
+          `INSERT OR IGNORE INTO sessions(agent_id, snapshot_id, repo_hash, created_at, status, content_json)
+           SELECT COALESCE(NULLIF(agent_id, ''), 'legacy-agent'),
+                  COALESCE(NULLIF(snapshot_id, ''), 'legacy-snapshot-' || rowid),
+                  ${repoHashExpr},
+                  ${createdAtExpr},
+                  ${statusExpr},
+                  ${contentJsonExpr}
+             FROM sessions_legacy_migration`,
+        )
+        .run()
+      this.db.exec('DROP TABLE sessions_legacy_migration')
+      this.db.exec('COMMIT')
+    } catch (error) {
+      if (this.db.inTransaction) this.db.exec('ROLLBACK')
+      throw error
+    }
+  }
+
+  private migrateLegacySessionEventsSchema(hadSessionEventsTable: boolean): void {
+    if (!hadSessionEventsTable) return
+    const columns = this.tableColumns('session_events')
+    if (REQUIRED_EVENT_COLUMNS.every((column) => columns.has(column))) return
+    for (const requiredIdentityColumn of ['session_id', 'event_id', 'ts', 'tool_name', 'content']) {
+      if (!columns.has(requiredIdentityColumn)) {
+        throw new Error(
+          `cannot migrate legacy session_events table; missing required column: ${requiredIdentityColumn}`,
+        )
+      }
+    }
+
+    this.db.exec('BEGIN IMMEDIATE')
+    try {
+      this.db.exec(`
+        DROP TABLE IF EXISTS session_events_fts;
+        DROP INDEX IF EXISTS idx_session_events_repo_ts;
+        DROP INDEX IF EXISTS idx_session_events_repo_session_ts;
+        DROP INDEX IF EXISTS idx_session_events_repo_priority_ts;
+        ALTER TABLE session_events RENAME TO session_events_legacy_migration;
+        CREATE TABLE session_events (
+          session_id TEXT NOT NULL,
+          event_id TEXT PRIMARY KEY,
+          repo_hash TEXT NOT NULL,
+          ts TEXT NOT NULL,
+          event_type TEXT NOT NULL DEFAULT 'tool_command',
+          tool_name TEXT NOT NULL,
+          content TEXT NOT NULL,
+          summary TEXT,
+          priority INTEGER NOT NULL DEFAULT 50,
+          metadata_json TEXT NOT NULL DEFAULT '{}'
+        );
+      `)
+
+      const repoHashExpr = columns.has('repo_hash')
+        ? "COALESCE(NULLIF(e.repo_hash, ''), 'legacy')"
+        : this.tableExists('sessions') && this.tableColumns('sessions').has('repo_hash')
+          ? "COALESCE((SELECT NULLIF(s.repo_hash, '') FROM sessions s WHERE s.agent_id = e.session_id ORDER BY s.created_at DESC LIMIT 1), 'legacy')"
+          : "'legacy'"
+      const eventTypeExpr = columns.has('event_type')
+        ? "COALESCE(NULLIF(e.event_type, ''), 'tool_command')"
+        : "'tool_command'"
+      const summaryExpr = columns.has('summary') ? 'e.summary' : 'NULL'
+      const priorityExpr = columns.has('priority')
+        ? 'COALESCE(CAST(e.priority AS INTEGER), 50)'
+        : '50'
+      const metadataExpr = columns.has('metadata_json')
+        ? "COALESCE(NULLIF(e.metadata_json, ''), '{}')"
+        : "'{}'"
+
+      this.db
+        .prepare<[], void>(
+          `INSERT OR IGNORE INTO session_events(
+             session_id, event_id, repo_hash, ts, event_type, tool_name, content, summary, priority, metadata_json
+           )
+           SELECT COALESCE(NULLIF(e.session_id, ''), 'legacy-session'),
+                  COALESCE(NULLIF(e.event_id, ''), 'legacy-event-' || e.rowid),
+                  ${repoHashExpr},
+                  COALESCE(NULLIF(CAST(e.ts AS TEXT), ''), '1970-01-01T00:00:00.000Z'),
+                  ${eventTypeExpr},
+                  COALESCE(NULLIF(e.tool_name, ''), 'Unknown'),
+                  COALESCE(e.content, ''),
+                  ${summaryExpr},
+                  ${priorityExpr},
+                  ${metadataExpr}
+             FROM session_events_legacy_migration e`,
+        )
+        .run()
+      this.db.exec('DROP TABLE session_events_legacy_migration')
+      this.db.exec('COMMIT')
+    } catch (error) {
+      if (this.db.inTransaction) this.db.exec('ROLLBACK')
+      throw error
+    }
+  }
+
+  private ensureCurrentSchema(): void {
+    const currentVersion = this.userVersion()
     if (currentVersion >= SESSION_MEMORY_SCHEMA_VERSION) return
 
     this.db.exec('BEGIN IMMEDIATE')
     try {
-      this.assertHardCutSchemaInTransaction(hadSessionEventsTable)
+      this.assertCurrentSchemaInTransaction()
       this.rebuildFtsInTransaction()
       this.db.exec(`PRAGMA user_version = ${SESSION_MEMORY_SCHEMA_VERSION}`)
       this.db.exec('COMMIT')
@@ -545,21 +713,19 @@ export class SessionMemorySessionStore {
     }
   }
 
-  private assertHardCutSchemaInTransaction(hadSessionEventsTable: boolean): void {
-    const columns = new Set(
-      this.db
-        .prepare<[], { name: string }>('PRAGMA table_info(session_events)')
-        .all()
-        .map((column) => column.name),
-    )
+  private assertCurrentSchemaInTransaction(): void {
+    const columns = this.tableColumns('session_events')
     const missingColumns = REQUIRED_EVENT_COLUMNS.filter((column) => !columns.has(column))
-    if (hadSessionEventsTable && missingColumns.length > 0) {
+    if (missingColumns.length > 0) {
       throw new Error(
-        `session-memory hard cut requires a fresh typed event schema; missing columns: ${missingColumns.join(', ')}`,
+        `session-memory schema migration failed; missing columns: ${missingColumns.join(', ')}`,
       )
     }
     this.db.exec(
       'CREATE INDEX IF NOT EXISTS idx_session_events_repo_priority_ts ON session_events(repo_hash, priority DESC, ts DESC)',
+    )
+    this.db.exec(
+      'CREATE INDEX IF NOT EXISTS idx_session_events_repo_session_ts ON session_events(repo_hash, session_id, ts DESC)',
     )
   }
 

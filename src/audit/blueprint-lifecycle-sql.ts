@@ -455,11 +455,12 @@ export async function auditBlueprintLifecycleSql(
             currentStatus === 'completed' &&
             !hasHistoricalZeroTaskWaiver(currentMarkdown)
           ) {
-            const taskCount = db
-              .prepare<[string], { total: number }>(
-                `SELECT COUNT(*) AS total FROM tasks WHERE blueprint_slug = ?`,
-              )
-              .get(row.slug)?.total ?? 0
+            const taskCount =
+              db
+                .prepare<[string], { total: number }>(
+                  `SELECT COUNT(*) AS total FROM tasks WHERE blueprint_slug = ?`,
+                )
+                .get(row.slug)?.total ?? 0
             if (taskCount === 0) {
               violations.push({
                 file: row.file_path,

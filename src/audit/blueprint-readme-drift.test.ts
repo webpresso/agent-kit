@@ -145,7 +145,11 @@ describe('auditBlueprintReadmeDrift', () => {
     )
 
     const readmePath = path.join(cwd, 'webpresso', 'blueprints', 'README.md')
-    writeFileSync(readmePath, ['# Blueprints', '', '## Authoring', '', 'Keep this prose.', ''].join('\n'), 'utf8')
+    writeFileSync(
+      readmePath,
+      ['# Blueprints', '', '## Authoring', '', 'Keep this prose.', ''].join('\n'),
+      'utf8',
+    )
 
     const result = auditBlueprintReadmeDrift(cwd, { fix: true })
     expect(result.ok).toBe(true)

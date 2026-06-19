@@ -190,10 +190,7 @@ export interface ExecuteBlueprintResult {
 
 let blueprintExecCommandExists: (command: string) => boolean = defaultCommandExists
 let blueprintExecStarter:
-  | ((
-      slug: string,
-      options: BlueprintMoveOptions,
-    ) => Promise<BlueprintLifecycleMutationResult>)
+  | ((slug: string, options: BlueprintMoveOptions) => Promise<BlueprintLifecycleMutationResult>)
   | null = null
 
 function assertBlueprintCanMoveToStatus(blueprint: Blueprint, nextStatus: BlueprintStatus): void {
@@ -881,10 +878,7 @@ export function _setBlueprintExecCommandExistsForTests(
 
 export function _setBlueprintExecStarterForTests(
   starter:
-    | ((
-        slug: string,
-        options: BlueprintMoveOptions,
-      ) => Promise<BlueprintLifecycleMutationResult>)
+    | ((slug: string, options: BlueprintMoveOptions) => Promise<BlueprintLifecycleMutationResult>)
     | null,
 ): void {
   blueprintExecStarter = starter

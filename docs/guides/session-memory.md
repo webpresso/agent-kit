@@ -1,7 +1,7 @@
 ---
 title: Session memory guide
 type: guide
-last_updated: 2026-06-13
+last_updated: 2026-06-19
 ---
 
 # Session memory
@@ -10,6 +10,37 @@ Session memory gives webpresso agents a local-only recall layer backed by SQLite
 and FTS5. It has no daemon, no cloud sync, and no telemetry. Capture hooks write
 bounded continuity events, while MCP tools let an agent index, restore, search,
 inspect, and safely reset local recall data.
+
+## Native backend and fallback
+
+Published agent-kit builds use a prebuilt-first native loader for the
+session-memory engine. The root package declares optional NAPI packages for:
+
+- `darwin-x64`
+- `darwin-arm64`
+- `linux-x64`
+- `linux-arm64`
+- `win32-x64`
+- `win32-arm64`
+
+The native backend is optional. If no compatible optional package or explicitly
+configured addon is available, MCP command execution remains usable through the
+TypeScript fallback. Fallback is visible in returned metadata; it is not silent.
+The Windows optional packages cover the native SQLite/FTS storage addon surface
+only; shell command execution tools still follow the repository's POSIX host
+contract and reject `win32` until Windows shell semantics are explicitly
+supported.
+
+The published package never runs a synchronous first-use Cargo build. Source
+builds are development-only and require both an agent-kit repository checkout
+and `WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE=1`. Operators can also point the
+loader at a vetted addon with `WP_NATIVE_SESSION_MEMORY_PATH=<path>`.
+
+The native and TypeScript command paths share the same compatibility oracle:
+bounded summaries, `124` timeout exits, `128+n` signal exits where known,
+indexed-output byte caps, truncation metadata, and local-only storage. Any
+future semver-visible divergence must be documented here and in the changeset
+that introduces it.
 
 ## Data location and reset safety
 
@@ -39,11 +70,11 @@ The compiled MCP registry exposes these tested session-memory tools:
 
 | Tool | Purpose | Bounds and safety |
 | --- | --- | --- |
-| `wp_session_batch_execute` | Run an explicit bounded batch of shell commands through the local session-memory store. | Requires explicit execute consent, caps concurrency/time/output, and indexes large outputs instead of returning them inline. |
+| `wp_session_batch_execute` | Run an explicit bounded batch of shell commands through session-memory execution (native backend when available, TypeScript fallback otherwise). | Requires explicit execute consent, caps concurrency/time/summary size, and indexes output instead of returning large raw payloads inline. |
 | `wp_session_capture` | Manually capture continuity content for later restore. | Truncates captured content before storage and records it under the active repo/session identity. |
 | `wp_session_index` | Index caller-provided text chunks. | Accepts at most 100 chunks per call, skips empty or oversized chunks, and returns bounded chunk ids and warnings. |
 | `wp_session_fetch_and_index` | Fetch an absolute `http(s)` URL and index bounded response content. | Caps URL length, response bytes, chunk count, and returned ids; failed fetches return bounded warnings. |
-| `wp_session_execute` | Run one explicit shell command through the local session-memory store. | Requires explicit execute consent, caps timeout/output, and returns bounded summaries plus optional indexed search hits. |
+| `wp_session_execute` | Run one explicit shell command through session-memory execution (native backend when available, TypeScript fallback otherwise). | Requires explicit execute consent, caps timeout/summary size, and returns bounded summaries plus optional indexed search hits. |
 | `wp_session_execute_file` | Run explicit local file `read_text` or `metadata` operations under repo-root validation. | Caps preview and file bytes; overflow content can be indexed instead of returned inline; no shell, write, network path, or repo escape behavior is part of this tool. |
 | `wp_session_restore` | Restore bounded continuity context for the active repo. | Defaults to continuity events, returns preview-only results, and caps result count and preview bytes. |
 | `wp_session_search` | Search indexed chunks plus continuity events with unified provenance. | Prioritizes indexed chunks, dedupes results, caps result count, and returns bounded previews. |
@@ -67,8 +98,8 @@ The `structuredContent.gain` object contains:
 - `approxTokensSaved` — `Math.floor(gainBytes / 4)`.
 - `precision` — `exact_utf8_bytes_approx_tokens`.
 - `rawBytesBasis` — one of `command_output_total`,
-  `batch_command_output_total`, `file_read_buffer`, `index_accepted_text`, or
-  `fetch_indexed_text`.
+  `batch_command_output_total`, `file_read_buffer`, `file_metadata_buffer`,
+  `index_accepted_text`, or `fetch_indexed_text`.
 
 `wp_session_stats` reports current-worktree Webpresso gain totals from the
 session-memory index DB. `wp gain` prints those Webpresso totals and then prints
@@ -195,6 +226,26 @@ carrier check, secret-policy audits, and path safety. Public claims
 should cite the reference parity matrix and must stay within the documented
 Cursor/OpenCode degraded support boundary.
 
+Native package changes also require:
+
+```bash
+vp run build:session-memory-native -- --target host
+vp run stage:session-memory-native -- --target host
+vp run native:session-memory:fmt
+vp run native:session-memory:clippy
+vp run native:session-memory:deny
+vp run native:session-memory:test
+vp run native:session-memory:bench:run
+vp run native:session-memory:bench:gate
+bun scripts/public-consumer-smoke.ts --setup-only --skip-build
+```
+
+The packed-consumer smoke inspects the actual tarball and fails if
+`native/session-memory-engine/**`, `Cargo.toml`, or `Cargo.lock` leak into the
+consumer package. It requires the compiled native loader JS so a consumer can
+resolve a prebuilt optional addon or take the TypeScript fallback without Rust
+sources.
+
 ## Fetch and index flow
 
 `wp_session_fetch_and_index` uses native `fetch()`, normalizes URLs, converts
@@ -242,8 +293,8 @@ FTS tables:
 ## Search fallback
 
 The store uses a three-tier fallback: porter FTS first, trigram FTS second, and
-an IDF-weighted Levenshtein pass last. Results include unified provenance so an
-agent can distinguish continuity events from indexed chunks.
+a capped Levenshtein pass last. Results include unified provenance so an agent
+can distinguish continuity events from indexed chunks.
 
 ## Unsupported modes and non-goals
 

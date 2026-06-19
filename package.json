@@ -58,7 +58,9 @@
     "THIRD-PARTY-NOTICES.md",
     "README.md",
     "docs/guides/session-memory.md",
-    "docs/bench/session-memory-methodology.md"
+    "docs/bench/session-memory-methodology.md",
+    "docs/bench/result-card-contract.md",
+    "docs/bench/result-cards"
   ],
   "type": "module",
   "sideEffects": false,
@@ -493,7 +495,18 @@
     "verify:paths": "./bin/wp audit absolute-path-policy --root .",
     "prepare": "husky",
     "mutation": "./bin/wp test --mutation",
-    "e2e": "./bin/wp e2e --config playwright.config.ts"
+    "e2e": "./bin/wp e2e --config playwright.config.ts",
+    "native:session-memory:build": "cargo build --manifest-path native/session-memory-engine/Cargo.toml --package session-memory-napi --release --locked",
+    "native:session-memory:fmt": "cargo fmt --manifest-path native/session-memory-engine/Cargo.toml --all -- --check",
+    "native:session-memory:clippy": "cargo clippy --manifest-path native/session-memory-engine/Cargo.toml --all-targets --all-features -- -D warnings",
+    "native:session-memory:test": "cargo test --manifest-path native/session-memory-engine/Cargo.toml --all",
+    "native:session-memory:bench": "pnpm run native:session-memory:bench:compile",
+    "native:session-memory:bench:compile": "cargo bench --manifest-path native/session-memory-engine/Cargo.toml --package session-memory-core --no-run",
+    "native:session-memory:bench:run": "cargo bench --manifest-path native/session-memory-engine/Cargo.toml --package session-memory-core",
+    "native:session-memory:bench:gate": "native/session-memory-engine/scripts/check-bench-thresholds.sh",
+    "build:session-memory-native": "bun scripts/build-session-memory-native-artifacts.ts",
+    "stage:session-memory-native": "bun scripts/stage-session-memory-native-artifacts.ts",
+    "native:session-memory:deny": "cargo deny --manifest-path native/session-memory-engine/Cargo.toml check"
   },
   "dependencies": {
     "@webpresso/cli-contract": "^0.2.0",

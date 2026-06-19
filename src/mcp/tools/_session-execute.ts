@@ -28,6 +28,13 @@ const outputSchema = createSummaryOutputSchema({
     outputBytes: z.number(),
     indexed: z.boolean(),
     summary: z.string(),
+    backend: z.enum(['native', 'typescript']),
+    fallbackReason: z.string().optional(),
+    truncated: z.boolean().optional(),
+    capturedBytes: z.number().optional(),
+    maxCaptureBytes: z.number().optional(),
+    timedOut: z.boolean().optional(),
+    signal: z.string().optional(),
     hits: z
       .array(
         z.object({
@@ -44,7 +51,7 @@ const outputSchema = createSummaryOutputSchema({
 const tool: ToolDescriptor = {
   name: 'wp_session_execute',
   description:
-    'Run one shell command and index bounded output into the local session-memory store. Use instead of raw shell for large-output commands.',
+    'Run one shell command through session-memory execution, using the native backend when available and TypeScript fallback otherwise; index output for search.',
   inputSchema,
   outputSchema,
   annotations: {
@@ -68,6 +75,7 @@ const tool: ToolDescriptor = {
             outputBytes: 0,
             indexed: false,
             summary: 'set execute=true to opt into shell execution',
+            backend: 'typescript' as const,
           },
         },
         { isError: true },
@@ -85,6 +93,7 @@ const tool: ToolDescriptor = {
             outputBytes: 0,
             indexed: false,
             summary: 'session execute shells through sh -c and rejects win32',
+            backend: 'typescript' as const,
           },
         },
         { isError: true },
@@ -121,6 +130,15 @@ const tool: ToolDescriptor = {
             outputBytes: result.outputBytes,
             indexed: result.indexed,
             summary: result.summary,
+            backend: result.backend,
+            ...(result.fallbackReason ? { fallbackReason: result.fallbackReason } : {}),
+            ...(result.truncated === undefined ? {} : { truncated: result.truncated }),
+            ...(result.capturedBytes === undefined ? {} : { capturedBytes: result.capturedBytes }),
+            ...(result.maxCaptureBytes === undefined
+              ? {}
+              : { maxCaptureBytes: result.maxCaptureBytes }),
+            ...(result.timedOut === undefined ? {} : { timedOut: result.timedOut }),
+            ...(result.signal ? { signal: result.signal } : {}),
             ...(hits ? { hits: [...hits] } : {}),
           },
         },
@@ -145,6 +163,7 @@ const tool: ToolDescriptor = {
             outputBytes: 0,
             indexed: false,
             summary: message,
+            backend: 'typescript' as const,
           },
         },
         { isError: true },

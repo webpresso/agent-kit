@@ -130,7 +130,6 @@ describe('wp_e2e tool', () => {
     expect((payload.details as { commands: unknown[] }).commands).toEqual(commands)
   })
 
-
   it('resolves the MCP project root for planning and command execution', async () => {
     const root = tempProjectRoot()
     process.env.CLAUDE_PROJECT_DIR = root

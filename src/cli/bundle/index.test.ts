@@ -62,12 +62,12 @@ describe('agent-kit CLI bundles', () => {
 
     expect(contractConsumerSources.length).toBeGreaterThan(0)
     for (const sourcePath of contractConsumerSources) {
-      expect(readFileSync(join(repoRoot, sourcePath), 'utf8')).toContain(
-        '@webpresso/cli-contract',
-      )
+      expect(readFileSync(join(repoRoot, sourcePath), 'utf8')).toContain('@webpresso/cli-contract')
     }
 
-    expect(readFileSync(join(repoRoot, 'package.json'), 'utf8')).toContain('@webpresso/cli-contract')
+    expect(readFileSync(join(repoRoot, 'package.json'), 'utf8')).toContain(
+      '@webpresso/cli-contract',
+    )
     expect(globSync('src/cli/bundle/contract.ts', { cwd: repoRoot })).toEqual([])
   })
 

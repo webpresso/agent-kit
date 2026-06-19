@@ -370,14 +370,16 @@ export class SessionMemoryStore {
          ORDER BY gainBytes DESC, tool_name ASC`,
       )
       .all()
-      .map((row): SessionGainToolStats => ({
-        toolName: row.toolName,
-        eventCount: row.eventCount,
-        rawBasisBytes: row.rawBasisBytes ?? 0,
-        returnedToolResultBytes: row.returnedToolResultBytes ?? 0,
-        gainBytes: row.gainBytes ?? 0,
-        approxTokensSaved: row.approxTokensSaved ?? 0,
-      }))
+      .map(
+        (row): SessionGainToolStats => ({
+          toolName: row.toolName,
+          eventCount: row.eventCount,
+          rawBasisBytes: row.rawBasisBytes ?? 0,
+          returnedToolResultBytes: row.returnedToolResultBytes ?? 0,
+          gainBytes: row.gainBytes ?? 0,
+          approxTokensSaved: row.approxTokensSaved ?? 0,
+        }),
+      )
     return {
       eventCount: totals?.eventCount ?? 0,
       rawBasisBytes: totals?.rawBasisBytes ?? 0,

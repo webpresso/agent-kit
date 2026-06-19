@@ -350,8 +350,6 @@ describe('routeCommand', () => {
     }
   })
 
-
-
   it('routes unbounded content-search host tool inputs to concrete wp_session tools', async () => {
     const { routeToolInputToSessionMemory } = await import('./dev-routing.js')
     const result = routeToolInputToSessionMemory({
@@ -380,7 +378,6 @@ describe('routeCommand', () => {
       expect(routeToolInputToSessionMemory({ tool_name, tool_input }), tool_name).toBeNull()
     }
   })
-
 
   it('does not sandbox canonical Webpresso wp MCP tools', async () => {
     const { routeToolInputToSessionMemory } = await import('./dev-routing.js')
