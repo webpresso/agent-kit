@@ -374,7 +374,6 @@ describe('ensureAgentKitGlobal', () => {
       expect(result).toStrictEqual({
         kind: 'agent-kit-global-repair-failed',
         reason: expect.stringContaining('EISDIR'),
-        command: [GLOBAL_VP, 'install', '-g', '@webpresso/agent-kit'],
       })
     } finally {
       rmSync(root, { force: true, recursive: true })

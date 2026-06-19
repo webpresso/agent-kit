@@ -28,7 +28,11 @@ import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
-import { confirmInstalledGlobally } from '#cli/auto-update/detect-pm.js'
+import {
+  buildVpGlobalInstallCommand,
+  confirmInstalledGlobally,
+  PUBLIC_PACKAGE_NAME,
+} from '#cli/auto-update/detect-pm.js'
 import {
   findAgentKitPackageRoot,
   resolveAgentKitPackageRoot,
@@ -45,7 +49,6 @@ import {
   type GlobalCapableVpCommandInput,
   resolveGlobalCapableVpCommand,
 } from '#cli/global-vp.js'
-import { buildVpGlobalInstallCommand, PUBLIC_PACKAGE_NAME } from '#cli/auto-update/detect-pm.js'
 import { getStateRoot } from '#paths/state-root.js'
 import {
   formatRootLauncherContractFailure,
@@ -91,7 +94,7 @@ export type EnsureAgentKitGlobalResult =
   | { kind: 'agent-kit-global-skipped-source-mode' }
   | { kind: 'agent-kit-global-skipped-no-vp'; hint: string }
   | { kind: 'agent-kit-global-failed'; exitCode: number; command: readonly string[] }
-  | { kind: 'agent-kit-global-repair-failed'; reason: string; command: readonly string[] }
+  | { kind: 'agent-kit-global-repair-failed'; reason: string; command?: readonly string[] }
 
 const NO_VP_HINT =
   'vp (vite-plus) is not on PATH; cannot refresh the global ' +
@@ -195,7 +198,6 @@ export function ensureAgentKitGlobal(input: EnsureAgentKitGlobalInput): EnsureAg
       return {
         kind: 'agent-kit-global-repair-failed',
         reason: error instanceof Error ? error.message : String(error),
-        command,
       }
     }
     return { kind: 'agent-kit-global-skipped-up-to-date', current, latest, repairedLauncher }
