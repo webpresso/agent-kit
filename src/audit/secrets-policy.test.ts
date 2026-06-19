@@ -14,7 +14,12 @@ function tempRepo(withGit = false): string {
   mkdirSync(join(root, '.webpresso'), { recursive: true })
   writeFileSync(
     join(root, '.webpresso', 'secrets.config.json'),
-    JSON.stringify({ manager: 'doppler', projectId: 'my-project' }),
+    JSON.stringify({
+      schemaVersion: 1,
+      providers: { default: { type: 'doppler', project: 'my-project' } },
+      profiles: { preview: { provider: 'default', environment: 'stg' } },
+      sinks: { 'dev-server': { defaultProfile: 'preview', allowedOps: ['run'] } },
+    }),
   )
   if (withGit) {
     execFileSync('git', ['init'], { cwd: root, stdio: 'ignore' })
