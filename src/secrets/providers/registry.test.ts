@@ -8,6 +8,20 @@ describe('secret provider registry', () => {
     expect(getSecretProviderPlugin('infisical').id).toBe('infisical')
   })
 
+  it('plans Infisical bootstrap through the concrete built-in plugin', () => {
+    expect(getSecretProviderPlugin('infisical').authModes.ci).toEqual(['service-token'])
+    expect(getSecretProviderPlugin('infisical').planBootstrap?.({
+      provider: { type: 'infisical', project: 'demo' },
+      profileName: 'preview',
+      environment: 'dev',
+      lanes: ['preview_main', 'prd'],
+    })).toEqual({
+      mode: 'service-token',
+      lanes: ['preview_main', 'prd'],
+      requiredSecrets: ['CI_SECRET_PROVIDER_TOKEN_PREVIEW', 'CI_SECRET_PROVIDER_TOKEN_PRODUCTION'],
+    })
+  })
+
   it('rejects unknown providers', () => {
     expect(() => getSecretProviderPlugin('vault')).toThrow('Unsupported provider "vault"')
   })

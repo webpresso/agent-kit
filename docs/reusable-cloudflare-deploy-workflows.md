@@ -46,7 +46,7 @@ This keeps CI aligned with the repo-local operator contract:
    values.
 2. Store the CI bootstrap token in the caller repo/org secrets.
 3. Pass that secret explicitly in the reusable workflow call.
-4. For Infisical callers, also pass `secret_env_profile` so the shared shell
+4. For Infisical callers, also pass `secret_profile` so the shared shell
    knows which environment slug to export.
 
 ## Runtime/bootstrap contract
@@ -77,7 +77,7 @@ Optional inputs:
 - `mode` (`deploy` or `destroy`)
 - `destroy_command`
 - `smoke_command`
-- `secret_env_profile`
+- `secret_profile`
 - `runner`
 - `skip_when_ci_secret_missing`
 
@@ -92,7 +92,7 @@ Required inputs:
 Optional inputs:
 
 - `smoke_command`
-- `secret_env_profile`
+- `secret_profile`
 - `release_version`
 - `runner`
 
