@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { ToolDescriptor } from '#mcp/auto-discover'
 import { resolveProjectRoot } from './_shared/project-root.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
+import { createGainSummaryResult } from './_session-gain.js'
 import { runSessionCommand, searchSessionCommandOutput } from './_session-command.js'
 import { defaultIndexDbPath } from './session-restore.js'
 import type { SearchHit } from '#session-memory/types'
@@ -116,7 +117,7 @@ const tool: ToolDescriptor = {
         hits = searchSessionCommandOutput(dbPath, [label], input.query)
       }
       const passed = result.exitCode === 0
-      return createSummaryResult(
+      return createGainSummaryResult(
         {
           passed,
           summary: passed
@@ -142,6 +143,12 @@ const tool: ToolDescriptor = {
           },
         },
         passed ? {} : { isError: true },
+        {
+          toolName: tool.name,
+          dbPath,
+          rawBasisBytes: result.outputBytes,
+          rawBytesBasis: 'command_output_total',
+        },
       )
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
