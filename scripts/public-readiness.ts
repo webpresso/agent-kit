@@ -213,7 +213,7 @@ const QUALITATIVE_BENCHMARK_CLAIM_PATTERN =
   /\b(?:(?:native\s+)?acceleration|speedup|performance improvement|reduced latency|latency reduction|cost savings|token savings)\b/iu
 
 const BENCHMARK_CLAIM_POLICY_LINE_PATTERN =
-  /\b(?:must cite|require(?:s|d)? checked-in|before promoting|not hook latency|not-instrumented|does not use|must not|no numeric|do not add numeric|not replacement parity evidence|not measured|approximation only|proxy only|exact UTF-8 byte gains|speedup numbers|unless a separate measured result card proves|approxTokensSaved|public numeric savings|not provider-token savings)\b/iu
+  /\b(?:must cite|require(?:s|d)? checked-in|before promoting|not hook latency|not-instrumented|does not use|must not|no numeric|do not add numeric|not replacement parity evidence|not measured|approximation only|proxy only|exact UTF-8 byte gains|speedup numbers|unless a separate measured result card proves|approxTokensSaved|public numeric savings|not provider-token savings|byte accounting|token proxy)\b/iu
 
 export function hasNumericBenchmarkClaim(text: string): boolean {
   return NUMERIC_BENCHMARK_CLAIM_PATTERN.test(text)
@@ -267,6 +267,12 @@ function publicBenchmarkClaimSurfaces(root: string): Array<{ path: string; text:
   if (latest !== null) surfaces.push({ path: 'CHANGELOG.md#latest', text: latest })
   for (const path of listMarkdownFiles(root, 'docs')) {
     if (path.startsWith('docs/research/')) continue
+    // The result-card contract and benchmark methodology are meta-docs: they
+    // DEFINE the metric-class taxonomy, show example metric tables, and carry
+    // the byte!=token disclaimer. They describe how claims are evidenced, they
+    // are not product claims, so they are excluded from claim-surface scanning.
+    if (path === 'docs/bench/result-card-contract.md') continue
+    if (path === 'docs/bench/session-memory-methodology.md') continue
     surfaces.push({ path, text: readFileSync(resolve(root, path), 'utf8') })
   }
   for (const path of listMarkdownFiles(root, '.changeset')) {
@@ -337,7 +343,7 @@ export function evaluateReadmeBenchmarkClaimGate(readme: string, root = ROOT): C
     )
   }
 
-  if (!hasNumericBenchmarkClaim(readme)) {
+  if (!surfaceHasBenchmarkClaim(readme)) {
     return pass(
       'readme-benchmark-claim-gate',
       'README contains the numeric benchmark claim gate and no numeric benchmark claim',
@@ -379,6 +385,13 @@ export function evaluateMetricClassBindingGate(root = ROOT): CheckResult {
   for (const surface of surfaces) {
     for (const line of surface.text.split('\n')) {
       if (!line.trim()) continue
+      // Only bind a line that is an actual benchmark claim — a quantitative or
+      // qualitative assertion — not a mere keyword mention (audit/preset names,
+      // packaging tech, taxonomy rows) or a policy/disclaimer line. This mirrors
+      // surfaceHasBenchmarkClaim so the binding gate and the numeric gate agree
+      // on what counts as a claim.
+      if (BENCHMARK_CLAIM_POLICY_LINE_PATTERN.test(line)) continue
+      if (!hasNumericBenchmarkClaim(line) && !hasQualitativeBenchmarkClaim(line)) continue
       for (const cls of classifyClaimLine(line)) {
         if (!claimedClasses.has(cls)) {
           claimedClasses.add(cls)

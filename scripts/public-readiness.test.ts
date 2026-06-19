@@ -410,13 +410,78 @@ describe('G2: metric-class binding gate', () => {
       writeFileSync(
         join(root, 'README.md'),
         'Public numeric benchmark claims require a checked-in first-party result card under docs/bench/result-cards/; see docs/bench/result-card-contract.md.\n' +
-          'Saves approxTokensSaved bytes per session.\n',
+          'Session capture cut context by 200 bytes per run (byte reduction).\n',
       )
       writeFileSync(join(root, 'package.json'), '{"description":"plain"}\n')
       writeByteProxyCard(root)
 
       const result = evaluateMetricClassBindingGate(root)
       expect(result.status).toStrictEqual('PASS')
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('does NOT flag descriptive keyword mentions that are not benchmark claims', () => {
+    const root = makeRoot()
+    try {
+      // Mentions of the rtk preset, NAPI packaging, and the reference-parity
+      // audit are descriptive — no number/unit, no savings phrasing — so they
+      // must not be treated as metric-class claims.
+      writeFileSync(
+        join(root, 'README.md'),
+        'Uses the rtk preset and resolves prebuilt NAPI packages when available.\n' +
+          'Run the reference-parity-matrix audit before promoting replacement-parity claims.\n',
+      )
+      writeFileSync(join(root, 'package.json'), '{"description":"plain"}\n')
+
+      const result = evaluateMetricClassBindingGate(root)
+      expect(result.status).toStrictEqual('PASS')
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('still flags a genuine unbacked native-speedup claim', () => {
+    const root = makeRoot()
+    try {
+      // A real quantitative speedup claim with only a byte-proxy card on disk
+      // must remain fail-closed: native_speedup is not byte_proxy.
+      writeFileSync(
+        join(root, 'README.md'),
+        'The native backend delivers a 3x speedup over the TypeScript fallback.\n',
+      )
+      writeFileSync(join(root, 'package.json'), '{"description":"plain"}\n')
+      writeByteProxyCard(root)
+
+      const result = evaluateMetricClassBindingGate(root)
+      expect(result.status).toStrictEqual('FAIL')
+      expect(result.detail).toContain('native_speedup')
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('excludes the contract/methodology meta-docs from claim scanning', () => {
+    const root = makeRoot()
+    try {
+      writeFileSync(join(root, 'README.md'), 'No claims here.\n')
+      writeFileSync(join(root, 'package.json'), '{"description":"plain"}\n')
+      // The contract doc DEFINES the taxonomy (recall@k, provider token savings)
+      // and carries the byte!=token disclaimer — it must not register as a claim.
+      writeFileSync(
+        join(root, 'docs/bench/result-card-contract.md'),
+        '# Contract\n\n' +
+          '| `recall` | Information-retrieval recall@k from qrels |\n' +
+          'A `byte_proxy` measurement does NOT prove provider token savings.\n',
+      )
+      writeFileSync(
+        join(root, 'docs/bench/session-memory-methodology.md'),
+        '# Methodology\n\nNative restore is 42ms faster in our example table.\n',
+      )
+
+      expect(evaluateMetricClassBindingGate(root).status).toStrictEqual('PASS')
+      expect(evaluatePublicBenchmarkClaimGate(root).status).toStrictEqual('PASS')
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
