@@ -274,6 +274,7 @@ describe('tooling umbrella package integration contract', () => {
             name: 'packed-consumer-smoke',
             private: true,
             devDependencies: {
+              '@webpresso/agent-config': '^0.1.5',
               vitest: '^2.1.0',
               '@playwright/test': '^1.55.0',
               oxlint: '^1.0.0',

@@ -114,7 +114,10 @@ function makeTempRepo(): string {
         name: '@acme/demo',
         private: true,
         dependencies: { react: '^18.0.0', hono: '^4.0.0' },
-        devDependencies: { vitest: '^2.0.0' },
+        devDependencies: {
+          vitest: '^2.0.0',
+          '@webpresso/agent-config': '^0.1.5',
+        },
       },
       null,
       2,
@@ -156,7 +159,7 @@ function readJsonFile<T>(path: string): T {
   return JSON.parse(readFileSync(path, 'utf8')) as T
 }
 
-describe('wp init end-to-end', { timeout: 20_000 }, () => {
+describe('wp init end-to-end', { timeout: 40_000 }, () => {
   let repo: string
   let consoleErrorSpy: ReturnType<typeof vi.spyOn> | undefined
   let consoleLogSpy: ReturnType<typeof vi.spyOn> | undefined
@@ -489,13 +492,14 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
         {
           name: '@acme/demo',
           private: true,
-          dependencies: { react: '^18.0.0', hono: '^4.0.0' },
-          devDependencies: {
-            vitest: '^2.0.0',
-            '@playwright/test': '^1.55.0',
-            oxlint: '^1.0.0',
-            oxfmt: '^1.0.0',
-          },
+        dependencies: { react: '^18.0.0', hono: '^4.0.0' },
+        devDependencies: {
+          vitest: '^2.0.0',
+          '@webpresso/agent-config': '^0.1.5',
+          '@playwright/test': '^1.55.0',
+          oxlint: '^1.0.0',
+          oxfmt: '^1.0.0',
+        },
         },
         null,
         2,

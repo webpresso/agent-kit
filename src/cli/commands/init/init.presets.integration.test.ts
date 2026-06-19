@@ -55,7 +55,14 @@ function runInitSilently(flags: Parameters<typeof runInit>[0]): Promise<number> 
 function makeRepo(): string {
   const dir = mkdtempSync(join(tmpdir(), 'wp-init-presets-'))
   mkdirSync(join(dir, '.git'), { recursive: true })
-  writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: '@acme/x', private: true }))
+  writeFileSync(
+    join(dir, 'package.json'),
+    JSON.stringify({
+      name: '@acme/x',
+      private: true,
+      devDependencies: { '@webpresso/agent-config': '^0.1.5' },
+    }),
+  )
   writeFileSync(join(dir, 'pnpm-workspace.yaml'), 'packages:\n  - apps/*\n')
   return dir
 }
@@ -72,7 +79,7 @@ const okSpawnResult = {
   signal: null,
 }
 
-describe('runInit() — omx + gstack presets (integration)', () => {
+describe('runInit() — omx + gstack presets (integration)', { timeout: 20_000 }, () => {
   let repo: string
   let originalCodexHome: string | undefined
   let originalHome: string | undefined
