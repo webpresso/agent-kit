@@ -68,12 +68,12 @@ const BANNED_PATTERNS: readonly BannedPattern[] = [
     message: 'use `wp ci act` instead of raw `with-secrets act`',
   },
   {
-    pattern: /\bact-with-webpresso\b/u,
-    message: 'delete local act-with-webpresso clones; use `wp ci act`',
+    pattern: /\bact-with-webpresso(?:\.[a-z]+)?\b/u,
+    message: 'remove legacy local act-with-webpresso helpers and route local workflow execution through `wp ci act`',
   },
   {
-    pattern: /\bact-secret-profile\b/u,
-    message: 'delete local act-secret-profile clones; use repo-owned .webpresso/secrets.config.json profiles',
+    pattern: /\bact-secret-profile(?:\.[a-z]+)?\b/u,
+    message: 'remove legacy act-secret-profile helpers and use the selected manager runtime contract instead',
   },
   {
     pattern: /\bsecretEnvProfile\b/u,
@@ -82,6 +82,10 @@ const BANNED_PATTERNS: readonly BannedPattern[] = [
   {
     pattern: /\b--secret-env-profile\b/u,
     message: 'use repo-owned secretProfile names instead of provider-specific --secret-env-profile wiring',
+  },
+  {
+    pattern: /\bsetup-webpresso(?:-[a-z0-9-]+)?\b/u,
+    message: 'remove legacy local setup clone helpers and use the global `wp` setup path instead',
   },
 ]
 

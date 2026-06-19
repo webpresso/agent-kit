@@ -194,4 +194,38 @@ describe('auditSecretProviderQuarantine', () => {
     expect(result.ok).toBe(true)
     expect(result.violations).toStrictEqual([])
   })
+
+  test('flags legacy act-with-webpresso helper references', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'scripts'), { recursive: true })
+    writeFileSync(join(root, 'scripts', 'run-ci.ts'), "await execa('act-with-webpresso', ['-W'])")
+
+    const result = auditSecretProviderQuarantine(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: expect.stringContaining('act-with-webpresso'),
+        }),
+      ]),
+    )
+  })
+
+  test('flags legacy act-secret-profile helper references', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'scripts'), { recursive: true })
+    writeFileSync(join(root, 'scripts', 'profile.ts'), "console.log('act-secret-profile')")
+
+    const result = auditSecretProviderQuarantine(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: expect.stringContaining('act-secret-profile'),
+        }),
+      ]),
+    )
+  })
 })

@@ -278,6 +278,7 @@ export function auditPackageSurface(
     checked += auditReferenceConsumerFreshness(root, baselines, violations)
   }
 
+  checked += auditConsumerAgentKitDependencyPolicy(root, violations)
   checked += auditPackedTarballSurface(root, contract, violations, options)
 
   return {
@@ -286,6 +287,46 @@ export function auditPackageSurface(
     checked,
     violations,
   }
+}
+
+function auditConsumerAgentKitDependencyPolicy(
+  root: string,
+  violations: RepoAuditViolation[],
+): number {
+  let checked = 0
+  for (const packageFile of walkFiles(root, (file) => basename(file) === 'package.json')) {
+    const relPath = relativePath(root, packageFile)
+    if (relPath.startsWith('examples/') || relPath.startsWith('src/secrets/migrate/fixtures/')) {
+      continue
+    }
+    const pkg = readJsonObject<
+      PackageRecord & {
+        dependencies?: Record<string, string>
+        devDependencies?: Record<string, string>
+        optionalDependencies?: Record<string, string>
+        peerDependencies?: Record<string, string>
+      }
+    >(packageFile)
+    if (pkg.name === '@webpresso/agent-kit') continue
+    const dependencyFields = [
+      ['dependencies', pkg.dependencies],
+      ['devDependencies', pkg.devDependencies],
+      ['optionalDependencies', pkg.optionalDependencies],
+      ['peerDependencies', pkg.peerDependencies],
+    ] as const
+
+    for (const [fieldName, deps] of dependencyFields) {
+      if (!deps || typeof deps !== 'object') continue
+      checked += 1
+      if (!('@webpresso/agent-kit' in deps)) continue
+      violations.push({
+        file: relPath,
+        message:
+          `${relPath}: ${fieldName} must not depend on @webpresso/agent-kit in consumer packages; use the global \`wp\` install and keep only @webpresso/agent-config locally`,
+      })
+    }
+  }
+  return checked
 }
 
 export function stagePublishableTarballSurface(
