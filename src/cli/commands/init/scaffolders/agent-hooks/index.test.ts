@@ -22,6 +22,7 @@ import {
   hoistTopLevelEvents,
   hookSubcommandFor,
   resolvePackageRootForHookLaunchers,
+  resolveNodeBinaryForManagedHookLaunchers,
   scaffoldAgentHooks,
   trustCodexWebpressoHooksForRepo,
   trustCodexPresetHooksForUser,
@@ -147,11 +148,13 @@ describe('scaffoldAgentHooks', () => {
   let repoRoot: string
   let previousCodexHome: string | undefined
   let previousHome: string | undefined
+  let previousHookNodePath: string | undefined
 
   beforeEach(() => {
     repoRoot = mkdtempSync(join(tmpdir(), 'wp-agent-hooks-'))
     previousCodexHome = process.env.CODEX_HOME
     previousHome = process.env.HOME
+    previousHookNodePath = process.env.WP_HOOK_NODE_PATH
     process.env.HOME = join(repoRoot, '.home')
     process.env.CODEX_HOME = join(repoRoot, '.codex-home')
   })
@@ -161,6 +164,8 @@ describe('scaffoldAgentHooks', () => {
     else process.env.CODEX_HOME = previousCodexHome
     if (previousHome === undefined) delete process.env.HOME
     else process.env.HOME = previousHome
+    if (previousHookNodePath === undefined) delete process.env.WP_HOOK_NODE_PATH
+    else process.env.WP_HOOK_NODE_PATH = previousHookNodePath
     await import('node:fs/promises').then((fs) => fs.rm(repoRoot, { recursive: true, force: true }))
   })
 
@@ -427,6 +432,23 @@ describe('scaffoldAgentHooks', () => {
     )
     expect(sessionLauncher).toContain('bin/wp-sessionstart-routing.js')
     expect(sessionLauncher).not.toContain('exec wp hook sessionstart-routing')
+  })
+
+  it('honors WP_HOOK_NODE_PATH when setup itself runs under a non-Node runtime', async () => {
+    const fakeNode = join(repoRoot, 'toolchain', 'node')
+    mkdirSync(join(repoRoot, 'toolchain'), { recursive: true })
+    writeFileSync(fakeNode, '#!/bin/sh\nexit 0\n', 'utf8')
+    chmodSync(fakeNode, 0o755)
+    process.env.WP_HOOK_NODE_PATH = fakeNode
+
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+
+    const launcher = readFileSync(
+      join(repoRoot, '.codex', 'managed-hooks', 'wp-sessionstart-routing.sh'),
+      'utf8',
+    )
+    expect(resolveNodeBinaryForManagedHookLaunchers()).toBe(fakeNode)
+    expect(launcher).toContain(`exec ${quoteShell(fakeNode)} `)
   })
 
   it('does not render local runtime or node_modules preambles', async () => {
@@ -1881,7 +1903,10 @@ hooks:
     const launcherPath = join(repoRoot, '.codex', 'managed-hooks', 'wp-stop-qa.sh')
     writeFileSync(
       launcherPath,
-      readFileSync(launcherPath, 'utf8').replace(process.execPath, '/missing/nonexistent-node'),
+      readFileSync(launcherPath, 'utf8').replace(
+        resolveNodeBinaryForManagedHookLaunchers(),
+        '/missing/nonexistent-node',
+      ),
       'utf8',
     )
     const result = spawnSync('sh', [launcherPath], {
@@ -1997,6 +2022,7 @@ hooks:
 
   it('executes every generated Claude hook command successfully from outside repo root', async () => {
     initGitRepo(repoRoot)
+    process.env.WP_HOOK_NODE_PATH = process.execPath
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
     installFakeWebpressoBins(repoRoot)
 
@@ -2039,6 +2065,7 @@ hooks:
 
   it('executes every generated Codex hook command successfully from a sibling cwd', async () => {
     initGitRepo(repoRoot)
+    process.env.WP_HOOK_NODE_PATH = process.execPath
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
     installFakeWebpressoBins(repoRoot)
 

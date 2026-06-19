@@ -11,7 +11,7 @@
  */
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { isAbsolute, join, resolve } from 'node:path'
 
 import { isHookName } from '#cli/commands/hook.js'
 import { type MergeOptions, type MergeResult, patchJsonFile } from '#cli/commands/init/merge'
@@ -24,6 +24,7 @@ import type { CodexAppServerApi } from '#codex/app-server/types.js'
 import { commandExists as defaultCommandExists } from '#runtime/command-exists.js'
 import {
   normalizeGlobalCodexHooksFile,
+  resolveBinaryOnPath,
   resolveInstalledOmxHookScriptPath,
 } from '#cli/commands/init/scaffolders/agent-hooks/codex-global-normalize'
 import { isPresetOwnedGlobalCodexHook } from './codex-global-ownership.js'
@@ -909,6 +910,13 @@ export function hookSubcommandFor(binName: string): string | undefined {
   return isHookName(sub) ? sub : undefined
 }
 
+export function resolveNodeBinaryForManagedHookLaunchers(): string {
+  const override = process.env.WP_HOOK_NODE_PATH?.trim()
+  if (override && isAbsolute(override) && existsSync(override)) return override
+
+  return resolveBinaryOnPath('node') ?? process.execPath
+}
+
 function renderManagedWebpressoHookLauncher(repoRoot: string, binName: string): string {
   const missingRuntimeWarning = `echo "webpresso hook ${binName} skipped: global wp not found; install with vp install -g @webpresso/agent-kit and re-run wp setup" >&2`
   // Guard fails closed (explicit deny JSON); json-only hooks keep Codex stdout
@@ -924,7 +932,7 @@ function renderManagedWebpressoHookLauncher(repoRoot: string, binName: string): 
   const packageRoot = resolvePackageRootForHookLaunchers()
   const repoRootPath = quoteShell(repoRoot)
   const hookBinPath = quoteShell(join(packageRoot, 'bin', `${binName}.js`))
-  const nodeBinary = quoteShell(process.execPath)
+  const nodeBinary = quoteShell(resolveNodeBinaryForManagedHookLaunchers())
 
 return `#!/bin/sh
 if [ -x ${nodeBinary} ] && [ -f ${hookBinPath} ]; then
@@ -997,7 +1005,7 @@ export async function scaffoldAgentHooks(
   const codexNormalization = normalizeGlobalCodexHooksFile(
     codexHooksPath,
     {
-      nodeBinary: process.execPath,
+      nodeBinary: resolveNodeBinaryForManagedHookLaunchers(),
       omxScriptPath: resolveInstalledOmxHookScriptPath(),
     },
     input.options,

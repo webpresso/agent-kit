@@ -91,6 +91,7 @@ import {
   disableManagedHooksFromManifest,
   type ManagedHookVendor,
   restoreManagedHooksFromManifest,
+  resolveNodeBinaryForManagedHookLaunchers,
   scaffoldAgentHooks,
   trustCodexWebpressoHooksForRepo,
   trustCodexPresetHooksForUser,
@@ -417,7 +418,7 @@ async function runHooksRecovery(
     normalizeGlobalCodexHooksFile(
       codexHooksPath,
       {
-        nodeBinary: process.execPath,
+        nodeBinary: resolveNodeBinaryForManagedHookLaunchers(),
       },
       options,
     )
