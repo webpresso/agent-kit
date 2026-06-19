@@ -146,6 +146,9 @@ describe('release workflow publish path', () => {
     )
     expect(workspaceReleaseStep).toContain("pkg.packageName !== '@webpresso/agent-kit'")
     expect(workspaceReleaseStep).toContain('const tag = `${pkg.packageName}@${pkg.version}`')
+    expect(workspaceReleaseStep).toContain('scripts/github-release-notes.ts')
+    expect(workspaceReleaseStep).toContain("'--notes-file',")
+    expect(workspaceReleaseStep).not.toContain("'--notes',")
     expect(workspaceReleaseStep).toContain("execFileSync('gh', [")
     expect(workspaceReleaseStep).toContain("'release',")
     expect(workspaceReleaseStep).toContain("'create',")
@@ -197,6 +200,10 @@ describe('release workflow publish path', () => {
     }
 
     // A GitHub Release is created/updated with the compiled binaries attached.
+    expect(afterChangesetsAction).toContain('scripts/github-release-notes.ts')
+    expect(afterChangesetsAction).toContain('--runtime-assets')
+    expect(afterChangesetsAction).toContain('--notes-file "$notes_file"')
+    expect(afterChangesetsAction).toContain('gh release edit "$tag" --title "v${version}" --notes-file "$notes_file"')
     expect(afterChangesetsAction).toContain('gh release create')
     expect(afterChangesetsAction).toContain('gh release upload')
     expect(afterChangesetsAction).toContain('echo "asset_count=$asset_count" >> "$GITHUB_OUTPUT"')
