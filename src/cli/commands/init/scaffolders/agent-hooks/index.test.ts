@@ -1925,7 +1925,13 @@ hooks:
     const packageRoot = mkdtempSync(join(repoRoot, 'runtime-absent-package-'))
     mkdirSync(join(packageRoot, 'bin'), { recursive: true })
     mkdirSync(join(packageRoot, 'dist', 'esm', 'cli'), { recursive: true })
-    for (const fileName of ['_run.js', 'runtime-lanes.js', '_managed-hook.js', 'wp-stop-qa.js']) {
+    for (const fileName of [
+      '_run.js',
+      'runtime-lanes.js',
+      '_managed-hook.js',
+      'wp-pretool-guard.js',
+      'wp-stop-qa.js',
+    ]) {
       writeFileSync(
         join(packageRoot, 'bin', fileName),
         readFileSync(join(resolvePackageRootForHookLaunchers(), 'bin', fileName), 'utf8'),
@@ -1944,17 +1950,34 @@ hooks:
       'utf8',
     )
 
-    const result = spawnSync(process.execPath, [join(packageRoot, 'bin', 'wp-stop-qa.js')], {
+    const stop = spawnSync(process.execPath, [join(packageRoot, 'bin', 'wp-stop-qa.js')], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: { ...process.env, PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+    })
+    const preTool = spawnSync(process.execPath, [join(packageRoot, 'bin', 'wp-pretool-guard.js')], {
       cwd: repoRoot,
       encoding: 'utf8',
       env: { ...process.env, PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
     })
 
-    expect(result.status, result.stderr).toBe(0)
-    expect(result.stdout).toBe('{}\n')
-    expect(result.stderr).toContain('native hook runtime unavailable')
-    expect(result.stderr).not.toContain('current Node is')
-    expect(result.stderr).not.toContain('built lane should not execute')
+    expect(stop.status, stop.stderr).toBe(0)
+    expect(stop.stdout).toBe('{}\n')
+    expect(stop.stderr).toContain('native hook runtime unavailable')
+    expect(stop.stderr).not.toContain('current Node is')
+    expect(stop.stderr).not.toContain('built lane should not execute')
+
+    expect(preTool.status, preTool.stderr).toBe(0)
+    expect(JSON.parse(preTool.stdout)).toEqual({
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'deny',
+        permissionDecisionReason:
+          'wp native hook runtime is unavailable. Reinstall @webpresso/agent-kit without omitting optional dependencies and re-run wp setup.',
+      },
+    })
+    expect(preTool.stderr).not.toContain('current Node is')
+    expect(preTool.stderr).not.toContain('built lane should not execute')
   })
 
   it('managed Codex launchers preserve event-specific fallbacks when repo root cannot be entered', async () => {
