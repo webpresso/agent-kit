@@ -91,7 +91,11 @@ jobs:
         with:
           bun-version: latest
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        # The native matrix includes Windows ARM64, where unrelated workspace
+        # postinstall packages such as workerd may not ship binaries. The build
+        # script only needs JS dependencies present plus Rust/Bun below, so keep
+        # lifecycle scripts disabled for this artifact-only job.
+        run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Install Rust toolchain
         run: rustup toolchain install 1.88.0 --profile minimal
       - name: Build session-memory native artifact
