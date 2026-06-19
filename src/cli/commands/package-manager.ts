@@ -19,6 +19,7 @@ import {
   resolveGlobalCapableVpCommand,
 } from '#cli/global-vp.js'
 import { resolveAgentKitPackageRoot } from '#cli/commands/init/package-root'
+import { ensureClaudeCodeUserPlugin } from '#cli/commands/init/scaffolders/claude-plugin/index.js'
 import { ensureCodexUserPlugin } from '#cli/commands/init/scaffolders/codex-plugin/index.js'
 import { getManagedRunner } from '#tool-runtime'
 
@@ -50,6 +51,7 @@ export interface PackageManagerCommandDeps {
   ) => SpawnSyncReturns<string>
   readonly resolveVpCommand?: () => GlobalCapableVpCommandInput | null
   readonly packageRoot?: string | null
+  readonly refreshClaudePlugin?: (packageRoot: string) => SpawnSyncReturns<string>
   readonly refreshCodexPlugin?: (packageRoot: string) => SpawnSyncReturns<string>
 }
 
@@ -84,6 +86,7 @@ interface RequiredGlobalUpdateDeps {
   readonly repoKey: string | null
   readonly vpCommand: GlobalCapableVpCommandInput
   readonly packageRoot: string | null
+  readonly refreshClaudePlugin: (packageRoot: string) => SpawnSyncReturns<string>
   readonly refreshCodexPlugin: (packageRoot: string) => SpawnSyncReturns<string>
   readonly run: (
     command: string,
@@ -172,6 +175,7 @@ function runGlobalUpdateCommand(deps: PackageManagerCommandDeps): number {
         ? resolveAgentKitPackageRoot({ moduleUrl: import.meta.url })
         : deps.packageRoot,
     repoKey: deps.repoKey ?? tryReadRepoKey(cwd),
+    refreshClaudePlugin: deps.refreshClaudePlugin ?? refreshClaudeUserPlugin,
     refreshCodexPlugin: deps.refreshCodexPlugin ?? refreshCodexUserPlugin,
     vpCommand,
     run: deps.run ?? defaultRun,
@@ -247,6 +251,11 @@ function buildGlobalUpdateSteps(
   })
 
   steps.push({
+    id: 'claude-plugin',
+    run: refreshClaudePlugin,
+  })
+
+  steps.push({
     id: 'codex-plugin',
     run: refreshCodexPlugin,
   })
@@ -281,6 +290,32 @@ function refreshCodexPlugin(deps: RequiredGlobalUpdateDeps): SpawnSyncReturns<st
     return spawnLike(1, new Error('could not resolve @webpresso/agent-kit package root'))
   }
   return deps.refreshCodexPlugin(deps.packageRoot)
+}
+
+function refreshClaudePlugin(deps: RequiredGlobalUpdateDeps): SpawnSyncReturns<string> {
+  if (!deps.packageRoot) {
+    return spawnLike(1, new Error('could not resolve @webpresso/agent-kit package root'))
+  }
+  return deps.refreshClaudePlugin(deps.packageRoot)
+}
+
+function refreshClaudeUserPlugin(packageRoot: string): SpawnSyncReturns<string> {
+  const result = ensureClaudeCodeUserPlugin({
+    options: { dryRun: false, overwrite: false },
+    packageRoot,
+  })
+
+  switch (result.kind) {
+    case 'claude-plugin-installed':
+    case 'claude-plugin-skipped-no-cli':
+    case 'claude-plugin-skipped-opt-out':
+    case 'claude-plugin-skipped-package-lifecycle':
+      return spawnLike(0)
+    case 'claude-plugin-skipped-dry-run':
+    case 'claude-plugin-unavailable':
+    case 'claude-plugin-failed':
+      return spawnLike(1, new Error(result.kind))
+  }
 }
 
 function refreshCodexUserPlugin(packageRoot: string): SpawnSyncReturns<string> {
