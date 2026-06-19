@@ -21,6 +21,7 @@ import { z } from 'zod'
 
 import { getStateRoot } from '#paths/state-root.js'
 
+import { UPDATE_CACHE_FILENAME, UPDATE_CHECK_INTERVAL_MS } from './cache.js'
 import { detect } from './detect-pm.js'
 import { scheduleDeferredInstall } from './installer.js'
 import { logUpdateError } from './log.js'
@@ -28,9 +29,6 @@ import { shouldSkipAutoInstall } from './skip.js'
 import { isNewerVersion } from './version.js'
 
 const PUBLIC_NPM_URL = 'https://registry.npmjs.org/@webpresso%2Fagent-kit'
-const UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000 // 24 hours
-const CACHE_FILENAME = 'update-notifier-cache.json'
-
 interface UpdateCache {
   latest: string
   current: string
@@ -91,14 +89,14 @@ export async function fetchLatestRelease(): Promise<string | null> {
  */
 export async function runUpdateFlow(version: string): Promise<void> {
   try {
-    const cachePath = join(getStateRoot(), CACHE_FILENAME)
+    const cachePath = join(getStateRoot(), UPDATE_CACHE_FILENAME)
     const now = Date.now()
 
     // Check 24-hour interval via cache
     const cached = await readCache(cachePath)
     let latest: string
 
-    if (cached !== null && now - cached.lastUpdateCheck < UPDATE_CHECK_INTERVAL) {
+    if (cached !== null && now - cached.lastUpdateCheck < UPDATE_CHECK_INTERVAL_MS) {
       latest = cached.latest
     } else {
       const fetched = await fetchLatestRelease()

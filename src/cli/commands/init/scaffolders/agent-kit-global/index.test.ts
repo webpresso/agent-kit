@@ -117,6 +117,7 @@ describe('ensureAgentKitGlobal', () => {
         resolveVpCommand: () => GLOBAL_VP,
         argv1: join(root, 'bin', 'wp'),
         packageRoot: root,
+        confirmInstalledGlobally: () => true,
         readFreshCachedLatest: () => '2.1.1',
       })
 
@@ -152,6 +153,7 @@ describe('ensureAgentKitGlobal', () => {
         resolveVpCommand: () => GLOBAL_VP,
         argv1: join(root, 'bin', 'wp'),
         packageRoot: root,
+        confirmInstalledGlobally: () => true,
         readFreshCachedLatest: () => '2.1.1',
       })
 
@@ -190,6 +192,44 @@ describe('ensureAgentKitGlobal', () => {
     ])
   })
 
+  it('stays conservative when the running wp binary is not proven to be the supported global install', () => {
+    const root = mkdtempSync(join(tmpdir(), 'wp-agent-kit-global-local-'))
+    const { spawn, calls } = makeSpawn()
+
+    try {
+      mkdirSync(join(root, 'bin'), { recursive: true })
+      writeFileSync(
+        join(root, 'package.json'),
+        `${JSON.stringify({ name: '@webpresso/agent-kit', version: '2.1.1', bin: { wp: 'bin/wp' } })}\n`,
+        'utf8',
+      )
+      writeFileSync(join(root, 'bin', 'wp'), rootWpSelectorSource, 'utf8')
+
+      const result = ensureAgentKitGlobal({
+        options: WRITE_OPTIONS,
+        spawn,
+        env: {},
+        resolveVpCommand: () => GLOBAL_VP,
+        argv1: join(root, 'bin', 'wp'),
+        packageRoot: root,
+        confirmInstalledGlobally: () => false,
+        readFreshCachedLatest: () => '2.1.1',
+      })
+
+      expect(result).toStrictEqual({
+        kind: 'agent-kit-global-updated',
+        command: [GLOBAL_VP, 'install', '-g', '@webpresso/agent-kit'],
+        repairedLauncher: join(root, 'bin', 'wp'),
+      })
+      expect(calls).toStrictEqual([
+        { cmd: GLOBAL_VP, args: ['--version'] },
+        { cmd: GLOBAL_VP, args: ['install', '-g', '@webpresso/agent-kit'] },
+      ])
+    } finally {
+      rmSync(root, { force: true, recursive: true })
+    }
+  })
+
   it('repairs a mutated root bin/wp back to the JS selector after refresh', () => {
     const root = mkdtempSync(join(tmpdir(), 'wp-agent-kit-global-'))
     const { spawn } = makeSpawn()
@@ -210,6 +250,7 @@ describe('ensureAgentKitGlobal', () => {
         resolveVpCommand: () => GLOBAL_VP,
         argv1: join(root, 'bin', 'wp'),
         packageRoot: root,
+        confirmInstalledGlobally: () => true,
       })
 
       expect(result).toStrictEqual({
@@ -244,6 +285,7 @@ describe('ensureAgentKitGlobal', () => {
         resolveVpCommand: () => GLOBAL_VP,
         argv1: '/Users/me/.vite-plus/bin/wp',
         resolvePackageRootForStaging: () => root,
+        confirmInstalledGlobally: () => true,
       })
 
       expect(result).toStrictEqual({
@@ -276,6 +318,7 @@ describe('ensureAgentKitGlobal', () => {
         resolveVpCommand: () => GLOBAL_VP,
         argv1: '/Users/me/.vite-plus/bin/wp',
         resolvePackageRootForStaging: () => root,
+        confirmInstalledGlobally: () => true,
       })
 
       expect(result).toStrictEqual({
@@ -303,5 +346,38 @@ describe('ensureAgentKitGlobal', () => {
       exitCode: 1,
       command: [GLOBAL_VP, 'install', '-g', '@webpresso/agent-kit'],
     })
+  })
+
+  it('reports skip-branch launcher repair failures distinctly when the install is otherwise up to date', () => {
+    const root = mkdtempSync(join(tmpdir(), 'wp-agent-kit-global-skip-repair-dir-'))
+    const { spawn } = makeSpawn()
+
+    try {
+      mkdirSync(join(root, 'bin', 'wp'), { recursive: true })
+      writeFileSync(
+        join(root, 'package.json'),
+        `${JSON.stringify({ name: '@webpresso/agent-kit', version: '2.1.1', bin: { wp: 'bin/wp' } })}\n`,
+        'utf8',
+      )
+
+      const result = ensureAgentKitGlobal({
+        options: WRITE_OPTIONS,
+        spawn,
+        env: {},
+        resolveVpCommand: () => GLOBAL_VP,
+        argv1: '/Users/me/.vite-plus/bin/wp',
+        packageRoot: root,
+        confirmInstalledGlobally: () => true,
+        readFreshCachedLatest: () => '2.1.1',
+      })
+
+      expect(result).toStrictEqual({
+        kind: 'agent-kit-global-repair-failed',
+        reason: expect.stringContaining('EISDIR'),
+        command: [GLOBAL_VP, 'install', '-g', '@webpresso/agent-kit'],
+      })
+    } finally {
+      rmSync(root, { force: true, recursive: true })
+    }
   })
 })

@@ -28,11 +28,16 @@ import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
+import { confirmInstalledGlobally } from '#cli/auto-update/detect-pm.js'
 import {
   findAgentKitPackageRoot,
   resolveAgentKitPackageRoot,
 } from '#cli/commands/init/package-root'
 import { makeNoopSpinnerFactory, type SpinnerFactory } from '#cli/commands/init/scaffolders/spinner'
+import {
+  UPDATE_CACHE_FILENAME,
+  readFreshCachedLatestRelease,
+} from '#cli/auto-update/cache.js'
 import { isPackageLifecycleEnvironment } from '#cli/auto-update/skip.js'
 import { isNewerVersion } from '#cli/auto-update/version.js'
 import {
@@ -62,6 +67,8 @@ export interface EnsureAgentKitGlobalInput {
   resolveVpCommand?: () => GlobalCapableVpCommandInput | null
   /** DI seam for tests/global installs; defaults to the package root owning argv1/import. */
   packageRoot?: string
+  /** DI seam for proving the current wp binary is a supported global install. */
+  confirmInstalledGlobally?: (realpath: string, env: NodeJS.ProcessEnv) => boolean
   /** DI seam for staging-root fallback when argv1 cannot be mapped back to the owning package. */
   resolvePackageRootForStaging?: (argv1: string) => string | null
   /** DI seam for the bootstrap update cache's latest published version. */
@@ -89,8 +96,6 @@ export type EnsureAgentKitGlobalResult =
 const NO_VP_HINT =
   'vp (vite-plus) is not on PATH; cannot refresh the global ' +
   `${PUBLIC_PACKAGE_NAME}. Install vite-plus, then re-run \`wp setup\`.`
-const UPDATE_CACHE_FILENAME = 'update-notifier-cache.json'
-const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
 
 function resolvePackageRootForStaging(argv1: string): string | null {
   const fromArgv = argv1.length > 0 ? findAgentKitPackageRoot(argv1) : null
@@ -131,17 +136,7 @@ function readPackageVersion(packageRoot: string): string | null {
 
 function readFreshCachedLatest(now: number = Date.now()): string | null {
   try {
-    const parsed = JSON.parse(
-      readFileSync(join(getStateRoot(), UPDATE_CACHE_FILENAME), 'utf8'),
-    ) as {
-      latest?: unknown
-      lastUpdateCheck?: unknown
-    }
-    if (typeof parsed.latest !== 'string' || typeof parsed.lastUpdateCheck !== 'number') {
-      return null
-    }
-    if (now - parsed.lastUpdateCheck >= UPDATE_CHECK_INTERVAL_MS) return null
-    return parsed.latest
+    return readFreshCachedLatestRelease(join(getStateRoot(), UPDATE_CACHE_FILENAME), now)
   } catch {
     return null
   }
@@ -186,7 +181,10 @@ export function ensureAgentKitGlobal(input: EnsureAgentKitGlobalInput): EnsureAg
   const command = buildVpGlobalInstallCommand(vpCommand)
   const packageRoot =
     input.packageRoot ?? (input.resolvePackageRootForStaging ?? resolvePackageRootForStaging)(argv1)
-  const current = packageRoot === null ? null : readPackageVersion(packageRoot)
+  const isSupportedGlobalInstall =
+    argv1.length > 0 &&
+    (input.confirmInstalledGlobally ?? confirmInstalledGlobally)(argv1, env)
+  const current = packageRoot !== null && isSupportedGlobalInstall ? readPackageVersion(packageRoot) : null
   const latest = (input.readFreshCachedLatest ?? readFreshCachedLatest)()
 
   if (packageRoot !== null && current !== null && latest !== null && !isNewerVersion(latest, current)) {
