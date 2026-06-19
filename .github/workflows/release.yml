@@ -134,14 +134,14 @@ jobs:
       - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
           pattern: session-memory-native-*
-          path: dist/session-memory-native-downloads
+          path: ${{ runner.temp }}/session-memory-native-downloads
 
       - name: Assemble session-memory native artifacts
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist/session-memory-native
-          for artifact_dir in dist/session-memory-native-downloads/session-memory-native-*; do
+          for artifact_dir in "$RUNNER_TEMP"/session-memory-native-downloads/session-memory-native-*; do
             target="${artifact_dir##*/session-memory-native-}"
             mkdir -p "dist/session-memory-native/${target}"
             cp "${artifact_dir}/session_memory_napi.node" "dist/session-memory-native/${target}/session_memory_napi.node"
@@ -183,6 +183,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HUSKY: '0'
           RELEASE_PUBLISH_RESULT_FILE: ${{ runner.temp }}/release-publish-result.json
+          SESSION_MEMORY_NATIVE_DOWNLOADS_DIR: ${{ runner.temp }}/session-memory-native-downloads
 
       - name: Read explicit publish result
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry-run != true }}
