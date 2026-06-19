@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.1.1
+
+### Patch Changes
+
+- 9ae7c1d: Fix global `vp` resolution for setup/update refreshes and ship internal managed hook launcher wrappers.
+
+  Reference parity / AI contract citations:
+
+  - `docs/bench/reference-parity-matrix.md`
+  - `src/__integration__/reference-parity-host-smoke.integration.test.ts`
+  - `src/__integration__/reference-parity-tool-surface.integration.test.ts`
+  - `docs/bench/session-memory-methodology.md`
+
+- d0280a8: Include the matching Changesets changelog section in GitHub Release notes for root and workspace package releases.
+- a192b5c: Refresh the installed Claude Code and Codex plugin caches after `wp update` updates the global agent-kit package so bundled skills such as `agent-kit:verify` and `agent-kit:tph` are available in new agent sessions.
+
 ## 2.1.0
 
 ### Minor Changes
