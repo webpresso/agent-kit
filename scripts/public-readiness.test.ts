@@ -1,10 +1,12 @@
-import { readFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
 import {
   evaluateRepoVisibilityReadiness,
+  evaluateReadmeBenchmarkClaimGate,
   evaluatePluginNativeLauncherPolicy,
   listPackedRuntimePayloadLeaks,
   listMissingPackedRuntimePaths,
@@ -64,11 +66,14 @@ describe('public-readiness runtime policy helpers', () => {
     ])
   })
 
-  it('flags denied packed runtime payload trees and native source workspaces', () => {
+  it('permits prebuilt native artifacts while flagging native source workspaces', () => {
     expect(
       listPackedRuntimePayloadLeaks([
+        'bin/runtime/darwin-arm64/session_memory.node',
         'bin/runtime/darwin-arm64/wp',
+        'dist/runtime/darwin-arm64/session_memory.node',
         'dist/runtime/darwin-arm64/wp',
+        'dist/runtime-packages/agent-kit-runtime-darwin-arm64/bin/session_memory.node',
         'dist/runtime-packages/agent-kit-runtime-darwin-arm64/bin/wp',
         'native/session-memory-engine/Cargo.toml',
         'bin/wp',
@@ -95,6 +100,27 @@ describe('public-readiness runtime policy helpers', () => {
         unpackedSize: AGENT_KIT_TARBALL_UNPACKED_SIZE_BUDGET_BYTES + 1,
       }),
     ).toMatchObject({ sizeOk: false, unpackedOk: false })
+  })
+
+  it('requires README numeric benchmark claims to point at checked-in first-party result cards', () => {
+    const root = mkdtempSync(join(tmpdir(), 'wp-readiness-claim-gate-'))
+    mkdirSync(join(root, 'docs/bench/result-cards'), { recursive: true })
+    writeFileSync(join(root, 'docs/bench/result-card-contract.md'), '# contract\n')
+    writeFileSync(join(root, 'docs/bench/result-cards/README.md'), '# cards\n')
+    try {
+      expect(
+        evaluateReadmeBenchmarkClaimGate(
+          'Public numeric benchmark claims require a checked-in first-party result card under docs/bench/result-cards/; see docs/bench/result-card-contract.md.',
+          root,
+        ),
+      ).toMatchObject({ status: 'PASS' })
+
+      expect(evaluateReadmeBenchmarkClaimGate('Bench latency is 1ms.', root)).toMatchObject({
+        status: 'FAIL',
+      })
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   })
 
   it('packs the prepared manifest with scripts disabled to avoid double prepack', () => {

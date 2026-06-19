@@ -19,7 +19,7 @@ export type SessionMemoryThresholdAxis = {
   metric: 'latency_ms' | 'recall_at_5'
   threshold: number
   observed: number | null
-  status: 'schema-valid' | 'passed' | 'failed'
+  status: 'schema-valid' | 'not-instrumented' | 'passed' | 'failed'
 }
 
 export type SessionMemoryReport = {

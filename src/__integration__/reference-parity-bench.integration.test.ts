@@ -33,7 +33,7 @@ function createBenchToolFixtureBin(): string {
   )
   writeExecutable(
     join(tempDir, 'claude'),
-    '#!/usr/bin/env sh\nif [ "$1" = "--version" ]; then\n  echo "2.1.177 (Claude Code)"\n  exit 0\nfi\necho "unexpected claude invocation: $*" >&2\nexit 2\n',
+    '#!/usr/bin/env sh\nif [ "$1" = "--version" ]; then\n  echo "2.1.183 (Claude Code)"\n  exit 0\nfi\necho "unexpected claude invocation: $*" >&2\nexit 2\n',
   )
   writeExecutable(
     join(tempDir, 'git'),

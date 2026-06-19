@@ -100,6 +100,8 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: latest
+      - name: Install Rust toolchain for native session-memory checks
+        run: rustup toolchain install 1.88.0 --profile minimal --component rustfmt,clippy
       - run: pnpm install --frozen-lockfile
       - name: Stage native runtime artifacts
         run: |
@@ -125,12 +127,26 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: latest
+      - name: Install Rust toolchain for native session-memory checks
+        run: rustup toolchain install 1.88.0 --profile minimal --component rustfmt,clippy
       - run: pnpm install --frozen-lockfile
       - name: Stage native runtime artifacts
         run: |
           pnpm run build:runtime-binaries
           pnpm run stage:plugin-runtime
+      - name: Native session-memory fmt
+        run: pnpm run native:session-memory:fmt
+      - name: Native session-memory clippy
+        run: pnpm run native:session-memory:clippy
+      - name: Native session-memory test
+        run: pnpm run native:session-memory:test
+      - name: Native session-memory bench gate
+        run: |
+          pnpm run native:session-memory:bench:run
+          pnpm run native:session-memory:bench:gate
       - name: Warm native session-memory addon
+        env:
+          WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE: "1"
         run: pnpm exec tsx --eval "import { loadNativeSessionMemoryEngine } from './src/session-memory/native-runtime.ts'; loadNativeSessionMemoryEngine()"
       - run: pnpm run test
       - name: Cursor hook contract slice

@@ -139,3 +139,32 @@ fn test_open_migrates_legacy_session_memory_chunks() {
         "legacy chunks should remain searchable after native open"
     );
 }
+
+#[test]
+fn test_search_empty_query_returns_empty_without_error() {
+    let (mut store, _dir) = make_store();
+    store
+        .index("empty-query", &["content should not matter".to_string()])
+        .unwrap();
+    let hits = store.search("   \t\n  ", 5, None).unwrap();
+    assert!(hits.is_empty());
+}
+
+#[test]
+fn test_fts_escaping_handles_quotes_and_operators() {
+    let (mut store, _dir) = make_store();
+    store
+        .index(
+            "escape-source",
+            &["literal quoted alpha and operator-ish beta OR gamma".to_string()],
+        )
+        .unwrap();
+
+    let quoted = store.search("\"alpha\"", 5, Some("escape-source")).unwrap();
+    assert!(quoted.iter().all(|hit| hit.source == "escape-source"));
+
+    let operator = store
+        .search("beta OR gamma", 5, Some("escape-source"))
+        .unwrap();
+    assert!(operator.iter().all(|hit| hit.source == "escape-source"));
+}

@@ -87,6 +87,24 @@ const BUILD_LOCK_POLL_MS = 250
 
 let cachedModule: NativeSessionMemoryModule | null = null
 
+export class NativeSessionMemoryUnavailableError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'NativeSessionMemoryUnavailableError'
+  }
+}
+
+export class NativeSessionMemoryLoadError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options)
+    this.name = 'NativeSessionMemoryLoadError'
+  }
+}
+
+export function resetNativeSessionMemoryEngineForTests(): void {
+  cachedModule = null
+}
+
 function resolvePackageRoot(): string {
   let cursor = resolve(dirname(fileURLToPath(import.meta.url)))
   while (true) {
@@ -160,6 +178,60 @@ function compiledNodePath(): string {
     cacheRoot,
     `${MODULE_BASENAME}.${buildIdentity}.${process.platform}-${process.arch}.node`,
   )
+}
+
+function packagedNativeCandidates(): string[] {
+  const packageRoot = resolvePackageRoot()
+  const moduleDir = dirname(fileURLToPath(import.meta.url))
+  const platformArch = `${process.platform}-${process.arch}`
+  return [
+    join(moduleDir, `${MODULE_BASENAME}.${platformArch}.node`),
+    join(moduleDir, `${MODULE_BASENAME}.node`),
+    join(packageRoot, 'prebuilds', platformArch, `${MODULE_BASENAME}.node`),
+    join(packageRoot, 'native', 'prebuilds', platformArch, `${MODULE_BASENAME}.node`),
+  ]
+}
+
+function resolvePrebuiltNativeModulePath(): string | null {
+  const explicitPath = process.env['WP_NATIVE_SESSION_MEMORY_PATH']
+  if (explicitPath) return existsSync(explicitPath) ? explicitPath : null
+  for (const candidate of packagedNativeCandidates()) {
+    if (existsSync(candidate)) return candidate
+  }
+  return null
+}
+
+function isRepoCheckout(): boolean {
+  const packageRoot = resolvePackageRoot()
+  return existsSync(join(packageRoot, '.git')) && existsSync(buildManifestPath())
+}
+
+function nativeBuildFromSourceEnabled(): boolean {
+  return process.env['WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE'] === '1'
+}
+
+function describePrebuiltLookup(): string {
+  const explicitPath = process.env['WP_NATIVE_SESSION_MEMORY_PATH']
+  const candidates = explicitPath ? [explicitPath] : packagedNativeCandidates()
+  return candidates.map((candidate) => `- ${candidate}`).join('\n')
+}
+
+function resolveNativeModulePath(): string {
+  const prebuiltPath = resolvePrebuiltNativeModulePath()
+  if (prebuiltPath !== null) return prebuiltPath
+
+  if (!nativeBuildFromSourceEnabled()) {
+    throw new NativeSessionMemoryUnavailableError(
+      `native session-memory engine unavailable: no prebuilt addon found for ${process.platform}-${process.arch}. ` +
+        `First-use cargo builds are disabled; set WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE=1 in an agent-kit repo checkout to build from source. Searched:\n${describePrebuiltLookup()}`,
+    )
+  }
+  if (!isRepoCheckout()) {
+    throw new NativeSessionMemoryUnavailableError(
+      'native session-memory engine unavailable: WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE=1 was set, but this installation is not an agent-kit repo checkout with native sources',
+    )
+  }
+  return ensureNativeModuleBuilt()
 }
 
 function cargoTargetDir(): string {
@@ -283,8 +355,16 @@ function ensureNativeModuleBuilt(): string {
 
 export function loadNativeSessionMemoryEngine(): NativeSessionMemoryModule {
   if (cachedModule !== null) return cachedModule
-  const nodePath = ensureNativeModuleBuilt()
-  const loaded = requireFromHere(nodePath) as unknown
+  const nodePath = resolveNativeModulePath()
+  let loaded: unknown
+  try {
+    loaded = requireFromHere(nodePath)
+  } catch (error) {
+    throw new NativeSessionMemoryLoadError(
+      `native session-memory engine failed to load from ${nodePath}: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
+    )
+  }
   const loadedRecord =
     typeof loaded === 'object' && loaded !== null ? (loaded as Record<string, unknown>) : null
   const defaultRecord =
@@ -311,14 +391,10 @@ export function loadNativeSessionMemoryEngine(): NativeSessionMemoryModule {
     'executeSandboxed',
   ] as const
   if (candidate === null || requiredKeys.some((key) => typeof candidate[key] !== 'function')) {
-    throw new Error(
+    throw new NativeSessionMemoryLoadError(
       `native session-memory engine loaded from ${nodePath} but did not expose the expected API`,
     )
   }
   cachedModule = candidate as NativeSessionMemoryModule
   return cachedModule
-}
-
-export function resetNativeSessionMemoryEngineForTests(): void {
-  cachedModule = null
 }

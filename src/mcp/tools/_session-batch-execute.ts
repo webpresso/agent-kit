@@ -73,6 +73,13 @@ const outputSchema = createSummaryOutputSchema({
         outputBytes: z.number(),
         indexed: z.boolean(),
         summary: z.string(),
+        backend: z.enum(['native', 'typescript']),
+        fallbackReason: z.string().optional(),
+        truncated: z.boolean().optional(),
+        capturedBytes: z.number().optional(),
+        maxCaptureBytes: z.number().optional(),
+        timedOut: z.boolean().optional(),
+        signal: z.string().optional(),
       }),
     ),
     queryHits: z

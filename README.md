@@ -191,7 +191,7 @@ These checks prove hook health, lifecycle state, reference parity gating, real
 pack tarball contents, package lint, the dev-var carrier check, secret-policy
 audits, and path safety for the public package. Session-continuity claims must
 stay scoped to typed continuity events, the tested capture/restore flow, and
-Cursor/OpenCode degraded host coverage documented in the hook matrix.
+Cursor/OpenCode degraded host coverage documented in the hook matrix. Public numeric benchmark claims must also cite a checked-in first-party result card under `docs/bench/result-cards/`; see [the benchmark result-card contract](./docs/bench/result-card-contract.md).
 
 ## Defaults and opt-ins
 

@@ -41,6 +41,37 @@ fn test_capture_and_restore_round_trip() {
 }
 
 #[test]
+fn test_capture_replaces_existing_event_fts_row() {
+    let (conn, _dir) = make_conn();
+    let agent_id = "agent-replace";
+    let repo_hash = "repo-replace";
+
+    capture_event(&conn, repo_hash, agent_id, "e1", "Bash", "old stale token").unwrap();
+    capture_event(&conn, repo_hash, agent_id, "e1", "Bash", "new fresh token").unwrap();
+
+    let old_hits: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM session_events_fts WHERE session_events_fts MATCH 'stale'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    let new_hits: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM session_events_fts WHERE session_events_fts MATCH 'fresh'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+
+    assert_eq!(old_hits, 0, "replacement should remove stale FTS content");
+    assert_eq!(
+        new_hits, 1,
+        "replacement should index fresh FTS content once"
+    );
+}
+
+#[test]
 fn test_snapshot_creates_row() {
     let (conn, _dir) = make_conn();
     let agent_id = "agent-snap";
@@ -171,7 +202,7 @@ fn test_restore_unrelated_query_returns_no_hits() {
 }
 
 #[test]
-fn test_open_migrates_legacy_text_timestamps() {
+fn test_open_rejects_legacy_flat_text_timestamp_schema() {
     let dir = tempdir().unwrap();
     let path = dir.path().join("legacy.db");
 
@@ -196,52 +227,10 @@ fn test_open_migrates_legacy_text_timestamps() {
             );",
         )
         .unwrap();
-        conn.execute(
-            "INSERT INTO session_events(session_id, event_id, repo_hash, ts, tool_name, content)
-             VALUES(?1, ?2, ?3, ?4, ?5, ?6)",
-            rusqlite::params![
-                "agent-legacy",
-                "legacy-1",
-                "repo-legacy",
-                "2026-06-12T10:00:00.000Z",
-                "Bash",
-                "old event"
-            ],
-        )
-        .unwrap();
-        conn.execute(
-            "INSERT INTO sessions(agent_id, snapshot_id, repo_hash, created_at, status, content_json)
-             VALUES(?1, ?2, ?3, ?4, ?5, ?6)",
-            rusqlite::params![
-                "agent-legacy",
-                "snap-legacy",
-                "repo-legacy",
-                "2026-06-12T10:00:00.000Z",
-                "complete",
-                "[]"
-            ],
-        )
-        .unwrap();
     }
 
-    let conn = open(&path).unwrap();
-    let ts_value: String = conn
-        .query_row(
-            "SELECT CAST(ts AS TEXT) FROM session_events LIMIT 1",
-            [],
-            |row| row.get(0),
-        )
-        .unwrap();
-    let created_at_value: String = conn
-        .query_row(
-            "SELECT CAST(created_at AS TEXT) FROM sessions LIMIT 1",
-            [],
-            |row| row.get(0),
-        )
-        .unwrap();
-
-    assert!(ts_value.chars().all(|char| char.is_ascii_digit()));
-    assert!(created_at_value.chars().all(|char| char.is_ascii_digit()));
+    let err = open(&path).unwrap_err().to_string();
+    assert!(err.contains("hard cut requires a fresh typed event schema"));
 }
 
 #[test]
@@ -284,4 +273,87 @@ fn test_concurrent_capture_doesnt_corrupt() {
     let events = restore(&conn, "repo-concurrent", "shared-agent", "", 100).unwrap();
     // 4 threads * 10 events = 40, WAL allows concurrent reads+writes
     assert!(events.len() >= 10, "WAL should allow concurrent capture");
+}
+
+#[test]
+fn test_concurrent_capture_persists_exact_count() {
+    use std::sync::Arc;
+
+    let dir = tempdir().unwrap();
+    let path = Arc::new(dir.path().join("concurrent-exact.db"));
+    {
+        let _init = open(&path).unwrap();
+    }
+
+    let handles: Vec<_> = (0..8)
+        .map(|t| {
+            let p = Arc::clone(&path);
+            std::thread::spawn(move || {
+                let conn = open(&p).unwrap();
+                for i in 0..25 {
+                    capture_event(
+                        &conn,
+                        "repo-concurrent-exact",
+                        "shared-agent",
+                        &format!("t{t}-e{i}"),
+                        "Bash",
+                        &format!("thread {t} event {i}"),
+                    )
+                    .unwrap();
+                }
+            })
+        })
+        .collect();
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    let conn = open(&path).unwrap();
+    let count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM session_events WHERE repo_hash = ?1 AND session_id = ?2",
+            rusqlite::params!["repo-concurrent-exact", "shared-agent"],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(count, 8 * 25);
+}
+
+#[test]
+fn test_open_rejects_old_flat_session_event_schema() {
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("old-flat.db");
+
+    {
+        let conn = rusqlite::Connection::open(&path).unwrap();
+        conn.execute_batch(
+            "CREATE TABLE session_events (
+                session_id TEXT NOT NULL,
+                event_id TEXT NOT NULL,
+                repo_hash TEXT NOT NULL,
+                ts TEXT NOT NULL,
+                tool_name TEXT NOT NULL,
+                content TEXT NOT NULL
+            );",
+        )
+        .unwrap();
+    }
+
+    let err = open(&path).unwrap_err().to_string();
+    assert!(
+        err.contains("hard cut requires a fresh typed event schema"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
+fn test_open_sets_session_memory_user_version() {
+    let (_conn, dir) = make_conn();
+    let path = dir.path().join("session.db");
+    let conn = open(&path).unwrap();
+    let version: i64 = conn
+        .query_row("PRAGMA user_version", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(version, 2);
 }

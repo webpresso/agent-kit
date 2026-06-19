@@ -12,8 +12,8 @@
 //! Node.js runs JS on a single thread, so one cached connection per db_path is sufficient
 //! for the hot path.
 //!
-//! `capture_event` uses a ring-buffer that flushes at 50 events, making each call a
-//! pure memory write (<0.01ms) rather than a synchronous SQLite INSERT.
+//! `capture_event` writes through to SQLite synchronously so public boundaries never
+//! lose buffered session events.
 //!
 //! napi-rs handles Rust panic → Node.js Error natively (no manual catch_unwind needed).
 
@@ -24,7 +24,7 @@ pub mod types;
 use napi::Result as NapiResult;
 use napi_derive::napi;
 use std::cell::RefCell;
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::path::Path;
 
 use session_memory_core::{
@@ -48,84 +48,6 @@ thread_local! {
 thread_local! {
     static SESSION_CACHE: RefCell<HashMap<String, session_memory_core::session::SessionEngine>> =
         RefCell::new(HashMap::new());
-}
-
-// (db_path, repo_hash, session_id, event_id, tool_name, content)
-type PendingEvent = (String, String, String, String, String, String);
-
-// Ring-buffer of pending `capture_event` writes, flushed every 50 entries.
-thread_local! {
-    static EVENT_BUFFER: RefCell<VecDeque<PendingEvent>> =
-        const { RefCell::new(VecDeque::new()) };
-}
-
-/// Flush all buffered events to SQLite. Called automatically when the buffer reaches 50
-/// entries, and explicitly via `flush_events`.
-fn flush_buffered_events(buf: &mut VecDeque<PendingEvent>) -> NapiResult<()> {
-    let mut pending = std::mem::take(buf);
-    // Group events by db_path so we open each connection at most once per flush.
-    while let Some((db_path, repo_hash, session_id, event_id, tool_name, content)) =
-        pending.pop_front()
-    {
-        if let Err(error) = SESSION_CACHE.with(|cache| {
-            let mut map = cache.borrow_mut();
-            if !map.contains_key(&db_path) {
-                let path = Path::new(&db_path);
-                let engine = session_memory_core::session::SessionEngine::open(path)
-                    .map_err(|e| napi::Error::from_reason(e.to_string()))?;
-                map.insert(db_path.clone(), engine);
-            }
-            map.get(&db_path)
-                .unwrap()
-                .capture_event(&repo_hash, &session_id, &event_id, &tool_name, &content)
-                .map_err(|e| napi::Error::from_reason(e.to_string()))
-        }) {
-            buf.push_back((db_path, repo_hash, session_id, event_id, tool_name, content));
-            buf.append(&mut pending);
-            return Err(error);
-        }
-    }
-    Ok(())
-}
-
-fn flush_buffered_events_for_db(
-    buf: &mut VecDeque<PendingEvent>,
-    target_db_path: &str,
-) -> NapiResult<u32> {
-    let mut pending = std::mem::take(buf);
-    let mut retained = VecDeque::new();
-    let mut flushed = 0u32;
-
-    while let Some((db_path, repo_hash, session_id, event_id, tool_name, content)) =
-        pending.pop_front()
-    {
-        if db_path != target_db_path {
-            retained.push_back((db_path, repo_hash, session_id, event_id, tool_name, content));
-            continue;
-        }
-        flushed += 1;
-        if let Err(error) = SESSION_CACHE.with(|cache| {
-            let mut map = cache.borrow_mut();
-            if !map.contains_key(target_db_path) {
-                let path = Path::new(target_db_path);
-                let engine = session_memory_core::session::SessionEngine::open(path)
-                    .map_err(|e| napi::Error::from_reason(e.to_string()))?;
-                map.insert(target_db_path.to_string(), engine);
-            }
-            map.get(target_db_path)
-                .unwrap()
-                .capture_event(&repo_hash, &session_id, &event_id, &tool_name, &content)
-                .map_err(|e| napi::Error::from_reason(e.to_string()))
-        }) {
-            retained.push_back((db_path, repo_hash, session_id, event_id, tool_name, content));
-            retained.append(&mut pending);
-            *buf = retained;
-            return Err(error);
-        }
-    }
-
-    *buf = retained;
-    Ok(flushed)
 }
 
 // ---------------------------------------------------------------------------
@@ -210,11 +132,8 @@ pub fn search(
 
 /// Capture a session event to the store.
 ///
-/// `session_id` (= `agent_id`) identifies the agent/repo session.
-///
-/// Hot path: writes to a thread-local ring buffer; flushes to SQLite every 50 events.
-/// Per-call cost is a memory push (~0.01ms). Call `flush_events` before `snapshot` to
-/// guarantee all events are persisted.
+/// `session_id` (= `agent_id`) identifies the agent/repo session. Writes are durable
+/// at the public boundary; there is no lossy in-memory event buffer.
 #[napi]
 pub fn capture_event(
     db_path: String,
@@ -224,39 +143,37 @@ pub fn capture_event(
     tool_name: String,
     content: String,
 ) -> NapiResult<()> {
-    EVENT_BUFFER.with(|buf| {
-        let mut b = buf.borrow_mut();
-        b.push_back((db_path, repo_hash, session_id, event_id, tool_name, content));
-        if b.len() >= 50 {
-            flush_buffered_events(&mut b)?;
+    SESSION_CACHE.with(|cache| {
+        let mut map = cache.borrow_mut();
+        if !map.contains_key(&db_path) {
+            let path = Path::new(&db_path);
+            let engine = session_memory_core::session::SessionEngine::open(path)
+                .map_err(|e| napi::Error::from_reason(e.to_string()))?;
+            map.insert(db_path.clone(), engine);
         }
-        Ok(())
+        map.get(&db_path)
+            .unwrap()
+            .capture_event(&repo_hash, &session_id, &event_id, &tool_name, &content)
+            .map_err(|e| napi::Error::from_reason(e.to_string()))
     })
 }
 
-/// Flush all buffered `capture_event` writes to SQLite immediately.
-///
-/// Call this before `snapshot` to ensure all events are persisted. Otherwise
-/// the buffer flushes lazily at 50-event intervals.
+/// Compatibility no-op: capture_event is durable at the public boundary.
 #[napi]
 pub fn flush_events() -> NapiResult<u32> {
-    EVENT_BUFFER.with(|buf| {
-        let mut b = buf.borrow_mut();
-        let count = b.len() as u32;
-        flush_buffered_events(&mut b)?;
-        Ok(count)
-    })
+    Ok(0)
 }
 
+/// Compatibility no-op: capture_event is durable at the public boundary.
 #[napi]
-pub fn flush_events_for_db(db_path: String) -> NapiResult<u32> {
-    EVENT_BUFFER.with(|buf| flush_buffered_events_for_db(&mut buf.borrow_mut(), &db_path))
+pub fn flush_events_for_db(_db_path: String) -> NapiResult<u32> {
+    Ok(0)
 }
 
 /// Create a session snapshot for `agent_id`, capped at `max_ms` milliseconds.
 ///
-/// Implicitly flushes the event buffer before snapshotting to guarantee all
-/// pending events are included. Returns partial gracefully if cap is exceeded.
+/// Capture writes are already durable, so snapshot reads directly from SQLite.
+/// Returns partial gracefully if cap is exceeded.
 #[napi]
 pub fn snapshot(
     db_path: String,
@@ -264,10 +181,6 @@ pub fn snapshot(
     agent_id: String,
     max_ms: u32,
 ) -> NapiResult<SnapshotResult> {
-    // Flush pending events so snapshot sees all of them.
-    EVENT_BUFFER
-        .with(|buf| flush_buffered_events_for_db(&mut buf.borrow_mut(), &db_path).map(|_| ()))?;
-
     SESSION_CACHE.with(|cache| {
         let mut map = cache.borrow_mut();
         if !map.contains_key(&db_path) {
@@ -299,10 +212,6 @@ pub fn restore(
     query: String,
     limit: u32,
 ) -> NapiResult<Vec<EventHit>> {
-    // Flush so restore sees all pending events.
-    EVENT_BUFFER
-        .with(|buf| flush_buffered_events_for_db(&mut buf.borrow_mut(), &db_path).map(|_| ()))?;
-
     SESSION_CACHE.with(|cache| {
         let mut map = cache.borrow_mut();
         if !map.contains_key(&db_path) {
@@ -377,7 +286,7 @@ pub struct ExecuteResult {
     /// Shell exit code (−1 if killed without a code).
     pub exit_code: i32,
     /// Total bytes streamed from stdout + stderr.
-    pub output_bytes: u32,
+    pub output_bytes: i64,
     /// Whether any content was indexed into FTS5.
     pub indexed: bool,
     /// First output text, truncated to 500 chars.
@@ -413,7 +322,7 @@ pub async fn execute_sandboxed(
 
     Ok(ExecuteResult {
         exit_code: result.exit_code,
-        output_bytes: result.output_bytes as u32,
+        output_bytes: result.output_bytes.min(9_007_199_254_740_991) as i64,
         indexed: result.indexed,
         summary: result.summary,
     })

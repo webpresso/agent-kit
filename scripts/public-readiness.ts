@@ -51,12 +51,16 @@ const BLUEPRINT_PATH = resolve(
 )
 const PUBLIC_HISTORY_TASK_ID = '1.5'
 
-const DENIED_PACKED_RUNTIME_PREFIXES = [
+const DENIED_PACKED_RUNTIME_PAYLOAD_PREFIXES = [
   'bin/runtime/',
   'dist/runtime/',
   'dist/runtime-packages/',
   'native/session-memory-engine/',
 ] as const
+
+function isAllowedPackedNativeAddon(path: string): boolean {
+  return path.endsWith('.node')
+}
 
 function run(
   command: string,
@@ -168,7 +172,8 @@ export function listMissingPackedRuntimePaths(
 
 export function listPackedRuntimePayloadLeaks(packedFiles: readonly string[]): string[] {
   return packedFiles.filter((path) =>
-    DENIED_PACKED_RUNTIME_PREFIXES.some((prefix) => path.startsWith(prefix)),
+    DENIED_PACKED_RUNTIME_PAYLOAD_PREFIXES.some((prefix) => path.startsWith(prefix)) &&
+    !isAllowedPackedNativeAddon(path),
   )
 }
 
@@ -181,6 +186,34 @@ function countMatches(paths: string[], patterns: RegExp[]): string[] {
     }
   }
   return hits
+}
+
+
+export function evaluateReadmeBenchmarkClaimGate(readme: string, root = ROOT): CheckResult {
+  const required = [
+    'docs/bench/result-card-contract.md',
+    'docs/bench/result-cards/',
+    'checked-in first-party result card',
+  ]
+  const missing = required.filter((marker) => !readme.includes(marker))
+  const missingPaths = [
+    'docs/bench/result-card-contract.md',
+    'docs/bench/result-cards/README.md',
+  ].filter((path) => !existsSync(resolve(root, path)))
+  return missing.length === 0 && missingPaths.length === 0
+    ? pass(
+        'readme-benchmark-claim-gate',
+        'numeric benchmark claims require checked-in first-party result-card evidence',
+      )
+    : fail(
+        'readme-benchmark-claim-gate',
+        [
+          missing.length ? `README missing claim-gate markers: ${missing.join(', ')}` : null,
+          missingPaths.length ? `missing checked-in result-card docs: ${missingPaths.join(', ')}` : null,
+        ]
+          .filter((value): value is string => value !== null)
+          .join('; '),
+      )
 }
 
 function blueprintTaskStatus(taskId: string): string | null {
@@ -411,7 +444,7 @@ if (import.meta.main) {
       missingRuntimePaths.length === 0 && leakedRuntimePayloadPaths.length === 0
         ? pass(
             'tarball-native-runtime-surface',
-            'thin-root tarball keeps manifest + launcher and excludes runtime payload trees',
+            'tarball keeps manifest + launcher, permits prebuilt native artifacts/optionals, and excludes native source trees',
           )
         : fail(
             'tarball-native-runtime-surface',
@@ -420,7 +453,7 @@ if (import.meta.main) {
                 ? `missing required packed runtime paths: ${missingRuntimePaths.join(', ')}`
                 : null,
               leakedRuntimePayloadPaths.length
-                ? `denied packed runtime payloads: ${leakedRuntimePayloadPaths.join(', ')}`
+                ? `denied packed native source paths: ${leakedRuntimePayloadPaths.join(', ')}`
                 : null,
             ]
               .filter((value): value is string => value !== null)
@@ -492,7 +525,10 @@ if (import.meta.main) {
     )
   }
 
-  // 6) Generated artifact regression
+  // 6) README benchmark claim gate
+  results.push(evaluateReadmeBenchmarkClaimGate(read('README.md')))
+
+  // 7) Generated artifact regression
   const testPlanFiles = run('git', ['ls-files', '.test-plan-service/**'])
   results.push(
     testPlanFiles.stdout.trim() === ''
@@ -500,7 +536,7 @@ if (import.meta.main) {
       : fail('tracked-generated-artifacts', testPlanFiles.stdout.trim()),
   )
 
-  // 7) History strategy evidence
+  // 8) History strategy evidence
   if (!existsSync(HISTORY_AUDIT_PATH)) {
     results.push(
       fail('history-audit-artifact', 'missing docs/research/2026-05-28-agent-kit-history-audit.md'),
@@ -520,7 +556,7 @@ if (import.meta.main) {
     }
   }
 
-  // 8) Repo visibility readiness is intentionally separate
+  // 9) Repo visibility readiness is intentionally separate
   const historyClassification =
     results.find((r) => r.name === 'history-audit-artifact' && r.status === 'PASS')?.detail ??
     'missing'

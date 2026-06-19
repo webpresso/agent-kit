@@ -53,10 +53,36 @@ pub fn capture_event(
     content: &str,
 ) -> SessionResult<()> {
     let ts = now_unix();
-    conn.execute(
-        "INSERT INTO session_events(session_id, event_id, repo_hash, ts, tool_name, content)
-         VALUES(?1, ?2, ?3, ?4, ?5, ?6)",
+    let inserted = conn.execute(
+        "INSERT OR IGNORE INTO session_events(
+             session_id, event_id, repo_hash, ts, event_type, tool_name, content, summary, priority, metadata_json
+         )
+         VALUES(?1, ?2, ?3, ?4, 'tool_command', ?5, ?6, NULL, 50, '{}')",
         params![session_id, event_id, repo_hash, ts, tool_name, content],
+    )?;
+    if inserted == 0 {
+        conn.execute(
+            "UPDATE session_events
+                SET session_id = ?1, repo_hash = ?3, ts = ?4, event_type = 'tool_command',
+                    tool_name = ?5, content = ?6, summary = NULL, priority = 50, metadata_json = '{}'
+              WHERE event_id = ?2",
+            params![session_id, event_id, repo_hash, ts, tool_name, content],
+        )?;
+        conn.execute(
+            "DELETE FROM session_events_fts WHERE event_id = ?1",
+            params![event_id],
+        )?;
+    }
+    conn.execute(
+        "INSERT INTO session_events_fts(session_id, event_id, repo_hash, tool_name, content)
+         VALUES(?1, ?2, ?3, ?4, ?5)",
+        params![
+            session_id,
+            event_id,
+            repo_hash,
+            tool_name,
+            format!("tool_command\n{content}")
+        ],
     )?;
     Ok(())
 }
@@ -76,7 +102,7 @@ pub fn snapshot(
     let mut stmt = conn.prepare(
         "SELECT event_id, tool_name, content FROM session_events
          WHERE repo_hash = ?1 AND session_id = ?2
-         ORDER BY ts ASC",
+         ORDER BY ts ASC, rowid ASC",
     )?;
     let events: Vec<(String, String, String)> = stmt
         .query_map(params![repo_hash, agent_id], |r| {
@@ -84,7 +110,7 @@ pub fn snapshot(
         })?
         .collect::<SqlResult<Vec<_>>>()?;
 
-    let snapshot_id = new_uuid();
+    let snapshot_id = new_snapshot_id(conn)?;
     let created_at = now_unix();
 
     // Build content_json from events (partial if deadline exceeded)
@@ -147,7 +173,7 @@ pub fn restore(
         "SELECT session_id, event_id, ts, tool_name, content
          FROM session_events
          WHERE repo_hash = ?1 AND session_id = ?2
-         ORDER BY ts DESC
+         ORDER BY ts DESC, rowid DESC
          LIMIT 500",
     )?;
     let events: Vec<EventHit> = stmt
@@ -177,7 +203,12 @@ pub fn restore(
         .filter(|(score, _)| *score > 0.0)
         .collect();
 
-    scored.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+    scored.sort_by(|a, b| {
+        b.0.partial_cmp(&a.0)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| b.1.ts.cmp(&a.1.ts))
+            .then_with(|| a.1.event_id.cmp(&b.1.event_id))
+    });
     scored.truncate(limit);
 
     Ok(scored.into_iter().map(|(_, ev)| ev).collect())
@@ -231,18 +262,11 @@ fn levenshtein_distance(a: &str, b: &str) -> usize {
     dp[m][n]
 }
 
-fn new_uuid() -> String {
-    // Minimal UUID v4 without a dep: use timestamp + random bytes
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let ts = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos();
-    // Mix with thread id
-    let tid = std::thread::current().id();
-    format!("{ts:x}-{tid:?}")
-        .replace("ThreadId(", "")
-        .replace(")", "")
+fn new_snapshot_id(conn: &Connection) -> SessionResult<String> {
+    let id = conn.query_row("SELECT lower(hex(randomblob(16)))", [], |row| {
+        row.get::<_, String>(0)
+    })?;
+    Ok(format!("snap_{id}"))
 }
 
 /// High-level engine combining Store + session operations.

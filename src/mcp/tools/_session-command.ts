@@ -1,12 +1,36 @@
+import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { mkdirSync, realpathSync } from 'node:fs'
 import { dirname, sep } from 'node:path'
 
-import { loadNativeSessionMemoryEngine } from '#session-memory/native-runtime.js'
+import {
+  NativeSessionMemoryUnavailableError,
+  loadNativeSessionMemoryEngine,
+} from '#session-memory/native-runtime.js'
 import { SessionMemoryStore } from '#session-memory/store.js'
 import type { SearchHit } from '#session-memory/types.js'
 import { defaultIndexDbPath } from './session-restore.js'
 
+export const MAX_CAPTURE_BYTES = 1024 * 1024
 const DEFAULT_SEARCH_LIMIT = 10
+
+const COMMON_SIGNAL_NUMBERS: Partial<Record<NodeJS.Signals, number>> = {
+  SIGHUP: 1,
+  SIGINT: 2,
+  SIGQUIT: 3,
+  SIGILL: 4,
+  SIGTRAP: 5,
+  SIGABRT: 6,
+  SIGBUS: 7,
+  SIGFPE: 8,
+  SIGKILL: 9,
+  SIGUSR1: 10,
+  SIGSEGV: 11,
+  SIGUSR2: 12,
+  SIGPIPE: 13,
+  SIGALRM: 14,
+  SIGTERM: 15,
+}
 
 const nativeExecutionQueues = new Map<string, Promise<void>>()
 
@@ -54,6 +78,13 @@ export interface SessionCommandResult {
   readonly outputBytes: number
   readonly indexed: boolean
   readonly summary: string
+  readonly backend: 'native' | 'typescript'
+  readonly fallbackReason?: string
+  readonly truncated?: boolean
+  readonly capturedBytes?: number
+  readonly maxCaptureBytes?: number
+  readonly timedOut?: boolean
+  readonly signal?: NodeJS.Signals
 }
 
 interface RunSessionCommandOptions {
@@ -63,6 +94,25 @@ interface RunSessionCommandOptions {
   readonly projectRoot: string
   readonly timeoutMs: number
   readonly dbPath?: string
+}
+
+function appendBounded(parts: Buffer[], chunk: Buffer, currentBytes: number): number {
+  const nextBytes = currentBytes + chunk.length
+  if (currentBytes >= MAX_CAPTURE_BYTES) return nextBytes
+  const remaining = MAX_CAPTURE_BYTES - currentBytes
+  parts.push(chunk.length <= remaining ? chunk : chunk.subarray(0, remaining))
+  return nextBytes
+}
+
+function summarizeOutput(output: string, timedOut: boolean): string {
+  const normalized = output
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 6)
+    .join('\n')
+  if (!normalized) return timedOut ? 'command timed out with no captured output' : 'no output'
+  return normalized.length > 2_000 ? `${normalized.slice(0, 2_000)}…` : normalized
 }
 
 function isPathInside(child: string, parent: string): boolean {
@@ -143,6 +193,140 @@ export function validateCommand(command: string, cwd: string, projectRoot: strin
   }
 }
 
+function commandChunkId(label: string, command: string, output: string): string {
+  return createHash('sha256')
+    .update(label)
+    .update('\0')
+    .update(command)
+    .update('\0')
+    .update(output)
+    .digest('hex')
+    .slice(0, 32)
+}
+
+function exitCodeFromSignal(signal: NodeJS.Signals | null): number {
+  if (!signal) return -1
+  return 128 + (COMMON_SIGNAL_NUMBERS[signal] ?? 15)
+}
+
+function terminateChildProcessTree(
+  child: ReturnType<typeof spawn>,
+  signal: NodeJS.Signals,
+): void {
+  if (process.platform !== 'win32' && child.pid) {
+    try {
+      process.kill(-child.pid, signal)
+      return
+    } catch {
+      // Fall through to child.kill; the process may have exited between timer and signal.
+    }
+  }
+  child.kill(signal)
+}
+
+async function runTypeScriptSessionCommand({
+  command,
+  label,
+  cwd,
+  timeoutMs,
+  dbPath,
+  fallbackReason,
+}: RunSessionCommandOptions & { dbPath: string; fallbackReason: string }): Promise<SessionCommandResult> {
+  const captured: Buffer[] = []
+  let totalOutputBytes = 0
+  let timedOut = false
+  let closeSignal: NodeJS.Signals | null = null
+
+  const exitCode = await new Promise<number>((resolve, reject) => {
+    const child = spawn('sh', ['-c', command], {
+      cwd,
+      detached: process.platform !== 'win32',
+      env: process.env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    let closed = false
+    const timer = setTimeout(() => {
+      timedOut = true
+      terminateChildProcessTree(child, 'SIGTERM')
+      setTimeout(() => {
+        if (!closed) terminateChildProcessTree(child, 'SIGKILL')
+      }, 1_000).unref()
+    }, timeoutMs)
+    child.stdout.on('data', (chunk: Buffer) => {
+      totalOutputBytes = appendBounded(captured, chunk, totalOutputBytes)
+    })
+    child.stderr.on('data', (chunk: Buffer) => {
+      totalOutputBytes = appendBounded(captured, chunk, totalOutputBytes)
+    })
+    child.on('error', (error) => {
+      closed = true
+      clearTimeout(timer)
+      reject(error)
+    })
+    child.on('close', (code, signal) => {
+      closed = true
+      closeSignal = signal
+      clearTimeout(timer)
+      if (timedOut) {
+        resolve(124)
+        return
+      }
+      if (code !== null) {
+        resolve(code)
+        return
+      }
+      resolve(exitCodeFromSignal(signal))
+    })
+  })
+
+  const output = Buffer.concat(captured).toString('utf8')
+  const capturedBytes = Buffer.byteLength(output, 'utf8')
+  const truncated = totalOutputBytes > capturedBytes
+  const summary = `${summarizeOutput(output, timedOut)}${truncated ? '\n[output truncated before indexing]' : ''}`
+  const indexed = output.trim().length > 0
+  const store = new SessionMemoryStore(dbPath)
+  try {
+    store.purge({ source: label, confirm: true })
+    if (indexed) {
+      store.indexChunk({
+        id: `command:${commandChunkId(label, command, output)}`,
+        source: label,
+        text: output,
+        metadata: {
+          command,
+          cwd,
+          exitCode,
+          outputBytes: totalOutputBytes,
+          capturedBytes,
+          maxCaptureBytes: MAX_CAPTURE_BYTES,
+          truncated,
+          timedOut,
+          ...(closeSignal ? { signal: closeSignal } : {}),
+          kind: 'session_command_output',
+          executionBackend: 'typescript',
+          fallbackReason,
+        },
+      })
+    }
+  } finally {
+    store.close()
+  }
+  return {
+    label,
+    exitCode,
+    outputBytes: totalOutputBytes,
+    indexed,
+    summary,
+    backend: 'typescript',
+    fallbackReason,
+    truncated,
+    capturedBytes,
+    maxCaptureBytes: MAX_CAPTURE_BYTES,
+    timedOut,
+    ...(closeSignal ? { signal: closeSignal } : {}),
+  }
+}
+
 export async function runSessionCommand({
   command,
   label,
@@ -153,16 +337,32 @@ export async function runSessionCommand({
 }: RunSessionCommandOptions): Promise<SessionCommandResult> {
   validateCommand(command, cwd, projectRoot)
   mkdirSync(dirname(dbPath), { recursive: true })
-  const result = await withNativeExecutionQueue(dbPath, () =>
-    loadNativeSessionMemoryEngine().executeSandboxed(dbPath, command, label, timeoutMs, cwd),
-  )
-  assertNativeExecuteResult(result)
-  return {
-    label,
-    exitCode: result.exitCode,
-    outputBytes: result.outputBytes,
-    indexed: result.indexed,
-    summary: result.summary,
+  try {
+    const result = await withNativeExecutionQueue(dbPath, () =>
+      loadNativeSessionMemoryEngine().executeSandboxed(dbPath, command, label, timeoutMs, cwd),
+    )
+    assertNativeExecuteResult(result)
+    return {
+      label,
+      exitCode: result.exitCode,
+      outputBytes: result.outputBytes,
+      indexed: result.indexed,
+      summary: result.summary,
+      backend: 'native',
+    }
+  } catch (error) {
+    if (!(error instanceof NativeSessionMemoryUnavailableError)) {
+      throw error
+    }
+    return runTypeScriptSessionCommand({
+      command,
+      label,
+      cwd,
+      projectRoot,
+      timeoutMs,
+      dbPath,
+      fallbackReason: error.message,
+    })
   }
 }
 

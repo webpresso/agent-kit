@@ -1,12 +1,13 @@
-//! SQLite + FTS5 store — byte-identical schema to the v1 TS engine.
+//! SQLite + FTS5 store for the native session-memory engine.
 //!
-//! ON-DISK SCHEMA (must match v1 exactly — zero-migration promise):
+//! ON-DISK SCHEMA:
 //!   CREATE VIRTUAL TABLE chunks USING fts5(content, source, tokenize='porter unicode61');
 //!   CREATE VIRTUAL TABLE chunks_trigram USING fts5(content, source, tokenize='trigram');
 //!   CREATE TABLE sources(id INTEGER PRIMARY KEY, label TEXT UNIQUE, indexed_at INTEGER, chunk_count INTEGER);
 //!   CREATE TABLE vocabulary(term TEXT PRIMARY KEY, idf_score REAL);
-//!   CREATE TABLE sessions(agent_id TEXT, snapshot_id TEXT, created_at INTEGER, status TEXT, content_json TEXT);
-//!   CREATE TABLE session_events(session_id TEXT, event_id TEXT, ts INTEGER, tool_name TEXT, content TEXT);
+//!   CREATE TABLE sessions(agent_id TEXT, snapshot_id TEXT PRIMARY KEY, repo_hash TEXT, created_at INTEGER, status TEXT, content_json TEXT);
+//!   CREATE TABLE session_events(session_id TEXT, event_id TEXT PRIMARY KEY, repo_hash TEXT, ts INTEGER, event_type TEXT, tool_name TEXT, content TEXT, summary TEXT, priority INTEGER, metadata_json TEXT);
+//!   CREATE VIRTUAL TABLE session_events_fts USING fts5(session_id UNINDEXED, event_id UNINDEXED, repo_hash UNINDEXED, tool_name UNINDEXED, content, tokenize='porter');
 //!   PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA mmap_size=268435456;
 
 use std::path::Path;
@@ -25,6 +26,8 @@ pub enum StoreError {
     Sqlite(#[from] rusqlite::Error),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("Schema error: {0}")]
+    Schema(String),
 }
 
 pub type StoreResult<T> = Result<T, StoreError>;
@@ -33,10 +36,120 @@ pub type StoreResult<T> = Result<T, StoreError>;
 pub fn open(path: &Path) -> StoreResult<Connection> {
     let conn = Connection::open(path)?;
     apply_pragmas(&conn)?;
+    let had_session_events_table = table_exists(&conn, "session_events")?;
+    reject_legacy_flat_session_schema(&conn, had_session_events_table)?;
     apply_schema(&conn)?;
+    ensure_current_session_schema(&conn, had_session_events_table)?;
     migrate_legacy_time_columns(&conn)?;
     migrate_legacy_chunk_tables(&conn)?;
     Ok(conn)
+}
+
+fn table_exists(conn: &Connection, table_name: &str) -> SqlResult<bool> {
+    conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?1)",
+        params![table_name],
+        |row| row.get::<_, i64>(0),
+    )
+    .map(|value| value != 0)
+}
+
+fn reject_legacy_flat_session_schema(
+    conn: &Connection,
+    had_session_events_table: bool,
+) -> StoreResult<()> {
+    if !had_session_events_table {
+        return Ok(());
+    }
+    let columns: std::collections::HashSet<String> = conn
+        .prepare("PRAGMA table_info(session_events)")?
+        .query_map([], |row| row.get::<_, String>(1))?
+        .collect::<SqlResult<_>>()?;
+    let required = ["event_type", "summary", "priority", "metadata_json"];
+    let missing_columns: Vec<&str> = required
+        .into_iter()
+        .filter(|column| !columns.contains(*column))
+        .collect();
+    if !missing_columns.is_empty() {
+        return Err(StoreError::Schema(format!(
+            "session-memory hard cut requires a fresh typed event schema; missing columns: {}",
+            missing_columns.join(", ")
+        )));
+    }
+    Ok(())
+}
+
+fn ensure_current_session_schema(
+    conn: &Connection,
+    had_session_events_table: bool,
+) -> StoreResult<()> {
+    const SESSION_MEMORY_SCHEMA_VERSION: i64 = 2;
+    const REQUIRED_EVENT_COLUMNS: &[&str] = &[
+        "session_id",
+        "event_id",
+        "repo_hash",
+        "ts",
+        "event_type",
+        "tool_name",
+        "content",
+        "summary",
+        "priority",
+        "metadata_json",
+    ];
+
+    let current_version: i64 = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
+    if current_version >= SESSION_MEMORY_SCHEMA_VERSION {
+        return Ok(());
+    }
+
+    let columns: std::collections::HashSet<String> = conn
+        .prepare("PRAGMA table_info(session_events)")?
+        .query_map([], |row| row.get::<_, String>(1))?
+        .collect::<SqlResult<_>>()?;
+    let missing_columns: Vec<&str> = REQUIRED_EVENT_COLUMNS
+        .iter()
+        .copied()
+        .filter(|column| !columns.contains(*column))
+        .collect();
+    if had_session_events_table && !missing_columns.is_empty() {
+        return Err(StoreError::Schema(format!(
+            "session-memory hard cut requires a fresh typed event schema; missing columns: {}",
+            missing_columns.join(", ")
+        )));
+    }
+
+    rebuild_session_events_fts(conn)?;
+    conn.pragma_update(None, "user_version", SESSION_MEMORY_SCHEMA_VERSION)?;
+    Ok(())
+}
+
+fn rebuild_session_events_fts(conn: &Connection) -> StoreResult<()> {
+    conn.execute("DELETE FROM session_events_fts", [])?;
+    let rows: Vec<(String, String, String, String, String)> = conn
+        .prepare(
+            "SELECT session_id, event_id, repo_hash, tool_name,
+                    event_type || char(10) || COALESCE(summary || char(10), '') || content
+               FROM session_events
+              ORDER BY rowid ASC",
+        )?
+        .query_map([], |row| {
+            Ok((
+                row.get(0)?,
+                row.get(1)?,
+                row.get(2)?,
+                row.get(3)?,
+                row.get(4)?,
+            ))
+        })?
+        .collect::<SqlResult<_>>()?;
+    for (session_id, event_id, repo_hash, tool_name, content) in rows {
+        conn.execute(
+            "INSERT INTO session_events_fts(session_id, event_id, repo_hash, tool_name, content)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![session_id, event_id, repo_hash, tool_name, content],
+        )?;
+    }
+    Ok(())
 }
 
 fn apply_pragmas(conn: &Connection) -> SqlResult<()> {
@@ -70,7 +183,7 @@ fn apply_schema(conn: &Connection) -> SqlResult<()> {
 
          CREATE TABLE IF NOT EXISTS sessions (
              agent_id     TEXT NOT NULL,
-             snapshot_id  TEXT NOT NULL,
+             snapshot_id  TEXT PRIMARY KEY,
              repo_hash    TEXT NOT NULL,
              created_at   INTEGER NOT NULL,
              status       TEXT NOT NULL DEFAULT 'active',
@@ -80,15 +193,23 @@ fn apply_schema(conn: &Connection) -> SqlResult<()> {
              ON sessions(repo_hash, created_at DESC);
 
          CREATE TABLE IF NOT EXISTS session_events (
-             session_id TEXT NOT NULL,
-             event_id   TEXT NOT NULL,
-             repo_hash  TEXT NOT NULL,
-             ts         INTEGER NOT NULL,
-             tool_name  TEXT NOT NULL,
-             content    TEXT NOT NULL
+             session_id    TEXT NOT NULL,
+             event_id      TEXT PRIMARY KEY,
+             repo_hash     TEXT NOT NULL,
+             ts            INTEGER NOT NULL,
+             event_type    TEXT NOT NULL DEFAULT 'tool_command',
+             tool_name     TEXT NOT NULL,
+             content       TEXT NOT NULL,
+             summary       TEXT,
+             priority      INTEGER NOT NULL DEFAULT 50,
+             metadata_json TEXT NOT NULL DEFAULT '{}'
          );
          CREATE INDEX IF NOT EXISTS idx_session_events_repo_ts
              ON session_events(repo_hash, ts DESC);
+         CREATE INDEX IF NOT EXISTS idx_session_events_repo_priority_ts
+             ON session_events(repo_hash, priority DESC, ts DESC);
+         CREATE VIRTUAL TABLE IF NOT EXISTS session_events_fts
+             USING fts5(session_id UNINDEXED, event_id UNINDEXED, repo_hash UNINDEXED, tool_name UNINDEXED, content, tokenize='porter');
 
          CREATE TABLE IF NOT EXISTS session_memory_chunks (
              id            TEXT PRIMARY KEY,
@@ -388,6 +509,12 @@ pub fn search(
     limit: usize,
     source_filter: Option<&str>,
 ) -> StoreResult<Vec<SearchHit>> {
+    let query = query.trim();
+    let limit = normalize_search_limit(limit);
+    if query.is_empty() || limit == 0 {
+        return Ok(Vec::new());
+    }
+
     let results = search_porter(conn, query, limit, source_filter)?;
     if !results.is_empty() {
         return Ok(results);
@@ -410,10 +537,14 @@ fn search_porter(
     let escaped = escape_fts_query(query);
 
     if let Some(src) = source_filter {
+        if source_filter_matches_entire_store(conn, src)? {
+            return search_porter(conn, query, limit, None);
+        }
+
         let sql = "SELECT content, source, bm25(chunks) AS rank
              FROM chunks
              WHERE chunks MATCH ?1 AND source = ?2
-             ORDER BY rank
+             ORDER BY rank ASC, rowid ASC
              LIMIT ?3";
         let mut stmt = conn.prepare(sql)?;
         let hits = stmt
@@ -424,7 +555,7 @@ fn search_porter(
         let sql = "SELECT content, source, bm25(chunks) AS rank
              FROM chunks
              WHERE chunks MATCH ?1
-             ORDER BY rank
+             ORDER BY rank ASC, rowid ASC
              LIMIT ?2";
         let mut stmt = conn.prepare(sql)?;
         let hits = stmt
@@ -434,21 +565,31 @@ fn search_porter(
     }
 }
 
+fn source_filter_matches_entire_store(conn: &Connection, source: &str) -> StoreResult<bool> {
+    let mut stmt = conn.prepare("SELECT label FROM sources LIMIT 2")?;
+    let labels = stmt
+        .query_map([], |row| row.get::<_, String>(0))?
+        .collect::<SqlResult<Vec<_>>>()?;
+    Ok(labels.len() == 1 && labels[0] == source)
+}
+
 fn search_trigram(
     conn: &Connection,
     query: &str,
     limit: usize,
     source_filter: Option<&str>,
 ) -> StoreResult<Vec<SearchHit>> {
+    let escaped = escape_fts_query(query);
+
     if let Some(src) = source_filter {
         let sql = "SELECT content, source, bm25(chunks_trigram) AS rank
              FROM chunks_trigram
              WHERE chunks_trigram MATCH ?1 AND source = ?2
-             ORDER BY rank
+             ORDER BY rank ASC, rowid ASC
              LIMIT ?3";
         let mut stmt = conn.prepare(sql)?;
         let hits = stmt
-            .query_map(params![query, src, limit as i64], |row| {
+            .query_map(params![escaped, src, limit as i64], |row| {
                 Ok(SearchHit {
                     content: row.get(0)?,
                     source: row.get(1)?,
@@ -462,11 +603,11 @@ fn search_trigram(
         let sql = "SELECT content, source, bm25(chunks_trigram) AS rank
              FROM chunks_trigram
              WHERE chunks_trigram MATCH ?1
-             ORDER BY rank
+             ORDER BY rank ASC, rowid ASC
              LIMIT ?2";
         let mut stmt = conn.prepare(sql)?;
         let hits = stmt
-            .query_map(params![query, limit as i64], |row| {
+            .query_map(params![escaped, limit as i64], |row| {
                 Ok(SearchHit {
                     content: row.get(0)?,
                     source: row.get(1)?,
@@ -487,37 +628,54 @@ fn search_levenshtein(
 ) -> StoreResult<Vec<SearchHit>> {
     // Pull all unique terms from vocabulary, find closest by Levenshtein distance,
     // score using idf_score, then search via trigram for top candidate terms.
+    const LEVENSHTEIN_SCAN_CAP: i64 = 1000;
+    const MIN_LEVENSHTEIN_SCORE: f64 = 0.60;
+
     let sql = match source_filter {
-        Some(_) => "SELECT content, source FROM chunks_trigram WHERE source = ?1",
-        None => "SELECT content, source FROM chunks_trigram",
+        Some(_) => {
+            "SELECT rowid, content, source FROM chunks_trigram WHERE source = ?1 ORDER BY rowid ASC LIMIT ?2"
+        }
+        None => "SELECT rowid, content, source FROM chunks_trigram ORDER BY rowid ASC LIMIT ?1",
     };
 
     let mut stmt = conn.prepare(sql)?;
-    let all_chunks: Vec<(String, String)> = if let Some(src) = source_filter {
-        stmt.query_map(params![src], |r| Ok((r.get(0)?, r.get(1)?)))?
-            .collect::<SqlResult<Vec<_>>>()?
+    let all_chunks: Vec<(i64, String, String)> = if let Some(src) = source_filter {
+        stmt.query_map(params![src, LEVENSHTEIN_SCAN_CAP], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+        })?
+        .collect::<SqlResult<Vec<_>>>()?
     } else {
-        stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
-            .collect::<SqlResult<Vec<_>>>()?
+        stmt.query_map(params![LEVENSHTEIN_SCAN_CAP], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+        })?
+        .collect::<SqlResult<Vec<_>>>()?
     };
 
-    // Score each chunk by best Levenshtein match against any query term
+    // Score each chunk by best Levenshtein match against any query term.
     let query_terms: Vec<&str> = query.split_whitespace().collect();
-    let mut scored: Vec<(f64, String, String)> = all_chunks
+    let mut seen = std::collections::HashSet::<(String, String)>::new();
+    let mut scored: Vec<(f64, i64, String, String)> = all_chunks
         .into_iter()
-        .map(|(content, source)| {
+        .filter_map(|(rowid, content, source)| {
+            let key = (source.clone(), content.clone());
+            if !seen.insert(key) {
+                return None;
+            }
             let score = score_by_levenshtein(&content, &query_terms);
-            (score, content, source)
+            (score >= MIN_LEVENSHTEIN_SCORE).then_some((score, rowid, content, source))
         })
-        .filter(|(s, _, _)| *s > 0.0)
         .collect();
 
-    scored.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+    scored.sort_by(|a, b| {
+        b.0.partial_cmp(&a.0)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.1.cmp(&b.1))
+    });
     scored.truncate(limit);
 
     Ok(scored
         .into_iter()
-        .map(|(score, content, source)| SearchHit {
+        .map(|(score, _, content, source)| SearchHit {
             content,
             source,
             rank: -score, // negative so "higher is better" matches BM25 convention
@@ -578,12 +736,17 @@ fn row_to_hit(row: &rusqlite::Row<'_>) -> SqlResult<SearchHit> {
     })
 }
 
+fn normalize_search_limit(limit: usize) -> usize {
+    limit.min(50)
+}
+
 /// Escape a user query for FTS5 match syntax.
-/// Wraps in double quotes per term to prevent FTS5 operator injection.
+/// Wraps each term in double quotes and doubles embedded quotes to prevent FTS5 operator injection.
 fn escape_fts_query(query: &str) -> String {
     query
         .split_whitespace()
-        .map(|t| format!("\"{}\"", t.replace('"', "")))
+        .filter(|term| !term.is_empty())
+        .map(|t| format!("\"{}\"", t.replace('"', "\"\"")))
         .collect::<Vec<_>>()
         .join(" ")
 }

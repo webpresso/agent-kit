@@ -36,10 +36,19 @@ Each run writes `scripts/bench/runs/<run-id>/report.md`.
 | `status` | `ok`, `rate_limit`, or `spawn_failed` |
 | `cost_usd` | Aggregated USD cost for the cell |
 | `recall@5` | Recall score computed from scenario qrels |
-| `wall_sec` | Mean wall-clock time in seconds |
+| `wall_sec` | Mean end-to-end cell wall-clock time in seconds; not hook latency |
 
 The CLI also prints a compact JSON summary with `runId`, `dryRun`, `reportPath`,
-and `cellCount`.
+`cellCount`, and `thresholdReport`. Measured threshold failures return a nonzero
+exit code. Hook-specific latency axes report `not-instrumented` unless a run
+collects hook-specific latency observations separately from `wall_sec`.
+
+## Public result cards
+
+Numeric benchmark claims in public docs must cite checked-in first-party
+evidence. Use [`../../docs/bench/result-card-contract.md`](../../docs/bench/result-card-contract.md)
+for the required result-card fields before promoting latency, recall, cost, or
+speedup numbers.
 
 ## Cost cap
 

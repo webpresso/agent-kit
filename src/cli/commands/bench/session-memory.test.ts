@@ -432,8 +432,8 @@ describe('wp bench session-memory', () => {
       label: 'PostToolUse capture latency',
       metric: 'latency_ms',
       threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.postToolCaptureLatencyMs,
-      observed: 500,
-      status: 'passed',
+      observed: null,
+      status: 'not-instrumented',
     })
     expect(report).toContain('cost_usd')
     expect(report).toContain('recall@5')
@@ -666,6 +666,7 @@ describe('wp bench session-memory', () => {
       deps,
     )
 
+    expect(result.exitCode).toBe(1)
     expect(result.thresholdReport.axes).toContainEqual({
       id: 'search_quality_recall_at_5',
       label: 'Search quality recall@5',
@@ -717,6 +718,7 @@ describe('wp bench session-memory', () => {
       deps,
     )
 
+    expect(result.exitCode).toBe(1)
     expect(result.thresholdReport.axes).toContainEqual({
       id: 'search_quality_recall_at_5',
       label: 'Search quality recall@5',
@@ -752,6 +754,7 @@ describe('wp bench session-memory', () => {
 
     expect(report).toContain('| debug-long-session | baseline | 1 | ok |')
     expect(report).toContain('missing scored response text in transcript')
+    expect(result.exitCode).toBe(1)
     expect(result.thresholdReport.axes).toContainEqual({
       id: 'search_quality_recall_at_5',
       label: 'Search quality recall@5',

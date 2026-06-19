@@ -151,7 +151,7 @@ export type SessionMemoryThresholdAxis = {
   readonly metric: 'latency_ms' | 'recall_at_5'
   readonly threshold: number
   readonly observed: number | null
-  readonly status: 'schema-valid' | 'passed' | 'failed'
+  readonly status: 'schema-valid' | 'not-instrumented' | 'passed' | 'failed'
 }
 
 export type SessionMemoryThresholdReport = {
@@ -380,19 +380,22 @@ function apiKeyMapFromEnv(env: NodeJS.ProcessEnv): Record<string, string | undef
 
 export function buildSessionMemoryThresholdReport(input: {
   readonly dryRun: boolean
-  readonly averageLatencyMs?: number
+  readonly hookLatencyMs?: Partial<Record<SessionMemoryThresholdAxisId, number>>
   readonly averageRecallAt5?: number
   readonly recallStatusValue?: number
   readonly recallFailure?: boolean
 }): SessionMemoryThresholdReport {
-  const latencyObserved = input.dryRun ? null : (input.averageLatencyMs ?? 0)
+  const latencyObserved = (axisId: SessionMemoryThresholdAxisId): number | null =>
+    input.dryRun ? null : (input.hookLatencyMs?.[axisId] ?? null)
   const recallObserved = input.dryRun ? null : (input.averageRecallAt5 ?? 0)
   const recallStatusValue = input.dryRun
     ? null
     : (input.recallStatusValue ?? input.averageRecallAt5 ?? 0)
-  const latencyStatus = (threshold: number): SessionMemoryThresholdAxis['status'] => {
+  const latencyStatus = (axisId: SessionMemoryThresholdAxisId, threshold: number): SessionMemoryThresholdAxis['status'] => {
     if (input.dryRun) return 'schema-valid'
-    return (latencyObserved ?? Number.POSITIVE_INFINITY) <= threshold ? 'passed' : 'failed'
+    const observed = latencyObserved(axisId)
+    if (observed === null) return 'not-instrumented'
+    return observed <= threshold ? 'passed' : 'failed'
   }
   const recallStatus = (threshold: number): SessionMemoryThresholdAxis['status'] => {
     if (input.dryRun) return 'schema-valid'
@@ -407,24 +410,33 @@ export function buildSessionMemoryThresholdReport(input: {
         label: 'PostToolUse capture latency',
         metric: 'latency_ms',
         threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.postToolCaptureLatencyMs,
-        observed: latencyObserved,
-        status: latencyStatus(DEFAULT_SESSION_MEMORY_THRESHOLDS.postToolCaptureLatencyMs),
+        observed: latencyObserved('post_tool_capture_latency_ms'),
+        status: latencyStatus(
+          'post_tool_capture_latency_ms',
+          DEFAULT_SESSION_MEMORY_THRESHOLDS.postToolCaptureLatencyMs,
+        ),
       },
       {
         id: 'precompact_snapshot_latency_ms',
         label: 'PreCompact snapshot latency',
         metric: 'latency_ms',
         threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.precompactSnapshotLatencyMs,
-        observed: latencyObserved,
-        status: latencyStatus(DEFAULT_SESSION_MEMORY_THRESHOLDS.precompactSnapshotLatencyMs),
+        observed: latencyObserved('precompact_snapshot_latency_ms'),
+        status: latencyStatus(
+          'precompact_snapshot_latency_ms',
+          DEFAULT_SESSION_MEMORY_THRESHOLDS.precompactSnapshotLatencyMs,
+        ),
       },
       {
         id: 'startup_resume_injection_latency_ms',
         label: 'SessionStart resume injection latency',
         metric: 'latency_ms',
         threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.startupResumeInjectionLatencyMs,
-        observed: latencyObserved,
-        status: latencyStatus(DEFAULT_SESSION_MEMORY_THRESHOLDS.startupResumeInjectionLatencyMs),
+        observed: latencyObserved('startup_resume_injection_latency_ms'),
+        status: latencyStatus(
+          'startup_resume_injection_latency_ms',
+          DEFAULT_SESSION_MEMORY_THRESHOLDS.startupResumeInjectionLatencyMs,
+        ),
       },
       {
         id: 'search_quality_recall_at_5',
@@ -661,12 +673,6 @@ export async function runBenchSessionMemoryCommand(
   }
 
   const reportPath = resolve(outputRoot, runId, 'report.md')
-  const successfulCells = cells.filter((cell) => cell.status === 'ok')
-  const averageWallMs =
-    successfulCells.length > 0
-      ? (successfulCells.reduce((sum, cell) => sum + cell.wall_sec, 0) / successfulCells.length) *
-        1000
-      : 0
   const averageRecallAt5 =
     thresholdRecallValues.length > 0
       ? thresholdRecallValues.reduce((sum, recall) => sum + recall, 0) /
@@ -674,7 +680,6 @@ export async function runBenchSessionMemoryCommand(
       : 0
   const thresholdReport = buildSessionMemoryThresholdReport({
     dryRun: false,
-    averageLatencyMs: Number(averageWallMs.toFixed(6)),
     averageRecallAt5: Number(averageRecallAt5.toFixed(6)),
     recallStatusValue: averageRecallAt5,
     recallFailure,
@@ -691,8 +696,10 @@ export async function runBenchSessionMemoryCommand(
     reportPath,
   )
 
+  const thresholdFailed = thresholdReport.axes.some((axis) => axis.status === 'failed')
+
   return {
-    exitCode: 0,
+    exitCode: thresholdFailed ? 1 : 0,
     runId,
     dryRun: false,
     reportPath,

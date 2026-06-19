@@ -1,32 +1,103 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { createHash } from 'node:crypto'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import envPaths from 'env-paths'
+import { tmpdir } from 'node:os'
+import { dirname, join, resolve } from 'node:path'
 
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const sourcePath = join(import.meta.dirname, 'native-runtime.ts')
+const execFileSyncMock = vi.hoisted(() => vi.fn())
 
-describe('native session-memory runtime build coordination', () => {
-  it('serializes cargo builds with a cross-process lock before spawning cargo', () => {
-    const source = readFileSync(sourcePath, 'utf8')
+vi.mock('node:child_process', async (importActual) => ({
+  ...(await importActual<typeof import('node:child_process')>()),
+  execFileSync: execFileSyncMock,
+}))
 
-    expect(source).toContain("import lockfile from 'proper-lockfile'")
-    expect(source).toContain('lockfile.lockSync')
-    expect(source.indexOf('lockfile.lockSync')).toBeLessThan(source.indexOf('execFileSync('))
-    expect(source).toContain("join(cacheRoot, '.build.lock')")
+let tmpDir: string
+let previousNativePath: string | undefined
+let previousBuildFromSource: string | undefined
+
+beforeEach(() => {
+  tmpDir = mkdtempSync(join(tmpdir(), 'wp-native-runtime-test-'))
+  previousNativePath = process.env.WP_NATIVE_SESSION_MEMORY_PATH
+  previousBuildFromSource = process.env.WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE
+  delete process.env.WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE
+  execFileSyncMock.mockReset()
+  vi.resetModules()
+})
+
+afterEach(() => {
+  if (previousNativePath === undefined) delete process.env.WP_NATIVE_SESSION_MEMORY_PATH
+  else process.env.WP_NATIVE_SESSION_MEMORY_PATH = previousNativePath
+  if (previousBuildFromSource === undefined) delete process.env.WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE
+  else process.env.WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE = previousBuildFromSource
+  rmSync(tmpDir, { recursive: true, force: true })
+})
+
+describe('native session-memory runtime availability', () => {
+  it('does not run cargo on first use when no prebuilt addon is available', async () => {
+    process.env.WP_NATIVE_SESSION_MEMORY_PATH = join(tmpDir, 'missing.node')
+    const { loadNativeSessionMemoryEngine, NativeSessionMemoryUnavailableError } = await import(
+      './native-runtime.js'
+    )
+
+    expect(() => loadNativeSessionMemoryEngine()).toThrow(NativeSessionMemoryUnavailableError)
+    expect(() => loadNativeSessionMemoryEngine()).toThrow(/First-use cargo builds are disabled/u)
+    expect(execFileSyncMock).not.toHaveBeenCalled()
   })
 
-  it('uses an explicit sync lock wait loop instead of unsupported proper-lockfile retries', () => {
-    const source = readFileSync(sourcePath, 'utf8')
+  it('reports addon load failures separately from missing-prebuilt availability', async () => {
+    const invalidAddon = join(tmpDir, 'invalid.node')
+    writeFileSync(invalidAddon, 'not a native addon')
+    process.env.WP_NATIVE_SESSION_MEMORY_PATH = invalidAddon
+    const { loadNativeSessionMemoryEngine, NativeSessionMemoryLoadError } = await import(
+      './native-runtime.js'
+    )
 
-    expect(source).toContain("code !== 'ELOCKED'")
-    expect(source).toContain('sleepSync(BUILD_LOCK_POLL_MS)')
-    expect(source).not.toContain('retries: {')
+    expect(() => loadNativeSessionMemoryEngine()).toThrow(NativeSessionMemoryLoadError)
+    expect(() => loadNativeSessionMemoryEngine()).toThrow(/failed to load from/u)
+    expect(execFileSyncMock).not.toHaveBeenCalled()
   })
 
-  it('rechecks the compiled addon after acquiring the build lock', () => {
-    const source = readFileSync(sourcePath, 'utf8')
-    const lockedBuild = source.slice(source.indexOf('return withNativeBuildLock'))
+  it('does not load cached source-built addons without the explicit source-build flag', async () => {
+    delete process.env.WP_NATIVE_SESSION_MEMORY_PATH
+    const packageRoot = resolve(import.meta.dirname, '../..')
+    const workspaceRoot = join(packageRoot, 'native', 'session-memory-engine')
+    const packageJson = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8')) as {
+      version?: string
+    }
+    const cargoLock = readFileSync(join(workspaceRoot, 'Cargo.lock'), 'utf8')
+    const fingerprint = createHash('sha256')
+      .update(packageRoot)
+      .update('\n')
+      .update(workspaceRoot)
+      .update('\n')
+      .update(packageJson.version ?? '0')
+      .update('\n')
+      .update(cargoLock)
+      .digest('hex')
+      .slice(0, 16)
+    const cachedAddon = join(
+      envPaths('webpresso-agent-kit').cache,
+      'session-memory-engine',
+      `session_memory_napi.${packageJson.version ?? '0'}-${fingerprint}.${process.platform}-${process.arch}.node`,
+    )
+    const createdCachedAddon = !existsSync(cachedAddon)
+    if (createdCachedAddon) {
+      mkdirSync(dirname(cachedAddon), { recursive: true })
+      writeFileSync(cachedAddon, 'stale cached source build')
+    }
 
-    expect(lockedBuild).toContain('if (!shouldRebuild(nodePath, workspaceRoot)) return nodePath')
+    try {
+      const { loadNativeSessionMemoryEngine, NativeSessionMemoryUnavailableError } = await import(
+        './native-runtime.js'
+      )
+
+      expect(() => loadNativeSessionMemoryEngine()).toThrow(NativeSessionMemoryUnavailableError)
+      expect(() => loadNativeSessionMemoryEngine()).not.toThrow(/failed to load from/u)
+      expect(execFileSyncMock).not.toHaveBeenCalled()
+    } finally {
+      if (createdCachedAddon) rmSync(cachedAddon, { force: true })
+    }
   })
 })

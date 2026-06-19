@@ -114,7 +114,7 @@ async fn test_execute_timeout_returns_failure_summary() {
         .await
         .unwrap();
 
-    assert_eq!(result.exit_code, -1);
+    assert_eq!(result.exit_code, 124);
     assert!(result.summary.contains("timeout"));
 }
 
@@ -181,5 +181,61 @@ async fn test_execute_replaces_prior_chunks_for_same_label() {
     assert!(
         !new_hits.is_empty(),
         "new chunks should remain searchable for the reused label"
+    );
+}
+
+#[tokio::test]
+async fn test_execute_indexes_only_first_mib_but_tracks_total_bytes() {
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("test.db");
+
+    let result = execute_and_index(
+        &db_path,
+        "python3 - <<'PY'\nimport sys\nsys.stdout.write('A' * (1024 * 1024 + 4096))\nsys.stdout.write('TAIL_AFTER_CAP_TOKEN')\nPY",
+        "cap-test",
+        DEFAULT_TIMEOUT_MS,
+        None,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(result.exit_code, 0);
+    assert!(result.output_bytes > 1024 * 1024);
+    assert!(result.indexed);
+
+    let store = Store::open(&db_path).unwrap();
+    let tail_hits = store
+        .search("TAIL_AFTER_CAP_TOKEN", 5, Some("cap-test"))
+        .unwrap();
+    assert!(
+        tail_hits.is_empty(),
+        "bytes after the 1MiB indexed-output cap must not be indexed"
+    );
+}
+
+#[tokio::test]
+async fn test_execute_preserves_utf8_split_across_stream_chunks() {
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("test.db");
+
+    let result = execute_and_index(
+        &db_path,
+        "python3 - <<'PY'\nimport sys\nfor _ in range(9000):\n    sys.stdout.write('é')\nsys.stdout.write(' UTF8_SPLIT_TOKEN')\nPY",
+        "utf8-test",
+        DEFAULT_TIMEOUT_MS,
+        None,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(result.exit_code, 0);
+    let store = Store::open(&db_path).unwrap();
+    let hits = store
+        .search("UTF8_SPLIT_TOKEN", 5, Some("utf8-test"))
+        .unwrap();
+    assert!(!hits.is_empty());
+    assert!(
+        hits.iter().all(|hit| !hit.content.contains('�')),
+        "incremental UTF-8 decoding should not inject replacement chars at chunk boundaries"
     );
 }
