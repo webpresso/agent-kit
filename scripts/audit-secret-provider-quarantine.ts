@@ -37,6 +37,11 @@ const BANNED_PATTERNS: Array<{ pattern: RegExp; message: string }> = [
       'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of provider flags',
   },
   {
+    pattern: /\bwith-secrets\s+--(?!doppler\b|infisical\b)/,
+    message:
+      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of the legacy with-secrets wrapper',
+  },
+  {
     pattern: /\bdoppler secrets download\b/,
     message: 'load secrets through runtime/env, not direct provider downloads',
   },

@@ -69,10 +69,25 @@ describe('auditSecretProviderQuarantine', () => {
     ])
   })
 
-  test('passes for clean source', () => {
+  test('flags generic with-secrets wrapper usage in source file', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'src'), { recursive: true })
     writeFileSync(join(root, 'src', 'app.ts'), "exec('with-secrets -- node server.js')")
+
+    const result = auditSecretProviderQuarantine(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toEqual([
+      expect.objectContaining({
+        message: expect.stringContaining('legacy with-secrets wrapper'),
+      }),
+    ])
+  })
+
+  test('passes for clean source', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'src'), { recursive: true })
+    writeFileSync(join(root, 'src', 'app.ts'), "exec('wp secrets run --sink dev-server --profile preview -- node server.js')")
 
     const result = auditSecretProviderQuarantine(root)
 

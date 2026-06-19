@@ -35,9 +35,7 @@ function createBootstrapPlan(
   providerId: SecretProviderPluginId,
   input: ProviderBootstrapInput,
 ): ProviderBootstrapPlan {
-  const suffixes = input.lanes.map((lane) =>
-    lane === 'prd' ? 'PRODUCTION' : lane.replace(/^preview_/u, 'PREVIEW_').toUpperCase(),
-  )
+  const suffixes = [...new Set(input.lanes.map((lane) => (lane === 'prd' ? 'PRODUCTION' : 'PREVIEW')))]
   return {
     mode: providerId === 'infisical' ? 'oidc' : 'service-token',
     lanes: input.lanes,

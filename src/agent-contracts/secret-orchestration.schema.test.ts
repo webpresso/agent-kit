@@ -53,7 +53,7 @@ describe('secret orchestration schemas', () => {
         plan: {
           mode: 'service-token',
           lanes: ['preview_main'],
-          requiredSecrets: ['CI_SECRET_PROVIDER_TOKEN_PREVIEW_MAIN'],
+          requiredSecrets: ['CI_SECRET_PROVIDER_TOKEN_PREVIEW'],
         },
         applied: false,
       }),

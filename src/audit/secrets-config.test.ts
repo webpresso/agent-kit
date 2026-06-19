@@ -59,7 +59,8 @@ describe('auditSecretsConfig', () => {
     expect(result.violations.length).toBeGreaterThan(0)
   })
 
-  test('passes for valid config', () => {
+
+  test('flags legacy pre-schemaVersion-1 config', () => {
     const root = tempRepo()
     writeFileSync(
       join(root, '.webpresso', 'secrets.config.json'),
@@ -68,9 +69,8 @@ describe('auditSecretsConfig', () => {
 
     const result = auditSecretsConfig(root)
 
-    expect(result.ok).toBe(true)
-    expect(result.checked).toBe(1)
-    expect(result.violations).toStrictEqual([])
+    expect(result.ok).toBe(false)
+    expect(result.violations[0]?.message).toContain('only schemaVersion 1')
   })
 
   test('passes for valid schemaVersion 1 config', () => {

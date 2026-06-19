@@ -43,10 +43,6 @@ export function getPreferredSecretsConfigPath(cwd: string = process.cwd()): stri
   return getRuntimeSecretsConfigPath(cwd) ?? getCommittedSecretsConfigPath(cwd)
 }
 
-function isManager(value: unknown): value is SecretManagerName {
-  return value === 'doppler' || value === 'infisical'
-}
-
 function parseConfig(raw: string, source: string): SecretsConfig {
   let parsed: unknown
   try {
@@ -75,23 +71,9 @@ function parseConfig(raw: string, source: string): SecretsConfig {
     }
   }
 
-  const obj = parsed as Record<string, unknown>
-  if (!isManager(obj.manager)) {
-    throw new Error(
-      `Malformed secrets config at ${source}: "manager" must be "doppler" or "infisical"`,
-    )
-  }
-  if (typeof obj.projectId !== 'string' || obj.projectId.length === 0) {
-    throw new Error(`Malformed secrets config at ${source}: "projectId" must be a non-empty string`)
-  }
-
-  return {
-    manager: obj.manager,
-    projectId: obj.projectId,
-    ...(typeof obj.projectLabel === 'string' && obj.projectLabel.length > 0
-      ? { projectLabel: obj.projectLabel }
-      : {}),
-  }
+  throw new Error(
+    `Malformed secrets config at ${source}: only schemaVersion 1 secret orchestration configs are supported`,
+  )
 }
 
 export function readSecretsConfig(cwd: string = process.cwd()): SecretsConfig | null {

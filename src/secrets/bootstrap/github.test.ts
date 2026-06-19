@@ -8,11 +8,11 @@ describe('github bootstrap action plan', () => {
       buildGitHubBootstrapActionPlan('verify', {
         mode: 'service-token',
         lanes: ['preview_main'],
-        requiredSecrets: ['CI_SECRET_PROVIDER_TOKEN_PREVIEW_MAIN'],
+        requiredSecrets: ['CI_SECRET_PROVIDER_TOKEN_PREVIEW'],
       }),
     ).toEqual({
       op: 'verify',
-      requiredSecrets: ['CI_SECRET_PROVIDER_TOKEN_PREVIEW_MAIN'],
+      requiredSecrets: ['CI_SECRET_PROVIDER_TOKEN_PREVIEW'],
       dryRun: true,
     })
   })

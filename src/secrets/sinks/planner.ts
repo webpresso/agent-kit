@@ -39,13 +39,7 @@ export function resolveSecretSink(input: ResolveSecretSinkOptions): ResolvedSecr
     )
   }
 
-  const provider = config.providers[profile.provider]
-  if (!provider) {
-    const fallback = getDefaultSecretProvider(config)
-    if (!fallback) throw new Error(`Unknown provider "${profile.provider}"`)
-  }
-
-  const resolvedProvider = provider ?? getDefaultSecretProvider(config)
+  const resolvedProvider = config.providers[profile.provider] ?? getDefaultSecretProvider(config)
   if (!resolvedProvider) throw new Error(`Unknown provider "${profile.provider}"`)
 
   const plugin = getSecretProviderPlugin(resolvedProvider.type)

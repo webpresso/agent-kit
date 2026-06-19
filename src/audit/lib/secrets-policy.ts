@@ -9,7 +9,6 @@ export type SecretsConfigMetadata = {
   readonly projectLabel?: string
 }
 
-const LEGACY_ALLOWED_CONFIG_KEYS = new Set(['manager', 'projectId', 'projectLabel'])
 const V1_ALLOWED_CONFIG_KEYS = new Set(['schemaVersion', 'providers', 'profiles', 'sinks'])
 const FORBIDDEN_CONFIG_KEY =
   /(?:^|_)(?:token|secret|password|api[_-]?key|credential|private[_-]?key)(?:$|_)/iu
@@ -68,46 +67,6 @@ export function shouldScanGitFileForSecretValues(relativePath: string): boolean 
   return /\.(?:md|ts|tsx|js|mjs|cjs|json|ya?ml|toml|txt|sh)$/iu.test(relativePath)
 }
 
-function validateLegacyConfigKeys(obj: Record<string, unknown>, sourceLabel: string): void {
-  for (const key of Object.keys(obj)) {
-    if (!LEGACY_ALLOWED_CONFIG_KEYS.has(key)) {
-      throw new Error(`${sourceLabel}: unexpected key "${key}"`)
-    }
-    if (FORBIDDEN_CONFIG_KEY.test(key)) {
-      throw new Error(`${sourceLabel}: key "${key}" looks like a secret name`)
-    }
-  }
-}
-
-function validateConfigValues(obj: Record<string, unknown>, sourceLabel: string): void {
-  if (obj.manager !== 'doppler' && obj.manager !== 'infisical') {
-    throw new Error(`${sourceLabel}: "manager" must be "doppler" or "infisical"`)
-  }
-  if (typeof obj.projectId !== 'string' || obj.projectId.length === 0) {
-    throw new Error(`${sourceLabel}: "projectId" must be a non-empty string`)
-  }
-  if (!PROJECT_ID_PATTERN.test(obj.projectId)) {
-    throw new Error(`${sourceLabel}: "projectId" must be a valid project slug`)
-  }
-}
-
-function buildConfigMetadata(
-  obj: Record<string, unknown>,
-  sourceLabel: string,
-): SecretsConfigMetadata {
-  const manager = obj.manager as 'doppler' | 'infisical'
-  const projectId = obj.projectId as string
-  if (obj.projectLabel === undefined) return { manager, projectId }
-
-  if (typeof obj.projectLabel !== 'string' || obj.projectLabel.length === 0) {
-    throw new Error(`${sourceLabel}: "projectLabel" must be a non-empty string when set`)
-  }
-  if (SECRET_VALUE_PATTERN.test(obj.projectLabel)) {
-    throw new Error(`${sourceLabel} projectLabel must not contain secret values`)
-  }
-  return { manager, projectId, projectLabel: obj.projectLabel }
-}
-
 export function parseSecretsConfigMetadata(
   raw: string,
   sourceLabel: string,
@@ -160,7 +119,5 @@ export function parseSecretsConfigMetadata(
     }
   }
 
-  validateLegacyConfigKeys(obj, sourceLabel)
-  validateConfigValues(obj, sourceLabel)
-  return buildConfigMetadata(obj, sourceLabel)
+  throw new Error(`${sourceLabel}: only schemaVersion 1 secret orchestration configs are supported`)
 }

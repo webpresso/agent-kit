@@ -39,14 +39,13 @@ export function fetchDopplerProfile(
 }
 
 export function planDopplerBootstrap(input: ProviderBootstrapInput): ProviderBootstrapPlan {
+  const requiredSecrets = [...new Set(input.lanes.map((lane) =>
+    lane === 'prd' ? 'CI_SECRET_PROVIDER_TOKEN_PRODUCTION' : 'CI_SECRET_PROVIDER_TOKEN_PREVIEW',
+  ))]
   return {
     mode: 'service-token',
     lanes: input.lanes,
-    requiredSecrets: input.lanes.map((lane) =>
-      lane === 'prd'
-        ? 'CI_SECRET_PROVIDER_TOKEN_PRODUCTION'
-        : `CI_SECRET_PROVIDER_TOKEN_${lane.replace(/^preview_/u, 'PREVIEW_').toUpperCase()}`,
-    ),
+    requiredSecrets,
   }
 }
 

@@ -36,7 +36,7 @@ describe('doppler provider adapter', () => {
     ).toEqual({
       mode: 'service-token',
       lanes: ['preview_main', 'prd'],
-      requiredSecrets: ['CI_SECRET_PROVIDER_TOKEN_PREVIEW_MAIN', 'CI_SECRET_PROVIDER_TOKEN_PRODUCTION'],
+      requiredSecrets: ['CI_SECRET_PROVIDER_TOKEN_PREVIEW', 'CI_SECRET_PROVIDER_TOKEN_PRODUCTION'],
     })
   })
 

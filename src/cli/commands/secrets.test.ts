@@ -76,7 +76,7 @@ describe('wp secrets', () => {
       ok: true,
       code: 'WP_GITHUB_BOOTSTRAP_PLANNED',
       plan: {
-        requiredSecrets: ['CI_SECRET_PROVIDER_TOKEN_PREVIEW_MAIN', 'CI_SECRET_PROVIDER_TOKEN_PRODUCTION'],
+        requiredSecrets: ['CI_SECRET_PROVIDER_TOKEN_PREVIEW', 'CI_SECRET_PROVIDER_TOKEN_PRODUCTION'],
       },
     })
   })
