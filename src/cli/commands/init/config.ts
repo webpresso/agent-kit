@@ -3,7 +3,7 @@
  * re-runs of `wp init` are idempotent without re-prompting.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { isAbsolute, join, normalize } from 'node:path'
 
 import type { AgentHost, VisibilityStatus } from './host-visibility.js'
 import { REQUIRED_CORE_CAPABILITIES } from './host-visibility.js'
@@ -25,6 +25,19 @@ function readOptionalString(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined
   const trimmed = value.trim()
   return trimmed.length > 0 ? trimmed : undefined
+}
+
+function normalizeManagedRelativePaths(values: unknown): string[] | undefined {
+  if (!Array.isArray(values)) return undefined
+  const normalized = values.flatMap((value) => {
+    if (typeof value !== 'string') return []
+    const trimmed = value.trim()
+    if (trimmed.length === 0 || isAbsolute(trimmed)) return []
+    const candidate = normalize(trimmed)
+    if (candidate === '..' || candidate.startsWith('../') || candidate.startsWith('..\\')) return []
+    return [candidate]
+  })
+  return normalized.length > 0 ? normalized : undefined
 }
 
 export interface AgentkitConfig {
@@ -61,6 +74,12 @@ export interface AgentkitConfig {
   scripts: {
     'setup-agent'?: string
   }
+  setup?: {
+    preservePaths?: string[]
+  }
+  generatedCleanup?: {
+    removePaths?: string[]
+  }
   durablePlanningRoot: string
   blueprintsDir?: string
   lastInit?: string
@@ -90,6 +109,10 @@ function parseConfigFile(path: string): AgentkitConfig | null {
     const hosts = parsed.hosts as Partial<NonNullable<AgentkitConfig['hosts']>> | undefined
     const rules = parsed.rules as Partial<AgentkitConfig['rules']> | undefined
     const scripts = parsed.scripts as Partial<AgentkitConfig['scripts']> | undefined
+    const rawSetup = parsed.setup as Partial<NonNullable<AgentkitConfig['setup']>> | undefined
+    const rawGeneratedCleanup = parsed.generatedCleanup as
+      | Partial<NonNullable<AgentkitConfig['generatedCleanup']>>
+      | undefined
     const rawIntegrations = parsed.integrations as
       | Partial<Record<ExternalIntegrationName, unknown>>
       | undefined
@@ -122,6 +145,11 @@ function parseConfigFile(path: string): AgentkitConfig | null {
             ...(scriptRoutes ? { scriptRoutes } : {}),
           }
         : undefined
+    const preservePaths = normalizeManagedRelativePaths(rawSetup?.preservePaths)
+    const normalizedSetup = preservePaths && preservePaths.length > 0 ? { preservePaths } : undefined
+    const removePaths = normalizeManagedRelativePaths(rawGeneratedCleanup?.removePaths)
+    const normalizedGeneratedCleanup =
+      removePaths && removePaths.length > 0 ? { removePaths } : undefined
     const rawToolchainIsolation = audit?.toolchainIsolation as
       | Partial<NonNullable<NonNullable<AgentkitConfig['audit']>['toolchainIsolation']>>
       | undefined
@@ -180,6 +208,8 @@ function parseConfigFile(path: string): AgentkitConfig | null {
       scripts: {
         'setup-agent': readOptionalString(scripts?.['setup-agent']),
       },
+      ...(normalizedSetup ? { setup: normalizedSetup } : {}),
+      ...(normalizedGeneratedCleanup ? { generatedCleanup: normalizedGeneratedCleanup } : {}),
       durablePlanningRoot: durablePlanningRoot ?? DEFAULT_DURABLE_PLANNING_ROOT,
       ...(blueprintsDir ? { blueprintsDir } : {}),
       lastInit: readOptionalString(parsed.lastInit),
@@ -243,6 +273,20 @@ export function mergeConfig(
           ...(mergedScriptRoutes ? { scriptRoutes: mergedScriptRoutes } : {}),
         }
       : undefined
+  const mergedGeneratedCleanupPaths = Array.from(
+    new Set([
+      ...(existing.generatedCleanup?.removePaths ?? []),
+      ...(incoming.generatedCleanup?.removePaths ?? []),
+    ]),
+  ).toSorted()
+  const mergedGeneratedCleanup =
+    mergedGeneratedCleanupPaths.length > 0
+      ? { removePaths: mergedGeneratedCleanupPaths }
+      : undefined
+  const mergedPreservePaths = Array.from(
+    new Set([...(existing.setup?.preservePaths ?? []), ...(incoming.setup?.preservePaths ?? [])]),
+  ).toSorted()
+  const mergedSetup = mergedPreservePaths.length > 0 ? { preservePaths: mergedPreservePaths } : undefined
   return {
     version: incoming.version,
     installed: { tier3Skills: tier3 },
@@ -259,6 +303,8 @@ export function mergeConfig(
     scripts: {
       'setup-agent': incoming.scripts['setup-agent'] ?? existing.scripts['setup-agent'],
     },
+    ...(mergedSetup ? { setup: mergedSetup } : {}),
+    ...(mergedGeneratedCleanup ? { generatedCleanup: mergedGeneratedCleanup } : {}),
     durablePlanningRoot: incoming.durablePlanningRoot || existing.durablePlanningRoot,
     blueprintsDir: incoming.blueprintsDir ?? existing.blueprintsDir,
     lastInit: incoming.lastInit ?? existing.lastInit,

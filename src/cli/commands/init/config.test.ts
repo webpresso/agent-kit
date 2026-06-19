@@ -76,6 +76,12 @@ describe('config', () => {
       mcp: { serverName: 'webpresso', toolPrefix: 'wp_' },
       rules: { overrides: ['repo-restrictions'] },
       scripts: { 'setup-agent': 'wp setup' },
+      setup: {
+        preservePaths: ['VISION.md'],
+      },
+      generatedCleanup: {
+        removePaths: ['scripts/resolve-webpresso-cli-versions.js'],
+      },
     }
     writeConfig(dir, cfg)
     expect(existsSync(join(dir, '.webpressorc.json'))).toBe(true)
@@ -88,6 +94,12 @@ describe('config', () => {
     expect(readBack?.mcp).toEqual({ serverName: 'webpresso', toolPrefix: 'wp_' })
     expect(readBack?.rules.overrides).toEqual(['repo-restrictions'])
     expect(readBack?.scripts['setup-agent']).toBe('wp setup')
+    expect(readBack?.setup).toEqual({
+      preservePaths: ['VISION.md'],
+    })
+    expect(readBack?.generatedCleanup).toEqual({
+      removePaths: ['scripts/resolve-webpresso-cli-versions.js'],
+    })
   })
 
   it('mergeConfig unions allowlists and tolerates optional legacy lastInit', () => {
@@ -106,6 +118,12 @@ describe('config', () => {
       mcp: { serverName: 'custom-server' },
       rules: { overrides: ['claude-rules'] },
       scripts: { 'setup-agent': 'wp setup' },
+      setup: {
+        preservePaths: ['VISION.md'],
+      },
+      generatedCleanup: {
+        removePaths: ['scripts/resolve-webpresso-cli-versions.js'],
+      },
       lastInit: '2026-04-22T00:00:00Z',
     }
     const merged = mergeConfig(existing, incoming)
@@ -114,6 +132,12 @@ describe('config', () => {
     expect(merged.mcp).toEqual({ serverName: 'custom-server', toolPrefix: 'wp_' })
     expect(merged.rules.overrides).toEqual(['agent-hooks', 'claude-rules'])
     expect(merged.scripts['setup-agent']).toBe('wp setup')
+    expect(merged.setup).toEqual({
+      preservePaths: ['VISION.md'],
+    })
+    expect(merged.generatedCleanup).toEqual({
+      removePaths: ['scripts/resolve-webpresso-cli-versions.js'],
+    })
     expect(merged.lastInit).toBe('2026-04-22T00:00:00Z')
   })
 
@@ -191,6 +215,27 @@ describe('config', () => {
     expect(readConfig(dir)?.guard).toEqual({
       packageManager: 'vp-only',
       scriptRoutes: { 'docs:check': 'docs-frontmatter' },
+    })
+  })
+
+  it('drops absolute and repo-escaping preserve/remove paths when reading config', () => {
+    writeFileSync(
+      join(dir, '.webpressorc.json'),
+      JSON.stringify({
+        version: '1',
+        installed: { tier3Skills: [] },
+        setup: { preservePaths: ['VISION.md', '/tmp/outside.txt', '../escape.txt'] },
+        generatedCleanup: {
+          removePaths: ['scripts/resolve-webpresso-cli-versions.js', '/tmp/outside.txt', '../escape.txt'],
+        },
+      }),
+    )
+
+    expect(readConfig(dir)?.setup).toEqual({
+      preservePaths: ['VISION.md'],
+    })
+    expect(readConfig(dir)?.generatedCleanup).toEqual({
+      removePaths: ['scripts/resolve-webpresso-cli-versions.js'],
     })
   })
 

@@ -126,6 +126,8 @@ import { scaffoldSubagents } from './scaffolders/subagents/index.js'
 import { maybeRunVisionInterview } from './scaffolders/vision/interview.js'
 import { scaffoldVision } from './scaffolders/vision/index.js'
 import { scaffoldWorkspaceConfig } from './scaffolders/workspace-config/index.js'
+import { removeConfiguredGeneratedPaths } from './generated-cleanup.js'
+import { captureConfiguredPreservedFiles, restoreChangedSnapshots } from './preserved-files.js'
 import {
   claimProjectOwnedTool,
   claimUserOwnedTool,
@@ -940,6 +942,10 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
   const acceptDefaults = flags.yes ?? true
 
   const existingConfig = readConfig(consumer.repoRoot)
+  const preservedSnapshots =
+    options.dryRun || !existingConfig
+      ? []
+      : captureConfiguredPreservedFiles(consumer.repoRoot, existingConfig)
   const integrations = resolveIntegrationConfig(existingConfig, flags)
   const presets = resolveSelectedPresets(flags, integrations)
   const legacyExternalIntegrations = collectLegacyExternalIntegrationNames(existingConfig, flags)
@@ -1172,6 +1178,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
 
     if (!options.dryRun) {
       writeConfig(consumer.repoRoot, config)
+      removeConfiguredGeneratedPaths(consumer.repoRoot, config)
     }
 
     // Apply scaffolder presets
@@ -1958,6 +1965,10 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
       `wp init: write failed — ${error instanceof Error ? error.message : String(error)}`,
     )
     return EXIT_WRITE_FAIL
+  } finally {
+    if (!options.dryRun && preservedSnapshots.length > 0) {
+      restoreChangedSnapshots(consumer.repoRoot, preservedSnapshots)
+    }
   }
 }
 

@@ -383,6 +383,20 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
         details: auditResult,
       }
     }
+    case 'consumer-agent-kit-dependency': {
+      const { auditConsumerAgentKitDependency } = await import(
+        '#audit/consumer-agent-kit-dependency'
+      )
+      const auditResult = auditConsumerAgentKitDependency(
+        input.cwd ?? input.directory ?? process.cwd(),
+      )
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
+    }
     case 'hook-surface': {
       const { auditHookSurface } = await import('#audit/hook-surface')
       const auditResult = auditHookSurface(input.cwd ?? input.directory)

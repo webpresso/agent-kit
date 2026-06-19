@@ -5,7 +5,7 @@ last_updated: '2026-06-12'
 
 # Security audits
 
-`@webpresso/agent-kit` ships four governance audit subcommands that enforce
+`@webpresso/agent-kit` ships governance audit subcommands that enforce
 secret hygiene across every repo that uses it. They run identically as a
 `wp audit <kind>` CLI command, a `wp_audit` MCP tool call, and a
 pre-commit/CI gate.
@@ -99,6 +99,24 @@ environment name).
 wp audit secrets-config
 ```
 
+### `consumer-agent-kit-dependency`
+
+Fails when a consumer repo keeps `@webpresso/agent-kit` in `dependencies` or
+`devDependencies`, or keeps retired local setup-webpresso ownership artifacts.
+The approved boundary is:
+
+- local presets/config only via `@webpresso/agent-config`
+- `wp` execution through the global CLI / MCP surface
+- no repo-local `@webpresso/agent-kit` project dependency
+- no repo-local `setup-webpresso` action or
+  `scripts/resolve-webpresso-cli-versions.js` helper
+
+The audit automatically skips the `@webpresso/agent-kit` source repo itself.
+
+```bash
+wp audit consumer-agent-kit-dependency
+```
+
 ## Pre-commit wiring
 
 Add to `.husky/pre-commit`:
@@ -127,13 +145,14 @@ In `.github/workflows/ci.yml`:
 
 ## MCP usage
 
-All four audits are available through the `wp_audit` MCP tool:
+All supported audits are available through the `wp_audit` MCP tool:
 
 ```
 wp_audit(kind="secrets-policy")
 wp_audit(kind="no-dev-vars")
 wp_audit(kind="secret-provider-quarantine")
 wp_audit(kind="secrets-config")
+wp_audit(kind="consumer-agent-kit-dependency")
 ```
 
 Each returns a structured result:

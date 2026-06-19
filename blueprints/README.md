@@ -50,6 +50,7 @@ Each subdirectory represents a lifecycle state:
 
 Move files with `git mv` so history follows the spec through its lifecycle.
 
+
 ## Active work (2026-06-13)
 
 _None currently._

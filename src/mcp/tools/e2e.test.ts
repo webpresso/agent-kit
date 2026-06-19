@@ -112,6 +112,7 @@ describe('wp_e2e tool', () => {
     expect(runCommandConfigs).toHaveBeenCalledWith(commands, {
       cwd: process.cwd(),
       signal: undefined,
+      timeoutMs: undefined,
     })
 
     const payload = parsePayload(result)
@@ -156,7 +157,41 @@ describe('wp_e2e tool', () => {
     await akE2eTool.handler({ suite: 'smoke' })
 
     expect(createE2eExecutionPlan).toHaveBeenCalledWith(expect.any(Object), root)
-    expect(runCommandConfigs).toHaveBeenCalledWith(commands, { cwd: root, signal: undefined })
+    expect(runCommandConfigs).toHaveBeenCalledWith(commands, {
+      cwd: root,
+      signal: undefined,
+      timeoutMs: undefined,
+    })
+  })
+
+  it('forwards timeoutMs to the shared e2e execution runner', async () => {
+    const groups = [
+      {
+        batchKey: 'smoke',
+        runs: [
+          {
+            suiteId: 'smoke',
+            batchKey: 'smoke',
+            runner: 'command',
+            logName: 'smoke',
+            command: 'vp',
+            args: ['run', 'e2e'],
+          },
+        ],
+      },
+    ]
+    const commands = [{ command: 'vp', args: ['run', 'e2e'] }]
+    createE2eExecutionPlan.mockResolvedValue(groups)
+    plannedGroupsToCommandConfigs.mockReturnValue(commands)
+    runCommandConfigs.mockResolvedValue({ passed: true, exitCode: 0, output: 'ok\n' })
+
+    await akE2eTool.handler({ suite: 'smoke', timeoutMs: 45_000 })
+
+    expect(runCommandConfigs).toHaveBeenCalledWith(commands, {
+      cwd: process.cwd(),
+      signal: undefined,
+      timeoutMs: 45_000,
+    })
   })
 
   it('propagates non-zero execution as passed=false with command metadata intact', async () => {

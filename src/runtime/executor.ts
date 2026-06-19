@@ -80,7 +80,7 @@ function resolveEnvironmentSelector(
   const explicitEnvironment = normalizeEnvironmentSelector(environment)
   if (explicitEnvironment) return explicitEnvironment
   if (!profile) return undefined
-  return isCanonicalSecretProfile(profile) ? undefined : profile
+  return isCanonicalSecretProfile(profile) ? undefined : undefined
 }
 
 export function resolveRuntimeEnvironment(

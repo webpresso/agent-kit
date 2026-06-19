@@ -3,8 +3,12 @@ import type { SecretGateCommandOptions, SecretGateRunResult } from '#secret-gate
 
 import {
   buildPublicCiActCommand,
+  preparePublicCiActExecution,
+  resolveCiActExecutionMode,
+  resolveCiActSecretEnvProfile,
   sanitizePublicCiActArgv,
   type CiActEventName,
+  type CiActExecutionMode,
 } from '#ci/act-runner.js'
 import { redactText } from '#mcp/tools/_shared/redact.js'
 import { runSecretGateCommand } from '#secret-gate/runner.js'
@@ -29,7 +33,8 @@ export interface CiActOptions {
   readonly eventName?: CiActEventName
   readonly eventPath?: string
   readonly envProfile?: string
-  readonly secretEnvProfile?: string
+  readonly secretProfile?: string
+  readonly mode?: CiActExecutionMode
   readonly containerArchitecture?: string
   readonly platformImage?: string
   readonly execute?: boolean
@@ -60,9 +65,10 @@ export function registerCiCommand(cli: CAC): void {
     .option('--event-path <path>', 'Use an existing event JSON file')
     .option('--env-profile <profile>', 'Secret-gate runtime profile', { default: 'secrets-only' })
     .option(
-      '--secret-env-profile <profile>',
-      'Provider-specific secret manager environment/config selector',
+      '--secret-profile <profile>',
+      'Repo-owned secret profile from .webpresso/secrets.config.json',
     )
+    .option('--mode <mode>', 'ci act mode: direct | replay')
     .option('--container-architecture <arch>', 'act container architecture override')
     .option('--platform-image <image>', 'act runner image for ubicloud-standard-2')
     .option(
@@ -83,7 +89,8 @@ export function registerCiCommand(cli: CAC): void {
         job: flags.job as string | undefined,
         eventName: flags.eventName as CiActEventName | undefined,
         envProfile: flags.envProfile as string | undefined,
-        secretEnvProfile: flags.secretEnvProfile as string | undefined,
+        secretProfile: flags.secretProfile as string | undefined,
+        mode: flags.mode as CiActExecutionMode | undefined,
         containerArchitecture: flags.containerArchitecture as string | undefined,
         platformImage: flags.platformImage as string | undefined,
         eventPath: flags.eventPath as string | undefined,
@@ -120,19 +127,29 @@ export async function runCiActCommand(
     return 0
   }
 
-  const result = await (deps.run ?? runSecretGateCommand)({
-    cwd,
-    envProfile: options.envProfile,
-    secretEnvProfile: options.secretEnvProfile,
-    command: 'act',
-    args: command.actArgs,
-    timeoutMs: normalizeCiActTimeoutMs(options.timeoutMs),
-  })
-  const stdout = redactText(result.stdout) ?? ''
-  const stderr = redactText(result.stderr) ?? ''
-  if (stdout) (deps.stdout ?? process.stdout).write(stdout)
-  if (stderr) (deps.stderr ?? process.stderr).write(stderr)
-  return result.exitCode
+  const prepared = preparePublicCiActExecution({ ...options, cwd })
+  try {
+    const result = await (deps.run ?? runSecretGateCommand)({
+      cwd,
+      envProfile: options.envProfile,
+      secretEnvProfile: resolveCiActSecretEnvProfile({ ...options, cwd }),
+      command: 'act',
+      args: prepared.command.actArgs,
+      timeoutMs: normalizeCiActTimeoutMs(options.timeoutMs),
+    })
+    const stdout = redactText(result.stdout) ?? ''
+    const stderr = redactText(result.stderr) ?? ''
+    if (prepared.nonSecurityEquivalent) {
+      ;(deps.stderr ?? process.stderr).write(
+        '[wp ci act] replay mode is a generated local approximation and is not security-equivalent to GitHub CI or OIDC.\n',
+      )
+    }
+    if (stdout) (deps.stdout ?? process.stdout).write(stdout)
+    if (stderr) (deps.stderr ?? process.stderr).write(stderr)
+    return result.exitCode
+  } finally {
+    prepared.cleanup()
+  }
 }
 
 export function normalizeCiActTimeoutMs(value: number | undefined): number {

@@ -41,6 +41,7 @@ export const MCP_AUDIT_KINDS = [
   'no-dev-vars',
   'secret-provider-quarantine',
   'secrets-config',
+  'consumer-agent-kit-dependency',
   'session-memory-hardcut',
 ] as const
 

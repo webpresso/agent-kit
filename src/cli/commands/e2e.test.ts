@@ -102,6 +102,7 @@ describe('wp e2e command helpers', () => {
     const cli = buildFakeCli()
     registerE2eCommand(cli as never)
     expect(cli.getOptions()).toContain('--file <path>')
+    expect(cli.getOptions()).toContain('--timeout-ms <ms>')
     expect(cli.getOptions()).toContain('--full')
   })
 })

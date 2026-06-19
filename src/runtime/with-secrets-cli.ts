@@ -18,7 +18,7 @@ function usage(): string {
     'Usage: with-secrets [--env-profile <profile>] [--runtime-profile <profile>] [--secret-env-profile <profile>] -- <command> [args...]',
     '',
     'Runtime profiles: none, public, secrets-only, service-runtime, database, full',
-    'Provider environment/config selectors use --secret-env-profile <profile> (legacy non-canonical --env-profile values still resolve as provider selectors).',
+    'Provider environment/config selectors use --secret-env-profile <profile>.',
   ].join('\n')
 }
 
@@ -52,7 +52,7 @@ export function parseWithSecretsArgs(argv: readonly string[]): ParsedCommand | n
       continue
     }
 
-    if (arg === '--secret-env-profile' || arg === '--provider-env-profile') {
+    if (arg === '--secret-env-profile') {
       environment = preamble[i + 1]
       i += 1
       continue
@@ -63,10 +63,6 @@ export function parseWithSecretsArgs(argv: readonly string[]): ParsedCommand | n
       continue
     }
 
-    if (arg.startsWith('--provider-env-profile=')) {
-      environment = arg.slice('--provider-env-profile='.length)
-      continue
-    }
   }
 
   const [command, ...commandRest] = commandArgs
@@ -83,7 +79,10 @@ export function runWithSecretsCli(argv: readonly string[] = process.argv.slice(2
 
   const selector = parsed.profile?.trim()
   if (selector && !isRuntimeProfile(selector) && !isDirectRuntimeProfile(selector)) {
-    // provider-specific selectors are allowed; nothing to validate here.
+    console.error(
+      `Unknown runtime profile "${selector}". Use a runtime profile or pass provider selectors via --secret-env-profile.`,
+    )
+    return 1
   }
 
   const result = spawnRuntimeCommandSync({

@@ -33,6 +33,7 @@ const inputSchema = z.object({
   workers: z.union([z.number(), z.string()]).optional(),
   testList: z.string().optional(),
   passthrough: z.array(z.string()).optional(),
+  timeoutMs: z.number().int().positive().max(60 * 60_000).optional(),
   full: z.boolean().optional().default(false),
 })
 
@@ -131,7 +132,11 @@ const tool: ToolDescriptor = {
       cwd,
     )
     const commands = plannedGroupsToCommandConfigs(groups)
-    const result = await runCommandConfigs(commands, { cwd, signal: extra?.signal })
+    const result = await runCommandConfigs(commands, {
+      cwd,
+      signal: extra?.signal,
+      timeoutMs: input.timeoutMs,
+    })
     const suiteIds = collectSuiteIds(groups)
 
     const payload = {

@@ -1,13 +1,5 @@
 import { createHash } from 'node:crypto'
-import {
-  closeSync,
-  existsSync,
-  mkdirSync,
-  openSync,
-  readSync,
-  realpathSync,
-  statSync,
-} from 'node:fs'
+import { closeSync, existsSync, mkdirSync, openSync, readSync, readFileSync, realpathSync, statSync } from 'node:fs'
 import { dirname, extname, join, relative, resolve, sep } from 'node:path'
 
 import { z } from 'zod'
@@ -17,7 +9,6 @@ import { resolveProjectRoot } from '#mcp/tools/_shared/project-root.js'
 
 import { SessionMemoryStore } from '#session-memory/store.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
-import { createGainSummaryResult } from './_session-gain.js'
 import { defaultIndexDbPath } from './session-restore.js'
 
 const MAX_PREVIEW_BYTES = 4 * 1024
@@ -30,6 +21,17 @@ const SECRET_PATH_PATTERNS = [
   /id_ed25519$/iu,
 ]
 const SUPPORTED_OPERATIONS = new Set(['read_text', 'metadata'])
+
+function readFilePrefix(absolutePath: string, byteLength: number): Buffer {
+  const fd = openSync(absolutePath, 'r')
+  try {
+    const buffer = Buffer.allocUnsafe(byteLength)
+    const bytesRead = readSync(fd, buffer, 0, byteLength, 0)
+    return buffer.subarray(0, bytesRead)
+  } finally {
+    closeSync(fd)
+  }
+}
 
 const inputSchema = z
   .object({
@@ -82,7 +84,6 @@ interface FileOperationResult {
     readonly lineCount: number
     readonly extension: string
   }
-  readonly rawBasisBytes?: number
 }
 
 const outputSchema = createSummaryOutputSchema({
@@ -189,17 +190,6 @@ function fileChunkId(path: string, content: Buffer): string {
   return createHash('sha256').update(path).update('\0').update(content).digest('hex').slice(0, 32)
 }
 
-function readFilePrefix(path: string, maxBytes: number): Buffer {
-  const fd = openSync(path, 'r')
-  try {
-    const target = Buffer.allocUnsafe(maxBytes)
-    const bytesRead = readSync(fd, target, 0, maxBytes, 0)
-    return target.subarray(0, bytesRead)
-  } finally {
-    closeSync(fd)
-  }
-}
-
 async function runFileOperation(
   input: SessionExecuteFileInput,
   repoRoot: string,
@@ -246,7 +236,6 @@ async function runFileOperation(
       indexedChunkIds: [],
       warnings,
       metadata,
-      rawBasisBytes: content.length,
     }
   }
   if (stats.size > input.maxFileBytes) {
@@ -278,7 +267,6 @@ async function runFileOperation(
     indexedChunkIds,
     warnings,
     metadata,
-    rawBasisBytes: content.length,
   }
 }
 
@@ -338,19 +326,10 @@ const tool: ToolDescriptor = {
     const store = new SessionMemoryStore(dbPath)
     try {
       const runtimeResult = await runFileOperation(input, repoRoot, store)
-      const payload = payloadFrom(runtimeResult)
-      const resultOptions = runtimeResult.passed ? {} : { isError: true }
-      if (runtimeResult.passed && typeof runtimeResult.rawBasisBytes === 'number') {
-        return createGainSummaryResult(payload, resultOptions, {
-          toolName: tool.name,
-          dbPath,
-          rawBasisBytes: runtimeResult.rawBasisBytes,
-          rawBytesBasis:
-            runtimeResult.operation === 'metadata' ? 'file_metadata_buffer' : 'file_read_buffer',
-          recordGainEvent: (gain) => store.recordGainEvent({ ...gain, toolName: tool.name }),
-        })
-      }
-      return createSummaryResult(payload, resultOptions)
+      return createSummaryResult(
+        payloadFrom(runtimeResult),
+        runtimeResult.passed ? {} : { isError: true },
+      )
     } finally {
       store.close()
     }

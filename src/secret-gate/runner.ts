@@ -1,6 +1,11 @@
 import { spawn } from 'node:child_process'
 
 import { buildRuntimeProcessEnv } from '#runtime/index.js'
+import {
+  exitCodeFromSignal,
+  forceKillProcessTree,
+  killProcessTree,
+} from '#shared-utils/process-supervisor.js'
 
 export interface SecretGateCommand {
   readonly command: string
@@ -29,12 +34,7 @@ export interface SecretGateRunResult {
 }
 
 const DEFAULT_MAX_OUTPUT_BYTES = 64 * 1024
-
-const SIGNAL_TO_EXIT_CODE: Readonly<Partial<Record<NodeJS.Signals, number>>> = {
-  SIGINT: 2,
-  SIGKILL: 9,
-  SIGTERM: 15,
-}
+export const SECRET_GATE_FORCE_KILL_GRACE_MS = 5_000
 
 const SECRET_GATE_RUNTIME_PROFILES = [
   'none',
@@ -75,11 +75,6 @@ export function buildSecretGateCommand(options: SecretGateCommandOptions): Secre
   return { command: runner, args }
 }
 
-function exitCodeFromSignal(signal: NodeJS.Signals | null): number {
-  if (!signal) return 1
-  return 128 + (SIGNAL_TO_EXIT_CODE[signal] ?? 15)
-}
-
 export function runSecretGateCommand(
   options: SecretGateCommandOptions,
 ): Promise<SecretGateRunResult> {
@@ -98,15 +93,28 @@ export function runSecretGateCommand(
     let stderr = ''
     let timedOut = false
     let aborted = false
+    let terminationRequested = false
+
+    let escalationTimer: ReturnType<typeof setTimeout> | undefined
+
+    const requestTermination = (): void => {
+      if (terminationRequested) return
+      terminationRequested = true
+      killProcessTree(child, 'SIGTERM')
+      if (process.platform === 'win32') return
+      escalationTimer = setTimeout(() => {
+        forceKillProcessTree(child)
+      }, SECRET_GATE_FORCE_KILL_GRACE_MS)
+    }
 
     const timer = setTimeout(() => {
       timedOut = true
-      killProcessTree(child.pid, child.kill.bind(child), 'SIGTERM')
+      requestTermination()
     }, timeoutMs)
 
     const onAbort = (): void => {
       aborted = true
-      killProcessTree(child.pid, child.kill.bind(child), 'SIGTERM')
+      requestTermination()
     }
 
     if (options.signal) {
@@ -116,6 +124,7 @@ export function runSecretGateCommand(
 
     const cleanup = (): void => {
       clearTimeout(timer)
+      if (escalationTimer) clearTimeout(escalationTimer)
       options.signal?.removeEventListener('abort', onAbort)
     }
 
@@ -150,22 +159,6 @@ export function runSecretGateCommand(
       })
     })
   })
-}
-
-function killProcessTree(
-  pid: number | undefined,
-  fallbackKill: (signal: NodeJS.Signals) => boolean,
-  signal: NodeJS.Signals,
-): void {
-  if (pid && process.platform !== 'win32') {
-    try {
-      process.kill(-pid, signal)
-      return
-    } catch {
-      // Fall through to killing the child when process-group cleanup is not available.
-    }
-  }
-  fallbackKill(signal)
 }
 
 function appendBoundedOutput(current: string, chunk: Buffer, maxBytes: number): string {
