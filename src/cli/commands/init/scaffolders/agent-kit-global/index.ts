@@ -24,7 +24,7 @@
  * warn-only contract as the codex-cli scaffolder).
  */
 import { spawnSync } from 'node:child_process'
-import { chmodSync, mkdirSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
@@ -34,12 +34,14 @@ import {
 } from '#cli/commands/init/package-root'
 import { makeNoopSpinnerFactory, type SpinnerFactory } from '#cli/commands/init/scaffolders/spinner'
 import { isPackageLifecycleEnvironment } from '#cli/auto-update/skip.js'
+import { isNewerVersion } from '#cli/auto-update/version.js'
 import {
   appendGlobalCapableVpArgs,
   type GlobalCapableVpCommandInput,
   resolveGlobalCapableVpCommand,
 } from '#cli/global-vp.js'
 import { buildVpGlobalInstallCommand, PUBLIC_PACKAGE_NAME } from '#cli/auto-update/detect-pm.js'
+import { getStateRoot } from '#paths/state-root.js'
 import {
   formatRootLauncherContractFailure,
   expectedRootWpBinRelativePath,
@@ -62,12 +64,20 @@ export interface EnsureAgentKitGlobalInput {
   packageRoot?: string
   /** DI seam for staging-root fallback when argv1 cannot be mapped back to the owning package. */
   resolvePackageRootForStaging?: (argv1: string) => string | null
+  /** DI seam for the bootstrap update cache's latest published version. */
+  readFreshCachedLatest?: () => string | null
   /** DI seam for spinner. Defaults to noop when !process.stdout.isTTY. */
   spinnerFactory?: SpinnerFactory
 }
 
 export type EnsureAgentKitGlobalResult =
   | { kind: 'agent-kit-global-updated'; command: readonly string[]; repairedLauncher?: string }
+  | {
+      kind: 'agent-kit-global-skipped-up-to-date'
+      current: string
+      latest: string
+      repairedLauncher?: string
+    }
   | { kind: 'agent-kit-global-skipped-dry-run' }
   | { kind: 'agent-kit-global-skipped-opt-out' }
   | { kind: 'agent-kit-global-skipped-package-lifecycle' }
@@ -79,6 +89,8 @@ export type EnsureAgentKitGlobalResult =
 const NO_VP_HINT =
   'vp (vite-plus) is not on PATH; cannot refresh the global ' +
   `${PUBLIC_PACKAGE_NAME}. Install vite-plus, then re-run \`wp setup\`.`
+const UPDATE_CACHE_FILENAME = 'update-notifier-cache.json'
+const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
 
 function resolvePackageRootForStaging(argv1: string): string | null {
   const fromArgv = argv1.length > 0 ? findAgentKitPackageRoot(argv1) : null
@@ -102,6 +114,37 @@ function repairRootWpLauncher(packageRoot: string): string {
     )
   }
   return destination
+}
+
+function readPackageVersion(packageRoot: string): string | null {
+  try {
+    const parsed = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8')) as {
+      version?: unknown
+    }
+    return typeof parsed.version === 'string' && parsed.version.trim().length > 0
+      ? parsed.version
+      : null
+  } catch {
+    return null
+  }
+}
+
+function readFreshCachedLatest(now: number = Date.now()): string | null {
+  try {
+    const parsed = JSON.parse(
+      readFileSync(join(getStateRoot(), UPDATE_CACHE_FILENAME), 'utf8'),
+    ) as {
+      latest?: unknown
+      lastUpdateCheck?: unknown
+    }
+    if (typeof parsed.latest !== 'string' || typeof parsed.lastUpdateCheck !== 'number') {
+      return null
+    }
+    if (now - parsed.lastUpdateCheck >= UPDATE_CHECK_INTERVAL_MS) return null
+    return parsed.latest
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -141,6 +184,25 @@ export function ensureAgentKitGlobal(input: EnsureAgentKitGlobalInput): EnsureAg
   }
 
   const command = buildVpGlobalInstallCommand(vpCommand)
+  const packageRoot =
+    input.packageRoot ?? (input.resolvePackageRootForStaging ?? resolvePackageRootForStaging)(argv1)
+  const current = packageRoot === null ? null : readPackageVersion(packageRoot)
+  const latest = (input.readFreshCachedLatest ?? readFreshCachedLatest)()
+
+  if (packageRoot !== null && current !== null && latest !== null && !isNewerVersion(latest, current)) {
+    let repairedLauncher: string | undefined
+    try {
+      repairedLauncher = repairRootWpLauncher(packageRoot)
+    } catch (error) {
+      return {
+        kind: 'agent-kit-global-repair-failed',
+        reason: error instanceof Error ? error.message : String(error),
+        command,
+      }
+    }
+    return { kind: 'agent-kit-global-skipped-up-to-date', current, latest, repairedLauncher }
+  }
+
   spinner.start()
   const install = spawn(command[0], command.slice(1), { stdio: 'inherit' })
   if (install.status !== 0) {
@@ -149,8 +211,6 @@ export function ensureAgentKitGlobal(input: EnsureAgentKitGlobalInput): EnsureAg
   }
 
   let repairedLauncher: string | undefined
-  const packageRoot =
-    input.packageRoot ?? (input.resolvePackageRootForStaging ?? resolvePackageRootForStaging)(argv1)
   if (!packageRoot) {
     spinner.fail('agent-kit root launcher repair failed')
     return {

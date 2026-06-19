@@ -25,6 +25,7 @@ import { detect } from './detect-pm.js'
 import { scheduleDeferredInstall } from './installer.js'
 import { logUpdateError } from './log.js'
 import { shouldSkipAutoInstall } from './skip.js'
+import { isNewerVersion } from './version.js'
 
 const PUBLIC_NPM_URL = 'https://registry.npmjs.org/@webpresso%2Fagent-kit'
 const UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000 // 24 hours
@@ -82,20 +83,6 @@ export async function fetchLatestRelease(): Promise<string | null> {
   if (!res.ok) return null
   const data = (await res.json()) as { 'dist-tags'?: { latest?: string } }
   return data['dist-tags']?.latest ?? null
-}
-
-function isNewerVersion(latest: string, current: string): boolean {
-  const l = latest.split('.').map((p) => parseInt(p, 10))
-  const c = current.split('.').map((p) => parseInt(p, 10))
-  const len = Math.max(l.length, c.length)
-  for (let i = 0; i < len; i++) {
-    const lv = l[i] ?? 0
-    const cv = c[i] ?? 0
-    if (Number.isNaN(lv) || Number.isNaN(cv)) return latest !== current
-    if (lv > cv) return true
-    if (lv < cv) return false
-  }
-  return false
 }
 
 /**
