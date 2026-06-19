@@ -177,7 +177,7 @@ Canonical v1 shape is pinned to the locked engineering review:
     "test": { "defaultProfile": "preview", "allowedOps": ["run"] },
     "e2e": { "defaultProfile": "preview", "allowedOps": ["run"] },
     "deploy-wrangler": { "defaultProfile": "production", "allowedOps": ["preview", "deploy"] },
-    "pulumi": { "defaultProfile": "preview", "allowedOps": ["preview", "up"] },
+    "pulumi": { "defaultProfile": "preview", "allowedOps": ["run", "preview", "up"] },
     "act": { "defaultProfile": "preview", "allowedOps": ["replay", "run"] },
     "github-actions-bootstrap": { "defaultProfile": "production", "allowedOps": ["verify", "apply", "rotate", "revoke"] },
     "db-branch": { "defaultProfile": "preview", "allowedOps": ["create", "connect", "cleanup"] }
