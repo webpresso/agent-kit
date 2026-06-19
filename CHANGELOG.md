@@ -1,5 +1,33 @@
 # Changelog
 
+## 2.2.0
+
+### Minor Changes
+
+- c6e5b25: Revive the native Rust session-memory engine behind prebuilt NAPI optional packages and route MCP command capture through the native backend when available.
+
+  The native backend is optional: consumers without a compatible addon keep the TypeScript fallback, and fallback/native state is visible in MCP metadata. The published root package does not require Rust sources or first-use Cargo builds; source builds are development-only behind `WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE=1`.
+
+  Windows native optional packages are prepared for the storage/search addon surface only; MCP shell execution remains POSIX-host-only until Windows command semantics are explicitly supported.
+
+  Validation surfaces: docs/guides/session-memory.md, docs/bench/reference-parity-matrix.md, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, `src/__integration__/reference-parity-tool-surface.integration.test.ts`, docs/bench/session-memory-methodology.md.
+
+- c6e5b25: Add scientific session-memory benchmark infrastructure and public-claim hardening (Option B).
+
+  Introduces: canonical `report.json` measurement artifact with per-run unique runId and
+  content-addressed manifestDigest; metric-class taxonomy (byte_proxy, provider_tokens_cost,
+  recall, hook_latency, native_speedup, replacement_parity, rtk_context_mode) with claim
+  binding enforcement; redaction/privacy scanner for shipped artifacts; capability registry
+  SSOT; phased bounded consumer-smoke readiness; and the full gate wiring in
+  `public:readiness`. No numeric benchmark claim ships without a first-party result card of
+  the matching metric class.
+
+### Patch Changes
+
+- 13169ef: Fix blueprint task parsing for compact inline metadata, allow non-git setup to complete user/global Codex and OMX setup paths while still rejecting project-only operations outside git worktrees, and keep the release native-artifact matrix from running unsupported workspace postinstall scripts on Windows ARM64.
+
+  Release evidence paths: `docs/bench/reference-parity-matrix.md`, `docs/bench/session-memory-methodology.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, and `src/__integration__/reference-parity-tool-surface.integration.test.ts`.
+
 ## 2.1.2
 
 ### Patch Changes
