@@ -130,6 +130,8 @@ jobs:
         run: |
           pnpm run build:runtime-binaries
           pnpm run stage:plugin-runtime
+      - name: Warm native session-memory addon
+        run: pnpm exec tsx --eval "import { loadNativeSessionMemoryEngine } from './src/session-memory/native-runtime.ts'; loadNativeSessionMemoryEngine()"
       - run: pnpm run test
       - name: Cursor hook contract slice
         run: |

@@ -64,18 +64,20 @@ describe('public-readiness runtime policy helpers', () => {
     ])
   })
 
-  it('flags denied packed runtime payload trees', () => {
+  it('flags denied packed runtime payload trees and native source workspaces', () => {
     expect(
       listPackedRuntimePayloadLeaks([
         'bin/runtime/darwin-arm64/wp',
         'dist/runtime/darwin-arm64/wp',
         'dist/runtime-packages/agent-kit-runtime-darwin-arm64/bin/wp',
+        'native/session-memory-engine/Cargo.toml',
         'bin/wp',
       ]),
     ).toEqual([
       'bin/runtime/darwin-arm64/wp',
       'dist/runtime/darwin-arm64/wp',
       'dist/runtime-packages/agent-kit-runtime-darwin-arm64/bin/wp',
+      'native/session-memory-engine/Cargo.toml',
     ])
   })
 
@@ -103,13 +105,6 @@ describe('public-readiness runtime policy helpers', () => {
     expect(source.indexOf('restorePackedManifest(ROOT)', packIndex)).toBeGreaterThan(packIndex)
   })
 
-  it('requires packed native session-memory engine paths in the tarball readiness script', () => {
-    const source = readFileSync(join(import.meta.dirname, 'public-readiness.ts'), 'utf8')
-
-    expect(source).toContain('tarball-session-memory-native-engine')
-    expect(source).toContain('native/session-memory-engine/Cargo.toml')
-    expect(source).toContain('native/session-memory-engine/crates/session-memory-core/Cargo.toml')
-  })
 })
 
 describe('public release readiness gate wiring', () => {

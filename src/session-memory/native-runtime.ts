@@ -7,6 +7,7 @@ import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 
 import envPaths from 'env-paths'
+import lockfile from 'proper-lockfile'
 
 export interface NativeSearchHit {
   readonly content: string
@@ -80,6 +81,7 @@ const requireFromHere = createRequire(import.meta.url)
 const NATIVE_WORKSPACE_DIRNAME = join('native', 'session-memory-engine')
 const BUILD_PACKAGE = 'session-memory-napi'
 const MODULE_BASENAME = 'session_memory_napi'
+const BUILD_LOCK_STALE_MS = 10 * 60 * 1000
 
 let cachedModule: NativeSessionMemoryModule | null = null
 
@@ -186,56 +188,75 @@ function shouldRebuild(nodePath: string, nativeWorkspaceRoot: string): boolean {
   return newestNativeWorkspaceMtimeMs(nativeWorkspaceRoot) > builtAt
 }
 
+function withNativeBuildLock<T>(cacheRoot: string, build: () => T): T {
+  const lockTarget = join(cacheRoot, '.build.lock')
+  const release = lockfile.lockSync(lockTarget, {
+    realpath: false,
+    stale: BUILD_LOCK_STALE_MS,
+    update: 30_000,
+    retries: { retries: 300, minTimeout: 100, maxTimeout: 1_000, factor: 1.2 },
+  })
+  try {
+    return build()
+  } finally {
+    release()
+  }
+}
+
 function ensureNativeModuleBuilt(): string {
   const workspaceRoot = buildWorkspaceRoot()
   const manifestPath = buildManifestPath()
   const nodePath = compiledNodePath()
   if (!shouldRebuild(nodePath, workspaceRoot)) return nodePath
 
-  const targetDir = cargoTargetDir()
-  mkdirSync(targetDir, { recursive: true })
+  return withNativeBuildLock(sessionMemoryNativeCacheRoot(), () => {
+    if (!shouldRebuild(nodePath, workspaceRoot)) return nodePath
 
-  try {
-    execFileSync(
-      process.env['CARGO'] || 'cargo',
-      [
-        'build',
-        '--manifest-path',
-        manifestPath,
-        '--package',
-        BUILD_PACKAGE,
-        '--release',
-        '--locked',
-      ],
-      {
-        cwd: workspaceRoot,
-        stdio: 'pipe',
-        encoding: 'utf8',
-        env: {
-          ...process.env,
-          CARGO_TARGET_DIR: targetDir,
-          TMPDIR: process.env['TMPDIR'] || tmpdir(),
+    const targetDir = cargoTargetDir()
+    mkdirSync(targetDir, { recursive: true })
+
+    try {
+      execFileSync(
+        process.env['CARGO'] || 'cargo',
+        [
+          'build',
+          '--manifest-path',
+          manifestPath,
+          '--package',
+          BUILD_PACKAGE,
+          '--release',
+          '--locked',
+        ],
+        {
+          cwd: workspaceRoot,
+          stdio: 'pipe',
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            CARGO_TARGET_DIR: targetDir,
+            TMPDIR: process.env['TMPDIR'] || tmpdir(),
+          },
         },
-      },
-    )
-  } catch (error) {
-    const failure = error as { stdout?: string; stderr?: string; message?: string }
-    const detail = [failure.message, failure.stdout, failure.stderr].filter(Boolean).join('\n')
-    throw new Error(
-      `native session-memory engine build failed. Expected cargo to build ${BUILD_PACKAGE} from ${manifestPath}. ${detail}`,
-    )
-  }
+      )
+    } catch (error) {
+      const failure = error as { stdout?: string; stderr?: string; message?: string }
+      const detail = [failure.message, failure.stdout, failure.stderr].filter(Boolean).join('\n')
+      throw new Error(
+        `native session-memory engine build failed. Expected cargo to build ${BUILD_PACKAGE} from ${manifestPath}. ${detail}`,
+      )
+    }
 
-  const builtLibraryPath = join(targetDir, 'release', platformLibraryName())
-  if (!existsSync(builtLibraryPath)) {
-    throw new Error(
-      `native session-memory engine build completed but did not produce ${builtLibraryPath}`,
-    )
-  }
+    const builtLibraryPath = join(targetDir, 'release', platformLibraryName())
+    if (!existsSync(builtLibraryPath)) {
+      throw new Error(
+        `native session-memory engine build completed but did not produce ${builtLibraryPath}`,
+      )
+    }
 
-  mkdirSync(dirname(nodePath), { recursive: true })
-  copyFileSync(builtLibraryPath, nodePath)
-  return nodePath
+    mkdirSync(dirname(nodePath), { recursive: true })
+    copyFileSync(builtLibraryPath, nodePath)
+    return nodePath
+  })
 }
 
 export function loadNativeSessionMemoryEngine(): NativeSessionMemoryModule {

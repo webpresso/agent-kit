@@ -55,6 +55,8 @@ jobs:
         run: ./bin/wp audit guardrails
       - run: pnpm run typecheck
       - run: pnpm run lint
+      - name: Warm native session-memory addon
+        run: pnpm exec tsx --eval "import { loadNativeSessionMemoryEngine } from './src/session-memory/native-runtime.ts'; loadNativeSessionMemoryEngine()"
       - run: pnpm run test
 
   e2e:
