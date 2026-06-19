@@ -202,13 +202,13 @@ and include a schema-valid threshold definition for
 
 **Acceptance:**
 
-- [ ] Dry-run is schema/no-API only.
-- [ ] Dry-run does not call the benchmark variant runner.
-- [ ] Dry-run does not require Anthropic/API credentials.
-- [ ] Dry-run does not call Anthropic admin workspace lookup / workspace verification.
-- [ ] Dry-run threshold report includes `search_quality_recall_at_5 >= 0.8`.
-- [ ] Dry-run marks threshold axes `schema-valid`, not measured passed/failed.
-- [ ] No measured `report.md` is required or produced by dry-run.
+- [x] Dry-run is schema/no-API only.
+- [x] Dry-run does not call the benchmark variant runner.
+- [x] Dry-run does not require Anthropic/API credentials.
+- [x] Dry-run does not call Anthropic admin workspace lookup / workspace verification.
+- [x] Dry-run threshold report includes `search_quality_recall_at_5 >= 0.8`.
+- [x] Dry-run marks threshold axes `schema-valid`, not measured passed/failed.
+- [x] No measured `report.md` is required or produced by dry-run.
 
 #### [bench] Task 1.2: Replace placeholder recall with transcript scoring
 
@@ -242,12 +242,12 @@ capture/session-memory storage files.
 
 **Acceptance:**
 
-- [ ] The measured path explicitly replaces placeholder `recall_at_5: 0`.
-- [ ] A measured cell computes recall from transcript text and scenario qrels.
-- [ ] Scoring supports `message.content[*].text`, `result`, `event.message.content[*].text`, and `event.result`.
-- [ ] Unsupported or malformed transcripts produce explicit scoring errors, not silent zero recall.
-- [ ] A one-cell run such as `--scenario debug-long-session --variant baseline --trials 1` writes a measured `report.md` when credentials are available.
-- [ ] The measured threshold report marks `search_quality_recall_at_5` as `passed` only when observed recall is `>= 0.8`, otherwise `failed`.
+- [x] The measured path explicitly replaces placeholder `recall_at_5: 0`.
+- [x] A measured cell computes recall from transcript text and scenario qrels.
+- [x] Scoring supports `message.content[*].text`, `result`, `event.message.content[*].text`, and `event.result`.
+- [x] Unsupported or malformed transcripts produce explicit scoring errors, not silent zero recall.
+- [x] A one-cell run such as `--scenario debug-long-session --variant baseline --trials 1` writes a measured `report.md` when credentials are available.
+- [x] The measured threshold report marks `search_quality_recall_at_5` as `passed` only when observed recall is `>= 0.8`, otherwise `failed`.
 
 #### [bench] Task 1.3: Add recall reason/error fields to report output
 
@@ -278,12 +278,12 @@ their existing non-`ok` status and also include `recall_error` when available.
 
 **Acceptance:**
 
-- [ ] Report cells include `recall_reason` when recall scoring succeeds.
-- [ ] Report cells include `recall_error` when recall scoring fails.
-- [ ] Tests explicitly cover both `recall_reason` and `recall_error`.
-- [ ] A scoring failure cannot masquerade as `recall_at_5: 0` without an error.
-- [ ] Scorer failures on successful benchmark runs keep `status: ok` and add `recall_error`; benchmark run failures keep their existing non-`ok` status.
-- [ ] `report.md` remains deterministic and human-readable.
+- [x] Report cells include `recall_reason` when recall scoring succeeds.
+- [x] Report cells include `recall_error` when recall scoring fails.
+- [x] Tests explicitly cover both `recall_reason` and `recall_error`.
+- [x] A scoring failure cannot masquerade as `recall_at_5: 0` without an error.
+- [x] Scorer failures on successful benchmark runs keep `status: ok` and add `recall_error`; benchmark run failures keep their existing non-`ok` status.
+- [x] `report.md` remains deterministic and human-readable.
 
 #### [qa] Task 1.4: Record the PoC decision and stop
 
@@ -309,11 +309,11 @@ outcome must be one of: `PoC failed`, `PoC passed but needs broader matrix`, or
 
 **Acceptance:**
 
-- [ ] Outcome includes dry-run proof.
-- [ ] Outcome includes measured `report.md` evidence if any quality claim is made.
-- [ ] Outcome does not claim release readiness.
-- [ ] Outcome does not claim larger continuity/replacement blueprint completion.
-- [ ] Follow-up recommendations name the downstream blueprint(s) that should be revised or unblocked.
+- [x] Outcome includes dry-run proof.
+- [x] Outcome includes measured `report.md` evidence if any quality claim is made.
+- [x] Outcome does not claim release readiness.
+- [x] Outcome does not claim larger continuity/replacement blueprint completion.
+- [x] Follow-up recommendations name the downstream blueprint(s) that should be revised or unblocked.
 
 ## Verification Gates
 
