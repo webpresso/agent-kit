@@ -368,7 +368,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     })
     commitAll(cwd, '2030-01-01T12:00:00Z')
 
-    transitionBlueprint(cwd, 'jumped-the-queue', 'draft', 'completed')
+    transitionBlueprint(cwd, 'jumped-the-queue', 'draft', 'in-progress')
     commitAll(cwd, '2030-01-02T12:00:00Z')
 
     const result = await auditBlueprintLifecycleSql(cwd)
@@ -378,7 +378,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
         (v) =>
           v.message.includes('jumped-the-queue') &&
           /illegal/i.test(v.message) &&
-          /planned, archived/i.test(v.message),
+          /planned, completed, archived/i.test(v.message),
       ),
     ).toBe(true)
   })
@@ -415,6 +415,47 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     const result = await auditBlueprintLifecycleSql(cwd)
     expect(result.ok).toBe(true)
     expect(result.violations.some((v) => v.message.includes('one-pr-finish'))).toBe(false)
+  })
+
+  it('allows draft blueprints to complete directly when all tasks are terminal', async () => {
+    initGitRepo(cwd)
+    writeBlueprint(cwd, 'draft-one-pr-finish', {
+      status: 'draft',
+      tasks: [
+        { id: '1.1', status: 'done' },
+        { id: '1.2', status: 'dropped' },
+      ],
+    })
+    commitAll(cwd, '2030-01-01T12:00:00Z')
+
+    transitionBlueprint(cwd, 'draft-one-pr-finish', 'draft', 'completed')
+    commitAll(cwd, '2030-01-02T12:00:00Z')
+
+    const result = await auditBlueprintLifecycleSql(cwd)
+    expect(result.ok).toBe(true)
+    expect(result.violations.some((v) => v.message.includes('draft-one-pr-finish'))).toBe(false)
+  })
+
+  it('rejects direct draft-to-completed when tasks are still open', async () => {
+    initGitRepo(cwd)
+    writeBlueprint(cwd, 'draft-one-pr-open-work', {
+      status: 'draft',
+      tasks: [{ id: '1.1', status: 'todo' }],
+    })
+    commitAll(cwd, '2030-01-01T12:00:00Z')
+
+    transitionBlueprint(cwd, 'draft-one-pr-open-work', 'draft', 'completed')
+    commitAll(cwd, '2030-01-02T12:00:00Z')
+
+    const result = await auditBlueprintLifecycleSql(cwd)
+    expect(result.ok).toBe(false)
+    expect(
+      result.violations.some(
+        (v) =>
+          v.message.includes('draft-one-pr-open-work') &&
+          v.message.includes('not done/dropped'),
+      ),
+    ).toBe(true)
   })
 
   it('rejects direct planned-to-completed when tasks are still open', async () => {

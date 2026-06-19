@@ -1028,6 +1028,11 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         case 'agent-kit-global-updated':
           console.log('  agent-kit global: ✓ refreshed via vp install -g')
           break
+        case 'agent-kit-global-skipped-up-to-date':
+          console.log(
+            `  agent-kit global: already up to date (${agentKitGlobalResult.current})`,
+          )
+          break
         case 'agent-kit-global-skipped-dry-run':
           console.log('  agent-kit global: skipped (--dry-run)')
           break

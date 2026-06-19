@@ -21,15 +21,14 @@ import { z } from 'zod'
 
 import { getStateRoot } from '#paths/state-root.js'
 
+import { UPDATE_CACHE_FILENAME, UPDATE_CHECK_INTERVAL_MS } from './cache.js'
 import { detect } from './detect-pm.js'
 import { scheduleDeferredInstall } from './installer.js'
 import { logUpdateError } from './log.js'
 import { shouldSkipAutoInstall } from './skip.js'
+import { isNewerVersion } from './version.js'
 
 const PUBLIC_NPM_URL = 'https://registry.npmjs.org/@webpresso%2Fagent-kit'
-const UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000 // 24 hours
-const CACHE_FILENAME = 'update-notifier-cache.json'
-
 interface UpdateCache {
   latest: string
   current: string
@@ -84,34 +83,20 @@ export async function fetchLatestRelease(): Promise<string | null> {
   return data['dist-tags']?.latest ?? null
 }
 
-function isNewerVersion(latest: string, current: string): boolean {
-  const l = latest.split('.').map((p) => parseInt(p, 10))
-  const c = current.split('.').map((p) => parseInt(p, 10))
-  const len = Math.max(l.length, c.length)
-  for (let i = 0; i < len; i++) {
-    const lv = l[i] ?? 0
-    const cv = c[i] ?? 0
-    if (Number.isNaN(lv) || Number.isNaN(cv)) return latest !== current
-    if (lv > cv) return true
-    if (lv < cv) return false
-  }
-  return false
-}
-
 /**
  * Orchestrate the full auto-update pipeline for the given package version.
  * Resolves without throwing — any error is written to auto-update.log.
  */
 export async function runUpdateFlow(version: string): Promise<void> {
   try {
-    const cachePath = join(getStateRoot(), CACHE_FILENAME)
+    const cachePath = join(getStateRoot(), UPDATE_CACHE_FILENAME)
     const now = Date.now()
 
     // Check 24-hour interval via cache
     const cached = await readCache(cachePath)
     let latest: string
 
-    if (cached !== null && now - cached.lastUpdateCheck < UPDATE_CHECK_INTERVAL) {
+    if (cached !== null && now - cached.lastUpdateCheck < UPDATE_CHECK_INTERVAL_MS) {
       latest = cached.latest
     } else {
       const fetched = await fetchLatestRelease()

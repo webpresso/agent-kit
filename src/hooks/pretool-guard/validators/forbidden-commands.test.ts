@@ -1065,18 +1065,25 @@ describe('blueprint lifecycle enforcement', () => {
     expect(result.passed).toBe(true)
   })
 
+  it('allows a one-PR completion git mv lifecycle transition', () => {
+    const result = validateForbiddenCommands(
+      bashInput('git mv blueprints/draft/my-bp blueprints/completed/my-bp'),
+    )
+    expect(result.passed).toBe(true)
+  })
+
   it('blocks an illegal git mv lifecycle transition and names the legal targets', () => {
     const result = validateForbiddenCommands(
-      bashInput('git mv blueprints/draft/foo blueprints/completed/foo'),
+      bashInput('git mv blueprints/draft/foo blueprints/in-progress/foo'),
     )
     expect(result.passed).toBe(false)
     expect('command' in result && result.category).toBe('blueprint')
-    expect('message' in result && result.message).toContain('planned, archived')
+    expect('message' in result && result.message).toContain('planned, completed, archived')
   })
 
   it('blocks echo && illegal git mv blueprints/... (git mv as sub-variant)', () => {
     const result = validateForbiddenCommands(
-      bashInput('echo info && git mv blueprints/draft/foo blueprints/completed/foo'),
+      bashInput('echo info && git mv blueprints/draft/foo blueprints/in-progress/foo'),
     )
     expect(result.passed).toBe(false)
     expect('command' in result && result.category).toBe('blueprint')
