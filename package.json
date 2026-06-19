@@ -101,6 +101,8 @@
     "#config/e2e-preset/*": "./src/config/e2e-preset/*.ts",
     "#hooks/*.js": "./src/hooks/*.ts",
     "#hooks/*": "./src/hooks/*.ts",
+    "#errors/*.js": "./src/errors/*.ts",
+    "#errors/*": "./src/errors/*.ts",
     "#session-memory/*.js": "./src/session-memory/*.ts",
     "#session-memory/*": "./src/session-memory/*.ts",
     "#launcher/*.js": "./src/launcher/*.ts",
