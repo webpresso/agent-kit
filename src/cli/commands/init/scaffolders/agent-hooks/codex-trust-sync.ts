@@ -26,7 +26,7 @@ export interface SyncCodexHookTrustInput {
 }
 
 export function defaultCodexConfigFilePath(): string {
-  const codexHome = process.env.CODEX_HOME ?? join(homedir(), '.codex')
+  const codexHome = process.env.CODEX_HOME || join(homedir(), '.codex')
   return join(codexHome, 'config.toml')
 }
 
