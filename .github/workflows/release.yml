@@ -41,6 +41,7 @@ on:
       - 'CHANGELOG.md'
       - 'packages/*/CHANGELOG.md'
       - 'scripts/release-publish.ts'
+      - 'scripts/github-release-notes.ts'
       - '.github/workflows/release.yml'
   workflow_dispatch:
     inputs:
@@ -294,9 +295,16 @@ jobs:
           for (const pkg of packages) {
             const tag = `${pkg.packageName}@${pkg.version}`
             const title = tag
-            const notes =
-              `${pkg.packageName} v${pkg.version} is published to npm. ` +
-              `Install with \`pnpm add -D ${pkg.packageName}\`.`
+            const notesFile = `${process.env.RUNNER_TEMP}/${pkg.packageName.replace(/[^a-z0-9.-]+/giu, '-')}-${pkg.version}-notes.md`
+            execFileSync('bun', [
+              'scripts/github-release-notes.ts',
+              '--package',
+              pkg.packageName,
+              '--version',
+              pkg.version,
+              '--out',
+              notesFile,
+            ], { stdio: 'inherit' })
 
             execFileSync('git', ['tag', '-f', tag, targetCommit], { stdio: 'inherit' })
             let remoteCommit = ''
@@ -319,7 +327,7 @@ jobs:
 
             try {
               execFileSync('gh', ['release', 'view', tag], { stdio: 'ignore' })
-              execFileSync('gh', ['release', 'edit', tag, '--title', title, '--notes', notes], {
+              execFileSync('gh', ['release', 'edit', tag, '--title', title, '--notes-file', notesFile], {
                 stdio: 'inherit',
               })
             } catch {
@@ -330,8 +338,8 @@ jobs:
                 '--verify-tag',
                 '--title',
                 title,
-                '--notes',
-                notes,
+                '--notes-file',
+                notesFile,
               ], { stdio: 'inherit' })
             }
             const releaseJson = execFileSync('gh', ['release', 'view', tag, '--json', 'url'], {
@@ -381,14 +389,20 @@ jobs:
           assets="$RUNNER_TEMP/release-assets"
           tag='${{ steps.release_meta.outputs.tag }}'
           version='${{ steps.release_meta.outputs.version }}'
-          notes="Native \`wp\` runtime binaries for @webpresso/agent-kit v${version} (darwin / linux / windows × arm64 / x64). Install from npm with \`pnpm add -D @webpresso/agent-kit\`; these standalone binaries are for direct download."
+          notes_file="$RUNNER_TEMP/github-release-notes-${version}.md"
+          bun scripts/github-release-notes.ts \
+            --package '@webpresso/agent-kit' \
+            --version "$version" \
+            --runtime-assets \
+            --out "$notes_file"
           if gh release view "$tag" >/dev/null 2>&1; then
+            gh release edit "$tag" --title "v${version}" --notes-file "$notes_file"
             gh release upload "$tag" "$assets"/* --clobber
           else
             gh release create "$tag" \
               --verify-tag \
               --title "v${version}" \
-              --notes "$notes" \
+              --notes-file "$notes_file" \
               "$assets"/*
           fi
 
