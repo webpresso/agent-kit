@@ -3,7 +3,7 @@ set -eu
 wp audit no-dev-vars
 wp audit absolute-path-policy --root .
 wp audit secret-provider-quarantine
-if git diff --cached --name-only --diff-filter=ACMR | grep -q '^blueprints/'; then
+if git diff --cached --name-only --diff-filter=ACMR | grep -Eq '^blueprints/(README\.md|[^/]+/.*\.md)$'; then
   wp audit blueprint-readme-drift
 fi
 wp audit guardrails

@@ -87,7 +87,8 @@ describe('scaffoldBaseKit', () => {
     expect(readFileSync(join(repoRoot, '.node-version'), 'utf8').trim()).toBe('24.16.0')
     expect(readFileSync(join(repoRoot, '.nvmrc'), 'utf8').trim()).toBe('24.16.0')
     const preCommit = readFileSync(join(repoRoot, '.husky', 'pre-commit'), 'utf8')
-    expect(preCommit).toContain("grep -q '^blueprints/'")
+    expect(preCommit).toContain('git diff --cached --name-only --diff-filter=ACMR')
+    expect(preCommit).toContain("grep -Eq '^blueprints/(README\\.md|[^/]+/.*\\.md)$'")
     expect(preCommit).toContain('wp audit blueprint-readme-drift')
   })
 
