@@ -61,7 +61,10 @@ const BLUEPRINT_PATH = resolve(
 const PUBLIC_HISTORY_TASK_ID = '1.5'
 
 export const DEFAULT_READINESS_COMMAND_TIMEOUT_MS = 60_000
-export const PACKED_CONSUMER_SMOKE_TIMEOUT_MS = 180_000
+// The setup-only packed consumer smoke has a 5 minute inner `wp setup` phase
+// budget plus native staging/pack phases. Keep the outer readiness bound above
+// that measured workload while still failing closed on hangs.
+export const PACKED_CONSUMER_SMOKE_TIMEOUT_MS = 480_000
 export const NPM_PACK_TIMEOUT_MS = 120_000
 export const GIT_LS_FILES_TIMEOUT_MS = 15_000
 export const GH_REPO_VIEW_TIMEOUT_MS = 15_000

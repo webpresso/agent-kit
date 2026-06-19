@@ -42,6 +42,9 @@ const setupOnly = process.argv.includes('--setup-only')
 const keep = process.argv.includes('--keep')
 const includeMutation = process.argv.includes('--include-mutation')
 const skipBuild = process.argv.includes('--skip-build')
+const DEFAULT_PHASE_TIMEOUT_MS = 5 * 60 * 1000
+const PACK_TIMEOUT_MS = 2 * 60 * 1000
+const TARBALL_CONTRACT_TIMEOUT_MS = 30_000
 
 const requiredFiles = [
   'tsconfig.json',
@@ -68,7 +71,7 @@ function run(
   args: readonly string[],
   cwd: string,
   env: NodeJS.ProcessEnv = process.env,
-  timeoutMs = 5 * 60 * 1000,
+  timeoutMs = DEFAULT_PHASE_TIMEOUT_MS,
 ): RunResult {
   try {
     execFileSync(command, [...args], {
@@ -95,12 +98,15 @@ function runOrThrow(
   args: readonly string[],
   cwd: string,
   env: NodeJS.ProcessEnv = process.env,
+  timeoutMs = DEFAULT_PHASE_TIMEOUT_MS,
 ): string {
   return execFileSync(command, [...args], {
     cwd,
     env,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
+    timeout: timeoutMs,
+    killSignal: 'SIGTERM',
   })
 }
 
@@ -125,6 +131,8 @@ function packCurrentArtifact(tempRoot: string): string {
       'npm',
       ['pack', '--ignore-scripts', '--json', '--pack-destination', tempRoot],
       ROOT,
+      process.env,
+      PACK_TIMEOUT_MS,
     )
   } finally {
     restorePackedManifest(ROOT)
@@ -223,6 +231,8 @@ function assertPackedSessionMemoryNativeContract(tarballPath: string): RunResult
     entries = execFileSync('tar', ['-tf', tarballPath], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: TARBALL_CONTRACT_TIMEOUT_MS,
+      killSignal: 'SIGTERM',
     })
       .split('\n')
       .filter(Boolean)
