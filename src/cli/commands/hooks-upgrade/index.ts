@@ -9,6 +9,7 @@ import {
 } from '#cli/commands/init/scaffolders/agent-hooks/manifest.js'
 import {
   disableManagedHooksFromManifest,
+  resolveNodeBinaryForManagedHookLaunchers,
   scaffoldAgentHooks,
   trustCodexWebpressoHooksForRepo,
 } from '#cli/commands/init/scaffolders/agent-hooks/index.js'
@@ -153,7 +154,7 @@ export async function upgradeHooksForRepo(
     normalizeGlobalCodexHooksFile(
       path.join(repoRoot, '.codex', 'hooks.json'),
       {
-        nodeBinary: process.execPath,
+        nodeBinary: resolveNodeBinaryForManagedHookLaunchers(),
       },
       {},
     )

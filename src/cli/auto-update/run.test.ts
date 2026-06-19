@@ -218,14 +218,14 @@ describe('runUpdateFlow — update available + PM detected', () => {
     )
     detectMock.mockReturnValue({
       topology: 'global-node',
-      command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
+      command: ['/global/bin/vp', 'install', '-g', '@webpresso/agent-kit'],
     })
 
     await runUpdateFlow('1.0.0')
 
     expect(scheduleDeferredInstallMock).toHaveBeenCalledOnce()
     expect(scheduleDeferredInstallMock).toHaveBeenCalledWith({
-      command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
+      command: ['/global/bin/vp', 'install', '-g', '@webpresso/agent-kit'],
     })
     expect(logUpdateErrorMock).not.toHaveBeenCalled()
   })

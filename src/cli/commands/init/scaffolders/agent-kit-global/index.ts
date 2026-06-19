@@ -34,6 +34,11 @@ import {
 } from '#cli/commands/init/package-root'
 import { makeNoopSpinnerFactory, type SpinnerFactory } from '#cli/commands/init/scaffolders/spinner'
 import { isPackageLifecycleEnvironment } from '#cli/auto-update/skip.js'
+import {
+  appendGlobalCapableVpArgs,
+  type GlobalCapableVpCommandInput,
+  resolveGlobalCapableVpCommand,
+} from '#cli/global-vp.js'
 import { buildVpGlobalInstallCommand, PUBLIC_PACKAGE_NAME } from '#cli/auto-update/detect-pm.js'
 import {
   formatRootLauncherContractFailure,
@@ -51,6 +56,8 @@ export interface EnsureAgentKitGlobalInput {
   env?: NodeJS.ProcessEnv
   /** The running binary path (defaults to process.argv[1]). Used for package-root repair. */
   argv1?: string
+  /** DI seam for resolving a global-capable vp binary. */
+  resolveVpCommand?: () => GlobalCapableVpCommandInput | null
   /** DI seam for tests/global installs; defaults to the package root owning argv1/import. */
   packageRoot?: string
   /** DI seam for staging-root fallback when argv1 cannot be mapped back to the owning package. */
@@ -119,12 +126,21 @@ export function ensureAgentKitGlobal(input: EnsureAgentKitGlobalInput): EnsureAg
   const spawn = input.spawn ?? spawnSync
   const spinner = (input.spinnerFactory ?? makeNoopSpinnerFactory())('agent-kit-global')
 
-  const probe = spawn('vp', ['--version'], { encoding: 'utf8' })
+  const vpCommand =
+    input.resolveVpCommand !== undefined
+      ? input.resolveVpCommand()
+      : resolveGlobalCapableVpCommand(env.PATH ?? '')
+  if (vpCommand === null) {
+    return { kind: 'agent-kit-global-skipped-no-vp', hint: NO_VP_HINT }
+  }
+
+  const probeCommand = appendGlobalCapableVpArgs(vpCommand, ['--version'])
+  const probe = spawn(probeCommand[0], probeCommand.slice(1), { encoding: 'utf8' })
   if (probe.error || (probe.status !== null && probe.status !== 0)) {
     return { kind: 'agent-kit-global-skipped-no-vp', hint: NO_VP_HINT }
   }
 
-  const command = buildVpGlobalInstallCommand()
+  const command = buildVpGlobalInstallCommand(vpCommand)
   spinner.start()
   const install = spawn(command[0], command.slice(1), { stdio: 'inherit' })
   if (install.status !== 0) {

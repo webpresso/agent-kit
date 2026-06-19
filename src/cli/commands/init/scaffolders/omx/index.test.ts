@@ -50,6 +50,45 @@ describe('ensureOmx', () => {
     expect(spawn).toHaveBeenNthCalledWith(1, 'vp', ['update'], { stdio: 'inherit' })
   })
 
+  it('wraps Windows command-script vp launch plans for refresh and update commands', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'omx-windows-vp-'))
+    const configPath = join(dir, 'config.toml')
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }, { status: 0 }])
+    const result = ensureOmx({
+      repoRoot: '/tmp/repo',
+      options: { overwrite: false, dryRun: false },
+      spawn,
+      resolveVpCommand: () => ({
+        command: 'C:\\Windows\\cmd.exe',
+        argsPrefix: ['/d', '/s', '/c', 'C:\\Users\\me\\.vite-plus\\bin\\vp.cmd'],
+        executable: 'C:\\Users\\me\\.vite-plus\\bin\\vp.cmd',
+      }),
+      configPath,
+    })
+
+    expect(result).toMatchObject({ kind: 'omx-ok', installed: false })
+    expect(spawn).toHaveBeenNthCalledWith(
+      1,
+      'C:\\Windows\\cmd.exe',
+      ['/d', '/s', '/c', 'C:\\Users\\me\\.vite-plus\\bin\\vp.cmd', 'update'],
+      { stdio: 'inherit' },
+    )
+    expect(spawn).toHaveBeenNthCalledWith(
+      3,
+      'C:\\Windows\\cmd.exe',
+      [
+        '/d',
+        '/s',
+        '/c',
+        'C:\\Users\\me\\.vite-plus\\bin\\vp.cmd',
+        'update',
+        '-g',
+        'oh-my-codex',
+      ],
+      { stdio: 'inherit' },
+    )
+  })
+
   it('returns omx-skipped-dry-run without spawning anything', () => {
     const spawn = makeSpawn([])
     const result = ensureOmx({

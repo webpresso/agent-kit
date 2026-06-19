@@ -15,6 +15,8 @@ import {
 
 installManagedRunnerHermeticHooks()
 
+const GLOBAL_VP = '/global/bin/vp'
+
 describe('wp package-manager commands', () => {
   function spawnResult(status: number | null, error?: Error) {
     return {
@@ -63,6 +65,7 @@ describe('wp package-manager commands', () => {
     expect(
       runPackageManagerCommand('update', {
         argv: ['node', 'wp', 'update'],
+        resolveVpCommand: () => GLOBAL_VP,
         cwd: '/repo/packages/agent-kit',
         ownershipState: defaultToolingOwnershipState(),
         exists: (target) =>
@@ -74,7 +77,52 @@ describe('wp package-manager commands', () => {
     ).toBe(0)
 
     expect(run).toHaveBeenCalledTimes(1)
-    expect(run).toHaveBeenNthCalledWith(1, 'vp', ['install', '-g', '@webpresso/agent-kit'])
+    expect(run).toHaveBeenNthCalledWith(1, GLOBAL_VP, ['install', '-g', '@webpresso/agent-kit'])
+  })
+
+  it('wraps Windows command-script vp launch plans for tooling refresh commands', () => {
+    const run = vi.fn(() => spawnResult(0))
+
+    expect(
+      runPackageManagerCommand('update', {
+        argv: ['node', 'wp', 'update'],
+        resolveVpCommand: () => ({
+          command: 'C:\\Windows\\cmd.exe',
+          argsPrefix: ['/d', '/s', '/c', 'C:\\Users\\me\\.vite-plus\\bin\\vp.cmd'],
+          executable: 'C:\\Users\\me\\.vite-plus\\bin\\vp.cmd',
+        }),
+        cwd: '/repo/packages/agent-kit',
+        ownershipState: defaultToolingOwnershipState(),
+        exists: (target) => String(target) === '/repo/packages/agent-kit/package.json',
+        run,
+      }),
+    ).toBe(0)
+
+    expect(run).toHaveBeenCalledWith('C:\\Windows\\cmd.exe', [
+      '/d',
+      '/s',
+      '/c',
+      'C:\\Users\\me\\.vite-plus\\bin\\vp.cmd',
+      'install',
+      '-g',
+      '@webpresso/agent-kit',
+    ])
+  })
+
+  it('reports a missing global-capable vp before starting tooling refresh steps', () => {
+    const run = vi.fn(() => spawnResult(0))
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    expect(
+      runPackageManagerCommand('update', {
+        argv: ['node', 'wp', 'update'],
+        resolveVpCommand: () => null,
+        run,
+      }),
+    ).toBe(1)
+
+    expect(run).not.toHaveBeenCalled()
+    expect(error.mock.calls.join('\n')).toContain('no global-capable vp executable found')
   })
 
   it('runs local verbs from the nearest package root when invoked in a nested directory', () => {
@@ -100,6 +148,7 @@ describe('wp package-manager commands', () => {
     expect(
       runPackageManagerCommand('update', {
         argv: ['node', 'wp', 'update', '--deps'],
+        resolveVpCommand: () => GLOBAL_VP,
         cwd: '/repo/packages/agent-kit/src',
         exists: (target) => String(target) === '/repo/packages/agent-kit/package.json',
         run,
@@ -118,6 +167,7 @@ describe('wp package-manager commands', () => {
     expect(
       runPackageManagerCommand('update', {
         argv: ['node', 'wp', 'update', '--deps', '--latest', 'typescript'],
+        resolveVpCommand: () => GLOBAL_VP,
         cwd: '/repo/packages/agent-kit',
         exists: (target) => String(target) === '/repo/packages/agent-kit/package.json',
         run,
@@ -135,6 +185,7 @@ describe('wp package-manager commands', () => {
     expect(
       runPackageManagerCommand('update', {
         argv: ['node', 'wp', 'update', 'typescript'],
+        resolveVpCommand: () => GLOBAL_VP,
         cwd: '/repo/packages/agent-kit',
         exists: (target) => String(target) === '/repo/packages/agent-kit/package.json',
         run,
@@ -153,6 +204,7 @@ describe('wp package-manager commands', () => {
     expect(
       runPackageManagerCommand('update', {
         argv: ['node', 'wp', 'update', '--deps', '--global'],
+        resolveVpCommand: () => GLOBAL_VP,
         run,
       }),
     ).toBe(1)
@@ -168,6 +220,7 @@ describe('wp package-manager commands', () => {
     expect(
       runPackageManagerCommand('update', {
         argv: ['node', 'wp', 'update', '--deps'],
+        resolveVpCommand: () => GLOBAL_VP,
         cwd: '/umbrella/no-package-here',
         exists: () => false,
         run,
@@ -185,6 +238,7 @@ describe('wp package-manager commands', () => {
     expect(
       runPackageManagerCommand('update', {
         argv: ['node', 'wp', 'update', '--dep'],
+        resolveVpCommand: () => GLOBAL_VP,
         run,
       }),
     ).toBe(1)
@@ -204,6 +258,7 @@ describe('wp package-manager commands', () => {
     expect(
       runPackageManagerCommand('update', {
         argv: ['node', 'wp', 'update', '--global'],
+        resolveVpCommand: () => GLOBAL_VP,
         ownershipState,
         exists: () => true,
         gstackRoot: '/fake-home/.claude/skills/gstack',
@@ -211,7 +266,7 @@ describe('wp package-manager commands', () => {
       }),
     ).toBe(0)
 
-    expect(run).toHaveBeenNthCalledWith(1, 'vp', ['update', '-g', 'oh-my-codex'])
+    expect(run).toHaveBeenNthCalledWith(1, GLOBAL_VP, ['update', '-g', 'oh-my-codex'])
     expect(run).toHaveBeenNthCalledWith(2, 'claude', [
       'plugin',
       'update',
@@ -230,7 +285,7 @@ describe('wp package-manager commands', () => {
     expect(run).toHaveBeenNthCalledWith(4, './setup', ['--team'], {
       cwd: '/fake-home/.claude/skills/gstack',
     })
-    expect(run).toHaveBeenNthCalledWith(5, 'vp', ['install', '-g', '@webpresso/agent-kit'])
+    expect(run).toHaveBeenNthCalledWith(5, GLOBAL_VP, ['install', '-g', '@webpresso/agent-kit'])
   })
 
   it('updates project-scoped OMC only when the current repo owns it', () => {
@@ -241,6 +296,7 @@ describe('wp package-manager commands', () => {
     expect(
       runPackageManagerCommand('update', {
         argv: ['node', 'wp', 'update', '--global'],
+        resolveVpCommand: () => GLOBAL_VP,
         ownershipState,
         repoKey: 'repo-123',
         run,
@@ -254,7 +310,7 @@ describe('wp package-manager commands', () => {
       'project',
       'oh-my-claudecode',
     ])
-    expect(run).toHaveBeenNthCalledWith(2, 'vp', ['install', '-g', '@webpresso/agent-kit'])
+    expect(run).toHaveBeenNthCalledWith(2, GLOBAL_VP, ['install', '-g', '@webpresso/agent-kit'])
   })
 
   it('updates omx only once when both user and project ownership exist', () => {
@@ -266,6 +322,7 @@ describe('wp package-manager commands', () => {
     expect(
       runPackageManagerCommand('update', {
         argv: ['node', 'wp', 'update'],
+        resolveVpCommand: () => GLOBAL_VP,
         ownershipState,
         repoKey: 'repo-123',
         run,
@@ -275,7 +332,7 @@ describe('wp package-manager commands', () => {
     expect(
       run.mock.calls.filter(
         ([command, args]) =>
-          command === 'vp' &&
+          command === GLOBAL_VP &&
           Array.isArray(args) &&
           args.join(' ') === 'update -g oh-my-codex',
       ),
@@ -291,6 +348,7 @@ describe('wp package-manager commands', () => {
     expect(
       runPackageManagerCommand('update', {
         argv: ['node', 'wp', 'update', '--global'],
+        resolveVpCommand: () => GLOBAL_VP,
         ownershipState,
         exists: (target) => String(target) !== '/fake-home/.claude/skills/gstack/.git',
         gstackRoot: '/fake-home/.claude/skills/gstack',
@@ -323,6 +381,7 @@ describe('wp package-manager commands', () => {
     expect(
       runPackageManagerCommand('update', {
         argv: ['node', 'wp', 'update', '-g'],
+        resolveVpCommand: () => GLOBAL_VP,
         ownershipState,
         exists: () => true,
         gstackRoot: '/fake-home/.claude/skills/gstack',
@@ -339,7 +398,7 @@ describe('wp package-manager commands', () => {
 
   it('reports missing global tools without throwing', () => {
     const run = vi.fn((command: string) => {
-      if (command === 'vp') return spawnResult(null, new Error('spawn vp ENOENT'))
+      if (command === GLOBAL_VP) return spawnResult(null, new Error('spawn vp ENOENT'))
       throw new Error(`spawn ${command} ENOENT`)
     })
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -350,6 +409,7 @@ describe('wp package-manager commands', () => {
     expect(
       runPackageManagerCommand('update', {
         argv: ['node', 'wp', 'update', '--global'],
+        resolveVpCommand: () => GLOBAL_VP,
         ownershipState,
         run,
       }),

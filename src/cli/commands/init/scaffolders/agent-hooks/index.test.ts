@@ -22,6 +22,7 @@ import {
   hoistTopLevelEvents,
   hookSubcommandFor,
   resolvePackageRootForHookLaunchers,
+  resolveNodeBinaryForManagedHookLaunchers,
   scaffoldAgentHooks,
   trustCodexWebpressoHooksForRepo,
   trustCodexPresetHooksForUser,
@@ -82,6 +83,15 @@ function installFakeWebpressoBins(repoRoot: string): void {
   }
 }
 
+function initGitRepo(root: string): void {
+  const result = spawnSync('git', ['init'], {
+    cwd: root,
+    encoding: 'utf8',
+    stdio: 'pipe',
+  })
+  expect(result.status, result.stderr).toBe(0)
+}
+
 async function runShellCommand(
   command: string,
   options: {
@@ -105,7 +115,17 @@ async function runShellCommand(
       stderr += chunk.toString()
     })
     child.on('error', reject)
+    const timeout = setTimeout(() => {
+      child.kill('SIGTERM')
+      resolve({
+        status: null,
+        stdout,
+        stderr: `${stderr}\nTimed out waiting for hook command to exit.`,
+        command,
+      })
+    }, 5000)
     child.on('close', (status) => {
+      clearTimeout(timeout)
       resolve({ status, stdout, stderr, command })
     })
   })
@@ -128,11 +148,13 @@ describe('scaffoldAgentHooks', () => {
   let repoRoot: string
   let previousCodexHome: string | undefined
   let previousHome: string | undefined
+  let previousHookNodePath: string | undefined
 
   beforeEach(() => {
     repoRoot = mkdtempSync(join(tmpdir(), 'wp-agent-hooks-'))
     previousCodexHome = process.env.CODEX_HOME
     previousHome = process.env.HOME
+    previousHookNodePath = process.env.WP_HOOK_NODE_PATH
     process.env.HOME = join(repoRoot, '.home')
     process.env.CODEX_HOME = join(repoRoot, '.codex-home')
   })
@@ -142,6 +164,8 @@ describe('scaffoldAgentHooks', () => {
     else process.env.CODEX_HOME = previousCodexHome
     if (previousHome === undefined) delete process.env.HOME
     else process.env.HOME = previousHome
+    if (previousHookNodePath === undefined) delete process.env.WP_HOOK_NODE_PATH
+    else process.env.WP_HOOK_NODE_PATH = previousHookNodePath
     await import('node:fs/promises').then((fs) => fs.rm(repoRoot, { recursive: true, force: true }))
   })
 
@@ -293,7 +317,9 @@ describe('scaffoldAgentHooks', () => {
       readFileSync(join(repoRoot, '.claude', 'hooks', 'check-gstack.sh'), 'utf8'),
     ).toThrow()
 
-    const settings = JSON.parse(readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8')) as {
+    const settings = JSON.parse(
+      readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8'),
+    ) as {
       hooks: {
         SessionStart?: Array<{ hooks: Array<{ command: string }> }>
         PreToolUse?: Array<{ hooks: Array<{ command: string }> }>
@@ -406,6 +432,23 @@ describe('scaffoldAgentHooks', () => {
     )
     expect(sessionLauncher).toContain('bin/wp-sessionstart-routing.js')
     expect(sessionLauncher).not.toContain('exec wp hook sessionstart-routing')
+  })
+
+  it('honors WP_HOOK_NODE_PATH when setup itself runs under a non-Node runtime', async () => {
+    const fakeNode = join(repoRoot, 'toolchain', 'node')
+    mkdirSync(join(repoRoot, 'toolchain'), { recursive: true })
+    writeFileSync(fakeNode, '#!/bin/sh\nexit 0\n', 'utf8')
+    chmodSync(fakeNode, 0o755)
+    process.env.WP_HOOK_NODE_PATH = fakeNode
+
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+
+    const launcher = readFileSync(
+      join(repoRoot, '.codex', 'managed-hooks', 'wp-sessionstart-routing.sh'),
+      'utf8',
+    )
+    expect(resolveNodeBinaryForManagedHookLaunchers()).toBe(fakeNode)
+    expect(launcher).toContain(`exec ${quoteShell(fakeNode)} `)
   })
 
   it('does not render local runtime or node_modules preambles', async () => {
@@ -915,10 +958,14 @@ describe('scaffoldAgentHooks', () => {
     }
 
     expect(
-      settings.hooks.PreToolUse.some((group) => group.matcher === 'Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*'),
+      settings.hooks.PreToolUse.some(
+        (group) => group.matcher === 'Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*',
+      ),
     ).toBe(true)
     expect(
-      settings.hooks.PostToolUse.some((group) => group.matcher === 'Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*'),
+      settings.hooks.PostToolUse.some(
+        (group) => group.matcher === 'Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*',
+      ),
     ).toBe(true)
     expect('PostToolBatch' in settings.hooks).toBe(false)
   })
@@ -1825,7 +1872,11 @@ hooks:
 
     const siblingCwd = mkdtempSync(join(repoRoot, 'codex-failing-pretool-'))
     const pretoolLauncher = join(repoRoot, '.codex', 'managed-hooks', 'wp-pretool-guard.sh')
-    writeFileSync(pretoolLauncher, '#!/bin/sh\nprintf "actual guard failure\\n" >&2\nexit 2\n', 'utf8')
+    writeFileSync(
+      pretoolLauncher,
+      '#!/bin/sh\nprintf "actual guard failure\\n" >&2\nexit 2\n',
+      'utf8',
+    )
     chmodSync(pretoolLauncher, 0o755)
 
     const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
@@ -1852,7 +1903,10 @@ hooks:
     const launcherPath = join(repoRoot, '.codex', 'managed-hooks', 'wp-stop-qa.sh')
     writeFileSync(
       launcherPath,
-      readFileSync(launcherPath, 'utf8').replace(process.execPath, '/missing/nonexistent-node'),
+      readFileSync(launcherPath, 'utf8').replace(
+        resolveNodeBinaryForManagedHookLaunchers(),
+        '/missing/nonexistent-node',
+      ),
       'utf8',
     )
     const result = spawnSync('sh', [launcherPath], {
@@ -1867,7 +1921,103 @@ hooks:
     expect(() => JSON.parse(result.stdout)).not.toThrow()
   })
 
+  it('managed hook wrappers degrade when the native runtime is absent instead of using the built JS lane', async () => {
+    const packageRoot = mkdtempSync(join(repoRoot, 'runtime-absent-package-'))
+    mkdirSync(join(packageRoot, 'bin'), { recursive: true })
+    mkdirSync(join(packageRoot, 'dist', 'esm', 'cli'), { recursive: true })
+    for (const fileName of [
+      '_run.js',
+      'runtime-lanes.js',
+      '_managed-hook.js',
+      'wp-pretool-guard.js',
+      'wp-stop-qa.js',
+    ]) {
+      writeFileSync(
+        join(packageRoot, 'bin', fileName),
+        readFileSync(join(resolvePackageRootForHookLaunchers(), 'bin', fileName), 'utf8'),
+        'utf8',
+      )
+    }
+    writeFileSync(
+      join(packageRoot, 'package.json'),
+      JSON.stringify({ name: '@webpresso/agent-kit', type: 'module' }),
+      'utf8',
+    )
+    writeFileSync(join(packageRoot, '.node-version'), '0.0.0', 'utf8')
+    writeFileSync(
+      join(packageRoot, 'dist', 'esm', 'cli', 'cli.js'),
+      'throw new Error("built lane should not execute")\n',
+      'utf8',
+    )
+
+    const stop = spawnSync(process.execPath, [join(packageRoot, 'bin', 'wp-stop-qa.js')], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: { ...process.env, PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+    })
+    const preTool = spawnSync(process.execPath, [join(packageRoot, 'bin', 'wp-pretool-guard.js')], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: { ...process.env, PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+    })
+
+    expect(stop.status, stop.stderr).toBe(0)
+    expect(stop.stdout).toBe('{}\n')
+    expect(stop.stderr).toContain('native hook runtime unavailable')
+    expect(stop.stderr).not.toContain('current Node is')
+    expect(stop.stderr).not.toContain('built lane should not execute')
+
+    expect(preTool.status, preTool.stderr).toBe(0)
+    expect(JSON.parse(preTool.stdout)).toEqual({
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'deny',
+        permissionDecisionReason:
+          'wp native hook runtime is unavailable. Reinstall @webpresso/agent-kit without omitting optional dependencies and re-run wp setup.',
+      },
+    })
+    expect(preTool.stderr).not.toContain('current Node is')
+    expect(preTool.stderr).not.toContain('built lane should not execute')
+  })
+
+  it('managed Codex launchers preserve event-specific fallbacks when repo root cannot be entered', async () => {
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+
+    const missingRepoRoot = join(repoRoot, 'missing-repo-root')
+    const preToolLauncherPath = join(repoRoot, '.codex', 'managed-hooks', 'wp-pretool-guard.sh')
+    const stopLauncherPath = join(repoRoot, '.codex', 'managed-hooks', 'wp-stop-qa.sh')
+    for (const launcherPath of [preToolLauncherPath, stopLauncherPath]) {
+      writeFileSync(
+        launcherPath,
+        readFileSync(launcherPath, 'utf8').replace(quoteShell(repoRoot), quoteShell(missingRepoRoot)),
+        'utf8',
+      )
+    }
+
+    const preTool = spawnSync('sh', [preToolLauncherPath], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+    })
+    const stop = spawnSync('sh', [stopLauncherPath], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+    })
+
+    expect(preTool.status).toBe(0)
+    expect(JSON.parse(preTool.stdout)).toMatchObject({
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'deny',
+      },
+    })
+    expect(stop.status).toBe(0)
+    expect(stop.stdout).toBe('{}\n')
+  })
+
   it('keeps Codex hook commands executable from a sibling cwd instead of failing with 127', async () => {
+    initGitRepo(repoRoot)
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
 
     const binPath = join(
@@ -1899,6 +2049,7 @@ hooks:
   })
 
   it('keeps the Codex Stop hook executable from a sibling cwd instead of failing with 127', async () => {
+    initGitRepo(repoRoot)
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
 
     const binPath = join(
@@ -1929,6 +2080,8 @@ hooks:
   })
 
   it('executes every generated Claude hook command successfully from outside repo root', async () => {
+    initGitRepo(repoRoot)
+    process.env.WP_HOOK_NODE_PATH = process.execPath
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
     installFakeWebpressoBins(repoRoot)
 
@@ -1958,6 +2111,7 @@ hooks:
             PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
             HOME: process.env.HOME,
             CLAUDE_PROJECT_DIR: repoRoot,
+            WP_SKIP_UPDATE_CHECK: '1',
           },
         }),
       ),
@@ -1969,6 +2123,8 @@ hooks:
   })
 
   it('executes every generated Codex hook command successfully from a sibling cwd', async () => {
+    initGitRepo(repoRoot)
+    process.env.WP_HOOK_NODE_PATH = process.execPath
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
     installFakeWebpressoBins(repoRoot)
 
@@ -1992,7 +2148,7 @@ hooks:
       commands.map((command) =>
         runShellCommand(command, {
           cwd: siblingCwd,
-          env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+          env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin', WP_SKIP_UPDATE_CHECK: '1' },
         }),
       ),
     )
@@ -2129,7 +2285,17 @@ describe('plugin-native invariants — .claude/settings.json', () => {
       group.matcher ? group.matcher.split('|') : [],
     )
 
-    for (const term of ['Bash', 'Read', 'Grep', 'WebFetch', 'Agent', 'Write', 'Edit', 'MultiEdit', 'mcp__.*']) {
+    for (const term of [
+      'Bash',
+      'Read',
+      'Grep',
+      'WebFetch',
+      'Agent',
+      'Write',
+      'Edit',
+      'MultiEdit',
+      'mcp__.*',
+    ]) {
       expect(matchers).toContain(term)
     }
   })
