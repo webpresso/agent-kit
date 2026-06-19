@@ -44,11 +44,15 @@ tags:
 
 ## Verification
 
-- `./node_modules/.bin/vitest run src/cli/commands/init/init.integration.test.ts -t 'outside a git repo|non-git directory|project-only setup'` (5 focused non-git tests; initial positive-path version first failed against old behavior, then passed)
-- `./bin/wp test --file src/cli/commands/init/init.integration.test.ts`
-- `./node_modules/.bin/vitest run src/cli/commands/init/repo-collection-guard.test.ts src/cli/commands/init/detect-consumer.test.ts`
-- `vp run typecheck`
-- `vp run lint`
-- `./bin/wp audit tph`
-- `./bin/wp blueprint show 2026-06-19-non-git-user-only-setup-global-hooks`
-- `WP_SKIP_AUTO_INSTALL=1 WP_SKIP_CLAUDE_PLUGIN=1 WP_SKIP_CODEX_PLUGIN=1 WP_SKIP_RTK=1 ./bin/wp setup --cwd <non-git-temp> --dry-run --host none`
+- RED: `./node_modules/.bin/vitest run src/cli/commands/init/init.integration.test.ts -t 'outside a git repo|non-git directory|project-only setup'` failed 5 focused non-git tests against the old behavior.
+- GREEN: `./node_modules/.bin/vitest run src/cli/commands/init/init.integration.test.ts -t 'outside a git repo|non-git directory|project-only setup'` passed 5 focused non-git tests.
+- `./node_modules/.bin/vitest run src/cli/commands/init/repo-collection-guard.test.ts src/cli/commands/init/detect-consumer.test.ts` passed 52 adjacent init tests.
+- `vp run typecheck` passed.
+- `vp run lint` passed.
+- `./bin/wp audit tph` passed.
+- `vp run blueprints:check` passed.
+- `./bin/wp audit blueprint-readme-drift` passed.
+- `./bin/wp blueprint show 2026-06-19-non-git-user-only-setup-global-hooks` passed.
+- `WP_SKIP_AUTO_INSTALL=1 WP_SKIP_CLAUDE_PLUGIN=1 WP_SKIP_CODEX_PLUGIN=1 WP_SKIP_RTK=1 ./bin/wp setup --cwd <non-git-temp> --dry-run --host none` passed and reported user-only setup.
+
+Validation gap: full `./bin/wp test --file src/cli/commands/init/init.integration.test.ts` and direct full-file Vitest both hung in this worktree after the focused regression tests passed; the affected non-git cases and adjacent init tests were run directly as the bounded substitute.

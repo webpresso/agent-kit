@@ -81,6 +81,18 @@ describe('release workflow publish path', () => {
     expect(workflow).toContain("- 'scripts/release-publish.ts'")
   })
 
+  it('installs release native-artifact dependencies without lifecycle scripts', () => {
+    const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
+    const nativeMatrixJob = workflow.slice(
+      workflow.indexOf('  session-memory-native-artifacts:'),
+      workflow.indexOf('  release:'),
+    )
+
+    expect(nativeMatrixJob).toContain('Session memory native (${{ matrix.target }})')
+    expect(nativeMatrixJob).toContain('pnpm install --frozen-lockfile --ignore-scripts')
+    expect(nativeMatrixJob).not.toContain('run: pnpm install --frozen-lockfile\n')
+  })
+
   it('publishes with npm public/provenance flow instead of legacy changeset or GitHub Packages publish', () => {
     const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
     expect(workflow.includes('pnpm changeset publish')).toBe(false)

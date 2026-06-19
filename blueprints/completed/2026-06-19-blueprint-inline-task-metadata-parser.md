@@ -35,5 +35,14 @@ Blueprint task metadata appeared in compact form such as `**Status:** todo **Dep
 
 ## Verification
 
-- `./node_modules/.bin/vitest run src/blueprint/core/parser.test.ts src/cli/commands/blueprint/mutations.test.ts src/blueprint/lifecycle/audit.test.ts -t 'compact inline task metadata|compact bracketed task status|compact inline status metadata'`
-- `./bin/wp blueprint audit --all --strict` confirms the invalid inline-status parser errors are gone; remaining failures are historical completed-blueprint content-policy violations.
+- RED: `./node_modules/.bin/vitest run src/blueprint/core/parser.test.ts src/cli/commands/blueprint/mutations.test.ts src/blueprint/lifecycle/audit.test.ts -t 'compact inline task metadata|compact bracketed task status|compact inline status metadata'` failed 3 focused tests against the old parser/mutation behavior.
+- GREEN: the same focused Vitest command passed 3 tests.
+- `./bin/wp test --file src/blueprint/core/parser.test.ts` passed.
+- `./bin/wp test --file src/cli/commands/blueprint/mutations.test.ts` passed.
+- `./bin/wp test --file src/blueprint/lifecycle/audit.test.ts` passed.
+- `vp run typecheck` passed.
+- `vp run lint` passed.
+- `vp run blueprints:check` passed.
+- `./bin/wp audit blueprint-readme-drift` passed.
+- `./bin/wp blueprint show 2026-06-19-blueprint-inline-task-metadata-parser` passed.
+- `./bin/wp blueprint audit --all --strict` no longer reports invalid inline-status parser errors; it still fails on pre-existing historical completed-blueprint acceptance/zero-task waiver issues.
