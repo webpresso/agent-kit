@@ -18,6 +18,9 @@ import {
   type GlobalCapableVpCommandInput,
   resolveGlobalCapableVpCommand,
 } from '#cli/global-vp.js'
+import { resolveAgentKitPackageRoot } from '#cli/commands/init/package-root'
+import { ensureClaudeCodeUserPlugin } from '#cli/commands/init/scaffolders/claude-plugin/index.js'
+import { ensureCodexUserPlugin } from '#cli/commands/init/scaffolders/codex-plugin/index.js'
 import { getManagedRunner } from '#tool-runtime'
 
 export const PACKAGE_MANAGER_VERBS = ['install', 'add', 'remove', 'update', 'exec', 'run'] as const
@@ -47,6 +50,9 @@ export interface PackageManagerCommandDeps {
     options?: PackageManagerRunOptions,
   ) => SpawnSyncReturns<string>
   readonly resolveVpCommand?: () => GlobalCapableVpCommandInput | null
+  readonly packageRoot?: string | null
+  readonly refreshClaudePlugin?: (packageRoot: string) => SpawnSyncReturns<string>
+  readonly refreshCodexPlugin?: (packageRoot: string) => SpawnSyncReturns<string>
 }
 
 const HELP_BY_VERB: Readonly<Record<PackageManagerVerb, string>> = {
@@ -79,6 +85,9 @@ interface RequiredGlobalUpdateDeps {
   readonly ownershipState: ToolingOwnershipState
   readonly repoKey: string | null
   readonly vpCommand: GlobalCapableVpCommandInput
+  readonly packageRoot: string | null
+  readonly refreshClaudePlugin: (packageRoot: string) => SpawnSyncReturns<string>
+  readonly refreshCodexPlugin: (packageRoot: string) => SpawnSyncReturns<string>
   readonly run: (
     command: string,
     args: readonly string[],
@@ -161,7 +170,13 @@ function runGlobalUpdateCommand(deps: PackageManagerCommandDeps): number {
     gstackRoot: deps.gstackRoot ?? defaultGstackRoot(),
     mkdir: deps.mkdir ?? mkdirSync,
     ownershipState: deps.ownershipState ?? readToolingOwnershipState(),
+    packageRoot:
+      deps.packageRoot === undefined
+        ? resolveAgentKitPackageRoot({ moduleUrl: import.meta.url })
+        : deps.packageRoot,
     repoKey: deps.repoKey ?? tryReadRepoKey(cwd),
+    refreshClaudePlugin: deps.refreshClaudePlugin ?? refreshClaudeUserPlugin,
+    refreshCodexPlugin: deps.refreshCodexPlugin ?? refreshCodexUserPlugin,
     vpCommand,
     run: deps.run ?? defaultRun,
   }
@@ -235,6 +250,16 @@ function buildGlobalUpdateSteps(
     args: command.slice(1),
   })
 
+  steps.push({
+    id: 'claude-plugin',
+    run: refreshClaudePlugin,
+  })
+
+  steps.push({
+    id: 'codex-plugin',
+    run: refreshCodexPlugin,
+  })
+
   return steps
 }
 
@@ -258,6 +283,71 @@ function refreshGstack(deps: RequiredGlobalUpdateDeps): SpawnSyncReturns<string>
   }
 
   return deps.run('./setup', ['--team'], { cwd: deps.gstackRoot })
+}
+
+function refreshCodexPlugin(deps: RequiredGlobalUpdateDeps): SpawnSyncReturns<string> {
+  if (!deps.packageRoot) {
+    return spawnLike(1, new Error('could not resolve @webpresso/agent-kit package root'))
+  }
+  return deps.refreshCodexPlugin(deps.packageRoot)
+}
+
+function refreshClaudePlugin(deps: RequiredGlobalUpdateDeps): SpawnSyncReturns<string> {
+  if (!deps.packageRoot) {
+    return spawnLike(1, new Error('could not resolve @webpresso/agent-kit package root'))
+  }
+  return deps.refreshClaudePlugin(deps.packageRoot)
+}
+
+function refreshClaudeUserPlugin(packageRoot: string): SpawnSyncReturns<string> {
+  const result = ensureClaudeCodeUserPlugin({
+    options: { dryRun: false, overwrite: false },
+    packageRoot,
+  })
+
+  switch (result.kind) {
+    case 'claude-plugin-installed':
+    case 'claude-plugin-skipped-no-cli':
+    case 'claude-plugin-skipped-opt-out':
+    case 'claude-plugin-skipped-package-lifecycle':
+      return spawnLike(0)
+    case 'claude-plugin-skipped-dry-run':
+    case 'claude-plugin-unavailable':
+    case 'claude-plugin-failed':
+      return spawnLike(1, new Error(result.kind))
+  }
+}
+
+function refreshCodexUserPlugin(packageRoot: string): SpawnSyncReturns<string> {
+  const result = ensureCodexUserPlugin({
+    options: { dryRun: false, overwrite: false },
+    packageRoot,
+  })
+
+  switch (result.kind) {
+    case 'codex-plugin-installed':
+    case 'codex-plugin-skipped-no-cli':
+    case 'codex-plugin-skipped-opt-out':
+    case 'codex-plugin-skipped-package-lifecycle':
+      return spawnLike(0)
+    case 'codex-plugin-skipped-dry-run':
+    case 'codex-plugin-unavailable':
+    case 'codex-plugin-timed-out':
+    case 'codex-plugin-failed':
+      return spawnLike(1, new Error(result.kind))
+  }
+}
+
+function spawnLike(status: number, error?: Error): SpawnSyncReturns<string> {
+  return {
+    error,
+    output: [],
+    pid: 0,
+    signal: null,
+    status,
+    stderr: '',
+    stdout: '',
+  }
 }
 
 function defaultGstackRoot(): string {
