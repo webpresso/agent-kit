@@ -82,6 +82,8 @@ const NATIVE_WORKSPACE_DIRNAME = join('native', 'session-memory-engine')
 const BUILD_PACKAGE = 'session-memory-napi'
 const MODULE_BASENAME = 'session_memory_napi'
 const BUILD_LOCK_STALE_MS = 10 * 60 * 1000
+const BUILD_LOCK_WAIT_MS = 10 * 60 * 1000
+const BUILD_LOCK_POLL_MS = 250
 
 let cachedModule: NativeSessionMemoryModule | null = null
 
@@ -188,14 +190,34 @@ function shouldRebuild(nodePath: string, nativeWorkspaceRoot: string): boolean {
   return newestNativeWorkspaceMtimeMs(nativeWorkspaceRoot) > builtAt
 }
 
+function sleepSync(ms: number) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
+}
+
+function acquireNativeBuildLock(lockTarget: string): () => void {
+  const started = Date.now()
+
+  while (true) {
+    try {
+      return lockfile.lockSync(lockTarget, {
+        realpath: false,
+        stale: BUILD_LOCK_STALE_MS,
+        update: 30_000,
+      })
+    } catch (error) {
+      const code = (error as { code?: string }).code
+      if (code !== 'ELOCKED') throw error
+      if (Date.now() - started > BUILD_LOCK_WAIT_MS) {
+        throw new Error(`Timed out waiting for native session-memory build lock at ${lockTarget}`)
+      }
+      sleepSync(BUILD_LOCK_POLL_MS)
+    }
+  }
+}
+
 function withNativeBuildLock<T>(cacheRoot: string, build: () => T): T {
   const lockTarget = join(cacheRoot, '.build.lock')
-  const release = lockfile.lockSync(lockTarget, {
-    realpath: false,
-    stale: BUILD_LOCK_STALE_MS,
-    update: 30_000,
-    retries: { retries: 300, minTimeout: 100, maxTimeout: 1_000, factor: 1.2 },
-  })
+  const release = acquireNativeBuildLock(lockTarget)
   try {
     return build()
   } finally {

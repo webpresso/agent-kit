@@ -15,6 +15,14 @@ describe('native session-memory runtime build coordination', () => {
     expect(source).toContain("join(cacheRoot, '.build.lock')")
   })
 
+  it('uses an explicit sync lock wait loop instead of unsupported proper-lockfile retries', () => {
+    const source = readFileSync(sourcePath, 'utf8')
+
+    expect(source).toContain("code !== 'ELOCKED'")
+    expect(source).toContain('sleepSync(BUILD_LOCK_POLL_MS)')
+    expect(source).not.toContain('retries: {')
+  })
+
   it('rechecks the compiled addon after acquiring the build lock', () => {
     const source = readFileSync(sourcePath, 'utf8')
     const lockedBuild = source.slice(source.indexOf('return withNativeBuildLock'))
