@@ -1,9 +1,20 @@
 #!/usr/bin/env sh
 set -eu
-wp audit no-dev-vars
-wp audit absolute-path-policy --root .
-wp audit secret-provider-quarantine
-if git diff --cached --name-only --diff-filter=ACMR | grep -Eq '^blueprints/(README\.md|[^/]+/.*\.md)$'; then
+
+STAGED="$(git diff --cached --name-only --diff-filter=ACMR)"
+
+# Fast, file-scoped audits — skip entirely on doc/blueprint-only commits.
+if printf '%s\n' "$STAGED" | grep -Eq '\.(ts|tsx|js|jsx|cjs|mjs|json|ya?ml|sh|tmpl)$|(^|/)\.env|\.dev\.vars$'; then
+  wp audit no-dev-vars
+  wp audit absolute-path-policy --root .
+  wp audit secret-provider-quarantine
+fi
+
+# Blueprint index drift — only when blueprint markdown is staged.
+if printf '%s\n' "$STAGED" | grep -Eq '^blueprints/(README\.md|[^/]+/.*\.md)$'; then
   wp audit blueprint-readme-drift
 fi
-wp audit guardrails
+
+# The whole-repo guardrails suite (catalog-drift, package-surface,
+# reference-parity, and other repo-wide audits) is CI-owned — see
+# .github/workflows/ci.yml — and is intentionally NOT run per-commit.

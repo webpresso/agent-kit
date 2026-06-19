@@ -16,7 +16,7 @@ if printf '%s\n' "$STAGED" | grep -Eq '^blueprints/(README\.md|[^/]+/.*\.md)$'; 
   "$ROOT/bin/wp" audit blueprint-readme-drift
 fi
 
-# NOTE: the full `wp audit guardrails` suite (catalog-drift, package-surface,
-# reference-parity, and ~42 other whole-repo audits) is intentionally NOT run
-# per-commit. It is a whole-repo, CI-grade gate owned by
+# NOTE: the whole-repo guardrails suite (catalog-drift, package-surface,
+# reference-parity, and ~42 other repo-wide audits) is intentionally NOT run
+# per-commit. It is a CI-grade gate owned by
 # .github/workflows/ci.agent-kit.yml (and ci.yml) and runs on every PR.

@@ -37,6 +37,11 @@ describe('scaffoldAuditHooks', () => {
     expect(content).toContain('wp audit secret-provider-quarantine')
     expect(content).not.toContain('skill-sizes')
     expect(content).not.toContain('broken-refs')
+    // Audits are gated on staged source/config and the whole-repo guardrails
+    // suite is never run per-commit.
+    expect(content).toContain('git diff --cached --name-only --diff-filter=ACMR')
+    expect(content).toContain('(ts|tsx|js|jsx')
+    expect(content).not.toContain('audit guardrails')
   })
 
   it('is idempotent — returns identical when comment header already present', async () => {
@@ -76,16 +81,18 @@ describe('scaffoldAuditHooks', () => {
     )
 
     const result = scaffoldAuditHooks({ repoRoot: tmpDir, options: {} })
-    // Header is present but the secrets gate line is new, so we append that one.
+    // The real audits are absent (only dead verbs), so the managed block is appended.
     expect(result.action).toBe('appended')
 
     const content = await readFile(preCommitPath(tmpDir), 'utf8')
-    // Dead verbs remain as-is from the existing file; the new check line is added once.
-    const headerCount = (content.match(/# webpresso audit hooks/g) ?? []).length
-    expect(headerCount).toStrictEqual(1)
+    // Dead verbs are preserved (we never remove content) and not re-added.
+    expect(content).toContain('wp audit skill-sizes')
+    expect((content.match(/wp audit skill-sizes/g) ?? []).length).toStrictEqual(1)
+    // The real, staged-gated audits are now present.
     expect(content).toContain('wp audit no-dev-vars')
     expect(content).toContain('wp audit absolute-path-policy --root .')
     expect(content).toContain('wp audit secret-provider-quarantine')
+    expect(content).toContain('git diff --cached --name-only --diff-filter=ACMR')
   })
 
   it('skips writes in dry-run mode', async () => {

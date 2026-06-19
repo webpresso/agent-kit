@@ -3,8 +3,12 @@
  *
  * Extends `.husky/pre-commit` to ensure the shared policy checks are present.
  *
- * Additive: appends lines only when not already present (idempotent).
- * Does not remove existing content.
+ * Additive: appends the managed audit block only when the audits are not
+ * already present (idempotent). Does not remove existing content.
+ *
+ * The audits are gated on staged source/config so doc/blueprint-only commits
+ * skip them — pre-commit must stay fast and scoped to changed things. The
+ * whole-repo guardrails suite is CI-owned and is intentionally NOT run here.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
@@ -21,43 +25,44 @@ export interface ScaffoldAuditHooksResult {
   action: 'created' | 'appended' | 'identical' | 'skipped-dry'
 }
 
+const AUDIT_HOOK_HEADER = '# webpresso audit hooks (staged mode — fast)'
+
 /**
- * Lines to append to `.husky/pre-commit` (each must be idempotently checked).
+ * The managed audit block. Audits run only when staged files include
+ * source/config — never on doc/blueprint-only commits, never whole-repo
+ * on every commit.
  */
-const AUDIT_HOOK_LINES = [
-  '# webpresso audit hooks (staged mode — fast)',
-  'wp audit no-dev-vars',
-  'wp audit absolute-path-policy --root .',
-  'wp audit secret-provider-quarantine',
-] as const
+const AUDIT_HOOK_BLOCK = [
+  AUDIT_HOOK_HEADER,
+  "if git diff --cached --name-only --diff-filter=ACMR | grep -Eq '\\.(ts|tsx|js|jsx|cjs|mjs|json|ya?ml|sh|tmpl)$|(^|/)\\.env|\\.dev\\.vars$'; then",
+  '  wp audit no-dev-vars',
+  '  wp audit absolute-path-policy --root .',
+  '  wp audit secret-provider-quarantine',
+  'fi',
+].join('\n')
 
 const SHEBANG = '#!/bin/sh\n'
 
-function hasEquivalentLine(existingContent: string, line: string): boolean {
-  if (existingContent.includes(line)) return true
-
-  if (line === '# webpresso audit hooks (staged mode — fast)') {
-    return (
-      (existingContent.includes('check-no-dev-vars.ts') ||
-        existingContent.includes('wp audit no-dev-vars')) &&
-      (existingContent.includes('wp audit absolute-path-policy --root .') ||
-        existingContent.includes('"$WP" audit absolute-path-policy --root .')) &&
-      (existingContent.includes('audit-secret-provider-quarantine.ts') ||
-        existingContent.includes('wp audit secret-provider-quarantine'))
-    )
-  }
-
-  if (line === 'wp audit absolute-path-policy --root .') {
-    return existingContent.includes('"$WP" audit absolute-path-policy --root .')
-  }
-
-  return false
+/**
+ * True when the managed fast audits already run in the hook, in any form
+ * (bare `wp`, `"$WP"`, `"$ROOT/bin/wp"`, or the legacy `*.ts` script paths).
+ * Keyed on the audit invocations themselves — not the header comment — so a
+ * stale header without the real audits still gets the block appended.
+ */
+function hasAuditBlock(existingContent: string): boolean {
+  return (
+    (existingContent.includes('audit no-dev-vars') ||
+      existingContent.includes('check-no-dev-vars.ts')) &&
+    existingContent.includes('audit absolute-path-policy --root .') &&
+    (existingContent.includes('audit secret-provider-quarantine') ||
+      existingContent.includes('audit-secret-provider-quarantine.ts'))
+  )
 }
 
 /**
- * Append audit hook lines to `.husky/pre-commit` if not already present.
- * Creates the file with a shebang if it does not exist.
- * Idempotent: re-running produces no change when lines are present.
+ * Append the managed audit block to `.husky/pre-commit` if the audits are not
+ * already present. Creates the file with a shebang if it does not exist.
+ * Idempotent: re-running produces no change when the audits are present.
  */
 export function scaffoldAuditHooks(input: ScaffoldAuditHooksInput): ScaffoldAuditHooksResult {
   const preCommitPath = path.join(input.repoRoot, '.husky', 'pre-commit')
@@ -72,22 +77,15 @@ export function scaffoldAuditHooks(input: ScaffoldAuditHooksInput): ScaffoldAudi
   const existingContent = existsSync(preCommitPath) ? readFileSync(preCommitPath, 'utf8') : null
 
   if (existingContent === null) {
-    // Create fresh file
-    const newContent = [SHEBANG, ...AUDIT_HOOK_LINES].join('\n') + '\n'
-    writeFileSync(preCommitPath, newContent, 'utf8')
+    writeFileSync(preCommitPath, SHEBANG + AUDIT_HOOK_BLOCK + '\n', 'utf8')
     return { preCommitPath, action: 'created' }
   }
 
-  // Determine which lines are missing
-  const missingLines = AUDIT_HOOK_LINES.filter((line) => !hasEquivalentLine(existingContent, line))
-
-  if (missingLines.length === 0) {
+  if (hasAuditBlock(existingContent)) {
     return { preCommitPath, action: 'identical' }
   }
 
-  // Append missing lines
   const separator = existingContent.endsWith('\n') ? '' : '\n'
-  const appended = existingContent + separator + missingLines.join('\n') + '\n'
-  writeFileSync(preCommitPath, appended, 'utf8')
+  writeFileSync(preCommitPath, existingContent + separator + AUDIT_HOOK_BLOCK + '\n', 'utf8')
   return { preCommitPath, action: 'appended' }
 }

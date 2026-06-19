@@ -95,6 +95,11 @@ describe('scaffoldBaseKit', () => {
     expect(preCommit).toContain('git diff --cached --name-only --diff-filter=ACMR')
     expect(preCommit).toContain("grep -Eq '^blueprints/(README\\.md|[^/]+/.*\\.md)$'")
     expect(preCommit).toContain('wp audit blueprint-readme-drift')
+    // The whole-repo guardrails suite is CI-owned, never run per-commit.
+    expect(preCommit).not.toContain('wp audit guardrails')
+    // Fast audits are gated on staged source/config — not run whole-repo every commit.
+    expect(preCommit).toContain('wp audit no-dev-vars')
+    expect(preCommit).toContain('(ts|tsx|js|jsx')
   })
 
   it('dry-run does not write files', () => {
