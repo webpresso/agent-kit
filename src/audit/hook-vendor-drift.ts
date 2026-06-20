@@ -198,8 +198,9 @@ function configReadFinding(
 export async function auditHookVendorDrift(options: {
   repoRoot: string
   fix?: boolean
+  log?: (message: string) => void
 }): Promise<DriftReport> {
-  const { repoRoot } = options
+  const { log, repoRoot } = options
 
   const claude = readClaudeInstalledEvents(repoRoot)
   const codex = readCodexInstalledEvents(repoRoot)
@@ -213,15 +214,17 @@ export async function auditHookVendorDrift(options: {
     findings.unshift(configReadFinding('codex', '.codex/hooks.json', codex.parseError))
   }
 
-  for (const f of findings) {
-    const prefix = f.severity === 'error' ? '[error]' : '[warn] '
-    console.log(
-      `${prefix} hook-vendor-drift: ${f.vendor}/${f.event} — expected=${f.expected} actual=${f.actual}`,
-    )
-  }
+  if (log) {
+    for (const f of findings) {
+      const prefix = f.severity === 'error' ? '[error]' : '[warn] '
+      log(
+        `${prefix} hook-vendor-drift: ${f.vendor}/${f.event} — expected=${f.expected} actual=${f.actual}`,
+      )
+    }
 
-  if (findings.length === 0) {
-    console.log('hook-vendor-drift: no drift detected')
+    if (findings.length === 0) {
+      log('hook-vendor-drift: no drift detected')
+    }
   }
 
   const hasError = findings.some((f) => f.severity === 'error')

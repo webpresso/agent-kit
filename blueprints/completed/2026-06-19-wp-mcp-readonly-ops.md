@@ -156,6 +156,8 @@ type WpReleaseReadinessInput = ReadonlyOpsBase & {
 
 - Parsed JSON detail sanitization now redacts/clips object keys as well as values, closing the remaining structured-detail leak path for secret-shaped JSON keys.
 - `wp_release_readiness` keeps `package-surface` in its read-only default set because the underlying `package-surface` audit now asserts built blueprint migration SQL assets instead of syncing/copying files before pack inspection, and runs `npm pack --dry-run --json --ignore-scripts` so `prepack`/`postpack` lifecycle hooks cannot mutate the repository during the audit.
+- `hook-vendor-drift` is pure by default so repo-audit formatting owns stdout; this keeps `wp audit hook-vendor-drift --json` machine-readable and prevents the guardrails composite from leaking standalone audit status lines.
 - Regression coverage:
   - `src/mcp/tools/readonly-ops.test.ts` covers redaction of secret-shaped parsed JSON keys.
   - `src/audit/package-surface.test.ts` verifies the package-surface audit reports stale/missing built migration SQL assets without creating the `dist/esm/blueprint/db/migrations` directory and does not run a package `prepack` script.
+  - `src/audit/hook-vendor-drift.test.ts` verifies the audit is silent by default and still supports explicit human-readable logging.
