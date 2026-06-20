@@ -9,6 +9,18 @@
  * shipping path is "publish the matrix".
  */
 export const PUBLISH_RUNTIME_MATRIX_ENV = 'WP_PUBLISH_RUNTIME_MATRIX'
+export const ROOT_RELEASE_PACKAGE_NAME = '@webpresso/agent-kit'
+
+const RUNTIME_HELPER_PACKAGE_PREFIX = '@webpresso/agent-kit-runtime-'
+const SESSION_MEMORY_HELPER_PACKAGE_PREFIX = '@webpresso/agent-kit-session-memory-'
+const GENERATED_HELPER_PACKAGE_PREFIX = `${ROOT_RELEASE_PACKAGE_NAME}-`
+
+export type ReleasePackageCategory =
+  | 'root'
+  | 'runtime-helper'
+  | 'session-memory-helper'
+  | 'generated-helper'
+  | 'workspace-github-release'
 
 /**
  * Whether the release pipeline should build, stage, and publish the per-platform
@@ -17,4 +29,16 @@ export const PUBLISH_RUNTIME_MATRIX_ENV = 'WP_PUBLISH_RUNTIME_MATRIX'
  */
 export function shouldPublishRuntimeMatrix(env: NodeJS.ProcessEnv): boolean {
   return env[PUBLISH_RUNTIME_MATRIX_ENV] !== '0'
+}
+
+export function classifyReleasePackage(packageName: string): ReleasePackageCategory {
+  if (packageName === ROOT_RELEASE_PACKAGE_NAME) return 'root'
+  if (packageName.startsWith(RUNTIME_HELPER_PACKAGE_PREFIX)) return 'runtime-helper'
+  if (packageName.startsWith(SESSION_MEMORY_HELPER_PACKAGE_PREFIX)) return 'session-memory-helper'
+  if (packageName.startsWith(GENERATED_HELPER_PACKAGE_PREFIX)) return 'generated-helper'
+  return 'workspace-github-release'
+}
+
+export function isWorkspaceGithubReleasePackage(packageName: string): boolean {
+  return classifyReleasePackage(packageName) === 'workspace-github-release'
 }

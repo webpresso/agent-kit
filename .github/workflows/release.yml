@@ -201,7 +201,9 @@ jobs:
               echo "should_finalize=false"
               echo "root_package_published=false"
               echo "non_root_package_count=0"
+              echo "workspace_github_release_count=0"
               echo "packages_json=[]"
+              echo "workspace_github_release_packages_json=[]"
             } >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -212,6 +214,8 @@ jobs:
           packages_json=$(node -e "const data = require(process.argv[1]); const fallback = data.packageName && data.version && data.publishState ? [{ packageName: data.packageName, version: data.version, publishState: data.publishState }] : []; process.stdout.write(JSON.stringify(Array.isArray(data.packages) ? data.packages : fallback))" "$result_file")
           root_package_published=$(node -e "const packages = JSON.parse(process.argv[1]); process.stdout.write(String(packages.some((pkg) => pkg.packageName === '@webpresso/agent-kit')))" "$packages_json")
           non_root_package_count=$(node -e "const packages = JSON.parse(process.argv[1]); process.stdout.write(String(packages.filter((pkg) => pkg.packageName !== '@webpresso/agent-kit').length))" "$packages_json")
+          workspace_github_release_packages_json=$(node -e "const packages = JSON.parse(process.argv[1]); process.stdout.write(JSON.stringify(packages.filter((pkg) => pkg.category === 'workspace-github-release')))" "$packages_json")
+          workspace_github_release_count=$(node -e "const packages = JSON.parse(process.argv[1]); process.stdout.write(String(packages.length))" "$workspace_github_release_packages_json")
           should_finalize=false
           if [ "$publish_state" = "published" ]; then
             should_finalize=true
@@ -227,7 +231,9 @@ jobs:
             echo "should_finalize=$should_finalize"
             echo "root_package_published=$root_package_published"
             echo "non_root_package_count=$non_root_package_count"
+            echo "workspace_github_release_count=$workspace_github_release_count"
             echo "packages_json=$packages_json"
+            echo "workspace_github_release_packages_json=$workspace_github_release_packages_json"
           } >> "$GITHUB_OUTPUT"
 
       - name: Probe published package version for artifact follow-up
@@ -337,11 +343,11 @@ jobs:
           echo "status=created" >> "$GITHUB_OUTPUT"
 
       - name: Publish workspace package GitHub Releases
-        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' && steps.publish_result.outputs.non_root_package_count != '0' }}
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' && steps.publish_result.outputs.workspace_github_release_count != '0' }}
         id: workspace_github_releases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PACKAGES_JSON: ${{ steps.publish_result.outputs.packages_json }}
+          PACKAGES_JSON: ${{ steps.publish_result.outputs.workspace_github_release_packages_json }}
         shell: bash
         run: |
           set -euo pipefail
@@ -349,9 +355,7 @@ jobs:
           const { execFileSync } = require('node:child_process')
           const { appendFileSync } = require('node:fs')
 
-          const packages = JSON.parse(process.env.PACKAGES_JSON || '[]').filter(
-            (pkg) => pkg.packageName !== '@webpresso/agent-kit',
-          )
+          const packages = JSON.parse(process.env.PACKAGES_JSON || '[]')
           const targetCommit = process.env.GITHUB_SHA
           const urls = []
 
@@ -505,6 +509,7 @@ jobs:
 
           root_package_published='${{ steps.publish_result.outputs.root_package_published }}'
           non_root_package_count='${{ steps.publish_result.outputs.non_root_package_count }}'
+          workspace_github_release_count='${{ steps.publish_result.outputs.workspace_github_release_count }}'
 
           if [ "$root_package_published" = 'true' ]; then
             expect_success '${{ steps.release_meta.outcome }}' 'Release metadata resolution'
@@ -539,10 +544,10 @@ jobs:
             fi
           fi
 
-          if [ "${non_root_package_count:-0}" -gt 0 ]; then
+          if [ "${workspace_github_release_count:-0}" -gt 0 ]; then
             expect_success '${{ steps.workspace_github_releases.outcome }}' 'Workspace package GitHub Release publish'
-            if [ '${{ steps.workspace_github_releases.outputs.count }}' != "$non_root_package_count" ]; then
-              echo "::error::Expected ${non_root_package_count} workspace package GitHub Release(s)." >&2
+            if [ '${{ steps.workspace_github_releases.outputs.count }}' != "$workspace_github_release_count" ]; then
+              echo "::error::Expected ${workspace_github_release_count} workspace package GitHub Release(s)." >&2
               failures=1
             fi
           fi
@@ -566,6 +571,8 @@ jobs:
             echo "- publishedPackages: ${{ steps.publish_result.outputs.packages_json || steps.changesets.outputs.publishedPackages || '[]' }}"
             echo "- root_package_published: ${{ steps.publish_result.outputs.root_package_published || 'false' }}"
             echo "- non_root_package_count: ${{ steps.publish_result.outputs.non_root_package_count || '0' }}"
+            echo "- workspace_github_release_count: ${{ steps.publish_result.outputs.workspace_github_release_count || '0' }}"
+            echo "- workspaceGithubReleasePackages: ${{ steps.publish_result.outputs.workspace_github_release_packages_json || '[]' }}"
             echo "- registry_visible: ${{ steps.registry_visibility.outputs.visible || 'n/a' }}"
             echo "- version: ${{ steps.release_meta.outputs.version || 'n/a' }}"
             echo "- tag: ${{ steps.release_meta.outputs.tag || 'n/a' }}"

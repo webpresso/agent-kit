@@ -140,13 +140,15 @@ describe('release workflow publish path', () => {
     expect(afterChangesetsAction).toContain('packages_json=$(')
     expect(afterChangesetsAction).toContain('root_package_published=$(')
     expect(afterChangesetsAction).toContain('non_root_package_count=$(')
+    expect(afterChangesetsAction).toContain('workspace_github_release_count=$(')
+    expect(afterChangesetsAction).toContain('workspace_github_release_packages_json=$(')
     expect(afterChangesetsAction).not.toContain("steps.publish_probe.outputs.published == 'true'")
     expect(afterChangesetsAction).toContain('id: registry_visibility')
     expect(afterChangesetsAction).toContain('Assert release finalization contract')
     expect(afterChangesetsAction).toContain('gh release view "$tag" --json url,assets')
   })
 
-  it('creates GitHub Releases for non-root workspace packages published by the custom release path', () => {
+  it('creates GitHub Releases only for workspace GitHub Release packages published by the custom release path', () => {
     const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
     const workspaceReleaseStep = workflow.slice(
       workflow.indexOf('- name: Publish workspace package GitHub Releases'),
@@ -154,9 +156,15 @@ describe('release workflow publish path', () => {
     )
 
     expect(workspaceReleaseStep).toContain(
-      "steps.publish_result.outputs.non_root_package_count != '0'",
+      "steps.publish_result.outputs.workspace_github_release_count != '0'",
     )
-    expect(workspaceReleaseStep).toContain("pkg.packageName !== '@webpresso/agent-kit'")
+    expect(workspaceReleaseStep).toContain(
+      'PACKAGES_JSON: ${{ steps.publish_result.outputs.workspace_github_release_packages_json }}',
+    )
+    expect(workspaceReleaseStep).toContain(
+      "const packages = JSON.parse(process.env.PACKAGES_JSON || '[]')",
+    )
+    expect(workspaceReleaseStep).not.toContain("pkg.packageName !== '@webpresso/agent-kit'")
     expect(workspaceReleaseStep).toContain('const tag = `${pkg.packageName}@${pkg.version}`')
     expect(workspaceReleaseStep).toContain('scripts/github-release-notes.ts')
     expect(workspaceReleaseStep).toContain("'--notes-file',")
@@ -165,6 +173,25 @@ describe('release workflow publish path', () => {
     expect(workspaceReleaseStep).toContain("'release',")
     expect(workspaceReleaseStep).toContain("'create',")
     expect(workspaceReleaseStep).toContain('urls=${urls.join')
+  })
+
+  it('asserts workspace GitHub Release finalization against the workspace-scoped count', () => {
+    const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
+    const finalizationStep = workflow.slice(
+      workflow.indexOf('- name: Assert release finalization contract'),
+      workflow.indexOf('- name: Release summary'),
+    )
+
+    expect(finalizationStep).toContain(
+      "workspace_github_release_count='${{ steps.publish_result.outputs.workspace_github_release_count }}'",
+    )
+    expect(finalizationStep).toContain('if [ "${workspace_github_release_count:-0}" -gt 0 ]')
+    expect(finalizationStep).toContain(
+      '\'${{ steps.workspace_github_releases.outputs.count }}\' != "$workspace_github_release_count"',
+    )
+    expect(finalizationStep).not.toContain(
+      '\'${{ steps.workspace_github_releases.outputs.count }}\' != "$non_root_package_count"',
+    )
   })
 
   it('runs root runtime release finalization only when the root package was published', () => {

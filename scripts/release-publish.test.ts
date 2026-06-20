@@ -39,6 +39,8 @@ describe('release-publish runtime lane', () => {
       "const RELEASE_PUBLISH_RESULT_FILE_ENV = 'RELEASE_PUBLISH_RESULT_FILE'",
     )
     expect(source).toContain('interface PublishedPackage')
+    expect(source).toContain('category: ReleasePackageCategory')
+    expect(source).toContain('category: classifyReleasePackage(pkg.name)')
     expect(source).toContain(
       'function writePublishResultFile(packages: readonly PublishedPackage[])',
     )
