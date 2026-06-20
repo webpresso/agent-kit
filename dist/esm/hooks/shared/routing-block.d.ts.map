@@ -1,0 +1,1 @@
+{"version":3,"file":"routing-block.d.ts","sourceRoot":"","sources":["../../../../src/hooks/shared/routing-block.ts"],"names":[],"mappings":"AAAA;;;;GAIG;AACH,eAAO,MAAM,gBAAgB,EAAE,MAuMjB,CAAA;AAEd,MAAM,MAAM,wBAAwB,GAAG;IACrC,QAAQ,CAAC,IAAI,EAAE,YAAY,CAAA;IAC3B,QAAQ,CAAC,OAAO,EAAE,MAAM,CAAA;CACzB,CAAA;AAED,wBAAgB,8BAA8B,IAAI,wBAAwB,CAEzE"}

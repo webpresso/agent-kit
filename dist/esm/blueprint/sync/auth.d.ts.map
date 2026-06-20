@@ -1,0 +1,1 @@
+{"version":3,"file":"auth.d.ts","sourceRoot":"","sources":["../../../../src/blueprint/sync/auth.ts"],"names":[],"mappings":"AAAA;;;;;;;;;GASG;AAKH,MAAM,WAAW,eAAe;IAC9B,QAAQ,CAAC,KAAK,EAAE,MAAM,CAAA;IACtB,QAAQ,CAAC,WAAW,EAAE,MAAM,CAAA;IAC5B,QAAQ,CAAC,MAAM,EAAE,MAAM,CAAA;CACxB;AA0BD;;;;;;;;;GASG;AACH,wBAAgB,mBAAmB,IAAI,eAAe,GAAG,IAAI,CAiB5D"}
