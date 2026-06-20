@@ -29,7 +29,8 @@ describe('reusable Cloudflare deploy workflows', () => {
         'dopplerhq/secrets-fetch-action@451892f16195f9ac360e1a5bcbf0b5fd0e957534',
       )
       expect(workflow).toContain('infisical export --projectId="${INFISICAL_PROJECT_ID}"')
-      expect(workflow).toContain('npm install --global @infisical/cli@0.43.91')
+      expect(workflow).toContain('vp install -g "@infisical/cli@0.43.91"')
+      expect(workflow).not.toContain('npm install --global @infisical')
       expect(workflow).not.toContain('@infisical/cli@latest')
     }
   })
