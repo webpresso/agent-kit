@@ -171,12 +171,12 @@ export function parseClaudeAuthStatusOutput(stdout: string, stderr = ''): Claude
     return { kind: 'missing', reason: 'Claude CLI is not logged in.' }
   }
 
-  if (/logged\s+in|authenticated|claude\.ai|subscription|max\b|pro\b/i.test(combined)) {
+  if (/logged\s+in|authenticated|claude\.ai|subscription/i.test(combined)) {
     const email = combined.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/iu)?.[0]
     const subscriptionType = combined.match(/\b(max|pro|team|enterprise)\b/iu)?.[1]
     return {
       kind: 'cli-login',
-      provider: /claude\.ai|subscription|max\b|pro\b/i.test(combined) ? 'firstParty' : 'unknown',
+      provider: /claude\.ai|subscription|first.?party/i.test(combined) ? 'firstParty' : 'unknown',
       ...(email ? { email } : {}),
       ...(subscriptionType ? { subscriptionType } : {}),
     }
@@ -332,10 +332,11 @@ export async function runCell(input: RunCellInput): Promise<RunResult> {
     const detected = await detectClaudeCliAuth({ spawn, cwd, env })
     authState = detected
     if (detected.kind !== 'cli-login') {
+      const failureReason = detected.kind === 'execution-failed' ? detected.message : detected.reason
       return {
         ok: false,
         error: 'spawn_failed',
-        failure_reason: detected.reason,
+        failure_reason: failureReason,
         usage: null,
         local_wall_ms: 0,
         tools: ZERO_TOOLS,

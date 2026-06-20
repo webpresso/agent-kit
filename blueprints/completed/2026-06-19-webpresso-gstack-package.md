@@ -6,7 +6,7 @@ status: completed
 complexity: L
 created: '2026-06-19'
 last_updated: '2026-06-20'
-progress: '100% (implemented; pending PR review/merge)'
+progress: '100% (implemented; review follow-up hardened)'
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -455,6 +455,7 @@ Implemented on 2026-06-20:
 - Replaced upstream clone/pull setup behavior with package-local skill installation, collision audit, and explicit `WP_GSTACK_CLEANUP_EXTERNAL=1` backup path for old external checkouts.
 - Updated `wp update` so gstack refresh is satisfied by the Webpresso package/plugin refresh path rather than pulling upstream.
 - Updated docs, third-party notices, compatibility metadata, and package manager/scaffolder tests.
+- G007/G010 review follow-up replaced the Claude skill auth snippet's fixed `/tmp/wp-claude-auth.json` path with a `mktemp -t` file plus explicit unrecognized-auth failure, expanded the staging size budget to all `packages/gstack` source files, and recorded the real upstream gstack commit `a861c00cfac6e2376d26c7d3ba5207cdc5aefc49`.
 
 Verification evidence:
 

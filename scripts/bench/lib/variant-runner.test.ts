@@ -348,4 +348,47 @@ describe('variant-runner', () => {
     })
   })
 
+  it('does not treat generic max/pro error text as a CLI login', () => {
+    expect(parseClaudeAuthStatusOutput('', 'HTTP 429: max connections exceeded')).toStrictEqual({
+      kind: 'missing',
+      reason: 'HTTP 429: max connections exceeded',
+    })
+    expect(parseClaudeAuthStatusOutput('proxy protocol error')).toStrictEqual({
+      kind: 'missing',
+      reason: 'proxy protocol error',
+    })
+  })
+
+  it('returns a diagnostic failure reason when claude auth status output is unrecognized', async () => {
+    const spawn: VariantSpawn = async (cmd) => {
+      if (cmd.join(' ') === 'claude auth status') {
+        return { exitCode: 0, stdout: 'HTTP 429: max connections exceeded', stderr: '' }
+      }
+      throw new Error('claude execution should not run without recognized CLI auth')
+    }
+
+    const result = await runCell({
+      scenario: 'debug',
+      prompt: 'say hi',
+      variant: 'baseline',
+      trial: 6,
+      pluginDir: '/tmp/plugin-main',
+      outputRoot: dir,
+      authMode: 'claude-login',
+      claudeHome: '/tmp/logged-in-claude-home',
+      spawn,
+    })
+
+    expect(result).toStrictEqual({
+      ok: false,
+      error: 'spawn_failed',
+      failure_reason: 'HTTP 429: max connections exceeded',
+      usage: null,
+      local_wall_ms: 0,
+      tools: [],
+      transcript_path: null,
+      home_dir: join(dir, 'adhoc', 'baseline', 'debug', 'trial-6', 'home'),
+    })
+  })
+
 })

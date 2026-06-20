@@ -5,8 +5,8 @@ owner: ozby
 status: planned
 complexity: S
 created: "2026-06-19"
-last_updated: "2026-06-19"
-progress: "implemented (3/3 tasks done, 0 blocked) — Claude CLI auth status diagnostics"
+last_updated: "2026-06-20"
+progress: "implemented (3/3 tasks done, 0 blocked) — review follow-up hardened"
 tags:
   - claude
   - auth
@@ -111,3 +111,4 @@ Rules:
 - A `401` after valid CLI login is surfaced as a stale Claude CLI session diagnostic through `failure_reason`; API-key mode keeps API-key failure wording.
 - Updated benchmark preflight/readme docs to distinguish isolated API-key proof mode from local CLI-login smoke mode.
 - Verification run: `./bin/wp test --file scripts/bench/lib/variant-runner.test.ts --file src/cli/commands/bench/session-memory.test.ts`; plus final branch typecheck/lint/audits before commit.
+- G007/G010 review follow-up removed generic standalone `max`/`pro` text from the CLI-login heuristic and preserves a diagnostic `failure_reason` when `claude auth status` exits 0 with unrecognized output, so transient error text is not treated as a logged-in first-party session.
