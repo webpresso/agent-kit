@@ -1,11 +1,39 @@
+import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 import { parseSecretsConfigMetadata, SECRETS_CONFIG_PATH } from './lib/secrets-policy.js'
 
+function resolveGitTopLevel(cwd: string): string | null {
+  try {
+    const out = execFileSync('git', ['rev-parse', '--show-toplevel'], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
+    return out || null
+  } catch {
+    return null
+  }
+}
+
+function resolveConfigPath(cwd: string): string {
+  const gitRoot = resolveGitTopLevel(cwd)
+  if (gitRoot) return join(gitRoot, SECRETS_CONFIG_PATH)
+
+  let current = resolve(cwd)
+  while (true) {
+    const candidate = join(current, SECRETS_CONFIG_PATH)
+    if (existsSync(candidate)) return candidate
+    const parent = dirname(current)
+    if (parent === current) return join(resolve(cwd), SECRETS_CONFIG_PATH)
+    current = parent
+  }
+}
+
 export function auditSecretsConfig(rootDirectory: string = process.cwd()): RepoAuditResult {
-  const configPath = join(rootDirectory, SECRETS_CONFIG_PATH)
+  const configPath = resolveConfigPath(rootDirectory)
   if (!existsSync(configPath)) {
     return { ok: true, title: 'secrets-config', checked: 0, violations: [] }
   }

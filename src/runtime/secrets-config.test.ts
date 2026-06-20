@@ -56,6 +56,31 @@ describe('runtime secrets config', () => {
     expect(resolveSecretsConfigProfileEnvironment('e2e-runtime', root)).toBe('dev')
   })
 
+
+  it('reads schemaVersion 1 committed config from nested cwd', () => {
+    const root = tempRepo({
+      schemaVersion: 1,
+      providers: {
+        default: { type: 'doppler', project: 'demo-project' },
+      },
+      profiles: {
+        preview: { provider: 'default', environment: 'stg' },
+      },
+      sinks: {},
+    })
+    const nested = path.join(root, 'apps', 'web')
+    mkdirSync(nested, { recursive: true })
+
+    expect(readSecretsConfig(nested)).toEqual({
+      manager: 'doppler',
+      projectId: 'demo-project',
+      profiles: {
+        preview: { environment: 'stg' },
+      },
+    })
+    expect(resolveSecretsConfigProfileEnvironment('preview', nested)).toBe('stg')
+  })
+
   it('preserves committed profiles when runtime config overrides only manager/project selection', () => {
     const root = tempRepo(
       {
@@ -93,5 +118,22 @@ describe('runtime secrets config', () => {
     expect(() => resolveSecretsConfigProfileEnvironment('missing', root)).toThrow(
       'Unknown secret profile "missing"',
     )
+  })
+
+  it('redacts secret-like unknown profile names from errors', () => {
+    const root = tempRepo({
+      manager: 'doppler',
+      projectId: 'demo',
+      profiles: {
+        deploy: { environment: 'preview' },
+      },
+    })
+
+    expect(() =>
+      resolveSecretsConfigProfileEnvironment('ctx7sk-reviewleak000000', root),
+    ).toThrow('Unknown secret profile "[redacted]"')
+    expect(() =>
+      resolveSecretsConfigProfileEnvironment('ctx7sk-reviewleak000000', root),
+    ).not.toThrow('ctx7sk-reviewleak000000')
   })
 })

@@ -59,6 +59,24 @@ describe('auditSecretsPolicy', () => {
     ])
   })
 
+  test('resolves repo root from nested cwd before scanning', () => {
+    const root = tempRepo()
+    const nested = join(root, 'apps', 'web')
+    mkdirSync(nested, { recursive: true })
+    writeFileSync(join(root, '.dev.vars'), 'API_KEY=abc123')
+
+    const result = auditSecretsPolicy(nested)
+
+    expect(result.ok).toBe(false)
+    expect(result.checked).toBeGreaterThan(0)
+    expect(result.violations).toEqual([
+      expect.objectContaining({
+        file: '.dev.vars',
+        message: expect.stringContaining('forbidden secret carrier'),
+      }),
+    ])
+  })
+
   test('flags *.key file on disk', () => {
     const root = tempRepo()
     writeFileSync(join(root, 'deploy.key'), '-----BEGIN RSA PRIVATE KEY-----')

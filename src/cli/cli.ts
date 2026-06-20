@@ -21,6 +21,7 @@ const VERSION = readPackageVersion(import.meta.url)
 const SUPPORTED_COMMANDS = [
   'blueprint',
   'config',
+  'secrets',
   'roadmap',
   'sync',
   'audit',
@@ -66,6 +67,7 @@ const ROOT_HELP = [
   '  setup                 Scaffold a consumer repo with the agent surface',
   '  blueprint             Manage blueprints (list, new, show, exec, audit, ...)',
   '  config                Repo configuration (secrets set/show/status/setup)',
+  '  secrets               Secret orchestration commands (doctor)',
   '  gain                  Show Webpresso gain metadata plus separate RTK gain totals',
   '  sync                  Sync agent rules + skills across IDE surfaces (--kind, --check)',
   '  bench                 Run the session-memory benchmark harness',
@@ -185,6 +187,11 @@ export async function main(): Promise<number> {
     case 'config': {
       const { registerConfigCommand } = await import('./commands/config.js')
       registerConfigCommand(cli)
+      break
+    }
+    case 'secrets': {
+      const { registerSecretsCommand } = await import('./commands/secrets.js')
+      registerSecretsCommand(cli)
       break
     }
     case 'roadmap': {

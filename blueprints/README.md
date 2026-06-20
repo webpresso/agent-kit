@@ -16,10 +16,11 @@ Each subdirectory represents a lifecycle state:
 | `draft/` | 7 | early-stage sketches. Expect churn; move to `planned/` once scoped. |
 | `planned/` | 19 | committed-to specs, ready to pick up. |
 | `in-progress/` | 0 | actively being executed. At most 3 active blueprints per lane. |
-| `completed/` | 84 | execution finished and verified. Kept for reference. |
+| `completed/` | 85 | execution finished and verified. Kept for reference. |
 | `parked/` | 11 | intentionally paused. Include a reason in the spec's frontmatter. |
 | `archived/` | 4 | superseded or abandoned. Not deleted — the record matters. |
 <!-- END: blueprint-index -->
+
 
 
 

@@ -1,3 +1,7 @@
+import { execFileSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+
 export const SECRETS_CONFIG_PATH = '.webpresso/secrets.config.json'
 
 export const SECRET_VALUE_PATTERN =
@@ -11,6 +15,7 @@ export type SecretsConfigMetadata = {
 }
 
 const ALLOWED_CONFIG_KEYS = new Set(['manager', 'projectId', 'projectLabel', 'profiles'])
+const ALLOWED_SCHEMA_V1_KEYS = new Set(['schemaVersion', 'providers', 'profiles', 'sinks', 'projectLabel'])
 const FORBIDDEN_CONFIG_KEY =
   /(?:^|_)(?:token|secret|password|api[_-]?key|credential|private[_-]?key)(?:$|_)/iu
 const PROJECT_ID_PATTERN = /^[a-z0-9][a-z0-9_-]{0,62}$/u
@@ -68,9 +73,40 @@ export function shouldScanGitFileForSecretValues(relativePath: string): boolean 
   return /\.(?:md|ts|tsx|js|mjs|cjs|json|ya?ml|toml|txt|sh)$/iu.test(relativePath)
 }
 
-function validateConfigKeys(obj: Record<string, unknown>, sourceLabel: string): void {
+function resolveGitTopLevel(cwd: string): string | null {
+  try {
+    const out = execFileSync('git', ['rev-parse', '--show-toplevel'], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
+    return out || null
+  } catch {
+    return null
+  }
+}
+
+export function resolveSecretsAuditRoot(rootDirectory: string = process.cwd()): string | null {
+  const absoluteRoot = resolve(rootDirectory)
+  const gitRoot = resolveGitTopLevel(absoluteRoot)
+  if (gitRoot && existsSync(join(gitRoot, SECRETS_CONFIG_PATH))) return gitRoot
+
+  let current = absoluteRoot
+  while (true) {
+    if (existsSync(join(current, SECRETS_CONFIG_PATH))) return current
+    const parent = dirname(current)
+    if (parent === current) return null
+    current = parent
+  }
+}
+
+function validateConfigKeys(
+  obj: Record<string, unknown>,
+  sourceLabel: string,
+  allowedKeys: ReadonlySet<string> = ALLOWED_CONFIG_KEYS,
+): void {
   for (const key of Object.keys(obj)) {
-    if (!ALLOWED_CONFIG_KEYS.has(key)) {
+    if (!allowedKeys.has(key)) {
       throw new Error(`${sourceLabel}: unexpected key "${key}"`)
     }
     if (FORBIDDEN_CONFIG_KEY.test(key)) {
@@ -113,21 +149,34 @@ function buildConfigMetadata(
     : { manager, projectId, projectLabel: obj.projectLabel }
 }
 
+function requireRecord(value: unknown, sourceLabel: string, name: string): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error(`${sourceLabel}: "${name}" must be an object`)
+  }
+  return value as Record<string, unknown>
+}
+
 function buildProfilesMetadata(
   value: unknown,
   sourceLabel: string,
+  allowedProviders?: ReadonlySet<string>,
 ): Readonly<Record<string, { readonly environment: string }>> | undefined {
   if (value === undefined) return undefined
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throw new Error(`${sourceLabel}: "profiles" must be an object`)
-  }
+  const profileEntries = requireRecord(value, sourceLabel, 'profiles')
 
   const profiles: Record<string, { readonly environment: string }> = {}
-  for (const [profileId, profileValue] of Object.entries(value as Record<string, unknown>)) {
+  for (const [profileId, profileValue] of Object.entries(profileEntries)) {
     if (typeof profileValue !== 'object' || profileValue === null || Array.isArray(profileValue)) {
       throw new Error(`${sourceLabel}: profile "${profileId}" must be an object`)
     }
-    const env = (profileValue as Record<string, unknown>).environment
+    const profile = profileValue as Record<string, unknown>
+    const provider = profile.provider
+    if (allowedProviders && provider !== undefined) {
+      if (typeof provider !== 'string' || !allowedProviders.has(provider)) {
+        throw new Error(`${sourceLabel}: profile "${profileId}" references unknown provider "${String(provider)}"`)
+      }
+    }
+    const env = profile.environment
     if (typeof env !== 'string' || env.trim().length === 0) {
       throw new Error(
         `${sourceLabel}: profile "${profileId}" must set a non-empty "environment"`,
@@ -140,6 +189,41 @@ function buildProfilesMetadata(
   }
 
   return profiles
+}
+
+
+function buildSchemaVersion1Metadata(
+  obj: Record<string, unknown>,
+  sourceLabel: string,
+): SecretsConfigMetadata | null {
+  if (obj.schemaVersion !== 1) return null
+  validateConfigKeys(obj, sourceLabel, ALLOWED_SCHEMA_V1_KEYS)
+
+  const providers = requireRecord(obj.providers, sourceLabel, 'providers')
+  const defaultProvider = requireRecord(providers.default, sourceLabel, 'providers.default')
+  const providerType = defaultProvider.type
+  if (providerType !== 'doppler' && providerType !== 'infisical') {
+    throw new Error(`${sourceLabel}: "providers.default.type" must be "doppler" or "infisical"`)
+  }
+  const manager: 'doppler' | 'infisical' = providerType
+  const project = defaultProvider.project
+  if (typeof project !== 'string' || project.length === 0) {
+    throw new Error(`${sourceLabel}: "providers.default.project" must be a non-empty string`)
+  }
+  if (!PROJECT_ID_PATTERN.test(project)) {
+    throw new Error(`${sourceLabel}: "providers.default.project" must be a valid project slug`)
+  }
+
+  const profiles = buildProfilesMetadata(obj.profiles, sourceLabel, new Set(Object.keys(providers)))
+  const base: SecretsConfigMetadata = profiles ? { manager, projectId: project, profiles } : { manager, projectId: project }
+  if (obj.projectLabel === undefined) return base
+  if (typeof obj.projectLabel !== 'string' || obj.projectLabel.length === 0) {
+    throw new Error(`${sourceLabel}: "projectLabel" must be a non-empty string when set`)
+  }
+  if (SECRET_VALUE_PATTERN.test(obj.projectLabel)) {
+    throw new Error(`${sourceLabel} projectLabel must not contain secret values`)
+  }
+  return { ...base, projectLabel: obj.projectLabel }
 }
 
 export function parseSecretsConfigMetadata(
@@ -163,6 +247,8 @@ export function parseSecretsConfigMetadata(
   }
 
   const obj = parsed as Record<string, unknown>
+  const schemaVersion1Metadata = buildSchemaVersion1Metadata(obj, sourceLabel)
+  if (schemaVersion1Metadata) return schemaVersion1Metadata
   validateConfigKeys(obj, sourceLabel)
   validateConfigValues(obj, sourceLabel)
   return buildConfigMetadata(obj, sourceLabel)
