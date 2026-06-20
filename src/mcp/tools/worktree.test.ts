@@ -78,7 +78,8 @@ afterEach(() => {
 describe('wp_worktree tool', () => {
   it('exposes the expected descriptor surface', () => {
     expect(wpWorktreeTool.name).toBe('wp_worktree')
-    expect(wpWorktreeTool.annotations?.idempotentHint).toBe(true)
+    expect(wpWorktreeTool.annotations?.readOnlyHint).toBe(false)
+    expect(wpWorktreeTool.annotations?.idempotentHint).toBe(false)
   })
 
   it('lists worktrees without execute', async () => {
@@ -256,7 +257,7 @@ describe('wp_worktree tool', () => {
     expect(removeRegistryMock).not.toHaveBeenCalled()
   })
 
-  it('prunes only stale registry entries for the current repo namespace', async () => {
+  it('prunes only stale registry entries for the current repo root', async () => {
     removeRegistryMock.mockReturnValue([{ id: 'stale' }])
     existsSyncMock.mockImplementation((path: string) => path !== '/missing/current')
 
@@ -270,10 +271,28 @@ describe('wp_worktree tool', () => {
     })
     const predicate = removeRegistryMock.mock.calls[0]?.[0] as (entry: {
       repoNamespace: string
+      repoRoot: string
       path: string
     }) => boolean
-    expect(predicate({ repoNamespace: 'github.com-webpresso-agent-kit-296ec9af45', path: '/missing/current' })).toBe(true)
-    expect(predicate({ repoNamespace: 'other-repo', path: '/missing/other' })).toBe(false)
-    expect(predicate({ repoNamespace: 'github.com-webpresso-agent-kit-296ec9af45', path: '/present/current' })).toBe(false)
+    expect(predicate({
+      repoNamespace: 'github.com-webpresso-agent-kit-296ec9af45',
+      repoRoot: '/repo/main',
+      path: '/missing/current',
+    })).toBe(true)
+    expect(predicate({
+      repoNamespace: 'github.com-webpresso-agent-kit-296ec9af45',
+      repoRoot: '/other/clone',
+      path: '/missing/other-clone',
+    })).toBe(false)
+    expect(predicate({
+      repoNamespace: 'other-repo',
+      repoRoot: '/repo/main',
+      path: '/missing/other',
+    })).toBe(false)
+    expect(predicate({
+      repoNamespace: 'github.com-webpresso-agent-kit-296ec9af45',
+      repoRoot: '/repo/main',
+      path: '/present/current',
+    })).toBe(false)
   })
 })
