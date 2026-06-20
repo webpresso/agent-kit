@@ -558,7 +558,7 @@ describe('routeCommand', () => {
       const result = routeCommand(command)
       expect(result?.action.action).toBe('deny')
       if (result?.action.action === 'deny') {
-        expect(result.action.guidance).toContain('Use `wp worktree` instead')
+        expect(result.action.guidance).toContain('Use the `wp_worktree` MCP tool')
       }
     }
   })

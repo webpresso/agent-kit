@@ -27,6 +27,7 @@ import sessionStats from './session-stats.js'
 import test from './test.js'
 import typecheck from './typecheck.js'
 import workerTail from './worker-tail.js'
+import worktree from './worktree.js'
 
 export const COMPILED_TOOL_REGISTRY: readonly ToolDescriptor[] = [
   audit,
@@ -56,4 +57,5 @@ export const COMPILED_TOOL_REGISTRY: readonly ToolDescriptor[] = [
   test,
   typecheck,
   workerTail,
+  worktree,
 ]

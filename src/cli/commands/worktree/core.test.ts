@@ -65,6 +65,38 @@ describe('parseWorktreePorcelain', () => {
     expect(result[0]?.branch).toBeNull()
   })
 
+  it('captures locked and prunable porcelain flags', () => {
+    const raw = [
+      'worktree /repo/locked',
+      'HEAD abc123',
+      'branch refs/heads/feat/locked',
+      'locked maintenance in progress',
+      '',
+      'worktree /repo/prunable',
+      'HEAD def456',
+      'detached',
+      'prunable gitdir file points to non-existent location',
+      '',
+    ].join('\n')
+
+    expect(parseWorktreePorcelain(raw)).toStrictEqual([
+      {
+        path: '/repo/locked',
+        head: 'abc123',
+        branch: 'refs/heads/feat/locked',
+        bare: false,
+        locked: true,
+      },
+      {
+        path: '/repo/prunable',
+        head: 'def456',
+        branch: null,
+        bare: false,
+        prunable: true,
+      },
+    ])
+  })
+
   it('returns empty array for empty input', () => {
     expect(parseWorktreePorcelain('')).toStrictEqual([])
     expect(parseWorktreePorcelain('   ')).toStrictEqual([])
@@ -256,6 +288,17 @@ describe('resolveNewWorktreeTarget', () => {
         explicitPath: '/tmp/auth-worktree',
       }),
     ).toThrow('Managed worktrees do not support custom creation paths')
+  })
+
+
+  it('rejects explicit branch targets that collide with an existing branch', () => {
+    expect(() =>
+      resolveNewWorktreeTarget({
+        branch: 'feat/auth',
+        repoRoot: '/repos/webpresso',
+        branchExists: (branch) => branch === 'feat/auth',
+      }),
+    ).toThrow('Worktree branch/path collision for feat/auth')
   })
 
   it('uses the shared sibling worktree root for explicit branch default paths', () => {
