@@ -8,6 +8,7 @@ import {
   isForbiddenGitPath,
   isForbiddenWorkingTreePath,
   parseSecretsConfigMetadata,
+  resolveSecretsAuditRoot,
   SECRET_VALUE_PATTERN,
   SECRETS_CONFIG_PATH,
   shouldScanGitFileForSecretValues,
@@ -90,13 +91,14 @@ function checkGitTrackedFiles(root: string, violations: RepoAuditViolation[]): v
 }
 
 export function auditSecretsPolicy(rootDirectory: string = process.cwd()): RepoAuditResult {
-  if (!existsSync(join(rootDirectory, SECRETS_CONFIG_PATH))) {
+  const auditRoot = resolveSecretsAuditRoot(rootDirectory)
+  if (!auditRoot) {
     return { ok: true, title: 'secrets-policy', checked: 0, violations: [] }
   }
 
   const violations: RepoAuditViolation[] = []
-  const checked = walkDir(rootDirectory, rootDirectory, violations)
-  checkGitTrackedFiles(rootDirectory, violations)
+  const checked = walkDir(auditRoot, auditRoot, violations)
+  checkGitTrackedFiles(auditRoot, violations)
 
   return { ok: violations.length === 0, title: 'secrets-policy', checked, violations }
 }

@@ -10,6 +10,8 @@ export interface SecretsConfigProfile {
 
 const SECRET_VALUE_PATTERN =
   /(?:^|[\s"'`=:])(?:(?:sk|pk)(?=[-_0-9])|ghp|gho|ghu|ghs|ghr|dp\.st|napi_|pplx-|ctx7sk-)[-_a-zA-Z0-9./+=]{8,}/u
+const SECRET_VALUE_PATTERN_GLOBAL =
+  /(?:^|[\s"'`=:])(?:(?:sk|pk)(?=[-_0-9])|ghp|gho|ghu|ghs|ghr|dp\.st|napi_|pplx-|ctx7sk-)[-_a-zA-Z0-9./+=]{8,}/gu
 
 export interface SecretsConfig {
   readonly manager: SecretManagerName
@@ -83,8 +85,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+export function isSecretLikeMetadataText(value: string): boolean {
+  return SECRET_VALUE_PATTERN.test(value)
+}
+
+export function sanitizeSecretsMetadataText(value: string): string {
+  return value.replace(SECRET_VALUE_PATTERN_GLOBAL, '[redacted]')
+}
+
 function assertNoSecretValue(value: string, source: string, label: string): void {
-  if (SECRET_VALUE_PATTERN.test(value)) {
+  if (isSecretLikeMetadataText(value)) {
     throw new Error(`Malformed secrets config at ${source}: ${label} must not contain secret values`)
   }
 }
@@ -247,8 +257,11 @@ export function resolveSecretsConfigProfile(
   const normalizedProfileId = profileId.trim()
   const profile = config.profiles?.[normalizedProfileId]
   if (!profile) {
+    const safeProfileId = isSecretLikeMetadataText(normalizedProfileId)
+      ? '[redacted]'
+      : normalizedProfileId
     throw new Error(
-      `Unknown secret profile "${normalizedProfileId}" in ${getCommittedSecretsConfigPath(cwd)}`,
+      `Unknown secret profile "${safeProfileId}" in ${getCommittedSecretsConfigPath(cwd)}`,
     )
   }
   return profile

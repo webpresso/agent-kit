@@ -51,6 +51,24 @@ describe('auditSecretProviderQuarantine', () => {
     ])
   })
 
+  test('resolves repo root from nested cwd before scanning', () => {
+    const root = tempRepo()
+    const nested = join(root, 'apps', 'web')
+    mkdirSync(nested, { recursive: true })
+    mkdirSync(join(root, 'src'), { recursive: true })
+    writeFileSync(join(root, 'src', 'deploy.ts'), "exec('doppler" + " run -- node server.js')")
+
+    const result = auditSecretProviderQuarantine(nested)
+
+    expect(result.ok).toBe(false)
+    expect(result.checked).toBeGreaterThan(0)
+    expect(result.violations).toEqual([
+      expect.objectContaining({
+        message: expect.stringContaining('direct doppler invocation'),
+      }),
+    ])
+  })
+
   test('flags with-secrets provider flag in source file', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'src'), { recursive: true })

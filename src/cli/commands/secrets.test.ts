@@ -198,4 +198,22 @@ describe('wp secrets doctor', () => {
       error: expect.stringContaining('Unknown secret profile "production"'),
     })
   })
+
+  it('redacts secret-like unknown profile names in JSON failures', async () => {
+    const stdout = makeWriter()
+
+    const exitCode = await runSecretsDoctorCommand({
+      cwd: tempRepo(),
+      profile: 'ctx7sk-reviewleak000000',
+      json: true,
+      stdout: stdout.writer,
+    })
+
+    expect(exitCode).toBe(1)
+    expect(stdout.output()).not.toContain('ctx7sk-reviewleak000000')
+    expect(JSON.parse(stdout.output())).toMatchObject({
+      ok: false,
+      error: expect.stringContaining('Unknown secret profile "[redacted]"'),
+    })
+  })
 })

@@ -1,9 +1,9 @@
 import type { Dirent } from 'node:fs'
-import { existsSync, readdirSync } from 'node:fs'
+import { readdirSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
-import { SECRETS_CONFIG_PATH } from './lib/secrets-policy.js'
+import { resolveSecretsAuditRoot } from './lib/secrets-policy.js'
 
 const SKIP_DIRS = new Set(['.git', 'node_modules'])
 
@@ -39,12 +39,13 @@ function walkDir(dir: string, root: string, violations: RepoAuditViolation[]): n
 }
 
 export function auditNoDevVars(rootDirectory: string = process.cwd()): RepoAuditResult {
-  if (!existsSync(join(rootDirectory, SECRETS_CONFIG_PATH))) {
+  const auditRoot = resolveSecretsAuditRoot(rootDirectory)
+  if (!auditRoot) {
     return { ok: true, title: 'no-dev-vars', checked: 0, violations: [] }
   }
 
   const violations: RepoAuditViolation[] = []
-  const checked = walkDir(rootDirectory, rootDirectory, violations)
+  const checked = walkDir(auditRoot, auditRoot, violations)
 
   return { ok: violations.length === 0, title: 'no-dev-vars', checked, violations }
 }

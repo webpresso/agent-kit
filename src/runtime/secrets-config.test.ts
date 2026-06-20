@@ -119,4 +119,21 @@ describe('runtime secrets config', () => {
       'Unknown secret profile "missing"',
     )
   })
+
+  it('redacts secret-like unknown profile names from errors', () => {
+    const root = tempRepo({
+      manager: 'doppler',
+      projectId: 'demo',
+      profiles: {
+        deploy: { environment: 'preview' },
+      },
+    })
+
+    expect(() =>
+      resolveSecretsConfigProfileEnvironment('ctx7sk-reviewleak000000', root),
+    ).toThrow('Unknown secret profile "[redacted]"')
+    expect(() =>
+      resolveSecretsConfigProfileEnvironment('ctx7sk-reviewleak000000', root),
+    ).not.toThrow('ctx7sk-reviewleak000000')
+  })
 })

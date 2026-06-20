@@ -1,11 +1,10 @@
 import type { CAC } from 'cac'
 
-const SECRET_VALUE_PATTERN =
-  /(?:^|[\s"'`=:])(?:(?:sk|pk)(?=[-_0-9])|ghp|gho|ghu|ghs|ghr|dp\.st|napi_|pplx-|ctx7sk-)[-_a-zA-Z0-9./+=]{8,}/u
-
 import {
+  isSecretLikeMetadataText,
   readSecretsConfig,
   resolveSecretsConfigProfileEnvironment,
+  sanitizeSecretsMetadataText,
   type SecretManagerName,
 } from '#runtime/secrets-config.js'
 
@@ -28,7 +27,7 @@ interface SecretsDoctorReport {
 }
 
 function isSafeMetadataText(value: string): boolean {
-  return !SECRET_VALUE_PATTERN.test(value)
+  return !isSecretLikeMetadataText(value)
 }
 
 function writeLine(writer: Pick<NodeJS.WriteStream, 'write'>, message: string): void {
@@ -85,7 +84,7 @@ export async function runSecretsDoctorCommand(options: SecretsDoctorOptions = {}
       ok: false,
       configured: false,
       ...(reportProfile ? { profile: reportProfile } : {}),
-      error: error instanceof Error ? error.message : String(error),
+      error: sanitizeSecretsMetadataText(error instanceof Error ? error.message : String(error)),
     }
     writeReport(stdout, report, options.json)
     return 1
