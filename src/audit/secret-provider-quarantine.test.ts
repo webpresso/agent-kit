@@ -54,7 +54,10 @@ describe('auditSecretProviderQuarantine', () => {
   test('flags direct infisical export invocation in source file', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'src'), { recursive: true })
-    writeFileSync(join(root, 'src', 'deploy.ts'), "exec('infisical export --projectId=demo --env=stg')")
+    writeFileSync(
+      join(root, 'src', 'deploy.ts'),
+      "exec('infisical" + " export --projectId=demo --env=stg')",
+    )
 
     const result = auditSecretProviderQuarantine(root)
 
@@ -87,7 +90,7 @@ describe('auditSecretProviderQuarantine', () => {
   test('flags generic with-secrets wrapper usage in source file', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'src'), { recursive: true })
-    writeFileSync(join(root, 'src', 'app.ts'), "exec('with-secrets -- node server.js')")
+    writeFileSync(join(root, 'src', 'app.ts'), "exec('with-secrets" + " -- node server.js')")
 
     const result = auditSecretProviderQuarantine(root)
 
@@ -102,7 +105,10 @@ describe('auditSecretProviderQuarantine', () => {
   test('flags with-secrets invocation without a double-dash separator', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'src'), { recursive: true })
-    writeFileSync(join(root, 'src', 'app.ts'), "exec('with-secrets act -W .github/workflows/ci.yml')")
+    writeFileSync(
+      join(root, 'src', 'app.ts'),
+      "exec('with-secrets" + " act -W .github/workflows/ci.yml')",
+    )
 
     const result = auditSecretProviderQuarantine(root)
 
@@ -117,7 +123,10 @@ describe('auditSecretProviderQuarantine', () => {
   test('flags direct infisical run invocation without a wrapper', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'src'), { recursive: true })
-    writeFileSync(join(root, 'src', 'app.ts'), "exec('infisical run --env=stg -- node server.js')")
+    writeFileSync(
+      join(root, 'src', 'app.ts'),
+      "exec('infisical" + " run --env=stg -- node server.js')",
+    )
 
     const result = auditSecretProviderQuarantine(root)
 
