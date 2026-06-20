@@ -171,13 +171,16 @@ jobs:
             throw new Error(`Missing ${path}. Commit repo secret-manager metadata before using the shared deploy harness.`);
           }
           const payload = JSON.parse(fs.readFileSync(path, "utf8"));
-          const manager = payload?.manager;
-          const projectId = payload?.projectId;
+          if (payload?.schemaVersion !== 1) {
+            throw new Error(`Unsupported secret config schemaVersion in ${path}. Expected schemaVersion: 1.`);
+          }
+          const manager = payload?.providers?.default?.type;
+          const projectId = payload?.providers?.default?.project;
           if (manager !== "doppler" && manager !== "infisical") {
-            throw new Error(`Unsupported secret manager "${String(manager)}" in ${path}.`);
+            throw new Error(`Unsupported secret manager "${String(manager)}" in ${path}. Use providers.default.type.`);
           }
           if (typeof projectId !== "string" || projectId.length === 0) {
-            throw new Error(`Invalid projectId in ${path}.`);
+            throw new Error(`Invalid providers.default.project in ${path}.`);
           }
           console.log(`manager=${manager}`);
           console.log(`project_id=${projectId}`);

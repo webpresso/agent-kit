@@ -153,13 +153,21 @@ Each returns a structured result:
 
 ```json
 {
-  "manager": "doppler",
-  "projectId": "my-project"
+  "schemaVersion": 1,
+  "providers": {
+    "default": {
+      "type": "doppler",
+      "project": "my-project"
+    }
+  },
+  "profiles": {},
+  "sinks": {}
 }
 ```
 
-Valid fields: `manager` (string, required), `projectId` (string, optional),
-`environment` (string, optional). No secret values — only metadata.
+Valid top-level fields: `schemaVersion`, `providers`, `profiles`, and `sinks`.
+The reusable workflow shell reads `providers.default.type` and
+`providers.default.project`. No secret values — only metadata.
 
 ## Source
 

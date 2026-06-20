@@ -25,6 +25,9 @@ describe('reusable Cloudflare deploy workflows', () => {
       )
       expect(workflow).not.toContain('secrets: inherit')
       expect(workflow).toContain('.webpresso/secrets.config.json')
+      expect(workflow).toContain('schemaVersion !== 1')
+      expect(workflow).toContain('providers?.default?.type')
+      expect(workflow).toContain('providers?.default?.project')
       expect(workflow).toContain(
         'dopplerhq/secrets-fetch-action@451892f16195f9ac360e1a5bcbf0b5fd0e957534',
       )
