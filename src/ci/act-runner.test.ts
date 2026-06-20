@@ -111,7 +111,7 @@ describe('public ci act runner contract', () => {
     ])
   })
 
-  it('uses direct act invocation for no-secret profiles', () => {
+  it('keeps the internal secret-file wrapper for no-secret profiles', () => {
     const command = buildPublicCiActCommand({
       cwd: '/repo',
       workflow: 'ci-e2e',
@@ -119,8 +119,13 @@ describe('public ci act runner contract', () => {
       containerArchitecture: 'linux/arm64',
     })
 
-    expect(command.command).toBe('act')
-    expect(command.args).toEqual([
+    expect(command.command).toBe('bash')
+    expect(command.args.slice(0, 3)).toEqual([
+      '-lc',
+      expect.stringContaining('--secret-file'),
+      'wp-ci-act',
+    ])
+    expect(command.args.slice(3)).toEqual([
       'pull_request',
       '-W',
       '/repo/.github/workflows/ci-e2e.yml',

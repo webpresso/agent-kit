@@ -196,15 +196,12 @@ export async function runSecretsBootstrapGithub(
 
   if (options.apply) {
     for (const secretName of bootstrapPlan.requiredSecrets) {
-      const value =
-        process.env[secretName] ??
-        process.env.CI_SECRET_PROVIDER_TOKEN ??
-        ''
+      const value = process.env[secretName] ?? ''
       if (!value) {
         throw createWpError({
           code: 'WP_GITHUB_BOOTSTRAP_MISSING_SECRET',
           problem: `Missing value for ${secretName}.`,
-          fix: `Export ${secretName} or CI_SECRET_PROVIDER_TOKEN before rerunning with --apply.`,
+          fix: `Export ${secretName} before rerunning with --apply.`,
           docsPath: DEFAULT_DOCS_PATH,
         })
       }

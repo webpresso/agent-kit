@@ -89,7 +89,7 @@ describe('wp ci command', () => {
     ])
   })
 
-  it('builds direct act argv for no-secret profiles', () => {
+  it('keeps the internal secret-file wrapper for no-secret profiles', () => {
     const command = buildCiActCommand(
       {
         workflow: 'ci-e2e',
@@ -98,8 +98,13 @@ describe('wp ci command', () => {
       '/repo',
     )
 
-    expect(command.command).toBe('act')
-    expect(command.args).toEqual([
+    expect(command.command).toBe('bash')
+    expect(command.args.slice(0, 3)).toEqual([
+      '-lc',
+      expect.stringContaining('--secret-file'),
+      'wp-ci-act',
+    ])
+    expect(command.args.slice(3)).toEqual([
       'pull_request',
       '-W',
       '/repo/.github/workflows/ci-e2e.yml',

@@ -35,9 +35,7 @@ const ACT_SECRET_FILE_BOOTSTRAP_SCRIPT = [
   ": > \"$secret_file\"",
   "if [ -n \"${CI_SECRET_PROVIDER_TOKEN_PREVIEW:-}\" ]; then",
   "  printf '%s=%s\\n' 'ci_secret_provider_token' \"$CI_SECRET_PROVIDER_TOKEN_PREVIEW\" >> \"$secret_file\"",
-  "elif [ -n \"${CI_SECRET_PROVIDER_TOKEN:-}\" ]; then",
-  "  printf '%s=%s\\n' 'ci_secret_provider_token' \"$CI_SECRET_PROVIDER_TOKEN\" >> \"$secret_file\"",
-  "elif [ -n \"${CI_SECRET_PROVIDER_TOKEN_PRODUCTION:-}\" ]; then",
+"elif [ -n \"${CI_SECRET_PROVIDER_TOKEN_PRODUCTION:-}\" ]; then",
   "  printf '%s=%s\\n' 'ci_secret_provider_token' \"$CI_SECRET_PROVIDER_TOKEN_PRODUCTION\" >> \"$secret_file\"",
   "fi",
   "exec act --secret-file \"$secret_file\" \"$@\"",
@@ -112,9 +110,6 @@ export function buildPublicCiActCommand(options: PublicCiActOptions = {}): Publi
     command: 'bash',
     args: ['-lc', ACT_SECRET_FILE_BOOTSTRAP_SCRIPT, 'wp-ci-act', ...actArgs],
   })
-  if (secretBackedCommand.command !== 'wp') {
-    return { command: 'act', args: actArgs, actArgs }
-  }
   const wrapped: SecretGateCommand = secretBackedCommand
   return { command: wrapped.command, args: wrapped.args, actArgs }
 }

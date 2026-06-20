@@ -84,8 +84,8 @@ describe('wp secrets', () => {
   it('applies bootstrap through gh when values are available', async () => {
     const stdout = makeWriter()
     const apply = vi.fn()
-    const previous = process.env.CI_SECRET_PROVIDER_TOKEN
-    process.env.CI_SECRET_PROVIDER_TOKEN = 'secret-value'
+    const previous = process.env.CI_SECRET_PROVIDER_TOKEN_PRODUCTION
+    process.env.CI_SECRET_PROVIDER_TOKEN_PRODUCTION = 'secret-value'
 
     try {
       const exitCode = await runSecretsCommand(
@@ -105,8 +105,8 @@ describe('wp secrets', () => {
         undefined,
       )
     } finally {
-      if (previous === undefined) delete process.env.CI_SECRET_PROVIDER_TOKEN
-      else process.env.CI_SECRET_PROVIDER_TOKEN = previous
+      if (previous === undefined) delete process.env.CI_SECRET_PROVIDER_TOKEN_PRODUCTION
+      else process.env.CI_SECRET_PROVIDER_TOKEN_PRODUCTION = previous
     }
   })
 
