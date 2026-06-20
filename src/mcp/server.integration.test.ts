@@ -83,7 +83,9 @@ describe('mcp server integration', () => {
     })
 
     const wpAudit = tools.find((t) => t.name === 'wp_audit')
+    const wpAudits = tools.find((t) => t.name === 'wp_audits')
     expect(wpAudit).toBeDefined()
+    expect(wpAudits).toBeDefined()
     expect(
       (wpAudit?.inputSchema.properties?.kind as { enum?: unknown[] } | undefined)?.enum ?? [],
     ).toContain('agents')
@@ -93,6 +95,10 @@ describe('mcp server integration', () => {
     expect(
       (wpAudit?.inputSchema.properties?.kind as { enum?: unknown[] } | undefined)?.enum ?? [],
     ).toContain('no-first-party-mjs')
+    expect(wpAudits?.inputSchema.properties).toMatchObject({
+      kinds: expect.any(Object),
+      preset: expect.any(Object),
+    })
 
     const names = tools.map((t) => t.name)
     expect(names).toEqual(
@@ -145,6 +151,7 @@ describe('mcp server integration', () => {
         'wp_e2e',
         'wp_typecheck',
         'wp_audit',
+        'wp_audits',
         'wp_session_index',
         'wp_session_fetch_and_index',
         'wp_session_execute_file',
@@ -326,6 +333,7 @@ describe('mcp server integration', () => {
         'wp_qa',
         'wp_test',
         'wp_audit',
+        'wp_audits',
         'wp_session_index',
         'wp_session_fetch_and_index',
         'wp_session_execute_file',

@@ -35,8 +35,12 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
       <tool>wp_qa</tool>
     </row>
     <row>
-      <trigger>auditing blueprints, catalog drift, bundle budget, docs frontmatter</trigger>
+      <trigger>single audit: auditing blueprints, catalog drift, bundle budget, docs frontmatter</trigger>
       <tool>wp_audit</tool>
+    </row>
+    <row>
+      <trigger>multiple audits, audit guardrails, chained audit checks, full audit evidence</trigger>
+      <tool>wp_audits</tool>
     </row>
     <row>
       <trigger>running act, local GitHub Actions, with-secrets -- act, vp exec act, pnpm exec act</trigger>

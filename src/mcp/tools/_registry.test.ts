@@ -24,6 +24,7 @@ describe('compiled MCP tool registry', () => {
     }
     expect(COMPILED_TOOL_REGISTRY.map((tool) => tool.name).sort()).toEqual([
       'wp_audit',
+      'wp_audits',
       'wp_ci_act',
       'wp_e2e',
       'wp_format',

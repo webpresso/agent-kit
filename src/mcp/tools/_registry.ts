@@ -1,6 +1,7 @@
 import type { ToolDescriptor } from '#mcp/auto-discover'
 
 import audit from './audit.js'
+import audits from './audits.js'
 import ciAct from './ci-act.js'
 import e2e from './e2e.js'
 import format from './format.js'
@@ -25,6 +26,7 @@ import workerTail from './worker-tail.js'
 
 export const COMPILED_TOOL_REGISTRY: readonly ToolDescriptor[] = [
   audit,
+  audits,
   ciAct,
   e2e,
   format,
