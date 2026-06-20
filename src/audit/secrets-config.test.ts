@@ -73,6 +73,85 @@ describe('auditSecretsConfig', () => {
     expect(result.violations).toStrictEqual([])
   })
 
+
+  test('passes for schemaVersion 1 config with default provider and profiles', () => {
+    const root = tempRepo()
+    writeFileSync(
+      join(root, '.webpresso', 'secrets.config.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        providers: {
+          default: {
+            type: 'doppler',
+            workspace: 'ozby',
+            workspaceId: '7abb07fb8507f57c2011',
+            project: 'my-project',
+          },
+        },
+        profiles: {
+          preview: { provider: 'default', environment: 'stg' },
+        },
+        sinks: {
+          test: { defaultProfile: 'preview', allowedOps: ['run'] },
+        },
+      }),
+    )
+
+    const result = auditSecretsConfig(root)
+
+    expect(result.ok).toBe(true)
+    expect(result.violations).toStrictEqual([])
+  })
+
+
+  test('validates schemaVersion 1 config from nested working directories', () => {
+    const root = tempRepo()
+    const nested = join(root, 'apps', 'web')
+    mkdirSync(nested, { recursive: true })
+    writeFileSync(
+      join(root, '.webpresso', 'secrets.config.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        providers: {
+          default: {
+            type: 'doppler',
+            project: 'my-project',
+          },
+        },
+        profiles: {
+          preview: { provider: 'default', environment: 'stg' },
+        },
+        sinks: {},
+      }),
+    )
+
+    const result = auditSecretsConfig(nested)
+
+    expect(result.ok).toBe(true)
+    expect(result.checked).toBe(1)
+    expect(result.violations).toStrictEqual([])
+  })
+
+  test('rejects schemaVersion 1 profiles that point at an unknown provider', () => {
+    const root = tempRepo()
+    writeFileSync(
+      join(root, '.webpresso', 'secrets.config.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        providers: { default: { type: 'doppler', project: 'my-project' } },
+        profiles: { preview: { provider: 'missing', environment: 'stg' } },
+        sinks: {},
+      }),
+    )
+
+    const result = auditSecretsConfig(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toEqual([
+      expect.objectContaining({ message: expect.stringContaining('unknown provider "missing"') }),
+    ])
+  })
+
   test('passes for valid config with named profiles', () => {
     const root = tempRepo()
     writeFileSync(

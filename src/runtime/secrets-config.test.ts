@@ -56,6 +56,31 @@ describe('runtime secrets config', () => {
     expect(resolveSecretsConfigProfileEnvironment('e2e-runtime', root)).toBe('dev')
   })
 
+
+  it('reads schemaVersion 1 committed config from nested cwd', () => {
+    const root = tempRepo({
+      schemaVersion: 1,
+      providers: {
+        default: { type: 'doppler', project: 'demo-project' },
+      },
+      profiles: {
+        preview: { provider: 'default', environment: 'stg' },
+      },
+      sinks: {},
+    })
+    const nested = path.join(root, 'apps', 'web')
+    mkdirSync(nested, { recursive: true })
+
+    expect(readSecretsConfig(nested)).toEqual({
+      manager: 'doppler',
+      projectId: 'demo-project',
+      profiles: {
+        preview: { environment: 'stg' },
+      },
+    })
+    expect(resolveSecretsConfigProfileEnvironment('preview', nested)).toBe('stg')
+  })
+
   it('preserves committed profiles when runtime config overrides only manager/project selection', () => {
     const root = tempRepo(
       {
