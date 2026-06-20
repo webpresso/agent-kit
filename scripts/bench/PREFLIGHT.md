@@ -54,7 +54,8 @@ export BENCH_CLAUDE_HOME=$HOME
 Expectations:
 
 - runs must be tagged as `cache-disabled baseline`
-- `BENCH_AUTH_MODE=claude-login` is for local single-workspace smoke runs only; it reuses local Claude CLI auth instead of copying credentials into the benchmark run directory
+- `BENCH_AUTH_MODE=claude-login` is for local single-workspace smoke runs only; it validates the selected home with `claude auth status`, then reuses local Claude CLI auth instead of copying credentials into the benchmark run directory
+- if `claude auth status` succeeds but execution returns `401`, refresh the Claude CLI login/session; this is a stale CLI session, not an API-key requirement
 - results are directional only for cache-sensitive comparisons
 
 ## Why this matters

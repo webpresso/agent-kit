@@ -4,7 +4,13 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { buildProviderCommand, runCell, type VariantSpawn } from './variant-runner'
+import {
+  buildProviderCommand,
+  classifyClaudeExecutionFailure,
+  parseClaudeAuthStatusOutput,
+  runCell,
+  type VariantSpawn,
+} from './variant-runner'
 
 describe('variant-runner', () => {
   let dir: string
@@ -159,6 +165,7 @@ describe('variant-runner', () => {
     expect(result).toStrictEqual({
       ok: false,
       error: 'rate_limit',
+      failure_reason: '429 rate limit exceeded',
       usage: null,
       local_wall_ms: expect.any(Number),
       tools: [],
@@ -204,15 +211,30 @@ describe('variant-runner', () => {
     expect(seenEnv?.ANTHROPIC_API_KEY).toBe('secret-main')
   })
 
-  it('uses the logged-in Claude home for explicit claude-login auth mode', async () => {
+  it('uses claude auth status and the logged-in Claude home for explicit claude-login auth mode', async () => {
     const originalAuthMode = process.env.BENCH_AUTH_MODE
     const originalBenchClaudeHome = process.env.BENCH_CLAUDE_HOME
     process.env.BENCH_AUTH_MODE = 'claude-login'
     process.env.BENCH_CLAUDE_HOME = '/tmp/logged-in-claude-home'
 
+    const seenCommands: string[][] = []
     let seenEnv: Record<string, string> | null = null
-    const spawn: VariantSpawn = async (_cmd, options) => {
+    const spawn: VariantSpawn = async (cmd, options) => {
+      seenCommands.push(cmd)
       seenEnv = options.env
+      if (cmd.join(' ') === 'claude auth status') {
+        return {
+          exitCode: 0,
+          stdout: JSON.stringify({
+            loggedIn: true,
+            provider: 'claude.ai',
+            email: 'dev@example.com',
+            subscriptionType: 'Max',
+          }),
+          stderr: '',
+        }
+      }
+
       return {
         exitCode: 0,
         stdout: JSON.stringify({
@@ -229,8 +251,9 @@ describe('variant-runner', () => {
       }
     }
 
+    let result: Awaited<ReturnType<typeof runCell>>
     try {
-      await runCell({
+      result = await runCell({
         scenario: 'debug',
         prompt: 'say hi',
         variant: 'baseline',
@@ -248,7 +271,81 @@ describe('variant-runner', () => {
       else process.env.BENCH_CLAUDE_HOME = originalBenchClaudeHome
     }
 
+    expect(result!.ok).toBe(true)
+    expect(seenCommands.map((cmd) => cmd.slice(0, 3))).toEqual([
+      ['claude', 'auth', 'status'],
+      ['claude', '--print', '--verbose'],
+    ])
     expect(seenEnv?.HOME).toBe('/tmp/logged-in-claude-home')
     expect(seenEnv?.ANTHROPIC_API_KEY).toBeUndefined()
   })
+
+  it('parses first-party Claude CLI auth status without an API key', () => {
+    expect(
+      parseClaudeAuthStatusOutput(
+        JSON.stringify({
+          loggedIn: true,
+          provider: 'claude.ai',
+          email: 'dev@example.com',
+          subscriptionType: 'Max',
+        }),
+      ),
+    ).toStrictEqual({
+      kind: 'cli-login',
+      provider: 'firstParty',
+      email: 'dev@example.com',
+      subscriptionType: 'Max',
+    })
+  })
+
+  it('classifies 401 after valid CLI auth as a stale Claude CLI session', () => {
+    expect(
+      classifyClaudeExecutionFailure({
+        authMode: 'claude-login',
+        authState: { kind: 'cli-login', provider: 'firstParty' },
+        stdout: '',
+        stderr: 'HTTP 401 unauthorized',
+      }),
+    ).toStrictEqual({
+      kind: 'execution-failed',
+      auth: 'cli-login',
+      status: 401,
+      message:
+        'Claude CLI auth status reports a logged-in first-party session, but claude execution returned 401. Refresh the Claude CLI login/session and retry.',
+    })
+  })
+
+  it('returns a stale-session failure reason when claude -p fails after auth status succeeds', async () => {
+    const spawn: VariantSpawn = async (cmd) => {
+      if (cmd.join(' ') === 'claude auth status') {
+        return { exitCode: 0, stdout: 'Logged in to claude.ai as dev@example.com (Max)', stderr: '' }
+      }
+      return { exitCode: 1, stdout: '', stderr: 'HTTP 401 unauthorized' }
+    }
+
+    const result = await runCell({
+      scenario: 'debug',
+      prompt: 'say hi',
+      variant: 'baseline',
+      trial: 5,
+      pluginDir: '/tmp/plugin-main',
+      outputRoot: dir,
+      authMode: 'claude-login',
+      claudeHome: '/tmp/logged-in-claude-home',
+      spawn,
+    })
+
+    expect(result).toStrictEqual({
+      ok: false,
+      error: 'spawn_failed',
+      failure_reason:
+        'Claude CLI auth status reports a logged-in first-party session, but claude execution returned 401. Refresh the Claude CLI login/session and retry.',
+      usage: null,
+      local_wall_ms: expect.any(Number),
+      tools: [],
+      transcript_path: null,
+      home_dir: join(dir, 'adhoc', 'baseline', 'debug', 'trial-5', 'home'),
+    })
+  })
+
 })

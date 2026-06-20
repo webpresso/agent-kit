@@ -37,6 +37,17 @@ export type RunCellInput = {
   spawn?: VariantSpawn
 }
 
+export type ClaudeCliAuthState =
+  | { kind: 'cli-login'; provider: 'firstParty' | string; email?: string; subscriptionType?: string }
+  | { kind: 'api-key'; source: 'ANTHROPIC_API_KEY' }
+  | { kind: 'missing'; reason: string }
+  | {
+      kind: 'execution-failed'
+      auth: 'cli-login' | 'api-key' | 'unknown'
+      status?: number
+      message: string
+    }
+
 export type RunResult =
   | {
       ok: true
@@ -49,6 +60,7 @@ export type RunResult =
   | {
       ok: false
       error: 'rate_limit' | 'spawn_failed'
+      failure_reason?: string
       usage: null
       local_wall_ms: number
       tools: []
@@ -70,11 +82,12 @@ function resolveClaudeAuth(
 ): {
   homeDir: string
   env: Record<string, string>
+  mode: BenchAuthMode
 } {
   if (input.authMode !== 'claude-login') {
     const envKey = variantEnvKey(input.variant)
     const apiKey = input.apiKeys?.[envKey] ?? process.env[envKey]
-    return { homeDir: cellHomeDir, env: apiKey ? { ANTHROPIC_API_KEY: apiKey } : {} }
+    return { homeDir: cellHomeDir, env: apiKey ? { ANTHROPIC_API_KEY: apiKey } : {}, mode: 'api-key' }
   }
 
   const loggedInHome = input.claudeHome ?? process.env.BENCH_CLAUDE_HOME ?? process.env.HOME
@@ -82,7 +95,7 @@ function resolveClaudeAuth(
     throw new Error('BENCH_AUTH_MODE=claude-login requires HOME or BENCH_CLAUDE_HOME')
   }
 
-  return { homeDir: loggedInHome, env: {} }
+  return { homeDir: loggedInHome, env: {}, mode: 'claude-login' }
 }
 
 function resolveCodexAuth(
@@ -91,6 +104,7 @@ function resolveCodexAuth(
 ): {
   homeDir: string
   env: Record<string, string>
+  mode: 'codex'
 } {
   const homeDir = input.codexHome ?? process.env.BENCH_CODEX_HOME ?? cellHomeDir
   const apiKey = input.apiKeys?.CODEX_API_KEY ?? process.env.CODEX_API_KEY
@@ -100,6 +114,7 @@ function resolveCodexAuth(
       CODEX_HOME: homeDir,
       ...(apiKey ? { CODEX_API_KEY: apiKey } : {}),
     },
+    mode: 'codex',
   }
 }
 
@@ -117,6 +132,121 @@ async function spawnWithBun(
   const stderr = await new Response(proc.stderr).text()
   const exitCode = await proc.exited
   return { exitCode, stdout, stderr }
+}
+
+
+function parseJsonAuthStatus(raw: string): ClaudeCliAuthState | undefined {
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    const loggedIn = parsed['loggedIn'] ?? parsed['logged_in'] ?? parsed['authenticated']
+    if (loggedIn !== true) return undefined
+    const provider = String(parsed['provider'] ?? parsed['authProvider'] ?? parsed['source'] ?? 'firstParty')
+    const normalizedProvider = /claude\.ai|first.?party|subscription/i.test(provider)
+      ? 'firstParty'
+      : provider
+    const email = typeof parsed['email'] === 'string' ? parsed['email'] : undefined
+    const subscriptionType =
+      typeof parsed['subscriptionType'] === 'string'
+        ? parsed['subscriptionType']
+        : typeof parsed['subscription_type'] === 'string'
+          ? parsed['subscription_type']
+          : undefined
+    return {
+      kind: 'cli-login',
+      provider: normalizedProvider,
+      ...(email ? { email } : {}),
+      ...(subscriptionType ? { subscriptionType } : {}),
+    }
+  } catch {
+    return undefined
+  }
+}
+
+export function parseClaudeAuthStatusOutput(stdout: string, stderr = ''): ClaudeCliAuthState {
+  const combined = `${stdout}\n${stderr}`.trim()
+  const json = parseJsonAuthStatus(combined)
+  if (json) return json
+
+  if (/not\s+(?:logged\s+in|authenticated)|login\s+required|unauthenticated/i.test(combined)) {
+    return { kind: 'missing', reason: 'Claude CLI is not logged in.' }
+  }
+
+  if (/logged\s+in|authenticated|claude\.ai|subscription|max\b|pro\b/i.test(combined)) {
+    const email = combined.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/iu)?.[0]
+    const subscriptionType = combined.match(/\b(max|pro|team|enterprise)\b/iu)?.[1]
+    return {
+      kind: 'cli-login',
+      provider: /claude\.ai|subscription|max\b|pro\b/i.test(combined) ? 'firstParty' : 'unknown',
+      ...(email ? { email } : {}),
+      ...(subscriptionType ? { subscriptionType } : {}),
+    }
+  }
+
+  return {
+    kind: 'missing',
+    reason: combined || 'Claude CLI auth status returned no recognizable login state.',
+  }
+}
+
+function statusFromAuthFailureText(text: string): number | undefined {
+  const match = text.match(/\b(401|403|429|500|502|503)\b/u)
+  return match ? Number(match[1]) : undefined
+}
+
+export function classifyClaudeExecutionFailure(input: {
+  authMode: BenchAuthMode
+  authState?: ClaudeCliAuthState
+  stdout: string
+  stderr: string
+}): ClaudeCliAuthState {
+  const combined = `${input.stdout}\n${input.stderr}`.trim()
+  const status = statusFromAuthFailureText(combined)
+  if (input.authMode === 'claude-login') {
+    if (status === 401 && input.authState?.kind === 'cli-login') {
+      return {
+        kind: 'execution-failed',
+        auth: 'cli-login',
+        status,
+        message:
+          'Claude CLI auth status reports a logged-in first-party session, but claude execution returned 401. Refresh the Claude CLI login/session and retry.',
+      }
+    }
+    return {
+      kind: 'execution-failed',
+      auth: 'cli-login',
+      ...(status ? { status } : {}),
+      message: combined || 'Claude CLI execution failed while using local CLI login auth.',
+    }
+  }
+
+  return {
+    kind: 'execution-failed',
+    auth: input.authMode === 'api-key' ? 'api-key' : 'unknown',
+    ...(status ? { status } : {}),
+    message:
+      status === 401
+        ? 'Claude API-key execution returned 401. Check ANTHROPIC_API_KEY or variant-specific API key environment.'
+        : combined || 'Claude execution failed.',
+  }
+}
+
+async function detectClaudeCliAuth(input: {
+  spawn: VariantSpawn
+  cwd: string
+  env: Record<string, string>
+}): Promise<ClaudeCliAuthState> {
+  const result = await input.spawn(['claude', 'auth', 'status'], {
+    cwd: input.cwd,
+    env: input.env,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
+
+  if (result.exitCode !== 0) {
+    return { kind: 'missing', reason: `${result.stdout}\n${result.stderr}`.trim() }
+  }
+
+  return parseClaudeAuthStatusOutput(result.stdout, result.stderr)
 }
 
 export function buildProviderCommand(input: {
@@ -197,6 +327,24 @@ export async function runCell(input: RunCellInput): Promise<RunResult> {
     codexProfile: input.codexProfile,
   })
 
+  let authState: ClaudeCliAuthState | undefined
+  if (provider === 'claude' && auth.mode === 'claude-login') {
+    const detected = await detectClaudeCliAuth({ spawn, cwd, env })
+    authState = detected
+    if (detected.kind !== 'cli-login') {
+      return {
+        ok: false,
+        error: 'spawn_failed',
+        failure_reason: detected.reason,
+        usage: null,
+        local_wall_ms: 0,
+        tools: ZERO_TOOLS,
+        transcript_path: null,
+        home_dir: homeDir,
+      }
+    }
+  }
+
   const start = performance.now()
   const result = await spawn(cmd, {
     cwd,
@@ -215,6 +363,7 @@ export async function runCell(input: RunCellInput): Promise<RunResult> {
     return {
       ok: false,
       error: 'rate_limit',
+      failure_reason: combined,
       usage: null,
       local_wall_ms: localWallMs,
       tools: ZERO_TOOLS,
@@ -224,9 +373,19 @@ export async function runCell(input: RunCellInput): Promise<RunResult> {
   }
 
   if (result.exitCode !== 0) {
+    const executionFailure =
+      provider === 'claude'
+        ? classifyClaudeExecutionFailure({
+            authMode: auth.mode === 'claude-login' ? 'claude-login' : 'api-key',
+            authState,
+            stdout: result.stdout,
+            stderr: result.stderr,
+          })
+        : undefined
     return {
       ok: false,
       error: 'spawn_failed',
+      ...(executionFailure ? { failure_reason: executionFailure.message } : {}),
       usage: null,
       local_wall_ms: localWallMs,
       tools: ZERO_TOOLS,
