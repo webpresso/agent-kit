@@ -93,8 +93,15 @@ describe('wp config secrets', () => {
     expect(exitCode).toBe(0)
     expect(existsSync(configPath)).toBe(true)
     expect(JSON.parse(readFileSync(configPath, 'utf8'))).toEqual({
-      manager: 'infisical',
-      projectId: 'shell-worker',
+      schemaVersion: 1,
+      providers: {
+        default: {
+          type: 'infisical',
+          project: 'shell-worker',
+        },
+      },
+      profiles: {},
+      sinks: {},
       projectLabel: 'Shell Worker',
     })
 

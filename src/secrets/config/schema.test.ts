@@ -82,4 +82,18 @@ describe('SecretOrchestrationConfigSchema', () => {
       }),
     ).toThrow(/default/u)
   })
+
+  it('rejects invalid project slugs', () => {
+    expect(() =>
+      parseSecretOrchestrationConfig({
+        ...canonicalConfig(),
+        providers: {
+          default: {
+            ...canonicalConfig().providers.default,
+            project: 'Edge Matte',
+          },
+        },
+      }),
+    ).toThrow(/project slug/u)
+  })
 })

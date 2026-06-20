@@ -51,6 +51,21 @@ describe('auditSecretProviderQuarantine', () => {
     ])
   })
 
+  test('flags direct infisical export invocation in source file', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'src'), { recursive: true })
+    writeFileSync(join(root, 'src', 'deploy.ts'), "exec('infisical export --projectId=demo --env=stg')")
+
+    const result = auditSecretProviderQuarantine(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toEqual([
+      expect.objectContaining({
+        message: expect.stringContaining('direct infisical'),
+      }),
+    ])
+  })
+
   test('flags with-secrets provider flag in source file', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'src'), { recursive: true })
@@ -95,6 +110,21 @@ describe('auditSecretProviderQuarantine', () => {
     expect(result.violations).toEqual([
       expect.objectContaining({
         message: expect.stringContaining('legacy with-secrets wrapper'),
+      }),
+    ])
+  })
+
+  test('flags direct infisical run invocation without a wrapper', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'src'), { recursive: true })
+    writeFileSync(join(root, 'src', 'app.ts'), "exec('infisical run --env=stg -- node server.js')")
+
+    const result = auditSecretProviderQuarantine(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toEqual([
+      expect.objectContaining({
+        message: expect.stringContaining('direct infisical'),
       }),
     ])
   })

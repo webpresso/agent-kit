@@ -1,3 +1,5 @@
+import { parseSecretOrchestrationConfig } from '#secrets/config/schema.js'
+
 export const SECRETS_CONFIG_PATH = '.webpresso/secrets.config.json'
 
 export const SECRET_VALUE_PATTERN =
@@ -92,28 +94,15 @@ export function parseSecretsConfigMetadata(
         throw new Error(`${sourceLabel}: unexpected key "${key}"`)
       }
     }
-    const providers = obj.providers
-    if (typeof providers !== 'object' || providers === null || Array.isArray(providers)) {
-      throw new Error(`${sourceLabel}: "providers" must be an object`)
-    }
-    const defaultProvider = (providers as Record<string, unknown>).default
-    if (typeof defaultProvider !== 'object' || defaultProvider === null || Array.isArray(defaultProvider)) {
-      throw new Error(`${sourceLabel}: "providers.default" must be an object`)
-    }
-    const provider = defaultProvider as Record<string, unknown>
-    if (provider.type !== 'doppler' && provider.type !== 'infisical') {
-      throw new Error(`${sourceLabel}: "providers.default.type" must be "doppler" or "infisical"`)
-    }
-    if (typeof provider.project !== 'string' || provider.project.length === 0) {
-      throw new Error(`${sourceLabel}: "providers.default.project" must be a non-empty string`)
-    }
+    const config = parseSecretOrchestrationConfig(obj)
+    const provider = config.providers.default
     if (!PROJECT_ID_PATTERN.test(provider.project)) {
       throw new Error(`${sourceLabel}: "providers.default.project" must be a valid project slug`)
     }
     return {
       manager: provider.type,
       projectId: provider.project,
-      projectLabel: typeof provider.project === 'string' ? provider.project : undefined,
+      projectLabel: provider.project,
     }
   }
 

@@ -3,11 +3,13 @@ import { z } from 'zod'
 import { BUILTIN_SECRET_PROVIDER_TYPES, type SecretProviderDefinition } from '#secrets/providers/types.js'
 import { BUILTIN_SECRET_SINKS, type SecretSinkDefinition } from '#secrets/sinks/types.js'
 
+const PROJECT_SLUG_PATTERN = /^[a-z0-9][a-z0-9_-]{0,62}$/u
+
 const ProviderDefinitionSchema = z.object({
   type: z.enum(BUILTIN_SECRET_PROVIDER_TYPES),
   workspace: z.string().min(1).optional(),
   workspaceId: z.string().min(1).optional(),
-  project: z.string().min(1),
+  project: z.string().regex(PROJECT_SLUG_PATTERN, 'Invalid project slug'),
 })
 
 const ProfileDefinitionSchema = z.object({

@@ -103,4 +103,33 @@ describe('auditSecretsConfig', () => {
     expect(result.checked).toBe(1)
     expect(result.violations).toStrictEqual([])
   })
+
+  test('reuses the full orchestration schema for v1 configs', () => {
+    const root = tempRepo()
+    writeFileSync(
+      join(root, '.webpresso', 'secrets.config.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        providers: {
+          default: {
+            type: 'doppler',
+            workspace: 'ozby',
+            workspaceId: '7abb07fb8507f57c2011',
+            project: 'Edge Matte',
+          },
+        },
+        profiles: {
+          preview: { provider: 'default', environment: 'stg' },
+        },
+        sinks: {
+          'dev-server': { defaultProfile: 'missing', allowedOps: ['run'] },
+        },
+      }),
+    )
+
+    const result = auditSecretsConfig(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations[0]?.message).toMatch(/project|default profile/i)
+  })
 })

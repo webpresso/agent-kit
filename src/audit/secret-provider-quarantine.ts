@@ -31,6 +31,16 @@ const BANNED_PATTERNS: readonly BannedPattern[] = [
       'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of direct doppler invocation',
   },
   {
+    pattern: p([String.raw`\b`, 'infisical', ' run', String.raw`\b`]),
+    message:
+      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of direct infisical invocation',
+  },
+  {
+    pattern: p([String.raw`\b`, 'infisical', ' export', String.raw`\b`]),
+    message:
+      'load secrets through runtime/env, not direct infisical exports',
+  },
+  {
     pattern: p([String.raw`\bwith-secrets\s+`, '--doppler', String.raw`\b`]),
     message:
       'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of provider flags',

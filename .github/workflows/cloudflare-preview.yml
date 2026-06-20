@@ -176,10 +176,11 @@ jobs:
           }
           const manager = payload?.providers?.default?.type;
           const projectId = payload?.providers?.default?.project;
+          const projectSlugPattern = /^[a-z0-9][a-z0-9_-]{0,62}$/u;
           if (manager !== "doppler" && manager !== "infisical") {
             throw new Error(`Unsupported secret manager "${String(manager)}" in ${path}. Use providers.default.type.`);
           }
-          if (typeof projectId !== "string" || projectId.length === 0) {
+          if (typeof projectId !== "string" || !projectSlugPattern.test(projectId)) {
             throw new Error(`Invalid providers.default.project in ${path}.`);
           }
           console.log(`manager=${manager}`);

@@ -2,9 +2,8 @@ import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import type { CAC } from 'cac'
-import { z } from 'zod'
 
-import { readJsonFileWithSchema } from '#shared-utils/read-json-file.js'
+import { parseSecretOrchestrationConfig } from '#secrets/config/schema.js'
 import { writeJsonFile } from '#shared-utils/write-json-file.js'
 
 type OutputWriter = Pick<NodeJS.WriteStream, 'write'>
@@ -16,12 +15,6 @@ export interface SecretsConfig {
   readonly projectId: string
   readonly projectLabel?: string
 }
-
-const SecretsConfigSchema = z.object({
-  manager: z.enum(['doppler', 'infisical']),
-  projectId: z.string(),
-  projectLabel: z.string().optional(),
-})
 
 interface SecretManagerAvailability {
   readonly available: boolean
@@ -141,23 +134,52 @@ function getSecretsConfigPath(cwd: string = process.cwd()): string {
 function readSecretsConfig(cwd?: string): SecretsConfig | null {
   const path = getSecretsConfigPath(cwd)
   if (!existsSync(path)) return null
-  let parsed: z.infer<typeof SecretsConfigSchema>
+  let parsed: unknown
   try {
-    parsed = readJsonFileWithSchema(path, SecretsConfigSchema)
+    parsed = JSON.parse(readFileSync(path, 'utf8'))
   } catch (error) {
     throw commandError(`Invalid secret manager config at ${path}`, 1, error)
   }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw commandError(`Invalid secret manager config at ${path}`, 1)
+  }
+  let config
+  try {
+    config = parseSecretOrchestrationConfig(parsed)
+  } catch (error) {
+    throw commandError(`Invalid secret manager config at ${path}`, 1, error)
+  }
+  const provider = config.providers.default
+  const projectLabel =
+    typeof (parsed as { projectLabel?: unknown }).projectLabel === 'string'
+      ? (parsed as { projectLabel?: string }).projectLabel
+      : undefined
   return {
-    manager: parsed.manager,
-    projectId: parsed.projectId,
-    ...(typeof parsed.projectLabel === 'string' ? { projectLabel: parsed.projectLabel } : {}),
+    manager: provider.type,
+    projectId: provider.project,
+    ...(projectLabel ? { projectLabel } : {}),
   }
 }
 
 function writeSecretsConfig(config: SecretsConfig, cwd?: string): void {
   const path = getSecretsConfigPath(cwd)
   mkdirSync(dirname(path), { recursive: true })
-  writeJsonFile(path, config, { writeFileOptions: { mode: 0o600 } })
+  writeJsonFile(
+    path,
+    {
+      schemaVersion: 1,
+      providers: {
+        default: {
+          type: config.manager,
+          project: config.projectId,
+        },
+      },
+      profiles: {},
+      sinks: {},
+      ...(config.projectLabel ? { projectLabel: config.projectLabel } : {}),
+    },
+    { writeFileOptions: { mode: 0o600 } },
+  )
 }
 
 function findConfigRoot(cwd: string): string {
