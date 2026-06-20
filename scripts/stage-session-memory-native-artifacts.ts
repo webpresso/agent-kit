@@ -19,6 +19,7 @@ export interface SessionMemoryNativeStageOperation {
 
 interface StageOptions {
   readonly rootDir?: string
+  readonly sourceRootDir?: string
   readonly selectedTarget?: string
 }
 
@@ -46,17 +47,12 @@ export function buildSessionMemoryNativeStageOperations(
   options: StageOptions = {},
 ): readonly SessionMemoryNativeStageOperation[] {
   const rootDir = options.rootDir ?? process.cwd()
+  const sourceRootDir = options.sourceRootDir ?? resolve(rootDir, 'dist', 'session-memory-native')
   return selectTargets(options.selectedTarget).map((target) => {
     const packageDir = sessionMemoryNativePackageDirName(target.packageName)
     return {
       target,
-      source: resolve(
-        rootDir,
-        'dist',
-        'session-memory-native',
-        target.id,
-        SESSION_MEMORY_NATIVE_ADDON_FILENAME,
-      ),
+      source: resolve(sourceRootDir, target.id, SESSION_MEMORY_NATIVE_ADDON_FILENAME),
       packageAddonDestination: resolve(
         rootDir,
         'dist',
@@ -109,11 +105,13 @@ export function renderSessionMemoryNativePackageManifest(
 
 export function stageSessionMemoryNativeArtifacts({
   rootDir = process.cwd(),
+  sourceRootDir,
   dryRun = false,
   allowMissing = false,
   selectedTarget,
 }: {
   readonly rootDir?: string
+  readonly sourceRootDir?: string
   readonly dryRun?: boolean
   readonly allowMissing?: boolean
   readonly selectedTarget?: string
@@ -121,7 +119,11 @@ export function stageSessionMemoryNativeArtifacts({
   const packageVersion = readPackageVersion(rootDir)
   const staged: string[] = []
 
-  for (const operation of buildSessionMemoryNativeStageOperations({ rootDir, selectedTarget })) {
+  for (const operation of buildSessionMemoryNativeStageOperations({
+    rootDir,
+    sourceRootDir,
+    selectedTarget,
+  })) {
     if (!existsSync(operation.source)) {
       const message = `missing session-memory native artifact for ${operation.target.id}: ${operation.source}`
       if (allowMissing) {
@@ -159,8 +161,14 @@ function parseArg(name: string): string | undefined {
 if (import.meta.main) {
   const dryRun = process.argv.includes('--dry-run')
   const allowMissing = process.argv.includes('--allow-missing')
+  const sourceRootDir = parseArg('--source-dir')
   const selectedTarget = parseArg('--target')
-  for (const line of stageSessionMemoryNativeArtifacts({ dryRun, allowMissing, selectedTarget })) {
+  for (const line of stageSessionMemoryNativeArtifacts({
+    sourceRootDir,
+    dryRun,
+    allowMissing,
+    selectedTarget,
+  })) {
     console.log(line)
   }
 }

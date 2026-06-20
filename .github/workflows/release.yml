@@ -134,18 +134,25 @@ jobs:
       - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
           pattern: session-memory-native-*
-          path: dist/session-memory-native-downloads
+          path: ${{ runner.temp }}/session-memory-native-downloads
 
       - name: Assemble session-memory native artifacts
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p dist/session-memory-native
-          for artifact_dir in dist/session-memory-native-downloads/session-memory-native-*; do
+          artifact_root="$RUNNER_TEMP/session-memory-native-$GITHUB_RUN_ID"
+          mkdir -p "$artifact_root"
+          for artifact_dir in "$RUNNER_TEMP"/session-memory-native-downloads/session-memory-native-*; do
             target="${artifact_dir##*/session-memory-native-}"
-            mkdir -p "dist/session-memory-native/${target}"
-            cp "${artifact_dir}/session_memory_napi.node" "dist/session-memory-native/${target}/session_memory_napi.node"
+            mkdir -p "${artifact_root}/${target}"
+            cp "${artifact_dir}/session_memory_napi.node" "${artifact_root}/${target}/session_memory_napi.node"
           done
+          actual_count="$(find "$artifact_root" -name session_memory_napi.node -type f | wc -l | tr -d ' ')"
+          if [ "$actual_count" != "6" ]; then
+            echo "Expected 6 session-memory native artifacts, found $actual_count" >&2
+            find "$artifact_root" -maxdepth 3 -type f >&2
+            exit 1
+          fi
 
       - name: Stage native runtime artifacts
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run == true }}
@@ -154,6 +161,7 @@ jobs:
           set -euo pipefail
           pnpm run build:runtime-binaries
           pnpm run stage:plugin-runtime
+          pnpm run stage:session-memory-native -- --source-dir "$RUNNER_TEMP/session-memory-native-$GITHUB_RUN_ID"
 
       - name: Validate version path (dry run)
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run == true }}
@@ -183,6 +191,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HUSKY: '0'
           RELEASE_PUBLISH_RESULT_FILE: ${{ runner.temp }}/release-publish-result.json
+          SESSION_MEMORY_NATIVE_ARTIFACTS_DIR: ${{ runner.temp }}/session-memory-native-${{ github.run_id }}
 
       - name: Read explicit publish result
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry-run != true }}

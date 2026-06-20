@@ -93,9 +93,16 @@ describe('release-publish runtime lane', () => {
     expect(workspacePublish).toContain("return 'already-published'")
   })
 
-  it('fails closed unless every declared session-memory native package is pre-staged', () => {
+  it('fails closed unless every declared session-memory native package is staged from the release handoff', () => {
     const source = readFileSync(join(import.meta.dirname, 'release-publish.ts'), 'utf8')
 
+    expect(source).toContain(
+      "const SESSION_MEMORY_NATIVE_ARTIFACTS_DIR_ENV = 'SESSION_MEMORY_NATIVE_ARTIFACTS_DIR'",
+    )
+    expect(source).toContain('function requireSessionMemoryNativeArtifactsDir()')
+    expect(source).toContain('is required to publish the session-memory native matrix')
+    expect(source).toContain('const sessionMemoryNativeStageArgs = [')
+    expect(source).toContain("'--source-dir'")
     expect(source).toContain('function assertPreparedSessionMemoryNativePackages')
     expect(source).toContain('missing session-memory native package artifact')
     expect(source).toContain('missing session-memory native package manifest')
