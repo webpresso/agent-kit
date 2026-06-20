@@ -18,7 +18,12 @@
 import { spawn } from 'node:child_process'
 import { join } from 'node:path'
 
-import { terminateProcessTreeWithEscalation } from '#cli/process-tree.js'
+import {
+  exitCodeFromSignal,
+  forceKillProcessTree,
+  killProcessTree,
+  PROCESS_TREE_FORCE_KILL_GRACE_MS,
+} from '#shared-utils/process-supervisor.js'
 
 export interface RunResult {
   readonly stdout: string
@@ -75,18 +80,27 @@ export function runCommand(
     let stderr = ''
     let timedOut = false
     let aborted = false
-    let cancelEscalation: (() => void) | undefined
+    let terminationRequested = false
+    let escalationTimer: ReturnType<typeof setTimeout> | undefined
+
+    const requestTermination = (): void => {
+      if (terminationRequested) return
+      terminationRequested = true
+      killProcessTree(child, 'SIGTERM')
+      if (process.platform === 'win32') return
+      escalationTimer = setTimeout(() => {
+        forceKillProcessTree(child)
+      }, PROCESS_TREE_FORCE_KILL_GRACE_MS)
+    }
 
     const internalTimer = setTimeout(() => {
       timedOut = true
-      cancelEscalation?.()
-      cancelEscalation = terminateProcessTreeWithEscalation(child)
+      requestTermination()
     }, options.timeoutMs)
 
     const onAbort = (): void => {
       aborted = true
-      cancelEscalation?.()
-      cancelEscalation = terminateProcessTreeWithEscalation(child)
+      requestTermination()
     }
     if (options.signal) {
       if (options.signal.aborted) {
@@ -102,7 +116,7 @@ export function runCommand(
 
     const cleanup = (): void => {
       clearTimeout(internalTimer)
-      cancelEscalation?.()
+      if (escalationTimer) clearTimeout(escalationTimer)
       options.signal?.removeEventListener('abort', onAbort)
     }
 
@@ -117,6 +131,7 @@ export function runCommand(
       resolve({ error: err })
     })
     child.on('close', (code: number | null, signal: NodeJS.Signals | null) => {
+      if (terminationRequested && signal !== 'SIGKILL') forceKillProcessTree(child)
       cleanup()
       const exitCode = code ?? exitCodeFromSignal(signal)
       resolve({ stdout, stderr, exitCode, signal, timedOut, aborted })

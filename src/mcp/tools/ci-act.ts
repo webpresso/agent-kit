@@ -6,8 +6,8 @@ import { DEFAULT_CI_ACT_TIMEOUT_MS, MAX_CI_ACT_TIMEOUT_MS } from '#cli/commands/
 import {
   buildPublicCiActCommand,
   preparePublicCiActExecution,
-  resolveCiActSecretEnvProfile,
   resolveCiActExecutionMode,
+  resolveCiActSecretEnvProfile,
   sanitizePublicCiActArgv,
 } from '#ci/act-runner.js'
 import { isSecretGateRuntimeProfile, runSecretGateCommand } from '#secret-gate/runner.js'
@@ -48,24 +48,57 @@ const inputSchema = z
   })
   .strict()
 
+const commandDetailsSchema = z.object({ command: z.string(), args: z.array(z.string()) })
+
 const outputSchema = createSummaryOutputSchema({
-  details: z.object({
-    command: z.object({ command: z.string(), args: z.array(z.string()) }),
-    envProfile: z.string(),
-    mode: z.enum(['dry-run', 'execute']),
-    nonSecurityEquivalent: z.object({ command: z.string(), args: z.array(z.string()) }),
-    secretEnvProfile: z.string().optional(),
-  }),
+  details: z.union([
+    z.object({
+      command: commandDetailsSchema,
+      envProfile: z.string(),
+      mode: z.enum(['dry-run', 'execute']),
+      nonSecurityEquivalent: commandDetailsSchema,
+      secretProfile: z.string().optional(),
+    }),
+    z.object({
+      command: commandDetailsSchema,
+      envProfile: z.string(),
+      mode: z.literal('replay'),
+      nonSecurityEquivalent: z.literal(true),
+      secretProfile: z.string().optional(),
+    }),
+  ]),
 })
 
-function publicCommandDetails(input: z.infer<typeof inputSchema>, cwd: string) {
+type CiActInput = z.infer<typeof inputSchema>
+
+function publicCommandDetails(input: CiActInput, cwd: string) {
   const command = sanitizePublicCiActArgv(buildPublicCiActCommand({ ...input, cwd }))
   return { command: command.command, args: [...command.args] }
 }
 
-function nonSecurityEquivalentDetails(input: z.infer<typeof inputSchema>, cwd: string) {
+function nonSecurityEquivalentDetails(input: CiActInput, cwd: string) {
   const command = sanitizePublicCiActArgv(buildPublicCiActCommand({ ...input, cwd }))
   return { command: 'act', args: [...command.actArgs] }
+}
+
+function dryRunDetails(input: CiActInput, cwd: string) {
+  if (resolveCiActExecutionMode(input) === 'replay') {
+    return {
+      command: publicCommandDetails(input, cwd),
+      envProfile: input.envProfile,
+      mode: 'replay' as const,
+      nonSecurityEquivalent: true as const,
+      secretProfile: input.secretProfile,
+    }
+  }
+
+  return {
+    command: publicCommandDetails(input, cwd),
+    envProfile: input.envProfile,
+    mode: 'dry-run' as const,
+    nonSecurityEquivalent: nonSecurityEquivalentDetails(input, cwd),
+    secretProfile: input.secretProfile,
+  }
 }
 
 const tool: ToolDescriptor = {
@@ -82,48 +115,69 @@ const tool: ToolDescriptor = {
   handler: async (raw, extra) => {
     const input = inputSchema.parse(raw ?? {})
     const cwd = resolveProjectRoot(input.cwd ? { cwd: input.cwd } : {})
-    const command = buildPublicCiActCommand({ ...input, cwd })
     if (!input.execute) {
       return createSummaryResult({
         passed: true,
         summary: `ci-act dry-run prepared via env profile ${input.envProfile}`,
-        details: {
-          command: publicCommandDetails(input, cwd),
-          envProfile: input.envProfile,
-          mode: 'dry-run',
-          nonSecurityEquivalent: nonSecurityEquivalentDetails(input, cwd),
-          secretEnvProfile: input.secretEnvProfile,
-        },
+        details: dryRunDetails(input, cwd),
       })
     }
 
-    const result = await runSecretGateCommand({
-      cwd,
-      envProfile: input.envProfile,
-      secretEnvProfile: input.secretEnvProfile,
-      command: 'act',
-      args: command.actArgs,
-      timeoutMs: input.timeoutMs,
-      signal: extra?.signal,
-    })
-    const merged = [result.stdout, result.stderr].filter(Boolean).join('\n')
-    const redacted = redactText(merged)
-    const clipped = clipRawOutput(redacted, 4_000, { toolName: 'wp_ci_act' })
-    const toolExecutionFailed = result.timedOut || result.aborted
-    return createSummaryResult(
-      {
-        passed: result.exitCode === 0,
-        summary:
-          result.exitCode === 0
-            ? `ci-act finished successfully via env profile ${input.envProfile}`
-            : `ci-act failed with exit ${result.exitCode} via env profile ${input.envProfile}`,
-        exitCode: result.exitCode,
-        details: {
-          command: publicCommandDetails(input, cwd),
-          envProfile: input.envProfile,
-          mode: 'execute',
-          nonSecurityEquivalent: nonSecurityEquivalentDetails(input, cwd),
-          secretEnvProfile: input.secretEnvProfile,
+    const prepared = preparePublicCiActExecution({ ...input, cwd })
+    try {
+      const result = await runSecretGateCommand({
+        cwd,
+        envProfile: input.envProfile,
+        secretEnvProfile: resolveCiActSecretEnvProfile({ ...input, cwd }),
+        command: 'act',
+        args: prepared.command.actArgs,
+        timeoutMs: input.timeoutMs,
+        signal: extra?.signal,
+      })
+      const merged = [result.stdout, result.stderr].filter(Boolean).join('\n')
+      const redacted = redactText(merged)
+      const clipped = clipRawOutput(redacted, 4_000, { toolName: 'wp_ci_act' })
+      const toolExecutionFailed = result.timedOut || result.aborted
+      const details =
+        prepared.mode === 'replay'
+          ? {
+              command: publicCommandDetails(input, cwd),
+              envProfile: input.envProfile,
+              mode: 'replay' as const,
+              nonSecurityEquivalent: true as const,
+              secretProfile: input.secretProfile,
+            }
+          : {
+              command: publicCommandDetails(input, cwd),
+              envProfile: input.envProfile,
+              mode: 'execute' as const,
+              nonSecurityEquivalent: nonSecurityEquivalentDetails(input, cwd),
+              secretProfile: input.secretProfile,
+            }
+      const failures = [
+        ...(prepared.nonSecurityEquivalent
+          ? [
+              {
+                message:
+                  'replay mode is a generated local approximation and is not security-equivalent to GitHub CI or OIDC',
+              },
+            ]
+          : []),
+        ...(result.timedOut ? [{ message: 'timed out while running act' }] : []),
+        ...(result.aborted ? [{ message: 'aborted by client signal' }] : []),
+      ]
+
+      return createSummaryResult(
+        {
+          passed: result.exitCode === 0,
+          summary:
+            result.exitCode === 0
+              ? `ci-act finished successfully via env profile ${input.envProfile}`
+              : `ci-act failed with exit ${result.exitCode} via env profile ${input.envProfile}`,
+          exitCode: result.exitCode,
+          details,
+          ...clipped,
+          ...(failures.length > 0 ? { failures } : {}),
         },
         toolExecutionFailed ? { isError: true } : {},
       )
