@@ -1,7 +1,7 @@
 ---
 title: Reusable Cloudflare deploy workflows
 type: guide
-last_updated: 2026-06-11
+last_updated: 2026-06-19
 ---
 
 # Reusable Cloudflare deploy workflows
@@ -9,8 +9,8 @@ last_updated: 2026-06-11
 `webpresso/github-actions` ships the reusable GitHub workflow shells that
 Webpresso consumer repos pin by immutable commit SHA:
 
-- `.github/workflows/cloudflare-preview.yml`
-- `.github/workflows/cloudflare-production.yml`
+- `webpresso/github-actions/.github/workflows/cloudflare-preview.yml`
+- `webpresso/github-actions/.github/workflows/cloudflare-production.yml`
 
 They are intentionally **shell-only**. The caller repo still owns:
 
@@ -22,18 +22,12 @@ They are intentionally **shell-only**. The caller repo still owns:
 
 ## Secret bootstrap contract
 
-The shared workflows do **not** use cross-owner `secrets: inherit` as the
-primary design.
+The shared workflows use repo-owned secret profiles plus provider-specific bootstrap.
 
-Instead, the caller passes one explicit reusable-workflow secret:
+The caller commits `.webpresso/secrets.config.json` metadata and passes a repo-owned `secret_profile` name. Bootstrap then depends on the provider:
 
-- `ci_secret_provider_token`
-
-The shared workflow then reads the caller repo’s committed
-`.webpresso/secrets.config.json` metadata and bootstraps the selected provider:
-
-- `doppler` → `dopplerhq/secrets-fetch-action`
-- `infisical` → `infisical export` via `INFISICAL_TOKEN`
+- `doppler` → reusable-workflow secret `ci_secret_provider_token` (for example preview / production config tokens), or optionally `doppler_identity_id` when OIDC-capable service accounts exist
+- `infisical` → `Infisical/secrets-action` via `infisical_identity_id`
 
 This keeps CI aligned with the repo-local operator contract:
 
@@ -44,10 +38,12 @@ This keeps CI aligned with the repo-local operator contract:
 
 1. Commit `.webpresso/secrets.config.json` with metadata only — never secret
    values.
-2. Store the CI bootstrap token in the caller repo/org secrets.
-3. Pass that secret explicitly in the reusable workflow call.
-4. For Infisical callers, also pass `secret_env_profile` so the shared shell
-   knows which environment slug to export.
+2. Commit a `profiles` map in `.webpresso/secrets.config.json` and pass
+   `secret_profile` so the shared shell can resolve the provider environment slug
+   from repo-owned metadata.
+3. For Doppler, map the appropriate GitHub secret onto the reusable workflow secret
+   `ci_secret_provider_token` (for example preview / production config tokens).
+4. For Infisical or Doppler OIDC-capable workspaces, pass the provider identity as a non-secret workflow input when that bootstrap mode is available.
 
 ## Runtime/bootstrap contract
 
@@ -77,9 +73,12 @@ Optional inputs:
 - `mode` (`deploy` or `destroy`)
 - `destroy_command`
 - `smoke_command`
-- `secret_env_profile`
+- `secret_profile`
+- `doppler_identity_id`
+- `ci_secret_provider_token` (workflow secret, for Doppler token bootstrap)
+- `ci_secret_provider_token` (workflow secret, for Doppler token bootstrap)
+- `infisical_identity_id`
 - `runner`
-- `skip_when_ci_secret_missing`
 
 ### Production
 
@@ -92,7 +91,9 @@ Required inputs:
 Optional inputs:
 
 - `smoke_command`
-- `secret_env_profile`
+- `secret_profile`
+- `doppler_identity_id`
+- `infisical_identity_id`
 - `release_version`
 - `runner`
 
@@ -111,8 +112,9 @@ jobs:
       install_command: pnpm install --frozen-lockfile
       verify_command: pnpm run lint
       deploy_command: wp deploy --lane prd
+      secret_profile: deploy
     secrets:
-      ci_secret_provider_token: ${{ secrets.CI_SECRET_PROVIDER_TOKEN }}
+      ci_secret_provider_token: ${{ secrets.CI_SECRET_PROVIDER_TOKEN_PRODUCTION }}
 ```
 
 When the shared shell changes:

@@ -14,12 +14,14 @@ describe('parseWithSecretsArgs', () => {
     })
   })
 
-  it('parses provider-specific selectors', () => {
-    expect(parseWithSecretsArgs(['--env-profile=prd', '--', 'wrangler', 'deploy'])).toEqual({
+  it('parses provider-specific selectors separately from runtime profiles', () => {
+    expect(
+      parseWithSecretsArgs(['--secret-env-profile=prd', '--', 'wrangler', 'deploy']),
+    ).toEqual({
       command: 'wrangler',
       args: ['deploy'],
-      profile: 'prd',
-      environment: undefined,
+      profile: undefined,
+      environment: 'prd',
     })
   })
 

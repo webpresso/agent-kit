@@ -4,10 +4,15 @@ import path from 'node:path'
 
 export type SecretManagerName = 'doppler' | 'infisical'
 
+export interface SecretsConfigProfile {
+  readonly environment: string
+}
+
 export interface SecretsConfig {
   readonly manager: SecretManagerName
   readonly projectId: string
   readonly projectLabel?: string
+  readonly profiles?: Readonly<Record<string, SecretsConfigProfile>>
 }
 
 const COMMITTED_RELATIVE_PATH = path.join('.webpresso', 'secrets.config.json')
@@ -44,6 +49,38 @@ function isManager(value: unknown): value is SecretManagerName {
   return value === 'doppler' || value === 'infisical'
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function parseProfiles(
+  value: unknown,
+  source: string,
+): Readonly<Record<string, SecretsConfigProfile>> | undefined {
+  if (value === undefined) return undefined
+  if (!isRecord(value)) {
+    throw new Error(`Malformed secrets config at ${source}: "profiles" must be an object`)
+  }
+
+  const profiles: Record<string, SecretsConfigProfile> = {}
+  for (const [profileId, profileValue] of Object.entries(value)) {
+    if (!isRecord(profileValue)) {
+      throw new Error(
+        `Malformed secrets config at ${source}: profile "${profileId}" must be an object`,
+      )
+    }
+    const environment = profileValue.environment
+    if (typeof environment !== 'string' || environment.trim().length === 0) {
+      throw new Error(
+        `Malformed secrets config at ${source}: profile "${profileId}" must set a non-empty "environment"`,
+      )
+    }
+    profiles[profileId] = { environment: environment.trim() }
+  }
+
+  return profiles
+}
+
 function parseConfig(raw: string, source: string): SecretsConfig {
   let parsed: unknown
   try {
@@ -53,11 +90,11 @@ function parseConfig(raw: string, source: string): SecretsConfig {
     throw new Error(`Malformed secrets config at ${source}: ${detail}`)
   }
 
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+  if (!isRecord(parsed)) {
     throw new Error(`Malformed secrets config at ${source}: expected object`)
   }
 
-  const obj = parsed as Record<string, unknown>
+  const obj = parsed
   if (!isManager(obj.manager)) {
     throw new Error(
       `Malformed secrets config at ${source}: "manager" must be "doppler" or "infisical"`,
@@ -73,19 +110,64 @@ function parseConfig(raw: string, source: string): SecretsConfig {
     ...(typeof obj.projectLabel === 'string' && obj.projectLabel.length > 0
       ? { projectLabel: obj.projectLabel }
       : {}),
+    ...(parseProfiles(obj.profiles, source) ? { profiles: parseProfiles(obj.profiles, source) } : {}),
+  }
+}
+
+function mergeSecretsConfigs(
+  committedConfig: SecretsConfig | null,
+  runtimeConfig: SecretsConfig | null,
+): SecretsConfig | null {
+  if (!committedConfig && !runtimeConfig) return null
+  if (!committedConfig) return runtimeConfig
+  if (!runtimeConfig) return committedConfig
+
+  return {
+    manager: runtimeConfig.manager,
+    projectId: runtimeConfig.projectId,
+    ...(runtimeConfig.projectLabel ?? committedConfig.projectLabel
+      ? { projectLabel: runtimeConfig.projectLabel ?? committedConfig.projectLabel }
+      : {}),
+    ...(committedConfig.profiles ?? runtimeConfig.profiles
+      ? { profiles: committedConfig.profiles ?? runtimeConfig.profiles }
+      : {}),
   }
 }
 
 export function readSecretsConfig(cwd: string = process.cwd()): SecretsConfig | null {
   const runtimePath = getRuntimeSecretsConfigPath(cwd)
-  if (runtimePath && existsSync(runtimePath)) {
-    return parseConfig(readFileSync(runtimePath, 'utf8'), runtimePath)
-  }
-
   const committedPath = getCommittedSecretsConfigPath(cwd)
-  if (existsSync(committedPath)) {
-    return parseConfig(readFileSync(committedPath, 'utf8'), committedPath)
-  }
 
-  return null
+  const runtimeConfig =
+    runtimePath && existsSync(runtimePath) ? parseConfig(readFileSync(runtimePath, 'utf8'), runtimePath) : null
+  const committedConfig = existsSync(committedPath)
+    ? parseConfig(readFileSync(committedPath, 'utf8'), committedPath)
+    : null
+
+  return mergeSecretsConfigs(committedConfig, runtimeConfig)
+}
+
+export function resolveSecretsConfigProfile(
+  profileId: string,
+  cwd: string = process.cwd(),
+): SecretsConfigProfile {
+  const config = readSecretsConfig(cwd)
+  if (!config) {
+    throw new Error('No secret manager configured.\nRun: wp config secrets setup')
+  }
+  const normalizedProfileId = profileId.trim()
+  const profile = config.profiles?.[normalizedProfileId]
+  if (!profile) {
+    throw new Error(
+      `Unknown secret profile "${normalizedProfileId}" in ${getCommittedSecretsConfigPath(cwd)}`,
+    )
+  }
+  return profile
+}
+
+export function resolveSecretsConfigProfileEnvironment(
+  profileId: string,
+  cwd: string = process.cwd(),
+): string {
+  return resolveSecretsConfigProfile(profileId, cwd).environment
 }

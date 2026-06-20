@@ -7,6 +7,7 @@ export type SecretsConfigMetadata = {
   readonly manager: 'doppler' | 'infisical'
   readonly projectId: string
   readonly projectLabel?: string
+  readonly profiles?: Readonly<Record<string, { readonly environment: string }>>
 }
 
 const ALLOWED_CONFIG_KEYS = new Set(['manager', 'projectId', 'projectLabel', 'profiles'])
@@ -96,7 +97,10 @@ function buildConfigMetadata(
 ): SecretsConfigMetadata {
   const manager = obj.manager as 'doppler' | 'infisical'
   const projectId = obj.projectId as string
-  if (obj.projectLabel === undefined) return { manager, projectId }
+  const profiles = buildProfilesMetadata(obj.profiles, sourceLabel)
+  if (obj.projectLabel === undefined) {
+    return profiles ? { manager, projectId, profiles } : { manager, projectId }
+  }
 
   if (typeof obj.projectLabel !== 'string' || obj.projectLabel.length === 0) {
     throw new Error(`${sourceLabel}: "projectLabel" must be a non-empty string when set`)
@@ -104,7 +108,38 @@ function buildConfigMetadata(
   if (SECRET_VALUE_PATTERN.test(obj.projectLabel)) {
     throw new Error(`${sourceLabel} projectLabel must not contain secret values`)
   }
-  return { manager, projectId, projectLabel: obj.projectLabel }
+  return profiles
+    ? { manager, projectId, projectLabel: obj.projectLabel, profiles }
+    : { manager, projectId, projectLabel: obj.projectLabel }
+}
+
+function buildProfilesMetadata(
+  value: unknown,
+  sourceLabel: string,
+): Readonly<Record<string, { readonly environment: string }>> | undefined {
+  if (value === undefined) return undefined
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error(`${sourceLabel}: "profiles" must be an object`)
+  }
+
+  const profiles: Record<string, { readonly environment: string }> = {}
+  for (const [profileId, profileValue] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof profileValue !== 'object' || profileValue === null || Array.isArray(profileValue)) {
+      throw new Error(`${sourceLabel}: profile "${profileId}" must be an object`)
+    }
+    const env = (profileValue as Record<string, unknown>).environment
+    if (typeof env !== 'string' || env.trim().length === 0) {
+      throw new Error(
+        `${sourceLabel}: profile "${profileId}" must set a non-empty "environment"`,
+      )
+    }
+    if (SECRET_VALUE_PATTERN.test(env)) {
+      throw new Error(`${sourceLabel}: profile "${profileId}" environment must not contain secret values`)
+    }
+    profiles[profileId] = { environment: env.trim() }
+  }
+
+  return profiles
 }
 
 export function parseSecretsConfigMetadata(

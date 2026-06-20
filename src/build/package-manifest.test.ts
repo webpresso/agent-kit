@@ -356,6 +356,7 @@ describe('createPackedManifest', () => {
     )
     for (const internalHook of contract.cliBins?.internalHooks ?? []) {
       expect(packageJson.bin).not.toHaveProperty(internalHook)
+      expect(existsSync(join(repoRoot, 'bin', `${internalHook}.js`))).toBe(true)
     }
   })
 

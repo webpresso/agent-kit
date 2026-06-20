@@ -52,7 +52,10 @@ export function checkVersionSkew(
 
   return (
     `[wp] Version skew: global wp is ${runningVersion} but this repo pins ` +
-    `@webpresso/agent-kit@${pinnedVersion}. ` +
-    `Run \`vp install -g @webpresso/agent-kit@${pinnedVersion}\` to align.`
+    `@webpresso/agent-kit@${pinnedVersion} in pnpm-workspace.yaml. ` +
+    `Consumer repos should depend on \`@webpresso/agent-config\` and use global \`wp\`, ` +
+    `not keep \`@webpresso/agent-kit\` as a repo dependency. Remove the stale pin if this is a ` +
+    `consumer repo, or run \`vp install -g @webpresso/agent-kit@${pinnedVersion}\` if this repo ` +
+    `intentionally owns the shared wp runtime.`
   )
 }

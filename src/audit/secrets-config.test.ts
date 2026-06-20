@@ -72,4 +72,24 @@ describe('auditSecretsConfig', () => {
     expect(result.checked).toBe(1)
     expect(result.violations).toStrictEqual([])
   })
+
+  test('passes for valid config with named profiles', () => {
+    const root = tempRepo()
+    writeFileSync(
+      join(root, '.webpresso', 'secrets.config.json'),
+      JSON.stringify({
+        manager: 'doppler',
+        projectId: 'my-project',
+        profiles: {
+          'e2e-runtime': { environment: 'dev' },
+          'deploy-preview': { environment: 'preview' },
+        },
+      }),
+    )
+
+    const result = auditSecretsConfig(root)
+
+    expect(result.ok).toBe(true)
+    expect(result.violations).toStrictEqual([])
+  })
 })

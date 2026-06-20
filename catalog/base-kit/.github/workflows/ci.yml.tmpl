@@ -23,7 +23,7 @@ jobs:
           node-version: '24.16.0'
           cache: true
           run-install: false
-      - uses: ./.github/actions/setup-webpresso
+      - run: vp install -g @webpresso/agent-kit
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
@@ -45,7 +45,7 @@ jobs:
           node-version: '24.16.0'
           cache: true
           run-install: false
-      - uses: ./.github/actions/setup-webpresso
+      - run: vp install -g @webpresso/agent-kit
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
@@ -68,7 +68,7 @@ jobs:
           node-version: '24.16.0'
           cache: true
           run-install: false
-      - uses: ./.github/actions/setup-webpresso
+      - run: vp install -g @webpresso/agent-kit
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
@@ -85,7 +85,7 @@ jobs:
           node-version: '24.16.0'
           cache: true
           run-install: false
-      - uses: ./.github/actions/setup-webpresso
+      - run: vp install -g @webpresso/agent-kit
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest

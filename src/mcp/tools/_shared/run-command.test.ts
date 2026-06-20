@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { isMissingBinary, isRunFailure, runCommand } from './run-command.js'
+import { PROCESS_TREE_FORCE_KILL_GRACE_MS } from '#shared-utils/process-supervisor.js'
 
 const spawnMock = vi.hoisted(() => vi.fn())
 let lastCloseFn: ((code: number | null, signal: NodeJS.Signals | null) => void) | null = null
@@ -65,6 +66,7 @@ afterEach(() => {
   lastCloseFn = null
   spawnMock.mockReset()
   vi.restoreAllMocks()
+  vi.useRealTimers()
 })
 
 describe('runCommand', () => {
@@ -161,5 +163,32 @@ describe('runCommand', () => {
     expect(processKill).toHaveBeenCalledWith(-2468, 'SIGTERM')
     expect(killCapture.signal).toBeNull()
     expect(isRunFailure(outcome)).toBe(false)
+  })
+
+  it('escalates a hung POSIX child from SIGTERM to SIGKILL after the grace window', async () => {
+    if (process.platform === 'win32') return
+    vi.useFakeTimers()
+    const processKill = vi.spyOn(process, 'kill').mockImplementation((pid, signal) => {
+      if (pid === -2468 && signal === 'SIGKILL') {
+        queueMicrotask(() => lastCloseFn?.(null, 'SIGKILL'))
+      }
+      return true
+    })
+    spawnMock.mockReturnValue(fakeChild({ pid: 2468, hang: true }))
+
+    const promise = runCommand('hang', [], { timeoutMs: 1 })
+
+    await vi.advanceTimersByTimeAsync(1)
+    expect(processKill).toHaveBeenCalledWith(-2468, 'SIGTERM')
+
+    await vi.advanceTimersByTimeAsync(PROCESS_TREE_FORCE_KILL_GRACE_MS)
+    const outcome = await promise
+
+    expect(processKill).toHaveBeenCalledWith(-2468, 'SIGKILL')
+    expect(isRunFailure(outcome)).toBe(false)
+    if (!isRunFailure(outcome)) {
+      expect(outcome.timedOut).toBe(true)
+      expect(outcome.exitCode).toBe(128 + 9)
+    }
   })
 })

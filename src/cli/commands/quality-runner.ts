@@ -3,6 +3,12 @@ import { spawn } from 'node:child_process'
 
 import { applyOutputTransform, type Failure, type TransformResult } from '#output-transforms/index'
 import { buildRuntimeProcessEnv, resolveRuntimeEnvironment } from '#runtime/index.js'
+import {
+  exitCodeFromSignal,
+  forceKillProcessTree,
+  killProcessTree,
+  PROCESS_TREE_FORCE_KILL_GRACE_MS,
+} from '#shared-utils/process-supervisor.js'
 
 import { createCliLogSink, type CliLogCommandName, type CliLogEntry } from './quality-log-store.js'
 
@@ -122,18 +128,30 @@ export async function runLoggedChildCommand(
     let timedOut = false
     let aborted = false
     let settled = false
+    let terminationRequested = false
+    let escalationTimer: ReturnType<typeof setTimeout> | undefined
+
+    const requestTermination = (): void => {
+      if (terminationRequested) return
+      terminationRequested = true
+      killProcessTree(child, 'SIGTERM')
+      if (process.platform === 'win32') return
+      escalationTimer = setTimeout(() => {
+        forceKillProcessTree(child)
+      }, PROCESS_TREE_FORCE_KILL_GRACE_MS)
+    }
 
     const timer =
       options.timeoutMs === undefined
         ? undefined
         : setTimeout(() => {
             timedOut = true
-            killChildTree(child, 'SIGTERM')
+            requestTermination()
           }, options.timeoutMs)
 
     const onAbort = (): void => {
       aborted = true
-      killChildTree(child, 'SIGTERM')
+      requestTermination()
     }
     if (options.signal) {
       if (options.signal.aborted) queueMicrotask(onAbort)
@@ -142,6 +160,7 @@ export async function runLoggedChildCommand(
 
     const cleanup = (): void => {
       if (timer) clearTimeout(timer)
+      if (escalationTimer) clearTimeout(escalationTimer)
       options.signal?.removeEventListener('abort', onAbort)
     }
 
@@ -167,7 +186,7 @@ export async function runLoggedChildCommand(
       })
     })
     child.on('close', (code: number | null, signal: NodeJS.Signals | null) => {
-      if (timedOut || aborted) forceKillChildTree(child)
+      if (terminationRequested && signal !== 'SIGKILL') forceKillProcessTree(child)
       finish({
         exitCode: code ?? exitCodeFromSignal(signal),
         timedOut,
@@ -249,36 +268,4 @@ function buildChildEnv(command: CliSpawnCommand, cwd: string): NodeJS.ProcessEnv
     env: { ...process.env, ...command.env },
   })
   return buildRuntimeProcessEnv(cwd, { ...process.env, ...command.env }, resolvedRuntime)
-}
-
-const COMMON_SIGNAL_NUMBERS: Readonly<Partial<Record<NodeJS.Signals, number>>> = {
-  SIGINT: 2,
-  SIGKILL: 9,
-  SIGTERM: 15,
-}
-
-function exitCodeFromSignal(signal: NodeJS.Signals | null): number {
-  if (!signal) return 1
-  return 128 + (COMMON_SIGNAL_NUMBERS[signal] ?? 15)
-}
-
-function killChildTree(child: ReturnType<typeof spawn>, signal: NodeJS.Signals): void {
-  if (process.platform !== 'win32' && child.pid) {
-    try {
-      process.kill(-child.pid, signal)
-      return
-    } catch {
-      // Fall through to the direct child below.
-    }
-  }
-  child.kill(signal)
-}
-
-function forceKillChildTree(child: ReturnType<typeof spawn>): void {
-  if (process.platform === 'win32' || !child.pid) return
-  try {
-    process.kill(-child.pid, 'SIGKILL')
-  } catch {
-    // Best-effort cleanup only.
-  }
 }

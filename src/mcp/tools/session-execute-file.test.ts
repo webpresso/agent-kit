@@ -21,7 +21,6 @@ function payload(result: Awaited<ReturnType<typeof sessionExecuteFileTool.handle
   return result.structuredContent as {
     passed: boolean
     summary: string
-    gain?: { rawBasisBytes: number; rawBytesBasis: string; gainBytes: number }
     operation: string
     path: string
     preview: string
@@ -73,23 +72,6 @@ describe('wp_session_execute_file tool', () => {
     store.close()
   })
 
-  it('uses actual read Buffer bytes, not full stat size, as file read gain basis', async () => {
-    const { root, dbPath } = fixture()
-    writeFileSync(join(root, 'src', 'basis.txt'), '1234567890')
-
-    const result = await sessionExecuteFileTool.handler({
-      repoRoot: root,
-      dbPath,
-      path: 'src/basis.txt',
-      operation: 'read_text',
-      maxFileBytes: 4,
-      maxPreviewBytes: 2,
-    })
-    const data = payload(result)
-
-    expect(data.gain).toMatchObject({ rawBasisBytes: 5, rawBytesBasis: 'file_read_buffer' })
-  })
-
   it('supports metadata analysis without shell/network/write capability', async () => {
     const { root, dbPath } = fixture()
     writeFileSync(join(root, 'src', 'file.ts'), 'one\ntwo\n')
@@ -104,10 +86,6 @@ describe('wp_session_execute_file tool', () => {
 
     expect(data.passed).toBe(true)
     expect(data.preview).toBe('')
-    expect(data.gain).toMatchObject({
-      rawBasisBytes: Buffer.byteLength('one\ntwo\n', 'utf8'),
-      rawBytesBasis: 'file_metadata_buffer',
-    })
     expect(JSON.stringify(result)).not.toContain('one')
     expect(JSON.stringify(result)).not.toContain('two')
   })

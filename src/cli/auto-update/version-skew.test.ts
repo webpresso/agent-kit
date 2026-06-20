@@ -31,8 +31,8 @@ describe('checkVersionSkew', () => {
       writeWorkspace(dir, `catalog:\n  '@webpresso/agent-kit': ^0.28.0\n`)
       const result = checkVersionSkew('0.30.3', dir)
       expect(result).toStrictEqual(
-        '[wp] Version skew: global wp is 0.30.3 but this repo pins @webpresso/agent-kit@0.28.0. ' +
-          'Run `vp install -g @webpresso/agent-kit@0.28.0` to align.',
+        '[wp] Version skew: global wp is 0.30.3 but this repo pins @webpresso/agent-kit@0.28.0 in pnpm-workspace.yaml. ' +
+          'Consumer repos should depend on `@webpresso/agent-config` and use global `wp`, not keep `@webpresso/agent-kit` as a repo dependency. Remove the stale pin if this is a consumer repo, or run `vp install -g @webpresso/agent-kit@0.28.0` if this repo intentionally owns the shared wp runtime.',
       )
     } finally {
       rmSync(dir, { recursive: true })

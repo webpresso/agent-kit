@@ -37,8 +37,5 @@
       "wp-stop-qa",
       "wp-precompact-snapshot"
     ]
-  },
-  "allowedPublicPackages": [
-    "@webpresso/agent-config"
-  ]
+  }
 }

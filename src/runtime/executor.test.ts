@@ -75,7 +75,7 @@ describe('runtime executor', () => {
     )
   })
 
-  it('forwards provider-specific environment selectors', () => {
+  it('does not treat non-runtime profile names as provider selectors', () => {
     const root = repoRoot({ manager: 'doppler', projectId: 'demo' })
     const fetchSpy = vi
       .spyOn(managers, 'fetchSecretsForConfig')
@@ -84,7 +84,7 @@ describe('runtime executor', () => {
     resolveRuntimeEnvironment({ cwd: root, profile: 'prd' })
     expect(fetchSpy).toHaveBeenCalledWith(
       expect.objectContaining({ manager: 'doppler', projectId: 'demo' }),
-      expect.objectContaining({ cwd: root, environment: 'prd' }),
+      expect.objectContaining({ cwd: root, environment: undefined }),
     )
   })
 })

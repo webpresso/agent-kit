@@ -69,6 +69,103 @@ describe('auditSecretProviderQuarantine', () => {
     ])
   })
 
+  test('flags raw with-secrets act usage and local act helper clones', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'scripts'), { recursive: true })
+    writeFileSync(join(root, 'scripts', 'act-with-webpresso.ts'), "exec('with-secrets -- act -W .github/workflows/ci.yml')")
+    writeFileSync(join(root, 'scripts', 'act-secret-profile.ts'), 'export const x = 1\n')
+
+    const result = auditSecretProviderQuarantine(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations.map((entry) => entry.message).join('\n')).toContain('wp ci act')
+    expect(result.violations.map((entry) => entry.message).join('\n')).toContain('act-secret-profile')
+  })
+
+  test('flags legacy CI fallback tokens and non-SHA action refs in secret-bearing workflows', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(
+      join(root, '.github', 'workflows', 'ci.yml'),
+      [
+        'name: ci',
+        'jobs:',
+        '  test:',
+        '    runs-on: ubuntu-latest',
+        '    steps:',
+        '      - uses: actions/checkout@v4',
+        '      - run: with-secrets -- act -W .github/workflows/ci.yml',
+        '        env:',
+        '          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}',
+      ].join('\n'),
+    )
+
+    const result = auditSecretProviderQuarantine(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations.map((entry) => entry.message).join('\n')).toContain('SHA-pin third-party action actions/checkout@v4')
+    expect(result.violations.map((entry) => entry.message).join('\n')).toContain('DOPPLER_TOKEN fallback')
+  })
+
+  test('requires id-token write only for OIDC-capable secret workflows', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(
+      join(root, '.github', 'workflows', 'deploy.yml'),
+      [
+        'name: deploy',
+        'on:',
+        '  workflow_call:',
+        '    inputs:',
+        '      doppler_identity_id:',
+        '        required: false',
+        '        type: string',
+        'jobs:',
+        '  deploy:',
+        '    runs-on: ubuntu-latest',
+        '    steps:',
+        '      - name: Checkout',
+        '        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd',
+      ].join('\n'),
+    )
+
+    const result = auditSecretProviderQuarantine(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations.map((entry) => entry.message).join('\n')).toContain(
+      'id-token: write',
+    )
+  })
+
+  test('flags non-SHA action refs for named-step uses entries in secret-bearing workflows', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(
+      join(root, '.github', 'workflows', 'deploy.yml'),
+      [
+        'name: deploy',
+        'jobs:',
+        '  deploy:',
+        '    runs-on: ubuntu-latest',
+        '    steps:',
+        '      - name: Checkout',
+        '        uses: actions/checkout@v4',
+        '    secrets:',
+        '      ci_secret_provider_token:',
+        '        required: false',
+        '    with:',
+        '      secret_profile: preview',
+      ].join('\n'),
+    )
+
+    const result = auditSecretProviderQuarantine(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations.map((entry) => entry.message).join('\n')).toContain(
+      'SHA-pin third-party action actions/checkout@v4',
+    )
+  })
+
   test('passes for clean source', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'src'), { recursive: true })

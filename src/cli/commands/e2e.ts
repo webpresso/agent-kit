@@ -29,6 +29,7 @@ export interface AkE2eCommandInput {
   noSupervisor?: boolean
   workers?: number | string
   testList?: string
+  timeoutMs?: number
   passthrough?: readonly string[]
 }
 
@@ -90,6 +91,7 @@ export function registerE2eCommand(cli: CAC): void {
     .option('--no-supervisor', 'Forward host-managed direct startup mode when supported')
     .option('--workers <n>', 'Forward worker count')
     .option('--test-list <path>', 'Forward a Playwright test-list file')
+    .option('--timeout-ms <ms>', 'Kill the e2e child process group if it exceeds this timeout')
     .option('--full', 'Print the full raw output instead of the default summary-first view')
     .option('--print-command', 'Print the resolved command instead of executing it')
     .action(async (flags: Record<string, unknown>) => {
@@ -118,6 +120,8 @@ export function registerE2eCommand(cli: CAC): void {
         commandName: 'e2e',
         commands,
         cwd: process.cwd(),
+        timeoutMs:
+          flags.timeoutMs === undefined ? undefined : Number.parseInt(String(flags.timeoutMs), 10),
         metadataOptions: {
           suite: flags.suite as string | undefined,
           runner: flags.runner as string | undefined,

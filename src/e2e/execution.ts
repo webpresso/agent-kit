@@ -4,6 +4,12 @@ import type { GenericE2ePlanInput } from './run-planner.js'
 import { spawn } from 'node:child_process'
 
 import { buildRuntimeProcessEnv, resolveRuntimeEnvironment } from '#runtime/index.js'
+import {
+  exitCodeFromSignal,
+  forceKillProcessTree,
+  killProcessTree,
+  PROCESS_TREE_FORCE_KILL_GRACE_MS,
+} from '#shared-utils/process-supervisor.js'
 
 import { loadConfiguredHostAdapter } from './load-host-adapter.js'
 import { planE2eRun, planGenericE2eRun } from './run-planner.js'
@@ -112,7 +118,7 @@ export interface CommandExecutionSummary {
 
 export async function runCommandConfigs(
   commands: readonly CommandConfig[],
-  options: { signal?: AbortSignal; cwd?: string } = {},
+  options: { signal?: AbortSignal; cwd?: string; timeoutMs?: number } = {},
 ): Promise<CommandExecutionSummary> {
   let combinedOutput = ''
 
@@ -138,7 +144,7 @@ export async function runCommandConfigs(
 
 async function runCommand(
   command: CommandConfig,
-  options: { signal?: AbortSignal; cwd?: string },
+  options: { signal?: AbortSignal; cwd?: string; timeoutMs?: number },
 ): Promise<{ exitCode: number; output: string }> {
   return new Promise((resolve) => {
     const cwd = command.cwd ?? options.cwd ?? process.cwd()
@@ -150,10 +156,48 @@ async function runCommand(
     const child = spawn(command.command, command.args, {
       cwd,
       env: buildRuntimeProcessEnv(cwd, { ...process.env, ...command.env }, resolvedEnv),
-      signal: options.signal,
+      detached: process.platform !== 'win32',
     })
     let stdout = ''
     let stderr = ''
+    let timedOut = false
+    let aborted = false
+    let terminationRequested = false
+    let escalationTimer: ReturnType<typeof setTimeout> | undefined
+
+    const requestTermination = (): void => {
+      if (terminationRequested) return
+      terminationRequested = true
+      killProcessTree(child, 'SIGTERM')
+      if (process.platform === 'win32') return
+      escalationTimer = setTimeout(() => {
+        forceKillProcessTree(child)
+      }, PROCESS_TREE_FORCE_KILL_GRACE_MS)
+    }
+
+    const timer =
+      options.timeoutMs === undefined
+        ? undefined
+        : setTimeout(() => {
+            timedOut = true
+            requestTermination()
+          }, options.timeoutMs)
+
+    const onAbort = (): void => {
+      aborted = true
+      requestTermination()
+    }
+
+    if (options.signal) {
+      if (options.signal.aborted) queueMicrotask(onAbort)
+      else options.signal.addEventListener('abort', onAbort, { once: true })
+    }
+
+    const cleanup = (): void => {
+      if (timer) clearTimeout(timer)
+      if (escalationTimer) clearTimeout(escalationTimer)
+      options.signal?.removeEventListener('abort', onAbort)
+    }
 
     child.stdout.on('data', (chunk: Buffer) => {
       stdout += chunk.toString('utf8')
@@ -162,6 +206,7 @@ async function runCommand(
       stderr += chunk.toString('utf8')
     })
     child.on('error', (error: NodeJS.ErrnoException) => {
+      cleanup()
       const message = error.message || String(error)
       resolve({
         exitCode: 1,
@@ -169,6 +214,8 @@ async function runCommand(
       })
     })
     child.on('close', (code: number | null, signal: NodeJS.Signals | null) => {
+      if (terminationRequested && signal !== 'SIGKILL') forceKillProcessTree(child)
+      cleanup()
       const exitCode = code ?? exitCodeFromSignal(signal)
       resolve({
         exitCode,
@@ -176,16 +223,6 @@ async function runCommand(
       })
     })
   })
-}
-
-function exitCodeFromSignal(signal: NodeJS.Signals | null): number {
-  if (!signal) return 1
-  const codeBySignal: Partial<Record<NodeJS.Signals, number>> = {
-    SIGINT: 2,
-    SIGKILL: 9,
-    SIGTERM: 15,
-  }
-  return 128 + (codeBySignal[signal] ?? 15)
 }
 
 function shellQuote(value: string): string {

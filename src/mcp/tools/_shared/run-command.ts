@@ -18,6 +18,13 @@
 import { spawn } from 'node:child_process'
 import { join } from 'node:path'
 
+import {
+  exitCodeFromSignal,
+  forceKillProcessTree,
+  killProcessTree,
+  PROCESS_TREE_FORCE_KILL_GRACE_MS,
+} from '#shared-utils/process-supervisor.js'
+
 export interface RunResult {
   readonly stdout: string
   readonly stderr: string
@@ -47,17 +54,6 @@ export function isMissingBinary(failure: RunFailure): boolean {
   return failure.error.code === 'ENOENT'
 }
 
-const COMMON_SIGNAL_NUMBERS: Readonly<Partial<Record<NodeJS.Signals, number>>> = {
-  SIGINT: 2,
-  SIGKILL: 9,
-  SIGTERM: 15,
-}
-
-function exitCodeFromSignal(signal: NodeJS.Signals | null): number {
-  if (!signal) return 1
-  return 128 + (COMMON_SIGNAL_NUMBERS[signal] ?? 15)
-}
-
 // Mirrors package script execution: project-local binaries (oxfmt, oxlint,
 // tsc) are devDependencies resolved via node_modules/.bin, not global installs.
 const PATH_SEP = process.platform === 'win32' ? ';' : ':'
@@ -84,15 +80,27 @@ export function runCommand(
     let stderr = ''
     let timedOut = false
     let aborted = false
+    let terminationRequested = false
+    let escalationTimer: ReturnType<typeof setTimeout> | undefined
+
+    const requestTermination = (): void => {
+      if (terminationRequested) return
+      terminationRequested = true
+      killProcessTree(child, 'SIGTERM')
+      if (process.platform === 'win32') return
+      escalationTimer = setTimeout(() => {
+        forceKillProcessTree(child)
+      }, PROCESS_TREE_FORCE_KILL_GRACE_MS)
+    }
 
     const internalTimer = setTimeout(() => {
       timedOut = true
-      killChildTree(child, 'SIGTERM')
+      requestTermination()
     }, options.timeoutMs)
 
     const onAbort = (): void => {
       aborted = true
-      killChildTree(child, 'SIGTERM')
+      requestTermination()
     }
     if (options.signal) {
       if (options.signal.aborted) {
@@ -108,6 +116,7 @@ export function runCommand(
 
     const cleanup = (): void => {
       clearTimeout(internalTimer)
+      if (escalationTimer) clearTimeout(escalationTimer)
       options.signal?.removeEventListener('abort', onAbort)
     }
 
@@ -122,34 +131,10 @@ export function runCommand(
       resolve({ error: err })
     })
     child.on('close', (code: number | null, signal: NodeJS.Signals | null) => {
-      if (timedOut || aborted) {
-        forceKillChildTree(child)
-      }
+      if (terminationRequested && signal !== 'SIGKILL') forceKillProcessTree(child)
       cleanup()
       const exitCode = code ?? exitCodeFromSignal(signal)
       resolve({ stdout, stderr, exitCode, signal, timedOut, aborted })
     })
   })
-}
-
-function killChildTree(child: ReturnType<typeof spawn>, signal: NodeJS.Signals): void {
-  if (process.platform !== 'win32' && child.pid) {
-    try {
-      process.kill(-child.pid, signal)
-      return
-    } catch {
-      // Fall back to the direct child below. The process may have exited between
-      // timeout/abort and signal delivery, or the host may reject group kills.
-    }
-  }
-  child.kill(signal)
-}
-
-function forceKillChildTree(child: ReturnType<typeof spawn>): void {
-  if (process.platform === 'win32' || !child.pid) return
-  try {
-    process.kill(-child.pid, 'SIGKILL')
-  } catch {
-    // Best-effort cleanup only; the group may already be gone.
-  }
 }
