@@ -34,6 +34,7 @@ describe('reusable Cloudflare deploy workflows', () => {
       )
       expect(workflow).toContain('infisical export --projectId="${INFISICAL_PROJECT_ID}"')
       expect(workflow).toContain('npm install --global "@infisical/cli@0.43.91"')
+      expect(workflow).toContain('service token scoped to the selected secret_profile environment')
       expect(workflow).not.toContain('vp install -g')
       expect(workflow).not.toContain('@infisical/cli@latest')
     }

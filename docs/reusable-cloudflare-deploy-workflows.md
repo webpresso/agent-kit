@@ -47,7 +47,9 @@ This keeps CI aligned with the repo-local operator contract:
 2. Store the CI bootstrap token in the caller repo/org secrets.
 3. Pass that secret explicitly in the reusable workflow call.
 4. For Infisical callers, also pass `secret_profile` so the shared shell
-   knows which environment slug to export.
+   knows which environment slug to export, and scope
+   `ci_secret_provider_token` to that same environment as an Infisical service
+   token fallback until OIDC bootstrap is implemented.
 
 ## Runtime/bootstrap contract
 

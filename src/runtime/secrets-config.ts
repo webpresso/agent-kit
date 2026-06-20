@@ -71,21 +71,53 @@ function parseConfig(raw: string, source: string): SecretsConfig {
     }
   }
 
+  const obj = parsed as Record<string, unknown>
+  if (
+    (obj.manager === 'doppler' || obj.manager === 'infisical') &&
+    typeof obj.projectId === 'string' &&
+    obj.projectId.length > 0
+  ) {
+    return {
+      manager: obj.manager,
+      projectId: obj.projectId,
+      ...(typeof obj.projectLabel === 'string' && obj.projectLabel.length > 0
+        ? { projectLabel: obj.projectLabel }
+        : {}),
+    }
+  }
+
   throw new Error(
     `Malformed secrets config at ${source}: only schemaVersion 1 secret orchestration configs are supported`,
   )
 }
 
+function mergeRuntimeOverride(
+  runtimeConfig: SecretsConfig,
+  committedConfig: SecretsConfig | null,
+): SecretsConfig {
+  if (!committedConfig || runtimeConfig.profileEnvironments) {
+    return runtimeConfig
+  }
+
+  return {
+    ...committedConfig,
+    manager: runtimeConfig.manager,
+    projectId: runtimeConfig.projectId,
+    ...(runtimeConfig.projectLabel ? { projectLabel: runtimeConfig.projectLabel } : {}),
+  }
+}
+
 export function readSecretsConfig(cwd: string = process.cwd()): SecretsConfig | null {
   const runtimePath = getRuntimeSecretsConfigPath(cwd)
-  if (runtimePath && existsSync(runtimePath)) {
-    return parseConfig(readFileSync(runtimePath, 'utf8'), runtimePath)
-  }
-
   const committedPath = getCommittedSecretsConfigPath(cwd)
-  if (existsSync(committedPath)) {
-    return parseConfig(readFileSync(committedPath, 'utf8'), committedPath)
+  const committedConfig = existsSync(committedPath)
+    ? parseConfig(readFileSync(committedPath, 'utf8'), committedPath)
+    : null
+
+  if (runtimePath && existsSync(runtimePath)) {
+    const runtimeConfig = parseConfig(readFileSync(runtimePath, 'utf8'), runtimePath)
+    return mergeRuntimeOverride(runtimeConfig, committedConfig)
   }
 
-  return null
+  return committedConfig
 }

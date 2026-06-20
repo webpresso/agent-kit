@@ -193,6 +193,7 @@ jobs:
         run: |
           echo "Missing required reusable-workflow secret: ci_secret_provider_token" >&2
           echo "Configure a provider bootstrap secret in the caller repo, then pass it explicitly via workflow-call secrets." >&2
+          echo "For Infisical, use a service token scoped to the selected secret_profile environment." >&2
           exit 1
 
       - name: Install caller dependencies
@@ -222,7 +223,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -z "${INFISICAL_ENV_SLUG}" ]]; then
-            echo "Infisical bootstrap requires workflow_call input secret_profile." >&2
+            echo "Infisical bootstrap requires workflow_call input secret_profile and a ci_secret_provider_token service token scoped to that environment." >&2
             exit 1
           fi
           npm install --global "@infisical/cli@0.43.91"

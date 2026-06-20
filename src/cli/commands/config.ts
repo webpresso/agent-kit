@@ -1,7 +1,8 @@
-import { spawnSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import type { CAC } from 'cac'
+import { z } from 'zod'
 
 import { parseSecretOrchestrationConfig } from '#secrets/config/schema.js'
 import { writeJsonFile } from '#shared-utils/write-json-file.js'
@@ -15,6 +16,12 @@ export interface SecretsConfig {
   readonly projectId: string
   readonly projectLabel?: string
 }
+
+const LegacySecretsConfigSchema = z.object({
+  manager: z.enum(['doppler', 'infisical']),
+  projectId: z.string().min(1),
+  projectLabel: z.string().min(1).optional(),
+})
 
 interface SecretManagerAvailability {
   readonly available: boolean
@@ -128,7 +135,21 @@ function createCliDiagnosticAdapter(options: {
 }
 
 function getSecretsConfigPath(cwd: string = process.cwd()): string {
-  return join(findConfigRoot(cwd), 'webpresso', 'secrets.json')
+  return join(resolveGitCommonDir(cwd) ?? findConfigRoot(cwd), 'webpresso', 'secrets.json')
+}
+
+function resolveGitCommonDir(cwd: string): string | null {
+  try {
+    const out = execFileSync('git', ['rev-parse', '--git-common-dir'], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
+    if (!out) return null
+    return resolve(cwd, out)
+  } catch {
+    return null
+  }
 }
 
 function readSecretsConfig(cwd?: string): SecretsConfig | null {
@@ -142,6 +163,10 @@ function readSecretsConfig(cwd?: string): SecretsConfig | null {
   }
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
     throw commandError(`Invalid secret manager config at ${path}`, 1)
+  }
+  const legacyConfig = LegacySecretsConfigSchema.safeParse(parsed)
+  if (legacyConfig.success) {
+    return legacyConfig.data
   }
   let config
   try {
@@ -164,22 +189,7 @@ function readSecretsConfig(cwd?: string): SecretsConfig | null {
 function writeSecretsConfig(config: SecretsConfig, cwd?: string): void {
   const path = getSecretsConfigPath(cwd)
   mkdirSync(dirname(path), { recursive: true })
-  writeJsonFile(
-    path,
-    {
-      schemaVersion: 1,
-      providers: {
-        default: {
-          type: config.manager,
-          project: config.projectId,
-        },
-      },
-      profiles: {},
-      sinks: {},
-      ...(config.projectLabel ? { projectLabel: config.projectLabel } : {}),
-    },
-    { writeFileOptions: { mode: 0o600 } },
-  )
+  writeJsonFile(path, config, { writeFileOptions: { mode: 0o600 } })
 }
 
 function findConfigRoot(cwd: string): string {

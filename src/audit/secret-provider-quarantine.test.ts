@@ -139,4 +139,18 @@ describe('auditSecretProviderQuarantine', () => {
     expect(result.ok).toBe(true)
     expect(result.violations).toStrictEqual([])
   })
+
+  test('allows shipped reusable workflows to use provider bootstrapping internally', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(
+      join(root, '.github', 'workflows', 'cloudflare-preview.yml'),
+      'steps:\\n  - run: infisical export --projectId="$INFISICAL_PROJECT_ID" --env="$INFISICAL_ENV_SLUG" --format=json\\n',
+    )
+
+    const result = auditSecretProviderQuarantine(root)
+
+    expect(result.ok).toBe(true)
+    expect(result.violations).toStrictEqual([])
+  })
 })

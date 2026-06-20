@@ -18,6 +18,10 @@ const IGNORED_DIRS = new Set([
 ])
 
 const TEXT_FILE_PATTERN = /\.(md|ts|tsx|js|json|ya?ml|toml|txt)$/iu
+const ALLOWED_PROVIDER_BOOTSTRAP_PATHS = new Set([
+  '.github/workflows/cloudflare-preview.yml',
+  '.github/workflows/cloudflare-production.yml',
+])
 
 type BannedPattern = { readonly pattern: RegExp; readonly message: string }
 
@@ -73,6 +77,15 @@ const BANNED_PATTERNS: readonly BannedPattern[] = [
 function scanFile(fullPath: string, relPath: string, violations: RepoAuditViolation[]): void {
   const content = readFileSync(fullPath, 'utf8')
   for (const { pattern, message } of BANNED_PATTERNS) {
+    if (
+      ALLOWED_PROVIDER_BOOTSTRAP_PATHS.has(relPath) &&
+      (message.includes('direct infisical invocation') ||
+        message.includes('direct doppler invocation') ||
+        message.includes('direct infisical exports') ||
+        message.includes('direct provider downloads'))
+    ) {
+      continue
+    }
     if (pattern.test(content)) {
       violations.push({ file: relPath, message: `${relPath}: ${message}` })
     }
