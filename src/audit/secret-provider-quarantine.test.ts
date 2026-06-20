@@ -153,4 +153,23 @@ describe('auditSecretProviderQuarantine', () => {
     expect(result.ok).toBe(true)
     expect(result.violations).toStrictEqual([])
   })
+
+  test('allows shipped docs and parity tests to mention approved provider bootstrap commands', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'docs'), { recursive: true })
+    mkdirSync(join(root, 'src', 'build'), { recursive: true })
+    writeFileSync(
+      join(root, 'docs', 'reusable-cloudflare-deploy-workflows.md'),
+      '`infisical export --projectId="$INFISICAL_PROJECT_ID" --env="$INFISICAL_ENV_SLUG" --format=json`',
+    )
+    writeFileSync(
+      join(root, 'src', 'build', 'reusable-cloudflare-workflows.test.ts'),
+      'expect(workflow).toContain(\'infisical export --projectId="${INFISICAL_PROJECT_ID}"\')',
+    )
+
+    const result = auditSecretProviderQuarantine(root)
+
+    expect(result.ok).toBe(true)
+    expect(result.violations).toStrictEqual([])
+  })
 })

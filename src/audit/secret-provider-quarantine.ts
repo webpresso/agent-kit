@@ -21,6 +21,8 @@ const TEXT_FILE_PATTERN = /\.(md|ts|tsx|js|json|ya?ml|toml|txt)$/iu
 const ALLOWED_PROVIDER_BOOTSTRAP_PATHS = new Set([
   '.github/workflows/cloudflare-preview.yml',
   '.github/workflows/cloudflare-production.yml',
+  'docs/reusable-cloudflare-deploy-workflows.md',
+  'src/build/reusable-cloudflare-workflows.test.ts',
 ])
 
 type BannedPattern = { readonly pattern: RegExp; readonly message: string }
