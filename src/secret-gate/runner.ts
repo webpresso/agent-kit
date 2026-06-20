@@ -18,6 +18,7 @@ export interface SecretGateCommandOptions {
   readonly cwd?: string
   readonly timeoutMs?: number
   readonly signal?: AbortSignal
+  readonly forceSecretGate?: boolean
 }
 
 export interface SecretGateRunResult {
@@ -61,7 +62,7 @@ export function buildSecretGateCommand(options: SecretGateCommandOptions): Secre
       `Unsupported secret-gate envProfile "${envProfile}". Use one of: ${SECRET_GATE_RUNTIME_PROFILES.join(', ')}. Pass provider-specific Doppler/Infisical selectors via secretEnvProfile.`,
     )
   }
-  if (envProfile && DIRECT_ENV_PROFILES.has(envProfile)) {
+  if (!options.forceSecretGate && envProfile && DIRECT_ENV_PROFILES.has(envProfile)) {
     return { command: options.command, args: [...(options.args ?? [])] }
   }
   const sink = options.sink?.trim()

@@ -72,7 +72,7 @@ describe('public ci act runner contract', () => {
     ).toThrow(`Unsupported container architecture "linux/s390x"`)
   })
 
-  it('wraps act through wp secrets run with an internal act secret-file', () => {
+  it('wraps act directly through wp secrets run without an internal secret-file', () => {
     const command = buildPublicCiActCommand({ cwd: '/repo', workflow: 'ci-e2e' })
 
     expect(command.command).toBe('wp')
@@ -84,10 +84,10 @@ describe('public ci act runner contract', () => {
       '--profile',
       'preview',
       '--',
-      'bash',
+      'act',
     ])
-    expect(command.args.join(' ')).toContain('--secret-file')
-    expect(command.args.join(' ')).toContain('ci_secret_provider_token')
+    expect(command.args.join(' ')).not.toContain('--secret-file')
+    expect(command.args.join(' ')).not.toContain('ci_secret_provider_token')
   })
 
   it('keeps provider environment selectors separate from runtime profiles', () => {
@@ -107,11 +107,11 @@ describe('public ci act runner contract', () => {
       '--profile',
       'dev',
       '--',
-      'bash',
+      'act',
     ])
   })
 
-  it('keeps the internal secret-file wrapper for no-secret profiles', () => {
+  it('keeps no-secret profiles on the wp secrets run sink path', () => {
     const command = buildPublicCiActCommand({
       cwd: '/repo',
       workflow: 'ci-e2e',
@@ -119,13 +119,16 @@ describe('public ci act runner contract', () => {
       containerArchitecture: 'linux/arm64',
     })
 
-    expect(command.command).toBe('bash')
-    expect(command.args.slice(0, 3)).toEqual([
-      '-lc',
-      expect.stringContaining('--secret-file'),
-      'wp-ci-act',
-    ])
-    expect(command.args.slice(3)).toEqual([
+    expect(command.command).toBe('wp')
+    expect(command.args).toEqual([
+      'secrets',
+      'run',
+      '--sink',
+      'act',
+      '--profile',
+      'preview',
+      '--',
+      'act',
       'pull_request',
       '-W',
       '/repo/.github/workflows/ci-e2e.yml',
