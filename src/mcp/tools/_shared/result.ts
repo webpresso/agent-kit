@@ -3,7 +3,8 @@ import { join } from 'node:path'
 
 import { z } from 'zod'
 
-import { GAIN_PRECISION, RAW_BYTES_BASIS_VALUES } from '#session-memory/gain-types.js'
+import { RAW_BYTES_BASIS_VALUES, GAIN_PRECISION } from '#session-memory/gain-types.js'
+import { sessionElisionSchema, type SessionElision } from '#mcp/tools/_session-elision-schema.js'
 
 const DEFAULT_RAW_OUTPUT_LIMIT = 4_000
 const DEFAULT_SUMMARY_TEXT_LIMIT = 240
@@ -31,14 +32,7 @@ export const gainTelemetrySchema = z.object({
   rawBytesBasis: z.enum(RAW_BYTES_BASIS_VALUES),
 })
 
-export const elisionSchema = z.object({
-  id: z.string(),
-  source: z.string(),
-  kind: z.enum(['truncated_output', 'file_overflow', 'command_output']),
-  rawBytes: z.number(),
-  returnedBytes: z.number(),
-  retrieveTool: z.string(),
-})
+export const elisionSchema = sessionElisionSchema
 
 export const summaryFirstResultSchema = z.object({
   passed: z.boolean(),
@@ -93,7 +87,7 @@ export function clipRawOutput(
         returnedText?: string
         metadata?: Record<string, unknown>
       }): {
-        elision?: z.infer<typeof elisionSchema>
+        elision?: SessionElision
         warning?: string
       }
     }
@@ -102,7 +96,7 @@ export function clipRawOutput(
   rawOutput?: string
   truncated?: true
   logPath?: string
-  elisions?: Array<z.infer<typeof elisionSchema>>
+  elisions?: SessionElision[]
   warnings?: string[]
 } {
   if (!rawOutput) return {}

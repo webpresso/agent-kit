@@ -82,6 +82,7 @@ interface FileOperationResult {
   readonly indexedChunkIds: readonly string[]
   readonly elisions: readonly z.infer<typeof sessionElisionSchema>[]
   readonly warnings: readonly string[]
+  readonly rawBasisBytes?: number
   readonly metadata?: {
     readonly sizeBytes: number
     readonly lineCount: number
@@ -243,6 +244,7 @@ async function runFileOperation(
       indexedChunkIds: [],
       elisions: [],
       warnings,
+      rawBasisBytes: stats.size,
       metadata,
     }
   }
@@ -291,6 +293,7 @@ async function runFileOperation(
     indexedChunkIds,
     elisions,
     warnings,
+    rawBasisBytes: stats.size,
     metadata,
   }
 }
@@ -352,13 +355,6 @@ const tool: ToolDescriptor = {
     mkdirSync(dirname(dbPath), { recursive: true })
     const store = new SessionMemoryStore(dbPath)
     try {
-<<<<<<< HEAD
-      const runtimeResult = await runFileOperation(input, repoRoot, store)
-      return createSummaryResult(
-        payloadFrom(runtimeResult),
-        runtimeResult.passed ? {} : { isError: true },
-      )
-=======
       const runtimeResult = await runFileOperation(input, repoRoot, store, dbPath)
       const payload = payloadFrom(runtimeResult)
       const resultOptions = runtimeResult.passed ? {} : { isError: true }
@@ -373,7 +369,6 @@ const tool: ToolDescriptor = {
         })
       }
       return createSummaryResult(payload, resultOptions)
->>>>>>> 2338f3a0 (Add exact session elision retrieval)
     } finally {
       store.close()
     }
