@@ -3,7 +3,7 @@ import path from 'node:path'
 
 import { fetchSecretsForConfig } from './secret-managers.js'
 import { isDirectRuntimeProfile, isRuntimeProfile, type RuntimeProfile } from './profiles.js'
-import { readSecretsConfig } from './secrets-config.js'
+import { readSecretsConfig, type SecretsConfig } from './secrets-config.js'
 
 export type RuntimeSelector = RuntimeProfile | string
 
@@ -73,13 +73,16 @@ function normalizeEnvironmentSelector(environment: string | undefined): string |
   return trimmed && trimmed.length > 0 ? trimmed : undefined
 }
 
-function resolveEnvironmentSelector(
+function resolveConfiguredEnvironmentSelector(
+  config: SecretsConfig,
   profile: string | undefined,
   environment: string | undefined,
 ): string | undefined {
   const explicitEnvironment = normalizeEnvironmentSelector(environment)
-  if (explicitEnvironment) return explicitEnvironment
+  if (explicitEnvironment) return config.profileEnvironments?.[explicitEnvironment] ?? explicitEnvironment
   if (!profile) return undefined
+  const configuredProfileEnvironment = config.profileEnvironments?.[profile]
+  if (configuredProfileEnvironment) return configuredProfileEnvironment
   return isCanonicalSecretProfile(profile) ? undefined : profile
 }
 
@@ -102,7 +105,7 @@ export function resolveRuntimeEnvironment(
   }
 
   const cache = options.cache ?? createRuntimeEnvCache()
-  const environmentSelector = resolveEnvironmentSelector(profile, options.environment)
+  const environmentSelector = resolveConfiguredEnvironmentSelector(config, profile, options.environment)
   const cacheKey = `${cwd}::${config.manager}::${config.projectId}::${environmentSelector ?? '<default>'}`
   const cached = cache.values.get(cacheKey)
   if (cached) return { ...cached }

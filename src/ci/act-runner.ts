@@ -25,6 +25,25 @@ export interface PublicCiActCommand {
 }
 
 const DEFAULT_WORKFLOW = 'ci-e2e'
+
+const ACT_SECRET_FILE_BOOTSTRAP_SCRIPT = [
+  "set -euo pipefail",
+  "secret_dir=\"$(mktemp -d \"${TMPDIR:-/tmp}/wp-ci-act-XXXXXX\")\"",
+  "cleanup() { rm -rf \"$secret_dir\"; }",
+  "trap cleanup EXIT",
+  "secret_file=\"$secret_dir/secrets.env\"",
+  ": > \"$secret_file\"",
+  "if [ -n \"${CI_SECRET_PROVIDER_TOKEN_PREVIEW:-}\" ]; then",
+  "  printf '%s=%s\\n' 'ci_secret_provider_token' \"$CI_SECRET_PROVIDER_TOKEN_PREVIEW\" >> \"$secret_file\"",
+  "elif [ -n \"${CI_SECRET_PROVIDER_TOKEN:-}\" ]; then",
+  "  printf '%s=%s\\n' 'ci_secret_provider_token' \"$CI_SECRET_PROVIDER_TOKEN\" >> \"$secret_file\"",
+  "elif [ -n \"${CI_SECRET_PROVIDER_TOKEN_PRODUCTION:-}\" ]; then",
+  "  printf '%s=%s\\n' 'ci_secret_provider_token' \"$CI_SECRET_PROVIDER_TOKEN_PRODUCTION\" >> \"$secret_file\"",
+  "fi",
+  "exec act --secret-file \"$secret_file\" \"$@\"",
+].join('\n')
+
+
 export const DEFAULT_PLATFORM_IMAGE = 'ghcr.io/catthehacker/ubuntu:full-latest'
 const DEFAULT_PLATFORM_IMAGE_SUPPORTED_ARCHITECTURES = new Set(['linux/amd64', 'linux/arm64'])
 
@@ -85,13 +104,18 @@ export function buildPublicCiActArgs(options: PublicCiActOptions = {}): string[]
 
 export function buildPublicCiActCommand(options: PublicCiActOptions = {}): PublicCiActCommand {
   const actArgs = buildPublicCiActArgs(options)
-  const wrapped: SecretGateCommand = buildSecretGateCommand({
+  const envProfile = options.envProfile ?? 'secrets-only'
+  const secretBackedCommand = buildSecretGateCommand({
     sink: 'act',
     profile: options.secretEnvProfile ?? 'preview',
-    envProfile: options.envProfile ?? 'secrets-only',
-    command: 'act',
-    args: actArgs,
+    envProfile,
+    command: 'bash',
+    args: ['-lc', ACT_SECRET_FILE_BOOTSTRAP_SCRIPT, 'wp-ci-act', ...actArgs],
   })
+  if (secretBackedCommand.command !== 'wp') {
+    return { command: 'act', args: actArgs, actArgs }
+  }
+  const wrapped: SecretGateCommand = secretBackedCommand
   return { command: wrapped.command, args: wrapped.args, actArgs }
 }
 

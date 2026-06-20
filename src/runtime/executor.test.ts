@@ -89,6 +89,19 @@ describe('runtime executor', () => {
     )
   })
 
+  it('maps configured profile names to provider environments', () => {
+    const root = repoRoot()
+    const fetchSpy = vi
+      .spyOn(managers, 'fetchSecretsForConfig')
+      .mockReturnValue({ SECRET: 'value' })
+
+    resolveRuntimeEnvironment({ cwd: root, profile: 'secrets-only', environment: 'preview' })
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ manager: 'doppler', projectId: 'demo' }),
+      expect.objectContaining({ cwd: root, environment: 'dev' }),
+    )
+  })
+
   it('forwards provider-specific environment selectors', () => {
     const root = repoRoot()
     const fetchSpy = vi
