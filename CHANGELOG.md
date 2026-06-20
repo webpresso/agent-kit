@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.3.0
+
+### Minor Changes
+
+- 7f9a492: Add exact session elision retrieval via `wp_session_retrieve` and emit retrievable elision handles from truncated session, command, batch, check-tool, and quality-runner outputs.
+
+  References: `docs/bench/reference-parity-matrix.md`, `docs/bench/session-memory-methodology.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, `src/__integration__/reference-parity-tool-surface.integration.test.ts`
+
+### Patch Changes
+
+- dc71d01: Remove the `format:check` package script; `format` remains the write/fix formatter entrypoint.
+
+  AI contract evidence: `docs/bench/reference-parity-matrix.md`, `docs/bench/session-memory-methodology.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, and `src/__integration__/reference-parity-tool-surface.integration.test.ts`.
+
+- dc71d01: Surface actionable diagnostics when `wp_test` file filters match zero Vitest tests.
+
+  AI contract evidence: `docs/bench/reference-parity-matrix.md`, `docs/bench/session-memory-methodology.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, and `src/__integration__/reference-parity-tool-surface.integration.test.ts`.
+
 ## 2.2.0
 
 ### Minor Changes
@@ -69,6 +87,7 @@
 - 909a9ae: Surface actionable diagnostics when `wp_test` file filters match zero Vitest tests.
 
   AI contract evidence: `docs/bench/reference-parity-matrix.md`, `docs/bench/session-memory-methodology.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, and `src/__integration__/reference-parity-tool-surface.integration.test.ts`.
+
 ## 2.0.5
 
 ### Patch Changes
