@@ -9,7 +9,7 @@ export type SecretsConfigMetadata = {
   readonly projectLabel?: string
 }
 
-const ALLOWED_CONFIG_KEYS = new Set(['manager', 'projectId', 'projectLabel'])
+const ALLOWED_CONFIG_KEYS = new Set(['manager', 'projectId', 'projectLabel', 'profiles'])
 const FORBIDDEN_CONFIG_KEY =
   /(?:^|_)(?:token|secret|password|api[_-]?key|credential|private[_-]?key)(?:$|_)/iu
 const PROJECT_ID_PATTERN = /^[a-z0-9][a-z0-9_-]{0,62}$/u
