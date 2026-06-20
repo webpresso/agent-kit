@@ -111,26 +111,24 @@ describe('wp secrets', () => {
   })
 
   it('runs a secret-scoped local command without direct with-secrets usage', async () => {
-    const previousArgv = process.argv
-    process.argv = ['node', 'wp', 'secrets', 'run', '--', 'vp', 'run', 'dev']
-    try {
-      const exitCode = await runSecretsCommand(
-        'run',
-        undefined,
-        { profile: 'preview', sink: 'dev-server' },
-        {
-          readConfig: () => config,
-          runSecretScopedCommand: (input) =>
-            ({
-              status: input.command === 'vp' && input.environment === 'stg' ? 0 : 1,
-              error: undefined,
-            }) as any,
-        },
-      )
+    const exitCode = await runSecretsCommand(
+      'run',
+      undefined,
+      {
+        profile: 'preview',
+        sink: 'dev-server',
+        argv: ['node', 'wp', 'secrets', 'run', '--', 'vp', 'run', 'dev'],
+      },
+      {
+        readConfig: () => config,
+        runSecretScopedCommand: (input) =>
+          ({
+            status: input.command === 'vp' && input.environment === 'stg' ? 0 : 1,
+            error: undefined,
+          }) as any,
+      },
+    )
 
-      expect(exitCode).toBe(0)
-    } finally {
-      process.argv = previousArgv
-    }
+    expect(exitCode).toBe(0)
   })
 })

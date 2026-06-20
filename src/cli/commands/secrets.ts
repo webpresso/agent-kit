@@ -20,6 +20,7 @@ export interface SecretsCommandOptions {
   readonly json?: boolean
   readonly lanes?: readonly string[]
   readonly apply?: boolean
+  readonly argv?: readonly string[]
 }
 
 export interface SecretsCommandDeps {
@@ -122,7 +123,7 @@ export function runSecretsRun(
   options: SecretsCommandOptions = {},
   deps: SecretsCommandDeps = {},
 ): number {
-  const rawArgv = process.argv.slice(2)
+  const rawArgv = (options.argv ?? process.argv).slice(2)
   const separatorIndex = rawArgv.indexOf('--')
   const commandParts = separatorIndex === -1 ? [] : rawArgv.slice(separatorIndex + 1)
   const [command, ...args] = commandParts
