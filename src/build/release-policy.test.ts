@@ -40,6 +40,15 @@ describe('classifyReleasePackage', () => {
     )
   })
 
+  it('classifies future agent-kit generated helper families outside workspace GitHub Releases', () => {
+    expect(classifyReleasePackage('@webpresso/agent-kit-future-native-helper')).toBe(
+      'generated-helper',
+    )
+    expect(isWorkspaceGithubReleasePackage('@webpresso/agent-kit-future-native-helper')).toBe(
+      false,
+    )
+  })
+
   it('treats other non-root workspace packages as GitHub Release packages', () => {
     expect(classifyReleasePackage('@webpresso/agent-config')).toBe('workspace-github-release')
     expect(isWorkspaceGithubReleasePackage('@webpresso/agent-config')).toBe(true)

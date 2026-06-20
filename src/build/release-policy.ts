@@ -13,11 +13,13 @@ export const ROOT_RELEASE_PACKAGE_NAME = '@webpresso/agent-kit'
 
 const RUNTIME_HELPER_PACKAGE_PREFIX = '@webpresso/agent-kit-runtime-'
 const SESSION_MEMORY_HELPER_PACKAGE_PREFIX = '@webpresso/agent-kit-session-memory-'
+const GENERATED_HELPER_PACKAGE_PREFIX = `${ROOT_RELEASE_PACKAGE_NAME}-`
 
 export type ReleasePackageCategory =
   | 'root'
   | 'runtime-helper'
   | 'session-memory-helper'
+  | 'generated-helper'
   | 'workspace-github-release'
 
 /**
@@ -33,6 +35,7 @@ export function classifyReleasePackage(packageName: string): ReleasePackageCateg
   if (packageName === ROOT_RELEASE_PACKAGE_NAME) return 'root'
   if (packageName.startsWith(RUNTIME_HELPER_PACKAGE_PREFIX)) return 'runtime-helper'
   if (packageName.startsWith(SESSION_MEMORY_HELPER_PACKAGE_PREFIX)) return 'session-memory-helper'
+  if (packageName.startsWith(GENERATED_HELPER_PACKAGE_PREFIX)) return 'generated-helper'
   return 'workspace-github-release'
 }
 
