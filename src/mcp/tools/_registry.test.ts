@@ -53,4 +53,11 @@ describe('compiled MCP tool registry', () => {
       'wp_worktree',
     ])
   })
+
+  it('keeps sensitive insight and forensics tools unregistered until their privacy fixture gate exists', () => {
+    const registeredNames = COMPILED_TOOL_REGISTRY.map((tool) => tool.name)
+
+    expect(registeredNames).not.toContain('wp_repo_forensics')
+    expect(registeredNames).not.toContain('wp_session_insight')
+  })
 })
