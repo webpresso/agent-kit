@@ -46,6 +46,8 @@ export interface WorktreeEntry {
   head: string
   branch: string | null
   bare: boolean
+  locked?: boolean
+  prunable?: boolean
 }
 
 export interface NewWorktreeTarget {
@@ -77,13 +79,26 @@ export function parseWorktreePorcelain(raw: string): WorktreeEntry[] {
     let head = ''
     let branch: string | null = null
     let bare = false
+    let locked = false
+    let prunable = false
     for (const line of lines) {
       if (line.startsWith('worktree ')) path = line.slice('worktree '.length)
       else if (line.startsWith('HEAD ')) head = line.slice('HEAD '.length)
       else if (line.startsWith('branch ')) branch = line.slice('branch '.length)
       else if (line === 'bare') bare = true
+      else if (line === 'locked' || line.startsWith('locked ')) locked = true
+      else if (line === 'prunable' || line.startsWith('prunable ')) prunable = true
     }
-    if (path) entries.push({ path, head, branch, bare })
+    if (path) {
+      entries.push({
+        path,
+        head,
+        branch,
+        bare,
+        ...(locked ? { locked } : {}),
+        ...(prunable ? { prunable } : {}),
+      })
+    }
   }
   return entries
 }
@@ -141,9 +156,16 @@ export function resolveNewWorktreeTarget(input: NewWorktreeTargetInput): NewWork
   }
 
   if (branch) {
+    const path = defaultWorktreePath(input.repoRoot, branch)
+    const entries = input.existingEntries ?? []
+    const branchExists = input.branchExists ?? (() => false)
+    const pathExists = input.pathExists ?? (() => false)
+    if (collides(branch, path, entries, branchExists, pathExists)) {
+      throw new Error(`Worktree branch/path collision for ${branch} at ${path}`)
+    }
     return {
       branch,
-      path: defaultWorktreePath(input.repoRoot, branch),
+      path,
       generated: false,
     }
   }
@@ -185,14 +207,14 @@ export function resolveWorktreePath(nameOrPath: string, entries: WorktreeEntry[]
   return match.path
 }
 
-function gitBranchExists(repoRoot: string, branch: string): boolean {
+export function gitBranchExists(repoRoot: string, branch: string): boolean {
   const result = spawnSync('git', ['show-ref', '--verify', '--quiet', `refs/heads/${branch}`], {
     cwd: repoRoot,
   })
   return result.status === 0
 }
 
-function listEntries(repoRoot: string): WorktreeEntry[] {
+export function listEntries(repoRoot: string): WorktreeEntry[] {
   const raw = execFileSync('git', ['worktree', 'list', '--porcelain'], {
     cwd: repoRoot,
     encoding: 'utf-8',

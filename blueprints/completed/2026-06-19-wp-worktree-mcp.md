@@ -2,11 +2,11 @@
 type: blueprint
 title: "Stateful WP worktree MCP tool"
 owner: ozby
-status: planned
+status: completed
 complexity: M
 created: "2026-06-19"
-last_updated: "2026-06-19"
-progress: "0% (planned; blueprint-only PR)"
+last_updated: "2026-06-20"
+progress: "100% (implemented and verified)"
 tags:
   - mcp
   - worktrees
@@ -82,25 +82,25 @@ Mutation rules:
 
 ## Tasks
 
-### Task 1: Extract structured worktree operations
+#### [worktree] Task 1.1: Extract structured worktree operations
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends:** None
 - **Files:** `src/cli/commands/worktree/*`, new shared helper/tests
 - **Steps:** Add tests around existing parser and worktree command behavior; extract structured return values without breaking CLI output; cover collisions, dirty tree, locked worktree, and missing repo.
 - **Acceptance:** CLI and MCP can share structured worktree logic.
 
-### Task 2: Implement `wp_worktree` MCP tool
+#### [mcp] Task 1.2: Implement `wp_worktree` MCP tool
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends:** Task 1
 - **Files:** MCP tool, registry, server tests
 - **Steps:** Add zod schemas, wire read-only and mutating actions with `execute` gating, and return summary-first structured output.
 - **Acceptance:** The MCP tool safely creates/lists/removes repo worktrees under test.
 
-### Task 3: Routing and guard alignment
+#### [routing] Task 1.3: Routing and guard alignment
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends:** Task 2
 - **Files:** pretool guard, routing block, wrapped `wp` hints/tests
 - **Steps:** Update hints that currently point at `wp_worktree`, add raw `git worktree` redirect tests, and document when direct git remains acceptable.
@@ -117,7 +117,29 @@ Mutation rules:
 
 ## PR Acceptance Criteria
 
-- [ ] Mutating operations cannot run without `execute: true`.
-- [ ] Dirty or locked worktrees are protected.
-- [ ] Existing CLI worktree behavior is preserved.
-- [ ] MCP output is bounded, structured, and actionable.
+- [x] Mutating operations cannot run without `execute: true`.
+- [x] Dirty or locked worktrees are protected.
+- [x] Existing CLI worktree behavior is preserved.
+- [x] MCP output is bounded, structured, and actionable.
+
+
+## Implementation Evidence
+
+Completed on 2026-06-20 in branch `feat/wp-worktree-mcp-20260619`.
+
+- Added `wp_worktree` MCP descriptor with structured output for `list`, `root`, `new`, `remove`, `refresh`, and `prune`.
+- Mutating actions return structured refusal unless `execute: true` is supplied.
+- `new` refuses branch/path collisions before invoking `git worktree add`; default base ref discovers `origin/HEAD` and falls back to `origin/main`.
+- `remove` refuses force, current checkout removal, locked worktrees, and dirty target worktrees before invoking `git worktree remove`.
+- List output is capped and registry refresh/cleanup failures return warnings plus explicit next actions.
+- Worktree porcelain parsing now captures `locked` and `prunable` flags for CLI/MCP shared logic.
+- Pretool raw mutating `git worktree` guidance now points to `wp_worktree` first, with `wp worktree` as CLI fallback.
+
+Verification evidence:
+
+- `./bin/wp test --file src/cli/commands/worktree/core.test.ts --file src/mcp/tools/worktree.test.ts --file src/hooks/pretool-guard/dev-routing.test.ts` → passed
+- `./bin/wp test --file src/mcp/tools/_registry.test.ts --file src/mcp/tools/session-docs.test.ts --file src/mcp/tools/worktree.test.ts` → passed
+- `vp run typecheck` → passed
+- `vp run lint` → passed
+- `./bin/wp audit tph` → passed
+- `vp run blueprints:check` → passed

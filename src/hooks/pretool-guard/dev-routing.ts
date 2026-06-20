@@ -36,7 +36,7 @@ function routeRawMutatingGitWorktree(command: string): RouteAction | null {
     action: 'deny',
     tool: 'wp_worktree',
     guidance:
-      'Use `wp worktree` instead — managed repositories may mutate linked worktrees only through agent-kit so owner bindings and the global registry stay consistent.',
+      'Use the `wp_worktree` MCP tool (or `wp worktree` CLI when MCP is unavailable) instead — managed repositories may mutate linked worktrees only through agent-kit so owner bindings and the global registry stay consistent.',
   }
 }
 

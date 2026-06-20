@@ -50,6 +50,7 @@ describe('compiled MCP tool registry', () => {
       'wp_test',
       'wp_typecheck',
       'wp_worker_tail',
+      'wp_worktree',
     ])
   })
 })
