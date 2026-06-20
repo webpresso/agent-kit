@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import type { CodexAppServerApi, HookMetadata, HooksListResponse } from '#codex/app-server/types.js'
+import type { CodexAppServerApi, CommandHookMetadata, HooksListResponse } from '#codex/app-server/types.js'
 import { syncCodexHookTrustWithAppServer } from './codex-trust-sync.js'
 
 const REPO_ROOT = '/repo'
 const HOOKS_PATH = '/repo/.codex/hooks.json'
 const CONFIG_FILE = '/fake/.codex/config.toml'
 
-const ownedHook = {
+const ownedHook: CommandHookMetadata = {
   key: `${HOOKS_PATH}:pre_tool_use:0:0`,
   eventName: 'pre_tool_use',
   handlerType: 'command',
@@ -23,9 +23,9 @@ const ownedHook = {
   isManaged: false,
   currentHash: 'sha256:abc123',
   trustStatus: 'untrusted',
-} as const
+}
 
-function hooksListResponse(hooks: readonly HookMetadata[]): HooksListResponse {
+function hooksListResponse(hooks: readonly CommandHookMetadata[]): HooksListResponse {
   return {
     data: [{ cwd: REPO_ROOT, hooks: [...hooks], warnings: [], errors: [] }],
   }
@@ -80,7 +80,7 @@ describe('syncCodexHookTrustWithAppServer', () => {
       {
         edits: [
           {
-            keyPath: 'hooks.state',
+            keyPath: 'config.hooks.state',
             value: {
               [ownedHook.key]: { enabled: true, trusted_hash: 'sha256:abc123' },
             },
