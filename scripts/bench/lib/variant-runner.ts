@@ -118,6 +118,22 @@ function resolveCodexAuth(
   }
 }
 
+function inheritedProcessEnvForAuth(auth: { mode: BenchAuthMode | 'codex' }): Record<string, string> {
+  const inherited = Object.fromEntries(
+    Object.entries(process.env).filter(
+      (entry): entry is [string, string] => typeof entry[1] === 'string',
+    ),
+  )
+
+  if (auth.mode === 'claude-login') {
+    delete inherited.ANTHROPIC_API_KEY
+    delete inherited.CLAUDE_API_KEY
+    delete inherited.ANTHROPIC_AUTH_TOKEN
+  }
+
+  return inherited
+}
+
 async function spawnWithBun(
   cmd: string[],
   options: {
@@ -318,11 +334,7 @@ export async function runCell(input: RunCellInput): Promise<RunResult> {
   const auth =
     provider === 'codex' ? resolveCodexAuth(input, homeDir) : resolveClaudeAuth(input, homeDir)
   const env = {
-    ...Object.fromEntries(
-      Object.entries(process.env).filter(
-        (entry): entry is [string, string] => typeof entry[1] === 'string',
-      ),
-    ),
+    ...inheritedProcessEnvForAuth(auth),
     HOME: auth.homeDir,
     ...auth.env,
   }

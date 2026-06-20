@@ -87,6 +87,8 @@ const tool: ToolDescriptor = {
   // etc. — clients should treat invocation as observable side effects.
   annotations: {
     title: 'Test',
+    readOnlyHint: false,
+    idempotentHint: false,
     destructiveHint: false,
     openWorldHint: false,
   },

@@ -157,7 +157,6 @@ describe('read-only ops MCP tools', () => {
       .mockResolvedValueOnce(ok('package surface ok'))
       .mockResolvedValueOnce(ok('reference parity ok'))
       .mockResolvedValueOnce(ok('changeset status ok'))
-      .mockResolvedValueOnce(ok('public readiness ok'))
 
     const result = await releaseReadinessTool.handler({ cwd })
     const payload = result.structuredContent as {
@@ -172,11 +171,20 @@ describe('read-only ops MCP tools', () => {
       ['./bin/wp', ['audit', 'package-surface']],
       ['./bin/wp', ['audit', 'reference-parity-matrix', '--strict']],
       ['vp', ['run', 'changeset:status']],
-      ['vp', ['run', 'public:readiness']],
     ])
     expect(payload.passed).toBe(true)
-    expect(payload.summary).toBe('release readiness passed (4 checks)')
-    expect(payload.counts).toEqual({ commandCount: 4, passedCount: 4, failedCount: 0 })
+    expect(payload.summary).toBe('release readiness passed (3 checks)')
+    expect(payload.counts).toEqual({ commandCount: 3, passedCount: 3, failedCount: 0 })
+  })
+
+  it('wp_release_readiness refuses public readiness rather than advertising it as read-only', async () => {
+    const result = await releaseReadinessTool.handler({ cwd, includePublicReadiness: true })
+    const payload = result.structuredContent as { passed: boolean; warnings: string[] }
+
+    expect(result.isError).toBe(true)
+    expect(payload.passed).toBe(false)
+    expect(payload.warnings).toEqual(['public_readiness_not_read_only'])
+    expect(runCommandMock).not.toHaveBeenCalled()
   })
 
   it('wp_release_readiness returns a failed aggregate without throwing', async () => {
@@ -204,5 +212,28 @@ describe('read-only ops MCP tools', () => {
 
     expect(payload.rawOutput).toHaveLength(32)
     expect(payload.truncated).toBe(true)
+  })
+
+  it('redacts and bounds parsed JSON details independently of raw output clipping', async () => {
+    runCommandMock
+      .mockResolvedValueOnce(
+        ok(
+          JSON.stringify({
+            ok: true,
+            token: 'ghp_abcdefghijklmnopqrstuvwxyz1234567890',
+            huge: 'safe chunk '.repeat(400),
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(ok('[]'))
+
+    const result = await prStatusTool.handler({ cwd, branch: 'feat/x', maxOutputBytes: 80 })
+    const payload = result.structuredContent as {
+      details: { pr: { truncated: true; snippet: string } }
+    }
+
+    expect(payload.details.pr.truncated).toBe(true)
+    expect(payload.details.pr.snippet).toHaveLength(80)
+    expect(payload.details.pr.snippet).not.toContain('ghp_abcdefghijklmnopqrstuvwxyz1234567890')
   })
 })

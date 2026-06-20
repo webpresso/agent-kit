@@ -22,7 +22,7 @@ Before invoking `claude`, verify auth in this order:
 AUTH_STATUS_FILE=$(mktemp -t wp-claude-auth.XXXXXX)
 trap 'rm -f "$AUTH_STATUS_FILE"' EXIT
 if claude auth status --output json >"$AUTH_STATUS_FILE" 2>/dev/null; then
-  if grep -E '"(authenticated|loggedIn|success)"[[:space:]]*:[[:space:]]*true|claude\.ai' "$AUTH_STATUS_FILE" >/dev/null; then
+  if grep -E '"(authenticated|loggedIn|success)"[[:space:]]*:[[:space:]]*true' "$AUTH_STATUS_FILE" >/dev/null; then
     echo "CLAUDE_AUTH=first-party"
   else
     echo "CLAUDE_AUTH=missing: claude auth status returned no recognized login state"

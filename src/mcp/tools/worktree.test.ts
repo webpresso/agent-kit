@@ -6,6 +6,7 @@ const existsSyncMock = vi.hoisted(() => vi.fn())
 const upsertMock = vi.hoisted(() => vi.fn())
 const removeRegistryMock = vi.hoisted(() => vi.fn())
 const pruneMock = vi.hoisted(() => vi.fn())
+const readRegistryMock = vi.hoisted(() => vi.fn())
 
 vi.mock('node:child_process', () => ({
   spawnSync: spawnSyncMock,
@@ -29,6 +30,7 @@ vi.mock('#worktrees/manager.js', () => ({
 
 vi.mock('#worktrees/registry.js', () => ({
   pruneStaleWorktreeRegistryEntries: pruneMock,
+  readWorktreeRegistry: readRegistryMock,
   removeWorktreeRegistryEntries: removeRegistryMock,
   upsertWorktreeRegistryEntry: upsertMock,
 }))
@@ -40,7 +42,7 @@ const PORCELAIN = [
   'HEAD aaaaaaa',
   'branch refs/heads/main',
   '',
-  'worktree /home/alice/.agent/worktrees/repos/github.com-webpresso-agent-kit-abc/feat-auth',
+  'worktree /home/alice/.agent/worktrees/repos/github.com-webpresso-agent-kit-296ec9af45/feat-auth',
   'HEAD bbbbbbb',
   'branch refs/heads/feat/auth',
   '',
@@ -61,6 +63,7 @@ afterEach(() => {
   upsertMock.mockReset()
   removeRegistryMock.mockReset()
   pruneMock.mockReset()
+  readRegistryMock.mockReset()
 })
 
 describe('wp_worktree tool', () => {
@@ -80,7 +83,7 @@ describe('wp_worktree tool', () => {
       worktrees: [
         { path: '/repo/main', branch: 'main', head: 'aaaaaaa' },
         {
-          path: '/home/alice/.agent/worktrees/repos/github.com-webpresso-agent-kit-abc/feat-auth',
+          path: '/home/alice/.agent/worktrees/repos/github.com-webpresso-agent-kit-296ec9af45/feat-auth',
           branch: 'feat/auth',
           head: 'bbbbbbb',
         },
@@ -158,6 +161,20 @@ describe('wp_worktree tool', () => {
 
   it('refuses to remove dirty worktrees', async () => {
     execFileSyncMock.mockReturnValue(PORCELAIN)
+    readRegistryMock.mockReturnValue({
+      version: 1,
+      entries: [
+        {
+          id: 'git-agent-kit-feat-auth',
+          repoNamespace: 'github.com-webpresso-agent-kit-296ec9af45',
+          repoRoot: '/repo/main',
+          kind: 'owner',
+          path: '/home/alice/.agent/worktrees/repos/github.com-webpresso-agent-kit-296ec9af45/feat-auth',
+          createdAt: '2026-06-20T00:00:00.000Z',
+          updatedAt: '2026-06-20T00:00:00.000Z',
+        },
+      ],
+    })
     spawnSyncMock.mockReturnValue(spawnResult(0, ' M file.ts\n'))
 
     const result = await wpWorktreeTool.handler({ action: 'remove', branch: 'feat/auth', execute: true })
@@ -172,7 +189,7 @@ describe('wp_worktree tool', () => {
       'git',
       ['status', '--porcelain'],
       expect.objectContaining({
-        cwd: '/home/alice/.agent/worktrees/repos/github.com-webpresso-agent-kit-abc/feat-auth',
+        cwd: '/home/alice/.agent/worktrees/repos/github.com-webpresso-agent-kit-296ec9af45/feat-auth',
       }),
     )
     expect(removeRegistryMock).not.toHaveBeenCalled()
@@ -180,6 +197,20 @@ describe('wp_worktree tool', () => {
 
   it('removes a clean unlocked worktree and updates the registry', async () => {
     execFileSyncMock.mockReturnValue(PORCELAIN)
+    readRegistryMock.mockReturnValue({
+      version: 1,
+      entries: [
+        {
+          id: 'git-agent-kit-feat-auth',
+          repoNamespace: 'github.com-webpresso-agent-kit-296ec9af45',
+          repoRoot: '/repo/main',
+          kind: 'owner',
+          path: '/home/alice/.agent/worktrees/repos/github.com-webpresso-agent-kit-296ec9af45/feat-auth',
+          createdAt: '2026-06-20T00:00:00.000Z',
+          updatedAt: '2026-06-20T00:00:00.000Z',
+        },
+      ],
+    })
     spawnSyncMock.mockImplementation((_cmd: string, args: string[]) => {
       if (args[0] === 'status') return spawnResult(0, '')
       if (args[0] === 'worktree' && args[1] === 'remove') return spawnResult(0, '')
@@ -193,10 +224,56 @@ describe('wp_worktree tool', () => {
       action: 'remove',
       executed: true,
       removed: {
-        path: '/home/alice/.agent/worktrees/repos/github.com-webpresso-agent-kit-abc/feat-auth',
+        path: '/home/alice/.agent/worktrees/repos/github.com-webpresso-agent-kit-296ec9af45/feat-auth',
         branch: 'feat/auth',
       },
     })
     expect(removeRegistryMock).toHaveBeenCalledOnce()
+  })
+
+  it('refuses to remove git worktrees outside the managed registry scope', async () => {
+    execFileSyncMock.mockReturnValue(
+      [
+        PORCELAIN,
+        '',
+        'worktree /tmp/manual-worktree',
+        'HEAD ccccccc',
+        'branch refs/heads/manual',
+        '',
+      ].join('\n'),
+    )
+    readRegistryMock.mockReturnValue({ version: 1, entries: [] })
+
+    const result = await wpWorktreeTool.handler({ action: 'remove', branch: 'manual', execute: true })
+
+    expect(payload(result)).toMatchObject({
+      passed: false,
+      action: 'remove',
+      executed: false,
+      warnings: ['unmanaged_worktree_protected'],
+    })
+    expect(spawnSyncMock).not.toHaveBeenCalled()
+    expect(removeRegistryMock).not.toHaveBeenCalled()
+  })
+
+  it('prunes only stale registry entries for the current repo namespace', async () => {
+    removeRegistryMock.mockReturnValue([{ id: 'stale' }])
+    existsSyncMock.mockImplementation((path: string) => path !== '/missing/current')
+
+    const result = await wpWorktreeTool.handler({ action: 'prune', execute: true })
+
+    expect(payload(result)).toMatchObject({
+      passed: true,
+      action: 'prune',
+      executed: true,
+      summary: 'Pruned 1 stale managed registry entry',
+    })
+    const predicate = removeRegistryMock.mock.calls[0]?.[0] as (entry: {
+      repoNamespace: string
+      path: string
+    }) => boolean
+    expect(predicate({ repoNamespace: 'github.com-webpresso-agent-kit-296ec9af45', path: '/missing/current' })).toBe(true)
+    expect(predicate({ repoNamespace: 'other-repo', path: '/missing/other' })).toBe(false)
+    expect(predicate({ repoNamespace: 'github.com-webpresso-agent-kit-296ec9af45', path: '/present/current' })).toBe(false)
   })
 })

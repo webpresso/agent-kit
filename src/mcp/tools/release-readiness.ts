@@ -13,7 +13,7 @@ import {
 
 const inputSchema = readonlyOpsBaseSchema
   .extend({
-    includePublicReadiness: z.boolean().optional().default(true),
+    includePublicReadiness: z.boolean().optional().default(false),
     includeChangesetStatus: z.boolean().optional().default(true),
     includeReferenceParity: z.boolean().optional().default(true),
   })
@@ -40,9 +40,6 @@ function commandsFor(input: Input): Array<{ id: string; command: string; args: s
   if (input.includeChangesetStatus) {
     commands.push({ id: 'changeset_status', command: 'vp', args: ['run', 'changeset:status'] })
   }
-  if (input.includePublicReadiness) {
-    commands.push({ id: 'public_readiness', command: 'vp', args: ['run', 'public:readiness'] })
-  }
   return commands
 }
 
@@ -62,6 +59,19 @@ const tool: ToolDescriptor = {
   handler: async (raw, extra) => {
     const input = inputSchema.parse(raw ?? {})
     const cwd = resolveReadonlyCwd(input)
+    if (input.includePublicReadiness) {
+      return createSummaryResult(
+        {
+          passed: false,
+          summary:
+            'release readiness refused public:readiness because it is not guaranteed read-only',
+          counts: { commandCount: 0, passedCount: 0, failedCount: 0 },
+          details: { cwd, commands: [] },
+          warnings: ['public_readiness_not_read_only'],
+        },
+        { isError: true },
+      )
+    }
     const commands = []
     for (const command of commandsFor(input)) {
       commands.push(
