@@ -431,13 +431,13 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(r.stderr).toContain('exited with 5')
     })
 
-    it('--with gstack + fake HOME with gstack pre-installed: exits 0, "updated"', () => {
+    it('--with gstack + fake HOME with legacy checkout: exits 0, installs Webpresso skills', () => {
       const r = runAk(['setup', '--yes', '--project-init', '--with', 'gstack', '--cwd', repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
       })
       expect(r.code).toBe(0)
-      expect(r.stdout).toContain('gstack: ✓ updated')
+      expect(r.stdout).toContain('gstack: ✓ installed')
       expect(r.stdout).toContain(path.join(fakeHome, '.claude', 'skills', 'gstack'))
     })
 
@@ -451,7 +451,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       })
 
       expect(r.code).toBe(0)
-      expect(r.stdout).toContain('gstack: ✓ updated')
+      expect(r.stdout).toContain('gstack: ✓ installed')
       expect(r.stdout).toContain(
         `gstack (codex): ✓ installed at ${path.join(fakeHome, '.codex', 'skills')}`,
       )
@@ -467,7 +467,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
         })
         expect(r.code).toBe(0)
         expect(r.stdout).toContain('omx setup: ✓')
-        expect(r.stdout).toContain('gstack: ✓ updated')
+        expect(r.stdout).toContain('gstack: ✓ installed')
       },
     )
 
@@ -484,7 +484,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
         expect(r.stderr).toContain('not on PATH')
         // gstack still runs after omx fails — independent presets aren't
         // coupled. Verify it succeeded against the fake-home fixture.
-        expect(r.stdout).toContain('gstack: ✓ updated')
+        expect(r.stdout).toContain('gstack: ✓ installed')
       },
     )
 

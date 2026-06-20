@@ -688,6 +688,26 @@ function readPackedEntryForAudit(
   return options.readPackedEntry?.(packageRoot) ?? readPackedEntry(packageRoot)
 }
 
+export function parseNpmPackJsonOutput(raw: string): unknown {
+  try {
+    return JSON.parse(raw) as unknown
+  } catch {
+    // npm can still print package lifecycle stdout before the final JSON array
+    // when scripts run during `npm pack --dry-run --json`. Parse the final
+    // JSON array instead of assuming stdout is pure JSON.
+    for (const match of raw.matchAll(/\[/gu)) {
+      const candidate = raw.slice(match.index).trim()
+      try {
+        const parsed = JSON.parse(candidate) as unknown
+        if (Array.isArray(parsed)) return parsed
+      } catch {
+        // keep scanning for the JSON array emitted by npm
+      }
+    }
+    throw new SyntaxError('Could not parse npm pack --json output')
+  }
+}
+
 function readPackedEntry(packageRoot: string): NpmPackDryRunEntry {
   syncBlueprintMigrationSqlAssets(packageRoot)
   const raw = execFileSync('npm', ['pack', '--dry-run', '--json'], {
@@ -695,7 +715,7 @@ function readPackedEntry(packageRoot: string): NpmPackDryRunEntry {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   })
-  const entries = JSON.parse(raw) as unknown
+  const entries = parseNpmPackJsonOutput(raw)
   if (!Array.isArray(entries) || entries.length === 0) return {}
   return (entries[0] as NpmPackDryRunEntry) ?? {}
 }

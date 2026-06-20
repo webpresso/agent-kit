@@ -364,18 +364,9 @@ describe('wp package-manager commands', () => {
       'user',
       'oh-my-claudecode',
     ])
-    expect(run).toHaveBeenNthCalledWith(3, 'git', [
-      '-C',
-      '/fake-home/.claude/skills/gstack',
-      'pull',
-      '--ff-only',
-      'origin',
-      'main',
-    ])
-    expect(run).toHaveBeenNthCalledWith(4, './setup', ['--team'], {
-      cwd: '/fake-home/.claude/skills/gstack',
-    })
-    expect(run).toHaveBeenNthCalledWith(5, GLOBAL_VP, ['install', '-g', '@webpresso/agent-kit'])
+    expect(run).toHaveBeenNthCalledWith(3, GLOBAL_VP, ['install', '-g', '@webpresso/agent-kit'])
+    expect(run.mock.calls.flat().join(' ')).not.toContain('github.com/garrytan/gstack')
+    expect(run.mock.calls.flat().join(' ')).not.toContain('./setup')
     expect(refreshClaudePlugin).toHaveBeenCalledWith(
       '/global/lib/node_modules/@webpresso/agent-kit',
     )
@@ -449,7 +440,7 @@ describe('wp package-manager commands', () => {
     expect(refreshCodexPlugin).toHaveBeenCalledWith('/global/lib/node_modules/@webpresso/agent-kit')
   })
 
-  it('clones gstack when the canonical checkout is missing and wp owns gstack', () => {
+  it('does not clone gstack when the canonical checkout is missing and wp owns gstack', () => {
     const run = vi.fn(() => spawnResult(0))
     const mkdir = vi.fn()
     const { refreshClaudePlugin, refreshCodexPlugin } = successfulPluginRefreshes()
@@ -471,17 +462,9 @@ describe('wp package-manager commands', () => {
       }),
     ).toBe(0)
 
-    expect(mkdir).toHaveBeenCalledWith('/fake-home/.claude/skills', { recursive: true })
-    expect(run).toHaveBeenCalledWith('git', [
-      'clone',
-      '--depth',
-      '1',
-      'https://github.com/garrytan/gstack.git',
-      '/fake-home/.claude/skills/gstack',
-    ])
-    expect(run).toHaveBeenCalledWith('./setup', ['--team'], {
-      cwd: '/fake-home/.claude/skills/gstack',
-    })
+    expect(mkdir).not.toHaveBeenCalled()
+    expect(run.mock.calls.flat().join(' ')).not.toContain('github.com/garrytan/gstack')
+    expect(run.mock.calls.flat().join(' ')).not.toContain('./setup')
     expect(refreshClaudePlugin).toHaveBeenCalledWith(
       '/global/lib/node_modules/@webpresso/agent-kit',
     )
@@ -511,7 +494,7 @@ describe('wp package-manager commands', () => {
       }),
     ).toBe(1)
 
-    expect(run).toHaveBeenCalledTimes(5)
+    expect(run).toHaveBeenCalledTimes(3)
     expect(refreshClaudePlugin).toHaveBeenCalledWith(
       '/global/lib/node_modules/@webpresso/agent-kit',
     )
