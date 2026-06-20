@@ -73,6 +73,14 @@ const WEBPRESSO_HOOK_BINS = [
   'wp-precompact-snapshot',
 ] as const
 
+function installFakeNodeRuntime(repoRoot: string): string {
+  const fakeNode = join(repoRoot, 'toolchain', 'node')
+  mkdirSync(join(repoRoot, 'toolchain'), { recursive: true })
+  writeFileSync(fakeNode, '#!/bin/sh\nexit 0\n', 'utf8')
+  chmodSync(fakeNode, 0o755)
+  return fakeNode
+}
+
 function installFakeWebpressoBins(repoRoot: string): void {
   const binDir = join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'bin')
   mkdirSync(binDir, { recursive: true })
@@ -2086,7 +2094,7 @@ hooks:
 
   it('executes every generated Claude hook command successfully from outside repo root', async () => {
     initGitRepo(repoRoot)
-    process.env.WP_HOOK_NODE_PATH = process.execPath
+    process.env.WP_HOOK_NODE_PATH = installFakeNodeRuntime(repoRoot)
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
     installFakeWebpressoBins(repoRoot)
 
@@ -2103,6 +2111,7 @@ hooks:
       'PostToolUse',
       'UserPromptSubmit',
       'Stop',
+      'PreCompact',
     ].flatMap((event) =>
       (settings.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)),
     )
@@ -2114,7 +2123,7 @@ hooks:
           cwd: siblingCwd,
           env: {
             PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
-            HOME: process.env.HOME,
+            HOME: repoRoot,
             CLAUDE_PROJECT_DIR: repoRoot,
             WP_SKIP_UPDATE_CHECK: '1',
           },
@@ -2129,7 +2138,7 @@ hooks:
 
   it('executes every generated Codex hook command successfully from a sibling cwd', async () => {
     initGitRepo(repoRoot)
-    process.env.WP_HOOK_NODE_PATH = process.execPath
+    process.env.WP_HOOK_NODE_PATH = installFakeNodeRuntime(repoRoot)
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
     installFakeWebpressoBins(repoRoot)
 
@@ -2144,20 +2153,24 @@ hooks:
       'PostToolUse',
       'UserPromptSubmit',
       'Stop',
+      'PreCompact',
     ].flatMap((event) =>
       (codex.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)),
     )
 
     expect(commands.length).toBeGreaterThan(0)
-    const results: Array<Awaited<ReturnType<typeof runShellCommand>>> = []
-    for (const command of commands) {
-      results.push(
-        await runShellCommand(command, {
+    const results = await Promise.all(
+      commands.map((command) =>
+        runShellCommand(command, {
           cwd: siblingCwd,
-          env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin', WP_SKIP_UPDATE_CHECK: '1' },
+          env: {
+            PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
+            HOME: repoRoot,
+            WP_SKIP_UPDATE_CHECK: '1',
+          },
         }),
-      )
-    }
+      ),
+    )
 
     for (const result of results) {
       expect(result.status, `${result.command}\n${result.stderr}`).toBe(0)
