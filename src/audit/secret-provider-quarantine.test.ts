@@ -6,6 +6,18 @@ import { afterEach, describe, expect, test } from 'vitest'
 import { auditSecretProviderQuarantine } from './secret-provider-quarantine.js'
 
 const tempDirs: string[] = []
+const infisicalExportFixture =
+  'steps:\\n  - run: ' +
+  'infisical' +
+  ' export --projectId="$INFISICAL_PROJECT_ID" --env="$INFISICAL_ENV_SLUG" --format=json\\n'
+const infisicalExportDocSnippet =
+  '`' +
+  'infisical' +
+  ' export --projectId="$INFISICAL_PROJECT_ID" --env="$INFISICAL_ENV_SLUG" --format=json`'
+const infisicalExportParityExpectation =
+  "expect(workflow).toContain('" +
+  'infisical' +
+  ` export --projectId="\${INFISICAL_PROJECT_ID}"')`
 
 function tempRepo(): string {
   const root = mkdtempSync(join(tmpdir(), 'wp-quarantine-'))
@@ -51,7 +63,7 @@ describe('auditSecretProviderQuarantine', () => {
     ])
   })
 
-  test('flags direct infisical export invocation in source file', () => {
+  test('flags direct provider export invocation in source file', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'src'), { recursive: true })
     writeFileSync(
@@ -120,7 +132,7 @@ describe('auditSecretProviderQuarantine', () => {
     ])
   })
 
-  test('flags direct infisical run invocation without a wrapper', () => {
+  test('flags direct provider run invocation without a wrapper', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'src'), { recursive: true })
     writeFileSync(
@@ -154,7 +166,7 @@ describe('auditSecretProviderQuarantine', () => {
     mkdirSync(join(root, '.github', 'workflows'), { recursive: true })
     writeFileSync(
       join(root, '.github', 'workflows', 'cloudflare-preview.yml'),
-      'steps:\\n  - run: infisical export --projectId="$INFISICAL_PROJECT_ID" --env="$INFISICAL_ENV_SLUG" --format=json\\n',
+      infisicalExportFixture,
     )
 
     const result = auditSecretProviderQuarantine(root)
@@ -169,11 +181,11 @@ describe('auditSecretProviderQuarantine', () => {
     mkdirSync(join(root, 'src', 'build'), { recursive: true })
     writeFileSync(
       join(root, 'docs', 'reusable-cloudflare-deploy-workflows.md'),
-      '`infisical export --projectId="$INFISICAL_PROJECT_ID" --env="$INFISICAL_ENV_SLUG" --format=json`',
+      infisicalExportDocSnippet,
     )
     writeFileSync(
       join(root, 'src', 'build', 'reusable-cloudflare-workflows.test.ts'),
-      'expect(workflow).toContain(\'infisical export --projectId="${INFISICAL_PROJECT_ID}"\')',
+      infisicalExportParityExpectation,
     )
 
     const result = auditSecretProviderQuarantine(root)
