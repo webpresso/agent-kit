@@ -10,7 +10,10 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
-import type { HooksMap } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
+import {
+  type HooksMap,
+  WP_HOOK_BIN_NAMES,
+} from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
 
 export const HOOK_MANIFEST_VENDORS = ['claude', 'codex'] as const
 export type HookManifestVendor = (typeof HOOK_MANIFEST_VENDORS)[number]
@@ -109,6 +112,34 @@ export type HookDiff = {
   readonly vendor: 'claude' | 'codex'
 }
 
+const VITE_PLUS_PATH_PREFIX = /^export PATH="\$HOME\/\.vite-plus\/bin:\$PATH";\s*/u
+const WP_HOOK_SUBCOMMANDS = new Set(WP_HOOK_BIN_NAMES.map((bin) => bin.replace(/^wp-/u, '')))
+
+function normalizeHookCommandForManifest(command: string): string {
+  return command.replace(VITE_PLUS_PATH_PREFIX, '')
+}
+
+function shellWords(command: string): string[] {
+  return command.match(/[A-Za-z0-9_.@/:$'"-]+/gu) ?? []
+}
+
+function isWebpressoManagedHookCommand(command: string): boolean {
+  const normalized = normalizeHookCommandForManifest(command)
+  if (WP_HOOK_BIN_NAMES.some((bin) => normalized.includes(bin))) return true
+
+  const words = shellWords(normalized).map((word) => word.replace(/^['"]|['"]$/gu, ''))
+  for (let index = 0; index < words.length - 2; index += 1) {
+    if (
+      words[index] === 'wp' &&
+      words[index + 1] === 'hook' &&
+      WP_HOOK_SUBCOMMANDS.has(words[index + 2] ?? '')
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
 /**
  * Compare installed hooks (from disk) against the manifest.
  * Returns per-hook 3-way verdicts:
@@ -131,7 +162,7 @@ export function diffHooksManifest(
     for (const [event, groups] of Object.entries(currentMap)) {
       for (const group of groups) {
         for (const hook of group.hooks) {
-          currentCommands.add(`${event}:${hook.command}`)
+          currentCommands.add(`${event}:${normalizeHookCommandForManifest(hook.command)}`)
         }
       }
     }
@@ -141,7 +172,7 @@ export function diffHooksManifest(
     for (const [event, groups] of Object.entries(manifestMap)) {
       for (const group of groups) {
         for (const hook of group.hooks) {
-          manifestCommands.add(`${event}:${hook.command}`)
+          manifestCommands.add(`${event}:${normalizeHookCommandForManifest(hook.command)}`)
         }
       }
     }
@@ -150,7 +181,7 @@ export function diffHooksManifest(
     for (const [event, groups] of Object.entries(manifestMap)) {
       for (const group of groups) {
         for (const hook of group.hooks) {
-          const key = `${event}:${hook.command}`
+          const key = `${event}:${normalizeHookCommandForManifest(hook.command)}`
           if (manifest.vendorState[vendor] === 'disabled' && !currentCommands.has(key)) {
             continue
           }
@@ -168,8 +199,8 @@ export function diffHooksManifest(
     for (const [event, groups] of Object.entries(currentMap)) {
       for (const group of groups) {
         for (const hook of group.hooks) {
-          const key = `${event}:${hook.command}`
-          if (!manifestCommands.has(key)) {
+          const key = `${event}:${normalizeHookCommandForManifest(hook.command)}`
+          if (!manifestCommands.has(key) && isWebpressoManagedHookCommand(hook.command)) {
             diffs.push({
               event,
               command: hook.command,

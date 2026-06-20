@@ -710,7 +710,7 @@ export function parseNpmPackJsonOutput(raw: string): unknown {
 
 function readPackedEntry(packageRoot: string): NpmPackDryRunEntry {
   assertBuiltBlueprintMigrationSqlAssets(packageRoot)
-  const raw = execFileSync('npm', ['pack', '--dry-run', '--json'], {
+  const raw = execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
     cwd: packageRoot,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],

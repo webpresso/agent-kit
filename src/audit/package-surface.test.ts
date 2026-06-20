@@ -390,6 +390,25 @@ describe('package-surface audit', () => {
     expect(existsSync(join(root, 'dist', 'esm', 'blueprint', 'db', 'migrations'))).toBe(false)
   })
 
+  test('package-surface audit does not run npm pack lifecycle scripts', () => {
+    const root = tempRepo()
+    writeJson(join(root, 'package.json'), {
+      name: '@webpresso/framework',
+      version: '0.1.0',
+      private: false,
+      files: ['package.json'],
+      scripts: {
+        prepack:
+          'node -e "require(\\"node:fs\\").writeFileSync(\\"MUTATED_BY_PREPACK\\", \\"yes\\")"',
+      },
+    })
+
+    const result = auditPackageSurface(root, { runSecretlint: () => [] })
+
+    expect(result.ok).toBe(true)
+    expect(existsSync(join(root, 'MUTATED_BY_PREPACK'))).toBe(false)
+  })
+
   test('flags forbidden packed tarball paths and content', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'docs', 'research'), { recursive: true })
