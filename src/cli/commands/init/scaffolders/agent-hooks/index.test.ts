@@ -176,6 +176,21 @@ async function runShellCommand(
   })
 }
 
+async function runHookCommandsSequentially(
+  commands: readonly string[],
+  options: {
+    cwd: string
+    env?: NodeJS.ProcessEnv
+  },
+): Promise<Array<{ status: number | null; stdout: string; stderr: string; command: string }>> {
+  const results: Array<{ status: number | null; stdout: string; stderr: string; command: string }> =
+    []
+  for (const command of commands) {
+    results.push(await runShellCommand(command, options))
+  }
+  return results
+}
+
 describe('hookSubcommandFor (managed-launcher dispatch gate)', () => {
   it('returns the wp hook subcommand for dispatchable managed hooks', () => {
     expect(hookSubcommandFor('wp-pretool-guard')).toStrictEqual('pretool-guard')
@@ -2161,22 +2176,18 @@ hooks:
     expect(commands.length).toBeGreaterThan(0)
     const runtimeLog = join(repoRoot, 'claude-hook-runtime.log')
     const binLog = join(repoRoot, 'claude-hook-bins.log')
-    const results = await Promise.all(
-      commands.map((command) =>
-        runShellCommand(command, {
-          cwd: siblingCwd,
-          env: {
-            PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
-            HOME: repoRoot,
-            CLAUDE_PROJECT_DIR: repoRoot,
-            WP_HOOK_SMOKE_BIN_DIR: fixtureBinDir,
-            WP_HOOK_SMOKE_BIN_LOG: binLog,
-            WP_HOOK_SMOKE_RUNTIME_LOG: runtimeLog,
-            WP_SKIP_UPDATE_CHECK: '1',
-          },
-        }),
-      ),
-    )
+    const results = await runHookCommandsSequentially(commands, {
+      cwd: siblingCwd,
+      env: {
+        PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
+        HOME: repoRoot,
+        CLAUDE_PROJECT_DIR: repoRoot,
+        WP_HOOK_SMOKE_BIN_DIR: fixtureBinDir,
+        WP_HOOK_SMOKE_BIN_LOG: binLog,
+        WP_HOOK_SMOKE_RUNTIME_LOG: runtimeLog,
+        WP_SKIP_UPDATE_CHECK: '1',
+      },
+    })
 
     for (const result of results) {
       expect(result.status, `${result.command}\n${result.stderr}`).toBe(0)
@@ -2186,7 +2197,7 @@ hooks:
       }
     }
     assertSmokeRanEveryWebpressoBin(runtimeLog, binLog)
-  })
+  }, 30_000)
 
   it('executes every generated Codex hook command successfully from a sibling cwd', async () => {
     initGitRepo(repoRoot)
@@ -2213,21 +2224,17 @@ hooks:
     expect(commands.length).toBeGreaterThan(0)
     const runtimeLog = join(repoRoot, 'codex-hook-runtime.log')
     const binLog = join(repoRoot, 'codex-hook-bins.log')
-    const results = await Promise.all(
-      commands.map((command) =>
-        runShellCommand(command, {
-          cwd: siblingCwd,
-          env: {
-            PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
-            HOME: repoRoot,
-            WP_HOOK_SMOKE_BIN_DIR: fixtureBinDir,
-            WP_HOOK_SMOKE_BIN_LOG: binLog,
-            WP_HOOK_SMOKE_RUNTIME_LOG: runtimeLog,
-            WP_SKIP_UPDATE_CHECK: '1',
-          },
-        }),
-      ),
-    )
+    const results = await runHookCommandsSequentially(commands, {
+      cwd: siblingCwd,
+      env: {
+        PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
+        HOME: repoRoot,
+        WP_HOOK_SMOKE_BIN_DIR: fixtureBinDir,
+        WP_HOOK_SMOKE_BIN_LOG: binLog,
+        WP_HOOK_SMOKE_RUNTIME_LOG: runtimeLog,
+        WP_SKIP_UPDATE_CHECK: '1',
+      },
+    })
 
     for (const result of results) {
       expect(result.status, `${result.command}\n${result.stderr}`).toBe(0)
@@ -2237,7 +2244,7 @@ hooks:
       }
     }
     assertSmokeRanEveryWebpressoBin(runtimeLog, binLog)
-  })
+  }, 30_000)
 })
 
 describe('classifyWebpressoHookBin', () => {
