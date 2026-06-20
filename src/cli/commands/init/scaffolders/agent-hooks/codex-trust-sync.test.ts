@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import type { CodexAppServerApi, HooksListResponse } from '../../../../../codex/app-server/types.js'
+import type { CodexAppServerApi, HookMetadata, HooksListResponse } from '#codex/app-server/types.js'
 import { syncCodexHookTrustWithAppServer } from './codex-trust-sync.js'
 
 const REPO_ROOT = '/repo'
 const HOOKS_PATH = '/repo/.codex/hooks.json'
+const CONFIG_FILE = '/fake/.codex/config.toml'
 
 const ownedHook = {
   key: `${HOOKS_PATH}:pre_tool_use:0:0`,
@@ -24,7 +25,7 @@ const ownedHook = {
   trustStatus: 'untrusted',
 } as const
 
-function hooksListResponse(hooks: readonly (typeof ownedHook)[]): HooksListResponse {
+function hooksListResponse(hooks: readonly HookMetadata[]): HooksListResponse {
   return {
     data: [{ cwd: REPO_ROOT, hooks: [...hooks], warnings: [], errors: [] }],
   }
@@ -54,13 +55,16 @@ class FakeApi implements CodexAppServerApi {
 }
 
 describe('syncCodexHookTrustWithAppServer', () => {
-  it('uses hooks/list metadata to write official hooks.state entries and verifies trust', async () => {
+  it('uses hooks/list metadata to write hooks.state entries to config.toml (not hooks.json) and verifies trust', async () => {
     const api = new FakeApi([
       hooksListResponse([ownedHook]),
       hooksListResponse([{ ...ownedHook, trustStatus: 'trusted' }]),
     ])
 
-    const result = await syncCodexHookTrustWithAppServer(api, { repoRoot: REPO_ROOT })
+    const result = await syncCodexHookTrustWithAppServer(api, {
+      repoRoot: REPO_ROOT,
+      codexConfigFilePath: CONFIG_FILE,
+    })
 
     expect(result).toStrictEqual({
       ok: true,
@@ -70,6 +74,8 @@ describe('syncCodexHookTrustWithAppServer', () => {
       },
     })
     expect(api.hooksListCalls).toStrictEqual([[REPO_ROOT], [REPO_ROOT]])
+    // filePath must point to config.toml — writing to hooks.json via 'hooks.state' keyPath
+    // causes Codex's deny_unknown_fields HooksFile parser to reject hooks.json entirely.
     expect(api.batchWrites).toStrictEqual([
       {
         edits: [
@@ -81,6 +87,7 @@ describe('syncCodexHookTrustWithAppServer', () => {
             mergeStrategy: 'upsert',
           },
         ],
+        filePath: CONFIG_FILE,
         reloadUserConfig: true,
       },
     ])

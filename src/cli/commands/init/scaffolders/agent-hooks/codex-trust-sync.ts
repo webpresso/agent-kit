@@ -1,4 +1,5 @@
-import { resolve } from 'node:path'
+import { homedir } from 'node:os'
+import { join, resolve } from 'node:path'
 
 import type {
   CodexAppServerApi,
@@ -9,12 +10,24 @@ import { isWebpressoOwnedCodexHook } from './codex-ownership.js'
 
 export interface SyncCodexHookTrustInput {
   readonly repoRoot: string
+  /**
+   * Absolute path to the Codex config.toml that holds [hooks].state trust entries.
+   * Defaults to ~/.codex/config.toml (honouring $CODEX_HOME).
+   * Must point to a TOML config file, NOT to hooks.json — writing `hooks.state` into
+   * hooks.json causes Codex's deny_unknown_fields HooksFile parser to reject it entirely.
+   */
+  readonly codexConfigFilePath?: string
   readonly expectedSourcePaths?: readonly string[]
   readonly hookDescription?: string
   readonly selectHook?: (
     metadata: unknown,
     expectedSourcePaths: readonly string[],
   ) => metadata is CommandHookMetadata
+}
+
+export function defaultCodexConfigFilePath(): string {
+  const codexHome = process.env.CODEX_HOME || join(homedir(), '.codex')
+  return join(codexHome, 'config.toml')
 }
 
 export type CodexTrustStateUpdate = Record<string, { enabled: true; trusted_hash: string }>
@@ -60,10 +73,12 @@ export async function syncCodexHookTrustWithAppServer(
   }
 
   const state = buildCodexTrustStateUpdate(ownedHooks)
+  const configFilePath = input.codexConfigFilePath ?? defaultCodexConfigFilePath()
 
   try {
     await api.configBatchWrite({
       edits: [{ keyPath: 'hooks.state', value: state, mergeStrategy: 'upsert' }],
+      filePath: configFilePath,
       reloadUserConfig: true,
     })
   } catch (error) {

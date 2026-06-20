@@ -30,9 +30,13 @@ const codexHooksMapSchema = z.record(z.string(), z.array(codexHookGroupSchema))
 /**
  * Full Codex hooks.json schema.
  * The canonical wrapped shape: `{ hooks: { [EventName]: [...] } }`
+ * Strict: rejects unknown top-level keys (e.g. `state`) that would corrupt
+ * hooks.json when Codex's deny_unknown_fields HooksFile parser reads it.
  */
-export const codexHooksSchema = z.object({
-  hooks: codexHooksMapSchema,
-})
+export const codexHooksSchema = z
+  .object({
+    hooks: codexHooksMapSchema,
+  })
+  .strict()
 
 export type CodexHooksConfig = z.infer<typeof codexHooksSchema>
