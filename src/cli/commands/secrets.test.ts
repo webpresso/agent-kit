@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { runSecretsCommand } from './secrets.js'
+import { createGitHubSecretSetInvocation, runSecretsCommand } from './secrets.js'
 
 function makeWriter() {
   const chunks: string[] = []
@@ -102,6 +102,20 @@ describe('wp secrets', () => {
       'secret-value',
       undefined,
     )
+  })
+
+  it('passes GitHub bootstrap secrets through stdin instead of argv', () => {
+    const invocation = createGitHubSecretSetInvocation(
+      'CI_SECRET_PROVIDER_TOKEN_PRODUCTION',
+      'secret-value',
+      '/tmp/repo',
+    )
+
+    expect(invocation.command).toBe('gh')
+    expect(invocation.args).toEqual(['secret', 'set', 'CI_SECRET_PROVIDER_TOKEN_PRODUCTION', '--body-file', '-'])
+    expect(invocation.args.join(' ')).not.toContain('secret-value')
+    expect(invocation.options.input).toBe('secret-value')
+    expect(invocation.options.stdio).toEqual(['pipe', 'ignore', 'ignore'])
   })
 
   it('runs a secret-scoped local command without direct with-secrets usage', async () => {

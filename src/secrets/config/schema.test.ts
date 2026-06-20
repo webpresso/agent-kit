@@ -71,4 +71,15 @@ describe('SecretOrchestrationConfigSchema', () => {
       }),
     ).toThrow(/runtime-shell/u)
   })
+
+  it('rejects configs that omit providers.default', () => {
+    expect(() =>
+      parseSecretOrchestrationConfig({
+        ...canonicalConfig(),
+        providers: {
+          main: canonicalConfig().providers.default,
+        },
+      }),
+    ).toThrow(/default/u)
+  })
 })

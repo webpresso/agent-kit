@@ -84,6 +84,21 @@ describe('auditSecretProviderQuarantine', () => {
     ])
   })
 
+  test('flags with-secrets invocation without a double-dash separator', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'src'), { recursive: true })
+    writeFileSync(join(root, 'src', 'app.ts'), "exec('with-secrets act -W .github/workflows/ci.yml')")
+
+    const result = auditSecretProviderQuarantine(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toEqual([
+      expect.objectContaining({
+        message: expect.stringContaining('legacy with-secrets wrapper'),
+      }),
+    ])
+  })
+
   test('passes for clean source', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'src'), { recursive: true })

@@ -32,6 +32,16 @@ export interface SecretsCommandDeps {
   readonly env?: NodeJS.ProcessEnv
 }
 
+interface GitHubSecretSetInvocation {
+  readonly command: string
+  readonly args: readonly string[]
+  readonly options: {
+    readonly cwd: string | undefined
+    readonly input: string
+    readonly stdio: ['pipe', 'ignore', 'ignore']
+  }
+}
+
 export function registerSecretsCommand(cli: CAC): void {
   cli
     .command('secrets <action> [target]', 'Secret orchestration commands (doctor, bootstrap github)')
@@ -221,11 +231,25 @@ export async function runSecretsBootstrapGithub(
   return 0
 }
 
+export function createGitHubSecretSetInvocation(
+  name: string,
+  value: string,
+  cwd: string | undefined,
+): GitHubSecretSetInvocation {
+  return {
+    command: 'gh',
+    args: ['secret', 'set', name, '--body-file', '-'],
+    options: {
+      cwd,
+      input: value,
+      stdio: ['pipe', 'ignore', 'ignore'],
+    },
+  }
+}
+
 function defaultGitHubSecretSet(name: string, value: string, cwd: string | undefined): void {
-  execFileSync('gh', ['secret', 'set', name, '--body', value], {
-    cwd,
-    stdio: 'ignore',
-  })
+  const invocation = createGitHubSecretSetInvocation(name, value, cwd)
+  execFileSync(invocation.command, [...invocation.args], invocation.options)
 }
 
 function readSecretConfig(cwd: string | undefined, deps: SecretsCommandDeps) {

@@ -23,7 +23,9 @@ const SinkDefinitionSchema = z.object({
 export const SecretOrchestrationConfigSchema = z
   .object({
     schemaVersion: z.literal(1),
-    providers: z.record(z.string().min(1), ProviderDefinitionSchema),
+    providers: z.object({
+      default: ProviderDefinitionSchema,
+    }).catchall(ProviderDefinitionSchema),
     profiles: z.record(z.string().min(1), ProfileDefinitionSchema),
     sinks: z.record(z.string().min(1), SinkDefinitionSchema),
   })
@@ -65,7 +67,7 @@ export function parseSecretOrchestrationConfig(value: unknown): SecretOrchestrat
 export function getDefaultSecretProvider(
   config: SecretOrchestrationConfig,
 ): SecretProviderDefinition | undefined {
-  return config.providers.default ?? Object.values(config.providers)[0]
+  return config.providers.default
 }
 
 export function isSecretOrchestrationConfig(value: unknown): value is SecretOrchestrationConfig {

@@ -226,16 +226,28 @@ jobs:
           fi
           npm install --global "@infisical/cli@0.43.91"
           tmp_json="$(mktemp)"
+          trap 'rm -f "$tmp_json"' EXIT
           infisical export --projectId="${INFISICAL_PROJECT_ID}" --env="${INFISICAL_ENV_SLUG}" --format=json > "${tmp_json}"
-          node - "${tmp_json}" <<'NODE' >> "$GITHUB_ENV"
+          node - "${tmp_json}" "$GITHUB_ENV" <<'NODE'
           const fs = require("node:fs");
+          const crypto = require("node:crypto");
           const payloadPath = process.argv[2];
+          const envPath = process.argv[3];
           const secrets = JSON.parse(fs.readFileSync(payloadPath, "utf8"));
+          const isValidKey = (value) => /^[A-Z_][A-Z0-9_]*$/u.test(value);
+          const maskValue = (value) =>
+            value.replace(/%/gu, "%25").replace(/\r/gu, "%0D").replace(/\n/gu, "%0A");
           for (const [key, value] of Object.entries(secrets)) {
+            if (!isValidKey(key)) {
+              throw new Error(`Invalid secret key from Infisical: ${key}`);
+            }
             const rendered = String(value ?? "");
-            console.log(`${key}<<__INFISICAL_EOF__`);
-            console.log(rendered);
-            console.log("__INFISICAL_EOF__");
+            process.stdout.write(`::add-mask::${maskValue(rendered)}\n`);
+            const delimiter = `__INFISICAL_${crypto.randomUUID()}__`;
+            if (rendered.includes(delimiter)) {
+              throw new Error(`Generated Infisical delimiter collided with secret value for ${key}`);
+            }
+            fs.appendFileSync(envPath, `${key}<<${delimiter}\n${rendered}\n${delimiter}\n`);
           }
           NODE
 

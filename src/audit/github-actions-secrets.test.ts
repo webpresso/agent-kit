@@ -79,4 +79,57 @@ describe('auditGitHubActionsSecrets', () => {
     expect(result.ok).toBe(true)
     expect(result.violations).toStrictEqual([])
   })
+
+  test('flags a later unpinned secret-bearing action even if the first occurrence is pinned', () => {
+    const root = tempRepo()
+    writeFileSync(
+      join(root, '.github', 'workflows', 'mixed.yml'),
+      [
+        'on:',
+        '  workflow_call:',
+        '    secrets:',
+        '      ci_secret_provider_token:',
+        '        required: false',
+        'jobs:',
+        '  deploy:',
+        '    permissions:',
+        '      contents: read',
+        '      packages: read',
+        '      id-token: write',
+        '    steps:',
+        '      - uses: dopplerhq/secrets-fetch-action@451892f16195f9ac360e1a5bcbf0b5fd0e957534',
+        '      - uses: dopplerhq/secrets-fetch-action@v2',
+      ].join('\n'),
+    )
+
+    const result = auditGitHubActionsSecrets(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations.map((v) => v.message).join('\n')).toContain('40-character SHA')
+  })
+
+  test('treats infisical-only workflows as secret-bearing', () => {
+    const root = tempRepo()
+    writeFileSync(
+      join(root, '.github', 'workflows', 'infisical.yml'),
+      [
+        'on:',
+        '  workflow_call:',
+        'jobs:',
+        '  deploy:',
+        '    permissions:',
+        '      contents: read',
+        '      packages: read',
+        '    steps:',
+        '      - run: echo "$INFISICAL_TOKEN"',
+        '      - run: infisical export --projectId="$INFISICAL_PROJECT_ID" --env="$INFISICAL_ENV_SLUG" --format=json',
+      ].join('\n'),
+    )
+
+    const result = auditGitHubActionsSecrets(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations.map((v) => v.message).join('\n')).toContain('ci_secret_provider_token explicitly')
+    expect(result.violations.map((v) => v.message).join('\n')).toContain('id-token: write')
+  })
 })

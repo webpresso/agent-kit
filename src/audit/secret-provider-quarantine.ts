@@ -46,6 +46,11 @@ const BANNED_PATTERNS: readonly BannedPattern[] = [
       'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of the legacy with-secrets wrapper',
   },
   {
+    pattern: /\bwith-secrets\s+(?:act|node|vp|pnpm|bun|wrangler)\b/u,
+    message:
+      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of the legacy with-secrets wrapper',
+  },
+  {
     pattern: p([String.raw`\b`, 'doppler secrets' + ' download', String.raw`\b`]),
     message: 'load secrets through runtime/env, not direct provider downloads',
   },
