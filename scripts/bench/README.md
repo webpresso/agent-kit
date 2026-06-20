@@ -74,7 +74,7 @@ verification gate targets a smoke cost below `$1` for that one-cell path.
 | `Missing workspace API keys` | Required API-key env vars are not set | Follow [`./PREFLIGHT.md`](./PREFLIGHT.md), or use `BENCH_AUTH_MODE=claude-login` for a local single-workspace smoke run with an already logged-in Claude CLI |
 | `Workspace mode unspecified` | `BENCH_WORKSPACE_MODE` is missing | Export `BENCH_WORKSPACE_MODE=isolated` or `BENCH_WORKSPACE_MODE=single-workspace` |
 | `rate_limit` in the report | Anthropic throttled the cell | Re-run later or reduce the number of cells/trials |
-| `spawn_failed` in the report | `claude` failed before a valid transcript was recorded | Verify local Claude CLI auth and plugin path |
+| `spawn_failed` in the report | `claude` failed before a valid transcript was recorded | Check `failure_reason`; if `claude auth status` is logged in but execution returned `401`, refresh the Claude CLI login/session rather than adding an API key |
 | `Manifest mismatch` | Pinned tool or plugin versions drifted from `manifest.lock.json` | Re-pin deliberately or restore the expected tool/plugin versions |
 
 ## Harness regression gate

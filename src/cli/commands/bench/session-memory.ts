@@ -41,6 +41,7 @@ type RunResult =
   | {
       ok: false
       error: 'rate_limit' | 'spawn_failed'
+      failure_reason?: string
       usage: null
       local_wall_ms?: number
       tools: []
@@ -129,6 +130,7 @@ type SessionMemoryReport = {
     recall_at_5: number
     recall_reason?: string
     recall_error?: string
+    failure_reason?: string
     wall_sec: number
   }>
   threshold_report?: SessionMemoryThresholdReport
@@ -742,7 +744,7 @@ export async function runBenchSessionMemoryCommand(
         if (!result.ok) {
           return {
             recall_at_5: 0,
-            recall_error: result.error,
+            recall_error: result.failure_reason ?? result.error,
           }
         }
 
@@ -786,6 +788,7 @@ export async function runBenchSessionMemoryCommand(
         local_wall_ms_std: usageSummary.local_wall_ms_std,
         recall_at_5: Number(averageRecallAt5.toFixed(6)),
         ...(recallError ? { recall_error: recallError } : {}),
+        ...(failed?.failure_reason ? { failure_reason: failed.failure_reason } : {}),
         ...(recallReason ? { recall_reason: recallReason } : {}),
         wall_sec: wallSec,
       })
