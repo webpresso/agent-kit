@@ -366,6 +366,49 @@ describe('package-surface audit', () => {
     )
   })
 
+  test('package-surface audit asserts built migration SQL assets without mutating them', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'src', 'blueprint', 'db', 'migrations'), { recursive: true })
+    writeJson(join(root, 'package.json'), {
+      name: '@webpresso/framework',
+      version: '0.1.0',
+      private: false,
+      files: ['dist/esm/blueprint/db/migrations'],
+    })
+    writeFileSync(join(root, 'src', 'blueprint', 'db', 'migrations', '0001_seed.sql'), 'select 1;\n')
+
+    const result = auditPackageSurface(root, { runSecretlint: () => [] })
+
+    expect(result.ok).toBe(false)
+    expect(
+      result.violations.some(
+        (violation) =>
+          violation.file === 'package.json' &&
+          violation.message.includes('Missing or stale built blueprint migration SQL assets'),
+      ),
+    ).toBe(true)
+    expect(existsSync(join(root, 'dist', 'esm', 'blueprint', 'db', 'migrations'))).toBe(false)
+  })
+
+  test('package-surface audit does not run npm pack lifecycle scripts', () => {
+    const root = tempRepo()
+    writeJson(join(root, 'package.json'), {
+      name: '@webpresso/framework',
+      version: '0.1.0',
+      private: false,
+      files: ['package.json'],
+      scripts: {
+        prepack:
+          'node -e "require(\\"node:fs\\").writeFileSync(\\"MUTATED_BY_PREPACK\\", \\"yes\\")"',
+      },
+    })
+
+    const result = auditPackageSurface(root, { runSecretlint: () => [] })
+
+    expect(result.ok).toBe(true)
+    expect(existsSync(join(root, 'MUTATED_BY_PREPACK'))).toBe(false)
+  })
+
   test('flags forbidden packed tarball paths and content', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'docs', 'research'), { recursive: true })

@@ -75,7 +75,7 @@ function sanitizeDetailValue(value: unknown): unknown {
   const entries = Object.entries(value as Record<string, unknown>)
   const limitedEntries = entries.slice(0, MAX_DETAIL_OBJECT_KEYS)
   const sanitized = Object.fromEntries(
-    limitedEntries.map(([key, entryValue]) => [key, sanitizeDetailValue(entryValue)]),
+    limitedEntries.map(([key, entryValue]) => [clipDetailString(key), sanitizeDetailValue(entryValue)]),
   ) as Record<string, unknown>
   if (entries.length > MAX_DETAIL_OBJECT_KEYS) {
     sanitized.truncated = true

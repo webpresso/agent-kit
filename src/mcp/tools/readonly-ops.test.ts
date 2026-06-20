@@ -75,12 +75,14 @@ describe('read-only ops MCP tools', () => {
   })
 
   it('wp_pr_status redacts parsed JSON details before returning them', async () => {
+    const secretKey = 'sk_abcdefghijklmnopqrstuvwxyz1234567890'
     runCommandMock
       .mockResolvedValueOnce(
         ok(
           JSON.stringify({
             number: 206,
             title: 'contains sk_abcdefghijklmnopqrstuvwxyz1234567890',
+            [secretKey]: 'secret-shaped key',
             state: 'OPEN',
           }),
         ),
@@ -100,6 +102,7 @@ describe('read-only ops MCP tools', () => {
     expect(payload.passed).toBe(true)
     expect(serialized).not.toContain('sk_abcdefghijklmnopqrstuvwxyz1234567890')
     expect(payload.details.pr.title).toContain('sk***90')
+    expect(serialized).toContain('sk***90')
     expect(payload.details.commands[0]?.details?.title).toContain('sk***90')
     expect(payload.details.commands[0]?.rawOutput).toContain('sk***90')
   })

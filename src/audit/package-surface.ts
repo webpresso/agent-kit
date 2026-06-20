@@ -13,7 +13,7 @@ import { basename, dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 
-import { syncBlueprintMigrationSqlAssets } from '#build/blueprint-migration-assets.js'
+import { assertBuiltBlueprintMigrationSqlAssets } from '#build/blueprint-migration-assets.js'
 import { createPackedManifest, readWorkspaceCatalogs } from '#build/package-manifest.js'
 import { escapeRegExp } from '#utils/string'
 
@@ -709,8 +709,8 @@ export function parseNpmPackJsonOutput(raw: string): unknown {
 }
 
 function readPackedEntry(packageRoot: string): NpmPackDryRunEntry {
-  syncBlueprintMigrationSqlAssets(packageRoot)
-  const raw = execFileSync('npm', ['pack', '--dry-run', '--json'], {
+  assertBuiltBlueprintMigrationSqlAssets(packageRoot)
+  const raw = execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
     cwd: packageRoot,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],

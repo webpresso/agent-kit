@@ -151,3 +151,11 @@ type WpReleaseReadinessInput = ReadonlyOpsBase & {
 - `wp_pr_status` now parses `details` only from redacted, bounded stdout so structured JSON cannot bypass the raw-output redaction/truncation budget. Oversized JSON details fail closed with a parse warning instead of returning unbounded parsed payloads.
 - `wp_release_readiness` no longer runs `vp run public:readiness` from the read-only MCP tool. `includePublicReadiness: true` is acknowledged with `public_readiness_not_read_only` so side-effectful readiness remains an explicit shell/CI gate, not a read-only MCP default.
 - Regression coverage: `src/mcp/tools/readonly-ops.test.ts`.
+
+### G011 final-safety hardening (2026-06-20)
+
+- Parsed JSON detail sanitization now redacts/clips object keys as well as values, closing the remaining structured-detail leak path for secret-shaped JSON keys.
+- `wp_release_readiness` keeps `package-surface` in its read-only default set because the underlying `package-surface` audit now asserts built blueprint migration SQL assets instead of syncing/copying files before pack inspection, and runs `npm pack --dry-run --json --ignore-scripts` so `prepack`/`postpack` lifecycle hooks cannot mutate the repository during the audit.
+- Regression coverage:
+  - `src/mcp/tools/readonly-ops.test.ts` covers redaction of secret-shaped parsed JSON keys.
+  - `src/audit/package-surface.test.ts` verifies the package-surface audit reports stale/missing built migration SQL assets without creating the `dist/esm/blueprint/db/migrations` directory and does not run a package `prepack` script.
