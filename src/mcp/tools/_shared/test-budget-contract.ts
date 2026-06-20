@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const MCP_SAFE_TEST_BUDGET_MS = 110_000
+export const MCP_SAFE_TEST_BUDGET_MS = 300_000
 
 export const workspaceShardingInputSchema = z
   .object({

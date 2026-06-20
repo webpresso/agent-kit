@@ -32,6 +32,7 @@ Each subdirectory represents a lifecycle state:
 
 
 
+
 ## Authoring
 
 - Use `docs/templates/blueprint.md` as the starting point.

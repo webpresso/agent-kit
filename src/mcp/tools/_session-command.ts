@@ -9,6 +9,7 @@ import {
 } from '#session-memory/native-runtime.js'
 import { SessionMemoryStore } from '#session-memory/store.js'
 import type { SearchHit } from '#session-memory/types.js'
+import { createSessionElisionRecorder, type SessionElision } from './_session-elision.js'
 import { defaultIndexDbPath } from './session-restore.js'
 
 export const MAX_CAPTURE_BYTES = 1024 * 1024
@@ -93,6 +94,8 @@ export interface SessionCommandResult {
   readonly maxCaptureBytes?: number
   readonly timedOut?: boolean
   readonly signal?: NodeJS.Signals
+  readonly elisions?: readonly SessionElision[]
+  readonly warnings?: readonly string[]
 }
 
 interface RunSessionCommandOptions {
@@ -292,6 +295,8 @@ async function runTypeScriptSessionCommand({
   const truncated = totalOutputBytes > capturedBytes
   const summary = `${summarizeOutput(output, timedOut)}${truncated ? '\n[output truncated before indexing]' : ''}`
   const indexed = output.trim().length > 0
+  const elisions: SessionElision[] = []
+  const warnings: string[] = []
   const store = new SessionMemoryStore(dbPath)
   try {
     store.purge({ source: label, confirm: true })
@@ -315,6 +320,33 @@ async function runTypeScriptSessionCommand({
           fallbackReason,
         },
       })
+      const recorded = createSessionElisionRecorder({
+        cwd,
+        sourcePrefix: 'wp_session_execute',
+        dbPath,
+      }).record({
+        source: label,
+        kind: 'command_output',
+        text: output,
+        returnedText: summary,
+        rawBytes: totalOutputBytes,
+        returnedBytes: Buffer.byteLength(summary, 'utf8'),
+        metadata: {
+          command,
+          cwd,
+          exitCode,
+          outputBytes: totalOutputBytes,
+          capturedBytes,
+          maxCaptureBytes: MAX_CAPTURE_BYTES,
+          truncated,
+          timedOut,
+          ...(closeSignal ? { signal: closeSignal } : {}),
+          executionBackend: 'typescript',
+          fallbackReason,
+        },
+      })
+      if (recorded.elision) elisions.push(recorded.elision)
+      if (recorded.warning) warnings.push(recorded.warning)
     }
   } finally {
     store.close()
@@ -332,6 +364,8 @@ async function runTypeScriptSessionCommand({
     maxCaptureBytes: MAX_CAPTURE_BYTES,
     timedOut,
     ...(closeSignal ? { signal: closeSignal } : {}),
+    ...(elisions.length > 0 ? { elisions } : {}),
+    ...(warnings.length > 0 ? { warnings } : {}),
   }
 }
 

@@ -14,6 +14,7 @@ import sessionExecuteFile from './session-execute-file.js'
 import sessionFetchAndIndex from './session-fetch-and-index.js'
 import sessionIndex from './session-index.js'
 import sessionPurge from './session-purge.js'
+import sessionRetrieve from './session-retrieve.js'
 import sessionRestore from './session-restore.js'
 import sessionSearch from './session-search.js'
 import sessionSnapshot from './session-snapshot.js'
@@ -37,6 +38,7 @@ export const COMPILED_TOOL_REGISTRY: readonly ToolDescriptor[] = [
   sessionFetchAndIndex,
   sessionIndex,
   sessionPurge,
+  sessionRetrieve,
   sessionRestore,
   sessionSearch,
   sessionSnapshot,

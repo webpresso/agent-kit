@@ -26,6 +26,7 @@ describe('instruction surface renderer', () => {
     expect(routingToolNamesFromSource(WP_ROUTING_BLOCK)).toStrictEqual([
       'wp_session_restore',
       'wp_session_search',
+      'wp_session_retrieve',
       'wp_session_execute_file',
       'wp_session_execute',
       'wp_session_batch_execute',

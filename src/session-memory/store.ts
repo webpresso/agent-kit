@@ -11,6 +11,7 @@ import type {
   SearchHit,
   SearchOptions,
   SessionMemoryUnifiedResult,
+  SessionMemoryExactChunk,
 } from './types.js'
 import type { SessionGainEventInput, SessionGainStats, SessionGainToolStats } from './gain-types.js'
 
@@ -259,6 +260,23 @@ export class SessionMemoryStore {
       raw.map((result) => this.mapUnifiedResult(result, options.maxPreviewBytes)),
       limit,
     )
+  }
+
+  getChunkById(id: string): SessionMemoryExactChunk | undefined {
+    const row = this.db
+      .prepare<[string], ChunkRow>(
+        'SELECT id, source, text, metadata_json, created_at FROM session_memory_chunks WHERE id = ?',
+      )
+      .get(id)
+    if (!row) return undefined
+    return {
+      id: row.id,
+      source: row.source,
+      text: row.text,
+      metadata: parseMetadata(row.metadata_json),
+      createdAt: row.created_at,
+      bytes: byteLength(row.text),
+    }
   }
 
   count(): number {

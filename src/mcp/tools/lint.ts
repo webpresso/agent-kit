@@ -234,6 +234,7 @@ const tool: ToolDescriptor = {
       const compact = formatMcpToolOutput(vpOutcome.stdout || vpOutcome.stderr, {
         toolName: 'wp_lint-vp',
         full: input.full,
+        cwd,
       })
       const payload = {
         passed: vpOutcome.exitCode === 0,

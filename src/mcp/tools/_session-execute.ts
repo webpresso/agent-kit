@@ -6,6 +6,7 @@ import { createSummaryOutputSchema, createSummaryResult } from './_shared/result
 import { createGainSummaryResult } from './_session-gain.js'
 import { runSessionCommand, searchSessionCommandOutput } from './_session-command.js'
 import { defaultIndexDbPath } from './session-restore.js'
+import { sessionElisionSchema } from './_session-elision.js'
 import type { SearchHit } from '#session-memory/types'
 
 const DEFAULT_TIMEOUT_MS = 30_000
@@ -35,6 +36,8 @@ const outputSchema = createSummaryOutputSchema({
     maxCaptureBytes: z.number().optional(),
     timedOut: z.boolean().optional(),
     signal: z.string().optional(),
+    elisions: z.array(sessionElisionSchema).optional(),
+    warnings: z.array(z.string()).optional(),
     hits: z
       .array(
         z.object({
@@ -139,8 +142,12 @@ const tool: ToolDescriptor = {
               : { maxCaptureBytes: result.maxCaptureBytes }),
             ...(result.timedOut === undefined ? {} : { timedOut: result.timedOut }),
             ...(result.signal ? { signal: result.signal } : {}),
+            ...(result.elisions ? { elisions: [...result.elisions] } : {}),
+            ...(result.warnings ? { warnings: [...result.warnings] } : {}),
             ...(hits ? { hits: [...hits] } : {}),
           },
+          ...(result.elisions ? { elisions: [...result.elisions] } : {}),
+          ...(result.warnings ? { warnings: [...result.warnings] } : {}),
         },
         passed ? {} : { isError: true },
         {

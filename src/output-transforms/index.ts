@@ -10,6 +10,25 @@ export interface TransformContext {
   readonly normalizedToolName: string
   readonly maxChars?: number
   readonly persistOverflow?: boolean
+  readonly elisionRecorder?: {
+    record(input: {
+      source: string
+      kind: 'truncated_output'
+      text: string
+      returnedText?: string
+      metadata?: Record<string, unknown>
+    }): {
+      elision?: {
+        id: string
+        source: string
+        kind: 'truncated_output' | 'file_overflow' | 'command_output'
+        rawBytes: number
+        returnedBytes: number
+        retrieveTool: string
+      }
+      warning?: string
+    }
+  }
 }
 
 export interface Failure {
@@ -27,6 +46,15 @@ export interface TransformResult {
   readonly tier?: 1 | 2 | 3
   readonly bytes?: number
   readonly tokensSaved?: number
+  readonly elisions?: readonly {
+    readonly id: string
+    readonly source: string
+    readonly kind: 'truncated_output' | 'file_overflow' | 'command_output'
+    readonly rawBytes: number
+    readonly returnedBytes: number
+    readonly retrieveTool: string
+  }[]
+  readonly warnings?: readonly string[]
   readonly transform?: {
     readonly toolName: string
     readonly normalizedToolName: string

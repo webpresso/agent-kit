@@ -108,6 +108,7 @@ const tool: ToolDescriptor = {
     const compact = formatMcpToolOutput(result.output, {
       toolName: 'wp_test',
       full: input.full,
+      cwd,
     })
     const payload = {
       passed: result.passed,

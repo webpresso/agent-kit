@@ -31,6 +31,27 @@ function transformFor(toolName: string, rawOutput: string | undefined): Transfor
   return applyOutputTransform(rawOutput, { toolName, ...baseContext })
 }
 
+function recordingTransformFor(toolName: string, rawOutput: string | undefined): TransformResult {
+  return applyOutputTransform(rawOutput, {
+    toolName,
+    ...baseContext,
+    elisionRecorder: {
+      record(input) {
+        return {
+          elision: {
+            id: `elision:${Buffer.from(input.text).toString('hex').slice(0, 16)}`,
+            source: `test:${input.source}`,
+            kind: input.kind,
+            rawBytes: Buffer.byteLength(input.text),
+            returnedBytes: Buffer.byteLength(input.returnedText ?? ''),
+            retrieveTool: 'wp_session_retrieve',
+          },
+        }
+      },
+    },
+  })
+}
+
 function expectAbsentRawOutput(result: TransformResult): void {
   expect(result.rawOutput).toBeUndefined()
   expect(result.truncated).toBeUndefined()
@@ -108,6 +129,45 @@ describe('output-transform contract — overflow', () => {
   it('typecheck (registered transform): clips passthrough fallback when no errors found', () => {
     const raw = 'x'.repeat(5_000)
     expectClippedPassthrough(transformFor('wp_typecheck', raw), raw.length)
+  })
+})
+
+describe('output-transform contract — elisions', () => {
+  it('does not emit elisions for byte-identical passthrough', () => {
+    const raw = 'all good\nstill fine'
+    const result = recordingTransformFor('wp_custom', raw)
+
+    expect(result.rawOutput).toBe(raw)
+    expect(result.elisions).toBeUndefined()
+  })
+
+  it('emits a retrievable elision when output is compacted', () => {
+    const raw = 'ok\nERROR one\nhidden context'
+    const result = recordingTransformFor('wp_custom', raw)
+
+    expect(result.rawOutput).toBe('ERROR one')
+    expect(result.elisions?.[0]).toMatchObject({
+      kind: 'truncated_output',
+      rawBytes: Buffer.byteLength(raw),
+      returnedBytes: Buffer.byteLength('ERROR one'),
+      retrieveTool: 'wp_session_retrieve',
+    })
+  })
+
+  it('returns bounded output plus a warning when the recorder fails', () => {
+    const raw = 'ok\nERROR one\nhidden context'
+    const result = applyOutputTransform(raw, {
+      toolName: 'wp_custom',
+      ...baseContext,
+      elisionRecorder: {
+        record() {
+          return { warning: 'recorder unavailable' }
+        },
+      },
+    })
+
+    expect(result.rawOutput).toBe('ERROR one')
+    expect(result.warnings).toEqual(['recorder unavailable'])
   })
 })
 

@@ -40,6 +40,7 @@ describe('WP_ROUTING_BLOCK', () => {
       'wp_session_index',
       'wp_session_purge',
       'wp_session_restore',
+      'wp_session_retrieve',
       'wp_session_search',
       'wp_session_snapshot',
       'wp_session_stats',
@@ -58,6 +59,8 @@ describe('WP_ROUTING_BLOCK', () => {
     expect(WP_ROUTING_BLOCK).toContain('restore/search first')
     expect(WP_ROUTING_BLOCK).toContain('wp_session_restore')
     expect(WP_ROUTING_BLOCK).toContain('wp_session_search')
+    expect(WP_ROUTING_BLOCK).toContain('retrieve exact elisions first')
+    expect(WP_ROUTING_BLOCK).toContain('wp_session_retrieve')
     expect(WP_ROUTING_BLOCK).not.toMatch(/\bctx_(?:execute|batch_execute|search|restore)\b/u)
   })
 

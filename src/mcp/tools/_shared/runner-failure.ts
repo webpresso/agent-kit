@@ -21,6 +21,7 @@
 import type { TransformResult } from '#output-transforms/index'
 
 import { clipRawOutput } from './result.js'
+import { createSessionElisionRecorder } from '../_session-elision.js'
 
 const RUNNER_FAILURE_EVIDENCE_BUDGET = 600
 
@@ -48,8 +49,12 @@ export function isRunnerFailure(input: {
 export function boundRunnerFailureEvidence(
   output: string,
   toolName: string,
+  cwd?: string,
 ): Omit<TransformResult, 'transform'> {
-  const clipped = clipRawOutput(output, RUNNER_FAILURE_EVIDENCE_BUDGET, { toolName })
+  const clipped = clipRawOutput(output, RUNNER_FAILURE_EVIDENCE_BUDGET, {
+    toolName,
+    elisionRecorder: createSessionElisionRecorder({ cwd, sourcePrefix: toolName }),
+  })
   const rawBytes = Buffer.byteLength(output)
   const bytes = Buffer.byteLength(clipped.rawOutput ?? '')
   return {

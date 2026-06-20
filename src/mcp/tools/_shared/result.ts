@@ -3,6 +3,8 @@ import { join } from 'node:path'
 
 import { z } from 'zod'
 
+import { GAIN_PRECISION, RAW_BYTES_BASIS_VALUES } from '#session-memory/gain-types.js'
+
 const DEFAULT_RAW_OUTPUT_LIMIT = 4_000
 const DEFAULT_SUMMARY_TEXT_LIMIT = 240
 
@@ -20,6 +22,24 @@ export const transformMetadataSchema = z.object({
   rawBytes: z.number(),
 })
 
+export const gainTelemetrySchema = z.object({
+  rawBasisBytes: z.number(),
+  returnedToolResultBytes: z.number(),
+  gainBytes: z.number(),
+  approxTokensSaved: z.number(),
+  precision: z.literal(GAIN_PRECISION),
+  rawBytesBasis: z.enum(RAW_BYTES_BASIS_VALUES),
+})
+
+export const elisionSchema = z.object({
+  id: z.string(),
+  source: z.string(),
+  kind: z.enum(['truncated_output', 'file_overflow', 'command_output']),
+  rawBytes: z.number(),
+  returnedBytes: z.number(),
+  retrieveTool: z.string(),
+})
+
 export const summaryFirstResultSchema = z.object({
   passed: z.boolean(),
   summary: z.string(),
@@ -35,6 +55,9 @@ export const summaryFirstResultSchema = z.object({
   tier: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
   bytes: z.number().optional(),
   tokensSaved: z.number().optional(),
+  gain: gainTelemetrySchema.optional(),
+  elisions: z.array(elisionSchema).optional(),
+  warnings: z.array(z.string()).optional(),
   transform: transformMetadataSchema.optional(),
 })
 
@@ -59,20 +82,54 @@ export interface SummaryFirstPayload {
 export function clipRawOutput(
   rawOutput: string | undefined,
   maxChars = DEFAULT_RAW_OUTPUT_LIMIT,
-  options: { toolName?: string; persistOverflow?: boolean } = {},
-): { rawOutput?: string; truncated?: true; logPath?: string } {
+  options: {
+    toolName?: string
+    persistOverflow?: boolean
+    elisionRecorder?: {
+      record(input: {
+        source: string
+        kind: 'truncated_output'
+        text: string
+        returnedText?: string
+        metadata?: Record<string, unknown>
+      }): {
+        elision?: z.infer<typeof elisionSchema>
+        warning?: string
+      }
+    }
+  } = {},
+): {
+  rawOutput?: string
+  truncated?: true
+  logPath?: string
+  elisions?: Array<z.infer<typeof elisionSchema>>
+  warnings?: string[]
+} {
   if (!rawOutput) return {}
   if (rawOutput.length <= maxChars) {
     return { rawOutput }
   }
+  const clipped = rawOutput.slice(0, maxChars)
   const logPath =
     options.persistOverflow !== false && options.toolName
       ? persistToolLog(options.toolName, rawOutput)
       : undefined
+  const recorded = options.elisionRecorder?.record({
+    source: options.toolName ?? 'tool-output',
+    kind: 'truncated_output',
+    text: rawOutput,
+    returnedText: clipped,
+    metadata: {
+      toolName: options.toolName,
+      reason: 'raw_output_limit',
+    },
+  })
   return {
-    rawOutput: rawOutput.slice(0, maxChars),
+    rawOutput: clipped,
     truncated: true,
     ...(logPath ? { logPath } : {}),
+    ...(recorded?.elision ? { elisions: [recorded.elision] } : {}),
+    ...(recorded?.warning ? { warnings: [recorded.warning] } : {}),
   }
 }
 

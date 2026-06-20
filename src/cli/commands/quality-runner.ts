@@ -2,6 +2,7 @@ import { closeSync, openSync, readFileSync, readSync, statSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 
 import { applyOutputTransform, type Failure, type TransformResult } from '#output-transforms/index'
+import { createSessionElisionRecorder } from '#mcp/tools/_session-elision.js'
 import { buildRuntimeProcessEnv, resolveRuntimeEnvironment } from '#runtime/index.js'
 import {
   exitCodeFromSignal,
@@ -93,6 +94,10 @@ export function emitCliCommandOutput(options: EmitCliCommandOutputOptions): void
   const transformed = applyOutputTransform(readTransformInput(options.entry.logPath), {
     toolName: options.toolName,
     persistOverflow: false,
+    elisionRecorder: createSessionElisionRecorder({
+      cwd: process.cwd(),
+      sourcePrefix: options.toolName,
+    }),
   })
   const lines = renderSummaryLines(options.summary, transformed, options.entry, options.passed)
   if (lines.length === 0) return
@@ -214,6 +219,16 @@ function renderSummaryLines(
 
   if (!passed || transformed.truncated) {
     lines.push(`Full log: wp logs ${entry.command}`)
+  }
+  if (transformed.elisions && transformed.elisions.length > 0) {
+    lines.push(
+      ...transformed.elisions.map(
+        (elision) => `Retrieve elision: ${elision.retrieveTool} id=${elision.id}`,
+      ),
+    )
+  }
+  if (transformed.warnings && transformed.warnings.length > 0) {
+    lines.push(...transformed.warnings.map((warning) => `Warning: ${warning}`))
   }
 
   return lines

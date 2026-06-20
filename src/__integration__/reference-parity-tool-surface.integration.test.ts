@@ -13,6 +13,7 @@ const REPLACEMENT_CRITICAL_MCP_TOOLS = [
   'wp_session_fetch_and_index',
   'wp_session_index',
   'wp_session_purge',
+  'wp_session_retrieve',
   'wp_session_restore',
   'wp_session_search',
   'wp_session_snapshot',

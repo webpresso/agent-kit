@@ -70,6 +70,44 @@ function store(): SessionMemoryStore {
   return new SessionMemoryStore(join(dir, 'memory.sqlite'))
 }
 
+describe('SessionMemoryStore exact chunk lookup', () => {
+  it('returns exact chunks by content-hash id', () => {
+    const s = store()
+    const text = 'exact lookup body'
+    const id = createHash('sha256').update(text).digest('hex').slice(0, 32)
+    s.indexChunk({ id: `elision:${id}`, source: 'test', text, metadata: { kind: 'unit' } })
+
+    expect(s.getChunkById(`elision:${id}`)).toMatchObject({
+      id: `elision:${id}`,
+      source: 'test',
+      text,
+      bytes: Buffer.byteLength(text, 'utf8'),
+      metadata: { kind: 'unit' },
+    })
+  })
+
+  it('returns undefined for missing exact ids', () => {
+    const s = store()
+    expect(s.getChunkById('elision:missing')).toBeUndefined()
+  })
+
+  it('handles concurrent deterministic elision writes', async () => {
+    const s = store()
+    await Promise.all(
+      Array.from({ length: 50 }, async (_, index) => {
+        const text = `concurrent elision ${index % 10}`
+        const id = `elision:${createHash('sha256').update(text).digest('hex').slice(0, 32)}`
+        s.indexChunk({ id, source: 'concurrent', text, metadata: { index } })
+      }),
+    )
+
+    expect(s.count()).toBe(10)
+    expect(s.getChunkById(`elision:${createHash('sha256').update('concurrent elision 3').digest('hex').slice(0, 32)}`)?.text).toBe(
+      'concurrent elision 3',
+    )
+  })
+})
+
 function expectedGainId(event: {
   readonly toolName: string
   readonly createdAt: string
