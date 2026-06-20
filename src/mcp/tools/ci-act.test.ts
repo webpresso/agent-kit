@@ -177,6 +177,30 @@ describe('wp_ci_act tool', () => {
     expect(details.command.args.join(' ')).not.toContain('--secret-file')
   })
 
+  it('forces the public secret-gate path even for direct env profiles in execute mode', async () => {
+    runSecretGateCommandMock.mockResolvedValue({
+      exitCode: 0,
+      stdout: 'ok',
+      stderr: '',
+      timedOut: false,
+      aborted: false,
+      signal: null,
+    })
+
+    await tool.handler({
+      workflowPath: '.github/workflows/ci.yml',
+      execute: true,
+      envProfile: 'public',
+    })
+
+    expect(runSecretGateCommandMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        envProfile: 'public',
+        forceSecretGate: true,
+      }),
+    )
+  })
+
   it('honors an explicit timeout override', async () => {
     runSecretGateCommandMock.mockResolvedValue({
       exitCode: 0,

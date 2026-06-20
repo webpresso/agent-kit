@@ -86,6 +86,7 @@ const tool: ToolDescriptor = {
       sink: 'act',
       profile: input.secretEnvProfile ?? 'preview',
       envProfile: input.envProfile,
+      forceSecretGate: true,
       command: 'act',
       args: command.actArgs,
       timeoutMs: input.timeoutMs,
