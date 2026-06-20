@@ -44,8 +44,15 @@ export async function runPreviewCommand(
 ): Promise<number> {
   try {
     const cwd = options.cwd ?? process.cwd()
+    const configPath = join(cwd, '.webpresso', 'secrets.config.json')
+    if (!existsSync(configPath)) {
+      throw createWpError({
+        code: 'WP_PREVIEW_CONFIG_MISSING',
+        problem: 'Missing .webpresso/secrets.config.json.',
+      })
+    }
     const config = parseSecretOrchestrationConfig(
-      JSON.parse(readFileSync(join(cwd, '.webpresso', 'secrets.config.json'), 'utf8')),
+      JSON.parse(readFileSync(configPath, 'utf8')),
     )
     const sinkPlan = resolveSecretSink({
       config,
@@ -60,12 +67,6 @@ export async function runPreviewCommand(
         problem: `Invalid preview lane "${lane}".`,
         fix: 'Use preview_main or preview_pr_<n>.',
         docsPath: 'docs/guides/repo-to-preview-url.md',
-      })
-    }
-    if (!existsSync(join(cwd, '.webpresso', 'secrets.config.json'))) {
-      throw createWpError({
-        code: 'WP_PREVIEW_CONFIG_MISSING',
-        problem: 'Missing .webpresso/secrets.config.json.',
       })
     }
 
