@@ -87,7 +87,7 @@ const tool: ToolDescriptor = {
     const passed = commands.every((command) => command.passed)
     const warnings = [
       ...commands.flatMap((command) => command.warnings ?? []),
-      ...(input.includePublicReadiness ? ['public_readiness_skipped_not_read_only'] : []),
+      ...(input.includePublicReadiness ? ['public_readiness_not_read_only'] : []),
     ]
     return createSummaryResult({
       passed,
