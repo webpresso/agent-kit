@@ -162,7 +162,10 @@ describe('wp_session_execute', () => {
       const newHits = store.search({ query: 'new repeated', source: 'repeat-label', limit: 5 })
 
       expect(data.details.backend).toBe('typescript')
-      expect(store.stats()).toMatchObject({ chunkCount: 1, sources: ['repeat-label'] })
+      expect(store.stats()).toMatchObject({
+        chunkCount: 2,
+        sources: ['repeat-label', 'wp_session_execute:repeat-label'],
+      })
       expect(newHits.map((hit) => hit.text).join('\n')).not.toContain('old repeated label output')
       expect(newHits[0]?.text).toContain('new repeated label output')
     } finally {

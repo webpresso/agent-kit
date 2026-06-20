@@ -152,7 +152,7 @@ const tool: ToolDescriptor = {
         suiteIds,
         runnerSummary: summarizeRunners(groups),
       },
-      ...formatMcpToolOutput(result.output, { toolName: 'wp_e2e', full: input.full }),
+      ...formatMcpToolOutput(result.output, { toolName: 'wp_e2e', full: input.full, cwd }),
     }
 
     return createSummaryResult(payload)

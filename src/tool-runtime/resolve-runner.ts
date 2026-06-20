@@ -1,8 +1,9 @@
-import { existsSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { existsSync, realpathSync } from 'node:fs'
+import { basename, dirname, resolve } from 'node:path'
 import { createRequire } from 'node:module'
 import { spawnSync } from 'node:child_process'
 
+import { pathCandidates } from '#runtime/command-exists.js'
 import { readTrustedJsonFile } from '#shared-utils/read-json-file.js'
 
 export interface ManagedRunnerResolution {
@@ -17,6 +18,7 @@ export type ManagedRunnerOutputPolicy = 'rtk-filtered' | 'structured'
 export interface ResolveRunnerOptions {
   readonly fallbackCommand?: string
   readonly fallbackArgs?: readonly string[]
+  readonly nodeExecPath?: string
   /** @deprecated Use {@link outputPolicy} for explicit output routing. */
   readonly filterOutput?: boolean
   readonly outputPolicy?: ManagedRunnerOutputPolicy
@@ -28,6 +30,7 @@ type ManagedToolSpec =
       readonly packageName: string
       readonly binName: string
       readonly fallbackArgs?: readonly string[]
+      readonly runWithNode?: boolean
     }
 
 const require = createRequire(import.meta.url)
@@ -41,7 +44,7 @@ const MANAGED_TOOL_PREFIX: Readonly<Record<string, ManagedToolSpec>> = {
   tsx: { packageName: 'tsx', binName: 'tsx' },
   vite: { packageName: 'vite', binName: 'vite' },
   vitest: { packageName: 'vitest', binName: 'vitest' },
-  vp: { command: 'vp', args: [] },
+  vp: { packageName: 'vite-plus', binName: 'vp', fallbackArgs: [], runWithNode: true },
   wrangler: { packageName: 'wrangler', binName: 'wrangler' },
 }
 
@@ -113,7 +116,7 @@ export function resolveRunner(
   const outputPolicy = resolveOutputPolicy(options.outputPolicy, options.filterOutput)
   const managed = MANAGED_TOOL_PREFIX[normalized]
   if (managed) {
-    return withOptionalRtk(resolveManagedTool(normalized, managed), outputPolicy)
+    return withOptionalRtk(resolveManagedTool(normalized, managed, options), outputPolicy)
   }
 
   if (options.fallbackCommand) {
@@ -131,17 +134,60 @@ export function resolveRunner(
   throw new Error(`No managed runtime runner is defined for tool "${normalized}"`)
 }
 
-function resolveManagedTool(tool: string, spec: ManagedToolSpec): ManagedRunnerResolution {
+function resolveManagedTool(
+  tool: string,
+  spec: ManagedToolSpec,
+  options: Pick<ResolveRunnerOptions, 'nodeExecPath'> = {},
+): ManagedRunnerResolution {
   if ('command' in spec) {
     return { tool, command: spec.command, args: [...spec.args], source: 'managed' }
   }
 
   const binPath = resolvePackageBin(spec.packageName, spec.binName)
   if (binPath) {
+    if (spec.runWithNode) {
+      return {
+        tool,
+        command: options.nodeExecPath ?? resolveNodeExecutablePath(),
+        args: [binPath, ...(spec.fallbackArgs ?? [])],
+        source: 'managed',
+      }
+    }
     return { tool, command: binPath, args: [...(spec.fallbackArgs ?? [])], source: 'managed' }
   }
 
-  return { tool, command: 'vp', args: ['exec', spec.binName], source: 'fallback' }
+  if (tool !== 'vp') {
+    const vpSpec = MANAGED_TOOL_PREFIX.vp
+    if (vpSpec === undefined) {
+      return { tool, command: 'vp', args: ['exec', spec.binName], source: 'fallback' }
+    }
+    const vp = resolveManagedTool('vp', vpSpec, options)
+    return {
+      tool,
+      command: vp.command,
+      args: [...vp.args, 'exec', spec.binName],
+      source: 'fallback',
+    }
+  }
+
+  return { tool, command: 'vp', args: [], source: 'fallback' }
+}
+
+function resolveNodeExecutablePath(): string {
+  const current = basename(process.execPath).toLowerCase()
+  if (current === 'node' || current === 'node.exe') return process.execPath
+
+  for (const candidate of pathCandidates('node')) {
+    try {
+      const real = realpathSync(candidate)
+      const realBase = basename(real).toLowerCase()
+      if (realBase === 'node' || realBase === 'node.exe') return real
+    } catch {
+      // Ignore broken PATH entries and continue to the next candidate.
+    }
+  }
+
+  return 'node'
 }
 
 function resolvePackageBin(packageName: string, binName: string): string | null {

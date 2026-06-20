@@ -64,6 +64,15 @@ describe('vendor hook schemas', () => {
     expect(result.success).toBe(true)
   })
 
+  it('codexHooksSchema rejects unknown top-level keys (strict — mirrors deny_unknown_fields in Codex HooksFile)', () => {
+    // { hooks: {}, state: {} } must fail — `state` at top level poisons the Codex hooks.json parser
+    expect(codexHooksSchema.safeParse({ hooks: {}, state: {} }).success).toBe(false)
+    // A valid wrapped shape with only `hooks` must succeed
+    expect(
+      codexHooksSchema.safeParse({ hooks: { PreToolUse: [] } }).success,
+    ).toBe(true)
+  })
+
   it('buildCursorHooksConfig() output parses against cursorHooksSchema', () => {
     const config = buildCursorHooksConfig({
       resolveBin: makeResolveBin('/repo/node_modules/.bin'),

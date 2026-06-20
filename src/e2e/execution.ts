@@ -160,8 +160,6 @@ async function runCommand(
     })
     let stdout = ''
     let stderr = ''
-    let timedOut = false
-    let aborted = false
     let terminationRequested = false
     let escalationTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -179,12 +177,10 @@ async function runCommand(
       options.timeoutMs === undefined
         ? undefined
         : setTimeout(() => {
-            timedOut = true
             requestTermination()
           }, options.timeoutMs)
 
     const onAbort = (): void => {
-      aborted = true
       requestTermination()
     }
 

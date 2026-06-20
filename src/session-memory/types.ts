@@ -10,6 +10,10 @@ export interface IndexedSessionMemoryChunk extends Required<Omit<SessionMemoryCh
   metadata: Record<string, unknown>
 }
 
+export interface SessionMemoryExactChunk extends IndexedSessionMemoryChunk {
+  bytes: number
+}
+
 export interface SessionMemorySearchOptions {
   query: string
   source?: string

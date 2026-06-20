@@ -110,6 +110,7 @@ describe('mcp server integration', () => {
         'wp_session_stats',
         'wp_session_purge',
         'wp_session_doctor',
+        'wp_session_retrieve',
       ]),
     )
     expect(names.filter((name) => name.startsWith('ak_'))).toEqual([])
@@ -152,6 +153,7 @@ describe('mcp server integration', () => {
         'wp_session_stats',
         'wp_session_purge',
         'wp_session_doctor',
+        'wp_session_retrieve',
       ]),
     )
   }, 20_000)
@@ -173,14 +175,19 @@ describe('mcp server integration', () => {
     )
     const names = tools.map((tool) => tool.name)
     const expectedSessionTools = [
+      'wp_session_batch_execute',
+      'wp_session_capture',
       'wp_session_doctor',
+      'wp_session_execute',
       'wp_session_execute_file',
       'wp_session_fetch_and_index',
       'wp_session_index',
       'wp_session_purge',
+      'wp_session_retrieve',
       'wp_session_restore',
       'wp_session_search',
       'wp_session_stats',
+      'wp_session_snapshot',
     ]
 
     expect(names).toEqual(expect.arrayContaining(['wp_audit', ...expectedSessionTools]))
@@ -327,6 +334,7 @@ describe('mcp server integration', () => {
         'wp_session_stats',
         'wp_session_purge',
         'wp_session_doctor',
+        'wp_session_retrieve',
       ]),
     )
   }, 20_000)

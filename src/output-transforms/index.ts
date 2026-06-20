@@ -5,11 +5,14 @@ import { passthroughTransform } from './passthrough.js'
 import { vitestTransform } from './vitest.js'
 import { shouldCompact } from './should-compact.js'
 
+import type { SessionElision, SessionElisionRecorder } from '#mcp/_session-elision'
+
 export interface TransformContext {
   readonly toolName: string
   readonly normalizedToolName: string
   readonly maxChars?: number
   readonly persistOverflow?: boolean
+  readonly elisionRecorder?: Pick<SessionElisionRecorder, 'record'>
 }
 
 export interface Failure {
@@ -27,6 +30,8 @@ export interface TransformResult {
   readonly tier?: 1 | 2 | 3
   readonly bytes?: number
   readonly tokensSaved?: number
+  readonly elisions?: readonly SessionElision[]
+  readonly warnings?: readonly string[]
   readonly transform?: {
     readonly toolName: string
     readonly normalizedToolName: string

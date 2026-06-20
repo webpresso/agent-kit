@@ -7,9 +7,8 @@
  * refreshing it here means the next global invocation runs the latest
  * published release.
  *
- * Uses the exact same command the auto-update installer infers
- * (`buildVpGlobalInstallCommand` — single source of truth), so there is no
- * second place that can drift on the install incantation.
+ * Uses the same Vite+ runner resolution as `wp update`: prefer a global-capable
+ * `vp`, but fall back to the Vite+ runner bundled inside `wp`.
  *
  * Skipped (no-op, non-fatal) when:
  *   - `--dry-run` (no writes anywhere),
@@ -17,7 +16,7 @@
  *     banner),
  *   - `WP_FORCE_SOURCE=1` (explicit source/JIT development mode inside the
  *     agent-kit checkout),
- *   - `vp` is not on PATH (nothing to install with).
+ *   - the bundled Vite+ runner is unavailable (usually omitted dependencies).
  *
  * A failed refresh is reported but NEVER fails consumer setup: keeping the
  * global tool current is ancillary to scaffolding the consumer repo (same
@@ -32,6 +31,7 @@ import {
   buildVpGlobalInstallCommand,
   confirmInstalledGlobally,
   PUBLIC_PACKAGE_NAME,
+  resolveBundledVpCommand,
 } from '#cli/auto-update/detect-pm.js'
 import {
   findAgentKitPackageRoot,
@@ -97,8 +97,8 @@ export type EnsureAgentKitGlobalResult =
   | { kind: 'agent-kit-global-repair-failed'; reason: string; command?: readonly string[] }
 
 const NO_VP_HINT =
-  'vp (vite-plus) is not on PATH; cannot refresh the global ' +
-  `${PUBLIC_PACKAGE_NAME}. Install vite-plus, then re-run \`wp setup\`.`
+  'the bundled Vite+ runner is unavailable; cannot refresh the global ' +
+  `${PUBLIC_PACKAGE_NAME}. Reinstall @webpresso/agent-kit without omitting dependencies, then re-run \`wp setup\`.`
 
 function resolvePackageRootForStaging(argv1: string): string | null {
   const fromArgv = argv1.length > 0 ? findAgentKitPackageRoot(argv1) : null
@@ -145,9 +145,7 @@ function readFreshCachedLatest(now: number = Date.now()): string | null {
   }
 }
 
-/**
- * Refresh the single global `@webpresso/agent-kit` install via `vp install -g`.
- */
+/** Refresh the single global `@webpresso/agent-kit` install. */
 export function ensureAgentKitGlobal(input: EnsureAgentKitGlobalInput): EnsureAgentKitGlobalResult {
   if (input.options.dryRun) return { kind: 'agent-kit-global-skipped-dry-run' }
 
@@ -170,7 +168,7 @@ export function ensureAgentKitGlobal(input: EnsureAgentKitGlobalInput): EnsureAg
   const vpCommand =
     input.resolveVpCommand !== undefined
       ? input.resolveVpCommand()
-      : resolveGlobalCapableVpCommand(env.PATH ?? '')
+      : (resolveGlobalCapableVpCommand(env.PATH ?? '') ?? resolveBundledVpCommand())
   if (vpCommand === null) {
     return { kind: 'agent-kit-global-skipped-no-vp', hint: NO_VP_HINT }
   }

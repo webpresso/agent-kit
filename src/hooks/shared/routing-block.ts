@@ -62,7 +62,8 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
       Context-window protection is mandatory for large-context work. Use wp_session_* MCP tools before raw reads, searches, shell output, network fetches, or compaction-sensitive continuity events can flood the transcript. Use restore/search first when resuming or recalling prior work.
     </description>
     <hierarchy>
-      <rule>restore/search first: use wp_session_restore for bounded continuity restore and wp_session_search for indexed chunks or event recall.</rule>
+      <rule>retrieve exact elisions first when a handle is present: use wp_session_retrieve for elided or truncated content ids.</rule>
+      <rule>restore/search first: use wp_session_restore for bounded continuity restore and wp_session_search for indexed chunks or event recall when no exact elision handle is available.</rule>
       <rule>read-to-analyze: use wp_session_execute_file for local file metadata or bounded read_text previews instead of raw full-file dumps.</rule>
       <rule>shell gathering: use wp_session_batch_execute for planned multi-command evidence gathering, or wp_session_execute for one explicit bounded command.</rule>
       <rule>network fetches: use wp_session_fetch_and_index for absolute http(s) fetches so SSRF checks, byte caps, indexing, and warnings apply.</rule>
@@ -73,6 +74,7 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
     <tools>
       <tool name="wp_session_restore"><category>session-memory</category><trigger>resume, restore, recover context, compacted session continuity</trigger></tool>
       <tool name="wp_session_search"><category>session-memory</category><trigger>search prior indexed evidence, recall decisions, find session references</trigger></tool>
+      <tool name="wp_session_retrieve"><category>session-memory</category><trigger>retrieve exact elided or truncated content by handle id</trigger></tool>
       <tool name="wp_session_execute_file"><category>session-memory</category><trigger>read-to-analyze, inspect large files, local file metadata, bounded file preview</trigger></tool>
       <tool name="wp_session_execute"><category>session-memory</category><trigger>single bounded shell command whose output may be large or useful later</trigger></tool>
       <tool name="wp_session_batch_execute"><category>session-memory</category><trigger>shell gathering, multiple bounded evidence commands, grep/find/git log batches</trigger></tool>

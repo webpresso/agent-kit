@@ -34,6 +34,10 @@ describe('wp qa command', () => {
 
   installManagedRunnerHermeticHooks()
 
+function bundledVpArgs(...tail: string[]) {
+  return [process.execPath, expect.stringMatching(/vite-plus.*bin.*vp/), ...tail]
+}
+
   afterEach(() => {
     for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true })
   })
@@ -46,7 +50,7 @@ describe('wp qa command', () => {
   it('runs the managed qa package script through vp', () => {
     expect(buildQaCommand()).toEqual({
       command: 'rtk',
-      args: ['vp', 'run', 'qa'],
+      args: bundledVpArgs('run', 'qa'),
     })
   })
 

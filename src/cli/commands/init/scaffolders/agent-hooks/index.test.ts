@@ -44,7 +44,7 @@ function codexBinCommand(repoRoot: string, name: string): string {
   if (name === 'wp-pretool-guard') {
     return guardedHookCommand(
       binPath,
-      `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with vp install -g @webpresso/agent-kit and re-run wp setup."}}'`,
+      `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with npm install -g @webpresso/agent-kit and re-run wp setup."}}'`,
     )
   }
   return guardedHookCommand(binPath, 'true')
@@ -58,7 +58,7 @@ function claudeBinCommand(name: string): string {
   if (name === 'wp-pretool-guard') {
     return guardedHookCommand(
       `"${binPath}"`,
-      `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with vp install -g @webpresso/agent-kit and re-run wp setup."}}'`,
+      `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with npm install -g @webpresso/agent-kit and re-run wp setup."}}'`,
     )
   }
   return guardedHookCommand(`"${binPath}"`, 'true')
@@ -2149,14 +2149,15 @@ hooks:
     )
 
     expect(commands.length).toBeGreaterThan(0)
-    const results = await Promise.all(
-      commands.map((command) =>
-        runShellCommand(command, {
+    const results: Array<Awaited<ReturnType<typeof runShellCommand>>> = []
+    for (const command of commands) {
+      results.push(
+        await runShellCommand(command, {
           cwd: siblingCwd,
           env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin', WP_SKIP_UPDATE_CHECK: '1' },
         }),
-      ),
-    )
+      )
+    }
 
     for (const result of results) {
       expect(result.status, `${result.command}\n${result.stderr}`).toBe(0)

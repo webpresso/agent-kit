@@ -24,6 +24,16 @@ describe('test budget contract', () => {
     expect(result.success).toBe(true)
   })
 
+  it('accepts the maximum explicit MCP test budget of five minutes', () => {
+    const result = schema.safeParse({
+      timeoutMs: 300_000,
+      workspaceSharding: { totalBudgetMs: 300_000, concurrency: 4 },
+    })
+
+    expect(MCP_SAFE_TEST_BUDGET_MS).toBe(300_000)
+    expect(result.success).toBe(true)
+  })
+
   it('rejects invalid shard concurrency', () => {
     const result = schema.safeParse({
       workspaceSharding: { concurrency: 0 },

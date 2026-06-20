@@ -4,7 +4,6 @@ import type { SecretGateCommandOptions, SecretGateRunResult } from '#secret-gate
 import {
   buildPublicCiActCommand,
   preparePublicCiActExecution,
-  resolveCiActExecutionMode,
   resolveCiActSecretEnvProfile,
   sanitizePublicCiActArgv,
   type CiActEventName,

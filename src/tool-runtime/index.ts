@@ -16,6 +16,7 @@ function cacheKey(tool: string, options: ResolveRunnerOptions): string {
     outputPolicy,
     fallbackCommand: options.fallbackCommand ?? null,
     fallbackArgs: options.fallbackArgs ?? [],
+    nodeExecPath: options.nodeExecPath ?? null,
   })
 }
 

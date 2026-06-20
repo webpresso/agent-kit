@@ -22,7 +22,12 @@
 import { z } from 'zod'
 
 import type { ToolDescriptor, ToolHandlerResult } from '#mcp/auto-discover'
-import { createSummaryOutputSchema, createSummaryResult, failureSchema } from './_shared/result.js'
+import {
+  createSummaryOutputSchema,
+  createSummaryResult,
+  elisionSchema,
+  failureSchema,
+} from './_shared/result.js'
 import {
   MCP_SAFE_TEST_BUDGET_MS,
   refineTestBudgetContract,
@@ -67,6 +72,8 @@ const qaLeafSchema = z
     rawOutput: z.string().optional(),
     truncated: z.boolean().optional(),
     logPath: z.string().optional(),
+    elisions: z.array(elisionSchema).optional(),
+    warnings: z.array(z.string()).optional(),
     timedOut: z.boolean().optional(),
     aborted: z.boolean().optional(),
     unwrapError: z.string().optional(),
@@ -97,6 +104,8 @@ interface CompactLeafResult {
   readonly rawOutput?: string
   readonly truncated?: boolean
   readonly logPath?: string
+  readonly elisions?: unknown[]
+  readonly warnings?: string[]
   readonly timedOut?: boolean
   readonly aborted?: boolean
   readonly unwrapError?: string
@@ -207,6 +216,10 @@ function toCompactLeaf(
       ? { truncated: result.truncated }
       : {}),
     ...(options.full && typeof result.logPath === 'string' ? { logPath: result.logPath } : {}),
+    ...(Array.isArray(result.elisions) ? { elisions: result.elisions } : {}),
+    ...(Array.isArray(result.warnings)
+      ? { warnings: result.warnings.filter((warning): warning is string => typeof warning === 'string') }
+      : {}),
     ...(typeof result.timedOut === 'boolean' ? { timedOut: result.timedOut } : {}),
     ...(typeof result.aborted === 'boolean' ? { aborted: result.aborted } : {}),
     ...(typeof result.unwrapError === 'string' ? { unwrapError: result.unwrapError } : {}),

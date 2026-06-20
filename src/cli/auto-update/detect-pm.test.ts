@@ -17,6 +17,7 @@ vi.mock('node:fs', async () => {
 import { realpathSync } from 'node:fs'
 
 import {
+  buildNpmGlobalInstallCommand,
   buildVpGlobalInstallCommand,
   confirmInstalledGlobally,
   detect,
@@ -77,7 +78,7 @@ describe('buildVpGlobalInstallCommand', () => {
     })
   })
 
-  it('aborts a Vite+ install when no global-capable vp executable can be resolved', () => {
+  it('aborts a Vite+ install when neither bundled nor global vp can be resolved', () => {
     realpathSyncMock.mockReturnValue(
       '/Users/me/.vite-plus/packages/@webpresso/agent-kit/lib/node_modules/@webpresso/agent-kit/bin/wp',
     )
@@ -87,8 +88,19 @@ describe('buildVpGlobalInstallCommand', () => {
       () => null,
     )
     expect(result).toStrictEqual({
-      abort: expect.stringContaining('Unable to resolve a global-capable vp executable'),
+      abort: expect.stringContaining('Unable to resolve the bundled Vite+ runner'),
     })
+  })
+})
+
+describe('buildNpmGlobalInstallCommand', () => {
+  it('returns the canonical npm global-install command', () => {
+    expect(buildNpmGlobalInstallCommand()).toStrictEqual([
+      'npm',
+      'install',
+      '-g',
+      '@webpresso/agent-kit',
+    ])
   })
 })
 
@@ -97,8 +109,11 @@ describe('parseUserAgent', () => {
     expect(parseUserAgent('vp/0.1.24 node/v24.16.0 darwin arm64')).toStrictEqual('vp')
   })
 
-  it('ignores non-Vite+ package managers', () => {
-    expect(parseUserAgent('npm/10.2.4 node/v22.0.0 darwin x64')).toStrictEqual(null)
+  it('detects npm', () => {
+    expect(parseUserAgent('npm/10.2.4 node/v22.0.0 darwin x64')).toStrictEqual('npm')
+  })
+
+  it('ignores unsupported package managers', () => {
     expect(parseUserAgent('pnpm/10.33.0 npm/? node/v22.0.0 darwin arm64')).toStrictEqual(null)
     expect(parseUserAgent('yarn/1.22.22 npm/? node/v22.0.0 darwin arm64')).toStrictEqual(null)
     expect(parseUserAgent('bun/1.1.0 npm/? node/v22.0.0 darwin arm64')).toStrictEqual(null)
@@ -118,41 +133,46 @@ describe('matchStoreMarker', () => {
     ).toStrictEqual('vp')
   })
 
-  it('returns null for legacy/global/local stores', () => {
+  it('detects npm global node_modules installs', () => {
+    expect(matchStoreMarker('/usr/local/lib/node_modules/@webpresso/agent-kit')).toStrictEqual(
+      'npm',
+    )
+  })
+
+  it('returns null for legacy/local stores', () => {
     expect(matchStoreMarker('/Users/me/.pnpm-store/v3/foo/@webpresso/agent-kit')).toStrictEqual(
       null,
     )
-    expect(matchStoreMarker('/usr/local/lib/node_modules/@webpresso/agent-kit')).toStrictEqual(null)
     expect(matchStoreMarker('/tmp/foo/bar/@webpresso/agent-kit')).toStrictEqual(null)
   })
 })
 
 describe('detectShim', () => {
-  it('turns unsupported global managers into Vite+ reinstall guidance', () => {
+  it('turns unsupported global managers into npm reinstall guidance', () => {
     expect(
       detectShim('/Users/me/.volta/tools/image/packages/@webpresso/agent-kit/bin/cli.js'),
-    ).toMatch(/vp install -g @webpresso\/agent-kit/)
+    ).toMatch(/npm install -g @webpresso\/agent-kit/)
     expect(detectShim('/opt/homebrew/Cellar/agent-kit/bin/wp')).toMatch(/Homebrew/)
-    expect(detectShim('/usr/local/lib/node_modules/@webpresso/agent-kit/bin/wp')).toMatch(
-      /npm global/,
-    )
   })
 
-  it('returns null for Vite+ paths', () => {
+  it('returns null for supported global paths', () => {
     expect(detectShim('/Users/me/.vite-plus/packages/@webpresso/agent-kit/bin/wp')).toStrictEqual(
+      null,
+    )
+    expect(detectShim('/usr/local/lib/node_modules/@webpresso/agent-kit/bin/wp')).toStrictEqual(
       null,
     )
   })
 })
 
 describe('confirmInstalledGlobally', () => {
-  it('accepts only Vite+ global installs', () => {
+  it('accepts supported global installs', () => {
     expect(
       confirmInstalledGlobally('/Users/me/.vite-plus/packages/@webpresso/agent-kit/bin/wp', {}),
     ).toBe(true)
     expect(
       confirmInstalledGlobally('/usr/local/lib/node_modules/@webpresso/agent-kit/bin/wp', {}),
-    ).toBe(false)
+    ).toBe(true)
     expect(
       confirmInstalledGlobally('/Users/me/proj/node_modules/@webpresso/agent-kit/bin/wp', {}),
     ).toBe(false)
@@ -213,11 +233,12 @@ describe('detect', () => {
     if ('abort' in result) expect(result.abort).toContain('project-local node_modules')
   })
 
-  it('aborts for unsupported global managers', () => {
+  it('detects npm global installs', () => {
     realpathSyncMock.mockReturnValue('/usr/local/lib/node_modules/@webpresso/agent-kit/bin/wp')
-    const result = detect({}, '/usr/local/bin/wp')
-    expect('abort' in result).toBe(true)
-    if ('abort' in result) expect(result.abort).toContain('vp install -g @webpresso/agent-kit')
+    expect(detect({}, '/usr/local/bin/wp')).toStrictEqual({
+      topology: 'npm',
+      command: ['npm', 'install', '-g', '@webpresso/agent-kit'],
+    })
   })
 
   it('aborts in explicit source mode', () => {

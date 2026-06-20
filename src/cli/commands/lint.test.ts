@@ -20,7 +20,8 @@ function buildFakeCli() {
 describe('wp lint command', () => {
   it('builds the lint command through vp with JSON output', () => {
     const command = buildLintCommand({ files: ['src/index.ts'], fix: true })
-    expect(command.command).toBe('vp')
+    expect(command.command).toBe(process.execPath)
+    expect(command.args[0]).toEqual(expect.stringMatching(/vite-plus.*bin.*vp/))
     expect(command.args).toContain('lint')
     expect(command.args).toContain('--format=json')
     expect(command.args).toContain('--fix')

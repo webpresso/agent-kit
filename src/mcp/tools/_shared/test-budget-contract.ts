@@ -1,6 +1,9 @@
 import { z } from 'zod'
 
-export const MCP_SAFE_TEST_BUDGET_MS = 110_000
+// Five minutes is the explicit upper bound for MCP-mediated test runs: long
+// enough for a full workspace verification pass, but still finite so a stalled
+// test transport returns control with structured diagnostics.
+export const MCP_SAFE_TEST_BUDGET_MS = 300_000
 
 export const workspaceShardingInputSchema = z
   .object({

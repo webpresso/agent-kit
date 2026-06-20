@@ -199,14 +199,23 @@ describe('wp_test tool', () => {
       expect(spawnMock).not.toHaveBeenCalled()
     })
 
+    it('accepts the five-minute MCP-safe maximum before spawning', async () => {
+      spawnMock.mockReturnValue(fakeChild({ stdout: 'ok\n', exitCode: 0 }))
+
+      const result = await wpTestTool.handler({ timeoutMs: 300_000, packages: ['x'] })
+
+      expect(spawnMock).toHaveBeenCalledOnce()
+      expect((result.structuredContent as { passed?: boolean }).passed).toBe(true)
+    })
+
     it('rejects tool budgets above the MCP-safe maximum before spawning', async () => {
-      await expect(wpTestTool.handler({ timeoutMs: 110_001, packages: ['x'] })).rejects.toSatisfy(
+      await expect(wpTestTool.handler({ timeoutMs: 300_001, packages: ['x'] })).rejects.toSatisfy(
         (error: unknown) => error instanceof Error && /timeoutMs/i.test(error.message),
       )
       await expect(
         wpTestTool.handler({
-          timeoutMs: 110_000,
-          workspaceSharding: { totalBudgetMs: 110_001 },
+          timeoutMs: 300_000,
+          workspaceSharding: { totalBudgetMs: 300_001 },
           packages: ['x'],
         }),
       ).rejects.toSatisfy(

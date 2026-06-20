@@ -54,6 +54,10 @@ const tempDirs: string[] = []
 
 installManagedRunnerHermeticHooks()
 
+function bundledVpArgs(...tail: string[]) {
+  return [process.execPath, expect.stringMatching(/vite-plus.*bin.*vp/), ...tail]
+}
+
 afterEach(() => {
   while (tempDirs.length > 0) rmSync(tempDirs.pop()!, { recursive: true, force: true })
   qualityRunnerMocks.runCliCommandSequence.mockClear()
@@ -76,7 +80,7 @@ describe('wp test command helpers', () => {
       }),
     ).toEqual({
       command: 'rtk',
-      args: ['vp', 'run', 'cli2', 'test', '--', '--reporter=dot'],
+      args: bundledVpArgs('run', 'cli2', 'test', '--', '--reporter=dot'),
     })
   })
 

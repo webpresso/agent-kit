@@ -225,10 +225,10 @@ const tool: ToolDescriptor = {
     })
 
     const compact = input.full
-      ? formatMcpToolOutput(combinedOutput, { toolName: 'wp_typecheck', full: true })
+      ? formatMcpToolOutput(combinedOutput, { toolName: 'wp_typecheck', full: true, cwd })
       : failedWithoutDiagnostics
-        ? boundRunnerFailureEvidence(combinedOutput, 'wp_typecheck')
-        : formatMcpToolOutput(combinedOutput, { toolName: 'wp_typecheck' })
+        ? boundRunnerFailureEvidence(combinedOutput, 'wp_typecheck', cwd)
+        : formatMcpToolOutput(combinedOutput, { toolName: 'wp_typecheck', cwd })
 
     const payload = {
       passed,

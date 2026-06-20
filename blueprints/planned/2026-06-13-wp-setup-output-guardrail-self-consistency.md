@@ -120,7 +120,7 @@ choice.
 | F9 | MEDIUM | Committing the host configs is gitignore-safe. | `gitignore-patcher.ts:55` ignores generated paths and cleanup untracks them; `.gitignore:102` ignores `.claude/settings.json`. Un-ignoring + a managed-region drift gate is required so consumer-added hooks are preserved. | T3.2, T3.3 |
 | F10 | MEDIUM | (eng-review) T1.3 migration is safe to clobber generated values. | Risk: a consumer may have hand-edited the script value. Migration must match webpresso-owned exact values only and leave divergent content untouched, with a test for the hand-edited case. | T1.3, T4.3 |
 | F11 | LOW | (eng-review) T4.2 clean-checkout reproduces D3 by deleting `.sh` files. | It must delete the committed `.claude/settings.json` / `.codex/hooks.json` from the fixture's working set too — `checkHookFile` reads those, not the `.sh` bodies — or it won't reproduce the real failure. (Post-Option-D, the committed files are present, so the fixture instead asserts they exist + drift gate passes.) | T4.2 |
-| F12 | HIGH | Scaffolded setup actions can safely keep inline version-resolution shell logic. | False. `catalog/base-kit/.github/actions/setup-webpresso/action.yml.tmpl` currently shells inline version-resolution logic, while `ingest-lens` already needed a dedicated `scripts/resolve-webpresso-cli-versions.js` helper after CI parsing failed before tests started. The helper belongs in scaffold output so consumers share one deterministic bootstrap path. | T1.5, T4.4 |
+| F12 | HIGH | Scaffolded setup actions can safely keep inline version-resolution shell logic. | False. `catalog/base-kit/.github/actions/setup-webpresso/action.yml.tmpl` currently shells inline version-resolution logic, while `ingest-lens` already needed a dedicated `scripts/resolve-webpresso-cli-versions.cjs` helper after CI parsing failed before tests started. The helper belongs in scaffold output so consumers share one deterministic bootstrap path. | T1.5, T4.4 |
 
 ## Key Decisions
 
@@ -244,13 +244,13 @@ Keep agent-kit building: update its own `package.json` scripts and
 **Depends:** None
 
 Add a scaffold-owned helper template (for example
-`scripts/resolve-webpresso-cli-versions.js`) that resolves
+`scripts/resolve-webpresso-cli-versions.cjs`) that resolves
 `@webpresso/agent-kit` and `vite-plus` from consumer-owned dependency metadata,
 including catalog-aware pins, and update the scaffolded `setup-webpresso`
 action to call it instead of inline shell parsing.
 
 **Files:**
-- Create: `catalog/base-kit/scripts/resolve-webpresso-cli-versions.js.tmpl`
+- Create: `catalog/base-kit/scripts/resolve-webpresso-cli-versions.cjs.tmpl`
 - Create: `catalog/base-kit/.husky/pre-push.tmpl`
 - Modify: `catalog/base-kit/.github/actions/setup-webpresso/action.yml.tmpl`
 - Modify: `catalog/base-kit/.husky/commit-msg.tmpl`
