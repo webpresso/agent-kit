@@ -287,3 +287,7 @@ set before promotion: `docs/bench/reference-parity-matrix.md`,
 `src/__integration__/reference-parity-host-smoke.integration.test.ts`,
 `src/__integration__/reference-parity-tool-surface.integration.test.ts`, and
 `docs/bench/session-memory-methodology.md`.
+
+### Curated review skills
+
+`wp setup --with gstack` installs Webpresso-owned, unprefixed workflow skills for outside-voice review and plan critique (`claude`, `plan-eng-review`, `plan-ceo-review`, `plan-design-review`, `review`). These are curated Markdown assets shipped with agent-kit; they do not clone or run an external gstack checkout. To retire an old `~/.claude/skills/gstack` checkout, rerun setup with `WP_GSTACK_CLEANUP_EXTERNAL=1`; the checkout is backed up instead of deleted in place.

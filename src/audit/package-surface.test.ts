@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, expect, test } from 'vitest'
 
-import { auditPackageSurface, stagePublishableTarballSurface } from './package-surface.js'
+import { auditPackageSurface, parseNpmPackJsonOutput, stagePublishableTarballSurface } from './package-surface.js'
 import {
   AGENT_KIT_TARBALL_SIZE_BUDGET_BYTES,
   AGENT_KIT_TARBALL_UNPACKED_SIZE_BUDGET_BYTES,
@@ -91,6 +91,19 @@ function fixtureSecretlintFinding(stageRoot: string): unknown {
     },
   ]
 }
+
+describe('parseNpmPackJsonOutput', () => {
+  test('parses npm JSON after lifecycle stdout prelude', () => {
+    const parsed = parseNpmPackJsonOutput('$ bun scripts/stage-gstack-skills.ts\nstage-gstack-skills: staged 5 skills\n[{"name":"@webpresso/agent-kit","files":[{"path":"package.json","size":42}]}]')
+
+    expect(parsed).toEqual([
+      {
+        name: '@webpresso/agent-kit',
+        files: [{ path: 'package.json', size: 42 }],
+      },
+    ])
+  })
+})
 
 describe('package-surface audit', () => {
   test('current package exposes the wp-extension public subpath contract', () => {

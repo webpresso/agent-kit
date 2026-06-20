@@ -66,8 +66,6 @@ const HELP_BY_VERB: Readonly<Record<PackageManagerVerb, string>> = {
   run: 'Run a package script through the managed package/task facade.',
 }
 
-const GSTACK_REPO = 'https://github.com/garrytan/gstack.git'
-
 interface PackageManagerCommandConfigWithId extends PackageManagerCommandConfig {
   readonly id: string
 }
@@ -274,18 +272,11 @@ function runGlobalUpdateStep(
   return step.run(deps)
 }
 
-function refreshGstack(deps: RequiredGlobalUpdateDeps): SpawnSyncReturns<string> {
-  const hasCheckout = deps.exists(path.join(deps.gstackRoot, '.git'))
-  if (hasCheckout) {
-    const pull = deps.run('git', ['-C', deps.gstackRoot, 'pull', '--ff-only', 'origin', 'main'])
-    if (pull.status !== 0) return pull
-  } else {
-    deps.mkdir(path.dirname(deps.gstackRoot), { recursive: true })
-    const clone = deps.run('git', ['clone', '--depth', '1', GSTACK_REPO, deps.gstackRoot])
-    if (clone.status !== 0) return clone
-  }
-
-  return deps.run('./setup', ['--team'], { cwd: deps.gstackRoot })
+function refreshGstack(_deps: RequiredGlobalUpdateDeps): SpawnSyncReturns<string> {
+  // Curated Webpresso-owned skills are shipped with @webpresso/agent-kit.
+  // `wp update` refreshes the package and host plugins; it must not clone, pull,
+  // or run upstream setup from an external checkout.
+  return spawnLike(0)
 }
 
 function refreshCodexPlugin(deps: RequiredGlobalUpdateDeps): SpawnSyncReturns<string> {

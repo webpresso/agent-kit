@@ -25,6 +25,41 @@
       "license": "MIT",
       "upstream": "https://github.com/vercel-labs/agent-skills/tree/main/skills/web-design-guidelines",
       "lastSynced": "2026-05-28"
+    },
+    {
+      "slug": "claude",
+      "license": "MIT",
+      "upstream": "https://github.com/garrytan/gstack",
+      "lastSynced": "2026-06-19",
+      "notes": "Manually curated Webpresso-owned derived workflow skill; see packages/gstack provenance and NOTICE."
+    },
+    {
+      "slug": "plan-eng-review",
+      "license": "MIT",
+      "upstream": "https://github.com/garrytan/gstack",
+      "lastSynced": "2026-06-19",
+      "notes": "Manually curated Webpresso-owned derived workflow skill; see packages/gstack provenance and NOTICE."
+    },
+    {
+      "slug": "plan-ceo-review",
+      "license": "MIT",
+      "upstream": "https://github.com/garrytan/gstack",
+      "lastSynced": "2026-06-19",
+      "notes": "Manually curated Webpresso-owned derived workflow skill; see packages/gstack provenance and NOTICE."
+    },
+    {
+      "slug": "plan-design-review",
+      "license": "MIT",
+      "upstream": "https://github.com/garrytan/gstack",
+      "lastSynced": "2026-06-19",
+      "notes": "Manually curated Webpresso-owned derived workflow skill; see packages/gstack provenance and NOTICE."
+    },
+    {
+      "slug": "review",
+      "license": "MIT",
+      "upstream": "https://github.com/garrytan/gstack",
+      "lastSynced": "2026-06-19",
+      "notes": "Manually curated Webpresso-owned derived workflow skill; see packages/gstack provenance and NOTICE."
     }
   ]
 }

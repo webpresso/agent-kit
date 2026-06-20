@@ -1,0 +1,11 @@
+{
+  "name": "@repo/gstack",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Private Webpresso-owned curated gstack-derived skill source and staging policy.",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

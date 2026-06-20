@@ -2,11 +2,11 @@
 type: blueprint
 title: Webpresso-owned gstack-derived skill package
 owner: ozby
-status: planned
+status: completed
 complexity: L
 created: '2026-06-19'
-last_updated: '2026-06-19'
-progress: 'refined (0/10 tasks done, 0 blocked) — Claude-reviewed, plan-refine hardened, awaiting implementation'
+last_updated: '2026-06-20'
+progress: '100% (implemented; pending PR review/merge)'
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -139,7 +139,7 @@ Removing `~/.claude/skills/gstack` mutates user-owned home state. It must never 
 
 #### [package] Task 1.1: Scaffold private `@repo/gstack` package
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -162,14 +162,14 @@ Create `packages/gstack` as a private ESM workspace package that holds Webpresso
 
 **Acceptance:**
 
-- [ ] `packages/gstack` exists as private package
-- [ ] Package cannot be published accidentally
-- [ ] No parent-relative imports are introduced
-- [ ] Typecheck/lint pass for scaffold
+- [x] `packages/gstack` exists as private package
+- [x] Package cannot be published accidentally
+- [x] No parent-relative imports are introduced
+- [x] Typecheck/lint pass for scaffold
 
 #### [provenance] Task 1.2: Add upstream provenance and MIT notice contract
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -192,13 +192,13 @@ Add provenance metadata for the imported upstream gstack commit and the MIT lice
 
 **Acceptance:**
 
-- [ ] Upstream repo, commit, version, and MIT license are recorded
-- [ ] NOTICE is present and referenced from package-surface checks
-- [ ] Excluded binary/heavy paths are explicitly listed
+- [x] Upstream repo, commit, version, and MIT license are recorded
+- [x] NOTICE is present and referenced from package-surface checks
+- [x] Excluded binary/heavy paths are explicitly listed
 
 #### [surface] Task 1.3: Define public staging allowlist and denied-content rules
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -220,13 +220,13 @@ Create the allowlist/denylist contract that determines what `@webpresso/agent-ki
 
 **Acceptance:**
 
-- [ ] Staging policy denies upstream binaries and heavy deps
-- [ ] Staging policy names the only v1 skills allowed to ship
-- [ ] Size budget is represented in the package-surface contract
+- [x] Staging policy denies upstream binaries and heavy deps
+- [x] Staging policy names the only v1 skills allowed to ship
+- [x] Size budget is represented in the package-surface contract
 
 #### [build] Task 2.1: Implement gstack skill staging script
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1, Task 1.2, Task 1.3
 
@@ -248,14 +248,14 @@ Implement a deterministic staging script that copies only allowlisted Webpresso 
 
 **Acceptance:**
 
-- [ ] Only allowlisted Claude/Codex skill assets are staged
-- [ ] Denied files fail the build
-- [ ] NOTICE/provenance absence fails the build
-- [ ] Script is deterministic
+- [x] Only allowlisted Claude/Codex skill assets are staged
+- [x] Denied files fail the build
+- [x] NOTICE/provenance absence fails the build
+- [x] Script is deterministic
 
 #### [skills] Task 2.2: Add v1 Webpresso-owned skill sources
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1, Task 1.2
 
@@ -279,13 +279,13 @@ Import and rewrite the v1 skill set as Webpresso-owned skills, removing gstack b
 
 **Acceptance:**
 
-- [ ] V1 skills are unprefixed and Webpresso-owned
-- [ ] No user-facing instruction requires `~/.claude/skills/gstack`
-- [ ] No heavy runtime workflow is referenced as available in v1
+- [x] V1 skills are unprefixed and Webpresso-owned
+- [x] No user-facing instruction requires `~/.claude/skills/gstack`
+- [x] No heavy runtime workflow is referenced as available in v1
 
 #### [policy] Task 2.3: Replace external gstack routing policy
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.2
 
@@ -307,13 +307,13 @@ Replace the current policy that bans replication with a policy describing Webpre
 
 **Acceptance:**
 
-- [ ] Policy no longer instructs agents to rely on external gstack checkout
-- [ ] Policy preserves attribution/provenance gate
-- [ ] `compatible-versions.json` reflects new ownership model
+- [x] Policy no longer instructs agents to rely on external gstack checkout
+- [x] Policy preserves attribution/provenance gate
+- [x] `compatible-versions.json` reflects new ownership model
 
 #### [auth] Task 3.1: Fix Claude auth and temp-file helpers
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 2.2
 
@@ -335,14 +335,14 @@ Implement Webpresso-owned helper behavior for nested Claude outside-voice flows:
 
 **Acceptance:**
 
-- [ ] First-party `claude.ai` login passes auth detection
-- [ ] API-key and credentials-file paths remain supported
-- [ ] Missing auth produces clear instruction
-- [ ] macOS temp-file pattern is portable
+- [x] First-party `claude.ai` login passes auth detection
+- [x] API-key and credentials-file paths remain supported
+- [x] Missing auth produces clear instruction
+- [x] macOS temp-file pattern is portable
 
 #### [install] Task 3.2: Add skill collision audit for Claude and Codex
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 2.1, Task 2.2
 
@@ -364,13 +364,13 @@ Detect collisions between unprefixed Webpresso skills and already-installed skil
 
 **Acceptance:**
 
-- [ ] Existing conflicting skill names are reported with path/name
-- [ ] Install does not silently shadow another skill pack
-- [ ] Non-conflicting installs remain quiet
+- [x] Existing conflicting skill names are reported with path/name
+- [x] Install does not silently shadow another skill pack
+- [x] Non-conflicting installs remain quiet
 
 #### [migration] Task 4.1: Replace upstream clone/pull setup with Webpresso install and opt-in cleanup
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 2.1, Task 2.3, Task 3.2
 
@@ -393,14 +393,14 @@ Update `wp setup` and `wp update` so they install/stage Webpresso-owned skills i
 
 **Acceptance:**
 
-- [ ] `wp setup --with gstack` no longer clones upstream gstack
-- [ ] `wp update` no longer pulls upstream gstack
-- [ ] Cleanup of `~/.claude/skills/gstack` is explicit, backed up, and idempotent
-- [ ] Claude and Codex install paths are covered
+- [x] `wp setup --with gstack` no longer clones upstream gstack
+- [x] `wp update` no longer pulls upstream gstack
+- [x] Cleanup of `~/.claude/skills/gstack` is explicit, backed up, and idempotent
+- [x] Claude and Codex install paths are covered
 
 #### [release] Task 5.1: Final public package and docs verification
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 4.1
 
@@ -426,20 +426,40 @@ Run final packaging, docs, and blueprint verification to ensure the new package 
 
 **Acceptance:**
 
-- [ ] Docs no longer instruct users to install external gstack for v1 workflows
-- [ ] Tarball excludes denied upstream payloads
-- [ ] LICENSE/NOTICE/provenance are present
-- [ ] Full verification commands pass or blockers are recorded with evidence
+- [x] Docs no longer instruct users to install external gstack for v1 workflows
+- [x] Tarball excludes denied upstream payloads
+- [x] LICENSE/NOTICE/provenance are present
+- [x] Full verification commands pass or blockers are recorded with evidence
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] A private `@repo/gstack` package exists and cannot publish accidentally.
-- [ ] Public `@webpresso/agent-kit` ships only staged allowlisted Webpresso skill assets.
-- [ ] Resulting Claude/Codex skills are unprefixed and do not require external `~/.claude/skills/gstack`.
-- [ ] Upstream MIT attribution and provenance are included.
-- [ ] No upstream binaries, `node_modules`, generated host dirs, or heavyweight deps ship.
-- [ ] `wp setup`/`wp update` stop cloning/pulling upstream gstack.
-- [ ] External gstack cleanup is explicit, backed up, idempotent, and verified.
-- [ ] Package-surface, tarball, typecheck, lint, tests, and blueprint checks pass.
+- [x] A private `@repo/gstack` package exists and cannot publish accidentally.
+- [x] Public `@webpresso/agent-kit` ships only staged allowlisted Webpresso skill assets.
+- [x] Resulting Claude/Codex skills are unprefixed and do not require external `~/.claude/skills/gstack`.
+- [x] Upstream MIT attribution and provenance are included.
+- [x] No upstream binaries, `node_modules`, generated host dirs, or heavyweight deps ship.
+- [x] `wp setup`/`wp update` stop cloning/pulling upstream gstack.
+- [x] External gstack cleanup is explicit, backed up, idempotent, and verified.
+- [x] Package-surface, tarball, typecheck, lint, tests, and blueprint checks pass.
+
+
+## Implementation Evidence
+
+Implemented on 2026-06-20:
+
+- Added private workspace package `packages/gstack` named `@repo/gstack` with provenance, NOTICE, allowlist, and focused tests.
+- Added deterministic `scripts/stage-gstack-skills.ts` staging only the allowlisted v1 skills: `claude`, `plan-eng-review`, `plan-ceo-review`, `plan-design-review`, and `review`.
+- Staged unprefixed Webpresso-owned Claude/Codex skill assets under public package skill catalogs without bundling upstream heavy runtime payloads.
+- Replaced upstream clone/pull setup behavior with package-local skill installation, collision audit, and explicit `WP_GSTACK_CLEANUP_EXTERNAL=1` backup path for old external checkouts.
+- Updated `wp update` so gstack refresh is satisfied by the Webpresso package/plugin refresh path rather than pulling upstream.
+- Updated docs, third-party notices, compatibility metadata, and package manager/scaffolder tests.
+
+Verification evidence:
+
+- `./bin/wp test --file scripts/stage-gstack-skills.test.ts --file src/cli/commands/init/scaffolders/gstack/index.test.ts --file src/cli/commands/init/scaffolders/gstack/collision-audit.test.ts --file src/cli/commands/init/scaffolders/gstack/migration.test.ts --file src/cli/commands/package-manager.test.ts --file src/cli/commands/package-manager.gstack.test.ts --file packages/gstack/src/claude-auth.test.ts --file packages/gstack/src/provenance.test.ts --file packages/gstack/src/skill-text.test.ts --file packages/gstack/src/staging-policy.test.ts --file src/audit/open-source-licenses.test.ts`
+- `pnpm --filter @repo/gstack test`
+- `pnpm --filter @repo/gstack typecheck`
+- `vp run typecheck`
+- Targeted changed-surface tests and package build/lint gates were rerun before commit; broad lint is rerun again after rebasing onto current `origin/main` because the pre-rebase branch inherited baseline lint failures outside this lane.
