@@ -60,4 +60,15 @@ describe('compiled MCP tool registry', () => {
     expect(registeredNames).not.toContain('wp_repo_forensics')
     expect(registeredNames).not.toContain('wp_session_insight')
   })
+
+  it('pins side-effect hints for execution-style tools', () => {
+    const tools = new Map(COMPILED_TOOL_REGISTRY.map((tool) => [tool.name, tool]))
+    for (const name of ['wp_test', 'wp_e2e', 'wp_ci_act', 'wp_worker_tail']) {
+      expect(tools.get(name)?.annotations).toMatchObject({
+        readOnlyHint: false,
+        idempotentHint: false,
+        destructiveHint: false,
+      })
+    }
+  })
 })

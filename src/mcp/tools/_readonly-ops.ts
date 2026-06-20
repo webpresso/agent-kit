@@ -50,6 +50,51 @@ export function parseJsonObject(text: string): Record<string, unknown> | undefin
   return parsed as Record<string, unknown>
 }
 
+const MAX_DETAIL_STRING_CHARS = 1_000
+const MAX_DETAIL_ARRAY_ITEMS = 50
+const MAX_DETAIL_OBJECT_KEYS = 50
+
+function clipDetailString(value: string): string {
+  const redacted = redactText(value) ?? ''
+  return redacted.length <= MAX_DETAIL_STRING_CHARS
+    ? redacted
+    : `${redacted.slice(0, MAX_DETAIL_STRING_CHARS)}…[truncated]`
+}
+
+function sanitizeDetailValue(value: unknown): unknown {
+  if (typeof value === 'string') return clipDetailString(value)
+  if (typeof value !== 'object' || value === null) return value
+
+  if (Array.isArray(value)) {
+    const items = value.slice(0, MAX_DETAIL_ARRAY_ITEMS).map(sanitizeDetailValue)
+    return value.length <= MAX_DETAIL_ARRAY_ITEMS
+      ? items
+      : [...items, { truncated: true, omittedItems: value.length - MAX_DETAIL_ARRAY_ITEMS }]
+  }
+
+  const entries = Object.entries(value as Record<string, unknown>)
+  const limitedEntries = entries.slice(0, MAX_DETAIL_OBJECT_KEYS)
+  const sanitized = Object.fromEntries(
+    limitedEntries.map(([key, entryValue]) => [key, sanitizeDetailValue(entryValue)]),
+  ) as Record<string, unknown>
+  if (entries.length > MAX_DETAIL_OBJECT_KEYS) {
+    sanitized.truncated = true
+    sanitized.omittedKeys = entries.length - MAX_DETAIL_OBJECT_KEYS
+  }
+  return sanitized
+}
+
+function sanitizeParsedDetails(
+  parsed: Record<string, unknown>,
+  maxOutputBytes: number,
+): Record<string, unknown> {
+  const sanitized = sanitizeDetailValue(parsed) as Record<string, unknown>
+  const serialized = JSON.stringify(sanitized)
+  if (Buffer.byteLength(serialized, 'utf8') <= maxOutputBytes) return sanitized
+
+  throw new Error(`parsed JSON details exceed maxOutputBytes (${maxOutputBytes})`)
+}
+
 export async function runReadonlyCommand(
   id: string,
   command: string,
@@ -94,7 +139,6 @@ export function normalizeCommandOutcome(
   }
 
   const combined = redactText([outcome.stdout, outcome.stderr].filter(Boolean).join('\n'))
-  const redactedStdout = redactText(outcome.stdout) ?? ''
   const clipped = clipRawOutput(combined, options.maxOutputBytes, {
     toolName: `wp_${id}`,
     persistOverflow: false,
@@ -111,12 +155,10 @@ export function normalizeCommandOutcome(
 
   if (options.parseJson && outcome.exitCode === 0) {
     try {
-      const clippedJson = clipRawOutput(redactedStdout, options.maxOutputBytes, {
-        toolName: `wp_${id}_details`,
-        persistOverflow: false,
-      })
-      const parsed = parseJsonObject(clippedJson.rawOutput ?? redactedStdout)
-      return parsed ? { ...result, details: parsed } : result
+      const parsed = parseJsonObject(outcome.stdout)
+      return parsed
+        ? { ...result, details: sanitizeParsedDetails(parsed, options.maxOutputBytes) }
+        : result
     } catch (error) {
       return {
         ...result,

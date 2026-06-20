@@ -109,6 +109,8 @@ const tool: ToolDescriptor = {
   outputSchema,
   annotations: {
     title: 'CI act',
+    readOnlyHint: false,
+    idempotentHint: false,
     destructiveHint: false,
     openWorldHint: false,
   },

@@ -235,22 +235,14 @@ describe('read-only ops MCP tools', () => {
     expect(payload.counts).toEqual({ commandCount: 3, passedCount: 3, failedCount: 0 })
   })
 
-  it('wp_release_readiness does not run public readiness from a read-only tool even when requested', async () => {
-    runCommandMock
-      .mockResolvedValueOnce(ok('package surface ok'))
-      .mockResolvedValueOnce(ok('reference parity ok'))
-      .mockResolvedValueOnce(ok('changeset status ok'))
-
+  it('wp_release_readiness refuses public readiness rather than advertising it as read-only', async () => {
     const result = await releaseReadinessTool.handler({ cwd, includePublicReadiness: true })
-    const payload = result.structuredContent as { passed: boolean; warnings: string[]; counts: Record<string, number> }
+    const payload = result.structuredContent as { passed: boolean; warnings: string[] }
 
-    expect(payload.passed).toBe(true)
-    expect(runCommandMock.mock.calls.map((call) => [call[0], call[1]])).not.toContainEqual([
-      'vp',
-      ['run', 'public:readiness'],
-    ])
-    expect(payload.counts).toEqual({ commandCount: 3, passedCount: 3, failedCount: 0 })
-    expect(payload.warnings).toContain('public_readiness_skipped_not_read_only')
+    expect(result.isError).toBe(true)
+    expect(payload.passed).toBe(false)
+    expect(payload.warnings).toEqual(['public_readiness_not_read_only'])
+    expect(runCommandMock).not.toHaveBeenCalled()
   })
 
   it('wp_release_readiness returns a failed aggregate without throwing', async () => {
@@ -279,4 +271,5 @@ describe('read-only ops MCP tools', () => {
     expect(payload.rawOutput).toHaveLength(32)
     expect(payload.truncated).toBe(true)
   })
+
 })

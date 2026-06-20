@@ -109,6 +109,8 @@ const tool: ToolDescriptor = {
   outputSchema,
   annotations: {
     title: 'E2E',
+    readOnlyHint: false,
+    idempotentHint: false,
     destructiveHint: false,
     openWorldHint: false,
   },

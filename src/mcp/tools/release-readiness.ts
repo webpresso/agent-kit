@@ -59,6 +59,19 @@ const tool: ToolDescriptor = {
   handler: async (raw, extra) => {
     const input = inputSchema.parse(raw ?? {})
     const cwd = resolveReadonlyCwd(input)
+    if (input.includePublicReadiness) {
+      return createSummaryResult(
+        {
+          passed: false,
+          summary:
+            'release readiness refused public:readiness because it is not guaranteed read-only',
+          counts: { commandCount: 0, passedCount: 0, failedCount: 0 },
+          details: { cwd, commands: [] },
+          warnings: ['public_readiness_not_read_only'],
+        },
+        { isError: true },
+      )
+    }
     const commands = []
     for (const command of commandsFor(input)) {
       commands.push(
