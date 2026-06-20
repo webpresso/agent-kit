@@ -2,11 +2,11 @@
 type: blueprint
 title: "Read-only WP MCP operations tools"
 owner: ozby
-status: planned
+status: completed
 complexity: L
 created: "2026-06-19"
 last_updated: "2026-06-20"
-progress: "100% (implemented; pending review/merge)"
+progress: "completed (implementation verified and merged)"
 tags:
   - mcp
   - devex
@@ -86,7 +86,7 @@ type WpReleaseReadinessInput = ReadonlyOpsBase & {
 
 ## Tasks
 
-### Task 1: Shared read-only command adapter
+#### [adapter] Task 1.1: Shared read-only command adapter
 
 - [x] **Status:** done
 - **Depends:** None
@@ -94,7 +94,7 @@ type WpReleaseReadinessInput = ReadonlyOpsBase & {
 - **Steps:** Added shared bounded command normalization over the existing MCP `runCommand`, redaction, truncation, JSON parsing, cwd resolution, missing-binary warnings, and aggregate counts.
 - **Acceptance:** New tools call existing CLI surfaces without unbounded output or throws; covered by `readonly-ops.test.ts`.
 
-### Task 2: PR status and release readiness tools
+#### [ops] Task 1.2: PR status and release readiness tools
 
 - [x] **Status:** done
 - **Depends:** Task 1
@@ -102,7 +102,7 @@ type WpReleaseReadinessInput = ReadonlyOpsBase & {
 - **Steps:** Implemented `wp_pr_status` over bounded `gh pr view`/`gh pr checks` and `wp_release_readiness` over existing package-surface, reference-parity, changeset, and public-readiness gates.
 - **Acceptance:** Agents get structured read-only status objects for PR/check/release decisions; missing binaries degrade with warnings.
 
-### Task 3: Bench and gain tools
+#### [bench] Task 1.3: Bench and gain tools
 
 - [x] **Status:** done
 - **Depends:** Task 1
@@ -110,7 +110,7 @@ type WpReleaseReadinessInput = ReadonlyOpsBase & {
 - **Steps:** Wrapped `wp bench session-memory` with dry-run default unless `mode: live` is explicit, and wrapped Webpresso/RTK gain reporting with bounded summary-first output.
 - **Acceptance:** Agents can collect benchmark and gain evidence without ad hoc shell parsing.
 
-### Task 4: Routing and docs
+#### [routing] Task 1.4: Routing and docs
 
 - [x] **Status:** done
 - **Depends:** Tasks 2, 3

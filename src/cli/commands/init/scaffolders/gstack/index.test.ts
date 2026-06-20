@@ -97,8 +97,14 @@ describe('ensureGstack', () => {
 
     await ensureGstack(testInput)
 
+    const expectedBackupPath = path.join(
+      path.dirname(path.dirname(testInput.installRoot!)),
+      'skills-backup',
+      'gstack.backup-2026-06-20T00-00-00-000Z',
+    )
     expect(existsSync(testInput.installRoot!)).toBe(false)
-    expect(existsSync(`${testInput.installRoot!}.backup-2026-06-20T00-00-00-000Z`)).toBe(true)
+    expect(existsSync(expectedBackupPath)).toBe(true)
+    expect(expectedBackupPath).not.toContain(`${path.sep}skills${path.sep}gstack.backup-`)
   })
 })
 
@@ -109,6 +115,8 @@ describe('cleanupExternalGstackCheckout', () => {
     mkdirSync(root, { recursive: true })
     expect(cleanupExternalGstackCheckout({ externalRoot: root, dryRun: true, explicit: true }).kind).toBe('dry-run')
     expect(cleanupExternalGstackCheckout({ externalRoot: root, dryRun: false, explicit: false }).kind).toBe('refused')
-    expect(cleanupExternalGstackCheckout({ externalRoot: root, dryRun: false, explicit: true, now: () => 0 }).kind).toBe('backed-up')
+    const result = cleanupExternalGstackCheckout({ externalRoot: root, dryRun: false, explicit: true, now: () => 0 })
+    expect(result.kind).toBe('backed-up')
+    expect(result.backupPath).toBe(path.join(path.dirname(root), '.gstack-backups', 'gstack.backup-1970-01-01T00-00-00-000Z'))
   })
 })

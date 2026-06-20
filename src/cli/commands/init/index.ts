@@ -1589,7 +1589,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
       }
     }
 
-    let gstackFailure: 'clone-failed' | 'pull-failed' | 'setup-failed' | null = null
+    let gstackFailure: 'setup-failed' | null = null
     if (process.env.WP_SKIP_GSTACK === '1') {
       console.warn('  gstack: ⚠ WP_SKIP_GSTACK=1 — skipping optional gstack integration.')
     } else if (isCiEnvironment && presets.includes('gstack')) {
@@ -1670,28 +1670,6 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
           break
         case 'gstack-skipped-dry-run':
           console.log('  gstack: skipped (--dry-run)')
-          break
-        case 'gstack-clone-failed':
-          console.error(
-            gstackResult.reason === 'signal-interrupted'
-              ? `  gstack: ✗ interrupted while running git clone`
-              : gstackResult.reason === 'inactivity-timeout'
-                ? `  gstack: ✗ git clone timed out after inactivity`
-                : `  gstack: ✗ git clone exited with ${gstackResult.exitCode}`,
-          )
-          console.error(`  gstack: log ${gstackResult.logPath}`)
-          gstackFailure = 'clone-failed'
-          break
-        case 'gstack-pull-failed':
-          console.error(
-            gstackResult.reason === 'signal-interrupted'
-              ? `  gstack: ✗ interrupted while running git pull`
-              : gstackResult.reason === 'inactivity-timeout'
-                ? `  gstack: ✗ git pull timed out after inactivity`
-                : `  gstack: ✗ git pull exited with ${gstackResult.exitCode}`,
-          )
-          console.error(`  gstack: log ${gstackResult.logPath}`)
-          gstackFailure = 'pull-failed'
           break
         case 'gstack-setup-failed':
           console.error(
@@ -1908,8 +1886,6 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     console.log('\nwp init: setup phases finished.')
     if (omxFailure === 'not-found') return EXIT_SETUP_FAIL
     if (omxFailure === 'spawn-failed') return EXIT_WRITE_FAIL
-    if (gstackFailure === 'clone-failed') return EXIT_WRITE_FAIL
-    if (gstackFailure === 'pull-failed') return EXIT_WRITE_FAIL
     if (gstackFailure === 'setup-failed') return EXIT_WRITE_FAIL
     if (rtkFailure === 'not-found') return EXIT_SETUP_FAIL
     if (rtkFailure === 'init-failed') return EXIT_WRITE_FAIL

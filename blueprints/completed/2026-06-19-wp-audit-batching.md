@@ -2,11 +2,11 @@
 type: blueprint
 title: "WP audit batching MCP surface"
 owner: ozby
-status: planned
+status: completed
 complexity: M
 created: "2026-06-19"
-last_updated: "2026-06-19"
-progress: "implemented (3/3 tasks done, 0 blocked) — wp_audits batch MCP surface"
+last_updated: "2026-06-20"
+progress: "completed (3/3 tasks done, verified and merged)"
 tags:
   - mcp
   - audit
@@ -97,7 +97,7 @@ Partial-failure contract:
 
 ## Tasks
 
-### Task 1: Shared audit dispatch contract
+#### [dispatch] Task 1.1: Shared audit dispatch contract
 
 - [x] **Status:** done
 - **Depends:** None
@@ -105,7 +105,7 @@ Partial-failure contract:
 - **Steps:** Add regression tests for current `wp_audit`, extract shared dispatch without changing output, and run targeted audit/MCP tests.
 - **Acceptance:** Existing `wp_audit` callers keep working and CLI/MCP dispatch use one source of truth where practical.
 
-### Task 2: Batch audit MCP behavior
+#### [mcp] Task 1.2: Batch audit MCP behavior
 
 - [x] **Status:** done
 - **Depends:** Task 1
@@ -113,7 +113,7 @@ Partial-failure contract:
 - **Steps:** Implement one-or-many input or `wp_audits`, add output schema, and cover pass, partial failure, crash, invalid input, explicit kinds, presets, and ordering.
 - **Acceptance:** Agents can run multiple audits in one MCP call and receive complete aggregate evidence.
 
-### Task 3: Agent routing and pretool redirects
+#### [routing] Task 1.3: Agent routing and pretool redirects
 
 - [x] **Status:** done
 - **Depends:** Task 2
