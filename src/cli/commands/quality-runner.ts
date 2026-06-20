@@ -2,14 +2,9 @@ import { closeSync, openSync, readFileSync, readSync, statSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 
 import { applyOutputTransform, type Failure, type TransformResult } from '#output-transforms/index'
-import { createSessionElisionRecorder } from '#mcp/tools/_session-elision.js'
+import { createSessionElisionRecorder } from '#mcp/_session-elision.js'
 import { buildRuntimeProcessEnv, resolveRuntimeEnvironment } from '#runtime/index.js'
-import {
-  exitCodeFromSignal,
-  forceKillProcessTree,
-  killProcessTree,
-  PROCESS_TREE_FORCE_KILL_GRACE_MS,
-} from '#shared-utils/process-supervisor.js'
+import { terminateProcessTreeWithEscalation } from '#cli/process-tree.js'
 
 import { createCliLogSink, type CliLogCommandName, type CliLogEntry } from './quality-log-store.js'
 
@@ -133,30 +128,21 @@ export async function runLoggedChildCommand(
     let timedOut = false
     let aborted = false
     let settled = false
-    let terminationRequested = false
-    let escalationTimer: ReturnType<typeof setTimeout> | undefined
-
-    const requestTermination = (): void => {
-      if (terminationRequested) return
-      terminationRequested = true
-      killProcessTree(child, 'SIGTERM')
-      if (process.platform === 'win32') return
-      escalationTimer = setTimeout(() => {
-        forceKillProcessTree(child)
-      }, PROCESS_TREE_FORCE_KILL_GRACE_MS)
-    }
+    let cancelEscalation: (() => void) | undefined
 
     const timer =
       options.timeoutMs === undefined
         ? undefined
         : setTimeout(() => {
             timedOut = true
-            requestTermination()
+            cancelEscalation?.()
+            cancelEscalation = terminateProcessTreeWithEscalation(child)
           }, options.timeoutMs)
 
     const onAbort = (): void => {
       aborted = true
-      requestTermination()
+      cancelEscalation?.()
+      cancelEscalation = terminateProcessTreeWithEscalation(child)
     }
     if (options.signal) {
       if (options.signal.aborted) queueMicrotask(onAbort)
@@ -165,7 +151,7 @@ export async function runLoggedChildCommand(
 
     const cleanup = (): void => {
       if (timer) clearTimeout(timer)
-      if (escalationTimer) clearTimeout(escalationTimer)
+      cancelEscalation?.()
       options.signal?.removeEventListener('abort', onAbort)
     }
 
@@ -191,7 +177,6 @@ export async function runLoggedChildCommand(
       })
     })
     child.on('close', (code: number | null, signal: NodeJS.Signals | null) => {
-      if (terminationRequested && signal !== 'SIGKILL') forceKillProcessTree(child)
       finish({
         exitCode: code ?? exitCodeFromSignal(signal),
         timedOut,
@@ -283,4 +268,15 @@ function buildChildEnv(command: CliSpawnCommand, cwd: string): NodeJS.ProcessEnv
     env: { ...process.env, ...command.env },
   })
   return buildRuntimeProcessEnv(cwd, { ...process.env, ...command.env }, resolvedRuntime)
+}
+
+const COMMON_SIGNAL_NUMBERS: Readonly<Partial<Record<NodeJS.Signals, number>>> = {
+  SIGINT: 2,
+  SIGKILL: 9,
+  SIGTERM: 15,
+}
+
+function exitCodeFromSignal(signal: NodeJS.Signals | null): number {
+  if (!signal) return 1
+  return 128 + (COMMON_SIGNAL_NUMBERS[signal] ?? 15)
 }

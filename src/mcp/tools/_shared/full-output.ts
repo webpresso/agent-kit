@@ -1,7 +1,7 @@
 import { applyOutputTransform, type TransformResult } from '#output-transforms/index'
 
 import { stripTransform } from './runner-failure.js'
-import { createSessionElisionRecorder } from '#mcp/tools/_session-elision.js'
+import { createSessionElisionRecorder } from '#mcp/_session-elision.js'
 
 export function formatMcpToolOutput(
   rawOutput: string | undefined,

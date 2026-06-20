@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { z } from 'zod'
 
 import { RAW_BYTES_BASIS_VALUES, GAIN_PRECISION } from '#session-memory/gain-types.js'
-import { sessionElisionSchema, type SessionElision } from '#mcp/tools/_session-elision-schema.js'
+import { sessionElisionSchema, type SessionElision } from '#mcp/_session-elision-schema.js'
 
 const DEFAULT_RAW_OUTPUT_LIMIT = 4_000
 const DEFAULT_SUMMARY_TEXT_LIMIT = 240

@@ -6,7 +6,7 @@ import { createSummaryOutputSchema, createSummaryResult } from './_shared/result
 import { createGainSummaryResult } from './_session-gain.js'
 import { runSessionCommand, searchSessionCommandOutput } from './_session-command.js'
 import { defaultIndexDbPath } from './session-restore.js'
-import { sessionElisionSchema } from './_session-elision.js'
+import { sessionElisionSchema } from '#mcp/_session-elision.js'
 import type { SearchHit } from '#session-memory/types'
 
 const MAX_CONCURRENCY = 8

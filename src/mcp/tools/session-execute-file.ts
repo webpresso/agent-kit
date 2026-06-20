@@ -10,7 +10,7 @@ import { resolveProjectRoot } from '#mcp/tools/_shared/project-root.js'
 import { SessionMemoryStore } from '#session-memory/store.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 import { createGainSummaryResult } from './_session-gain.js'
-import { createSessionElisionRecorder, sessionElisionSchema } from './_session-elision.js'
+import { createSessionElisionRecorder, sessionElisionSchema } from '#mcp/_session-elision.js'
 import { defaultIndexDbPath } from './session-restore.js'
 
 const MAX_PREVIEW_BYTES = 4 * 1024

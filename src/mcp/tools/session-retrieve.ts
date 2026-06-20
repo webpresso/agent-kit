@@ -5,12 +5,12 @@ import { dirname } from 'node:path'
 import type { ToolDescriptor } from '#mcp/auto-discover'
 import { SessionMemoryStore } from '#session-memory/store.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
-import { WP_SESSION_RETRIEVE_TOOL_NAME } from './_session-elision.js'
+import { WP_SESSION_RETRIEVE_TOOL_NAME } from '#mcp/_session-elision-schema.js'
 import { defaultIndexDbPath } from './session-restore.js'
 
 const DEFAULT_MAX_BYTES = 4 * 1024
 const MAX_BYTES = 256 * 1024
-const SAFE_ID_RE = /^[A-Za-z0-9:_-]{1,160}$/u
+const ELISION_ID_RE = /^elision:[a-f0-9]{32}$/u
 
 const inputSchema = z
   .object({
@@ -73,8 +73,8 @@ const tool: ToolDescriptor = {
   handler: async (raw) => {
     const input = inputSchema.parse(raw ?? {})
     const warnings: string[] = []
-    if (!SAFE_ID_RE.test(input.id)) {
-      warnings.push('malformed retrieval id')
+    if (!ELISION_ID_RE.test(input.id)) {
+      warnings.push('malformed elision retrieval id')
       const payload = {
         passed: false,
         summary: 'session chunk was not found',

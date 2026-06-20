@@ -104,9 +104,6 @@
       "#mcp/*": [
         "./src/mcp/*"
       ],
-      "#mcp/tools/*": [
-        "./src/mcp/tools/*"
-      ],
       "#content/*": [
         "./src/content/*"
       ],

@@ -21,7 +21,7 @@
 import type { TransformResult } from '#output-transforms/index'
 
 import { clipRawOutput } from './result.js'
-import { createSessionElisionRecorder } from '#mcp/tools/_session-elision.js'
+import { createSessionElisionRecorder } from '#mcp/_session-elision.js'
 
 const RUNNER_FAILURE_EVIDENCE_BUDGET = 600
 

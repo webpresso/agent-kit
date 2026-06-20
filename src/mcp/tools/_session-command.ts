@@ -9,7 +9,8 @@ import {
 } from '#session-memory/native-runtime.js'
 import { SessionMemoryStore } from '#session-memory/store.js'
 import type { SearchHit } from '#session-memory/types.js'
-import { createSessionElisionRecorder, type SessionElision } from './_session-elision.js'
+import { createSessionElisionRecorder, type SessionElision } from '#mcp/_session-elision.js'
+import { redactText } from './_shared/redact.js'
 import { defaultIndexDbPath } from './session-restore.js'
 
 export const MAX_CAPTURE_BYTES = 1024 * 1024
@@ -124,6 +125,11 @@ function summarizeOutput(output: string, timedOut: boolean): string {
     .join('\n')
   if (!normalized) return timedOut ? 'command timed out with no captured output' : 'no output'
   return normalized.length > 2_000 ? `${normalized.slice(0, 2_000)}…` : normalized
+}
+
+function redactCommandOutput(output: string): { output: string; redacted: boolean } {
+  const redacted = redactText(output) ?? output
+  return { output: redacted, redacted: redacted !== output }
 }
 
 function isPathInside(child: string, parent: string): boolean {
@@ -293,18 +299,21 @@ async function runTypeScriptSessionCommand({
   const output = Buffer.concat(captured).toString('utf8')
   const capturedBytes = Buffer.byteLength(output, 'utf8')
   const truncated = totalOutputBytes > capturedBytes
-  const summary = `${summarizeOutput(output, timedOut)}${truncated ? '\n[output truncated before indexing]' : ''}`
+  const redaction = redactCommandOutput(output)
+  const summary = `${summarizeOutput(redaction.output, timedOut)}${truncated ? '\n[output truncated before indexing]' : ''}`
   const indexed = output.trim().length > 0
   const elisions: SessionElision[] = []
   const warnings: string[] = []
+  if (redaction.redacted) warnings.push('command output was redacted before indexing')
   const store = new SessionMemoryStore(dbPath)
   try {
     store.purge({ source: label, confirm: true })
+    store.purge({ source: `wp_session_execute:${label}`, confirm: true })
     if (indexed) {
       store.indexChunk({
-        id: `command:${commandChunkId(label, command, output)}`,
+        id: `command:${commandChunkId(label, command, redaction.output)}`,
         source: label,
-        text: output,
+        text: redaction.output,
         metadata: {
           command,
           cwd,
@@ -314,6 +323,7 @@ async function runTypeScriptSessionCommand({
           maxCaptureBytes: MAX_CAPTURE_BYTES,
           truncated,
           timedOut,
+          redacted: redaction.redacted,
           ...(closeSignal ? { signal: closeSignal } : {}),
           kind: 'session_command_output',
           executionBackend: 'typescript',
@@ -327,7 +337,7 @@ async function runTypeScriptSessionCommand({
       }).record({
         source: label,
         kind: 'command_output',
-        text: output,
+        text: redaction.output,
         returnedText: summary,
         rawBytes: totalOutputBytes,
         returnedBytes: Buffer.byteLength(summary, 'utf8'),
@@ -340,6 +350,7 @@ async function runTypeScriptSessionCommand({
           maxCaptureBytes: MAX_CAPTURE_BYTES,
           truncated,
           timedOut,
+          redacted: redaction.redacted,
           ...(closeSignal ? { signal: closeSignal } : {}),
           executionBackend: 'typescript',
           fallbackReason,
@@ -384,17 +395,36 @@ export async function runSessionCommand({
       loadNativeSessionMemoryEngine().executeSandboxed(dbPath, command, label, timeoutMs, cwd),
     )
     assertNativeExecuteResult(result)
+    const warnings: string[] = []
+    const elisions: SessionElision[] = []
+    const summaryRedaction = redactCommandOutput(result.summary)
+    if (summaryRedaction.redacted) warnings.push('command summary was redacted')
+    if (result.indexed) {
+      const recorded = recordNativeCommandElision({
+        dbPath,
+        cwd,
+        label,
+        command,
+        result,
+        summary: summaryRedaction.output,
+      })
+      if (recorded.redacted) warnings.push('command output was redacted before indexing')
+      if (recorded.elision) elisions.push(recorded.elision)
+      if (recorded.warning) warnings.push(recorded.warning)
+    }
     return {
       label,
       exitCode: result.exitCode,
       outputBytes: result.outputBytes,
       indexed: result.indexed,
-      summary: result.summary,
+      summary: summaryRedaction.output,
       backend: 'native',
       truncated: result.truncated,
       capturedBytes: result.capturedBytes,
       maxCaptureBytes: result.maxCaptureBytes,
       timedOut: result.timedOut,
+      ...(elisions.length > 0 ? { elisions } : {}),
+      ...(warnings.length > 0 ? { warnings } : {}),
     }
   } catch (error) {
     if (!(error instanceof NativeSessionMemoryUnavailableError)) {
@@ -409,6 +439,81 @@ export async function runSessionCommand({
       dbPath,
       fallbackReason: error.message,
     })
+  }
+}
+
+function recordNativeCommandElision(input: {
+  readonly dbPath: string
+  readonly cwd: string
+  readonly label: string
+  readonly command: string
+  readonly result: {
+    readonly exitCode: number
+    readonly outputBytes: number
+    readonly truncated: boolean
+    readonly capturedBytes: number
+    readonly maxCaptureBytes: number
+    readonly timedOut: boolean
+  }
+  readonly summary: string
+}): { elision?: SessionElision; warning?: string; redacted: boolean } {
+  const store = new SessionMemoryStore(input.dbPath)
+  try {
+    const capturedText = store
+      .getChunksBySource(input.label)
+      .map((chunk) => chunk.text)
+      .join('')
+    if (!capturedText) return { redacted: false }
+    const redaction = redactCommandOutput(capturedText)
+    store.purge({ source: `wp_session_execute:${input.label}`, confirm: true })
+    if (redaction.redacted) {
+      store.purge({ source: input.label, confirm: true })
+      store.indexChunk({
+        id: `command:${commandChunkId(input.label, input.command, redaction.output)}`,
+        source: input.label,
+        text: redaction.output,
+        metadata: {
+          command: input.command,
+          cwd: input.cwd,
+          exitCode: input.result.exitCode,
+          outputBytes: input.result.outputBytes,
+          capturedBytes: input.result.capturedBytes,
+          maxCaptureBytes: input.result.maxCaptureBytes,
+          truncated: input.result.truncated,
+          timedOut: input.result.timedOut,
+          redacted: true,
+          kind: 'session_command_output',
+          executionBackend: 'native',
+        },
+      })
+    }
+    const recorded = createSessionElisionRecorder({
+      cwd: input.cwd,
+      sourcePrefix: 'wp_session_execute',
+      dbPath: input.dbPath,
+    }).record({
+      source: input.label,
+      kind: 'command_output',
+      text: redaction.output,
+      returnedText: input.summary,
+      rawBytes: input.result.outputBytes,
+      returnedBytes: Buffer.byteLength(input.summary, 'utf8'),
+      metadata: {
+        command: input.command,
+        cwd: input.cwd,
+        exitCode: input.result.exitCode,
+        outputBytes: input.result.outputBytes,
+        capturedBytes: input.result.capturedBytes,
+        maxCaptureBytes: input.result.maxCaptureBytes,
+        truncated: input.result.truncated,
+        timedOut: input.result.timedOut,
+        redacted: redaction.redacted,
+        executionBackend: 'native',
+      },
+    })
+    return { ...recorded, redacted: redaction.redacted }
+  } finally {
+    store.close()
   }
 }
 
