@@ -366,7 +366,7 @@ const tool: ToolDescriptor = {
     title: 'Worktree',
     readOnlyHint: false,
     destructiveHint: true,
-    idempotentHint: true,
+    idempotentHint: false,
     openWorldHint: false,
   },
   handler: async (raw) => {
@@ -422,7 +422,10 @@ const tool: ToolDescriptor = {
 
       const context = managedContext(repoRoot)
       const pruned = removeWorktreeRegistryEntries(
-        (entry) => entry.repoNamespace === context.repoNamespace && !existsSync(entry.path),
+        (entry) =>
+          entry.repoNamespace === context.repoNamespace &&
+          entry.repoRoot === context.repoRoot &&
+          !existsSync(entry.path),
       )
       return result({
         passed: true,

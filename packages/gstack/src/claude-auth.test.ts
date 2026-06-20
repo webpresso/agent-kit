@@ -27,7 +27,7 @@ describe('Claude skill helper snippets', () => {
     for (const skillPath of skillPaths) {
       const skill = readFileSync(skillPath, 'utf8')
       expect(skill).toContain('"$AUTH_STATUS_FILE"')
-      expect(skill).toMatch(/"\(authenticated\|loggedIn\|success\)"\\\[\\\[:space:\\\]\\\]\*:\\\[\\\[:space:\\\]\\\]\*true/)
+      expect(skill).toContain('"(authenticated|loggedIn|success)"[[:space:]]*:[[:space:]]*true')
       expect(skill).not.toMatch(/grep -E .*claude\\.ai/)
     }
   })

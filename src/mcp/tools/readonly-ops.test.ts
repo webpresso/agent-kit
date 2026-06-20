@@ -96,7 +96,6 @@ describe('read-only ops MCP tools', () => {
       }
     }
     const serialized = JSON.stringify(payload)
-    console.log(JSON.stringify(payload, null, 2))
 
     expect(payload.passed).toBe(true)
     expect(serialized).not.toContain('sk_abcdefghijklmnopqrstuvwxyz1234567890')
