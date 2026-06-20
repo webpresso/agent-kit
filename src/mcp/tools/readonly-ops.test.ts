@@ -96,6 +96,7 @@ describe('read-only ops MCP tools', () => {
       }
     }
     const serialized = JSON.stringify(payload)
+    console.log(JSON.stringify(payload, null, 2))
 
     expect(payload.passed).toBe(true)
     expect(serialized).not.toContain('sk_abcdefghijklmnopqrstuvwxyz1234567890')
@@ -105,15 +106,9 @@ describe('read-only ops MCP tools', () => {
   })
 
   it('wp_pr_status refuses unbounded parsed JSON details when the details budget is exceeded', async () => {
+    const hugeTitle = Array.from({ length: 60 }, (_, index) => `word${index}`).join(' ')
     runCommandMock
-      .mockResolvedValueOnce(
-        ok(
-          JSON.stringify({
-            number: 206,
-            title: Array.from({ length: 60 }, (_, index) => `word${index}`).join(' '),
-          }),
-        ),
-      )
+      .mockResolvedValueOnce(ok(JSON.stringify({ number: 206, title: hugeTitle })))
       .mockResolvedValueOnce(ok('[]'))
 
     const result = await prStatusTool.handler({ cwd, branch: 'feat/huge', maxOutputBytes: 80 })
@@ -123,13 +118,15 @@ describe('read-only ops MCP tools', () => {
       warnings: string[]
       details: { pr?: unknown; commands: Array<{ details?: unknown; rawOutput?: string; truncated?: true }> }
     }
+    const serialized = JSON.stringify(payload)
 
     expect(payload.passed).toBe(false)
     expect(payload.summary).toContain('pr status incomplete')
     expect(payload.details.pr).toBeUndefined()
     expect(payload.details.commands[0]?.details).toBeUndefined()
     expect(payload.details.commands[0]?.truncated).toBe(true)
-    expect(payload.warnings.some((warning) => warning.includes('could not parse JSON output from gh'))).toBe(true)
+    expect(payload.warnings.some((warning) => warning.includes('parsed JSON details exceed maxOutputBytes'))).toBe(true)
+    expect(serialized).not.toContain(hugeTitle)
   })
 
   it('wp_pr_status degrades when gh is missing', async () => {
