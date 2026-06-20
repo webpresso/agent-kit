@@ -6,7 +6,8 @@
 export const WP_ROUTING_BLOCK: string = `<wp_routing>
   <description>
     Use the wp_* MCP tools for all test, lint, typecheck, qa, audit, local CI act,
-    Cloudflare Worker tail, and session-memory context-window protection operations.
+    Cloudflare Worker tail, PR/CI status, benchmarks, gain reports, release readiness,
+    and session-memory context-window protection operations.
     If a wp_* MCP tool is stale or unavailable, use the matching direct wp CLI command.
     Never invoke wp through package-manager wrappers such as bun run wp, pnpm run wp,
     npm run wp, yarn wp, or vp run wp.
@@ -49,6 +50,22 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
     <row>
       <trigger>wrangler tail, with-secrets -- wrangler tail, Cloudflare Worker logs</trigger>
       <tool>wp_worker_tail</tool>
+    </row>
+    <row>
+      <trigger>PR status, GitHub checks, gh pr view, gh pr checks, review decision</trigger>
+      <tool>wp_pr_status</tool>
+    </row>
+    <row>
+      <trigger>session-memory benchmark, wp bench session-memory, benchmark dry-run</trigger>
+      <tool>wp_bench</tool>
+    </row>
+    <row>
+      <trigger>gain reporting, wp gain, rtk gain, token savings report</trigger>
+      <tool>wp_gain</tool>
+    </row>
+    <row>
+      <trigger>release readiness, package surface, changeset status, public readiness, reference parity</trigger>
+      <tool>wp_release_readiness</tool>
     </row>
     <row>
       <trigger>e2e testing philosophy audit, tph-e2e</trigger>
@@ -141,6 +158,28 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
       <forbidden>wrangler tail, with-secrets -- wrangler tail</forbidden>
       <usage>Use the wp_worker_tail MCP tool for Cloudflare Worker tail logs. The tool routes through the canonical with-secrets -- wrangler tail ... contract and returns bounded redacted output.</usage>
     </tool>
+    <tool name="wp_pr_status">
+      <category>dev-workflow</category>
+      <trigger>PR status, GitHub checks, gh pr view, gh pr checks, review decision</trigger>
+      <forbidden>gh pr view, gh pr checks</forbidden>
+      <usage>Use wp_pr_status for read-only PR/check/review summaries. It does not mutate PRs.</usage>
+    </tool>
+    <tool name="wp_bench">
+      <category>dev-workflow</category>
+      <trigger>session-memory benchmark, wp bench session-memory, benchmark dry-run</trigger>
+      <usage>Use wp_bench for structured benchmark evidence. It defaults to dry-run unless live mode is explicit.</usage>
+    </tool>
+    <tool name="wp_gain">
+      <category>dev-workflow</category>
+      <trigger>gain reporting, wp gain, rtk gain, token savings report</trigger>
+      <forbidden>rtk gain</forbidden>
+      <usage>Use wp_gain for bounded session-memory or RTK gain totals.</usage>
+    </tool>
+    <tool name="wp_release_readiness">
+      <category>dev-workflow</category>
+      <trigger>release readiness, package surface, changeset status, public readiness, reference parity</trigger>
+      <usage>Use wp_release_readiness for read-only release gates; it must not publish, tag, version, merge, or mutate release state.</usage>
+    </tool>
   </tools>
 
   <ownership_boundary>
@@ -192,6 +231,9 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
     <command>wrangler tail</command>
     <command>with-secrets -- act</command>
     <command>with-secrets -- wrangler tail</command>
+    <command>gh pr view</command>
+    <command>gh pr checks</command>
+    <command>rtk gain</command>
   </forbidden_alternatives>
 
   <output_format>

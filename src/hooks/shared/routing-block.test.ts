@@ -96,6 +96,16 @@ describe('WP_ROUTING_BLOCK', () => {
     expect(WP_ROUTING_BLOCK).toContain('multiple audits')
   })
 
+  it('routes read-only ops commands to shipped MCP tool names', () => {
+    expect(WP_ROUTING_BLOCK).toContain('wp_pr_status')
+    expect(WP_ROUTING_BLOCK).toContain('wp_bench')
+    expect(WP_ROUTING_BLOCK).toContain('wp_gain')
+    expect(WP_ROUTING_BLOCK).toContain('wp_release_readiness')
+    expect(WP_ROUTING_BLOCK).toContain('gh pr checks')
+    expect(WP_ROUTING_BLOCK).toContain('rtk gain')
+    expect(WP_ROUTING_BLOCK).toContain('public readiness')
+  })
+
   it('routes local act and Worker tail commands to shipped MCP tool names', () => {
     expect(WP_ROUTING_BLOCK).toContain('wp_ci_act')
     expect(WP_ROUTING_BLOCK).toContain('wp_worker_tail')

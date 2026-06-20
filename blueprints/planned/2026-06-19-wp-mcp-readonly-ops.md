@@ -5,8 +5,8 @@ owner: ozby
 status: planned
 complexity: L
 created: "2026-06-19"
-last_updated: "2026-06-19"
-progress: "0% (planned; blueprint-only PR)"
+last_updated: "2026-06-20"
+progress: "100% (implemented; pending review/merge)"
 tags:
   - mcp
   - devex
@@ -88,35 +88,35 @@ type WpReleaseReadinessInput = ReadonlyOpsBase & {
 
 ### Task 1: Shared read-only command adapter
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends:** None
-- **Files:** MCP tool helpers and tests
-- **Steps:** Add bounded command execution with structured stdout/stderr, reuse result helpers/redaction, and test truncation, command failure, missing binary, and cwd handling.
-- **Acceptance:** New tools can call existing CLI surfaces without unbounded output or throws.
+- **Files:** `src/mcp/tools/_readonly-ops.ts`, `src/mcp/tools/readonly-ops.test.ts`
+- **Steps:** Added shared bounded command normalization over the existing MCP `runCommand`, redaction, truncation, JSON parsing, cwd resolution, missing-binary warnings, and aggregate counts.
+- **Acceptance:** New tools call existing CLI surfaces without unbounded output or throws; covered by `readonly-ops.test.ts`.
 
 ### Task 2: PR status and release readiness tools
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends:** Task 1
-- **Files:** `src/mcp/tools/*`, registry, server tests
-- **Steps:** Implement `wp_pr_status`, refactor/import public readiness checks where practical, and implement `wp_release_readiness` as read-only aggregation.
-- **Acceptance:** Agents get one structured status object for PR/check/release decisions.
+- **Files:** `src/mcp/tools/pr-status.ts`, `src/mcp/tools/release-readiness.ts`, registry, server tests
+- **Steps:** Implemented `wp_pr_status` over bounded `gh pr view`/`gh pr checks` and `wp_release_readiness` over existing package-surface, reference-parity, changeset, and public-readiness gates.
+- **Acceptance:** Agents get structured read-only status objects for PR/check/release decisions; missing binaries degrade with warnings.
 
 ### Task 3: Bench and gain tools
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends:** Task 1
-- **Files:** bench/gain MCP tools, registry, tests
-- **Steps:** Wrap `wp bench session-memory` with dry-run default and wrap existing gain reporting with summary output.
+- **Files:** `src/mcp/tools/bench.ts`, `src/mcp/tools/gain.ts`, registry, tests
+- **Steps:** Wrapped `wp bench session-memory` with dry-run default unless `mode: live` is explicit, and wrapped Webpresso/RTK gain reporting with bounded summary-first output.
 - **Acceptance:** Agents can collect benchmark and gain evidence without ad hoc shell parsing.
 
 ### Task 4: Routing and docs
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends:** Tasks 2, 3
-- **Files:** routing block, generated tool names, docs/tests
-- **Steps:** Advertise new read-only MCP tools, test tool listing, and document when shell remains appropriate.
-- **Acceptance:** Tool routing is explicit and does not overclaim MCP coverage.
+- **Files:** `src/hooks/shared/routing-block.ts`, `src/hooks/pretool-guard/dev-routing.ts`, generated-surface tests, server integration tests
+- **Steps:** Advertised `wp_pr_status`, `wp_bench`, `wp_gain`, and `wp_release_readiness`; routed raw `gh pr`, `rtk gain`, and release status scripts to structured MCP surfaces while leaving implementation commands as direct CLI fallbacks.
+- **Acceptance:** Tool routing is explicit and does not overclaim mutating coverage.
 
 ## Test Plan
 
@@ -128,7 +128,20 @@ type WpReleaseReadinessInput = ReadonlyOpsBase & {
 
 ## PR Acceptance Criteria
 
-- [ ] All new tools are read-only or explicit about dry-run/live behavior.
-- [ ] Missing external CLIs degrade with warnings, not crashes.
-- [ ] Outputs are bounded and summary-first.
-- [ ] Existing CLI behavior remains unchanged.
+- [x] All new tools are read-only or explicit about dry-run/live behavior.
+- [x] Missing external CLIs degrade with warnings, not crashes.
+- [x] Outputs are bounded and summary-first.
+- [x] Existing CLI behavior remains unchanged.
+
+## Implementation Evidence
+
+- Added `wp_pr_status`, `wp_bench`, `wp_gain`, and `wp_release_readiness` MCP tools plus the shared bounded `_readonly-ops` helper.
+- Registered all four tools in the compiled registry and server advertisement tests.
+- Updated routing guidance and pretool routing for PR status, RTK gain, and release-readiness commands.
+- Verification on 2026-06-20:
+  - `./bin/wp test --file src/mcp/tools/readonly-ops.test.ts --file src/mcp/tools/_registry.test.ts --file src/mcp/server.integration.test.ts --file src/hooks/pretool-guard/dev-routing.test.ts --file src/hooks/shared/routing-block.test.ts --file src/cli/commands/init/scaffold-agent-rules.test.ts --file src/cli/commands/init/scaffold-agents-md.test.ts --file src/cli/commands/init/scaffolders/opencode-plugin/index.test.ts`
+  - `vp run typecheck`
+  - `vp run lint`
+  - `./bin/wp audit tph`
+  - `./bin/wp audit blueprint-readme-drift`
+  - `./bin/wp audit blueprint-pr-coverage --base origin/main`
