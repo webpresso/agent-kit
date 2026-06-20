@@ -168,7 +168,7 @@ describe('renderAgentsMd', () => {
     )
     expect(rendered).toContain('wp_session_retrieve')
     expect(rendered).toContain(
-      'wp_test, wp_e2e, wp_lint, wp_typecheck, wp_qa, wp_audit, wp_ci_act, wp_worker_tail',
+      'wp_test, wp_e2e, wp_lint, wp_typecheck, wp_qa, wp_audit, wp_ci_act, wp_worker_tail, wp_pr_status, wp_bench, wp_gain, wp_release_readiness',
     )
   })
 

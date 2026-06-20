@@ -45,6 +45,10 @@ describe('instruction surface renderer', () => {
       'wp_audit',
       'wp_ci_act',
       'wp_worker_tail',
+      'wp_pr_status',
+      'wp_bench',
+      'wp_gain',
+      'wp_release_readiness',
     ])
   })
 

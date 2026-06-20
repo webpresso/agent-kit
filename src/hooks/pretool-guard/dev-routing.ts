@@ -130,6 +130,27 @@ const ROUTING_RULES: RoutingRule[] = [
     tool: 'wp_worker_tail',
   },
   {
+    prefixes: ['gh pr view', 'gh pr checks', 'gh pr status'],
+    guidanceType: 'qa',
+    guidance:
+      'Use wp_pr_status MCP tool instead — PR/check/review status is bounded, structured, and read-only',
+    tool: 'wp_pr_status',
+  },
+  {
+    prefixes: ['rtk gain'],
+    guidanceType: 'qa',
+    guidance:
+      'Use wp_gain MCP tool instead — gain totals are bounded and structured; use source="rtk" for RTK totals',
+    tool: 'wp_gain',
+  },
+  {
+    prefixes: ['vp run public:readiness', 'vp run changeset:status'],
+    guidanceType: 'qa',
+    guidance:
+      'Use wp_release_readiness MCP tool instead — release gates are aggregated without publishing, tagging, versioning, or merging',
+    tool: 'wp_release_readiness',
+  },
+  {
     prefixes: [
       'act',
       'with-secrets -- act',

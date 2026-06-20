@@ -2,11 +2,15 @@ import type { ToolDescriptor } from '#mcp/auto-discover'
 
 import audit from './audit.js'
 import audits from './audits.js'
+import bench from './bench.js'
 import ciAct from './ci-act.js'
 import e2e from './e2e.js'
 import format from './format.js'
+import gain from './gain.js'
 import lint from './lint.js'
+import prStatus from './pr-status.js'
 import qa from './qa.js'
+import releaseReadiness from './release-readiness.js'
 import sessionBatchExecute from './session-batch-execute.js'
 import sessionCapture from './session-capture.js'
 import sessionDoctor from './session-doctor.js'
@@ -27,11 +31,15 @@ import workerTail from './worker-tail.js'
 export const COMPILED_TOOL_REGISTRY: readonly ToolDescriptor[] = [
   audit,
   audits,
+  bench,
   ciAct,
   e2e,
   format,
+  gain,
   lint,
+  prStatus,
   qa,
+  releaseReadiness,
   sessionBatchExecute,
   sessionCapture,
   sessionDoctor,
