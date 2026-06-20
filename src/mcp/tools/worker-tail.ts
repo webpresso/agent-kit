@@ -76,6 +76,8 @@ const tool: ToolDescriptor = {
   outputSchema,
   annotations: {
     title: 'Worker tail',
+    readOnlyHint: false,
+    idempotentHint: false,
     destructiveHint: false,
     openWorldHint: false,
   },

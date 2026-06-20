@@ -9,7 +9,7 @@
 
 import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { basename } from 'node:path'
+import { basename, isAbsolute, relative, resolve } from 'node:path'
 
 import { z } from 'zod'
 
@@ -25,7 +25,7 @@ import {
 import { deriveRepoNamespace, resolveWorktreeRoot } from '#worktrees/location.js'
 import { readRepoOriginUrl, repoManagedRoot } from '#worktrees/manager.js'
 import {
-  pruneStaleWorktreeRegistryEntries,
+  readWorktreeRegistry,
   removeWorktreeRegistryEntries,
   upsertWorktreeRegistryEntry,
 } from '#worktrees/registry.js'
@@ -73,6 +73,13 @@ const outputSchema = z.object({
 })
 
 type WpWorktreePayload = z.infer<typeof outputSchema>
+
+interface ManagedWorktreeContext {
+  readonly repoNamespace: string
+  readonly repoRoot: string
+  readonly originUrl: string | null
+  readonly managedRoot: string
+}
 
 function result(payload: WpWorktreePayload, isError = !payload.passed) {
   return {
@@ -124,13 +131,32 @@ function isDirty(path: string): boolean {
   return String(status.stdout ?? '').trim().length > 0
 }
 
-function refreshManagedEntries(repoRoot: string): number {
+function managedContext(repoRoot: string): ManagedWorktreeContext {
   const originUrl = readRepoOriginUrl(repoRoot)
   const repoNamespace = deriveRepoNamespace({ repoRoot, originUrl })
   const managedRoot = resolveWorktreeRoot(repoRoot, { originUrl })
+  return { repoNamespace, repoRoot, originUrl, managedRoot }
+}
+
+function isPathInside(parent: string, child: string): boolean {
+  const rel = relative(resolve(parent), resolve(child))
+  return rel === '' || (!!rel && !rel.startsWith('..') && !isAbsolute(rel))
+}
+
+function isRegisteredManagedWorktree(resolvedPath: string, context: ManagedWorktreeContext): boolean {
+  return readWorktreeRegistry().entries.some(
+    (entry) =>
+      entry.repoNamespace === context.repoNamespace &&
+      entry.repoRoot === context.repoRoot &&
+      resolve(entry.path) === resolve(resolvedPath),
+  )
+}
+
+function refreshManagedEntries(repoRoot: string): number {
+  const { originUrl, repoNamespace, managedRoot } = managedContext(repoRoot)
   let updated = 0
   for (const entry of listEntries(repoRoot)) {
-    if (!entry.path.startsWith(`${managedRoot}/`)) continue
+    if (!isPathInside(managedRoot, entry.path)) continue
     upsertWorktreeRegistryEntry({
       id: `git-${repoNamespace}-${basename(entry.path)}`,
       repoNamespace,
@@ -252,7 +278,7 @@ function handleRemove(input: WpWorktreeInput, repoRoot: string): WpWorktreePaylo
   }
 
   const entry = entries.find((candidate) => candidate.path === resolved)
-  const managedRoot = repoManagedRoot(repoRoot)
+  const context = managedContext(repoRoot)
   if (resolved === repoRoot) {
     return {
       passed: false,
@@ -262,14 +288,15 @@ function handleRemove(input: WpWorktreeInput, repoRoot: string): WpWorktreePaylo
       warnings: ['main_checkout_protected'],
     }
   }
-  if (!resolved.startsWith(`${managedRoot}/`)) {
+  if (!isRegisteredManagedWorktree(resolved, context)) {
     return {
       passed: false,
-      summary: `wp_worktree remove refused: ${resolved} is not under the managed worktree root`,
+      summary: `wp_worktree remove refused: ${resolved} is not a registered managed worktree for this repository`,
       action: input.action,
       executed: false,
-      warnings: ['unmanaged_worktree'],
-      nextAction: 'Remove unmanaged worktrees manually with git after confirming the target path is safe.',
+      warnings: ['unmanaged_worktree_protected'],
+      nextAction:
+        'Run wp_worktree refresh with execute:true to register managed worktrees, or use git worktree directly after manual review.',
     }
   }
   if (entry?.locked) {
@@ -393,12 +420,13 @@ const tool: ToolDescriptor = {
         }, false)
       }
 
-      const pruned = pruneStaleWorktreeRegistryEntries({
-        predicate: (entry) => entry.repoRoot === repoRoot,
-      })
+      const context = managedContext(repoRoot)
+      const pruned = removeWorktreeRegistryEntries(
+        (entry) => entry.repoNamespace === context.repoNamespace && !existsSync(entry.path),
+      )
       return result({
         passed: true,
-        summary: `Pruned ${pruned.removed.length} stale managed registry entr${pruned.removed.length === 1 ? 'y' : 'ies'}`,
+        summary: `Pruned ${pruned.length} stale managed registry entr${pruned.length === 1 ? 'y' : 'ies'}`,
         action: input.action,
         executed: true,
         warnings: [],
