@@ -77,7 +77,7 @@ export async function syncCodexHookTrustWithAppServer(
 
   try {
     await api.configBatchWrite({
-      edits: [{ keyPath: 'config.hooks.state', value: state, mergeStrategy: 'upsert' }],
+      edits: [{ keyPath: 'hooks.state', value: state, mergeStrategy: 'upsert' }],
       filePath: configFilePath,
       reloadUserConfig: true,
     })

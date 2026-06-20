@@ -80,7 +80,7 @@ describe('syncCodexHookTrustWithAppServer', () => {
       {
         edits: [
           {
-            keyPath: 'config.hooks.state',
+            keyPath: 'hooks.state',
             value: {
               [ownedHook.key]: { enabled: true, trusted_hash: 'sha256:abc123' },
             },

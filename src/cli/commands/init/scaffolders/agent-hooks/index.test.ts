@@ -656,7 +656,7 @@ describe('scaffoldAgentHooks', () => {
       {
         edits: [
           {
-            keyPath: 'config.hooks.state',
+            keyPath: 'hooks.state',
             value: {
               [`${hooksPath}:pre_tool_use:0:0`]: { enabled: true, trusted_hash: 'sha256:abc123' },
             },
@@ -931,7 +931,7 @@ describe('scaffoldAgentHooks', () => {
       {
         edits: [
           {
-            keyPath: 'config.hooks.state',
+            keyPath: 'hooks.state',
             value: {
               [`${globalHooksPath}:pre_tool_use:1:0`]: {
                 enabled: true,
