@@ -196,7 +196,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
     })
 
     it('baseline: wp setup scaffolds the agent surface and exits 0 without needing --yes', () => {
-      const r = runAk(['setup', '--cwd', repo], {
+      const r = runAk(['setup', '--project-init', '--cwd', repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
       })
@@ -295,7 +295,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
     })
 
     it('bootstrap: --with base-kit on an empty repo creates docs/hooks/scripts/act/test/e2e/ci scaffolds', () => {
-      const r = runAk(['setup', '--yes', '--with', 'base-kit', '--cwd', repo], {
+      const r = runAk(['setup', '--yes', '--project-init', '--with', 'base-kit', '--cwd', repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
         WP_SKIP_GSTACK: '1',
@@ -342,7 +342,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
     })
 
     it('--project + fake omx on PATH: chains project-scoped omx setup', () => {
-      const r = runAk(['setup', '--yes', '--with', 'omx', '--project', '--cwd', repo], {
+      const r = runAk(['setup', '--yes', '--project-init', '--with', 'omx', '--project', '--cwd', repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
       })
@@ -352,7 +352,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
     })
 
     it('--with omx re-applies agent hooks after omx rewrites codex hooks back to relative commands', () => {
-      const r = runAk(['setup', '--yes', '--with', 'omx', '--cwd', repo], {
+      const r = runAk(['setup', '--yes', '--project-init', '--with', 'omx', '--cwd', repo], {
         PATH: makeRewritingOmxPath(repo),
         HOME: fakeHome,
       })
@@ -436,7 +436,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
     })
 
     it('--with gstack + fake HOME with gstack pre-installed: exits 0, "updated"', () => {
-      const r = runAk(['setup', '--yes', '--with', 'gstack', '--cwd', repo], {
+      const r = runAk(['setup', '--yes', '--project-init', '--with', 'gstack', '--cwd', repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
       })
@@ -449,7 +449,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       mkdirSync(path.join(fakeHome, '.codex'), { recursive: true })
       writeFileSync(path.join(fakeHome, '.codex', 'config.toml'), 'model = "gpt-5.4"\n')
 
-      const r = runAk(['setup', '--yes', '--with', 'gstack', '--cwd', repo], {
+      const r = runAk(['setup', '--yes', '--project-init', '--with', 'gstack', '--cwd', repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
       })
@@ -465,7 +465,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       '--with omx,gstack combined: both presets execute against fixtures',
       { timeout: 20_000 },
       () => {
-        const r = runAk(['setup', '--yes', '--with', 'omx,gstack', '--cwd', repo], {
+        const r = runAk(['setup', '--yes', '--project-init', '--with', 'omx,gstack', '--cwd', repo], {
           PATH: pathWithFakeOmxOk(),
           HOME: fakeHome,
         })
@@ -479,7 +479,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       'presets run independently: omx failure does NOT skip gstack, exit code reflects partial failure',
       { timeout: 20_000 },
       () => {
-        const r = runAk(['setup', '--yes', '--with', 'omx,gstack', '--cwd', repo], {
+        const r = runAk(['setup', '--yes', '--project-init', '--with', 'omx,gstack', '--cwd', repo], {
           PATH: pathWithoutOmx(),
           HOME: fakeHome,
         })
@@ -517,7 +517,15 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
     })
 
     it('rejects unknown --with values with exit code 1', () => {
-      const r = runAk(['setup', '--yes', '--with', 'definitely-not-a-skill', '--cwd', repo])
+      const r = runAk([
+        'setup',
+        '--yes',
+        '--project-init',
+        '--with',
+        'definitely-not-a-skill',
+        '--cwd',
+        repo,
+      ])
       expect(r.code).toBe(1)
     })
 
