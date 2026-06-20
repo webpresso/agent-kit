@@ -1294,6 +1294,24 @@ describe('validateForbiddenCommands — wp audit + guard config routing', () => 
     expect(String(result.message)).toContain('wp_audit(kind="catalog-drift")')
   })
 
+  it('redirects `wp audit guardrails` to the wp_audits preset', () => {
+    setRepoConfig(undefined)
+    const result = validateForbiddenCommands(bashInput('wp audit guardrails'))
+    expect(result.passed).toBe(false)
+    expect(String(result.message)).toContain('wp_audits(preset="guardrails")')
+  })
+
+  it('redirects chained known audits to wp_audits kinds', () => {
+    setRepoConfig(undefined)
+    const result = validateForbiddenCommands(
+      bashInput('wp audit catalog-drift && wp audit blueprint-readme-drift'),
+    )
+    expect(result.passed).toBe(false)
+    expect(String(result.message)).toContain(
+      'wp_audits(kinds=["catalog-drift", "blueprint-readme-drift"])',
+    )
+  })
+
   it('does not redirect `wp audit <unknown-kind>`', () => {
     setRepoConfig(undefined)
     const result = validateForbiddenCommands(bashInput('wp audit not-a-real-kind'))

@@ -90,8 +90,10 @@ describe('WP_ROUTING_BLOCK', () => {
     expect(WP_ROUTING_BLOCK).toContain('wp_qa')
   })
 
-  it('mentions wp_audit MCP tool', () => {
+  it('mentions wp_audit and wp_audits MCP tools', () => {
     expect(WP_ROUTING_BLOCK).toContain('wp_audit')
+    expect(WP_ROUTING_BLOCK).toContain('wp_audits')
+    expect(WP_ROUTING_BLOCK).toContain('multiple audits')
   })
 
   it('routes local act and Worker tail commands to shipped MCP tool names', () => {

@@ -597,14 +597,30 @@ function guardRedirect(message: string): ValidationResult {
   return { validator: VALIDATOR_NAME, passed: false, message }
 }
 
-/** `wp audit <kind>` (CLI) → `wp_audit(kind=...)` (MCP). Generic; not gated on config. */
+/** `wp audit <kind>` (CLI) → MCP audit tools. Generic; not gated on config. */
 function findWpAuditRedirect(command: string): string | undefined {
+  const knownKinds: string[] = []
+  let firstKnownVariant: string | undefined
+
   for (const variant of getCommandVariants(command)) {
     const kind = WP_AUDIT_RE.exec(variant)?.[1]
-    if (kind && AUDIT_KIND_SET.has(kind)) {
-      return `"${variant}" denied — use the MCP audit tool: mcp__webpresso__wp_audit(kind="${kind}"). Returns structured, summary-first results.`
+    if (kind === 'guardrails') {
+      return `"${variant}" denied — use the MCP batch audit tool: mcp__webpresso__wp_audits(preset="guardrails"). Returns aggregate structured, summary-first results.`
     }
+    if (!kind || !AUDIT_KIND_SET.has(kind)) continue
+    if (!firstKnownVariant) firstKnownVariant = variant
+    if (!knownKinds.includes(kind)) knownKinds.push(kind)
   }
+
+  if (knownKinds.length > 1) {
+    return `Multiple wp audit commands denied — use the MCP batch audit tool: mcp__webpresso__wp_audits(kinds=[${knownKinds.map((kind) => `"${kind}"`).join(', ')}]). Returns aggregate structured, summary-first results.`
+  }
+
+  const kind = knownKinds[0]
+  if (kind && firstKnownVariant) {
+    return `"${firstKnownVariant}" denied — use the MCP audit tool: mcp__webpresso__wp_audit(kind="${kind}"). Returns structured, summary-first results.`
+  }
+
   return undefined
 }
 

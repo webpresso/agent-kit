@@ -6,7 +6,7 @@ status: planned
 complexity: M
 created: "2026-06-19"
 last_updated: "2026-06-19"
-progress: "0% (planned; blueprint-only PR)"
+progress: "implemented (3/3 tasks done, 0 blocked) — wp_audits batch MCP surface"
 tags:
   - mcp
   - audit
@@ -39,7 +39,7 @@ Claude review found that the original combined MCP productivity plan was too bro
 
 ## Public MCP Contract
 
-Preferred implementation is to evolve the existing `wp_audit` contract to accept one-or-many audit kinds if that can be done without breaking current callers. If that would create compatibility risk, add `wp_audits` as a separate batch tool and keep `wp_audit` as a single-kind wrapper.
+Implementation adds `wp_audits` as a separate batch tool and keeps `wp_audit` as the single-kind wrapper. The existing `wp_audit` dispatcher is exported as shared dispatch so single and batch behavior use the same audit implementations.
 
 Batch input:
 
@@ -99,7 +99,7 @@ Partial-failure contract:
 
 ### Task 1: Shared audit dispatch contract
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends:** None
 - **Files:** `src/mcp/tools/audit.ts`, `src/cli/commands/audit-core.ts`, shared audit dispatch module if needed
 - **Steps:** Add regression tests for current `wp_audit`, extract shared dispatch without changing output, and run targeted audit/MCP tests.
@@ -107,7 +107,7 @@ Partial-failure contract:
 
 ### Task 2: Batch audit MCP behavior
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends:** Task 1
 - **Files:** `src/mcp/tools/audit*.ts`, `src/mcp/tools/_registry.ts`, MCP server tests
 - **Steps:** Implement one-or-many input or `wp_audits`, add output schema, and cover pass, partial failure, crash, invalid input, explicit kinds, presets, and ordering.
@@ -115,7 +115,7 @@ Partial-failure contract:
 
 ### Task 3: Agent routing and pretool redirects
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends:** Task 2
 - **Files:** routing block, pretool guard validators/tests, wrapped `wp` hints
 - **Steps:** Route chained audit commands and `wp audit guardrails` to the batch surface while keeping single audit commands on single-audit usage.
@@ -131,7 +131,15 @@ Partial-failure contract:
 
 ## PR Acceptance Criteria
 
-- [ ] Blueprint remains current with the implemented API choice.
-- [ ] Batch audit behavior is deterministic and summary-first.
-- [ ] Partial failures and crashes are represented in structured results.
-- [ ] Routing guidance reduces repeated single-audit MCP calls.
+- [x] Blueprint remains current with the implemented API choice.
+- [x] Batch audit behavior is deterministic and summary-first.
+- [x] Partial failures and crashes are represented in structured results.
+- [x] Routing guidance reduces repeated single-audit MCP calls.
+
+
+## Implementation Evidence
+
+- Added `wp_audits` MCP tool with explicit `kinds` or `preset` input, deterministic de-duplication, ordered results, partial-failure aggregation, and per-audit crash entries.
+- Kept `wp_audit` single-kind compatible by exporting its dispatcher instead of changing its input contract.
+- Registered `wp_audits` in the compiled MCP registry and server advertisement tests.
+- Verification run: `./bin/wp test --file src/mcp/tools/audits.test.ts --file src/mcp/tools/audit.test.ts --file src/mcp/server.integration.test.ts`; `vp run typecheck`; `vp run lint`; `./bin/wp audit tph`; `./bin/wp audit blueprint-readme-drift`; `./bin/wp audit blueprint-pr-coverage --base origin/main`.
