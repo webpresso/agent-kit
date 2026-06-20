@@ -112,3 +112,8 @@ Rules:
 - Updated benchmark preflight/readme docs to distinguish isolated API-key proof mode from local CLI-login smoke mode.
 - Verification run: `./bin/wp test --file scripts/bench/lib/variant-runner.test.ts --file src/cli/commands/bench/session-memory.test.ts`; plus final branch typecheck/lint/audits before commit.
 - G007/G010 review follow-up removed generic standalone `max`/`pro` text from the CLI-login heuristic and preserves a diagnostic `failure_reason` when `claude auth status` exits 0 with unrecognized output, so transient error text is not treated as a logged-in first-party session.
+
+### G011 final-review follow-up (2026-06-20)
+
+- `BENCH_AUTH_MODE=claude-login` now strips ambient `ANTHROPIC_API_KEY`, `CLAUDE_API_KEY`, and variant-specific Claude API-key environment variables before spawning `claude auth status` or `claude --print`, ensuring local first-party CLI-login cells cannot silently fall back to inherited API-key auth.
+- Regression coverage: `scripts/bench/lib/variant-runner.test.ts`.

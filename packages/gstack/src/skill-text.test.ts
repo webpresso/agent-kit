@@ -15,4 +15,15 @@ describe('@repo/gstack skill text contract', () => {
       expect(content).not.toMatch(/browse\/dist|design\/dist|make-pdf\/dist|playwright|puppeteer|ngrok|html-to-docx/i)
     }
   })
+
+  it('recognizes Claude first-party auth only from explicit truthy auth fields', () => {
+    const claudeSkill = readFileSync(
+      path.resolve(import.meta.dirname, '../skills/claude.md'),
+      'utf8',
+    )
+
+    expect(claudeSkill).toContain('"(authenticated|loggedIn|success)"')
+    expect(claudeSkill).not.toContain('|claude\\.ai')
+    expect(claudeSkill).not.toMatch(/claude\\.ai'?[[:space:]]*\\|/)
+  })
 })

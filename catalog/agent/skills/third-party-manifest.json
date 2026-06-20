@@ -31,35 +31,35 @@
       "license": "MIT",
       "upstream": "https://github.com/garrytan/gstack",
       "lastSynced": "2026-06-19",
-      "notes": "Manually curated Webpresso-owned derived workflow skill; see packages/gstack provenance and NOTICE."
+      "notes": "Manually curated Webpresso-owned derived workflow skill; provenance summary ships in THIRD-PARTY-NOTICES.md."
     },
     {
       "slug": "plan-eng-review",
       "license": "MIT",
       "upstream": "https://github.com/garrytan/gstack",
       "lastSynced": "2026-06-19",
-      "notes": "Manually curated Webpresso-owned derived workflow skill; see packages/gstack provenance and NOTICE."
+      "notes": "Manually curated Webpresso-owned derived workflow skill; provenance summary ships in THIRD-PARTY-NOTICES.md."
     },
     {
       "slug": "plan-ceo-review",
       "license": "MIT",
       "upstream": "https://github.com/garrytan/gstack",
       "lastSynced": "2026-06-19",
-      "notes": "Manually curated Webpresso-owned derived workflow skill; see packages/gstack provenance and NOTICE."
+      "notes": "Manually curated Webpresso-owned derived workflow skill; provenance summary ships in THIRD-PARTY-NOTICES.md."
     },
     {
       "slug": "plan-design-review",
       "license": "MIT",
       "upstream": "https://github.com/garrytan/gstack",
       "lastSynced": "2026-06-19",
-      "notes": "Manually curated Webpresso-owned derived workflow skill; see packages/gstack provenance and NOTICE."
+      "notes": "Manually curated Webpresso-owned derived workflow skill; provenance summary ships in THIRD-PARTY-NOTICES.md."
     },
     {
       "slug": "review",
       "license": "MIT",
       "upstream": "https://github.com/garrytan/gstack",
       "lastSynced": "2026-06-19",
-      "notes": "Manually curated Webpresso-owned derived workflow skill; see packages/gstack provenance and NOTICE."
+      "notes": "Manually curated Webpresso-owned derived workflow skill; provenance summary ships in THIRD-PARTY-NOTICES.md."
     }
   ]
 }

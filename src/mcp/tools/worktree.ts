@@ -252,6 +252,7 @@ function handleRemove(input: WpWorktreeInput, repoRoot: string): WpWorktreePaylo
   }
 
   const entry = entries.find((candidate) => candidate.path === resolved)
+  const managedRoot = repoManagedRoot(repoRoot)
   if (resolved === repoRoot) {
     return {
       passed: false,
@@ -259,6 +260,16 @@ function handleRemove(input: WpWorktreeInput, repoRoot: string): WpWorktreePaylo
       action: input.action,
       executed: false,
       warnings: ['main_checkout_protected'],
+    }
+  }
+  if (!resolved.startsWith(`${managedRoot}/`)) {
+    return {
+      passed: false,
+      summary: `wp_worktree remove refused: ${resolved} is not under the managed worktree root`,
+      action: input.action,
+      executed: false,
+      warnings: ['unmanaged_worktree'],
+      nextAction: 'Remove unmanaged worktrees manually with git after confirming the target path is safe.',
     }
   }
   if (entry?.locked) {
@@ -382,7 +393,9 @@ const tool: ToolDescriptor = {
         }, false)
       }
 
-      const pruned = pruneStaleWorktreeRegistryEntries()
+      const pruned = pruneStaleWorktreeRegistryEntries({
+        predicate: (entry) => entry.repoRoot === repoRoot,
+      })
       return result({
         passed: true,
         summary: `Pruned ${pruned.removed.length} stale managed registry entr${pruned.removed.length === 1 ? 'y' : 'ies'}`,

@@ -32,6 +32,10 @@ export interface RegistryOptions {
   readonly now?: () => string
 }
 
+export interface PruneStaleWorktreeRegistryOptions extends RegistryOptions {
+  readonly predicate?: (entry: ManagedWorktreeEntry) => boolean
+}
+
 function registryPath(root = resolveManagedWorktreeRoot()): string {
   return join(root, 'registry.json')
 }
@@ -123,13 +127,15 @@ export function removeWorktreeRegistryEntries(
   return removed
 }
 
-export function pruneStaleWorktreeRegistryEntries(options: RegistryOptions = {}): {
+export function pruneStaleWorktreeRegistryEntries(options: PruneStaleWorktreeRegistryOptions = {}): {
   kept: ManagedWorktreeEntry[]
   removed: ManagedWorktreeEntry[]
 } {
   const registry = readWorktreeRegistry(options)
-  const kept = registry.entries.filter((entry) => existsSync(entry.path))
-  const removed = registry.entries.filter((entry) => !existsSync(entry.path))
+  const shouldPrune = (entry: ManagedWorktreeEntry): boolean =>
+    !existsSync(entry.path) && (options.predicate?.(entry) ?? true)
+  const kept = registry.entries.filter((entry) => !shouldPrune(entry))
+  const removed = registry.entries.filter(shouldPrune)
   if (removed.length > 0) writeWorktreeRegistry({ version: 1, entries: kept }, options)
   return { kept, removed }
 }

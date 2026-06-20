@@ -59,4 +59,4 @@ This file is an engineering attribution inventory, not legal advice.
 
 This package includes Webpresso-owned, manually curated workflow skill assets derived from ideas in the MIT-licensed gstack project by Garry Tan and contributors: https://github.com/garrytan/gstack
 
-The curated assets are small Markdown-only skill sources. Upstream binaries, generated host directories, dependency payloads, and heavyweight runtime surfaces are intentionally excluded. Detailed provenance lives in `packages/gstack/provenance/upstream-gstack.json`; the private source notice lives in `packages/gstack/NOTICE.gstack.md`.
+The curated assets are small Markdown-only skill sources. Upstream binaries, generated host directories, dependency payloads, and heavyweight runtime surfaces are intentionally excluded. Public provenance is summarized in this notice and the machine-readable third-party manifest shipped with the package.

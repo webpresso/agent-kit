@@ -24,7 +24,7 @@ vi.mock('#cli/utils', async (importOriginal) => {
 
 vi.mock('#worktrees/manager.js', () => ({
   readRepoOriginUrl: () => 'https://github.com/webpresso/agent-kit.git',
-  repoManagedRoot: () => '/home/alice/.agent/worktrees/repos/github.com-webpresso-agent-kit-hash',
+  repoManagedRoot: () => '/home/alice/.agent/worktrees/repos/github.com-webpresso-agent-kit-abc',
 }))
 
 vi.mock('#worktrees/registry.js', () => ({
@@ -43,6 +43,15 @@ const PORCELAIN = [
   'worktree /home/alice/.agent/worktrees/repos/github.com-webpresso-agent-kit-abc/feat-auth',
   'HEAD bbbbbbb',
   'branch refs/heads/feat/auth',
+  '',
+].join('\n')
+
+const PORCELAIN_WITH_UNMANAGED = [
+  PORCELAIN,
+  '',
+  'worktree /tmp/manual-agent-kit-worktree',
+  'HEAD ccccccc',
+  'branch refs/heads/feat/manual',
   '',
 ].join('\n')
 
@@ -198,5 +207,45 @@ describe('wp_worktree tool', () => {
       },
     })
     expect(removeRegistryMock).toHaveBeenCalledOnce()
+  })
+
+  it('refuses to remove unmanaged worktrees even when they are clean git worktrees', async () => {
+    execFileSyncMock.mockReturnValue(PORCELAIN_WITH_UNMANAGED)
+    spawnSyncMock.mockReturnValue(spawnResult(0, ''))
+
+    const result = await wpWorktreeTool.handler({
+      action: 'remove',
+      branch: 'feat/manual',
+      execute: true,
+    })
+
+    expect(payload(result)).toMatchObject({
+      passed: false,
+      action: 'remove',
+      executed: false,
+      warnings: ['unmanaged_worktree'],
+    })
+    expect(spawnSyncMock).not.toHaveBeenCalledWith(
+      'git',
+      ['worktree', 'remove', '/tmp/manual-agent-kit-worktree'],
+      expect.anything(),
+    )
+    expect(removeRegistryMock).not.toHaveBeenCalled()
+  })
+
+  it('scopes registry pruning to the current repository', async () => {
+    pruneMock.mockReturnValue({ kept: [], removed: [] })
+
+    const result = await wpWorktreeTool.handler({ action: 'prune', execute: true })
+    const pruneOptions = pruneMock.mock.calls[0]?.[0] as { predicate?: (entry: { repoRoot: string }) => boolean }
+
+    expect(payload(result)).toMatchObject({
+      passed: true,
+      action: 'prune',
+      executed: true,
+    })
+    expect(pruneMock).toHaveBeenCalledOnce()
+    expect(pruneOptions.predicate?.({ repoRoot: '/repo/main' })).toBe(true)
+    expect(pruneOptions.predicate?.({ repoRoot: '/other/repo' })).toBe(false)
   })
 })

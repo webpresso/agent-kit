@@ -244,8 +244,14 @@ describe('variant-runner', () => {
   it('uses claude auth status and the logged-in Claude home for explicit claude-login auth mode', async () => {
     const originalAuthMode = process.env.BENCH_AUTH_MODE
     const originalBenchClaudeHome = process.env.BENCH_CLAUDE_HOME
+    const originalAnthropicApiKey = process.env.ANTHROPIC_API_KEY
+    const originalClaudeApiKey = process.env.CLAUDE_API_KEY
+    const originalVariantApiKey = process.env.ANTHROPIC_API_KEY_BASELINE
     process.env.BENCH_AUTH_MODE = 'claude-login'
     process.env.BENCH_CLAUDE_HOME = '/tmp/logged-in-claude-home'
+    process.env.ANTHROPIC_API_KEY = 'ambient-anthropic-secret'
+    process.env.CLAUDE_API_KEY = 'ambient-claude-secret'
+    process.env.ANTHROPIC_API_KEY_BASELINE = 'ambient-variant-secret'
 
     const seenCommands: string[][] = []
     let seenEnv: Record<string, string> | null = null
@@ -299,6 +305,12 @@ describe('variant-runner', () => {
       else process.env.BENCH_AUTH_MODE = originalAuthMode
       if (originalBenchClaudeHome === undefined) delete process.env.BENCH_CLAUDE_HOME
       else process.env.BENCH_CLAUDE_HOME = originalBenchClaudeHome
+      if (originalAnthropicApiKey === undefined) delete process.env.ANTHROPIC_API_KEY
+      else process.env.ANTHROPIC_API_KEY = originalAnthropicApiKey
+      if (originalClaudeApiKey === undefined) delete process.env.CLAUDE_API_KEY
+      else process.env.CLAUDE_API_KEY = originalClaudeApiKey
+      if (originalVariantApiKey === undefined) delete process.env.ANTHROPIC_API_KEY_BASELINE
+      else process.env.ANTHROPIC_API_KEY_BASELINE = originalVariantApiKey
     }
 
     expect(result!.ok).toBe(true)
@@ -308,6 +320,8 @@ describe('variant-runner', () => {
     ])
     expect(seenEnv?.HOME).toBe('/tmp/logged-in-claude-home')
     expect(seenEnv?.ANTHROPIC_API_KEY).toBeUndefined()
+    expect(seenEnv?.CLAUDE_API_KEY).toBeUndefined()
+    expect(seenEnv?.ANTHROPIC_API_KEY_BASELINE).toBeUndefined()
   })
 
   it('parses first-party Claude CLI auth status without an API key', () => {

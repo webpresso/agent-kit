@@ -118,6 +118,24 @@ function resolveCodexAuth(
   }
 }
 
+function inheritedProcessEnv(): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(process.env).filter(
+      (entry): entry is [string, string] => typeof entry[1] === 'string',
+    ),
+  )
+}
+
+function withoutClaudeApiKeyEnv(env: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(env).filter(([key]) => {
+      if (key === 'ANTHROPIC_API_KEY' || key === 'CLAUDE_API_KEY') return false
+      if (/^(?:ANTHROPIC|CLAUDE)_API_KEY_/u.test(key)) return false
+      return true
+    }),
+  )
+}
+
 async function spawnWithBun(
   cmd: string[],
   options: {
@@ -317,12 +335,11 @@ export async function runCell(input: RunCellInput): Promise<RunResult> {
 
   const auth =
     provider === 'codex' ? resolveCodexAuth(input, homeDir) : resolveClaudeAuth(input, homeDir)
+  const baseEnv = inheritedProcessEnv()
   const env = {
-    ...Object.fromEntries(
-      Object.entries(process.env).filter(
-        (entry): entry is [string, string] => typeof entry[1] === 'string',
-      ),
-    ),
+    ...(provider === 'claude' && auth.mode === 'claude-login'
+      ? withoutClaudeApiKeyEnv(baseEnv)
+      : baseEnv),
     HOME: auth.homeDir,
     ...auth.env,
   }
