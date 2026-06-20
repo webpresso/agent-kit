@@ -122,11 +122,9 @@ export async function runCiActCommand(
 
   const result = await (deps.run ?? runSecretGateCommand)({
     cwd,
-    sink: 'act',
-    envProfile: options.envProfile,
-    secretEnvProfile: options.secretEnvProfile,
-    command: 'act',
-    args: command.actArgs,
+    envProfile: 'none',
+    command: command.command,
+    args: command.args,
     timeoutMs: normalizeCiActTimeoutMs(options.timeoutMs),
   })
   const stdout = redactText(result.stdout) ?? ''
