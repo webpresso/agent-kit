@@ -20,6 +20,7 @@ export interface PublicCiActOptions {
   readonly eventName?: CiActEventName
   readonly eventPath?: string
   readonly envProfile?: string
+  readonly secretEnvProfile?: string
   readonly secretProfile?: string
   readonly mode?: CiActExecutionMode
   readonly containerArchitecture?: string
@@ -161,6 +162,11 @@ export function preparePublicCiActExecution(
 }
 
 export function resolveCiActSecretEnvProfile(options: PublicCiActOptions = {}): string | undefined {
+  const secretEnvProfile = options.secretEnvProfile?.trim()
+  if (secretEnvProfile) {
+    return secretEnvProfile
+  }
+
   const secretProfile = options.secretProfile?.trim()
   if (secretProfile) {
     return resolveSecretsConfigProfileEnvironment(secretProfile, options.cwd)
