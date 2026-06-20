@@ -26,11 +26,11 @@ const BANNED_PATH_PATTERNS: ReadonlyArray<{
   readonly message: string
 }> = [
   {
-    pattern: /(^|\/)act-with-webpresso\.[^.\/]+$/u,
+    pattern: /(^|\/)act-with-webpresso\.[^./]+$/u,
     message: 'delete local act-with-webpresso clones; use `wp ci act`',
   },
   {
-    pattern: /(^|\/)act-secret-profile\.[^.\/]+$/u,
+    pattern: /(^|\/)act-secret-profile\.[^./]+$/u,
     message: 'delete local act-secret-profile clones; use repo-owned .webpresso/secrets.config.json profiles',
   },
 ]
