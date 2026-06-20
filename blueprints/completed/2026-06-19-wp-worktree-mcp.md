@@ -143,3 +143,9 @@ Verification evidence:
 - `vp run lint` → passed
 - `./bin/wp audit tph` → passed
 - `vp run blueprints:check` → passed
+
+### G011 final-review follow-up (2026-06-20)
+
+- `wp_worktree remove` now refuses clean-but-unmanaged git worktrees outside the repo-managed worktree root; users must remove unmanaged paths manually after inspecting safety.
+- `wp_worktree prune` now scopes stale registry cleanup to entries for the current repository instead of pruning unrelated registry entries globally.
+- Regression coverage: `src/mcp/tools/worktree.test.ts`.

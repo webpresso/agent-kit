@@ -94,6 +94,7 @@ export function normalizeCommandOutcome(
   }
 
   const combined = redactText([outcome.stdout, outcome.stderr].filter(Boolean).join('\n'))
+  const redactedStdout = redactText(outcome.stdout) ?? ''
   const clipped = clipRawOutput(combined, options.maxOutputBytes, {
     toolName: `wp_${id}`,
     persistOverflow: false,
@@ -110,13 +111,20 @@ export function normalizeCommandOutcome(
 
   if (options.parseJson && outcome.exitCode === 0) {
     try {
-      const parsed = parseJsonObject(outcome.stdout)
+      const clippedJson = clipRawOutput(redactedStdout, options.maxOutputBytes, {
+        toolName: `wp_${id}_details`,
+        persistOverflow: false,
+      })
+      const parsed = parseJsonObject(clippedJson.rawOutput ?? redactedStdout)
       return parsed ? { ...result, details: parsed } : result
     } catch (error) {
       return {
         ...result,
         passed: false,
-        warnings: [`could not parse JSON output from ${command.command}: ${(error as Error).message}`],
+        warnings: [
+          ...(result.warnings ?? []),
+          `could not parse JSON output from ${command.command}: ${(error as Error).message}`,
+        ],
       }
     }
   }

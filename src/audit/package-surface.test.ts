@@ -122,6 +122,19 @@ describe('package-surface audit', () => {
     expect(pkg.tshy?.exports?.['./wp-extension']).toBe('./src/wp-extension/index.ts')
   })
 
+  test('public gstack attribution does not point package consumers to private source paths', () => {
+    const root = resolve(import.meta.dirname, '..', '..')
+    const notices = readFileSync(join(root, 'THIRD-PARTY-NOTICES.md'), 'utf8')
+    const manifest = readFileSync(
+      join(root, 'catalog', 'agent', 'skills', 'third-party-manifest.json'),
+      'utf8',
+    )
+
+    expect(notices).toContain('gstack-derived workflow skills')
+    expect(`${notices}\n${manifest}`).not.toContain('packages/gstack/')
+    expect(`${notices}\n${manifest}`).not.toContain('packages/gstack provenance')
+  })
+
   test('flags publishable @webpresso packages outside the contract', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'packages', 'bad'), { recursive: true })

@@ -13,7 +13,7 @@ import {
 
 const inputSchema = readonlyOpsBaseSchema
   .extend({
-    includePublicReadiness: z.boolean().optional().default(true),
+    includePublicReadiness: z.boolean().optional().default(false),
     includeChangesetStatus: z.boolean().optional().default(true),
     includeReferenceParity: z.boolean().optional().default(true),
   })
@@ -39,9 +39,6 @@ function commandsFor(input: Input): Array<{ id: string; command: string; args: s
   }
   if (input.includeChangesetStatus) {
     commands.push({ id: 'changeset_status', command: 'vp', args: ['run', 'changeset:status'] })
-  }
-  if (input.includePublicReadiness) {
-    commands.push({ id: 'public_readiness', command: 'vp', args: ['run', 'public:readiness'] })
   }
   return commands
 }
@@ -75,12 +72,16 @@ const tool: ToolDescriptor = {
     }
 
     const passed = commands.every((command) => command.passed)
+    const warnings = [
+      ...commands.flatMap((command) => command.warnings ?? []),
+      ...(input.includePublicReadiness ? ['public_readiness_skipped_not_read_only'] : []),
+    ]
     return createSummaryResult({
       passed,
       summary: summarizeCommands('release readiness', commands),
       counts: commandCounts(commands),
       details: { cwd, commands },
-      warnings: commands.flatMap((command) => command.warnings ?? []),
+      warnings,
     })
   },
 }

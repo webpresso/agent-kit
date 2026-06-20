@@ -464,3 +464,9 @@ Verification evidence:
 - `pnpm --filter @repo/gstack typecheck`
 - `vp run typecheck`
 - Targeted changed-surface tests and package build/lint gates were rerun before commit; broad lint is rerun again after rebasing onto current `origin/main` because the pre-rebase branch inherited baseline lint failures outside this lane.
+
+### G011 final-review follow-up (2026-06-20)
+
+- The curated Claude skill now treats first-party auth as present only when `claude auth status --output json` includes an explicit truthy auth field; a JSON payload with `provider: claude.ai` but `loggedIn: false` no longer passes.
+- Public gstack attribution now points to shipped `THIRD-PARTY-NOTICES.md`/manifest summaries instead of private `packages/gstack/...` provenance paths that package consumers cannot read.
+- Regression coverage: `packages/gstack/src/skill-text.test.ts` and `src/audit/package-surface.test.ts`; generated `catalog/agent/skills/claude/SKILL.md` and `skills/claude/SKILL.md` were regenerated from source.

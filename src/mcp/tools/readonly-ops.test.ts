@@ -74,6 +74,64 @@ describe('read-only ops MCP tools', () => {
     expect(payload.details.pr.number).toBe(182)
   })
 
+  it('wp_pr_status redacts parsed JSON details before returning them', async () => {
+    runCommandMock
+      .mockResolvedValueOnce(
+        ok(
+          JSON.stringify({
+            number: 206,
+            title: 'contains sk_abcdefghijklmnopqrstuvwxyz1234567890',
+            state: 'OPEN',
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(ok('[]'))
+
+    const result = await prStatusTool.handler({ cwd, branch: 'feat/secret' })
+    const payload = result.structuredContent as {
+      passed: boolean
+      details: {
+        pr: { title: string }
+        commands: Array<{ details?: { title?: string }; rawOutput?: string }>
+      }
+    }
+    const serialized = JSON.stringify(payload)
+
+    expect(payload.passed).toBe(true)
+    expect(serialized).not.toContain('sk_abcdefghijklmnopqrstuvwxyz1234567890')
+    expect(payload.details.pr.title).toContain('sk***90')
+    expect(payload.details.commands[0]?.details?.title).toContain('sk***90')
+    expect(payload.details.commands[0]?.rawOutput).toContain('sk***90')
+  })
+
+  it('wp_pr_status refuses unbounded parsed JSON details when the details budget is exceeded', async () => {
+    runCommandMock
+      .mockResolvedValueOnce(
+        ok(
+          JSON.stringify({
+            number: 206,
+            title: Array.from({ length: 60 }, (_, index) => `word${index}`).join(' '),
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(ok('[]'))
+
+    const result = await prStatusTool.handler({ cwd, branch: 'feat/huge', maxOutputBytes: 80 })
+    const payload = result.structuredContent as {
+      passed: boolean
+      summary: string
+      warnings: string[]
+      details: { pr?: unknown; commands: Array<{ details?: unknown; rawOutput?: string; truncated?: true }> }
+    }
+
+    expect(payload.passed).toBe(false)
+    expect(payload.summary).toContain('pr status incomplete')
+    expect(payload.details.pr).toBeUndefined()
+    expect(payload.details.commands[0]?.details).toBeUndefined()
+    expect(payload.details.commands[0]?.truncated).toBe(true)
+    expect(payload.warnings.some((warning) => warning.includes('could not parse JSON output from gh'))).toBe(true)
+  })
+
   it('wp_pr_status degrades when gh is missing', async () => {
     runCommandMock.mockResolvedValueOnce(missingBinary('gh')).mockResolvedValueOnce(missingBinary('gh'))
 
@@ -157,7 +215,6 @@ describe('read-only ops MCP tools', () => {
       .mockResolvedValueOnce(ok('package surface ok'))
       .mockResolvedValueOnce(ok('reference parity ok'))
       .mockResolvedValueOnce(ok('changeset status ok'))
-      .mockResolvedValueOnce(ok('public readiness ok'))
 
     const result = await releaseReadinessTool.handler({ cwd })
     const payload = result.structuredContent as {
@@ -172,11 +229,28 @@ describe('read-only ops MCP tools', () => {
       ['./bin/wp', ['audit', 'package-surface']],
       ['./bin/wp', ['audit', 'reference-parity-matrix', '--strict']],
       ['vp', ['run', 'changeset:status']],
-      ['vp', ['run', 'public:readiness']],
     ])
     expect(payload.passed).toBe(true)
-    expect(payload.summary).toBe('release readiness passed (4 checks)')
-    expect(payload.counts).toEqual({ commandCount: 4, passedCount: 4, failedCount: 0 })
+    expect(payload.summary).toBe('release readiness passed (3 checks)')
+    expect(payload.counts).toEqual({ commandCount: 3, passedCount: 3, failedCount: 0 })
+  })
+
+  it('wp_release_readiness does not run public readiness from a read-only tool even when requested', async () => {
+    runCommandMock
+      .mockResolvedValueOnce(ok('package surface ok'))
+      .mockResolvedValueOnce(ok('reference parity ok'))
+      .mockResolvedValueOnce(ok('changeset status ok'))
+
+    const result = await releaseReadinessTool.handler({ cwd, includePublicReadiness: true })
+    const payload = result.structuredContent as { passed: boolean; warnings: string[]; counts: Record<string, number> }
+
+    expect(payload.passed).toBe(true)
+    expect(runCommandMock.mock.calls.map((call) => [call[0], call[1]])).not.toContainEqual([
+      'vp',
+      ['run', 'public:readiness'],
+    ])
+    expect(payload.counts).toEqual({ commandCount: 3, passedCount: 3, failedCount: 0 })
+    expect(payload.warnings).toContain('public_readiness_skipped_not_read_only')
   })
 
   it('wp_release_readiness returns a failed aggregate without throwing', async () => {
