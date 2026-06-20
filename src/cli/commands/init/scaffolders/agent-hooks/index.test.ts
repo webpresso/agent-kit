@@ -663,6 +663,7 @@ describe('scaffoldAgentHooks', () => {
             mergeStrategy: 'upsert',
           },
         ],
+        filePath: expect.any(String),
         reloadUserConfig: true,
       },
     ])
@@ -940,6 +941,7 @@ describe('scaffoldAgentHooks', () => {
             mergeStrategy: 'upsert',
           },
         ],
+        filePath: expect.any(String),
         reloadUserConfig: true,
       },
     ])
