@@ -4,7 +4,8 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { validateCommand } from './_session-command.js'
+import { SessionMemoryStore } from '#session-memory/store.js'
+import { runSessionCommand, validateCommand } from './_session-command.js'
 
 let projectRoot: string
 let outsideRoot: string
@@ -83,5 +84,39 @@ describe('validateCommand', () => {
     expect(() => validateCommand('echo hello', symlinkPath, projectRoot)).toThrow(
       /outside trusted project root/u,
     )
+  })
+})
+
+describe('runSessionCommand', () => {
+  it('redacts command output before indexing and elision retrieval', async () => {
+    const secret = 'ghp_abcdefghijklmnopqrstuvwxyz1234567890'
+    const dbPath = join(projectRoot, 'session-memory.db')
+
+    const result = await runSessionCommand({
+      command: `printf "%s" "GITHUB_TOKEN=${secret}"`,
+      label: 'secret-command-output',
+      cwd: projectRoot,
+      projectRoot,
+      timeoutMs: 5_000,
+      dbPath,
+    })
+
+    expect(JSON.stringify(result)).not.toContain(secret)
+    expect(result.warnings).toContain('command output was redacted before indexing')
+    expect(result.elisions).toHaveLength(1)
+
+    const store = new SessionMemoryStore(dbPath)
+    try {
+      const chunks = store.getChunksBySource('secret-command-output')
+      expect(chunks.map((chunk) => chunk.text).join('')).not.toContain(secret)
+      expect(chunks.map((chunk) => chunk.text).join('')).toContain('GITHUB_TOKEN=gh***90')
+      const elision = result.elisions?.[0]
+      expect(elision?.id).toMatch(/^elision:[a-f0-9]{32}$/u)
+      const retrieved = elision ? store.getChunkById(elision.id) : undefined
+      expect(retrieved?.text).not.toContain(secret)
+      expect(retrieved?.text).toContain('GITHUB_TOKEN=gh***90')
+    } finally {
+      store.close()
+    }
   })
 })

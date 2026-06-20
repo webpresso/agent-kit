@@ -203,12 +203,15 @@ describe('ensureOmx', () => {
   })
 
   it('forces user scope for the setup invocation', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'omx-user-scope-'))
+    const configPath = join(dir, 'config.toml')
     const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }, { status: 0 }])
     ensureOmx({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
       spawn,
       resolveVpCommand: () => 'vp',
+      configPath,
     })
     expect(spawn).toHaveBeenNthCalledWith(4, 'omx', ['setup', '--yes', '--scope', 'user'], {
       cwd: '/tmp/repo',
@@ -217,6 +220,8 @@ describe('ensureOmx', () => {
   })
 
   it('allows setup to request project scope explicitly', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'omx-project-scope-'))
+    const configPath = join(dir, 'config.toml')
     const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }, { status: 0 }])
     ensureOmx({
       repoRoot: '/tmp/repo',
@@ -224,6 +229,7 @@ describe('ensureOmx', () => {
       scope: 'project',
       spawn,
       resolveVpCommand: () => 'vp',
+      configPath,
     })
     expect(spawn).toHaveBeenNthCalledWith(4, 'omx', ['setup', '--yes', '--scope', 'project'], {
       cwd: '/tmp/repo',

@@ -279,6 +279,25 @@ export class SessionMemoryStore {
     }
   }
 
+  getChunksBySource(source: string): SessionMemoryExactChunk[] {
+    return this.db
+      .prepare<[string], ChunkRow>(
+        `SELECT id, source, text, metadata_json, created_at
+           FROM session_memory_chunks
+          WHERE source = ?
+          ORDER BY created_at ASC, id ASC`,
+      )
+      .all(source)
+      .map((row) => ({
+        id: row.id,
+        source: row.source,
+        text: row.text,
+        metadata: parseMetadata(row.metadata_json),
+        createdAt: row.created_at,
+        bytes: byteLength(row.text),
+      }))
+  }
+
   count(): number {
     const row = this.db
       .prepare<[], { count: number }>('SELECT COUNT(*) AS count FROM session_memory_chunks')
@@ -451,6 +470,11 @@ export class SessionMemoryStore {
         this.db.prepare<[string]>('DELETE FROM session_memory_chunks_tri WHERE id = ?').run(row.id)
         this.db.prepare<[string]>('DELETE FROM session_memory_chunks WHERE id = ?').run(row.id)
       }
+      if (options.source) {
+        this.deleteNativeSourceTables(options.source)
+      } else {
+        this.deleteNativeSourceTables()
+      }
       if (!options.source) {
         this.db.prepare('DELETE FROM session_memory_gain_events').run()
       }
@@ -465,6 +489,26 @@ export class SessionMemoryStore {
       ...(options.source ? { source: options.source } : {}),
       warnings,
     }
+  }
+
+  private deleteNativeSourceTables(source?: string): void {
+    for (const table of ['chunks', 'chunks_trigram'] as const) {
+      if (!this.tableExists(table)) continue
+      if (source) this.db.prepare<[string]>(`DELETE FROM ${table} WHERE source = ?`).run(source)
+      else this.db.prepare(`DELETE FROM ${table}`).run()
+    }
+    if (!this.tableExists('sources')) return
+    if (source) this.db.prepare<[string]>('DELETE FROM sources WHERE label = ?').run(source)
+    else this.db.prepare('DELETE FROM sources').run()
+  }
+
+  private tableExists(name: string): boolean {
+    const row = this.db
+      .prepare<[string], { count: number }>(
+        "SELECT COUNT(*) AS count FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?",
+      )
+      .get(name)
+    return (row?.count ?? 0) > 0
   }
 
   doctor(): SessionMemoryIndexDoctorResult {

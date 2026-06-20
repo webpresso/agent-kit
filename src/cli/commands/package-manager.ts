@@ -18,6 +18,7 @@ import {
   type GlobalCapableVpCommandInput,
   resolveGlobalCapableVpCommand,
 } from '#cli/global-vp.js'
+import { resolveBundledVpCommand } from '#cli/auto-update/detect-pm.js'
 import { resolveAgentKitPackageRoot } from '#cli/commands/init/package-root'
 import { ensureClaudeCodeUserPlugin } from '#cli/commands/init/scaffolders/claude-plugin/index.js'
 import { ensureCodexUserPlugin } from '#cli/commands/init/scaffolders/codex-plugin/index.js'
@@ -199,17 +200,6 @@ function runGlobalUpdateCommand(deps: PackageManagerCommandDeps): number {
   }
 
   return failed ? 1 : 0
-}
-
-function resolveBundledVpCommand(): GlobalCapableVpCommandInput | null {
-  const resolution = getManagedRunner('vp', { outputPolicy: 'structured' })
-  if (resolution.source !== 'managed') return null
-  if (resolution.args.length === 0) return resolution.command
-  return {
-    command: resolution.command,
-    argsPrefix: resolution.args,
-    executable: resolution.args[0] ?? resolution.command,
-  }
 }
 
 function buildGlobalUpdateSteps(

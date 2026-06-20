@@ -2149,14 +2149,15 @@ hooks:
     )
 
     expect(commands.length).toBeGreaterThan(0)
-    const results = await Promise.all(
-      commands.map((command) =>
-        runShellCommand(command, {
+    const results: Array<Awaited<ReturnType<typeof runShellCommand>>> = []
+    for (const command of commands) {
+      results.push(
+        await runShellCommand(command, {
           cwd: siblingCwd,
           env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin', WP_SKIP_UPDATE_CHECK: '1' },
         }),
-      ),
-    )
+      )
+    }
 
     for (const result of results) {
       expect(result.status, `${result.command}\n${result.stderr}`).toBe(0)

@@ -10,6 +10,7 @@ import sessionRetrieveTool from './session-retrieve.js'
 import { defaultIndexDbPath } from './session-restore.js'
 
 const roots: string[] = []
+const MISSING_ELISION_ID = 'elision:00000000000000000000000000000000'
 
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), 'ak-session-retrieve-'))
@@ -87,7 +88,7 @@ describe('wp_session_retrieve tool', () => {
 
   it('returns passed=false for missing ids', async () => {
     const { root } = fixture()
-    const result = await sessionRetrieveTool.handler({ cwd: root, id: 'elision:missing' })
+    const result = await sessionRetrieveTool.handler({ cwd: root, id: MISSING_ELISION_ID })
 
     expect(result.isError).toBe(true)
     expect(payload(result)).toMatchObject({
@@ -104,16 +105,32 @@ describe('wp_session_retrieve tool', () => {
 
     expect(result.isError).toBe(true)
     expect(data.passed).toBe(false)
-    expect(data.warnings).toEqual(['malformed retrieval id'])
+    expect(data.warnings).toEqual(['malformed elision retrieval id'])
     expect(JSON.stringify(result)).not.toMatch(/SELECT|\/tmp|\/Users/u)
   })
 
+  it('rejects non-elision chunk ids', async () => {
+    const { root, dbPath } = fixture()
+    const store = new SessionMemoryStore(dbPath)
+    store.indexChunk({ id: 'command:abc123', source: 'unit', text: 'command content' })
+    store.close()
+
+    const result = await sessionRetrieveTool.handler({ cwd: root, id: 'command:abc123' })
+
+    expect(result.isError).toBe(true)
+    expect(payload(result)).toMatchObject({
+      passed: false,
+      text: '',
+      warnings: ['malformed elision retrieval id'],
+    })
+  })
+
   it('does not expose a public database path override', () => {
-    expect(sessionRetrieveTool.inputSchema.safeParse({ id: 'elision:a', dbPath: 'x' }).success).toBe(
-      false,
-    )
-    expect(sessionRetrieveTool.inputSchema.safeParse({ id: 'elision:a', indexDbPath: 'x' }).success).toBe(
-      false,
-    )
+    expect(sessionRetrieveTool.inputSchema.safeParse({ id: MISSING_ELISION_ID, dbPath: 'x' }).success)
+      .toBe(false)
+    expect(
+      sessionRetrieveTool.inputSchema.safeParse({ id: MISSING_ELISION_ID, indexDbPath: 'x' })
+        .success,
+    ).toBe(false)
   })
 })

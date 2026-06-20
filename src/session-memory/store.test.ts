@@ -91,6 +91,30 @@ describe('SessionMemoryStore exact chunk lookup', () => {
     expect(s.getChunkById('elision:missing')).toBeUndefined()
   })
 
+  it('returns exact chunks by source in stable order', () => {
+    const s = store()
+    s.indexChunk({
+      id: 'elision:b',
+      source: 'source-a',
+      text: 'second',
+      createdAt: '2026-06-20T00:00:02.000Z',
+    })
+    s.indexChunk({
+      id: 'elision:a',
+      source: 'source-a',
+      text: 'first',
+      createdAt: '2026-06-20T00:00:01.000Z',
+    })
+    s.indexChunk({
+      id: 'elision:c',
+      source: 'source-b',
+      text: 'other',
+      createdAt: '2026-06-20T00:00:00.000Z',
+    })
+
+    expect(s.getChunksBySource('source-a').map((chunk) => chunk.text)).toEqual(['first', 'second'])
+  })
+
   it('handles concurrent deterministic elision writes', async () => {
     const s = store()
     await Promise.all(

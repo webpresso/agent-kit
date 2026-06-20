@@ -104,6 +104,7 @@ const TEMPLATE_MAP: Array<[string, string]> = [
   ['.changeset/config.json.tmpl', '.changeset/config.json'],
   ['.changeset/README.md.tmpl', '.changeset/README.md'],
   ['commitlint.config.ts.tmpl', 'commitlint.config.ts'],
+  ['scripts/resolve-webpresso-cli-versions.cjs.tmpl', 'scripts/resolve-webpresso-cli-versions.cjs'],
   ['scripts/sync-release-metadata-version.ts.tmpl', 'scripts/sync-release-metadata-version.ts'],
   ['scripts/release-publish.ts.tmpl', 'scripts/release-publish.ts'],
   ['.husky/pre-commit.tmpl', '.husky/pre-commit'],

@@ -66,8 +66,15 @@ describe('wp_ci_act tool', () => {
     const payload = result.structuredContent as Record<string, unknown>
     expect(payload.passed).toBe(true)
     expect(payload.summary).toContain('dry-run')
-    const details = payload.details as { command: { command: string; args: string[] } }
-    expect(details.command).toEqual(buildCiActCommand({ workflowPath: '.github/workflows/ci.yml' }, root))
+    const details = payload.details as {
+      command: { command: string; args: string[] }
+      mode: string
+      nonSecurityEquivalent: { command: string; args: string[] }
+    }
+    expect(details.mode).toBe('dry-run')
+    expect(details.command).toEqual(
+      buildCiActCommand({ workflowPath: '.github/workflows/ci.yml' }, root),
+    )
     expect(details.command.command).toBe('with-secrets')
     expect(details.command.args.slice(0, 4)).toEqual([
       '--runtime-profile',
@@ -76,6 +83,9 @@ describe('wp_ci_act tool', () => {
       'act',
     ])
     expect(details.command.args.join(' ')).not.toContain('--secret-file')
+    expect(details.nonSecurityEquivalent.command).toBe('act')
+    expect(details.nonSecurityEquivalent.args.join(' ')).not.toContain('with-secrets')
+    expect(details.nonSecurityEquivalent.args.join(' ')).not.toContain('--secret-file')
     expect(JSON.stringify(payload)).not.toContain(TEST_REDACTABLE_SECRET)
     expect(JSON.stringify(payload)).not.toMatch(/wp-ci-act-[^" ]+secrets\.env/u)
   })
@@ -189,9 +199,15 @@ describe('wp_ci_act tool', () => {
     expect(call.args.join(' ')).not.toContain('--bind')
     const payload = result.structuredContent as Record<string, unknown>
     expect(payload.passed).toBe(true)
-    const details = payload.details as { command: { command: string; args: string[] } }
+    const details = payload.details as {
+      command: { command: string; args: string[] }
+      mode: string
+      nonSecurityEquivalent: { command: string; args: string[] }
+    }
+    expect(details.mode).toBe('execute')
     expect(details.command.command).toBe('with-secrets')
     expect(details.command.args.join(' ')).not.toContain('--secret-file')
+    expect(details.nonSecurityEquivalent.command).toBe('act')
   })
 
   it('executes replay mode through a generated workflow file and reports it as non-security-equivalent', async () => {

@@ -49,18 +49,23 @@ const inputSchema = z
   .strict()
 
 const outputSchema = createSummaryOutputSchema({
-    details: z.object({
-      command: z.object({ command: z.string(), args: z.array(z.string()) }),
-      envProfile: z.string(),
-      secretProfile: z.string().optional(),
-      mode: z.enum(['direct', 'replay']),
-      nonSecurityEquivalent: z.boolean(),
-    }),
+  details: z.object({
+    command: z.object({ command: z.string(), args: z.array(z.string()) }),
+    envProfile: z.string(),
+    mode: z.enum(['dry-run', 'execute']),
+    nonSecurityEquivalent: z.object({ command: z.string(), args: z.array(z.string()) }),
+    secretEnvProfile: z.string().optional(),
+  }),
 })
 
 function publicCommandDetails(input: z.infer<typeof inputSchema>, cwd: string) {
   const command = sanitizePublicCiActArgv(buildPublicCiActCommand({ ...input, cwd }))
   return { command: command.command, args: [...command.args] }
+}
+
+function nonSecurityEquivalentDetails(input: z.infer<typeof inputSchema>, cwd: string) {
+  const command = sanitizePublicCiActArgv(buildPublicCiActCommand({ ...input, cwd }))
+  return { command: 'act', args: [...command.actArgs] }
 }
 
 const tool: ToolDescriptor = {
@@ -85,56 +90,40 @@ const tool: ToolDescriptor = {
         details: {
           command: publicCommandDetails(input, cwd),
           envProfile: input.envProfile,
-          secretProfile: input.secretProfile,
-          mode: resolveCiActExecutionMode(input),
-          nonSecurityEquivalent: resolveCiActExecutionMode(input) === 'replay',
+          mode: 'dry-run',
+          nonSecurityEquivalent: nonSecurityEquivalentDetails(input, cwd),
+          secretEnvProfile: input.secretEnvProfile,
         },
       })
     }
 
-    const prepared = preparePublicCiActExecution({ ...input, cwd })
-    try {
-      const result = await runSecretGateCommand({
-        cwd,
-        envProfile: input.envProfile,
-        secretEnvProfile: resolveCiActSecretEnvProfile({ ...input, cwd }),
-        command: 'act',
-        args: prepared.command.actArgs,
-        timeoutMs: input.timeoutMs,
-        signal: extra?.signal,
-      })
-      const merged = [result.stdout, result.stderr].filter(Boolean).join('\n')
-      const redacted = redactText(merged)
-      const clipped = clipRawOutput(redacted, 4_000, { toolName: 'wp_ci_act' })
-      const toolExecutionFailed = result.timedOut || result.aborted
-      return createSummaryResult(
-        {
-          passed: result.exitCode === 0,
-          summary:
-            result.exitCode === 0
-              ? `ci-act finished successfully via ${prepared.mode} mode`
-              : `ci-act failed with exit ${result.exitCode} via ${prepared.mode} mode`,
-          exitCode: result.exitCode,
-          details: {
-            command: sanitizePublicCiActArgv(prepared.command),
-            envProfile: input.envProfile,
-            secretProfile: input.secretProfile,
-            mode: prepared.mode,
-            nonSecurityEquivalent: prepared.nonSecurityEquivalent,
-          },
-          ...clipped,
-          ...(prepared.nonSecurityEquivalent
-            ? {
-                failures: [
-                  {
-                    message:
-                      'replay mode is a generated local approximation and is not security-equivalent to GitHub CI or OIDC',
-                  },
-                ],
-              }
-            : {}),
-          ...(result.timedOut ? { failures: [{ message: 'timed out while running act' }] } : {}),
-          ...(result.aborted ? { failures: [{ message: 'aborted by client signal' }] } : {}),
+    const result = await runSecretGateCommand({
+      cwd,
+      envProfile: input.envProfile,
+      secretEnvProfile: input.secretEnvProfile,
+      command: 'act',
+      args: command.actArgs,
+      timeoutMs: input.timeoutMs,
+      signal: extra?.signal,
+    })
+    const merged = [result.stdout, result.stderr].filter(Boolean).join('\n')
+    const redacted = redactText(merged)
+    const clipped = clipRawOutput(redacted, 4_000, { toolName: 'wp_ci_act' })
+    const toolExecutionFailed = result.timedOut || result.aborted
+    return createSummaryResult(
+      {
+        passed: result.exitCode === 0,
+        summary:
+          result.exitCode === 0
+            ? `ci-act finished successfully via env profile ${input.envProfile}`
+            : `ci-act failed with exit ${result.exitCode} via env profile ${input.envProfile}`,
+        exitCode: result.exitCode,
+        details: {
+          command: publicCommandDetails(input, cwd),
+          envProfile: input.envProfile,
+          mode: 'execute',
+          nonSecurityEquivalent: nonSecurityEquivalentDetails(input, cwd),
+          secretEnvProfile: input.secretEnvProfile,
         },
         toolExecutionFailed ? { isError: true } : {},
       )

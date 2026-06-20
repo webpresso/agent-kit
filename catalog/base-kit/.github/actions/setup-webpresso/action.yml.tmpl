@@ -1,0 +1,28 @@
+name: Set up Webpresso tooling
+description: >
+  Install shared Webpresso CLIs needed by the base-kit workflow surface.
+  Resolves repo-owned version pins without relying on a preinstalled global `vp`.
+runs:
+  using: composite
+  steps:
+    - name: Install shared Webpresso CLIs
+      shell: bash
+      run: |
+        set -euo pipefail
+        eval "$(node ./scripts/resolve-webpresso-cli-versions.cjs)"
+
+        if [[ -z "${AGENT_KIT_VERSION}" ]]; then
+          echo "::error::Missing @webpresso/agent-kit dependency pin in package.json. Consumer repos must pin a published semver range."
+          exit 1
+        fi
+
+        if [[ "${AGENT_KIT_VERSION}" == "latest" || "${AGENT_KIT_VERSION}" == workspace:* || "${AGENT_KIT_VERSION}" == file:* || "${AGENT_KIT_VERSION}" == link:* ]]; then
+          echo "::error::Invalid @webpresso/agent-kit pin '${AGENT_KIT_VERSION}'. Use a published semver range, not latest/workspace:/file:/link:."
+          exit 1
+        fi
+
+        if [[ -n "${VITE_PLUS_VERSION}" ]]; then
+          npm install -g "vite-plus@${VITE_PLUS_VERSION}" "@webpresso/agent-kit@${AGENT_KIT_VERSION}"
+        else
+          npm install -g "@webpresso/agent-kit@${AGENT_KIT_VERSION}"
+        fi
