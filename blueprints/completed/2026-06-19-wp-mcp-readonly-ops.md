@@ -149,5 +149,5 @@ type WpReleaseReadinessInput = ReadonlyOpsBase & {
 ### G011 final-review follow-up (2026-06-20)
 
 - `wp_pr_status` now parses `details` only from redacted, bounded stdout so structured JSON cannot bypass the raw-output redaction/truncation budget. Oversized JSON details fail closed with a parse warning instead of returning unbounded parsed payloads.
-- `wp_release_readiness` no longer runs `vp run public:readiness` from the read-only MCP tool. `includePublicReadiness: true` is acknowledged with `public_readiness_skipped_not_read_only` so side-effectful readiness remains an explicit shell/CI gate, not a read-only MCP default.
+- `wp_release_readiness` no longer runs `vp run public:readiness` from the read-only MCP tool. `includePublicReadiness: true` is acknowledged with `public_readiness_not_read_only` so side-effectful readiness remains an explicit shell/CI gate, not a read-only MCP default.
 - Regression coverage: `src/mcp/tools/readonly-ops.test.ts`.
