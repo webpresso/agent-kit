@@ -11,7 +11,7 @@ describe('@repo/gstack provenance', () => {
       curation: { importedSkills: string[]; excludedPayloads: string[] }
     }
     expect(provenance.upstream.repository).toBe('https://github.com/garrytan/gstack')
-    expect(provenance.upstream.commit).toBeTruthy()
+    expect(provenance.upstream.commit).toMatch(/^[0-9a-f]{40}$/u)
     expect(provenance.upstream.version).toBeTruthy()
     expect(provenance.upstream.license).toBe('MIT')
     expect(provenance.curation.importedSkills).toEqual([

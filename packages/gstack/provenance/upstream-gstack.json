@@ -2,7 +2,7 @@
   "upstream": {
     "name": "gstack",
     "repository": "https://github.com/garrytan/gstack",
-    "commit": "manual-curation-2026-06-19",
+    "commit": "a861c00cfac6e2376d26c7d3ba5207cdc5aefc49",
     "version": "unversioned-main-snapshot",
     "license": "MIT"
   },

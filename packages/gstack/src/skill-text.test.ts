@@ -11,6 +11,7 @@ describe('@repo/gstack skill text contract', () => {
       expect(content).not.toMatch(/gstack-/)
       expect(content).not.toContain('~/.claude/skills/gstack')
       expect(content).not.toContain('~/.codex/skills/gstack')
+      expect(content).not.toContain('/tmp/wp-claude-auth')
       expect(content).not.toMatch(/browse\/dist|design\/dist|make-pdf\/dist|playwright|puppeteer|ngrok|html-to-docx/i)
     }
   })

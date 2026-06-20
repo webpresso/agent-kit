@@ -19,9 +19,14 @@ Use this skill when the user wants Claude to independently review a diff, challe
 Before invoking `claude`, verify auth in this order:
 
 ```bash
-if claude auth status --output json >/tmp/wp-claude-auth.json 2>/dev/null; then
-  if grep -E '"(authenticated|loggedIn|success)"[[:space:]]*:[[:space:]]*true|claude\.ai' /tmp/wp-claude-auth.json >/dev/null; then
+AUTH_STATUS_FILE=$(mktemp -t wp-claude-auth.XXXXXX)
+trap 'rm -f "$AUTH_STATUS_FILE"' EXIT
+if claude auth status --output json >"$AUTH_STATUS_FILE" 2>/dev/null; then
+  if grep -E '"(authenticated|loggedIn|success)"[[:space:]]*:[[:space:]]*true|claude\.ai' "$AUTH_STATUS_FILE" >/dev/null; then
     echo "CLAUDE_AUTH=first-party"
+  else
+    echo "CLAUDE_AUTH=missing: claude auth status returned no recognized login state"
+    exit 1
   fi
 elif [ -n "${ANTHROPIC_API_KEY:-}${CLAUDE_API_KEY:-}" ]; then
   echo "CLAUDE_AUTH=api-key"

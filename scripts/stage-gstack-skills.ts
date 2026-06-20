@@ -61,22 +61,21 @@ export function validateGstackStagingPolicy(repoRoot: string, policy = readGstac
       }
     }
 
+    totalBytes += statSync(filePath).size
+
     const isAllowlistedSkill = allowlisted.has(rel)
-    if (isAllowlistedSkill || relFromSource === policy.notice || relFromSource === policy.provenance) {
+    if (isAllowlistedSkill) {
       const content = readFileSync(filePath, 'utf8')
-      totalBytes += Buffer.byteLength(content)
-      if (isAllowlistedSkill) {
-        for (const denied of policy.deniedContentPatterns) {
-          if (content.toLowerCase().includes(denied.toLowerCase())) {
-            throw new Error(`denied gstack content matched ${denied}: ${rel}`)
-          }
+      for (const denied of policy.deniedContentPatterns) {
+        if (content.toLowerCase().includes(denied.toLowerCase())) {
+          throw new Error(`denied gstack content matched ${denied}: ${rel}`)
         }
       }
     }
   }
 
   if (totalBytes > policy.sizeBudgetBytes) {
-    throw new Error(`gstack staged payload ${totalBytes} exceeds budget ${policy.sizeBudgetBytes}`)
+    throw new Error(`gstack source payload ${totalBytes} exceeds budget ${policy.sizeBudgetBytes}`)
   }
 }
 

@@ -56,4 +56,17 @@ describe('stageGstackSkills', () => {
     )
     expect(() => stageGstackSkills(root)).toThrow(/denied gstack content matched playwright/)
   })
+
+  it('counts non-allowlisted source files against the package payload budget', () => {
+    const root = fixtureRepo()
+    mkdirSync(path.join(root, 'packages/gstack/assets'), { recursive: true })
+    writeFileSync(path.join(root, 'packages/gstack/assets/large.txt'), 'x'.repeat(1024))
+    const policy = {
+      ...JSON.parse(readFileSync(path.join(root, 'packages/gstack/staging/allowlist.json'), 'utf8')),
+      sizeBudgetBytes: 512,
+    }
+
+    expect(() => validateGstackStagingPolicy(root, policy)).toThrow(/gstack source payload .* exceeds budget/)
+  })
+
 })
