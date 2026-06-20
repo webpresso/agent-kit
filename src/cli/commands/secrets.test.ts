@@ -84,30 +84,24 @@ describe('wp secrets', () => {
   it('applies bootstrap through gh when values are available', async () => {
     const stdout = makeWriter()
     const apply = vi.fn()
-    const previous = process.env.CI_SECRET_PROVIDER_TOKEN_PRODUCTION
-    process.env.CI_SECRET_PROVIDER_TOKEN_PRODUCTION = 'secret-value'
 
-    try {
-      const exitCode = await runSecretsCommand(
-        'bootstrap',
-        'github',
-        { profile: 'production', json: true, lanes: ['prd'], apply: true },
-        {
-          readConfig: () => config,
-          stdout: stdout.writer,
-          runGitHubSecretSet: apply,
-        },
-      )
-      expect(exitCode).toBe(0)
-      expect(apply).toHaveBeenCalledWith(
-        'CI_SECRET_PROVIDER_TOKEN_PRODUCTION',
-        'secret-value',
-        undefined,
-      )
-    } finally {
-      if (previous === undefined) delete process.env.CI_SECRET_PROVIDER_TOKEN_PRODUCTION
-      else process.env.CI_SECRET_PROVIDER_TOKEN_PRODUCTION = previous
-    }
+    const exitCode = await runSecretsCommand(
+      'bootstrap',
+      'github',
+      { profile: 'production', json: true, lanes: ['prd'], apply: true },
+      {
+        readConfig: () => config,
+        stdout: stdout.writer,
+        runGitHubSecretSet: apply,
+        env: { CI_SECRET_PROVIDER_TOKEN_PRODUCTION: 'secret-value' },
+      },
+    )
+    expect(exitCode).toBe(0)
+    expect(apply).toHaveBeenCalledWith(
+      'CI_SECRET_PROVIDER_TOKEN_PRODUCTION',
+      'secret-value',
+      undefined,
+    )
   })
 
   it('runs a secret-scoped local command without direct with-secrets usage', async () => {

@@ -29,6 +29,7 @@ export interface SecretsCommandDeps {
   readonly stderr?: Pick<NodeJS.WriteStream, 'write'>
   readonly runGitHubSecretSet?: (name: string, value: string, cwd?: string) => void
   readonly runSecretScopedCommand?: typeof spawnRuntimeCommandSync
+  readonly env?: NodeJS.ProcessEnv
 }
 
 export function registerSecretsCommand(cli: CAC): void {
@@ -197,7 +198,7 @@ export async function runSecretsBootstrapGithub(
 
   if (options.apply) {
     for (const secretName of bootstrapPlan.requiredSecrets) {
-      const value = process.env[secretName] ?? ''
+      const value = (deps.env ?? process.env)[secretName] ?? ''
       if (!value) {
         throw createWpError({
           code: 'WP_GITHUB_BOOTSTRAP_MISSING_SECRET',
