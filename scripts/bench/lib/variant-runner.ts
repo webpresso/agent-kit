@@ -162,6 +162,10 @@ function parseJsonAuthStatus(raw: string): ClaudeCliAuthState | undefined {
   }
 }
 
+function truncateFailureReason(value: string, maxLength = 600): string {
+  return value.length <= maxLength ? value : `${value.slice(0, maxLength)}…[truncated]`
+}
+
 export function parseClaudeAuthStatusOutput(stdout: string, stderr = ''): ClaudeCliAuthState {
   const combined = `${stdout}\n${stderr}`.trim()
   const json = parseJsonAuthStatus(combined)
@@ -169,6 +173,13 @@ export function parseClaudeAuthStatusOutput(stdout: string, stderr = ''): Claude
 
   if (/not\s+(?:logged\s+in|authenticated)|login\s+required|unauthenticated/i.test(combined)) {
     return { kind: 'missing', reason: 'Claude CLI is not logged in.' }
+  }
+
+  if (/error|failed|could not|unable|timeout|network|denied|unauthorized/i.test(combined)) {
+    return {
+      kind: 'missing',
+      reason: combined || 'Claude CLI auth status did not report a usable login.',
+    }
   }
 
   if (/logged\s+in|authenticated|claude\.ai|subscription/i.test(combined)) {
@@ -336,7 +347,7 @@ export async function runCell(input: RunCellInput): Promise<RunResult> {
       return {
         ok: false,
         error: 'spawn_failed',
-        failure_reason: failureReason,
+        failure_reason: truncateFailureReason(failureReason),
         usage: null,
         local_wall_ms: 0,
         tools: ZERO_TOOLS,
@@ -364,7 +375,7 @@ export async function runCell(input: RunCellInput): Promise<RunResult> {
     return {
       ok: false,
       error: 'rate_limit',
-      failure_reason: combined,
+      failure_reason: truncateFailureReason(combined),
       usage: null,
       local_wall_ms: localWallMs,
       tools: ZERO_TOOLS,
@@ -386,7 +397,9 @@ export async function runCell(input: RunCellInput): Promise<RunResult> {
     return {
       ok: false,
       error: 'spawn_failed',
-      ...(executionFailure ? { failure_reason: executionFailure.message } : {}),
+      ...(executionFailure
+        ? { failure_reason: truncateFailureReason(executionFailure.message) }
+        : {}),
       usage: null,
       local_wall_ms: localWallMs,
       tools: ZERO_TOOLS,

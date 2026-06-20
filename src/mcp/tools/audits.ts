@@ -9,30 +9,16 @@
 
 import { z } from 'zod'
 
+import { resolveGuardrailAuditKinds } from '#cli/commands/audit'
 import type { ToolDescriptor } from '#mcp/auto-discover'
-import { MCP_AUDIT_KINDS, type MCPAuditKind } from './_shared/audit-kinds.js'
+import { MCP_AUDIT_KINDS, isMCPAuditKind, type MCPAuditKind } from './_shared/audit-kinds.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 import { dispatchAudit, KINDS } from './audit.js'
 import type { AuditPayload } from './audit.js'
 
-const GUARDRAIL_PRESET = [
-  'catalog-drift',
-  'package-surface',
-  'reference-parity-matrix',
-  'blueprint-readme-drift',
-  'blueprint-lifecycle',
-  'docs-frontmatter',
-  'agents',
-  'architecture-drift',
-  'absolute-path-policy',
-  'no-first-party-mjs',
-  'toolchain-isolation',
-  'open-source-licenses',
-  'secrets-policy',
-  'no-dev-vars',
-  'secret-provider-quarantine',
-  'secrets-config',
-] as const satisfies readonly MCPAuditKind[]
+export function resolveGuardrailPresetKinds(root = process.cwd()): MCPAuditKind[] {
+  return resolveGuardrailAuditKinds(root).filter(isMCPAuditKind)
+}
 
 const ALL_PRESET = MCP_AUDIT_KINDS.filter(
   (kind) => kind !== 'commit-message' && kind !== 'bundle-budget',
@@ -86,7 +72,9 @@ function uniqueKinds(kinds: readonly MCPAuditKind[]): MCPAuditKind[] {
 
 function resolveKinds(input: AkAuditsInput): MCPAuditKind[] {
   if (input.kinds) return uniqueKinds(input.kinds)
-  if (input.preset === 'guardrails') return [...GUARDRAIL_PRESET]
+  if (input.preset === 'guardrails') {
+    return resolveGuardrailPresetKinds(input.cwd ?? input.directory ?? process.cwd())
+  }
   return [...ALL_PRESET]
 }
 

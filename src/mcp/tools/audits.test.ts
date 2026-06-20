@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const repoGuardrailsMock = {
   auditCatalogDrift: vi.fn(),
   auditDocsFrontmatter: vi.fn(),
+  auditNoRelativePackageScripts: vi.fn(),
 }
 
 const blueprintReadmeDriftMock = {
@@ -65,6 +66,46 @@ const secretsConfigMock = {
   auditSecretsConfig: vi.fn(),
 }
 
+const roadmapLinksMock = {
+  auditRoadmapLinks: vi.fn(),
+}
+
+const techDebtMock = {
+  auditTechDebt: vi.fn(),
+}
+
+const cloudflareDeployContractMock = {
+  auditCloudflareDeployContract: vi.fn(),
+}
+
+const sessionMemoryHardcutMock = {
+  auditSessionMemoryHardcut: vi.fn(),
+}
+
+const aiContractsMock = {
+  auditAiContracts: vi.fn(),
+}
+
+const consumerAgentKitDependencyMock = {
+  auditConsumerAgentKitDependency: vi.fn(),
+}
+
+const hookSurfaceMock = {
+  auditHookSurface: vi.fn(),
+}
+
+const harnessSurfacesMock = {
+  auditHarnessSurfaces: vi.fn(),
+}
+
+const weaknessMiningMock = {
+  auditWeaknessMining: vi.fn(),
+}
+
+const harnessOverlayEvidenceMock = {
+  auditHarnessOverlayEvidence: vi.fn(),
+}
+
 vi.mock('#audit/repo-guardrails', () => repoGuardrailsMock)
 vi.mock('#audit/blueprint-readme-drift', () => blueprintReadmeDriftMock)
 vi.mock('#audit/blueprint-pr-coverage', () => blueprintPrCoverageMock)
@@ -81,8 +122,20 @@ vi.mock('#audit/secrets-policy', () => secretsPolicyMock)
 vi.mock('#audit/no-dev-vars', () => noDevVarsMock)
 vi.mock('#audit/secret-provider-quarantine', () => secretProviderQuarantineMock)
 vi.mock('#audit/secrets-config', () => secretsConfigMock)
+vi.mock('#audit/roadmap-links', () => roadmapLinksMock)
+vi.mock('#audit/tech-debt', () => techDebtMock)
+vi.mock('#audit/cloudflare-deploy-contract', () => cloudflareDeployContractMock)
+vi.mock('#audit/session-memory-hardcut', () => sessionMemoryHardcutMock)
+vi.mock('#audit/ai-contracts', () => aiContractsMock)
+vi.mock('#audit/consumer-agent-kit-dependency', () => consumerAgentKitDependencyMock)
+vi.mock('#audit/hook-surface', () => hookSurfaceMock)
+vi.mock('#audit/harness-surfaces', () => harnessSurfacesMock)
+vi.mock('#audit/weakness-mining/index', () => weaknessMiningMock)
+vi.mock('#audit/harness-overlay-evidence', () => harnessOverlayEvidenceMock)
 
-import wpAuditsTool from './audits.js'
+import { resolveGuardrailAuditKinds } from '#cli/commands/audit'
+import { isMCPAuditKind } from './_shared/audit-kinds.js'
+import wpAuditsTool, { resolveGuardrailPresetKinds } from './audits.js'
 
 function passingAudit(checked = 1) {
   return { ok: true, title: 'ok', checked, violations: [] }
@@ -122,6 +175,16 @@ beforeEach(() => {
     noDevVarsMock,
     secretProviderQuarantineMock,
     secretsConfigMock,
+    roadmapLinksMock,
+    techDebtMock,
+    cloudflareDeployContractMock,
+    sessionMemoryHardcutMock,
+    aiContractsMock,
+    consumerAgentKitDependencyMock,
+    hookSurfaceMock,
+    harnessSurfacesMock,
+    weaknessMiningMock,
+    harnessOverlayEvidenceMock,
   ]) {
     for (const fn of Object.values(group)) fn.mockReset()
   }
@@ -132,6 +195,13 @@ describe('wp_audits tool', () => {
     expect(wpAuditsTool.name).toBe('wp_audits')
     expect(wpAuditsTool.annotations?.readOnlyHint).toBe(true)
     expect(wpAuditsTool.description).toContain('multiple packaged repo audits')
+  })
+
+  it('keeps the guardrails preset aligned with CLI guardrails for MCP-supported audits', () => {
+    const root = process.cwd()
+    expect(resolveGuardrailPresetKinds(root)).toEqual(
+      resolveGuardrailAuditKinds(root).filter(isMCPAuditKind),
+    )
   })
 
   it('runs explicit kinds once each in first-seen order', async () => {
@@ -227,48 +297,46 @@ describe('wp_audits tool', () => {
   })
 
   it('resolves guardrails preset to the bounded repo guardrail audit set', async () => {
+    const root = process.cwd()
     repoGuardrailsMock.auditCatalogDrift.mockReturnValue(passingAudit())
     packageSurfaceMock.auditPackageSurface.mockReturnValue(passingAudit())
     referenceParityMatrixMock.auditReferenceParityMatrix.mockReturnValue(passingAudit())
     blueprintReadmeDriftMock.auditBlueprintReadmeDrift.mockReturnValue(passingAudit())
     blueprintLifecycleSqlMock.auditBlueprintLifecycleSql.mockResolvedValue(passingAudit())
+    roadmapLinksMock.auditRoadmapLinks.mockReturnValue(passingAudit())
     repoGuardrailsMock.auditDocsFrontmatter.mockReturnValue(passingAudit())
     agentsAuditMock.auditAgents.mockReturnValue(passingAudit())
+    techDebtMock.auditTechDebt.mockReturnValue(passingAudit())
+    repoGuardrailsMock.auditNoRelativePackageScripts.mockReturnValue(passingAudit())
     architectureDriftMock.auditArchitectureDrift.mockReturnValue(passingAudit())
+    cloudflareDeployContractMock.auditCloudflareDeployContract.mockResolvedValue(passingAudit())
     absolutePathPolicyMock.auditAbsolutePathPolicy.mockReturnValue(passingAudit())
     noFirstPartyMjsMock.auditNoFirstPartyMjs.mockReturnValue(passingAudit())
     toolchainIsolationMock.auditToolchainIsolation.mockReturnValue(passingAudit())
+    aiContractsMock.auditAiContracts.mockReturnValue(passingAudit())
+    hookSurfaceMock.auditHookSurface.mockReturnValue({
+      passed: true,
+      details: { ok: true, violations: [] },
+    })
+    sessionMemoryHardcutMock.auditSessionMemoryHardcut.mockReturnValue(passingAudit())
     openSourceLicensesMock.auditOpenSourceLicenses.mockReturnValue(passingAudit())
     secretsPolicyMock.auditSecretsPolicy.mockReturnValue(passingAudit())
     noDevVarsMock.auditNoDevVars.mockReturnValue(passingAudit())
     secretProviderQuarantineMock.auditSecretProviderQuarantine.mockReturnValue(passingAudit())
     secretsConfigMock.auditSecretsConfig.mockReturnValue(passingAudit())
+    consumerAgentKitDependencyMock.auditConsumerAgentKitDependency.mockReturnValue(passingAudit())
+    harnessSurfacesMock.auditHarnessSurfaces.mockReturnValue(passingAudit())
+    weaknessMiningMock.auditWeaknessMining.mockResolvedValue(passingAudit())
+    harnessOverlayEvidenceMock.auditHarnessOverlayEvidence.mockReturnValue(passingAudit())
 
-    const result = await wpAuditsTool.handler({ preset: 'guardrails', cwd: '/repo', strict: true })
+    const result = await wpAuditsTool.handler({ preset: 'guardrails', cwd: root, strict: true })
     const payload = parsePayload(result)
 
     expect(payload.passed).toBe(true)
-    expect(payload.total).toBe(16)
-    expect(payload.results.map((entry) => entry.kind)).toEqual([
-      'catalog-drift',
-      'package-surface',
-      'reference-parity-matrix',
-      'blueprint-readme-drift',
-      'blueprint-lifecycle',
-      'docs-frontmatter',
-      'agents',
-      'architecture-drift',
-      'absolute-path-policy',
-      'no-first-party-mjs',
-      'toolchain-isolation',
-      'open-source-licenses',
-      'secrets-policy',
-      'no-dev-vars',
-      'secret-provider-quarantine',
-      'secrets-config',
-    ])
+    expect(payload.total).toBe(resolveGuardrailPresetKinds(root).length)
+    expect(payload.results.map((entry) => entry.kind)).toEqual(resolveGuardrailPresetKinds(root))
     expect(referenceParityMatrixMock.auditReferenceParityMatrix).toHaveBeenCalledWith(
-      '/repo',
+      root,
       undefined,
       { requireReleaseReady: true },
     )

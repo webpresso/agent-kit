@@ -48,8 +48,6 @@ export type EnsureGstackResult =
   | { kind: 'gstack-already-configured'; root: string; codex: GstackCodexResult; collisions?: GstackSkillCollision[] }
   | { kind: 'gstack-skipped-dry-run' }
   | { kind: 'gstack-setup-failed'; command: 'webpresso-skill-install'; exitCode: number; reason: 'collision' | 'missing-package-assets' | 'exit-nonzero' | 'inactivity-timeout' | 'signal-interrupted'; logPath: string; collisions?: GstackSkillCollision[] }
-  | { kind: 'gstack-clone-failed'; exitCode: number; reason: 'exit-nonzero' | 'inactivity-timeout' | 'signal-interrupted'; logPath: string }
-  | { kind: 'gstack-pull-failed'; exitCode: number; reason: 'exit-nonzero' | 'inactivity-timeout' | 'signal-interrupted'; logPath: string }
 
 function defaultExternalCheckoutRoot(): string {
   return path.join(process.env.HOME || homedir(), '.claude', 'skills', 'gstack')
@@ -74,6 +72,15 @@ function defaultDetectCodex(input: { exists: typeof existsSync; codexConfigPath:
 function resolveCatalogSkillsRoot(packageRoot: string | null | undefined): string | null {
   const root = packageRoot ?? resolveAgentKitPackageRoot({ moduleUrl: import.meta.url })
   return root ? path.join(root, 'catalog', 'agent', 'skills') : null
+}
+
+function defaultExternalBackupRoot(externalRoot: string): string {
+  const externalParent = path.dirname(externalRoot)
+  const ownerRoot = path.dirname(externalParent)
+  if (path.basename(externalParent) === 'skills') {
+    return path.join(ownerRoot, 'skills-backup')
+  }
+  return path.join(externalParent, '.gstack-backups')
 }
 
 function hasInstalledWebpressoSkills(root: string, exists: typeof existsSync): boolean {
@@ -108,6 +115,7 @@ export function cleanupExternalGstackCheckout(input: {
   rename?: typeof renameSync
   rm?: typeof rmSync
   now?: () => number
+  backupRoot?: string
 }): { kind: 'skipped-not-present' | 'refused' | 'dry-run' | 'backed-up'; backupPath?: string; path: string } {
   const exists = input.exists ?? existsSync
   if (!exists(input.externalRoot)) return { kind: 'skipped-not-present', path: input.externalRoot }
@@ -116,8 +124,9 @@ export function cleanupExternalGstackCheckout(input: {
   const mkdir = input.mkdir ?? mkdirSync
   const rename = input.rename ?? renameSync
   const stamp = new Date(input.now?.() ?? Date.now()).toISOString().replaceAll(':', '-').replaceAll('.', '-')
-  const backupPath = `${input.externalRoot}.backup-${stamp}`
-  mkdir(path.dirname(backupPath), { recursive: true })
+  const backupRoot = input.backupRoot ?? defaultExternalBackupRoot(input.externalRoot)
+  const backupPath = path.join(backupRoot, `${path.basename(input.externalRoot)}.backup-${stamp}`)
+  mkdir(backupRoot, { recursive: true })
   rename(input.externalRoot, backupPath)
   return { kind: 'backed-up', path: input.externalRoot, backupPath }
 }

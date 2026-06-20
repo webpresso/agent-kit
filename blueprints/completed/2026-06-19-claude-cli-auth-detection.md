@@ -2,7 +2,7 @@
 type: blueprint
 title: "Claude CLI auth detection hardening"
 owner: ozby
-status: planned
+status: completed
 complexity: S
 created: "2026-06-19"
 last_updated: "2026-06-20"
@@ -64,7 +64,7 @@ Rules:
 
 ## Tasks
 
-### Task 1: Locate and isolate repo-owned Claude auth paths
+#### [discovery] Task 1.1: Locate and isolate repo-owned Claude auth paths
 
 - [x] **Status:** done
 - **Depends:** None
@@ -72,7 +72,7 @@ Rules:
 - **Steps:** Grep for `ANTHROPIC_API_KEY`, `claude -p`, and Claude auth checks; classify repo-owned, docs-only, and external gstack-owned paths.
 - **Acceptance:** The implementation PR does not edit generated cache skill files and names any cross-repo handoff separately.
 
-### Task 2: Implement mockable auth detection
+#### [auth] Task 1.2: Implement mockable auth detection
 
 - [x] **Status:** done
 - **Depends:** Task 1
@@ -80,7 +80,7 @@ Rules:
 - **Steps:** Add parser for `claude auth status`, add execution-probe classification, and cover CLI-login/no-key, API-key, missing CLI, stale execution token, and malformed output.
 - **Acceptance:** Tests prove logged-in Claude CLI without API key passes the auth gate.
 
-### Task 3: Update benchmark/review diagnostics
+#### [docs] Task 1.3: Update benchmark/review diagnostics
 
 - [x] **Status:** done
 - **Depends:** Task 2

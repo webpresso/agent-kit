@@ -175,6 +175,36 @@ describe('variant-runner', () => {
     expect(existsSync(join(dir, 'adhoc', 'v2', 'debug', 'trial-2', 'transcript.jsonl'))).toBe(false)
   })
 
+  it('does not treat failed auth-status output mentioning claude.ai as a login', () => {
+    expect(parseClaudeAuthStatusOutput('', 'Could not connect to claude.ai')).toEqual({
+      kind: 'missing',
+      reason: 'Could not connect to claude.ai',
+    })
+  })
+
+  it('bounds raw rate-limit failure output', async () => {
+    const noisyFailure = `429 rate limit ${'x'.repeat(900)}`
+    const spawn: VariantSpawn = vi.fn(async () => ({
+      exitCode: 1,
+      stdout: noisyFailure,
+      stderr: '',
+    }))
+
+    const result = await runCell({
+      scenario: 'debug',
+      prompt: 'say hi',
+      variant: 'bounded-rate-limit',
+      trial: 1,
+      pluginDir: '/tmp/plugin-v2',
+      outputRoot: dir,
+      spawn,
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.failure_reason?.length).toBeLessThanOrEqual(612)
+    expect(result.failure_reason).toContain('[truncated]')
+  })
+
   it('passes the per-variant API key through the spawned environment', async () => {
     let seenEnv: Record<string, string> | null = null
     const spawn: VariantSpawn = async (_cmd, options) => {
