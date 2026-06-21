@@ -37,6 +37,8 @@ diagnostic metadata, and expose recent records through `wp hooks errors`.
   detail.
 - [x] `wp hooks errors` prints recent repo-scoped managed hook degradation
   records.
+- [x] Blueprint coverage travels with the implementation branch and passes the
+  blueprint lifecycle gate before PR creation.
 
 ## Tasks
 
@@ -53,6 +55,12 @@ diagnostic metadata, and expose recent records through `wp hooks errors`.
 - [x] Add `wp hooks errors` as a read-only command over the repo-scoped error
   store.
 - [x] Cover human-readable and JSON output paths.
+
+#### Task 1.3: Package the implementation for review
+
+- [x] Keep this blueprint in the PR diff so the blueprint coverage gate can
+  connect the implementation to its plan.
+- [x] Validate the PR branch from an isolated worktree before opening the PR.
 
 ## Verification
 

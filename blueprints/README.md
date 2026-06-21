@@ -38,10 +38,6 @@ Each subdirectory represents a lifecycle state:
 
 
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 5913e099 (docs(competitive): publish parity matrix and fix audit staging)
 ## Authoring
 
 - Use `docs/templates/blueprint.md` as the starting point.
