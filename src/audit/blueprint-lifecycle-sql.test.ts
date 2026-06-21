@@ -26,64 +26,75 @@ function makeTempRepo(): string {
 interface FakeGitOptions {
   readonly lastTouchIso?: string
   readonly previousStatusByPath?: Record<string, string>
+  readonly patchByPath?: Record<string, string>
 }
 
 async function withFakeGitHistory<T>(options: FakeGitOptions, run: () => Promise<T>): Promise<T> {
   const fakeRoot = mkdtempSync(path.join(tmpdir(), 'wp-audit-bp-fake-git-'))
   const gitPath = path.join(fakeRoot, 'git')
-  const gitJsPath = path.join(fakeRoot, 'git.js')
+  const patchCases = Object.entries(options.patchByPath ?? {})
+    .map(([expectedPath, patch], index) => {
+      const patchFile = path.join(fakeRoot, `patch-${index}.diff`)
+      writeFileSync(patchFile, patch, 'utf8')
+      return `    *${expectedPath}) cat ${JSON.stringify(patchFile)}; exit 0 ;;`
+    })
+    .join('\n')
+  const previousStatusCases = Object.entries(options.previousStatusByPath ?? {})
+    .map(
+      ([expectedPath, previousStatus]) => `    *${expectedPath})
+      current_status=$(awk '/^status:/ { sub(/^status:[[:space:]]*/, ""); print; exit }' "$PWD/$filePath")
+      [ -z "$current_status" ] && exit 0
+      printf '%s\\n' 'commit:fake-head' '@@ -1 +1 @@' '-status: ${previousStatus}' "+status: $current_status" 'commit:fake-base'
+      exit 0
+      ;;`,
+    )
+    .join('\n')
+
   writeFileSync(
-    gitJsPath,
-    `const fs = require('node:fs')
-const path = require('node:path')
+    gitPath,
+    `#!/bin/sh
+if [ "$1" = "rev-parse" ] && [ "$2" = "--show-toplevel" ]; then
+  pwd
+  exit 0
+fi
 
-const args = process.argv.slice(2)
-if (args[0] === 'rev-parse' && args[1] === '--show-toplevel') {
-  console.log(process.cwd())
-  process.exit(0)
-}
+if [ "$1" = "log" ]; then
+  has_one=false
+  has_iso_format=false
+  has_patch=false
+  for arg do
+    [ "$arg" = "-1" ] && has_one=true
+    [ "$arg" = "--format=%cI" ] && has_iso_format=true
+    [ "$arg" = "-p" ] && has_patch=true
+  done
+  if [ "$has_one" = "true" ] && [ "$has_iso_format" = "true" ]; then
+    printf '%s\\n' "\${WP_FAKE_GIT_LAST_TOUCH_ISO:-2030-01-01T12:00:00+00:00}"
+    exit 0
+  fi
+  if [ "$has_patch" = "true" ]; then
+    for lastArg do
+      filePath=$lastArg
+    done
+    filePath=$(printf '%s' "$filePath" | sed 's#\\\\#/#g')
+    case "$filePath" in
+${patchCases}
+${previousStatusCases}
+    esac
+    exit 0
+  fi
+fi
 
-if (args[0] === 'log' && args.includes('-1') && args.includes('--format=%cI')) {
-  console.log(process.env.WP_FAKE_GIT_LAST_TOUCH_ISO || '2030-01-01T12:00:00+00:00')
-  process.exit(0)
-}
-
-if (args[0] === 'log' && args.includes('-p')) {
-  const filePath = args[args.length - 1].replace(/\\\\/g, '/')
-  const previousStatusByPath = JSON.parse(process.env.WP_FAKE_GIT_PREVIOUS_STATUS_BY_PATH || '{}')
-  const previousStatus = previousStatusByPath[filePath] || Object.entries(previousStatusByPath)
-    .find(([expectedPath]) => filePath.endsWith(expectedPath))?.[1]
-  if (!previousStatus) process.exit(0)
-
-  const markdown = fs.readFileSync(path.resolve(process.cwd(), filePath), 'utf8')
-  const currentStatusLine = markdown.split('\\n').find((line) => line.startsWith('status:'))
-  const currentStatus = currentStatusLine?.slice('status:'.length).trim()
-  if (!currentStatus) process.exit(0)
-
-  console.log('commit:fake-head')
-  console.log('@@ -1 +1 @@')
-  console.log('-status: ' + previousStatus)
-  console.log('+status: ' + currentStatus)
-  console.log('commit:fake-base')
-  process.exit(0)
-}
-
-console.error('unexpected fake git invocation: ' + args.join(' '))
-process.exit(1)
+printf '%s\\n' "unexpected fake git invocation: $*" >&2
+exit 1
 `,
     'utf8',
   )
-  writeFileSync(gitPath, `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} ${JSON.stringify(gitJsPath)} "$@"\n`, 'utf8')
   chmodSync(gitPath, 0o755)
 
   const previousPath = process.env.PATH
   const previousTouch = process.env.WP_FAKE_GIT_LAST_TOUCH_ISO
-  const previousMap = process.env.WP_FAKE_GIT_PREVIOUS_STATUS_BY_PATH
   process.env.PATH = `${fakeRoot}${path.delimiter}${previousPath ?? ''}`
   process.env.WP_FAKE_GIT_LAST_TOUCH_ISO = options.lastTouchIso ?? '2030-01-01T12:00:00+00:00'
-  process.env.WP_FAKE_GIT_PREVIOUS_STATUS_BY_PATH = JSON.stringify(
-    options.previousStatusByPath ?? {},
-  )
 
   try {
     expect(
@@ -95,6 +106,13 @@ process.exit(1)
         }).trim(),
       ),
     ).toBe(realpathSync(cwd))
+    expect(
+      execFileSync('git', ['log', '-1', '--format=%cI', '--', 'blueprints/example.md'], {
+        cwd,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }).trim(),
+    ).toBe(options.lastTouchIso ?? '2030-01-01T12:00:00+00:00')
     const [firstHistoryPath, firstPreviousStatus] = Object.entries(
       options.previousStatusByPath ?? {},
     )[0] ?? [null, null]
@@ -105,6 +123,15 @@ process.exit(1)
         { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
       )
       expect(fakePatch).toContain(`-status: ${firstPreviousStatus}`)
+    }
+    const [firstPatchPath, firstPatch] = Object.entries(options.patchByPath ?? {})[0] ?? [null, null]
+    if (firstPatchPath && firstPatch) {
+      const fakePatch = execFileSync(
+        'git',
+        ['log', '--follow', '--find-renames', '--format=commit:%H', '--unified=0', '-p', '--', firstPatchPath],
+        { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+      )
+      expect(fakePatch).toContain(firstPatch)
     }
     return await run()
   } finally {
@@ -117,11 +144,6 @@ process.exit(1)
       delete process.env.WP_FAKE_GIT_LAST_TOUCH_ISO
     } else {
       process.env.WP_FAKE_GIT_LAST_TOUCH_ISO = previousTouch
-    }
-    if (previousMap === undefined) {
-      delete process.env.WP_FAKE_GIT_PREVIOUS_STATUS_BY_PATH
-    } else {
-      process.env.WP_FAKE_GIT_PREVIOUS_STATUS_BY_PATH = previousMap
     }
     rmSync(fakeRoot, { recursive: true, force: true })
   }
@@ -179,15 +201,15 @@ afterEach(() => {
   rmSync(cwd, { recursive: true, force: true })
 })
 
-describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral projection)', () => {
-  it('returns ok when there are no blueprints', async () => {
+describe.sequential('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral projection)', () => {
+  it.sequential('returns ok when there are no blueprints', async () => {
     const result = await auditBlueprintLifecycleSql(cwd)
     expect(result.ok).toBe(true)
     expect(result.title).toBe('Blueprint lifecycle')
     expect(result.violations).toHaveLength(0)
   })
 
-  it('reads no persistent DB — verdict comes purely from the markdown', async () => {
+  it.sequential('reads no persistent DB — verdict comes purely from the markdown', async () => {
     writeBlueprint(cwd, 'active-wip', {
       status: 'in-progress',
       tasks: [{ id: '1.1', status: 'todo' }],
@@ -197,7 +219,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     expect(result.violations).toHaveLength(0)
   })
 
-  it('catches an in-progress blueprint with 0 tasks', async () => {
+  it.sequential('catches an in-progress blueprint with 0 tasks', async () => {
     writeBlueprint(cwd, 'empty-wip', { status: 'in-progress' })
     const result = await auditBlueprintLifecycleSql(cwd)
     expect(result.ok).toBe(false)
@@ -208,7 +230,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     ).toBe(true)
   })
 
-  it('catches a status/directory mismatch (file in completed/ but status=in-progress)', async () => {
+  it.sequential('catches a status/directory mismatch (file in completed/ but status=in-progress)', async () => {
     writeBlueprint(cwd, 'mismatched', {
       status: 'completed',
       frontmatterStatus: 'in-progress',
@@ -225,7 +247,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     ).toBe(true)
   })
 
-  it('catches a completed blueprint whose tasks are not all done (progress_pct < 100)', async () => {
+  it.sequential('catches a completed blueprint whose tasks are not all done (progress_pct < 100)', async () => {
     writeBlueprint(cwd, 'partial-done', {
       status: 'completed',
       tasks: [
@@ -242,7 +264,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     ).toBe(true)
   })
 
-  it('passes a completed blueprint whose tasks are all done', async () => {
+  it.sequential('passes a completed blueprint whose tasks are all done', async () => {
     writeBlueprint(cwd, 'fully-done', {
       status: 'completed',
       tasks: [{ id: '1.1', status: 'done' }],
@@ -251,7 +273,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     expect(result.violations.some((v) => v.message.includes('fully-done'))).toBe(false)
   })
 
-  it('does not flag a completed blueprint whose remaining non-done task is intentionally dropped', async () => {
+  it.sequential('does not flag a completed blueprint whose remaining non-done task is intentionally dropped', async () => {
     writeBlueprint(cwd, 'descoped-complete', {
       status: 'completed',
       tasks: [
@@ -263,7 +285,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     expect(result.violations.some((v) => v.message.includes('descoped-complete'))).toBe(false)
   })
 
-  it('catches an in-progress blueprint whose tasks are all done (finished, wrong lane)', async () => {
+  it.sequential('catches an in-progress blueprint whose tasks are all done (finished, wrong lane)', async () => {
     writeBlueprint(cwd, 'shipped-but-wip', {
       status: 'in-progress',
       tasks: [
@@ -281,7 +303,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     ).toBe(true)
   })
 
-  it('treats a dropped task as terminal (done ∪ dropped) for the wrong-lane check', async () => {
+  it.sequential('treats a dropped task as terminal (done ∪ dropped) for the wrong-lane check', async () => {
     writeBlueprint(cwd, 'descoped-wip', {
       status: 'in-progress',
       tasks: [
@@ -293,7 +315,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     expect(result.violations.some((v) => v.message.includes('descoped-wip'))).toBe(true)
   })
 
-  it('catches a completed blueprint with a non-terminal task (untruthful status)', async () => {
+  it.sequential('catches a completed blueprint with a non-terminal task (untruthful status)', async () => {
     writeBlueprint(cwd, 'claims-done', {
       status: 'completed',
       tasks: [
@@ -310,7 +332,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     ).toBe(true)
   })
 
-  it('catches exceeding the in-progress WIP limit', async () => {
+  it.sequential('catches exceeding the in-progress WIP limit', async () => {
     for (const slug of ['wip-a', 'wip-b', 'wip-c', 'wip-d']) {
       writeBlueprint(cwd, slug, { status: 'in-progress', tasks: [{ id: '1.1', status: 'todo' }] })
     }
@@ -325,7 +347,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     ).toBe(true)
   })
 
-  it('allows up to the WIP limit', async () => {
+  it.sequential('allows up to the WIP limit', async () => {
     for (const slug of ['wip-1', 'wip-2', 'wip-3']) {
       writeBlueprint(cwd, slug, { status: 'in-progress', tasks: [{ id: '1.1', status: 'todo' }] })
     }
@@ -333,7 +355,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     expect(result.violations.some((v) => /lane limit/i.test(v.message))).toBe(false)
   })
 
-  it('respects the WIP budget override from .agent/.audit-budgets.yaml', async () => {
+  it.sequential('respects the WIP budget override from .agent/.audit-budgets.yaml', async () => {
     mkdirSync(path.join(cwd, '.agent'), { recursive: true })
     writeFileSync(
       path.join(cwd, '.agent', '.audit-budgets.yaml'),
@@ -348,7 +370,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     expect(result.violations.some((v) => /lane limit is 2/i.test(v.message))).toBe(true)
   })
 
-  it('warns when an in-progress blueprint is stale in git history', async () => {
+  it.sequential('warns when an in-progress blueprint is stale in git history', async () => {
     writeBlueprint(cwd, 'stale-blueprint', {
       status: 'in-progress',
       tasks: [{ id: '1.1', status: 'todo' }],
@@ -372,7 +394,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     ).toBe(true)
   })
 
-  it('passes without a staleness warning when an in-progress blueprint is fresh in git history', async () => {
+  it.sequential('passes without a staleness warning when an in-progress blueprint is fresh in git history', async () => {
     writeBlueprint(cwd, 'fresh-blueprint', {
       status: 'in-progress',
       tasks: [{ id: '1.1', status: 'todo' }],
@@ -392,7 +414,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     expect(result.violations.some((v) => v.message.startsWith('[warn]'))).toBe(false)
   })
 
-  it('never applies staleness warnings to non in-progress blueprint states', async () => {
+  it.sequential('never applies staleness warnings to non in-progress blueprint states', async () => {
     writeBlueprint(cwd, 'completed-blueprint', {
       status: 'completed',
       tasks: [{ id: '1.1', status: 'done' }],
@@ -416,7 +438,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     expect(result.violations.some((v) => /stale/i.test(v.message))).toBe(false)
   })
 
-  it('degrades gracefully outside git by surfacing a non-failing staleness notice in the title', async () => {
+  it.sequential('degrades gracefully outside git by surfacing a non-failing staleness notice in the title', async () => {
     writeBlueprint(cwd, 'nogit-blueprint', {
       status: 'in-progress',
       tasks: [{ id: '1.1', status: 'todo' }],
@@ -428,7 +450,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
   })
 
 
-  it('degrades transition history checks instead of timing out when the git history budget is exhausted', async () => {
+  it.sequential('degrades transition history checks instead of timing out when the git history budget is exhausted', async () => {
     writeBlueprint(cwd, 'budget-a', {
       status: 'planned',
       tasks: [{ id: '1.1', status: 'todo' }],
@@ -452,7 +474,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     ).toBe(true)
   })
 
-  it('flags an illegal lifecycle transition based on git history', async () => {
+  it.sequential('flags an illegal lifecycle transition based on git history', async () => {
     writeBlueprint(cwd, 'jumped-the-queue', {
       status: 'in-progress',
       tasks: [{ id: '1.1', status: 'todo' }],
@@ -472,7 +494,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     ).toBe(true)
   })
 
-  it('allows a legal lifecycle transition based on git history', async () => {
+  it.sequential('allows a legal lifecycle transition based on git history', async () => {
     writeBlueprint(cwd, 'ready-to-start', {
       status: 'in-progress',
       tasks: [{ id: '1.1', status: 'todo' }],
@@ -484,7 +506,45 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     expect(result.violations.some((v) => v.message.includes('ready-to-start'))).toBe(false)
   })
 
-  it('allows planned blueprints to complete directly when all tasks are terminal', async () => {
+  it.sequential('ignores body status-looking patch lines when checking lifecycle transitions', async () => {
+    writeBlueprint(cwd, 'body-status-example', {
+      status: 'in-progress',
+      tasks: [{ id: '1.1', status: 'todo' }],
+    })
+    const blueprintPath = path.join(cwd, 'blueprints', 'in-progress', 'body-status-example.md')
+    writeFileSync(
+      blueprintPath,
+      [
+        readFileSync(blueprintPath, 'utf8'),
+        '',
+        '```yaml',
+        'status: in-progress',
+        '```',
+        '',
+      ].join('\n'),
+      'utf8',
+    )
+
+    const result = await withFakeGitHistory(
+      {
+        patchByPath: {
+          'blueprints/in-progress/body-status-example.md': [
+            'commit:fake-body-edit',
+            '@@ -20 +20 @@',
+            '-status: archived',
+            '+status: in-progress',
+            'commit:fake-base',
+          ].join('\n'),
+        },
+      },
+      () => auditBlueprintLifecycleSql(cwd),
+    )
+
+    expect(result.ok).toBe(true)
+    expect(result.violations.some((v) => v.message.includes('body-status-example'))).toBe(false)
+  })
+
+  it.sequential('allows planned blueprints to complete directly when all tasks are terminal', async () => {
     writeBlueprint(cwd, 'one-pr-finish', {
       status: 'completed',
       tasks: [
@@ -500,7 +560,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     expect(result.violations.some((v) => v.message.includes('one-pr-finish'))).toBe(false)
   })
 
-  it('allows draft blueprints to complete directly when all tasks are terminal', async () => {
+  it.sequential('allows draft blueprints to complete directly when all tasks are terminal', async () => {
     writeBlueprint(cwd, 'draft-one-pr-finish', {
       status: 'completed',
       tasks: [
@@ -516,7 +576,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     expect(result.violations.some((v) => v.message.includes('draft-one-pr-finish'))).toBe(false)
   })
 
-  it('rejects direct draft-to-completed when tasks are still open', async () => {
+  it.sequential('rejects direct draft-to-completed when tasks are still open', async () => {
     writeBlueprint(cwd, 'draft-one-pr-open-work', {
       status: 'completed',
       tasks: [{ id: '1.1', status: 'todo' }],
@@ -535,7 +595,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     ).toBe(true)
   })
 
-  it('rejects direct planned-to-completed when tasks are still open', async () => {
+  it.sequential('rejects direct planned-to-completed when tasks are still open', async () => {
     writeBlueprint(cwd, 'one-pr-open-work', {
       status: 'completed',
       tasks: [{ id: '1.1', status: 'todo' }],
@@ -552,7 +612,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     ).toBe(true)
   })
 
-  it('rejects direct planned-to-completed when the blueprint has zero tasks', async () => {
+  it.sequential('rejects direct planned-to-completed when the blueprint has zero tasks', async () => {
     writeBlueprint(cwd, 'one-pr-empty', { status: 'completed' })
     const result = await withFakeGitHistory(
       { previousStatusByPath: { 'blueprints/completed/one-pr-empty.md': 'planned' } },
@@ -566,7 +626,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     ).toBe(true)
   })
 
-  it('grandfathers historical transition gaps when the current blueprint declares the existing waiver', async () => {
+  it.sequential('grandfathers historical transition gaps when the current blueprint declares the existing waiver', async () => {
     writeBlueprint(cwd, 'legacy-gap', {
       status: 'completed',
       tasks: [{ id: '1.1', status: 'todo' }],
