@@ -1,4 +1,5 @@
-import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { tmpdir } from 'node:os'
 
@@ -30,10 +31,10 @@ interface FakeGitOptions {
 async function withFakeGitHistory<T>(options: FakeGitOptions, run: () => Promise<T>): Promise<T> {
   const fakeRoot = mkdtempSync(path.join(tmpdir(), 'wp-audit-bp-fake-git-'))
   const gitPath = path.join(fakeRoot, 'git')
+  const gitJsPath = path.join(fakeRoot, 'git.js')
   writeFileSync(
-    gitPath,
-    `#!/usr/bin/env node
-const fs = require('node:fs')
+    gitJsPath,
+    `const fs = require('node:fs')
 const path = require('node:path')
 
 const args = process.argv.slice(2)
@@ -50,11 +51,13 @@ if (args[0] === 'log' && args.includes('-1') && args.includes('--format=%cI')) {
 if (args[0] === 'log' && args.includes('-p')) {
   const filePath = args[args.length - 1].replace(/\\\\/g, '/')
   const previousStatusByPath = JSON.parse(process.env.WP_FAKE_GIT_PREVIOUS_STATUS_BY_PATH || '{}')
-  const previousStatus = previousStatusByPath[filePath]
+  const previousStatus = previousStatusByPath[filePath] || Object.entries(previousStatusByPath)
+    .find(([expectedPath]) => filePath.endsWith(expectedPath))?.[1]
   if (!previousStatus) process.exit(0)
 
   const markdown = fs.readFileSync(path.resolve(process.cwd(), filePath), 'utf8')
-  const currentStatus = markdown.match(/^status:\\s*(.+)$/m)?.[1]?.trim()
+  const currentStatusLine = markdown.split('\\n').find((line) => line.startsWith('status:'))
+  const currentStatus = currentStatusLine?.slice('status:'.length).trim()
   if (!currentStatus) process.exit(0)
 
   console.log('commit:fake-head')
@@ -70,6 +73,7 @@ process.exit(1)
 `,
     'utf8',
   )
+  writeFileSync(gitPath, `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} ${JSON.stringify(gitJsPath)} "$@"\n`, 'utf8')
   chmodSync(gitPath, 0o755)
 
   const previousPath = process.env.PATH
@@ -82,6 +86,26 @@ process.exit(1)
   )
 
   try {
+    expect(
+      realpathSync(
+        execFileSync('git', ['rev-parse', '--show-toplevel'], {
+          cwd,
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'pipe'],
+        }).trim(),
+      ),
+    ).toBe(realpathSync(cwd))
+    const [firstHistoryPath, firstPreviousStatus] = Object.entries(
+      options.previousStatusByPath ?? {},
+    )[0] ?? [null, null]
+    if (firstHistoryPath && firstPreviousStatus) {
+      const fakePatch = execFileSync(
+        'git',
+        ['log', '--follow', '--find-renames', '--format=commit:%H', '--unified=0', '-p', '--', firstHistoryPath],
+        { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+      )
+      expect(fakePatch).toContain(`-status: ${firstPreviousStatus}`)
+    }
     return await run()
   } finally {
     if (previousPath === undefined) {
