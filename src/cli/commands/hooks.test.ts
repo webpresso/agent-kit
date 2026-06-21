@@ -6,6 +6,7 @@ const statusCommand = vi.hoisted(() => vi.fn())
 const dispatchCommand = vi.hoisted(() => vi.fn())
 const demoCommand = vi.hoisted(() => vi.fn())
 const hooksUpgradeCommand = vi.hoisted(() => vi.fn())
+const hooksErrorsCommand = vi.hoisted(() => vi.fn())
 
 vi.mock('#hooks/doctor', () => ({
   printHooksDoctor,
@@ -25,6 +26,10 @@ vi.mock('#hooks/demo/index.js', () => ({
 
 vi.mock('#cli/commands/hooks-upgrade/index.js', () => ({
   hooksUpgradeCommand,
+}))
+
+vi.mock('#hooks/errors/index.js', () => ({
+  hooksErrorsCommand,
 }))
 
 import { registerHooksCommand } from './hooks.js'
@@ -65,6 +70,11 @@ describe('registerHooksCommand', () => {
   it('wires hooks upgrade to the upgrade command', async () => {
     await runHooksCli(['hooks', 'upgrade', '--workspace', '--apply'])
     expect(hooksUpgradeCommand).toHaveBeenCalledWith(['--workspace', '--apply'])
+  })
+
+  it('wires hooks errors to the errors command with json and limit args', async () => {
+    await runHooksCli(['hooks', 'errors', '--json', '--limit', '3'])
+    expect(hooksErrorsCommand).toHaveBeenCalledWith(['--json', '--limit', '3'])
   })
 
   it('calls printHooksDoctor when no subcommand is provided', async () => {

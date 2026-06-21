@@ -278,11 +278,6 @@ export async function main(): Promise<number> {
       registerMigrateCommand(cli)
       break
     }
-    case 'secrets': {
-      const { registerSecretsCommand } = await import('./commands/secrets.js')
-      registerSecretsCommand(cli)
-      break
-    }
     case 'doctor': {
       const { registerDoctorCommand } = await import('./commands/doctor.js')
       registerDoctorCommand(cli)

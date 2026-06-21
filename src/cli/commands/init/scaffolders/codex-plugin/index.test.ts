@@ -15,8 +15,21 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { CODEX_PLUGIN_ID, buildCodexStagingMarketplace, ensureCodexUserPlugin } from './index.js'
 
 const tempRoots: string[] = []
+const PLUGIN_VERSION = '1.2.3'
 
 function makePackageRoot(): string {
+  const root = mkdtempSync(join(tmpdir(), 'wp-codex-plugin-'))
+  tempRoots.push(root)
+  mkdirSync(join(root, '.codex-plugin'), { recursive: true })
+  writeFileSync(
+    join(root, '.codex-plugin', 'plugin.json'),
+    JSON.stringify({ name: 'agent-kit', version: PLUGIN_VERSION }) + '\n',
+    'utf8',
+  )
+  return root
+}
+
+function makePackageRootWithoutVersion(): string {
   const root = mkdtempSync(join(tmpdir(), 'wp-codex-plugin-'))
   tempRoots.push(root)
   mkdirSync(join(root, '.codex-plugin'), { recursive: true })
@@ -28,6 +41,24 @@ function makeStagingRoot(): string {
   const root = mkdtempSync(join(tmpdir(), 'wp-codex-staging-'))
   tempRoots.push(root)
   return root
+}
+
+function installedPluginListJson(version = PLUGIN_VERSION): string {
+  return (
+    JSON.stringify({
+      installed: [
+        {
+          pluginId: CODEX_PLUGIN_ID,
+          name: 'agent-kit',
+          marketplaceName: 'webpresso',
+          version,
+          installed: true,
+          enabled: true,
+        },
+      ],
+      available: [],
+    }) + '\n'
+  )
 }
 
 afterEach(() => {
@@ -101,6 +132,10 @@ describe('ensureCodexUserPlugin', () => {
     expect(calls).toEqual([
       { command: 'codex', args: ['plugin', 'marketplace', 'remove', 'webpresso', '--json'] },
       { command: 'codex', args: ['plugin', 'marketplace', 'add', stagingRoot, '--json'] },
+      {
+        command: 'codex',
+        args: ['plugin', 'list', '--marketplace', 'webpresso', '--json'],
+      },
       {
         command: 'codex',
         args: ['plugin', 'add', 'agent-kit', '--marketplace', 'webpresso', '--json'],
@@ -187,6 +222,155 @@ describe('ensureCodexUserPlugin', () => {
     })
   })
 
+  it('skips plugin add when plugin list already confirms the expected version is installed', () => {
+    const packageRoot = makePackageRoot()
+    const stagingRoot = makeStagingRoot()
+    const calls: Array<{
+      command: string
+      args: readonly string[]
+      options?: { timeoutMs?: number }
+    }> = []
+
+    const result = ensureCodexUserPlugin({
+      options: { dryRun: false, overwrite: false },
+      packageRoot,
+      stagingRoot,
+      env: {},
+      commandExists: () => true,
+      runCommand: (command, args, options) => {
+        calls.push({ command, args, options })
+        if (args[0] === 'plugin' && args[1] === 'list') {
+          return { exitCode: 0, stdout: installedPluginListJson() }
+        }
+        return { exitCode: 0 }
+      },
+    })
+
+    expect(result).toEqual({
+      kind: 'codex-plugin-installed',
+      packageRoot,
+      pluginId: CODEX_PLUGIN_ID,
+      stagingRoot,
+    })
+    expect(calls).toEqual([
+      { command: 'codex', args: ['plugin', 'marketplace', 'remove', 'webpresso', '--json'] },
+      { command: 'codex', args: ['plugin', 'marketplace', 'add', stagingRoot, '--json'] },
+      {
+        command: 'codex',
+        args: ['plugin', 'list', '--marketplace', 'webpresso', '--json'],
+        options: { timeoutMs: 2000 },
+      },
+    ])
+  })
+
+  it('continues to plugin add when plugin list shows a stale version', () => {
+    const packageRoot = makePackageRoot()
+    const stagingRoot = makeStagingRoot()
+    const calls: Array<readonly string[]> = []
+
+    const result = ensureCodexUserPlugin({
+      options: { dryRun: false, overwrite: false },
+      packageRoot,
+      stagingRoot,
+      env: {},
+      commandExists: () => true,
+      runCommand: (_command, args) => {
+        calls.push(args)
+        if (args[0] === 'plugin' && args[1] === 'list') {
+          return { exitCode: 0, stdout: installedPluginListJson('0.0.1') }
+        }
+        return { exitCode: 0 }
+      },
+    })
+
+    expect(result).toEqual({
+      kind: 'codex-plugin-installed',
+      packageRoot,
+      pluginId: CODEX_PLUGIN_ID,
+      stagingRoot,
+    })
+    expect(calls).toContainEqual([
+      'plugin',
+      'add',
+      'agent-kit',
+      '--marketplace',
+      'webpresso',
+      '--json',
+    ])
+  })
+
+  it('continues to plugin add when plugin list times out', () => {
+    const packageRoot = makePackageRoot()
+    const stagingRoot = makeStagingRoot()
+    const calls: Array<readonly string[]> = []
+
+    const result = ensureCodexUserPlugin({
+      options: { dryRun: false, overwrite: false },
+      packageRoot,
+      stagingRoot,
+      env: {},
+      commandExists: () => true,
+      runCommand: (_command, args) => {
+        calls.push(args)
+        if (args[0] === 'plugin' && args[1] === 'list') {
+          return { exitCode: 0, timedOut: true, stdout: installedPluginListJson() }
+        }
+        return { exitCode: 0 }
+      },
+    })
+
+    expect(result).toEqual({
+      kind: 'codex-plugin-installed',
+      packageRoot,
+      pluginId: CODEX_PLUGIN_ID,
+      stagingRoot,
+    })
+    expect(calls).toContainEqual([
+      'plugin',
+      'add',
+      'agent-kit',
+      '--marketplace',
+      'webpresso',
+      '--json',
+    ])
+  })
+
+  it('continues to plugin add when the expected manifest version is unavailable', () => {
+    const packageRoot = makePackageRootWithoutVersion()
+    const stagingRoot = makeStagingRoot()
+    const calls: Array<readonly string[]> = []
+
+    const result = ensureCodexUserPlugin({
+      options: { dryRun: false, overwrite: false },
+      packageRoot,
+      stagingRoot,
+      env: {},
+      commandExists: () => true,
+      runCommand: (_command, args) => {
+        calls.push(args)
+        if (args[0] === 'plugin' && args[1] === 'list') {
+          return { exitCode: 0, stdout: installedPluginListJson() }
+        }
+        return { exitCode: 0 }
+      },
+    })
+
+    expect(result).toEqual({
+      kind: 'codex-plugin-installed',
+      packageRoot,
+      pluginId: CODEX_PLUGIN_ID,
+      stagingRoot,
+    })
+    expect(calls).toContainEqual([
+      'plugin',
+      'add',
+      'agent-kit',
+      '--marketplace',
+      'webpresso',
+      '--json',
+    ])
+  })
+
   it('supports an env opt-out', () => {
     const packageRoot = makePackageRoot()
     process.env.WP_SKIP_CODEX_PLUGIN = '1'
@@ -258,6 +442,10 @@ describe('ensureCodexUserPlugin', () => {
       { command: 'codex', args: ['plugin', 'marketplace', 'add', stagingRoot, '--json'] },
       {
         command: 'codex',
+        args: ['plugin', 'list', '--marketplace', 'webpresso', '--json'],
+      },
+      {
+        command: 'codex',
         args: ['plugin', 'add', 'agent-kit', '--marketplace', 'webpresso', '--json'],
       },
     ])
@@ -290,6 +478,40 @@ describe('ensureCodexUserPlugin', () => {
       stagingRoot,
       step: 'plugin-add',
       timeoutMs: 8000,
+    })
+  })
+
+  it('reports installed when post-timeout plugin list verifies the expected version', () => {
+    const packageRoot = makePackageRoot()
+    const stagingRoot = makeStagingRoot()
+    let listCalls = 0
+
+    const result = ensureCodexUserPlugin({
+      options: { dryRun: false, overwrite: false },
+      packageRoot,
+      stagingRoot,
+      env: {},
+      commandExists: () => true,
+      runCommand: (_command, args) => {
+        if (args[0] === 'plugin' && args[1] === 'list') {
+          listCalls += 1
+          return {
+            exitCode: 0,
+            stdout: listCalls === 1 ? installedPluginListJson('0.0.1') : installedPluginListJson(),
+          }
+        }
+        if (args[0] === 'plugin' && args[1] === 'add') {
+          return { exitCode: 124, timedOut: true }
+        }
+        return { exitCode: 0 }
+      },
+    })
+
+    expect(result).toEqual({
+      kind: 'codex-plugin-installed',
+      packageRoot,
+      pluginId: CODEX_PLUGIN_ID,
+      stagingRoot,
     })
   })
 })

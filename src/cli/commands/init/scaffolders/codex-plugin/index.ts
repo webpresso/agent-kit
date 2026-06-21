@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
@@ -39,7 +39,14 @@ export interface EnsureCodexPluginInput {
     command: string,
     args: readonly string[],
     options?: { timeoutMs?: number },
-  ) => { exitCode: number; timedOut?: boolean }
+  ) => CodexCommandResult
+}
+
+interface CodexCommandResult {
+  exitCode: number
+  timedOut?: boolean
+  stdout?: string
+  stderr?: string
 }
 
 export type EnsureCodexPluginResult =
@@ -67,12 +74,13 @@ export type EnsureCodexPluginResult =
     }
 
 const CODEX_PLUGIN_ADD_TIMEOUT_MS = 8_000
+const CODEX_PLUGIN_LIST_TIMEOUT_MS = 2_000
 
 function defaultRunCommand(
   command: string,
   args: readonly string[],
   options: { timeoutMs?: number } = {},
-): { exitCode: number; timedOut?: boolean } {
+): CodexCommandResult {
   const result = spawnSync(command, [...args], {
     stdio: 'pipe',
     encoding: 'utf8',
@@ -82,11 +90,16 @@ function defaultRunCommand(
 
   if (result.error) {
     if ('code' in result.error && result.error.code === 'ETIMEDOUT') {
-      return { exitCode: 124, timedOut: true }
+      return {
+        exitCode: result.status ?? 124,
+        timedOut: true,
+        stdout: result.stdout ?? '',
+        stderr: result.stderr ?? '',
+      }
     }
     throw result.error
   }
-  return { exitCode: result.status ?? 1 }
+  return { exitCode: result.status ?? 1, stdout: result.stdout ?? '', stderr: result.stderr ?? '' }
 }
 
 function defaultStagingRoot(): string {
@@ -127,6 +140,62 @@ export function buildCodexStagingMarketplace(stagingRoot: string, packageRoot: s
   )
 }
 
+function readExpectedPluginVersion(pluginManifestPath: string): string | undefined {
+  try {
+    const manifest = JSON.parse(readFileSync(pluginManifestPath, 'utf8')) as { version?: unknown }
+    return typeof manifest.version === 'string' && manifest.version.length > 0
+      ? manifest.version
+      : undefined
+  } catch {
+    return undefined
+  }
+}
+
+function outputConfirmsExpectedPluginInstalled(
+  stdout: string | undefined,
+  expectedVersion: string | undefined,
+): boolean {
+  if (expectedVersion === undefined) return false
+  if (!stdout) return false
+  try {
+    const parsed = JSON.parse(stdout) as {
+      installed?: Array<{
+        pluginId?: unknown
+        installed?: unknown
+        enabled?: unknown
+        version?: unknown
+      }>
+    }
+    return (
+      parsed.installed?.some(
+        (plugin) =>
+          plugin.pluginId === CODEX_PLUGIN_ID &&
+          plugin.installed === true &&
+          plugin.enabled === true &&
+          plugin.version === expectedVersion,
+      ) === true
+    )
+  } catch {
+    return false
+  }
+}
+
+function expectedPluginIsInstalled(
+  runCommand: EnsureCodexPluginInput['runCommand'],
+  expectedVersion: string | undefined,
+): boolean {
+  const listResult = runCommand?.(
+    'codex',
+    ['plugin', 'list', '--marketplace', CODEX_MARKETPLACE_NAME, '--json'],
+    { timeoutMs: CODEX_PLUGIN_LIST_TIMEOUT_MS },
+  )
+  return (
+    listResult?.exitCode === 0 &&
+    listResult.timedOut !== true &&
+    outputConfirmsExpectedPluginInstalled(listResult.stdout, expectedVersion)
+  )
+}
+
 export function ensureCodexUserPlugin(input: EnsureCodexPluginInput): EnsureCodexPluginResult {
   const packageRoot = input.packageRoot
   const pluginManifestPath = join(packageRoot, '.codex-plugin', 'plugin.json')
@@ -154,6 +223,7 @@ export function ensureCodexUserPlugin(input: EnsureCodexPluginInput): EnsureCode
 
   const stagingRoot = input.stagingRoot ?? defaultStagingRoot()
   buildCodexStagingMarketplace(stagingRoot, packageRoot)
+  const expectedVersion = readExpectedPluginVersion(pluginManifestPath)
 
   const runCommand = input.runCommand ?? defaultRunCommand
   // Best-effort: drop any stale `webpresso` marketplace (e.g. an earlier
@@ -181,12 +251,29 @@ export function ensureCodexUserPlugin(input: EnsureCodexPluginInput): EnsureCode
     }
   }
 
+  if (expectedPluginIsInstalled(runCommand, expectedVersion)) {
+    return {
+      kind: 'codex-plugin-installed',
+      packageRoot,
+      pluginId: CODEX_PLUGIN_ID,
+      stagingRoot,
+    }
+  }
+
   const pluginAdd = runCommand(
     'codex',
     ['plugin', 'add', 'agent-kit', '--marketplace', CODEX_MARKETPLACE_NAME, '--json'],
     { timeoutMs: CODEX_PLUGIN_ADD_TIMEOUT_MS },
   )
   if (pluginAdd.timedOut) {
+    if (expectedPluginIsInstalled(runCommand, expectedVersion)) {
+      return {
+        kind: 'codex-plugin-installed',
+        packageRoot,
+        pluginId: CODEX_PLUGIN_ID,
+        stagingRoot,
+      }
+    }
     return {
       kind: 'codex-plugin-timed-out',
       packageRoot,
