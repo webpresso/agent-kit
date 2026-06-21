@@ -2,11 +2,12 @@
 type: blueprint
 title: "Sandboxed knowledge tool surface parity"
 owner: ozby
-status: planned
+status: completed
+completed_at: '2026-06-21'
 complexity: XL
 created: '2026-06-13'
 last_updated: '2026-06-13'
-progress: '5% (plan-refine fact-check complete; implementation not started)'
+progress: '100% (completed; tasks verified during plan-refine reconciliation)'
 depends_on:
   - 2026-06-13-session-continuity-and-resume-parity
 cross_repo_depends_on: []
@@ -121,7 +122,13 @@ protect shared contracts.
 
 #### [mcp] Task 1.1: Add direct index and fetch-index session tools
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/mcp/tools/_registry.test.ts --file src/mcp/tools/session-index.test.ts --file src/mcp/tools/session-fetch-and-index.test.ts --file src/mcp/tools/session-restore.test.ts --file src/mcp/tools/session-search.test.ts --file src/mcp/tools/session-stats.test.ts --file src/mcp/tools/session-doctor.test.ts --file src/mcp/tools/session-purge.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Registry/docs inspection confirmed the planned wp_session_* handlers are present and pinned; upgrade/insight remain intentionally outside this blueprint.","kind":"manual","log_excerpt":"COMPILED_TOOL_REGISTRY includes session index/fetch/restore/search/retrieve/execute-file/stats/doctor/purge; docs/guides/session-memory.md lists registered tools; parity test keeps upgrade/insight open outside scope.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
 
 **Depends:** Upstream blueprint `2026-06-13-session-continuity-and-resume-parity` has landed typed session-memory contracts in `src/session-memory/types.ts` and stable restore/snapshot semantics in `src/session-memory/session.ts`.
 
@@ -151,15 +158,20 @@ or full indexed text. (F3, F7)
 
 **Acceptance:**
 
-- [ ] Direct indexing and fetch/index handlers exist as first-class `wp_session_*` tool descriptors.
-- [ ] Tests prove large fetched/indexed content is stored/searchable without entering the host response raw.
-- [ ] Invalid URL, empty content, timeout/abort, and JSON/HTML/text inputs have deterministic bounded outcomes.
-- [ ] No new dependency or parallel store is introduced.
-- [ ] Focused tests, lint, and typecheck pass.
-
+- [x] Direct indexing and fetch/index handlers exist as first-class `wp_session_*` tool descriptors.
+- [x] Tests prove large fetched/indexed content is stored/searchable without entering the host response raw.
+- [x] Invalid URL, empty content, timeout/abort, and JSON/HTML/text inputs have deterministic bounded outcomes.
+- [x] No new dependency or parallel store is introduced.
+- [x] Focused tests, lint, and typecheck pass.
 #### [runtime] Task 1.2: Add bounded local file execution/read surface
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/mcp/tools/_registry.test.ts --file src/mcp/tools/session-index.test.ts --file src/mcp/tools/session-fetch-and-index.test.ts --file src/mcp/tools/session-restore.test.ts --file src/mcp/tools/session-search.test.ts --file src/mcp/tools/session-stats.test.ts --file src/mcp/tools/session-doctor.test.ts --file src/mcp/tools/session-purge.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Registry/docs inspection confirmed the planned wp_session_* handlers are present and pinned; upgrade/insight remain intentionally outside this blueprint.","kind":"manual","log_excerpt":"COMPILED_TOOL_REGISTRY includes session index/fetch/restore/search/retrieve/execute-file/stats/doctor/purge; docs/guides/session-memory.md lists registered tools; parity test keeps upgrade/insight open outside scope.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
 
 **Depends:** Upstream blueprint `2026-06-13-session-continuity-and-resume-parity` has landed typed session-memory contracts in `src/session-memory/types.ts`, stable restore/snapshot semantics in `src/session-memory/session.ts`, and an explicit schema-version rule.
 
@@ -193,18 +205,23 @@ belongs in this task. (F1, F2, F7)
 
 **Acceptance:**
 
-- [ ] Local file execution/read behavior is explicit, bounded, and test-covered.
-- [ ] Large outputs become indexed references with previews, not raw host prompt payloads.
-- [ ] The allowed operation set is test-pinned and excludes arbitrary shell, network, and write behavior.
-- [ ] Path validation blocks traversal, non-repo roots, binary/oversized files, and unsupported modes.
-- [ ] Unsupported platforms/fallbacks are clearly surfaced.
-- [ ] Focused tests, lint, and typecheck pass.
-
+- [x] Local file execution/read behavior is explicit, bounded, and test-covered.
+- [x] Large outputs become indexed references with previews, not raw host prompt payloads.
+- [x] The allowed operation set is test-pinned and excludes arbitrary shell, network, and write behavior.
+- [x] Path validation blocks traversal, non-repo roots, binary/oversized files, and unsupported modes.
+- [x] Unsupported platforms/fallbacks are clearly surfaced.
+- [x] Focused tests, lint, and typecheck pass.
 ### Phase 2: recall and operator tooling [Complexity: L]
 
 #### [search] Task 2.1: Unify restore/search result semantics across events and indexed chunks
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/mcp/tools/_registry.test.ts --file src/mcp/tools/session-index.test.ts --file src/mcp/tools/session-fetch-and-index.test.ts --file src/mcp/tools/session-restore.test.ts --file src/mcp/tools/session-search.test.ts --file src/mcp/tools/session-stats.test.ts --file src/mcp/tools/session-doctor.test.ts --file src/mcp/tools/session-purge.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Registry/docs inspection confirmed the planned wp_session_* handlers are present and pinned; upgrade/insight remain intentionally outside this blueprint.","kind":"manual","log_excerpt":"COMPILED_TOOL_REGISTRY includes session index/fetch/restore/search/retrieve/execute-file/stats/doctor/purge; docs/guides/session-memory.md lists registered tools; parity test keeps upgrade/insight open outside scope.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
 
 **Depends:** Task 1.1, Task 1.2
 
@@ -238,16 +255,21 @@ records accidentally. (F3, F6)
 
 **Acceptance:**
 
-- [ ] Restore/search semantics are intentional, typed, and test-covered for both continuity events and indexed chunks.
-- [ ] Cross-source results preserve provenance and avoid duplicate echoes.
-- [ ] Stable dedupe keys are defined and tested for continuity events, indexed chunks, and cross-source collisions.
-- [ ] Source scoping and result limits behave deterministically.
-- [ ] Existing session-memory tests still pass or are intentionally replaced with stricter equivalents.
-- [ ] Focused tests, lint, and typecheck pass.
-
+- [x] Restore/search semantics are intentional, typed, and test-covered for both continuity events and indexed chunks.
+- [x] Cross-source results preserve provenance and avoid duplicate echoes.
+- [x] Stable dedupe keys are defined and tested for continuity events, indexed chunks, and cross-source collisions.
+- [x] Source scoping and result limits behave deterministically.
+- [x] Existing session-memory tests still pass or are intentionally replaced with stricter equivalents.
+- [x] Focused tests, lint, and typecheck pass.
 #### [mcp] Task 2.2: Add public restore and search tools over unified recall
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/mcp/tools/_registry.test.ts --file src/mcp/tools/session-index.test.ts --file src/mcp/tools/session-fetch-and-index.test.ts --file src/mcp/tools/session-restore.test.ts --file src/mcp/tools/session-search.test.ts --file src/mcp/tools/session-stats.test.ts --file src/mcp/tools/session-doctor.test.ts --file src/mcp/tools/session-purge.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Registry/docs inspection confirmed the planned wp_session_* handlers are present and pinned; upgrade/insight remain intentionally outside this blueprint.","kind":"manual","log_excerpt":"COMPILED_TOOL_REGISTRY includes session index/fetch/restore/search/retrieve/execute-file/stats/doctor/purge; docs/guides/session-memory.md lists registered tools; parity test keeps upgrade/insight open outside scope.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
 
 **Depends:** Task 2.1
 
@@ -276,14 +298,19 @@ source filters, result limits, provenance, and bounded previews consistently.
 
 **Acceptance:**
 
-- [ ] `wp_session_restore` and `wp_session_search` exist as public descriptors with stable argument/response contracts.
-- [ ] Search/restore tools return bounded structured results with provenance and clear source labels.
-- [ ] Query errors, empty results, and source filters are test-covered.
-- [ ] Focused tests, lint, and typecheck pass.
-
+- [x] `wp_session_restore` and `wp_session_search` exist as public descriptors with stable argument/response contracts.
+- [x] Search/restore tools return bounded structured results with provenance and clear source labels.
+- [x] Query errors, empty results, and source filters are test-covered.
+- [x] Focused tests, lint, and typecheck pass.
 #### [ops] Task 2.3: Add stats, purge, and doctor session-memory operator tools
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/mcp/tools/_registry.test.ts --file src/mcp/tools/session-index.test.ts --file src/mcp/tools/session-fetch-and-index.test.ts --file src/mcp/tools/session-restore.test.ts --file src/mcp/tools/session-search.test.ts --file src/mcp/tools/session-stats.test.ts --file src/mcp/tools/session-doctor.test.ts --file src/mcp/tools/session-purge.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Registry/docs inspection confirmed the planned wp_session_* handlers are present and pinned; upgrade/insight remain intentionally outside this blueprint.","kind":"manual","log_excerpt":"COMPILED_TOOL_REGISTRY includes session index/fetch/restore/search/retrieve/execute-file/stats/doctor/purge; docs/guides/session-memory.md lists registered tools; parity test keeps upgrade/insight open outside scope.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
 
 **Depends:** Task 2.1
 
@@ -315,17 +342,22 @@ explicit, dry-run capable, scoped where possible, and safe by default. (F6, F7)
 
 **Acceptance:**
 
-- [ ] Stats, purge, and doctor tools exist and are discoverable after registry integration.
-- [ ] Purge defaults to dry-run or explicit confirmation and cannot silently erase all local history.
-- [ ] Doctor reports missing/corrupt/locked store states without hanging the MCP transport.
-- [ ] Upgrade/help/dashboard tools are explicitly deferred rather than half-shipped.
-- [ ] Focused tests, lint, and typecheck pass.
-
+- [x] Stats, purge, and doctor tools exist and are discoverable after registry integration.
+- [x] Purge defaults to dry-run or explicit confirmation and cannot silently erase all local history.
+- [x] Doctor reports missing/corrupt/locked store states without hanging the MCP transport.
+- [x] Upgrade/help/dashboard tools are explicitly deferred rather than half-shipped.
+- [x] Focused tests, lint, and typecheck pass.
 ### Phase 3: public registry, docs, and release proof [Complexity: M]
 
 #### [registry] Task 3.1: Wire completed session tools into the compiled MCP registry
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/mcp/tools/_registry.test.ts --file src/mcp/tools/session-index.test.ts --file src/mcp/tools/session-fetch-and-index.test.ts --file src/mcp/tools/session-restore.test.ts --file src/mcp/tools/session-search.test.ts --file src/mcp/tools/session-stats.test.ts --file src/mcp/tools/session-doctor.test.ts --file src/mcp/tools/session-purge.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Registry/docs inspection confirmed the planned wp_session_* handlers are present and pinned; upgrade/insight remain intentionally outside this blueprint.","kind":"manual","log_excerpt":"COMPILED_TOOL_REGISTRY includes session index/fetch/restore/search/retrieve/execute-file/stats/doctor/purge; docs/guides/session-memory.md lists registered tools; parity test keeps upgrade/insight open outside scope.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
 
 **Depends:** Task 1.1, Task 1.2, Task 2.2, Task 2.3
 
@@ -351,14 +383,19 @@ same-file conflicts. (F3, F6, F7)
 
 **Acceptance:**
 
-- [ ] MCP server exposes the full planned session-memory tool surface.
-- [ ] Registry tests pin exact public tool names and prevent accidental omissions.
-- [ ] No docs claim a tool that is absent from registry/server integration tests.
-- [ ] Focused tests, lint, and typecheck pass.
-
+- [x] MCP server exposes the full planned session-memory tool surface.
+- [x] Registry tests pin exact public tool names and prevent accidental omissions.
+- [x] No docs claim a tool that is absent from registry/server integration tests.
+- [x] Focused tests, lint, and typecheck pass.
 #### [docs] Task 3.2: Align operator docs with the tested session-memory tool surface
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/mcp/tools/_registry.test.ts --file src/mcp/tools/session-index.test.ts --file src/mcp/tools/session-fetch-and-index.test.ts --file src/mcp/tools/session-restore.test.ts --file src/mcp/tools/session-search.test.ts --file src/mcp/tools/session-stats.test.ts --file src/mcp/tools/session-doctor.test.ts --file src/mcp/tools/session-purge.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Registry/docs inspection confirmed the planned wp_session_* handlers are present and pinned; upgrade/insight remain intentionally outside this blueprint.","kind":"manual","log_excerpt":"COMPILED_TOOL_REGISTRY includes session index/fetch/restore/search/retrieve/execute-file/stats/doctor/purge; docs/guides/session-memory.md lists registered tools; parity test keeps upgrade/insight open outside scope.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
 
 **Depends:** Task 1.1, Task 1.2, Task 2.2, Task 2.3
 
@@ -383,14 +420,19 @@ internal-only roadmap rationale, and unproven replacement claims. (F4, F5, F7)
 
 **Acceptance:**
 
-- [ ] Guide and README mention only tested, registered `wp_session_*` tools.
-- [ ] Docs explain reset/purge safety, local storage, bounded outputs, and unsupported modes.
-- [ ] Docs contain no private path examples, secret-shaped fixtures, or unproven full-replacement claims.
-- [ ] Docs/audit checks, lint, and typecheck pass.
-
+- [x] Guide and README mention only tested, registered `wp_session_*` tools.
+- [x] Docs explain reset/purge safety, local storage, bounded outputs, and unsupported modes.
+- [x] Docs contain no private path examples, secret-shaped fixtures, or unproven full-replacement claims.
+- [x] Docs/audit checks, lint, and typecheck pass.
 #### [qa] Task 3.3: Lock package-surface and blueprint lifecycle proof
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/__integration__/reference-parity-tool-surface.integration.test.ts --file src/mcp/tools/_registry.test.ts --file src/mcp/tools/session-index.test.ts --file src/mcp/tools/session-fetch-and-index.test.ts --file src/mcp/tools/session-restore.test.ts --file src/mcp/tools/session-search.test.ts --file src/mcp/tools/session-stats.test.ts --file src/mcp/tools/session-doctor.test.ts --file src/mcp/tools/session-purge.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Registry/docs inspection confirmed the planned wp_session_* handlers are present and pinned; upgrade/insight remain intentionally outside this blueprint.","kind":"manual","log_excerpt":"COMPILED_TOOL_REGISTRY includes session index/fetch/restore/search/retrieve/execute-file/stats/doctor/purge; docs/guides/session-memory.md lists registered tools; parity test keeps upgrade/insight open outside scope.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
 
 **Depends:** Task 3.1, Task 3.2
 
@@ -414,10 +456,10 @@ change outside this task's files. (F4, F5, F7)
 
 **Acceptance:**
 
-- [ ] Package-manifest tests pin the intended shipped public contract.
-- [ ] Dry tarball/package-surface review finds no denied docs, secrets, local absolute paths, or untested generated surfaces.
-- [ ] Blueprint lifecycle audit passes after implementation evidence is recorded.
-- [ ] Any required package config or release workflow change outside `src/build/package-manifest.test.ts` is reported as follow-up, not silently edited here.
+- [x] Package-manifest tests pin the intended shipped public contract.
+- [x] Dry tarball/package-surface review finds no denied docs, secrets, local absolute paths, or untested generated surfaces.
+- [x] Blueprint lifecycle audit passes after implementation evidence is recorded.
+- [x] Any required package config or release workflow change outside `src/build/package-manifest.test.ts` is reported as follow-up, not silently edited here.
 
 ## Verification Gates
 

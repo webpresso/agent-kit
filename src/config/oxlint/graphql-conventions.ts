@@ -28,6 +28,8 @@ function buildPatterns() {
   const patterns = []
 
   for (const [singular, correct, label] of SINGULAR_TABLE_RULES) {
+    // Intentional internal-only dynamic regex: `singular` values come from the
+    // static SINGULAR_TABLE_RULES table above, not from user input.
     // Query root fields: `user {`, `user_by_pk`, `user_aggregate`, `user(where:`, `user(limit:`
     // Must NOT match plural forms (e.g., `users(`) or compound words (e.g., `user_id`)
     // For `singular(`, requires GraphQL-like arg after `(` to avoid false positives

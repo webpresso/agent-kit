@@ -2,11 +2,14 @@
 type: blueprint
 title: Close test coverage gaps in security-critical modules
 owner: ozby
-status: planned
+status: parked
 complexity: M
 created: '2026-06-14'
-last_updated: '2026-06-14'
-progress: '0% (0/9 tasks done, 0 blocked)'
+last_updated: '2026-06-21'
+progress: '0% (0/10 tasks done, 0 blocked, updated 2026-06-21)'
+parked_reason: >-
+  Refresh needed before execution: secret-manager behavior hardened since plan and several
+  target test files remain absent; update expected behavior before adding coverage.
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -16,8 +19,6 @@ tags:
   - mcp
   - secret-gate
   - pretool-guard
-worktree_owner_id: ''
-worktree_owner_branch: ''
 ---
 
 # Close test coverage gaps in security-critical modules

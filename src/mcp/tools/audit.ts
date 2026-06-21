@@ -171,6 +171,7 @@ export async function dispatchAudit(input: AkAuditInput): Promise<AuditPayload> 
       const { auditBlueprintLifecycleSql } = await import('#audit/blueprint-lifecycle-sql')
       const auditResult = await auditBlueprintLifecycleSql(
         input.cwd ?? input.directory ?? process.cwd(),
+        { baseRef: input.baseRef },
       )
       return {
         passed: auditResult.ok,

@@ -32,7 +32,7 @@ describe('checkVersionSkew', () => {
       const result = checkVersionSkew('0.30.3', dir)
       expect(result).toStrictEqual(
         '[wp] Version skew: global wp is 0.30.3 but this repo expects @webpresso/agent-kit@0.28.0 for the shared wp runtime. ' +
-          'Run `vp install -g @webpresso/agent-kit@0.28.0` to align the global CLI.',
+          'Run `npm install -g @webpresso/agent-kit@0.28.0` to align the global CLI.',
       )
     } finally {
       rmSync(dir, { recursive: true })

@@ -1,4 +1,5 @@
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { mkdtempSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { tmpdir } from 'node:os'
 
@@ -37,6 +38,17 @@ function writeBlueprint(relativePath: string): void {
     ].join('\n'),
     'utf8',
   )
+}
+
+function runGit(args: readonly string[]): void {
+  execFileSync('git', args, { cwd, stdio: 'ignore' })
+}
+
+function initGitRepo(): void {
+  runGit(['init'])
+  runGit(['config', 'user.email', 'test@example.com'])
+  runGit(['config', 'user.name', 'Test User'])
+  runGit(['config', 'core.hooksPath', '/dev/null'])
 }
 
 beforeEach(() => {
@@ -94,6 +106,36 @@ describe('auditBlueprintReadmeDrift', () => {
     expect(updated).toContain('| `completed/` | 1 |')
     expect(updated).toContain('Keep this prose.')
     expect(updated).toContain('## Authoring')
+  })
+
+  it('counts uncommitted lifecycle moves as visible working-tree state', () => {
+    const readmePath = path.join(cwd, 'blueprints', 'README.md')
+    writeFileSync(
+      readmePath,
+      ['# Blueprints', '', '## Authoring', '', 'Keep this prose.', ''].join('\n'),
+      'utf8',
+    )
+    auditBlueprintReadmeDrift(cwd, { fix: true })
+
+    initGitRepo()
+    runGit(['add', 'blueprints'])
+    runGit(['commit', '-m', 'seed blueprints'])
+
+    const fromPath = path.join(cwd, 'blueprints', 'planned', 'one.md')
+    const toPath = path.join(cwd, 'blueprints', 'completed', 'one.md')
+    renameSync(fromPath, toPath)
+    writeFileSync(
+      toPath,
+      readFileSync(toPath, 'utf8').replace('status: planned', 'status: completed'),
+    )
+
+    const result = auditBlueprintReadmeDrift(cwd, { fix: true })
+    expect(result.ok).toBe(true)
+
+    const updated = readFileSync(readmePath, 'utf8')
+    expect(updated).toContain('| `planned/` | 0 |')
+    expect(updated).toContain('| `in-progress/` | 1 |')
+    expect(updated).toContain('| `completed/` | 2 |')
   })
 
   it('passes when the generated block is already in sync', () => {

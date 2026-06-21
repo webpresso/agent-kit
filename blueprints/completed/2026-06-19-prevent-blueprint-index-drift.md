@@ -2,11 +2,12 @@
 type: blueprint
 title: Prevent stale blueprint index commits and pushes
 owner: ozby
-status: planned
+status: completed
+completed_at: '2026-06-21'
 complexity: S
 created: '2026-06-19'
 last_updated: '2026-06-19'
-progress: 'implemented (1/1 tasks done, 0 blocked) — lightweight commit/push guard for blueprint README drift'
+progress: '100% (completed; 1/1 tasks done, 0 blocked)'
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -58,6 +59,12 @@ Prevent branches from committing or pushing blueprint changes while `blueprints/
 #### [hooks] Task 1.1: Harden blueprint README drift hooks
 
 **Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","audit_kind":"blueprint-readme-drift","command":"./bin/wp audit blueprint-readme-drift","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:21:53.508Z"},{"agent":"codex","audit_kind":"blueprint-lifecycle","command":"./bin/wp audit blueprint-lifecycle","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:21:53.508Z"}]
+```
 
 **Depends:** None
 

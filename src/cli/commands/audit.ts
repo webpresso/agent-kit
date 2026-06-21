@@ -44,6 +44,7 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
   'blueprint-lifecycle': async (root, options) =>
     (await import('#audit/blueprint-lifecycle-sql')).auditBlueprintLifecycleSql(root, {
       includeOmxPlans: options.omxPlans,
+      baseRef: options.baseRef ?? options.base,
     }),
   'roadmap-links': async (root, options) =>
     (await import('#audit/roadmap-links')).auditRoadmapLinks(root, {
