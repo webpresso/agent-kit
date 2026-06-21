@@ -1,11 +1,11 @@
 import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
 const githubActionsReadmePath =
   '/Users/ozby/repos/webpresso/github-actions/_worktrees/wp-secret-orchestration-20260619/README.md'
-const checklistPath =
-  '/Users/ozby/repos/webpresso/agent-kit/_worktrees/wp-secret-orchestration-20260619/docs/release/secret-orchestration-checklist.md'
+const checklistPath = join(process.cwd(), 'docs/release/secret-orchestration-checklist.md')
 
 describe('secret orchestration smoke', () => {
   it('documents the release checklist and shared reusable workflows when sibling worktrees are available', () => {
