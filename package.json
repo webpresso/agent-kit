@@ -116,8 +116,6 @@
     "#content/*": "./src/content/*.ts",
     "#errors/*.js": "./src/errors/*.ts",
     "#errors/*": "./src/errors/*.ts",
-    "#secrets/*.js": "./src/secrets/*.ts",
-    "#secrets/*": "./src/secrets/*.ts",
     "#tool-runtime": "./src/tool-runtime/index.ts",
     "#tool-runtime/*.js": "./src/tool-runtime/*.ts",
     "#tool-runtime/*": "./src/tool-runtime/*.ts",
