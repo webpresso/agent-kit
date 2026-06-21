@@ -10,6 +10,7 @@
 
 import crypto from 'node:crypto'
 import { execSync } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import matter from 'gray-matter'
@@ -87,6 +88,93 @@ const _GSTACK_SKILL_PATTERN =
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+const organizationByGitRoot = new Map<string, string>()
+
+interface RemoteConfigRead {
+  readonly configRead: boolean
+  readonly remote: string | null
+}
+
+function findGitRoot(startPath: string): string | null {
+  let dir = path.dirname(startPath)
+
+  while (true) {
+    if (existsSync(path.join(dir, '.git'))) return dir
+    const parent = path.dirname(dir)
+    if (parent === dir) return null
+    dir = parent
+  }
+}
+
+function organizationFromRemote(remote: string): string | null {
+  const match = remote.match(/[:/]([^/]+)\/[^/]+(?:\.git)?$/)
+  return match?.[1] ?? null
+}
+
+function readGitDirFromFile(dotGitPath: string): string | null {
+  try {
+    const gitFile = readFileSync(dotGitPath, 'utf8')
+    const match = gitFile.match(/^gitdir:\s*(.+)$/m)
+    if (!match?.[1]) return null
+    const gitDir = match[1].trim()
+    return path.isAbsolute(gitDir) ? path.normalize(gitDir) : path.resolve(path.dirname(dotGitPath), gitDir)
+  } catch {
+    return null
+  }
+}
+
+function resolveCommonGitDir(gitDir: string): string {
+  try {
+    const commonDir = readFileSync(path.join(gitDir, 'commondir'), 'utf8').trim()
+    if (commonDir.length === 0) return gitDir
+    return path.isAbsolute(commonDir)
+      ? path.normalize(commonDir)
+      : path.resolve(gitDir, commonDir)
+  } catch {
+    return gitDir
+  }
+}
+
+function remoteOriginUrlFromConfig(config: string): string | null {
+  let inOriginRemote = false
+  for (const rawLine of config.split('\n')) {
+    const line = rawLine.trim()
+    if (line.length === 0 || line.startsWith('#') || line.startsWith(';')) continue
+
+    const sectionMatch = line.match(/^\[(.+)]$/)
+    if (sectionMatch?.[1]) {
+      inOriginRemote = sectionMatch[1] === 'remote "origin"'
+      continue
+    }
+
+    if (!inOriginRemote) continue
+    const urlMatch = line.match(/^url\s*=\s*(.+)$/)
+    if (urlMatch?.[1]) return urlMatch[1].trim()
+  }
+  return null
+}
+
+function readRemoteOriginFromGitConfig(gitRoot: string): RemoteConfigRead {
+  const dotGitPath = path.join(gitRoot, '.git')
+  const directConfigPath = path.join(dotGitPath, 'config')
+  let configPath: string | null = existsSync(directConfigPath) ? directConfigPath : null
+
+  if (!configPath) {
+    const gitDir = readGitDirFromFile(dotGitPath)
+    if (gitDir) {
+      configPath = path.join(resolveCommonGitDir(gitDir), 'config')
+    }
+  }
+
+  if (!configPath || !existsSync(configPath)) return { configRead: false, remote: null }
+
+  try {
+    return { configRead: true, remote: remoteOriginUrlFromConfig(readFileSync(configPath, 'utf8')) }
+  } catch {
+    return { configRead: false, remote: null }
+  }
+}
+
 function safeString(value: unknown): string | null {
   if (value === null || value === undefined) return null
   if (value instanceof Date) return value.toISOString().split('T')[0] ?? null
@@ -99,23 +187,35 @@ function safeStringArray(value: unknown): string[] {
   return value.filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
 }
 
-/** Detect org from git remote URL in the directory containing filePath. */
+/** Detect org from git remote URL, caching once per repo root. */
 function detectOrganization(filePath: string): string {
-  try {
-    const dir = path.dirname(filePath)
-    const remote = execSync('git remote get-url origin', {
-      cwd: dir,
-      stdio: ['ignore', 'pipe', 'ignore'],
-      encoding: 'utf8',
-      timeout: 5000,
-    }).trim()
-    // Handles both SSH (git@github.com:org/repo.git) and HTTPS (https://github.com/org/repo.git)
-    const match = remote.match(/[:/]([^/]+)\/[^/]+(?:\.git)?$/)
-    if (match?.[1]) return match[1]
-  } catch {
-    // Silently fall through — not all environments have git remotes
+  const gitRoot = findGitRoot(filePath)
+  if (!gitRoot) return 'unknown'
+
+  const cached = organizationByGitRoot.get(gitRoot)
+  if (cached) return cached
+
+  let organization = 'unknown'
+  const configRemote = readRemoteOriginFromGitConfig(gitRoot)
+  if (configRemote.configRead) {
+    organization = configRemote.remote ? (organizationFromRemote(configRemote.remote) ?? 'unknown') : 'unknown'
+  } else {
+    try {
+      const remote = execSync('git config --get remote.origin.url', {
+        cwd: gitRoot,
+        stdio: ['ignore', 'pipe', 'ignore'],
+        encoding: 'utf8',
+        timeout: 500,
+      }).trim()
+      organization = organizationFromRemote(remote) ?? 'unknown'
+    } catch {
+      // Silently fall through — not all environments have git remotes. Cache the
+      // miss so bulk blueprint ingestion remains bounded in non-git fixtures.
+    }
   }
-  return 'unknown'
+
+  organizationByGitRoot.set(gitRoot, organization)
+  return organization
 }
 
 /** Determine visibility from frontmatter or filepath convention. Defaults to private. */
