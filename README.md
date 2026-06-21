@@ -36,15 +36,24 @@ Install the Webpresso CLI globally, then run setup from your repo root. `wp` bun
 npm install -g @webpresso/agent-kit && wp setup
 ```
 
-For repeatable consumer-repo setup, pin `@webpresso/agent-kit` in the repo
-with a published semver range and run global `wp setup`. The package pin is
-used for version selection, not as a local execution path. If setup is launched
-from a global CLI that does not satisfy the repo pin, setup warns.
+For repeatable consumer-repo setup, keep `wp` global and keep only
+`@webpresso/agent-config` as the local preset dependency. The repo-level Agent
+Kit pin is a version-selection contract for the global binary, not a signal to
+add a consumer-local `@webpresso/agent-kit` dependency. If setup is launched
+from a global CLI that does not satisfy the repo pin, setup warns and tells you
+to align the global `wp` install.
 
 Then run the canonical success check:
 
 ```bash
 wp hooks doctor
+```
+
+Then prove the secret and preview surfaces:
+
+```bash
+wp secrets doctor
+wp preview --json
 ```
 
 **Success signal:** `wp setup` completes and is idempotent. On a fresh repo it
@@ -72,6 +81,9 @@ devDependency disappears — keep dependencies your repo imports directly (e.g.
 `vitest`, `@playwright/test`, `typescript`); review execution-only binaries
 (e.g. `oxlint`, `oxfmt`) for removal only when nothing imports them. See
 [`docs/getting-started.md`](docs/getting-started.md).
+
+For the end-to-end operator path from repo checkout to preview URL, see
+[`docs/guides/repo-to-preview-url.md`](docs/guides/repo-to-preview-url.md).
 
 For a first real read-only host action in either Claude or Codex, ask the host
 to run `wp_audit(kind="docs-frontmatter")`.
