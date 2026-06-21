@@ -361,6 +361,16 @@ export async function dispatchAudit(input: AkAuditInput): Promise<AuditPayload> 
         details: auditResult,
       }
     }
+    case 'github-actions-secrets': {
+      const { auditGithubActionsSecrets } = await import('#audit/github-actions-secrets')
+      const auditResult = auditGithubActionsSecrets(input.cwd ?? input.directory ?? process.cwd())
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
+    }
     case 'secret-provider-quarantine': {
       const { auditSecretProviderQuarantine } = await import('#audit/secret-provider-quarantine')
       const auditResult = auditSecretProviderQuarantine(

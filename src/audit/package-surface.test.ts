@@ -298,6 +298,50 @@ describe('package-surface audit', () => {
     )
   })
 
+  test('flags consumer package manifests that depend on @webpresso/agent-kit', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'apps', 'consumer'), { recursive: true })
+    writeJson(join(root, 'package-surface.json'), {})
+    writeJson(join(root, 'apps', 'consumer', 'package.json'), {
+      name: 'consumer-app',
+      private: true,
+      devDependencies: {
+        '@webpresso/agent-kit': 'workspace:*',
+      },
+    })
+
+    const result = auditPackageSurface(root, fastFixtureAudit)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: 'apps/consumer/package.json',
+          message: expect.stringContaining('global `wp` install'),
+        }),
+      ]),
+    )
+  })
+
+  test('allows clean consumer manifests that keep only @webpresso/agent-config locally', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'apps', 'consumer'), { recursive: true })
+    writeJson(join(root, 'package-surface.json'), {})
+    writeJson(join(root, 'apps', 'consumer', 'package.json'), {
+      name: 'consumer-app',
+      private: true,
+      devDependencies: {
+        '@webpresso/agent-config': '0.1.4',
+      },
+    })
+
+    const result = auditPackageSurface(root, fastFixtureAudit)
+
+    expect(
+      result.violations.some((violation) => violation.file === 'apps/consumer/package.json'),
+    ).toBe(false)
+  })
+
   test('does not match unscoped webpresso baseline inside a scoped @webpresso/framework lock entry', () => {
     const root = tempRepo()
     writeJson(join(root, 'package-surface.json'), {

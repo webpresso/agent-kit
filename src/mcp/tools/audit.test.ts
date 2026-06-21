@@ -37,6 +37,10 @@ const blueprintPrCoverageMock = {
   auditBlueprintPrCoverage: vi.fn(),
 }
 
+const githubActionsSecretsMock = {
+  auditGithubActionsSecrets: vi.fn(),
+}
+
 const agentsAuditMock = {
   auditAgents: vi.fn(),
 }
@@ -96,6 +100,7 @@ const viteLocalMock = {
 vi.mock('#audit/repo-guardrails', () => repoGuardrailsMock)
 vi.mock('#audit/blueprint-readme-drift', () => blueprintReadmeDriftMock)
 vi.mock('#audit/blueprint-pr-coverage', () => blueprintPrCoverageMock)
+vi.mock('#audit/github-actions-secrets', () => githubActionsSecretsMock)
 vi.mock('#audit/blueprint-lifecycle-sql', () => blueprintLifecycleSqlMock)
 vi.mock('#audit/agents', () => agentsAuditMock)
 vi.mock('#audit/reference-parity-matrix', () => referenceParityMatrixMock)
@@ -210,6 +215,14 @@ describe('wp_audit tool', () => {
         baseRef: 'abc123',
       })
       expect(parsePayload(result).passed).toBe(true)
+    })
+
+    it('github-actions-secrets -> auditGithubActionsSecrets', async () => {
+      githubActionsSecretsMock.auditGithubActionsSecrets.mockReturnValue(passingAudit())
+      const result = await akAuditTool.handler({ kind: 'github-actions-secrets', cwd: '/repo' })
+      expect(githubActionsSecretsMock.auditGithubActionsSecrets).toHaveBeenCalledWith('/repo')
+      expect(parsePayload(result).passed).toBe(true)
+      expect(parsePayload(result).kind).toBe('github-actions-secrets')
     })
 
     it('agents -> auditAgents', async () => {

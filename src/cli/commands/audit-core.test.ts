@@ -196,6 +196,23 @@ describe('runAuditDispatch', () => {
     })
   })
 
+  describe('github-actions-secrets', () => {
+    test('runs as a standalone repo-result', async () => {
+      const result = await runAuditDispatch(
+        'github-actions-secrets',
+        [],
+        { root: '/not-a-git-repo' },
+        makeDeps({ root: '/repo' }),
+      )
+
+      expect(result.kind).toBe('repo-result')
+      if (result.kind !== 'repo-result') return
+      expect(result.name).toBe('github-actions-secrets')
+      expect(result.result.ok).toBe(true)
+      expect(result.result.violations).toStrictEqual([])
+    })
+  })
+
   describe('mutation', () => {
     test('calls runStryker, returns script-exit with code', async () => {
       const deps = makeDeps()
