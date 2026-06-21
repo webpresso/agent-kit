@@ -6,7 +6,7 @@ status: completed
 complexity: XL
 created: '2026-06-19'
 last_updated: '2026-06-19'
-progress: '100% (17/17 tasks completed in this monolith branch; updated 2026-06-21)'
+progress: '100% (17/17 planning tasks completed; implementation split to child PRs, updated 2026-06-21)'
 depends_on:
   - >-
     ./2026-06-19-cross-repo-agent-kit-dedupe-e2e-secrets-act-setup.md
@@ -177,7 +177,7 @@ Canonical v1 shape is pinned to the locked engineering review:
     "test": { "defaultProfile": "preview", "allowedOps": ["run"] },
     "e2e": { "defaultProfile": "preview", "allowedOps": ["run"] },
     "deploy-wrangler": { "defaultProfile": "production", "allowedOps": ["preview", "deploy"] },
-    "pulumi": { "defaultProfile": "preview", "allowedOps": ["run", "preview", "up"] },
+    "pulumi": { "defaultProfile": "preview", "allowedOps": ["preview", "up"] },
     "act": { "defaultProfile": "preview", "allowedOps": ["replay", "run"] },
     "github-actions-bootstrap": { "defaultProfile": "production", "allowedOps": ["verify", "apply", "rotate", "revoke"] },
     "db-branch": { "defaultProfile": "preview", "allowedOps": ["create", "connect", "cleanup"] }
@@ -866,6 +866,10 @@ smoke, SHA-pin audit, package-surface/public-readiness, and release evidence.
 - [x] Public package surface excludes secrets, private paths, and generated junk.
 - [x] Release checklist captures evidence and credential-gated smoke.
 
+## Completion Note
+
+This completed blueprint records the planning and handoff artifact. Implementation is intentionally split across focused child PRs/worktrees so this parent PR is no longer a partially-complete execution tracker.
+
 ## Verification Gates
 
 | Gate | Command / evidence | Success criteria |
@@ -985,7 +989,3 @@ smoke, SHA-pin audit, package-surface/public-readiness, and release evidence.
   implementation ownership for `wp migrate secrets`, `wp cleanup preview`, and
   `wp audit github-actions-secrets`; fixed the task count to 17; and reconciled
   bootstrap ops to `verify/apply/rotate/revoke`.
-
-## Completion Note
-
-This branch carries the monolithic implementation payload and marks the parent blueprint complete for branch-local review. Focused child PRs remain the safer merge path, but this PR is kept synced per request and is not closed.
