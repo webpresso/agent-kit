@@ -79,7 +79,14 @@ export function auditAbsolutePathPolicy(rootDirectory: string = process.cwd()): 
       if (SKIP_DIRS.has(entry)) continue
 
       const fullPath = join(directory, entry)
-      const stat = statSync(fullPath)
+      let stat: ReturnType<typeof statSync>
+      try {
+        stat = statSync(fullPath)
+      } catch {
+        // Broken symlinks or raced deletions should not crash the audit.
+        // Treat them as non-scannable entries and continue.
+        continue
+      }
 
       if (stat.isDirectory()) {
         checked += walk(fullPath)
