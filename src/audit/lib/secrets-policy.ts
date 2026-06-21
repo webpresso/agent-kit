@@ -14,7 +14,6 @@ export type SecretsConfigMetadata = {
   readonly profiles?: Readonly<Record<string, { readonly environment: string }>>
 }
 
-const ALLOWED_CONFIG_KEYS = new Set(['manager', 'projectId', 'projectLabel', 'profiles'])
 const ALLOWED_SCHEMA_V1_KEYS = new Set([
   'schemaVersion',
   'providers',
@@ -109,7 +108,7 @@ export function resolveSecretsAuditRoot(rootDirectory: string = process.cwd()): 
 function validateConfigKeys(
   obj: Record<string, unknown>,
   sourceLabel: string,
-  allowedKeys: ReadonlySet<string> = ALLOWED_CONFIG_KEYS,
+  allowedKeys: ReadonlySet<string>,
 ): void {
   for (const key of Object.keys(obj)) {
     if (!allowedKeys.has(key)) {
@@ -119,40 +118,6 @@ function validateConfigKeys(
       throw new Error(`${sourceLabel}: key "${key}" looks like a secret name`)
     }
   }
-}
-
-function validateConfigValues(obj: Record<string, unknown>, sourceLabel: string): void {
-  if (obj.manager !== 'doppler' && obj.manager !== 'infisical') {
-    throw new Error(`${sourceLabel}: "manager" must be "doppler" or "infisical"`)
-  }
-  if (typeof obj.projectId !== 'string' || obj.projectId.length === 0) {
-    throw new Error(`${sourceLabel}: "projectId" must be a non-empty string`)
-  }
-  if (!PROJECT_ID_PATTERN.test(obj.projectId)) {
-    throw new Error(`${sourceLabel}: "projectId" must be a valid project slug`)
-  }
-}
-
-function buildConfigMetadata(
-  obj: Record<string, unknown>,
-  sourceLabel: string,
-): SecretsConfigMetadata {
-  const manager = obj.manager as 'doppler' | 'infisical'
-  const projectId = obj.projectId as string
-  const profiles = buildProfilesMetadata(obj.profiles, sourceLabel)
-  if (obj.projectLabel === undefined) {
-    return profiles ? { manager, projectId, profiles } : { manager, projectId }
-  }
-
-  if (typeof obj.projectLabel !== 'string' || obj.projectLabel.length === 0) {
-    throw new Error(`${sourceLabel}: "projectLabel" must be a non-empty string when set`)
-  }
-  if (SECRET_VALUE_PATTERN.test(obj.projectLabel)) {
-    throw new Error(`${sourceLabel} projectLabel must not contain secret values`)
-  }
-  return profiles
-    ? { manager, projectId, projectLabel: obj.projectLabel, profiles }
-    : { manager, projectId, projectLabel: obj.projectLabel }
 }
 
 function requireRecord(value: unknown, sourceLabel: string, name: string): Record<string, unknown> {
@@ -258,7 +223,5 @@ export function parseSecretsConfigMetadata(
   const obj = parsed as Record<string, unknown>
   const schemaVersion1Metadata = buildSchemaVersion1Metadata(obj, sourceLabel)
   if (schemaVersion1Metadata) return schemaVersion1Metadata
-  validateConfigKeys(obj, sourceLabel)
-  validateConfigValues(obj, sourceLabel)
-  return buildConfigMetadata(obj, sourceLabel)
+  throw new Error(`${sourceLabel}: only schemaVersion 1 secret config is supported`)
 }

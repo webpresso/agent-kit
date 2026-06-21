@@ -40,6 +40,10 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
       <tool>wp_audit</tool>
     </row>
     <row>
+      <trigger>multiple audits, audit guardrails, chained audit checks, full audit evidence</trigger>
+      <tool>wp_audits</tool>
+    </row>
+    <row>
       <trigger>running act, local GitHub Actions, legacy with-secrets -- act, vp exec act, pnpm exec act</trigger>
       <tool>wp_ci_act</tool>
     </row>
@@ -141,6 +145,12 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
       <trigger>auditing blueprints, catalog drift, bundle budget, docs frontmatter</trigger>
       <forbidden>just audit</forbidden>
       <usage>Use kind="tph-e2e" for the E2E testing-philosophy audit. This audits E2E quality rules; it does not execute the E2E suite itself.</usage>
+    </tool>
+    <tool name="wp_audits">
+      <category>dev-workflow</category>
+      <trigger>multiple audits, audit guardrails, chained audit checks, full audit evidence</trigger>
+      <forbidden>running wp_audit repeatedly for independent audit kinds when wp_audits can batch them</forbidden>
+      <usage>Use wp_audits for one request that needs all or multiple audit kinds.</usage>
     </tool>
     <tool name="wp_ci_act">
       <category>dev-workflow</category>

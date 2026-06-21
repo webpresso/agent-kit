@@ -1,4 +1,11 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -25,8 +32,8 @@ const ALREADY_PUBLISHED_PATTERNS = [
 ]
 
 const RELEASE_PUBLISH_RESULT_FILE_ENV = 'RELEASE_PUBLISH_RESULT_FILE'
+const SESSION_MEMORY_NATIVE_DOWNLOADS_DIR_ENV = 'SESSION_MEMORY_NATIVE_DOWNLOADS_DIR'
 const SESSION_MEMORY_NATIVE_ARTIFACTS_DIR_ENV = 'SESSION_MEMORY_NATIVE_ARTIFACTS_DIR'
-const ROOT_PACKAGE_NAME = '@webpresso/agent-kit'
 
 type PublishState = 'published' | 'already-published'
 
@@ -217,8 +224,7 @@ function writePublishResultFile(packages: readonly PublishedPackage[]) {
   const primaryPackage =
     packages.find(
       (publishedPackage) => publishedPackage.packageName === ROOT_RELEASE_PACKAGE_NAME,
-    ) ??
-    packages[0]
+    ) ?? packages[0]
   if (!primaryPackage) {
     return
   }
@@ -278,6 +284,35 @@ function assertPreparedSessionMemoryNativePackages(
       version,
     )
   })
+}
+
+function rehydrateSessionMemoryNativeArtifacts(rootDir: string): void {
+  const downloadsRoot = process.env[SESSION_MEMORY_NATIVE_DOWNLOADS_DIR_ENV]
+  if (!downloadsRoot || !existsSync(downloadsRoot)) return
+
+  for (const target of SESSION_MEMORY_NATIVE_TARGETS) {
+    const destination = resolve(
+      rootDir,
+      'dist',
+      'session-memory-native',
+      target.id,
+      'session_memory_napi.node',
+    )
+    if (existsSync(destination)) continue
+
+    const downloadSource = resolve(
+      downloadsRoot,
+      `session-memory-native-${target.id}`,
+      'session_memory_napi.node',
+    )
+    if (!existsSync(downloadSource)) continue
+
+    mkdirSync(dirname(destination), { recursive: true })
+    copyFileSync(downloadSource, destination)
+    process.stdout.write(
+      `[release:publish] rehydrated session-memory native artifact ${target.id} from ${downloadsRoot}\n`,
+    )
+  }
 }
 
 function requireSessionMemoryNativeArtifactsDir(): string {

@@ -128,7 +128,7 @@ describe('release-publish runtime lane', () => {
     expect(source).toContain('function rehydrateSessionMemoryNativeArtifacts(rootDir: string)')
     expect(source).toContain('[release:publish] rehydrated session-memory native artifact')
     expect(source.indexOf('rehydrateSessionMemoryNativeArtifacts(packageRoot)')).toBeLessThan(
-      source.indexOf("run('pnpm', ['run', 'stage:session-memory-native'])"),
+      source.indexOf('const sessionMemoryNativeStageArgs = ['),
     )
   })
 })

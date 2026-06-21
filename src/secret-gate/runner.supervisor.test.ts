@@ -7,15 +7,17 @@ vi.mock('node:child_process', () => ({
   spawn: spawnMock,
 }))
 
-function fakeChild(opts: {
-  pid?: number
-  hang?: boolean
-  stdout?: string
-  stderr?: string
-  exitCode?: number | null
-  signal?: NodeJS.Signals | null
-  killCapture?: { signal: NodeJS.Signals | null }
-} = {}): unknown {
+function fakeChild(
+  opts: {
+    pid?: number
+    hang?: boolean
+    stdout?: string
+    stderr?: string
+    exitCode?: number | null
+    signal?: NodeJS.Signals | null
+    killCapture?: { signal: NodeJS.Signals | null }
+  } = {},
+): unknown {
   let closeFn: ((code: number | null, signal: NodeJS.Signals | null) => void) | null = null
   return {
     pid: opts.pid ?? 2468,
@@ -68,6 +70,9 @@ describe('secret-gate runner supervisor', () => {
 
     const promise = runSecretGateCommand({
       command: 'hang',
+      sink: 'test',
+      profile: 'preview',
+      forceSecretGate: true,
       timeoutMs: 1,
     })
 
