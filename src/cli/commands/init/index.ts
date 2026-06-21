@@ -96,7 +96,6 @@ import {
   restoreManagedHooksFromManifest,
   scaffoldAgentHooks,
   trustCodexWebpressoHooksForRepo,
-  trustCodexPresetHooksForUser,
 } from './scaffolders/agent-hooks/index.js'
 import { ensureAgentKitGlobal } from './scaffolders/agent-kit-global/index.js'
 import { scaffoldAuditHooks } from './scaffolders/audit-hooks/index.js'
@@ -456,9 +455,6 @@ async function runUserOnlySetup(input: {
     switch (omxResult.kind) {
       case 'omx-ok':
         console.log(omxResult.installed ? '  omx setup: ✓ installed + configured' : '  omx setup: ✓')
-        console.log(
-          `  omx codex hooks: ${omxResult.codexGlobalHooks.repaired ? '✓ path-stable' : 'already path-stable'} ${omxResult.codexGlobalHooks.targetPath}`,
-        )
         break
       case 'omx-skipped-dry-run':
         console.log('  omx setup: skipped (--dry-run)')
@@ -526,8 +522,6 @@ async function runUserOnlySetup(input: {
         break
     }
   }
-
-  await trustCodexPresetHooksForUser({ repoRoot, options })
 
   const webpressoMcpResult = ensureCodexWebpressoMcp({ options })
   switch (webpressoMcpResult.kind) {
@@ -1253,9 +1247,6 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
               `  omx project-scope cleanup: ✓ removed ${omxResult.removedProjectFiles.length} tracked file(s)`,
             )
           }
-          console.log(
-            `  omx codex hooks: ${omxResult.codexGlobalHooks.repaired ? '✓ path-stable' : 'already path-stable'} ${omxResult.codexGlobalHooks.targetPath}`,
-          )
           if (!options.dryRun) {
             toolingOwnership =
               integrations.omx?.scope === 'project' && repoKey !== null
@@ -1370,8 +1361,6 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     // clearing all `[hooks.state]` entries before rehydrating its own hooks.
     // Re-apply webpresso's trust hashes after that possible cleanup.
     await trustCodexWebpressoHooksForRepo({ repoRoot: consumer.repoRoot, options })
-    await trustCodexPresetHooksForUser({ repoRoot: consumer.repoRoot, options })
-
     // Always upsert webpresso's MCP entry into the user's codex config when
     // an install root is discoverable. Codex's config.toml is user-global, so
     // we resolve to whatever absolute install path exists today (Claude

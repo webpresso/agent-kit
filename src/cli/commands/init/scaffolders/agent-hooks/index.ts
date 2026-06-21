@@ -3,9 +3,9 @@
  *   - `.claude/settings.json` (Claude Code)
  *   - `.codex/hooks.json` (Codex CLI)
  *
- * Mostly additive: preserves unrelated hooks, ensures webpresso's entries
- * are present, and prunes stale legacy Claude ak-* hook commands that current
- * setups no longer own. Uses installed bin paths so consumers don't need bun.
+ * Mostly additive: preserves unrelated hooks and ensures webpresso's direct
+ * `wp hook <name>` entries are present. Uses the installed package root and
+ * current Node binary so consumers don't need bun or generated hook shims.
  *
  * Runs by default on every `wp setup`.
  */
@@ -22,7 +22,6 @@ import {
 import { CodexAppServerClient } from '#codex/app-server/client.js'
 import type { CodexAppServerApi } from '#codex/app-server/types.js'
 import { commandExists as defaultCommandExists } from '#runtime/command-exists.js'
-import { isPresetOwnedGlobalCodexHook } from './codex-global-ownership.js'
 import { CLAUDE_PLUGIN_ID } from '#cli/commands/init/scaffolders/claude-plugin/index.js'
 import {
   syncCodexHookTrustWithAppServer,
@@ -36,18 +35,6 @@ import {
 } from './skill-hooks.js'
 import type { HooksManifest } from './manifest.js'
 import { buildClaudeHookGroups } from './emitters/claude.js'
-import {
-  DIRECT_CLAUDE_NODE_MODULES_BIN_PATTERN,
-  DIRECT_MANAGED_HOOK_LAUNCHER_PATTERN,
-  DIRECT_NODE_MODULES_BIN_PATTERN,
-  GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN,
-  GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN,
-  GUARDED_NODE_MODULES_BIN_PATTERN,
-  IF_GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN,
-  IF_GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN,
-  IF_GUARDED_NODE_MODULES_BIN_PATTERN,
-  stripSingleShellQuotePair,
-} from './shell-identity.js'
 import {
   type HookGroup,
   type HooksMap,
@@ -117,70 +104,28 @@ const CODEX_BIN = (repoRoot: string) => (name: string) => buildDirectWpHookComma
 // MatcherSet is re-exported from ./ir.js (export type above)
 // ensureGroup, mergeAgentKitGroups are imported from ./merge.js
 
-// Derived from the WP_HOOK_BIN_NAMES single source of truth (ir.ts). The legacy
-// set is the same bins under the retired `ak-` prefix, pruned on setup.
+// Derived from the WP_HOOK_BIN_NAMES single source of truth (ir.ts).
 const WEBPRESSO_HOOK_BIN_NAMES = new Set(WP_HOOK_BIN_NAMES)
-const LEGACY_WEBPRESSO_HOOK_BIN_NAMES = new Set(
-  WP_HOOK_BIN_NAMES.map((bin) => bin.replace(/^wp-/u, 'ak-')),
-)
 
-type WebpressoHookBinClassification =
-  | { kind: 'canonical'; binName: string }
-  | { kind: 'legacy'; binName: string }
+type WebpressoHookBinClassification = { kind: 'canonical'; binName: string }
 
 export function classifyWebpressoHookBin(
   binName: string | null,
 ): WebpressoHookBinClassification | null {
   if (binName === null) return null
-  if (WEBPRESSO_HOOK_BIN_NAMES.has(binName)) return { kind: 'canonical', binName }
-  if (LEGACY_WEBPRESSO_HOOK_BIN_NAMES.has(binName)) return { kind: 'legacy', binName }
-  return null
+  return WEBPRESSO_HOOK_BIN_NAMES.has(binName) ? { kind: 'canonical', binName } : null
 }
 
 function extractAgentKitCodexBinName(command: string): string | null {
-  const wpHookBinName = extractWpHookCommandBinName(command)
-  if (wpHookBinName !== null) return wpHookBinName
-  const normalizedCommand = stripSingleShellQuotePair(command.trim())
-  const directBinMatch = DIRECT_NODE_MODULES_BIN_PATTERN.exec(normalizedCommand)
-  if (directBinMatch !== null) return directBinMatch[1] ?? null
-  const directManagedLauncherMatch = DIRECT_MANAGED_HOOK_LAUNCHER_PATTERN.exec(normalizedCommand)
-  if (directManagedLauncherMatch !== null) return directManagedLauncherMatch[2] ?? null
-  const guardedBinMatch = GUARDED_NODE_MODULES_BIN_PATTERN.exec(command.trim())
-  if (guardedBinMatch !== null) return guardedBinMatch[3] ?? null
-  const ifGuardedBinMatch = IF_GUARDED_NODE_MODULES_BIN_PATTERN.exec(command.trim())
-  if (ifGuardedBinMatch !== null) return ifGuardedBinMatch[3] ?? null
-  const guardedManagedLauncherMatch = GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(command.trim())
-  if (guardedManagedLauncherMatch !== null) return guardedManagedLauncherMatch[3] ?? null
-  const ifGuardedManagedLauncherMatch = IF_GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(
-    command.trim(),
-  )
-  if (ifGuardedManagedLauncherMatch !== null) return ifGuardedManagedLauncherMatch[3] ?? null
-  return null
+  return extractWpHookCommandBinName(command)
 }
 
 function extractClaudeBinName(command: string): string | null {
-  const wpHookBinName = extractWpHookCommandBinName(command)
-  if (wpHookBinName !== null) return wpHookBinName
-  const normalizedCommand = stripSingleShellQuotePair(command.trim())
-  const directBinMatch = DIRECT_CLAUDE_NODE_MODULES_BIN_PATTERN.exec(normalizedCommand)
-  if (directBinMatch !== null) return directBinMatch[1] ?? null
-  const directManagedLauncherMatch = DIRECT_MANAGED_HOOK_LAUNCHER_PATTERN.exec(normalizedCommand)
-  if (directManagedLauncherMatch !== null) return directManagedLauncherMatch[2] ?? null
-  const guardedBinMatch = GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN.exec(command.trim())
-  if (guardedBinMatch !== null) return guardedBinMatch[2] ?? null
-  const ifGuardedBinMatch = IF_GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN.exec(command.trim())
-  if (ifGuardedBinMatch !== null) return ifGuardedBinMatch[2] ?? null
-  const guardedManagedLauncherMatch = GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(command.trim())
-  if (guardedManagedLauncherMatch !== null) return guardedManagedLauncherMatch[3] ?? null
-  const ifGuardedManagedLauncherMatch = IF_GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(
-    command.trim(),
-  )
-  if (ifGuardedManagedLauncherMatch !== null) return ifGuardedManagedLauncherMatch[3] ?? null
-  return null
+  return extractWpHookCommandBinName(command)
 }
 
 function extractWpHookCommandBinName(command: string): string | null {
-  const match = /\bwp\s+hook\s+([a-z0-9-]+)/u.exec(command)
+  const match = /\bwp["']?\s+hook\s+([a-z0-9-]+)/u.exec(command)
   const subcommand = match?.[1]
   if (!subcommand || !isHookName(subcommand)) return null
   const binName = `wp-${subcommand}`
@@ -577,46 +522,6 @@ export async function trustCodexWebpressoHooksForRepo(
   }
 }
 
-export async function trustCodexPresetHooksForUser(input: ScaffoldAgentHooksInput): Promise<void> {
-  if (shouldSkipCodexTrustSync(input)) return
-
-  const codexHome = process.env.CODEX_HOME || join(homedir(), '.codex')
-  const hooksPath = resolve(codexHome, 'hooks.json')
-  if (!existsSync(hooksPath)) return
-
-  const createCodexAppServer =
-    input.createCodexAppServer ?? ((repoRoot) => CodexAppServerClient.start({ cwd: repoRoot }))
-
-  let api: CodexAppServerApi
-  try {
-    api = await createCodexAppServer(input.repoRoot)
-  } catch (error) {
-    reportCodexTrustSyncWarning(input, {
-      kind: 'codex-app-server-trust-sync-warning',
-      message: error instanceof Error ? error.message : String(error),
-    })
-    return
-  }
-
-  try {
-    const syncResult = await syncCodexHookTrustWithAppServer(api, {
-      repoRoot: input.repoRoot,
-      expectedSourcePaths: [hooksPath],
-      hookDescription: 'preset-owned global',
-      selectHook: isPresetOwnedGlobalCodexHook,
-    })
-    if (!syncResult.ok && syncResult.reason !== 'no-webpresso-hooks-found') {
-      reportCodexTrustSyncWarning(input, {
-        kind: 'codex-app-server-trust-sync-warning',
-        message: syncResult.message,
-        syncResult,
-      })
-    }
-  } finally {
-    await api.close()
-  }
-}
-
 function isCodexCliAvailable(input: ScaffoldAgentHooksInput): boolean {
   const commandExists =
     input.codexAvailable ?? (input.createCodexAppServer ? () => true : defaultCommandExists)
@@ -898,10 +803,8 @@ export function resolvePackageRootForHookLaunchers(
 }
 
 /**
- * The `wp hook <sub>` subcommand historically matched the `wp-*` managed hook
- * bins 1:1 by stripping the `wp-` prefix. Keep it exported while the bin names
- * still track the hook names even though managed launchers now execute the
- * compiled hook bins directly.
+ * The `wp hook <sub>` subcommand maps each catalogued `wp-*` hook bin to the
+ * direct CLI subcommand generated into host hook config.
  */
 export function hookSubcommandFor(binName: string): string | undefined {
   const sub = binName.startsWith('wp-') ? binName.slice(3) : binName

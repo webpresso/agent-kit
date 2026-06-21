@@ -34,7 +34,7 @@ This behavior is documented in `catalog/agent/rules/supported-agent-clis.md`.
 This repo does **not** invent hook ordering between multiple systems.
 The bounded contract is:
 
-- webpresso owns `wp_*` routing and managed hook launchers
+- webpresso owns `wp hook <name>` routing and generated host hook commands
 - RTK owns shell filtering where it is explicitly installed
 - `wp audit hook-surface` enforces the single-rewriter-per-matcher invariant
 

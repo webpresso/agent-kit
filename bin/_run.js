@@ -358,7 +358,7 @@ export function buildLaunchPlan({
   // from source, so a stale compiled `bin/runtime/<arch>/wp` never gates dev work. It is
   // the explicit counterpart to WP_FORCE_COMPILED_RUNTIME and wins when both are set.
   // Runtime-owned hook dispatch still goes through the native runtime when present so
-  // managed hook launchers exercise the same global `bin/wp hook ...` contract as installs.
+  // direct hook dispatch exercises the same global `bin/wp hook ...` contract as installs.
   // No-op without source (consumers).
   const mustUseRuntimeWhenAvailable =
     binName === 'wp' && forwardedArgs[0] === 'hook' && areRuntimeHooksEnabled(repoRoot)

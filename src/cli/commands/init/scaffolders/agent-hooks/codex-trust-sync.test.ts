@@ -12,7 +12,7 @@ const ownedHook: CommandHookMetadata = {
   eventName: 'pre_tool_use',
   handlerType: 'command',
   matcher: 'Bash',
-  command: './.codex/managed-hooks/wp-pretool-guard.sh',
+  command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
   timeoutSec: 5,
   statusMessage: null,
   sourcePath: HOOKS_PATH,

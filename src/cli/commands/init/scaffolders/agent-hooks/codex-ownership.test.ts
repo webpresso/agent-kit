@@ -10,69 +10,27 @@ function ownedHook(overrides: Record<string, unknown> = {}): Record<string, unkn
     handlerType: 'command',
     pluginId: null,
     sourcePath: EXPECTED_SOURCE_PATHS[0],
-    command: './.codex/managed-hooks/wp-pretool-guard.sh',
+    command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
     ...overrides,
   }
 }
 
 describe('isWebpressoOwnedCodexHook', () => {
-  it('accepts unmanaged command hooks from expected source paths that target current managed codex launchers', () => {
+  it('accepts unmanaged command hooks from expected source paths that target direct wp hook commands', () => {
     for (const binName of KNOWN_WEBPRESSO_CODEX_BINS) {
       expect(
         isWebpressoOwnedCodexHook(
-          ownedHook({ command: `./.codex/managed-hooks/${binName}.sh` }),
+          ownedHook({ command: `node /pkg/bin/wp hook ${binName.slice(3)} # ${binName}` }),
           EXPECTED_SOURCE_PATHS,
         ),
       ).toBe(true)
     }
   })
 
-  it('accepts quoted absolute managed launcher paths', () => {
+  it('accepts direct commands with absolute wp launcher paths', () => {
     expect(
       isWebpressoOwnedCodexHook(
-        ownedHook({ command: '"/repo/.codex/managed-hooks/wp-post-tool.sh"' }),
-        EXPECTED_SOURCE_PATHS,
-      ),
-    ).toBe(true)
-  })
-
-  it('accepts managed local Codex launcher commands', () => {
-    expect(
-      isWebpressoOwnedCodexHook(
-        ownedHook({ command: '"/repo/.codex/managed-hooks/wp-post-tool.sh"' }),
-        EXPECTED_SOURCE_PATHS,
-      ),
-    ).toBe(true)
-    expect(
-      isWebpressoOwnedCodexHook(
-        ownedHook({
-          command:
-            '[ -x "/repo/.codex/managed-hooks/wp-post-tool.sh" ] && "/repo/.codex/managed-hooks/wp-post-tool.sh" || true',
-        }),
-        EXPECTED_SOURCE_PATHS,
-      ),
-    ).toBe(true)
-  })
-
-  it('accepts guarded absolute managed launcher commands', () => {
-    expect(
-      isWebpressoOwnedCodexHook(
-        ownedHook({
-          command:
-            '[ -x "/repo/.codex/managed-hooks/wp-post-tool.sh" ] && "/repo/.codex/managed-hooks/wp-post-tool.sh" || printf "%s\\n" "{}"',
-        }),
-        EXPECTED_SOURCE_PATHS,
-      ),
-    ).toBe(true)
-  })
-
-  it('accepts if/then guarded managed launcher commands', () => {
-    expect(
-      isWebpressoOwnedCodexHook(
-        ownedHook({
-          command:
-            'if [ -x "/repo/.codex/managed-hooks/wp-post-tool.sh" ]; then "/repo/.codex/managed-hooks/wp-post-tool.sh"; else printf "%s\\n" "{}"; fi',
-        }),
+        ownedHook({ command: '/usr/bin/node /repo/node_modules/@webpresso/agent-kit/bin/wp hook post-tool # wp-post-tool' }),
         EXPECTED_SOURCE_PATHS,
       ),
     ).toBe(true)
@@ -129,22 +87,22 @@ describe('isWebpressoOwnedCodexHook', () => {
     ).toBe(false)
   })
 
-  it('rejects commands that do not directly target known managed codex launchers', () => {
+  it('rejects commands that do not directly target known direct wp hook commands', () => {
     expect(
       isWebpressoOwnedCodexHook(
-        ownedHook({ command: './node_modules/.bin/wp-pretool-guard' }),
+        ownedHook({ command: 'python .codex/hooks/wp-pretool-guard.py' }),
         EXPECTED_SOURCE_PATHS,
       ),
     ).toBe(false)
     expect(
       isWebpressoOwnedCodexHook(
-        ownedHook({ command: './.codex/managed-hooks/ak-pretool-guard.sh' }),
+        ownedHook({ command: 'ak hook pretool-guard' }),
         EXPECTED_SOURCE_PATHS,
       ),
     ).toBe(false)
     expect(
       isWebpressoOwnedCodexHook(
-        ownedHook({ command: 'echo ./.codex/managed-hooks/wp-pretool-guard.sh' }),
+        ownedHook({ command: 'echo wp-pretool-guard' }),
         EXPECTED_SOURCE_PATHS,
       ),
     ).toBe(false)

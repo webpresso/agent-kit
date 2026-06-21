@@ -55,7 +55,7 @@ function writeInstalledHooks(repoRoot: string): void {
               hooks: [
                 {
                   type: 'command',
-                  command: path.join(repoRoot, '.codex/managed-hooks/wp-sessionstart-routing.sh'),
+                  command: `/usr/bin/node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing`,
                 },
               ],
             },
@@ -102,7 +102,7 @@ describe('upgradeHooksForRepo', () => {
             hooks: [
               {
                 type: 'command',
-                command: path.join(repoRoot, '.codex/managed-hooks/wp-sessionstart-routing.sh'),
+                command: `/usr/bin/node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing`,
               },
             ],
           },

@@ -64,7 +64,7 @@ describe('ensureGroup', () => {
         {
           type: 'command',
           command:
-            '[ -x "/repo/.codex/managed-hooks/wp-stop-qa.sh" ] && "/repo/.codex/managed-hooks/wp-stop-qa.sh" || true',
+            'node /pkg/bin/wp hook stop-qa # wp-stop-qa',
           timeout: 5,
         },
       ],
@@ -74,7 +74,7 @@ describe('ensureGroup', () => {
         {
           type: 'command',
           command:
-            '[ -x "/new-repo/.codex/managed-hooks/wp-stop-qa.sh" ] && "/new-repo/.codex/managed-hooks/wp-stop-qa.sh" || true',
+            'node /other/bin/wp hook stop-qa # wp-stop-qa',
           timeout: 10,
         },
       ],
@@ -87,13 +87,13 @@ describe('ensureGroup', () => {
     expect(result[0]?.hooks[0]?.timeout).toStrictEqual(10)
   })
 
-  it('dedupes legacy and if/then guarded launcher forms for the same hook target', () => {
+  it('dedupes different direct wp hook command materializations for the same hook target', () => {
     const existing: HookGroup = {
       hooks: [
         {
           type: 'command',
           command:
-            '[ -x "/repo/.codex/managed-hooks/wp-stop-qa.sh" ] && "/repo/.codex/managed-hooks/wp-stop-qa.sh" || true',
+            'node /pkg/bin/wp hook stop-qa # wp-stop-qa',
         },
       ],
     }
@@ -102,7 +102,7 @@ describe('ensureGroup', () => {
         {
           type: 'command',
           command:
-            'if [ -x "/new-repo/.codex/managed-hooks/wp-stop-qa.sh" ]; then "/new-repo/.codex/managed-hooks/wp-stop-qa.sh"; else true; fi',
+            'node /new/bin/wp hook stop-qa # wp-stop-qa',
           timeout: 10,
         },
       ],

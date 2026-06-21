@@ -46,24 +46,24 @@ const MATCHERS = {
   postToolUse: 'Bash|Write|Edit|MultiEdit|mcp__.*',
 } as const
 
+function hookSubcommand(name: string): string {
+  return name.replace(/^wp-/u, '')
+}
+
+function directFixtureCommand(name: string): string {
+  const fallback = WP_HOOK_SPECS.find((spec) => spec.bin === name)?.jsonOnly === true
+    ? "printf '%s\\n' '{}'"
+    : 'true'
+  return `if [ -x /usr/bin/node ] && [ -f /pkg/bin/wp ]; then /usr/bin/node /pkg/bin/wp hook ${hookSubcommand(name)}; else ${fallback}; fi # ${name}`
+}
+
 const CLAUDE_HOOKS = buildClaudeHookGroups({
-  resolveBin: (name) => `"$CLAUDE_PROJECT_DIR/.claude/hooks/managed/${name}.sh"`,
+  resolveBin: directFixtureCommand,
   matchers: MATCHERS,
 })
 
-function codexFixtureCommand(name: string): string {
-  const binPath = `'/repo/.codex/managed-hooks/${name}.sh'`
-  const fallback =
-    name === 'wp-pretool-guard'
-      ? `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install @webpresso/agent-kit globally and re-run wp setup."}}'`
-      : WP_HOOK_SPECS.find((spec) => spec.bin === name)?.jsonOnly === true
-        ? "printf '%s\\n' '{}'"
-        : 'true'
-  return `if [ -x ${binPath} ]; then ${binPath}; else ${fallback}; fi`
-}
-
 const CODEX_HOOKS = buildCodexHookGroups({
-  resolveBin: () => codexFixtureCommand,
+  resolveBin: () => directFixtureCommand,
   matchers: MATCHERS,
   repoRoot: '/repo',
 })
