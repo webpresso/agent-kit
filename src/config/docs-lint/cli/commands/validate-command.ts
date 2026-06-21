@@ -106,6 +106,8 @@ export class ValidateCommand {
         .filter(
           (f) =>
             !IGNORE_PATTERNS.some((pattern) => {
+              // Intentional config glob conversion: these patterns are trusted
+              // ignore globs, not free-form user regex input.
               const regex = new RegExp(pattern.replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*'))
               return regex.test(f)
             }),

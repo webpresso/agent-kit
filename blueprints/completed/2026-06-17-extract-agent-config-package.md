@@ -2,11 +2,12 @@
 type: blueprint
 title: "Extract @webpresso/agent-config (binary-free test/config tooling)"
 owner: ozby
-status: planned
+status: completed
+completed_at: '2026-06-21'
 complexity: L
 created: '2026-06-17'
 last_updated: '2026-06-17'
-progress: '0% (planned)'
+progress: '100% (completed; tasks verified during plan-refine reconciliation)'
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -71,41 +72,72 @@ internally at 4 sites, 0 consumer pull), `docs-lint`/`launch`/`test-preset`/`e2e
 ## Tasks
 
 #### [infra] Task 1.1: Scaffold `packages/agent-config`
-**Status:** todo **Depends:** None
+**Status:** done
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/config/export-resolution.test.ts --file src/build/package-manifest.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Code inspection confirmed @webpresso/agent-config package, moved config surfaces, binary-free package manifest, removed old agent-kit config exports, and no preferGlobal references.","kind":"manual","log_excerpt":"packages/agent-config/package.json and packages/agent-config/src/{tsconfig,vitest,stryker,workers-test}; rg preferGlobal and old agent-kit config subpaths returned zero hits.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
+
 **Files:** Create `packages/agent-config/package.json` (name `@webpresso/agent-config`,
 `"type":"module"`, `"sideEffects":false`, **no `bin`**, empty `exports` stub, deps =
 `vite-plus`/`vitest`/`vite`/`@vitejs/plugin-react`, `better-sqlite3` as optional peer
 **and** devDep — not optionalDependencies, F1); `packages/agent-config/tsconfig.json`
 + tshy build; Modify `pnpm-workspace.yaml` (add `packages/*`).
 **Acceptance:** [ ] resolves in workspace [ ] no `bin` [ ] `better-sqlite3` absent from `dependencies`/`optionalDependencies` [ ] builds empty.
-
 #### [config] Task 2.1: Move `tsconfig/*` (NOT diff-empty, F5)
-**Status:** todo **Depends:** 1.1
+**Status:** done
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/config/export-resolution.test.ts --file src/build/package-manifest.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Code inspection confirmed @webpresso/agent-config package, moved config surfaces, binary-free package manifest, removed old agent-kit config exports, and no preferGlobal references.","kind":"manual","log_excerpt":"packages/agent-config/package.json and packages/agent-config/src/{tsconfig,vitest,stryker,workers-test}; rg preferGlobal and old agent-kit config subpaths returned zero hits.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
+
 Move `src/config/tsconfig/*.json` → `packages/agent-config/src/tsconfig/`; **rewrite the
 4 self-extends** to `@webpresso/agent-config/tsconfig/...`; add the 5 keys to `exports`.
 **Acceptance:** [ ] 4 self-extends rewritten [ ] 5 keys resolve [ ] react-router→react-library→library→base chain intact [ ] `diff -ru` import-path-only.
-
 #### [config] Task 2.2: Move `vitest/**` (+ support, F1)
-**Status:** todo **Depends:** 1.1
+**Status:** done
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/config/export-resolution.test.ts --file src/build/package-manifest.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Code inspection confirmed @webpresso/agent-config package, moved config surfaces, binary-free package manifest, removed old agent-kit config exports, and no preferGlobal references.","kind":"manual","log_excerpt":"packages/agent-config/package.json and packages/agent-config/src/{tsconfig,vitest,stryker,workers-test}; rg preferGlobal and old agent-kit config subpaths returned zero hits.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
+
 Move whole `src/config/vitest/` incl. `bun-sqlite-shim`, `flakiness-reporter`,
 `pool-defaults`, `version-guard`, `generated-runtime-aliases`, `node-setup`,
 `react-setup`, `ambient.d.ts`, `consumer-package`, `vitest-parity.test.ts`.
 **Acceptance:** [ ] `nodeConfig`/`workersConfig`/`reactConfig` resolve [ ] `npm pack --dry-run` proves no `better-sqlite3` in a default install [ ] shim resolves when `bun:sqlite` is used.
-
 #### [config] Task 2.3: Move `stryker` + `workers-test` (vitest peer, F7)
-**Status:** todo **Depends:** 1.1
+**Status:** done
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/config/export-resolution.test.ts --file src/build/package-manifest.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Code inspection confirmed @webpresso/agent-config package, moved config surfaces, binary-free package manifest, removed old agent-kit config exports, and no preferGlobal references.","kind":"manual","log_excerpt":"packages/agent-config/package.json and packages/agent-config/src/{tsconfig,vitest,stryker,workers-test}; rg preferGlobal and old agent-kit config subpaths returned zero hits.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
+
 Move `src/config/{stryker,workers-test}/`; add `./stryker`,`./workers-test`; declare
 `vitest` real; `@stryker-mutator/*`/`@cloudflare/vitest-pool-workers`/`wrangler` optional peers.
 **Acceptance:** [ ] both groups resolve [ ] `vitest` declared [ ] mocks import under a consumer install.
-
 #### [config] Task 2.4: agent-config isolation + surface guards
-**Status:** todo **Depends:** 2.1, 2.2, 2.3
+**Status:** done
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/config/export-resolution.test.ts --file src/build/package-manifest.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Code inspection confirmed @webpresso/agent-config package, moved config surfaces, binary-free package manifest, removed old agent-kit config exports, and no preferGlobal references.","kind":"manual","log_excerpt":"packages/agent-config/package.json and packages/agent-config/src/{tsconfig,vitest,stryker,workers-test}; rg preferGlobal and old agent-kit config subpaths returned zero hits.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
+
 **Files:** `packages/agent-config/src/export-isolation.test.ts` (4 groups public, no
 `@webpresso/agent-kit`/`#cli`/MCP leak); `publint`; `attw --pack`.
 **Acceptance:** [ ] isolation green [ ] publint clean [ ] attw clean.
-
 #### [agent-kit] Task 3.1: Strip exports + rewire self-hosting + drop preferGlobal + major bump (F6)
-**Status:** todo **Depends:** 2.4
+**Status:** done
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/config/export-resolution.test.ts --file src/build/package-manifest.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Code inspection confirmed @webpresso/agent-config package, moved config surfaces, binary-free package manifest, removed old agent-kit config exports, and no preferGlobal references.","kind":"manual","log_excerpt":"packages/agent-config/package.json and packages/agent-config/src/{tsconfig,vitest,stryker,workers-test}; rg preferGlobal and old agent-kit config subpaths returned zero hits.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
+
 **Files:** Modify `package.json` (delete the 4 export groups, delete `"preferGlobal"` `:30`,
 trim `files`); Delete moved `src/config/{tsconfig,vitest,stryker,workers-test}`; **Rewire
 self-hosting:** root `stryker.config.ts:4` → `@webpresso/agent-config/stryker`; root

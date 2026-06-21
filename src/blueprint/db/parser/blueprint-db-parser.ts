@@ -9,7 +9,8 @@
  */
 
 import crypto from 'node:crypto'
-import { execSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import path from 'node:path'
 
 import matter from 'gray-matter'
@@ -99,22 +100,43 @@ function safeStringArray(value: unknown): string[] {
   return value.filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
 }
 
-/** Detect org from git remote URL in the directory containing filePath. */
+const organizationByGitRoot = new Map<string, string>()
+
+function findGitMetadataRoot(startDir: string): string | null {
+  let current = path.resolve(startDir)
+  while (true) {
+    if (existsSync(path.join(current, '.git'))) return current
+    const parent = path.dirname(current)
+    if (parent === current) return null
+    current = parent
+  }
+}
+
+/** Detect org from git remote URL once per git root instead of once per file. */
 function detectOrganization(filePath: string): string {
+  const dir = path.dirname(filePath)
+  const gitRoot = findGitMetadataRoot(dir)
+  if (gitRoot === null) return 'unknown'
+
+  const cached = organizationByGitRoot.get(gitRoot)
+  if (cached !== undefined) return cached
+
   try {
-    const dir = path.dirname(filePath)
-    const remote = execSync('git remote get-url origin', {
-      cwd: dir,
+    const remote = execFileSync('git', ['remote', 'get-url', 'origin'], {
+      cwd: gitRoot,
       stdio: ['ignore', 'pipe', 'ignore'],
       encoding: 'utf8',
-      timeout: 5000,
+      timeout: 1500,
     }).trim()
     // Handles both SSH (git@github.com:org/repo.git) and HTTPS (https://github.com/org/repo.git)
     const match = remote.match(/[:/]([^/]+)\/[^/]+(?:\.git)?$/)
-    if (match?.[1]) return match[1]
+    const organization = match?.[1] ?? 'unknown'
+    organizationByGitRoot.set(gitRoot, organization)
+    return organization
   } catch {
     // Silently fall through — not all environments have git remotes
   }
+  organizationByGitRoot.set(gitRoot, 'unknown')
   return 'unknown'
 }
 

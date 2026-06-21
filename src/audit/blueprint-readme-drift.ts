@@ -62,14 +62,29 @@ function initialCounts(): Record<BlueprintState, number> {
   }
 }
 
-function listTrackedBlueprintPaths(cwd: string, trackedRoot: string): readonly string[] | null {
-  const result = spawnSync('git', ['ls-files', '--full-name', trackedRoot], {
+function listVisibleBlueprintPaths(cwd: string, trackedRoot: string): readonly string[] | null {
+  const result = spawnSync(
+    'git',
+    ['ls-files', '--cached', '--others', '--exclude-standard', '--full-name', trackedRoot],
+    {
+      cwd,
+      encoding: 'utf8',
+      timeout: 5000,
+    },
+  )
+  if (result.status !== 0 || result.error != null) return null
+
+  const deleted = spawnSync('git', ['ls-files', '--deleted', '--full-name', trackedRoot], {
     cwd,
     encoding: 'utf8',
     timeout: 5000,
   })
-  if (result.status !== 0 || result.error != null) return null
-  return result.stdout.split('\n').filter(Boolean)
+  if (deleted.status !== 0 || deleted.error != null) return null
+
+  const deletedPaths = new Set(deleted.stdout.split('\n').filter(Boolean))
+  return result.stdout
+    .split('\n')
+    .filter((filePath) => filePath.length > 0 && !deletedPaths.has(filePath))
 }
 
 function countBlueprintsByState(cwd: string): Record<BlueprintState, number> {
@@ -77,13 +92,13 @@ function countBlueprintsByState(cwd: string): Record<BlueprintState, number> {
   const blueprintsRoot = resolveBlueprintRoot(cwd)
   if (!existsSync(blueprintsRoot)) return counts
 
-  // Prefer git ls-files so counts reflect tracked-only files — prevents
-  // untracked local files from inflating counts and causing --fix to emit
-  // values that differ from a clean CI checkout.
+  // Prefer git ls-files so counts reflect the visible, non-ignored working
+  // tree: tracked files plus untracked additions, minus deleted tracked files.
+  // This keeps --fix trustworthy while lifecycle moves are still unstaged.
   const trackedRoot = path.relative(cwd, blueprintsRoot).replace(/\\/g, '/')
-  const tracked = listTrackedBlueprintPaths(cwd, trackedRoot)
-  if (tracked !== null) {
-    for (const filePath of tracked) {
+  const visible = listVisibleBlueprintPaths(cwd, trackedRoot)
+  if (visible !== null) {
+    for (const filePath of visible) {
       const prefix = `${trackedRoot}/`
       const afterBlueprints = filePath.startsWith(prefix) ? filePath.slice(prefix.length) : filePath
       const parsed = parseBlueprintDocumentRelativePath(afterBlueprints)

@@ -14,34 +14,16 @@ Each subdirectory represents a lifecycle state:
 | State | Count | Description |
 | ----- | ----: | ----------- |
 | `draft/` | 7 | early-stage sketches. Expect churn; move to `planned/` once scoped. |
-| `planned/` | 18 | committed-to specs, ready to pick up. |
-| `in-progress/` | 0 | actively being executed. At most 3 active blueprints per lane. |
-| `completed/` | 98 | execution finished and verified. Kept for reference. |
-| `parked/` | 11 | intentionally paused. Include a reason in the spec's frontmatter. |
+| `planned/` | 0 | committed-to specs, ready to pick up. |
+| `in-progress/` | 3 | actively being executed. At most 3 active blueprints per lane. |
+| `completed/` | 105 | execution finished and verified. Kept for reference. |
+| `parked/` | 19 | intentionally paused. Include a reason in the spec's frontmatter. |
 | `archived/` | 4 | superseded or abandoned. Not deleted — the record matters. |
 <!-- END: blueprint-index -->
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<<<<<<< HEAD
-=======
-
->>>>>>> 5913e099 (docs(competitive): publish parity matrix and fix audit staging)
 ## Authoring
 
 - Use `docs/templates/blueprint.md` as the starting point.

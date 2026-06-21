@@ -181,9 +181,11 @@ describe('WP_ROUTING_BLOCK', () => {
     expect(WP_ROUTING_BLOCK).not.toContain('use just recipes directly')
   })
 
-  it('routes split agent config helpers through agent-kit and agent-config surfaces', () => {
-    expect(WP_ROUTING_BLOCK).toContain('@webpresso/agent-kit/oxlint')
+  it('routes global wp and split agent-config guidance without local agent-kit dependency advice', () => {
+    expect(WP_ROUTING_BLOCK).toContain('global wp CLI')
+    expect(WP_ROUTING_BLOCK).toContain('version-skew warning')
     expect(WP_ROUTING_BLOCK).toContain('@webpresso/agent-config/workers-test')
+    expect(WP_ROUTING_BLOCK).not.toContain('@webpresso/agent-kit/oxlint')
     expect(WP_ROUTING_BLOCK).toContain('wp_* MCP tool names')
     expect(WP_ROUTING_BLOCK).toContain('wp-* hook bin names unchanged')
   })

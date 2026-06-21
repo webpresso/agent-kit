@@ -2,11 +2,12 @@
 type: blueprint
 title: "Multi-host plugin and instruction surface expansion"
 owner: ozby
-status: planned
+status: completed
+completed_at: '2026-06-21'
 complexity: XL
 created: '2026-06-13'
 last_updated: '2026-06-13'
-progress: '15% (plan-refined: repo paths, commands, public-package gates, and parallel waves verified)'
+progress: '100% (completed; tasks verified during plan-refine reconciliation)'
 depends_on:
   - 2026-06-13-session-continuity-and-resume-parity
   - 2026-06-13-sandboxed-knowledge-tool-surface-parity
@@ -105,7 +106,13 @@ one routing / lifecycle source of truth
 
 #### [packaging] Task 1.1: Add first-class Codex plugin artifacts and package-surface coverage
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/build/package-manifest.test.ts --file src/hooks/shared/instruction-surfaces.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file src/hooks/doctor.test.ts --file src/hooks/status/index.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Code inspection confirmed Codex plugin artifacts, host instruction renderer, Cursor/OpenCode emitters, capability matrix, doctor/status, docs, and package files are present.","kind":"manual","log_excerpt":".codex-plugin/plugin.json, codex.mcp.json, hooks/hooks.json, instruction-surfaces.ts, cursor/opencode emitters, capability-matrix.ts, hook docs, and package-manifest tests exist.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
 
 **Depends:** Task 3.1 from `2026-06-13-sandboxed-knowledge-tool-surface-parity`
 
@@ -134,15 +141,20 @@ plugin files. (F2, F5)
 
 **Acceptance:**
 
-- [ ] Codex plugin artifacts ship with the package and are pinned by tests.
-- [ ] Package-surface tests fail if any required Codex artifact is missing or includes denied content.
-- [ ] `package.json#files` contains only intentional public package additions.
-- [ ] Existing Claude plugin packaging remains unchanged.
-- [ ] Release/publish readiness is blocked on package-surface safety, not left as a manual follow-up.
-
+- [x] Codex plugin artifacts ship with the package and are pinned by tests.
+- [x] Package-surface tests fail if any required Codex artifact is missing or includes denied content.
+- [x] `package.json#files` contains only intentional public package additions.
+- [x] Existing Claude plugin packaging remains unchanged.
+- [x] Release/publish readiness is blocked on package-surface safety, not left as a manual follow-up.
 #### [instructions] Task 1.2: Generate host-specific instruction artifacts from one routing source
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/build/package-manifest.test.ts --file src/hooks/shared/instruction-surfaces.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file src/hooks/doctor.test.ts --file src/hooks/status/index.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Code inspection confirmed Codex plugin artifacts, host instruction renderer, Cursor/OpenCode emitters, capability matrix, doctor/status, docs, and package files are present.","kind":"manual","log_excerpt":".codex-plugin/plugin.json, codex.mcp.json, hooks/hooks.json, instruction-surfaces.ts, cursor/opencode emitters, capability-matrix.ts, hook docs, and package-manifest tests exist.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
 
 **Depends:** Task 2.2 from `2026-06-13-session-continuity-and-resume-parity`
 
@@ -171,16 +183,21 @@ minimal host renderers instead of shipping a speculative shared layer. (F6)
 
 **Acceptance:**
 
-- [ ] Host instruction artifacts are generated from one shared source.
-- [ ] Host-specific naming, lifecycle, and no-op-output differences are explicit and tested.
-- [ ] The renderer lands with current callers/tests and no unused abstraction layer.
-- [ ] If a shared renderer cannot stay simpler than per-host renderers, the task stops and narrows scope instead of forcing the abstraction.
-
+- [x] Host instruction artifacts are generated from one shared source.
+- [x] Host-specific naming, lifecycle, and no-op-output differences are explicit and tested.
+- [x] The renderer lands with current callers/tests and no unused abstraction layer.
+- [x] If a shared renderer cannot stay simpler than per-host renderers, the task stops and narrows scope instead of forcing the abstraction.
 ### Phase 2: host-support emitters and matrix [Complexity: L]
 
 #### [cursor] Task 2.1: Harden Cursor projection around host quirks and degraded lifecycle support
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/build/package-manifest.test.ts --file src/hooks/shared/instruction-surfaces.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file src/hooks/doctor.test.ts --file src/hooks/status/index.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Code inspection confirmed Codex plugin artifacts, host instruction renderer, Cursor/OpenCode emitters, capability matrix, doctor/status, docs, and package files are present.","kind":"manual","log_excerpt":".codex-plugin/plugin.json, codex.mcp.json, hooks/hooks.json, instruction-surfaces.ts, cursor/opencode emitters, capability-matrix.ts, hook docs, and package-manifest tests exist.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
 
 **Depends:** None
 
@@ -207,13 +224,18 @@ shared matrix and public docs updates to dependent tasks to avoid file conflicts
 
 **Acceptance:**
 
-- [ ] Cursor projection emits only host-valid config and response assumptions.
-- [ ] Cursor no-op handling cannot produce empty stdout where the host expects structured output.
-- [ ] Unsupported Cursor lifecycle events are omitted or downgraded intentionally, not accidentally emitted.
-
+- [x] Cursor projection emits only host-valid config and response assumptions.
+- [x] Cursor no-op handling cannot produce empty stdout where the host expects structured output.
+- [x] Unsupported Cursor lifecycle events are omitted or downgraded intentionally, not accidentally emitted.
 #### [opencode] Task 2.2: Pin plugin-style host bridge support boundaries
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/build/package-manifest.test.ts --file src/hooks/shared/instruction-surfaces.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file src/hooks/doctor.test.ts --file src/hooks/status/index.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Code inspection confirmed Codex plugin artifacts, host instruction renderer, Cursor/OpenCode emitters, capability matrix, doctor/status, docs, and package files are present.","kind":"manual","log_excerpt":".codex-plugin/plugin.json, codex.mcp.json, hooks/hooks.json, instruction-surfaces.ts, cursor/opencode emitters, capability-matrix.ts, hook docs, and package-manifest tests exist.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
 
 **Depends:** None
 
@@ -240,13 +262,18 @@ README claims out of this task. (F7)
 
 **Acceptance:**
 
-- [ ] Plugin-style host support boundaries are explicit in tests.
-- [ ] Existing OpenCode scaffolder path remains generated and refreshable by setup.
-- [ ] Unsupported lifecycle paths are not silently implied as supported.
-
+- [x] Plugin-style host support boundaries are explicit in tests.
+- [x] Existing OpenCode scaffolder path remains generated and refreshable by setup.
+- [x] Unsupported lifecycle paths are not silently implied as supported.
 #### [matrix] Task 2.3: Align the capability matrix after host-specific emitter decisions
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/build/package-manifest.test.ts --file src/hooks/shared/instruction-surfaces.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file src/hooks/doctor.test.ts --file src/hooks/status/index.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Code inspection confirmed Codex plugin artifacts, host instruction renderer, Cursor/OpenCode emitters, capability matrix, doctor/status, docs, and package files are present.","kind":"manual","log_excerpt":".codex-plugin/plugin.json, codex.mcp.json, hooks/hooks.json, instruction-surfaces.ts, cursor/opencode emitters, capability-matrix.ts, hook docs, and package-manifest tests exist.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
 
 **Depends:** Task 1.2, Task 2.1, Task 2.2
 
@@ -270,15 +297,20 @@ by doctor/status/docs. (F3, F4, F6, F7)
 
 **Acceptance:**
 
-- [ ] Capability matrix rows match the emitted host behavior.
-- [ ] Full, partial, unmapped, and unsupported claims are test-covered.
-- [ ] Matrix wording is ready for doctor/status/docs without public overclaiming.
-
+- [x] Capability matrix rows match the emitted host behavior.
+- [x] Full, partial, unmapped, and unsupported claims are test-covered.
+- [x] Matrix wording is ready for doctor/status/docs without public overclaiming.
 ### Phase 3: operator flows [Complexity: L]
 
 #### [doctor] Task 3.1: Teach hook doctor about packaged host artifacts and ownership rules
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/build/package-manifest.test.ts --file src/hooks/shared/instruction-surfaces.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file src/hooks/doctor.test.ts --file src/hooks/status/index.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Code inspection confirmed Codex plugin artifacts, host instruction renderer, Cursor/OpenCode emitters, capability matrix, doctor/status, docs, and package files are present.","kind":"manual","log_excerpt":".codex-plugin/plugin.json, codex.mcp.json, hooks/hooks.json, instruction-surfaces.ts, cursor/opencode emitters, capability-matrix.ts, hook docs, and package-manifest tests exist.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
 
 **Depends:** None
 
@@ -302,13 +334,18 @@ and tests only; public documentation is serialized in Task 4.2. (F8)
 
 **Acceptance:**
 
-- [ ] Doctor understands packaged host artifacts and managed hook ownership rules.
-- [ ] Repair suggestions are concrete, bounded, and host-specific.
-- [ ] Doctor reports host-specific lifecycle depth without flattening degraded hosts.
-
+- [x] Doctor understands packaged host artifacts and managed hook ownership rules.
+- [x] Repair suggestions are concrete, bounded, and host-specific.
+- [x] Doctor reports host-specific lifecycle depth without flattening degraded hosts.
 #### [status] Task 3.2: Teach hook status about host artifacts and degraded modes
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/build/package-manifest.test.ts --file src/hooks/shared/instruction-surfaces.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file src/hooks/doctor.test.ts --file src/hooks/status/index.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Code inspection confirmed Codex plugin artifacts, host instruction renderer, Cursor/OpenCode emitters, capability matrix, doctor/status, docs, and package files are present.","kind":"manual","log_excerpt":".codex-plugin/plugin.json, codex.mcp.json, hooks/hooks.json, instruction-surfaces.ts, cursor/opencode emitters, capability-matrix.ts, hook docs, and package-manifest tests exist.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
 
 **Depends:** None
 
@@ -332,15 +369,20 @@ serialized in Task 4.2. (F8)
 
 **Acceptance:**
 
-- [ ] Status reports packaged artifacts separately from active hook installation.
-- [ ] Partial/deferred host states are visible and not treated as failures unless the host is configured as required.
-- [ ] Status output stays summary-first and bounded.
-
+- [x] Status reports packaged artifacts separately from active hook installation.
+- [x] Partial/deferred host states are visible and not treated as failures unless the host is configured as required.
+- [x] Status output stays summary-first and bounded.
 ### Phase 4: setup integration, docs, and final package proof [Complexity: M]
 
 #### [setup] Task 4.1: Wire setup visibility for Codex artifacts and plugin-style host surfaces
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/build/package-manifest.test.ts --file src/hooks/shared/instruction-surfaces.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file src/hooks/doctor.test.ts --file src/hooks/status/index.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Code inspection confirmed Codex plugin artifacts, host instruction renderer, Cursor/OpenCode emitters, capability matrix, doctor/status, docs, and package files are present.","kind":"manual","log_excerpt":".codex-plugin/plugin.json, codex.mcp.json, hooks/hooks.json, instruction-surfaces.ts, cursor/opencode emitters, capability-matrix.ts, hook docs, and package-manifest tests exist.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
 
 **Depends:** Task 1.1, Task 2.1, Task 2.2, Task 3.1, Task 3.2
 
@@ -366,13 +408,18 @@ knowledge. Keep public README/hook docs out of this task. (F2, F5, F7)
 
 **Acceptance:**
 
-- [ ] Setup/init output names the new host artifact surfaces and ownership boundaries.
-- [ ] Generated files remain generated-whole-file where appropriate and consumer-owned files are preserved.
-- [ ] Host support visibility agrees with doctor/status behavior.
-
+- [x] Setup/init output names the new host artifact surfaces and ownership boundaries.
+- [x] Generated files remain generated-whole-file where appropriate and consumer-owned files are preserved.
+- [x] Host support visibility agrees with doctor/status behavior.
 #### [docs-qa] Task 4.2: Lock public docs, hook matrix, and release/package proof
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/build/package-manifest.test.ts --file src/hooks/shared/instruction-surfaces.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file src/hooks/doctor.test.ts --file src/hooks/status/index.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"agent":"codex","audit_kind":"package-surface","command":"./bin/wp audit package-surface","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-21T15:34:35.128Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Code inspection confirmed Codex plugin artifacts, host instruction renderer, Cursor/OpenCode emitters, capability matrix, doctor/status, docs, and package files are present.","kind":"manual","log_excerpt":".codex-plugin/plugin.json, codex.mcp.json, hooks/hooks.json, instruction-surfaces.ts, cursor/opencode emitters, capability-matrix.ts, hook docs, and package-manifest tests exist.","result":"pass","ts":"2026-06-21T15:34:35.128Z"}]
+```
 
 **Depends:** Task 1.1, Task 1.2, Task 2.3, Task 3.1, Task 3.2, Task 4.1
 
@@ -399,10 +446,10 @@ docs are shared public surfaces. (F2, F3, F5)
 
 **Acceptance:**
 
-- [ ] README and hook docs match actual shipped install paths and host support levels.
-- [ ] Public docs do not claim full lifecycle depth for every host.
-- [ ] Package-surface/tarball checks prove no denied content ships with the new plugin artifacts.
-- [ ] Final focused test suite passes with repeated `--file` flags.
+- [x] README and hook docs match actual shipped install paths and host support levels.
+- [x] Public docs do not claim full lifecycle depth for every host.
+- [x] Package-surface/tarball checks prove no denied content ships with the new plugin artifacts.
+- [x] Final focused test suite passes with repeated `--file` flags.
 
 ## Verification Gates
 

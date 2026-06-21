@@ -1,12 +1,15 @@
 ---
 type: blueprint
-title: "wp setup output must pass wp audit guardrails (self-consistency)"
+title: wp setup output must pass wp audit guardrails (self-consistency)
 owner: ozby
-status: planned
+status: parked
 complexity: L
 created: '2026-06-13'
-last_updated: '2026-06-17'
-progress: '20% (legacy helper-script removal in progress; setup-action helper centralization and local hook hardening started)'
+last_updated: '2026-06-21'
+progress: '0% (0/14 tasks done, 0 blocked, updated 2026-06-21)'
+parked_reason: >-
+  Refresh needed before execution: later completed work contradicts generated
+  pre-push/commit-msg/setup-webpresso assumptions; re-scope around current setup policy.
 depends_on: []
 cross_repo_depends_on: []
 tags:

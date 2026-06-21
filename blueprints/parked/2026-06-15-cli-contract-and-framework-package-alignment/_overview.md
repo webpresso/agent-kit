@@ -2,11 +2,14 @@
 type: blueprint
 title: CLI contract and framework package alignment
 owner: agent-kit
-status: planned
+status: parked
 complexity: M
 created: '2026-06-15'
-last_updated: '2026-06-15'
-progress: '0% (blueprint-only follow-up for cli-contract-adoption PR #140)'
+last_updated: '2026-06-21'
+progress: '0% (0/0 tasks done, 0 blocked, updated 2026-06-21)'
+parked_reason: >-
+  Dependency-gated: contract adoption is done, but framework rename is not an active
+  published dependency; keep parked until external rename is scheduled.
 depends_on:
   - completed/agent-kit-cli-bundle-cutover
 cross_repo_depends_on: []

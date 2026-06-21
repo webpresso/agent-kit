@@ -87,7 +87,12 @@ shift
 if [ -n "\${WP_HOOK_SMOKE_BIN_DIR:-}" ] && [ -n "$script" ]; then
   fixture="\${WP_HOOK_SMOKE_BIN_DIR}/$(basename "$script")"
   if [ -f "$fixture" ]; then
-    exec ${quoteShell(process.execPath)} "$fixture" "$@"
+    if [ -n "\${WP_HOOK_SMOKE_BIN_LOG:-}" ]; then
+      bin_name="\${script##*/}"
+      printf '%s\\n' "\${bin_name%.js}" >> "\${WP_HOOK_SMOKE_BIN_LOG}"
+    fi
+    printf '%s\\n' '{}'
+    exit 0
   fi
 fi
 exec ${quoteShell(process.execPath)} "$script" "$@"
@@ -105,13 +110,7 @@ function installFakeWebpressoBins(repoRoot: string): string {
     const binPath = join(binDir, `${bin}.js`)
     writeFileSync(
       binPath,
-      `#!/usr/bin/env node
-const { appendFileSync } = require('node:fs')
-if (process.env.WP_HOOK_SMOKE_BIN_LOG) {
-  appendFileSync(process.env.WP_HOOK_SMOKE_BIN_LOG, ${JSON.stringify(`${bin}\n`)})
-}
-process.stdout.write("{}\\n")
-`,
+      `# fixture marker for ${bin}\n`,
       'utf8',
     )
     chmodSync(binPath, 0o755)
@@ -142,6 +141,7 @@ async function runShellCommand(
   options: {
     cwd: string
     env?: NodeJS.ProcessEnv
+    timeoutMs?: number
   },
 ): Promise<{ status: number | null; stdout: string; stderr: string; command: string }> {
   return await new Promise((resolve, reject) => {
@@ -168,7 +168,7 @@ async function runShellCommand(
         stderr: `${stderr}\nTimed out waiting for hook command to exit.`,
         command,
       })
-    }, 5000)
+    }, options.timeoutMs ?? 5000)
     child.on('close', (status) => {
       clearTimeout(timeout)
       resolve({ status, stdout, stderr, command })
@@ -176,19 +176,20 @@ async function runShellCommand(
   })
 }
 
-async function runHookCommandsSequentially(
+async function runHookCommands(
   commands: readonly string[],
   options: {
     cwd: string
     env?: NodeJS.ProcessEnv
   },
 ): Promise<Array<{ status: number | null; stdout: string; stderr: string; command: string }>> {
-  const results: Array<{ status: number | null; stdout: string; stderr: string; command: string }> =
-    []
-  for (const command of commands) {
-    results.push(await runShellCommand(command, options))
-  }
-  return results
+  const batchCommand = commands.join('\n')
+  return [
+    await runShellCommand(batchCommand, {
+      ...options,
+      timeoutMs: Math.max(5000, commands.length * 5000),
+    }),
+  ]
 }
 
 describe('hookSubcommandFor (managed-launcher dispatch gate)', () => {
@@ -2347,7 +2348,7 @@ exit "\${WP_FAKE_HOOK_STATUS:-1}"
     expect(commands.length).toBeGreaterThan(0)
     const runtimeLog = join(repoRoot, 'claude-hook-runtime.log')
     const binLog = join(repoRoot, 'claude-hook-bins.log')
-    const results = await runHookCommandsSequentially(commands, {
+    const results = await runHookCommands(commands, {
       cwd: siblingCwd,
       env: {
         PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
@@ -2395,7 +2396,7 @@ exit "\${WP_FAKE_HOOK_STATUS:-1}"
     expect(commands.length).toBeGreaterThan(0)
     const runtimeLog = join(repoRoot, 'codex-hook-runtime.log')
     const binLog = join(repoRoot, 'codex-hook-bins.log')
-    const results = await runHookCommandsSequentially(commands, {
+    const results = await runHookCommands(commands, {
       cwd: siblingCwd,
       env: {
         PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
