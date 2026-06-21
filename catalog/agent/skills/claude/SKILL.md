@@ -12,28 +12,25 @@ upstream:
 
 # Claude outside voice
 
-Use this skill when the user wants Claude to independently review a diff, challenge a plan, or answer a repo question. Keep the call bounded, read-only unless the user explicitly asks otherwise, and report Claude's conclusions as external advice rather than as verified fact.
+Use this skill when the user wants Claude to independently review a diff, challenge a plan, or answer a repo question from a non-Claude host. Keep the call bounded, read-only unless the user explicitly asks otherwise, and report Claude's conclusions as external advice rather than as verified fact.
 
 ## Auth check
 
-Before invoking `claude`, verify auth in this order:
+Use the local Claude CLI login directly. This is the Claude Max / first-party account path; do not route this skill through Anthropic API-key environment variables.
 
 ```bash
 AUTH_STATUS_FILE=$(mktemp -t wp-claude-auth.XXXXXX)
 trap 'rm -f "$AUTH_STATUS_FILE"' EXIT
-if claude auth status --output json >"$AUTH_STATUS_FILE" 2>/dev/null; then
-  if grep -E '"(authenticated|loggedIn|success)"[[:space:]]*:[[:space:]]*true' "$AUTH_STATUS_FILE" >/dev/null; then
-    echo "CLAUDE_AUTH=first-party"
-  else
-    echo "CLAUDE_AUTH=missing: claude auth status returned no recognized login state"
+if ! claude auth status --json >"$AUTH_STATUS_FILE" 2>/dev/null; then
+  if ! claude auth status >"$AUTH_STATUS_FILE" 2>/dev/null; then
+    echo "CLAUDE_AUTH=missing: run claude auth login with the intended Claude Max account"
     exit 1
   fi
-elif [ -n "${ANTHROPIC_API_KEY:-}${CLAUDE_API_KEY:-}" ]; then
-  echo "CLAUDE_AUTH=api-key"
-elif [ -f "$HOME/.claude/.credentials.json" ] || [ -f "$HOME/.config/claude/credentials.json" ]; then
-  echo "CLAUDE_AUTH=credentials-file"
+fi
+if grep -E '"(authenticated|loggedIn|success)"[[:space:]]*:[[:space:]]*true' "$AUTH_STATUS_FILE" >/dev/null; then
+  echo "CLAUDE_AUTH=cli-login"
 else
-  echo "CLAUDE_AUTH=missing: run claude auth login or set ANTHROPIC_API_KEY"
+  echo "CLAUDE_AUTH=missing: claude auth status did not report a recognized Claude CLI login"
   exit 1
 fi
 ```

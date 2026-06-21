@@ -500,6 +500,7 @@ describe('wp_qa tool', () => {
     await wpQaTool.handler({
       files: ['a.ts'],
       packages: ['p1'],
+      suite: 'unit',
       timeoutMs: 5_000,
       workspaceSharding: { totalBudgetMs: 5_000 },
     })
@@ -510,6 +511,7 @@ describe('wp_qa tool', () => {
       {
         files: ['a.ts'],
         packages: ['p1'],
+        suite: 'unit',
         timeoutMs: 5_000,
         workspaceSharding: { totalBudgetMs: 5_000 },
       },

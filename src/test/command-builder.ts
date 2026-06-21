@@ -50,6 +50,13 @@ export function buildTestCommand(
   if (suite) {
     assertSuiteCompatible(target, options)
 
+    if (target.type === 'file') {
+      return buildWorkspaceFileSuiteCommand(target.values, {
+        ...options,
+        suite: normalizeTestSuiteName(suite),
+      })
+    }
+
     if (target.type === 'package') {
       return buildPackageSuiteCommand(target.values, {
         ...options,
@@ -231,6 +238,42 @@ function buildWorkspaceSuiteCommand(
   return commands.length === 1 ? commands[0]! : { sequence: commands }
 }
 
+function buildWorkspaceFileSuiteCommand(
+  files: readonly string[],
+  options: TestCommandOptions & { suite: TestSuiteName },
+): CommandConfig {
+  const { configFile, testFiles } = splitVitestFileTargets(files)
+  const resolution = getManagedRunner('vitest', {
+    outputPolicy: resolveOutputPolicy(options.outputPolicy, options.filterOutput),
+  })
+  const passthrough = buildVitestPassthrough(options)
+  const commands = explicitSuitesFor(options.suite).flatMap((suite) => {
+    const selectedFiles = filterFilesForSuite(testFiles, suite)
+    if (selectedFiles.length === 0) return []
+    return [
+      {
+        command: resolution.command,
+        args: [
+          ...resolution.args,
+          ...createExplicitFileSuiteVitestArgs(suite, configFile),
+          ...passthrough,
+          ...selectedFiles,
+        ],
+      },
+    ]
+  })
+
+  if (commands.length === 0) {
+    throw new Error(
+      `No explicit file targets matched suite "${options.suite}". Refusing to expand ${
+        testFiles.length
+      } file target${testFiles.length === 1 ? '' : 's'} into a broader suite run.`,
+    )
+  }
+
+  return commands.length === 1 ? commands[0]! : { sequence: commands }
+}
+
 function buildPackageSuiteCommand(
   packageTargets: readonly string[],
   options: TestCommandOptions & { suite: TestSuiteName },
@@ -263,9 +306,6 @@ function buildPackageSuiteCommand(
 }
 
 function assertSuiteCompatible(target: ResolvedTestTarget, options: TestCommandOptions): void {
-  if (target.type === 'file') {
-    throw new Error('--suite cannot be combined with file targets.')
-  }
   if (options.mutation) {
     throw new Error('--suite cannot be combined with --mutation.')
   }
@@ -325,6 +365,66 @@ export function isCommandSequenceConfig(config: CommandConfig): config is Comman
 
 function isVitestConfigFile(file: string): boolean {
   return /^vitest(?:\.[\w-]+)?\.config\.(?:ts|mts|cts|js|mjs|cjs)$/u.test(file)
+}
+
+function splitVitestFileTargets(files: readonly string[]): {
+  configFile?: string
+  testFiles: string[]
+} {
+  const configFiles: string[] = []
+  const testFiles: string[] = []
+
+  for (const file of files) {
+    if (isVitestConfigFile(file)) {
+      configFiles.push(file)
+    } else {
+      testFiles.push(file)
+    }
+  }
+
+  if (configFiles.length > 1) {
+    throw new Error(`Expected at most one Vitest config file, received: ${configFiles.join(', ')}`)
+  }
+
+  return {
+    configFile: configFiles[0],
+    testFiles,
+  }
+}
+
+function explicitSuitesFor(suite: TestSuiteName): readonly Exclude<TestSuiteName, 'all'>[] {
+  return suite === 'all' ? ['unit', 'integration'] : [suite]
+}
+
+function createExplicitFileSuiteVitestArgs(
+  suite: Exclude<TestSuiteName, 'all'>,
+  configFile?: string,
+): string[] {
+  const args = ['run']
+  if (configFile) {
+    args.push('--config', configFile)
+  }
+
+  if (suite === 'integration') {
+    args.push('--no-file-parallelism', '--testTimeout', '30000')
+  } else {
+    args.push('--exclude', '**/*.integration.test.ts', '--exclude', '**/*.e2e.test.ts')
+  }
+
+  return args
+}
+
+const INTEGRATION_E2E_FILE_PATTERN = /\.(integration|e2e)\.test\.[jt]sx?$/
+
+function filterFilesForSuite(
+  files: readonly string[],
+  suite: Exclude<TestSuiteName, 'all'>,
+): string[] {
+  return files.filter((file) =>
+    suite === 'integration'
+      ? INTEGRATION_E2E_FILE_PATTERN.test(file)
+      : !INTEGRATION_E2E_FILE_PATTERN.test(file),
+  )
 }
 
 function shouldBypassRecursiveWpTask(cwd: string, options: TestCommandOptions): boolean {

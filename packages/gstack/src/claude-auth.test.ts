@@ -12,15 +12,32 @@ describe('Claude skill helper snippets', () => {
   ]
   const content = readFileSync(skillPaths[0]!, 'utf8')
 
-  it('detects first-party auth before API key and credentials fallbacks', () => {
-    expect(content.indexOf('claude auth status --output json')).toBeLessThan(content.indexOf('ANTHROPIC_API_KEY'))
-    expect(content).not.toMatch(/grep -E .*claude\\.ai/)
-    expect(content).toContain('AUTH_STATUS_FILE=$(mktemp -t wp-claude-auth.XXXXXX)')
-    expect(content).toContain('rm -f "$AUTH_STATUS_FILE"')
-    expect(content).not.toContain('/tmp/wp-claude-auth.json')
-    expect(content).toContain('CLAUDE_AUTH=api-key')
-    expect(content).toContain('CLAUDE_AUTH=credentials-file')
-    expect(content).toContain('CLAUDE_AUTH=missing')
+  it('uses Claude CLI login directly instead of API-key fallback auth', () => {
+    expect(content).toContain('claude auth status --json')
+    expect(content).toContain('claude auth status >"$AUTH_STATUS_FILE"')
+    expect(content).toContain('CLAUDE_AUTH=cli-login')
+    expect(content).toContain('run claude auth login with the intended Claude Max account')
+    expect(content).not.toContain('claude auth status --output json')
+    expect(content).not.toContain('ANTHROPIC_API_KEY')
+    expect(content).not.toContain('CLAUDE_API_KEY')
+    expect(content).not.toContain('CLAUDE_AUTH=api-key')
+    expect(content).not.toContain('CLAUDE_AUTH=credentials-file')
+    expect(content).not.toContain('$HOME/.claude/.credentials.json')
+  })
+
+  it('keeps source, staged, and packaged Claude skill surfaces free of stale auth fallbacks', () => {
+    for (const skillPath of skillPaths) {
+      const skill = readFileSync(skillPath, 'utf8')
+      expect(skill, skillPath).toContain('claude auth status --json')
+      expect(skill, skillPath).toContain('claude auth status >"$AUTH_STATUS_FILE"')
+      expect(skill, skillPath).not.toContain('claude auth status --output json')
+      expect(skill, skillPath).not.toContain('ANTHROPIC_API_KEY')
+      expect(skill, skillPath).not.toContain('CLAUDE_API_KEY')
+      expect(skill, skillPath).not.toContain('CLAUDE_AUTH=api-key')
+      expect(skill, skillPath).not.toContain('CLAUDE_AUTH=credentials-file')
+      expect(skill, skillPath).not.toContain('$HOME/.claude/.credentials.json')
+      expect(skill, skillPath).not.toContain('$HOME/.config/claude/credentials.json')
+    }
   })
 
   it('requires explicit logged-in booleans across all staged Claude skill surfaces', () => {
@@ -28,12 +45,14 @@ describe('Claude skill helper snippets', () => {
       const skill = readFileSync(skillPath, 'utf8')
       expect(skill).toContain('"$AUTH_STATUS_FILE"')
       expect(skill).toContain('"(authenticated|loggedIn|success)"[[:space:]]*:[[:space:]]*true')
-      expect(skill).not.toMatch(/grep -E .*claude\\.ai/)
+      expect(skill).not.toMatch(/grep -E .*claude\.ai/)
     }
   })
 
-  it('uses a portable Darwin-safe mktemp pattern', () => {
+  it('uses portable Darwin-safe mktemp patterns', () => {
+    expect(content).toContain('mktemp -t wp-claude-auth.XXXXXX')
     expect(content).toContain('mktemp -t wp-claude-review.XXXXXX')
     expect(content).not.toMatch(/XXXXXX\.[a-z]+/)
+    expect(content).not.toContain('/tmp/wp-claude-auth.json')
   })
 })
