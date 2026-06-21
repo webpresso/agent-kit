@@ -28,13 +28,6 @@
       "docs-lint",
       "docs-migrate"
     ],
-    "internalHooks": [
-      "wp-sessionstart-routing",
-      "wp-pretool-guard",
-      "wp-post-tool",
-      "wp-guard-switch",
-      "wp-stop-qa",
-      "wp-precompact-snapshot"
-    ]
+    "internalHooks": []
   }
 }

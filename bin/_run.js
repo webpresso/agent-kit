@@ -26,6 +26,38 @@ function resolvePackageRoot() {
   return join(dirname(fileURLToPath(import.meta.url)), '..')
 }
 
+function isAgentKitSourceRepo(repoRoot) {
+  const packageJsonPath = join(repoRoot, 'package.json')
+  if (!existsSync(packageJsonPath)) return false
+  try {
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
+    return packageJson?.name === '@webpresso/agent-kit' && existsSync(join(repoRoot, 'src'))
+  } catch {
+    return false
+  }
+}
+
+function runtimeHooksStatePath(repoRoot) {
+  return join(repoRoot, '.webpresso', 'runtime-hooks.json')
+}
+
+export function areRuntimeHooksEnabled(repoRoot = resolvePackageRoot()) {
+  if (!isAgentKitSourceRepo(repoRoot)) return true
+
+  const override = process.env.WP_DEV_RUNTIME_HOOKS?.trim().toLowerCase()
+  if (override === '1' || override === 'true') return true
+  if (override === '0' || override === 'false') return false
+
+  const statePath = runtimeHooksStatePath(repoRoot)
+  if (!existsSync(statePath)) return false
+  try {
+    const parsed = JSON.parse(readFileSync(statePath, 'utf8'))
+    return parsed?.runtimeHooks === true
+  } catch {
+    return false
+  }
+}
+
 function normalizeNodeVersion(version) {
   return version.replace(/^v/u, '')
 }
@@ -328,7 +360,8 @@ export function buildLaunchPlan({
   // Runtime-owned hook dispatch still goes through the native runtime when present so
   // managed hook launchers exercise the same global `bin/wp hook ...` contract as installs.
   // No-op without source (consumers).
-  const mustUseRuntimeWhenAvailable = binName === 'wp' && forwardedArgs[0] === 'hook'
+  const mustUseRuntimeWhenAvailable =
+    binName === 'wp' && forwardedArgs[0] === 'hook' && areRuntimeHooksEnabled(repoRoot)
   if (
     sourceOverride &&
     hasSource &&

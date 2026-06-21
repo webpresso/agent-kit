@@ -1,4 +1,11 @@
-import { existsSync, readFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from 'node:fs'
+import { dirname } from 'node:path'
 import type { WriteStream } from 'node:tty'
 
 import { getSurfacePath, NotInGitRepoError } from '#paths/state-root.js'
@@ -26,7 +33,19 @@ export interface HooksErrorsOptions {
   readonly cwd?: string
 }
 
+export interface RecordHookErrorInput {
+  readonly binName: string
+  readonly hookName: string
+  readonly event: string
+  readonly phase: string
+  readonly fallback: string
+  readonly status?: number
+  readonly signal?: string
+  readonly detail?: string
+}
+
 const DEFAULT_LIMIT = 10
+const MAX_ERROR_ENTRIES = 50
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
   if (value === undefined) return fallback
@@ -53,6 +72,42 @@ export function readHookErrors(cwd = process.cwd()): readonly HookErrorEntry[] {
     return Array.isArray(parsed.entries) ? parsed.entries : []
   } catch {
     return []
+  }
+}
+
+function readHookErrorIndex(cwd = process.cwd()): HookErrorIndex {
+  return { version: 1, entries: readHookErrors(cwd) }
+}
+
+function writeHookErrorIndex(indexPath: string, index: HookErrorIndex): void {
+  mkdirSync(dirname(indexPath), { recursive: true })
+  const tempPath = `${indexPath}.${process.pid}.tmp`
+  writeFileSync(tempPath, `${JSON.stringify(index, null, 2)}\n`, 'utf8')
+  renameSync(tempPath, indexPath)
+}
+
+export function recordHookError(input: RecordHookErrorInput, cwd = process.cwd()): void {
+  try {
+    const indexPath = resolveHookErrorsPath(cwd)
+    const index = readHookErrorIndex(cwd)
+    const entry: HookErrorEntry = {
+      timestamp: new Date().toISOString(),
+      binName: input.binName,
+      hookName: input.hookName,
+      event: input.event,
+      phase: input.phase,
+      fallback: input.fallback,
+      ...(input.status === undefined ? {} : { status: input.status }),
+      ...(input.signal === undefined ? {} : { signal: input.signal }),
+      ...(input.detail === undefined ? {} : { detail: input.detail }),
+    }
+    writeHookErrorIndex(indexPath, {
+      version: 1,
+      entries: [entry, ...index.entries].slice(0, MAX_ERROR_ENTRIES),
+    })
+  } catch {
+    // Hook error recording is diagnostic-only. Event-specific fallbacks must
+    // still run even when the recorder cannot write to disk.
   }
 }
 

@@ -94,7 +94,6 @@ import {
   disableManagedHooksFromManifest,
   type ManagedHookVendor,
   restoreManagedHooksFromManifest,
-  resolveNodeBinaryForManagedHookLaunchers,
   scaffoldAgentHooks,
   trustCodexWebpressoHooksForRepo,
   trustCodexPresetHooksForUser,
@@ -105,7 +104,6 @@ import { ensureClaudeCodeUserPlugin } from './scaffolders/claude-plugin/index.js
 import { ensureCodexUserPlugin } from './scaffolders/codex-plugin/index.js'
 import { scaffoldClaudeRules } from './scaffolders/claude-rules/index.js'
 import { ensureCodexCli } from './scaffolders/codex-cli/index.js'
-import { normalizeGlobalCodexHooksFile } from './scaffolders/agent-hooks/codex-global-normalize.js'
 import {
   CONTEXT7_API_KEY_ENV,
   ensureClaudeContext7Mcp,
@@ -787,18 +785,8 @@ async function runHooksRecovery(
     writeHooksManifest(repoRoot, nextManifest.claude, nextManifest.codex, nextManifest.vendorState)
   }
 
-  if (mutationResult.codex !== undefined) {
-    const codexHooksPath = join(repoRoot, '.codex', 'hooks.json')
-    normalizeGlobalCodexHooksFile(
-      codexHooksPath,
-      {
-        nodeBinary: resolveNodeBinaryForManagedHookLaunchers(),
-      },
-      options,
-    )
-    if (restoreHooks) {
-      await trustCodexWebpressoHooksForRepo(scaffoldInput)
-    }
+  if (mutationResult.codex !== undefined && restoreHooks) {
+    await trustCodexWebpressoHooksForRepo(scaffoldInput)
   }
 
   const results = [mutationResult.claude, mutationResult.codex].filter(

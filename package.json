@@ -510,7 +510,8 @@
     "build:session-memory-native": "bun scripts/build-session-memory-native-artifacts.ts",
     "stage:session-memory-native": "bun scripts/stage-session-memory-native-artifacts.ts",
     "native:session-memory:deny": "cargo deny --manifest-path native/session-memory-engine/Cargo.toml check",
-    "stage:gstack-skills": "bun scripts/stage-gstack-skills.ts"
+    "stage:gstack-skills": "bun scripts/stage-gstack-skills.ts",
+    "gstack:coverage": "bun scripts/audit-gstack-coverage.ts"
   },
   "dependencies": {
     "@webpresso/cli-contract": "^0.2.0",

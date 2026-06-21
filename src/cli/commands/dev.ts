@@ -1,4 +1,6 @@
 import type { CAC } from 'cac'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
 
 import { loadDevManifest, resolveDevServices, type AkDevMode } from '#dev/index'
 
@@ -15,6 +17,77 @@ export interface RunDevCommandResult {
   services: string[]
 }
 
+type RuntimeHooksAction = 'enable' | 'disable' | 'status'
+
+export interface RuntimeHooksResult {
+  readonly enabled: boolean
+  readonly sourceRepo: boolean
+  readonly statePath: string
+}
+
+function findRepoRoot(cwd = process.cwd()): string {
+  let current = resolve(cwd)
+  for (;;) {
+    if (existsSync(join(current, 'package.json')) && existsSync(join(current, '.git'))) {
+      return current
+    }
+    const parent = dirname(current)
+    if (parent === current) return resolve(cwd)
+    current = parent
+  }
+}
+
+function isAgentKitSourceRepo(repoRoot: string): boolean {
+  const packageJsonPath = join(repoRoot, 'package.json')
+  if (!existsSync(packageJsonPath)) return false
+  try {
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as { name?: string }
+    return packageJson.name === '@webpresso/agent-kit' && existsSync(join(repoRoot, 'src'))
+  } catch {
+    return false
+  }
+}
+
+function runtimeHooksStatePath(repoRoot: string): string {
+  return join(repoRoot, '.webpresso', 'runtime-hooks.json')
+}
+
+function readRuntimeHooksEnabled(repoRoot: string): boolean {
+  const statePath = runtimeHooksStatePath(repoRoot)
+  if (!existsSync(statePath)) return false
+  try {
+    const parsed = JSON.parse(readFileSync(statePath, 'utf8')) as { runtimeHooks?: unknown }
+    return parsed.runtimeHooks === true
+  } catch {
+    return false
+  }
+}
+
+export function runRuntimeHooksCommand(
+  action: RuntimeHooksAction,
+  input: { cwd?: string } = {},
+): RuntimeHooksResult {
+  const repoRoot = findRepoRoot(input.cwd)
+  const statePath = runtimeHooksStatePath(repoRoot)
+  const sourceRepo = isAgentKitSourceRepo(repoRoot)
+  if (!sourceRepo) {
+    throw new Error('wp dev runtime-hooks is only available in the @webpresso/agent-kit source repo.')
+  }
+
+  if (action === 'enable' || action === 'disable') {
+    mkdirSync(dirname(statePath), { recursive: true })
+    writeFileSync(
+      statePath,
+      `${JSON.stringify({ runtimeHooks: action === 'enable' }, null, 2)}\n`,
+      'utf8',
+    )
+  } else if (action !== 'status') {
+    throw new Error('Usage: wp dev runtime-hooks enable|disable|status')
+  }
+
+  return { enabled: readRuntimeHooksEnabled(repoRoot), sourceRepo, statePath }
+}
+
 export function getDevHelpText(): string {
   return [
     'Usage: wp dev [target] [options]',
@@ -24,6 +97,9 @@ export function getDevHelpText(): string {
     '  --doctor           Validate manifest and print resolved services',
     '  --clean            Clean supervisor-owned state for the target',
     '  --restart          Restart the target',
+    '',
+    'Subcommands:',
+    '  wp dev runtime-hooks enable|disable|status',
     '  -h, --help         Display this message',
     '',
     'Manifest precedence: --manifest -> WP_APP_MANIFEST -> ./app-manifest.yaml -> error',
@@ -41,6 +117,14 @@ export async function runDevCommand(input: RunDevCommandInput): Promise<RunDevCo
 }
 
 export function registerDevCommand(cli: CAC): void {
+  cli
+    .command('dev runtime-hooks <action>', 'Toggle source-repo runtime hook dispatch')
+    .action((action: RuntimeHooksAction) => {
+      const result = runRuntimeHooksCommand(action)
+      console.log(JSON.stringify(result, null, 2))
+      process.exit(0)
+    })
+
   cli
     .command('dev [target]', 'Run a manifest-backed development target')
     .option(
