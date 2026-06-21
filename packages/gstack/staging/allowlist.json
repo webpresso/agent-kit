@@ -1,15 +1,80 @@
 {
   "schemaVersion": 1,
-  "sizeBudgetBytes": 75000,
+  "sizeBudgetBytes": 125000,
   "sourceRoot": "packages/gstack",
   "notice": "NOTICE.gstack.md",
   "provenance": "provenance/upstream-gstack.json",
   "skills": [
-    { "name": "claude", "source": "skills/claude.md", "target": "catalog/agent/skills/claude/SKILL.md" },
-    { "name": "plan-eng-review", "source": "skills/plan-eng-review.md", "target": "catalog/agent/skills/plan-eng-review/SKILL.md" },
-    { "name": "plan-ceo-review", "source": "skills/plan-ceo-review.md", "target": "catalog/agent/skills/plan-ceo-review/SKILL.md" },
-    { "name": "plan-design-review", "source": "skills/plan-design-review.md", "target": "catalog/agent/skills/plan-design-review/SKILL.md" },
-    { "name": "review", "source": "skills/review.md", "target": "catalog/agent/skills/review/SKILL.md" }
+    {
+      "name": "claude",
+      "source": "skills/claude.md",
+      "target": "catalog/agent/skills/claude/SKILL.md"
+    },
+    {
+      "name": "codex",
+      "source": "skills/codex.md",
+      "target": "catalog/agent/skills/codex/SKILL.md"
+    },
+    {
+      "name": "opencode-go",
+      "source": "skills/opencode-go.md",
+      "target": "catalog/agent/skills/opencode-go/SKILL.md"
+    },
+    {
+      "name": "deepseek",
+      "source": "skills/deepseek.md",
+      "target": "catalog/agent/skills/deepseek/SKILL.md"
+    },
+    {
+      "name": "glm",
+      "source": "skills/glm.md",
+      "target": "catalog/agent/skills/glm/SKILL.md"
+    },
+    {
+      "name": "kimi",
+      "source": "skills/kimi.md",
+      "target": "catalog/agent/skills/kimi/SKILL.md"
+    },
+    {
+      "name": "minimax",
+      "source": "skills/minimax.md",
+      "target": "catalog/agent/skills/minimax/SKILL.md"
+    },
+    {
+      "name": "mimo",
+      "source": "skills/mimo.md",
+      "target": "catalog/agent/skills/mimo/SKILL.md"
+    },
+    {
+      "name": "qwen",
+      "source": "skills/qwen.md",
+      "target": "catalog/agent/skills/qwen/SKILL.md"
+    },
+    {
+      "name": "hy3",
+      "source": "skills/hy3.md",
+      "target": "catalog/agent/skills/hy3/SKILL.md"
+    },
+    {
+      "name": "plan-eng-review",
+      "source": "skills/plan-eng-review.md",
+      "target": "catalog/agent/skills/plan-eng-review/SKILL.md"
+    },
+    {
+      "name": "plan-ceo-review",
+      "source": "skills/plan-ceo-review.md",
+      "target": "catalog/agent/skills/plan-ceo-review/SKILL.md"
+    },
+    {
+      "name": "plan-design-review",
+      "source": "skills/plan-design-review.md",
+      "target": "catalog/agent/skills/plan-design-review/SKILL.md"
+    },
+    {
+      "name": "review",
+      "source": "skills/review.md",
+      "target": "catalog/agent/skills/review/SKILL.md"
+    }
   ],
   "deniedPathPatterns": [
     "node_modules/",

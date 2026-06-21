@@ -1,5 +1,21 @@
-export const webpressoGstackPackage = {
+export const gstackPackageMetadata = {
   packageName: '@repo/gstack',
-  private: true,
-  stagedSkillNames: ['claude', 'plan-eng-review', 'plan-ceo-review', 'plan-design-review', 'review'],
+  publishable: false,
+  stagedSkillNames: [
+    'claude',
+    'codex',
+    'opencode-go',
+    'deepseek',
+    'glm',
+    'kimi',
+    'minimax',
+    'mimo',
+    'qwen',
+    'hy3',
+    'plan-eng-review',
+    'plan-ceo-review',
+    'plan-design-review',
+    'review',
+  ],
+  provenanceRequired: true,
 } as const
