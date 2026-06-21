@@ -16,7 +16,8 @@ import {
   runtimeBinaryFilename,
   runtimePackageDirName,
   type RuntimeTarget,
-} from '../src/build/runtime-targets.js'
+} from '#build/runtime-targets.js'
+import { syncBlueprintMigrationSqlAssets } from '#build/blueprint-migration-assets.js'
 
 export interface RuntimeStageOperation {
   readonly target: RuntimeTarget
@@ -139,6 +140,11 @@ export function stageRuntimeArtifacts({
     staged.push(operation.pluginDestination)
     staged.push(operation.packageBinaryDestination)
     staged.push(operation.packageManifestDestination)
+  }
+
+  if (!dryRun) {
+    syncBlueprintMigrationSqlAssets(rootDir)
+    staged.push(resolve(rootDir, 'dist', 'esm', 'blueprint', 'db', 'migrations'))
   }
 
   return staged
