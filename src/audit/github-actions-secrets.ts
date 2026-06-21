@@ -2,94 +2,107 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
+import { SECRETS_CONFIG_PATH } from './lib/secrets-policy.js'
 
-const WORKFLOWS_DIR = '.github/workflows'
-const WORKFLOW_PATTERN = /\.ya?ml$/iu
-const SECRET_BEARING_ACTION_PATTERNS = [
-  {
-    name: 'dopplerhq/secrets-fetch-action',
-    pattern: /dopplerhq\/secrets-fetch-action@([^\s#]+)/gu,
-  },
+const WORKFLOW_FILE_PATTERN = /\.(ya?ml)$/iu
+const SECRET_BEARING_ACTION_PREFIXES = [
+  'dopplerhq/secrets-fetch-action@',
+  'dopplerhq/cli-action@',
 ] as const
+const FULL_SHA_PATTERN = /@[0-9a-f]{40}(?:\s|$)/iu
 const INFISICAL_INDICATORS = [/INFISICAL_TOKEN/u, /\binfisical export\b/u] as const
 const EXPLICIT_CI_SECRET_PATTERN =
-  /ci_secret_provider_token:\s*\n(?:\s+.*\n)*?\s+required:\s*false/iu
+  /ci_secret_provider_token:\s*\n(?:\s+.*\n)*?\s+required:\s*(?:true|false)/iu
 
-function isFullSha(ref: string): boolean {
-  return /^[0-9a-f]{40}$/u.test(ref)
+function walkWorkflowFiles(dir: string): string[] {
+  if (!existsSync(dir)) return []
+  const files: string[] = []
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const fullPath = join(dir, entry.name)
+    if (entry.isDirectory()) {
+      files.push(...walkWorkflowFiles(fullPath))
+      continue
+    }
+    if (entry.isFile() && WORKFLOW_FILE_PATTERN.test(entry.name)) {
+      files.push(fullPath)
+    }
+  }
+  return files
 }
 
-function pushViolation(violations: RepoAuditViolation[], file: string, message: string): void {
-  violations.push({ file, message })
+function isSecretBearing(content: string): boolean {
+  return (
+    SECRET_BEARING_ACTION_PREFIXES.some((prefix) => content.includes(prefix)) ||
+    INFISICAL_INDICATORS.some((pattern) => pattern.test(content))
+  )
 }
 
-function auditWorkflow(filePath: string, relativePath: string, violations: RepoAuditViolation[]): void {
-  const text = readFileSync(filePath, 'utf8')
-  const usesSecretBearingAction =
-    SECRET_BEARING_ACTION_PATTERNS.some(({ pattern }) => [...text.matchAll(pattern)].length > 0)
-    || INFISICAL_INDICATORS.some((pattern) => pattern.test(text))
+function findViolations(root: string, file: string): RepoAuditViolation[] {
+  const relPath = relative(root, file).replace(/\\/gu, '/')
+  const content = readFileSync(file, 'utf8')
+  const violations: RepoAuditViolation[] = []
+  const isReusableWorkflow = /(^|\n)\s*workflow_call:\s*$/mu.test(content)
+  const hasSecretBearingAccess = isSecretBearing(content)
 
-  for (const { name, pattern } of SECRET_BEARING_ACTION_PATTERNS) {
-    for (const match of text.matchAll(pattern)) {
-      const ref = match[1] ?? ''
-      if (!isFullSha(ref)) {
-        pushViolation(
-          violations,
-          relativePath,
-          `${relativePath}: ${name} must be pinned by full 40-character SHA`,
-        )
-      }
+  if (/\bsecrets:\s*inherit\b/u.test(content)) {
+    violations.push({
+      file: relPath,
+      message: `${relPath}: reusable secret workflows must declare explicit named secrets instead of \`secrets: inherit\``,
+    })
+  }
+
+  if (isReusableWorkflow && /^\s*environment:\s+/mu.test(content)) {
+    violations.push({
+      file: relPath,
+      message: `${relPath}: workflow_call secret workflows must not depend on GitHub Environment secrets; pass explicit workflow_call secrets instead`,
+    })
+  }
+
+  if (isReusableWorkflow && hasSecretBearingAccess && !EXPLICIT_CI_SECRET_PATTERN.test(content)) {
+    violations.push({
+      file: relPath,
+      message: `${relPath}: reusable secret-bearing workflows must declare ci_secret_provider_token explicitly`,
+    })
+  }
+
+  if (hasSecretBearingAccess && !/\bid-token:\s*write\b/u.test(content)) {
+    violations.push({
+      file: relPath,
+      message: `${relPath}: secret-bearing workflows must request id-token: write`,
+    })
+  }
+
+  for (const line of content.split(/\r?\n/u)) {
+    const trimmed = line.trim()
+    if (!/^(?:-\s*)?uses:\s+/u.test(trimmed)) continue
+    for (const prefix of SECRET_BEARING_ACTION_PREFIXES) {
+      if (!trimmed.includes(prefix)) continue
+      if (FULL_SHA_PATTERN.test(trimmed)) continue
+      violations.push({
+        file: relPath,
+        message: `${relPath}: secret-bearing action must be pinned to a full SHA instead of ${trimmed.replace(/^-\s+uses:\s*/u, '').replace(/^uses:\s*/u, '')}`,
+      })
     }
   }
 
-  if (/secrets:\s*inherit/u.test(text)) {
-    pushViolation(
-      violations,
-      relativePath,
-      `${relativePath}: replace secrets: inherit with explicit lane-named workflow_call secrets`,
-    )
-  }
-
-  if (/workflow_call:/u.test(text) && usesSecretBearingAction) {
-    if (!EXPLICIT_CI_SECRET_PATTERN.test(text)) {
-      pushViolation(
-        violations,
-        relativePath,
-        `${relativePath}: reusable secret-bearing workflows must declare ci_secret_provider_token explicitly`,
-      )
-    }
-  }
-
-  if (usesSecretBearingAction && !text.includes('id-token: write')) {
-    pushViolation(
-      violations,
-      relativePath,
-      `${relativePath}: secret-bearing workflows must request id-token: write`,
-    )
-  }
+  return violations
 }
 
-export function auditGitHubActionsSecrets(rootDirectory: string = process.cwd()): RepoAuditResult {
-  const workflowsRoot = join(rootDirectory, WORKFLOWS_DIR)
-  if (!existsSync(workflowsRoot)) {
+export function auditGithubActionsSecrets(rootDirectory: string = process.cwd()): RepoAuditResult {
+  if (!existsSync(join(rootDirectory, SECRETS_CONFIG_PATH))) {
     return { ok: true, title: 'github-actions-secrets', checked: 0, violations: [] }
   }
 
-  const violations: RepoAuditViolation[] = []
-  let checked = 0
-
-  for (const entry of readdirSync(workflowsRoot, { withFileTypes: true, encoding: 'utf8' })) {
-    if (!entry.isFile() || !WORKFLOW_PATTERN.test(entry.name)) continue
-    const filePath = join(workflowsRoot, entry.name)
-    const relativePath = relative(rootDirectory, filePath).replace(/\\/gu, '/')
-    checked += 1
-    auditWorkflow(filePath, relativePath, violations)
-  }
+  const workflowRoot = join(rootDirectory, '.github', 'workflows')
+  const workflowFiles = walkWorkflowFiles(workflowRoot)
+  const violations = workflowFiles.flatMap((file) => findViolations(rootDirectory, file))
 
   return {
     ok: violations.length === 0,
     title: 'github-actions-secrets',
-    checked,
+    checked: workflowFiles.length,
     violations,
   }
 }
+
+export const auditGitHubActionsSecrets = auditGithubActionsSecrets

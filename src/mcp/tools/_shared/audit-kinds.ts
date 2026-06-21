@@ -39,6 +39,7 @@ export const MCP_AUDIT_KINDS = [
   'open-source-licenses',
   'secrets-policy',
   'no-dev-vars',
+  'github-actions-secrets',
   'secret-provider-quarantine',
   'github-actions-secrets',
   'secrets-config',

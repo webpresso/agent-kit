@@ -43,6 +43,7 @@ export type AuditKind =
   | 'no-relative-package-scripts'
   | 'secrets-policy'
   | 'no-dev-vars'
+  | 'github-actions-secrets'
   | 'secret-provider-quarantine'
   | 'secrets-config'
   | 'consumer-agent-kit-dependency'
@@ -235,6 +236,12 @@ export async function runAuditDispatch(
       const root = options.root ?? target ?? deps.root
       const result = auditNoDevVars(root)
       return { kind: 'repo-result', name: 'no-dev-vars', result }
+    }
+    case 'github-actions-secrets': {
+      const { auditGithubActionsSecrets } = await import('#audit/github-actions-secrets')
+      const root = options.root ?? target ?? deps.root
+      const result = auditGithubActionsSecrets(root)
+      return { kind: 'repo-result', name: 'github-actions-secrets', result }
     }
     case 'secret-provider-quarantine': {
       const { auditSecretProviderQuarantine } = await import('#audit/secret-provider-quarantine')

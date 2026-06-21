@@ -361,6 +361,16 @@ export async function dispatchAudit(input: AkAuditInput): Promise<AuditPayload> 
         details: auditResult,
       }
     }
+    case 'github-actions-secrets': {
+      const { auditGithubActionsSecrets } = await import('#audit/github-actions-secrets')
+      const auditResult = auditGithubActionsSecrets(input.cwd ?? input.directory ?? process.cwd())
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
+    }
     case 'secret-provider-quarantine': {
       const { auditSecretProviderQuarantine } = await import('#audit/secret-provider-quarantine')
       const auditResult = auditSecretProviderQuarantine(
@@ -384,9 +394,8 @@ export async function dispatchAudit(input: AkAuditInput): Promise<AuditPayload> 
       }
     }
     case 'consumer-agent-kit-dependency': {
-      const { auditConsumerAgentKitDependency } = await import(
-        '#audit/consumer-agent-kit-dependency'
-      )
+      const { auditConsumerAgentKitDependency } =
+        await import('#audit/consumer-agent-kit-dependency')
       const auditResult = auditConsumerAgentKitDependency(
         input.cwd ?? input.directory ?? process.cwd(),
       )
@@ -437,16 +446,6 @@ export async function dispatchAudit(input: AkAuditInput): Promise<AuditPayload> 
     case 'harness-overlay-evidence': {
       const { auditHarnessOverlayEvidence } = await import('#audit/harness-overlay-evidence')
       const auditResult = auditHarnessOverlayEvidence(input.cwd ?? input.directory ?? process.cwd())
-      return {
-        passed: auditResult.ok,
-        summary: summarizeRepoAudit(kind, auditResult),
-        kind,
-        details: auditResult,
-      }
-    }
-    case 'github-actions-secrets': {
-      const { auditGitHubActionsSecrets } = await import('#audit/github-actions-secrets')
-      const auditResult = auditGitHubActionsSecrets(input.cwd ?? input.directory ?? process.cwd())
       return {
         passed: auditResult.ok,
         summary: summarizeRepoAudit(kind, auditResult),
