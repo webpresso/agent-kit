@@ -12,6 +12,8 @@ type HooksCommandOptions = {
   tool?: string
   workspace?: boolean
   apply?: boolean
+  json?: boolean
+  limit?: string
 }
 
 async function runDoctor(options: HooksCommandOptions): Promise<number> {
@@ -33,7 +35,7 @@ export function registerHooksCommand(cli: CAC): void {
   cli
     .command(
       'hooks [subcommand] [...args]',
-      'Verify plugin hook installation health (subcommands: doctor, status, dispatch, demo, upgrade)',
+      'Verify plugin hook installation health (subcommands: doctor, status, errors, dispatch, demo, upgrade)',
     )
     .option('--skip-mcp', 'Skip MCP server liveness check (for CI)')
     .option(
@@ -54,6 +56,8 @@ export function registerHooksCommand(cli: CAC): void {
     .option('--dry-run', 'Print hooks that would fire without executing them (default: true)')
     .option('--workspace', 'Target every repo listed in ~/.agent/workspace.yaml')
     .option('--apply', 'Write the upgrade instead of previewing it')
+    .option('--json', 'Print machine-readable JSON for supported hooks subcommands')
+    .option('--limit <n>', 'Limit rows for supported hooks subcommands', { default: undefined })
     .action(
       async (subcommand: string | undefined, args: string[], options: HooksCommandOptions) => {
         switch (subcommand) {
@@ -64,6 +68,14 @@ export function registerHooksCommand(cli: CAC): void {
             const { statusCommand } = await import('#hooks/status/index.js')
             const extraArgs = options.vendor ? ['--vendor', options.vendor] : []
             await statusCommand(extraArgs)
+            return
+          }
+          case 'errors': {
+            const { hooksErrorsCommand } = await import('#hooks/errors/index.js')
+            const extraArgs: string[] = []
+            if (options.json === true) extraArgs.push('--json')
+            if (options.limit !== undefined) extraArgs.push('--limit', String(options.limit))
+            await hooksErrorsCommand(extraArgs)
             return
           }
           case 'dispatch': {
@@ -101,7 +113,7 @@ export function registerHooksCommand(cli: CAC): void {
           }
           default:
             throw new Error(
-              `Unknown hooks subcommand: ${subcommand}\n\nUse one of: doctor, status, dispatch, demo, upgrade`,
+              `Unknown hooks subcommand: ${subcommand}\n\nUse one of: doctor, status, errors, dispatch, demo, upgrade`,
             )
         }
       },

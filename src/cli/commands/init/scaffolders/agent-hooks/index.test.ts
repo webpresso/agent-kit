@@ -2047,6 +2047,139 @@ hooks:
     expect(preTool.stderr).not.toContain('built lane should not execute')
   })
 
+  it('managed hook wrappers persist unexpected child failures and preserve exit 2 semantics', async () => {
+    const packageRoot = mkdtempSync(join(repoRoot, 'managed-hook-child-failure-'))
+    const targetId = `${process.platform}-${process.arch}`
+    mkdirSync(join(packageRoot, 'bin', 'runtime', targetId), { recursive: true })
+
+    for (const fileName of [
+      '_run.js',
+      'runtime-lanes.js',
+      '_managed-hook.js',
+      'wp-pretool-guard.js',
+      'wp-stop-qa.js',
+      'wp-precompact-snapshot.js',
+      'wp-sessionstart-routing.js',
+    ]) {
+      writeFileSync(
+        join(packageRoot, 'bin', fileName),
+        readFileSync(join(resolvePackageRootForHookLaunchers(), 'bin', fileName), 'utf8'),
+        'utf8',
+      )
+    }
+    writeFileSync(
+      join(packageRoot, 'package.json'),
+      JSON.stringify({
+        name: '@webpresso/agent-kit',
+        type: 'module',
+        optionalDependencies: { '@webpresso/agent-kit-runtime-test': '0.0.0' },
+      }),
+      'utf8',
+    )
+    writeFileSync(
+      join(packageRoot, 'bin', 'runtime-manifest.json'),
+      JSON.stringify({
+        binaryName: 'wp',
+        targets: [
+          {
+            id: targetId,
+            os: process.platform,
+            cpu: process.arch,
+            packageName: '@webpresso/agent-kit-runtime-test',
+          },
+        ],
+      }),
+      'utf8',
+    )
+
+    const fakeRuntime = join(packageRoot, 'bin', 'runtime', targetId, 'wp')
+    writeFileSync(
+      fakeRuntime,
+      `#!/bin/sh
+printf 'child stdout should not leak\\n'
+printf 'child stderr should not leak\\n' >&2
+exit "\${WP_FAKE_HOOK_STATUS:-1}"
+`,
+      'utf8',
+    )
+    chmodSync(fakeRuntime, 0o755)
+
+    const errorsPath = join(packageRoot, 'hook-errors.json')
+    const runManagedBin = (binName: string, status = '1') =>
+      spawnSync(process.execPath, [join(packageRoot, 'bin', `${binName}.js`)], {
+        cwd: repoRoot,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          WP_HOOK_ERRORS_PATH: errorsPath,
+          WP_FAKE_HOOK_STATUS: status,
+        },
+      })
+
+    const stop = runManagedBin('wp-stop-qa')
+    expect(stop.status, stop.stderr).toBe(0)
+    expect(stop.stdout).toBe('{}\n')
+    expect(stop.stderr).toContain('fallback=emit-empty-json')
+    expect(stop.stdout).not.toContain('child stdout should not leak')
+    expect(stop.stderr).not.toContain('child stderr should not leak')
+
+    const precompact = runManagedBin('wp-precompact-snapshot')
+    expect(precompact.status, precompact.stderr).toBe(0)
+    expect(precompact.stdout).toBe('{}\n')
+    expect(precompact.stderr).toContain('event=PreCompact')
+
+    const sessionstart = runManagedBin('wp-sessionstart-routing')
+    expect(sessionstart.status, sessionstart.stderr).toBe(0)
+    expect(sessionstart.stdout).toBe('')
+    expect(sessionstart.stderr).toContain('fallback=fail-open')
+
+    const preTool = runManagedBin('wp-pretool-guard')
+    expect(preTool.status, preTool.stderr).toBe(0)
+    expect(JSON.parse(preTool.stdout)).toMatchObject({
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'deny',
+      },
+    })
+    expect(preTool.stderr).toContain('fallback=fail-closed-deny')
+
+    const preservedExitTwo = runManagedBin('wp-pretool-guard', '2')
+    expect(preservedExitTwo.status).toBe(2)
+    expect(preservedExitTwo.stdout).toContain('child stdout should not leak')
+    expect(preservedExitTwo.stderr).toContain('child stderr should not leak')
+
+    const stored = JSON.parse(readFileSync(errorsPath, 'utf8')) as {
+      entries: Array<{ binName: string; status: number; fallback: string; detail?: string }>
+    }
+    expect(stored.entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          binName: 'wp-stop-qa',
+          status: 1,
+          fallback: 'emit-empty-json',
+        }),
+        expect.objectContaining({
+          binName: 'wp-precompact-snapshot',
+          status: 1,
+          fallback: 'emit-empty-json',
+        }),
+        expect.objectContaining({
+          binName: 'wp-sessionstart-routing',
+          status: 1,
+          fallback: 'fail-open',
+        }),
+        expect.objectContaining({
+          binName: 'wp-pretool-guard',
+          status: 1,
+          fallback: 'fail-closed-deny',
+        }),
+      ]),
+    )
+    expect(stored.entries).toHaveLength(4)
+    expect(JSON.stringify(stored)).not.toContain('child stdout should not leak')
+    expect(JSON.stringify(stored)).not.toContain('child stderr should not leak')
+  })
+
   it('managed Codex launchers preserve event-specific fallbacks when repo root cannot be entered', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
 
