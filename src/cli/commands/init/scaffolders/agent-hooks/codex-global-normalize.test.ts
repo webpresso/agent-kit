@@ -112,8 +112,47 @@ describe('normalizeGlobalCodexHooksJson', () => {
     const groups = (result.value.hooks as Record<string, Array<{ matcher?: string }>>).PreToolUse
 
     expect(result.changed).toBe(true)
-    expect(groups).toHaveLength(1)
-    expect(groups[0]?.matcher).toBeUndefined()
+    expect(groups).toStrictEqual([
+      {
+        hooks: [
+          {
+            type: 'command',
+            command: '"/managed/wp-global-codex-omx-hook.sh"',
+          },
+        ],
+      },
+    ])
+  })
+
+  it('keeps overlapping non-managed PreToolUse hook matchers untouched', () => {
+    const hooks = {
+      hooks: {
+        PreToolUse: [
+          {
+            matcher: 'Bash',
+            hooks: [
+              {
+                type: 'command',
+                command: '"/custom/pretool-hook.sh"',
+              },
+            ],
+          },
+          {
+            hooks: [
+              {
+                type: 'command',
+                command: '"/custom/pretool-hook.sh"',
+              },
+            ],
+          },
+        ],
+      },
+    }
+
+    const result = normalizeGlobalCodexHooksJson(hooks, { nodeBinary: '/abs/node' }, '/managed')
+
+    expect(result.changed).toBe(false)
+    expect(result.value).toStrictEqual(hooks)
   })
 
   it('is idempotent on already normalized hooks', () => {
