@@ -88,14 +88,6 @@ function ageInDays(isoTimestamp: string, nowMs: number): number | null {
   return Math.floor((nowMs - touchedAtMs) / 86_400_000)
 }
 
-function readFrontmatterStatus(markdown: string): string | null {
-  const frontmatterBody = readFrontmatterBody(markdown)
-  if (!frontmatterBody) return null
-  const statusMatch = frontmatterBody.match(/^status:\s*(.+)$/m)
-  if (!statusMatch?.[1]) return null
-  return statusMatch[1].trim().replace(/^['"]|['"]$/g, '')
-}
-
 function readFrontmatterBody(markdown: string): string | null {
   const frontmatterMatch = markdown.match(/^---\n([\s\S]*?)\n---/m)
   return frontmatterMatch?.[1] ?? null
@@ -116,18 +108,66 @@ function hasHistoricalZeroTaskWaiver(markdown: string): boolean {
   )
 }
 
-interface GitHistoryEntry {
-  readonly revision: string
-  readonly filePath: string
+function normalizePatchedStatus(raw: string): string {
+  return raw.trim().replace(/^['"]|['"]$/g, '')
 }
 
-function listBlueprintHistoryEntries(cwd: string, filePath: string): GitHistoryEntry[] {
+function patchedStatus(line: string, prefix: '-' | '+'): string | null {
+  if (!line.startsWith(prefix)) return null
+  const match = line.slice(1).match(/^status:\s*(.+)$/)
+  return match?.[1] ? normalizePatchedStatus(match[1]) : null
+}
+
+function previousStatusFromPatch(diff: string, currentStatus: string): string | null {
+  let removedStatuses: string[] = []
+  let addedStatuses: string[] = []
+
+  const evaluateCommit = (): string | null => {
+    if (!addedStatuses.includes(currentStatus)) return null
+    return removedStatuses.find((status) => status !== currentStatus) ?? null
+  }
+
+  for (const rawLine of diff.split('\n')) {
+    if (rawLine.startsWith('commit:')) {
+      const previous = evaluateCommit()
+      if (previous) return previous
+      removedStatuses = []
+      addedStatuses = []
+      continue
+    }
+
+    const removed = patchedStatus(rawLine, '-')
+    if (removed) {
+      removedStatuses.push(removed)
+      continue
+    }
+
+    const added = patchedStatus(rawLine, '+')
+    if (added) addedStatuses.push(added)
+  }
+
+  return evaluateCommit()
+}
+
+function readPreviousLifecycleStatusFromGit(
+  cwd: string,
+  filePath: string,
+  currentStatus: string,
+): string | null {
   try {
     const repoRelativePath = path.isAbsolute(filePath) ? path.relative(cwd, filePath) : filePath
-    let trackedPath = repoRelativePath.replace(/\\/g, '/')
-    const out = execFileSync(
+    const diff = execFileSync(
       'git',
-      ['log', '--follow', '--format=commit:%H', '--name-status', '--', trackedPath],
+      [
+        'log',
+        '--follow',
+        '--find-renames',
+        '--format=commit:%H',
+        '--unified=0',
+        '-p',
+        '--',
+        repoRelativePath.replace(/\\/g, '/'),
+      ],
       {
         cwd,
         encoding: 'utf8',
@@ -136,78 +176,10 @@ function listBlueprintHistoryEntries(cwd: string, filePath: string): GitHistoryE
         maxBuffer: 1024 * 1024,
       },
     )
-
-    const history: GitHistoryEntry[] = []
-    let currentRevision: string | null = null
-    let currentPathAtRevision: string | null = null
-    let nextTrackedPath = trackedPath
-
-    const flushEntry = (): void => {
-      if (!currentRevision || !currentPathAtRevision) return
-      history.push({ revision: currentRevision, filePath: currentPathAtRevision })
-      trackedPath = nextTrackedPath
-    }
-
-    for (const rawLine of out.split('\n')) {
-      const line = rawLine.trim()
-      if (!line) continue
-      if (line.startsWith('commit:')) {
-        flushEntry()
-        currentRevision = line.slice('commit:'.length).trim()
-        currentPathAtRevision = trackedPath
-        nextTrackedPath = trackedPath
-        continue
-      }
-
-      const parts = line.split('\t')
-      const status = parts[0]?.trim() ?? ''
-      if (!status.startsWith('R')) continue
-
-      const oldPath = parts[1]?.trim().replace(/\\/g, '/')
-      const newPath = parts[2]?.trim().replace(/\\/g, '/')
-      if (oldPath && newPath && newPath === currentPathAtRevision) {
-        nextTrackedPath = oldPath
-      }
-    }
-
-    flushEntry()
-    return history
-  } catch {
-    return []
-  }
-}
-
-function readHistoricalFile(cwd: string, revision: string, filePath: string): string | null {
-  try {
-    return execFileSync('git', ['show', `${revision}:${filePath}`], {
-      cwd,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-      timeout: 1_500,
-      maxBuffer: 1024 * 1024,
-    })
+    return previousStatusFromPatch(diff, currentStatus)
   } catch {
     return null
   }
-}
-
-function readPreviousLifecycleStatusFromGit(
-  cwd: string,
-  filePath: string,
-  currentStatus: string,
-): string | null {
-  const history = listBlueprintHistoryEntries(cwd, filePath)
-  if (history.length < 2) return null
-
-  for (const entry of history.slice(1)) {
-    const markdown = readHistoricalFile(cwd, entry.revision, entry.filePath)
-    if (!markdown) continue
-    const status = readFrontmatterStatus(markdown)
-    if (!status || status === currentStatus) continue
-    return status
-  }
-
-  return null
 }
 
 export interface BlueprintLifecycleAuditOptions {
@@ -414,9 +386,10 @@ export async function auditBlueprintLifecycleSql(
     //    been touched in git within the configured day budget.
     // -----------------------------------------------------------------------
     const staleCandidates = allBlueprints.filter((row) => STALENESS_SCOPE.has(row.status))
+    const gitHistoryAvailable = allBlueprints.length > 0 ? isGitHistoryAvailable(cwd) : false
     checked += staleCandidates.length
     if (staleCandidates.length > 0) {
-      if (isGitHistoryAvailable(cwd)) {
+      if (gitHistoryAvailable) {
         const nowMs = Date.now()
         for (const row of staleCandidates) {
           const lastTouchIso = readLastGitTouchIso(cwd, row.file_path)
@@ -443,7 +416,7 @@ export async function auditBlueprintLifecycleSql(
     checked += allBlueprints.length
     if (allBlueprints.length === 0) {
       // Nothing to reconcile against history, so suppress the outside-git notice.
-    } else if (isGitHistoryAvailable(cwd)) {
+    } else if (gitHistoryAvailable) {
       const transitionStartedAt = Date.now()
       let transitionChecked = 0
       for (const row of allBlueprints) {

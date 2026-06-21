@@ -2320,15 +2320,19 @@ exit "\${WP_FAKE_HOOK_STATUS:-1}"
       hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>
     }
 
-    const commands = [
-      'SessionStart',
-      'PreToolUse',
-      'PostToolUse',
-      'UserPromptSubmit',
-      'Stop',
-      'PreCompact',
-    ].flatMap((event) =>
-      (settings.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)),
+    const commands = Array.from(
+      new Set(
+        [
+          'SessionStart',
+          'PreToolUse',
+          'PostToolUse',
+          'UserPromptSubmit',
+          'Stop',
+          'PreCompact',
+        ].flatMap((event) =>
+          (settings.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)),
+        ),
+      ),
     )
 
     expect(commands.length).toBeGreaterThan(0)
@@ -2368,15 +2372,19 @@ exit "\${WP_FAKE_HOOK_STATUS:-1}"
       hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>
     }
 
-    const commands = [
-      'SessionStart',
-      'PreToolUse',
-      'PostToolUse',
-      'UserPromptSubmit',
-      'Stop',
-      'PreCompact',
-    ].flatMap((event) =>
-      (codex.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)),
+    const commands = Array.from(
+      new Set(
+        [
+          'SessionStart',
+          'PreToolUse',
+          'PostToolUse',
+          'UserPromptSubmit',
+          'Stop',
+          'PreCompact',
+        ].flatMap((event) =>
+          (codex.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)),
+        ),
+      ),
     )
 
     expect(commands.length).toBeGreaterThan(0)

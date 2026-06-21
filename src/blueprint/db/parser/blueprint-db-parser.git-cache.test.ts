@@ -6,16 +6,25 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const execSync = vi.hoisted(() => vi.fn(() => 'git@github.com:webpresso/agent-kit.git\n'))
 
-vi.mock('node:child_process', () => ({ execSync }))
+vi.mock('node:child_process', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('node:child_process')>()),
+  execSync,
+}))
 
 const createdRoots: string[] = []
+let rootCounter = 0
 
-function makeGitRoot(): string {
-  const root = join(tmpdir(), `wp-parser-git-cache-${process.pid}-${createdRoots.length}`)
+function makeGitRoot(remoteOrigin?: string): string {
+  const root = join(tmpdir(), `wp-parser-git-cache-${process.pid}-${rootCounter++}`)
   rmSync(root, { recursive: true, force: true })
   mkdirSync(join(root, 'blueprints', 'completed', 'one'), { recursive: true })
   mkdirSync(join(root, 'blueprints', 'completed', 'two'), { recursive: true })
-  writeFileSync(join(root, '.git'), 'gitdir: /tmp/fake.git\n', 'utf8')
+  mkdirSync(join(root, '.git'), { recursive: true })
+  writeFileSync(
+    join(root, '.git', 'config'),
+    remoteOrigin ? `[remote "origin"]\n\turl = ${remoteOrigin}\n` : '[core]\n\trepositoryformatversion = 0\n',
+    'utf8',
+  )
   createdRoots.push(root)
   return root
 }
@@ -36,7 +45,21 @@ describe('parseBlueprintForDb git organization cache', () => {
     }
   })
 
-  it('detects organization once per git root instead of shelling out for every blueprint', async () => {
+  it('reads organization from local git config without shelling out', async () => {
+    const { parseBlueprintForDb } = await import('./blueprint-db-parser.js')
+    const root = makeGitRoot('git@github.com:webpresso/agent-kit.git')
+
+    const parsed = parseBlueprintForDb(
+      content,
+      join(root, 'blueprints', 'completed', 'one', '_overview.md'),
+      'one',
+    )
+
+    expect(parsed.organization).toBe('webpresso')
+    expect(execSync).not.toHaveBeenCalled()
+  })
+
+  it('caches missing organization once per git root without shelling out', async () => {
     const { parseBlueprintForDb } = await import('./blueprint-db-parser.js')
     const root = makeGitRoot()
 
@@ -51,14 +74,8 @@ describe('parseBlueprintForDb git organization cache', () => {
       'two',
     )
 
-    expect(first.organization).toBe('webpresso')
-    expect(second.organization).toBe('webpresso')
-    expect(execSync).toHaveBeenCalledTimes(1)
-    expect(execSync).toHaveBeenCalledWith('git remote get-url origin', {
-      cwd: root,
-      stdio: ['ignore', 'pipe', 'ignore'],
-      encoding: 'utf8',
-      timeout: 1500,
-    })
+    expect(first.organization).toBe('unknown')
+    expect(second.organization).toBe('unknown')
+    expect(execSync).not.toHaveBeenCalled()
   })
 })

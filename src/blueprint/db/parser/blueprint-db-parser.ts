@@ -10,7 +10,7 @@
 
 import crypto from 'node:crypto'
 import { execSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import matter from 'gray-matter'
@@ -90,6 +90,11 @@ const _GSTACK_SKILL_PATTERN =
 
 const organizationByGitRoot = new Map<string, string>()
 
+interface RemoteConfigRead {
+  readonly configRead: boolean
+  readonly remote: string | null
+}
+
 function findGitRoot(startPath: string): string | null {
   let dir = path.dirname(startPath)
 
@@ -104,6 +109,70 @@ function findGitRoot(startPath: string): string | null {
 function organizationFromRemote(remote: string): string | null {
   const match = remote.match(/[:/]([^/]+)\/[^/]+(?:\.git)?$/)
   return match?.[1] ?? null
+}
+
+function readGitDirFromFile(dotGitPath: string): string | null {
+  try {
+    const gitFile = readFileSync(dotGitPath, 'utf8')
+    const match = gitFile.match(/^gitdir:\s*(.+)$/m)
+    if (!match?.[1]) return null
+    const gitDir = match[1].trim()
+    return path.isAbsolute(gitDir) ? path.normalize(gitDir) : path.resolve(path.dirname(dotGitPath), gitDir)
+  } catch {
+    return null
+  }
+}
+
+function resolveCommonGitDir(gitDir: string): string {
+  try {
+    const commonDir = readFileSync(path.join(gitDir, 'commondir'), 'utf8').trim()
+    if (commonDir.length === 0) return gitDir
+    return path.isAbsolute(commonDir)
+      ? path.normalize(commonDir)
+      : path.resolve(gitDir, commonDir)
+  } catch {
+    return gitDir
+  }
+}
+
+function remoteOriginUrlFromConfig(config: string): string | null {
+  let inOriginRemote = false
+  for (const rawLine of config.split('\n')) {
+    const line = rawLine.trim()
+    if (line.length === 0 || line.startsWith('#') || line.startsWith(';')) continue
+
+    const sectionMatch = line.match(/^\[(.+)]$/)
+    if (sectionMatch?.[1]) {
+      inOriginRemote = sectionMatch[1] === 'remote "origin"'
+      continue
+    }
+
+    if (!inOriginRemote) continue
+    const urlMatch = line.match(/^url\s*=\s*(.+)$/)
+    if (urlMatch?.[1]) return urlMatch[1].trim()
+  }
+  return null
+}
+
+function readRemoteOriginFromGitConfig(gitRoot: string): RemoteConfigRead {
+  const dotGitPath = path.join(gitRoot, '.git')
+  const directConfigPath = path.join(dotGitPath, 'config')
+  let configPath: string | null = existsSync(directConfigPath) ? directConfigPath : null
+
+  if (!configPath) {
+    const gitDir = readGitDirFromFile(dotGitPath)
+    if (gitDir) {
+      configPath = path.join(resolveCommonGitDir(gitDir), 'config')
+    }
+  }
+
+  if (!configPath || !existsSync(configPath)) return { configRead: false, remote: null }
+
+  try {
+    return { configRead: true, remote: remoteOriginUrlFromConfig(readFileSync(configPath, 'utf8')) }
+  } catch {
+    return { configRead: false, remote: null }
+  }
 }
 
 function safeString(value: unknown): string | null {
@@ -127,17 +196,22 @@ function detectOrganization(filePath: string): string {
   if (cached) return cached
 
   let organization = 'unknown'
-  try {
-    const remote = execSync('git remote get-url origin', {
-      cwd: gitRoot,
-      stdio: ['ignore', 'pipe', 'ignore'],
-      encoding: 'utf8',
-      timeout: 1500,
-    }).trim()
-    organization = organizationFromRemote(remote) ?? 'unknown'
-  } catch {
-    // Silently fall through — not all environments have git remotes. Cache the
-    // miss so bulk blueprint ingestion remains bounded in non-git fixtures.
+  const configRemote = readRemoteOriginFromGitConfig(gitRoot)
+  if (configRemote.configRead) {
+    organization = configRemote.remote ? (organizationFromRemote(configRemote.remote) ?? 'unknown') : 'unknown'
+  } else {
+    try {
+      const remote = execSync('git config --get remote.origin.url', {
+        cwd: gitRoot,
+        stdio: ['ignore', 'pipe', 'ignore'],
+        encoding: 'utf8',
+        timeout: 500,
+      }).trim()
+      organization = organizationFromRemote(remote) ?? 'unknown'
+    } catch {
+      // Silently fall through — not all environments have git remotes. Cache the
+      // miss so bulk blueprint ingestion remains bounded in non-git fixtures.
+    }
   }
 
   organizationByGitRoot.set(gitRoot, organization)
