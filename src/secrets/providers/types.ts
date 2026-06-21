@@ -1,17 +1,23 @@
-export const BUILTIN_SECRET_PROVIDER_TYPES = ['doppler', 'infisical'] as const
+export const BUILT_IN_PROVIDER_TYPES = ['doppler', 'infisical'] as const
+export const BUILTIN_SECRET_PROVIDER_TYPES = BUILT_IN_PROVIDER_TYPES
 
-export type BuiltInSecretProviderType = (typeof BUILTIN_SECRET_PROVIDER_TYPES)[number]
-export type SecretProviderPluginId = BuiltInSecretProviderType | (string & {})
+export type BuiltInProviderType = (typeof BUILT_IN_PROVIDER_TYPES)[number]
+export type BuiltInSecretProviderType = BuiltInProviderType
+export type SecretProviderPluginId = BuiltInProviderType | (string & {})
 
 export type SecretProviderLocalAuthMode = 'cli-login' | 'keychain'
 export type SecretProviderCiAuthMode = 'oidc' | 'service-token'
-export type SecretBootstrapCapability = 'github-actions-bootstrap' | 'manual'
+export type SecretProviderBootstrapCapability = 'github-actions-bootstrap' | 'manual'
+export type SecretBootstrapCapability = SecretProviderBootstrapCapability
 
 export interface SecretProviderDefinition {
-  readonly type: SecretProviderPluginId
+  readonly type: BuiltInProviderType
+  readonly project?: string
   readonly workspace?: string
   readonly workspaceId?: string
-  readonly project: string
+  readonly projectId?: string
+  readonly identityId?: string
+  readonly projectSlug?: string
 }
 
 export interface SecretProviderProfileDefinition {
@@ -67,7 +73,7 @@ export interface ProviderBootstrapPlan {
 }
 
 export interface SecretProviderPlugin {
-  readonly id: SecretProviderPluginId
+  readonly id: BuiltInProviderType
   readonly authModes: {
     readonly local: SecretProviderLocalAuthMode
     readonly ci: readonly SecretProviderCiAuthMode[]
@@ -75,7 +81,7 @@ export interface SecretProviderPlugin {
   readonly capabilities: {
     readonly profiles: readonly string[]
     readonly sinks: readonly string[]
-    readonly bootstrap: readonly SecretBootstrapCapability[]
+    readonly bootstrap: readonly SecretProviderBootstrapCapability[]
   }
   redactionPolicy(input: SecretProviderRedactionInput): SecretProviderRedactionPolicy
   diagnose(input: ProviderDoctorInput): Promise<ProviderDoctorReport> | ProviderDoctorReport

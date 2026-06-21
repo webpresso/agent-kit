@@ -29,19 +29,22 @@ export function diagnoseDopplerProvider(input: ProviderDoctorInput): ProviderDoc
   }
 }
 
-export function fetchDopplerProfile(
-  input: ProviderProfileFetchInput,
-): ResolvedSecretMaterial {
+export function fetchDopplerProfile(input: ProviderProfileFetchInput): ResolvedSecretMaterial {
+  const project = input.provider.project ?? input.provider.projectId ?? input.provider.projectSlug
   return {
     environment: {},
-    redactedValues: [input.provider.project, input.environment],
+    redactedValues: [project, input.environment].filter((value): value is string => Boolean(value)),
   }
 }
 
 export function planDopplerBootstrap(input: ProviderBootstrapInput): ProviderBootstrapPlan {
-  const requiredSecrets = [...new Set(input.lanes.map((lane) =>
-    lane === 'prd' ? 'CI_SECRET_PROVIDER_TOKEN_PRODUCTION' : 'CI_SECRET_PROVIDER_TOKEN_PREVIEW',
-  ))]
+  const requiredSecrets = [
+    ...new Set(
+      input.lanes.map((lane) =>
+        lane === 'prd' ? 'CI_SECRET_PROVIDER_TOKEN_PRODUCTION' : 'CI_SECRET_PROVIDER_TOKEN_PREVIEW',
+      ),
+    ),
+  ]
   return {
     mode: 'service-token',
     lanes: input.lanes,

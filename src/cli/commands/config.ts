@@ -175,13 +175,22 @@ function readSecretsConfig(cwd?: string): SecretsConfig | null {
     throw commandError(`Invalid secret manager config at ${path}`, 1, error)
   }
   const provider = config.providers.default
+  if (!provider)
+    throw commandError(`Invalid secret manager config at ${path}: missing default provider`)
+  const projectId =
+    provider.type === 'infisical'
+      ? (provider.project ?? provider.projectId ?? provider.projectSlug)
+      : provider.project
+  if (!projectId) {
+    throw commandError(`Invalid secret manager config at ${path}: missing provider project id`)
+  }
   const projectLabel =
     typeof (parsed as { projectLabel?: unknown }).projectLabel === 'string'
       ? (parsed as { projectLabel?: string }).projectLabel
       : undefined
   return {
     manager: provider.type,
-    projectId: provider.project,
+    projectId,
     ...(projectLabel ? { projectLabel } : {}),
   }
 }

@@ -1,12 +1,15 @@
+import { parseSecretsSchema, type SecretsSchema } from '#secrets/config/schema.js'
+import { getProviderPlugin } from '#secrets/providers/registry.js'
 import {
-  type SecretOrchestrationConfig,
-  getDefaultSecretProvider,
-  parseSecretOrchestrationConfig,
-} from '#secrets/config/schema.js'
-import { getSecretProviderPlugin } from '#secrets/providers/registry.js'
-import { BUILTIN_SECRET_SINKS, type ResolvedSecretSinkPlan, type SecretSinkPlanInput } from './types.js'
+  SECRET_SINK_NAMES,
+  type ResolvedSecretSinkPlan,
+  type SecretRuntimeProfile,
+  type SecretSinkName,
+  type SecretSinkOperation,
+  type SecretSinkPlanInput,
+} from '#secrets/sinks/types.js'
 
-const RUNTIME_PROFILE_BY_SINK: Record<string, ResolvedSecretSinkPlan['runtimeProfile']> = {
+const RUNTIME_PROFILE_BY_SINK: Record<SecretSinkName, SecretRuntimeProfile> = {
   'dev-server': 'service-runtime',
   test: 'service-runtime',
   e2e: 'service-runtime',
@@ -17,43 +20,69 @@ const RUNTIME_PROFILE_BY_SINK: Record<string, ResolvedSecretSinkPlan['runtimePro
   'db-branch': 'database',
 }
 
-export interface ResolveSecretSinkOptions extends SecretSinkPlanInput {
-  readonly config: SecretOrchestrationConfig | unknown
+export interface ResolveSecretSinkInput extends SecretSinkPlanInput {}
+
+export interface ResolveSecretSinkOptions extends ResolveSecretSinkInput {
+  readonly config: SecretsSchema | unknown
 }
 
-export function resolveSecretSink(input: ResolveSecretSinkOptions): ResolvedSecretSinkPlan {
-  const config = parseSecretOrchestrationConfig(input.config)
-  const sink = config.sinks[input.sink]
-  if (!sink || !BUILTIN_SECRET_SINKS.includes(input.sink as (typeof BUILTIN_SECRET_SINKS)[number])) {
-    throw new Error(`Unsupported sink "${input.sink}"`)
+function isOptionsObject(value: unknown): value is ResolveSecretSinkOptions {
+  return Boolean(value && typeof value === 'object' && 'config' in value)
+}
+
+export function resolveSecretSink(
+  schema: SecretsSchema,
+  input: ResolveSecretSinkInput,
+): ResolvedSecretSinkPlan
+export function resolveSecretSink(input: ResolveSecretSinkOptions): ResolvedSecretSinkPlan
+export function resolveSecretSink(
+  schemaOrInput: SecretsSchema | ResolveSecretSinkOptions,
+  maybeInput?: ResolveSecretSinkInput,
+): ResolvedSecretSinkPlan {
+  const schema = isOptionsObject(schemaOrInput)
+    ? parseSecretsSchema(schemaOrInput.config)
+    : parseSecretsSchema(schemaOrInput)
+  const input = isOptionsObject(schemaOrInput) ? schemaOrInput : maybeInput
+  if (!input) {
+    throw new Error('Missing secret sink resolution input.')
   }
 
-  const profileName = input.profile ?? sink.defaultProfile
-  const profile = config.profiles[profileName]
+  const sink = schema.sinks[input.sink]
+  if (!sink || !SECRET_SINK_NAMES.includes(input.sink as SecretSinkName)) {
+    throw new Error(`Unsupported secret sink "${input.sink}".`)
+  }
+
+  const op = input.op as SecretSinkOperation
+  if (!sink.allowedOps.includes(op)) {
+    throw new Error(`Unsupported operation "${input.op}" for sink "${input.sink}".`)
+  }
+
+  const profileId = input.profile ?? sink.defaultProfile
+  const profile = schema.profiles[profileId]
   if (!profile) {
-    throw new Error(`Unknown profile "${profileName}"`)
-  }
-  if (!sink.allowedOps.includes(input.op)) {
-    throw new Error(
-      `Unsupported op "${input.op}" for sink "${input.sink}". Allowed ops: ${sink.allowedOps.join(', ')}`,
-    )
+    throw new Error(`Unknown secret profile "${profileId}".`)
   }
 
-  const resolvedProvider = config.providers[profile.provider] ?? getDefaultSecretProvider(config)
-  if (!resolvedProvider) throw new Error(`Unknown provider "${profile.provider}"`)
+  const provider = schema.providers[profile.provider]
+  if (!provider) {
+    throw new Error(`Unknown provider "${profile.provider}" for profile "${profileId}".`)
+  }
 
-  const plugin = getSecretProviderPlugin(resolvedProvider.type)
+  const plugin = getProviderPlugin(provider.type)
   if (!plugin.capabilities.sinks.includes(input.sink)) {
-    throw new Error(`Provider "${resolvedProvider.type}" does not support sink "${input.sink}"`)
+    throw new Error(`Provider "${provider.type}" does not support sink "${input.sink}".`)
   }
 
   return {
-    sink: input.sink as (typeof BUILTIN_SECRET_SINKS)[number],
-    op: input.op,
-    profile: profileName,
-    provider: resolvedProvider.type,
+    sink: input.sink as SecretSinkName,
+    op,
+    profile: profileId,
     environment: profile.environment,
-    runtimeProfile: RUNTIME_PROFILE_BY_SINK[input.sink] ?? 'service-runtime',
+    provider: provider.type,
+    providerId: profile.provider,
+    providerType: provider.type,
+    allowedOps: sink.allowedOps,
+    runtimeProfile: RUNTIME_PROFILE_BY_SINK[input.sink as SecretSinkName],
     docsPath: 'docs/secrets/providers.md',
     requiresBootstrap: input.sink === 'github-actions-bootstrap',
   }

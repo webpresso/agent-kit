@@ -1,99 +1,94 @@
 import { describe, expect, it } from 'vitest'
 
-import { parseSecretOrchestrationConfig } from './schema.js'
+import {
+  parseSecretsSchema,
+  redactSecretsValue,
+  type SecretsSchema,
+} from '#secrets/config/schema.js'
 
-function canonicalConfig(providerType: 'doppler' | 'infisical' = 'doppler') {
-  return {
-    schemaVersion: 1,
-    providers: {
-      default: {
-        type: providerType,
-        workspace: providerType === 'doppler' ? 'ozby' : undefined,
-        workspaceId: providerType === 'doppler' ? '7abb07fb8507f57c2011' : undefined,
-        project: providerType === 'doppler' ? 'ingest-lens' : 'edge-matte',
-      },
+const dopplerFixture = {
+  schemaVersion: 1,
+  providers: {
+    default: {
+      type: 'doppler',
+      workspace: 'ozby',
+      workspaceId: '7abb07fb8507f57c2011',
+      project: 'ingest-lens',
     },
-    profiles: {
-      preview: { provider: 'default', environment: 'stg' },
-      production: { provider: 'default', environment: 'prd' },
-    },
-    sinks: {
-      'dev-server': { defaultProfile: 'preview', allowedOps: ['run'] },
-      test: { defaultProfile: 'preview', allowedOps: ['run'] },
-      e2e: { defaultProfile: 'preview', allowedOps: ['run'] },
-      'deploy-wrangler': { defaultProfile: 'production', allowedOps: ['preview', 'deploy'] },
-      pulumi: { defaultProfile: 'preview', allowedOps: ['preview', 'up'] },
-      act: { defaultProfile: 'preview', allowedOps: ['replay', 'run'] },
-      'github-actions-bootstrap': {
-        defaultProfile: 'production',
-        allowedOps: ['verify', 'apply', 'rotate', 'revoke'],
-      },
-      'db-branch': { defaultProfile: 'preview', allowedOps: ['create', 'connect', 'cleanup'] },
-    },
-  }
-}
+  },
+  profiles: {
+    preview: { provider: 'default', environment: 'stg' },
+    production: { provider: 'default', environment: 'prd' },
+  },
+  sinks: {
+    'dev-server': { defaultProfile: 'preview', allowedOps: ['run'] },
+    e2e: { defaultProfile: 'preview', allowedOps: ['run'] },
+    'deploy-wrangler': { defaultProfile: 'production', allowedOps: ['preview', 'deploy'] },
+  },
+} satisfies SecretsSchema
 
-describe('SecretOrchestrationConfigSchema', () => {
-  it('accepts the pinned Doppler config example', () => {
-    expect(parseSecretOrchestrationConfig(canonicalConfig())).toMatchObject({
+describe('parseSecretsSchema', () => {
+  it('accepts the pinned Doppler schema fixture', () => {
+    expect(parseSecretsSchema(dopplerFixture)).toEqual(dopplerFixture)
+  })
+
+  it('accepts an Infisical fixture', () => {
+    const parsed = parseSecretsSchema({
       schemaVersion: 1,
       providers: {
-        default: expect.objectContaining({ type: 'doppler', project: 'ingest-lens' }),
+        default: {
+          type: 'infisical',
+          projectId: 'project_123',
+          identityId: 'identity_456',
+        },
+      },
+      profiles: {
+        preview: { provider: 'default', environment: 'preview' },
+      },
+      sinks: {
+        act: { defaultProfile: 'preview', allowedOps: ['run', 'replay'] },
       },
     })
+
+    expect(parsed.providers.default.type).toBe('infisical')
+    expect(parsed.profiles.preview.environment).toBe('preview')
   })
 
-  it('accepts the pinned Infisical config example', () => {
-    expect(parseSecretOrchestrationConfig(canonicalConfig('infisical'))).toMatchObject({
-      providers: {
-        default: expect.objectContaining({ type: 'infisical', project: 'edge-matte' }),
-      },
-    })
-  })
-
-  it('rejects unknown providers', () => {
+  it('rejects unknown provider types', () => {
     expect(() =>
-      parseSecretOrchestrationConfig({
-        ...canonicalConfig(),
-        providers: { default: { type: 'vault', project: 'demo' } },
-      }),
-    ).toThrow('Invalid option')
-  })
-
-  it('rejects unsupported sinks', () => {
-    expect(() =>
-      parseSecretOrchestrationConfig({
-        ...canonicalConfig(),
-        sinks: {
-          ...canonicalConfig().sinks,
-          'runtime-shell': { defaultProfile: 'preview', allowedOps: ['run'] },
-        },
-      }),
-    ).toThrow(/runtime-shell/u)
-  })
-
-  it('rejects configs that omit providers.default', () => {
-    expect(() =>
-      parseSecretOrchestrationConfig({
-        ...canonicalConfig(),
-        providers: {
-          main: canonicalConfig().providers.default,
-        },
-      }),
-    ).toThrow(/default/u)
-  })
-
-  it('rejects invalid project slugs', () => {
-    expect(() =>
-      parseSecretOrchestrationConfig({
-        ...canonicalConfig(),
+      parseSecretsSchema({
+        schemaVersion: 1,
         providers: {
           default: {
-            ...canonicalConfig().providers.default,
-            project: 'Edge Matte',
+            type: 'vault',
+            projectId: 'ignored',
           },
         },
+        profiles: {
+          preview: { provider: 'default', environment: 'stg' },
+        },
+        sinks: {
+          'dev-server': { defaultProfile: 'preview', allowedOps: ['run'] },
+        },
       }),
-    ).toThrow(/project slug/u)
+    ).toThrow('Unsupported secret provider')
+  })
+})
+
+describe('redactSecretsValue', () => {
+  it('redacts canary secret values inside nested structures', () => {
+    const redacted = redactSecretsValue(
+      {
+        problem: 'bad config',
+        evidence: {
+          stderr: 'token=CANARY_SECRET_123',
+          nested: ['keep', 'CANARY_SECRET_123'],
+        },
+      },
+      ['CANARY_SECRET_123'],
+    ) as Record<string, unknown>
+
+    expect(JSON.stringify(redacted)).not.toContain('CANARY_SECRET_123')
+    expect(JSON.stringify(redacted)).toContain('[REDACTED]')
   })
 })

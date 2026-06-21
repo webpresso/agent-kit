@@ -1,38 +1,32 @@
 import { describe, expect, it } from 'vitest'
 
-import { getSecretProviderPlugin, redactProviderEvidence } from './registry.js'
+import { createBuiltInProviderRegistry, getProviderPlugin } from '#secrets/providers/registry.js'
 
-describe('secret provider registry', () => {
-  it('registers Doppler and Infisical as explicit built-ins', () => {
-    expect(getSecretProviderPlugin('doppler').id).toBe('doppler')
-    expect(getSecretProviderPlugin('infisical').id).toBe('infisical')
+describe('createBuiltInProviderRegistry', () => {
+  it('exposes only the explicit built-in providers', () => {
+    const registry = createBuiltInProviderRegistry()
+
+    expect([...registry.keys()].sort()).toEqual(['doppler', 'infisical'])
   })
 
-  it('plans Infisical bootstrap through the concrete built-in plugin', () => {
-    expect(getSecretProviderPlugin('infisical').authModes.ci).toEqual(['service-token'])
-    expect(getSecretProviderPlugin('infisical').planBootstrap?.({
-      provider: { type: 'infisical', project: 'demo' },
-      profileName: 'preview',
-      environment: 'dev',
-      lanes: ['preview_main', 'prd'],
-    })).toEqual({
-      mode: 'service-token',
-      lanes: ['preview_main', 'prd'],
-      requiredSecrets: ['CI_SECRET_PROVIDER_TOKEN_PREVIEW', 'CI_SECRET_PROVIDER_TOKEN_PRODUCTION'],
-    })
+  it('returns the Doppler workplace-aware plugin contract', () => {
+    const plugin = getProviderPlugin('doppler')
+
+    expect(plugin.authModes.local).toBe('cli-login')
+    expect(plugin.authModes.ci).toContain('service-token')
+    expect(plugin.capabilities.sinks).toContain('deploy-wrangler')
+    expect(plugin.capabilities.bootstrap).toContain('github-actions-bootstrap')
   })
 
-  it('rejects unknown providers', () => {
-    expect(() => getSecretProviderPlugin('vault')).toThrow('Unsupported provider "vault"')
+  it('returns the Infisical OIDC-first plugin contract', () => {
+    const plugin = getProviderPlugin('infisical')
+
+    expect(plugin.authModes.local).toBe('cli-login')
+    expect(plugin.authModes.ci).toContain('oidc')
+    expect(plugin.capabilities.profiles).toContain('preview')
   })
 
-  it('redacts canary secret values', () => {
-    expect(
-      redactProviderEvidence(
-        'doppler',
-        'preview token preview-secret-123 should never leak',
-        ['preview-secret-123'],
-      ),
-    ).toBe('preview token [REDACTED] should never leak')
+  it('rejects unknown provider ids', () => {
+    expect(() => getProviderPlugin('vault')).toThrow('Unknown built-in secret provider')
   })
 })

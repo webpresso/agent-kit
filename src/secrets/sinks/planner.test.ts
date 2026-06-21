@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { resolveSecretSink } from './planner.js'
+import { parseSecretsSchema } from '#secrets/config/schema.js'
+import { resolveSecretSink } from '#secrets/sinks/planner.js'
 
-const config = {
+const fixture = parseSecretsSchema({
   schemaVersion: 1,
   providers: {
     default: {
@@ -18,42 +19,37 @@ const config = {
   },
   sinks: {
     'dev-server': { defaultProfile: 'preview', allowedOps: ['run'] },
-    test: { defaultProfile: 'preview', allowedOps: ['run'] },
     e2e: { defaultProfile: 'preview', allowedOps: ['run'] },
     'deploy-wrangler': { defaultProfile: 'production', allowedOps: ['preview', 'deploy'] },
-    pulumi: { defaultProfile: 'preview', allowedOps: ['preview', 'up'] },
-    act: { defaultProfile: 'preview', allowedOps: ['replay', 'run'] },
-    'github-actions-bootstrap': {
-      defaultProfile: 'production',
-      allowedOps: ['verify', 'apply', 'rotate', 'revoke'],
-    },
-    'db-branch': { defaultProfile: 'preview', allowedOps: ['create', 'connect', 'cleanup'] },
   },
-} as const
+})
 
 describe('resolveSecretSink', () => {
-  it('resolves the provider-neutral sink choke point', () => {
-    expect(resolveSecretSink({ config, sink: 'act', op: 'run' })).toEqual({
-      sink: 'act',
-      op: 'run',
-      profile: 'preview',
+  it('resolves a provider-neutral sink plan through the single orchestration choke point', () => {
+    expect(resolveSecretSink(fixture, { sink: 'deploy-wrangler', op: 'deploy' })).toMatchObject({
+      sink: 'deploy-wrangler',
+      op: 'deploy',
+      profile: 'production',
+      environment: 'prd',
       provider: 'doppler',
-      environment: 'stg',
-      runtimeProfile: 'secrets-only',
+      providerId: 'default',
+      providerType: 'doppler',
+      allowedOps: ['preview', 'deploy'],
+      runtimeProfile: 'full',
       docsPath: 'docs/secrets/providers.md',
       requiresBootstrap: false,
     })
   })
 
   it('rejects unsupported sinks', () => {
-    expect(() => resolveSecretSink({ config, sink: 'runtime-shell', op: 'run' })).toThrow(
-      'Unsupported sink "runtime-shell"',
+    expect(() => resolveSecretSink(fixture, { sink: 'pulumi', op: 'up' })).toThrow(
+      'Unsupported secret sink',
     )
   })
 
-  it('rejects unsupported ops', () => {
-    expect(() => resolveSecretSink({ config, sink: 'dev-server', op: 'apply' })).toThrow(
-      'Unsupported op "apply" for sink "dev-server"',
+  it('rejects unsupported sink operations', () => {
+    expect(() => resolveSecretSink(fixture, { sink: 'dev-server', op: 'deploy' })).toThrow(
+      'Unsupported operation',
     )
   })
 })

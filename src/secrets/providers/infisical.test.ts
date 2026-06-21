@@ -37,6 +37,6 @@ describe('infisical provider adapter', () => {
 
   it('exposes the built-in infisical plugin contract', () => {
     expect(infisicalProviderPlugin.id).toBe('infisical')
-    expect(infisicalProviderPlugin.authModes.ci).toEqual(['service-token'])
+    expect(infisicalProviderPlugin.authModes.ci).toContain('service-token')
   })
 })

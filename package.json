@@ -108,6 +108,8 @@
     "#ci/*": "./src/ci/*.ts",
     "#secret-gate/*.js": "./src/secret-gate/*.ts",
     "#secret-gate/*": "./src/secret-gate/*.ts",
+    "#secrets/*.js": "./src/secrets/*.ts",
+    "#secrets/*": "./src/secrets/*.ts",
     "#mcp/*.js": "./src/mcp/*.ts",
     "#mcp/*": "./src/mcp/*.ts",
     "#content/*.js": "./src/content/*.ts",
