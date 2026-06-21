@@ -2,11 +2,11 @@
 type: blueprint
 title: Harden secret manager error handling
 owner: ozby
-status: planned
+status: completed
 complexity: S
 created: '2026-06-14'
-last_updated: '2026-06-14'
-progress: '0% (0/3 tasks done, 0 blocked)'
+last_updated: '2026-06-21'
+progress: '100% (3/3 tasks done, 0 blocked)'
 depends_on:
   - 2026-06-14-close-test-coverage-gaps-security-modules
 cross_repo_depends_on: []
@@ -74,7 +74,7 @@ worktree_owner_branch: ''
 ## Tasks
 
 #### [secret-gate] Task 1.1: Truncate and redact secret-manager error output
-**Status:** todo
+**Status:** done
 **Depends:** Task 2.2 (from `close-test-coverage-gaps-security-modules` for test patterns)
 **Files:** — Modify: `src/runtime/secret-managers.ts`
 **Steps (TDD):**
@@ -85,13 +85,13 @@ worktree_owner_branch: ''
 2. Update `detail` construction to use only the redacted-then-truncated stderr line.
 3. `./bin/wp typecheck` — verify the `#mcp/tools/_shared/redact` import compiles and introduces no `runtime → mcp` import cycle (`redact.ts` is a leaf; the edge is one-directional).
 **Acceptance:**
-- [ ] `result.stdout` is never included in the error message body (verified by grep of the compiled line).
-- [ ] `result.stderr` is redacted, then truncated to first line ≤512 bytes (redaction precedes truncation).
-- [ ] Existing call sites (`fetchFromDoppler`, `fetchFromInfisical`) still throw informative errors.
-- [ ] `redactText` is imported via the `#mcp/tools/_shared/redact` subpath; `./bin/wp lint --file src/runtime/secret-managers.ts` passes.
+- [x] `result.stdout` is never included in the error message body (verified by grep of the compiled line).
+- [x] `result.stderr` is redacted, then truncated to first line ≤512 bytes (redaction precedes truncation).
+- [x] Existing call sites (`fetchFromDoppler`, `fetchFromInfisical`) still throw informative errors.
+- [x] `redactText` is imported via the `#mcp/tools/_shared/redact` subpath; `./bin/wp lint --file src/runtime/secret-managers.ts` passes.
 
 #### [secret-gate] Task 1.2: Add unit tests for `formatFailure` and `parseJsonSecrets`
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.1
 **Files:** — Create: `src/runtime/secret-managers.test.ts`
 **Steps (TDD):**
@@ -109,11 +109,11 @@ worktree_owner_branch: ''
 3. Test → `./bin/wp test --file src/runtime/secret-managers.test.ts` verify FAIL (if TDD), then implement fix, verify PASS.
 4. `./bin/wp lint` + `./bin/wp typecheck`.
 **Acceptance:**
-- [ ] `./bin/wp test --file src/runtime/secret-managers.test.ts` passes.
-- [ ] All `formatFailure` and `parseJsonSecrets` branches are covered, including the 512-byte-boundary token-split case.
+- [x] `./bin/wp test --file src/runtime/secret-managers.test.ts` passes.
+- [x] All `formatFailure` and `parseJsonSecrets` branches are covered, including the 512-byte-boundary token-split case.
 
 #### [secret-gate] Task 1.3: Document error-handling contract in code comments
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.1
 **Files:** — Modify: `src/runtime/secret-managers.ts`
 **Steps (TDD):**
@@ -124,8 +124,8 @@ worktree_owner_branch: ''
 2. Add a concise comment above each `formatFailure` call site in `fetchFromDoppler` and `fetchFromInfisical` noting the contract.
 3. `./bin/wp lint` + `./bin/wp typecheck`.
 **Acceptance:**
-- [ ] Future maintainers see the rationale in source (JSDoc renders in IDE hover).
-- [ ] No lint violations from comment formatting.
+- [x] Future maintainers see the rationale in source (JSDoc renders in IDE hover).
+- [x] No lint violations from comment formatting.
 
 ## Verification Gates
 
@@ -150,3 +150,18 @@ worktree_owner_branch: ''
 | Redaction rules miss a token format | Reuse `src/mcp/tools/_shared/redact.ts` patterns; add tests for `sk_`, `ghp_`, and base64-like tokens in stderr, including a token that straddles the 512-byte boundary. Extend `TOKEN_PATTERNS` in that module if gaps found. |
 | Truncating before redacting could split a token | Redact the full stderr line first, then apply the 512-byte cut. Task 1.2 includes a boundary-split test to lock this ordering in. |
 | Test file creation before dependency blueprint completes | Task 1.2 depends on Task 1.1; the dependency on `close-test-coverage-gaps-security-modules` ensures test infrastructure patterns are established — wait for that blueprint to complete before creating the test file. |
+
+
+## Completion Evidence
+
+Completed on `main` as part of the secret-orchestration hardening stack and verified on 2026-06-21:
+
+- `src/runtime/secret-managers.ts` imports `redactText` via `#mcp/tools/_shared/redact` and excludes secret-manager stdout from failure messages.
+- `formatFailure` keeps only the first stderr line, redacts it before UTF-8 byte truncation, and caps detail output at 512 bytes.
+- `src/runtime/secret-managers.test.ts` covers stdout exclusion, first-line stderr behavior, redaction-before-truncation boundary behavior, empty output, JSON parsing failures, unexpected payloads, valid flat objects, and non-string value filtering.
+- Source comments document the error-handling contract at `formatFailure` and both Doppler/Infisical call sites.
+- Verification commands:
+  - `wp_test` for `src/runtime/secret-managers.test.ts`.
+  - `wp_lint` for `src/runtime/secret-managers.ts` and `src/runtime/secret-managers.test.ts`.
+  - `wp_typecheck`.
+  - `wp_audit(kind=secrets-policy)`.
