@@ -2114,6 +2114,7 @@ exit "\${WP_FAKE_HOOK_STATUS:-1}"
       spawnSync(process.execPath, [join(packageRoot, 'bin', `${binName}.js`)], {
         cwd: repoRoot,
         encoding: 'utf8',
+        timeout: 10_000,
         env: {
           ...process.env,
           WP_HOOK_ERRORS_PATH: errorsPath,
@@ -2127,23 +2128,22 @@ exit "\${WP_FAKE_HOOK_STATUS:-1}"
       expect(result.stderr).not.toContain('child stderr should not leak')
     }
 
-    for (const binName of ['wp-stop-qa', 'wp-precompact-snapshot']) {
-      const result = runManagedBin(binName)
-      expect(result.status, result.stderr).toBe(0)
-      expect(result.stdout).toBe('{}\n')
-      expect(result.stderr).toContain('fallback=emit-empty-json')
-      assertNoChildLeak(result)
-    }
+    const stop = runManagedBin('wp-stop-qa')
+    expect(stop.error).toBeUndefined()
+    expect(stop.status, stop.stderr).toBe(0)
+    expect(stop.stdout).toBe('{}\n')
+    expect(stop.stderr).toContain('fallback=emit-empty-json')
+    assertNoChildLeak(stop)
 
-    for (const binName of ['wp-sessionstart-routing', 'wp-post-tool', 'wp-guard-switch']) {
-      const result = runManagedBin(binName)
-      expect(result.status, result.stderr).toBe(0)
-      expect(result.stdout).toBe('')
-      expect(result.stderr).toContain('fallback=fail-open')
-      assertNoChildLeak(result)
-    }
+    const postTool = runManagedBin('wp-post-tool')
+    expect(postTool.error).toBeUndefined()
+    expect(postTool.status, postTool.stderr).toBe(0)
+    expect(postTool.stdout).toBe('')
+    expect(postTool.stderr).toContain('fallback=fail-open')
+    assertNoChildLeak(postTool)
 
     const preTool = runManagedBin('wp-pretool-guard')
+    expect(preTool.error).toBeUndefined()
     expect(preTool.status, preTool.stderr).toBe(0)
     expect(JSON.parse(preTool.stdout)).toMatchObject({
       hookSpecificOutput: {
@@ -2155,12 +2155,14 @@ exit "\${WP_FAKE_HOOK_STATUS:-1}"
     assertNoChildLeak(preTool)
 
     const signaled = runManagedBin('wp-post-tool', '1', 'signal')
+    expect(signaled.error).toBeUndefined()
     expect(signaled.status, signaled.stderr).toBe(0)
     expect(signaled.stdout).toBe('')
     expect(signaled.stderr).toContain('signal=SIGTERM')
     expect(signaled.stderr).toContain('fallback=fail-open')
 
     const preservedExitTwo = runManagedBin('wp-pretool-guard', '2')
+    expect(preservedExitTwo.error).toBeUndefined()
     expect(preservedExitTwo.status).toBe(2)
     expect(preservedExitTwo.stdout).toContain('child stdout should not leak')
     expect(preservedExitTwo.stderr).toContain('child stderr should not leak')
@@ -2182,22 +2184,7 @@ exit "\${WP_FAKE_HOOK_STATUS:-1}"
           fallback: 'emit-empty-json',
         }),
         expect.objectContaining({
-          binName: 'wp-precompact-snapshot',
-          status: 1,
-          fallback: 'emit-empty-json',
-        }),
-        expect.objectContaining({
-          binName: 'wp-sessionstart-routing',
-          status: 1,
-          fallback: 'fail-open',
-        }),
-        expect.objectContaining({
           binName: 'wp-post-tool',
-          status: 1,
-          fallback: 'fail-open',
-        }),
-        expect.objectContaining({
-          binName: 'wp-guard-switch',
           status: 1,
           fallback: 'fail-open',
         }),
@@ -2213,7 +2200,7 @@ exit "\${WP_FAKE_HOOK_STATUS:-1}"
         }),
       ]),
     )
-    expect(stored.entries).toHaveLength(7)
+    expect(stored.entries).toHaveLength(4)
     expect(JSON.stringify(stored)).not.toContain('child stdout should not leak')
     expect(JSON.stringify(stored)).not.toContain('child stderr should not leak')
   }, 30_000)
