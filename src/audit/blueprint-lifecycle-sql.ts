@@ -118,14 +118,45 @@ function patchedStatus(line: string, prefix: '-' | '+'): string | null {
   return match?.[1] ? normalizePatchedStatus(match[1]) : null
 }
 
-function previousStatusFromPatch(diff: string, currentStatus: string): string | null {
+function frontmatterEndLine(markdown: string): number | null {
+  const lines = markdown.split('\n')
+  if (lines[0] !== '---') return null
+  for (let index = 1; index < lines.length; index += 1) {
+    if (lines[index] === '---') return index + 1
+  }
+  return null
+}
+
+interface PatchHunkPosition {
+  oldLine: number
+  newLine: number
+}
+
+function parsePatchHunkPosition(line: string): PatchHunkPosition | null {
+  const match = line.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/)
+  if (!match?.[1] || !match[2]) return null
+  return {
+    oldLine: Number(match[1]),
+    newLine: Number(match[2]),
+  }
+}
+
+function previousStatusFromPatch(
+  diff: string,
+  currentStatus: string,
+  frontmatterEnd: number | null,
+): string | null {
   let removedStatuses: string[] = []
   let addedStatuses: string[] = []
+  let hunkPosition: PatchHunkPosition | null = null
 
   const evaluateCommit = (): string | null => {
     if (!addedStatuses.includes(currentStatus)) return null
     return removedStatuses.find((status) => status !== currentStatus) ?? null
   }
+
+  const isFrontmatterLine = (lineNumber: number): boolean =>
+    frontmatterEnd === null || lineNumber <= frontmatterEnd
 
   for (const rawLine of diff.split('\n')) {
     if (rawLine.startsWith('commit:')) {
@@ -133,17 +164,46 @@ function previousStatusFromPatch(diff: string, currentStatus: string): string | 
       if (previous) return previous
       removedStatuses = []
       addedStatuses = []
+      hunkPosition = null
+      continue
+    }
+
+    const nextHunkPosition = parsePatchHunkPosition(rawLine)
+    if (nextHunkPosition) {
+      hunkPosition = nextHunkPosition
       continue
     }
 
     const removed = patchedStatus(rawLine, '-')
     if (removed) {
-      removedStatuses.push(removed)
+      const oldLine = hunkPosition?.oldLine
+      if (oldLine === undefined || isFrontmatterLine(oldLine)) {
+        removedStatuses.push(removed)
+      }
+      if (hunkPosition) hunkPosition.oldLine += 1
       continue
     }
 
     const added = patchedStatus(rawLine, '+')
-    if (added) addedStatuses.push(added)
+    if (added) {
+      const newLine = hunkPosition?.newLine
+      if (newLine === undefined || isFrontmatterLine(newLine)) {
+        addedStatuses.push(added)
+      }
+      if (hunkPosition) hunkPosition.newLine += 1
+      continue
+    }
+
+    if (rawLine.startsWith('-')) {
+      if (hunkPosition) hunkPosition.oldLine += 1
+    } else if (rawLine.startsWith('+')) {
+      if (hunkPosition) hunkPosition.newLine += 1
+    } else if (rawLine.startsWith(' ')) {
+      if (hunkPosition) {
+        hunkPosition.oldLine += 1
+        hunkPosition.newLine += 1
+      }
+    }
   }
 
   return evaluateCommit()
@@ -176,7 +236,8 @@ function readPreviousLifecycleStatusFromGit(
         maxBuffer: 1024 * 1024,
       },
     )
-    return previousStatusFromPatch(diff, currentStatus)
+    const markdown = readFileSync(path.resolve(cwd, repoRelativePath), 'utf8')
+    return previousStatusFromPatch(diff, currentStatus, frontmatterEndLine(markdown))
   } catch {
     return null
   }
