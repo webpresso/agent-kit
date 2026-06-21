@@ -1,6 +1,5 @@
 import type { CAC } from 'cac'
 
-import { getPackageScript, isRecursiveWpScript } from '#cli/package-scripts.js'
 import { getManagedRunner } from '#tool-runtime'
 import { createCliLogSink } from './quality-log-store.js'
 import { emitCliCommandOutput, runCliCommandSequence } from './quality-runner.js'
@@ -18,9 +17,6 @@ export interface QaCommandConfig {
   readonly args: readonly string[]
 }
 
-const RECURSIVE_QA_MESSAGE =
-  'Refusing to run a recursive qa script. Point package.json scripts.qa at the real QA pipeline, not `wp qa`.\n'
-
 export function registerQaCommand(cli: CAC): void {
   cli
     .command('qa', QA_COMMAND_HELP)
@@ -30,10 +26,6 @@ export function registerQaCommand(cli: CAC): void {
       const command = buildQaCommand({ cwd: process.cwd() })
 
       if (flags.printCommand) {
-        if (!command) {
-          writeStderr(process.stderr, RECURSIVE_QA_MESSAGE)
-          return 1
-        }
         console.log(formatShellCommand(command))
         return 0
       }
@@ -50,38 +42,37 @@ export function registerQaCommand(cli: CAC): void {
     })
 }
 
-export function buildQaCommand(options: { cwd?: string } = {}): QaCommandConfig | undefined {
-  const cwd = options.cwd ?? process.cwd()
-  const qaScript = getPackageScript(cwd, 'qa')
-  if (qaScript && isRecursiveWpScript(qaScript, 'qa')) return
-
+export function buildQaCommand(_options: { cwd?: string } = {}): readonly QaCommandConfig[] {
   const resolution = getManagedRunner('vp')
-  return {
+  const vp = (script: string): QaCommandConfig => ({
     command: resolution.command,
-    args: [...resolution.args, 'run', 'qa'],
-  }
+    args: [...resolution.args, 'run', script],
+  })
+  const wp = (...args: string[]): QaCommandConfig => ({ command: './bin/wp', args })
+  return [
+    vp('build'),
+    wp('typecheck'),
+    wp('lint'),
+    wp('format', '--check'),
+    wp('test', '--suite', 'all'),
+    wp('test', '--suite', 'package-smoke'),
+    vp('lint:pkg'),
+    wp('audit', 'guardrails'),
+    vp('workflow-actions:check'),
+    wp('hooks', 'doctor', '--skip-mcp'),
+  ]
 }
 
 export async function runQaCommand(
   options: { cwd?: string } = {},
   deps: { stderr?: Pick<typeof process.stderr, 'write'> } = {},
 ): Promise<{ exitCode: number; entry: import('./quality-log-store.js').CliLogEntry }> {
-  const command = buildQaCommand(options)
-  if (!command) {
-    writeStderr(deps.stderr ?? process.stderr, RECURSIVE_QA_MESSAGE)
-    const sink = createCliLogSink('qa', options.cwd)
-    sink.write(RECURSIVE_QA_MESSAGE)
-    const entry = await sink.finalize({
-      exitCode: 1,
-      summary: 'qa failed: recursive qa script',
-      options: { recursive: true },
-    })
-    return { exitCode: 1, entry }
-  }
+  void deps
+  const commands = buildQaCommand(options)
 
   const result = await runCliCommandSequence({
     commandName: 'qa',
-    commands: [{ command: command.command, args: command.args }],
+    commands,
     cwd: options.cwd,
     summary: ({ exitCode, timedOut, aborted }) => {
       if (timedOut) return 'qa timed out'
@@ -92,14 +83,10 @@ export async function runQaCommand(
   return { exitCode: result.exitCode, entry: result.entry }
 }
 
-function formatShellCommand(config: QaCommandConfig): string {
-  return [config.command, ...config.args].map(shellQuote).join(' ')
+function formatShellCommand(config: readonly QaCommandConfig[]): string {
+  return config.map((command) => [command.command, ...command.args].map(shellQuote).join(' ')).join(' && ')
 }
 
 function shellQuote(value: string): string {
   return /^[A-Za-z0-9_./:=@+-]+$/u.test(value) ? value : `'${value.replace(/'/gu, "'\\''")}'`
-}
-
-function writeStderr(stream: Pick<typeof process.stderr, 'write'>, message: string): void {
-  stream.write(message)
 }

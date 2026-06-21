@@ -1,4 +1,4 @@
-export const TEST_SUITE_VALUES = ['all', 'unit', 'integration'] as const
+export const TEST_SUITE_VALUES = ['all', 'unit', 'integration', 'package-smoke'] as const
 
 export type TestSuiteName = (typeof TEST_SUITE_VALUES)[number]
 
@@ -8,6 +8,11 @@ export interface ResolvedTestSuiteRun {
   readonly vitestArgs: readonly string[]
 }
 
+/**
+ * `all` means the standard non-smoke suite: unit followed by integration/e2e.
+ * Package install/setup smoke tests are intentionally explicit release-gate
+ * work and run through `package-smoke`.
+ */
 const UNIT_SUITE_RUN: ResolvedTestSuiteRun = {
   suite: 'unit',
   label: 'suite unit',
@@ -24,6 +29,18 @@ const INTEGRATION_SUITE_RUN: ResolvedTestSuiteRun = {
     '.e2e.test.ts',
     '--testTimeout',
     '30000',
+  ],
+}
+
+const PACKAGE_SMOKE_SUITE_RUN: ResolvedTestSuiteRun = {
+  suite: 'package-smoke',
+  label: 'suite package-smoke',
+  vitestArgs: [
+    'run',
+    '--no-file-parallelism',
+    'package-smoke.test.ts',
+    '--testTimeout',
+    '120000',
   ],
 }
 
@@ -48,7 +65,9 @@ export function resolveTestSuiteRuns(
       ? [UNIT_SUITE_RUN, INTEGRATION_SUITE_RUN]
       : suite === 'unit'
         ? [UNIT_SUITE_RUN]
-        : [INTEGRATION_SUITE_RUN]
+        : suite === 'integration'
+          ? [INTEGRATION_SUITE_RUN]
+          : [PACKAGE_SMOKE_SUITE_RUN]
 
   return baseRuns.map((run) => ({
     ...run,

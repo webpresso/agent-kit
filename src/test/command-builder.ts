@@ -8,6 +8,12 @@ import {
   resolveOutputPolicy,
 } from '#tool-runtime'
 import { getPackageScript, isRecursiveWpScript, packageUsesVitest } from '#cli/package-scripts.js'
+import {
+  createWorkspaceTestPlan,
+  filterFilesForTestSuite,
+  type TestPlan,
+  type TestRunPlan,
+} from './test-plan.js'
 import { normalizeTestSuiteName, resolveTestSuiteRuns, type TestSuiteName } from './suite.js'
 
 export interface SingleCommandConfig {
@@ -64,9 +70,21 @@ export function buildTestCommand(
       })
     }
 
-    return buildWorkspaceSuiteCommand({
+    return buildWorkspacePlanCommand({
       ...options,
       suite: normalizeTestSuiteName(suite),
+    })
+  }
+
+  if (
+    target.type === 'all' &&
+    !options.mutation &&
+    !options.workers &&
+    !options.watch
+  ) {
+    return buildWorkspacePlanCommand({
+      ...options,
+      suite: 'all',
     })
   }
 
@@ -224,17 +242,23 @@ function buildVitestPassthrough(options: TestCommandOptions): string[] {
   return args
 }
 
-function buildWorkspaceSuiteCommand(
+function buildWorkspacePlanCommand(
   options: TestCommandOptions & { suite: TestSuiteName },
 ): CommandConfig {
-  const runs = resolveTestSuiteRuns(options.suite, buildVitestPassthrough(options))
+  const plan = createWorkspaceTestPlan(options.cwd ?? process.cwd(), {
+    suite: options.suite,
+    passthrough: buildVitestPassthrough(options),
+  })
   const resolution = getManagedRunner('vitest', {
     outputPolicy: resolveOutputPolicy(options.outputPolicy, options.filterOutput),
   })
-  const commands = runs.map((run) => ({
+  const commands = flattenPlanRuns(plan).map((run) => ({
     command: resolution.command,
-    args: [...resolution.args, ...run.vitestArgs],
+    args: [...resolution.args, ...run.args],
   }))
+  if (commands.length === 0) {
+    return { command: resolution.command, args: [...resolution.args, 'run', '--passWithNoTests'] }
+  }
   return commands.length === 1 ? commands[0]! : { sequence: commands }
 }
 
@@ -248,7 +272,7 @@ function buildWorkspaceFileSuiteCommand(
   })
   const passthrough = buildVitestPassthrough(options)
   const commands = explicitSuitesFor(options.suite).flatMap((suite) => {
-    const selectedFiles = filterFilesForSuite(testFiles, suite)
+    const selectedFiles = filterFilesForTestSuite(testFiles, suite)
     if (selectedFiles.length === 0) return []
     return [
       {
@@ -392,6 +416,10 @@ function splitVitestFileTargets(files: readonly string[]): {
   }
 }
 
+function flattenPlanRuns(plan: TestPlan): readonly TestRunPlan[] {
+  return plan.phases.flatMap((phase) => phase.runs)
+}
+
 function explicitSuitesFor(suite: TestSuiteName): readonly Exclude<TestSuiteName, 'all'>[] {
   return suite === 'all' ? ['unit', 'integration'] : [suite]
 }
@@ -407,24 +435,13 @@ function createExplicitFileSuiteVitestArgs(
 
   if (suite === 'integration') {
     args.push('--no-file-parallelism', '--testTimeout', '30000')
+  } else if (suite === 'package-smoke') {
+    args.push('--no-file-parallelism', '--testTimeout', '120000')
   } else {
     args.push('--exclude', '**/*.integration.test.ts', '--exclude', '**/*.e2e.test.ts')
   }
 
   return args
-}
-
-const INTEGRATION_E2E_FILE_PATTERN = /\.(integration|e2e)\.test\.[jt]sx?$/
-
-function filterFilesForSuite(
-  files: readonly string[],
-  suite: Exclude<TestSuiteName, 'all'>,
-): string[] {
-  return files.filter((file) =>
-    suite === 'integration'
-      ? INTEGRATION_E2E_FILE_PATTERN.test(file)
-      : !INTEGRATION_E2E_FILE_PATTERN.test(file),
-  )
 }
 
 function shouldBypassRecursiveWpTask(cwd: string, options: TestCommandOptions): boolean {

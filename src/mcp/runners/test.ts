@@ -1,11 +1,18 @@
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { availableParallelism } from 'node:os'
 import { join } from 'node:path'
-import { globSync } from 'glob'
 
-import { getPackageScript, isRecursiveWpScript, packageUsesVitest } from '#cli/package-scripts.js'
+import { packageUsesVitest } from '#cli/package-scripts.js'
 import { isRunFailure, runCommand as runSharedCommand } from '#mcp/tools/_shared/run-command'
-import { resolveTestSuiteRuns, type TestSuiteName } from '#test'
+import {
+  createWorkspaceTestPlan,
+  filterFilesForTestSuite,
+  resolveTestSuiteRuns,
+  type TestPhase,
+  type TestRunPlan,
+  type TestSuiteName,
+  type WorkspaceTestShardingOptions,
+} from '#test'
 
 // Keep the runner's own deadline comfortably below common MCP client call
 // ceilings so slow suites fail fast with a structured `timedOut` payload
@@ -20,15 +27,6 @@ const WORKSPACE_MAX_DEFAULT_CONCURRENCY = 4
 // fixed high weight so the greedy balancer distributes them evenly.
 const INTEGRATION_E2E_SHARD_WEIGHT = 200_000
 const INTEGRATION_E2E_FILE_PATTERN = /\.(integration|e2e)\.test\.[jt]sx?$/
-const VITEST_DEFAULT_INCLUDE = '**/*.{test,spec}.?(c|m)[jt]s?(x)'
-const VITEST_DEFAULT_IGNORE = [
-  '**/node_modules/**',
-  '**/dist/**',
-  '**/coverage/**',
-  '**/.git/**',
-  '**/.{idea,cache,output,temp}/**',
-  '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*',
-] as const
 
 export interface TestRunInput {
   /** Working tree to run from. Defaults to `CLAUDE_PROJECT_DIR` or `process.cwd()`. */
@@ -128,30 +126,8 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
     return withFailureScope(result, 'file-filter command')
   }
 
-  if (input.suite) {
-    const suiteShardRuns = createWorkspaceSuiteShardRuns(cwd, input.suite, workspaceSharding)
-    if (suiteShardRuns && suiteShardRuns.length > 0) {
-      return runScopedConcurrent(cwd, suiteShardRuns, input, workspaceSharding)
-    }
-    return runScopedSequence(cwd, createWorkspaceSuiteRuns(input.suite), input, workspaceSharding)
-  }
-
-  const workspaceShardRuns = createWorkspaceVitestShardRuns(cwd, workspaceSharding)
-  if (workspaceShardRuns && workspaceShardRuns.length > 0) {
-    return runScopedConcurrent(cwd, workspaceShardRuns, input, workspaceSharding)
-  }
-
-  if (shouldBypassWorkspaceTestScript(cwd)) {
-    const result = await runCommand(
-      'vp',
-      ['exec', '--', 'vitest', 'run', '--reporter=json', '--no-color'],
-      {
-        ...input,
-        cwd,
-        timeoutMs: commandTimeoutMs,
-      },
-    )
-    return withFailureScope(result, 'workspace vitest command')
+  if (usesVitest(cwd)) {
+    return runWorkspaceTestPlan(cwd, input, workspaceSharding)
   }
 
   const result = await runCommand('vp', ['run', 'test'], {
@@ -299,6 +275,87 @@ async function runScopedSequence(
     aborted,
     failureScope,
   }
+}
+
+async function runWorkspaceTestPlan(
+  cwd: string,
+  input: TestRunInput,
+  workspaceSharding: ResolvedWorkspaceSharding,
+): Promise<TestResult> {
+  const plan = createWorkspaceTestPlan(cwd, {
+    suite: input.suite ?? 'all',
+    reporterArgs: ['--reporter=json', '--no-color'],
+    passthrough: input.extraArgs,
+    sharding: workspaceShardingToPlanInput(workspaceSharding),
+  })
+  if (plan.phases.length === 0) {
+    return {
+      passed: false,
+      output: `No test files matched suite "${input.suite ?? 'all'}".`,
+      exitCode: 1,
+      failureScope: 'workspace test plan',
+    }
+  }
+
+  const budget = createRunBudget(workspaceSharding.totalBudgetMs)
+  let combinedOutput = ''
+  let firstFailure = 0
+  let timedOut = false
+  let aborted = false
+  let failureScope: string | undefined
+
+  for (const phase of plan.phases) {
+    const remainingMs = getRemainingBudgetMs(budget)
+    if (remainingMs <= 0) {
+      timedOut = true
+      if (firstFailure === 0) {
+        firstFailure = 124
+        failureScope = 'overall test budget'
+      }
+      combinedOutput += formatScopedOutput(
+        'overall test budget',
+        `Global test budget exhausted before ${phase.label}.`,
+      )
+      break
+    }
+
+    const phaseResult = await runTestPhase(cwd, phase, input, workspaceSharding, remainingMs)
+    combinedOutput += phaseResult.output
+    if (!phaseResult.passed && firstFailure === 0) {
+      firstFailure = phaseResult.exitCode
+      failureScope = phaseResult.failureScope ?? phase.label
+    }
+    if (phaseResult.timedOut) timedOut = true
+    if (phaseResult.aborted) aborted = true
+    if (!phaseResult.passed || phaseResult.timedOut || phaseResult.aborted) break
+  }
+
+  return {
+    passed: firstFailure === 0,
+    output: combinedOutput,
+    exitCode: firstFailure,
+    timedOut,
+    aborted,
+    failureScope,
+  }
+}
+
+async function runTestPhase(
+  cwd: string,
+  phase: TestPhase,
+  input: TestRunInput,
+  workspaceSharding: ResolvedWorkspaceSharding,
+  remainingBudgetMs: number,
+): Promise<TestResult> {
+  const runs = phase.runs.map(testRunPlanToScopedRun)
+  const phaseSharding: ResolvedWorkspaceSharding = {
+    ...workspaceSharding,
+    concurrency: Math.max(1, Math.min(phase.concurrency, workspaceSharding.concurrency)),
+    totalBudgetMs: remainingBudgetMs,
+  }
+  return phase.concurrency > 1
+    ? runScopedConcurrent(cwd, runs, input, phaseSharding)
+    : runScopedSequence(cwd, runs, input, phaseSharding)
 }
 
 async function runScopedConcurrent(
@@ -452,72 +509,6 @@ function withFailureScope(result: TestResult, scope: string): TestResult {
   return { ...result, failureScope: scope }
 }
 
-function createWorkspaceVitestShardRuns(
-  cwd: string,
-  workspaceSharding: ResolvedWorkspaceSharding,
-): ScopedRun[] | undefined {
-  if (!workspaceSharding.enabled) return undefined
-  if (!hasRootVitestTestScript(cwd)) return undefined
-  const files = discoverVitestFiles(cwd)
-  if (files.length < workspaceSharding.minFilesToShard) return undefined
-  const shards = buildBalancedShards(cwd, files, workspaceSharding)
-  const shardTotal = shards.length
-  if (shardTotal <= 1) return undefined
-
-  return shards.map((filesInShard, index) => ({
-    scope: `shard ${index + 1}/${shardTotal} (${filesInShard.length} files)`,
-    args: createVitestShardArgs(filesInShard, workspaceSharding, shardTotal),
-  }))
-}
-
-function createWorkspaceSuiteRuns(suite: TestSuiteName): ScopedRun[] {
-  return createVitestScopedRuns(suite, ['exec', '--', 'vitest'], 'workspace')
-}
-
-function createWorkspaceSuiteShardRuns(
-  cwd: string,
-  suite: TestSuiteName,
-  workspaceSharding: ResolvedWorkspaceSharding,
-): ScopedRun[] | undefined {
-  if (!workspaceSharding.enabled) return undefined
-  if (!hasRootVitestTestScript(cwd)) return undefined
-
-  const files = discoverVitestFiles(cwd)
-  const runs = resolveTestSuiteRuns(suite, ['--reporter=json', '--no-color']).flatMap(
-    (suiteRun) => {
-      const suiteFiles = filterFilesForSuite(files, suiteRun.suite)
-      if (suiteFiles.length < workspaceSharding.minFilesToShard) {
-        return [
-          {
-            scope: `workspace (${suiteRun.label})`,
-            args: ['exec', '--', 'vitest', ...suiteRun.vitestArgs],
-          },
-        ]
-      }
-
-      const shards = buildBalancedShards(cwd, suiteFiles, workspaceSharding)
-      const shardTotal = shards.length
-      if (shardTotal <= 1) {
-        return [
-          {
-            scope: `workspace (${suiteRun.label})`,
-            args: ['exec', '--', 'vitest', ...suiteRun.vitestArgs],
-          },
-        ]
-      }
-
-      const suiteArgs =
-        suiteRun.suite === 'integration' ? ['--no-file-parallelism', '--testTimeout', '30000'] : []
-      return shards.map((filesInShard, index) => ({
-        scope: `workspace (${suiteRun.label}) shard ${index + 1}/${shardTotal} (${filesInShard.length} files)`,
-        args: createVitestShardArgs(filesInShard, workspaceSharding, shardTotal, suiteArgs),
-      }))
-    },
-  )
-
-  return runs.length > 0 ? runs : undefined
-}
-
 function createVitestShardRunsFromFiles(
   cwd: string,
   files: readonly string[],
@@ -535,20 +526,23 @@ function createVitestShardRunsFromFiles(
   }))
 }
 
-function hasRootVitestTestScript(cwd: string): boolean {
-  const packageJson = findPackageJson(cwd)
-  if (!packageJson) return false
-  const pkg = readPackage(packageJson)
-  const scripts = pkg.scripts
-  if (!scripts || typeof scripts !== 'object' || Array.isArray(scripts)) return false
-  const testScript = (scripts as Record<string, unknown>).test
-  return typeof testScript === 'string' && /\bvitest\b/.test(testScript)
+function workspaceShardingToPlanInput(
+  workspaceSharding: ResolvedWorkspaceSharding,
+): Required<WorkspaceTestShardingOptions> {
+  return {
+    enabled: workspaceSharding.enabled,
+    minFilesToShard: workspaceSharding.minFilesToShard,
+    targetFilesPerShard: workspaceSharding.targetFilesPerShard,
+    maxShards: workspaceSharding.maxShards,
+    concurrency: workspaceSharding.concurrency,
+  }
 }
 
-function shouldBypassWorkspaceTestScript(cwd: string): boolean {
-  const testScript = getPackageScript(cwd, 'test')
-  if (!testScript || !isRecursiveWpScript(testScript, 'test')) return false
-  return packageUsesVitest(cwd)
+function testRunPlanToScopedRun(run: TestRunPlan): ScopedRun {
+  return {
+    scope: run.scope,
+    args: ['exec', '--', 'vitest', ...run.args],
+  }
 }
 
 function createVitestScopedRuns(
@@ -595,6 +589,16 @@ function createExplicitFileSuiteVitestArgs(
       '--no-color',
     ]
   }
+  if (suite === 'package-smoke') {
+    return [
+      'run',
+      '--no-file-parallelism',
+      '--testTimeout',
+      '120000',
+      '--reporter=json',
+      '--no-color',
+    ]
+  }
   return [
     'run',
     '--exclude',
@@ -628,23 +632,11 @@ function unsupportedSuiteFileFilter(suite: TestSuiteName, files: readonly string
   }
 }
 
-function discoverVitestFiles(cwd: string): string[] {
-  return globSync(VITEST_DEFAULT_INCLUDE, {
-    cwd,
-    nodir: true,
-    ignore: [...VITEST_DEFAULT_IGNORE],
-  }).sort((left, right) => left.localeCompare(right))
-}
-
 function filterFilesForSuite(
   files: readonly string[],
   suite: Exclude<TestSuiteName, 'all'>,
 ): string[] {
-  return files.filter((file) =>
-    suite === 'integration'
-      ? INTEGRATION_E2E_FILE_PATTERN.test(file)
-      : !INTEGRATION_E2E_FILE_PATTERN.test(file),
-  )
+  return filterFilesForTestSuite(files, suite)
 }
 
 function createVitestShardArgs(

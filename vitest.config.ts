@@ -2,6 +2,7 @@ import { resolve } from 'node:path'
 import { defineConfig } from 'vitest/config'
 
 import { createVitestAliasEntriesFromPackageImports } from './src/config/internal-subpath-imports.js'
+import { defaultVitestIgnore, VITEST_WORKSPACE_INCLUDE } from './src/test/vitest-discovery.js'
 
 const derivedInternalAliases = createVitestAliasEntriesFromPackageImports()
 
@@ -19,14 +20,8 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: [
-      'src/**/*.test.ts',
-      'src/**/*.integration.test.ts',
-      'scripts/**/*.test.ts',
-      'test/**/*.test.ts',
-      '*.test.ts',
-    ],
-    exclude: ['**/node_modules/**', '**/dist/**'],
+    include: [...VITEST_WORKSPACE_INCLUDE],
+    exclude: [...defaultVitestIgnore()],
     // Reset agent-session-leaked env (CLAUDE_PROJECT_DIR, WP_SKIP_UPDATE_CHECK)
     // before every test so the suite is hermetic regardless of launch env.
     globalSetup: ['./src/test-helpers/global-setup.ts'],
