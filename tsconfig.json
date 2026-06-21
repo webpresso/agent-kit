@@ -92,6 +92,12 @@
       "#hooks/*": [
         "./src/hooks/*"
       ],
+      "#errors/*.js": [
+        "./src/errors/*.ts"
+      ],
+      "#errors/*": [
+        "./src/errors/*.ts"
+      ],
       "#session-memory/*.js": [
         "./src/session-memory/*.ts"
       ],
@@ -112,9 +118,6 @@
       ],
       "#content/*": [
         "./src/content/*"
-      ],
-      "#errors/*": [
-        "./src/errors/*.ts"
       ],
       "#runtime/*": [
         "./src/runtime/*.ts"

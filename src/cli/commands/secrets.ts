@@ -44,7 +44,10 @@ interface GitHubSecretSetInvocation {
 
 export function registerSecretsCommand(cli: CAC): void {
   cli
-    .command('secrets <action> [target]', 'Secret orchestration commands (doctor, bootstrap github)')
+    .command(
+      'secrets <action> [target]',
+      'Secret orchestration commands (doctor, bootstrap github)',
+    )
     .option('--profile <name>', 'Secret profile name', { default: 'preview' })
     .option('--sink <id>', 'Secret sink id')
     .option('--json', 'Emit machine-readable JSON')
@@ -179,8 +182,14 @@ export async function runSecretsBootstrapGithub(
 ): Promise<number> {
   const config = readSecretConfig(options.cwd, deps)
   const profile = options.profile ?? 'production'
-  const lanes = options.lanes && options.lanes.length > 0 ? [...options.lanes] : ['preview_main', 'prd']
-  const plan = resolveSecretSink({ config, sink: 'github-actions-bootstrap', profile, op: options.apply ? 'apply' : 'verify' })
+  const lanes =
+    options.lanes && options.lanes.length > 0 ? [...options.lanes] : ['preview_main', 'prd']
+  const plan = resolveSecretSink({
+    config,
+    sink: 'github-actions-bootstrap',
+    profile,
+    op: options.apply ? 'apply' : 'verify',
+  })
   const provider = config.providers[config.profiles[plan.profile]!.provider]
   if (!provider) {
     throw createWpError({
@@ -192,11 +201,11 @@ export async function runSecretsBootstrapGithub(
   const plugin = getSecretProviderPlugin(plan.provider)
   const bootstrapPlan = plugin.planBootstrap
     ? await plugin.planBootstrap({
-    provider,
-    profileName: plan.profile,
-    environment: plan.environment,
-    lanes,
-  })
+        provider,
+        profileName: plan.profile,
+        environment: plan.environment,
+        lanes,
+      })
     : undefined
   if (!bootstrapPlan) {
     throw createWpError({
@@ -281,7 +290,11 @@ function readCommittedSecretsConfig(cwd: string | undefined): unknown {
   return JSON.parse(readFileSync(file, 'utf8'))
 }
 
-function writePayload(payload: Record<string, unknown>, json: boolean, deps: SecretsCommandDeps): void {
+function writePayload(
+  payload: Record<string, unknown>,
+  json: boolean,
+  deps: SecretsCommandDeps,
+): void {
   const writer = deps.stdout ?? process.stdout
   if (json) {
     writer.write(`${JSON.stringify(payload, null, 2)}\n`)
@@ -291,7 +304,11 @@ function writePayload(payload: Record<string, unknown>, json: boolean, deps: Sec
   writer.write(`${JSON.stringify(payload, null, 2)}\n`)
 }
 
-function writeError(error: ReturnType<typeof ensureWpError>, json: boolean, deps: SecretsCommandDeps): void {
+function writeError(
+  error: ReturnType<typeof ensureWpError>,
+  json: boolean,
+  deps: SecretsCommandDeps,
+): void {
   const writer = deps.stderr ?? process.stderr
   if (json) {
     writer.write(`${JSON.stringify(toWpErrorJson(error), null, 2)}\n`)

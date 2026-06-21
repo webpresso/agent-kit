@@ -77,4 +77,51 @@ describe('runErrCommand', () => {
     expect(ERR_COMMAND_HELP).toContain('wp err sh -c')
     expect(ERR_COMMAND_HELP).toContain('print only failure-looking output')
   })
+
+  it('emits a JSON WP_* envelope for failed commands when --json metadata is provided', () => {
+    const stdout = writable()
+    const code = runErrCommand(
+      [
+        '--json',
+        '--code',
+        'WP_SECRET_PROVIDER_FAILURE',
+        '--problem',
+        'Provider bootstrap failed.',
+        '--cause',
+        'The provider command exited non-zero.',
+        '--fix',
+        'Repair the provider configuration and rerun the command.',
+        '--docs-url',
+        'docs/errors/wp-secret-orchestration.md#wp_secret_provider_failure',
+        '--redact',
+        'CANARY_SECRET_123',
+        'node',
+        '-e',
+        'throw new Error("boom")',
+      ],
+      {
+        run: () =>
+          spawnResult({
+            stdout: 'token=CANARY_SECRET_123\n',
+            stderr: 'FAIL stderr\n',
+            status: 1,
+          }),
+        stdout: stdout.stream,
+      },
+    )
+
+    expect(code).toBe(1)
+    expect(JSON.parse(stdout.read())).toEqual({
+      code: 'WP_SECRET_PROVIDER_FAILURE',
+      problem: 'Provider bootstrap failed.',
+      cause: 'The provider command exited non-zero.',
+      fix: 'Repair the provider configuration and rerun the command.',
+      docsUrl: 'docs/errors/wp-secret-orchestration.md#wp_secret_provider_failure',
+      evidence: {
+        command: 'node -e throw new Error("boom")',
+        output: 'FAIL stderr\ntoken=[REDACTED]\n',
+      },
+      redacted: true,
+    })
+  })
 })

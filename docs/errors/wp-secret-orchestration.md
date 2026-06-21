@@ -3,10 +3,32 @@ type: guide
 title: WP secret orchestration errors
 status: draft
 created: 2026-06-19
-last_updated: 2026-06-19
+last_updated: '2026-06-19'
 ---
 
 # WP secret orchestration errors
 
-This page documents the stable `WP_*` error envelope for secret orchestration
-commands such as `wp secrets`, `wp preview`, and `wp cleanup preview`.
+This page is the stable docs target for secret-orchestration error envelopes
+that use `WP_*` codes and `--json` output. It covers `wp secrets`,
+`wp preview`, and related secret-scoped orchestration commands.
+
+## `WP_ERR_COMMAND_FAILED`
+
+- **Problem:** a wrapped command failed and returned non-zero output.
+- **Cause:** the underlying command exited non-zero.
+- **Fix:** inspect the redacted evidence payload and fix the command-specific
+  failure before retrying.
+
+## `WP_SECRET_CONFIG_INVALID`
+
+- **Problem:** the committed or runtime secret metadata is malformed.
+- **Cause:** the config shape does not match the supported schema contract.
+- **Fix:** update `.webpresso/secrets.config.json` to the supported schema and
+  rerun the command.
+
+## `WP_SECRET_PROVIDER_FAILURE`
+
+- **Problem:** the selected secret provider could not bootstrap or resolve
+  secret material.
+- **Cause:** provider auth, capability, or environment selection failed.
+- **Fix:** repair the provider configuration or token, then rerun the command.

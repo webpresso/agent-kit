@@ -24,7 +24,10 @@ export interface PreviewCommandDeps {
 
 export function registerPreviewCommand(cli: CAC): void {
   cli
-    .command('preview', 'Plan or run a preview deploy through the shared secret orchestration surface')
+    .command(
+      'preview',
+      'Plan or run a preview deploy through the shared secret orchestration surface',
+    )
     .option('--lane <lane>', 'Preview lane id', { default: 'preview_main' })
     .option('--json', 'Emit machine-readable JSON')
     .option('--execute', 'Run the preview deploy instead of dry-run planning')
@@ -51,9 +54,7 @@ export async function runPreviewCommand(
         problem: 'Missing .webpresso/secrets.config.json.',
       })
     }
-    const config = parseSecretOrchestrationConfig(
-      JSON.parse(readFileSync(configPath, 'utf8')),
-    )
+    const config = parseSecretOrchestrationConfig(JSON.parse(readFileSync(configPath, 'utf8')))
     const sinkPlan = resolveSecretSink({
       config,
       sink: 'deploy-wrangler',
