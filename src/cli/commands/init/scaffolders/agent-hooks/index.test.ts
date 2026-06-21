@@ -2060,6 +2060,8 @@ hooks:
       'wp-stop-qa.js',
       'wp-precompact-snapshot.js',
       'wp-sessionstart-routing.js',
+      'wp-post-tool.js',
+      'wp-guard-switch.js',
     ]) {
       writeFileSync(
         join(packageRoot, 'bin', fileName),
@@ -2096,6 +2098,9 @@ hooks:
     writeFileSync(
       fakeRuntime,
       `#!/bin/sh
+if [ "\${WP_FAKE_HOOK_MODE:-}" = "signal" ]; then
+  kill -TERM $$
+fi
 printf 'child stdout should not leak\\n'
 printf 'child stderr should not leak\\n' >&2
 exit "\${WP_FAKE_HOOK_STATUS:-1}"
@@ -2105,7 +2110,7 @@ exit "\${WP_FAKE_HOOK_STATUS:-1}"
     chmodSync(fakeRuntime, 0o755)
 
     const errorsPath = join(packageRoot, 'hook-errors.json')
-    const runManagedBin = (binName: string, status = '1') =>
+    const runManagedBin = (binName: string, status = '1', mode = '') =>
       spawnSync(process.execPath, [join(packageRoot, 'bin', `${binName}.js`)], {
         cwd: repoRoot,
         encoding: 'utf8',
@@ -2113,25 +2118,30 @@ exit "\${WP_FAKE_HOOK_STATUS:-1}"
           ...process.env,
           WP_HOOK_ERRORS_PATH: errorsPath,
           WP_FAKE_HOOK_STATUS: status,
+          WP_FAKE_HOOK_MODE: mode,
         },
       })
 
-    const stop = runManagedBin('wp-stop-qa')
-    expect(stop.status, stop.stderr).toBe(0)
-    expect(stop.stdout).toBe('{}\n')
-    expect(stop.stderr).toContain('fallback=emit-empty-json')
-    expect(stop.stdout).not.toContain('child stdout should not leak')
-    expect(stop.stderr).not.toContain('child stderr should not leak')
+    const assertNoChildLeak = (result: ReturnType<typeof runManagedBin>) => {
+      expect(result.stdout).not.toContain('child stdout should not leak')
+      expect(result.stderr).not.toContain('child stderr should not leak')
+    }
 
-    const precompact = runManagedBin('wp-precompact-snapshot')
-    expect(precompact.status, precompact.stderr).toBe(0)
-    expect(precompact.stdout).toBe('{}\n')
-    expect(precompact.stderr).toContain('event=PreCompact')
+    for (const binName of ['wp-stop-qa', 'wp-precompact-snapshot']) {
+      const result = runManagedBin(binName)
+      expect(result.status, result.stderr).toBe(0)
+      expect(result.stdout).toBe('{}\n')
+      expect(result.stderr).toContain('fallback=emit-empty-json')
+      assertNoChildLeak(result)
+    }
 
-    const sessionstart = runManagedBin('wp-sessionstart-routing')
-    expect(sessionstart.status, sessionstart.stderr).toBe(0)
-    expect(sessionstart.stdout).toBe('')
-    expect(sessionstart.stderr).toContain('fallback=fail-open')
+    for (const binName of ['wp-sessionstart-routing', 'wp-post-tool', 'wp-guard-switch']) {
+      const result = runManagedBin(binName)
+      expect(result.status, result.stderr).toBe(0)
+      expect(result.stdout).toBe('')
+      expect(result.stderr).toContain('fallback=fail-open')
+      assertNoChildLeak(result)
+    }
 
     const preTool = runManagedBin('wp-pretool-guard')
     expect(preTool.status, preTool.stderr).toBe(0)
@@ -2142,6 +2152,13 @@ exit "\${WP_FAKE_HOOK_STATUS:-1}"
       },
     })
     expect(preTool.stderr).toContain('fallback=fail-closed-deny')
+    assertNoChildLeak(preTool)
+
+    const signaled = runManagedBin('wp-post-tool', '1', 'signal')
+    expect(signaled.status, signaled.stderr).toBe(0)
+    expect(signaled.stdout).toBe('')
+    expect(signaled.stderr).toContain('signal=SIGTERM')
+    expect(signaled.stderr).toContain('fallback=fail-open')
 
     const preservedExitTwo = runManagedBin('wp-pretool-guard', '2')
     expect(preservedExitTwo.status).toBe(2)
@@ -2149,7 +2166,13 @@ exit "\${WP_FAKE_HOOK_STATUS:-1}"
     expect(preservedExitTwo.stderr).toContain('child stderr should not leak')
 
     const stored = JSON.parse(readFileSync(errorsPath, 'utf8')) as {
-      entries: Array<{ binName: string; status: number; fallback: string; detail?: string }>
+      entries: Array<{
+        binName: string
+        status?: number
+        signal?: string
+        fallback: string
+        detail?: string
+      }>
     }
     expect(stored.entries).toEqual(
       expect.arrayContaining([
@@ -2169,16 +2192,31 @@ exit "\${WP_FAKE_HOOK_STATUS:-1}"
           fallback: 'fail-open',
         }),
         expect.objectContaining({
+          binName: 'wp-post-tool',
+          status: 1,
+          fallback: 'fail-open',
+        }),
+        expect.objectContaining({
+          binName: 'wp-guard-switch',
+          status: 1,
+          fallback: 'fail-open',
+        }),
+        expect.objectContaining({
           binName: 'wp-pretool-guard',
           status: 1,
           fallback: 'fail-closed-deny',
         }),
+        expect.objectContaining({
+          binName: 'wp-post-tool',
+          signal: 'SIGTERM',
+          fallback: 'fail-open',
+        }),
       ]),
     )
-    expect(stored.entries).toHaveLength(4)
+    expect(stored.entries).toHaveLength(7)
     expect(JSON.stringify(stored)).not.toContain('child stdout should not leak')
     expect(JSON.stringify(stored)).not.toContain('child stderr should not leak')
-  })
+  }, 30_000)
 
   it('managed Codex launchers preserve event-specific fallbacks when repo root cannot be entered', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
