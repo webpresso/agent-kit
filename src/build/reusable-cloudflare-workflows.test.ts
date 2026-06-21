@@ -25,11 +25,17 @@ describe('reusable Cloudflare deploy workflows', () => {
       )
       expect(workflow).not.toContain('secrets: inherit')
       expect(workflow).toContain('.webpresso/secrets.config.json')
+      expect(workflow).toContain('schemaVersion !== 1')
+      expect(workflow).toContain('providers?.default?.type')
+      expect(workflow).toContain('providers?.default?.project')
+      expect(workflow).toContain('projectSlugPattern')
       expect(workflow).toContain(
         'dopplerhq/secrets-fetch-action@451892f16195f9ac360e1a5bcbf0b5fd0e957534',
       )
       expect(workflow).toContain('infisical export --projectId="${INFISICAL_PROJECT_ID}"')
-      expect(workflow).toContain('npm install --global @infisical/cli@0.43.91')
+      expect(workflow).toContain('npm install --global "@infisical/cli@0.43.91"')
+      expect(workflow).toContain('service token scoped to the selected secret_profile environment')
+      expect(workflow).not.toContain('vp install -g')
       expect(workflow).not.toContain('@infisical/cli@latest')
       expect(workflow).toContain('trap cleanup EXIT')
       expect(workflow).toContain('rm -f "${tmp_json}"')

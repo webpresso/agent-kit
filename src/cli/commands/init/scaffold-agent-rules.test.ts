@@ -93,7 +93,7 @@ describe('scaffoldAgentRules', () => {
       'artifact="agent-rules/webpresso-routing.md -&gt; .cursor/rules/webpresso-routing.mdc"',
     )
     expect(content).toContain(
-      'wp_test, wp_e2e, wp_lint, wp_typecheck, wp_qa, wp_audit, wp_ci_act, wp_worker_tail, wp_pr_status, wp_bench, wp_gain, wp_release_readiness',
+      'wp_test, wp_e2e, wp_lint, wp_typecheck, wp_qa, wp_audit, wp_audits, wp_ci_act, wp_worker_tail, wp_pr_status, wp_bench, wp_gain, wp_release_readiness',
     )
     expect(content).not.toContain('generic plugin')
   })

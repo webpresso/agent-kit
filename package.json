@@ -33,8 +33,7 @@
     "docs-check-refs": "bin/docs-check-refs.js",
     "docs-check-stale": "bin/docs-check-stale.js",
     "docs-lint": "bin/docs-lint.js",
-    "docs-migrate": "bin/docs-migrate.js",
-    "with-secrets": "bin/with-secrets"
+    "docs-migrate": "bin/docs-migrate.js"
   },
   "files": [
     "bin/wp",

@@ -29,4 +29,3 @@ export {
   type SecretsConfig,
   type SecretsConfigProfile,
 } from './secrets-config.js'
-export { runWithSecretsCli, parseWithSecretsArgs } from './with-secrets-cli.js'

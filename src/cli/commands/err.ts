@@ -62,34 +62,29 @@ export function runErrCommand(commandParts: readonly string[], deps: ErrCommandD
 
   if (
     exitCode !== 0 &&
-    (parsed.envelope.json
-      || parsed.envelope.code
-      || parsed.envelope.problem
-      || parsed.envelope.cause
-      || parsed.envelope.fix
-      || parsed.envelope.docsUrl)
+    (parsed.envelope.json ||
+      parsed.envelope.code ||
+      parsed.envelope.problem ||
+      parsed.envelope.cause ||
+      parsed.envelope.fix ||
+      parsed.envelope.docsUrl)
   ) {
     const envelope = createWpErrorEnvelope({
       code: parsed.envelope.code ?? 'WP_ERR_COMMAND_FAILED',
       problem: parsed.envelope.problem ?? 'Command failed.',
-      cause:
-        parsed.envelope.cause
-        ?? `The command exited with status ${exitCode}.`,
+      cause: parsed.envelope.cause ?? `The command exited with status ${exitCode}.`,
       fix:
-        parsed.envelope.fix
-        ?? 'Inspect the redacted evidence and rerun the command once the failure is fixed.',
+        parsed.envelope.fix ??
+        'Inspect the redacted evidence and rerun the command once the failure is fixed.',
       docsUrl:
-        parsed.envelope.docsUrl
-        ?? 'docs/errors/wp-secret-orchestration.md#wp_err_command_failed',
+        parsed.envelope.docsUrl ?? 'docs/errors/wp-secret-orchestration.md#wp_err_command_failed',
       evidence: {
         command: [parsed.command, ...parsed.args].join(' '),
         output: combineOutput(result.stderr, result.stdout) || result.error?.message || '',
       },
       redact: parsed.envelope.redact,
     })
-    const rendered = parsed.envelope.json
-      ? JSON.stringify(envelope)
-      : formatEnvelopeText(envelope)
+    const rendered = parsed.envelope.json ? JSON.stringify(envelope) : formatEnvelopeText(envelope)
     write(deps.stdout ?? process.stdout, ensureTrailingNewline(rendered))
     return exitCode
   }

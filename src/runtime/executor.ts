@@ -3,7 +3,7 @@ import path from 'node:path'
 
 import { fetchSecretsForConfig } from './secret-managers.js'
 import { isDirectRuntimeProfile, isRuntimeProfile, type RuntimeProfile } from './profiles.js'
-import { readSecretsConfig } from './secrets-config.js'
+import { readSecretsConfig, type SecretsConfig } from './secrets-config.js'
 
 export type RuntimeSelector = RuntimeProfile | string
 
@@ -73,14 +73,17 @@ function normalizeEnvironmentSelector(environment: string | undefined): string |
   return trimmed && trimmed.length > 0 ? trimmed : undefined
 }
 
-function resolveEnvironmentSelector(
+function resolveConfiguredEnvironmentSelector(
+  config: SecretsConfig,
   profile: string | undefined,
   environment: string | undefined,
 ): string | undefined {
   const explicitEnvironment = normalizeEnvironmentSelector(environment)
-  if (explicitEnvironment) return explicitEnvironment
+  if (explicitEnvironment)
+    return config.profiles?.[explicitEnvironment]?.environment ?? explicitEnvironment
   if (!profile) return undefined
-  return isCanonicalSecretProfile(profile) ? undefined : undefined
+  if (isCanonicalSecretProfile(profile)) return undefined
+  return undefined
 }
 
 export function resolveRuntimeEnvironment(
@@ -96,11 +99,17 @@ export function resolveRuntimeEnvironment(
   const config = readSecretsConfig(cwd)
   if (!config) {
     if (!profile) return {}
-    throw new Error('No secret manager configured.\nRun: wp config secrets setup')
+    throw new Error(
+      'No secret profile configured.\nCommit a valid .webpresso/secrets.config.json and run: wp secrets doctor --profile preview --json',
+    )
   }
 
   const cache = options.cache ?? createRuntimeEnvCache()
-  const environmentSelector = resolveEnvironmentSelector(profile, options.environment)
+  const environmentSelector = resolveConfiguredEnvironmentSelector(
+    config,
+    profile,
+    options.environment,
+  )
   const cacheKey = `${cwd}::${config.manager}::${config.projectId}::${environmentSelector ?? '<default>'}`
   const cached = cache.values.get(cacheKey)
   if (cached) return { ...cached }

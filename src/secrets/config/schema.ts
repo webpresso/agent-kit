@@ -1,4 +1,5 @@
 import { isBuiltInProviderType } from '#secrets/providers/registry.js'
+import type { SecretProviderDefinition } from '#secrets/providers/types.js'
 import {
   SECRET_SINK_NAMES,
   SECRET_SINK_OPERATIONS,
@@ -7,14 +8,15 @@ import {
 
 export interface DopplerProviderConfig {
   readonly type: 'doppler'
-  readonly workspace: string
-  readonly workspaceId: string
+  readonly workspace?: string
+  readonly workspaceId?: string
   readonly project: string
 }
 
 export interface InfisicalProviderConfig {
   readonly type: 'infisical'
-  readonly projectId: string
+  readonly project?: string
+  readonly projectId?: string
   readonly identityId?: string
   readonly projectSlug?: string
 }
@@ -58,26 +60,32 @@ function parseProviderConfig(providerId: string, value: unknown): SecretProvider
     case 'doppler':
       return {
         type: 'doppler',
-        workspace: assertNonEmptyString(
-          record.workspace,
-          `Provider "${providerId}" requires a non-empty workspace.`,
-        ),
-        workspaceId: assertNonEmptyString(
-          record.workspaceId,
-          `Provider "${providerId}" requires a non-empty workspaceId.`,
-        ),
+        ...(typeof record.workspace === 'string' && record.workspace.trim().length > 0
+          ? { workspace: record.workspace }
+          : {}),
+        ...(typeof record.workspaceId === 'string' && record.workspaceId.trim().length > 0
+          ? { workspaceId: record.workspaceId }
+          : {}),
         project: assertNonEmptyString(
           record.project,
           `Provider "${providerId}" requires a non-empty project.`,
         ),
       }
     case 'infisical':
+      if (
+        (typeof record.projectId !== 'string' || record.projectId.trim().length === 0) &&
+        (typeof record.project !== 'string' || record.project.trim().length === 0)
+      ) {
+        throw new Error(`Provider "${providerId}" requires a non-empty projectId or project.`)
+      }
       return {
         type: 'infisical',
-        projectId: assertNonEmptyString(
-          record.projectId,
-          `Provider "${providerId}" requires a non-empty projectId.`,
-        ),
+        ...(typeof record.project === 'string' && record.project.trim().length > 0
+          ? { project: record.project }
+          : {}),
+        ...(typeof record.projectId === 'string' && record.projectId.trim().length > 0
+          ? { projectId: record.projectId }
+          : {}),
         ...(typeof record.identityId === 'string' && record.identityId.trim().length > 0
           ? { identityId: record.identityId }
           : {}),
@@ -126,8 +134,8 @@ function parseSinks(value: unknown): Record<string, SecretSinkDefinition> {
       ),
       allowedOps: allowedOps.map((operation) => {
         if (
-          typeof operation !== 'string'
-          || !SECRET_SINK_OPERATIONS.includes(operation as (typeof SECRET_SINK_OPERATIONS)[number])
+          typeof operation !== 'string' ||
+          !SECRET_SINK_OPERATIONS.includes(operation as (typeof SECRET_SINK_OPERATIONS)[number])
         ) {
           throw new Error(`Sink "${sinkId}" contains unsupported operation "${String(operation)}".`)
         }
@@ -175,6 +183,41 @@ export function parseSecretsSchema(input: unknown): SecretsSchema {
     profiles,
     sinks,
   }
+}
+
+export const SecretOrchestrationConfigSchema = {
+  parse: parseSecretsSchema,
+  safeParse(
+    input: unknown,
+  ): { success: true; data: SecretsSchema } | { success: false; error: Error } {
+    try {
+      return { success: true, data: parseSecretsSchema(input) }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error : new Error(String(error)) }
+    }
+  },
+}
+
+export type SecretOrchestrationConfig = SecretsSchema
+
+export function parseSecretOrchestrationConfig(value: unknown): SecretOrchestrationConfig {
+  return parseSecretsSchema(value)
+}
+
+export function getDefaultSecretProvider(
+  config: SecretOrchestrationConfig,
+): SecretProviderDefinition | undefined {
+  return config.providers.default
+}
+
+export function isSecretOrchestrationConfig(value: unknown): value is SecretOrchestrationConfig {
+  return SecretOrchestrationConfigSchema.safeParse(value).success
+}
+
+export function asSecretSinkDefinitionMap(
+  config: SecretOrchestrationConfig,
+): Record<string, SecretSinkDefinition> {
+  return config.sinks
 }
 
 function redactString(value: string, secrets: readonly string[]): string {

@@ -394,9 +394,8 @@ export async function dispatchAudit(input: AkAuditInput): Promise<AuditPayload> 
       }
     }
     case 'consumer-agent-kit-dependency': {
-      const { auditConsumerAgentKitDependency } = await import(
-        '#audit/consumer-agent-kit-dependency'
-      )
+      const { auditConsumerAgentKitDependency } =
+        await import('#audit/consumer-agent-kit-dependency')
       const auditResult = auditConsumerAgentKitDependency(
         input.cwd ?? input.directory ?? process.cwd(),
       )

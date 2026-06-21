@@ -1,10 +1,10 @@
-import { spawnSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import type { CAC } from 'cac'
 import { z } from 'zod'
 
-import { readJsonFileWithSchema } from '#shared-utils/read-json-file.js'
+import { parseSecretOrchestrationConfig } from '#secrets/config/schema.js'
 import { writeJsonFile } from '#shared-utils/write-json-file.js'
 
 type OutputWriter = Pick<NodeJS.WriteStream, 'write'>
@@ -17,10 +17,10 @@ export interface SecretsConfig {
   readonly projectLabel?: string
 }
 
-const SecretsConfigSchema = z.object({
+const LegacySecretsConfigSchema = z.object({
   manager: z.enum(['doppler', 'infisical']),
-  projectId: z.string(),
-  projectLabel: z.string().optional(),
+  projectId: z.string().min(1),
+  projectLabel: z.string().min(1).optional(),
 })
 
 interface SecretManagerAvailability {
@@ -127,7 +127,7 @@ function createCliDiagnosticAdapter(options: {
         authenticated: false,
         detail: [
           `${options.displayName} CLI is installed, but agent-kit does not inspect manager auth state or fetch secrets.`,
-          `Run the manager login flow, then verify execution with: with-secrets -- <cmd>`,
+          `Run the manager login flow, then verify execution with: wp secrets run --sink dev-server --profile preview -- <cmd>`,
         ].join(' '),
       }
     },
@@ -135,22 +135,63 @@ function createCliDiagnosticAdapter(options: {
 }
 
 function getSecretsConfigPath(cwd: string = process.cwd()): string {
-  return join(findConfigRoot(cwd), 'webpresso', 'secrets.json')
+  return join(resolveGitCommonDir(cwd) ?? findConfigRoot(cwd), 'webpresso', 'secrets.json')
+}
+
+function resolveGitCommonDir(cwd: string): string | null {
+  try {
+    const out = execFileSync('git', ['rev-parse', '--git-common-dir'], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
+    if (!out) return null
+    return resolve(cwd, out)
+  } catch {
+    return null
+  }
 }
 
 function readSecretsConfig(cwd?: string): SecretsConfig | null {
   const path = getSecretsConfigPath(cwd)
   if (!existsSync(path)) return null
-  let parsed: z.infer<typeof SecretsConfigSchema>
+  let parsed: unknown
   try {
-    parsed = readJsonFileWithSchema(path, SecretsConfigSchema)
+    parsed = JSON.parse(readFileSync(path, 'utf8'))
   } catch (error) {
     throw commandError(`Invalid secret manager config at ${path}`, 1, error)
   }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw commandError(`Invalid secret manager config at ${path}`, 1)
+  }
+  const legacyConfig = LegacySecretsConfigSchema.safeParse(parsed)
+  if (legacyConfig.success) {
+    return legacyConfig.data
+  }
+  let config
+  try {
+    config = parseSecretOrchestrationConfig(parsed)
+  } catch (error) {
+    throw commandError(`Invalid secret manager config at ${path}`, 1, error)
+  }
+  const provider = config.providers.default
+  if (!provider)
+    throw commandError(`Invalid secret manager config at ${path}: missing default provider`)
+  const projectId =
+    provider.type === 'infisical'
+      ? (provider.project ?? provider.projectId ?? provider.projectSlug)
+      : provider.project
+  if (!projectId) {
+    throw commandError(`Invalid secret manager config at ${path}: missing provider project id`)
+  }
+  const projectLabel =
+    typeof (parsed as { projectLabel?: unknown }).projectLabel === 'string'
+      ? (parsed as { projectLabel?: string }).projectLabel
+      : undefined
   return {
-    manager: parsed.manager,
-    projectId: parsed.projectId,
-    ...(typeof parsed.projectLabel === 'string' ? { projectLabel: parsed.projectLabel } : {}),
+    manager: provider.type,
+    projectId,
+    ...(projectLabel ? { projectLabel } : {}),
   }
 }
 
@@ -253,7 +294,7 @@ async function getStatus(
 
 function formatShowMessage(status: SecretsConfigStatus): string {
   if (!status.configured || !status.config) {
-    return `No secret manager configured.\nRun: wp config secrets setup`
+    return `No secret profile configured.\nCommit a valid .webpresso/secrets.config.json and run: wp secrets doctor --profile preview --json`
   }
   return [
     `manager: ${status.config.manager}`,
@@ -265,7 +306,7 @@ function formatShowMessage(status: SecretsConfigStatus): string {
 
 function formatStatusMessage(status: SecretsConfigStatus): string {
   if (!status.configured || !status.config) {
-    return `configured: no\npath: ${status.path}\naction: run 'wp config secrets setup'`
+    return `configured: no\npath: ${status.path}\naction: commit .webpresso/secrets.config.json and run 'wp secrets doctor --profile preview --json'`
   }
 
   return [

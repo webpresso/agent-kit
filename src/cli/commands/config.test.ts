@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -50,7 +51,7 @@ describe('wp config secrets', () => {
     )
 
     expect(exitCode).toBe(1)
-    expect(stdout.output()).toContain('Run: wp config secrets setup')
+    expect(stdout.output()).toContain('wp secrets doctor --profile preview --json')
   })
 
   it('writes an explicit manager/project selection', async () => {
@@ -118,6 +119,30 @@ describe('wp config secrets', () => {
     await expect(runSecretsConfigCommand('show', [], { cwd: root })).rejects.toMatchObject({
       message: `Invalid secret manager config at ${configPath}`,
       exitCode: 1,
+    })
+  })
+
+  it('writes runtime overrides to the git common dir in linked worktrees', async () => {
+    const repoRoot = makeRepo()
+    writeFileSync(join(repoRoot, 'README.md'), 'seed\n', 'utf8')
+    execFileSync('git', ['init'], { cwd: repoRoot, stdio: 'ignore' })
+    execFileSync('git', ['config', 'user.email', 'codex@example.com'], { cwd: repoRoot, stdio: 'ignore' })
+    execFileSync('git', ['config', 'user.name', 'Codex'], { cwd: repoRoot, stdio: 'ignore' })
+    execFileSync('git', ['add', 'README.md'], { cwd: repoRoot, stdio: 'ignore' })
+    execFileSync('git', ['commit', '-m', 'init'], { cwd: repoRoot, stdio: 'ignore' })
+    const worktreePath = join(tmpdir(), `wp-config-worktree-${Date.now()}`)
+    tempRoots.push(worktreePath)
+    execFileSync('git', ['worktree', 'add', worktreePath], { cwd: repoRoot, stdio: 'ignore' })
+
+    await expect(
+      runSecretsConfigCommand('set', ['doppler', 'platform-dev'], { cwd: worktreePath }),
+    ).resolves.toBe(0)
+
+    const commonConfigPath = join(repoRoot, '.git', 'webpresso', 'secrets.json')
+    expect(existsSync(commonConfigPath)).toBe(true)
+    expect(JSON.parse(readFileSync(commonConfigPath, 'utf8'))).toMatchObject({
+      manager: 'doppler',
+      projectId: 'platform-dev',
     })
   })
 

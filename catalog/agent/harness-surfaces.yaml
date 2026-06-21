@@ -91,24 +91,22 @@ surfaces:
       - src/hooks/pretool-guard/runner.ts
       - src/hooks/pretool-guard/dev-routing.ts
   - id: secret-gate
-    title: Secret handling and with-secrets execution
+    title: Secret handling and wp secrets execution
     owner: agent-kit
     kind: secret-gate
     lifecycle: locked
     paths:
       - path: src/secret-gate
         status: concrete
-      - path: src/runtime/with-secrets-cli.ts
-        status: concrete
-      - path: bin/with-secrets
+      - path: src/cli/commands/secrets.ts
         status: concrete
     triggers:
-      - with-secrets -- <cmd>
+      - wp secrets run --sink <sink> --profile <profile> -- <cmd>
       - wp config secrets
       - wp audit secrets-policy
     evidence:
       - src/secret-gate/runner.ts
-      - src/runtime/with-secrets-cli.ts
+      - src/cli/commands/secrets.ts
       - src/audit/secrets-policy.ts
   - id: omx-runtime-state
     title: OMX runtime and workflow state

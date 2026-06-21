@@ -32,18 +32,18 @@ The caller commits `.webpresso/secrets.config.json` metadata and passes a repo-o
 This keeps CI aligned with the repo-local operator contract:
 
 - configure metadata with `wp config secrets ...`
-- run local secret-scoped commands through `with-secrets -- <cmd>`
+- run local secret-scoped commands through `wp secrets run --sink <sink> --profile <profile> -- <cmd>`
 
 ### Caller requirements
 
 1. Commit `.webpresso/secrets.config.json` with metadata only — never secret
    values.
-2. Commit a `profiles` map in `.webpresso/secrets.config.json` and pass
-   `secret_profile` so the shared shell can resolve the provider environment slug
-   from repo-owned metadata.
-3. For Doppler, map the appropriate GitHub secret onto the reusable workflow secret
-   `ci_secret_provider_token` (for example preview / production config tokens).
-4. For Infisical or Doppler OIDC-capable workspaces, pass the provider identity as a non-secret workflow input when that bootstrap mode is available.
+2. Store the CI bootstrap token in the caller repo/org secrets.
+3. Pass that secret explicitly in the reusable workflow call.
+4. For Infisical callers, also pass `secret_profile` so the shared shell
+   knows which environment slug to export, and scope
+   `ci_secret_provider_token` to that same environment as an Infisical service
+   token fallback until OIDC bootstrap is implemented.
 
 ## Runtime/bootstrap contract
 
@@ -74,10 +74,6 @@ Optional inputs:
 - `destroy_command`
 - `smoke_command`
 - `secret_profile`
-- `doppler_identity_id`
-- `ci_secret_provider_token` (workflow secret, for Doppler token bootstrap)
-- `ci_secret_provider_token` (workflow secret, for Doppler token bootstrap)
-- `infisical_identity_id`
 - `runner`
 
 ### Production
@@ -92,8 +88,6 @@ Optional inputs:
 
 - `smoke_command`
 - `secret_profile`
-- `doppler_identity_id`
-- `infisical_identity_id`
 - `release_version`
 - `runner`
 

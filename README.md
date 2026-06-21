@@ -99,7 +99,7 @@ vp run public:consumer-smoke -- --setup-only
 | Capability | What it does | Proof |
 | --- | --- | --- |
 | **`wp setup` onboarding** | Idempotent scaffolder for the base-kit quality config + `AGENTS.md` / `CLAUDE.md` wiring, with a curated shared-favorites default for host-visible Webpresso skills | [`src/cli/commands/init/`](src/cli/commands/init/), verified by [`scripts/public-consumer-smoke.ts`](scripts/public-consumer-smoke.ts) |
-| **Shared secret-aware command execution** | `with-secrets` injects shared runtime secrets/profile env for command execution, and shared deploy/e2e paths reuse that same runtime selector path | [`src/runtime/`](src/runtime/), [`src/deploy/`](src/deploy/), [`src/e2e/`](src/e2e/) |
+| **Shared secret-aware command execution** | `wp secrets run --sink <sink> --profile <profile> -- <cmd>` injects shared runtime secrets/profile env for command execution, and shared deploy/e2e paths reuse that same runtime selector path | [`src/runtime/`](src/runtime/), [`src/deploy/`](src/deploy/), [`src/e2e/`](src/e2e/) |
 | **Summary-first `wp_*` MCP tools** | `wp_test` / `wp_typecheck` / `wp_lint` / `wp_qa` / `wp_e2e` / `wp_format` / `wp_ci_act` / `wp_audit` return JSON with `bytes` / `tokensSaved` budget metadata. Session-memory tools are registered and tested as `wp_session_batch_execute` / `wp_session_capture` / `wp_session_doctor` / `wp_session_execute` / `wp_session_execute_file` / `wp_session_fetch_and_index` / `wp_session_index` / `wp_session_purge` / `wp_session_retrieve` / `wp_session_restore` / `wp_session_search` / `wp_session_snapshot` / `wp_session_stats`; see [`docs/guides/session-memory.md`](docs/guides/session-memory.md) for local storage, native optional-package fallback, bounded outputs, reset safety, enforcement hooks, platform support, and non-goals. | [`src/mcp/tools/`](src/mcp/tools/) (each with co-located `.test.ts`), [`src/mcp/server.integration.test.ts`](src/mcp/server.integration.test.ts) |
 | **MCP server + CLI surface** | Registers the tool set and exposes it to agents | [`src/mcp/server.ts`](src/mcp/server.ts), [`src/mcp/cli.ts`](src/mcp/cli.ts), [`src/mcp/cli.integration.test.ts`](src/mcp/cli.integration.test.ts) |
 | **Blueprint runtime** | Lifecycle states, dependency-aware task graph, structured authoring control plane (`wp_blueprint_depgraph` / `put` / `transition`) | [`src/mcp/blueprint-server.ts`](src/mcp/blueprint-server.ts), [`docs/lifecycle.md`](docs/lifecycle.md), [`docs/blueprint-format.md`](docs/blueprint-format.md) |
@@ -120,7 +120,7 @@ pre-commit and in CI. Each gates on `.webpresso/secrets.config.json` presence
 | --- | --- |
 | `wp audit secrets-policy` | Forbidden secret carriers (`.env`, `.dev.vars`, credential files) in the working tree **and** git-tracked history |
 | `wp audit no-dev-vars` | `.dev.vars` or `.env` files anywhere in the repo tree |
-| `wp audit secret-provider-quarantine` | Direct secret-provider CLI invocations and provider-specific flags in source — requires the `with-secrets -- <cmd>` abstraction instead |
+| `wp audit secret-provider-quarantine` | Direct secret-provider CLI invocations and provider-specific flags in source — requires the shared `wp secrets run --sink <sink> --profile <profile> -- <cmd>` abstraction instead |
 | `wp audit secrets-config` | Validates `.webpresso/secrets.config.json` exists, parses as valid JSON, and contains no embedded secret values |
 
 **Wire them in `.husky/pre-commit`:**

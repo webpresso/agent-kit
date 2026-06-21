@@ -12,7 +12,11 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, expect, test } from 'vitest'
 
-import { auditPackageSurface, parseNpmPackJsonOutput, stagePublishableTarballSurface } from './package-surface.js'
+import {
+  auditPackageSurface,
+  parseNpmPackJsonOutput,
+  stagePublishableTarballSurface,
+} from './package-surface.js'
 import {
   AGENT_KIT_TARBALL_SIZE_BUDGET_BYTES,
   AGENT_KIT_TARBALL_UNPACKED_SIZE_BUDGET_BYTES,
@@ -94,7 +98,9 @@ function fixtureSecretlintFinding(stageRoot: string): unknown {
 
 describe('parseNpmPackJsonOutput', () => {
   test('parses npm JSON after lifecycle stdout prelude', () => {
-    const parsed = parseNpmPackJsonOutput('$ bun scripts/stage-gstack-skills.ts\nstage-gstack-skills: staged 5 skills\n[{"name":"@webpresso/agent-kit","files":[{"path":"package.json","size":42}]}]')
+    const parsed = parseNpmPackJsonOutput(
+      '$ bun scripts/stage-gstack-skills.ts\nstage-gstack-skills: staged 5 skills\n[{"name":"@webpresso/agent-kit","files":[{"path":"package.json","size":42}]}]',
+    )
 
     expect(parsed).toEqual([
       {
@@ -419,7 +425,10 @@ describe('package-surface audit', () => {
       private: false,
       files: ['dist/esm/blueprint/db/migrations'],
     })
-    writeFileSync(join(root, 'src', 'blueprint', 'db', 'migrations', '0001_seed.sql'), 'select 1;\n')
+    writeFileSync(
+      join(root, 'src', 'blueprint', 'db', 'migrations', '0001_seed.sql'),
+      'select 1;\n',
+    )
 
     const result = auditPackageSurface(root, { runSecretlint: () => [] })
 

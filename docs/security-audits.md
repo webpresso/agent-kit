@@ -63,13 +63,13 @@ content. Pair it with `secrets-policy` for content-level enforcement.
 
 Scans source files for direct secret-provider CLI invocations and
 provider-specific flags. Consumer code must go through the
-`with-secrets -- <cmd>` abstraction, which selects the configured provider
+`wp secrets run --sink <sink> --profile <profile> -- <cmd>` abstraction, which selects the configured provider
 at runtime rather than hard-coding it.
 
 **Catches:**
 - Direct invocation of the secret manager CLI (e.g. the provider's own
   `run` subcommand)
-- Provider-specific flags passed to `with-secrets` (e.g. `--doppler`,
+- Provider-specific flags passed to the legacy secret wrapper (e.g. `--doppler`,
   `--infisical`) instead of the provider-neutral form
 - Direct provider `secrets download` calls
 - Imports of the deprecated internal secret-runner runtime path (use `@webpresso/framework/runtime/env` instead)
@@ -172,13 +172,21 @@ Each returns a structured result:
 
 ```json
 {
-  "manager": "doppler",
-  "projectId": "my-project"
+  "schemaVersion": 1,
+  "providers": {
+    "default": {
+      "type": "doppler",
+      "project": "my-project"
+    }
+  },
+  "profiles": {},
+  "sinks": {}
 }
 ```
 
-Valid fields: `manager` (string, required), `projectId` (string, optional),
-`environment` (string, optional). No secret values — only metadata.
+Valid top-level fields: `schemaVersion`, `providers`, `profiles`, and `sinks`.
+The reusable workflow shell reads `providers.default.type` and
+`providers.default.project`. No secret values — only metadata.
 
 ## Source
 

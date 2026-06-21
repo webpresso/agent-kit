@@ -18,6 +18,12 @@ const IGNORED_DIRS = new Set([
 ])
 
 const TEXT_FILE_PATTERN = /\.(md|ts|tsx|js|json|ya?ml|toml|txt)$/iu
+const ALLOWED_PROVIDER_BOOTSTRAP_PATHS = new Set([
+  '.github/workflows/cloudflare-preview.yml',
+  '.github/workflows/cloudflare-production.yml',
+  'docs/reusable-cloudflare-deploy-workflows.md',
+  'src/build/reusable-cloudflare-workflows.test.ts',
+])
 
 type BannedPattern = { readonly pattern: RegExp; readonly message: string }
 
@@ -31,7 +37,8 @@ const BANNED_PATH_PATTERNS: ReadonlyArray<{
   },
   {
     pattern: /(^|\/)act-secret-profile\.[^./]+$/u,
-    message: 'delete local act-secret-profile clones; use repo-owned .webpresso/secrets.config.json profiles',
+    message:
+      'delete local act-secret-profile clones; use repo-owned .webpresso/secrets.config.json profiles',
   },
 ]
 
@@ -41,15 +48,37 @@ const p = (parts: readonly string[]): RegExp => new RegExp(parts.join(''), 'u')
 const BANNED_PATTERNS: readonly BannedPattern[] = [
   {
     pattern: p([String.raw`\b`, 'doppler', ' run', String.raw`\b`]),
-    message: 'use `with-secrets -- <cmd>` instead of direct doppler invocation',
+    message:
+      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of direct doppler invocation',
+  },
+  {
+    pattern: p([String.raw`\b`, 'infisical', ' run', String.raw`\b`]),
+    message:
+      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of direct infisical invocation',
+  },
+  {
+    pattern: p([String.raw`\b`, 'infisical', ' export', String.raw`\b`]),
+    message: 'load secrets through runtime/env, not direct infisical exports',
   },
   {
     pattern: p([String.raw`\bwith-secrets\s+`, '--doppler', String.raw`\b`]),
-    message: 'use selected-manager `with-secrets -- <cmd>` instead of provider flags',
+    message:
+      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of provider flags',
   },
   {
     pattern: p([String.raw`\bwith-secrets\s+`, '--infisical', String.raw`\b`]),
-    message: 'use selected-manager `with-secrets -- <cmd>` instead of provider flags',
+    message:
+      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of provider flags',
+  },
+  {
+    pattern: /\bwith-secrets\s+--(?!doppler\b|infisical\b)/u,
+    message:
+      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of the legacy with-secrets wrapper',
+  },
+  {
+    pattern: /\bwith-secrets\s+(?:act|node|vp|pnpm|bun|wrangler)\b/u,
+    message:
+      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of the legacy with-secrets wrapper',
   },
   {
     pattern: p([String.raw`\b`, 'doppler secrets' + ' download', String.raw`\b`]),
@@ -69,19 +98,23 @@ const BANNED_PATTERNS: readonly BannedPattern[] = [
   },
   {
     pattern: /\bact-with-webpresso(?:\.[a-z]+)?\b/u,
-    message: 'remove legacy local act-with-webpresso helpers and route local workflow execution through `wp ci act`',
+    message:
+      'remove legacy local act-with-webpresso helpers and route local workflow execution through `wp ci act`',
   },
   {
     pattern: /\bact-secret-profile(?:\.[a-z]+)?\b/u,
-    message: 'remove legacy act-secret-profile helpers and use the selected manager runtime contract instead',
+    message:
+      'remove legacy act-secret-profile helpers and use the selected manager runtime contract instead',
   },
   {
     pattern: /\bsecretEnvProfile\b/u,
-    message: 'use repo-owned secretProfile names instead of provider-specific secretEnvProfile wiring',
+    message:
+      'use repo-owned secretProfile names instead of provider-specific secretEnvProfile wiring',
   },
   {
     pattern: /\b--secret-env-profile\b/u,
-    message: 'use repo-owned secretProfile names instead of provider-specific --secret-env-profile wiring',
+    message:
+      'use repo-owned secretProfile names instead of provider-specific --secret-env-profile wiring',
   },
   {
     pattern: /\bsetup-webpresso(?:-[a-z0-9-]+)?\b/u,
@@ -137,6 +170,15 @@ function scanFile(fullPath: string, relPath: string, violations: RepoAuditViolat
 
   const content = readFileSync(fullPath, 'utf8')
   for (const { pattern, message } of BANNED_PATTERNS) {
+    if (
+      ALLOWED_PROVIDER_BOOTSTRAP_PATHS.has(relPath) &&
+      (message.includes('direct infisical invocation') ||
+        message.includes('direct doppler invocation') ||
+        message.includes('direct infisical exports') ||
+        message.includes('direct provider downloads'))
+    ) {
+      continue
+    }
     if (pattern.test(content)) {
       violations.push({ file: relPath, message: `${relPath}: ${message}` })
     }

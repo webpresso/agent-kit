@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process'
 
-import type { DeployPlan, DeployRequest, DeployStep } from './types.js'
+import type { DeployLane, DeployPlan, DeployRequest, DeployStep } from './types.js'
 import { loadDeployAdapter } from './load-adapter.js'
 import { parseDeployLane, validateDeployPlan } from './schema.js'
 import { getManagedRunner } from '#tool-runtime'
@@ -8,6 +8,7 @@ import {
   buildRuntimeProcessEnv,
   createRuntimeEnvCache,
   resolveRuntimeEnvironment,
+  isDirectRuntimeProfile,
 } from '#runtime/index.js'
 
 export interface CreateDeployPlanOptions {
@@ -52,8 +53,9 @@ export async function runDeployPlan(options: RunDeployPlanOptions): Promise<numb
   }
 
   const cache = createRuntimeEnvCache()
+  const cwd = options.cwd ?? process.cwd()
   for (const step of plan.steps) {
-    const code = await runDeployStep(step, plan, cache)
+    const code = await runDeployStep(step, plan, cache, cwd)
     if (code !== 0) return code
   }
   return 0
@@ -63,17 +65,18 @@ async function runDeployStep(
   step: DeployStep,
   plan: DeployPlan,
   cache: ReturnType<typeof createRuntimeEnvCache>,
+  defaultCwd: string,
 ): Promise<number> {
   const label = step.label ?? step.id
   const stageLabel = step.stage ? ` [${step.stage}]` : ''
   console.error(`[deploy]${stageLabel} ${label}`)
 
   if (step.kind === 'http-check') {
-    return runHttpCheck(step, cache)
+    return runHttpCheck(step, plan, cache, defaultCwd)
   }
 
   const command = resolveStepCommand(step)
-  const cwd = step.cwd ?? process.cwd()
+  const cwd = step.cwd ?? defaultCwd
   const baseEnv = {
     ...process.env,
     ...(plan.releaseVersion ? { RELEASE_VERSION: plan.releaseVersion } : {}),
@@ -82,6 +85,7 @@ async function runDeployStep(
   const resolvedEnv = resolveRuntimeEnvironment({
     cwd,
     profile: step.runtimeProfile,
+    environment: resolveDeployStepSecretProfile(step, plan.lane),
     env: baseEnv,
     cache,
   })
@@ -94,6 +98,13 @@ async function runDeployStep(
     shell: false,
   })
   return result.status ?? 1
+}
+
+
+function resolveDeployStepSecretProfile(step: DeployStep, lane: DeployLane): string | undefined {
+  const runtimeProfile = step.runtimeProfile?.trim()
+  if (!runtimeProfile || isDirectRuntimeProfile(runtimeProfile)) return undefined
+  return lane === 'prd' ? 'production' : 'preview'
 }
 
 function resolveStepCommand(step: Exclude<DeployStep, { kind: 'http-check' }>): {
@@ -109,13 +120,16 @@ function resolveStepCommand(step: Exclude<DeployStep, { kind: 'http-check' }>): 
 
 async function runHttpCheck(
   step: Extract<DeployStep, { kind: 'http-check' }>,
+  plan: DeployPlan,
   cache: ReturnType<typeof createRuntimeEnvCache>,
+  defaultCwd: string,
 ): Promise<number> {
-  const cwd = step.cwd ?? process.cwd()
+  const cwd = step.cwd ?? defaultCwd
   const baseEnv = { ...process.env, ...step.env }
   const resolvedEnv = resolveRuntimeEnvironment({
     cwd,
     profile: step.runtimeProfile,
+    environment: resolveDeployStepSecretProfile(step, plan.lane),
     env: baseEnv,
     cache,
   })

@@ -56,11 +56,10 @@ function seedCompleteManifestRepo(root: string): void {
     'src/hooks/pretool-guard/validators/dangerous-commands.ts',
     'src/hooks/pretool-guard/validators/forbidden-commands.ts',
     'src/secret-gate/runner.ts',
-    'src/runtime/with-secrets-cli.ts',
+    'src/cli/commands/secrets.ts',
     'src/audit/secrets-policy.ts',
     'src/blueprint/execution/progress-bridge.ts',
     'scripts/bench/harness-gate/index.ts',
-    'bin/with-secrets',
     'AGENTS.md',
   ]) {
     write(root, path)
@@ -90,8 +89,7 @@ function completeWorkflow(): string {
       "      - 'AGENTS.md'",
       "      - 'src/audit/**'",
       "      - 'src/secret-gate/**'",
-      "      - 'src/runtime/with-secrets-cli.ts'",
-      "      - 'bin/with-secrets'",
+      "      - 'src/cli/commands/secrets.ts'",
       "      - 'src/blueprint/execution/progress-bridge.ts'",
       "      - 'src/hooks/**'",
       "      - 'src/symlinker/**'",
@@ -148,7 +146,7 @@ function completeManifest(): string {
         'agent-kit',
         'secret-gate',
         'locked',
-        ['src/secret-gate', 'bin/with-secrets'],
+        ['src/secret-gate', 'src/cli/commands/secrets.ts'],
         ['src/secret-gate/runner.ts'],
       ),
       surface(

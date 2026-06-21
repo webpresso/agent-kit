@@ -72,11 +72,22 @@ describe('public ci act runner contract', () => {
     ).toThrow(`Unsupported container architecture "linux/s390x"`)
   })
 
-  it('wraps act through the provider-neutral secret gate', () => {
+  it('wraps act directly through wp secrets run without an internal secret-file', () => {
     const command = buildPublicCiActCommand({ cwd: '/repo', workflow: 'ci-e2e' })
 
-    expect(command.command).toBe('with-secrets')
-    expect(command.args.slice(0, 4)).toEqual(['--runtime-profile', 'secrets-only', '--', 'act'])
+    expect(command.command).toBe('wp')
+    expect(command.args.slice(0, 8)).toEqual([
+      'secrets',
+      'run',
+      '--sink',
+      'act',
+      '--profile',
+      'preview',
+      '--',
+      'act',
+    ])
+    expect(command.args.join(' ')).not.toContain('--secret-file')
+    expect(command.args.join(' ')).not.toContain('ci_secret_provider_token')
   })
 
   it('keeps provider environment selectors separate from runtime profiles', () => {
@@ -87,18 +98,20 @@ describe('public ci act runner contract', () => {
       secretEnvProfile: 'dev',
     })
 
-    expect(command.command).toBe('with-secrets')
-    expect(command.args.slice(0, 6)).toEqual([
-      '--runtime-profile',
-      'secrets-only',
-      '--secret-env-profile',
+    expect(command.command).toBe('wp')
+    expect(command.args.slice(0, 8)).toEqual([
+      'secrets',
+      'run',
+      '--sink',
+      'act',
+      '--profile',
       'dev',
       '--',
       'act',
     ])
   })
 
-  it('uses direct act invocation for no-secret profiles', () => {
+  it('keeps no-secret profiles on the wp secrets run sink path', () => {
     const command = buildPublicCiActCommand({
       cwd: '/repo',
       workflow: 'ci-e2e',
@@ -106,8 +119,16 @@ describe('public ci act runner contract', () => {
       containerArchitecture: 'linux/arm64',
     })
 
-    expect(command.command).toBe('act')
+    expect(command.command).toBe('wp')
     expect(command.args).toEqual([
+      'secrets',
+      'run',
+      '--sink',
+      'act',
+      '--profile',
+      'preview',
+      '--',
+      'act',
       'pull_request',
       '-W',
       '/repo/.github/workflows/ci-e2e.yml',

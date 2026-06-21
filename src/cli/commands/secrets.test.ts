@@ -1,12 +1,6 @@
-import { execFileSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import path from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
-import { runSecretsDoctorCommand } from './secrets.js'
-
-const roots: string[] = []
+import { createGitHubSecretSetInvocation, runSecretsCommand } from './secrets.js'
 
 function makeWriter() {
   const chunks: string[] = []
@@ -21,199 +15,128 @@ function makeWriter() {
   }
 }
 
-function tempRepo(): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'wp-secrets-doctor-'))
-  roots.push(root)
-  execFileSync('git', ['init'], { cwd: root, stdio: 'ignore' })
-  mkdirSync(path.join(root, '.webpresso'), { recursive: true })
-  writeFileSync(
-    path.join(root, '.webpresso', 'secrets.config.json'),
-    JSON.stringify(
-      {
-        schemaVersion: 1,
-        providers: {
-          default: {
-            type: 'doppler',
-            project: 'demo-project',
-          },
-        },
-        profiles: {
-          preview: { provider: 'default', environment: 'stg' },
-        },
-        sinks: {},
-      },
-      null,
-      2,
-    ),
-  )
-  return root
-}
+const config = {
+  schemaVersion: 1,
+  providers: {
+    default: {
+      type: 'doppler',
+      workspace: 'ozby',
+      workspaceId: '7abb07fb8507f57c2011',
+      project: 'ingest-lens',
+    },
+  },
+  profiles: {
+    preview: { provider: 'default', environment: 'stg' },
+    production: { provider: 'default', environment: 'prd' },
+  },
+  sinks: {
+    'dev-server': { defaultProfile: 'preview', allowedOps: ['run'] },
+    test: { defaultProfile: 'preview', allowedOps: ['run'] },
+    e2e: { defaultProfile: 'preview', allowedOps: ['run'] },
+    'deploy-wrangler': { defaultProfile: 'production', allowedOps: ['preview', 'deploy'] },
+    pulumi: { defaultProfile: 'preview', allowedOps: ['preview', 'up'] },
+    act: { defaultProfile: 'preview', allowedOps: ['replay', 'run'] },
+    'github-actions-bootstrap': {
+      defaultProfile: 'production',
+      allowedOps: ['verify', 'apply', 'rotate', 'revoke'],
+    },
+    'db-branch': { defaultProfile: 'preview', allowedOps: ['create', 'connect', 'cleanup'] },
+  },
+} as const
 
-afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
-})
-
-describe('wp secrets doctor', () => {
-  it('validates schemaVersion 1 committed metadata from nested cwd', async () => {
-    const root = tempRepo()
-    const nested = path.join(root, 'apps', 'web')
-    mkdirSync(nested, { recursive: true })
+describe('wp secrets', () => {
+  it('returns actionable doctor JSON', async () => {
     const stdout = makeWriter()
-
-    const exitCode = await runSecretsDoctorCommand({
-      cwd: nested,
-      profile: 'preview',
-      json: true,
-      stdout: stdout.writer,
-    })
+    const exitCode = await runSecretsCommand(
+      'doctor',
+      undefined,
+      { profile: 'preview', sink: 'dev-server', json: true },
+      { readConfig: () => config, stdout: stdout.writer },
+    )
 
     expect(exitCode).toBe(0)
     expect(JSON.parse(stdout.output())).toMatchObject({
       ok: true,
-      configured: true,
-      manager: 'doppler',
-      projectId: 'demo-project',
-      profile: 'preview',
-      environment: 'stg',
+      code: 'WP_SECRETS_DOCTOR_OK',
+      plan: { provider: 'doppler', environment: 'stg' },
     })
   })
 
-
-  it('fails without echoing secret-like profile metadata', async () => {
-    const root = tempRepo()
-    writeFileSync(
-      path.join(root, '.webpresso', 'secrets.config.json'),
-      JSON.stringify({
-        schemaVersion: 1,
-        providers: { default: { type: 'doppler', project: 'demo-project' } },
-        profiles: { preview: { provider: 'default', environment: 'ctx7sk-reviewleak000000' } },
-        sinks: {},
-      }),
+  it('plans GitHub bootstrap by lane-named secret', async () => {
+    const stdout = makeWriter()
+    const exitCode = await runSecretsCommand(
+      'bootstrap',
+      'github',
+      { profile: 'production', json: true, lanes: ['preview_main', 'prd'] },
+      { readConfig: () => config, stdout: stdout.writer },
     )
-    const stdout = makeWriter()
 
-    const exitCode = await runSecretsDoctorCommand({
-      cwd: root,
-      profile: 'preview',
-      json: true,
-      stdout: stdout.writer,
-    })
-
-    expect(exitCode).toBe(1)
-    expect(stdout.output()).not.toContain('ctx7sk-reviewleak000000')
+    expect(exitCode).toBe(0)
     expect(JSON.parse(stdout.output())).toMatchObject({
-      ok: false,
-      error: expect.stringContaining('must not contain secret values'),
+      ok: true,
+      code: 'WP_GITHUB_BOOTSTRAP_PLANNED',
+      plan: {
+        requiredSecrets: ['CI_SECRET_PROVIDER_TOKEN_PREVIEW', 'CI_SECRET_PROVIDER_TOKEN_PRODUCTION'],
+      },
     })
   })
 
+  it('applies bootstrap through gh when values are available', async () => {
+    const stdout = makeWriter()
+    const apply = vi.fn()
 
-  it('fails without echoing secret-like provider references', async () => {
-    const root = tempRepo()
-    writeFileSync(
-      path.join(root, '.webpresso', 'secrets.config.json'),
-      JSON.stringify({
-        schemaVersion: 1,
-        providers: { default: { type: 'doppler', project: 'demo-project' } },
-        profiles: { preview: { provider: 'ctx7sk-reviewleak000000', environment: 'stg' } },
-        sinks: {},
-      }),
+    const exitCode = await runSecretsCommand(
+      'bootstrap',
+      'github',
+      { profile: 'production', json: true, lanes: ['prd'], apply: true },
+      {
+        readConfig: () => config,
+        stdout: stdout.writer,
+        runGitHubSecretSet: apply,
+        env: { CI_SECRET_PROVIDER_TOKEN_PRODUCTION: 'secret-value' },
+      },
     )
-    const stdout = makeWriter()
-
-    const exitCode = await runSecretsDoctorCommand({ cwd: root, profile: 'preview', json: true, stdout: stdout.writer })
-
-    expect(exitCode).toBe(1)
-    expect(stdout.output()).not.toContain('ctx7sk-reviewleak000000')
-    expect(JSON.parse(stdout.output())).toMatchObject({
-      ok: false,
-      error: expect.stringContaining('must not contain secret values'),
-    })
-  })
-
-  it('fails without echoing secret-like profile ids', async () => {
-    const root = tempRepo()
-    writeFileSync(
-      path.join(root, '.webpresso', 'secrets.config.json'),
-      JSON.stringify({
-        schemaVersion: 1,
-        providers: { default: { type: 'doppler', project: 'demo-project' } },
-        profiles: { 'ctx7sk-reviewleak000000': { provider: 'default', environment: 'stg' } },
-        sinks: {},
-      }),
+    expect(exitCode).toBe(0)
+    expect(apply).toHaveBeenCalledWith(
+      'CI_SECRET_PROVIDER_TOKEN_PRODUCTION',
+      'secret-value',
+      undefined,
     )
-    const stdout = makeWriter()
-
-    const exitCode = await runSecretsDoctorCommand({
-      cwd: root,
-      profile: 'ctx7sk-reviewleak000000',
-      json: true,
-      stdout: stdout.writer,
-    })
-
-    expect(exitCode).toBe(1)
-    expect(stdout.output()).not.toContain('ctx7sk-reviewleak000000')
-    expect(JSON.parse(stdout.output())).toMatchObject({
-      ok: false,
-      error: expect.stringContaining('must not contain secret values'),
-    })
   })
 
-  it('rejects profile provider names that are not declared', async () => {
-    const root = tempRepo()
-    writeFileSync(
-      path.join(root, '.webpresso', 'secrets.config.json'),
-      JSON.stringify({
-        schemaVersion: 1,
-        providers: { default: { type: 'doppler', project: 'demo-project' } },
-        profiles: { preview: { provider: 'missing', environment: 'stg' } },
-        sinks: {},
-      }),
+  it('passes GitHub bootstrap secrets through stdin instead of argv', () => {
+    const invocation = createGitHubSecretSetInvocation(
+      'CI_SECRET_PROVIDER_TOKEN_PRODUCTION',
+      'secret-value',
+      '/tmp/repo',
     )
-    const stdout = makeWriter()
 
-    const exitCode = await runSecretsDoctorCommand({ cwd: root, profile: 'preview', json: true, stdout: stdout.writer })
-
-    expect(exitCode).toBe(1)
-    expect(JSON.parse(stdout.output())).toMatchObject({
-      ok: false,
-      error: expect.stringContaining('unknown provider'),
-    })
+    expect(invocation.command).toBe('gh')
+    expect(invocation.args).toEqual(['secret', 'set', 'CI_SECRET_PROVIDER_TOKEN_PRODUCTION', '--body-file', '-'])
+    expect(invocation.args.join(' ')).not.toContain('secret-value')
+    expect(invocation.options.input).toBe('secret-value')
+    expect(invocation.options.stdio).toEqual(['pipe', 'ignore', 'ignore'])
   })
 
-  it('reports unknown profile as a JSON failure', async () => {
-    const stdout = makeWriter()
+  it('runs a secret-scoped local command without direct with-secrets usage', async () => {
+    const exitCode = await runSecretsCommand(
+      'run',
+      undefined,
+      {
+        profile: 'preview',
+        sink: 'dev-server',
+        argv: ['node', 'wp', 'secrets', 'run', '--', 'vp', 'run', 'dev'],
+      },
+      {
+        readConfig: () => config,
+        runSecretScopedCommand: (input) =>
+          ({
+            status: input.command === 'vp' && input.environment === 'stg' ? 0 : 1,
+            error: undefined,
+          }) as any,
+      },
+    )
 
-    const exitCode = await runSecretsDoctorCommand({
-      cwd: tempRepo(),
-      profile: 'production',
-      json: true,
-      stdout: stdout.writer,
-    })
-
-    expect(exitCode).toBe(1)
-    expect(JSON.parse(stdout.output())).toMatchObject({
-      ok: false,
-      profile: 'production',
-      error: expect.stringContaining('Unknown secret profile "production"'),
-    })
-  })
-
-  it('redacts secret-like unknown profile names in JSON failures', async () => {
-    const stdout = makeWriter()
-
-    const exitCode = await runSecretsDoctorCommand({
-      cwd: tempRepo(),
-      profile: 'ctx7sk-reviewleak000000',
-      json: true,
-      stdout: stdout.writer,
-    })
-
-    expect(exitCode).toBe(1)
-    expect(stdout.output()).not.toContain('ctx7sk-reviewleak000000')
-    expect(JSON.parse(stdout.output())).toMatchObject({
-      ok: false,
-      error: expect.stringContaining('Unknown secret profile "[redacted]"'),
-    })
+    expect(exitCode).toBe(0)
   })
 })

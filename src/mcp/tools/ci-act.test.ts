@@ -54,7 +54,7 @@ function tempProjectRoot(): string {
 }
 
 describe('wp_ci_act tool', () => {
-  it('returns the same canonical with-secrets dry-run command as the CLI', async () => {
+  it('returns the same canonical wp secrets run dry-run command as the CLI', async () => {
     vi.stubEnv('GITHUB_PAT', TEST_REDACTABLE_SECRET)
     const root = tempProjectRoot()
     const result = await tool.handler({
@@ -66,19 +66,16 @@ describe('wp_ci_act tool', () => {
     const payload = result.structuredContent as Record<string, unknown>
     expect(payload.passed).toBe(true)
     expect(payload.summary).toContain('dry-run')
-    const details = payload.details as {
-      command: { command: string; args: string[] }
-      mode: string
-      nonSecurityEquivalent: { command: string; args: string[] }
-    }
-    expect(details.mode).toBe('dry-run')
-    expect(details.command).toEqual(
-      buildCiActCommand({ workflowPath: '.github/workflows/ci.yml' }, root),
-    )
-    expect(details.command.command).toBe('with-secrets')
-    expect(details.command.args.slice(0, 4)).toEqual([
-      '--runtime-profile',
-      'secrets-only',
+    const details = payload.details as { command: { command: string; args: string[] } }
+    expect(details.command).toEqual(buildCiActCommand({ workflowPath: '.github/workflows/ci.yml' }, root))
+    expect(details.command.command).toBe('wp')
+    expect(details.command.args.slice(0, 8)).toEqual([
+      'secrets',
+      'run',
+      '--sink',
+      'act',
+      '--profile',
+      'preview',
       '--',
       'act',
     ])
@@ -168,8 +165,9 @@ describe('wp_ci_act tool', () => {
     expect(runSecretGateCommandMock).toHaveBeenCalledWith(
       expect.objectContaining({
         cwd: root,
+        sink: 'act',
+        profile: 'dev',
         envProfile: 'secrets-only',
-        secretEnvProfile: 'dev',
       }),
     )
   })
@@ -199,13 +197,8 @@ describe('wp_ci_act tool', () => {
     expect(call.args.join(' ')).not.toContain('--bind')
     const payload = result.structuredContent as Record<string, unknown>
     expect(payload.passed).toBe(true)
-    const details = payload.details as {
-      command: { command: string; args: string[] }
-      mode: string
-      nonSecurityEquivalent: { command: string; args: string[] }
-    }
-    expect(details.mode).toBe('execute')
-    expect(details.command.command).toBe('with-secrets')
+    const details = payload.details as { command: { command: string; args: string[] } }
+    expect(details.command.command).toBe('wp')
     expect(details.command.args.join(' ')).not.toContain('--secret-file')
     expect(details.nonSecurityEquivalent.command).toBe('act')
   })
@@ -235,6 +228,30 @@ describe('wp_ci_act tool', () => {
     const details = payload.details as { nonSecurityEquivalent: boolean; mode: string }
     expect(details.mode).toBe('replay')
     expect(details.nonSecurityEquivalent).toBe(true)
+  })
+
+  it('forces the public secret-gate path even for direct env profiles in execute mode', async () => {
+    runSecretGateCommandMock.mockResolvedValue({
+      exitCode: 0,
+      stdout: 'ok',
+      stderr: '',
+      timedOut: false,
+      aborted: false,
+      signal: null,
+    })
+
+    await tool.handler({
+      workflowPath: '.github/workflows/ci.yml',
+      execute: true,
+      envProfile: 'public',
+    })
+
+    expect(runSecretGateCommandMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        envProfile: 'public',
+        forceSecretGate: true,
+      }),
+    )
   })
 
   it('honors an explicit timeout override', async () => {

@@ -14,7 +14,12 @@ function tempRepo(withGit = false): string {
   mkdirSync(join(root, '.webpresso'), { recursive: true })
   writeFileSync(
     join(root, '.webpresso', 'secrets.config.json'),
-    JSON.stringify({ manager: 'doppler', projectId: 'my-project' }),
+    JSON.stringify({
+      schemaVersion: 1,
+      providers: { default: { type: 'doppler', project: 'my-project' } },
+      profiles: { preview: { provider: 'default', environment: 'stg' } },
+      sinks: { 'dev-server': { defaultProfile: 'preview', allowedOps: ['run'] } },
+    }),
   )
   if (withGit) {
     execFileSync('git', ['init'], { cwd: root, stdio: 'ignore' })
@@ -153,6 +158,19 @@ describe('auditSecretsPolicy', () => {
       'const env = { LANGFUSE_PUBLIC_KEY: "pk-lf-test", LANGFUSE_SECRET_KEY: "sk-lf-test" }'
     writeFileSync(join(root, 'service.test.ts'), testContent)
     execFileSync('git', ['add', 'service.test.ts'], { cwd: root, stdio: 'ignore' })
+
+    const result = auditSecretsPolicy(root)
+
+    expect(result.ok).toBe(true)
+    expect(result.violations).toStrictEqual([])
+  })
+
+
+  test('does not flag e2e file containing GraphQL pk field names', () => {
+    const root = tempRepo(true)
+    const e2eContent = 'query { projects_by_pk(id: "00000000-0000-0000-0000-000000000000") { id } }'
+    writeFileSync(join(root, 'flow.e2e.ts'), e2eContent)
+    execFileSync('git', ['add', 'flow.e2e.ts'], { cwd: root, stdio: 'ignore' })
 
     const result = auditSecretsPolicy(root)
 

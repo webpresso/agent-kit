@@ -10,6 +10,9 @@ const SECRET_BEARING_ACTION_PREFIXES = [
   'dopplerhq/cli-action@',
 ] as const
 const FULL_SHA_PATTERN = /@[0-9a-f]{40}(?:\s|$)/iu
+const INFISICAL_INDICATORS = [/INFISICAL_TOKEN/u, /\binfisical export\b/u] as const
+const EXPLICIT_CI_SECRET_PATTERN =
+  /ci_secret_provider_token:\s*\n(?:\s+.*\n)*?\s+required:\s*(?:true|false)/iu
 
 function walkWorkflowFiles(dir: string): string[] {
   if (!existsSync(dir)) return []
@@ -27,25 +30,45 @@ function walkWorkflowFiles(dir: string): string[] {
   return files
 }
 
+function isSecretBearing(content: string): boolean {
+  return (
+    SECRET_BEARING_ACTION_PREFIXES.some((prefix) => content.includes(prefix)) ||
+    INFISICAL_INDICATORS.some((pattern) => pattern.test(content))
+  )
+}
+
 function findViolations(root: string, file: string): RepoAuditViolation[] {
   const relPath = relative(root, file).replace(/\\/gu, '/')
   const content = readFileSync(file, 'utf8')
   const violations: RepoAuditViolation[] = []
   const isReusableWorkflow = /(^|\n)\s*workflow_call:\s*$/mu.test(content)
+  const hasSecretBearingAccess = isSecretBearing(content)
 
   if (/\bsecrets:\s*inherit\b/u.test(content)) {
     violations.push({
       file: relPath,
-      message:
-        `${relPath}: reusable secret workflows must declare explicit named secrets instead of \`secrets: inherit\``,
+      message: `${relPath}: reusable secret workflows must declare explicit named secrets instead of \`secrets: inherit\``,
     })
   }
 
   if (isReusableWorkflow && /^\s*environment:\s+/mu.test(content)) {
     violations.push({
       file: relPath,
-      message:
-        `${relPath}: workflow_call secret workflows must not depend on GitHub Environment secrets; pass explicit workflow_call secrets instead`,
+      message: `${relPath}: workflow_call secret workflows must not depend on GitHub Environment secrets; pass explicit workflow_call secrets instead`,
+    })
+  }
+
+  if (isReusableWorkflow && hasSecretBearingAccess && !EXPLICIT_CI_SECRET_PATTERN.test(content)) {
+    violations.push({
+      file: relPath,
+      message: `${relPath}: reusable secret-bearing workflows must declare ci_secret_provider_token explicitly`,
+    })
+  }
+
+  if (hasSecretBearingAccess && !/\bid-token:\s*write\b/u.test(content)) {
+    violations.push({
+      file: relPath,
+      message: `${relPath}: secret-bearing workflows must request id-token: write`,
     })
   }
 
@@ -57,8 +80,7 @@ function findViolations(root: string, file: string): RepoAuditViolation[] {
       if (FULL_SHA_PATTERN.test(trimmed)) continue
       violations.push({
         file: relPath,
-        message:
-          `${relPath}: secret-bearing action must be pinned to a full SHA instead of ${trimmed.replace(/^uses:\s*/u, '')}`,
+        message: `${relPath}: secret-bearing action must be pinned to a full SHA instead of ${trimmed.replace(/^-\s+uses:\s*/u, '').replace(/^uses:\s*/u, '')}`,
       })
     }
   }
@@ -82,3 +104,5 @@ export function auditGithubActionsSecrets(rootDirectory: string = process.cwd())
     violations,
   }
 }
+
+export const auditGitHubActionsSecrets = auditGithubActionsSecrets

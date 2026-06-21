@@ -25,8 +25,14 @@ describe('wp_worker_tail tool', () => {
     expect(payload.summary).toContain('dry-run')
     const details = payload.details as { command: { command: string; args: string[] } }
     expect(details.command).toEqual({
-      command: 'with-secrets',
+      command: 'wp',
       args: [
+        'secrets',
+        'run',
+        '--sink',
+        'deploy-wrangler',
+        '--profile',
+        'preview',
         '--',
         'wrangler',
         'tail',
@@ -73,8 +79,14 @@ describe('wp_worker_tail tool', () => {
     expect(payload.passed).toBe(true)
     expect((payload.events as unknown[]).length).toBe(1)
     const details = payload.details as { command: { command: string; args: string[] } }
-    expect(details.command.command).toBe('with-secrets')
-    expect(details.command.args.slice(0, 4)).toEqual([
+    expect(details.command.command).toBe('wp')
+    expect(details.command.args.slice(0, 10)).toEqual([
+      'secrets',
+      'run',
+      '--sink',
+      'deploy-wrangler',
+      '--profile',
+      'preview',
       '--',
       'wrangler',
       'tail',

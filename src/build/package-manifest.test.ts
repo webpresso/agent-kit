@@ -321,7 +321,6 @@ describe('createPackedManifest', () => {
         version: '1.0.0',
         bin: {
           wp: 'bin/wp',
-          'with-secrets': 'bin/with-secrets',
         },
       },
       { catalog: {} },
@@ -331,7 +330,6 @@ describe('createPackedManifest', () => {
 
     expect(manifest.bin).toEqual({
       wp: 'bin/wp',
-      'with-secrets': 'bin/with-secrets',
     })
     expect(manifest.bin?.['wp-precompact-snapshot']).toBe(undefined)
   })

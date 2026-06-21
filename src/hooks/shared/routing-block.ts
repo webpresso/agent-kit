@@ -44,11 +44,11 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
       <tool>wp_audits</tool>
     </row>
     <row>
-      <trigger>running act, local GitHub Actions, with-secrets -- act, vp exec act, pnpm exec act</trigger>
+      <trigger>running act, local GitHub Actions, legacy with-secrets -- act, vp exec act, pnpm exec act</trigger>
       <tool>wp_ci_act</tool>
     </row>
     <row>
-      <trigger>wrangler tail, with-secrets -- wrangler tail, Cloudflare Worker logs</trigger>
+      <trigger>wrangler tail, legacy with-secrets -- wrangler tail, Cloudflare Worker logs</trigger>
       <tool>wp_worker_tail</tool>
     </row>
     <row>
@@ -146,17 +146,23 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
       <forbidden>just audit</forbidden>
       <usage>Use kind="tph-e2e" for the E2E testing-philosophy audit. This audits E2E quality rules; it does not execute the E2E suite itself.</usage>
     </tool>
+    <tool name="wp_audits">
+      <category>dev-workflow</category>
+      <trigger>multiple audits, audit guardrails, chained audit checks, full audit evidence</trigger>
+      <forbidden>running wp_audit repeatedly for independent audit kinds when wp_audits can batch them</forbidden>
+      <usage>Use wp_audits for one request that needs all or multiple audit kinds.</usage>
+    </tool>
     <tool name="wp_ci_act">
       <category>dev-workflow</category>
-      <trigger>running act, local GitHub Actions, with-secrets -- act, vp exec act, pnpm exec act</trigger>
+      <trigger>running act, local GitHub Actions, legacy with-secrets -- act, vp exec act, pnpm exec act</trigger>
       <forbidden>act, vp exec act, pnpm exec act</forbidden>
-      <usage>Use the wp_ci_act MCP tool for local GitHub Actions execution. The tool uses the public secret contract: configure with wp config secrets ... and execute through with-secrets -- act ... internally.</usage>
+      <usage>Use the wp_ci_act MCP tool for local GitHub Actions execution. The tool uses the public secret contract: configure with wp config secrets ... and execute through wp secrets run --sink act --profile <profile> -- act ... internally.</usage>
     </tool>
     <tool name="wp_worker_tail">
       <category>dev-workflow</category>
-      <trigger>wrangler tail, with-secrets -- wrangler tail, Cloudflare Worker logs</trigger>
+      <trigger>wrangler tail, legacy with-secrets -- wrangler tail, Cloudflare Worker logs</trigger>
       <forbidden>wrangler tail, with-secrets -- wrangler tail</forbidden>
-      <usage>Use the wp_worker_tail MCP tool for Cloudflare Worker tail logs. The tool routes through the canonical with-secrets -- wrangler tail ... contract and returns bounded redacted output.</usage>
+      <usage>Use the wp_worker_tail MCP tool for Cloudflare Worker tail logs. The tool routes through wp secrets run --sink deploy-wrangler --profile <profile> -- wrangler tail ... and returns bounded redacted output.</usage>
     </tool>
     <tool name="wp_pr_status">
       <category>dev-workflow</category>

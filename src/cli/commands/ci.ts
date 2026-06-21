@@ -3,8 +3,7 @@ import type { SecretGateCommandOptions, SecretGateRunResult } from '#secret-gate
 
 import {
   buildPublicCiActCommand,
-  preparePublicCiActExecution,
-  resolveCiActSecretEnvProfile,
+  resolveCiActExecutionMode,
   sanitizePublicCiActArgv,
   type CiActEventName,
   type CiActExecutionMode,
@@ -17,7 +16,7 @@ export const MAX_CI_ACT_TIMEOUT_MS = 60 * 60_000
 
 export const CI_COMMAND_HELP = [
   'Run repository CI helpers through the portable, secret-safe wp surface.',
-  'Configure secret access with `wp config secrets ...`; execution shells through `with-secrets -- <cmd>`.',
+  'Configure secret access with committed `.webpresso/secrets.config.json` metadata and validate with `wp secrets doctor --profile <profile> --json` before execution.',
   '',
   'Examples:',
   '  wp ci act --workflow ci-e2e',
@@ -126,29 +125,24 @@ export async function runCiActCommand(
     return 0
   }
 
-  const prepared = preparePublicCiActExecution({ ...options, cwd })
-  try {
-    const result = await (deps.run ?? runSecretGateCommand)({
-      cwd,
-      envProfile: options.envProfile,
-      secretEnvProfile: resolveCiActSecretEnvProfile({ ...options, cwd }),
-      command: 'act',
-      args: prepared.command.actArgs,
-      timeoutMs: normalizeCiActTimeoutMs(options.timeoutMs),
-    })
-    const stdout = redactText(result.stdout) ?? ''
-    const stderr = redactText(result.stderr) ?? ''
-    if (prepared.nonSecurityEquivalent) {
-      ;(deps.stderr ?? process.stderr).write(
-        '[wp ci act] replay mode is a generated local approximation and is not security-equivalent to GitHub CI or OIDC.\n',
-      )
-    }
-    if (stdout) (deps.stdout ?? process.stdout).write(stdout)
-    if (stderr) (deps.stderr ?? process.stderr).write(stderr)
-    return result.exitCode
-  } finally {
-    prepared.cleanup()
+  if (resolveCiActExecutionMode(options) === 'replay') {
+    ;(deps.stderr ?? process.stderr).write(
+      'Warning: replay mode is a generated local approximation and is not security-equivalent to GitHub CI or OIDC.\n',
+    )
   }
+
+  const result = await (deps.run ?? runSecretGateCommand)({
+    cwd,
+    envProfile: 'none',
+    command: command.command,
+    args: command.args,
+    timeoutMs: normalizeCiActTimeoutMs(options.timeoutMs),
+  })
+  const stdout = redactText(result.stdout) ?? ''
+  const stderr = redactText(result.stderr) ?? ''
+  if (stdout) (deps.stdout ?? process.stdout).write(stdout)
+  if (stderr) (deps.stderr ?? process.stderr).write(stderr)
+  return result.exitCode
 }
 
 export function normalizeCiActTimeoutMs(value: number | undefined): number {

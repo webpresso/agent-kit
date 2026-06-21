@@ -109,8 +109,8 @@ describe('WP_ROUTING_BLOCK', () => {
   it('routes local act and Worker tail commands to shipped MCP tool names', () => {
     expect(WP_ROUTING_BLOCK).toContain('wp_ci_act')
     expect(WP_ROUTING_BLOCK).toContain('wp_worker_tail')
-    expect(WP_ROUTING_BLOCK).toContain('with-secrets -- act')
-    expect(WP_ROUTING_BLOCK).toContain('with-secrets -- wrangler tail')
+    expect(WP_ROUTING_BLOCK).toContain('wp secrets run --sink act')
+    expect(WP_ROUTING_BLOCK).toContain('wp secrets run --sink deploy-wrangler')
     expect(WP_ROUTING_BLOCK).not.toContain('ak_ci_act')
     expect(WP_ROUTING_BLOCK).not.toContain('ak_worker_tail')
   })

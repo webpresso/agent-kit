@@ -95,7 +95,9 @@ export function sanitizeSecretsMetadataText(value: string): string {
 
 function assertNoSecretValue(value: string, source: string, label: string): void {
   if (isSecretLikeMetadataText(value)) {
-    throw new Error(`Malformed secrets config at ${source}: ${label} must not contain secret values`)
+    throw new Error(
+      `Malformed secrets config at ${source}: ${label} must not contain secret values`,
+    )
   }
 }
 
@@ -142,8 +144,10 @@ function parseProfiles(
   return profiles
 }
 
-
-function parseSchemaVersion1Config(obj: Record<string, unknown>, source: string): SecretsConfig | null {
+function parseSchemaVersion1Config(
+  obj: Record<string, unknown>,
+  source: string,
+): SecretsConfig | null {
   if (obj.schemaVersion !== 1) return null
   const providers = isRecord(obj.providers) ? obj.providers : null
   const providerMap = providers ? new Set(Object.keys(providers)) : new Set<string>()
@@ -166,15 +170,20 @@ function parseSchemaVersion1Config(obj: Record<string, unknown>, source: string)
     manager: defaultProvider.type,
     projectId: defaultProvider.project,
     ...(typeof obj.projectLabel === 'string' && obj.projectLabel.length > 0
-      ? (assertNoSecretValue(obj.projectLabel, source, 'projectLabel'), { projectLabel: obj.projectLabel })
+      ? (assertNoSecretValue(obj.projectLabel, source, 'projectLabel'),
+        { projectLabel: obj.projectLabel })
       : {}),
-    ...(parseProfiles(obj.profiles, source, providerMap) ? { profiles: parseProfiles(obj.profiles, source, providerMap) } : {}),
+    ...(parseProfiles(obj.profiles, source, providerMap)
+      ? { profiles: parseProfiles(obj.profiles, source, providerMap) }
+      : {}),
   }
 }
 
 function parseConfig(raw: string, source: string): SecretsConfig {
   if (SECRET_VALUE_PATTERN.test(raw)) {
-    throw new Error(`Malformed secrets config at ${source}: metadata must not contain secret values`)
+    throw new Error(
+      `Malformed secrets config at ${source}: metadata must not contain secret values`,
+    )
   }
 
   let parsed: unknown
@@ -207,9 +216,12 @@ function parseConfig(raw: string, source: string): SecretsConfig {
     manager: obj.manager,
     projectId: obj.projectId,
     ...(typeof obj.projectLabel === 'string' && obj.projectLabel.length > 0
-      ? (assertNoSecretValue(obj.projectLabel, source, 'projectLabel'), { projectLabel: obj.projectLabel })
+      ? (assertNoSecretValue(obj.projectLabel, source, 'projectLabel'),
+        { projectLabel: obj.projectLabel })
       : {}),
-    ...(parseProfiles(obj.profiles, source) ? { profiles: parseProfiles(obj.profiles, source) } : {}),
+    ...(parseProfiles(obj.profiles, source)
+      ? { profiles: parseProfiles(obj.profiles, source) }
+      : {}),
   }
 }
 
@@ -224,10 +236,10 @@ function mergeSecretsConfigs(
   return {
     manager: runtimeConfig.manager,
     projectId: runtimeConfig.projectId,
-    ...(runtimeConfig.projectLabel ?? committedConfig.projectLabel
+    ...((runtimeConfig.projectLabel ?? committedConfig.projectLabel)
       ? { projectLabel: runtimeConfig.projectLabel ?? committedConfig.projectLabel }
       : {}),
-    ...(committedConfig.profiles ?? runtimeConfig.profiles
+    ...((committedConfig.profiles ?? runtimeConfig.profiles)
       ? { profiles: committedConfig.profiles ?? runtimeConfig.profiles }
       : {}),
   }
@@ -238,7 +250,9 @@ export function readSecretsConfig(cwd: string = process.cwd()): SecretsConfig | 
   const committedPath = getCommittedSecretsConfigPath(cwd)
 
   const runtimeConfig =
-    runtimePath && existsSync(runtimePath) ? parseConfig(readFileSync(runtimePath, 'utf8'), runtimePath) : null
+    runtimePath && existsSync(runtimePath)
+      ? parseConfig(readFileSync(runtimePath, 'utf8'), runtimePath)
+      : null
   const committedConfig = existsSync(committedPath)
     ? parseConfig(readFileSync(committedPath, 'utf8'), committedPath)
     : null

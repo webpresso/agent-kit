@@ -27,7 +27,10 @@ describe('wp ci command', () => {
     const root = mkdtempSync(join(tmpdir(), 'wp-cli-ci-act-'))
     tempDirs.push(root)
     mkdirSync(join(root, '.github', 'workflows'), { recursive: true })
-    writeFileSync(join(root, '.github', 'workflows', 'ci-e2e.yml'), 'name: ci-e2e\non: pull_request\njobs: {}\n')
+    writeFileSync(
+      join(root, '.github', 'workflows', 'ci-e2e.yml'),
+      'name: ci-e2e\non: pull_request\njobs: {}\n',
+    )
     return root
   }
 
@@ -39,10 +42,14 @@ describe('wp ci command', () => {
   it('builds a public secret-gate act command by default', () => {
     const command = buildCiActCommand({ workflow: 'ci-e2e' }, '/repo')
 
-    expect(command.command).toBe('with-secrets')
+    expect(command.command).toBe('wp')
     expect(command.args).toEqual([
-      '--runtime-profile',
-      'secrets-only',
+      'secrets',
+      'run',
+      '--sink',
+      'act',
+      '--profile',
+      'preview',
       '--',
       'act',
       'pull_request',
@@ -72,8 +79,12 @@ describe('wp ci command', () => {
     )
 
     expect(command.args).toEqual([
-      '--runtime-profile',
-      'secrets-only',
+      'secrets',
+      'run',
+      '--sink',
+      'act',
+      '--profile',
+      'preview',
       '--',
       'act',
       'workflow_dispatch',
@@ -91,7 +102,7 @@ describe('wp ci command', () => {
     ])
   })
 
-  it('builds direct act argv for no-secret profiles', () => {
+  it('keeps no-secret profiles on the wp secrets run sink path', () => {
     const command = buildCiActCommand(
       {
         workflow: 'ci-e2e',
@@ -100,8 +111,16 @@ describe('wp ci command', () => {
       '/repo',
     )
 
-    expect(command.command).toBe('act')
+    expect(command.command).toBe('wp')
     expect(command.args).toEqual([
+      'secrets',
+      'run',
+      '--sink',
+      'act',
+      '--profile',
+      'preview',
+      '--',
+      'act',
       'pull_request',
       '-W',
       '/repo/.github/workflows/ci-e2e.yml',
@@ -137,7 +156,8 @@ describe('wp ci command', () => {
 
     expect(code).toBe(0)
     expect(run).not.toHaveBeenCalled()
-    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('with-secrets'))
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"command":"wp"'))
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('secrets'))
     expect(stdout).toHaveBeenCalledWith(expect.not.stringContaining('chef-token'))
   })
 
@@ -180,11 +200,18 @@ describe('wp ci command', () => {
     expect(code).toBe(0)
     expect(run).toHaveBeenCalledWith({
       cwd: '/repo',
-      envProfile: undefined,
-      secretEnvProfile: undefined,
-      command: 'act',
+      envProfile: 'none',
+      command: 'wp',
       timeoutMs: DEFAULT_CI_ACT_TIMEOUT_MS,
       args: [
+        'secrets',
+        'run',
+        '--sink',
+        'act',
+        '--profile',
+        'preview',
+        '--',
+        'act',
         'pull_request',
         '-W',
         '/repo/.github/workflows/ci-e2e.yml',

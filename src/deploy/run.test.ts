@@ -1,9 +1,10 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createDeployPlan } from './run.js'
+import { createDeployPlan, runDeployPlan } from './run.js'
+import * as managers from '#runtime/secret-managers.js'
 
 describe('createDeployPlan', () => {
   let root: string
@@ -46,6 +47,100 @@ describe('createDeployPlan', () => {
         requiredCredentials: [],
         steps: [{ kind: 'managed-tool', tool: 'wrangler' }],
       },
+    )
+  })
+
+
+
+  it('resolves production deploy secrets through the production profile environment', async () => {
+    mkdirSync(join(root, '.webpresso'), { recursive: true })
+    writeFileSync(
+      join(root, '.webpresso', 'secrets.config.json'),
+      JSON.stringify(
+        {
+          schemaVersion: 1,
+          providers: { default: { type: 'doppler', project: 'demo' } },
+          profiles: {
+            preview: { provider: 'default', environment: 'stg' },
+            production: { provider: 'default', environment: 'prd' },
+          },
+          sinks: { 'deploy-wrangler': { defaultProfile: 'production', allowedOps: ['deploy'] } },
+        },
+        null,
+        2,
+      ),
+    )
+    writeFileSync(
+      join(root, 'agent-kit.config.ts'),
+      "export const agentKitConfig = { deploy: { adapterModule: './deploy-adapter.ts' } }\n",
+    )
+    writeFileSync(
+      join(root, 'deploy-adapter.ts'),
+      [
+        'export const webpressoDeployAdapter = {',
+        '  createPlan: (request) => ({',
+        '    schemaVersion: 1,',
+        '    lane: request.lane,',
+        "    provider: 'cloudflare',",
+        "    requiredCredentials: ['SECRET_ENV'],",
+        "    steps: [{ kind: 'command', id: 'deploy', runtimeProfile: 'secrets-only', command: process.execPath, args: ['-e', 'process.exit(process.env.SECRET_ENV === \\\'prd\\\' ? 0 : 42)'] }],",
+        '  }),',
+        '}',
+        '',
+      ].join('\n'),
+    )
+    const fetchSpy = vi.spyOn(managers, 'fetchSecretsForConfig').mockReturnValue({ SECRET_ENV: 'prd' })
+
+    await expect(runDeployPlan({ cwd: root, lane: 'prd' })).resolves.toBe(0)
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ manager: 'doppler', projectId: 'demo' }),
+      expect.objectContaining({ cwd: root, environment: 'prd' }),
+    )
+  })
+
+  it('resolves preview deploy secrets through the preview profile environment', async () => {
+    mkdirSync(join(root, '.webpresso'), { recursive: true })
+    writeFileSync(
+      join(root, '.webpresso', 'secrets.config.json'),
+      JSON.stringify(
+        {
+          schemaVersion: 1,
+          providers: { default: { type: 'doppler', project: 'demo' } },
+          profiles: {
+            preview: { provider: 'default', environment: 'stg' },
+            production: { provider: 'default', environment: 'prd' },
+          },
+          sinks: { 'deploy-wrangler': { defaultProfile: 'preview', allowedOps: ['preview'] } },
+        },
+        null,
+        2,
+      ),
+    )
+    writeFileSync(
+      join(root, 'agent-kit.config.ts'),
+      "export const agentKitConfig = { deploy: { adapterModule: './deploy-adapter.ts' } }\n",
+    )
+    writeFileSync(
+      join(root, 'deploy-adapter.ts'),
+      [
+        'export const webpressoDeployAdapter = {',
+        '  createPlan: (request) => ({',
+        '    schemaVersion: 1,',
+        '    lane: request.lane,',
+        "    provider: 'cloudflare',",
+        "    requiredCredentials: ['SECRET_ENV'],",
+        "    steps: [{ kind: 'command', id: 'deploy', runtimeProfile: 'secrets-only', command: process.execPath, args: ['-e', 'process.exit(process.env.SECRET_ENV === \\\'stg\\\' ? 0 : 42)'] }],",
+        '  }),',
+        '}',
+        '',
+      ].join('\n'),
+    )
+    const fetchSpy = vi.spyOn(managers, 'fetchSecretsForConfig').mockReturnValue({ SECRET_ENV: 'stg' })
+
+    await expect(runDeployPlan({ cwd: root, lane: 'preview_main' })).resolves.toBe(0)
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ manager: 'doppler', projectId: 'demo' }),
+      expect.objectContaining({ cwd: root, environment: 'stg' }),
     )
   })
 

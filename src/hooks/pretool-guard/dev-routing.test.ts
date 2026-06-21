@@ -300,7 +300,7 @@ describe('routeCommand', () => {
       if (result?.action.action === 'deny') {
         expect(result.action.tool).toBe('wp_ci_act')
         expect(result.action.guidance).toContain('wp_ci_act')
-        expect(result.action.guidance).toContain('with-secrets -- act')
+        expect(result.action.guidance).toContain('wp secrets run --sink act')
         expect(result.action.guidance).not.toMatch(/\bak_/u)
       }
     }
@@ -319,7 +319,7 @@ describe('routeCommand', () => {
       if (result?.action.action === 'deny') {
         expect(result.action.tool).toBe('wp_ci_act')
         expect(result.action.guidance).toContain('wp_ci_act')
-        expect(result.action.guidance).toContain('with-secrets -- act')
+        expect(result.action.guidance).toContain('wp secrets run --sink act')
         expect(result.action.guidance).not.toMatch(/\bak_/u)
       }
     }
@@ -339,7 +339,7 @@ describe('routeCommand', () => {
       if (result?.action.action === 'deny') {
         expect(result.action.tool).toBe('wp_worker_tail')
         expect(result.action.guidance).toContain('wp_worker_tail')
-        expect(result.action.guidance).toContain('with-secrets -- wrangler tail')
+        expect(result.action.guidance).toContain('wp secrets run --sink deploy-wrangler')
         expect(result.action.guidance).not.toMatch(/\bak_/u)
       }
     }
@@ -603,11 +603,11 @@ describe('routeCommand', () => {
       [
         [
           'cd /Users/ozby/repos/webpresso/_worktrees/webpresso-secret-aware-mcp && vp run test -- \\',
-          '  src/secret-gate/runner.test.ts src/runtime/secrets-config.test.ts \\',
+          '  src/secret-gate/runner.test.ts src/ci/act-runner.test.ts \\',
           '  src/mcp/tools/ci-act.test.ts src/mcp/tools/worker-tail.test.ts \\',
           '  src/hooks/pretool-guard/dev-routing.test.ts',
         ].join('\n'),
-        'vp run test -- src/secret-gate/runner.test.ts src/runtime/secrets-config.test.ts src/mcp/tools/ci-act.test.ts src/mcp/tools/worker-tail.test.ts src/hooks/pretool-guard/dev-routing.test.ts',
+        'vp run test -- src/secret-gate/runner.test.ts src/ci/act-runner.test.ts src/mcp/tools/ci-act.test.ts src/mcp/tools/worker-tail.test.ts src/hooks/pretool-guard/dev-routing.test.ts',
         'wp_test',
       ],
       [

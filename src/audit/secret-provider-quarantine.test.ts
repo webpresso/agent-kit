@@ -6,6 +6,16 @@ import { afterEach, describe, expect, test } from 'vitest'
 import { auditSecretProviderQuarantine } from './secret-provider-quarantine.js'
 
 const tempDirs: string[] = []
+const infisicalExportFixture =
+  'steps:\\n  - run: ' +
+  'infisical' +
+  ' export --projectId="$INFISICAL_PROJECT_ID" --env="$INFISICAL_ENV_SLUG" --format=json\\n'
+const infisicalExportDocSnippet =
+  '`' +
+  'infisical' +
+  ' export --projectId="$INFISICAL_PROJECT_ID" --env="$INFISICAL_ENV_SLUG" --format=json`'
+const infisicalExportParityExpectation =
+  "expect(workflow).toContain('" + 'infisical' + ` export --projectId="\${INFISICAL_PROJECT_ID}"')`
 
 function tempRepo(): string {
   const root = mkdtempSync(join(tmpdir(), 'wp-quarantine-'))
@@ -51,20 +61,20 @@ describe('auditSecretProviderQuarantine', () => {
     ])
   })
 
-  test('resolves repo root from nested cwd before scanning', () => {
+  test('flags direct provider export invocation in source file', () => {
     const root = tempRepo()
-    const nested = join(root, 'apps', 'web')
-    mkdirSync(nested, { recursive: true })
     mkdirSync(join(root, 'src'), { recursive: true })
-    writeFileSync(join(root, 'src', 'deploy.ts'), "exec('doppler" + " run -- node server.js')")
+    writeFileSync(
+      join(root, 'src', 'deploy.ts'),
+      "exec('infisical" + " export --projectId=demo --env=stg')",
+    )
 
-    const result = auditSecretProviderQuarantine(nested)
+    const result = auditSecretProviderQuarantine(root)
 
     expect(result.ok).toBe(false)
-    expect(result.checked).toBeGreaterThan(0)
     expect(result.violations).toEqual([
       expect.objectContaining({
-        message: expect.stringContaining('direct doppler invocation'),
+        message: expect.stringContaining('direct infisical'),
       }),
     ])
   })
@@ -87,107 +97,97 @@ describe('auditSecretProviderQuarantine', () => {
     ])
   })
 
-  test('flags raw with-secrets act usage and local act helper clones', () => {
+  test('flags generic with-secrets wrapper usage in source file', () => {
     const root = tempRepo()
-    mkdirSync(join(root, 'scripts'), { recursive: true })
-    writeFileSync(join(root, 'scripts', 'act-with-webpresso.ts'), "exec('with-secrets -- act -W .github/workflows/ci.yml')")
-    writeFileSync(join(root, 'scripts', 'act-secret-profile.ts'), 'export const x = 1\n')
+    mkdirSync(join(root, 'src'), { recursive: true })
+    writeFileSync(join(root, 'src', 'app.ts'), "exec('with-secrets" + " -- node server.js')")
 
     const result = auditSecretProviderQuarantine(root)
 
     expect(result.ok).toBe(false)
-    expect(result.violations.map((entry) => entry.message).join('\n')).toContain('wp ci act')
-    expect(result.violations.map((entry) => entry.message).join('\n')).toContain('act-secret-profile')
-  })
-
-  test('flags legacy CI fallback tokens and non-SHA action refs in secret-bearing workflows', () => {
-    const root = tempRepo()
-    mkdirSync(join(root, '.github', 'workflows'), { recursive: true })
-    writeFileSync(
-      join(root, '.github', 'workflows', 'ci.yml'),
-      [
-        'name: ci',
-        'jobs:',
-        '  test:',
-        '    runs-on: ubuntu-latest',
-        '    steps:',
-        '      - uses: actions/checkout@v4',
-        '      - run: with-secrets -- act -W .github/workflows/ci.yml',
-        '        env:',
-        '          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}',
-      ].join('\n'),
-    )
-
-    const result = auditSecretProviderQuarantine(root)
-
-    expect(result.ok).toBe(false)
-    expect(result.violations.map((entry) => entry.message).join('\n')).toContain('SHA-pin third-party action actions/checkout@v4')
-    expect(result.violations.map((entry) => entry.message).join('\n')).toContain('DOPPLER_TOKEN fallback')
-  })
-
-  test('requires id-token write only for OIDC-capable secret workflows', () => {
-    const root = tempRepo()
-    mkdirSync(join(root, '.github', 'workflows'), { recursive: true })
-    writeFileSync(
-      join(root, '.github', 'workflows', 'deploy.yml'),
-      [
-        'name: deploy',
-        'on:',
-        '  workflow_call:',
-        '    inputs:',
-        '      doppler_identity_id:',
-        '        required: false',
-        '        type: string',
-        'jobs:',
-        '  deploy:',
-        '    runs-on: ubuntu-latest',
-        '    steps:',
-        '      - name: Checkout',
-        '        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd',
-      ].join('\n'),
-    )
-
-    const result = auditSecretProviderQuarantine(root)
-
-    expect(result.ok).toBe(false)
-    expect(result.violations.map((entry) => entry.message).join('\n')).toContain(
-      'id-token: write',
+    expect(result.violations).toContainEqual(
+      expect.objectContaining({
+        message: expect.stringContaining('legacy with-secrets wrapper'),
+      }),
     )
   })
 
-  test('flags non-SHA action refs for named-step uses entries in secret-bearing workflows', () => {
+  test('flags with-secrets invocation without a double-dash separator', () => {
     const root = tempRepo()
-    mkdirSync(join(root, '.github', 'workflows'), { recursive: true })
+    mkdirSync(join(root, 'src'), { recursive: true })
     writeFileSync(
-      join(root, '.github', 'workflows', 'deploy.yml'),
-      [
-        'name: deploy',
-        'jobs:',
-        '  deploy:',
-        '    runs-on: ubuntu-latest',
-        '    steps:',
-        '      - name: Checkout',
-        '        uses: actions/checkout@v4',
-        '    secrets:',
-        '      ci_secret_provider_token:',
-        '        required: false',
-        '    with:',
-        '      secret_profile: preview',
-      ].join('\n'),
+      join(root, 'src', 'app.ts'),
+      "exec('with-secrets" + " act -W .github/workflows/ci.yml')",
     )
 
     const result = auditSecretProviderQuarantine(root)
 
     expect(result.ok).toBe(false)
-    expect(result.violations.map((entry) => entry.message).join('\n')).toContain(
-      'SHA-pin third-party action actions/checkout@v4',
+    expect(result.violations).toContainEqual(
+      expect.objectContaining({
+        message: expect.stringContaining('legacy with-secrets wrapper'),
+      }),
     )
+  })
+
+  test('flags direct provider run invocation without a wrapper', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'src'), { recursive: true })
+    writeFileSync(
+      join(root, 'src', 'app.ts'),
+      "exec('infisical" + " run --env=stg -- node server.js')",
+    )
+
+    const result = auditSecretProviderQuarantine(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toEqual([
+      expect.objectContaining({
+        message: expect.stringContaining('direct infisical'),
+      }),
+    ])
   })
 
   test('passes for clean source', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'src'), { recursive: true })
-    writeFileSync(join(root, 'src', 'app.ts'), "exec('with-secrets -- node server.js')")
+    writeFileSync(
+      join(root, 'src', 'app.ts'),
+      "exec('wp secrets run --sink dev-server --profile preview -- node server.js')",
+    )
+
+    const result = auditSecretProviderQuarantine(root)
+
+    expect(result.ok).toBe(true)
+    expect(result.violations).toStrictEqual([])
+  })
+
+  test('allows shipped reusable workflows to use provider bootstrapping internally', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(
+      join(root, '.github', 'workflows', 'cloudflare-preview.yml'),
+      infisicalExportFixture,
+    )
+
+    const result = auditSecretProviderQuarantine(root)
+
+    expect(result.ok).toBe(true)
+    expect(result.violations).toStrictEqual([])
+  })
+
+  test('allows shipped docs and parity tests to mention approved provider bootstrap commands', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'docs'), { recursive: true })
+    mkdirSync(join(root, 'src', 'build'), { recursive: true })
+    writeFileSync(
+      join(root, 'docs', 'reusable-cloudflare-deploy-workflows.md'),
+      infisicalExportDocSnippet,
+    )
+    writeFileSync(
+      join(root, 'src', 'build', 'reusable-cloudflare-workflows.test.ts'),
+      infisicalExportParityExpectation,
+    )
 
     const result = auditSecretProviderQuarantine(root)
 

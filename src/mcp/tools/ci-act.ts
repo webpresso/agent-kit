@@ -104,7 +104,7 @@ function dryRunDetails(input: CiActInput, cwd: string) {
 const tool: ToolDescriptor = {
   name: 'wp_ci_act',
   description:
-    'Run local GitHub Actions workflows through `act` via the public secret contract (`wp config secrets ...`, then `with-secrets -- act ...`).',
+    'Run local GitHub Actions workflows through `act` via the public secret contract (`wp secrets doctor --profile <profile> --json`, then `wp secrets run --sink act --profile <profile> -- act ...`).',
   inputSchema,
   outputSchema,
   annotations: {
@@ -127,10 +127,13 @@ const tool: ToolDescriptor = {
 
     const prepared = preparePublicCiActExecution({ ...input, cwd })
     try {
+      const secretProfile = resolveCiActSecretEnvProfile({ ...input, cwd }) ?? 'preview'
       const result = await runSecretGateCommand({
         cwd,
+        sink: 'act',
+        profile: secretProfile,
         envProfile: input.envProfile,
-        secretEnvProfile: resolveCiActSecretEnvProfile({ ...input, cwd }),
+        forceSecretGate: true,
         command: 'act',
         args: prepared.command.actArgs,
         timeoutMs: input.timeoutMs,
@@ -140,6 +143,10 @@ const tool: ToolDescriptor = {
       const redacted = redactText(merged)
       const clipped = clipRawOutput(redacted, 4_000, { toolName: 'wp_ci_act' })
       const toolExecutionFailed = result.timedOut || result.aborted
+      const failures = [
+        ...(result.timedOut ? [{ message: 'ci-act timed out while running act' }] : []),
+        ...(result.aborted ? [{ message: 'ci-act aborted by client signal' }] : []),
+      ]
       const details =
         prepared.mode === 'replay'
           ? {
@@ -156,18 +163,6 @@ const tool: ToolDescriptor = {
               nonSecurityEquivalent: nonSecurityEquivalentDetails(input, cwd),
               secretProfile: input.secretProfile,
             }
-      const failures = [
-        ...(prepared.nonSecurityEquivalent
-          ? [
-              {
-                message:
-                  'replay mode is a generated local approximation and is not security-equivalent to GitHub CI or OIDC',
-              },
-            ]
-          : []),
-        ...(result.timedOut ? [{ message: 'timed out while running act' }] : []),
-        ...(result.aborted ? [{ message: 'aborted by client signal' }] : []),
-      ]
 
       return createSummaryResult(
         {
@@ -177,9 +172,11 @@ const tool: ToolDescriptor = {
               ? `ci-act finished successfully via env profile ${input.envProfile}`
               : `ci-act failed with exit ${result.exitCode} via env profile ${input.envProfile}`,
           exitCode: result.exitCode,
+          timedOut: result.timedOut,
+          aborted: result.aborted,
           details,
-          ...clipped,
           ...(failures.length > 0 ? { failures } : {}),
+          ...clipped,
         },
         toolExecutionFailed ? { isError: true } : {},
       )

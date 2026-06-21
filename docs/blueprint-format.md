@@ -230,7 +230,7 @@ explicit:
   blueprint explicitly owns durable public CLI branding.
 - Do not introduce legacy AK-prefixed aliases as replacement tool names.
 - For secret-gated local execution, describe the public shell contract as
-  `with-secrets -- <cmd>` and downstream CI adoption as `act-with-webpresso`.
+  `wp secrets run --sink <sink> --profile <profile> -- <cmd>` and downstream CI adoption through shared `wp ci act`.
 - Public cross-plan references must use GitHub URLs and must not include local
   absolute paths, sibling-repo filesystem paths, or private historical context
   that is unrelated to the public plan.

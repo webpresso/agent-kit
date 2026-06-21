@@ -127,6 +127,20 @@ describe('release workflow publish path', () => {
     expect(workflow).toContain('publish: pnpm run release:publish')
   })
 
+  it('keeps downloaded session-memory native artifacts outside dist until publish staging', () => {
+    const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
+
+    expect(workflow).toContain('path: ${{ runner.temp }}/session-memory-native-downloads')
+    expect(workflow).toContain('artifact_root="$RUNNER_TEMP/session-memory-native-$GITHUB_RUN_ID"')
+    expect(workflow).toContain(
+      'SESSION_MEMORY_NATIVE_ARTIFACTS_DIR: ${{ runner.temp }}/session-memory-native-${{ github.run_id }}',
+    )
+    expect(workflow).toContain(
+      'pnpm run stage:session-memory-native -- --source-dir "$RUNNER_TEMP/session-memory-native-$GITHUB_RUN_ID"',
+    )
+    expect(workflow).not.toContain('path: dist/session-memory-native-downloads')
+  })
+
   it('uses the explicit publish-result handoff for release finalization instead of brittle action outputs', () => {
     const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
     const changesetsActionIndex = workflow.indexOf('uses: changesets/action@')
@@ -258,7 +272,10 @@ describe('release workflow publish path', () => {
     )
 
     expect(releasePublish).toContain('assertPreparedSessionMemoryNativePackages')
-    expect(releasePublish).toContain("run('pnpm', ['run', 'stage:session-memory-native'])")
+    expect(releasePublish).toContain('SESSION_MEMORY_NATIVE_ARTIFACTS_DIR_ENV')
+    expect(releasePublish).toContain('function requireSessionMemoryNativeArtifactsDir()')
+    expect(releasePublish).toContain('is required to publish the session-memory native matrix')
+    expect(releasePublish).toContain("'--source-dir'")
     expect(releasePublish).not.toContain(
       "'build:session-memory-native',\n    '--',\n    '--target',\n    'host'",
     )

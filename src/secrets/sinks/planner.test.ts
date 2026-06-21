@@ -26,14 +26,18 @@ const fixture = parseSecretsSchema({
 
 describe('resolveSecretSink', () => {
   it('resolves a provider-neutral sink plan through the single orchestration choke point', () => {
-    expect(resolveSecretSink(fixture, { sink: 'deploy-wrangler', op: 'deploy' })).toEqual({
+    expect(resolveSecretSink(fixture, { sink: 'deploy-wrangler', op: 'deploy' })).toMatchObject({
       sink: 'deploy-wrangler',
       op: 'deploy',
       profile: 'production',
       environment: 'prd',
+      provider: 'doppler',
       providerId: 'default',
       providerType: 'doppler',
       allowedOps: ['preview', 'deploy'],
+      runtimeProfile: 'full',
+      docsPath: 'docs/secrets/providers.md',
+      requiresBootstrap: false,
     })
   })
 

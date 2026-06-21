@@ -321,8 +321,7 @@ function auditConsumerAgentKitDependencyPolicy(
       if (!('@webpresso/agent-kit' in deps)) continue
       violations.push({
         file: relPath,
-        message:
-          `${relPath}: ${fieldName} must not depend on @webpresso/agent-kit in consumer packages; use the global \`wp\` install and keep only @webpresso/agent-config locally`,
+        message: `${relPath}: ${fieldName} must not depend on @webpresso/agent-kit in consumer packages; use the global \`wp\` install and keep only @webpresso/agent-config locally`,
       })
     }
   }

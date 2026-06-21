@@ -3,22 +3,25 @@ import { describe, expect, it } from 'vitest'
 import { buildSecretGateCommand, runSecretGateCommand } from './runner.js'
 
 describe('secret-gate runner', () => {
-  it('builds command through the canonical with-secrets shell contract by default', () => {
+  it('builds command through wp secrets run by default', () => {
     const command = buildSecretGateCommand({
+      sink: 'act',
       command: 'act',
       args: ['-W', '.github/workflows/ci.yml'],
     })
 
     expect(command).toEqual({
-      command: 'with-secrets',
-      args: ['--', 'act', '-W', '.github/workflows/ci.yml'],
+      command: 'wp',
+      args: ['secrets', 'run', '--sink', 'act', '--profile', 'preview', '--', 'act', '-W', '.github/workflows/ci.yml'],
     })
   })
 
   it('bounds captured stdout', async () => {
     const result = await runSecretGateCommand({
-      runner: '/bin/echo',
-      command: 'x'.repeat(100),
+      sink: 'act',
+      envProfile: 'public',
+      command: '/bin/echo',
+      args: ['x'.repeat(100)],
       maxOutputBytes: 48,
     })
 
@@ -29,19 +32,21 @@ describe('secret-gate runner', () => {
 
   it('supports custom runner with separate runtime and provider environment profiles', () => {
     const command = buildSecretGateCommand({
-      runner: 'wp-secret-runner',
+      sink: 'deploy-wrangler',
+      profile: 'dev',
       envProfile: 'database',
-      secretEnvProfile: 'dev',
       command: 'wrangler',
       args: ['tail', 'api-worker'],
     })
 
     expect(command).toEqual({
-      command: 'wp-secret-runner',
+      command: 'wp',
       args: [
-        '--runtime-profile',
-        'database',
-        '--secret-env-profile',
+        'secrets',
+        'run',
+        '--sink',
+        'deploy-wrangler',
+        '--profile',
         'dev',
         '--',
         'wrangler',
@@ -60,8 +65,9 @@ describe('secret-gate runner', () => {
     ).toThrow('Use one of')
   })
 
-  it('bypasses the with-secrets wrapper for no-secret profiles', () => {
+  it('bypasses the secret wrapper for no-secret profiles', () => {
     const command = buildSecretGateCommand({
+      sink: 'act',
       envProfile: 'public',
       command: 'act',
       args: ['-W', '.github/workflows/ci.yml'],
@@ -75,6 +81,7 @@ describe('secret-gate runner', () => {
 
   it('executes commands directly for no-secret profiles', async () => {
     const result = await runSecretGateCommand({
+      sink: 'act',
       envProfile: 'public',
       command: '/bin/echo',
       args: ['hello'],

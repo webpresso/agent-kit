@@ -1,12 +1,16 @@
 ---
 type: guide
+title: WP secret orchestration errors
+status: draft
+created: 2026-06-19
 last_updated: '2026-06-19'
 ---
 
 # WP secret orchestration errors
 
 This page is the stable docs target for secret-orchestration error envelopes
-that use `WP_*` codes and `--json` output.
+that use `WP_*` codes and `--json` output. It covers `wp secrets`,
+`wp preview`, and related secret-scoped orchestration commands.
 
 ## `WP_ERR_COMMAND_FAILED`
 

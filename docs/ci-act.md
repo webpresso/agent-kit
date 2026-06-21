@@ -7,7 +7,7 @@ last_updated: '2026-05-24'
 
 `wp ci act` is the public CLI contract for local GitHub Actions reproduction.
 `wp_ci_act` is the matching MCP tool. Both surfaces use the provider-neutral
-secret gate plus the shared webpresso CI act argv builder.
+secret gate (`wp secrets run --sink act --profile <profile> -- ...`) and the shared webpresso CI act argv builder.
 
 ## Allowed public inputs
 

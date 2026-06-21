@@ -1,9 +1,12 @@
 ---
 type: guide
-last_updated: '2026-06-19'
+title: Neon and Xata DB branching
+status: draft
+created: 2026-06-19
+last_updated: 2026-06-19
 ---
 
-# Neon now, Xata later
+# Neon and Xata DB branching
 
 This guide records the v1 DB-branching contract for secret orchestration.
 

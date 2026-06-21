@@ -100,7 +100,7 @@ this block is preserved verbatim across `wp sync` runs.
 
 - Do not commit secrets or credentials.
 - Do not create or persist secret-bearing files like `.env`, `.env.local`, `.env.*.local`, `.dev.vars`, or `.dev.vars.example`.
-- Route secret-scoped commands through the repo contract (`wp config secrets` + `with-secrets -- <cmd>`).
+- Route secret-scoped commands through the repo contract (`wp secrets doctor --profile <profile> --json` + `wp secrets run --sink <sink> --profile <profile> -- <cmd>`).
 - Keep secret/path checks on shared audit surfaces when available.
 - Do not commit agent surfaces (`.agent/`, `.agents/`, `.cursor/`, `.omx/`, `.omc/`, `.codex/`, `.opencode/`).
 - Do not hand-edit generated or derived surfaces; edit the catalog in agent-kit.

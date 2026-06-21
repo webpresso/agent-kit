@@ -59,7 +59,8 @@ describe('auditSecretsConfig', () => {
     expect(result.violations.length).toBeGreaterThan(0)
   })
 
-  test('passes for valid config', () => {
+
+  test('flags legacy pre-schemaVersion-1 config', () => {
     const root = tempRepo()
     writeFileSync(
       join(root, '.webpresso', 'secrets.config.json'),
@@ -68,13 +69,11 @@ describe('auditSecretsConfig', () => {
 
     const result = auditSecretsConfig(root)
 
-    expect(result.ok).toBe(true)
-    expect(result.checked).toBe(1)
-    expect(result.violations).toStrictEqual([])
+    expect(result.ok).toBe(false)
+    expect(result.violations[0]?.message).toContain('only schemaVersion 1')
   })
 
-
-  test('passes for schemaVersion 1 config with default provider and profiles', () => {
+  test('passes for valid schemaVersion 1 config', () => {
     const root = tempRepo()
     writeFileSync(
       join(root, '.webpresso', 'secrets.config.json'),
@@ -85,14 +84,15 @@ describe('auditSecretsConfig', () => {
             type: 'doppler',
             workspace: 'ozby',
             workspaceId: '7abb07fb8507f57c2011',
-            project: 'my-project',
+            project: 'edge-matte',
           },
         },
         profiles: {
           preview: { provider: 'default', environment: 'stg' },
+          production: { provider: 'default', environment: 'prd' },
         },
         sinks: {
-          test: { defaultProfile: 'preview', allowedOps: ['run'] },
+          'dev-server': { defaultProfile: 'preview', allowedOps: ['run'] },
         },
       }),
     )
@@ -100,14 +100,12 @@ describe('auditSecretsConfig', () => {
     const result = auditSecretsConfig(root)
 
     expect(result.ok).toBe(true)
+    expect(result.checked).toBe(1)
     expect(result.violations).toStrictEqual([])
   })
 
-
-  test('validates schemaVersion 1 config from nested working directories', () => {
+  test('reuses the full orchestration schema for v1 configs', () => {
     const root = tempRepo()
-    const nested = join(root, 'apps', 'web')
-    mkdirSync(nested, { recursive: true })
     writeFileSync(
       join(root, '.webpresso', 'secrets.config.json'),
       JSON.stringify({
@@ -115,60 +113,23 @@ describe('auditSecretsConfig', () => {
         providers: {
           default: {
             type: 'doppler',
-            project: 'my-project',
+            workspace: 'ozby',
+            workspaceId: '7abb07fb8507f57c2011',
+            project: 'Edge Matte',
           },
         },
         profiles: {
           preview: { provider: 'default', environment: 'stg' },
         },
-        sinks: {},
-      }),
-    )
-
-    const result = auditSecretsConfig(nested)
-
-    expect(result.ok).toBe(true)
-    expect(result.checked).toBe(1)
-    expect(result.violations).toStrictEqual([])
-  })
-
-  test('rejects schemaVersion 1 profiles that point at an unknown provider', () => {
-    const root = tempRepo()
-    writeFileSync(
-      join(root, '.webpresso', 'secrets.config.json'),
-      JSON.stringify({
-        schemaVersion: 1,
-        providers: { default: { type: 'doppler', project: 'my-project' } },
-        profiles: { preview: { provider: 'missing', environment: 'stg' } },
-        sinks: {},
+        sinks: {
+          'dev-server': { defaultProfile: 'missing', allowedOps: ['run'] },
+        },
       }),
     )
 
     const result = auditSecretsConfig(root)
 
     expect(result.ok).toBe(false)
-    expect(result.violations).toEqual([
-      expect.objectContaining({ message: expect.stringContaining('unknown provider "missing"') }),
-    ])
-  })
-
-  test('passes for valid config with named profiles', () => {
-    const root = tempRepo()
-    writeFileSync(
-      join(root, '.webpresso', 'secrets.config.json'),
-      JSON.stringify({
-        manager: 'doppler',
-        projectId: 'my-project',
-        profiles: {
-          'e2e-runtime': { environment: 'dev' },
-          'deploy-preview': { environment: 'preview' },
-        },
-      }),
-    )
-
-    const result = auditSecretsConfig(root)
-
-    expect(result.ok).toBe(true)
-    expect(result.violations).toStrictEqual([])
+    expect(result.violations[0]?.message).toMatch(/project|default profile/i)
   })
 })

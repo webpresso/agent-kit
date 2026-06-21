@@ -42,6 +42,7 @@ export interface PreparedPublicCiActExecution {
 }
 
 const DEFAULT_WORKFLOW = 'ci-e2e'
+
 export const DEFAULT_PLATFORM_IMAGE = 'ghcr.io/catthehacker/ubuntu:full-latest'
 const DEFAULT_PLATFORM_IMAGE_SUPPORTED_ARCHITECTURES = new Set(['linux/amd64', 'linux/arm64'])
 
@@ -113,11 +114,12 @@ export function buildPublicCiActCommand(options: PublicCiActOptions = {}): Publi
       ? GENERATED_REPLAY_WORKFLOW_PLACEHOLDER
       : undefined
   const actArgs = buildPublicCiActArgs(options, workflowPathOverride)
-  const secretEnvProfile = resolveCiActSecretEnvProfile(options)
+  const secretEnvProfile = resolveCiActSecretEnvProfile(options) ?? 'preview'
   const wrapped: SecretGateCommand = buildSecretGateCommand({
-    runner: 'with-secrets',
+    sink: 'act',
+    profile: secretEnvProfile,
     envProfile: options.envProfile ?? 'secrets-only',
-    secretEnvProfile,
+    forceSecretGate: true,
     command: 'act',
     args: actArgs,
   })
@@ -142,11 +144,12 @@ export function preparePublicCiActExecution(
     { ...options, cwd },
     replay ? replay.workflowPath : undefined,
   )
-  const secretEnvProfile = resolveCiActSecretEnvProfile({ ...options, cwd })
+  const secretEnvProfile = resolveCiActSecretEnvProfile({ ...options, cwd }) ?? 'preview'
   const wrapped: SecretGateCommand = buildSecretGateCommand({
-    runner: 'with-secrets',
+    sink: 'act',
+    profile: secretEnvProfile,
     envProfile: options.envProfile ?? 'secrets-only',
-    secretEnvProfile,
+    forceSecretGate: true,
     command: 'act',
     args: actArgs,
   })

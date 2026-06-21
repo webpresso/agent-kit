@@ -23,6 +23,7 @@ export default defineConfig({
       'src/**/*.test.ts',
       'src/**/*.integration.test.ts',
       'scripts/**/*.test.ts',
+      'test/**/*.test.ts',
       '*.test.ts',
     ],
     exclude: ['**/node_modules/**', '**/dist/**'],

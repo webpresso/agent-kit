@@ -143,6 +143,8 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
   'no-dev-vars': async (root) => (await import('#audit/no-dev-vars')).auditNoDevVars(root),
   'secret-provider-quarantine': async (root) =>
     (await import('#audit/secret-provider-quarantine')).auditSecretProviderQuarantine(root),
+  'github-actions-secrets': async (root) =>
+    (await import('#audit/github-actions-secrets')).auditGitHubActionsSecrets(root),
   'secrets-config': async (root) =>
     (await import('#audit/secrets-config')).auditSecretsConfig(root),
   'consumer-agent-kit-dependency': async (root) =>

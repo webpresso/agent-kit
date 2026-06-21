@@ -23,6 +23,21 @@ describe('stage-session-memory-native-artifacts', () => {
     })
   })
 
+  it('can stage from a release handoff directory outside dist', () => {
+    const [operation] = buildSessionMemoryNativeStageOperations({
+      rootDir: '/repo',
+      sourceRootDir: '/runner-temp/session-memory-native',
+    })
+
+    expect(operation).toMatchObject({
+      source: '/runner-temp/session-memory-native/darwin-x64/session_memory_napi.node',
+      packageAddonDestination:
+        '/repo/dist/session-memory-native-packages/agent-kit-session-memory-darwin-x64/session_memory_napi.node',
+      packageManifestDestination:
+        '/repo/dist/session-memory-native-packages/agent-kit-session-memory-darwin-x64/package.json',
+    })
+  })
+
   it('renders npm metadata that exposes only the addon file for the target os/cpu', () => {
     const [operation] = buildSessionMemoryNativeStageOperations({ rootDir: '/repo' })
     const manifest = JSON.parse(

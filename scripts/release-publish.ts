@@ -1,4 +1,11 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -26,6 +33,7 @@ const ALREADY_PUBLISHED_PATTERNS = [
 
 const RELEASE_PUBLISH_RESULT_FILE_ENV = 'RELEASE_PUBLISH_RESULT_FILE'
 const SESSION_MEMORY_NATIVE_DOWNLOADS_DIR_ENV = 'SESSION_MEMORY_NATIVE_DOWNLOADS_DIR'
+const SESSION_MEMORY_NATIVE_ARTIFACTS_DIR_ENV = 'SESSION_MEMORY_NATIVE_ARTIFACTS_DIR'
 
 type PublishState = 'published' | 'already-published'
 
@@ -216,8 +224,7 @@ function writePublishResultFile(packages: readonly PublishedPackage[]) {
   const primaryPackage =
     packages.find(
       (publishedPackage) => publishedPackage.packageName === ROOT_RELEASE_PACKAGE_NAME,
-    ) ??
-    packages[0]
+    ) ?? packages[0]
   if (!primaryPackage) {
     return
   }
@@ -308,6 +315,16 @@ function rehydrateSessionMemoryNativeArtifacts(rootDir: string): void {
   }
 }
 
+function requireSessionMemoryNativeArtifactsDir(): string {
+  const artifactsDir = process.env[SESSION_MEMORY_NATIVE_ARTIFACTS_DIR_ENV]
+  if (!artifactsDir) {
+    throw new Error(
+      `${SESSION_MEMORY_NATIVE_ARTIFACTS_DIR_ENV} is required to publish the session-memory native matrix`,
+    )
+  }
+  return artifactsDir
+}
+
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const packageRoot = dirname(scriptDir)
 const rootPackage = readPublishablePackage(packageRoot)
@@ -358,9 +375,19 @@ if (shouldPublishRuntimeMatrix(process.env)) {
 
   // Session-memory native packages are real NAPI artifacts, not single-runner
   // cross-compiled launcher assets. The release job must provide every target
-  // artifact under dist/session-memory-native/<target>/ before this publish
-  // script runs. Stage all targets here and fail closed if any are missing.
-  const sessionMemoryNativeStageResult = run('pnpm', ['run', 'stage:session-memory-native'])
+  // artifact through SESSION_MEMORY_NATIVE_ARTIFACTS_DIR before this publish
+  // script runs. Keep that handoff outside dist because the root build refreshes
+  // dist before publishing. Stage all targets here and fail closed if any are
+  // missing.
+  const sessionMemoryNativeArtifactsDir = requireSessionMemoryNativeArtifactsDir()
+  const sessionMemoryNativeStageArgs = [
+    'run',
+    'stage:session-memory-native',
+    '--',
+    '--source-dir',
+    sessionMemoryNativeArtifactsDir,
+  ]
+  const sessionMemoryNativeStageResult = run('pnpm', sessionMemoryNativeStageArgs)
   if (exitCode(sessionMemoryNativeStageResult) !== 0) {
     process.exit(exitCode(sessionMemoryNativeStageResult))
   }

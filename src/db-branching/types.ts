@@ -49,11 +49,11 @@ export function isDbBranchProviderDescriptor(
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const candidate = value as Record<string, unknown>
   return (
-    (candidate.provider === 'neon' || candidate.provider === 'xata')
-    && (candidate.mode === 'managed' || candidate.mode === 'future')
-    && typeof candidate.supportsClone === 'boolean'
-    && typeof candidate.supportsTtl === 'boolean'
-    && typeof candidate.supportsCleanup === 'boolean'
+    (candidate.provider === 'neon' || candidate.provider === 'xata') &&
+    (candidate.mode === 'managed' || candidate.mode === 'future') &&
+    typeof candidate.supportsClone === 'boolean' &&
+    typeof candidate.supportsTtl === 'boolean' &&
+    typeof candidate.supportsCleanup === 'boolean'
   )
 }
 
@@ -79,14 +79,16 @@ export function createDbBranchPlan(input: CreateDbBranchPlanInput): ManagedDbBra
     ),
     smokeCommand: requireNonEmptyString(input.smokeCommand, 'smokeCommand'),
     ttlSeconds:
-      input.ttlSeconds > 0 ? input.ttlSeconds : (() => { throw new Error('ttlSeconds must be > 0') })(),
+      input.ttlSeconds > 0
+        ? input.ttlSeconds
+        : (() => {
+            throw new Error('ttlSeconds must be > 0')
+          })(),
     cleanupCommand: requireNonEmptyString(input.cleanupCommand, 'cleanupCommand'),
   }
 }
 
-export function createDbBranchSkipPlan(
-  input: CreateDbBranchSkipPlanInput,
-): SkippedDbBranchPlan {
+export function createDbBranchSkipPlan(input: CreateDbBranchSkipPlanInput): SkippedDbBranchPlan {
   return {
     kind: 'skip',
     reason: requireNonEmptyString(input.reason, 'reason'),

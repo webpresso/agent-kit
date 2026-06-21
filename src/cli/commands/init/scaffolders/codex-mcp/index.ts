@@ -19,7 +19,7 @@
  *   3. `[mcp_servers.context7]` plus `.mcp.json#mcpServers.context7` — point at
  *      Context7's hosted MCP endpoint with the required static `Accept` header
  *      plus an env-backed `CONTEXT7_API_KEY` header. The value is supplied by
- *      agent-kit's selected secret provider through `with-secrets -- <agent>`;
+ *      agent-kit's selected secret provider through the agent launch environment;
  *      setup never reads or persists the raw key.
  */
 import { execFileSync } from 'node:child_process'
@@ -411,7 +411,7 @@ export function ensureCodexWebpressoMcp(
 // Context7's API key belongs to the configured agent-kit secret provider
 // (Doppler, Infisical, etc.). Codex can populate HTTP headers from environment
 // variables, so setup writes only the variable mapping and relies on
-// `with-secrets -- codex` to inject the value at runtime.
+// the provider-backed Codex launch environment to inject the value at runtime.
 // ────────────────────────────────────────────────────────────────────────────
 
 export const CONTEXT7_MCP_SERVER_NAME = 'context7'
@@ -478,7 +478,7 @@ export function ensureCodexContext7Mcp(input: EnsureCodexContext7McpInput): Merg
 //
 // Claude Code supports environment variable expansion inside `.mcp.json`
 // `headers`, so project config can name `${CONTEXT7_API_KEY}` without embedding
-// the secret. Launch Claude through `with-secrets -- claude` to populate it.
+// the secret. Launch Claude from a provider-backed shell to populate it.
 // ────────────────────────────────────────────────────────────────────────────
 
 export const CLAUDE_CONTEXT7_API_KEY_REF = `\${${CONTEXT7_API_KEY_ENV}}`
