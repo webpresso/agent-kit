@@ -101,6 +101,12 @@
       "#secret-gate/*": [
         "./src/secret-gate/*"
       ],
+      "#secrets/*.js": [
+        "./src/secrets/*.ts"
+      ],
+      "#secrets/*": [
+        "./src/secrets/*.ts"
+      ],
       "#mcp/*": [
         "./src/mcp/*"
       ],
