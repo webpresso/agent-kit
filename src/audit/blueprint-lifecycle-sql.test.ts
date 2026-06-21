@@ -360,6 +360,32 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     expect(result.violations.some((v) => v.message.startsWith('[warn]'))).toBe(false)
   })
 
+
+  it('degrades transition history checks instead of timing out when the git history budget is exhausted', async () => {
+    initGitRepo(cwd)
+    writeBlueprint(cwd, 'budget-a', {
+      status: 'planned',
+      tasks: [{ id: '1.1', status: 'todo' }],
+    })
+    writeBlueprint(cwd, 'budget-b', {
+      status: 'planned',
+      tasks: [{ id: '1.1', status: 'todo' }],
+    })
+    commitAll(cwd, '2030-01-01T12:00:00Z')
+
+    const result = await auditBlueprintLifecycleSql(cwd, { transitionHistoryBudgetMs: 0 })
+
+    expect(result.ok).toBe(true)
+    expect(result.title).toContain('transition history check partially skipped by time budget')
+    expect(
+      result.violations.some(
+        (v) =>
+          v.message.startsWith('[warn]') &&
+          v.message.includes('transition history check stopped after 0/2 files'),
+      ),
+    ).toBe(true)
+  })
+
   it('flags an illegal lifecycle transition based on git history', async () => {
     initGitRepo(cwd)
     writeBlueprint(cwd, 'jumped-the-queue', {

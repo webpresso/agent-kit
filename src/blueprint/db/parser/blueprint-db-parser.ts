@@ -10,6 +10,7 @@
 
 import crypto from 'node:crypto'
 import { execSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import path from 'node:path'
 
 import matter from 'gray-matter'
@@ -87,6 +88,24 @@ const _GSTACK_SKILL_PATTERN =
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+const organizationByGitRoot = new Map<string, string>()
+
+function findGitRoot(startPath: string): string | null {
+  let dir = path.dirname(startPath)
+
+  while (true) {
+    if (existsSync(path.join(dir, '.git'))) return dir
+    const parent = path.dirname(dir)
+    if (parent === dir) return null
+    dir = parent
+  }
+}
+
+function organizationFromRemote(remote: string): string | null {
+  const match = remote.match(/[:/]([^/]+)\/[^/]+(?:\.git)?$/)
+  return match?.[1] ?? null
+}
+
 function safeString(value: unknown): string | null {
   if (value === null || value === undefined) return null
   if (value instanceof Date) return value.toISOString().split('T')[0] ?? null
@@ -99,23 +118,30 @@ function safeStringArray(value: unknown): string[] {
   return value.filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
 }
 
-/** Detect org from git remote URL in the directory containing filePath. */
+/** Detect org from git remote URL, caching once per repo root. */
 function detectOrganization(filePath: string): string {
+  const gitRoot = findGitRoot(filePath)
+  if (!gitRoot) return 'unknown'
+
+  const cached = organizationByGitRoot.get(gitRoot)
+  if (cached) return cached
+
+  let organization = 'unknown'
   try {
-    const dir = path.dirname(filePath)
     const remote = execSync('git remote get-url origin', {
-      cwd: dir,
+      cwd: gitRoot,
       stdio: ['ignore', 'pipe', 'ignore'],
       encoding: 'utf8',
-      timeout: 5000,
+      timeout: 1500,
     }).trim()
-    // Handles both SSH (git@github.com:org/repo.git) and HTTPS (https://github.com/org/repo.git)
-    const match = remote.match(/[:/]([^/]+)\/[^/]+(?:\.git)?$/)
-    if (match?.[1]) return match[1]
+    organization = organizationFromRemote(remote) ?? 'unknown'
   } catch {
-    // Silently fall through — not all environments have git remotes
+    // Silently fall through — not all environments have git remotes. Cache the
+    // miss so bulk blueprint ingestion remains bounded in non-git fixtures.
   }
-  return 'unknown'
+
+  organizationByGitRoot.set(gitRoot, organization)
+  return organization
 }
 
 /** Determine visibility from frontmatter or filepath convention. Defaults to private. */

@@ -39,6 +39,9 @@ diagnostic metadata, and expose recent records through `wp hooks errors`.
   records.
 - [x] Blueprint coverage travels with the implementation branch and passes the
   blueprint lifecycle gate before PR creation.
+- [x] Blueprint lifecycle verification remains bounded on large blueprint
+  histories by caching parser git metadata and degrading transition-history
+  checks when their time budget is exhausted.
 
 ## Tasks
 
@@ -62,6 +65,14 @@ diagnostic metadata, and expose recent records through `wp hooks errors`.
   connect the implementation to its plan.
 - [x] Validate the PR branch from an isolated worktree before opening the PR.
 
+#### Task 1.4: Fix blueprint lifecycle audit timeout
+
+- [x] Cache DB parser organization detection per git root instead of spawning
+  `git remote get-url origin` once per blueprint.
+- [x] Bound best-effort transition-history checks and emit an advisory warning
+  instead of hanging the audit on repositories with many blueprint history
+  probes.
+
 ## Verification
 
 - `./bin/wp test --file src/hooks/errors/index.test.ts --file src/cli/commands/hooks.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/index.test.ts` — passed.
@@ -69,3 +80,5 @@ diagnostic metadata, and expose recent records through `wp hooks errors`.
 - `./bin/wp typecheck` — passed.
 - `./bin/wp audit blueprint-lifecycle` — passed after adding this blueprint's
   explicit task list.
+- `./bin/wp audit blueprint-lifecycle` — passed in 31.72s after the timeout
+  fix.

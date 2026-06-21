@@ -51,6 +51,7 @@ interface TaskInProgressRow {
 const TERMINAL_TASK_SQL = "('done','dropped')"
 const STALENESS_SCOPE = new Set(['in-progress'])
 const STALENESS_WARNING_PREFIX = '[warn]'
+const DEFAULT_TRANSITION_HISTORY_BUDGET_MS = 15_000
 
 function isGitHistoryAvailable(cwd: string): boolean {
   try {
@@ -212,6 +213,8 @@ function readPreviousLifecycleStatusFromGit(
 export interface BlueprintLifecycleAuditOptions {
   /** Opt-in: also audit `.omx/plans/` derived-handoff governance (`--legacy-omx`). */
   readonly includeOmxPlans?: boolean
+  /** Bound best-effort git transition history checks so large repos degrade instead of hanging. */
+  readonly transitionHistoryBudgetMs?: number
 }
 
 export async function auditBlueprintLifecycleSql(
@@ -221,6 +224,8 @@ export async function auditBlueprintLifecycleSql(
   const budgets = loadBudgets(cwd)
   const wipInProgressMax = budgets['blueprint-wip-in-progress-max'].max ?? 3
   const staleInProgressDays = budgets['blueprint-stale-in-progress-days'].max_days ?? 14
+  const transitionHistoryBudgetMs =
+    options.transitionHistoryBudgetMs ?? DEFAULT_TRANSITION_HISTORY_BUDGET_MS
 
   // Structural markdown checks (type / status-vs-folder / _overview / linking /
   // optional .omx-plan handoff governance). Run unconditionally and merged —
@@ -439,7 +444,25 @@ export async function auditBlueprintLifecycleSql(
     if (allBlueprints.length === 0) {
       // Nothing to reconcile against history, so suppress the outside-git notice.
     } else if (isGitHistoryAvailable(cwd)) {
+      const transitionStartedAt = Date.now()
+      let transitionChecked = 0
       for (const row of allBlueprints) {
+        if (
+          transitionHistoryBudgetMs <= 0 ||
+          Date.now() - transitionStartedAt >= transitionHistoryBudgetMs
+        ) {
+          const remaining = allBlueprints.length - transitionChecked
+          advisoryViolations.push({
+            message:
+              `${STALENESS_WARNING_PREFIX} Blueprint transition history check stopped after ` +
+              `${transitionChecked}/${allBlueprints.length} files due to ` +
+              `${transitionHistoryBudgetMs}ms budget; ${remaining} unchecked`,
+          })
+          titleNotices.push('transition history check partially skipped by time budget')
+          break
+        }
+        transitionChecked += 1
+
         const currentMarkdown = readFileSync(row.file_path, 'utf8')
         if (hasHistoricalVerificationGapWaiver(currentMarkdown)) continue
 
