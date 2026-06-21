@@ -85,9 +85,6 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
   const cwd = input.cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd()
   const commandTimeoutMs = input.timeoutMs ?? DEFAULT_TEST_TIMEOUT_MS
   const workspaceSharding = resolveWorkspaceSharding(input.workspaceSharding, input.timeoutMs)
-  if (input.suite && input.files && input.files.length > 0) {
-    throw new Error('--suite cannot be combined with file targets.')
-  }
   if (input.packages && input.packages.length > 0) {
     if (input.suite) {
       return runPackageSuiteSequence(cwd, input.packages, input, workspaceSharding)
@@ -97,6 +94,18 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
 
   if (input.files && input.files.length > 0) {
     if (usesVitest(cwd)) {
+      if (input.suite) {
+        const suiteFileRuns = createExplicitFileSuiteRuns(
+          input.suite,
+          ['exec', '--', 'vitest'],
+          'file-filter',
+          input.files,
+        )
+        if (suiteFileRuns.length === 0) {
+          return noMatchingSuiteFiles(input.suite, input.files)
+        }
+        return runScopedSequence(cwd, suiteFileRuns, input, workspaceSharding)
+      }
       const fileShardRuns = createVitestShardRunsFromFiles(cwd, input.files, workspaceSharding)
       if (fileShardRuns && fileShardRuns.length > 0) {
         return runScopedConcurrent(cwd, fileShardRuns, input, workspaceSharding)
@@ -107,6 +116,9 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
         { ...input, cwd, timeoutMs: commandTimeoutMs },
       )
       return withFailureScope(result, 'file-filter command')
+    }
+    if (input.suite) {
+      return unsupportedSuiteFileFilter(input.suite, input.files)
     }
     const result = await runCommand('vp', ['run', 'test', '--', ...input.files], {
       ...input,
@@ -169,13 +181,22 @@ async function runPackageSuiteSequence(
     assertVitestBackedPackageTarget(cwd, pkg)
   }
 
-  const suiteRuns = packages.flatMap((pkg) =>
-    createVitestScopedRuns(
-      input.suite ?? 'all',
-      ['exec', '--filter', pkg, '--', 'vitest'],
-      `package ${pkg}`,
-    ),
-  )
+  const suiteRuns = packages.flatMap((pkg) => {
+    const prefixArgs = ['exec', '--filter', pkg, '--', 'vitest']
+    if (input.files && input.files.length > 0) {
+      return createExplicitFileSuiteRuns(
+        input.suite ?? 'all',
+        prefixArgs,
+        `package ${pkg}`,
+        input.files,
+      )
+    }
+    return createVitestScopedRuns(input.suite ?? 'all', prefixArgs, `package ${pkg}`)
+  })
+
+  if (suiteRuns.length === 0 && input.files && input.files.length > 0) {
+    return noMatchingSuiteFiles(input.suite ?? 'all', input.files)
+  }
 
   return runScopedSequence(cwd, suiteRuns, input, workspaceSharding)
 }
@@ -539,6 +560,72 @@ function createVitestScopedRuns(
     scope: `${scopePrefix} (${run.label})`,
     args: [...prefixArgs, ...run.vitestArgs],
   }))
+}
+
+function createExplicitFileSuiteRuns(
+  suite: TestSuiteName,
+  prefixArgs: readonly string[],
+  scopePrefix: string,
+  files: readonly string[],
+): ScopedRun[] {
+  return resolveTestSuiteRuns(suite).flatMap((run) => {
+    const selectedFiles = filterFilesForSuite(files, run.suite)
+    if (selectedFiles.length === 0) return []
+    return [
+      {
+        scope: `${scopePrefix} (${run.label}, ${selectedFiles.length} file${
+          selectedFiles.length === 1 ? '' : 's'
+        })`,
+        args: [...prefixArgs, ...createExplicitFileSuiteVitestArgs(run.suite), ...selectedFiles],
+      },
+    ]
+  })
+}
+
+function createExplicitFileSuiteVitestArgs(
+  suite: Exclude<TestSuiteName, 'all'>,
+): readonly string[] {
+  if (suite === 'integration') {
+    return [
+      'run',
+      '--no-file-parallelism',
+      '--testTimeout',
+      '30000',
+      '--reporter=json',
+      '--no-color',
+    ]
+  }
+  return [
+    'run',
+    '--exclude',
+    '**/*.integration.test.ts',
+    '--exclude',
+    '**/*.e2e.test.ts',
+    '--reporter=json',
+    '--no-color',
+  ]
+}
+
+function noMatchingSuiteFiles(suite: TestSuiteName, files: readonly string[]): TestResult {
+  return {
+    passed: false,
+    output: `No explicit file targets matched suite "${suite}". Refusing to expand ${
+      files.length
+    } file target${files.length === 1 ? '' : 's'} into a broader suite run.`,
+    exitCode: 1,
+    failureScope: 'file-suite filter',
+  }
+}
+
+function unsupportedSuiteFileFilter(suite: TestSuiteName, files: readonly string[]): TestResult {
+  return {
+    passed: false,
+    output: `Suite "${suite}" cannot be applied to ${files.length} explicit file target${
+      files.length === 1 ? '' : 's'
+    } because the workspace is not Vitest-backed. Refusing to ignore the suite filter.`,
+    exitCode: 1,
+    failureScope: 'file-suite filter',
+  }
 }
 
 function discoverVitestFiles(cwd: string): string[] {

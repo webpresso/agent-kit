@@ -13,14 +13,31 @@ describe('Claude skill helper snippets', () => {
   const content = readFileSync(skillPaths[0]!, 'utf8')
 
   it('uses Claude CLI login directly instead of API-key fallback auth', () => {
-    expect(content).toContain('claude auth status')
+    expect(content).toContain('claude auth status --json')
+    expect(content).toContain('claude auth status >"$AUTH_STATUS_FILE"')
     expect(content).toContain('CLAUDE_AUTH=cli-login')
     expect(content).toContain('run claude auth login with the intended Claude Max account')
+    expect(content).not.toContain('claude auth status --output json')
     expect(content).not.toContain('ANTHROPIC_API_KEY')
     expect(content).not.toContain('CLAUDE_API_KEY')
     expect(content).not.toContain('CLAUDE_AUTH=api-key')
     expect(content).not.toContain('CLAUDE_AUTH=credentials-file')
     expect(content).not.toContain('$HOME/.claude/.credentials.json')
+  })
+
+  it('keeps source, staged, and packaged Claude skill surfaces free of stale auth fallbacks', () => {
+    for (const skillPath of skillPaths) {
+      const skill = readFileSync(skillPath, 'utf8')
+      expect(skill, skillPath).toContain('claude auth status --json')
+      expect(skill, skillPath).toContain('claude auth status >"$AUTH_STATUS_FILE"')
+      expect(skill, skillPath).not.toContain('claude auth status --output json')
+      expect(skill, skillPath).not.toContain('ANTHROPIC_API_KEY')
+      expect(skill, skillPath).not.toContain('CLAUDE_API_KEY')
+      expect(skill, skillPath).not.toContain('CLAUDE_AUTH=api-key')
+      expect(skill, skillPath).not.toContain('CLAUDE_AUTH=credentials-file')
+      expect(skill, skillPath).not.toContain('$HOME/.claude/.credentials.json')
+      expect(skill, skillPath).not.toContain('$HOME/.config/claude/credentials.json')
+    }
   })
 
   it('requires explicit logged-in booleans across all staged Claude skill surfaces', () => {

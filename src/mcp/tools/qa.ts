@@ -22,6 +22,7 @@
 import { z } from 'zod'
 
 import type { ToolDescriptor, ToolHandlerResult } from '#mcp/auto-discover'
+import { TEST_SUITE_VALUES } from '#test'
 import {
   createSummaryOutputSchema,
   createSummaryResult,
@@ -50,6 +51,8 @@ const inputSchema = z
     // Forwarded to `wp_typecheck.packages` and `wp_test.packages` to scope
     // the run to specific workspace packages.
     packages: z.array(z.string()).optional(),
+    // Forwarded only to `wp_test`; lint/typecheck do not have suite semantics.
+    suite: z.enum(TEST_SUITE_VALUES).optional(),
     // Forwarded only to `wp_test` so QA callers can use the same safe test
     // budget contract without widening lint/typecheck inputs.
     timeoutMs: z.number().int().positive().max(MCP_SAFE_TEST_BUDGET_MS).optional(),
@@ -278,6 +281,7 @@ const tool: ToolDescriptor = {
           cwd: input.cwd,
           files: input.files,
           packages: input.packages,
+          suite: input.suite,
           timeoutMs: input.timeoutMs,
           workspaceSharding: input.workspaceSharding,
           full: input.full,

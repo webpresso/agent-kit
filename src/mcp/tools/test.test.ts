@@ -179,15 +179,39 @@ describe('wp_test tool', () => {
       expect(spawnMock).not.toHaveBeenCalled()
     })
 
-    it('rejects combining suite selection with file targets', async () => {
-      await expect(
-        wpTestTool.handler({ suite: 'unit', files: ['src/example.test.ts'] }),
-      ).rejects.toSatisfy(
-        (error: unknown) =>
-          error instanceof Error &&
-          /--suite cannot be combined with file targets/i.test(error.message),
-      )
-      expect(spawnMock).not.toHaveBeenCalled()
+    it('treats suite selection as a filter over explicit file targets', async () => {
+      writeVitestWorkspace(dir)
+      spawnMock.mockReturnValue(fakeChild({ stdout: '{}\n', exitCode: 0 }))
+
+      const result = await wpTestTool.handler({
+        suite: 'unit',
+        files: ['src/example.test.ts', 'src/slow.integration.test.ts'],
+      })
+      const payload = result.structuredContent as {
+        passed: boolean
+        details?: { suite?: string; files?: string[] }
+      }
+
+      expect(spawnMock).toHaveBeenCalledOnce()
+      expect(spawnMock.mock.calls[0]![1]).toEqual([
+        'exec',
+        '--',
+        'vitest',
+        'run',
+        '--exclude',
+        '**/*.integration.test.ts',
+        '--exclude',
+        '**/*.e2e.test.ts',
+        '--reporter=json',
+        '--no-color',
+        'src/example.test.ts',
+      ])
+      expect(payload.passed).toBe(true)
+      expect(payload.details?.suite).toBe('unit')
+      expect(payload.details?.files).toEqual([
+        'src/example.test.ts',
+        'src/slow.integration.test.ts',
+      ])
     })
 
     it('rejects invalid workspace sharding inputs', async () => {

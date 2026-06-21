@@ -496,8 +496,15 @@ describe('sessionstart hook buildOutput', () => {
 
     expect(result.status).toBe(0)
     const parsed = JSON.parse(result.stdout) as ParsedOutput
+    const ctx = parsed.hookSpecificOutput.additionalContext
     expect(parsed.hookSpecificOutput.hookEventName).toBe('SessionStart')
-    expect(parsed.hookSpecificOutput.additionalContext).toContain(WP_ROUTING_BLOCK)
+    const routingIndex = ctx.indexOf('<wp_routing>')
+    expect(routingIndex).toBe(0)
+    expect(ctx).toContain('<tool name="wp_test">')
+    const continuityIndex = ctx.indexOf('<wp_session_continuity')
+    if (continuityIndex !== -1) {
+      expect(routingIndex).toBeLessThan(continuityIndex)
+    }
   })
 })
 

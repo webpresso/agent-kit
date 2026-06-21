@@ -21,9 +21,11 @@ Use the local Claude CLI login directly. This is the Claude Max / first-party ac
 ```bash
 AUTH_STATUS_FILE=$(mktemp -t wp-claude-auth.XXXXXX)
 trap 'rm -f "$AUTH_STATUS_FILE"' EXIT
-if ! claude auth status >"$AUTH_STATUS_FILE" 2>/dev/null; then
-  echo "CLAUDE_AUTH=missing: run claude auth login with the intended Claude Max account"
-  exit 1
+if ! claude auth status --json >"$AUTH_STATUS_FILE" 2>/dev/null; then
+  if ! claude auth status >"$AUTH_STATUS_FILE" 2>/dev/null; then
+    echo "CLAUDE_AUTH=missing: run claude auth login with the intended Claude Max account"
+    exit 1
+  fi
 fi
 if grep -E '"(authenticated|loggedIn|success)"[[:space:]]*:[[:space:]]*true' "$AUTH_STATUS_FILE" >/dev/null; then
   echo "CLAUDE_AUTH=cli-login"

@@ -45,7 +45,7 @@ describe('stageGstackSkills', () => {
     ])
     const stagedClaude = readFileSync(path.join(root, first.staged[0]!), 'utf8')
     expect(stagedClaude).toContain('name: claude')
-    expect(stagedClaude).toContain('claude auth status')
+    expect(stagedClaude).toContain('claude auth status --json')
     expect(stagedClaude).toContain('claude auth status >"$AUTH_STATUS_FILE"')
     expect(stagedClaude).not.toContain('claude auth status --output json')
     expect(stagedClaude).not.toContain('ANTHROPIC_API_KEY')

@@ -428,13 +428,88 @@ describe('buildTestCommand', () => {
     })
   })
 
-  it('rejects suite selection for file targets', () => {
+  it('treats suite selection as a filter over explicit file targets', () => {
+    expect(
+      buildTestCommand(
+        {
+          type: 'file',
+          values: ['apps/cli2/src/commands/target.test.ts', 'apps/cli2/src/db.integration.test.ts'],
+        },
+        { suite: 'unit', coverage: true },
+      ),
+    ).toEqual({
+      command: 'rtk',
+      args: [
+        expect.stringContaining('vitest'),
+        'run',
+        '--exclude',
+        '**/*.integration.test.ts',
+        '--exclude',
+        '**/*.e2e.test.ts',
+        '--coverage',
+        'apps/cli2/src/commands/target.test.ts',
+      ],
+    })
+  })
+
+  it('does not broaden explicit file targets when no file matches the selected suite', () => {
     expect(() =>
       buildTestCommand(
-        { type: 'file', values: ['apps/cli2/src/commands/target.test.ts'] },
+        { type: 'file', values: ['apps/cli2/src/db.integration.test.ts'] },
         { suite: 'unit' },
       ),
-    ).toThrow(/--suite cannot be combined with file targets/i)
+    ).toThrow(/refusing to expand 1 file target into a broader suite run/i)
+  })
+
+  it('builds separate explicit file runs for suite=all without broadening', () => {
+    const command = buildTestCommand(
+      {
+        type: 'file',
+        values: [
+          'vitest.config.ts',
+          'apps/cli2/src/commands/target.test.ts',
+          'apps/cli2/src/db.integration.test.ts',
+        ],
+      },
+      { suite: 'all', testNamePattern: 'core' },
+    )
+
+    expect(isCommandSequenceConfig(command)).toBe(true)
+    if (!isCommandSequenceConfig(command)) return
+
+    expect(command.sequence).toEqual([
+      {
+        command: 'rtk',
+        args: [
+          expect.stringContaining('vitest'),
+          'run',
+          '--config',
+          'vitest.config.ts',
+          '--exclude',
+          '**/*.integration.test.ts',
+          '--exclude',
+          '**/*.e2e.test.ts',
+          '-t',
+          'core',
+          'apps/cli2/src/commands/target.test.ts',
+        ],
+      },
+      {
+        command: 'rtk',
+        args: [
+          expect.stringContaining('vitest'),
+          'run',
+          '--config',
+          'vitest.config.ts',
+          '--no-file-parallelism',
+          '--testTimeout',
+          '30000',
+          '-t',
+          'core',
+          'apps/cli2/src/db.integration.test.ts',
+        ],
+      },
+    ])
   })
 
   it('rejects suite selection with mutation, workers, or watch mode', () => {

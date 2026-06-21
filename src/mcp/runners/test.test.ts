@@ -264,6 +264,43 @@ describe('test runner', () => {
     }
   })
 
+  it('treats suite selection as a filter over explicit package file targets', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'wp-vp-vitest-suite-files-'))
+    try {
+      vi.stubEnv('CLAUDE_PROJECT_DIR', root)
+      writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'workspace-root' }))
+      mkdirSync(join(root, 'packages', 'a'), { recursive: true })
+      writeFileSync(
+        join(root, 'packages', 'a', 'package.json'),
+        JSON.stringify({ devDependencies: { vitest: '^4.0.0' } }),
+      )
+      spawnMock.mockReturnValueOnce(fakeChild({ stdout: '{}\n', exitCode: 0 }))
+
+      await runTests({
+        packages: ['a'],
+        suite: 'integration',
+        files: ['src/a.test.ts', 'src/a.integration.test.ts'],
+      })
+
+      expect(spawnMock.mock.calls[0]![1]).toEqual([
+        'exec',
+        '--filter',
+        'a',
+        '--',
+        'vitest',
+        'run',
+        '--no-file-parallelism',
+        '--testTimeout',
+        '30000',
+        '--reporter=json',
+        '--no-color',
+        'src/a.integration.test.ts',
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   it('preserves file filters for non-vitest package test scripts', async () => {
     const root = mkdtempSync(join(tmpdir(), 'wp-vp-script-files-'))
     try {
@@ -444,11 +481,43 @@ describe('test runner', () => {
     ])
   })
 
-  it('rejects combining suite selection with file targets', async () => {
-    await expect(runTests({ suite: 'unit', files: ['a.test.ts'] })).rejects.toThrow(
-      /--suite cannot be combined with file targets/i,
-    )
+  it('treats suite selection as a filter over explicit workspace file targets', async () => {
+    writeVitestWorkspace(defaultRoot!)
+    spawnMock.mockReturnValue(fakeChild({ stdout: '{}\n', exitCode: 0 }))
+
+    await runTests({
+      suite: 'unit',
+      files: ['src/a.test.ts', 'src/slow.integration.test.ts'],
+    })
+
+    expect(spawnMock).toHaveBeenCalledOnce()
+    expect(spawnMock.mock.calls[0]![1]).toEqual([
+      'exec',
+      '--',
+      'vitest',
+      'run',
+      '--exclude',
+      '**/*.integration.test.ts',
+      '--exclude',
+      '**/*.e2e.test.ts',
+      '--reporter=json',
+      '--no-color',
+      'src/a.test.ts',
+    ])
+  })
+
+  it('does not broaden explicit file targets when no file matches the selected suite', async () => {
+    writeVitestWorkspace(defaultRoot!)
+
+    const result = await runTests({
+      suite: 'integration',
+      files: ['src/a.test.ts'],
+    })
+
     expect(spawnMock).not.toHaveBeenCalled()
+    expect(result.passed).toBe(false)
+    expect(result.failureScope).toBe('file-suite filter')
+    expect(result.output).toContain('Refusing to expand 1 file target into a broader suite run')
   })
 
   it('shards root vitest workspace runs across discovered test files', async () => {
@@ -611,6 +680,15 @@ describe('test runner', () => {
     } finally {
       nowSpy.mockRestore()
     }
+  })
+
+  it('fails closed instead of ignoring suite for non-vitest workspace file targets', async () => {
+    const result = await runTests({ suite: 'unit', files: ['src/a.test.ts'] })
+
+    expect(spawnMock).not.toHaveBeenCalled()
+    expect(result.passed).toBe(false)
+    expect(result.failureScope).toBe('file-suite filter')
+    expect(result.output).toContain('Refusing to ignore the suite filter')
   })
 
   it('runs `vp run test -- <files>` when files are given without packages', async () => {

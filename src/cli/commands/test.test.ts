@@ -95,6 +95,26 @@ describe('wp test command helpers', () => {
     })
   })
 
+  it('treats suite selection as a filter over explicit file targets', () => {
+    expect(
+      createAkTestCommandConfig({
+        suite: 'unit',
+        file: ['apps/cli2/src/commands/target.test.ts'],
+      }),
+    ).toEqual({
+      command: 'rtk',
+      args: [
+        expect.stringContaining('vitest'),
+        'run',
+        '--exclude',
+        '**/*.integration.test.ts',
+        '--exclude',
+        '**/*.e2e.test.ts',
+        'apps/cli2/src/commands/target.test.ts',
+      ],
+    })
+  })
+
   it('builds a two-phase command sequence for suite=all', () => {
     const command = createAkTestCommandConfig({ suite: 'all' })
     expect(isCommandSequenceConfig(command)).toBe(true)
