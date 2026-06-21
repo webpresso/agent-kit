@@ -2,11 +2,11 @@
 type: blueprint
 title: Publish fact-checked 5-competitor context-management feature parity matrix
 owner: ozby
-status: planned
+status: completed
 complexity: M
 created: '2026-06-21'
 last_updated: '2026-06-21'
-progress: '0% (0/5 tasks done, 0 blocked)'
+progress: '100% (5/5 tasks done, 0 blocked)'
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -67,33 +67,38 @@ the numbers — they were verified against source on 2026-06-21:
 
 ## Tasks
 
-### Task 1: Write the corrected matrix
-- [ ] Create `docs/competitive/feature-parity-matrix.md` with the exact content
+#### [docs] Task 1.1: Write the corrected matrix
+**Status:** done
+- [x] Create `docs/competitive/feature-parity-matrix.md` with the exact content
       in the "Canonical deliverable" appendix below (all corrections applied).
 
-### Task 2: Verify fact-check corrections landed
-- [ ] `grep -c "IDF-weighted Levenshtein fallback" docs/competitive/feature-parity-matrix.md`
+#### [qa] Task 1.2: Verify fact-check corrections landed
+**Status:** done
+- [x] `grep -c "IDF-weighted Levenshtein fallback" docs/competitive/feature-parity-matrix.md`
       returns 0 unconditional uses; the per-backend split wording is present.
-- [ ] The capture_event performance row reads `target <0.5ms; bench gate ≤2ms`,
+- [x] The capture_event performance row reads `target <0.5ms; bench gate ≤2ms`,
       not a bare `<0.5ms`.
-- [ ] The MCP-tools row reads `~28 compiled + blueprint MCP tools (>30 total)`,
+- [x] The MCP-tools row reads `~28 compiled + blueprint MCP tools (>30 total)`,
       not a bare `30+`.
 
-### Task 3: Verify positioning honesty (eng-review decision)
-- [ ] §11 marks search/compression/speed superiority as **projected, pending
+#### [qa] Task 1.3: Verify positioning honesty (eng-review decision)
+**Status:** done
+- [x] §11 marks search/compression/speed superiority as **projected, pending
       published benchmarks** — not asserted as current fact — consistent with
       §5's "no public measured benchmarks yet".
 
-### Task 4: Verify DX roadmap annotations (DX-review decision)
-- [ ] §10 marks proxy/HTTP mode (#6) as the top adoption lever (zero-code wedge).
-- [ ] §10 reframes test-runner breadth (#10) as a polyglot accessibility gate.
-- [ ] §10 includes the new "actionable failure output" backlog item.
+#### [qa] Task 1.4: Verify DX roadmap annotations (DX-review decision)
+**Status:** done
+- [x] §10 marks proxy/HTTP mode (#6) as the top adoption lever (zero-code wedge).
+- [x] §10 reframes test-runner breadth (#10) as a polyglot accessibility gate.
+- [x] §10 includes the new "actionable failure output" backlog item.
 
-### Task 5: Doc hygiene + PR
-- [ ] `wp audit docs-frontmatter` passes (or the doc is exempt — it has no
+#### [qa] Task 1.5: Doc hygiene + PR
+**Status:** done
+- [x] `wp audit docs-frontmatter` passes (or the doc is exempt — it has no
       frontmatter; confirm the audit does not require it for `docs/competitive/`).
-- [ ] Data-freshness footnote present at end of file.
-- [ ] Commit and ensure the blueprint moves `planned → in-progress` on start and
+- [x] Data-freshness footnote present at end of file.
+- [x] Commit and ensure the blueprint moves `planned → in-progress` on start and
       `→ completed` on finish per lifecycle.
 
 ## Verification
@@ -117,6 +122,11 @@ grep -qi "point-in-time\|snapshot" "$M" && echo "data-freshness footnote OK"
 Write the following to `docs/competitive/feature-parity-matrix.md` **verbatim**:
 
 ````markdown
+---
+type: research
+last_updated: '2026-06-21'
+---
+
 # Context-Management Feature Parity Matrix
 
 **Date:** 2026-06-21

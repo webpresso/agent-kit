@@ -58,8 +58,11 @@ describe('stage-plugin-runtime-artifacts', () => {
         mkdirSync(dirname(operation.source), { recursive: true })
         writeFileSync(operation.source, `runtime:${operation.target.id}`, 'utf8')
       }
+      const migrationSourceDir = join(root, 'src', 'blueprint', 'db', 'migrations')
+      mkdirSync(migrationSourceDir, { recursive: true })
+      writeFileSync(join(migrationSourceDir, '0001_seed.sql'), 'CREATE TABLE blueprints();\n')
 
-      stageRuntimeArtifacts({ rootDir: root })
+      const staged = stageRuntimeArtifacts({ rootDir: root })
 
       const [operation] = buildRuntimeStageOperations({ rootDir: root })
       expect(readFileSync(operation!.pluginDestination, 'utf8')).toBe('runtime:darwin-arm64')
@@ -67,6 +70,11 @@ describe('stage-plugin-runtime-artifacts', () => {
       expect(existsSync(operation!.packageManifestDestination)).toBe(true)
       expect(JSON.parse(readFileSync(operation!.packageManifestDestination, 'utf8')).version).toBe(
         '9.8.7',
+      )
+      const migrationDistDir = join(root, 'dist', 'esm', 'blueprint', 'db', 'migrations')
+      expect(staged).toContain(migrationDistDir)
+      expect(readFileSync(join(migrationDistDir, '0001_seed.sql'), 'utf8')).toBe(
+        'CREATE TABLE blueprints();\n',
       )
       expect(existsSync(join(root, 'bin', 'wp'))).toBe(false)
     } finally {
