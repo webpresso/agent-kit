@@ -1,12 +1,15 @@
 ---
 type: blueprint
-title: "Session continuity and resume parity"
+title: Session continuity and resume parity
 owner: ozby
-status: planned
+status: parked
 complexity: XL
 created: '2026-06-13'
-last_updated: '2026-06-13'
-progress: '0% (planned; refined 2026-06-13 with fact-check, path, command, safety, and parallelization audit)'
+last_updated: '2026-06-21'
+progress: '0% (0/8 tasks done, 0 blocked, updated 2026-06-21)'
+parked_reason: >-
+  Refresh needed before execution/completion: current implementation migrates legacy rows
+  instead of fail-closed behavior and SessionStart timeout proof gap remains.
 depends_on: []
 cross_repo_depends_on: []
 tags:

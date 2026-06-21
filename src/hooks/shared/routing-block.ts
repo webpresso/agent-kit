@@ -199,7 +199,8 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
   </hook_diagnostics>
 
   <package_guidance>
-    <rule>Consumers add @webpresso/agent-kit for CLI/audit/tooling helpers such as @webpresso/agent-kit/oxlint, @webpresso/agent-kit/test-preset, @webpresso/agent-kit/e2e-preset, @webpresso/agent-kit/docs-lint, and @webpresso/agent-kit/launch; and add @webpresso/agent-config for config presets such as @webpresso/agent-config/tsconfig/base.json, @webpresso/agent-config/vitest/node, @webpresso/agent-config/stryker, and @webpresso/agent-config/workers-test.</rule>
+    <rule>Consumers use a global wp CLI for agent-kit CLI/audit/tooling surfaces and keep only @webpresso/agent-config locally for config presets such as @webpresso/agent-config/tsconfig/base.json, @webpresso/agent-config/vitest/node, @webpresso/agent-config/stryker, and @webpresso/agent-config/workers-test.</rule>
+    <rule>If a repo pins @webpresso/agent-kit and global wp reports a version-skew warning, align the global wp install to the repo pin before trusting CLI/audit/tooling output.</rule>
     <rule>Do not recommend adding retired split agent config packages for consumer projects; keep wp_* MCP tool names and wp-* hook bin names unchanged.</rule>
   </package_guidance>
 

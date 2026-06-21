@@ -2,11 +2,12 @@
 type: blueprint
 title: MCP session command sandboxing
 owner: ozby
-status: planned
+status: completed
+completed_at: '2026-06-21'
 complexity: M
 created: '2026-06-14'
 last_updated: '2026-06-14'
-progress: 'refined (0/3 tasks done, 0 blocked) — fact-checked, corrected, Blueprint-compliant'
+progress: '100% (completed; tasks verified during plan-refine reconciliation)'
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -130,7 +131,13 @@ Current tests use commands like `printf "%s\n" "hello"; exit 42` which contains 
 
 #### Task 1.1: Create unit test file for command/cwd validation
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/mcp/tools/session-command.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:21:53.508Z"},{"agent":"codex","command":"./bin/wp test --file src/mcp/tools/session-execute.test.ts -- --testNamePattern reject/non-zero/safe focused subset && ./bin/wp test --file src/mcp/tools/session-batch-execute.test.ts -- --testNamePattern reject/non-zero/safe focused subset","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:21:53.508Z"}]
+```
 
 **Depends:** None
 
@@ -148,17 +155,22 @@ The cwd tests must construct the trusted root explicitly (a tmpdir treated as `C
 4. Note: tests remain failing until Task 2.1 implements `validateCommand`
 
 **Acceptance:**
-- [ ] Test file exists at `src/mcp/tools/session-command.test.ts`
-- [ ] Tests cover command injection, shell metacharacters, and cwd escape vectors
-- [ ] cwd tests anchor the trusted root independently of the cwd under test
-- [ ] Tests follow existing conventions (Vitest, tmpdir cleanup, direct internal imports)
-- [ ] All tests fail (Task 2.1 will make them pass)
+- [x] Test file exists at `src/mcp/tools/session-command.test.ts`
+- [x] Tests cover command injection, shell metacharacters, and cwd escape vectors
+- [x] cwd tests anchor the trusted root independently of the cwd under test
+- [x] Tests follow existing conventions (Vitest, tmpdir cleanup, direct internal imports)
+- [x] All tests fail (Task 2.1 will make them pass)
 
 ---
-
 #### Task 2.1: Implement command and cwd validation in `runSessionCommand`
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/mcp/tools/session-command.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:21:53.508Z"},{"agent":"codex","command":"./bin/wp test --file src/mcp/tools/session-execute.test.ts -- --testNamePattern reject/non-zero/safe focused subset && ./bin/wp test --file src/mcp/tools/session-batch-execute.test.ts -- --testNamePattern reject/non-zero/safe focused subset","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:21:53.508Z"}]
+```
 
 **Depends:** Task 1.1
 
@@ -186,19 +198,24 @@ Wire `projectRoot` resolution at the handler boundary: in each caller, resolve t
 6. Run `wp typecheck` (or the `wp_typecheck` MCP tool) — verify zero errors
 
 **Acceptance:**
-- [ ] `validateCommand` is exported and rejects shell metacharacters at the top level
-- [ ] `input.cwd` outside the independently-anchored project root is rejected before spawn
-- [ ] `projectRoot` is derived from `CLAUDE_PROJECT_DIR`/`process.cwd()`, never from `input.cwd`
-- [ ] `runSessionCommand` still uses `spawn('sh', ['-c', command])` for validated commands
-- [ ] `session-command.test.ts` passes all cases
-- [ ] `wp typecheck` passes
-- [ ] Existing safe-command tests in `session-execute.test.ts` / `session-batch-execute.test.ts` still pass (the two top-level-`;`/`exit` cases are rewritten in Task 3.1, not here)
+- [x] `validateCommand` is exported and rejects shell metacharacters at the top level
+- [x] `input.cwd` outside the independently-anchored project root is rejected before spawn
+- [x] `projectRoot` is derived from `CLAUDE_PROJECT_DIR`/`process.cwd()`, never from `input.cwd`
+- [x] `runSessionCommand` still uses `spawn('sh', ['-c', command])` for validated commands
+- [x] `session-command.test.ts` passes all cases
+- [x] `wp typecheck` passes
+- [x] Existing safe-command tests in `session-execute.test.ts` / `session-batch-execute.test.ts` still pass (the two top-level-`;`/`exit` cases are rewritten in Task 3.1, not here)
 
 ---
-
 #### Task 3.1: Add malicious-input integration tests and rewrite the two shell-builtin tests
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/mcp/tools/session-command.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:21:53.508Z"},{"agent":"codex","command":"./bin/wp test --file src/mcp/tools/session-execute.test.ts -- --testNamePattern reject/non-zero/safe focused subset && ./bin/wp test --file src/mcp/tools/session-batch-execute.test.ts -- --testNamePattern reject/non-zero/safe focused subset","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:21:53.508Z"}]
+```
 
 **Depends:** Task 2.1
 
@@ -224,12 +241,12 @@ This task ALSO rewrites the two existing tests that relied on a top-level `;`/`e
 5. Run the `wp_test` MCP tool on `src/mcp/tools/session-batch-execute.test.ts` — verify PASS
 
 **Acceptance:**
-- [ ] Injection payloads in `wp_session_execute` handler fail before spawn
-- [ ] Injection payloads in `wp_session_batch_execute` handler fail before spawn
-- [ ] cwd escape attempts via both handlers fail before spawn
-- [ ] The two non-zero-exit tests are rewritten to use a real binary (no top-level `;`/`exit`) and keep their original assertions
-- [ ] Safe commands continue to work
-- [ ] `wp_test` on `session-execute.test.ts` and `session-batch-execute.test.ts` passes
+- [x] Injection payloads in `wp_session_execute` handler fail before spawn
+- [x] Injection payloads in `wp_session_batch_execute` handler fail before spawn
+- [x] cwd escape attempts via both handlers fail before spawn
+- [x] The two non-zero-exit tests are rewritten to use a real binary (no top-level `;`/`exit`) and keep their original assertions
+- [x] Safe commands continue to work
+- [x] `wp_test` on `session-execute.test.ts` and `session-batch-execute.test.ts` passes
 
 ---
 

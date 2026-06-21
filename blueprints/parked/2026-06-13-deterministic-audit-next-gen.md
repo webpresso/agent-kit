@@ -1,12 +1,17 @@
 ---
 type: blueprint
-title: "Next-gen deterministic audit improvements: metadata, SARIF, diff-aware reporting"
+title: >-
+  Next-gen deterministic audit improvements: metadata, SARIF, diff-aware
+  reporting
 owner: ozby
-status: planned
+status: parked
 complexity: L
-created: "2026-06-13"
-last_updated: "2026-06-13"
-progress: "0% (planned; research-backed draft, tasks unstarted)"
+created: '2026-06-13'
+last_updated: '2026-06-21'
+progress: '0% (0/10 tasks done, 0 blocked, updated 2026-06-21)'
+parked_reason: >-
+  Refresh needed before execution: audit registry/result contracts have drifted;
+  SARIF/diff-aware task inventory must be updated against current audit surface.
 tags:
   - audit
   - deterministic

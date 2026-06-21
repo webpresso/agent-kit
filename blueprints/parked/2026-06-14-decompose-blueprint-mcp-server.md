@@ -2,11 +2,14 @@
 type: blueprint
 title: Decompose blueprint MCP server
 owner: ozby
-status: planned
+status: parked
 complexity: XL
 created: '2026-06-14'
-last_updated: '2026-06-14'
-progress: '0% (0/9 tasks done, 0 blocked)'
+last_updated: '2026-06-21'
+progress: '0% (0/9 tasks done, 0 blocked, updated 2026-06-21)'
+parked_reason: >-
+  Refresh needed before execution: shared-module extraction partially landed and
+  blueprint-server line/function inventory drifted; avoid duplicating extraction work.
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -14,8 +17,6 @@ tags:
   - mcp
   - blueprint
   - srp
-worktree_owner_id: ''
-worktree_owner_branch: ''
 ---
 
 # Decompose blueprint MCP server

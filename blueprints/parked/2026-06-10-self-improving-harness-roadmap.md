@@ -1,12 +1,15 @@
 ---
 type: parent-roadmap
-title: "Self-improving harness — gated loop roadmap"
+title: Self-improving harness — gated loop roadmap
 owner: ozby
-status: planned
+status: parked
 complexity: XL
-created: "2026-06-10"
-last_updated: "2026-06-15"
-progress: "child execution implemented in PR #139 and parked for legal lifecycle finalization; parent roadmap remains planned for deferred proposal stage"
+created: '2026-06-10'
+last_updated: '2026-06-21'
+progress: '0% (0/0 tasks done, 0 blocked, updated 2026-06-21)'
+parked_reason: >-
+  Child execution is implemented/parked and parent proposal stage is deferred pending
+  legal/lifecycle finalization; not executable as ordinary planned work.
 depends_on:
   - 2026-06-10-harness-surface-manifest
   - 2026-06-10-weakness-mining-audit

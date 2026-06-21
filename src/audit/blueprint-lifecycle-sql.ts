@@ -20,7 +20,7 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import {
@@ -29,6 +29,7 @@ import {
   parseLifecycleBlueprintStatus,
 } from '#lifecycle/transition-matrix.js'
 import { buildEphemeralProjection } from '#db/ephemeral-projection.js'
+import { parseBlueprintDocumentRelativePath } from '#utils/document-paths.js'
 
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 import { loadBudgets } from './_budgets.js'
@@ -47,13 +48,29 @@ interface TaskInProgressRow {
   status: string
 }
 
+interface TransitionCandidate {
+  readonly currentPath: string
+  readonly previousRevision: string
+  readonly previousPaths: readonly string[]
+}
+
 /** A task is "terminal" (counts as finished) when it is done OR intentionally dropped. */
 const TERMINAL_TASK_SQL = "('done','dropped')"
 const STALENESS_SCOPE = new Set(['in-progress'])
 const STALENESS_WARNING_PREFIX = '[warn]'
-const DEFAULT_TRANSITION_HISTORY_BUDGET_MS = 15_000
+
+function hasGitMetadata(cwd: string): boolean {
+  let current = path.resolve(cwd)
+  while (true) {
+    if (existsSync(path.join(current, '.git'))) return true
+    const parent = path.dirname(current)
+    if (parent === current) return false
+    current = parent
+  }
+}
 
 function isGitHistoryAvailable(cwd: string): boolean {
+  if (!hasGitMetadata(cwd)) return false
   try {
     execFileSync('git', ['rev-parse', '--show-toplevel'], {
       cwd,
@@ -67,9 +84,231 @@ function isGitHistoryAvailable(cwd: string): boolean {
   }
 }
 
+function normalizeGitPath(filePath: string): string {
+  return filePath.replace(/\\/g, '/').replace(/^"|"$/g, '')
+}
+
+function repoRelativePathForGit(cwd: string, filePath: string): string {
+  const rawRelativePath = path.isAbsolute(filePath) ? path.relative(cwd, filePath) : filePath
+  const normalized = normalizeGitPath(rawRelativePath)
+  if (!normalized.startsWith('../') && normalized !== '..' && !path.isAbsolute(normalized)) {
+    return normalized
+  }
+
+  const segments = normalizeGitPath(filePath).split('/')
+  const blueprintsIdx = segments.lastIndexOf('blueprints')
+  if (blueprintsIdx >= 0) return segments.slice(blueprintsIdx).join('/')
+  return normalized
+}
+
+function parsePorcelainPath(line: string): string | null {
+  const payload = line.slice(3).trim()
+  if (!payload) return null
+  const renameSeparator = ' -> '
+  const currentPath = payload.includes(renameSeparator)
+    ? (payload.split(renameSeparator).at(-1) ?? payload)
+    : payload
+  return normalizeGitPath(currentPath)
+}
+
+interface NameStatusEntry {
+  readonly status: string
+  readonly currentPath: string
+  readonly previousPaths: readonly string[]
+}
+
+function blueprintSlugFromGitPath(filePath: string): string | null {
+  const segments = normalizeGitPath(filePath).split('/').filter(Boolean)
+  const blueprintsIdx = segments.lastIndexOf('blueprints')
+  const relativePath =
+    blueprintsIdx >= 0 ? segments.slice(blueprintsIdx + 1).join('/') : segments.join('/')
+  return parseBlueprintDocumentRelativePath(relativePath)?.slug ?? null
+}
+
+function parseNameStatusLine(line: string): NameStatusEntry | null {
+  const trimmed = line.trim()
+  if (!trimmed) return null
+  const parts = trimmed.split('\t').filter(Boolean)
+  const status = parts[0] ?? ''
+  if (status.startsWith('D')) {
+    const deletedPath = parts[1]
+    return deletedPath
+      ? { status, currentPath: normalizeGitPath(deletedPath), previousPaths: [] }
+      : null
+  }
+  if (status.startsWith('R') || status.startsWith('C')) {
+    const oldPath = parts[1]
+    const newPath = parts[2]
+    if (!newPath) return null
+    return {
+      status,
+      currentPath: normalizeGitPath(newPath),
+      previousPaths: oldPath ? [normalizeGitPath(oldPath)] : [],
+    }
+  }
+  const currentPath = parts[1]
+  if (!currentPath) return null
+  const previousPaths = status.startsWith('A') ? [] : [normalizeGitPath(currentPath)]
+  return { status, currentPath: normalizeGitPath(currentPath), previousPaths }
+}
+
+function addNameStatusCandidates(
+  candidates: Map<string, TransitionCandidate>,
+  out: string,
+  previousRevision: string,
+): void {
+  const deletedPathsBySlug = new Map<string, string[]>()
+  const entries: NameStatusEntry[] = []
+  for (const rawLine of out.split('\n')) {
+    const parsed = parseNameStatusLine(rawLine)
+    if (!parsed) continue
+    if (parsed.status.startsWith('D')) {
+      const slug = blueprintSlugFromGitPath(parsed.currentPath)
+      if (!slug) continue
+      const paths = deletedPathsBySlug.get(slug) ?? []
+      paths.push(parsed.currentPath)
+      deletedPathsBySlug.set(slug, paths)
+      continue
+    }
+    entries.push(parsed)
+  }
+
+  for (const parsed of entries) {
+    const deletedSameSlug =
+      parsed.previousPaths.length === 0
+        ? (deletedPathsBySlug.get(blueprintSlugFromGitPath(parsed.currentPath) ?? '') ?? [])
+        : []
+    upsertTransitionCandidate(candidates, {
+      currentPath: parsed.currentPath,
+      previousRevision,
+      previousPaths: [...parsed.previousPaths, ...deletedSameSlug],
+    })
+  }
+}
+
+function upsertTransitionCandidate(
+  candidates: Map<string, TransitionCandidate>,
+  candidate: TransitionCandidate,
+): void {
+  const existing = candidates.get(candidate.currentPath)
+  if (!existing) {
+    candidates.set(candidate.currentPath, candidate)
+    return
+  }
+
+  const previousPaths = [...new Set([...existing.previousPaths, ...candidate.previousPaths])]
+  candidates.set(candidate.currentPath, {
+    currentPath: candidate.currentPath,
+    previousRevision:
+      existing.previousPaths.length > 0 ? existing.previousRevision : candidate.previousRevision,
+    previousPaths,
+  })
+}
+
+function readMergeBase(cwd: string, baseRef: string): string | null {
+  try {
+    const out = execFileSync('git', ['merge-base', baseRef, 'HEAD'], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 1_500,
+    }).trim()
+    return out.length > 0 ? out : null
+  } catch {
+    return null
+  }
+}
+
+function listChangedBlueprintCandidates(
+  cwd: string,
+  options: { baseRef?: string } = {},
+): Map<string, TransitionCandidate> | null {
+  try {
+    const candidates = new Map<string, TransitionCandidate>()
+
+    const mergeBase = options.baseRef ? readMergeBase(cwd, options.baseRef) : null
+    if (mergeBase) {
+      const baseOut = execFileSync(
+        'git',
+        ['diff', '--name-status', '--find-renames=20%', `${mergeBase}..HEAD`, '--', 'blueprints'],
+        {
+          cwd,
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'pipe'],
+          timeout: 1_500,
+          maxBuffer: 1024 * 1024,
+        },
+      )
+      addNameStatusCandidates(candidates, baseOut, mergeBase)
+    } else {
+      // Local fallback: in the absence of an explicit base ref, check the most
+      // recent committed blueprint changes plus the dirty/staged working tree.
+      const headOut = execFileSync(
+        'git',
+        [
+          'diff-tree',
+          '--no-commit-id',
+          '--name-status',
+          '-r',
+          '--find-renames=20%',
+          'HEAD',
+          '--',
+          'blueprints',
+        ],
+        {
+          cwd,
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'pipe'],
+          timeout: 1_500,
+          maxBuffer: 1024 * 1024,
+        },
+      )
+      addNameStatusCandidates(candidates, headOut, 'HEAD^')
+    }
+
+    const stagedOut = execFileSync(
+      'git',
+      ['diff', '--name-status', '--find-renames=20%', '--cached', '--', 'blueprints'],
+      {
+        cwd,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 1_500,
+        maxBuffer: 1024 * 1024,
+      },
+    )
+    addNameStatusCandidates(candidates, stagedOut, 'HEAD')
+
+    const statusOut = execFileSync(
+      'git',
+      ['status', '--porcelain', '--untracked-files=all', '--', 'blueprints'],
+      {
+        cwd,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 1_500,
+        maxBuffer: 1024 * 1024,
+      },
+    )
+    for (const rawLine of statusOut.split('\n')) {
+      if (!rawLine.trim()) continue
+      const parsed = parsePorcelainPath(rawLine)
+      if (!parsed) continue
+      upsertTransitionCandidate(candidates, {
+        currentPath: parsed,
+        previousRevision: 'HEAD',
+        previousPaths: [],
+      })
+    }
+    return candidates
+  } catch {
+    return null
+  }
+}
+
 function readLastGitTouchIso(cwd: string, filePath: string): string | null {
   try {
-    const repoRelativePath = path.isAbsolute(filePath) ? path.relative(cwd, filePath) : filePath
+    const repoRelativePath = repoRelativePathForGit(cwd, filePath)
     const out = execFileSync('git', ['log', '-1', '--format=%cI', '--', repoRelativePath], {
       cwd,
       encoding: 'utf8',
@@ -86,6 +325,14 @@ function ageInDays(isoTimestamp: string, nowMs: number): number | null {
   const touchedAtMs = Date.parse(isoTimestamp)
   if (Number.isNaN(touchedAtMs)) return null
   return Math.floor((nowMs - touchedAtMs) / 86_400_000)
+}
+
+function readFrontmatterStatus(markdown: string): string | null {
+  const frontmatterBody = readFrontmatterBody(markdown)
+  if (!frontmatterBody) return null
+  const statusMatch = frontmatterBody.match(/^status:\s*(.+)$/m)
+  if (!statusMatch?.[1]) return null
+  return statusMatch[1].trim().replace(/^['"]|['"]$/g, '')
 }
 
 function readFrontmatterBody(markdown: string): string | null {
@@ -108,146 +355,75 @@ function hasHistoricalZeroTaskWaiver(markdown: string): boolean {
   )
 }
 
-function normalizePatchedStatus(raw: string): string {
-  return raw.trim().replace(/^['"]|['"]$/g, '')
-}
-
-function patchedStatus(line: string, prefix: '-' | '+'): string | null {
-  if (!line.startsWith(prefix)) return null
-  const match = line.slice(1).match(/^status:\s*(.+)$/)
-  return match?.[1] ? normalizePatchedStatus(match[1]) : null
-}
-
-function frontmatterEndLine(markdown: string): number | null {
-  const lines = markdown.split('\n')
-  if (lines[0] !== '---') return null
-  for (let index = 1; index < lines.length; index += 1) {
-    if (lines[index] === '---') return index + 1
-  }
-  return null
-}
-
-interface PatchHunkPosition {
-  oldLine: number
-  newLine: number
-}
-
-function parsePatchHunkPosition(line: string): PatchHunkPosition | null {
-  const match = line.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/)
-  if (!match?.[1] || !match[2]) return null
-  return {
-    oldLine: Number(match[1]),
-    newLine: Number(match[2]),
-  }
-}
-
-function previousStatusFromPatch(
-  diff: string,
-  currentStatus: string,
-  frontmatterEnd: number | null,
-): string | null {
-  let removedStatuses: string[] = []
-  let addedStatuses: string[] = []
-  let hunkPosition: PatchHunkPosition | null = null
-
-  const evaluateCommit = (): string | null => {
-    if (!addedStatuses.includes(currentStatus)) return null
-    return removedStatuses.find((status) => status !== currentStatus) ?? null
-  }
-
-  const isFrontmatterLine = (lineNumber: number): boolean =>
-    frontmatterEnd === null || lineNumber <= frontmatterEnd
-
-  for (const rawLine of diff.split('\n')) {
-    if (rawLine.startsWith('commit:')) {
-      const previous = evaluateCommit()
-      if (previous) return previous
-      removedStatuses = []
-      addedStatuses = []
-      hunkPosition = null
-      continue
-    }
-
-    const nextHunkPosition = parsePatchHunkPosition(rawLine)
-    if (nextHunkPosition) {
-      hunkPosition = nextHunkPosition
-      continue
-    }
-
-    const removed = patchedStatus(rawLine, '-')
-    if (removed) {
-      const oldLine = hunkPosition?.oldLine
-      if (oldLine === undefined || isFrontmatterLine(oldLine)) {
-        removedStatuses.push(removed)
-      }
-      if (hunkPosition) hunkPosition.oldLine += 1
-      continue
-    }
-
-    const added = patchedStatus(rawLine, '+')
-    if (added) {
-      const newLine = hunkPosition?.newLine
-      if (newLine === undefined || isFrontmatterLine(newLine)) {
-        addedStatuses.push(added)
-      }
-      if (hunkPosition) hunkPosition.newLine += 1
-      continue
-    }
-
-    if (rawLine.startsWith('-')) {
-      if (hunkPosition) hunkPosition.oldLine += 1
-    } else if (rawLine.startsWith('+')) {
-      if (hunkPosition) hunkPosition.newLine += 1
-    } else if (rawLine.startsWith(' ')) {
-      if (hunkPosition) {
-        hunkPosition.oldLine += 1
-        hunkPosition.newLine += 1
-      }
-    }
-  }
-
-  return evaluateCommit()
-}
-
-function readPreviousLifecycleStatusFromGit(
-  cwd: string,
-  filePath: string,
-  currentStatus: string,
-): string | null {
+function listTrackedBlueprintPaths(cwd: string): readonly string[] {
   try {
-    const repoRelativePath = path.isAbsolute(filePath) ? path.relative(cwd, filePath) : filePath
-    const diff = execFileSync(
-      'git',
-      [
-        'log',
-        '--follow',
-        '--find-renames',
-        '--format=commit:%H',
-        '--unified=0',
-        '-p',
-        '--',
-        repoRelativePath.replace(/\\/g, '/'),
-      ],
-      {
-        cwd,
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'pipe'],
-        timeout: 1_500,
-        maxBuffer: 1024 * 1024,
-      },
-    )
-    const markdown = readFileSync(path.resolve(cwd, repoRelativePath), 'utf8')
-    return previousStatusFromPatch(diff, currentStatus, frontmatterEndLine(markdown))
+    const out = execFileSync('git', ['ls-files', '--', 'blueprints'], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 1_500,
+      maxBuffer: 1024 * 1024,
+    })
+    return out
+      .split('\n')
+      .map((line) => normalizeGitPath(line.trim()))
+      .filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
+function readGitFile(cwd: string, revision: string, filePath: string): string | null {
+  try {
+    return execFileSync('git', ['show', `${revision}:${filePath}`], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 1_500,
+      maxBuffer: 1024 * 1024,
+    })
   } catch {
     return null
   }
 }
 
+function candidateFallbackPaths(slug: string, trackedPaths: readonly string[]): readonly string[] {
+  const flatSuffix = `/${slug}.md`
+  const overviewSuffix = `/${slug}/_overview.md`
+  return trackedPaths.filter((trackedPath) => {
+    const normalized = normalizeGitPath(trackedPath)
+    return normalized.endsWith(flatSuffix) || normalized.endsWith(overviewSuffix)
+  })
+}
+
+function readPreviousLifecycleStatusFromCandidate(
+  cwd: string,
+  row: BlueprintStatusRow,
+  candidate: TransitionCandidate,
+  trackedPaths: readonly string[],
+  currentStatus: string,
+): string | null {
+  const previousPaths = [
+    ...candidate.previousPaths,
+    ...candidateFallbackPaths(row.slug, trackedPaths),
+  ]
+  const uniquePreviousPaths = [...new Set(previousPaths.map(normalizeGitPath))]
+  for (const previousPath of uniquePreviousPaths) {
+    const markdown = readGitFile(cwd, candidate.previousRevision, previousPath)
+    if (!markdown) continue
+    const status = readFrontmatterStatus(markdown)
+    if (!status || status === currentStatus) continue
+    return status
+  }
+
+  return null
+}
+
 export interface BlueprintLifecycleAuditOptions {
   /** Opt-in: also audit `.omx/plans/` derived-handoff governance (`--legacy-omx`). */
   readonly includeOmxPlans?: boolean
-  /** Bound best-effort git transition history checks so large repos degrade instead of hanging. */
-  readonly transitionHistoryBudgetMs?: number
+  /** Optional PR/base ref for transition legality over the whole branch range. */
+  readonly baseRef?: string
 }
 
 export async function auditBlueprintLifecycleSql(
@@ -257,8 +433,6 @@ export async function auditBlueprintLifecycleSql(
   const budgets = loadBudgets(cwd)
   const wipInProgressMax = budgets['blueprint-wip-in-progress-max'].max ?? 3
   const staleInProgressDays = budgets['blueprint-stale-in-progress-days'].max_days ?? 14
-  const transitionHistoryBudgetMs =
-    options.transitionHistoryBudgetMs ?? DEFAULT_TRANSITION_HISTORY_BUDGET_MS
 
   // Structural markdown checks (type / status-vs-folder / _overview / linking /
   // optional .omx-plan handoff governance). Run unconditionally and merged —
@@ -271,6 +445,7 @@ export async function auditBlueprintLifecycleSql(
   const advisoryViolations: RepoAuditViolation[] = []
   let checked = structural.checked
   const titleNotices: string[] = []
+  const gitHistoryAvailable = isGitHistoryAvailable(cwd)
 
   const conn = await buildEphemeralProjection(cwd)
   const { db } = conn
@@ -447,7 +622,6 @@ export async function auditBlueprintLifecycleSql(
     //    been touched in git within the configured day budget.
     // -----------------------------------------------------------------------
     const staleCandidates = allBlueprints.filter((row) => STALENESS_SCOPE.has(row.status))
-    const gitHistoryAvailable = allBlueprints.length > 0 ? isGitHistoryAvailable(cwd) : false
     checked += staleCandidates.length
     if (staleCandidates.length > 0) {
       if (gitHistoryAvailable) {
@@ -472,37 +646,46 @@ export async function auditBlueprintLifecycleSql(
 
     // -----------------------------------------------------------------------
     // 9. Transition legality — best effort, based on previous lifecycle status
-    //    observed in git history. Missing history fails open by design.
+    //    observed in the current PR/base range when `baseRef` is provided; local
+    //    fallback checks HEAD-touched plus dirty/staged blueprint paths. Missing
+    //    history fails open by design.
     // -----------------------------------------------------------------------
-    checked += allBlueprints.length
+    const transitionCandidateMap = gitHistoryAvailable
+      ? listChangedBlueprintCandidates(cwd, { baseRef: options.baseRef })
+      : null
+    if (gitHistoryAvailable && transitionCandidateMap === null && allBlueprints.length > 0) {
+      titleNotices.push('transition history check skipped: changed-path collection failed')
+    }
+    const transitionCandidates =
+      transitionCandidateMap === null
+        ? []
+        : allBlueprints.filter((row) => {
+            const repoRelativePath = repoRelativePathForGit(cwd, row.file_path)
+            return transitionCandidateMap.has(normalizeGitPath(repoRelativePath))
+          })
+    const trackedBlueprintPaths = gitHistoryAvailable ? listTrackedBlueprintPaths(cwd) : []
+
+    checked += transitionCandidates.length
     if (allBlueprints.length === 0) {
       // Nothing to reconcile against history, so suppress the outside-git notice.
     } else if (gitHistoryAvailable) {
-      const transitionStartedAt = Date.now()
-      let transitionChecked = 0
-      for (const row of allBlueprints) {
-        if (
-          transitionHistoryBudgetMs <= 0 ||
-          Date.now() - transitionStartedAt >= transitionHistoryBudgetMs
-        ) {
-          const remaining = allBlueprints.length - transitionChecked
-          advisoryViolations.push({
-            message:
-              `${STALENESS_WARNING_PREFIX} Blueprint transition history check stopped after ` +
-              `${transitionChecked}/${allBlueprints.length} files due to ` +
-              `${transitionHistoryBudgetMs}ms budget; ${remaining} unchecked`,
-          })
-          titleNotices.push('transition history check partially skipped by time budget')
-          break
-        }
-        transitionChecked += 1
-
+      for (const row of transitionCandidates) {
         const currentMarkdown = readFileSync(row.file_path, 'utf8')
         if (hasHistoricalVerificationGapWaiver(currentMarkdown)) continue
 
         const currentStatus = parseLifecycleBlueprintStatus(row.status)
         if (!currentStatus) continue
-        const previousRaw = readPreviousLifecycleStatusFromGit(cwd, row.file_path, currentStatus)
+        const repoRelativePath = repoRelativePathForGit(cwd, row.file_path)
+        const candidate = transitionCandidateMap?.get(repoRelativePath)
+        const previousRaw = candidate
+          ? readPreviousLifecycleStatusFromCandidate(
+              cwd,
+              row,
+              candidate,
+              trackedBlueprintPaths,
+              currentStatus,
+            )
+          : null
         if (!previousRaw) continue
         const previousStatus = parseLifecycleBlueprintStatus(previousRaw)
         if (!previousStatus) continue

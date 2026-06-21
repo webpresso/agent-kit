@@ -2,11 +2,12 @@
 type: blueprint
 title: "De-conflict global vs repo-pinned wp versions"
 owner: ozby
-status: planned
+status: completed
+completed_at: '2026-06-21'
 complexity: S
 created: '2026-06-17'
 last_updated: '2026-06-17'
-progress: '0% (planned)'
+progress: '100% (completed; tasks verified during plan-refine reconciliation)'
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -47,8 +48,18 @@ This is independent of [[2026-06-17-extract-agent-config-package]] (different fi
 
 ## Tasks
 
-#### [cli] Task 1: Version-skew detection + warning
-**Status:** todo **Depends:** None
+#### [cli] Task 1.1: Version-skew detection + warning
+
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/cli/auto-update/version-skew.test.ts --file src/hooks/shared/routing-block.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:36:05.514Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Code and docs inspection confirmed CLI bootstrap calls version-skew check, README documents global wp alignment, and routing block mentions the skew warning.","kind":"manual","log_excerpt":"src/cli/bootstrap.ts calls checkVersionSkew; src/cli/auto-update/version-skew.ts warns with npm install -g; README and routing-block describe global wp plus local agent-config.","result":"pass","ts":"2026-06-21T15:36:05.514Z"}]
+```
+
+**Depends:** None
+
 Emit a warning at `wp` startup when the running global `wp` version differs from the
 repo-pinned `@webpresso/agent-kit` (read the consumer's catalog/lockfile pin from the
 nearest workspace; compare to the running CLI version; warn on mismatch). **Detection
@@ -56,15 +67,33 @@ only — no timeout/retry changes** (`catalog/agent/rules/no-timeout-as-fix.md`)
 false positives when aligned or when no pin is found.
 **Files:** add the skew check near `src/cli/auto-update/detect-pm.ts` /
 `src/cli/commands/init/detect-consumer.ts`; surface via existing CLI warning path.
-**Acceptance:** [ ] warning fires on a deliberately mismatched global-vs-pin pair [ ] no false positive when aligned or pin absent [ ] no timeout/retry changes.
 
-#### [docs] Task 2: Document precedence + the warning
-**Status:** todo **Depends:** 1
+**Acceptance:**
+
+- [x] warning fires on a deliberately mismatched global-vs-pin pair
+- [x] no false positive when aligned or pin absent
+- [x] no timeout/retry changes.
+#### [docs] Task 1.2: Document precedence + the warning
+
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/cli/auto-update/version-skew.test.ts --file src/hooks/shared/routing-block.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-21T15:36:05.514Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Code and docs inspection confirmed CLI bootstrap calls version-skew check, README documents global wp alignment, and routing block mentions the skew warning.","kind":"manual","log_excerpt":"src/cli/bootstrap.ts calls checkVersionSkew; src/cli/auto-update/version-skew.ts warns with npm install -g; README and routing-block describe global wp plus local agent-config.","result":"pass","ts":"2026-06-21T15:36:05.514Z"}]
+```
+
+**Depends:** 1.1
+
 Document the global-vs-repo-pin precedence and the new skew warning in `README.md`
 and `src/hooks/shared/routing-block.ts` guidance. Note `preferGlobal` removal is
 handled by [[2026-06-17-extract-agent-config-package]] Task 3.1 (avoid double-edit of
 `package.json`).
-**Acceptance:** [ ] precedence documented [ ] routing-block mentions the skew warning.
+
+**Acceptance:**
+
+- [x] precedence documented
+- [x] routing-block mentions the skew warning.
 
 ## Risk
 

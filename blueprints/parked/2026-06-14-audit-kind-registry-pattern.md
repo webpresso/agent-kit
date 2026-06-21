@@ -2,11 +2,14 @@
 type: blueprint
 title: Audit kind registry pattern
 owner: ozby
-status: planned
+status: parked
 complexity: M
 created: '2026-06-14'
-last_updated: '2026-06-14'
-progress: '0% (0/6 tasks done, 0 blocked)'
+last_updated: '2026-06-21'
+progress: '0% (0/6 tasks done, 0 blocked, updated 2026-06-21)'
+parked_reason: >-
+  Refresh needed before execution: current audit kind inventory and MCP audit switch count
+  drifted; duplicate github-actions-secrets entry should be reconciled first.
 refined: true
 depends_on: []
 cross_repo_depends_on: []
@@ -16,8 +19,6 @@ tags:
   - dry
   - audit
   - mcp
-worktree_owner_id: ''
-worktree_owner_branch: ''
 ---
 
 # Audit kind registry pattern

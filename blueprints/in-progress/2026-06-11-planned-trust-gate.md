@@ -1,11 +1,11 @@
 ---
 type: blueprint
-title: "Make planned a hard trust state"
+title: Make planned a hard trust state
 owner: ozby
-status: planned
+status: in-progress
 complexity: L
 created: '2026-06-11'
-last_updated: '2026-06-11'
+last_updated: '2026-06-21'
 progress: '0% (0/19 tasks done, 0 blocked, updated 2026-06-11)'
 tags:
   - blueprints

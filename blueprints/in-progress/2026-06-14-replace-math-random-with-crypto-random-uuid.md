@@ -2,10 +2,10 @@
 type: blueprint
 title: Replace Math.random with crypto-derived IDs
 owner: ozby
-status: planned
+status: in-progress
 complexity: S
 created: '2026-06-14'
-last_updated: '2026-06-14'
+last_updated: '2026-06-21'
 progress: '0% (0/3 tasks done, 0 blocked)'
 depends_on: []
 cross_repo_depends_on: []

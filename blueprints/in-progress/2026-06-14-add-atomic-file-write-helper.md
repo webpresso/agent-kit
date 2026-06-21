@@ -2,10 +2,10 @@
 type: blueprint
 title: Add atomic file write helper
 owner: ozby
-status: planned
+status: in-progress
 complexity: S
 created: '2026-06-14'
-last_updated: '2026-06-14'
+last_updated: '2026-06-21'
 progress: '0% (0/4 tasks done, 0 blocked)'
 depends_on:
   - 2026-06-14-shared-filesystem-io-utilities
