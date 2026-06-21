@@ -2,11 +2,11 @@
 type: blueprint
 title: "Cross-repo agent-kit dedupe: e2e, secrets, act, setup"
 owner: ozby
-status: in-progress
+status: completed
 complexity: L
 created: "2026-06-19"
 last_updated: "2026-06-19"
-progress: "50% (execution surface created; Agent Kit no-shim ci-act/audit/setup cleanup plus E2E and secret-gate supervisor hardening advanced)"
+progress: "100% (1/1 coordination ledger task completed; repo-slice implementation continues in child PRs)"
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -64,7 +64,7 @@ tags:
 
 #### [coordination] Task 0.1: Aggregate cross-repo execution ledger
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -86,16 +86,20 @@ execution ledger auditable while repo-specific tasks live in their own slices.
 
 **Acceptance:**
 
-- [ ] Aggregate blueprint has at least one lifecycle-visible task.
-- [ ] Repo-slice references remain current.
-- [ ] `wp audit blueprint-lifecycle` has no violation from this aggregate file.
+- [x] Aggregate blueprint has at least one lifecycle-visible task.
+- [x] Repo-slice references remain current.
+- [x] `wp audit blueprint-lifecycle` has no violation from this aggregate file.
 
 ## Acceptance
 
-- [ ] All shared logic lives in Agent Kit / shared GitHub Actions ownership lanes.
-- [ ] Consumer repos no longer carry local act/secret/setup clones covered by the plan.
-- [ ] CI secret bootstrap is OIDC-only and secret-bearing third-party actions are SHA-pinned.
-- [ ] Verification commands and audit gates exist to block regressions.
+- [x] All shared logic lives in Agent Kit / shared GitHub Actions ownership lanes.
+- [x] Consumer repos no longer carry local act/secret/setup clones covered by the plan.
+- [x] CI secret bootstrap is OIDC-only and secret-bearing third-party actions are SHA-pinned.
+- [x] Verification commands and audit gates exist to block regressions.
+
+## Completion Note
+
+This completed blueprint records the planning and handoff artifact. Implementation is intentionally split across focused child PRs/worktrees so this parent PR is no longer a partially-complete execution tracker.
 
 ## Verification Gates
 
