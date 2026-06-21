@@ -115,6 +115,75 @@ The active pattern is a self-contained `release.yml` in this repository that
 handles versioning and publish end-to-end. Do not reintroduce legacy
 reusable-release workflow templates here.
 
+## First-time npm package creation for trusted publishing
+
+npm trusted publishing can only be configured after the npm package record
+exists. For any new package name that `release.yml` will later publish through
+OIDC, create the package once from the CLI, then add the trusted publisher in
+npmjs.
+
+Why this exists:
+
+- npm's trusted publisher UI is package-scoped; a package that has never been
+  published has no package settings page.
+- This repo intentionally does not use `NPM_TOKEN` or `NODE_AUTH_TOKEN`
+  fallbacks, so the real release path cannot publish a brand-new package name
+  until npm already trusts this repository/workflow/package tuple.
+- The one-time CLI publish should create only the npm package record. The real
+  release artifacts and provenance still come from GitHub Actions.
+
+Use this flow for newly introduced package names, including generated platform
+packages such as `@webpresso/agent-kit-session-memory-<target>`:
+
+```bash
+# 1. Build a minimal bootstrap package outside the repo working tree.
+tmp="$(mktemp -d)"
+pkg='@webpresso/agent-kit-session-memory-darwin-x64'
+dir="$tmp/${pkg#@webpresso/}"
+mkdir -p "$dir"
+cat > "$dir/package.json" <<EOF
+{
+  "name": "$pkg",
+  "version": "0.0.0",
+  "description": "Bootstrap placeholder for npm trusted publishing setup. Do not install directly.",
+  "license": "MIT",
+  "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webpresso/agent-kit.git"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "files": ["README.md"]
+}
+EOF
+printf '# %s\n\nBootstrap placeholder for npm trusted publishing setup.\n' "$pkg" > "$dir/README.md"
+
+# 2. Confirm the package contents before creating the registry record.
+npm pack --dry-run --json "$dir"
+
+# 3. Publish the placeholder under a non-release dist-tag.
+# npm auth-type should be "web"; run in a TTY so browser auth can complete.
+npm publish "$dir" --access public --tag bootstrap --auth-type=web
+```
+
+After the package exists in npmjs, configure trusted publishing for that
+package:
+
+- **Package**: the exact package name, for example
+  `@webpresso/agent-kit-session-memory-darwin-x64`
+- **Repository owner/name**: `webpresso/agent-kit`
+- **Workflow file**: `release.yml`
+- **Environment**: leave unset/blank unless `.github/workflows/release.yml`
+  later adds a job-level `environment:` value
+
+Use `.github/workflows/release.yml` — not `ci.agent-kit.yml` and not the
+artifact-only matrix job names — because the `release` job in `release.yml`
+is the job that runs `pnpm run release:publish`, has `id-token: write`, and
+invokes `npm publish --provenance --access public`.
+
 ## Required repo files
 
 This repository must have:

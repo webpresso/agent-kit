@@ -111,7 +111,7 @@ describe('runtime executor', () => {
     resolveRuntimeEnvironment({ cwd: root, profile: 'prd' })
     expect(fetchSpy).toHaveBeenCalledWith(
       expect.objectContaining({ manager: 'doppler', projectId: 'demo' }),
-      expect.objectContaining({ cwd: root, environment: 'prd' }),
+      expect.objectContaining({ cwd: root, environment: undefined }),
     )
   })
 })

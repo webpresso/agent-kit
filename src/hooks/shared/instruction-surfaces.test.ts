@@ -26,6 +26,7 @@ describe('instruction surface renderer', () => {
     expect(routingToolNamesFromSource(WP_ROUTING_BLOCK)).toStrictEqual([
       'wp_session_restore',
       'wp_session_search',
+      'wp_session_retrieve',
       'wp_session_execute_file',
       'wp_session_execute',
       'wp_session_batch_execute',
@@ -44,6 +45,10 @@ describe('instruction surface renderer', () => {
       'wp_audit',
       'wp_ci_act',
       'wp_worker_tail',
+      'wp_pr_status',
+      'wp_bench',
+      'wp_gain',
+      'wp_release_readiness',
     ])
   })
 

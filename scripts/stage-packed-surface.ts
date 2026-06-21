@@ -3,6 +3,7 @@
 import { resolve } from 'node:path'
 
 import { stagePublishableTarballSurface } from '../src/audit/package-surface.ts'
+import { syncBlueprintMigrationSqlAssets } from '../src/build/blueprint-migration-assets.ts'
 
 const target = process.argv[2]
 if (!target) {
@@ -12,6 +13,7 @@ if (!target) {
 
 const root = resolve(process.argv[3] ?? process.cwd())
 const destination = resolve(target)
+syncBlueprintMigrationSqlAssets(root)
 const result = stagePublishableTarballSurface(root, destination)
 console.log(
   JSON.stringify(

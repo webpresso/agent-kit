@@ -40,6 +40,7 @@ describe('WP_ROUTING_BLOCK', () => {
       'wp_session_index',
       'wp_session_purge',
       'wp_session_restore',
+      'wp_session_retrieve',
       'wp_session_search',
       'wp_session_snapshot',
       'wp_session_stats',
@@ -58,6 +59,8 @@ describe('WP_ROUTING_BLOCK', () => {
     expect(WP_ROUTING_BLOCK).toContain('restore/search first')
     expect(WP_ROUTING_BLOCK).toContain('wp_session_restore')
     expect(WP_ROUTING_BLOCK).toContain('wp_session_search')
+    expect(WP_ROUTING_BLOCK).toContain('retrieve exact elisions first')
+    expect(WP_ROUTING_BLOCK).toContain('wp_session_retrieve')
     expect(WP_ROUTING_BLOCK).not.toMatch(/\bctx_(?:execute|batch_execute|search|restore)\b/u)
   })
 
@@ -87,8 +90,20 @@ describe('WP_ROUTING_BLOCK', () => {
     expect(WP_ROUTING_BLOCK).toContain('wp_qa')
   })
 
-  it('mentions wp_audit MCP tool', () => {
+  it('mentions wp_audit and wp_audits MCP tools', () => {
     expect(WP_ROUTING_BLOCK).toContain('wp_audit')
+    expect(WP_ROUTING_BLOCK).toContain('wp_audits')
+    expect(WP_ROUTING_BLOCK).toContain('multiple audits')
+  })
+
+  it('routes read-only ops commands to shipped MCP tool names', () => {
+    expect(WP_ROUTING_BLOCK).toContain('wp_pr_status')
+    expect(WP_ROUTING_BLOCK).toContain('wp_bench')
+    expect(WP_ROUTING_BLOCK).toContain('wp_gain')
+    expect(WP_ROUTING_BLOCK).toContain('wp_release_readiness')
+    expect(WP_ROUTING_BLOCK).toContain('gh pr checks')
+    expect(WP_ROUTING_BLOCK).toContain('rtk gain')
+    expect(WP_ROUTING_BLOCK).toContain('public readiness')
   })
 
   it('routes local act and Worker tail commands to shipped MCP tool names', () => {

@@ -39,6 +39,8 @@ describe('release-publish runtime lane', () => {
       "const RELEASE_PUBLISH_RESULT_FILE_ENV = 'RELEASE_PUBLISH_RESULT_FILE'",
     )
     expect(source).toContain('interface PublishedPackage')
+    expect(source).toContain('category: ReleasePackageCategory')
+    expect(source).toContain('category: classifyReleasePackage(pkg.name)')
     expect(source).toContain(
       'function writePublishResultFile(packages: readonly PublishedPackage[])',
     )
@@ -115,5 +117,18 @@ describe('release-publish runtime lane', () => {
     expect(nativePublishBlock).not.toContain("'build:session-memory-native'")
     expect(nativePublishBlock).not.toContain("'--target',\n    'host'")
     expect(nativePublishBlock).not.toContain('existsSync(resolve(preparedPackageRoot')
+  })
+
+  it('rehydrates downloaded session-memory native artifacts after build and before staging', () => {
+    const source = readFileSync(join(import.meta.dirname, 'release-publish.ts'), 'utf8')
+
+    expect(source).toContain(
+      "const SESSION_MEMORY_NATIVE_DOWNLOADS_DIR_ENV = 'SESSION_MEMORY_NATIVE_DOWNLOADS_DIR'",
+    )
+    expect(source).toContain('function rehydrateSessionMemoryNativeArtifacts(rootDir: string)')
+    expect(source).toContain('[release:publish] rehydrated session-memory native artifact')
+    expect(source.indexOf('rehydrateSessionMemoryNativeArtifacts(packageRoot)')).toBeLessThan(
+      source.indexOf("run('pnpm', ['run', 'stage:session-memory-native'])"),
+    )
   })
 })

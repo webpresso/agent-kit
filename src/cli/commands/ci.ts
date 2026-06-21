@@ -3,8 +3,10 @@ import type { SecretGateCommandOptions, SecretGateRunResult } from '#secret-gate
 
 import {
   buildPublicCiActCommand,
+  resolveCiActExecutionMode,
   sanitizePublicCiActArgv,
   type CiActEventName,
+  type CiActExecutionMode,
 } from '#ci/act-runner.js'
 import { redactText } from '#mcp/tools/_shared/redact.js'
 import { runSecretGateCommand } from '#secret-gate/runner.js'
@@ -29,7 +31,8 @@ export interface CiActOptions {
   readonly eventName?: CiActEventName
   readonly eventPath?: string
   readonly envProfile?: string
-  readonly secretEnvProfile?: string
+  readonly secretProfile?: string
+  readonly mode?: CiActExecutionMode
   readonly containerArchitecture?: string
   readonly platformImage?: string
   readonly execute?: boolean
@@ -60,9 +63,10 @@ export function registerCiCommand(cli: CAC): void {
     .option('--event-path <path>', 'Use an existing event JSON file')
     .option('--env-profile <profile>', 'Secret-gate runtime profile', { default: 'secrets-only' })
     .option(
-      '--secret-env-profile <profile>',
-      'Provider-specific secret manager environment/config selector',
+      '--secret-profile <profile>',
+      'Repo-owned secret profile from .webpresso/secrets.config.json',
     )
+    .option('--mode <mode>', 'ci act mode: direct | replay')
     .option('--container-architecture <arch>', 'act container architecture override')
     .option('--platform-image <image>', 'act runner image for ubicloud-standard-2')
     .option(
@@ -83,7 +87,8 @@ export function registerCiCommand(cli: CAC): void {
         job: flags.job as string | undefined,
         eventName: flags.eventName as CiActEventName | undefined,
         envProfile: flags.envProfile as string | undefined,
-        secretEnvProfile: flags.secretEnvProfile as string | undefined,
+        secretProfile: flags.secretProfile as string | undefined,
+        mode: flags.mode as CiActExecutionMode | undefined,
         containerArchitecture: flags.containerArchitecture as string | undefined,
         platformImage: flags.platformImage as string | undefined,
         eventPath: flags.eventPath as string | undefined,
@@ -118,6 +123,12 @@ export async function runCiActCommand(
       `${JSON.stringify({ command: preview.command, args: preview.args })}\n`,
     )
     return 0
+  }
+
+  if (resolveCiActExecutionMode(options) === 'replay') {
+    ;(deps.stderr ?? process.stderr).write(
+      'Warning: replay mode is a generated local approximation and is not security-equivalent to GitHub CI or OIDC.\n',
+    )
   }
 
   const result = await (deps.run ?? runSecretGateCommand)({

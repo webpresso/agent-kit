@@ -81,6 +81,7 @@ const tool: ToolDescriptor = {
     const compact = formatMcpToolOutput(combined, {
       toolName: 'wp_format',
       full: input.full,
+      cwd: input.cwd,
     })
 
     const payload = {

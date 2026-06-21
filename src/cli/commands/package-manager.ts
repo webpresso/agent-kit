@@ -18,6 +18,7 @@ import {
   type GlobalCapableVpCommandInput,
   resolveGlobalCapableVpCommand,
 } from '#cli/global-vp.js'
+import { resolveBundledVpCommand } from '#cli/auto-update/detect-pm.js'
 import { resolveAgentKitPackageRoot } from '#cli/commands/init/package-root'
 import { ensureClaudeCodeUserPlugin } from '#cli/commands/init/scaffolders/claude-plugin/index.js'
 import { ensureCodexUserPlugin } from '#cli/commands/init/scaffolders/codex-plugin/index.js'
@@ -56,16 +57,14 @@ export interface PackageManagerCommandDeps {
 }
 
 const HELP_BY_VERB: Readonly<Record<PackageManagerVerb, string>> = {
-  install: 'Install dependencies through the managed vp facade.',
-  add: 'Add dependencies through the managed vp facade.',
-  remove: 'Remove dependencies through the managed vp facade.',
+  install: 'Install dependencies through the managed package/task facade.',
+  add: 'Add dependencies through the managed package/task facade.',
+  remove: 'Remove dependencies through the managed package/task facade.',
   update:
-    'Refresh wp and any optional OMX/OMC/gstack integrations previously installed by wp; use --deps for local dependency updates through the managed vp facade.',
-  exec: 'Run a binary through the managed vp facade.',
-  run: 'Run a package script through the managed vp facade.',
+    'Refresh wp and any optional OMX/OMC/gstack integrations previously installed by wp; use --deps for local dependency updates through the managed package/task facade.',
+  exec: 'Run a binary through the managed package/task facade.',
+  run: 'Run a package script through the managed package/task facade.',
 }
-
-const GSTACK_REPO = 'https://github.com/garrytan/gstack.git'
 
 interface PackageManagerCommandConfigWithId extends PackageManagerCommandConfig {
   readonly id: string
@@ -98,7 +97,7 @@ interface RequiredGlobalUpdateDeps {
 export function registerPackageManagerCommand(cli: CAC, verb: PackageManagerVerb): void {
   const command = cli.command(`${verb} [...args]`, HELP_BY_VERB[verb])
   if (verb === 'update') {
-    command.option('--deps', 'Update local dependencies through managed vp update.')
+    command.option('--deps', 'Update local dependencies through managed package/task update.')
     command.option('-g, --global', 'Compatibility alias for the default tooling refresh.')
   }
 
@@ -158,10 +157,12 @@ export function runPackageManagerCommand(
 function runGlobalUpdateCommand(deps: PackageManagerCommandDeps): number {
   const cwd = deps.cwd ?? process.cwd()
   const vpCommand =
-    deps.resolveVpCommand !== undefined ? deps.resolveVpCommand() : resolveGlobalCapableVpCommand()
+    deps.resolveVpCommand !== undefined
+      ? deps.resolveVpCommand()
+      : (resolveGlobalCapableVpCommand() ?? resolveBundledVpCommand())
   if (vpCommand === null) {
     return failUsage(
-      'wp update: no global-capable vp executable found on PATH; ensure the user-global Vite+ vp is installed and appears before project/runtime-local shims.',
+      'wp update: no bundled Vite+ runner found; reinstall @webpresso/agent-kit without omitting dependencies.',
     )
   }
 
@@ -271,18 +272,11 @@ function runGlobalUpdateStep(
   return step.run(deps)
 }
 
-function refreshGstack(deps: RequiredGlobalUpdateDeps): SpawnSyncReturns<string> {
-  const hasCheckout = deps.exists(path.join(deps.gstackRoot, '.git'))
-  if (hasCheckout) {
-    const pull = deps.run('git', ['-C', deps.gstackRoot, 'pull', '--ff-only', 'origin', 'main'])
-    if (pull.status !== 0) return pull
-  } else {
-    deps.mkdir(path.dirname(deps.gstackRoot), { recursive: true })
-    const clone = deps.run('git', ['clone', '--depth', '1', GSTACK_REPO, deps.gstackRoot])
-    if (clone.status !== 0) return clone
-  }
-
-  return deps.run('./setup', ['--team'], { cwd: deps.gstackRoot })
+function refreshGstack(_deps: RequiredGlobalUpdateDeps): SpawnSyncReturns<string> {
+  // Curated Webpresso-owned skills are shipped with @webpresso/agent-kit.
+  // `wp update` refreshes the package and host plugins; it must not clone, pull,
+  // or run upstream setup from an external checkout.
+  return spawnLike(0)
 }
 
 function refreshCodexPlugin(deps: RequiredGlobalUpdateDeps): SpawnSyncReturns<string> {

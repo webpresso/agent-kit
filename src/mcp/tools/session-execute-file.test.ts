@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import sessionExecuteFileTool from './session-execute-file.js'
+import sessionRetrieveTool from './session-retrieve.js'
 import sessionSearchTool from './session-search.js'
 import { SessionMemoryStore } from '../../session-memory/store.js'
 
@@ -21,7 +22,6 @@ function payload(result: Awaited<ReturnType<typeof sessionExecuteFileTool.handle
   return result.structuredContent as {
     passed: boolean
     summary: string
-    gain?: { rawBasisBytes: number; rawBytesBasis: string; gainBytes: number }
     operation: string
     path: string
     preview: string
@@ -29,6 +29,7 @@ function payload(result: Awaited<ReturnType<typeof sessionExecuteFileTool.handle
     truncated: boolean
     overflowIndexed: boolean
     indexedChunkIds: string[]
+    elisions?: Array<{ id: string; kind: string; retrieveTool: string }>
     warnings: string[]
     code?: string
   }
@@ -63,6 +64,11 @@ describe('wp_session_execute_file tool', () => {
     expect(data.preview.length).toBeLessThanOrEqual(80)
     expect(data.preview).not.toContain('needle-file-overflow')
     expect(data.indexedChunkIds).toHaveLength(1)
+    expect(data.elisions).toHaveLength(1)
+    expect(data.elisions?.[0]).toMatchObject({
+      kind: 'file_overflow',
+      retrieveTool: 'wp_session_retrieve',
+    })
     expect(data.counts.indexedChunkCount).toBe(1)
     expect(JSON.stringify(result)).not.toContain('needle-file-overflow')
 
@@ -71,23 +77,6 @@ describe('wp_session_execute_file tool', () => {
       'file:src/large.txt',
     )
     store.close()
-  })
-
-  it('uses actual read Buffer bytes, not full stat size, as file read gain basis', async () => {
-    const { root, dbPath } = fixture()
-    writeFileSync(join(root, 'src', 'basis.txt'), '1234567890')
-
-    const result = await sessionExecuteFileTool.handler({
-      repoRoot: root,
-      dbPath,
-      path: 'src/basis.txt',
-      operation: 'read_text',
-      maxFileBytes: 4,
-      maxPreviewBytes: 2,
-    })
-    const data = payload(result)
-
-    expect(data.gain).toMatchObject({ rawBasisBytes: 5, rawBytesBasis: 'file_read_buffer' })
   })
 
   it('supports metadata analysis without shell/network/write capability', async () => {
@@ -104,10 +93,6 @@ describe('wp_session_execute_file tool', () => {
 
     expect(data.passed).toBe(true)
     expect(data.preview).toBe('')
-    expect(data.gain).toMatchObject({
-      rawBasisBytes: Buffer.byteLength('one\ntwo\n', 'utf8'),
-      rawBytesBasis: 'file_metadata_buffer',
-    })
     expect(JSON.stringify(result)).not.toContain('one')
     expect(JSON.stringify(result)).not.toContain('two')
   })
@@ -126,6 +111,7 @@ describe('wp_session_execute_file tool', () => {
 
     expect(result.isError).toBe(true)
     expect(data).toMatchObject({ passed: false, code: 'secret_path', preview: '' })
+    expect(data.elisions).toEqual([])
     expect(JSON.stringify(result)).not.toContain('secret-sentinel')
     const store = new SessionMemoryStore(dbPath)
     expect(store.count()).toBe(0)
@@ -148,6 +134,7 @@ describe('wp_session_execute_file tool', () => {
     })
     expect(escape.isError).toBe(true)
     expect(payload(escape)).toMatchObject({ passed: false, code: 'denied_path', preview: '' })
+    expect(payload(escape).elisions).toEqual([])
 
     const binary = await sessionExecuteFileTool.handler({
       repoRoot: root,
@@ -226,7 +213,9 @@ describe('wp_session_execute_file tool', () => {
         operation: 'read_text',
         maxPreviewBytes: 32,
       })
-      expect(payload(result)).toMatchObject({ passed: true, overflowIndexed: true })
+      const data = payload(result)
+      expect(data).toMatchObject({ passed: true, overflowIndexed: true })
+      expect(data.elisions).toHaveLength(1)
 
       const search = await sessionSearchTool.handler?.({
         cwd: root,
@@ -236,6 +225,13 @@ describe('wp_session_execute_file tool', () => {
         limit: 1,
       })
       expect(JSON.stringify(search.structuredContent)).toContain('file:src/default-store.txt')
+
+      const retrieve = await sessionRetrieveTool.handler({
+        cwd: root,
+        id: data.elisions![0]!.id,
+        maxBytes: 1024,
+      })
+      expect(JSON.stringify(retrieve.structuredContent)).toContain('default-store-needle')
     } finally {
       if (previousIndexDb === undefined) delete process.env.WP_SESSION_MEMORY_INDEX_DB
       else process.env.WP_SESSION_MEMORY_INDEX_DB = previousIndexDb

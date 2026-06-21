@@ -14,7 +14,7 @@ type SpawnReturn = { status: number | null; error?: Error; stdout?: string }
 
 /**
  * Build a spawnSync fake that records every call and answers the `vp --version`
- * probe and the `vp install -g …` command independently.
+ * probe and the managed global install command independently.
  */
 type ScaffolderSpawn = NonNullable<Parameters<typeof ensureAgentKitGlobal>[0]['spawn']>
 

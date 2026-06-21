@@ -19,12 +19,24 @@ secret gate (`wp secrets run --sink act --profile <profile> -- ...`) and the sha
   (`none`, `public`, `secrets-only`, `service-runtime`, `database`, `full`)
 - runner image and container architecture
 - execute vs dry-run
-- provider-specific secret-manager environment/config selector via
-  `secretEnvProfile` / `--secret-env-profile` (for example Doppler `dev` or
-  Infisical environment slug)
+- execution mode:
+  - `direct` — run the selected workflow file through `act`
+  - `replay` — generate a local replay workflow file first, then run `act`
+- repo-owned secret profile name via `secretProfile` / `--secret-profile`,
+  resolved from `.webpresso/secrets.config.json`
 
 Bare workflow ids resolve to `.github/workflows/<id>.yml`. Dry-run is the
 default and returns a redacted command preview.
+
+## Direct vs replay mode
+
+- `direct` is the default and points `act` at the selected workflow file.
+- `replay` generates a temporary local workflow file and points `act` at that
+  generated file instead.
+
+Replay mode is for local approximation when `act` cannot faithfully reproduce
+GitHub behavior such as reusable-workflow or OIDC-heavy paths. It is explicitly
+**not security-equivalent** to GitHub CI.
 
 ## Timeout contract
 
@@ -48,19 +60,15 @@ The public helper does not accept secret-bearing or mutation-oriented argv:
 - `--allow-host-mutation`
 - arbitrary passthrough argv
 - public `act --secret`, `--secret-file`, bind, volume, or container mutation flags
-- consumer repo-local adapter paths such as `src/ci/act-helper.ts` or
+- provider-specific `secretEnvProfile` / `--secret-env-profile` selectors
+- consumer repo-local adapter paths such as `scripts/act-with-webpresso.ts` or
   `src/secret-gate/runner.ts`
-
-MCP may create an internal temporary `act --secret-file` after secrets have
-already crossed the approved secret-gate/profile boundary. Public structured
-metadata redacts the temp path as `[INTERNAL_SECRET_FILE]`, and the file is
-removed after the call.
 
 ## Secret handling
 
 Secrets must arrive through approved runtime/profile channels, not argv.
 `envProfile` is intentionally runtime-only; do not pass Doppler/Infisical
-config names there. Use `secretEnvProfile` / `--secret-env-profile` for
-provider-specific selectors. Returned stdout, stderr, raw output, JSON
+config names there. Use `secretProfile` / `--secret-profile` for
+repo-owned aliases declared in `.webpresso/secrets.config.json`; provider-specific environment selectors remain internal implementation details behind those aliases. Returned stdout, stderr, raw output, JSON
 content, and structured metadata are redacted before they are exposed to the
 agent.

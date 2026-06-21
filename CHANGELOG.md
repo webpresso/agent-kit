@@ -1,5 +1,53 @@
 # Changelog
 
+## 2.3.1
+
+### Patch Changes
+
+- 7d5fa1a: Add a stateful `wp_worktree` MCP tool for safe worktree lifecycle operations with dirty/locked protection, bounded structured output, and execute-gated mutations that reuse existing `wp worktree` behavior.
+
+  Reference-parity and session-memory evidence remains governed by `docs/bench/reference-parity-matrix.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, `src/__integration__/reference-parity-tool-surface.integration.test.ts`, and `docs/bench/session-memory-methodology.md`.
+
+- 2b2c656: Document and lock the sensitive MCP insight/forensics contract before implementation, including privacy boundaries, data-source limits, redaction requirements, and registry tests that keep the tool surface absent until the contract is accepted.
+
+  Reference-parity and session-memory evidence remains governed by `docs/bench/reference-parity-matrix.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, `src/__integration__/reference-parity-tool-surface.integration.test.ts`, and `docs/bench/session-memory-methodology.md`.
+
+- 0a623ab: Detect first-party Claude CLI login for local benchmark auth so `BENCH_AUTH_MODE=claude-login` can use `claude auth status` without requiring `ANTHROPIC_API_KEY`, and classify stale CLI execution sessions when `claude -p` returns 401 after a valid CLI login.
+
+  Reference-parity and session-memory evidence remains governed by `docs/bench/reference-parity-matrix.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, `src/__integration__/reference-parity-tool-surface.integration.test.ts`, and `docs/bench/session-memory-methodology.md`.
+
+- 648d964: Bundle curated Webpresso-owned gstack-derived workflow skills inside agent-kit, stage them through an allowlisted private workspace package, and make setup/update paths stop depending on an external gstack checkout by default.
+- 493c0e9: Close final review hardening gaps for read-only MCP outputs, Claude CLI-login environment isolation, managed worktree safety, and shipped gstack attribution/auth checks.
+- c491fd0: Add the `wp_audits` MCP tool for deterministic batch audit execution with shared `wp_audit` dispatch, aggregate partial-failure reporting, and routing guidance for multi-audit requests.
+
+  Reference-parity and session-memory evidence remains governed by `docs/bench/reference-parity-matrix.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, `src/__integration__/reference-parity-tool-surface.integration.test.ts`, and `docs/bench/session-memory-methodology.md`.
+
+- 41d52ee: Harden final MCP productivity guardrails: sanitize parsed read-only details, keep release readiness read-only, isolate Claude-login benchmarks from ambient API keys, require explicit Claude CLI login status, and restrict worktree removals/pruning to registered managed entries.
+- 81ebb4b: Add read-only MCP operations tools for PR status, benchmark, gain, and release-readiness checks with bounded structured output and explicit dry-run/live behavior.
+
+  Reference-parity and session-memory evidence remains governed by `docs/bench/reference-parity-matrix.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, `src/__integration__/reference-parity-tool-surface.integration.test.ts`, and `docs/bench/session-memory-methodology.md`.
+
+- 7149323: Harden Claude CLI auth and curated gstack staging after final review: avoid false-positive auth parsing, preserve diagnostics for unrecognized CLI auth status, use a safe temp file in the Claude skill auth snippet, enforce the gstack source payload budget across all source files, and record a real upstream gstack commit in provenance.
+- 57893db: Keep hook vendor drift audit output machine-readable by default and stabilize generated hook smoke coverage so every managed hook launcher is exercised deterministically without corrupting JSON or shared smoke logs.
+
+## 2.3.0
+
+### Minor Changes
+
+- 7f9a492: Add exact session elision retrieval via `wp_session_retrieve` and emit retrievable elision handles from truncated session, command, batch, check-tool, and quality-runner outputs.
+
+  References: `docs/bench/reference-parity-matrix.md`, `docs/bench/session-memory-methodology.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, `src/__integration__/reference-parity-tool-surface.integration.test.ts`
+
+### Patch Changes
+
+- dc71d01: Remove the `format:check` package script; `format` remains the write/fix formatter entrypoint.
+
+  AI contract evidence: `docs/bench/reference-parity-matrix.md`, `docs/bench/session-memory-methodology.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, and `src/__integration__/reference-parity-tool-surface.integration.test.ts`.
+
+- dc71d01: Surface actionable diagnostics when `wp_test` file filters match zero Vitest tests.
+
+  AI contract evidence: `docs/bench/reference-parity-matrix.md`, `docs/bench/session-memory-methodology.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, and `src/__integration__/reference-parity-tool-surface.integration.test.ts`.
+
 ## 2.2.0
 
 ### Minor Changes

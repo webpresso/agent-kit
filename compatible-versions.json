@@ -16,6 +16,6 @@
     }
   },
   "_intentionally_not_pinned": {
-    "gstack": "Lane 4: agent-kit does not redistribute Garry Tan's gstack. The gstack scaffolder clones the upstream main branch and runs `./setup --team`. No version pin because gstack is not a versioned package \u2014 it's a skill registry consumed at HEAD. See `catalog/agent/rules/gstack-routing.md` (Blueprint Task 0.4)."
+    "gstack": "Curated Webpresso-owned Markdown skills are staged from private workspace package @repo/gstack. Upstream gstack is not consumed at HEAD; refreshes are explicit manual blueprint work with provenance review."
   }
 }

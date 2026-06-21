@@ -1,6 +1,6 @@
 {
   "name": "@webpresso/agent-kit",
-  "version": "2.2.0",
+  "version": "2.3.1",
   "private": false,
   "repository": {
     "type": "git",
@@ -462,9 +462,9 @@
     "build": "tshy && bun src/build/blueprint-migration-assets.ts && bun src/build/generate-oxlintrc.ts && bun src/build/normalize-tsconfig-json-exports.ts && vp run chmod-bins",
     "build:runtime-binaries": "bun scripts/build-runtime-binaries.ts",
     "stage:plugin-runtime": "bun scripts/stage-plugin-runtime-artifacts.ts",
-    "postbuild": "vp run generate-skills && vp run sync-doc-templates",
+    "postbuild": "vp run stage:gstack-skills && vp run generate-skills && vp run sync-doc-templates",
     "chmod-bins": "bun scripts/chmod-bins.ts",
-    "prepack": "bun src/build/package-manifest.ts prepare",
+    "prepack": "vp run stage:gstack-skills && bun src/build/package-manifest.ts prepare",
     "postpack": "bun src/build/package-manifest.ts restore",
     "generate-skills": "bun src/build/generate-skills-dir.ts",
     "sync-doc-templates": "bun src/build/sync-catalog-doc-templates.ts",
@@ -509,7 +509,8 @@
     "native:session-memory:bench:gate": "native/session-memory-engine/scripts/check-bench-thresholds.sh",
     "build:session-memory-native": "bun scripts/build-session-memory-native-artifacts.ts",
     "stage:session-memory-native": "bun scripts/stage-session-memory-native-artifacts.ts",
-    "native:session-memory:deny": "cargo deny --manifest-path native/session-memory-engine/Cargo.toml check"
+    "native:session-memory:deny": "cargo deny --manifest-path native/session-memory-engine/Cargo.toml check",
+    "stage:gstack-skills": "bun scripts/stage-gstack-skills.ts"
   },
   "dependencies": {
     "@webpresso/cli-contract": "^0.2.0",

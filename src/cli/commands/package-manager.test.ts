@@ -17,6 +17,10 @@ installManagedRunnerHermeticHooks()
 
 const GLOBAL_VP = '/global/bin/vp'
 
+function bundledVpArgs(...tail: string[]) {
+  return [process.execPath, expect.stringMatching(/vite-plus.*bin.*vp/), ...tail]
+}
+
 describe('wp package-manager commands', () => {
   function spawnResult(status: number | null, error?: Error) {
     return {
@@ -41,19 +45,19 @@ describe('wp package-manager commands', () => {
     expect(PACKAGE_MANAGER_VERBS).toEqual(['install', 'add', 'remove', 'update', 'exec', 'run'])
   })
 
-  it.each(PACKAGE_MANAGER_VERBS)('routes %s through managed vp', (verb) => {
+  it.each(PACKAGE_MANAGER_VERBS)('routes %s through the managed package/task facade', (verb) => {
     expect(buildPackageManagerCommand(verb, ['node', 'wp', verb, '--flag', 'value'])).toEqual({
       command: 'rtk',
-      args: ['vp', verb, '--flag', 'value'],
+      args: bundledVpArgs(verb, '--flag', 'value'),
     })
   })
 
-  it('routes exec through managed vp and preserves the raw tail', () => {
+  it('routes exec through the managed package/task facade and preserves the raw tail', () => {
     expect(
       buildPackageManagerCommand('exec', ['node', 'wp', 'exec', '--', 'vitest', 'run']),
     ).toEqual({
       command: 'rtk',
-      args: ['vp', 'exec', '--', 'vitest', 'run'],
+      args: bundledVpArgs('exec', '--', 'vitest', 'run'),
     })
   })
 
@@ -61,7 +65,7 @@ describe('wp package-manager commands', () => {
     const run = vi.fn(() => spawnResult(7))
 
     expect(runPackageManagerCommand('run', { run })).toBe(7)
-    expect(run).toHaveBeenCalledWith('rtk', ['vp', 'run'], {
+    expect(run).toHaveBeenCalledWith('rtk', bundledVpArgs('run'), {
       cwd: process.cwd(),
     })
   })
@@ -204,7 +208,7 @@ describe('wp package-manager commands', () => {
     ).toBe(1)
 
     expect(run).not.toHaveBeenCalled()
-    expect(error.mock.calls.join('\n')).toContain('no global-capable vp executable found')
+    expect(error.mock.calls.join('\n')).toContain('no bundled Vite+ runner found')
   })
 
   it('runs local verbs from the nearest package root when invoked in a nested directory', () => {
@@ -219,12 +223,12 @@ describe('wp package-manager commands', () => {
       }),
     ).toBe(0)
 
-    expect(run).toHaveBeenCalledWith('rtk', ['vp', 'run', 'test'], {
+    expect(run).toHaveBeenCalledWith('rtk', bundledVpArgs('run', 'test'), {
       cwd: '/repo/packages/agent-kit',
     })
   })
 
-  it('runs local dependency updates through managed vp only with --deps', () => {
+  it('runs local dependency updates through the managed package/task facade only with --deps', () => {
     const run = vi.fn(() => spawnResult(0))
 
     expect(
@@ -238,7 +242,7 @@ describe('wp package-manager commands', () => {
     ).toBe(0)
 
     expect(run).toHaveBeenCalledTimes(1)
-    expect(run).toHaveBeenCalledWith('rtk', ['vp', 'update'], {
+    expect(run).toHaveBeenCalledWith('rtk', bundledVpArgs('update'), {
       cwd: '/repo/packages/agent-kit',
     })
   })
@@ -256,7 +260,7 @@ describe('wp package-manager commands', () => {
       }),
     ).toBe(0)
 
-    expect(run).toHaveBeenCalledWith('rtk', ['vp', 'update', '--latest', 'typescript'], {
+    expect(run).toHaveBeenCalledWith('rtk', bundledVpArgs('update', '--latest', 'typescript'), {
       cwd: '/repo/packages/agent-kit',
     })
   })
@@ -274,7 +278,7 @@ describe('wp package-manager commands', () => {
       }),
     ).toBe(0)
 
-    expect(run).toHaveBeenCalledWith('rtk', ['vp', 'update', 'typescript'], {
+    expect(run).toHaveBeenCalledWith('rtk', bundledVpArgs('update', 'typescript'), {
       cwd: '/repo/packages/agent-kit',
     })
   })
@@ -360,18 +364,9 @@ describe('wp package-manager commands', () => {
       'user',
       'oh-my-claudecode',
     ])
-    expect(run).toHaveBeenNthCalledWith(3, 'git', [
-      '-C',
-      '/fake-home/.claude/skills/gstack',
-      'pull',
-      '--ff-only',
-      'origin',
-      'main',
-    ])
-    expect(run).toHaveBeenNthCalledWith(4, './setup', ['--team'], {
-      cwd: '/fake-home/.claude/skills/gstack',
-    })
-    expect(run).toHaveBeenNthCalledWith(5, GLOBAL_VP, ['install', '-g', '@webpresso/agent-kit'])
+    expect(run).toHaveBeenNthCalledWith(3, GLOBAL_VP, ['install', '-g', '@webpresso/agent-kit'])
+    expect(run.mock.calls.flat().join(' ')).not.toContain('github.com/garrytan/gstack')
+    expect(run.mock.calls.flat().join(' ')).not.toContain('./setup')
     expect(refreshClaudePlugin).toHaveBeenCalledWith(
       '/global/lib/node_modules/@webpresso/agent-kit',
     )
@@ -445,7 +440,7 @@ describe('wp package-manager commands', () => {
     expect(refreshCodexPlugin).toHaveBeenCalledWith('/global/lib/node_modules/@webpresso/agent-kit')
   })
 
-  it('clones gstack when the canonical checkout is missing and wp owns gstack', () => {
+  it('does not clone gstack when the canonical checkout is missing and wp owns gstack', () => {
     const run = vi.fn(() => spawnResult(0))
     const mkdir = vi.fn()
     const { refreshClaudePlugin, refreshCodexPlugin } = successfulPluginRefreshes()
@@ -467,17 +462,9 @@ describe('wp package-manager commands', () => {
       }),
     ).toBe(0)
 
-    expect(mkdir).toHaveBeenCalledWith('/fake-home/.claude/skills', { recursive: true })
-    expect(run).toHaveBeenCalledWith('git', [
-      'clone',
-      '--depth',
-      '1',
-      'https://github.com/garrytan/gstack.git',
-      '/fake-home/.claude/skills/gstack',
-    ])
-    expect(run).toHaveBeenCalledWith('./setup', ['--team'], {
-      cwd: '/fake-home/.claude/skills/gstack',
-    })
+    expect(mkdir).not.toHaveBeenCalled()
+    expect(run.mock.calls.flat().join(' ')).not.toContain('github.com/garrytan/gstack')
+    expect(run.mock.calls.flat().join(' ')).not.toContain('./setup')
     expect(refreshClaudePlugin).toHaveBeenCalledWith(
       '/global/lib/node_modules/@webpresso/agent-kit',
     )
@@ -507,7 +494,7 @@ describe('wp package-manager commands', () => {
       }),
     ).toBe(1)
 
-    expect(run).toHaveBeenCalledTimes(5)
+    expect(run).toHaveBeenCalledTimes(3)
     expect(refreshClaudePlugin).toHaveBeenCalledWith(
       '/global/lib/node_modules/@webpresso/agent-kit',
     )

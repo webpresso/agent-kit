@@ -23,6 +23,9 @@ export {
   getPreferredSecretsConfigPath,
   getRuntimeSecretsConfigPath,
   readSecretsConfig,
+  resolveSecretsConfigProfile,
+  resolveSecretsConfigProfileEnvironment,
   type SecretManagerName,
   type SecretsConfig,
+  type SecretsConfigProfile,
 } from './secrets-config.js'

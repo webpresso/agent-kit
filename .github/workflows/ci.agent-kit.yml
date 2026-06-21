@@ -83,6 +83,27 @@ jobs:
             echo "- packages_token_ok: ${{ steps.packages.outputs.packages_token_ok }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
+  blueprint-gate:
+    name: Blueprint gate
+    if: ${{ github.event_name == 'pull_request' && !startsWith(github.head_ref, 'changeset-release/') && needs.auth-preflight.outputs.repo_access_ok == 'true' && needs.auth-preflight.outputs.action_downloads_ok == 'true' && needs.auth-preflight.outputs.packages_token_ok == 'true' }}
+    runs-on: ubuntu-latest
+    needs: auth-preflight
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: latest
+      - run: pnpm install --frozen-lockfile
+      - name: Require blueprint coverage for non-doc PRs
+        run: ./bin/wp audit blueprint-pr-coverage --base "${{ github.event.pull_request.base.sha }}"
+
   lint-typecheck:
     name: Lint & typecheck
     runs-on: ubuntu-latest
@@ -189,6 +210,10 @@ jobs:
         run: |
           pnpm run build:runtime-binaries
           pnpm run stage:plugin-runtime
+      - name: Verify secret provider correctness
+        run: pnpm run verify:secrets
+      - name: Quarantine secret provider drift
+        run: pnpm run audit:secret-provider-quarantine
       - name: Stage packed surface for external scanning
         run: |
           rm -rf .webpresso-packed-surface
@@ -199,6 +224,86 @@ jobs:
           args: dir --exit-code 1 /github/workspace/.webpresso-packed-surface
       - name: Run wp audit guardrails
         run: ./bin/wp audit guardrails
+
+  e2e:
+    name: E2E
+    runs-on: ubuntu-latest
+    needs: auth-preflight
+    if: ${{ needs.auth-preflight.outputs.repo_access_ok == 'true' && needs.auth-preflight.outputs.action_downloads_ok == 'true' && needs.auth-preflight.outputs.packages_token_ok == 'true' }}
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: latest
+      - run: pnpm install --frozen-lockfile
+      - name: Run e2e when Playwright bootstrap is present
+        run: |
+          if [ ! -f playwright.config.ts ]; then
+            echo "Skipping e2e: playwright.config.ts not present."
+            exit 0
+          fi
+
+          pnpm run e2e
+
+  architecture-drift:
+    name: Architecture drift
+    runs-on: ubuntu-latest
+    needs: auth-preflight
+    if: ${{ needs.auth-preflight.outputs.repo_access_ok == 'true' && needs.auth-preflight.outputs.action_downloads_ok == 'true' && needs.auth-preflight.outputs.packages_token_ok == 'true' }}
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: latest
+      - run: pnpm install --frozen-lockfile
+      - name: Check architecture drift contract
+        run: ./bin/wp audit architecture-drift --root .
+
+  deploy-verify:
+    name: Deploy verify
+    runs-on: ubuntu-latest
+    needs: auth-preflight
+    if: ${{ needs.auth-preflight.outputs.repo_access_ok == 'true' && needs.auth-preflight.outputs.action_downloads_ok == 'true' && needs.auth-preflight.outputs.packages_token_ok == 'true' }}
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: latest
+      - run: pnpm install --frozen-lockfile
+      - name: Verify deploy-contract gate when production release metadata is present
+        run: |
+          set -euo pipefail
+
+          METADATA_PATH='infra/release-metadata.production.json'
+
+          if [ ! -f "$METADATA_PATH" ]; then
+            echo "No production release metadata present at $METADATA_PATH; skipping deploy-contract gate."
+            exit 0
+          fi
+
+          if ! node -e "const pkg=require('./package.json'); process.exit(pkg.scripts && pkg.scripts['verify:deploy-contract'] ? 0 : 1)"; then
+            echo "::error::Detected $METADATA_PATH but no verify:deploy-contract script."
+            echo "::error::Repos adopting the shared deploy contract must keep agent-kit provider-neutral and supply a repo-owned deploy verifier."
+            echo "::error::That verifier owns provider-specific env-name derivation, Preview-URL prohibitions for DO previews, and must fail closed for migration-bearing Durable Object releases."
+            exit 1
+          fi
+
+          pnpm run verify:deploy-contract
 
   bundle-smoke:
     name: Bundle smoke
@@ -293,7 +398,7 @@ jobs:
     name: WP check
     runs-on: ubuntu-latest
     if: always()
-    needs: [lint-typecheck, test, audits, bundle-smoke]
+    needs: [lint-typecheck, test, audits, bundle-smoke, blueprint-gate, e2e, architecture-drift, deploy-verify]
     steps:
       - name: All jobs passed
         run: |

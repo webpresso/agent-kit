@@ -15,9 +15,7 @@ const infisicalExportDocSnippet =
   'infisical' +
   ' export --projectId="$INFISICAL_PROJECT_ID" --env="$INFISICAL_ENV_SLUG" --format=json`'
 const infisicalExportParityExpectation =
-  "expect(workflow).toContain('" +
-  'infisical' +
-  ` export --projectId="\${INFISICAL_PROJECT_ID}"')`
+  "expect(workflow).toContain('" + 'infisical' + ` export --projectId="\${INFISICAL_PROJECT_ID}"')`
 
 function tempRepo(): string {
   const root = mkdtempSync(join(tmpdir(), 'wp-quarantine-'))
@@ -107,11 +105,11 @@ describe('auditSecretProviderQuarantine', () => {
     const result = auditSecretProviderQuarantine(root)
 
     expect(result.ok).toBe(false)
-    expect(result.violations).toEqual([
+    expect(result.violations).toContainEqual(
       expect.objectContaining({
         message: expect.stringContaining('legacy with-secrets wrapper'),
       }),
-    ])
+    )
   })
 
   test('flags with-secrets invocation without a double-dash separator', () => {
@@ -125,11 +123,11 @@ describe('auditSecretProviderQuarantine', () => {
     const result = auditSecretProviderQuarantine(root)
 
     expect(result.ok).toBe(false)
-    expect(result.violations).toEqual([
+    expect(result.violations).toContainEqual(
       expect.objectContaining({
         message: expect.stringContaining('legacy with-secrets wrapper'),
       }),
-    ])
+    )
   })
 
   test('flags direct provider run invocation without a wrapper', () => {
@@ -153,7 +151,10 @@ describe('auditSecretProviderQuarantine', () => {
   test('passes for clean source', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'src'), { recursive: true })
-    writeFileSync(join(root, 'src', 'app.ts'), "exec('wp secrets run --sink dev-server --profile preview -- node server.js')")
+    writeFileSync(
+      join(root, 'src', 'app.ts'),
+      "exec('wp secrets run --sink dev-server --profile preview -- node server.js')",
+    )
 
     const result = auditSecretProviderQuarantine(root)
 

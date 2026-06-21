@@ -3,7 +3,13 @@ import { z } from 'zod'
 import type { ToolDescriptor } from '#mcp/auto-discover'
 
 import { DEFAULT_CI_ACT_TIMEOUT_MS, MAX_CI_ACT_TIMEOUT_MS } from '#cli/commands/ci'
-import { buildPublicCiActCommand, sanitizePublicCiActArgv } from '#ci/act-runner.js'
+import {
+  buildPublicCiActCommand,
+  preparePublicCiActExecution,
+  resolveCiActExecutionMode,
+  resolveCiActSecretEnvProfile,
+  sanitizePublicCiActArgv,
+} from '#ci/act-runner.js'
 import { isSecretGateRuntimeProfile, runSecretGateCommand } from '#secret-gate/runner.js'
 import { clipRawOutput, createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 import { resolveProjectRoot } from './_shared/project-root.js'
@@ -25,9 +31,10 @@ const inputSchema = z
       .default('secrets-only')
       .refine((value) => isSecretGateRuntimeProfile(value), {
         message:
-          'envProfile is a secret-gate runtime profile (none, public, secrets-only, service-runtime, database, full). Use secretEnvProfile for Doppler/Infisical configs such as dev.',
+          'envProfile is a secret-gate runtime profile (none, public, secrets-only, service-runtime, database, full). Use secretProfile for repo-owned secret selectors.',
       }),
-    secretEnvProfile: z.string().optional(),
+    secretProfile: z.string().optional(),
+    mode: z.enum(['direct', 'replay']).optional().default('direct'),
     timeoutMs: z
       .number()
       .int()
@@ -41,17 +48,57 @@ const inputSchema = z
   })
   .strict()
 
+const commandDetailsSchema = z.object({ command: z.string(), args: z.array(z.string()) })
+
 const outputSchema = createSummaryOutputSchema({
-  details: z.object({
-    command: z.object({ command: z.string(), args: z.array(z.string()) }),
-    envProfile: z.string(),
-    secretEnvProfile: z.string().optional(),
-  }),
+  details: z.union([
+    z.object({
+      command: commandDetailsSchema,
+      envProfile: z.string(),
+      mode: z.enum(['dry-run', 'execute']),
+      nonSecurityEquivalent: commandDetailsSchema,
+      secretProfile: z.string().optional(),
+    }),
+    z.object({
+      command: commandDetailsSchema,
+      envProfile: z.string(),
+      mode: z.literal('replay'),
+      nonSecurityEquivalent: z.literal(true),
+      secretProfile: z.string().optional(),
+    }),
+  ]),
 })
 
-function publicCommandDetails(input: z.infer<typeof inputSchema>, cwd: string) {
+type CiActInput = z.infer<typeof inputSchema>
+
+function publicCommandDetails(input: CiActInput, cwd: string) {
   const command = sanitizePublicCiActArgv(buildPublicCiActCommand({ ...input, cwd }))
   return { command: command.command, args: [...command.args] }
+}
+
+function nonSecurityEquivalentDetails(input: CiActInput, cwd: string) {
+  const command = sanitizePublicCiActArgv(buildPublicCiActCommand({ ...input, cwd }))
+  return { command: 'act', args: [...command.actArgs] }
+}
+
+function dryRunDetails(input: CiActInput, cwd: string) {
+  if (resolveCiActExecutionMode(input) === 'replay') {
+    return {
+      command: publicCommandDetails(input, cwd),
+      envProfile: input.envProfile,
+      mode: 'replay' as const,
+      nonSecurityEquivalent: true as const,
+      secretProfile: input.secretProfile,
+    }
+  }
+
+  return {
+    command: publicCommandDetails(input, cwd),
+    envProfile: input.envProfile,
+    mode: 'dry-run' as const,
+    nonSecurityEquivalent: nonSecurityEquivalentDetails(input, cwd),
+    secretProfile: input.secretProfile,
+  }
 }
 
 const tool: ToolDescriptor = {
@@ -62,59 +109,80 @@ const tool: ToolDescriptor = {
   outputSchema,
   annotations: {
     title: 'CI act',
+    readOnlyHint: false,
+    idempotentHint: false,
     destructiveHint: false,
     openWorldHint: false,
   },
   handler: async (raw, extra) => {
     const input = inputSchema.parse(raw ?? {})
     const cwd = resolveProjectRoot(input.cwd ? { cwd: input.cwd } : {})
-    const command = buildPublicCiActCommand({ ...input, cwd })
     if (!input.execute) {
       return createSummaryResult({
         passed: true,
         summary: `ci-act dry-run prepared via env profile ${input.envProfile}`,
-        details: {
-          command: publicCommandDetails(input, cwd),
-          envProfile: input.envProfile,
-          secretEnvProfile: input.secretEnvProfile,
-        },
+        details: dryRunDetails(input, cwd),
       })
     }
 
-    const result = await runSecretGateCommand({
-      cwd,
-      sink: 'act',
-      profile: input.secretEnvProfile ?? 'preview',
-      envProfile: input.envProfile,
-      forceSecretGate: true,
-      command: 'act',
-      args: command.actArgs,
-      timeoutMs: input.timeoutMs,
-      signal: extra?.signal,
-    })
-    const merged = [result.stdout, result.stderr].filter(Boolean).join('\n')
-    const redacted = redactText(merged)
-    const clipped = clipRawOutput(redacted, 4_000, { toolName: 'wp_ci_act' })
-    const toolExecutionFailed = result.timedOut || result.aborted
-    return createSummaryResult(
-      {
-        passed: result.exitCode === 0,
-        summary:
-          result.exitCode === 0
-            ? `ci-act finished successfully via env profile ${input.envProfile}`
-            : `ci-act failed with exit ${result.exitCode} via env profile ${input.envProfile}`,
-        exitCode: result.exitCode,
-        details: {
-          command: publicCommandDetails(input, cwd),
-          envProfile: input.envProfile,
-          secretEnvProfile: input.secretEnvProfile,
+    const prepared = preparePublicCiActExecution({ ...input, cwd })
+    try {
+      const secretProfile = resolveCiActSecretEnvProfile({ ...input, cwd }) ?? 'preview'
+      const result = await runSecretGateCommand({
+        cwd,
+        sink: 'act',
+        profile: secretProfile,
+        envProfile: input.envProfile,
+        forceSecretGate: true,
+        command: 'act',
+        args: prepared.command.actArgs,
+        timeoutMs: input.timeoutMs,
+        signal: extra?.signal,
+      })
+      const merged = [result.stdout, result.stderr].filter(Boolean).join('\n')
+      const redacted = redactText(merged)
+      const clipped = clipRawOutput(redacted, 4_000, { toolName: 'wp_ci_act' })
+      const toolExecutionFailed = result.timedOut || result.aborted
+      const failures = [
+        ...(result.timedOut ? [{ message: 'ci-act timed out while running act' }] : []),
+        ...(result.aborted ? [{ message: 'ci-act aborted by client signal' }] : []),
+      ]
+      const details =
+        prepared.mode === 'replay'
+          ? {
+              command: publicCommandDetails(input, cwd),
+              envProfile: input.envProfile,
+              mode: 'replay' as const,
+              nonSecurityEquivalent: true as const,
+              secretProfile: input.secretProfile,
+            }
+          : {
+              command: publicCommandDetails(input, cwd),
+              envProfile: input.envProfile,
+              mode: 'execute' as const,
+              nonSecurityEquivalent: nonSecurityEquivalentDetails(input, cwd),
+              secretProfile: input.secretProfile,
+            }
+
+      return createSummaryResult(
+        {
+          passed: result.exitCode === 0,
+          summary:
+            result.exitCode === 0
+              ? `ci-act finished successfully via env profile ${input.envProfile}`
+              : `ci-act failed with exit ${result.exitCode} via env profile ${input.envProfile}`,
+          exitCode: result.exitCode,
+          timedOut: result.timedOut,
+          aborted: result.aborted,
+          details,
+          ...(failures.length > 0 ? { failures } : {}),
+          ...clipped,
         },
-        ...clipped,
-        ...(result.timedOut ? { failures: [{ message: 'timed out while running act' }] } : {}),
-        ...(result.aborted ? { failures: [{ message: 'aborted by client signal' }] } : {}),
-      },
-      toolExecutionFailed ? { isError: true } : {},
-    )
+        toolExecutionFailed ? { isError: true } : {},
+      )
+    } finally {
+      prepared.cleanup()
+    }
   },
 }
 

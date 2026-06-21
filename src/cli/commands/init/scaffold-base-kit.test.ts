@@ -36,7 +36,7 @@ describe('scaffoldBaseKit', () => {
     expect(existsSync(join(repoRoot, '.husky', 'pre-commit'))).toBe(true)
     expect(existsSync(join(repoRoot, '.husky', 'commit-msg'))).toBe(false)
     expect(existsSync(join(repoRoot, '.github', 'actions', 'setup-webpresso', 'action.yml'))).toBe(
-      true,
+      false,
     )
     expect(existsSync(join(repoRoot, '.github', 'workflows', 'ci.yml'))).toBe(true)
     expect(existsSync(join(repoRoot, '.github', 'workflows', 'release.yml'))).toBe(true)
@@ -80,6 +80,8 @@ describe('scaffoldBaseKit', () => {
     expect(workflow).toContain('\n  architecture-drift:\n')
     expect(workflow).toContain('\n  deploy-verify:\n')
     expect(workflow).toContain('Skipping e2e: playwright.config.ts not present.')
+    expect(workflow).toContain('vp install -g @webpresso/agent-kit')
+    expect(workflow).not.toContain('./.github/actions/setup-webpresso')
     expect(workflow).not.toContain('\n  test:\n')
     expect(workflow).not.toContain('\n  wp-audits:\n')
     expect(workflow).not.toContain('\n  deploy-contract:\n')

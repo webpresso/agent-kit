@@ -20,9 +20,9 @@ import type { ToolDescriptor } from '#mcp/auto-discover'
 import { MCP_AUDIT_KINDS } from './_shared/audit-kinds.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 
-const KINDS = MCP_AUDIT_KINDS
+export const KINDS = MCP_AUDIT_KINDS
 
-const inputSchema = z.object({
+export const inputSchema = z.object({
   kind: z.enum(KINDS),
   /** Working tree to run the audit against. `directory` is accepted as an input alias. */
   cwd: z.string().optional(),
@@ -34,14 +34,14 @@ const inputSchema = z.object({
 
 export type AkAuditInput = z.infer<typeof inputSchema>
 
-interface RepoAuditLikeResult {
+export interface RepoAuditLikeResult {
   ok: boolean
   title?: string
   checked?: number
   violations?: { message: string; file?: string }[]
 }
 
-type AuditPayload = {
+export type AuditPayload = {
   passed: boolean
   summary: string
   kind: string
@@ -71,11 +71,11 @@ const outputSchema = createSummaryOutputSchema({
   kind: z.enum(KINDS),
 })
 
-function wrap(payload: AuditPayload, options: { isError?: boolean } = {}) {
+export function wrapAuditPayload(payload: AuditPayload, options: { isError?: boolean } = {}) {
   return createSummaryResult(payload, options)
 }
 
-function summarizeRepoAudit(kind: string, result: RepoAuditLikeResult): string {
+export function summarizeRepoAudit(kind: string, result: RepoAuditLikeResult): string {
   const violationCount = result.violations?.length ?? 0
   if (result.ok) {
     const checked = typeof result.checked === 'number' ? ` (${result.checked} checked)` : ''
@@ -88,7 +88,7 @@ function summarizeExitCode(kind: string, exitCode: number): string {
   return exitCode === 0 ? `${kind} audit passed` : `${kind} audit failed (exit ${exitCode})`
 }
 
-async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
+export async function dispatchAudit(input: AkAuditInput): Promise<AuditPayload> {
   const { kind } = input
   switch (kind) {
     case 'catalog-drift': {
@@ -383,6 +383,20 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
         details: auditResult,
       }
     }
+    case 'consumer-agent-kit-dependency': {
+      const { auditConsumerAgentKitDependency } = await import(
+        '#audit/consumer-agent-kit-dependency'
+      )
+      const auditResult = auditConsumerAgentKitDependency(
+        input.cwd ?? input.directory ?? process.cwd(),
+      )
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
+    }
     case 'hook-surface': {
       const { auditHookSurface } = await import('#audit/hook-surface')
       const auditResult = auditHookSurface(input.cwd ?? input.directory)
@@ -497,18 +511,18 @@ const tool: ToolDescriptor = {
           : 'unknown'
       // Schema validation failure — agent supplied bad input; isError lets
       // it distinguish "audit ran and found issues" from "audit didn't run".
-      return wrap(
+      return wrapAuditPayload(
         { passed: false, summary: `Invalid wp_audit input for ${kind}`, kind, details: message },
         { isError: true },
       )
     }
 
     try {
-      const payload = await dispatch(input)
-      return wrap(payload)
+      const payload = await dispatchAudit(input)
+      return wrapAuditPayload(payload)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      return wrap(
+      return wrapAuditPayload(
         {
           passed: false,
           summary: `${input.kind} audit crashed`,

@@ -30,10 +30,10 @@ plan, test, and keep a repo correct.
 
 Requires Node.js 24 or newer. No private registry setup is required.
 
-First-time machine? Install Vite+ so `vp` is on PATH first (`curl -fsSL https://viteplus.dev/install.sh | bash` on Linux/macOS; in CI use `voidzero-dev/setup-vp@v1`).
+Install the Webpresso CLI globally, then run setup from your repo root. `wp` bundles the package/task facade it needs, so a separate global `vp` install is not required.
 
 ```bash
-vp install -g @webpresso/agent-kit && wp setup
+npm install -g @webpresso/agent-kit && wp setup
 ```
 
 For repeatable consumer-repo setup, keep the repo contract on global `wp` plus
@@ -287,3 +287,7 @@ set before promotion: `docs/bench/reference-parity-matrix.md`,
 `src/__integration__/reference-parity-host-smoke.integration.test.ts`,
 `src/__integration__/reference-parity-tool-surface.integration.test.ts`, and
 `docs/bench/session-memory-methodology.md`.
+
+### Curated review skills
+
+`wp setup --with gstack` installs Webpresso-owned, unprefixed workflow skills for outside-voice review and plan critique (`claude`, `plan-eng-review`, `plan-ceo-review`, `plan-design-review`, `review`). These are curated Markdown assets shipped with agent-kit; they do not clone or run an external gstack checkout. To retire an old `~/.claude/skills/gstack` checkout, rerun setup with `WP_GSTACK_CLEANUP_EXTERNAL=1`; the checkout is backed up instead of deleted in place.

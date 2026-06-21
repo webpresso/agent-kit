@@ -87,6 +87,8 @@ const tool: ToolDescriptor = {
   // etc. — clients should treat invocation as observable side effects.
   annotations: {
     title: 'Test',
+    readOnlyHint: false,
+    idempotentHint: false,
     destructiveHint: false,
     openWorldHint: false,
   },
@@ -108,6 +110,7 @@ const tool: ToolDescriptor = {
     const compact = formatMcpToolOutput(result.output, {
       toolName: 'wp_test',
       full: input.full,
+      cwd,
     })
     const payload = {
       passed: result.passed,

@@ -126,6 +126,8 @@ import { scaffoldSubagents } from './scaffolders/subagents/index.js'
 import { maybeRunVisionInterview } from './scaffolders/vision/interview.js'
 import { scaffoldVision } from './scaffolders/vision/index.js'
 import { scaffoldWorkspaceConfig } from './scaffolders/workspace-config/index.js'
+import { removeConfiguredGeneratedPaths } from './generated-cleanup.js'
+import { captureConfiguredPreservedFiles, restoreChangedSnapshots } from './preserved-files.js'
 import {
   claimProjectOwnedTool,
   claimUserOwnedTool,
@@ -577,7 +579,7 @@ async function runUserOnlySetup(input: {
     const agentKitGlobalResult = ensureAgentKitGlobal({ options })
     switch (agentKitGlobalResult.kind) {
       case 'agent-kit-global-updated':
-        console.log('  agent-kit global: ✓ refreshed via vp install -g')
+        console.log('  agent-kit global: ✓ refreshed global package')
         break
       case 'agent-kit-global-skipped-dry-run':
         console.log('  agent-kit global: skipped (--dry-run)')
@@ -940,6 +942,10 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
   const acceptDefaults = flags.yes ?? true
 
   const existingConfig = readConfig(consumer.repoRoot)
+  const preservedSnapshots =
+    options.dryRun || !existingConfig
+      ? []
+      : captureConfiguredPreservedFiles(consumer.repoRoot, existingConfig)
   const integrations = resolveIntegrationConfig(existingConfig, flags)
   const presets = resolveSelectedPresets(flags, integrations)
   const legacyExternalIntegrations = collectLegacyExternalIntegrationNames(existingConfig, flags)
@@ -1172,6 +1178,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
 
     if (!options.dryRun) {
       writeConfig(consumer.repoRoot, config)
+      removeConfiguredGeneratedPaths(consumer.repoRoot, config)
     }
 
     // Apply scaffolder presets
@@ -1461,7 +1468,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
       const agentKitGlobalResult = ensureAgentKitGlobal({ options })
       switch (agentKitGlobalResult.kind) {
         case 'agent-kit-global-updated':
-          console.log('  agent-kit global: ✓ refreshed via vp install -g')
+          console.log('  agent-kit global: ✓ refreshed global package')
           break
         case 'agent-kit-global-skipped-up-to-date':
           console.log(
@@ -1582,7 +1589,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
       }
     }
 
-    let gstackFailure: 'clone-failed' | 'pull-failed' | 'setup-failed' | null = null
+    let gstackFailure: 'setup-failed' | null = null
     if (process.env.WP_SKIP_GSTACK === '1') {
       console.warn('  gstack: ⚠ WP_SKIP_GSTACK=1 — skipping optional gstack integration.')
     } else if (isCiEnvironment && presets.includes('gstack')) {
@@ -1663,28 +1670,6 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
           break
         case 'gstack-skipped-dry-run':
           console.log('  gstack: skipped (--dry-run)')
-          break
-        case 'gstack-clone-failed':
-          console.error(
-            gstackResult.reason === 'signal-interrupted'
-              ? `  gstack: ✗ interrupted while running git clone`
-              : gstackResult.reason === 'inactivity-timeout'
-                ? `  gstack: ✗ git clone timed out after inactivity`
-                : `  gstack: ✗ git clone exited with ${gstackResult.exitCode}`,
-          )
-          console.error(`  gstack: log ${gstackResult.logPath}`)
-          gstackFailure = 'clone-failed'
-          break
-        case 'gstack-pull-failed':
-          console.error(
-            gstackResult.reason === 'signal-interrupted'
-              ? `  gstack: ✗ interrupted while running git pull`
-              : gstackResult.reason === 'inactivity-timeout'
-                ? `  gstack: ✗ git pull timed out after inactivity`
-                : `  gstack: ✗ git pull exited with ${gstackResult.exitCode}`,
-          )
-          console.error(`  gstack: log ${gstackResult.logPath}`)
-          gstackFailure = 'pull-failed'
           break
         case 'gstack-setup-failed':
           console.error(
@@ -1901,8 +1886,6 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     console.log('\nwp init: setup phases finished.')
     if (omxFailure === 'not-found') return EXIT_SETUP_FAIL
     if (omxFailure === 'spawn-failed') return EXIT_WRITE_FAIL
-    if (gstackFailure === 'clone-failed') return EXIT_WRITE_FAIL
-    if (gstackFailure === 'pull-failed') return EXIT_WRITE_FAIL
     if (gstackFailure === 'setup-failed') return EXIT_WRITE_FAIL
     if (rtkFailure === 'not-found') return EXIT_SETUP_FAIL
     if (rtkFailure === 'init-failed') return EXIT_WRITE_FAIL
@@ -1958,6 +1941,10 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
       `wp init: write failed — ${error instanceof Error ? error.message : String(error)}`,
     )
     return EXIT_WRITE_FAIL
+  } finally {
+    if (!options.dryRun && preservedSnapshots.length > 0) {
+      restoreChangedSnapshots(consumer.repoRoot, preservedSnapshots)
+    }
   }
 }
 

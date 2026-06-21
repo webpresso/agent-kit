@@ -268,6 +268,25 @@ describe('routeCommand', () => {
     }
   })
 
+  it('routes read-only PR, gain, and release status commands to structured MCP tools', async () => {
+    const routeCommand = await getRoute()
+    for (const [command, expectedTool] of [
+      ['gh pr view 182 --json number,title', 'wp_pr_status'],
+      ['gh pr checks 182', 'wp_pr_status'],
+      ['rtk gain --format json', 'wp_gain'],
+      ['vp run public:readiness', 'wp_release_readiness'],
+      ['vp run changeset:status', 'wp_release_readiness'],
+    ] as const) {
+      const result = routeCommand(command)
+      expect(result?.action.action, command).toBe('deny')
+      if (result?.action.action === 'deny') {
+        expect(result.action.tool, command).toBe(expectedTool)
+        expect(result.action.guidance, command).toContain(expectedTool)
+        expect(result.action.guidance, command).toContain('MCP tool')
+      }
+    }
+  })
+
   it('raw and wrapped CI act source entrypoints deny with secret-aware MCP guidance', async () => {
     const routeCommand = await getRoute()
     for (const command of [
@@ -337,6 +356,9 @@ describe('routeCommand', () => {
       ['vp exec playwright test e2e/smoke.spec.ts', 'wp_e2e'],
       ['with-secrets -- wrangler tail webpresso-chef-alpha --format json', 'wp_worker_tail'],
       ['with-secrets -- act -W .github/workflows/ci.yml', 'wp_ci_act'],
+      ['gh pr checks 182', 'wp_pr_status'],
+      ['rtk gain --format json', 'wp_gain'],
+      ['vp run public:readiness', 'wp_release_readiness'],
     ] as const) {
       const result = routeCommand(command)
       expect(result?.action.action, command).toBe('deny')
@@ -536,7 +558,7 @@ describe('routeCommand', () => {
       const result = routeCommand(command)
       expect(result?.action.action).toBe('deny')
       if (result?.action.action === 'deny') {
-        expect(result.action.guidance).toContain('Use `wp worktree` instead')
+        expect(result.action.guidance).toContain('Use the `wp_worktree` MCP tool')
       }
     }
   })

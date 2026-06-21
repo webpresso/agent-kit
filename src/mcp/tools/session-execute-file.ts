@@ -1,13 +1,5 @@
 import { createHash } from 'node:crypto'
-import {
-  closeSync,
-  existsSync,
-  mkdirSync,
-  openSync,
-  readSync,
-  realpathSync,
-  statSync,
-} from 'node:fs'
+import { closeSync, existsSync, mkdirSync, openSync, readSync, realpathSync, statSync } from 'node:fs'
 import { dirname, extname, join, relative, resolve, sep } from 'node:path'
 
 import { z } from 'zod'
@@ -18,6 +10,7 @@ import { resolveProjectRoot } from '#mcp/tools/_shared/project-root.js'
 import { SessionMemoryStore } from '#session-memory/store.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 import { createGainSummaryResult } from './_session-gain.js'
+import { createSessionElisionRecorder, sessionElisionSchema } from '#mcp/_session-elision.js'
 import { defaultIndexDbPath } from './session-restore.js'
 
 const MAX_PREVIEW_BYTES = 4 * 1024
@@ -30,6 +23,17 @@ const SECRET_PATH_PATTERNS = [
   /id_ed25519$/iu,
 ]
 const SUPPORTED_OPERATIONS = new Set(['read_text', 'metadata'])
+
+function readFilePrefix(absolutePath: string, byteLength: number): Buffer {
+  const fd = openSync(absolutePath, 'r')
+  try {
+    const buffer = Buffer.allocUnsafe(byteLength)
+    const bytesRead = readSync(fd, buffer, 0, byteLength, 0)
+    return buffer.subarray(0, bytesRead)
+  } finally {
+    closeSync(fd)
+  }
+}
 
 const inputSchema = z
   .object({
@@ -76,13 +80,14 @@ interface FileOperationResult {
   readonly truncated: boolean
   readonly overflowIndexed: boolean
   readonly indexedChunkIds: readonly string[]
+  readonly elisions: readonly z.infer<typeof sessionElisionSchema>[]
   readonly warnings: readonly string[]
+  readonly rawBasisBytes?: number
   readonly metadata?: {
     readonly sizeBytes: number
     readonly lineCount: number
     readonly extension: string
   }
-  readonly rawBasisBytes?: number
 }
 
 const outputSchema = createSummaryOutputSchema({
@@ -98,6 +103,7 @@ const outputSchema = createSummaryOutputSchema({
     truncated: z.boolean(),
     overflowIndexed: z.boolean(),
     indexedChunkIds: z.array(z.string()),
+    elisions: z.array(sessionElisionSchema),
     warnings: z.array(z.string()),
     metadata: z
       .object({
@@ -114,6 +120,7 @@ const outputSchema = createSummaryOutputSchema({
   truncated: z.boolean(),
   overflowIndexed: z.boolean(),
   indexedChunkIds: z.array(z.string()),
+  elisions: z.array(sessionElisionSchema),
   warnings: z.array(z.string()),
   code: z.string().optional(),
 })
@@ -133,6 +140,7 @@ function errorResult(
     truncated: false,
     overflowIndexed: false,
     indexedChunkIds: [],
+    elisions: [],
     warnings: [warning],
   }
 }
@@ -189,21 +197,11 @@ function fileChunkId(path: string, content: Buffer): string {
   return createHash('sha256').update(path).update('\0').update(content).digest('hex').slice(0, 32)
 }
 
-function readFilePrefix(path: string, maxBytes: number): Buffer {
-  const fd = openSync(path, 'r')
-  try {
-    const target = Buffer.allocUnsafe(maxBytes)
-    const bytesRead = readSync(fd, target, 0, maxBytes, 0)
-    return target.subarray(0, bytesRead)
-  } finally {
-    closeSync(fd)
-  }
-}
-
 async function runFileOperation(
   input: SessionExecuteFileInput,
   repoRoot: string,
   store: SessionMemoryStore,
+  dbPath: string,
 ): Promise<FileOperationResult> {
   if (!SUPPORTED_OPERATIONS.has(input.operation)) {
     return errorResult(input, 'unsupported_operation', `unsupported operation ${input.operation}`)
@@ -244,9 +242,10 @@ async function runFileOperation(
       truncated: false,
       overflowIndexed: false,
       indexedChunkIds: [],
+      elisions: [],
       warnings,
+      rawBasisBytes: stats.size,
       metadata,
-      rawBasisBytes: content.length,
     }
   }
   if (stats.size > input.maxFileBytes) {
@@ -256,6 +255,7 @@ async function runFileOperation(
   const previewBytes = Buffer.byteLength(preview, 'utf8')
   const truncated = stats.size > previewBytes
   const indexedChunkIds: string[] = []
+  const elisions: z.infer<typeof sessionElisionSchema>[] = []
   if (truncated) {
     const id = `file:${fileChunkId(normalized.relative, content)}`
     store.indexChunk({
@@ -265,6 +265,21 @@ async function runFileOperation(
       metadata: { kind: 'session_file_read', path: normalized.relative, sizeBytes: stats.size },
     })
     indexedChunkIds.push(id)
+    const recorded = createSessionElisionRecorder({
+      cwd: repoRoot,
+      sourcePrefix: 'wp_session_execute_file',
+      dbPath,
+    }).record({
+      source: `file:${normalized.relative}`,
+      kind: 'file_overflow',
+      text,
+      returnedText: preview,
+      rawBytes: stats.size,
+      returnedBytes: previewBytes,
+      metadata: { path: normalized.relative, sizeBytes: stats.size },
+    })
+    if (recorded.elision) elisions.push(recorded.elision)
+    if (recorded.warning) warnings.push(recorded.warning)
   }
   return {
     passed: true,
@@ -276,9 +291,10 @@ async function runFileOperation(
     truncated,
     overflowIndexed: indexedChunkIds.length > 0,
     indexedChunkIds,
+    elisions,
     warnings,
+    rawBasisBytes: stats.size,
     metadata,
-    rawBasisBytes: content.length,
   }
 }
 
@@ -297,6 +313,7 @@ function payloadFrom(result: FileOperationResult) {
     truncated: result.truncated,
     overflowIndexed: result.overflowIndexed,
     indexedChunkIds: [...result.indexedChunkIds],
+    elisions: [...result.elisions],
     warnings: [...result.warnings],
     ...(result.passed ? {} : { code: result.code }),
     counts: {
@@ -311,6 +328,7 @@ function payloadFrom(result: FileOperationResult) {
       truncated: result.truncated,
       overflowIndexed: result.overflowIndexed,
       indexedChunkIds: [...result.indexedChunkIds],
+      elisions: [...result.elisions],
       warnings: [...result.warnings],
       ...(result.metadata ? { metadata: result.metadata } : {}),
     },
@@ -337,7 +355,7 @@ const tool: ToolDescriptor = {
     mkdirSync(dirname(dbPath), { recursive: true })
     const store = new SessionMemoryStore(dbPath)
     try {
-      const runtimeResult = await runFileOperation(input, repoRoot, store)
+      const runtimeResult = await runFileOperation(input, repoRoot, store, dbPath)
       const payload = payloadFrom(runtimeResult)
       const resultOptions = runtimeResult.passed ? {} : { isError: true }
       if (runtimeResult.passed && typeof runtimeResult.rawBasisBytes === 'number') {

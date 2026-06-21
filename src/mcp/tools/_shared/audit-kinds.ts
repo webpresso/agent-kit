@@ -42,6 +42,7 @@ export const MCP_AUDIT_KINDS = [
   'secret-provider-quarantine',
   'github-actions-secrets',
   'secrets-config',
+  'consumer-agent-kit-dependency',
   'session-memory-hardcut',
 ] as const
 

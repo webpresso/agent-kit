@@ -21,6 +21,7 @@ const VERSION = readPackageVersion(import.meta.url)
 const SUPPORTED_COMMANDS = [
   'blueprint',
   'config',
+  'secrets',
   'roadmap',
   'sync',
   'audit',
@@ -70,15 +71,16 @@ const ROOT_HELP = [
   '  setup                 Scaffold a consumer repo with the agent surface',
   '  blueprint             Manage blueprints (list, new, show, exec, audit, ...)',
   '  config                Repo configuration (secrets set/show/status/setup)',
+  '  secrets               Secret orchestration commands (doctor)',
   '  gain                  Show Webpresso gain metadata plus separate RTK gain totals',
   '  sync                  Sync agent rules + skills across IDE surfaces (--kind, --check)',
   '  bench                 Run the session-memory benchmark harness',
-  '  install               Install dependencies through the managed vp facade',
-  '  add                   Add dependencies through the managed vp facade',
-  '  remove                Remove dependencies through the managed vp facade',
+  '  install               Install dependencies through the managed package/task facade',
+  '  add                   Add dependencies through the managed package/task facade',
+  '  remove                Remove dependencies through the managed package/task facade',
   '  update                Refresh wp and any wp-managed optional OMX/OMC/gstack integrations by default; use --deps for local dependencies (--global is an alias)',
-  '  exec                  Run a binary through the managed vp facade',
-  '  run                   Run a package script through the managed vp facade',
+  '  exec                  Run a binary through the managed package/task facade',
+  '  run                   Run a package script through the managed package/task facade',
   '',
   'Quality:',
   '  audit                 Run packaged audits (bundle budgets, repo guardrails, TPH, tech-debt)',
@@ -193,6 +195,11 @@ export async function main(): Promise<number> {
     case 'config': {
       const { registerConfigCommand } = await import('./commands/config.js')
       registerConfigCommand(cli)
+      break
+    }
+    case 'secrets': {
+      const { registerSecretsCommand } = await import('./commands/secrets.js')
+      registerSecretsCommand(cli)
       break
     }
     case 'roadmap': {

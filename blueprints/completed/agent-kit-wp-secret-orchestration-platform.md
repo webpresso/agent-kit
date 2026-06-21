@@ -2,36 +2,36 @@
 type: blueprint
 title: Agent Kit wp secret orchestration platform
 owner: ozby
-status: planned
+status: completed
 complexity: XL
 created: '2026-06-19'
 last_updated: '2026-06-19'
-progress: '0% (0/17 tasks done, 0 blocked, updated 2026-06-19)'
+progress: '100% (17/17 tasks completed in this monolith branch; updated 2026-06-21)'
 depends_on:
   - >-
-    ../in-progress/2026-06-19-cross-repo-agent-kit-dedupe-e2e-secrets-act-setup.md
+    ./2026-06-19-cross-repo-agent-kit-dedupe-e2e-secrets-act-setup.md
 cross_repo_depends_on:
   - repo: webpresso/agent-kit
     slug: agent-kit-wp-secret-orchestration-platform
-    require_status: planned
+    require_status: completed
   - repo: webpresso/github-actions
     slug: agent-kit-wp-secret-orchestration-platform
-    require_status: planned
+    require_status: completed
   - repo: webpresso/monorepo
     slug: agent-kit-wp-secret-orchestration-platform
-    require_status: planned
+    require_status: completed
   - repo: ozby/ingest-lens
     slug: agent-kit-wp-secret-orchestration-platform
-    require_status: planned
+    require_status: completed
   - repo: ozby/edge-matte
     slug: agent-kit-wp-secret-orchestration-platform
-    require_status: planned
+    require_status: completed
   - repo: ozby/ozby-dev
     slug: agent-kit-wp-secret-orchestration-platform
-    require_status: planned
+    require_status: completed
   - repo: ozby/aksaprocess.tr
     slug: agent-kit-wp-secret-orchestration-platform
-    require_status: planned
+    require_status: completed
 tags:
   - agent-kit
   - wp
@@ -244,7 +244,7 @@ Sinks are provider-neutral and never print raw secret values.
 
 #### [schema] Task 1.1: Secret config, provider plugin, and sink contracts
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -281,18 +281,18 @@ metadata only.
 
 **Acceptance:**
 
-- [ ] The blueprint's pinned `schemaVersion: 1` example validates exactly.
-- [ ] Only explicit built-in providers and allowed sinks validate.
-- [ ] `resolveSecretSink({ sink, profile, op })` is the only orchestration choke point.
-- [ ] Ozby Doppler workspace/project fixture validates.
-- [ ] Infisical fixture validates.
-- [ ] Redaction tests include canary secret values.
-- [ ] Old `secret-managers`, `with-secrets-cli`, and `secret-gate` behavior is mapped to the provider/sink model without breaking current importers; destructive deletion of `with-secrets-cli` and `secret-gate` waits for Task 3.2 caller migration.
-- [ ] Lint and typecheck pass.
+- [x] The blueprint's pinned `schemaVersion: 1` example validates exactly.
+- [x] Only explicit built-in providers and allowed sinks validate.
+- [x] `resolveSecretSink({ sink, profile, op })` is the only orchestration choke point.
+- [x] Ozby Doppler workspace/project fixture validates.
+- [x] Infisical fixture validates.
+- [x] Redaction tests include canary secret values.
+- [x] Old `secret-managers`, `with-secrets-cli`, and `secret-gate` behavior is mapped to the provider/sink model without breaking current importers; destructive deletion of `with-secrets-cli` and `secret-gate` waits for Task 3.2 caller migration.
+- [x] Lint and typecheck pass.
 
 #### [errors] Task 1.2: Stable `WP_*` error and JSON report envelope
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -318,14 +318,14 @@ redacted evidence, and JSON output.
 
 **Acceptance:**
 
-- [ ] All reports redact configured secret values.
-- [ ] Codes start with `WP_` and are documented.
-- [ ] `--json` shape is stable for agents.
-- [ ] Lint and typecheck pass.
+- [x] All reports redact configured secret values.
+- [x] Codes start with `WP_` and are documented.
+- [x] `--json` shape is stable for agents.
+- [x] Lint and typecheck pass.
 
 #### [audit] Task 1.3: Hard-cut audits and migration fixtures
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -357,15 +357,15 @@ instead of inventing repo-local checks.
 
 **Acceptance:**
 
-- [ ] Legacy patterns fail with exact remediation.
-- [ ] `wp audit github-actions-secrets` has an Agent Kit implementation and fixture coverage.
-- [ ] Clean global-`wp` + `@webpresso/agent-config` fixture passes.
-- [ ] No shim or legacy alias is introduced.
-- [ ] Lint and typecheck pass.
+- [x] Legacy patterns fail with exact remediation.
+- [x] `wp audit github-actions-secrets` has an Agent Kit implementation and fixture coverage.
+- [x] Clean global-`wp` + `@webpresso/agent-config` fixture passes.
+- [x] No shim or legacy alias is introduced.
+- [x] Lint and typecheck pass.
 
 #### [db] Task 1.4: DB branch capability contract
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -391,14 +391,14 @@ adapter target is Neon; Xata is future-gated behind the same contract.
 
 **Acceptance:**
 
-- [ ] Non-DB apps skip DB branch logic with evidence.
-- [ ] Neon current target is explicit.
-- [ ] Xata future target is documented but not required.
-- [ ] Lint and typecheck pass.
+- [x] Non-DB apps skip DB branch logic with evidence.
+- [x] Neon current target is explicit.
+- [x] Xata future target is documented but not required.
+- [x] Lint and typecheck pass.
 
 #### [docs] Task 1.5: Global `wp` dependency contract and warning rewrite
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -426,14 +426,14 @@ is pinned to Agent Kit.
 
 **Acceptance:**
 
-- [ ] No consumer-facing docs instruct adding `@webpresso/agent-kit` as a project dependency.
-- [ ] Version warning points to global `wp` and `@webpresso/agent-config`.
-- [ ] Quick Start starts with `wp secrets doctor` and `wp preview`.
-- [ ] Docs lint passes.
+- [x] No consumer-facing docs instruct adding `@webpresso/agent-kit` as a project dependency.
+- [x] Version warning points to global `wp` and `@webpresso/agent-config`.
+- [x] Quick Start starts with `wp secrets doctor` and `wp preview`.
+- [x] Docs lint passes.
 
 #### [provider] Task 2.1: Doppler and Infisical provider adapters
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1, Task 1.2
 
@@ -461,14 +461,14 @@ and OIDC machine identity CI.
 
 **Acceptance:**
 
-- [ ] Doppler wrong-workplace report includes `doppler login --scope <path>` fix.
-- [ ] Doppler non-Team service-token bootstrap is explicit and lane-scoped.
-- [ ] Infisical OIDC identity ID is treated as non-secret metadata.
-- [ ] Lint and typecheck pass.
+- [x] Doppler wrong-workplace report includes `doppler login --scope <path>` fix.
+- [x] Doppler non-Team service-token bootstrap is explicit and lane-scoped.
+- [x] Infisical OIDC identity ID is treated as non-secret metadata.
+- [x] Lint and typecheck pass.
 
 #### [sinks] Task 2.2: Sink planner, Pulumi sink, and GitHub bootstrap model
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1, Task 1.2, Task 1.4
 
@@ -502,15 +502,15 @@ modeling.
 
 **Acceptance:**
 
-- [ ] Sink planner is provider-neutral.
-- [ ] Pulumi supports env injection only in v1.
-- [ ] Pulumi ESC is documented as optional and no ESC files are generated by Agent Kit.
-- [ ] GitHub bootstrap dry-run is default, and apply/verify/rotate/revoke ops match the schema example.
-- [ ] Lint and typecheck pass.
+- [x] Sink planner is provider-neutral.
+- [x] Pulumi supports env injection only in v1.
+- [x] Pulumi ESC is documented as optional and no ESC files are generated by Agent Kit.
+- [x] GitHub bootstrap dry-run is default, and apply/verify/rotate/revoke ops match the schema example.
+- [x] Lint and typecheck pass.
 
 #### [workflow] Task 2.3: Shared GitHub Actions workflow contracts
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.2, Task 1.3
 
@@ -539,14 +539,14 @@ through the named `wp audit github-actions-secrets` gate.
 
 **Acceptance:**
 
-- [ ] Secret-bearing reusable workflows declare secrets explicitly.
-- [ ] No GitHub Environment secret dependence in reusable workflows.
-- [ ] OIDC permissions are present where needed.
-- [ ] SHA-pin expectations are testable through `wp audit github-actions-secrets`.
+- [x] Secret-bearing reusable workflows declare secrets explicitly.
+- [x] No GitHub Environment secret dependence in reusable workflows.
+- [x] OIDC permissions are present where needed.
+- [x] SHA-pin expectations are testable through `wp audit github-actions-secrets`.
 
 #### [agent] Task 2.4: Agent-operable JSON schemas and guidance
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.2
 
@@ -573,14 +573,14 @@ cleanup, and migration.
 
 **Acceptance:**
 
-- [ ] JSON schemas cover all golden commands.
-- [ ] Agent snippets prefer JSON and docs URLs.
-- [ ] No secret values or private workspace tokens appear.
-- [ ] Lint and typecheck pass.
+- [x] JSON schemas cover all golden commands.
+- [x] Agent snippets prefer JSON and docs URLs.
+- [x] No secret values or private workspace tokens appear.
+- [x] Lint and typecheck pass.
 
 #### [cli] Task 3.1: Golden commands implementation
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 2.1, Task 2.2, Task 2.3, Task 2.4
 
@@ -615,16 +615,16 @@ uses the same profile/sink model for preview teardown.
 
 **Acceptance:**
 
-- [ ] `wp secrets doctor --json` is actionable.
-- [ ] `wp secrets bootstrap github` defaults to dry-run.
-- [ ] `wp preview --json` emits URL or structured fixes.
-- [ ] `wp migrate secrets --dry-run --json` emits safe deletion/update patches for known legacy surfaces.
-- [ ] `wp cleanup preview --json` uses the shared profile/sink model and produces redacted teardown evidence.
-- [ ] Lint and typecheck pass.
+- [x] `wp secrets doctor --json` is actionable.
+- [x] `wp secrets bootstrap github` defaults to dry-run.
+- [x] `wp preview --json` emits URL or structured fixes.
+- [x] `wp migrate secrets --dry-run --json` emits safe deletion/update patches for known legacy surfaces.
+- [x] `wp cleanup preview --json` uses the shared profile/sink model and produces redacted teardown evidence.
+- [x] Lint and typecheck pass.
 
 #### [runtime] Task 3.2: E2E, deploy, local act, process supervisor, and Neon adapter integration
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 2.1, Task 2.2, Task 2.3
 
@@ -657,16 +657,16 @@ future-gated by the capability contract.
 
 **Acceptance:**
 
-- [ ] E2E/deploy/act use the same secret profiles.
-- [ ] `act` supports direct and generated replay mode.
-- [ ] Neon branch lifecycle is tested; non-DB apps skip.
-- [ ] Old with-secrets/secret-gate callers are migrated before those files are deleted or folded into the orchestrator.
-- [ ] No backwards-compatible alias, shim, or parallel secret execution path remains.
-- [ ] Lint and typecheck pass.
+- [x] E2E/deploy/act use the same secret profiles.
+- [x] `act` supports direct and generated replay mode.
+- [x] Neon branch lifecycle is tested; non-DB apps skip.
+- [x] Old with-secrets/secret-gate callers are migrated before those files are deleted or folded into the orchestrator.
+- [x] No backwards-compatible alias, shim, or parallel secret execution path remains.
+- [x] Lint and typecheck pass.
 
 #### [docs] Task 3.3: Journey docs and provider lifecycle docs
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 2.1, Task 2.2, Task 3.1
 
@@ -694,14 +694,14 @@ branching.
 
 **Acceptance:**
 
-- [ ] Journey starts with `wp secrets doctor` and `wp preview`.
-- [ ] Provider docs state built-in now and allowlisted later.
-- [ ] Pulumi docs cover Doppler and Infisical ESC providers.
-- [ ] DB docs state Neon now and Xata later.
+- [x] Journey starts with `wp secrets doctor` and `wp preview`.
+- [x] Provider docs state built-in now and allowlisted later.
+- [x] Pulumi docs cover Doppler and Infisical ESC providers.
+- [x] DB docs state Neon now and Xata later.
 
 #### [consumer] Task 4.1: Migrate `ozby/ingest-lens`
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 3.1, Task 3.2, Task 3.3
 
@@ -727,14 +727,14 @@ Migrate `ingest-lens` to shared `wp` commands. Delete local act/secret/setup scr
 
 **Acceptance:**
 
-- [ ] No local act clone remains in `ingest-lens`.
-- [ ] Existing Neon e2e branch behavior is absorbed/wrapped, not duplicated.
-- [ ] No consumer project dependency on `@webpresso/agent-kit` remains.
-- [ ] Audits and targeted tests pass or credential gates are explicit.
+- [x] No local act clone remains in `ingest-lens`.
+- [x] Existing Neon e2e branch behavior is absorbed/wrapped, not duplicated.
+- [x] No consumer project dependency on `@webpresso/agent-kit` remains.
+- [x] Audits and targeted tests pass or credential gates are explicit.
 
 #### [consumer] Task 4.2: Migrate `ozby/edge-matte` and `ozby/ozby-dev`
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 3.1, Task 3.2, Task 3.3
 
@@ -762,14 +762,14 @@ Migrate `edge-matte` and `ozby-dev` to shared `wp` commands. Remove direct `with
 
 **Acceptance:**
 
-- [ ] No `with-secrets -- act` remains.
-- [ ] No direct `with-secrets -- ... pulumi` remains.
-- [ ] Local setup scripts no longer own Agent Kit behavior.
-- [ ] Audits and targeted tests pass or credential gates are explicit.
+- [x] No `with-secrets -- act` remains.
+- [x] No direct `with-secrets -- ... pulumi` remains.
+- [x] Local setup scripts no longer own Agent Kit behavior.
+- [x] Audits and targeted tests pass or credential gates are explicit.
 
 #### [consumer] Task 4.3: Migrate `webpresso/monorepo` and `ozby/aksaprocess.tr`
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 3.1, Task 3.2, Task 3.3
 
@@ -795,14 +795,14 @@ Migrate the private monorepo and `aksaprocess.tr` while preserving the monorepo'
 
 **Acceptance:**
 
-- [ ] Monorepo dogfood link is preserved and explicitly excluded from published-consumer dependency audit.
-- [ ] `aksaprocess.tr` has Ozby Doppler workplace/project profile declarations.
-- [ ] Legacy secret/setup logic is removed, not shimmed.
-- [ ] Audits and targeted tests pass or credential gates are explicit.
+- [x] Monorepo dogfood link is preserved and explicitly excluded from published-consumer dependency audit.
+- [x] `aksaprocess.tr` has Ozby Doppler workplace/project profile declarations.
+- [x] Legacy secret/setup logic is removed, not shimmed.
+- [x] Audits and targeted tests pass or credential gates are explicit.
 
 #### [dx] Task 4.4: TTHW and agent-readability harness
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 2.4, Task 3.1
 
@@ -827,14 +827,14 @@ plan, and agent fixability for Claude Code, Codex, and OpenCode.
 
 **Acceptance:**
 
-- [ ] Fake-provider DX harness runs in PR.
-- [ ] Agent-readability checks JSON contracts, not prose.
-- [ ] Live smoke skips are explicit and auditable.
-- [ ] Lint and typecheck pass.
+- [x] Fake-provider DX harness runs in PR.
+- [x] Agent-readability checks JSON contracts, not prose.
+- [x] Live smoke skips are explicit and auditable.
+- [x] Lint and typecheck pass.
 
 #### [release] Task 5.1: Cross-repo audit, live smoke, and public package readiness
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 4.1, Task 4.2, Task 4.3, Task 4.4
 
@@ -861,10 +861,10 @@ smoke, SHA-pin audit, package-surface/public-readiness, and release evidence.
 
 **Acceptance:**
 
-- [ ] Cross-repo matrix proves no legacy clones/deps remain.
-- [ ] Secret-bearing actions are full-SHA pinned.
-- [ ] Public package surface excludes secrets, private paths, and generated junk.
-- [ ] Release checklist captures evidence and credential-gated smoke.
+- [x] Cross-repo matrix proves no legacy clones/deps remain.
+- [x] Secret-bearing actions are full-SHA pinned.
+- [x] Public package surface excludes secrets, private paths, and generated junk.
+- [x] Release checklist captures evidence and credential-gated smoke.
 
 ## Verification Gates
 
@@ -985,3 +985,7 @@ smoke, SHA-pin audit, package-surface/public-readiness, and release evidence.
   implementation ownership for `wp migrate secrets`, `wp cleanup preview`, and
   `wp audit github-actions-secrets`; fixed the task count to 17; and reconciled
   bootstrap ops to `verify/apply/rotate/revoke`.
+
+## Completion Note
+
+This branch carries the monolithic implementation payload and marks the parent blueprint complete for branch-local review. Focused child PRs remain the safer merge path, but this PR is kept synced per request and is not closed.

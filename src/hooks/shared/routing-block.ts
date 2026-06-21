@@ -6,7 +6,8 @@
 export const WP_ROUTING_BLOCK: string = `<wp_routing>
   <description>
     Use the wp_* MCP tools for all test, lint, typecheck, qa, audit, local CI act,
-    Cloudflare Worker tail, and session-memory context-window protection operations.
+    Cloudflare Worker tail, PR/CI status, benchmarks, gain reports, release readiness,
+    and session-memory context-window protection operations.
     If a wp_* MCP tool is stale or unavailable, use the matching direct wp CLI command.
     Never invoke wp through package-manager wrappers such as bun run wp, pnpm run wp,
     npm run wp, yarn wp, or vp run wp.
@@ -35,7 +36,7 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
       <tool>wp_qa</tool>
     </row>
     <row>
-      <trigger>auditing blueprints, catalog drift, bundle budget, docs frontmatter</trigger>
+      <trigger>single audit: auditing blueprints, catalog drift, bundle budget, docs frontmatter</trigger>
       <tool>wp_audit</tool>
     </row>
     <row>
@@ -45,6 +46,22 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
     <row>
       <trigger>wrangler tail, legacy with-secrets -- wrangler tail, Cloudflare Worker logs</trigger>
       <tool>wp_worker_tail</tool>
+    </row>
+    <row>
+      <trigger>PR status, GitHub checks, gh pr view, gh pr checks, review decision</trigger>
+      <tool>wp_pr_status</tool>
+    </row>
+    <row>
+      <trigger>session-memory benchmark, wp bench session-memory, benchmark dry-run</trigger>
+      <tool>wp_bench</tool>
+    </row>
+    <row>
+      <trigger>gain reporting, wp gain, rtk gain, token savings report</trigger>
+      <tool>wp_gain</tool>
+    </row>
+    <row>
+      <trigger>release readiness, package surface, changeset status, public readiness, reference parity</trigger>
+      <tool>wp_release_readiness</tool>
     </row>
     <row>
       <trigger>e2e testing philosophy audit, tph-e2e</trigger>
@@ -62,7 +79,8 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
       Context-window protection is mandatory for large-context work. Use wp_session_* MCP tools before raw reads, searches, shell output, network fetches, or compaction-sensitive continuity events can flood the transcript. Use restore/search first when resuming or recalling prior work.
     </description>
     <hierarchy>
-      <rule>restore/search first: use wp_session_restore for bounded continuity restore and wp_session_search for indexed chunks or event recall.</rule>
+      <rule>retrieve exact elisions first when a handle is present: use wp_session_retrieve for elided or truncated content ids.</rule>
+      <rule>restore/search first: use wp_session_restore for bounded continuity restore and wp_session_search for indexed chunks or event recall when no exact elision handle is available.</rule>
       <rule>read-to-analyze: use wp_session_execute_file for local file metadata or bounded read_text previews instead of raw full-file dumps.</rule>
       <rule>shell gathering: use wp_session_batch_execute for planned multi-command evidence gathering, or wp_session_execute for one explicit bounded command.</rule>
       <rule>network fetches: use wp_session_fetch_and_index for absolute http(s) fetches so SSRF checks, byte caps, indexing, and warnings apply.</rule>
@@ -73,6 +91,7 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
     <tools>
       <tool name="wp_session_restore"><category>session-memory</category><trigger>resume, restore, recover context, compacted session continuity</trigger></tool>
       <tool name="wp_session_search"><category>session-memory</category><trigger>search prior indexed evidence, recall decisions, find session references</trigger></tool>
+      <tool name="wp_session_retrieve"><category>session-memory</category><trigger>retrieve exact elided or truncated content by handle id</trigger></tool>
       <tool name="wp_session_execute_file"><category>session-memory</category><trigger>read-to-analyze, inspect large files, local file metadata, bounded file preview</trigger></tool>
       <tool name="wp_session_execute"><category>session-memory</category><trigger>single bounded shell command whose output may be large or useful later</trigger></tool>
       <tool name="wp_session_batch_execute"><category>session-memory</category><trigger>shell gathering, multiple bounded evidence commands, grep/find/git log batches</trigger></tool>
@@ -135,6 +154,28 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
       <forbidden>wrangler tail, with-secrets -- wrangler tail</forbidden>
       <usage>Use the wp_worker_tail MCP tool for Cloudflare Worker tail logs. The tool routes through wp secrets run --sink deploy-wrangler --profile <profile> -- wrangler tail ... and returns bounded redacted output.</usage>
     </tool>
+    <tool name="wp_pr_status">
+      <category>dev-workflow</category>
+      <trigger>PR status, GitHub checks, gh pr view, gh pr checks, review decision</trigger>
+      <forbidden>gh pr view, gh pr checks</forbidden>
+      <usage>Use wp_pr_status for read-only PR/check/review summaries. It does not mutate PRs.</usage>
+    </tool>
+    <tool name="wp_bench">
+      <category>dev-workflow</category>
+      <trigger>session-memory benchmark, wp bench session-memory, benchmark dry-run</trigger>
+      <usage>Use wp_bench for structured benchmark evidence. It defaults to dry-run unless live mode is explicit.</usage>
+    </tool>
+    <tool name="wp_gain">
+      <category>dev-workflow</category>
+      <trigger>gain reporting, wp gain, rtk gain, token savings report</trigger>
+      <forbidden>rtk gain</forbidden>
+      <usage>Use wp_gain for bounded session-memory or RTK gain totals.</usage>
+    </tool>
+    <tool name="wp_release_readiness">
+      <category>dev-workflow</category>
+      <trigger>release readiness, package surface, changeset status, public readiness, reference parity</trigger>
+      <usage>Use wp_release_readiness for read-only release gates; it must not publish, tag, version, merge, or mutate release state.</usage>
+    </tool>
   </tools>
 
   <ownership_boundary>
@@ -186,6 +227,9 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
     <command>wrangler tail</command>
     <command>with-secrets -- act</command>
     <command>with-secrets -- wrangler tail</command>
+    <command>gh pr view</command>
+    <command>gh pr checks</command>
+    <command>rtk gain</command>
   </forbidden_alternatives>
 
   <output_format>

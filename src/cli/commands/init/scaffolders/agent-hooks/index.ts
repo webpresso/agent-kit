@@ -75,7 +75,7 @@ export type { MatcherSet } from './ir.js'
 // - pretool guard: fail-closed (explicit deny JSON) so policy cannot silently
 //   bypass when the guard binary is missing/non-executable.
 const PRETOOL_GUARD_BIN = 'wp-pretool-guard'
-const PRETOOL_GUARD_MISSING_DENY = `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with vp install -g @webpresso/agent-kit and re-run wp setup."}}'`
+const PRETOOL_GUARD_MISSING_DENY = `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with npm install -g @webpresso/agent-kit and re-run wp setup."}}'`
 const JSON_ONLY_HOOK_FALLBACK = `printf '%s\\n' '{}'`
 const CLAUDE_MANAGED_HOOK_SUBDIR = '.claude/hooks/managed'
 const CODEX_MANAGED_HOOK_SUBDIR = '.codex/managed-hooks'
@@ -144,6 +144,8 @@ export function classifyWebpressoHookBin(
 }
 
 function extractAgentKitCodexBinName(command: string): string | null {
+  const wpHookBinName = extractWpHookCommandBinName(command)
+  if (wpHookBinName !== null) return wpHookBinName
   const normalizedCommand = stripSingleShellQuotePair(command.trim())
   const directBinMatch = DIRECT_NODE_MODULES_BIN_PATTERN.exec(normalizedCommand)
   if (directBinMatch !== null) return directBinMatch[1] ?? null
@@ -163,6 +165,8 @@ function extractAgentKitCodexBinName(command: string): string | null {
 }
 
 function extractClaudeBinName(command: string): string | null {
+  const wpHookBinName = extractWpHookCommandBinName(command)
+  if (wpHookBinName !== null) return wpHookBinName
   const normalizedCommand = stripSingleShellQuotePair(command.trim())
   const directBinMatch = DIRECT_CLAUDE_NODE_MODULES_BIN_PATTERN.exec(normalizedCommand)
   if (directBinMatch !== null) return directBinMatch[1] ?? null
@@ -179,6 +183,14 @@ function extractClaudeBinName(command: string): string | null {
   )
   if (ifGuardedManagedLauncherMatch !== null) return ifGuardedManagedLauncherMatch[3] ?? null
   return null
+}
+
+function extractWpHookCommandBinName(command: string): string | null {
+  const match = /\bwp\s+hook\s+([a-z0-9-]+)/u.exec(command)
+  const subcommand = match?.[1]
+  if (!subcommand || !isHookName(subcommand)) return null
+  const binName = `wp-${subcommand}`
+  return WEBPRESSO_HOOK_BIN_NAMES.has(binName) ? binName : null
 }
 
 // ensureGroup and mergeAgentKitGroups are imported from ./merge.js
@@ -209,7 +221,7 @@ function materializeClaudeSkillCommand(skillHook: SkillHook): string {
     const args = skillHook.command.slice(3)
     const stdoutPolicy = skillHook.event === 'Stop' ? ' >/dev/null' : ''
     const verb = args.split(/\s+/u)[0]?.replaceAll(/[^\w-]/gu, '') || 'hook'
-    return `if command -v wp >/dev/null 2>&1; then wp ${args}${stdoutPolicy}; else echo "webpresso: skill hook (wp ${verb}) skipped: global wp not found; install with vp install -g @webpresso/agent-kit and re-run wp setup" >&2; fi ${tag}`
+    return `if command -v wp >/dev/null 2>&1; then wp ${args}${stdoutPolicy}; else echo "webpresso: skill hook (wp ${verb}) skipped: global wp not found; install with npm install -g @webpresso/agent-kit and re-run wp setup" >&2; fi ${tag}`
   }
   return `${skillHook.command} ${tag}`
 }
@@ -253,7 +265,7 @@ export function buildWebpressoHookGroups(input: {
   return buildClaudeHookGroups(input)
 }
 
-function normalizeCodexAgentKitCommands(hooks: HooksMap, repoRoot: string): HooksMap {
+function normalizeCodexAgentKitCommands(hooks: HooksMap): HooksMap {
   const normalized: HooksMap = {}
 
   for (const [event, groups] of Object.entries(hooks)) {
@@ -265,11 +277,7 @@ function normalizeCodexAgentKitCommands(hooks: HooksMap, repoRoot: string): Hook
           if (typeof command !== 'string') return hook
           const classification = classifyWebpressoHookBin(extractAgentKitCodexBinName(command))
           if (classification === null) return hook
-          if (classification.kind === 'legacy') return []
-          return {
-            ...hook,
-            command: CODEX_BIN(repoRoot)(classification.binName),
-          }
+          return []
         }),
       }
       if (nextGroup.hooks.length === 0) return dedupedGroups
@@ -294,11 +302,7 @@ function normalizeClaudeAgentKitCommands(hooks: HooksMap): HooksMap {
           if (typeof command !== 'string') return hook
           const classification = classifyWebpressoHookBin(extractClaudeBinName(command))
           if (classification === null) return hook
-          if (classification.kind === 'legacy') return []
-          return {
-            ...hook,
-            command: CC_BIN(classification.binName),
-          }
+          return []
         }),
       }
       if (nextGroup.hooks.length === 0) return dedupedGroups
@@ -439,7 +443,7 @@ function patchCodexHooks(
   repoRoot: string,
 ): Record<string, unknown> {
   const migrated = hoistTopLevelEvents(existing)
-  const existingHooks = normalizeCodexAgentKitCommands((migrated.hooks ?? {}) as HooksMap, repoRoot)
+  const existingHooks = normalizeCodexAgentKitCommands((migrated.hooks ?? {}) as HooksMap)
   return {
     ...migrated,
     hooks: mergeAgentKitGroups(existingHooks, buildManagedCodexHooks(repoRoot)),
@@ -705,7 +709,7 @@ function patchCodexHooksFromManifest(
   manifest: HooksManifest,
 ): Record<string, unknown> {
   const migrated = hoistTopLevelEvents(existing)
-  const existingHooks = normalizeCodexAgentKitCommands((migrated.hooks ?? {}) as HooksMap, repoRoot)
+  const existingHooks = normalizeCodexAgentKitCommands((migrated.hooks ?? {}) as HooksMap)
   return {
     ...migrated,
     hooks: mergeAgentKitGroups(existingHooks, manifest.codex),
@@ -726,7 +730,7 @@ function disableCodexHooksFromManifest(
   manifest: HooksManifest,
 ): Record<string, unknown> {
   const migrated = hoistTopLevelEvents(existing)
-  const existingHooks = normalizeCodexAgentKitCommands((migrated.hooks ?? {}) as HooksMap, repoRoot)
+  const existingHooks = normalizeCodexAgentKitCommands((migrated.hooks ?? {}) as HooksMap)
   return {
     ...migrated,
     hooks: removeManagedHooks(existingHooks, manifest.codex),
@@ -918,7 +922,7 @@ export function resolveNodeBinaryForManagedHookLaunchers(): string {
 }
 
 function renderManagedWebpressoHookLauncher(repoRoot: string, binName: string): string {
-  const missingRuntimeWarning = `echo "webpresso hook ${binName} skipped: global wp not found; install with vp install -g @webpresso/agent-kit and re-run wp setup" >&2`
+  const missingRuntimeWarning = `echo "webpresso hook ${binName} skipped: global wp not found; install with npm install -g @webpresso/agent-kit and re-run wp setup" >&2`
   // Guard fails closed (explicit deny JSON); json-only hooks keep Codex stdout
   // parseable; every other hook warns on stderr instead of silently exiting — a
   // silently-disabled hook hid the broken node pin for weeks (2026-06 audit).

@@ -46,6 +46,19 @@ describe('auditNoDevVars', () => {
     expect(result.violations).toEqual([expect.objectContaining({ file: '.dev.vars' })])
   })
 
+  test('resolves repo root from nested cwd before scanning', () => {
+    const root = tempRepo()
+    const nested = join(root, 'apps', 'web')
+    mkdirSync(nested, { recursive: true })
+    writeFileSync(join(root, '.dev.vars'), 'API_KEY=secret123')
+
+    const result = auditNoDevVars(nested)
+
+    expect(result.ok).toBe(false)
+    expect(result.checked).toBeGreaterThan(0)
+    expect(result.violations).toEqual([expect.objectContaining({ file: '.dev.vars' })])
+  })
+
   test('flags .env on disk', () => {
     const root = tempRepo()
     writeFileSync(join(root, '.env'), 'DATABASE_URL=postgres://secret')

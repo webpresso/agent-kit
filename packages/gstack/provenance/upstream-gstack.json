@@ -1,0 +1,33 @@
+{
+  "upstream": {
+    "name": "gstack",
+    "repository": "https://github.com/garrytan/gstack",
+    "commit": "a861c00cfac6e2376d26c7d3ba5207cdc5aefc49",
+    "version": "unversioned-main-snapshot",
+    "license": "MIT"
+  },
+  "curation": {
+    "date": "2026-06-19",
+    "mode": "manual nuance-preserving rewrite",
+    "importedSkills": [
+      "claude",
+      "plan-eng-review",
+      "plan-ceo-review",
+      "plan-design-review",
+      "review"
+    ],
+    "excludedPayloads": [
+      "node_modules/**",
+      ".git/**",
+      ".agents/** generated host outputs",
+      ".claude/** generated host outputs",
+      ".codex/** generated host outputs",
+      "browse/dist/**",
+      "design/dist/**",
+      "make-pdf/dist/**",
+      "ios debug bridge payloads",
+      "Playwright/Puppeteer/HuggingFace/ngrok/html-to-docx runtime dependencies",
+      "native binary artifacts (*.node, prebuilt browser bundles)"
+    ]
+  }
+}

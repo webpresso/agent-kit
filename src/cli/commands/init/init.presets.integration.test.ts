@@ -19,6 +19,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const spawnSyncMock = vi.fn()
 const spawnMock = vi.fn()
 
+function managedVpTail(call: readonly unknown[]): readonly unknown[] | null {
+  if (call[0] === 'vp') return Array.isArray(call[1]) ? call[1] : []
+  if (call[0] !== process.execPath || !Array.isArray(call[1])) return null
+  const [bin, ...tail] = call[1]
+  return typeof bin === 'string' && /vite-plus.*bin.*vp/u.test(bin) ? tail : null
+}
+
 class FakeAsyncChild extends EventEmitter {
   readonly stdout = new PassThrough()
   readonly stderr = new PassThrough()
@@ -552,7 +559,9 @@ describe('runInit() — omx + gstack presets (integration)', { timeout: 20_000 }
         (c) => c[0] === 'git' && Array.isArray(c[1]) && c[1][0] === 'clone',
       )
       const bunCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'bun')
-      const vpCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'vp')
+      const vpCalls = spawnSyncMock.mock.calls
+        .map((call) => managedVpTail(call))
+        .filter((tail): tail is readonly unknown[] => tail !== null)
       const actionlintCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'actionlint')
       expect(omxCalls).toHaveLength(0)
       expect(gstackCloneCalls).toHaveLength(0)
@@ -564,11 +573,11 @@ describe('runInit() — omx + gstack presets (integration)', { timeout: 20_000 }
       expect(bunCalls[0]?.[1]).toEqual(['--version'])
       expect(
         vpCalls.some(
-          (call) => JSON.stringify(call[1]) === JSON.stringify(['update', '-g', 'oh-my-codex']),
+          (tail) => JSON.stringify(tail) === JSON.stringify(['update', '-g', 'oh-my-codex']),
         ),
       ).toBe(false)
       expect(
-        vpCalls.filter((call) => JSON.stringify(call[1]) === JSON.stringify(['--version'])).length,
+        vpCalls.filter((tail) => JSON.stringify(tail) === JSON.stringify(['--version'])).length,
       ).toBeGreaterThanOrEqual(2)
       expect(actionlintCalls[0]?.[1]).toEqual(['--version'])
     })
@@ -576,12 +585,14 @@ describe('runInit() — omx + gstack presets (integration)', { timeout: 20_000 }
     it('--dry-run skips runtime probes after preflight', async () => {
       await runInitSilently({ cwd: repo, yes: true, 'dry-run': true })
       const bunCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'bun')
-      const vpCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'vp')
+      const vpCalls = spawnSyncMock.mock.calls
+        .map((call) => managedVpTail(call))
+        .filter((tail): tail is readonly unknown[] => tail !== null)
       const actionlintCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'actionlint')
       expect(bunCalls).toHaveLength(0)
       expect(vpCalls).toHaveLength(1)
       expect(actionlintCalls).toHaveLength(0)
-      expect(vpCalls[0]?.[1]).toEqual(['--version'])
+      expect(vpCalls[0]).toEqual(['--version'])
     })
 
     it('accepts CLI-normalized dryRun and skips external setup work', async () => {
@@ -592,11 +603,13 @@ describe('runInit() — omx + gstack presets (integration)', { timeout: 20_000 }
             String(c[0]),
           ),
       )
-      const vpCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'vp')
+      const vpCalls = spawnSyncMock.mock.calls
+        .map((call) => managedVpTail(call))
+        .filter((tail): tail is readonly unknown[] => tail !== null)
 
       expect(externalSetupCalls).toHaveLength(0)
       expect(vpCalls).toHaveLength(1)
-      expect(vpCalls[0]?.[1]).toEqual(['--version'])
+      expect(vpCalls[0]).toEqual(['--version'])
     })
   })
 

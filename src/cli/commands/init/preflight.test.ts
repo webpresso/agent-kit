@@ -174,7 +174,7 @@ describe('runPreflight', () => {
 
       expect(result.ok).toStrictEqual(true)
       expect(result.score).toStrictEqual(4)
-      expect(result.warnings[0]).toContain('vp')
+      expect(result.warnings[0]).toContain('bundled Vite+ runner')
     })
   })
 

@@ -164,6 +164,42 @@ describe('e2e execution helpers', () => {
     expect(result).toEqual({ passed: true, exitCode: 0, output: realpathSync(cwd) })
   })
 
+  it('aborts a long-running child command when the AbortSignal fires', async () => {
+    const cwd = tempDir()
+    const controller = new AbortController()
+    const promise = runCommandConfigs(
+      [
+        {
+          command: process.execPath,
+          args: ['-e', 'setInterval(() => {}, 1000)'],
+        },
+      ],
+      { cwd, signal: controller.signal },
+    )
+
+    controller.abort()
+    const result = await promise
+
+    expect(result.passed).toBe(false)
+    expect(result.exitCode).toBeGreaterThan(0)
+  })
+
+  it('times out a long-running child command when timeoutMs elapses', async () => {
+    const cwd = tempDir()
+    const result = await runCommandConfigs(
+      [
+        {
+          command: process.execPath,
+          args: ['-e', 'setInterval(() => {}, 1000)'],
+        },
+      ],
+      { cwd, timeoutMs: 10 },
+    )
+
+    expect(result.passed).toBe(false)
+    expect(result.exitCode).toBeGreaterThan(0)
+  })
+
   it('merges group and run env when flattening planned commands', () => {
     const commands = plannedGroupsToCommandConfigs([
       {

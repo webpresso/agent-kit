@@ -14,6 +14,10 @@ import {
 
 const tempDirs: string[] = []
 
+function bundledVpArgs(...tail: string[]) {
+  return [process.execPath, expect.stringMatching(/vite-plus.*bin.*vp/), ...tail]
+}
+
 installManagedRunnerHermeticHooks()
 
 afterEach(() => {
@@ -24,92 +28,92 @@ describe('buildVpTestCommand', () => {
   it('builds a vp package test command', () => {
     expect(buildVpTestCommand(['cli2'])).toEqual({
       command: 'rtk',
-      args: ['vp', 'run', 'cli2', 'test'],
+      args: bundledVpArgs('run', 'cli2', 'test'),
     })
   })
 
   it('builds explicit vp task ids for scoped package targets', () => {
     expect(buildVpTestCommand(['@repo/logger'])).toEqual({
       command: 'rtk',
-      args: ['vp', 'run', '@repo/logger#test'],
+      args: bundledVpArgs('run', '@repo/logger#test'),
     })
   })
 
   it('builds vp test command with no-cache option', () => {
     expect(buildVpTestCommand(['cli2'], { noCache: true })).toEqual({
       command: 'rtk',
-      args: ['vp', 'run', 'cli2', '--no-cache', 'test'],
+      args: bundledVpArgs('run', 'cli2', '--no-cache', 'test'),
     })
   })
 
   it('builds vp test command with cache option', () => {
     expect(buildVpTestCommand(['cli2'], { cache: true })).toEqual({
       command: 'rtk',
-      args: ['vp', 'run', 'cli2', '--cache', 'test'],
+      args: bundledVpArgs('run', 'cli2', '--cache', 'test'),
     })
   })
 
   it('builds vp test command with parallel option', () => {
     expect(buildVpTestCommand(['cli2'], { parallel: true })).toEqual({
       command: 'rtk',
-      args: ['vp', 'run', 'cli2', '--parallel', 'test'],
+      args: bundledVpArgs('run', 'cli2', '--parallel', 'test'),
     })
   })
 
   it('builds vp test command with mutation task', () => {
     expect(buildVpTestCommand(['cli2'], { mutation: true })).toEqual({
       command: 'rtk',
-      args: ['vp', 'run', 'cli2', 'test:mutation'],
+      args: bundledVpArgs('run', 'cli2', 'test:mutation'),
     })
   })
 
   it('builds vp test command with workers task', () => {
     expect(buildVpTestCommand(['cli2'], { workers: true })).toEqual({
       command: 'rtk',
-      args: ['vp', 'run', 'cli2', 'test:workers'],
+      args: bundledVpArgs('run', 'cli2', 'test:workers'),
     })
   })
 
   it('builds vp test command with watch task', () => {
     expect(buildVpTestCommand(['cli2'], { watch: true })).toEqual({
       command: 'rtk',
-      args: ['vp', 'run', 'cli2', 'test:watch'],
+      args: bundledVpArgs('run', 'cli2', 'test:watch'),
     })
   })
 
   it('builds vp test command with concurrency limit', () => {
     expect(buildVpTestCommand(['cli2'], { concurrencyLimit: 4 })).toEqual({
       command: 'rtk',
-      args: ['vp', 'run', 'cli2', '--concurrency-limit', '4', 'test'],
+      args: bundledVpArgs('run', 'cli2', '--concurrency-limit', '4', 'test'),
       env: { VP_RUN_CONCURRENCY_LIMIT: '4' },
     })
   })
 
   it('forwards explicit outputPolicy to resolve raw runner output', () => {
     expect(buildVpTestCommand(['cli2'], { outputPolicy: 'structured' })).toEqual({
-      command: 'vp',
-      args: ['run', 'cli2', 'test'],
+      command: process.execPath,
+      args: [expect.stringMatching(/vite-plus.*bin.*vp/), 'run', 'cli2', 'test'],
     })
   })
 
   it('builds vp test command with log mode', () => {
     expect(buildVpTestCommand(['cli2'], { log: 'labeled' })).toEqual({
       command: 'rtk',
-      args: ['vp', 'run', 'cli2', '--log', 'labeled', 'test'],
+      args: bundledVpArgs('run', 'cli2', '--log', 'labeled', 'test'),
     })
   })
 
   it('keeps explicit vp task id unchanged', () => {
     expect(buildVpTestCommand(['cli2#test:watch'])).toEqual({
       command: 'rtk',
-      args: ['vp', 'run', 'cli2#test:watch'],
+      args: bundledVpArgs('run', 'cli2#test:watch'),
     })
   })
 
   it('builds vp test with multiple filters including scoped', () => {
     expect(buildVpTestCommand(['cli2', '@repo/logger'])).toEqual({
       command: 'rtk',
-      args: ['vp', 'run', 'cli2', '@repo/logger#test', 'test'],
+      args: bundledVpArgs('run', 'cli2', '@repo/logger#test', 'test'),
     })
   })
 
@@ -123,8 +127,7 @@ describe('buildVpTestCommand', () => {
       }),
     ).toEqual({
       command: 'rtk',
-      args: [
-        'vp',
+      args: bundledVpArgs(
         'run',
         'cli2',
         '--concurrency-limit',
@@ -135,7 +138,7 @@ describe('buildVpTestCommand', () => {
         '--',
         '--coverage',
         '--runInBand',
-      ],
+      ),
       env: { VP_RUN_CONCURRENCY_LIMIT: '2' },
     })
   })
@@ -143,7 +146,7 @@ describe('buildVpTestCommand', () => {
   it('builds vp test with scoped filter that has a path', () => {
     expect(buildVpTestCommand(['@scope/pkg/src/test.ts'], {})).toEqual({
       command: 'rtk',
-      args: ['vp', 'run', '@scope/pkg/src/test.ts#test'],
+      args: bundledVpArgs('run', '@scope/pkg/src/test.ts#test'),
     })
   })
 })
@@ -297,7 +300,7 @@ describe('buildTestCommand recursion safety', () => {
 
     expect(buildTestCommand({ type: 'all', values: [] }, { cwd })).toEqual({
       command: 'rtk',
-      args: ['vp', 'run', 'test'],
+      args: bundledVpArgs('run', 'test'),
     })
   })
 })
@@ -306,7 +309,7 @@ describe('buildTestCommand', () => {
   it('uses vp for package targets', () => {
     expect(buildTestCommand({ type: 'package', values: ['cli2'] })).toEqual({
       command: 'rtk',
-      args: ['vp', 'run', 'cli2', 'test'],
+      args: bundledVpArgs('run', 'cli2', 'test'),
     })
   })
 
@@ -408,8 +411,7 @@ describe('buildTestCommand', () => {
       ),
     ).toEqual({
       command: 'rtk',
-      args: [
-        'vp',
+      args: bundledVpArgs(
         'exec',
         '--filter',
         'pkg-a',
@@ -422,7 +424,7 @@ describe('buildTestCommand', () => {
         '--testTimeout',
         '30000',
         '--coverage',
-      ],
+      ),
     })
   })
 

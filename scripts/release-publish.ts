@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -7,6 +7,9 @@ import { preparePackedManifest, restorePackedManifest } from '../src/build/packa
 import { RUNTIME_TARGETS, runtimePackageDirName } from '../src/build/runtime-targets.js'
 import {
   PUBLISH_RUNTIME_MATRIX_ENV,
+  ROOT_RELEASE_PACKAGE_NAME,
+  type ReleasePackageCategory,
+  classifyReleasePackage,
   shouldPublishRuntimeMatrix,
 } from '../src/build/release-policy.js'
 import {
@@ -44,6 +47,7 @@ interface PublishedPackage {
   packageName: string
   version: string
   publishState: PublishState
+  category: ReleasePackageCategory
 }
 
 function run(command: string, args: string[], cwd = process.cwd()) {
@@ -201,6 +205,7 @@ function toPublishedPackage(pkg: PublishablePackage, publishState: PublishState)
     packageName: pkg.name,
     version: pkg.version,
     publishState,
+    category: classifyReleasePackage(pkg.name),
   }
 }
 
@@ -210,7 +215,9 @@ function writePublishResultFile(packages: readonly PublishedPackage[]) {
   if (packages.length === 0) return
 
   const primaryPackage =
-    packages.find((publishedPackage) => publishedPackage.packageName === ROOT_PACKAGE_NAME) ??
+    packages.find(
+      (publishedPackage) => publishedPackage.packageName === ROOT_RELEASE_PACKAGE_NAME,
+    ) ??
     packages[0]
   if (!primaryPackage) {
     return
@@ -286,13 +293,13 @@ function requireSessionMemoryNativeArtifactsDir(): string {
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const packageRoot = dirname(scriptDir)
 const rootPackage = readPublishablePackage(packageRoot)
-if (!rootPackage || rootPackage.name !== ROOT_PACKAGE_NAME) {
-  throw new Error(`release-publish must run from ${ROOT_PACKAGE_NAME}`)
+if (!rootPackage || rootPackage.name !== ROOT_RELEASE_PACKAGE_NAME) {
+  throw new Error(`release-publish must run from ${ROOT_RELEASE_PACKAGE_NAME}`)
 }
 
 const publishedPackages: PublishedPackage[] = []
 for (const workspacePackage of discoverWorkspacePackages(packageRoot)) {
-  if (workspacePackage.name === ROOT_PACKAGE_NAME) continue
+  if (workspacePackage.name === ROOT_RELEASE_PACKAGE_NAME) continue
   const publishState = publishSimpleWorkspacePackage(workspacePackage)
   if (publishState) {
     publishedPackages.push(toPublishedPackage(workspacePackage, publishState))
@@ -328,6 +335,8 @@ if (shouldPublishRuntimeMatrix(process.env)) {
   if (exitCode(runtimeStageResult) !== 0) {
     process.exit(exitCode(runtimeStageResult))
   }
+
+  rehydrateSessionMemoryNativeArtifacts(packageRoot)
 
   // Session-memory native packages are real NAPI artifacts, not single-runner
   // cross-compiled launcher assets. The release job must provide every target

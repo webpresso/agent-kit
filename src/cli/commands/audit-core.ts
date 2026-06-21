@@ -45,6 +45,7 @@ export type AuditKind =
   | 'no-dev-vars'
   | 'secret-provider-quarantine'
   | 'secrets-config'
+  | 'consumer-agent-kit-dependency'
   | 'session-memory-hardcut'
   | 'harness-surfaces'
   | 'weakness-mining'

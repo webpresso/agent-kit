@@ -44,7 +44,7 @@ function codexBinCommand(repoRoot: string, name: string): string {
   if (name === 'wp-pretool-guard') {
     return guardedHookCommand(
       binPath,
-      `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with vp install -g @webpresso/agent-kit and re-run wp setup."}}'`,
+      `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with npm install -g @webpresso/agent-kit and re-run wp setup."}}'`,
     )
   }
   return guardedHookCommand(binPath, 'true')
@@ -58,7 +58,7 @@ function claudeBinCommand(name: string): string {
   if (name === 'wp-pretool-guard') {
     return guardedHookCommand(
       `"${binPath}"`,
-      `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with vp install -g @webpresso/agent-kit and re-run wp setup."}}'`,
+      `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with npm install -g @webpresso/agent-kit and re-run wp setup."}}'`,
     )
   }
   return guardedHookCommand(`"${binPath}"`, 'true')
@@ -73,13 +73,58 @@ const WEBPRESSO_HOOK_BINS = [
   'wp-precompact-snapshot',
 ] as const
 
-function installFakeWebpressoBins(repoRoot: string): void {
-  const binDir = join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'bin')
+function installFakeNodeRuntime(repoRoot: string): string {
+  const fakeNode = join(repoRoot, 'toolchain', 'node')
+  mkdirSync(join(repoRoot, 'toolchain'), { recursive: true })
+  writeFileSync(
+    fakeNode,
+    `#!/bin/sh
+if [ -n "\${WP_HOOK_SMOKE_RUNTIME_LOG:-}" ]; then
+  printf '%s\\n' "$*" >> "\${WP_HOOK_SMOKE_RUNTIME_LOG}"
+fi
+script="$1"
+shift
+if [ -n "\${WP_HOOK_SMOKE_BIN_DIR:-}" ] && [ -n "$script" ]; then
+  fixture="\${WP_HOOK_SMOKE_BIN_DIR}/$(basename "$script")"
+  if [ -f "$fixture" ]; then
+    exec ${quoteShell(process.execPath)} "$fixture" "$@"
+  fi
+fi
+exec ${quoteShell(process.execPath)} "$script" "$@"
+`,
+    'utf8',
+  )
+  chmodSync(fakeNode, 0o755)
+  return fakeNode
+}
+
+function installFakeWebpressoBins(repoRoot: string): string {
+  const binDir = join(repoRoot, 'fixture-hook-bins')
   mkdirSync(binDir, { recursive: true })
   for (const bin of WEBPRESSO_HOOK_BINS) {
     const binPath = join(binDir, `${bin}.js`)
-    writeFileSync(binPath, '#!/usr/bin/env node\nprocess.stdout.write("{}\\n")\n', 'utf8')
+    writeFileSync(
+      binPath,
+      `#!/usr/bin/env node
+const { appendFileSync } = require('node:fs')
+if (process.env.WP_HOOK_SMOKE_BIN_LOG) {
+  appendFileSync(process.env.WP_HOOK_SMOKE_BIN_LOG, ${JSON.stringify(`${bin}\n`)})
+}
+process.stdout.write("{}\\n")
+`,
+      'utf8',
+    )
     chmodSync(binPath, 0o755)
+  }
+  return binDir
+}
+
+function assertSmokeRanEveryWebpressoBin(runtimeLog: string, binLog: string): void {
+  const runtimeArgs = readFileSync(runtimeLog, 'utf8')
+  const executedBins = readFileSync(binLog, 'utf8').trim().split('\n').filter(Boolean)
+  expect(new Set(executedBins)).toStrictEqual(new Set(WEBPRESSO_HOOK_BINS))
+  for (const bin of WEBPRESSO_HOOK_BINS) {
+    expect(runtimeArgs).toContain(`${bin}.js`)
   }
 }
 
@@ -129,6 +174,21 @@ async function runShellCommand(
       resolve({ status, stdout, stderr, command })
     })
   })
+}
+
+async function runHookCommandsSequentially(
+  commands: readonly string[],
+  options: {
+    cwd: string
+    env?: NodeJS.ProcessEnv
+  },
+): Promise<Array<{ status: number | null; stdout: string; stderr: string; command: string }>> {
+  const results: Array<{ status: number | null; stdout: string; stderr: string; command: string }> =
+    []
+  for (const command of commands) {
+    results.push(await runShellCommand(command, options))
+  }
+  return results
 }
 
 describe('hookSubcommandFor (managed-launcher dispatch gate)', () => {
@@ -535,6 +595,8 @@ describe('scaffoldAgentHooks', () => {
     mkdirSync(join(repoRoot, '.claude'), { recursive: true })
     const staleGuard =
       '[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/wp-pretool-guard" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/wp-pretool-guard" || true'
+    const staleDirectGuard =
+      'export PATH="$HOME/.vite-plus/bin:$PATH"; if command -v wp >/dev/null 2>&1; then wp hook pretool-guard; else true; fi'
     writeFileSync(
       settingsPath,
       JSON.stringify(
@@ -543,7 +605,10 @@ describe('scaffoldAgentHooks', () => {
             PreToolUse: [
               {
                 matcher: 'Bash|Write|Edit|MultiEdit',
-                hooks: [{ type: 'command', command: staleGuard, timeout: 5 }],
+                hooks: [
+                  { type: 'command', command: staleGuard, timeout: 5 },
+                  { type: 'command', command: staleDirectGuard, timeout: 5 },
+                ],
               },
             ],
           },
@@ -1292,7 +1357,7 @@ hooks:
     ).toEqual([])
     expect(allCommands).toContain('echo keep-codex-session')
     expect(allCommands).toContain('./node_modules/.bin/not-webpresso')
-    expect(customCommands).toStrictEqual([codexBinCommand(repoRoot, 'wp-pretool-guard'), 42])
+    expect(customCommands).toStrictEqual([42])
     expect(codex.hooks.LegacyOnlyCustomEvent).toBe(undefined)
     expect(
       allCommands.filter(
@@ -2086,9 +2151,9 @@ hooks:
 
   it('executes every generated Claude hook command successfully from outside repo root', async () => {
     initGitRepo(repoRoot)
-    process.env.WP_HOOK_NODE_PATH = process.execPath
+    process.env.WP_HOOK_NODE_PATH = installFakeNodeRuntime(repoRoot)
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
-    installFakeWebpressoBins(repoRoot)
+    const fixtureBinDir = installFakeWebpressoBins(repoRoot)
 
     const siblingCwd = mkdtempSync(join(repoRoot, 'claude-smoke-'))
     const settings = JSON.parse(
@@ -2103,35 +2168,42 @@ hooks:
       'PostToolUse',
       'UserPromptSubmit',
       'Stop',
+      'PreCompact',
     ].flatMap((event) =>
       (settings.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)),
     )
 
     expect(commands.length).toBeGreaterThan(0)
-    const results = await Promise.all(
-      commands.map((command) =>
-        runShellCommand(command, {
-          cwd: siblingCwd,
-          env: {
-            PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
-            HOME: process.env.HOME,
-            CLAUDE_PROJECT_DIR: repoRoot,
-            WP_SKIP_UPDATE_CHECK: '1',
-          },
-        }),
-      ),
-    )
+    const runtimeLog = join(repoRoot, 'claude-hook-runtime.log')
+    const binLog = join(repoRoot, 'claude-hook-bins.log')
+    const results = await runHookCommandsSequentially(commands, {
+      cwd: siblingCwd,
+      env: {
+        PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
+        HOME: repoRoot,
+        CLAUDE_PROJECT_DIR: repoRoot,
+        WP_HOOK_SMOKE_BIN_DIR: fixtureBinDir,
+        WP_HOOK_SMOKE_BIN_LOG: binLog,
+        WP_HOOK_SMOKE_RUNTIME_LOG: runtimeLog,
+        WP_SKIP_UPDATE_CHECK: '1',
+      },
+    })
 
     for (const result of results) {
       expect(result.status, `${result.command}\n${result.stderr}`).toBe(0)
+      expect(result.stderr, result.command).toBe('')
+      for (const line of result.stdout.trim().split('\n').filter(Boolean)) {
+        expect(() => JSON.parse(line), `${result.command}\n${line}`).not.toThrow()
+      }
     }
-  })
+    assertSmokeRanEveryWebpressoBin(runtimeLog, binLog)
+  }, 30_000)
 
   it('executes every generated Codex hook command successfully from a sibling cwd', async () => {
     initGitRepo(repoRoot)
-    process.env.WP_HOOK_NODE_PATH = process.execPath
+    process.env.WP_HOOK_NODE_PATH = installFakeNodeRuntime(repoRoot)
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
-    installFakeWebpressoBins(repoRoot)
+    const fixtureBinDir = installFakeWebpressoBins(repoRoot)
 
     const siblingCwd = mkdtempSync(join(repoRoot, 'codex-smoke-'))
     const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
@@ -2144,24 +2216,35 @@ hooks:
       'PostToolUse',
       'UserPromptSubmit',
       'Stop',
+      'PreCompact',
     ].flatMap((event) =>
       (codex.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)),
     )
 
     expect(commands.length).toBeGreaterThan(0)
-    const results = await Promise.all(
-      commands.map((command) =>
-        runShellCommand(command, {
-          cwd: siblingCwd,
-          env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin', WP_SKIP_UPDATE_CHECK: '1' },
-        }),
-      ),
-    )
+    const runtimeLog = join(repoRoot, 'codex-hook-runtime.log')
+    const binLog = join(repoRoot, 'codex-hook-bins.log')
+    const results = await runHookCommandsSequentially(commands, {
+      cwd: siblingCwd,
+      env: {
+        PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
+        HOME: repoRoot,
+        WP_HOOK_SMOKE_BIN_DIR: fixtureBinDir,
+        WP_HOOK_SMOKE_BIN_LOG: binLog,
+        WP_HOOK_SMOKE_RUNTIME_LOG: runtimeLog,
+        WP_SKIP_UPDATE_CHECK: '1',
+      },
+    })
 
     for (const result of results) {
       expect(result.status, `${result.command}\n${result.stderr}`).toBe(0)
+      expect(result.stderr, result.command).toBe('')
+      for (const line of result.stdout.trim().split('\n').filter(Boolean)) {
+        expect(() => JSON.parse(line), `${result.command}\n${line}`).not.toThrow()
+      }
     }
-  })
+    assertSmokeRanEveryWebpressoBin(runtimeLog, binLog)
+  }, 30_000)
 })
 
 describe('classifyWebpressoHookBin', () => {

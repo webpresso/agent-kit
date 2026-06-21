@@ -83,7 +83,9 @@ describe('mcp server integration', () => {
     })
 
     const wpAudit = tools.find((t) => t.name === 'wp_audit')
+    const wpAudits = tools.find((t) => t.name === 'wp_audits')
     expect(wpAudit).toBeDefined()
+    expect(wpAudits).toBeDefined()
     expect(
       (wpAudit?.inputSchema.properties?.kind as { enum?: unknown[] } | undefined)?.enum ?? [],
     ).toContain('agents')
@@ -93,11 +95,19 @@ describe('mcp server integration', () => {
     expect(
       (wpAudit?.inputSchema.properties?.kind as { enum?: unknown[] } | undefined)?.enum ?? [],
     ).toContain('no-first-party-mjs')
+    expect(wpAudits?.inputSchema.properties).toMatchObject({
+      kinds: expect.any(Object),
+      preset: expect.any(Object),
+    })
 
     const names = tools.map((t) => t.name)
     expect(names).toEqual(
       expect.arrayContaining([
         'wp_worker_tail',
+        'wp_pr_status',
+        'wp_bench',
+        'wp_gain',
+        'wp_release_readiness',
         'wp_ci_act',
         'wp_lint',
         'wp_qa',
@@ -110,6 +120,7 @@ describe('mcp server integration', () => {
         'wp_session_stats',
         'wp_session_purge',
         'wp_session_doctor',
+        'wp_session_retrieve',
       ]),
     )
     expect(names.filter((name) => name.startsWith('ak_'))).toEqual([])
@@ -144,6 +155,11 @@ describe('mcp server integration', () => {
         'wp_e2e',
         'wp_typecheck',
         'wp_audit',
+        'wp_audits',
+        'wp_pr_status',
+        'wp_bench',
+        'wp_gain',
+        'wp_release_readiness',
         'wp_session_index',
         'wp_session_fetch_and_index',
         'wp_session_execute_file',
@@ -152,6 +168,7 @@ describe('mcp server integration', () => {
         'wp_session_stats',
         'wp_session_purge',
         'wp_session_doctor',
+        'wp_session_retrieve',
       ]),
     )
   }, 20_000)
@@ -173,14 +190,19 @@ describe('mcp server integration', () => {
     )
     const names = tools.map((tool) => tool.name)
     const expectedSessionTools = [
+      'wp_session_batch_execute',
+      'wp_session_capture',
       'wp_session_doctor',
+      'wp_session_execute',
       'wp_session_execute_file',
       'wp_session_fetch_and_index',
       'wp_session_index',
       'wp_session_purge',
+      'wp_session_retrieve',
       'wp_session_restore',
       'wp_session_search',
       'wp_session_stats',
+      'wp_session_snapshot',
     ]
 
     expect(names).toEqual(expect.arrayContaining(['wp_audit', ...expectedSessionTools]))
@@ -319,6 +341,11 @@ describe('mcp server integration', () => {
         'wp_qa',
         'wp_test',
         'wp_audit',
+        'wp_audits',
+        'wp_pr_status',
+        'wp_bench',
+        'wp_gain',
+        'wp_release_readiness',
         'wp_session_index',
         'wp_session_fetch_and_index',
         'wp_session_execute_file',
@@ -327,6 +354,7 @@ describe('mcp server integration', () => {
         'wp_session_stats',
         'wp_session_purge',
         'wp_session_doctor',
+        'wp_session_retrieve',
       ]),
     )
   }, 20_000)

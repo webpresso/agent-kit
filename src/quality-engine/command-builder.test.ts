@@ -6,6 +6,7 @@
 
 import { describe, expect, it } from 'vitest'
 
+import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
 import {
   buildFormatCommand,
   buildLintCommand,
@@ -18,6 +19,12 @@ import {
   normalizeCacInputs,
 } from './command-builder'
 import type { ResolvedTarget } from './target-resolver'
+
+installManagedRunnerHermeticHooks()
+
+function bundledVpArgs(...tail: string[]) {
+  return [process.execPath, expect.stringMatching(/vite-plus.*bin.*vp/), ...tail]
+}
 
 describe('buildLintCommand', () => {
   it('builds basic lint command', () => {
@@ -60,8 +67,8 @@ describe('buildFormatCommand', () => {
 describe('buildTypecheckCommand', () => {
   it('builds basic typecheck command', () => {
     const cmd = buildTypecheckCommand({ type: 'all', value: [] }, '/repo')
-    expect(cmd.command).toBe('vp')
-    expect(cmd.args).toEqual(['run', 'typecheck'])
+    expect(cmd.command).toBe('rtk')
+    expect(cmd.args).toEqual(bundledVpArgs('run', 'typecheck'))
   })
 
   it('builds typecheck command with package filters', () => {
@@ -69,7 +76,7 @@ describe('buildTypecheckCommand', () => {
       { type: 'package', value: ['--filter=@webpresso/cli2'] },
       '/repo',
     )
-    expect(cmd.args).toEqual(['run', '--filter=@webpresso/cli2', 'typecheck'])
+    expect(cmd.args).toEqual(bundledVpArgs('run', '--filter=@webpresso/cli2', 'typecheck'))
   })
 
   it('skips package filters for non-package targets', () => {
@@ -89,17 +96,19 @@ describe('buildTypecheckCommand', () => {
       },
     )
 
-    expect(cmd.args).toEqual([
-      'run',
-      '--filter=@webpresso/cli2',
-      '--no-cache',
-      '--parallel',
-      '--concurrency-limit',
-      '6',
-      '--log',
-      'grouped',
-      'typecheck',
-    ])
+    expect(cmd.args).toEqual(
+      bundledVpArgs(
+        'run',
+        '--filter=@webpresso/cli2',
+        '--no-cache',
+        '--parallel',
+        '--concurrency-limit',
+        '6',
+        '--log',
+        'grouped',
+        'typecheck',
+      ),
+    )
     expect(cmd.env).toEqual({ VP_RUN_CONCURRENCY_LIMIT: '6' })
   })
 
@@ -135,13 +144,13 @@ describe('getVpTestTask', () => {
 describe('buildVpTestCommand', () => {
   it('builds basic workspace test command', () => {
     const cmd = buildVpTestCommand([])
-    expect(cmd.command).toBe('vp')
-    expect(cmd.args).toEqual(['run', 'test'])
+    expect(cmd.command).toBe('rtk')
+    expect(cmd.args).toEqual(bundledVpArgs('run', 'test'))
   })
 
   it('builds test command with filters', () => {
     const cmd = buildVpTestCommand(['--filter=@webpresso/cli2'])
-    expect(cmd.args).toEqual(['run', '--filter=@webpresso/cli2', 'test'])
+    expect(cmd.args).toEqual(bundledVpArgs('run', '--filter=@webpresso/cli2', 'test'))
   })
 
   it('builds test command with coverage flag', () => {
@@ -152,12 +161,12 @@ describe('buildVpTestCommand', () => {
 
   it('builds test:workers command with workers flag', () => {
     const cmd = buildVpTestCommand([], { workers: true })
-    expect(cmd.args[1]).toBe('test:workers')
+    expect(cmd.args.at(-1)).toBe('test:workers')
   })
 
   it('maps watch mode to the watch task', () => {
     const cmd = buildVpTestCommand([], { watch: true })
-    expect(cmd.args).toEqual(['run', 'test:watch'])
+    expect(cmd.args).toEqual(bundledVpArgs('run', 'test:watch'))
   })
 
   it('passes native Vite+ run options through for tests', () => {
@@ -168,17 +177,19 @@ describe('buildVpTestCommand', () => {
       concurrencyLimit: 3,
     })
 
-    expect(cmd.args).toEqual([
-      'run',
-      '--filter=@webpresso/cli2',
-      '--no-cache',
-      '--parallel',
-      '--concurrency-limit',
-      '3',
-      '--log',
-      'grouped',
-      'test',
-    ])
+    expect(cmd.args).toEqual(
+      bundledVpArgs(
+        'run',
+        '--filter=@webpresso/cli2',
+        '--no-cache',
+        '--parallel',
+        '--concurrency-limit',
+        '3',
+        '--log',
+        'grouped',
+        'test',
+      ),
+    )
     expect(cmd.env).toEqual({ VP_RUN_CONCURRENCY_LIMIT: '3' })
   })
 })
@@ -260,13 +271,13 @@ describe('buildVitestCommand', () => {
 describe('buildVpTestCommand', () => {
   it('builds basic workspace test command', () => {
     const cmd = buildVpTestCommand([])
-    expect(cmd.command).toBe('vp')
-    expect(cmd.args).toEqual(['run', 'test'])
+    expect(cmd.command).toBe('rtk')
+    expect(cmd.args).toEqual(bundledVpArgs('run', 'test'))
   })
 
   it('builds test command with filters', () => {
     const cmd = buildVpTestCommand(['--filter=@webpresso/cli2'])
-    expect(cmd.args).toEqual(['run', '--filter=@webpresso/cli2', 'test'])
+    expect(cmd.args).toEqual(bundledVpArgs('run', '--filter=@webpresso/cli2', 'test'))
   })
 
   it('builds test command with coverage flag', () => {
@@ -277,12 +288,12 @@ describe('buildVpTestCommand', () => {
 
   it('builds test:workers command with workers flag', () => {
     const cmd = buildVpTestCommand([], { workers: true })
-    expect(cmd.args[1]).toBe('test:workers')
+    expect(cmd.args.at(-1)).toBe('test:workers')
   })
 
   it('maps watch mode to the watch task', () => {
     const cmd = buildVpTestCommand([], { watch: true })
-    expect(cmd.args).toEqual(['run', 'test:watch'])
+    expect(cmd.args).toEqual(bundledVpArgs('run', 'test:watch'))
   })
 
   it('passes native Vite+ run options through for tests', () => {
@@ -293,17 +304,19 @@ describe('buildVpTestCommand', () => {
       concurrencyLimit: 3,
     })
 
-    expect(cmd.args).toEqual([
-      'run',
-      '--filter=@webpresso/cli2',
-      '--no-cache',
-      '--parallel',
-      '--concurrency-limit',
-      '3',
-      '--log',
-      'grouped',
-      'test',
-    ])
+    expect(cmd.args).toEqual(
+      bundledVpArgs(
+        'run',
+        '--filter=@webpresso/cli2',
+        '--no-cache',
+        '--parallel',
+        '--concurrency-limit',
+        '3',
+        '--log',
+        'grouped',
+        'test',
+      ),
+    )
     expect(cmd.env).toEqual({ VP_RUN_CONCURRENCY_LIMIT: '3' })
   })
 

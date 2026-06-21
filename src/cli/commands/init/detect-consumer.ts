@@ -257,7 +257,7 @@ export function discoverWorkspacePackages(
 
 /**
  * Soft warning for the published-consumer install contract. Consumers run the
- * global Vite+ `wp` binary and depend on `@webpresso/agent-config` for local
+ * global `wp` binary and depend on `@webpresso/agent-config` for local
  * presets. Source/JIT mode is reserved for this repo via `WP_FORCE_SOURCE=1`.
  */
 export function warnIfNonLocalCli(repoRoot: string, cliUrl: string = import.meta.url): void {
@@ -283,7 +283,7 @@ export function warnIfNonLocalCli(repoRoot: string, cliUrl: string = import.meta
   if (isLocalAgentKitCli(repoRoot, cliPath)) {
     console.error(
       `warning: wp is running from this repo's node_modules (${cliPath}). ` +
-        'Consumers must use the global Vite+ install: `vp install -g @webpresso/agent-kit`, then run `wp setup`.',
+        'Consumers must use the global install: `npm install -g @webpresso/agent-kit`, then run `wp setup`.',
     )
     return
   }
@@ -298,7 +298,7 @@ export function warnIfNonLocalCli(repoRoot: string, cliUrl: string = import.meta
   if (typeof configVersion !== 'string' || !isPublishedSemverRange(configVersion)) {
     console.error(
       'warning: missing or invalid @webpresso/agent-config dependency pin. ' +
-        'Consumers must pin a published semver range in package.json, run `vp install`, then use global `wp setup`.',
+        'Consumers must pin a published semver range in package.json, install dependencies, then use global `wp setup`.',
     )
   }
 }

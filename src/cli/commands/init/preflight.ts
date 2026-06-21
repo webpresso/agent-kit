@@ -8,6 +8,7 @@ import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
+import { getManagedRunner } from '#tool-runtime'
 import { resolveBlueprintRoot } from '#utils/blueprint-root'
 
 export interface PreflightResult {
@@ -42,9 +43,10 @@ function checkTypeScriptWorkspace(repoRoot: string): string | null {
 }
 
 function checkVp(): string | null {
-  const result = spawnSync('vp', ['--version'], { encoding: 'utf8' })
+  const resolution = getManagedRunner('vp', { outputPolicy: 'structured' })
+  const result = spawnSync(resolution.command, [...resolution.args, '--version'], { encoding: 'utf8' })
   if (result.error !== undefined || (result.status !== null && result.status !== 0)) {
-    return 'vp not found on PATH — install Vite+ and use vp as the package-command facade (see docs)'
+    return 'bundled Vite+ runner unavailable — reinstall @webpresso/agent-kit without omitting dependencies (see docs)'
   }
   return null
 }

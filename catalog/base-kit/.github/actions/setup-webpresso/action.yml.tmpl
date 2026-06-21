@@ -9,7 +9,7 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        eval "$(node ./scripts/resolve-webpresso-cli-versions.js)"
+        eval "$(node ./scripts/resolve-webpresso-cli-versions.cjs)"
 
         if ! command -v vp >/dev/null 2>&1; then
           curl -fsSL https://vite.plus | bash

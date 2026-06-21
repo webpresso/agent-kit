@@ -19,7 +19,7 @@ your repo root:
 
 ```bash
 cd your-repo
-vp install -g @webpresso/agent-kit
+npm install -g @webpresso/agent-kit
 wp setup
 ```
 
@@ -39,7 +39,7 @@ for those commands.
 
 No private registry setup is required.
 
-If `vp` is not already on PATH, install Vite+ first (`curl -fsSL https://viteplus.dev/install.sh | bash` on Linux/macOS; in CI use `voidzero-dev/setup-vp@v1`), then continue.
+`wp` bundles the package/task facade it needs, so a separate global `vp` install is not required.
 
 For committed/team repos, keep `@webpresso/agent-config` locally for presets
 and use the global `wp` install for CLI/setup behavior. Do not add

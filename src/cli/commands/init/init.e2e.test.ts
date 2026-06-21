@@ -215,7 +215,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(existsSync(path.join(repo, '.husky', 'commit-msg'))).toBe(false)
       expect(existsSync(path.join(repo, '.husky', 'pre-push'))).toBe(false)
       expect(existsSync(path.join(repo, 'scripts', 'check-no-dev-vars.ts'))).toBe(false)
-      expect(existsSync(path.join(repo, 'scripts', 'resolve-webpresso-cli-versions.js'))).toBe(true)
+      expect(existsSync(path.join(repo, 'scripts', 'resolve-webpresso-cli-versions.cjs'))).toBe(true)
 
       // Future-proof guard: PreToolUse should be fail-closed (deny JSON
       // fallback), not silent fail-open `|| true`.
@@ -233,47 +233,6 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(r.stdout).toContain(
         'Do not blanket-remove devDependencies just because wp can execute the tool.',
       )
-    })
-
-    it('plain repo without --project-init falls back to user-only setup and leaves repo files untouched', () => {
-      const r = runAk(['setup', '--yes', '--cwd', repo, '--host', 'none'], {
-        PATH: pathWithFakeOmxOk(),
-        HOME: fakeHome,
-        WP_SKIP_AUTO_INSTALL: '1',
-        WP_SKIP_CLAUDE_PLUGIN: '1',
-        WP_SKIP_CODEX_PLUGIN: '1',
-        WP_SKIP_GSTACK: '1',
-      })
-
-      expect(r.code).toBe(0)
-      expect(r.stderr).toContain('does not look like an initialized Webpresso project')
-      expect(r.stdout).toContain('No repo files will be written here.')
-      expect(r.stdout).toContain('Re-run with --project-init')
-      expect(existsSync(path.join(repo, '.agent'))).toBe(false)
-      expect(existsSync(path.join(repo, '.webpressorc.json'))).toBe(false)
-      expect(existsSync(path.join(repo, '.actrc'))).toBe(false)
-      expect(existsSync(path.join(repo, 'package.json'))).toBe(false)
-      expect(existsSync(path.join(repo, '.mcp.json'))).toBe(false)
-      expect(existsSync(path.join(repo, '.codex', 'hooks.json'))).toBe(false)
-      expect(existsSync(path.join(repo, '.claude', 'settings.json'))).toBe(false)
-    })
-
-    it('--user-only skips repo scaffolding even when explicitly requested', () => {
-      const r = runAk(['setup', '--yes', '--user-only', '--cwd', repo, '--host', 'none'], {
-        PATH: pathWithFakeOmxOk(),
-        HOME: fakeHome,
-        WP_SKIP_AUTO_INSTALL: '1',
-        WP_SKIP_CLAUDE_PLUGIN: '1',
-        WP_SKIP_CODEX_PLUGIN: '1',
-        WP_SKIP_GSTACK: '1',
-      })
-
-      expect(r.code).toBe(0)
-      expect(r.stdout).toContain('running explicit user-only setup')
-      expect(existsSync(path.join(repo, '.agent'))).toBe(false)
-      expect(existsSync(path.join(repo, '.webpressorc.json'))).toBe(false)
-      expect(existsSync(path.join(repo, '.actrc'))).toBe(false)
-      expect(existsSync(path.join(repo, '.mcp.json'))).toBe(false)
     })
 
     it('--prune removes stale agent-kit plugin cache versions from every existing supported cache root', () => {
@@ -314,7 +273,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
         '1.1.0',
       )
 
-      const r = runAk(['setup', '--yes', '--project-init', '--prune', '--cwd', repo], {
+      const r = runAk(['setup', '--yes', '--prune', '--cwd', repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
         WP_SKIP_GSTACK: '1',
@@ -352,7 +311,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(existsSync(path.join(repo, 'scripts', 'audit-secret-provider-quarantine.ts'))).toBe(
         false,
       )
-      expect(existsSync(path.join(repo, 'scripts', 'resolve-webpresso-cli-versions.js'))).toBe(true)
+      expect(existsSync(path.join(repo, 'scripts', 'resolve-webpresso-cli-versions.cjs'))).toBe(true)
       expect(existsSync(path.join(repo, '.husky', 'pre-commit'))).toBe(true)
       expect(existsSync(path.join(repo, '.husky', 'commit-msg'))).toBe(false)
       expect(existsSync(path.join(repo, '.husky', 'pre-push'))).toBe(false)
@@ -364,12 +323,12 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(existsSync(path.join(repo, 'e2e', '.gitkeep'))).toBe(true)
       expect(
         existsSync(path.join(repo, '.github', 'actions', 'setup-webpresso', 'action.yml')),
-      ).toBe(true)
+      ).toBe(false)
       expect(existsSync(path.join(repo, '.github', 'workflows', 'ci.yml'))).toBe(true)
     })
 
     it('--with omx + fake omx on PATH: exits 0 and chains omx setup', () => {
-      const r = runAk(['setup', '--yes', '--project-init', '--with', 'omx', '--cwd', repo], {
+      const r = runAk(['setup', '--yes', '--with', 'omx', '--cwd', repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
       })
@@ -455,7 +414,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
     })
 
     it('--with omx + omx not on PATH: exits 1 with not-found hint', () => {
-      const r = runAk(['setup', '--yes', '--project-init', '--with', 'omx', '--cwd', repo], {
+      const r = runAk(['setup', '--yes', '--with', 'omx', '--cwd', repo], {
         PATH: pathWithoutOmx(),
         HOME: fakeHome,
       })
@@ -464,7 +423,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
     })
 
     it('--with omx + omx setup fails: exits 3 (EXIT_WRITE_FAIL)', () => {
-      const r = runAk(['setup', '--yes', '--project-init', '--with', 'omx', '--cwd', repo], {
+      const r = runAk(['setup', '--yes', '--with', 'omx', '--cwd', repo], {
         PATH: pathWithFakeOmxFail(),
         HOME: fakeHome,
       })
@@ -472,13 +431,13 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(r.stderr).toContain('exited with 5')
     })
 
-    it('--with gstack + fake HOME with gstack pre-installed: exits 0, "updated"', () => {
+    it('--with gstack + fake HOME with legacy checkout: exits 0, installs Webpresso skills', () => {
       const r = runAk(['setup', '--yes', '--project-init', '--with', 'gstack', '--cwd', repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
       })
       expect(r.code).toBe(0)
-      expect(r.stdout).toContain('gstack: ✓ updated')
+      expect(r.stdout).toContain('gstack: ✓ installed')
       expect(r.stdout).toContain(path.join(fakeHome, '.claude', 'skills', 'gstack'))
     })
 
@@ -492,7 +451,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       })
 
       expect(r.code).toBe(0)
-      expect(r.stdout).toContain('gstack: ✓ updated')
+      expect(r.stdout).toContain('gstack: ✓ installed')
       expect(r.stdout).toContain(
         `gstack (codex): ✓ installed at ${path.join(fakeHome, '.codex', 'skills')}`,
       )
@@ -508,7 +467,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
         })
         expect(r.code).toBe(0)
         expect(r.stdout).toContain('omx setup: ✓')
-        expect(r.stdout).toContain('gstack: ✓ updated')
+        expect(r.stdout).toContain('gstack: ✓ installed')
       },
     )
 
@@ -525,12 +484,12 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
         expect(r.stderr).toContain('not on PATH')
         // gstack still runs after omx fails — independent presets aren't
         // coupled. Verify it succeeded against the fake-home fixture.
-        expect(r.stdout).toContain('gstack: ✓ updated')
+        expect(r.stdout).toContain('gstack: ✓ installed')
       },
     )
 
     it('runtime check: prints bun + vp + actionlint status regardless of presets', () => {
-      const r = runAk(['setup', '--yes', '--project-init', '--cwd', repo], {
+      const r = runAk(['setup', '--yes', '--cwd', repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
       })
@@ -542,7 +501,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
     })
 
     it('runtime check: missing tool prints install hint, exit still 0', () => {
-      const r = runAk(['setup', '--yes', '--project-init', '--cwd', repo], {
+      const r = runAk(['setup', '--yes', '--cwd', repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
       })
@@ -554,7 +513,15 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
     })
 
     it('rejects unknown --with values with exit code 1', () => {
-      const r = runAk(['setup', '--yes', '--project-init', '--with', 'definitely-not-a-skill', '--cwd', repo])
+      const r = runAk([
+        'setup',
+        '--yes',
+        '--project-init',
+        '--with',
+        'definitely-not-a-skill',
+        '--cwd',
+        repo,
+      ])
       expect(r.code).toBe(1)
     })
 

@@ -6,6 +6,7 @@ import { createSummaryOutputSchema, createSummaryResult } from './_shared/result
 import { createGainSummaryResult } from './_session-gain.js'
 import { runSessionCommand, searchSessionCommandOutput } from './_session-command.js'
 import { defaultIndexDbPath } from './session-restore.js'
+import { sessionElisionSchema } from '#mcp/_session-elision.js'
 import type { SearchHit } from '#session-memory/types'
 
 const MAX_CONCURRENCY = 8
@@ -82,6 +83,8 @@ const outputSchema = createSummaryOutputSchema({
         maxCaptureBytes: z.number().optional(),
         timedOut: z.boolean().optional(),
         signal: z.string().optional(),
+        elisions: z.array(sessionElisionSchema).optional(),
+        warnings: z.array(z.string()).optional(),
       }),
     ),
     queryHits: z
@@ -185,6 +188,8 @@ const tool: ToolDescriptor = {
       }
 
       const failedCount = results.filter((result) => result.exitCode !== 0).length
+      const elisions = results.flatMap((result) => [...(result.elisions ?? [])])
+      const warnings = results.flatMap((result) => [...(result.warnings ?? [])])
       return createGainSummaryResult(
         {
           passed: failedCount === 0,
@@ -196,6 +201,8 @@ const tool: ToolDescriptor = {
             results,
             ...(queryHits ? { queryHits } : {}),
           },
+          ...(elisions.length > 0 ? { elisions } : {}),
+          ...(warnings.length > 0 ? { warnings } : {}),
         },
         failedCount === 0 ? {} : { isError: true },
         {

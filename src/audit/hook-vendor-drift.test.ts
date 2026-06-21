@@ -170,6 +170,23 @@ describe('auditHookVendorDrift (file I/O)', () => {
     expect(report.findings.some((f) => f.severity === 'error')).toBe(false)
   })
 
+  test('audit is silent by default so CLI JSON output stays machine-readable', async () => {
+    const consoleLog = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    await auditHookVendorDrift({ repoRoot })
+
+    expect(consoleLog).not.toHaveBeenCalled()
+  })
+
+  test('explicit logger receives human-readable audit lines', async () => {
+    const lines: string[] = []
+
+    await auditHookVendorDrift({ repoRoot, log: (line) => lines.push(line) })
+
+    expect(lines.length).toBeGreaterThan(0)
+    expect(lines[0]).toContain('hook-vendor-drift:')
+  })
+
   test('malformed .claude/settings.json is surfaced as an error, NOT a silent "no drift"', async () => {
     mkdirSync(join(repoRoot, '.claude'), { recursive: true })
     writeFileSync(join(repoRoot, '.claude', 'settings.json'), '{ this is not json', 'utf8')

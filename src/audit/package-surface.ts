@@ -13,7 +13,7 @@ import { basename, dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 
-import { syncBlueprintMigrationSqlAssets } from '#build/blueprint-migration-assets.js'
+import { assertBuiltBlueprintMigrationSqlAssets } from '#build/blueprint-migration-assets.js'
 import { createPackedManifest, readWorkspaceCatalogs } from '#build/package-manifest.js'
 import { escapeRegExp } from '#utils/string'
 
@@ -688,14 +688,34 @@ function readPackedEntryForAudit(
   return options.readPackedEntry?.(packageRoot) ?? readPackedEntry(packageRoot)
 }
 
+export function parseNpmPackJsonOutput(raw: string): unknown {
+  try {
+    return JSON.parse(raw) as unknown
+  } catch {
+    // npm can still print package lifecycle stdout before the final JSON array
+    // when scripts run during `npm pack --dry-run --json`. Parse the final
+    // JSON array instead of assuming stdout is pure JSON.
+    for (const match of raw.matchAll(/\[/gu)) {
+      const candidate = raw.slice(match.index).trim()
+      try {
+        const parsed = JSON.parse(candidate) as unknown
+        if (Array.isArray(parsed)) return parsed
+      } catch {
+        // keep scanning for the JSON array emitted by npm
+      }
+    }
+    throw new SyntaxError('Could not parse npm pack --json output')
+  }
+}
+
 function readPackedEntry(packageRoot: string): NpmPackDryRunEntry {
-  syncBlueprintMigrationSqlAssets(packageRoot)
-  const raw = execFileSync('npm', ['pack', '--dry-run', '--json'], {
+  assertBuiltBlueprintMigrationSqlAssets(packageRoot)
+  const raw = execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
     cwd: packageRoot,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   })
-  const entries = JSON.parse(raw) as unknown
+  const entries = parseNpmPackJsonOutput(raw)
   if (!Array.isArray(entries) || entries.length === 0) return {}
   return (entries[0] as NpmPackDryRunEntry) ?? {}
 }

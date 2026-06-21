@@ -1,4 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   DEFAULT_CI_ACT_TIMEOUT_MS,
@@ -13,6 +17,22 @@ import {
 describe('wp ci command', () => {
   const defaultArchitecture =
     process.platform === 'darwin' && process.arch === 'arm64' ? 'linux/arm64' : 'linux/amd64'
+  const tempDirs: string[] = []
+
+  afterEach(() => {
+    for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true })
+  })
+
+  function tempProjectRoot(): string {
+    const root = mkdtempSync(join(tmpdir(), 'wp-cli-ci-act-'))
+    tempDirs.push(root)
+    mkdirSync(join(root, '.github', 'workflows'), { recursive: true })
+    writeFileSync(
+      join(root, '.github', 'workflows', 'ci-e2e.yml'),
+      'name: ci-e2e\non: pull_request\njobs: {}\n',
+    )
+    return root
+  }
 
   it('exports a dedicated ci act timeout budget above the generic runner default', () => {
     expect(DEFAULT_CI_ACT_TIMEOUT_MS).toBe(20 * 60_000)
@@ -51,7 +71,6 @@ describe('wp ci command', () => {
         job: 'webpresso',
         eventName: 'workflow_dispatch',
         envProfile: 'secrets-only',
-        secretEnvProfile: 'ci-local',
         containerArchitecture: 'linux/arm64',
         platformImage: 'image',
         eventPath: 'event.json',
@@ -65,7 +84,7 @@ describe('wp ci command', () => {
       '--sink',
       'act',
       '--profile',
-      'ci-local',
+      'preview',
       '--',
       'act',
       'workflow_dispatch',
@@ -140,6 +159,23 @@ describe('wp ci command', () => {
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"command":"wp"'))
     expect(stdout).toHaveBeenCalledWith(expect.stringContaining('secrets'))
     expect(stdout).toHaveBeenCalledWith(expect.not.stringContaining('chef-token'))
+  })
+
+  it('prints replay-mode dry-runs without spawning', async () => {
+    const run = vi.fn()
+    const stdout = vi.fn(() => true)
+    const code = await runCiActCommand(
+      { workflow: 'ci-e2e', mode: 'replay' },
+      {
+        cwd: '/repo',
+        run,
+        stdout: { write: stdout },
+      },
+    )
+
+    expect(code).toBe(0)
+    expect(run).not.toHaveBeenCalled()
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('[GENERATED_REPLAY_WORKFLOW]'))
   })
 
   it('executes through the shared secret-gate runner only when execute=true', async () => {
@@ -256,5 +292,30 @@ describe('wp ci command', () => {
 
   it('does not require repo-local adapter or wrapper paths', () => {
     expect(validateCiActCommand()).toBeNull()
+  })
+
+  it('emits a non-security-equivalent warning in replay mode', async () => {
+    const root = tempProjectRoot()
+    const stderr = vi.fn(() => true)
+    const code = await runCiActCommand(
+      { workflow: 'ci-e2e', execute: true, mode: 'replay' },
+      {
+        cwd: root,
+        run: async () => ({
+          exitCode: 0,
+          signal: null,
+          timedOut: false,
+          aborted: false,
+          stdout: '',
+          stderr: '',
+        }),
+        stderr: { write: stderr },
+      },
+    )
+
+    expect(code).toBe(0)
+    expect(stderr).toHaveBeenCalledWith(
+      expect.stringContaining('not security-equivalent to GitHub CI or OIDC'),
+    )
   })
 })

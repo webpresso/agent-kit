@@ -86,6 +86,13 @@ wp skill install tanstack-query
 | `web-design-guidelines/` | General web-UI guidelines. |
 | `vercel-react-best-practices/` | Vercel / React deployment hygiene, server-cache patterns, edge-runtime considerations. |
 
+
+### Curated plan/review workflows
+
+Agent-kit also ships a lightweight Webpresso-owned set of unprefixed workflow skills derived from MIT-licensed gstack ideas: `claude`, `plan-eng-review`, `plan-ceo-review`, `plan-design-review`, and `review`. They are staged from the private gstack workspace package through an allowlist, include provenance/NOTICE metadata, and do not require or install an external `~/.claude/skills/gstack` checkout.
+
+External checkout cleanup is explicit only: `wp setup --with gstack` leaves an existing checkout in place unless `WP_GSTACK_CLEANUP_EXTERNAL=1` is set, in which case the directory is backed up before retirement.
+
 ### Operational/domain catalog skills
 
 These are catalog-owned skills for repo operations or general engineering

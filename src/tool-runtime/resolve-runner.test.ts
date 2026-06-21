@@ -61,6 +61,25 @@ describe('resolveRunner', () => {
     })
   })
 
+
+  it('resolves vp through the bundled Vite+ bin with the current Node runtime', () => {
+    expect(resolveRunner('vp', { outputPolicy: 'structured', nodeExecPath: '/usr/local/bin/node' })).toEqual({
+      tool: 'vp',
+      command: '/usr/local/bin/node',
+      args: [expect.stringMatching(/vite-plus.*bin.*vp/)],
+      source: 'managed',
+    })
+  })
+
+  it('uses the same RTK-default wrapper for bundled vp', () => {
+    expect(resolveRunner('vp', { nodeExecPath: '/usr/local/bin/node' })).toEqual({
+      tool: 'vp',
+      command: 'rtk',
+      args: ['/usr/local/bin/node', expect.stringMatching(/vite-plus.*bin.*vp/)],
+      source: 'managed',
+    })
+  })
+
   it('uses the same RTK-default wrapper for fallback runners', () => {
     expect(
       resolveRunner('custom-tool', {

@@ -87,6 +87,7 @@ const sessionMemoryToolNames = [
   'wp_session_fetch_and_index',
   'wp_session_index',
   'wp_session_purge',
+  'wp_session_retrieve',
   'wp_session_restore',
   'wp_session_search',
   'wp_session_snapshot',
@@ -354,6 +355,7 @@ describe('createPackedManifest', () => {
     )
     for (const internalHook of contract.cliBins?.internalHooks ?? []) {
       expect(packageJson.bin).not.toHaveProperty(internalHook)
+      expect(existsSync(join(repoRoot, 'bin', `${internalHook}.js`))).toBe(true)
     }
   })
 

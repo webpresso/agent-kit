@@ -79,11 +79,11 @@ function resolveConfiguredEnvironmentSelector(
   environment: string | undefined,
 ): string | undefined {
   const explicitEnvironment = normalizeEnvironmentSelector(environment)
-  if (explicitEnvironment) return config.profileEnvironments?.[explicitEnvironment] ?? explicitEnvironment
+  if (explicitEnvironment)
+    return config.profiles?.[explicitEnvironment]?.environment ?? explicitEnvironment
   if (!profile) return undefined
-  const configuredProfileEnvironment = config.profileEnvironments?.[profile]
-  if (configuredProfileEnvironment) return configuredProfileEnvironment
-  return isCanonicalSecretProfile(profile) ? undefined : profile
+  if (isCanonicalSecretProfile(profile)) return undefined
+  return undefined
 }
 
 export function resolveRuntimeEnvironment(
@@ -105,7 +105,11 @@ export function resolveRuntimeEnvironment(
   }
 
   const cache = options.cache ?? createRuntimeEnvCache()
-  const environmentSelector = resolveConfiguredEnvironmentSelector(config, profile, options.environment)
+  const environmentSelector = resolveConfiguredEnvironmentSelector(
+    config,
+    profile,
+    options.environment,
+  )
   const cacheKey = `${cwd}::${config.manager}::${config.projectId}::${environmentSelector ?? '<default>'}`
   const cached = cache.values.get(cacheKey)
   if (cached) return { ...cached }

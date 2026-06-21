@@ -48,7 +48,7 @@ describe('wp root command surface', () => {
     expect(result.code).toBe(0)
     expect(result.stdout.join('\n')).toContain('setup                 Scaffold a consumer repo')
     expect(result.stdout.join('\n')).toContain(
-      'install               Install dependencies through the managed vp facade',
+      'install               Install dependencies through the managed package/task facade',
     )
     expect(result.stdout.join('\n')).toContain(
       'Refresh wp and any wp-managed optional OMX/OMC/gstack integrations by default; use --deps for local dependencies',
@@ -89,13 +89,13 @@ describe('wp root command surface', () => {
     expect(result.stdout.join('\n')).toContain('--deps')
     expect(result.stdout.join('\n')).toContain('--global')
     expect(result.stdout.join('\n')).toContain(
-      'Update local dependencies through managed vp update',
+      'Update local dependencies through managed package/task update',
     )
     expect(result.stdout.join('\n')).toContain(
       'Compatibility alias for the default tooling refresh',
     )
     expect(result.stdout.join('\n')).not.toContain(
-      'Update local dependencies through the managed vp facade (default)',
+      'Update local dependencies through the managed package/task facade (default)',
     )
   })
 

@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, expect, test } from 'vitest'
 
-import { auditPackageSurface, stagePublishableTarballSurface } from './package-surface.js'
+import { auditPackageSurface, parseNpmPackJsonOutput, stagePublishableTarballSurface } from './package-surface.js'
 import {
   AGENT_KIT_TARBALL_SIZE_BUDGET_BYTES,
   AGENT_KIT_TARBALL_UNPACKED_SIZE_BUDGET_BYTES,
@@ -92,6 +92,19 @@ function fixtureSecretlintFinding(stageRoot: string): unknown {
   ]
 }
 
+describe('parseNpmPackJsonOutput', () => {
+  test('parses npm JSON after lifecycle stdout prelude', () => {
+    const parsed = parseNpmPackJsonOutput('$ bun scripts/stage-gstack-skills.ts\nstage-gstack-skills: staged 5 skills\n[{"name":"@webpresso/agent-kit","files":[{"path":"package.json","size":42}]}]')
+
+    expect(parsed).toEqual([
+      {
+        name: '@webpresso/agent-kit',
+        files: [{ path: 'package.json', size: 42 }],
+      },
+    ])
+  })
+})
+
 describe('package-surface audit', () => {
   test('current package exposes the wp-extension public subpath contract', () => {
     const root = resolve(import.meta.dirname, '..', '..')
@@ -107,6 +120,19 @@ describe('package-surface audit', () => {
     })
     expect(pkg.imports?.['#wp-extension']).toBe('./src/wp-extension/index.ts')
     expect(pkg.tshy?.exports?.['./wp-extension']).toBe('./src/wp-extension/index.ts')
+  })
+
+  test('public gstack attribution does not point package consumers to private source paths', () => {
+    const root = resolve(import.meta.dirname, '..', '..')
+    const notices = readFileSync(join(root, 'THIRD-PARTY-NOTICES.md'), 'utf8')
+    const manifest = readFileSync(
+      join(root, 'catalog', 'agent', 'skills', 'third-party-manifest.json'),
+      'utf8',
+    )
+
+    expect(notices).toContain('gstack-derived workflow skills')
+    expect(`${notices}\n${manifest}`).not.toContain('packages/gstack/')
+    expect(`${notices}\n${manifest}`).not.toContain('packages/gstack provenance')
   })
 
   test('flags publishable @webpresso packages outside the contract', () => {
@@ -338,6 +364,49 @@ describe('package-surface audit', () => {
         }),
       ]),
     )
+  })
+
+  test('package-surface audit asserts built migration SQL assets without mutating them', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'src', 'blueprint', 'db', 'migrations'), { recursive: true })
+    writeJson(join(root, 'package.json'), {
+      name: '@webpresso/framework',
+      version: '0.1.0',
+      private: false,
+      files: ['dist/esm/blueprint/db/migrations'],
+    })
+    writeFileSync(join(root, 'src', 'blueprint', 'db', 'migrations', '0001_seed.sql'), 'select 1;\n')
+
+    const result = auditPackageSurface(root, { runSecretlint: () => [] })
+
+    expect(result.ok).toBe(false)
+    expect(
+      result.violations.some(
+        (violation) =>
+          violation.file === 'package.json' &&
+          violation.message.includes('Missing or stale built blueprint migration SQL assets'),
+      ),
+    ).toBe(true)
+    expect(existsSync(join(root, 'dist', 'esm', 'blueprint', 'db', 'migrations'))).toBe(false)
+  })
+
+  test('package-surface audit does not run npm pack lifecycle scripts', () => {
+    const root = tempRepo()
+    writeJson(join(root, 'package.json'), {
+      name: '@webpresso/framework',
+      version: '0.1.0',
+      private: false,
+      files: ['package.json'],
+      scripts: {
+        prepack:
+          'node -e "require(\\"node:fs\\").writeFileSync(\\"MUTATED_BY_PREPACK\\", \\"yes\\")"',
+      },
+    })
+
+    const result = auditPackageSurface(root, { runSecretlint: () => [] })
+
+    expect(result.ok).toBe(true)
+    expect(existsSync(join(root, 'MUTATED_BY_PREPACK'))).toBe(false)
   })
 
   test('flags forbidden packed tarball paths and content', () => {
