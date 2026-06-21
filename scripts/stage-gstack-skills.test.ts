@@ -29,12 +29,23 @@ describe('stageGstackSkills', () => {
     expect(second).toEqual(first)
     expect(first.staged).toEqual([
       'catalog/agent/skills/claude/SKILL.md',
+      'catalog/agent/skills/codex/SKILL.md',
+      'catalog/agent/skills/deepseek/SKILL.md',
+      'catalog/agent/skills/glm/SKILL.md',
+      'catalog/agent/skills/hy3/SKILL.md',
+      'catalog/agent/skills/kimi/SKILL.md',
+      'catalog/agent/skills/mimo/SKILL.md',
+      'catalog/agent/skills/minimax/SKILL.md',
+      'catalog/agent/skills/opencode-go/SKILL.md',
       'catalog/agent/skills/plan-ceo-review/SKILL.md',
       'catalog/agent/skills/plan-design-review/SKILL.md',
       'catalog/agent/skills/plan-eng-review/SKILL.md',
+      'catalog/agent/skills/qwen/SKILL.md',
       'catalog/agent/skills/review/SKILL.md',
     ])
     expect(readFileSync(path.join(root, first.staged[0]!), 'utf8')).toContain('name: claude')
+    expect(readFileSync(path.join(root, 'catalog/agent/skills/codex/SKILL.md'), 'utf8')).toContain('codex exec --sandbox read-only')
+    expect(readFileSync(path.join(root, 'catalog/agent/skills/qwen/SKILL.md'), 'utf8')).toContain('opencode-go/qwen3.7-max')
   })
 
   it('rejects denied paths and missing NOTICE/provenance', () => {

@@ -7,10 +7,19 @@
     "license": "MIT"
   },
   "curation": {
-    "date": "2026-06-19",
+    "date": "2026-06-21",
     "mode": "manual nuance-preserving rewrite",
     "importedSkills": [
       "claude",
+      "codex",
+      "opencode-go",
+      "deepseek",
+      "glm",
+      "kimi",
+      "minimax",
+      "mimo",
+      "qwen",
+      "hy3",
       "plan-eng-review",
       "plan-ceo-review",
       "plan-design-review",

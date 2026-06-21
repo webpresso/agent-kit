@@ -16,6 +16,15 @@ describe('@repo/gstack provenance', () => {
     expect(provenance.upstream.license).toBe('MIT')
     expect(provenance.curation.importedSkills).toEqual([
       'claude',
+      'codex',
+      'opencode-go',
+      'deepseek',
+      'glm',
+      'kimi',
+      'minimax',
+      'mimo',
+      'qwen',
+      'hy3',
       'plan-eng-review',
       'plan-ceo-review',
       'plan-design-review',

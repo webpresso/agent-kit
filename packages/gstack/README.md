@@ -9,3 +9,5 @@ This package is intentionally **not publishable**. It holds:
 - staging policy used to copy only allowlisted assets into the public `@webpresso/agent-kit` package surface
 
 It does not vendor upstream binaries, generated host directories, browser/design runtimes, or dependency payloads. Upstream refreshes are explicit manual curation work, not an automatic overlay.
+
+Current curated outside-voice skills include Claude, Codex, and OpenCode Go model-family reviewers for DeepSeek, GLM, Kimi, MiniMax, MiMo, Qwen, and HY3.
