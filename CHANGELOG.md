@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.3.2
+
+### Patch Changes
+
+- 5dca90b: Add cross-host outside-voice skills for Codex, Claude CLI-login auth, and OpenCode Go model-family reviewers covering DeepSeek, GLM, Kimi, MiniMax, MiMo, Qwen, and HY3.
+
+  Reference parity and session-memory contract evidence remains covered by
+  `docs/bench/reference-parity-matrix.md`,
+  `docs/bench/session-memory-methodology.md`,
+  `src/__integration__/reference-parity-host-smoke.integration.test.ts`, and
+  `src/__integration__/reference-parity-tool-surface.integration.test.ts`.
+
+- 5dca90b: Fix the packaged Claude outside-voice skill auth snippet to use `claude auth status --json` with a plain-status fallback, and allow `wp_test`/`wp_qa` to combine suite labels with explicit file targets without broadening targeted runs.
+- ed6c6a0: Deduplicate overlapping setup-managed Codex OMX PreToolUse hook groups during global hook normalization so Bash tools do not run the same global hook multiple times before the repo guard.
+
+  Release-note audit references: `docs/bench/reference-parity-matrix.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, `src/__integration__/reference-parity-tool-surface.integration.test.ts`, `docs/bench/session-memory-methodology.md`.
+
 ## 2.3.1
 
 ### Patch Changes
