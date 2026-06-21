@@ -43,6 +43,7 @@ describe('instruction surface renderer', () => {
       'wp_typecheck',
       'wp_qa',
       'wp_audit',
+      'wp_audits',
       'wp_ci_act',
       'wp_worker_tail',
       'wp_pr_status',

@@ -106,7 +106,7 @@ describe('OPENCODE_PLUGIN_CONTENT', () => {
     )
     expect(OPENCODE_PLUGIN_CONTENT).toContain('<wp_instruction_surface host="opencode"')
     expect(OPENCODE_PLUGIN_CONTENT).toContain(
-      'wp_test, wp_e2e, wp_lint, wp_typecheck, wp_qa, wp_audit, wp_ci_act, wp_worker_tail, wp_pr_status, wp_bench, wp_gain, wp_release_readiness',
+      'wp_test, wp_e2e, wp_lint, wp_typecheck, wp_qa, wp_audit, wp_audits, wp_ci_act, wp_worker_tail, wp_pr_status, wp_bench, wp_gain, wp_release_readiness',
     )
     expect(OPENCODE_PLUGIN_CONTENT).not.toContain('generic plugin')
   })
