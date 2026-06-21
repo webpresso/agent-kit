@@ -83,6 +83,39 @@ describe('normalizeGlobalCodexHooksJson', () => {
     expect(commands[0]?.command).toBe('"/managed/wp-global-codex-omx-json-hook.sh"')
   })
 
+  it('deduplicates overlapping managed OMX PreToolUse launchers after normalization', () => {
+    const hooks = {
+      hooks: {
+        PreToolUse: [
+          {
+            matcher: 'Bash',
+            hooks: [
+              {
+                type: 'command',
+                command: '"/managed/wp-global-codex-omx-hook.sh"',
+              },
+            ],
+          },
+          {
+            hooks: [
+              {
+                type: 'command',
+                command: '"/managed/wp-global-codex-omx-hook.sh"',
+              },
+            ],
+          },
+        ],
+      },
+    }
+
+    const result = normalizeGlobalCodexHooksJson(hooks, { nodeBinary: '/abs/node' }, '/managed')
+    const groups = (result.value.hooks as Record<string, Array<{ matcher?: string }>>).PreToolUse
+
+    expect(result.changed).toBe(true)
+    expect(groups).toHaveLength(1)
+    expect(groups[0]?.matcher).toBeUndefined()
+  })
+
   it('is idempotent on already normalized hooks', () => {
     const hooks = {
       hooks: {

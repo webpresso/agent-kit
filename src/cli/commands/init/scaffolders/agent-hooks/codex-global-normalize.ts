@@ -140,8 +140,7 @@ export function normalizeGlobalCodexHooksJson(
   const nextHooks: HooksMap = {}
 
   for (const [event, groups] of Object.entries(hooks as HooksMap)) {
-    const seen = new Set<string>()
-    const deduped: HookGroup[] = []
+    const normalizedGroups: HookGroup[] = []
 
     for (const group of groups ?? []) {
       const normalizedHooks = (group.hooks ?? []).map((hook) => {
@@ -158,6 +157,29 @@ export function normalizeGlobalCodexHooksJson(
       const normalizedGroup: HookGroup = {
         ...group,
         ...(normalizedHooks.length > 0 ? { hooks: normalizedHooks } : {}),
+      }
+
+      normalizedGroups.push(normalizedGroup)
+    }
+
+    const catchAllManagedOmxGroupKeys = new Set(
+      normalizedGroups
+        .filter(isCatchAllMatcherGroup)
+        .map((group) => stableManagedOmxHookGroupKey(group))
+        .filter((key) => key !== null),
+    )
+    const seen = new Set<string>()
+    const deduped: HookGroup[] = []
+
+    for (const normalizedGroup of normalizedGroups) {
+      const managedOmxGroupKey = stableManagedOmxHookGroupKey(normalizedGroup)
+      if (
+        managedOmxGroupKey !== null &&
+        !isCatchAllMatcherGroup(normalizedGroup) &&
+        catchAllManagedOmxGroupKeys.has(managedOmxGroupKey)
+      ) {
+        changed = true
+        continue
       }
 
       const key = stableHookGroupKey(normalizedGroup)
@@ -249,6 +271,32 @@ function stableHookGroupKey(group: HookGroup): string {
       timeout: hook.timeout ?? null,
     })),
   })
+}
+
+function stableManagedOmxHookGroupKey(group: HookGroup): string | null {
+  const hooks = group.hooks ?? []
+  if (hooks.length === 0) return null
+  if (
+    hooks.some((hook) => {
+      const command = typeof hook.command === 'string' ? hook.command.trim() : ''
+      const basenameValue = extractManagedLauncherBasename(command)
+      return basenameValue === null || !isManagedOmxGlobalLauncherBasename(basenameValue)
+    })
+  ) {
+    return null
+  }
+
+  return JSON.stringify(
+    hooks.map((hook) => ({
+      type: hook.type ?? '',
+      command: typeof hook.command === 'string' ? hook.command.trim() : '',
+      timeout: hook.timeout ?? null,
+    })),
+  )
+}
+
+function isCatchAllMatcherGroup(group: HookGroup): boolean {
+  return typeof group.matcher !== 'string' || group.matcher.trim().length === 0
 }
 
 function quoteShell(value: string): string {
