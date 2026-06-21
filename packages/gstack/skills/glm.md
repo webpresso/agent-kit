@@ -59,4 +59,3 @@ If the primary model is unavailable or quota-limited, retry with one fallback fr
 | MiMo | `opencode-go/mimo-v2.5-pro`, `opencode-go/mimo-v2.5`, `opencode-go/mimo-v2-pro`, `opencode-go/mimo-v2-omni` |
 | Qwen | `opencode-go/qwen3.7-max`, `opencode-go/qwen3.7-plus`, `opencode-go/qwen3.6-plus`, `opencode-go/qwen3.5-plus` |
 | HY3 | `opencode-go/hy3-preview` |
-
