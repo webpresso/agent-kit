@@ -1,10 +1,7 @@
-import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { scanBlueprintDirectory } from '#service/scanner.js'
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
-import { parseBlueprintDocumentRelativePath } from '#utils/document-paths.js'
 
 import type { RepoAuditResult } from './repo-guardrails.js'
 
@@ -24,8 +21,6 @@ const STATE_ROWS = [
   ['parked', "intentionally paused. Include a reason in the spec's frontmatter."],
   ['archived', 'superseded or abandoned. Not deleted — the record matters.'],
 ] as const
-
-type BlueprintState = (typeof STATE_ROWS)[number][0]
 
 export interface BlueprintReadmeDriftOptions {
   fix?: boolean
@@ -51,87 +46,12 @@ function blueprintReadmeRelativePath(cwd: string): string {
   return path.relative(cwd, resolveBlueprintReadmePath(cwd)).replace(/\\/g, '/')
 }
 
-function initialCounts(): Record<BlueprintState, number> {
-  return {
-    draft: 0,
-    planned: 0,
-    'in-progress': 0,
-    completed: 0,
-    parked: 0,
-    archived: 0,
-  }
-}
-
-function listVisibleBlueprintPaths(cwd: string, trackedRoot: string): readonly string[] | null {
-  const result = spawnSync(
-    'git',
-    ['ls-files', '--cached', '--others', '--exclude-standard', '--full-name', trackedRoot],
-    {
-      cwd,
-      encoding: 'utf8',
-      timeout: 5000,
-    },
-  )
-  if (result.status !== 0 || result.error != null) return null
-
-  const deleted = spawnSync('git', ['ls-files', '--deleted', '--full-name', trackedRoot], {
-    cwd,
-    encoding: 'utf8',
-    timeout: 5000,
-  })
-  if (deleted.status !== 0 || deleted.error != null) return null
-
-  const deletedPaths = new Set(deleted.stdout.split('\n').filter(Boolean))
-  return result.stdout
-    .split('\n')
-    .filter((filePath) => filePath.length > 0 && !deletedPaths.has(filePath))
-}
-
-function countBlueprintsByState(cwd: string): Record<BlueprintState, number> {
-  const counts = initialCounts()
-  const blueprintsRoot = resolveBlueprintRoot(cwd)
-  if (!existsSync(blueprintsRoot)) return counts
-
-  // Prefer git ls-files so counts reflect the visible, non-ignored working
-  // tree: tracked files plus untracked additions, minus deleted tracked files.
-  // This keeps --fix trustworthy while lifecycle moves are still unstaged.
-  const trackedRoot = path.relative(cwd, blueprintsRoot).replace(/\\/g, '/')
-  const visible = listVisibleBlueprintPaths(cwd, trackedRoot)
-  if (visible !== null) {
-    for (const filePath of visible) {
-      const prefix = `${trackedRoot}/`
-      const afterBlueprints = filePath.startsWith(prefix) ? filePath.slice(prefix.length) : filePath
-      const parsed = parseBlueprintDocumentRelativePath(afterBlueprints)
-      if (!parsed) continue
-      counts[parsed.state as BlueprintState] += 1
-    }
-    return counts
-  }
-
-  // Fallback for non-git contexts (e.g. bare extract, temp directory).
-  const scanned = scanBlueprintDirectory({
-    baseDir: blueprintsRoot,
-    includeSpecialFolders: true,
-  })
-
-  for (const blueprint of scanned) {
-    const relativePath = path.relative(blueprintsRoot, blueprint.path).replace(/\\/g, '/')
-    const parsed = parseBlueprintDocumentRelativePath(relativePath)
-    if (!parsed) continue
-    counts[parsed.state as BlueprintState] += 1
-  }
-
-  return counts
-}
-
-function renderGeneratedBlock(counts: Record<BlueprintState, number>): string {
+function renderGeneratedBlock(): string {
   const lines = [
     BEGIN_MARKER,
-    '| State | Count | Description |',
-    '| ----- | ----: | ----------- |',
-    ...STATE_ROWS.map(
-      ([state, description]) => `| \`${state}/\` | ${counts[state]} | ${description} |`,
-    ),
+    '| State | Description |',
+    '| ----- | ----------- |',
+    ...STATE_ROWS.map(([state, description]) => `| \`${state}/\` | ${description} |`),
     END_MARKER,
   ]
   return `${lines.join('\n')}\n`
@@ -176,7 +96,7 @@ export function auditBlueprintReadmeDrift(
   }
 
   const current = readFileSync(readmePath, 'utf8')
-  const expectedBlock = renderGeneratedBlock(countBlueprintsByState(cwd))
+  const expectedBlock = renderGeneratedBlock()
   const currentBlock = extractExistingBlock(current)
   const updated = replaceExistingBlock(current, expectedBlock)
   const isInSync = currentBlock !== null && currentBlock.trimEnd() === expectedBlock.trimEnd()

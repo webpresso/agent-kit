@@ -101,14 +101,16 @@ describe('auditBlueprintReadmeDrift', () => {
     expect(result.ok).toBe(true)
 
     const updated = readFileSync(readmePath, 'utf8')
-    expect(updated).toContain('| `planned/` | 1 |')
-    expect(updated).toContain('| `in-progress/` | 1 |')
-    expect(updated).toContain('| `completed/` | 1 |')
+    expect(updated).toContain('| State | Description |')
+    expect(updated).toContain('| `planned/` | committed-to specs, ready to pick up. |')
+    expect(updated).toContain('| `in-progress/` | actively being executed. At most 3 active blueprints per lane. |')
+    expect(updated).toContain('| `completed/` | execution finished and verified. Kept for reference. |')
+    expect(updated).not.toContain('| State | Count | Description |')
     expect(updated).toContain('Keep this prose.')
     expect(updated).toContain('## Authoring')
   })
 
-  it('counts uncommitted lifecycle moves as visible working-tree state', () => {
+  it('keeps the README stable across uncommitted lifecycle moves', () => {
     const readmePath = path.join(cwd, 'blueprints', 'README.md')
     writeFileSync(
       readmePath,
@@ -116,6 +118,7 @@ describe('auditBlueprintReadmeDrift', () => {
       'utf8',
     )
     auditBlueprintReadmeDrift(cwd, { fix: true })
+    const before = readFileSync(readmePath, 'utf8')
 
     initGitRepo()
     runGit(['add', 'blueprints'])
@@ -131,11 +134,7 @@ describe('auditBlueprintReadmeDrift', () => {
 
     const result = auditBlueprintReadmeDrift(cwd, { fix: true })
     expect(result.ok).toBe(true)
-
-    const updated = readFileSync(readmePath, 'utf8')
-    expect(updated).toContain('| `planned/` | 0 |')
-    expect(updated).toContain('| `in-progress/` | 1 |')
-    expect(updated).toContain('| `completed/` | 2 |')
+    expect(readFileSync(readmePath, 'utf8')).toBe(before)
   })
 
   it('passes when the generated block is already in sync', () => {
@@ -195,6 +194,25 @@ describe('auditBlueprintReadmeDrift', () => {
 
     const result = auditBlueprintReadmeDrift(cwd, { fix: true })
     expect(result.ok).toBe(true)
-    expect(readFileSync(readmePath, 'utf8')).toContain('| `planned/` | 1 |')
+    expect(readFileSync(readmePath, 'utf8')).toContain(
+      '| `planned/` | committed-to specs, ready to pick up. |',
+    )
+  })
+
+  it('keeps the README stable when blueprint counts change', () => {
+    const readmePath = path.join(cwd, 'blueprints', 'README.md')
+    writeFileSync(
+      readmePath,
+      ['# Blueprints', '', '## Authoring', '', 'Keep this prose.', ''].join('\n'),
+      'utf8',
+    )
+    auditBlueprintReadmeDrift(cwd, { fix: true })
+    const before = readFileSync(readmePath, 'utf8')
+
+    writeBlueprint(path.join('completed', 'four.md'))
+
+    const result = auditBlueprintReadmeDrift(cwd)
+    expect(result.ok).toBe(true)
+    expect(readFileSync(readmePath, 'utf8')).toBe(before)
   })
 })
