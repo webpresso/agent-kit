@@ -91,7 +91,7 @@ export function detect(
 
   if (isProjectLocalNodeModulesBin(realpath) || isProjectLocalNodeModulesBin(argv0)) {
     return {
-      abort: `${PUBLIC_PACKAGE_NAME} is running from a project-local node_modules tree (${realpath}); install the published package with \`npm install -g ${PUBLIC_PACKAGE_NAME}\` and run global \`wp\`.`,
+      abort: `${PUBLIC_PACKAGE_NAME} is running from a project-local node_modules tree (${realpath}); install the published package with \`vp install -g ${PUBLIC_PACKAGE_NAME}\` and run global \`wp\`.`,
     }
   }
 
@@ -175,7 +175,7 @@ export function confirmInstalledGlobally(realpath: string, _env: NodeJS.ProcessE
 }
 
 function unsupportedManagerMessage(manager: string, realpath: string): string {
-  return `${PUBLIC_PACKAGE_NAME} appears to be managed by ${manager} (${realpath}); reinstall with \`npm install -g ${PUBLIC_PACKAGE_NAME}\`. Source development uses WP_FORCE_SOURCE=1 from an agent-kit checkout.`
+  return `${PUBLIC_PACKAGE_NAME} appears to be managed by ${manager} (${realpath}); reinstall with \`vp install -g ${PUBLIC_PACKAGE_NAME}\`. Source development uses WP_FORCE_SOURCE=1 from an agent-kit checkout.`
 }
 
 function globalVpUnavailableMessage(): string {
@@ -183,7 +183,7 @@ function globalVpUnavailableMessage(): string {
 }
 
 function unableToDetectMessage(pathHint: string): string {
-  return `Unable to verify a supported global install for ${PUBLIC_PACKAGE_NAME} at ${pathHint}; auto-install disabled. Install with \`npm install -g ${PUBLIC_PACKAGE_NAME}\` or use WP_FORCE_SOURCE=1 inside the agent-kit source repo.`
+  return `Unable to verify a supported global install for ${PUBLIC_PACKAGE_NAME} at ${pathHint}; auto-install disabled. Install with \`vp install -g ${PUBLIC_PACKAGE_NAME}\` or use WP_FORCE_SOURCE=1 inside the agent-kit source repo.`
 }
 
 export function resolveBundledVpCommand(): GlobalCapableVpCommandInput | null {

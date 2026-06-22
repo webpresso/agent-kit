@@ -53,6 +53,6 @@ export function checkVersionSkew(
   return (
     `[wp] Version skew: global wp is ${runningVersion} but this repo expects ` +
     `@webpresso/agent-kit@${pinnedVersion} for the shared wp runtime. ` +
-    `Run \`npm install -g @webpresso/agent-kit@${pinnedVersion}\` to align the global CLI.`
+    `Run \`vp install -g @webpresso/agent-kit@${pinnedVersion}\` to align the global CLI.`
   )
 }

@@ -151,7 +151,7 @@ describe('detectShim', () => {
   it('turns unsupported global managers into npm reinstall guidance', () => {
     expect(
       detectShim('/Users/me/.volta/tools/image/packages/@webpresso/agent-kit/bin/cli.js'),
-    ).toMatch(/npm install -g @webpresso\/agent-kit/)
+    ).toMatch(/vp install -g @webpresso\/agent-kit/)
     expect(detectShim('/opt/homebrew/Cellar/agent-kit/bin/wp')).toMatch(/Homebrew/)
   })
 

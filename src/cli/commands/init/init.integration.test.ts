@@ -1044,7 +1044,7 @@ describe('warnIfNonLocalCli (DX2)', () => {
       captured.some(
         (line) =>
           line.includes("warning: wp is running from this repo's node_modules") &&
-          line.includes('npm install -g @webpresso/agent-kit'),
+          line.includes('vp install -g @webpresso/agent-kit'),
       ),
     ).toBe(true)
   })
