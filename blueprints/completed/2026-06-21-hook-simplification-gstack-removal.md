@@ -1,8 +1,28 @@
+---
+type: blueprint
+title: Hook Simplification + gstack/OMX Legacy Removal Gate
+owner: agent-kit
+status: completed
+complexity: M
+created: '2026-06-21'
+last_updated: '2026-06-22'
+completed_at: '2026-06-22'
+progress: '100% (implemented and verified in PR #233)'
+depends_on: []
+cross_repo_depends_on: []
+tags:
+  - hooks
+  - codex
+  - claude
+  - gstack
+  - omx
+---
+
 # Hook Simplification + gstack/OMX Legacy Removal Gate
 
 ## Status
 
-In progress.
+Completed.
 
 ## User intent
 
