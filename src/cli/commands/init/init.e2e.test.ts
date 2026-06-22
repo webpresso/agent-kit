@@ -212,7 +212,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(existsSync(path.join(repo, '.husky', 'pre-push'))).toBe(false)
       expect(existsSync(path.join(repo, 'scripts', 'check-no-dev-vars.ts'))).toBe(false)
       expect(existsSync(path.join(repo, 'scripts', 'resolve-webpresso-cli-versions.cjs'))).toBe(
-        true,
+        false,
       )
 
       // Future-proof guard: PreToolUse should be fail-closed (deny JSON
@@ -310,7 +310,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
         false,
       )
       expect(existsSync(path.join(repo, 'scripts', 'resolve-webpresso-cli-versions.cjs'))).toBe(
-        true,
+        false,
       )
       expect(existsSync(path.join(repo, '.husky', 'pre-commit'))).toBe(true)
       expect(existsSync(path.join(repo, '.husky', 'commit-msg'))).toBe(false)
