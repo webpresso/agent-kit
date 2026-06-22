@@ -54,6 +54,10 @@ interface TransitionCandidate {
   readonly previousPaths: readonly string[]
 }
 
+interface ChangedBlueprintScope {
+  readonly slugs: ReadonlySet<string>
+}
+
 /** A task is "terminal" (counts as finished) when it is done OR intentionally dropped. */
 const TERMINAL_TASK_SQL = "('done','dropped')"
 const STALENESS_SCOPE = new Set(['in-progress'])
@@ -373,6 +377,30 @@ function listTrackedBlueprintPaths(cwd: string): readonly string[] {
   }
 }
 
+function changedBlueprintScope(
+  candidates: Map<string, TransitionCandidate>,
+): ChangedBlueprintScope {
+  const slugs = new Set<string>()
+  for (const [currentPath, candidate] of candidates) {
+    const currentSlug = blueprintSlugFromGitPath(currentPath)
+    if (currentSlug) slugs.add(currentSlug)
+    for (const previousPath of candidate.previousPaths) {
+      const previousSlug = blueprintSlugFromGitPath(previousPath)
+      if (previousSlug) slugs.add(previousSlug)
+    }
+  }
+  return { slugs }
+}
+
+function violationTouchesBlueprintScope(
+  violation: RepoAuditViolation,
+  scope: ChangedBlueprintScope,
+): boolean {
+  if (!violation.file) return false
+  const slug = blueprintSlugFromGitPath(violation.file)
+  return slug !== null && scope.slugs.has(slug)
+}
+
 function readGitFile(cwd: string, revision: string, filePath: string): string | null {
   try {
     return execFileSync('git', ['show', `${revision}:${filePath}`], {
@@ -424,6 +452,8 @@ export interface BlueprintLifecycleAuditOptions {
   readonly includeOmxPlans?: boolean
   /** Optional PR/base ref for transition legality over the whole branch range. */
   readonly baseRef?: string
+  /** Restrict expensive/error-producing checks to blueprints touched in git. */
+  readonly changedOnly?: boolean
 }
 
 export async function auditBlueprintLifecycleSql(
@@ -433,6 +463,40 @@ export async function auditBlueprintLifecycleSql(
   const budgets = loadBudgets(cwd)
   const wipInProgressMax = budgets['blueprint-wip-in-progress-max'].max ?? 3
   const staleInProgressDays = budgets['blueprint-stale-in-progress-days'].max_days ?? 14
+  const gitHistoryAvailable = isGitHistoryAvailable(cwd)
+
+  const changedCandidateMap = gitHistoryAvailable
+    ? listChangedBlueprintCandidates(cwd, { baseRef: options.baseRef })
+    : null
+  const changedScope =
+    changedCandidateMap === null ? null : changedBlueprintScope(changedCandidateMap)
+
+  if (options.changedOnly) {
+    if (!gitHistoryAvailable) {
+      return {
+        ok: true,
+        title: 'Blueprint lifecycle — changed-only skipped outside git',
+        checked: 0,
+        violations: [],
+      }
+    }
+    if (changedScope === null) {
+      return {
+        ok: true,
+        title: 'Blueprint lifecycle — changed-only skipped: changed-path collection failed',
+        checked: 0,
+        violations: [],
+      }
+    }
+    if (changedScope.slugs.size === 0) {
+      return {
+        ok: true,
+        title: 'Blueprint lifecycle — changed-only: no changed blueprints',
+        checked: 0,
+        violations: [],
+      }
+    }
+  }
 
   // Structural markdown checks (type / status-vs-folder / _overview / linking /
   // optional .omx-plan handoff governance). Run unconditionally and merged —
@@ -440,12 +504,20 @@ export async function auditBlueprintLifecycleSql(
   // the hook-runtime hot path until the audit runs.
   const { auditBlueprintLifecycle } = await import('./repo-guardrails.js')
   const structural = auditBlueprintLifecycle(cwd, options)
+  const structuralViolations =
+    options.changedOnly && changedScope
+      ? structural.violations.filter((violation) =>
+          violationTouchesBlueprintScope(violation, changedScope),
+        )
+      : structural.violations
 
-  const violations: RepoAuditViolation[] = [...structural.violations]
+  const violations: RepoAuditViolation[] = [...structuralViolations]
   const advisoryViolations: RepoAuditViolation[] = []
-  let checked = structural.checked
+  let checked = options.changedOnly && changedScope ? changedScope.slugs.size : structural.checked
   const titleNotices: string[] = []
-  const gitHistoryAvailable = isGitHistoryAvailable(cwd)
+  if (options.changedOnly && changedScope) {
+    titleNotices.push(`changed-only: ${changedScope.slugs.size} blueprint(s)`)
+  }
 
   const conn = await buildEphemeralProjection(cwd)
   const { db } = conn
@@ -456,6 +528,11 @@ export async function auditBlueprintLifecycleSql(
         'SELECT slug, status, file_path, progress_pct FROM blueprints',
       )
       .all()
+
+    const isAffectedSlug = (slug: string): boolean =>
+      !options.changedOnly || changedScope === null || changedScope.slugs.has(slug)
+    const isAffectedBlueprint = (row: { slug: string }): boolean => isAffectedSlug(row.slug)
+    const affectedBlueprints = allBlueprints.filter(isAffectedBlueprint)
 
     // -----------------------------------------------------------------------
     // 1. in-progress blueprints with 0 tasks
@@ -470,6 +547,7 @@ export async function auditBlueprintLifecycleSql(
            )`,
       )
       .all()
+      .filter(isAffectedBlueprint)
 
     checked += inProgressNoTasks.length
     for (const row of inProgressNoTasks) {
@@ -483,8 +561,8 @@ export async function auditBlueprintLifecycleSql(
     // 2. status/directory mismatch
     //    Blueprint file_path convention: blueprints/<status>/<slug>/_overview.md
     // -----------------------------------------------------------------------
-    checked += allBlueprints.length
-    for (const row of allBlueprints) {
+    checked += affectedBlueprints.length
+    for (const row of affectedBlueprints) {
       const segments = row.file_path.replace(/\\/g, '/').split('/')
       const blueprintsIdx = segments.lastIndexOf('blueprints')
       const dirStatus = blueprintsIdx >= 0 ? segments[blueprintsIdx + 1] : null
@@ -514,6 +592,7 @@ export async function auditBlueprintLifecycleSql(
            )`,
       )
       .all()
+      .filter((row) => isAffectedSlug(row.blueprint_slug))
 
     checked += blockedInProgress.length
     for (const row of blockedInProgress) {
@@ -534,6 +613,7 @@ export async function auditBlueprintLifecycleSql(
             AND progress_pct < 100`,
       )
       .all()
+      .filter(isAffectedBlueprint)
 
     checked += incompleteCompleted.length
     for (const row of incompleteCompleted) {
@@ -568,6 +648,7 @@ export async function auditBlueprintLifecycleSql(
             AND SUM(CASE WHEN t.status IN ${TERMINAL_TASK_SQL} THEN 1 ELSE 0 END) = COUNT(t.id)`,
       )
       .all()
+      .filter(isAffectedBlueprint)
 
     checked += allTerminalInProgress.length
     for (const row of allTerminalInProgress) {
@@ -592,6 +673,7 @@ export async function auditBlueprintLifecycleSql(
            )`,
       )
       .all()
+      .filter(isAffectedBlueprint)
 
     checked += completedWithOpenTasks.length
     for (const row of completedWithOpenTasks) {
@@ -610,8 +692,16 @@ export async function auditBlueprintLifecycleSql(
       )
       .all()
     const inProgressCount = inProgressCountRows[0]?.n ?? 0
-    checked += 1
-    if (inProgressCount > wipInProgressMax) {
+    const affectedInProgressCount = affectedBlueprints.filter(
+      (row) => row.status === 'in-progress',
+    ).length
+    if (!options.changedOnly || affectedInProgressCount > 0) {
+      checked += 1
+    }
+    if (
+      inProgressCount > wipInProgressMax &&
+      (!options.changedOnly || affectedInProgressCount > 0)
+    ) {
       violations.push({
         message: `${inProgressCount} blueprints are in-progress — the lane limit is ${wipInProgressMax} (budget: blueprint-wip-in-progress-max); finish or park some before starting more`,
       })
@@ -621,7 +711,7 @@ export async function auditBlueprintLifecycleSql(
     // 8. Staleness — warn (do not fail) when an in-progress blueprint has not
     //    been touched in git within the configured day budget.
     // -----------------------------------------------------------------------
-    const staleCandidates = allBlueprints.filter((row) => STALENESS_SCOPE.has(row.status))
+    const staleCandidates = affectedBlueprints.filter((row) => STALENESS_SCOPE.has(row.status))
     checked += staleCandidates.length
     if (staleCandidates.length > 0) {
       if (gitHistoryAvailable) {
@@ -650,9 +740,7 @@ export async function auditBlueprintLifecycleSql(
     //    fallback checks HEAD-touched plus dirty/staged blueprint paths. Missing
     //    history fails open by design.
     // -----------------------------------------------------------------------
-    const transitionCandidateMap = gitHistoryAvailable
-      ? listChangedBlueprintCandidates(cwd, { baseRef: options.baseRef })
-      : null
+    const transitionCandidateMap = changedCandidateMap
     if (gitHistoryAvailable && transitionCandidateMap === null && allBlueprints.length > 0) {
       titleNotices.push('transition history check skipped: changed-path collection failed')
     }

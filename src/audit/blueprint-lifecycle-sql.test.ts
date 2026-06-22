@@ -335,6 +335,54 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     expect(result.violations.some((v) => /lane limit/i.test(v.message))).toBe(false)
   })
 
+  it('changed-only ignores unrelated lifecycle debt', async () => {
+    writeBlueprint(cwd, 'unrelated-empty-wip', { status: 'in-progress' })
+    writeBlueprint(cwd, 'changed-clean', {
+      status: 'completed',
+      tasks: [{ id: '1.1', status: 'done' }],
+    })
+
+    const result = await withFakeGit(
+      {
+        baseDiff: 'M\tblueprints/completed/changed-clean.md\n',
+        mergeBase: 'fake-base',
+        trackedFiles: [
+          'blueprints/in-progress/unrelated-empty-wip.md',
+          'blueprints/completed/changed-clean.md',
+        ],
+      },
+      () => auditBlueprintLifecycleSql(cwd, { changedOnly: true, baseRef: 'origin/main' }),
+    )
+
+    expect(result.ok).toBe(true)
+    expect(result.title).toContain('changed-only: 1 blueprint')
+    expect(result.violations.some((v) => v.message.includes('unrelated-empty-wip'))).toBe(false)
+  })
+
+  it('changed-only still fails changed blueprint lifecycle violations', async () => {
+    writeBlueprint(cwd, 'changed-empty-wip', { status: 'in-progress' })
+    writeBlueprint(cwd, 'unrelated-clean', {
+      status: 'completed',
+      tasks: [{ id: '1.1', status: 'done' }],
+    })
+
+    const result = await withFakeGit(
+      {
+        baseDiff: 'M\tblueprints/in-progress/changed-empty-wip.md\n',
+        mergeBase: 'fake-base',
+        trackedFiles: [
+          'blueprints/in-progress/changed-empty-wip.md',
+          'blueprints/completed/unrelated-clean.md',
+        ],
+      },
+      () => auditBlueprintLifecycleSql(cwd, { changedOnly: true, baseRef: 'origin/main' }),
+    )
+
+    expect(result.ok).toBe(false)
+    expect(result.violations.some((v) => v.message.includes('changed-empty-wip'))).toBe(true)
+    expect(result.violations.some((v) => v.message.includes('unrelated-clean'))).toBe(false)
+  })
+
   it('respects the WIP budget override from .agent/.audit-budgets.yaml', async () => {
     mkdirSync(path.join(cwd, '.agent'), { recursive: true })
     writeFileSync(

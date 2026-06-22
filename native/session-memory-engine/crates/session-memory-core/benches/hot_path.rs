@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use criterion::{Criterion, criterion_group, criterion_main};
 use session_memory_core::session::{capture_event, restore, snapshot};
 use session_memory_core::store::{Store, open};
@@ -136,7 +138,24 @@ criterion_group!(
     bench_index,
     bench_search,
     bench_session_capture,
-    bench_snapshot,
     bench_restore
 );
-criterion_main!(benches);
+
+// `snapshot_50_events` is a sub-200µs micro-op whose Criterion *mean* is highly
+// sensitive to the occasional severe outlier (scheduler preemption / cold cache)
+// on shared CI runners — the median stays stable but the mean spikes, flaking the
+// mean threshold in check-bench-thresholds.sh. Stabilize the measurement (not the
+// threshold, per the no-timeout-as-fix rule): longer warm-up to shed cold-start
+// samples, and 3x the samples over a longer window so a lone outlier no longer
+// drags the mean. Kept in its own group so the slow `index_100_chunks` bench
+// (350ms/iter) is NOT subjected to the larger sample count. The benchmark id is
+// unchanged (`snapshot_50_events`), so the gate's threshold key still matches.
+criterion_group!(
+    name = snapshot_benches;
+    config = Criterion::default()
+        .warm_up_time(Duration::from_secs(5))
+        .measurement_time(Duration::from_secs(10))
+        .sample_size(300);
+    targets = bench_snapshot
+);
+criterion_main!(benches, snapshot_benches);

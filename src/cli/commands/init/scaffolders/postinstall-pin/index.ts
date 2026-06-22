@@ -1,7 +1,7 @@
 /**
- * Ensures `package.json#scripts.postinstall` includes `wp setup` so managed
- * hook files in `.claude/hooks/managed/` are regenerated on every
- * `pnpm install` after an agent-kit upgrade.
+ * Ensures `package.json#scripts.postinstall` includes `wp setup` so generated
+ * host hook commands are refreshed on every `pnpm install` after an agent-kit
+ * upgrade.
  *
  * - Already contains `wp setup` → identical (no-op)
  * - Has postinstall without `wp setup` → prepends: `wp setup && (existing)`

@@ -45,6 +45,7 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
     (await import('#audit/blueprint-lifecycle-sql')).auditBlueprintLifecycleSql(root, {
       includeOmxPlans: options.omxPlans,
       baseRef: options.baseRef ?? options.base,
+      changedOnly: options.changedOnly,
     }),
   'roadmap-links': async (root, options) =>
     (await import('#audit/roadmap-links')).auditRoadmapLinks(root, {
@@ -259,7 +260,7 @@ export function registerAuditCommand(cli: CAC): void {
     )
     .option(
       '--changed-only',
-      'Restrict to packages touched in git diff --name-only origin/main (bucket-boundary)',
+      'Restrict supported audits to changed/affected files from git diff (blueprint-lifecycle, bucket-boundary)',
     )
     .option('--docs-root <dir>', 'Docs directory for docs-frontmatter')
     .option('--draft-tech-debt', 'Draft a tech-debt item for supported audit findings')

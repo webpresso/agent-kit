@@ -3,15 +3,15 @@
  *   - `.claude/settings.json` (Claude Code)
  *   - `.codex/hooks.json` (Codex CLI)
  *
- * Mostly additive: preserves unrelated hooks, ensures webpresso's entries
- * are present, and prunes stale legacy Claude ak-* hook commands that current
- * setups no longer own. Uses installed bin paths so consumers don't need bun.
+ * Mostly additive: preserves unrelated hooks and ensures webpresso's direct
+ * `wp hook <name>` entries are present. Uses the installed package root and
+ * current Node binary so consumers don't need bun or generated hook shims.
  *
  * Runs by default on every `wp setup`.
  */
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { isAbsolute, join, resolve } from 'node:path'
+import { join, resolve } from 'node:path'
 
 import { isHookName } from '#cli/commands/hook.js'
 import { type MergeOptions, type MergeResult, patchJsonFile } from '#cli/commands/init/merge'
@@ -22,12 +22,6 @@ import {
 import { CodexAppServerClient } from '#codex/app-server/client.js'
 import type { CodexAppServerApi } from '#codex/app-server/types.js'
 import { commandExists as defaultCommandExists } from '#runtime/command-exists.js'
-import {
-  normalizeGlobalCodexHooksFile,
-  resolveBinaryOnPath,
-  resolveInstalledOmxHookScriptPath,
-} from '#cli/commands/init/scaffolders/agent-hooks/codex-global-normalize'
-import { isPresetOwnedGlobalCodexHook } from './codex-global-ownership.js'
 import { CLAUDE_PLUGIN_ID } from '#cli/commands/init/scaffolders/claude-plugin/index.js'
 import {
   syncCodexHookTrustWithAppServer,
@@ -41,18 +35,6 @@ import {
 } from './skill-hooks.js'
 import type { HooksManifest } from './manifest.js'
 import { buildClaudeHookGroups } from './emitters/claude.js'
-import {
-  DIRECT_CLAUDE_NODE_MODULES_BIN_PATTERN,
-  DIRECT_MANAGED_HOOK_LAUNCHER_PATTERN,
-  DIRECT_NODE_MODULES_BIN_PATTERN,
-  GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN,
-  GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN,
-  GUARDED_NODE_MODULES_BIN_PATTERN,
-  IF_GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN,
-  IF_GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN,
-  IF_GUARDED_NODE_MODULES_BIN_PATTERN,
-  stripSingleShellQuotePair,
-} from './shell-identity.js'
 import {
   type HookGroup,
   type HooksMap,
@@ -75,26 +57,15 @@ export type { MatcherSet } from './ir.js'
 // - pretool guard: fail-closed (explicit deny JSON) so policy cannot silently
 //   bypass when the guard binary is missing/non-executable.
 const PRETOOL_GUARD_BIN = 'wp-pretool-guard'
-const PRETOOL_GUARD_MISSING_DENY = `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with npm install -g @webpresso/agent-kit and re-run wp setup."}}'`
+const PRETOOL_GUARD_MISSING_DENY = `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with vp install -g @webpresso/agent-kit and re-run wp setup."}}'`
 const JSON_ONLY_HOOK_FALLBACK = `printf '%s\\n' '{}'`
-const CLAUDE_MANAGED_HOOK_SUBDIR = '.claude/hooks/managed'
-const CODEX_MANAGED_HOOK_SUBDIR = '.codex/managed-hooks'
-
-function claudeManagedHookLauncherPath(name: string): string {
-  return `$CLAUDE_PROJECT_DIR/${CLAUDE_MANAGED_HOOK_SUBDIR}/${name}.sh`
-}
-
-function codexManagedHookLauncherPath(repoRoot: string, name: string): string {
-  return resolve(repoRoot, CODEX_MANAGED_HOOK_SUBDIR, `${name}.sh`)
-}
 
 function quoteShell(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`
 }
 
-function quoteHookCommandPath(value: string): string {
-  if (value.startsWith('$CLAUDE_PROJECT_DIR/')) return `"${value}"`
-  return quoteShell(value)
+function resolveWpHookLauncherPath(): string {
+  return resolve(resolvePackageRootForHookLaunchers(), 'bin', 'wp')
 }
 
 const HOOK_SPEC_BY_BIN = new Map(WP_HOOK_SPECS.map((spec) => [spec.bin, spec]))
@@ -109,84 +80,52 @@ function missingLauncherFallbackCommand(name: string): string {
   return 'true'
 }
 
-function buildGuardedHookCommand(binPath: string, name: string): string {
-  const quotedBinPath = quoteHookCommandPath(binPath)
-  return `if [ -x ${quotedBinPath} ]; then ${quotedBinPath}; else ${missingLauncherFallbackCommand(name)}; fi`
+function hookSubcommandForRequired(binName: string): string {
+  const hookName = hookSubcommandFor(binName)
+  if (hookName === undefined) {
+    throw new Error(`No wp hook subcommand registered for ${binName}`)
+  }
+  return hookName
 }
 
-const CC_BIN = (name: string) => buildGuardedHookCommand(claudeManagedHookLauncherPath(name), name)
-const CODEX_BIN = (repoRoot: string) => (name: string) => {
-  return buildGuardedHookCommand(codexManagedHookLauncherPath(repoRoot, name), name)
+function buildDirectWpHookCommand(repoRoot: string, name: string): string {
+  const wpPath = quoteShell(resolveWpHookLauncherPath())
+  const nodePath = quoteShell(process.execPath)
+  const repoRootPath = quoteShell(repoRoot)
+  const hookName = hookSubcommandForRequired(name)
+  const fallback = missingLauncherFallbackCommand(name)
+  return `if [ -x ${nodePath} ] && [ -f ${wpPath} ]; then (cd ${repoRootPath} && ${nodePath} ${wpPath} hook ${hookName}); status=$?; if [ "$status" -eq 2 ]; then exit 2; elif [ "$status" -ne 0 ]; then ${fallback}; fi; else ${fallback}; fi # ${name}`
 }
+
+const CC_BIN = (repoRoot: string) => (name: string) => buildDirectWpHookCommand(repoRoot, name)
+const CODEX_BIN = (repoRoot: string) => (name: string) => buildDirectWpHookCommand(repoRoot, name)
 
 // HookGroup, HooksMap, HOOK_EVENT_NAMES are imported from ./ir.js
 // MatcherSet is re-exported from ./ir.js (export type above)
 // ensureGroup, mergeAgentKitGroups are imported from ./merge.js
 
-// Derived from the WP_HOOK_BIN_NAMES single source of truth (ir.ts). The legacy
-// set is the same bins under the retired `ak-` prefix, pruned on setup.
+// Derived from the WP_HOOK_BIN_NAMES single source of truth (ir.ts).
 const WEBPRESSO_HOOK_BIN_NAMES = new Set(WP_HOOK_BIN_NAMES)
-const LEGACY_WEBPRESSO_HOOK_BIN_NAMES = new Set(
-  WP_HOOK_BIN_NAMES.map((bin) => bin.replace(/^wp-/u, 'ak-')),
-)
 
-type WebpressoHookBinClassification =
-  | { kind: 'canonical'; binName: string }
-  | { kind: 'legacy'; binName: string }
+type WebpressoHookBinClassification = { kind: 'canonical'; binName: string }
 
 export function classifyWebpressoHookBin(
   binName: string | null,
 ): WebpressoHookBinClassification | null {
   if (binName === null) return null
-  if (WEBPRESSO_HOOK_BIN_NAMES.has(binName)) return { kind: 'canonical', binName }
-  if (LEGACY_WEBPRESSO_HOOK_BIN_NAMES.has(binName)) return { kind: 'legacy', binName }
-  return null
+  return WEBPRESSO_HOOK_BIN_NAMES.has(binName) ? { kind: 'canonical', binName } : null
 }
 
 function extractAgentKitCodexBinName(command: string): string | null {
-  const wpHookBinName = extractWpHookCommandBinName(command)
-  if (wpHookBinName !== null) return wpHookBinName
-  const normalizedCommand = stripSingleShellQuotePair(command.trim())
-  const directBinMatch = DIRECT_NODE_MODULES_BIN_PATTERN.exec(normalizedCommand)
-  if (directBinMatch !== null) return directBinMatch[1] ?? null
-  const directManagedLauncherMatch = DIRECT_MANAGED_HOOK_LAUNCHER_PATTERN.exec(normalizedCommand)
-  if (directManagedLauncherMatch !== null) return directManagedLauncherMatch[2] ?? null
-  const guardedBinMatch = GUARDED_NODE_MODULES_BIN_PATTERN.exec(command.trim())
-  if (guardedBinMatch !== null) return guardedBinMatch[3] ?? null
-  const ifGuardedBinMatch = IF_GUARDED_NODE_MODULES_BIN_PATTERN.exec(command.trim())
-  if (ifGuardedBinMatch !== null) return ifGuardedBinMatch[3] ?? null
-  const guardedManagedLauncherMatch = GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(command.trim())
-  if (guardedManagedLauncherMatch !== null) return guardedManagedLauncherMatch[3] ?? null
-  const ifGuardedManagedLauncherMatch = IF_GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(
-    command.trim(),
-  )
-  if (ifGuardedManagedLauncherMatch !== null) return ifGuardedManagedLauncherMatch[3] ?? null
-  return null
+  return extractWpHookCommandBinName(command)
 }
 
 function extractClaudeBinName(command: string): string | null {
-  const wpHookBinName = extractWpHookCommandBinName(command)
-  if (wpHookBinName !== null) return wpHookBinName
-  const normalizedCommand = stripSingleShellQuotePair(command.trim())
-  const directBinMatch = DIRECT_CLAUDE_NODE_MODULES_BIN_PATTERN.exec(normalizedCommand)
-  if (directBinMatch !== null) return directBinMatch[1] ?? null
-  const directManagedLauncherMatch = DIRECT_MANAGED_HOOK_LAUNCHER_PATTERN.exec(normalizedCommand)
-  if (directManagedLauncherMatch !== null) return directManagedLauncherMatch[2] ?? null
-  const guardedBinMatch = GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN.exec(command.trim())
-  if (guardedBinMatch !== null) return guardedBinMatch[2] ?? null
-  const ifGuardedBinMatch = IF_GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN.exec(command.trim())
-  if (ifGuardedBinMatch !== null) return ifGuardedBinMatch[2] ?? null
-  const guardedManagedLauncherMatch = GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(command.trim())
-  if (guardedManagedLauncherMatch !== null) return guardedManagedLauncherMatch[3] ?? null
-  const ifGuardedManagedLauncherMatch = IF_GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN.exec(
-    command.trim(),
-  )
-  if (ifGuardedManagedLauncherMatch !== null) return ifGuardedManagedLauncherMatch[3] ?? null
-  return null
+  return extractWpHookCommandBinName(command)
 }
 
 function extractWpHookCommandBinName(command: string): string | null {
-  const match = /\bwp\s+hook\s+([a-z0-9-]+)/u.exec(command)
+  const match = /\bwp["']?\s+hook\s+([a-z0-9-]+)/u.exec(command)
   const subcommand = match?.[1]
   if (!subcommand || !isHookName(subcommand)) return null
   const binName = `wp-${subcommand}`
@@ -221,7 +160,7 @@ function materializeClaudeSkillCommand(skillHook: SkillHook): string {
     const args = skillHook.command.slice(3)
     const stdoutPolicy = skillHook.event === 'Stop' ? ' >/dev/null' : ''
     const verb = args.split(/\s+/u)[0]?.replaceAll(/[^\w-]/gu, '') || 'hook'
-    return `if command -v wp >/dev/null 2>&1; then wp ${args}${stdoutPolicy}; else echo "webpresso: skill hook (wp ${verb}) skipped: global wp not found; install with npm install -g @webpresso/agent-kit and re-run wp setup" >&2; fi ${tag}`
+    return `if command -v wp >/dev/null 2>&1; then wp ${args}${stdoutPolicy}; else echo "webpresso: skill hook (wp ${verb}) skipped: global wp not found; install with vp install -g @webpresso/agent-kit and re-run wp setup" >&2; fi ${tag}`
   }
   return `${skillHook.command} ${tag}`
 }
@@ -385,6 +324,7 @@ function patchClaudeUserSettings(existing: Record<string, unknown>): Record<stri
 
 function patchClaudeSettings(
   existing: Record<string, unknown>,
+  repoRoot: string,
   skillHooks: readonly SkillHook[],
   gstackEnabled: boolean,
 ): Record<string, unknown> {
@@ -394,7 +334,7 @@ function patchClaudeSettings(
   const cleanedExistingHooks = mergeSkillHooks(existingHooks, [])
   const merged = mergeAgentKitGroups(
     cleanedExistingHooks,
-    buildManagedClaudeHooks(skillHooks, gstackEnabled),
+    buildManagedClaudeHooks(repoRoot, skillHooks, gstackEnabled),
   )
 
   return withClaudeWorktreeSettings(existing, {
@@ -451,12 +391,13 @@ function patchCodexHooks(
 }
 
 function buildManagedClaudeHooks(
+  repoRoot: string,
   skillHooks: readonly SkillHook[],
   gstackEnabled: boolean,
 ): HooksMap {
   const withSkills = mergeSkillHooks({}, skillHooks)
   const webpresso = buildWebpressoHookGroups({
-    resolveBin: CC_BIN,
+    resolveBin: CC_BIN(repoRoot),
     matchers: CLAUDE_MATCHERS,
   })
   const merged = mergeAgentKitGroups(withSkills, webpresso)
@@ -569,46 +510,6 @@ export async function trustCodexWebpressoHooksForRepo(
 
   try {
     const syncResult = await syncCodexHookTrustWithAppServer(api, { repoRoot: input.repoRoot })
-    if (!syncResult.ok && syncResult.reason !== 'no-webpresso-hooks-found') {
-      reportCodexTrustSyncWarning(input, {
-        kind: 'codex-app-server-trust-sync-warning',
-        message: syncResult.message,
-        syncResult,
-      })
-    }
-  } finally {
-    await api.close()
-  }
-}
-
-export async function trustCodexPresetHooksForUser(input: ScaffoldAgentHooksInput): Promise<void> {
-  if (shouldSkipCodexTrustSync(input)) return
-
-  const codexHome = process.env.CODEX_HOME || join(homedir(), '.codex')
-  const hooksPath = resolve(codexHome, 'hooks.json')
-  if (!existsSync(hooksPath)) return
-
-  const createCodexAppServer =
-    input.createCodexAppServer ?? ((repoRoot) => CodexAppServerClient.start({ cwd: repoRoot }))
-
-  let api: CodexAppServerApi
-  try {
-    api = await createCodexAppServer(input.repoRoot)
-  } catch (error) {
-    reportCodexTrustSyncWarning(input, {
-      kind: 'codex-app-server-trust-sync-warning',
-      message: error instanceof Error ? error.message : String(error),
-    })
-    return
-  }
-
-  try {
-    const syncResult = await syncCodexHookTrustWithAppServer(api, {
-      repoRoot: input.repoRoot,
-      expectedSourcePaths: [hooksPath],
-      hookDescription: 'preset-owned global',
-      selectHook: isPresetOwnedGlobalCodexHook,
-    })
     if (!syncResult.ok && syncResult.reason !== 'no-webpresso-hooks-found') {
       reportCodexTrustSyncWarning(input, {
         kind: 'codex-app-server-trust-sync-warning',
@@ -745,8 +646,6 @@ export function restoreManagedHooksFromManifest(
   if (manifestIncludesGstackHooks(manifest)) {
     ensureGstackHooks(input.repoRoot, input.options)
   }
-  ensureManagedWebpressoHookLaunchers(input.repoRoot, input.options)
-
   const result: ManagedHookMutationResult = {}
   if (vendors.includes('claude')) {
     result.claude = patchJsonFile(
@@ -876,7 +775,7 @@ function ensureGstackHooks(repoRoot: string, options: MergeOptions = {}): void {
   const hooksDir = join(repoRoot, '.claude', 'hooks')
   mkdirSync(hooksDir, { recursive: true })
 
-  // Overwrite-on-change (mirrors ensureManagedWebpressoHookLaunchers) so
+  // Overwrite-on-change (mirrors hook template overwrite behavior) so
   // template fixes actually reach existing repos on regen — write-once kept
   // the unconditional-deny bug alive in every previously scaffolded repo.
   const gstackScripts: ReadonlyArray<readonly [string, string]> = [
@@ -904,71 +803,12 @@ export function resolvePackageRootForHookLaunchers(
 }
 
 /**
- * The `wp hook <sub>` subcommand historically matched the `wp-*` managed hook
- * bins 1:1 by stripping the `wp-` prefix. Keep it exported while the bin names
- * still track the hook names even though managed launchers now execute the
- * compiled hook bins directly.
+ * The `wp hook <sub>` subcommand maps each catalogued `wp-*` hook bin to the
+ * direct CLI subcommand generated into host hook config.
  */
 export function hookSubcommandFor(binName: string): string | undefined {
   const sub = binName.startsWith('wp-') ? binName.slice(3) : binName
   return isHookName(sub) ? sub : undefined
-}
-
-export function resolveNodeBinaryForManagedHookLaunchers(): string {
-  const override = process.env.WP_HOOK_NODE_PATH?.trim()
-  if (override && isAbsolute(override) && existsSync(override)) return override
-
-  return resolveBinaryOnPath('node') ?? process.execPath
-}
-
-function renderManagedWebpressoHookLauncher(repoRoot: string, binName: string): string {
-  const missingRuntimeWarning = `echo "webpresso hook ${binName} skipped: global wp not found; install with npm install -g @webpresso/agent-kit and re-run wp setup" >&2`
-  // Guard fails closed (explicit deny JSON); json-only hooks keep Codex stdout
-  // parseable; every other hook warns on stderr instead of silently exiting — a
-  // silently-disabled hook hid the broken node pin for weeks (2026-06 audit).
-  const missingFallback = isJsonOnlyHookBin(binName)
-    ? `${missingRuntimeWarning}
-  ${JSON_ONLY_HOOK_FALLBACK}`
-    : binName === PRETOOL_GUARD_BIN
-      ? PRETOOL_GUARD_MISSING_DENY
-      : missingRuntimeWarning
-
-  const packageRoot = resolvePackageRootForHookLaunchers()
-  const repoRootPath = quoteShell(repoRoot)
-  const hookBinPath = quoteShell(join(packageRoot, 'bin', `${binName}.js`))
-  const nodeBinary = quoteShell(resolveNodeBinaryForManagedHookLaunchers())
-
-  return `#!/bin/sh
-if [ -x ${nodeBinary} ] && [ -f ${hookBinPath} ]; then
-  if cd ${repoRootPath}; then
-    exec ${nodeBinary} ${hookBinPath} "$@"
-  fi
-fi
-
-${missingFallback}
-exit 0
-`
-}
-
-function ensureManagedWebpressoHookLaunchers(repoRoot: string, options: MergeOptions = {}): void {
-  if (options.dryRun) return
-
-  const launcherTargets = [
-    join(repoRoot, CLAUDE_MANAGED_HOOK_SUBDIR),
-    join(repoRoot, CODEX_MANAGED_HOOK_SUBDIR),
-  ]
-
-  for (const directory of launcherTargets) {
-    mkdirSync(directory, { recursive: true })
-    for (const binName of WEBPRESSO_HOOK_BIN_NAMES) {
-      const launcherPath = join(directory, `${binName}.sh`)
-      const content = renderManagedWebpressoHookLauncher(repoRoot, binName)
-      if (!existsSync(launcherPath) || readFileSync(launcherPath, 'utf8') !== content) {
-        writeFileSync(launcherPath, content, 'utf8')
-      }
-      chmodSync(launcherPath, 0o755)
-    }
-  }
 }
 
 export async function scaffoldAgentHooks(
@@ -978,19 +818,18 @@ export async function scaffoldAgentHooks(
   if (gstackEnabled) {
     ensureGstackHooks(input.repoRoot, input.options)
   }
-  ensureManagedWebpressoHookLaunchers(input.repoRoot, input.options)
   const skillHooks = extractSkillHooks(join(input.repoRoot, '.agent', 'skills'))
   const manifest: HooksManifest = {
     version: 1,
     generatedAt: new Date().toISOString(),
-    claude: buildManagedClaudeHooks(skillHooks, gstackEnabled),
+    claude: buildManagedClaudeHooks(input.repoRoot, skillHooks, gstackEnabled),
     codex: buildManagedCodexHooks(input.repoRoot),
     vendorState: { claude: 'enabled', codex: 'enabled' },
   }
   const result = {
     claude: patchJsonFile(
       join(input.repoRoot, '.claude', 'settings.json'),
-      (existing) => patchClaudeSettings(existing, skillHooks, gstackEnabled),
+      (existing) => patchClaudeSettings(existing, input.repoRoot, skillHooks, gstackEnabled),
       input.options,
     ),
     codex: patchJsonFile(
@@ -1004,21 +843,6 @@ export async function scaffoldAgentHooks(
       input.options,
     ),
     manifest,
-  }
-  const codexHooksPath = join(input.repoRoot, '.codex', 'hooks.json')
-  const codexNormalization = normalizeGlobalCodexHooksFile(
-    codexHooksPath,
-    {
-      nodeBinary: resolveNodeBinaryForManagedHookLaunchers(),
-      omxScriptPath: resolveInstalledOmxHookScriptPath(),
-    },
-    input.options,
-  )
-  if (
-    (result.codex.action === 'identical' || result.codex.action === 'created') &&
-    codexNormalization.action === 'overwritten'
-  ) {
-    result.codex = { ...codexNormalization }
   }
   if (input.trustCodexHooks !== false) {
     await trustCodexWebpressoHooksForRepo(input)

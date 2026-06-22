@@ -58,9 +58,7 @@ describe('ensureOmx project-scope cleanup integration', () => {
     git(repoRoot, ['add', '-f', '.codex/config.toml', '.omx/setup-scope.json'])
 
     // Isolate the Codex config to a dedicated tmpdir; without this, ensureOmx
-    // defaults to the real ~/.codex/config.toml and mutates the developer's
-    // global Codex hooks file, making `codexGlobalHooks.repaired` flip across
-    // runs/parallel workers (a non-hermetic flake).
+    // defaults to the real ~/.codex/config.toml.
     const configPath = makeIsolatedCodexConfig()
 
     const result = ensureOmx({
@@ -74,9 +72,6 @@ describe('ensureOmx project-scope cleanup integration', () => {
       kind: 'omx-ok',
       installed: false,
       removedProjectFiles: ['.codex/config.toml', '.omx/setup-scope.json'],
-      codexGlobalHooks: {
-        repaired: false,
-      },
     })
     expect(existsSync(join(repoRoot, '.codex', 'config.toml'))).toBe(false)
     expect(existsSync(join(repoRoot, '.omx', 'setup-scope.json'))).toBe(false)
@@ -102,9 +97,6 @@ describe('ensureOmx project-scope cleanup integration', () => {
       kind: 'omx-ok',
       installed: false,
       removedProjectFiles: [],
-      codexGlobalHooks: {
-        repaired: false,
-      },
     })
     expect(existsSync(join(repoRoot, '.omx', 'setup-scope.json'))).toBe(true)
   })

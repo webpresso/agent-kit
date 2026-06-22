@@ -1,7 +1,5 @@
 import {
-  accessSync,
   chmodSync,
-  constants,
   existsSync,
   mkdtempSync,
   mkdirSync,
@@ -9,7 +7,7 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs'
-import { spawn, spawnSync } from 'node:child_process'
+import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -22,105 +20,34 @@ import {
   hoistTopLevelEvents,
   hookSubcommandFor,
   resolvePackageRootForHookLaunchers,
-  resolveNodeBinaryForManagedHookLaunchers,
   scaffoldAgentHooks,
   trustCodexWebpressoHooksForRepo,
-  trustCodexPresetHooksForUser,
 } from './index.js'
 
 function quoteShell(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`
 }
 
-function guardedHookCommand(binPath: string, fallback: string): string {
-  return `if [ -x ${binPath} ]; then ${binPath}; else ${fallback}; fi`
+function directWpHookCommand(repoRoot: string, name: string): string {
+  const wpPath = quoteShell(join(process.cwd(), 'bin', 'wp'))
+  const nodePath = quoteShell(process.execPath)
+  const repoRootPath = quoteShell(repoRoot)
+  const hookName = name.startsWith('wp-') ? name.slice(3) : name
+  const fallback =
+    name === 'wp-stop-qa' || name === 'wp-precompact-snapshot'
+      ? `printf '%s\\n' '{}'`
+      : name === 'wp-pretool-guard'
+        ? `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with vp install -g @webpresso/agent-kit and re-run wp setup."}}'`
+        : 'true'
+  return `if [ -x ${nodePath} ] && [ -f ${wpPath} ]; then (cd ${repoRootPath} && ${nodePath} ${wpPath} hook ${hookName}); status=$?; if [ "$status" -eq 2 ]; then exit 2; elif [ "$status" -ne 0 ]; then ${fallback}; fi; else ${fallback}; fi # ${name}`
 }
 
 function codexBinCommand(repoRoot: string, name: string): string {
-  const binPath = quoteShell(join(repoRoot, '.codex', 'managed-hooks', `${name}.sh`))
-  if (name === 'wp-stop-qa' || name === 'wp-precompact-snapshot') {
-    return guardedHookCommand(binPath, `printf '%s\\n' '{}'`)
-  }
-  if (name === 'wp-pretool-guard') {
-    return guardedHookCommand(
-      binPath,
-      `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with npm install -g @webpresso/agent-kit and re-run wp setup."}}'`,
-    )
-  }
-  return guardedHookCommand(binPath, 'true')
+  return directWpHookCommand(repoRoot, name)
 }
 
-function claudeBinCommand(name: string): string {
-  const binPath = `$CLAUDE_PROJECT_DIR/.claude/hooks/managed/${name}.sh`
-  if (name === 'wp-stop-qa' || name === 'wp-precompact-snapshot') {
-    return guardedHookCommand(`"${binPath}"`, `printf '%s\\n' '{}'`)
-  }
-  if (name === 'wp-pretool-guard') {
-    return guardedHookCommand(
-      `"${binPath}"`,
-      `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with npm install -g @webpresso/agent-kit and re-run wp setup."}}'`,
-    )
-  }
-  return guardedHookCommand(`"${binPath}"`, 'true')
-}
-
-const WEBPRESSO_HOOK_BINS = [
-  'wp-sessionstart-routing',
-  'wp-pretool-guard',
-  'wp-post-tool',
-  'wp-guard-switch',
-  'wp-stop-qa',
-  'wp-precompact-snapshot',
-] as const
-
-function installFakeNodeRuntime(repoRoot: string): string {
-  const fakeNode = join(repoRoot, 'toolchain', 'node')
-  mkdirSync(join(repoRoot, 'toolchain'), { recursive: true })
-  writeFileSync(
-    fakeNode,
-    `#!/bin/sh
-if [ -n "\${WP_HOOK_SMOKE_RUNTIME_LOG:-}" ]; then
-  printf '%s\\n' "$*" >> "\${WP_HOOK_SMOKE_RUNTIME_LOG}"
-fi
-script="$1"
-shift
-if [ -n "\${WP_HOOK_SMOKE_BIN_DIR:-}" ] && [ -n "$script" ]; then
-  fixture="\${WP_HOOK_SMOKE_BIN_DIR}/$(basename "$script")"
-  if [ -f "$fixture" ]; then
-    if [ -n "\${WP_HOOK_SMOKE_BIN_LOG:-}" ]; then
-      bin_name="\${script##*/}"
-      printf '%s\\n' "\${bin_name%.js}" >> "\${WP_HOOK_SMOKE_BIN_LOG}"
-    fi
-    printf '%s\\n' '{}'
-    exit 0
-  fi
-fi
-exec ${quoteShell(process.execPath)} "$script" "$@"
-`,
-    'utf8',
-  )
-  chmodSync(fakeNode, 0o755)
-  return fakeNode
-}
-
-function installFakeWebpressoBins(repoRoot: string): string {
-  const binDir = join(repoRoot, 'fixture-hook-bins')
-  mkdirSync(binDir, { recursive: true })
-  for (const bin of WEBPRESSO_HOOK_BINS) {
-    const binPath = join(binDir, `${bin}.js`)
-    writeFileSync(binPath, `# fixture marker for ${bin}\n`, 'utf8')
-    chmodSync(binPath, 0o755)
-  }
-  return binDir
-}
-
-function assertSmokeRanEveryWebpressoBin(runtimeLog: string, binLog: string): void {
-  const runtimeArgs = readFileSync(runtimeLog, 'utf8')
-  const executedBins = readFileSync(binLog, 'utf8').trim().split('\n').filter(Boolean)
-  expect(new Set(executedBins)).toStrictEqual(new Set(WEBPRESSO_HOOK_BINS))
-  for (const bin of WEBPRESSO_HOOK_BINS) {
-    expect(runtimeArgs).toContain(`${bin}.js`)
-  }
+function claudeBinCommand(repoRoot: string, name: string): string {
+  return directWpHookCommand(repoRoot, name)
 }
 
 function initGitRepo(root: string): void {
@@ -132,64 +59,8 @@ function initGitRepo(root: string): void {
   expect(result.status, result.stderr).toBe(0)
 }
 
-async function runShellCommand(
-  command: string,
-  options: {
-    cwd: string
-    env?: NodeJS.ProcessEnv
-    timeoutMs?: number
-  },
-): Promise<{ status: number | null; stdout: string; stderr: string; command: string }> {
-  return await new Promise((resolve, reject) => {
-    const child = spawn('sh', ['-c', command], {
-      cwd: options.cwd,
-      env: options.env,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
-
-    let stdout = ''
-    let stderr = ''
-    child.stdout.on('data', (chunk) => {
-      stdout += chunk.toString()
-    })
-    child.stderr.on('data', (chunk) => {
-      stderr += chunk.toString()
-    })
-    child.on('error', reject)
-    const timeout = setTimeout(() => {
-      child.kill('SIGTERM')
-      resolve({
-        status: null,
-        stdout,
-        stderr: `${stderr}\nTimed out waiting for hook command to exit.`,
-        command,
-      })
-    }, options.timeoutMs ?? 5000)
-    child.on('close', (status) => {
-      clearTimeout(timeout)
-      resolve({ status, stdout, stderr, command })
-    })
-  })
-}
-
-async function runHookCommands(
-  commands: readonly string[],
-  options: {
-    cwd: string
-    env?: NodeJS.ProcessEnv
-  },
-): Promise<Array<{ status: number | null; stdout: string; stderr: string; command: string }>> {
-  const batchCommand = commands.join('\n')
-  return [
-    await runShellCommand(batchCommand, {
-      ...options,
-      timeoutMs: Math.max(5000, commands.length * 5000),
-    }),
-  ]
-}
-
-describe('hookSubcommandFor (managed-launcher dispatch gate)', () => {
-  it('returns the wp hook subcommand for dispatchable managed hooks', () => {
+describe('hookSubcommandFor (direct hook dispatch gate)', () => {
+  it('returns the wp hook subcommand for dispatchable hooks', () => {
     expect(hookSubcommandFor('wp-pretool-guard')).toStrictEqual('pretool-guard')
     expect(hookSubcommandFor('wp-sessionstart-routing')).toStrictEqual('sessionstart-routing')
     expect(hookSubcommandFor('wp-precompact-snapshot')).toStrictEqual('precompact-snapshot')
@@ -205,13 +76,11 @@ describe('scaffoldAgentHooks', () => {
   let repoRoot: string
   let previousCodexHome: string | undefined
   let previousHome: string | undefined
-  let previousHookNodePath: string | undefined
 
   beforeEach(() => {
     repoRoot = mkdtempSync(join(tmpdir(), 'wp-agent-hooks-'))
     previousCodexHome = process.env.CODEX_HOME
     previousHome = process.env.HOME
-    previousHookNodePath = process.env.WP_HOOK_NODE_PATH
     process.env.HOME = join(repoRoot, '.home')
     process.env.CODEX_HOME = join(repoRoot, '.codex-home')
   })
@@ -221,8 +90,6 @@ describe('scaffoldAgentHooks', () => {
     else process.env.CODEX_HOME = previousCodexHome
     if (previousHome === undefined) delete process.env.HOME
     else process.env.HOME = previousHome
-    if (previousHookNodePath === undefined) delete process.env.WP_HOOK_NODE_PATH
-    else process.env.WP_HOOK_NODE_PATH = previousHookNodePath
     await import('node:fs/promises').then((fs) => fs.rm(repoRoot, { recursive: true, force: true }))
   })
 
@@ -408,44 +275,42 @@ describe('scaffoldAgentHooks', () => {
     const codexCommands = codex.hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command))
 
     expect(claudeCommands.some((cmd) => cmd.includes('wp-sessionstart-routing'))).toBe(true)
-    expect(claudeCommands.some((cmd) => cmd.includes('$CLAUDE_PROJECT_DIR'))).toBe(true)
+    expect(claudeCommands).toContain(claudeBinCommand(repoRoot, 'wp-sessionstart-routing'))
     expect(codexCommands).toContain(codexBinCommand(repoRoot, 'wp-sessionstart-routing'))
     expect(
-      readFileSync(
-        join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh'),
-        'utf8',
-      ),
-    ).toContain('bin/wp-sessionstart-routing.js')
+      existsSync(join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh')),
+    ).toBe(false)
     expect(
-      readFileSync(join(repoRoot, '.codex', 'managed-hooks', 'wp-sessionstart-routing.sh'), 'utf8'),
-    ).toContain('bin/wp-sessionstart-routing.js')
+      existsSync(join(repoRoot, '.codex', 'managed-hooks', 'wp-sessionstart-routing.sh')),
+    ).toBe(false)
   })
 
-  it('repairs managed hook launcher execute bits on repeated setup', async () => {
+  it('does not materialize hook launcher scripts on repeated setup', async () => {
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
 
-    const launcherPath = join(repoRoot, '.codex', 'managed-hooks', 'wp-sessionstart-routing.sh')
-    chmodSync(launcherPath, 0o644)
-
-    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
-
-    expect(() => accessSync(launcherPath, constants.X_OK)).not.toThrow()
+    expect(
+      existsSync(join(repoRoot, '.codex', 'managed-hooks', 'wp-sessionstart-routing.sh')),
+    ).toBe(false)
+    expect(
+      existsSync(join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh')),
+    ).toBe(false)
   })
 
-  it('uses direct managed hook binaries instead of shelling through global wp', async () => {
+  it('uses the absolute package wp hook path instead of node_modules hook shims', async () => {
     mkdirSync(join(repoRoot, 'node_modules', '.bin'), { recursive: true })
     const shimPath = join(repoRoot, 'node_modules', '.bin', 'wp-guard-switch')
     writeFileSync(shimPath, '#!/bin/sh\nexit 42\n', 'utf8')
     chmodSync(shimPath, 0o755)
 
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
-
-    const launcher = readFileSync(
-      join(repoRoot, '.codex', 'managed-hooks', 'wp-guard-switch.sh'),
-      'utf8',
-    )
-    expect(launcher).toContain('bin/wp-guard-switch.js')
-    expect(launcher).not.toContain('exec wp hook guard-switch')
+    const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
+      hooks: { UserPromptSubmit: Array<{ hooks: Array<{ command: string }> }> }
+    }
+    const command = codex.hooks.UserPromptSubmit[0]?.hooks[0]?.command ?? ''
+    expect(command).toContain('bin/wp')
+    expect(command).toContain(' hook guard-switch')
+    expect(command).not.toContain('node_modules/.bin')
   })
 
   it('resolves the packaged hook-launcher root from PATH when moduleUrl is virtual', () => {
@@ -470,52 +335,6 @@ describe('scaffoldAgentHooks', () => {
     } finally {
       rmSync(packageRoot, { recursive: true, force: true })
     }
-  })
-
-  it('uses direct bin entrypoints in managed hook launchers', async () => {
-    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
-
-    const guardLauncher = readFileSync(
-      join(repoRoot, '.claude', 'hooks', 'managed', 'wp-pretool-guard.sh'),
-      'utf8',
-    )
-    expect(guardLauncher).toContain('bin/wp-pretool-guard.js')
-    expect(guardLauncher).toContain('exec ')
-    expect(guardLauncher).not.toContain('exec wp hook pretool-guard')
-
-    const sessionLauncher = readFileSync(
-      join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh'),
-      'utf8',
-    )
-    expect(sessionLauncher).toContain('bin/wp-sessionstart-routing.js')
-    expect(sessionLauncher).not.toContain('exec wp hook sessionstart-routing')
-  })
-
-  it('honors WP_HOOK_NODE_PATH when setup itself runs under a non-Node runtime', async () => {
-    const fakeNode = join(repoRoot, 'toolchain', 'node')
-    mkdirSync(join(repoRoot, 'toolchain'), { recursive: true })
-    writeFileSync(fakeNode, '#!/bin/sh\nexit 0\n', 'utf8')
-    chmodSync(fakeNode, 0o755)
-    process.env.WP_HOOK_NODE_PATH = fakeNode
-
-    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
-
-    const launcher = readFileSync(
-      join(repoRoot, '.codex', 'managed-hooks', 'wp-sessionstart-routing.sh'),
-      'utf8',
-    )
-    expect(resolveNodeBinaryForManagedHookLaunchers()).toBe(fakeNode)
-    expect(launcher).toContain(`exec ${quoteShell(fakeNode)} `)
-  })
-
-  it('does not render local runtime or node_modules preambles', async () => {
-    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
-    const guardLauncher = readFileSync(
-      join(repoRoot, '.claude', 'hooks', 'managed', 'wp-pretool-guard.sh'),
-      'utf8',
-    )
-    expect(guardLauncher).not.toContain('WP_BIN=')
-    expect(guardLauncher).toContain('bin/wp-pretool-guard.js')
   })
 
   it('dedupes pre-existing wrapped script hooks against the raw incoming form', async () => {
@@ -587,46 +406,6 @@ describe('scaffoldAgentHooks', () => {
     expect(gstackSkillMatches).toHaveLength(1)
   })
 
-  it('rewrites stale Claude wp-pretool-guard wrappers to the managed fail-closed form without duplicates', async () => {
-    const settingsPath = join(repoRoot, '.claude', 'settings.json')
-    mkdirSync(join(repoRoot, '.claude'), { recursive: true })
-    const staleGuard =
-      '[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/wp-pretool-guard" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/wp-pretool-guard" || true'
-    const staleDirectGuard =
-      'export PATH="$HOME/.vite-plus/bin:$PATH"; if command -v wp >/dev/null 2>&1; then wp hook pretool-guard; else true; fi'
-    writeFileSync(
-      settingsPath,
-      JSON.stringify(
-        {
-          hooks: {
-            PreToolUse: [
-              {
-                matcher: 'Bash|Write|Edit|MultiEdit',
-                hooks: [
-                  { type: 'command', command: staleGuard, timeout: 5 },
-                  { type: 'command', command: staleDirectGuard, timeout: 5 },
-                ],
-              },
-            ],
-          },
-        },
-        null,
-        2,
-      ),
-    )
-
-    await scaffoldAgentHooks({ repoRoot, options: {} })
-
-    const settings = JSON.parse(readFileSync(settingsPath, 'utf8')) as {
-      hooks: { PreToolUse: Array<{ matcher?: string; hooks: Array<{ command: string }> }> }
-    }
-    const wpPretoolGuards = settings.hooks.PreToolUse.flatMap((group) =>
-      group.hooks.map((hook) => hook.command),
-    ).filter((command) => command.includes('wp-pretool-guard'))
-
-    expect(wpPretoolGuards).toStrictEqual([claudeBinCommand('wp-pretool-guard')])
-  })
-
   it('does not duplicate the wp-sessionstart-routing entry on a second scaffold', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {} })
     await scaffoldAgentHooks({ repoRoot, options: {} })
@@ -655,7 +434,7 @@ describe('scaffoldAgentHooks', () => {
                 eventName: 'pre_tool_use',
                 handlerType: 'command',
                 matcher: 'Bash',
-                command: './.codex/managed-hooks/wp-pretool-guard.sh',
+                command: codexBinCommand(repoRoot, 'wp-pretool-guard'),
                 timeoutSec: 5,
                 statusMessage: null,
                 sourcePath: hooksPath,
@@ -683,7 +462,7 @@ describe('scaffoldAgentHooks', () => {
                 eventName: 'pre_tool_use',
                 handlerType: 'command',
                 matcher: 'Bash',
-                command: './.codex/managed-hooks/wp-pretool-guard.sh',
+                command: codexBinCommand(repoRoot, 'wp-pretool-guard'),
                 timeoutSec: 5,
                 statusMessage: null,
                 sourcePath: hooksPath,
@@ -814,7 +593,7 @@ describe('scaffoldAgentHooks', () => {
                 eventName: 'pre_tool_use',
                 handlerType: 'command',
                 matcher: 'Bash',
-                command: './.codex/managed-hooks/wp-pretool-guard.sh',
+                command: codexBinCommand(repoRoot, 'wp-pretool-guard'),
                 timeoutSec: 5,
                 statusMessage: null,
                 sourcePath: hooksPath,
@@ -842,7 +621,7 @@ describe('scaffoldAgentHooks', () => {
                 eventName: 'pre_tool_use',
                 handlerType: 'command',
                 matcher: 'Bash',
-                command: './.codex/managed-hooks/wp-pretool-guard.sh',
+                command: codexBinCommand(repoRoot, 'wp-pretool-guard'),
                 timeoutSec: 5,
                 statusMessage: null,
                 sourcePath: hooksPath,
@@ -882,131 +661,6 @@ describe('scaffoldAgentHooks', () => {
     })
 
     expect(batchWrites).toHaveLength(1)
-  })
-
-  it('refreshes only OMX preset-owned global Codex hooks after setup rewrites ~/.codex/hooks.json', async () => {
-    const globalHooksPath = join(repoRoot, '.codex-home', 'hooks.json')
-    mkdirSync(join(repoRoot, '.codex-home'), { recursive: true })
-    writeFileSync(globalHooksPath, JSON.stringify({ hooks: {} }, null, 2))
-
-    const { api, batchWrites, hooksListCalls } = createFakeCodexAppServer([
-      {
-        data: [
-          {
-            cwd: repoRoot,
-            hooks: [
-              {
-                key: `${globalHooksPath}:pre_tool_use:0:0`,
-                eventName: 'pre_tool_use',
-                handlerType: 'command',
-                matcher: 'Bash',
-                command: 'node "/tmp/legacy-codex-hook.js"',
-                timeoutSec: 5,
-                statusMessage: null,
-                sourcePath: globalHooksPath,
-                source: 'user',
-                pluginId: null,
-                displayOrder: 0,
-                enabled: true,
-                isManaged: false,
-                currentHash: 'sha256:ctx123',
-                trustStatus: 'modified',
-              },
-              {
-                key: `${globalHooksPath}:pre_tool_use:1:0`,
-                eventName: 'pre_tool_use',
-                handlerType: 'command',
-                matcher: 'Bash',
-                command: '"/Users/test/.codex/managed-hooks/wp-global-codex-omx-hook.sh"',
-                timeoutSec: 5,
-                statusMessage: null,
-                sourcePath: globalHooksPath,
-                source: 'user',
-                pluginId: null,
-                displayOrder: 1,
-                enabled: true,
-                isManaged: false,
-                currentHash: 'sha256:omx123',
-                trustStatus: 'modified',
-              },
-            ],
-            warnings: [],
-            errors: [],
-          },
-        ],
-      },
-      {
-        data: [
-          {
-            cwd: repoRoot,
-            hooks: [
-              {
-                key: `${globalHooksPath}:pre_tool_use:0:0`,
-                eventName: 'pre_tool_use',
-                handlerType: 'command',
-                matcher: 'Bash',
-                command: 'node "/tmp/legacy-codex-hook.js"',
-                timeoutSec: 5,
-                statusMessage: null,
-                sourcePath: globalHooksPath,
-                source: 'user',
-                pluginId: null,
-                displayOrder: 0,
-                enabled: true,
-                isManaged: false,
-                currentHash: 'sha256:ctx123',
-                trustStatus: 'trusted',
-              },
-              {
-                key: `${globalHooksPath}:pre_tool_use:1:0`,
-                eventName: 'pre_tool_use',
-                handlerType: 'command',
-                matcher: 'Bash',
-                command: '"/Users/test/.codex/managed-hooks/wp-global-codex-omx-hook.sh"',
-                timeoutSec: 5,
-                statusMessage: null,
-                sourcePath: globalHooksPath,
-                source: 'user',
-                pluginId: null,
-                displayOrder: 1,
-                enabled: true,
-                isManaged: false,
-                currentHash: 'sha256:omx123',
-                trustStatus: 'trusted',
-              },
-            ],
-            warnings: [],
-            errors: [],
-          },
-        ],
-      },
-    ])
-
-    await trustCodexPresetHooksForUser({
-      repoRoot,
-      options: {},
-      createCodexAppServer: async () => api,
-    })
-
-    expect(hooksListCalls).toStrictEqual([[repoRoot], [repoRoot]])
-    expect(batchWrites).toStrictEqual([
-      {
-        edits: [
-          {
-            keyPath: 'hooks.state',
-            value: {
-              [`${globalHooksPath}:pre_tool_use:1:0`]: {
-                enabled: true,
-                trusted_hash: 'sha256:omx123',
-              },
-            },
-            mergeStrategy: 'upsert',
-          },
-        ],
-        filePath: expect.any(String),
-        reloadUserConfig: true,
-      },
-    ])
   })
 
   it('uses broad Claude context-heavy PreToolUse/PostToolUse matchers', async () => {
@@ -1149,397 +803,15 @@ hooks:
     expect(command).toContain('# from-skill: verify')
     const result = spawnSync('sh', ['-c', command ?? ''], {
       cwd: repoRoot,
-      env: { ...process.env, CLAUDE_PROJECT_DIR: repoRoot },
+      env: {
+        ...process.env,
+        CLAUDE_PROJECT_DIR: repoRoot,
+        PATH: `${binDir}:${process.env.PATH ?? ''}`,
+      },
       encoding: 'utf8',
     })
 
     expect(result.stdout).toBe('')
-  })
-
-  it('prunes stale legacy Claude ak-* hook commands while preserving unrelated hooks', async () => {
-    const settingsPath = join(repoRoot, '.claude', 'settings.json')
-    mkdirSync(join(repoRoot, '.claude'), { recursive: true })
-    writeFileSync(
-      settingsPath,
-      JSON.stringify(
-        {
-          hooks: {
-            SessionStart: [
-              {
-                hooks: [
-                  {
-                    type: 'command',
-                    command: '"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-sessionstart-routing"',
-                    timeout: 5,
-                  },
-                ],
-              },
-              {
-                hooks: [{ type: 'command', command: 'echo keep-session-start', timeout: 1 }],
-              },
-            ],
-            PreToolUse: [
-              {
-                matcher: 'Bash|Write|Edit',
-                hooks: [
-                  {
-                    type: 'command',
-                    command:
-                      '[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-pretool-guard" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-pretool-guard" || true',
-                    timeout: 5,
-                  },
-                ],
-              },
-            ],
-            PostToolUse: [
-              {
-                matcher: 'Write|Edit',
-                hooks: [
-                  {
-                    type: 'command',
-                    command: '"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-post-tool"',
-                    timeout: 15,
-                  },
-                ],
-              },
-            ],
-            UserPromptSubmit: [
-              {
-                hooks: [
-                  {
-                    type: 'command',
-                    command: '"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-guard-switch"',
-                    timeout: 5,
-                  },
-                ],
-              },
-            ],
-            Stop: [
-              {
-                hooks: [
-                  {
-                    type: 'command',
-                    command: '"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-stop-qa"',
-                  },
-                ],
-              },
-            ],
-          },
-        },
-        null,
-        2,
-      ),
-    )
-
-    await scaffoldAgentHooks({ repoRoot, options: {} })
-
-    const settings = JSON.parse(readFileSync(settingsPath, 'utf8')) as {
-      hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>
-    }
-
-    const allCommands = Object.values(settings.hooks).flatMap((groups) =>
-      groups.flatMap((group) => group.hooks.map((hook) => hook.command)),
-    )
-
-    expect(allCommands.some((command) => command.includes('node_modules/.bin/ak-'))).toBe(false)
-    expect(allCommands).toContain('echo keep-session-start')
-    expect(allCommands.some((command) => command.includes('wp-sessionstart-routing'))).toBe(true)
-    expect(allCommands.some((command) => command.includes('wp-pretool-guard'))).toBe(true)
-    expect(allCommands.some((command) => command.includes('wp-post-tool'))).toBe(true)
-    expect(allCommands.some((command) => command.includes('wp-guard-switch'))).toBe(true)
-    expect(allCommands.some((command) => command.includes('wp-stop-qa'))).toBe(true)
-  })
-
-  it('prunes stale legacy wrapped Codex ak-* hook commands while preserving unrelated hooks', async () => {
-    const codexPath = join(repoRoot, '.codex', 'hooks.json')
-    mkdirSync(join(repoRoot, '.codex'), { recursive: true })
-    writeFileSync(
-      codexPath,
-      JSON.stringify(
-        {
-          hooks: {
-            SessionStart: [
-              {
-                hooks: [
-                  {
-                    type: 'command',
-                    command: './node_modules/.bin/ak-sessionstart-routing',
-                    timeout: 5,
-                  },
-                ],
-              },
-              {
-                hooks: [{ type: 'command', command: 'echo keep-codex-session', timeout: 1 }],
-              },
-            ],
-            PreToolUse: [
-              {
-                matcher: 'Bash|Write|Edit',
-                hooks: [
-                  {
-                    type: 'command',
-                    command:
-                      '[ -x ./node_modules/.bin/ak-pretool-guard ] && ./node_modules/.bin/ak-pretool-guard || true',
-                    timeout: 5,
-                  },
-                ],
-              },
-              {
-                matcher: 'Bash',
-                hooks: [
-                  {
-                    type: 'command',
-                    command: './node_modules/.bin/not-webpresso',
-                    timeout: 5,
-                  },
-                ],
-              },
-            ],
-            CustomEvent: [
-              {
-                hooks: [
-                  {
-                    type: 'command',
-                    command: './node_modules/.bin/wp-pretool-guard',
-                    timeout: 123,
-                  },
-                  {
-                    type: 'command',
-                    command: 42,
-                  },
-                ],
-              },
-            ],
-            LegacyOnlyCustomEvent: [
-              {
-                hooks: [
-                  {
-                    type: 'command',
-                    command: './node_modules/.bin/ak-pretool-guard',
-                  },
-                ],
-              },
-            ],
-          },
-        },
-        null,
-        2,
-      ),
-    )
-
-    await scaffoldAgentHooks({
-      repoRoot,
-      options: {},
-      gstackEnabled: true,
-      trustCodexHooks: false,
-    })
-
-    const codex = JSON.parse(readFileSync(codexPath, 'utf8')) as {
-      hooks: Record<string, Array<{ hooks: Array<{ command: unknown; timeout?: number }> }>>
-    }
-    const allCommands = Object.values(codex.hooks).flatMap((groups) =>
-      groups.flatMap((group) => group.hooks.map((hook) => hook.command)),
-    )
-    const customCommands = codex.hooks.CustomEvent.flatMap((group) =>
-      group.hooks.map((hook) => hook.command),
-    )
-    const preToolUseCommands = codex.hooks.PreToolUse.flatMap((group) =>
-      group.hooks.map((hook) => hook.command),
-    )
-
-    expect(
-      allCommands.filter(
-        (command) => typeof command === 'string' && command.includes('node_modules/.bin/ak-'),
-      ),
-    ).toEqual([])
-    expect(allCommands).toContain('echo keep-codex-session')
-    expect(allCommands).toContain('./node_modules/.bin/not-webpresso')
-    expect(customCommands).toStrictEqual([42])
-    expect(codex.hooks.LegacyOnlyCustomEvent).toBe(undefined)
-    expect(
-      allCommands.filter(
-        (command) => command === codexBinCommand(repoRoot, 'wp-sessionstart-routing'),
-      ),
-    ).toHaveLength(1)
-    expect(
-      preToolUseCommands.filter(
-        (command) => command === codexBinCommand(repoRoot, 'wp-pretool-guard'),
-      ),
-    ).toHaveLength(1)
-  })
-
-  it('prunes stale legacy flat-form Codex ak-* hook commands during wrapped migration', async () => {
-    const codexPath = join(repoRoot, '.codex', 'hooks.json')
-    mkdirSync(join(repoRoot, '.codex'), { recursive: true })
-    writeFileSync(
-      codexPath,
-      JSON.stringify(
-        {
-          SessionStart: [
-            {
-              hooks: [
-                {
-                  type: 'command',
-                  command: './node_modules/.bin/ak-sessionstart-routing',
-                  timeout: 5,
-                },
-              ],
-            },
-          ],
-          PreToolUse: [
-            {
-              matcher: 'Bash|Edit|Write',
-              hooks: [
-                { type: 'command', command: './node_modules/.bin/ak-pretool-guard', timeout: 5 },
-              ],
-            },
-          ],
-        },
-        null,
-        2,
-      ),
-    )
-
-    await scaffoldAgentHooks({
-      repoRoot,
-      options: {},
-      gstackEnabled: true,
-      trustCodexHooks: false,
-    })
-
-    const codex = JSON.parse(readFileSync(codexPath, 'utf8')) as {
-      hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>
-      SessionStart?: unknown
-      PreToolUse?: unknown
-    }
-    const allCommands = Object.values(codex.hooks).flatMap((groups) =>
-      groups.flatMap((group) => group.hooks.map((hook) => hook.command)),
-    )
-
-    expect(codex.SessionStart).toBe(undefined)
-    expect(codex.PreToolUse).toBe(undefined)
-    expect(allCommands.filter((command) => command.includes('node_modules/.bin/ak-'))).toEqual([])
-    expect(
-      allCommands.filter(
-        (command) => command === codexBinCommand(repoRoot, 'wp-sessionstart-routing'),
-      ),
-    ).toHaveLength(1)
-    expect(
-      allCommands.filter((command) => command === codexBinCommand(repoRoot, 'wp-pretool-guard')),
-    ).toHaveLength(1)
-  })
-
-  it('converges dirty Claude and Codex hook surfaces before Codex trust sync observes hooks', async () => {
-    const claudePath = join(repoRoot, '.claude', 'settings.json')
-    const codexPath = join(repoRoot, '.codex', 'hooks.json')
-    mkdirSync(join(repoRoot, '.claude'), { recursive: true })
-    mkdirSync(join(repoRoot, '.codex'), { recursive: true })
-    writeFileSync(
-      claudePath,
-      JSON.stringify(
-        {
-          hooks: {
-            PreToolUse: [
-              {
-                matcher: 'Bash',
-                hooks: [
-                  {
-                    type: 'command',
-                    command: '"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-pretool-guard"',
-                  },
-                ],
-              },
-            ],
-          },
-        },
-        null,
-        2,
-      ),
-    )
-    writeFileSync(
-      codexPath,
-      JSON.stringify(
-        {
-          hooks: {
-            PreToolUse: [
-              {
-                matcher: 'Bash',
-                hooks: [
-                  { type: 'command', command: './node_modules/.bin/ak-pretool-guard' },
-                  { type: 'command', command: './node_modules/.bin/wp-pretool-guard' },
-                ],
-              },
-            ],
-          },
-        },
-        null,
-        2,
-      ),
-    )
-
-    const observedCodexCommands: string[][] = []
-    let hooksListCount = 0
-    const api = {
-      async hooksList() {
-        hooksListCount += 1
-        const codex = JSON.parse(readFileSync(codexPath, 'utf8')) as {
-          hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>
-        }
-        const commands = Object.values(codex.hooks).flatMap((groups) =>
-          groups.flatMap((group) => group.hooks.map((hook) => hook.command)),
-        )
-        observedCodexCommands.push(commands)
-        return {
-          data: [
-            {
-              cwd: repoRoot,
-              hooks: commands.map((command, index) => ({
-                key: `${codexPath}:command:${index}`,
-                eventName: 'pre_tool_use',
-                handlerType: 'command',
-                matcher: 'Bash',
-                command,
-                timeoutSec: 5,
-                statusMessage: null,
-                sourcePath: codexPath,
-                source: 'project',
-                pluginId: null,
-                displayOrder: index,
-                enabled: true,
-                isManaged: false,
-                currentHash: `sha256:${index}`,
-                trustStatus: hooksListCount === 1 ? 'untrusted' : 'trusted',
-              })),
-              warnings: [],
-              errors: [],
-            },
-          ],
-        }
-      },
-      async configBatchWrite() {
-        return {}
-      },
-      close() {},
-    }
-
-    await scaffoldAgentHooks({
-      repoRoot,
-      options: {},
-      createCodexAppServer: async () => api,
-    })
-
-    const firstClaude = readFileSync(claudePath, 'utf8')
-    const firstCodex = readFileSync(codexPath, 'utf8')
-
-    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
-
-    expect(readFileSync(claudePath, 'utf8')).toBe(firstClaude)
-    expect(readFileSync(codexPath, 'utf8')).toBe(firstCodex)
-    expect(
-      observedCodexCommands.flat().filter((command) => command.includes('node_modules/.bin/ak-')),
-    ).toEqual([])
-    expect(firstClaude).not.toContain('node_modules/.bin/ak-')
-    expect(firstCodex).not.toContain('node_modules/.bin/ak-')
   })
 
   it('removes stale skill-managed hooks when the skill is no longer installed', async () => {
@@ -1621,7 +893,7 @@ hooks:
               hooks: [
                 {
                   type: 'command',
-                  command: './node_modules/.bin/wp-sessionstart-routing',
+                  command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
                   timeout: 5,
                 },
               ],
@@ -1631,7 +903,11 @@ hooks:
             {
               matcher: 'Bash|Edit|Write',
               hooks: [
-                { type: 'command', command: './node_modules/.bin/wp-pretool-guard', timeout: 5 },
+                {
+                  type: 'command',
+                  command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
+                  timeout: 5,
+                },
               ],
             },
           ],
@@ -1662,126 +938,7 @@ hooks:
     ).toBe('Bash|apply_patch|Edit|Write|mcp__.*')
   })
 
-  it('rewrites wrapped Codex OMX hooks to the managed launcher family and adds wp-* alongside', async () => {
-    const codexPath = join(repoRoot, '.codex', 'hooks.json')
-    mkdirSync(join(repoRoot, '.codex'), { recursive: true })
-    writeFileSync(
-      codexPath,
-      JSON.stringify(
-        {
-          hooks: {
-            SessionStart: [
-              {
-                matcher: 'startup|resume',
-                hooks: [{ type: 'command', command: 'node /opt/omx/codex-native-hook.js' }],
-              },
-            ],
-          },
-        },
-        null,
-        2,
-      ),
-    )
-
-    await scaffoldAgentHooks({ repoRoot, options: {} })
-
-    const codex = JSON.parse(readFileSync(codexPath, 'utf8')) as {
-      hooks: { SessionStart: Array<{ hooks: Array<{ command: string }> }> }
-    }
-    const sessionCmds = codex.hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command))
-    expect(sessionCmds.some((c) => c.includes('codex-native-hook'))).toBe(false)
-    expect(
-      sessionCmds.some((c) => c.includes('.codex/managed-hooks/wp-global-codex-omx-hook.sh')),
-    ).toBe(true)
-    expect(sessionCmds).toContain(codexBinCommand(repoRoot, 'wp-sessionstart-routing'))
-    expect(
-      readFileSync(
-        join(repoRoot, '.codex', 'managed-hooks', 'wp-global-codex-omx-hook.sh'),
-        'utf8',
-      ),
-    ).toContain('exec ')
-  })
-
-  it('rewrites Codex Stop OMX hooks to the JSON-only managed launcher', async () => {
-    const codexPath = join(repoRoot, '.codex', 'hooks.json')
-    mkdirSync(join(repoRoot, '.codex'), { recursive: true })
-    writeFileSync(
-      codexPath,
-      JSON.stringify(
-        {
-          hooks: {
-            Stop: [
-              {
-                hooks: [{ type: 'command', command: 'node /opt/omx/codex-native-hook.js' }],
-              },
-            ],
-          },
-        },
-        null,
-        2,
-      ),
-    )
-
-    await scaffoldAgentHooks({ repoRoot, options: {} })
-
-    const codex = JSON.parse(readFileSync(codexPath, 'utf8')) as {
-      hooks: { Stop: Array<{ hooks: Array<{ command: string }> }> }
-    }
-    const stopCommands = codex.hooks.Stop.flatMap((g) => g.hooks.map((h) => h.command))
-    expect(stopCommands.some((c) => c.includes('codex-native-hook'))).toBe(false)
-    expect(
-      stopCommands.some((c) => c.includes('.codex/managed-hooks/wp-global-codex-omx-json-hook.sh')),
-    ).toBe(true)
-    expect(
-      readFileSync(
-        join(repoRoot, '.codex', 'managed-hooks', 'wp-global-codex-omx-json-hook.sh'),
-        'utf8',
-      ),
-    ).toContain(`printf '%s\\n' '{}'`)
-  })
-
-  it('rewrites live-style Codex Stop OMX hooks with OMX_ROOT and absolute node paths', async () => {
-    const codexPath = join(repoRoot, '.codex', 'hooks.json')
-    mkdirSync(join(repoRoot, '.codex'), { recursive: true })
-    writeFileSync(
-      codexPath,
-      JSON.stringify(
-        {
-          hooks: {
-            Stop: [
-              {
-                hooks: [
-                  {
-                    type: 'command',
-                    command: `OMX_ROOT="${repoRoot}" "${process.execPath}" "/Users/test/.vite-plus/packages/oh-my-codex/lib/node_modules/oh-my-codex/dist/scripts/codex-native-hook.js"`,
-                  },
-                ],
-              },
-            ],
-          },
-        },
-        null,
-        2,
-      ),
-    )
-
-    await scaffoldAgentHooks({ repoRoot, options: {} })
-
-    const codex = JSON.parse(readFileSync(codexPath, 'utf8')) as {
-      hooks: { Stop: Array<{ hooks: Array<{ command: string }> }> }
-    }
-    const stopCommands = codex.hooks.Stop.flatMap((group) =>
-      group.hooks.map((hook) => hook.command),
-    )
-    expect(stopCommands.some((command) => command.includes('codex-native-hook'))).toBe(false)
-    expect(
-      stopCommands.some((command) =>
-        command.includes('.codex/managed-hooks/wp-global-codex-omx-json-hook.sh'),
-      ),
-    ).toBe(true)
-  })
-
-  it('writes Codex hook commands as managed local launchers', async () => {
+  it('writes Codex hook commands as direct wp hook invocations', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {} })
 
     const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
@@ -1811,7 +968,7 @@ hooks:
       hooks: { PreCompact?: Array<{ hooks: Array<{ command: string }> }> }
     }
     const cursor = buildCursorHooksConfig({
-      resolveBin: (name) => `./node_modules/.bin/${name}`,
+      resolveBin: (name) => `node /pkg/bin/wp hook ${name.slice(3)} # ${name}`,
       matchers: { preToolUse: 'Bash|Write|Edit', postToolUse: 'Write|Edit' },
     }) as Record<string, unknown>
 
@@ -1822,25 +979,24 @@ hooks:
       group.hooks.map((hook) => hook.command),
     )
 
-    expect(claudePreCompactCommands).toStrictEqual([claudeBinCommand('wp-precompact-snapshot')])
+    expect(claudePreCompactCommands).toStrictEqual([
+      claudeBinCommand(repoRoot, 'wp-precompact-snapshot'),
+    ])
     expect(codexPreCompactCommands).toStrictEqual([
       codexBinCommand(repoRoot, 'wp-precompact-snapshot'),
     ])
     expect(result.manifest.claude.PreCompact?.[0]?.hooks[0]?.command).toBe(
-      claudeBinCommand('wp-precompact-snapshot'),
+      claudeBinCommand(repoRoot, 'wp-precompact-snapshot'),
     )
     expect(result.manifest.codex.PreCompact?.[0]?.hooks[0]?.command).toBe(
       codexBinCommand(repoRoot, 'wp-precompact-snapshot'),
     )
     expect(
-      readFileSync(
-        join(repoRoot, '.claude', 'hooks', 'managed', 'wp-precompact-snapshot.sh'),
-        'utf8',
-      ),
-    ).toContain('bin/wp-precompact-snapshot.js')
-    expect(
-      readFileSync(join(repoRoot, '.codex', 'managed-hooks', 'wp-precompact-snapshot.sh'), 'utf8'),
-    ).toContain('bin/wp-precompact-snapshot.js')
+      existsSync(join(repoRoot, '.claude', 'hooks', 'managed', 'wp-precompact-snapshot.sh')),
+    ).toBe(false)
+    expect(existsSync(join(repoRoot, '.codex', 'managed-hooks', 'wp-precompact-snapshot.sh'))).toBe(
+      false,
+    )
 
     // Cursor has no supported PreCompact/project-hook equivalent today. The
     // Cursor emitter must degrade explicitly by omitting the managed
@@ -1850,431 +1006,9 @@ hooks:
     expect(JSON.stringify(cursor)).not.toContain('wp-precompact-snapshot')
   })
 
-  it('fails closed for missing wp-pretool-guard launcher, emits JSON for missing Stop launcher, and fails open for other missing Codex hook launchers', async () => {
-    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
-
-    const siblingCwd = mkdtempSync(join(repoRoot, 'codex-missing-bins-'))
-    const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
-      hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>
-    }
-
-    const commandByEvent = {
-      SessionStart: (codex.hooks.SessionStart ?? []).flatMap((group) =>
-        group.hooks.map((hook) => hook.command),
-      ),
-      PreToolUse: (codex.hooks.PreToolUse ?? []).flatMap((group) =>
-        group.hooks.map((hook) => hook.command),
-      ),
-      PostToolUse: (codex.hooks.PostToolUse ?? []).flatMap((group) =>
-        group.hooks.map((hook) => hook.command),
-      ),
-      UserPromptSubmit: (codex.hooks.UserPromptSubmit ?? []).flatMap((group) =>
-        group.hooks.map((hook) => hook.command),
-      ),
-      Stop: (codex.hooks.Stop ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)),
-    }
-
-    for (const bin of WEBPRESSO_HOOK_BINS) {
-      chmodSync(join(repoRoot, '.codex', 'managed-hooks', `${bin}.sh`), 0o644)
-    }
-
-    const runFromSibling = (command: string) =>
-      spawnSync('sh', ['-c', command], {
-        cwd: siblingCwd,
-        encoding: 'utf8',
-        env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
-      })
-
-    const preTool = commandByEvent.PreToolUse[0]
-    expect(preTool).toContain('wp-pretool-guard')
-    const preToolResult = runFromSibling(preTool ?? '')
-    expect(preToolResult.status, preTool).toBe(0)
-    expect(preToolResult.stdout).toContain('"hookEventName":"PreToolUse"')
-    expect(preToolResult.stdout).toContain('"permissionDecision":"deny"')
-    expect(preToolResult.stdout).toContain('"wp not found on PATH.')
-
-    const stopResults = await Promise.all(
-      commandByEvent.Stop.map(async (command) => ({
-        command,
-        result: await runShellCommand(command, {
-          cwd: siblingCwd,
-          env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
-        }),
-      })),
-    )
-    for (const { command, result } of stopResults) {
-      expect(result.status, `Stop: ${command}`).toBe(0)
-      expect(result.stdout, `Stop: ${command}`).toBe('{}\n')
-      expect(() => JSON.parse(result.stdout)).not.toThrow()
-    }
-
-    const failOpenEvents: Array<keyof typeof commandByEvent> = [
-      'SessionStart',
-      'PostToolUse',
-      'UserPromptSubmit',
-    ]
-    const failOpenResults = await Promise.all(
-      failOpenEvents.flatMap((event) =>
-        commandByEvent[event].map(async (command) => ({
-          event,
-          command,
-          result: await runShellCommand(command, {
-            cwd: siblingCwd,
-            env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
-          }),
-        })),
-      ),
-    )
-    for (const { event, command, result } of failOpenResults) {
-      expect(result.status, `${event}: ${command}`).toBe(0)
-      expect(result.stdout, `${event}: ${command}`).toBe('')
-    }
-  })
-
-  it('preserves a real wp-pretool-guard failure instead of masking it as a missing launcher', async () => {
-    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
-
-    const siblingCwd = mkdtempSync(join(repoRoot, 'codex-failing-pretool-'))
-    const pretoolLauncher = join(repoRoot, '.codex', 'managed-hooks', 'wp-pretool-guard.sh')
-    writeFileSync(
-      pretoolLauncher,
-      '#!/bin/sh\nprintf "actual guard failure\\n" >&2\nexit 2\n',
-      'utf8',
-    )
-    chmodSync(pretoolLauncher, 0o755)
-
-    const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
-      hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>
-    }
-    const preTool = (codex.hooks.PreToolUse ?? []).flatMap((group) =>
-      group.hooks.map((hook) => hook.command),
-    )[0]
-
-    const result = spawnSync('sh', ['-c', preTool ?? ''], {
-      cwd: siblingCwd,
-      encoding: 'utf8',
-      env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
-    })
-
-    expect(result.status).toBe(2)
-    expect(result.stdout).not.toContain('wp not found on PATH')
-    expect(result.stderr).toContain('actual guard failure')
-  })
-
-  it('managed Codex Stop launcher emits JSON passthrough when the runtime is unavailable', async () => {
-    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
-
-    const launcherPath = join(repoRoot, '.codex', 'managed-hooks', 'wp-stop-qa.sh')
-    writeFileSync(
-      launcherPath,
-      readFileSync(launcherPath, 'utf8').replace(
-        resolveNodeBinaryForManagedHookLaunchers(),
-        '/missing/nonexistent-node',
-      ),
-      'utf8',
-    )
-    const result = spawnSync('sh', [launcherPath], {
-      cwd: repoRoot,
-      encoding: 'utf8',
-      env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
-    })
-
-    expect(result.status).toBe(0)
-    expect(result.stderr).toContain('webpresso hook wp-stop-qa skipped: global wp not found')
-    expect(result.stdout).toBe('{}\n')
-    expect(() => JSON.parse(result.stdout)).not.toThrow()
-  })
-
-  it('managed hook wrappers degrade when the native runtime is absent instead of using the built JS lane', async () => {
-    const packageRoot = mkdtempSync(join(repoRoot, 'runtime-absent-package-'))
-    mkdirSync(join(packageRoot, 'bin'), { recursive: true })
-    mkdirSync(join(packageRoot, 'dist', 'esm', 'cli'), { recursive: true })
-    for (const fileName of [
-      '_run.js',
-      'runtime-lanes.js',
-      '_managed-hook.js',
-      'wp-pretool-guard.js',
-      'wp-stop-qa.js',
-    ]) {
-      writeFileSync(
-        join(packageRoot, 'bin', fileName),
-        readFileSync(join(resolvePackageRootForHookLaunchers(), 'bin', fileName), 'utf8'),
-        'utf8',
-      )
-    }
-    writeFileSync(
-      join(packageRoot, 'package.json'),
-      JSON.stringify({ name: '@webpresso/agent-kit', type: 'module' }),
-      'utf8',
-    )
-    writeFileSync(join(packageRoot, '.node-version'), '0.0.0', 'utf8')
-    writeFileSync(
-      join(packageRoot, 'dist', 'esm', 'cli', 'cli.js'),
-      'throw new Error("built lane should not execute")\n',
-      'utf8',
-    )
-
-    const stop = spawnSync(process.execPath, [join(packageRoot, 'bin', 'wp-stop-qa.js')], {
-      cwd: repoRoot,
-      encoding: 'utf8',
-      env: { ...process.env, PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
-    })
-    const preTool = spawnSync(process.execPath, [join(packageRoot, 'bin', 'wp-pretool-guard.js')], {
-      cwd: repoRoot,
-      encoding: 'utf8',
-      env: { ...process.env, PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
-    })
-
-    expect(stop.status, stop.stderr).toBe(0)
-    expect(stop.stdout).toBe('{}\n')
-    expect(stop.stderr).toContain('native hook runtime unavailable')
-    expect(stop.stderr).not.toContain('current Node is')
-    expect(stop.stderr).not.toContain('built lane should not execute')
-
-    expect(preTool.status, preTool.stderr).toBe(0)
-    expect(JSON.parse(preTool.stdout)).toEqual({
-      hookSpecificOutput: {
-        hookEventName: 'PreToolUse',
-        permissionDecision: 'deny',
-        permissionDecisionReason:
-          'wp native hook runtime is unavailable. Reinstall @webpresso/agent-kit without omitting optional dependencies and re-run wp setup.',
-      },
-    })
-    expect(preTool.stderr).not.toContain('current Node is')
-    expect(preTool.stderr).not.toContain('built lane should not execute')
-  })
-
-  it('managed hook wrappers persist unexpected child failures and preserve exit 2 semantics', async () => {
-    const packageRoot = mkdtempSync(join(repoRoot, 'managed-hook-child-failure-'))
-    const targetId = `${process.platform}-${process.arch}`
-    mkdirSync(join(packageRoot, 'bin', 'runtime', targetId), { recursive: true })
-
-    for (const fileName of [
-      '_run.js',
-      'runtime-lanes.js',
-      '_managed-hook.js',
-      'wp-pretool-guard.js',
-      'wp-stop-qa.js',
-      'wp-precompact-snapshot.js',
-      'wp-sessionstart-routing.js',
-      'wp-post-tool.js',
-      'wp-guard-switch.js',
-    ]) {
-      writeFileSync(
-        join(packageRoot, 'bin', fileName),
-        readFileSync(join(resolvePackageRootForHookLaunchers(), 'bin', fileName), 'utf8'),
-        'utf8',
-      )
-    }
-    writeFileSync(
-      join(packageRoot, 'package.json'),
-      JSON.stringify({
-        name: '@webpresso/agent-kit',
-        type: 'module',
-        optionalDependencies: { '@webpresso/agent-kit-runtime-test': '0.0.0' },
-      }),
-      'utf8',
-    )
-    writeFileSync(
-      join(packageRoot, 'bin', 'runtime-manifest.json'),
-      JSON.stringify({
-        binaryName: 'wp',
-        targets: [
-          {
-            id: targetId,
-            os: process.platform,
-            cpu: process.arch,
-            packageName: '@webpresso/agent-kit-runtime-test',
-          },
-        ],
-      }),
-      'utf8',
-    )
-
-    const fakeRuntime = join(packageRoot, 'bin', 'runtime', targetId, 'wp')
-    writeFileSync(
-      fakeRuntime,
-      `#!/bin/sh
-if [ "\${WP_FAKE_HOOK_MODE:-}" = "signal" ]; then
-  kill -TERM $$
-fi
-printf 'child stdout should not leak\\n'
-printf 'child stderr should not leak\\n' >&2
-exit "\${WP_FAKE_HOOK_STATUS:-1}"
-`,
-      'utf8',
-    )
-    chmodSync(fakeRuntime, 0o755)
-
-    const errorsPath = join(packageRoot, 'hook-errors.json')
-    const runManagedBin = (binName: string, status = '1', mode = '') =>
-      spawnSync(process.execPath, [join(packageRoot, 'bin', `${binName}.js`)], {
-        cwd: repoRoot,
-        encoding: 'utf8',
-        timeout: 10_000,
-        env: {
-          ...process.env,
-          WP_HOOK_ERRORS_PATH: errorsPath,
-          WP_FAKE_HOOK_STATUS: status,
-          WP_FAKE_HOOK_MODE: mode,
-        },
-      })
-
-    const assertNoChildLeak = (result: ReturnType<typeof runManagedBin>) => {
-      expect(result.stdout).not.toContain('child stdout should not leak')
-      expect(result.stderr).not.toContain('child stderr should not leak')
-    }
-
-    for (const binName of ['wp-stop-qa', 'wp-precompact-snapshot']) {
-      const result = runManagedBin(binName)
-      expect(result.error).toBeUndefined()
-      expect(result.status, result.stderr).toBe(0)
-      expect(result.stdout).toBe('{}\n')
-      expect(result.stderr).toContain('fallback=emit-empty-json')
-      assertNoChildLeak(result)
-    }
-
-    for (const binName of ['wp-sessionstart-routing', 'wp-post-tool', 'wp-guard-switch']) {
-      const result = runManagedBin(binName)
-      expect(result.error).toBeUndefined()
-      expect(result.status, result.stderr).toBe(0)
-      expect(result.stdout).toBe('')
-      expect(result.stderr).toContain('fallback=fail-open')
-      assertNoChildLeak(result)
-    }
-
-    const preTool = runManagedBin('wp-pretool-guard')
-    expect(preTool.error).toBeUndefined()
-    expect(preTool.status, preTool.stderr).toBe(0)
-    expect(JSON.parse(preTool.stdout)).toMatchObject({
-      hookSpecificOutput: {
-        hookEventName: 'PreToolUse',
-        permissionDecision: 'deny',
-      },
-    })
-    expect(preTool.stderr).toContain('fallback=fail-closed-deny')
-    assertNoChildLeak(preTool)
-
-    const signaled = runManagedBin('wp-post-tool', '1', 'signal')
-    expect(signaled.error).toBeUndefined()
-    expect(signaled.status, signaled.stderr).toBe(0)
-    expect(signaled.stdout).toBe('')
-    expect(signaled.stderr).toContain('signal=SIGTERM')
-    expect(signaled.stderr).toContain('fallback=fail-open')
-
-    const preservedExitTwo = runManagedBin('wp-pretool-guard', '2')
-    expect(preservedExitTwo.error).toBeUndefined()
-    expect(preservedExitTwo.status).toBe(2)
-    expect(preservedExitTwo.stdout).toContain('child stdout should not leak')
-    expect(preservedExitTwo.stderr).toContain('child stderr should not leak')
-
-    const stored = JSON.parse(readFileSync(errorsPath, 'utf8')) as {
-      entries: Array<{
-        binName: string
-        status?: number
-        signal?: string
-        fallback: string
-        detail?: string
-      }>
-    }
-    expect(stored.entries).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          binName: 'wp-stop-qa',
-          status: 1,
-          fallback: 'emit-empty-json',
-        }),
-        expect.objectContaining({
-          binName: 'wp-precompact-snapshot',
-          status: 1,
-          fallback: 'emit-empty-json',
-        }),
-        expect.objectContaining({
-          binName: 'wp-sessionstart-routing',
-          status: 1,
-          fallback: 'fail-open',
-        }),
-        expect.objectContaining({
-          binName: 'wp-post-tool',
-          status: 1,
-          fallback: 'fail-open',
-        }),
-        expect.objectContaining({
-          binName: 'wp-guard-switch',
-          status: 1,
-          fallback: 'fail-open',
-        }),
-        expect.objectContaining({
-          binName: 'wp-pretool-guard',
-          status: 1,
-          fallback: 'fail-closed-deny',
-        }),
-        expect.objectContaining({
-          binName: 'wp-post-tool',
-          signal: 'SIGTERM',
-          fallback: 'fail-open',
-        }),
-      ]),
-    )
-    expect(stored.entries).toHaveLength(7)
-    expect(JSON.stringify(stored)).not.toContain('child stdout should not leak')
-    expect(JSON.stringify(stored)).not.toContain('child stderr should not leak')
-  }, 30_000)
-
-  it('managed Codex launchers preserve event-specific fallbacks when repo root cannot be entered', async () => {
-    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
-
-    const missingRepoRoot = join(repoRoot, 'missing-repo-root')
-    const preToolLauncherPath = join(repoRoot, '.codex', 'managed-hooks', 'wp-pretool-guard.sh')
-    const stopLauncherPath = join(repoRoot, '.codex', 'managed-hooks', 'wp-stop-qa.sh')
-    for (const launcherPath of [preToolLauncherPath, stopLauncherPath]) {
-      writeFileSync(
-        launcherPath,
-        readFileSync(launcherPath, 'utf8').replace(
-          quoteShell(repoRoot),
-          quoteShell(missingRepoRoot),
-        ),
-        'utf8',
-      )
-    }
-
-    const preTool = spawnSync('sh', [preToolLauncherPath], {
-      cwd: repoRoot,
-      encoding: 'utf8',
-      env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
-    })
-    const stop = spawnSync('sh', [stopLauncherPath], {
-      cwd: repoRoot,
-      encoding: 'utf8',
-      env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
-    })
-
-    expect(preTool.status).toBe(0)
-    expect(JSON.parse(preTool.stdout)).toMatchObject({
-      hookSpecificOutput: {
-        hookEventName: 'PreToolUse',
-        permissionDecision: 'deny',
-      },
-    })
-    expect(stop.status).toBe(0)
-    expect(stop.stdout).toBe('{}\n')
-  })
-
   it('keeps Codex hook commands executable from a sibling cwd instead of failing with 127', async () => {
     initGitRepo(repoRoot)
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
-
-    const binPath = join(
-      repoRoot,
-      'node_modules',
-      '@webpresso',
-      'agent-kit',
-      'bin',
-      'wp-pretool-guard.js',
-    )
-    mkdirSync(join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'bin'), { recursive: true })
-    writeFileSync(binPath, '#!/usr/bin/env node\nprocess.stdout.write("{}\\n")\n', 'utf8')
-    chmodSync(binPath, 0o755)
 
     const siblingCwd = mkdtempSync(join(repoRoot, 'sibling-'))
     const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
@@ -2296,18 +1030,6 @@ exit "\${WP_FAKE_HOOK_STATUS:-1}"
     initGitRepo(repoRoot)
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
 
-    const binPath = join(
-      repoRoot,
-      'node_modules',
-      '@webpresso',
-      'agent-kit',
-      'bin',
-      'wp-stop-qa.js',
-    )
-    mkdirSync(join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'bin'), { recursive: true })
-    writeFileSync(binPath, '#!/usr/bin/env node\nprocess.exit(0)\n', 'utf8')
-    chmodSync(binPath, 0o755)
-
     const siblingCwd = mkdtempSync(join(repoRoot, 'sibling-stop-'))
     const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
       hooks: { Stop: Array<{ hooks: Array<{ command: string }> }> }
@@ -2322,123 +1044,15 @@ exit "\${WP_FAKE_HOOK_STATUS:-1}"
     expect(command).toBe(codexBinCommand(repoRoot, 'wp-stop-qa'))
     expect(result.status).toBe(0)
   })
-
-  it('executes every generated Claude hook command successfully from outside repo root', async () => {
-    initGitRepo(repoRoot)
-    process.env.WP_HOOK_NODE_PATH = installFakeNodeRuntime(repoRoot)
-    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
-    const fixtureBinDir = installFakeWebpressoBins(repoRoot)
-
-    const siblingCwd = mkdtempSync(join(repoRoot, 'claude-smoke-'))
-    const settings = JSON.parse(
-      readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8'),
-    ) as {
-      hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>
-    }
-
-    const commands = Array.from(
-      new Set(
-        [
-          'SessionStart',
-          'PreToolUse',
-          'PostToolUse',
-          'UserPromptSubmit',
-          'Stop',
-          'PreCompact',
-        ].flatMap((event) =>
-          (settings.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)),
-        ),
-      ),
-    )
-
-    expect(commands.length).toBeGreaterThan(0)
-    const runtimeLog = join(repoRoot, 'claude-hook-runtime.log')
-    const binLog = join(repoRoot, 'claude-hook-bins.log')
-    const results = await runHookCommands(commands, {
-      cwd: siblingCwd,
-      env: {
-        PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
-        HOME: repoRoot,
-        CLAUDE_PROJECT_DIR: repoRoot,
-        WP_HOOK_SMOKE_BIN_DIR: fixtureBinDir,
-        WP_HOOK_SMOKE_BIN_LOG: binLog,
-        WP_HOOK_SMOKE_RUNTIME_LOG: runtimeLog,
-        WP_SKIP_UPDATE_CHECK: '1',
-      },
-    })
-
-    for (const result of results) {
-      expect(result.status, `${result.command}\n${result.stderr}`).toBe(0)
-      expect(result.stderr, result.command).toBe('')
-      for (const line of result.stdout.trim().split('\n').filter(Boolean)) {
-        expect(() => JSON.parse(line), `${result.command}\n${line}`).not.toThrow()
-      }
-    }
-    assertSmokeRanEveryWebpressoBin(runtimeLog, binLog)
-  }, 30_000)
-
-  it('executes every generated Codex hook command successfully from a sibling cwd', async () => {
-    initGitRepo(repoRoot)
-    process.env.WP_HOOK_NODE_PATH = installFakeNodeRuntime(repoRoot)
-    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
-    const fixtureBinDir = installFakeWebpressoBins(repoRoot)
-
-    const siblingCwd = mkdtempSync(join(repoRoot, 'codex-smoke-'))
-    const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
-      hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>
-    }
-
-    const commands = Array.from(
-      new Set(
-        [
-          'SessionStart',
-          'PreToolUse',
-          'PostToolUse',
-          'UserPromptSubmit',
-          'Stop',
-          'PreCompact',
-        ].flatMap((event) =>
-          (codex.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)),
-        ),
-      ),
-    )
-
-    expect(commands.length).toBeGreaterThan(0)
-    const runtimeLog = join(repoRoot, 'codex-hook-runtime.log')
-    const binLog = join(repoRoot, 'codex-hook-bins.log')
-    const results = await runHookCommands(commands, {
-      cwd: siblingCwd,
-      env: {
-        PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
-        HOME: repoRoot,
-        WP_HOOK_SMOKE_BIN_DIR: fixtureBinDir,
-        WP_HOOK_SMOKE_BIN_LOG: binLog,
-        WP_HOOK_SMOKE_RUNTIME_LOG: runtimeLog,
-        WP_SKIP_UPDATE_CHECK: '1',
-      },
-    })
-
-    for (const result of results) {
-      expect(result.status, `${result.command}\n${result.stderr}`).toBe(0)
-      expect(result.stderr, result.command).toBe('')
-      for (const line of result.stdout.trim().split('\n').filter(Boolean)) {
-        expect(() => JSON.parse(line), `${result.command}\n${line}`).not.toThrow()
-      }
-    }
-    assertSmokeRanEveryWebpressoBin(runtimeLog, binLog)
-  }, 30_000)
 })
 
 describe('classifyWebpressoHookBin', () => {
-  it('classifies canonical, legacy, null, and unrelated bin names exactly', () => {
+  it('classifies canonical, null, and unrelated bin names exactly', () => {
     expect(classifyWebpressoHookBin('wp-pretool-guard')).toStrictEqual({
       kind: 'canonical',
       binName: 'wp-pretool-guard',
     })
-    expect(classifyWebpressoHookBin('ak-pretool-guard')).toStrictEqual({
-      kind: 'legacy',
-      binName: 'ak-pretool-guard',
-    })
+    expect(classifyWebpressoHookBin('old-pretool-guard')).toBeNull()
     expect(classifyWebpressoHookBin(null)).toBeNull()
     expect(classifyWebpressoHookBin('not-webpresso')).toBeNull()
   })
@@ -2448,12 +1062,21 @@ describe('hoistTopLevelEvents', () => {
   it('moves top-level event keys into the wrapped `hooks` key', async () => {
     const input = {
       SessionStart: [
-        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-sessionstart-routing' }] },
+        {
+          hooks: [
+            {
+              type: 'command',
+              command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
+            },
+          ],
+        },
       ],
       PreToolUse: [
         {
           matcher: 'Bash',
-          hooks: [{ type: 'command', command: './node_modules/.bin/wp-pretool-guard' }],
+          hooks: [
+            { type: 'command', command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard' },
+          ],
         },
       ],
     }
@@ -2483,11 +1106,25 @@ describe('hoistTopLevelEvents', () => {
   it('dedupes when both top-level and wrapped contain the same wp-* command', async () => {
     const input = {
       SessionStart: [
-        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-sessionstart-routing' }] },
+        {
+          hooks: [
+            {
+              type: 'command',
+              command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
+            },
+          ],
+        },
       ],
       hooks: {
         SessionStart: [
-          { hooks: [{ type: 'command', command: './node_modules/.bin/wp-sessionstart-routing' }] },
+          {
+            hooks: [
+              {
+                type: 'command',
+                command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
+              },
+            ],
+          },
         ],
       },
     }
@@ -2505,7 +1142,14 @@ describe('hoistTopLevelEvents', () => {
     const input = {
       $schema: 'https://example.com/schema.json',
       SessionStart: [
-        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-sessionstart-routing' }] },
+        {
+          hooks: [
+            {
+              type: 'command',
+              command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
+            },
+          ],
+        },
       ],
     }
 
@@ -2574,7 +1218,7 @@ describe('plugin-native invariants — .claude/settings.json', () => {
 describe('buildWebpressoHookGroups', () => {
   it('returns the canonical 6 wp-* event groups with the supplied bin resolver', async () => {
     const result = buildWebpressoHookGroups({
-      resolveBin: (name) => `./node_modules/.bin/${name}`,
+      resolveBin: (name) => `node /pkg/bin/wp hook ${name.slice(3)} # ${name}`,
       matchers: { preToolUse: 'Bash|Edit|Write', postToolUse: 'Edit|Write' },
     })
 
@@ -2589,30 +1233,33 @@ describe('buildWebpressoHookGroups', () => {
       ].sort(),
     )
     expect(result.SessionStart?.[0]?.hooks[0]?.command).toBe(
-      './node_modules/.bin/wp-sessionstart-routing',
+      'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
     )
     expect(result.PreToolUse?.[0]?.matcher).toBe('Bash|Edit|Write')
-    expect(result.PreToolUse?.[0]?.hooks[0]?.command).toBe('./node_modules/.bin/wp-pretool-guard')
-    expect(result.PostToolUse?.[0]?.matcher).toBe('Edit|Write')
-    expect(result.PostToolUse?.[0]?.hooks[0]?.command).toBe('./node_modules/.bin/wp-post-tool')
-    expect(result.UserPromptSubmit?.[0]?.hooks[0]?.command).toBe(
-      './node_modules/.bin/wp-guard-switch',
+    expect(result.PreToolUse?.[0]?.hooks[0]?.command).toBe(
+      'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
     )
-    expect(result.Stop?.[0]?.hooks[0]?.command).toBe('./node_modules/.bin/wp-stop-qa')
+    expect(result.PostToolUse?.[0]?.matcher).toBe('Edit|Write')
+    expect(result.PostToolUse?.[0]?.hooks[0]?.command).toBe(
+      'node /pkg/bin/wp hook post-tool # wp-post-tool',
+    )
+    expect(result.UserPromptSubmit?.[0]?.hooks[0]?.command).toBe(
+      'node /pkg/bin/wp hook guard-switch # wp-guard-switch',
+    )
+    expect(result.Stop?.[0]?.hooks[0]?.command).toBe('node /pkg/bin/wp hook stop-qa # wp-stop-qa')
     expect(result.PreCompact?.[0]?.hooks[0]?.command).toBe(
-      './node_modules/.bin/wp-precompact-snapshot',
+      'node /pkg/bin/wp hook precompact-snapshot # wp-precompact-snapshot',
     )
     expect(result.PreCompact?.[0]?.matcher).toBe(undefined)
   })
 
   it('substitutes the Claude bin resolver for guarded $CLAUDE_PROJECT_DIR commands', async () => {
     const result = buildWebpressoHookGroups({
-      resolveBin: (name) =>
-        `[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/${name}" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/${name}" || true`,
+      resolveBin: (name) => `node /pkg/bin/wp hook ${name.slice(3)} # ${name}`,
       matchers: { preToolUse: 'Bash|Write|Edit|MultiEdit', postToolUse: 'Write|Edit|MultiEdit' },
     })
 
-    expect(result.SessionStart?.[0]?.hooks[0]?.command).toContain('$CLAUDE_PROJECT_DIR')
+    expect(result.SessionStart?.[0]?.hooks[0]?.command).toContain('wp hook sessionstart-routing')
     expect(result.SessionStart?.[0]?.hooks[0]?.command).toContain('wp-sessionstart-routing')
     expect(result.PreToolUse?.[0]?.matcher).toBe('Bash|Write|Edit|MultiEdit')
   })
@@ -2664,29 +1311,6 @@ describe('BP1 hotfix: launcher chain, node fallback, gstack stdin scoping, stop-
     // Skipped runs warn on stderr instead of silently succeeding.
     expect(stopCommand).toContain('>&2')
     expect(stopCommand).not.toContain('|| true')
-  })
-
-  it('renders shim launchers with direct-bin execution and no duplicated exit 0', async () => {
-    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
-    for (const bin of WEBPRESSO_HOOK_BINS) {
-      const launcher = readFileSync(
-        join(repoRoot, '.claude', 'hooks', 'managed', `${bin}.sh`),
-        'utf8',
-      )
-      expect(launcher).toContain(`bin/${bin}.js`)
-      expect(launcher).not.toMatch(/exit 0\s+exit 0/u)
-    }
-    // Non-guard hooks warn on stderr (never silently skip); guard stays fail-closed.
-    const sessionStart = readFileSync(
-      join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh'),
-      'utf8',
-    )
-    expect(sessionStart).toContain('>&2')
-    const guard = readFileSync(
-      join(repoRoot, '.claude', 'hooks', 'managed', 'wp-pretool-guard.sh'),
-      'utf8',
-    )
-    expect(guard).toContain('permissionDecision')
   })
 
   it('scopes the gstack PreToolUse check to gstack-owned skills via stdin', async () => {

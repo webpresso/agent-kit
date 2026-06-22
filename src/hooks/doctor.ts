@@ -15,7 +15,6 @@ import { spawn } from 'node:child_process'
 import { platform } from 'node:os'
 import { join, resolve } from 'node:path'
 
-import { repairInstalledOmxPluginHooks } from '#cli/commands/init/scaffolders/omx/index.js'
 import type { HooksMap } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
 import {
   diffHooksManifest,
@@ -606,10 +605,10 @@ export function checkOmxPluginCacheStaleSurfaceRepair(
     }
   }
 
-  const repair = options.repair ?? repairInstalledOmxPluginHooks
+  const repair = options.repair
   let repairedPaths: string[]
   try {
-    repairedPaths = repair(codexHome, nodeBinary)
+    repairedPaths = repair ? repair(codexHome, nodeBinary) : []
   } catch {
     return {
       name: 'OMX plugin-cache stale-surface repair',
@@ -1043,12 +1042,12 @@ async function checkClaudeHost(): Promise<DoctorCheck> {
       }
 }
 
-// Marker for the managed hook launchers `wp setup` writes under
-// `.claude/hooks/managed/` (CLAUDE_MANAGED_HOOK_SUBDIR in the agent-hooks
-// scaffolder). The plugin manifest no longer ships hooks (they double-fired
-// against these and were the less reliable surface), so settings.json is the
-// single source — if it does not reference them, the hooks are not installed.
-const MANAGED_HOOK_MARKER = 'hooks/managed/wp-pretool-guard'
+// Markers for the direct hook commands `wp setup` writes into
+// `.claude/settings.json`. The plugin manifest no longer ships hooks (they
+// double-fired against settings.json and were the less reliable surface), so
+// settings.json is the single source — if it does not reference the direct
+// `bin/wp hook pretool-guard` command, the hooks are not installed.
+const AGENT_KIT_HOOK_MARKERS = ['bin/wp', ' hook pretool-guard'] as const
 const CODEX_PLUGIN_ARTIFACTS = [
   'hooks/hooks.json',
   'codex.mcp.json',
@@ -1186,8 +1185,8 @@ export function checkHostLifecycleDepth(): DoctorCheck {
 }
 
 /**
- * Verify the consumer's `.claude/settings.json` carries the managed agent-kit
- * hook launchers. Since the hooks are single-sourced there (not in the plugin
+ * Verify the consumer's `.claude/settings.json` carries the direct agent-kit
+ * hook commands. Since the hooks are single-sourced there (not in the plugin
  * manifest), a missing reference means a plugin-only install that never ran
  * `wp setup` — i.e. no agent-kit hooks are active.
  */
@@ -1204,7 +1203,7 @@ export function checkManagedHooksInstalled(cwd = process.cwd()): {
   }
   try {
     const raw = readFileSync(settingsPath, 'utf-8')
-    if (!raw.includes(MANAGED_HOOK_MARKER)) {
+    if (!AGENT_KIT_HOOK_MARKERS.every((marker) => raw.includes(marker))) {
       return {
         ok: false,
         detail: 'agent-kit hooks not found in .claude/settings.json — run `wp setup`',
@@ -1682,7 +1681,7 @@ export async function printHooksDoctor(opts: RunHooksDoctorOptions = {}): Promis
     console.error('Repair hints:')
     console.error('  • Refresh local hook/plugin surfaces: `wp setup`')
     console.error(
-      '  • Consumers: run `npm install -g @webpresso/agent-kit && wp setup`; source checkout: enable `WP_FORCE_SOURCE=1` (direnv allow).',
+      '  • Consumers: run `vp install -g @webpresso/agent-kit && wp setup`; source checkout: enable `WP_FORCE_SOURCE=1` (direnv allow).',
     )
     console.error(
       '  • If install failed resolving @webpresso/agent-kit: make sure this repo uses the public npm registry, then rerun `vp install`',

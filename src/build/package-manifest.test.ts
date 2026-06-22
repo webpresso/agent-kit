@@ -18,7 +18,6 @@ import {
   preparePackedManifest,
   restorePackedManifest,
 } from './package-manifest.js'
-import { WP_HOOK_BIN_NAMES } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
 
 const repoRoot = findRepoRoot(import.meta.dirname)
 
@@ -52,8 +51,6 @@ function loadDryRunPackagePaths(): string[] {
     'README.md',
     'package.json',
     'LICENSE',
-    'bin/_managed-hook.js',
-    ...(contract.cliBins?.internalHooks ?? []).map((hookBin) => `bin/${hookBin}.js`),
     ...codexPluginArtifactPaths,
     ...sessionMemoryPublicDocPaths,
     ...expectedSessionMemoryToolDescriptors,
@@ -334,7 +331,8 @@ describe('createPackedManifest', () => {
     expect(manifest.bin?.['wp-precompact-snapshot']).toBe(undefined)
   })
 
-  it('classifies precompact snapshot as an internal hook bin rather than a public CLI', () => {
+  it('does not expose removed internal hook bins as public CLIs or package files', () => {
+    const packedPaths = getDryRunPackagePaths()
     const packageJson = readJsonObject(join(repoRoot, 'package.json')) as {
       bin?: Record<string, string>
     }
@@ -344,34 +342,24 @@ describe('createPackedManifest', () => {
         public?: string[]
       }
     }
+    const removedHookBins = [
+      'wp-sessionstart-routing',
+      'wp-pretool-guard',
+      'wp-post-tool',
+      'wp-guard-switch',
+      'wp-stop-qa',
+      'wp-precompact-snapshot',
+    ]
 
-    expect(contract.cliBins?.internalHooks ?? []).toContain('wp-precompact-snapshot')
-    expect([...(contract.cliBins?.internalHooks ?? [])].sort()).toEqual(
-      [...WP_HOOK_BIN_NAMES].sort(),
-    )
-    expect(contract.cliBins?.public ?? []).not.toContain('wp-precompact-snapshot')
+    expect(contract.cliBins?.internalHooks ?? []).toStrictEqual([])
     expect(Object.keys(packageJson.bin ?? {}).sort()).toEqual(
       [...(contract.cliBins?.public ?? [])].sort(),
     )
-    for (const internalHook of contract.cliBins?.internalHooks ?? []) {
-      expect(packageJson.bin).not.toHaveProperty(internalHook)
-      expect(existsSync(join(repoRoot, 'bin', `${internalHook}.js`))).toBe(true)
-    }
-  })
-
-  it('packs internal managed hook wrapper files without exposing them as public package bins', () => {
-    const packedPaths = getDryRunPackagePaths()
-    const packageJson = readJsonObject(join(repoRoot, 'package.json')) as {
-      bin?: Record<string, string>
-    }
-    const contract = JSON.parse(readFileSync(join(repoRoot, 'package-surface.json'), 'utf8')) as {
-      cliBins?: { internalHooks?: string[] }
-    }
-
-    expect(packedPaths).toContain('bin/_managed-hook.js')
-    for (const hookBin of contract.cliBins?.internalHooks ?? []) {
-      expect(packedPaths).toContain(`bin/${hookBin}.js`)
+    expect(packedPaths).not.toContain('bin/_managed-hook.js')
+    for (const hookBin of removedHookBins) {
       expect(packageJson.bin).not.toHaveProperty(hookBin)
+      expect(existsSync(join(repoRoot, 'bin', `${hookBin}.js`))).toBe(false)
+      expect(packedPaths).not.toContain(`bin/${hookBin}.js`)
     }
   })
 

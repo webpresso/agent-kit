@@ -85,7 +85,10 @@ describe('vendor hook schemas', () => {
       preToolUse: [
         {
           hooks: [
-            { type: 'command' as const, command: '/repo/node_modules/.bin/wp-pretool-guard' },
+            {
+              type: 'command' as const,
+              command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
+            },
           ],
         },
       ],

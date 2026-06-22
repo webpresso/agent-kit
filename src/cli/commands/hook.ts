@@ -1,7 +1,6 @@
 import type { CAC } from 'cac'
 
 import { recordHookError, type HookFallbackAction } from '#hooks/errors/index.js'
-import type { HookEventName } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
 
 const HOOK_NAMES = [
   'pretool-guard',
@@ -15,13 +14,13 @@ const HOOK_NAMES = [
 
 export type HookName = (typeof HOOK_NAMES)[number]
 
-type ManagedHookMetadata = {
+type HookMetadata = {
   readonly binName: string
-  readonly event: HookEventName
+  readonly event: string
   readonly fallback: HookFallbackAction
 }
 
-const MANAGED_HOOK_METADATA: Readonly<Partial<Record<HookName, ManagedHookMetadata>>> = {
+const HOOK_METADATA: Readonly<Record<HookName, HookMetadata>> = {
   'pretool-guard': {
     binName: 'wp-pretool-guard',
     event: 'PreToolUse',
@@ -40,12 +39,14 @@ const MANAGED_HOOK_METADATA: Readonly<Partial<Record<HookName, ManagedHookMetada
     event: 'PreCompact',
     fallback: 'emit-empty-json',
   },
+  'test-quality-check': {
+    binName: 'wp-test-quality-check',
+    event: 'TestQualityCheck',
+    fallback: 'fail-open',
+  },
 }
 
-const PRETOOL_GUARD_RUNTIME_UNAVAILABLE_REASON =
-  'wp hook pretool-guard failed unexpectedly; failing closed.'
-
-const HOOK_HANDLERS: Readonly<Record<HookName, (args: string[]) => Promise<void>>> = {
+const HOOK_HANDLERS: Readonly<Record<HookName, (args: string[]) => Promise<void> | void>> = {
   'pretool-guard': async () => {
     const { main } = await import('#hooks/pretool-guard/index')
     await main()
@@ -76,10 +77,6 @@ const HOOK_HANDLERS: Readonly<Record<HookName, (args: string[]) => Promise<void>
   },
 }
 
-export function isHookName(value: string): value is HookName {
-  return value in HOOK_HANDLERS
-}
-
 function errorDetail(error: unknown): string {
   return error instanceof Error ? error.message : String(error ?? '')
 }
@@ -97,9 +94,7 @@ function writePretoolDeny(reason: string): void {
 }
 
 function emitFallback(name: HookName, error: unknown): void {
-  const metadata = MANAGED_HOOK_METADATA[name]
-  if (!metadata) throw error
-
+  const metadata = HOOK_METADATA[name]
   const detail = errorDetail(error)
   recordHookError({
     binName: metadata.binName,
@@ -111,7 +106,7 @@ function emitFallback(name: HookName, error: unknown): void {
   })
 
   if (metadata.fallback === 'fail-closed-deny') {
-    writePretoolDeny(PRETOOL_GUARD_RUNTIME_UNAVAILABLE_REASON)
+    writePretoolDeny(`webpresso pretool guard failed: ${detail}`)
     return
   }
 
@@ -123,6 +118,10 @@ function emitFallback(name: HookName, error: unknown): void {
   process.stderr.write(
     `webpresso hook ${metadata.binName} degraded: hook=${name} event=${metadata.event} fallback=${metadata.fallback}: ${detail}\n`,
   )
+}
+
+export function isHookName(value: string): value is HookName {
+  return value in HOOK_HANDLERS
 }
 
 export async function runHookCommand(name: string, args: string[] = []): Promise<void> {

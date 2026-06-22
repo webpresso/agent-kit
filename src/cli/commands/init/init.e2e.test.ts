@@ -76,10 +76,6 @@ function runAk(args: string[], extraEnv: Record<string, string> = {}): RunResult
       // packaged in this fixture PATH — skip unless a test explicitly opts in.
       WP_SKIP_RTK: '1',
       WP_SKIP_OMC: '1',
-      // The e2e runner invokes source through Bun while hook launchers must
-      // hard-target Node. Keep the generated launcher contract independent of
-      // the fixture PATH that intentionally hides node.
-      WP_HOOK_NODE_PATH: process.execPath,
       ...extraEnv,
     },
   })
@@ -155,10 +151,10 @@ case "$1" in
 {
   "hooks": {
     "SessionStart": [
-      { "hooks": [{ "type": "command", "command": "./node_modules/.bin/wp-sessionstart-routing" }] }
+      { "hooks": [{ "type": "command", "command": "node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing" }] }
     ],
     "Stop": [
-      { "hooks": [{ "type": "command", "command": "./node_modules/.bin/wp-stop-qa" }] }
+      { "hooks": [{ "type": "command", "command": "node /pkg/bin/wp hook stop-qa # wp-stop-qa" }] }
     ]
   }
 }
@@ -216,7 +212,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(existsSync(path.join(repo, '.husky', 'pre-push'))).toBe(false)
       expect(existsSync(path.join(repo, 'scripts', 'check-no-dev-vars.ts'))).toBe(false)
       expect(existsSync(path.join(repo, 'scripts', 'resolve-webpresso-cli-versions.cjs'))).toBe(
-        true,
+        false,
       )
 
       // Future-proof guard: PreToolUse should be fail-closed (deny JSON
@@ -314,7 +310,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
         false,
       )
       expect(existsSync(path.join(repo, 'scripts', 'resolve-webpresso-cli-versions.cjs'))).toBe(
-        true,
+        false,
       )
       expect(existsSync(path.join(repo, '.husky', 'pre-commit'))).toBe(true)
       expect(existsSync(path.join(repo, '.husky', 'commit-msg'))).toBe(false)
@@ -376,30 +372,23 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
         group.hooks.map((hook) => hook.command),
       )
 
-      const sessionRoutingBin = path.join(
-        repo,
-        '.codex',
-        'managed-hooks',
-        'wp-sessionstart-routing.sh',
-      )
-      const stopQaBin = path.join(repo, '.codex', 'managed-hooks', 'wp-stop-qa.sh')
-      // CODEX_BIN produces guarded commands: `[ -x '<abs>' ] && '<abs>' || true`
       expect(
         sessionCommands.some(
-          (cmd) => cmd.includes(sessionRoutingBin) && !cmd.includes('./node_modules'),
+          (cmd) => cmd.includes('/bin/wp') && cmd.includes(' hook sessionstart-routing'),
         ),
       ).toBe(true)
       expect(
-        stopCommands.some((cmd) => cmd.includes(stopQaBin) && !cmd.includes('./node_modules')),
+        stopCommands.some((cmd) => cmd.includes('/bin/wp') && cmd.includes(' hook stop-qa')),
       ).toBe(true)
       expect(
         sessionCommands.every(
-          (cmd) => !cmd.includes('./node_modules/.bin/wp-sessionstart-routing'),
+          (cmd) =>
+            !cmd.includes('node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing'),
         ),
       ).toBe(true)
-      expect(stopCommands.every((cmd) => !cmd.includes('./node_modules/.bin/wp-stop-qa'))).toBe(
-        true,
-      )
+      expect(
+        stopCommands.every((cmd) => !cmd.includes('node /pkg/bin/wp hook stop-qa # wp-stop-qa')),
+      ).toBe(true)
       expect(sessionCommands.every((cmd) => !cmd.includes('node_modules/.bin'))).toBe(true)
       expect(stopCommands.every((cmd) => !cmd.includes('node_modules/.bin'))).toBe(true)
 
@@ -408,7 +397,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
         .flatMap((event) =>
           (codex.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)),
         )
-        .filter((command) => command.includes('/.codex/managed-hooks/wp-'))
+        .filter((command) => command.includes('/bin/wp') && command.includes(' hook '))
 
       for (const command of allCommands) {
         const result = spawnSync('sh', ['-lc', command], {
