@@ -11,6 +11,7 @@ import {
   evaluateMetricClassBindingGate,
   evaluateRedactionGate,
   evaluateCapabilityDocsGate,
+  evaluateCompiledRuntimeTypecheckParity,
   hasNumericBenchmarkClaim,
   listFirstPartyBenchmarkResultCards,
   evaluatePluginNativeLauncherPolicy,
@@ -90,6 +91,48 @@ describe('public-readiness runtime policy helpers', () => {
       argsOk: true,
       command: '${CLAUDE_PLUGIN_ROOT}/bin/wp',
       args: ['mcp'],
+    })
+  })
+
+  it('fails readiness when the compiled host runtime is missing the typecheck targeting surface', () => {
+    const result = evaluateCompiledRuntimeTypecheckParity({
+      runtimeBinaryPath: '/tmp/wp',
+      targetId: 'linux-x64',
+      probe: () => ({
+        ok: false,
+        failures: ['typecheck --help is missing the --file flag'],
+        helpOutput: 'Usage: wp typecheck',
+        fileOutput: '',
+        expectedScopes: ['@parity/root', '@parity/widget'],
+        workspaceRoot: '/tmp/runtime-parity',
+      }),
+    })
+
+    expect(result).toEqual({
+      name: 'compiled-runtime-typecheck-parity',
+      status: 'FAIL',
+      detail: 'typecheck --help is missing the --file flag',
+    })
+  })
+
+  it('passes readiness when the compiled host runtime exposes typecheck targeting parity', () => {
+    const result = evaluateCompiledRuntimeTypecheckParity({
+      runtimeBinaryPath: '/tmp/wp',
+      targetId: 'linux-x64',
+      probe: () => ({
+        ok: true,
+        failures: [],
+        helpOutput: '',
+        fileOutput: '',
+        expectedScopes: ['@parity/root', '@parity/widget'],
+        workspaceRoot: '/tmp/runtime-parity',
+      }),
+    })
+
+    expect(result).toEqual({
+      name: 'compiled-runtime-typecheck-parity',
+      status: 'PASS',
+      detail: 'host runtime linux-x64 exposes --file/--package and resolved scopes',
     })
   })
 

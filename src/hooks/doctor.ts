@@ -32,6 +32,10 @@ import {
   rootContractMode,
   validateRootLauncherContract,
 } from '#launcher/root-contract.js'
+import {
+  formatRuntimeTypecheckParityFailures,
+  probeRuntimeTypecheckParity,
+} from '#typecheck/runtime-parity.js'
 import { isMcpReady } from './shared/mcp-sentinel.js'
 
 export interface DoctorCheck {
@@ -512,6 +516,149 @@ function formatNativeRuntimeDetail(status: NativePluginRuntimeStatus): string {
     .join(', ')
 }
 
+function inspectNativePluginRuntime(): NativePluginRuntimeStatus {
+  const root = resolvePluginRoot()
+  if (!root) {
+    return {
+      launchMode: 'missing',
+      reason: 'plugin root not found',
+    }
+  }
+
+  const pluginJsonPath = join(root, '.claude-plugin', 'plugin.json')
+  const manifestPath = join(root, 'bin', 'runtime-manifest.json')
+  const stagedBinPath = join(root, 'bin', 'wp')
+
+  if (!tryAccess(pluginJsonPath)) {
+    return {
+      launchMode: 'missing',
+      manifestPath,
+      stagedBinPath,
+      reason: 'plugin manifest missing',
+    }
+  }
+
+  try {
+    const pluginManifest = JSON.parse(readFileSync(pluginJsonPath, 'utf-8')) as {
+      mcpServers?: Record<string, { command?: string; args?: string[] }>
+    }
+    const server = pluginManifest.mcpServers?.webpresso
+    const launchMode: NativePluginRuntimeStatus['launchMode'] =
+      server?.command === '${CLAUDE_PLUGIN_ROOT}/bin/wp' &&
+      Array.isArray(server.args) &&
+      server.args.length === 1 &&
+      server.args[0] === 'mcp'
+        ? 'native'
+        : server?.command === 'node' || (server?.args ?? []).some((arg) => arg.endsWith('wp.js'))
+          ? 'stale-node-launcher'
+          : server
+            ? 'custom'
+            : 'missing'
+
+    if (!tryAccess(manifestPath)) {
+      return {
+        launchMode,
+        manifestPath,
+        stagedBinPath,
+        reason: 'runtime manifest missing',
+      }
+    }
+
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as RuntimeManifestLike
+    const target = manifest.targets?.find(
+      (candidate) => candidate.os === process.platform && candidate.cpu === process.arch,
+    )
+    const targetId = target?.id
+    const runtimeCandidates = target ? resolveRuntimeBinaryCandidates(root, manifest, target) : []
+    const runtimeTargetPath = runtimeCandidates.find((candidate) => tryAccess(candidate))
+
+    if (!targetId) {
+      return {
+        launchMode,
+        manifestPath,
+        stagedBinPath,
+        runtimeCandidates,
+        reason: `no runtime target for ${process.platform}/${process.arch}`,
+      }
+    }
+
+    if (!tryAccess(stagedBinPath)) {
+      return {
+        launchMode,
+        targetId,
+        manifestPath,
+        stagedBinPath,
+        runtimeTargetPath,
+        runtimeCandidates,
+        reason: 'staged native launcher missing',
+      }
+    }
+
+    if (lstatSync(stagedBinPath).isSymbolicLink()) {
+      return {
+        launchMode,
+        targetId,
+        manifestPath,
+        stagedBinPath,
+        runtimeTargetPath,
+        runtimeCandidates,
+        reason: 'staged native launcher is a symlink',
+      }
+    }
+
+    if (!runtimeTargetPath) {
+      if (launchMode === 'native' && isSourceCheckoutWithRuntimeTooling(root)) {
+        return {
+          launchMode,
+          targetId,
+          manifestPath,
+          stagedBinPath,
+          runtimeCandidates,
+          reason:
+            'skipped (source checkout runtime payload not staged; run build:runtime-binaries then stage:plugin-runtime to verify the plugin-native lane locally)',
+        }
+      }
+
+      return {
+        launchMode,
+        targetId,
+        manifestPath,
+        stagedBinPath,
+        runtimeCandidates,
+        reason: `native runtime payload missing; checked ${runtimeCandidates.join(', ')}`,
+      }
+    }
+
+    if (launchMode !== 'native') {
+      return {
+        launchMode,
+        targetId,
+        manifestPath,
+        stagedBinPath,
+        runtimeTargetPath,
+        runtimeCandidates,
+        reason: 'plugin manifest is not using the native launcher',
+      }
+    }
+
+    return {
+      launchMode,
+      targetId,
+      manifestPath,
+      stagedBinPath,
+      runtimeTargetPath,
+      runtimeCandidates,
+    }
+  } catch (error) {
+    return {
+      launchMode: 'missing',
+      manifestPath,
+      stagedBinPath,
+      reason: error instanceof Error ? error.message : String(error),
+    }
+  }
+}
+
 function isSourceCheckoutWithRuntimeTooling(root: string): boolean {
   return (
     tryAccess(join(root, 'src', 'cli', 'cli.ts')) &&
@@ -636,190 +783,45 @@ export function checkOmxPluginCacheStaleSurfaceRepair(
 }
 
 export function checkNativePluginRuntime(): DoctorCheck {
-  const root = resolvePluginRoot()
-  if (!root) {
-    return {
-      name: 'native plugin runtime',
-      ok: false,
-      detail: formatNativeRuntimeDetail({
-        launchMode: 'missing',
-        reason: 'plugin root not found',
-      }),
-    }
+  const status = inspectNativePluginRuntime()
+  const isSourceCheckoutSkip =
+    status.launchMode === 'native' && status.reason?.startsWith('skipped (source checkout') === true
+  return {
+    name: 'native plugin runtime',
+    ok: (status.launchMode === 'native' && !status.reason) || isSourceCheckoutSkip,
+    detail: formatNativeRuntimeDetail(status),
   }
+}
 
-  const pluginJsonPath = join(root, '.claude-plugin', 'plugin.json')
-  const manifestPath = join(root, 'bin', 'runtime-manifest.json')
-  const stagedBinPath = join(root, 'bin', 'wp')
-
-  if (!tryAccess(pluginJsonPath)) {
+export function checkPhase2RuntimeTypecheckParity(): DoctorCheck {
+  const status = inspectNativePluginRuntime()
+  if (status.launchMode !== 'native' || !status.runtimeTargetPath) {
     return {
-      name: 'native plugin runtime',
-      ok: false,
-      detail: formatNativeRuntimeDetail({
-        launchMode: 'missing',
-        manifestPath,
-        stagedBinPath,
-        reason: 'plugin manifest missing',
-      }),
-    }
-  }
-
-  try {
-    const pluginManifest = JSON.parse(readFileSync(pluginJsonPath, 'utf-8')) as {
-      mcpServers?: Record<string, { command?: string; args?: string[] }>
-    }
-    const server = pluginManifest.mcpServers?.webpresso
-    const launchMode: NativePluginRuntimeStatus['launchMode'] =
-      server?.command === '${CLAUDE_PLUGIN_ROOT}/bin/wp' &&
-      Array.isArray(server.args) &&
-      server.args.length === 1 &&
-      server.args[0] === 'mcp'
-        ? 'native'
-        : server?.command === 'node' || (server?.args ?? []).some((arg) => arg.endsWith('wp.js'))
-          ? 'stale-node-launcher'
-          : server
-            ? 'custom'
-            : 'missing'
-
-    if (!tryAccess(manifestPath)) {
-      return {
-        name: 'native plugin runtime',
-        ok: false,
-        detail: formatNativeRuntimeDetail({
-          launchMode,
-          manifestPath,
-          stagedBinPath,
-          reason: 'runtime manifest missing',
-        }),
-      }
-    }
-
-    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as RuntimeManifestLike
-    const target = manifest.targets?.find(
-      (candidate) => candidate.os === process.platform && candidate.cpu === process.arch,
-    )
-    const targetId = target?.id
-    const runtimeCandidates = target ? resolveRuntimeBinaryCandidates(root, manifest, target) : []
-    const runtimeTargetPath = runtimeCandidates.find((candidate) => tryAccess(candidate))
-
-    if (!targetId) {
-      return {
-        name: 'native plugin runtime',
-        ok: false,
-        detail: formatNativeRuntimeDetail({
-          launchMode,
-          manifestPath,
-          stagedBinPath,
-          runtimeCandidates,
-          reason: `no runtime target for ${process.platform}/${process.arch}`,
-        }),
-      }
-    }
-
-    if (!tryAccess(stagedBinPath)) {
-      return {
-        name: 'native plugin runtime',
-        ok: false,
-        detail: formatNativeRuntimeDetail({
-          launchMode,
-          targetId,
-          manifestPath,
-          stagedBinPath,
-          runtimeTargetPath,
-          runtimeCandidates,
-          reason: 'staged native launcher missing',
-        }),
-      }
-    }
-
-    if (lstatSync(stagedBinPath).isSymbolicLink()) {
-      return {
-        name: 'native plugin runtime',
-        ok: false,
-        detail: formatNativeRuntimeDetail({
-          launchMode,
-          targetId,
-          manifestPath,
-          stagedBinPath,
-          runtimeTargetPath,
-          runtimeCandidates,
-          reason: 'staged native launcher is a symlink',
-        }),
-      }
-    }
-
-    if (!runtimeTargetPath) {
-      if (launchMode === 'native' && isSourceCheckoutWithRuntimeTooling(root)) {
-        return {
-          name: 'native plugin runtime',
-          ok: true,
-          detail: formatNativeRuntimeDetail({
-            launchMode,
-            targetId,
-            manifestPath,
-            stagedBinPath,
-            runtimeCandidates,
-            reason:
-              'skipped (source checkout runtime payload not staged; run build:runtime-binaries then stage:plugin-runtime to verify the plugin-native lane locally)',
-          }),
-        }
-      }
-
-      return {
-        name: 'native plugin runtime',
-        ok: false,
-        detail: formatNativeRuntimeDetail({
-          launchMode,
-          targetId,
-          manifestPath,
-          stagedBinPath,
-          runtimeCandidates,
-          reason: `native runtime payload missing; checked ${runtimeCandidates.join(', ')}`,
-        }),
-      }
-    }
-
-    if (launchMode !== 'native') {
-      return {
-        name: 'native plugin runtime',
-        ok: false,
-        detail: formatNativeRuntimeDetail({
-          launchMode,
-          targetId,
-          manifestPath,
-          stagedBinPath,
-          runtimeTargetPath,
-          runtimeCandidates,
-          reason: 'plugin manifest is not using the native launcher',
-        }),
-      }
-    }
-
-    return {
-      name: 'native plugin runtime',
+      name: 'phase2 runtime typecheck parity',
       ok: true,
-      detail: formatNativeRuntimeDetail({
-        launchMode,
-        targetId,
-        manifestPath,
-        stagedBinPath,
-        runtimeTargetPath,
-        runtimeCandidates,
-      }),
-    }
-  } catch (error) {
-    return {
-      name: 'native plugin runtime',
-      ok: false,
-      detail: formatNativeRuntimeDetail({
-        launchMode: 'missing',
-        manifestPath,
-        stagedBinPath,
-        reason: error instanceof Error ? error.message : String(error),
-      }),
+      detail: 'skipped (native runtime not available for parity probe; see native plugin runtime)',
     }
   }
+
+  const probe = probeRuntimeTypecheckParity({
+    command: status.runtimeTargetPath,
+    env: {
+      ...process.env,
+      WP_SKIP_UPDATE_CHECK: '1',
+    },
+  })
+
+  return probe.ok
+    ? {
+        name: 'phase2 runtime typecheck parity',
+        ok: true,
+        detail: `host runtime ${status.targetId ?? 'unknown-target'} exposes --file/--package and resolved scopes`,
+      }
+    : {
+        name: 'phase2 runtime typecheck parity',
+        ok: false,
+        detail: `runtime surface mismatch: ${formatRuntimeTypecheckParityFailures(probe)}`,
+      }
 }
 
 async function checkMcpServer(): Promise<{ ok: boolean; detail?: string; skipped?: boolean }> {
@@ -1536,6 +1538,7 @@ export async function runHooksDoctor(opts: RunHooksDoctorOptions = {}): Promise<
   checks.push({ name: 'plugin.json integrity', ...checkPluginJson() })
   checks.push({ advisory: true, ...checkRootLauncherContract() })
   checks.push({ advisory: true, ...checkNativePluginRuntime() })
+  checks.push({ advisory: true, ...checkPhase2RuntimeTypecheckParity() })
   checks.push({ advisory: true, ...checkOmxPluginCacheStaleSurfaceRepair() })
   checks.push({ advisory: true, ...checkThirdPartyHookCoexistence() })
   checks.push({ advisory: true, ...checkPackagedHostArtifacts(opts.cwd) })

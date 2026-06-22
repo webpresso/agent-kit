@@ -6,6 +6,12 @@ import { fileURLToPath } from 'node:url'
 vi.mock('node:fs')
 vi.mock('node:os', () => ({ platform: () => 'linux' }))
 vi.mock('node:child_process', () => ({ spawn: vi.fn() }))
+const parityProbeMock = vi.hoisted(() => vi.fn())
+vi.mock('#typecheck/runtime-parity.js', () => ({
+  formatRuntimeTypecheckParityFailures: (result: { failures: readonly string[] }) =>
+    result.failures.join('; '),
+  probeRuntimeTypecheckParity: parityProbeMock,
+}))
 
 import { spawn } from 'node:child_process'
 import { accessSync, existsSync, lstatSync, readFileSync, statSync } from 'node:fs'
@@ -21,6 +27,14 @@ describe('hooks/doctor', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     vi.stubEnv('WP_DOCTOR_MCP_TIMEOUT_MS', '1000')
+    parityProbeMock.mockReturnValue({
+      ok: true,
+      failures: [],
+      helpOutput: '',
+      fileOutput: '',
+      expectedScopes: ['@parity/root', '@parity/widget'],
+      workspaceRoot: '/tmp/parity-fixture',
+    })
     mockExistsSync.mockImplementation(((path: Parameters<typeof existsSync>[0]) => {
       try {
         mockAccessSync(path)
@@ -263,6 +277,139 @@ describe('hooks/doctor', () => {
       expect(flowCheck?.detail).toContain('MCP first')
       expect(flowCheck?.detail).toContain('direct `wp` only as fallback')
       expect(flowCheck?.detail).toContain('bun run wp')
+    })
+
+    it('records explicit phase2 runtime typecheck parity evidence for the native host runtime', async () => {
+      const hostTargetId = `linux-${process.arch}`
+      const runtimeManifestPath = join(repoRoot, 'bin', 'runtime-manifest.json')
+      const stagedBinPath = join(repoRoot, 'bin', 'wp')
+      const runtimeTargetPath = join(repoRoot, 'bin', 'runtime', hostTargetId, 'wp')
+      const knownPaths = new Set([
+        pkgJson,
+        pluginJson,
+        runtimeManifestPath,
+        stagedBinPath,
+        runtimeTargetPath,
+      ])
+
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (String(path) === rtkMarker) throw new Error('ENOENT')
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === pkgJson) return JSON.stringify({ bin: { wp: './bin/wp' } })
+        if (String(path) === pluginJson) {
+          return JSON.stringify({
+            version: '0.28.0',
+            mcpServers: { webpresso: { command: '${CLAUDE_PLUGIN_ROOT}/bin/wp', args: ['mcp'] } },
+          })
+        }
+        if (String(path) === runtimeManifestPath) {
+          return JSON.stringify({
+            binaryName: 'wp',
+            targets: [
+              {
+                id: hostTargetId,
+                os: 'linux',
+                cpu: process.arch,
+                packageName: `@webpresso/agent-kit-runtime-${hostTargetId}`,
+              },
+            ],
+          })
+        }
+        if (String(path) === stagedBinPath) {
+          return "#!/usr/bin/env node\n\nimport { runNamedBin } from './_run.js'\n\nrunNamedBin('wp')\n"
+        }
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+      mockStatSync.mockReturnValue({ mode: 0o755 } as unknown as ReturnType<typeof statSync>)
+      mockHealthyHookProbe()
+
+      const { runHooksDoctor } = await import('#hooks/doctor')
+      const result = await runHooksDoctor({ skipMcp: true })
+
+      expect(parityProbeMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: runtimeTargetPath,
+          env: expect.objectContaining({ WP_SKIP_UPDATE_CHECK: '1' }),
+        }),
+      )
+      expect(result.checks.find((c) => c.name === 'phase2 runtime typecheck parity')).toEqual(
+        expect.objectContaining({
+          advisory: true,
+          ok: true,
+          detail: `host runtime ${hostTargetId} exposes --file/--package and resolved scopes`,
+        }),
+      )
+    })
+
+    it('surfaces a specific runtime parity mismatch when the native host runtime lags typecheck targeting', async () => {
+      const hostTargetId = `linux-${process.arch}`
+      const runtimeManifestPath = join(repoRoot, 'bin', 'runtime-manifest.json')
+      const stagedBinPath = join(repoRoot, 'bin', 'wp')
+      const runtimeTargetPath = join(repoRoot, 'bin', 'runtime', hostTargetId, 'wp')
+      const knownPaths = new Set([
+        pkgJson,
+        pluginJson,
+        runtimeManifestPath,
+        stagedBinPath,
+        runtimeTargetPath,
+      ])
+
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (String(path) === rtkMarker) throw new Error('ENOENT')
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === pkgJson) return JSON.stringify({ bin: { wp: './bin/wp' } })
+        if (String(path) === pluginJson) {
+          return JSON.stringify({
+            version: '0.28.0',
+            mcpServers: { webpresso: { command: '${CLAUDE_PLUGIN_ROOT}/bin/wp', args: ['mcp'] } },
+          })
+        }
+        if (String(path) === runtimeManifestPath) {
+          return JSON.stringify({
+            binaryName: 'wp',
+            targets: [
+              {
+                id: hostTargetId,
+                os: 'linux',
+                cpu: process.arch,
+                packageName: `@webpresso/agent-kit-runtime-${hostTargetId}`,
+              },
+            ],
+          })
+        }
+        if (String(path) === stagedBinPath) {
+          return "#!/usr/bin/env node\n\nimport { runNamedBin } from './_run.js'\n\nrunNamedBin('wp')\n"
+        }
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+      mockStatSync.mockReturnValue({ mode: 0o755 } as unknown as ReturnType<typeof statSync>)
+      mockHealthyHookProbe()
+      parityProbeMock.mockReturnValue({
+        ok: false,
+        failures: ['typecheck --help is missing the --file flag'],
+        helpOutput: 'Usage: wp typecheck',
+        fileOutput: '',
+        expectedScopes: ['@parity/root', '@parity/widget'],
+        workspaceRoot: '/tmp/parity-fixture',
+      })
+
+      const { runHooksDoctor } = await import('#hooks/doctor')
+      const result = await runHooksDoctor({ skipMcp: true })
+
+      expect(result.ok).toBe(true)
+      expect(result.checks.find((c) => c.name === 'phase2 runtime typecheck parity')).toEqual(
+        expect.objectContaining({
+          advisory: true,
+          ok: false,
+          detail: 'runtime surface mismatch: typecheck --help is missing the --file flag',
+        }),
+      )
     })
 
     it('skips nested dist manifests and resolves the real package root in built mode', async () => {

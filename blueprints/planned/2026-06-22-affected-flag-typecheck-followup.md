@@ -93,6 +93,12 @@ reverse-dependency `--affected` closure:
   scopes and runs the normal scope-level typecheck once per scope.
 - `wp typecheck --package <name>` resolves exact `package.json` names only.
 - MCP `wp_typecheck` and the public `runTypecheck` helper share the same planner.
+- The compiled host runtime is now parity-guarded for `typecheck --help` and
+  `typecheck --file` scope reporting, so bare global/runtime lanes cannot drift
+  behind the JS CLI surface silently.
+- Packed/global smoke now proves bare `wp typecheck --help` and
+  `wp typecheck --file` against a real isolated global install plus the host
+  runtime helper package.
 - The future `--affected` work remains scoped to reverse-dependency closure and
   measured narrowing.
 

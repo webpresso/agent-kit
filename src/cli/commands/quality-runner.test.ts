@@ -85,6 +85,30 @@ describe('quality runner', () => {
     expect(fullWrites.join('')).not.toContain('Full log: wp logs typecheck')
   })
 
+  it('surfaces resolved typecheck scopes ahead of the summary in summary-first output', async () => {
+    const script = join(stateRoot.path, 'pass.js')
+    writeFileSync(script, "process.stdout.write('typecheck passed\\n');", 'utf8')
+
+    const result = await runCliCommandSequence({
+      commandName: 'typecheck',
+      commands: [{ command: process.execPath, args: [script] }],
+      metadataOptions: { resolvedScopes: ['@parity/root', '@parity/widget'] },
+      summary: ({ exitCode }) => (exitCode === 0 ? 'typecheck passed' : `exit ${exitCode}`),
+    })
+
+    const writes: string[] = []
+    emitCliCommandOutput({
+      entry: result.entry,
+      summary: result.entry.summary ?? '',
+      passed: true,
+      toolName: 'wp_typecheck',
+      stdout: { write: (chunk: string) => (writes.push(chunk), true) },
+    })
+
+    expect(writes.join('')).toContain('Resolved typecheck scopes: @parity/root, @parity/widget')
+    expect(writes.join('')).toContain('typecheck passed')
+  })
+
   it('handles large output without truncating persisted raw logs', async () => {
     const payload = 'x'.repeat(400_000)
     const script = join(stateRoot.path, 'large.js')
