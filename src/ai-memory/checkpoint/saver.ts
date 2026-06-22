@@ -1,3 +1,5 @@
+import { shortId } from '#shared-utils/short-id.js'
+
 import type {
   Checkpoint,
   CheckpointConfig,
@@ -49,12 +51,10 @@ export abstract class BaseCheckpointSaver {
 
 export function generateCheckpointId(): CheckpointId {
   const timestamp = Date.now().toString(36)
-  const random = Math.random().toString(36).substring(2, 10)
-  return `ckpt_${timestamp}_${random}`
+  return `ckpt_${timestamp}_${shortId(8)}`
 }
 
 export function generateThreadId(): ThreadId {
   const timestamp = Date.now().toString(36)
-  const random = Math.random().toString(36).substring(2, 10)
-  return `thrd_${timestamp}_${random}`
+  return `thrd_${timestamp}_${shortId(8)}`
 }

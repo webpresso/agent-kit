@@ -200,10 +200,7 @@ function findBlueprintDocument(
 }
 
 function atomicWriteFile(targetPath: string, content: string): void {
-  const tmpPath = path.join(
-    tmpdir(),
-    `wp-bp-mutation-${Date.now()}-${Math.random().toString(36).slice(2)}.tmp`,
-  )
+  const tmpPath = path.join(tmpdir(), `wp-bp-mutation-${Date.now()}-${randomUUID()}.tmp`)
   writeFileSync(tmpPath, content, 'utf8')
   renameSync(tmpPath, targetPath)
 }

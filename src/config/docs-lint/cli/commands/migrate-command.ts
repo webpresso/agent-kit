@@ -1,4 +1,6 @@
 import type { FileSystem, MigratorDeps } from '#config/docs-lint/cli/interfaces'
+
+import { randomUUID } from 'node:crypto'
 import type { DocType, MigrationResult } from '#config/docs-lint/index'
 
 import { glob } from 'glob'
@@ -313,7 +315,7 @@ export class MigrateCommand {
     // is never a partial file — the temp is cleaned up in `finally`. Without
     // this, an interrupted copy would leave a corrupt .bak that the
     // existsSync-skip above would then preserve permanently as the "original".
-    const tempPath = `${backupPath}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const tempPath = `${backupPath}.tmp-${process.pid}-${Date.now()}-${randomUUID()}`
     try {
       await fs.copyFile(filePath, tempPath)
       await fs.rename(tempPath, backupPath)

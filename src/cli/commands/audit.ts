@@ -114,6 +114,7 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
     (await import('#audit/absolute-path-policy')).auditAbsolutePathPolicy(root),
   'no-first-party-mjs': async (root) =>
     (await import('#audit/no-first-party-mjs')).auditNoFirstPartyMjs(root),
+  'no-math-random': async (root) => (await import('#audit/no-math-random')).auditNoMathRandom(root),
   'agent-cost': async (root) => (await import('#audit/agent-cost')).auditAgentCost(root),
   'blueprint-db-consistency': async (root) =>
     (await import('#audit/blueprint-db-consistency')).auditBlueprintDbConsistency(root),
