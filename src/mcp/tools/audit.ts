@@ -212,6 +212,16 @@ export async function dispatchAudit(input: AkAuditInput): Promise<AuditPayload> 
         details: auditResult,
       }
     }
+    case 'no-math-random': {
+      const { auditNoMathRandom } = await import('#audit/no-math-random')
+      const auditResult = auditNoMathRandom(input.cwd ?? input.directory ?? process.cwd())
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
+    }
     case 'no-first-party-mjs': {
       const { auditNoFirstPartyMjs } = await import('#audit/no-first-party-mjs')
       const auditResult = auditNoFirstPartyMjs(input.cwd ?? input.directory ?? process.cwd())

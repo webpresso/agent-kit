@@ -25,6 +25,7 @@ export const MCP_AUDIT_KINDS = [
   'cloudflare-deploy-contract',
   'absolute-path-policy',
   'no-first-party-mjs',
+  'no-math-random',
   'roadmap-links',
   'bundle-budget',
   'commit-message',

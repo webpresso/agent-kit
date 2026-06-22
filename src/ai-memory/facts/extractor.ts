@@ -1,3 +1,5 @@
+import { shortId } from '#shared-utils/short-id.js'
+
 import type {
   ConfidenceLevel,
   Fact,
@@ -142,8 +144,7 @@ export class FactExtractor {
 
 export function generateFactId(): FactId {
   const timestamp = Date.now().toString(36)
-  const random = Math.random().toString(36).substring(2, 8)
-  return `fact_${timestamp}_${random}`
+  return `fact_${timestamp}_${shortId(6)}`
 }
 
 export const FACT_EXTRACTION_PROMPT = `Extract key facts from the following conversation message.

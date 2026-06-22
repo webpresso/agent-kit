@@ -14,6 +14,7 @@ import type {
 import type { FactDatabase } from '#ai-memory/facts/consolidator.js'
 import type { Fact, FactId, FactRetrievalOptions, RetrievedFact } from '#ai-memory/facts/types.js'
 import type { MemoryStore } from '#ai-memory/hierarchy/retriever.js'
+import { shortId } from '#shared-utils/short-id.js'
 import { z } from 'zod'
 
 type CheckpointRow = {
@@ -93,7 +94,7 @@ export class SqliteAiMemoryStore extends BaseCheckpointSaver implements FactData
     state: CheckpointState,
     parentId?: CheckpointId,
   ): Promise<CheckpointResult> {
-    const checkpointId = `ckpt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
+    const checkpointId = `ckpt_${Date.now().toString(36)}_${shortId(8)}`
     const now = new Date().toISOString()
     this.db
       .prepare(

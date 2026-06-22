@@ -6,6 +6,7 @@ import { existsSync, mkdirSync } from 'node:fs'
 import { basename, dirname, join, relative } from 'node:path'
 
 import { scaffoldAgent } from '#cli/commands/init/scaffold-agent'
+import { shortId } from '#shared-utils/short-id.js'
 import { readConfig } from '#cli/commands/init/config'
 import { resolveCatalogDir } from '#cli/commands/init/index'
 import { getProjectRoot } from '#cli/utils'
@@ -123,7 +124,7 @@ function formatTimestamp(now: Date): string {
 }
 
 function defaultRandomSuffix(): string {
-  return Math.random().toString(36).slice(2, 5).padEnd(3, '0')
+  return shortId(3)
 }
 
 function defaultWorktreePath(repoRoot: string, branch: string): string {

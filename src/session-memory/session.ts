@@ -1,4 +1,5 @@
 import { Database } from '#db/sqlite.js'
+import { shortId } from '#shared-utils/short-id.js'
 
 import type {
   RestoreInput,
@@ -123,7 +124,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS session_events_fts
 `
 
 function newId(prefix: string): string {
-  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
+  return `${prefix}_${Date.now().toString(36)}_${shortId(8)}`
 }
 
 function byteLength(value: string): number {

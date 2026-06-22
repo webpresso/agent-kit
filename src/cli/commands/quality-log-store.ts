@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import {
   closeSync,
   createWriteStream,
@@ -15,6 +16,7 @@ import { dirname, join } from 'node:path'
 
 import { getSurfacePath } from '#paths/state-root.js'
 import { readTrustedJsonFile } from '#shared-utils/read-json-file.js'
+import { shortId } from '#shared-utils/short-id.js'
 import { writeJsonFile } from '#shared-utils/write-json-file.js'
 
 export const CLI_LOG_COMMANDS = [
@@ -216,7 +218,7 @@ function withCommandIndexLock<T>(command: CliLogCommandName, cwd: string, fn: ()
 }
 
 function writeIndexAtomically(indexPath: string, index: CliLogIndex): void {
-  const tmpPath = `${indexPath}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`
+  const tmpPath = `${indexPath}.${process.pid}.${randomUUID()}.tmp`
   writeJsonFile(tmpPath, index)
   renameSync(tmpPath, indexPath)
 }
@@ -293,6 +295,5 @@ function getCommandIndexPath(command: CliLogCommandName, cwd: string): string {
 
 function createLogId(now = new Date()): string {
   const iso = now.toISOString().replaceAll(':', '-').replaceAll('.', '-')
-  const entropy = Math.random().toString(36).slice(2, 8)
-  return `${iso}-${entropy}`
+  return `${iso}-${shortId(6)}`
 }

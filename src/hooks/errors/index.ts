@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import type { WriteStream } from 'node:tty'
@@ -83,9 +84,7 @@ export function readHookErrors(cwd = process.cwd()): readonly HookErrorEntry[] {
 
 function writeHookErrorIndex(indexPath: string, entries: readonly HookErrorEntry[]): void {
   mkdirSync(dirname(indexPath), { recursive: true })
-  const tmpPath = `${indexPath}.${process.pid}.${Date.now()}.${Math.random()
-    .toString(36)
-    .slice(2)}.tmp`
+  const tmpPath = `${indexPath}.${process.pid}.${Date.now()}.${randomUUID()}.tmp`
   try {
     writeFileSync(
       tmpPath,
