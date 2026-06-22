@@ -16,13 +16,17 @@ describe('wp migrate secrets', () => {
       JSON.stringify({
         devDependencies: { '@webpresso/agent-kit': '^2.0.0' },
         scripts: {
-          'act:e2e': 'bun ./scripts/act-with-webpresso.ts workflow_dispatch -W .github/workflows/e2e.yml',
+          'act:e2e':
+            'bun ./scripts/act-with-webpresso.ts workflow_dispatch -W .github/workflows/e2e.yml',
           dev: 'with-secrets -- vp run dev',
         },
       }),
     )
     writeFileSync(join(root, 'scripts', 'act-with-webpresso.ts'), 'console.log("legacy")')
-    writeFileSync(join(root, '.github', 'workflows', 'ci.yml'), 'secrets: inherit\nenvironment: prod\n')
+    writeFileSync(
+      join(root, '.github', 'workflows', 'ci.yml'),
+      'secrets: inherit\nenvironment: prod\n',
+    )
 
     const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
     try {

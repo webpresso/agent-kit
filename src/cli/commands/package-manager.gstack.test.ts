@@ -5,7 +5,14 @@ import { claimUserOwnedTool, defaultToolingOwnershipState } from '#cli/tooling-o
 
 describe('wp update Webpresso-owned gstack refresh', () => {
   it('does not clone, pull, or run upstream setup for gstack ownership', () => {
-    const run = vi.fn(() => ({ status: 0, signal: null, stderr: '', stdout: '', output: [], pid: 1 }))
+    const run = vi.fn(() => ({
+      status: 0,
+      signal: null,
+      stderr: '',
+      stdout: '',
+      output: [],
+      pid: 1,
+    }))
     const ownershipState = claimUserOwnedTool(defaultToolingOwnershipState(), 'gstack')
 
     const status = runPackageManagerCommand('update', {
@@ -15,8 +22,22 @@ describe('wp update Webpresso-owned gstack refresh', () => {
       repoKey: null,
       packageRoot: '/pkg',
       resolveVpCommand: () => ({ command: 'vp', argsPrefix: [], executable: 'vp' }),
-      refreshClaudePlugin: () => ({ status: 0, signal: null, stderr: '', stdout: '', output: [], pid: 1 }),
-      refreshCodexPlugin: () => ({ status: 0, signal: null, stderr: '', stdout: '', output: [], pid: 1 }),
+      refreshClaudePlugin: () => ({
+        status: 0,
+        signal: null,
+        stderr: '',
+        stdout: '',
+        output: [],
+        pid: 1,
+      }),
+      refreshCodexPlugin: () => ({
+        status: 0,
+        signal: null,
+        stderr: '',
+        stdout: '',
+        output: [],
+        pid: 1,
+      }),
       run,
     })
 

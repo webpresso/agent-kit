@@ -108,11 +108,7 @@ function installFakeWebpressoBins(repoRoot: string): string {
   mkdirSync(binDir, { recursive: true })
   for (const bin of WEBPRESSO_HOOK_BINS) {
     const binPath = join(binDir, `${bin}.js`)
-    writeFileSync(
-      binPath,
-      `# fixture marker for ${bin}\n`,
-      'utf8',
-    )
+    writeFileSync(binPath, `# fixture marker for ${bin}\n`, 'utf8')
     chmodSync(binPath, 0o755)
   }
   return binDir

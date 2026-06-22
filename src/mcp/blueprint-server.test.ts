@@ -35,7 +35,7 @@ function writeBlueprintReadme(root: string): void {
       '| `planned/` | committed-to specs, ready to pick up. |',
       '| `in-progress/` | actively being executed. At most 3 active blueprints per lane. |',
       '| `completed/` | execution finished and verified. Kept for reference. |',
-      '| `parked/` | intentionally paused. Include a reason in the spec\'s frontmatter. |',
+      "| `parked/` | intentionally paused. Include a reason in the spec's frontmatter. |",
       '| `archived/` | superseded or abandoned. Not deleted — the record matters. |',
       '<!-- END: blueprint-index -->',
       '',

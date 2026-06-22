@@ -80,13 +80,18 @@ const tool: ToolDescriptor = {
 
     if (input.includeChecks) {
       commands.push(
-        await runReadonlyCommand('pr_status_checks', 'gh', ['pr', 'checks', ...selector, '--json', 'name,state,bucket,link,description'], {
-          cwd,
-          timeoutMs: input.timeoutMs,
-          maxOutputBytes: input.maxOutputBytes,
-          signal: extra?.signal,
-          parseJson: false,
-        }),
+        await runReadonlyCommand(
+          'pr_status_checks',
+          'gh',
+          ['pr', 'checks', ...selector, '--json', 'name,state,bucket,link,description'],
+          {
+            cwd,
+            timeoutMs: input.timeoutMs,
+            maxOutputBytes: input.maxOutputBytes,
+            signal: extra?.signal,
+            parseJson: false,
+          },
+        ),
       )
     }
 

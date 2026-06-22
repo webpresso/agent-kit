@@ -38,10 +38,7 @@ import {
   resolveAgentKitPackageRoot,
 } from '#cli/commands/init/package-root'
 import { makeNoopSpinnerFactory, type SpinnerFactory } from '#cli/commands/init/scaffolders/spinner'
-import {
-  UPDATE_CACHE_FILENAME,
-  readFreshCachedLatestRelease,
-} from '#cli/auto-update/cache.js'
+import { UPDATE_CACHE_FILENAME, readFreshCachedLatestRelease } from '#cli/auto-update/cache.js'
 import { isPackageLifecycleEnvironment } from '#cli/auto-update/skip.js'
 import { isNewerVersion } from '#cli/auto-update/version.js'
 import {
@@ -183,12 +180,17 @@ export function ensureAgentKitGlobal(input: EnsureAgentKitGlobalInput): EnsureAg
   const packageRoot =
     input.packageRoot ?? (input.resolvePackageRootForStaging ?? resolvePackageRootForStaging)(argv1)
   const isSupportedGlobalInstall =
-    argv1.length > 0 &&
-    (input.confirmInstalledGlobally ?? confirmInstalledGlobally)(argv1, env)
-  const current = packageRoot !== null && isSupportedGlobalInstall ? readPackageVersion(packageRoot) : null
+    argv1.length > 0 && (input.confirmInstalledGlobally ?? confirmInstalledGlobally)(argv1, env)
+  const current =
+    packageRoot !== null && isSupportedGlobalInstall ? readPackageVersion(packageRoot) : null
   const latest = (input.readFreshCachedLatest ?? readFreshCachedLatest)()
 
-  if (packageRoot !== null && current !== null && latest !== null && !isNewerVersion(latest, current)) {
+  if (
+    packageRoot !== null &&
+    current !== null &&
+    latest !== null &&
+    !isNewerVersion(latest, current)
+  ) {
     let repairedLauncher: string | undefined
     try {
       repairedLauncher = repairRootWpLauncher(packageRoot)

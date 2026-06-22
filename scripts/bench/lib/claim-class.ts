@@ -30,7 +30,8 @@ const CLAIM_PATTERNS: readonly ClaimPattern[] = [
     cls: 'recall',
   },
   {
-    pattern: /hook latency|preToolUse|postToolCapture|hook timing|startup latency|resume injection/iu,
+    pattern:
+      /hook latency|preToolUse|postToolCapture|hook timing|startup latency|resume injection/iu,
     cls: 'hook_latency',
     exclude: /wall time|end-to-end duration/iu,
   },
@@ -61,9 +62,15 @@ type CardPattern = {
 
 const CARD_PATTERNS: readonly CardPattern[] = [
   { pattern: /gainBytes|approxTokensSaved|bytesSaved|byteReduction/iu, cls: 'byte_proxy' },
-  { pattern: /tokensSaved|providerTokens|costSavings|costReduction/iu, cls: 'provider_tokens_cost' },
+  {
+    pattern: /tokensSaved|providerTokens|costSavings|costReduction/iu,
+    cls: 'provider_tokens_cost',
+  },
   { pattern: /recall|searchQuality|accuracy/iu, cls: 'recall' },
-  { pattern: /hookLatency|preToolUse|postToolCapture|hookTiming|startupLatency|resumeInjection/iu, cls: 'hook_latency' },
+  {
+    pattern: /hookLatency|preToolUse|postToolCapture|hookTiming|startupLatency|resumeInjection/iu,
+    cls: 'hook_latency',
+  },
   { pattern: /nativeSpeedup|rustSpeedup|napi|nativeBackend|fasterNative/iu, cls: 'native_speedup' },
   { pattern: /dropIn|parity|compatibleReplacement/iu, cls: 'replacement_parity' },
   { pattern: /rtkContext|contextMode|contextCompression/iu, cls: 'rtk_context_mode' },

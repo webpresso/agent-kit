@@ -47,7 +47,8 @@ function runGit(args, cwd) {
 
 function resolveStateRoot() {
   const home = homedir()
-  if (process.platform === 'darwin') return join(home, 'Library', 'Application Support', 'webpresso')
+  if (process.platform === 'darwin')
+    return join(home, 'Library', 'Application Support', 'webpresso')
   if (process.platform === 'win32') {
     const localAppData = process.env.LOCALAPPDATA ?? join(home, 'AppData', 'Local')
     return join(localAppData, 'webpresso', 'Data')

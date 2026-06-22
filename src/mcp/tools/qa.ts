@@ -221,7 +221,11 @@ function toCompactLeaf(
     ...(options.full && typeof result.logPath === 'string' ? { logPath: result.logPath } : {}),
     ...(Array.isArray(result.elisions) ? { elisions: result.elisions } : {}),
     ...(Array.isArray(result.warnings)
-      ? { warnings: result.warnings.filter((warning): warning is string => typeof warning === 'string') }
+      ? {
+          warnings: result.warnings.filter(
+            (warning): warning is string => typeof warning === 'string',
+          ),
+        }
       : {}),
     ...(typeof result.timedOut === 'boolean' ? { timedOut: result.timedOut } : {}),
     ...(typeof result.aborted === 'boolean' ? { aborted: result.aborted } : {}),

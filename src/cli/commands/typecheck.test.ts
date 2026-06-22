@@ -33,9 +33,9 @@ describe('wp typecheck command', () => {
 
   installManagedRunnerHermeticHooks()
 
-function bundledVpArgs(...tail: string[]) {
-  return [process.execPath, expect.stringMatching(/vite-plus.*bin.*vp/), ...tail]
-}
+  function bundledVpArgs(...tail: string[]) {
+    return [process.execPath, expect.stringMatching(/vite-plus.*bin.*vp/), ...tail]
+  }
 
   afterEach(() => {
     for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true })

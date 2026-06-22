@@ -5,14 +5,26 @@
  * provenance-backed Markdown skill sources shipped with @webpresso/agent-kit
  * into user skill roots. Removing an old external checkout is explicit only.
  */
-import { existsSync, mkdirSync, cpSync, renameSync, rmSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  cpSync,
+  renameSync,
+  rmSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs'
 import { homedir } from 'node:os'
 import path from 'node:path'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
 import { resolveAgentKitPackageRoot } from '#cli/commands/init/package-root'
 
-import { auditGstackSkillCollisions, WEBPRESSO_GSTACK_SKILLS, type GstackSkillCollision } from './collision-audit.js'
+import {
+  auditGstackSkillCollisions,
+  WEBPRESSO_GSTACK_SKILLS,
+  type GstackSkillCollision,
+} from './collision-audit.js'
 
 export interface EnsureGstackInput {
   repoRoot: string
@@ -43,11 +55,38 @@ export type GstackCodexResult =
   | { kind: 'gstack-codex-skipped'; reason: 'not-detected' | 'not-requested'; skillsRoot: string }
 
 export type EnsureGstackResult =
-  | { kind: 'gstack-installed'; root: string; codex: GstackCodexResult; collisions?: GstackSkillCollision[] }
-  | { kind: 'gstack-updated'; root: string; codex: GstackCodexResult; collisions?: GstackSkillCollision[] }
-  | { kind: 'gstack-already-configured'; root: string; codex: GstackCodexResult; collisions?: GstackSkillCollision[] }
+  | {
+      kind: 'gstack-installed'
+      root: string
+      codex: GstackCodexResult
+      collisions?: GstackSkillCollision[]
+    }
+  | {
+      kind: 'gstack-updated'
+      root: string
+      codex: GstackCodexResult
+      collisions?: GstackSkillCollision[]
+    }
+  | {
+      kind: 'gstack-already-configured'
+      root: string
+      codex: GstackCodexResult
+      collisions?: GstackSkillCollision[]
+    }
   | { kind: 'gstack-skipped-dry-run' }
-  | { kind: 'gstack-setup-failed'; command: 'webpresso-skill-install'; exitCode: number; reason: 'collision' | 'missing-package-assets' | 'exit-nonzero' | 'inactivity-timeout' | 'signal-interrupted'; logPath: string; collisions?: GstackSkillCollision[] }
+  | {
+      kind: 'gstack-setup-failed'
+      command: 'webpresso-skill-install'
+      exitCode: number
+      reason:
+        | 'collision'
+        | 'missing-package-assets'
+        | 'exit-nonzero'
+        | 'inactivity-timeout'
+        | 'signal-interrupted'
+      logPath: string
+      collisions?: GstackSkillCollision[]
+    }
 
 function defaultExternalCheckoutRoot(): string {
   return path.join(process.env.HOME || homedir(), '.claude', 'skills', 'gstack')
@@ -65,7 +104,10 @@ function defaultCodexSkillsRoot(): string {
   return path.join(process.env.HOME || homedir(), '.codex', 'skills')
 }
 
-function defaultDetectCodex(input: { exists: typeof existsSync; codexConfigPath: string }): boolean {
+function defaultDetectCodex(input: {
+  exists: typeof existsSync
+  codexConfigPath: string
+}): boolean {
   return input.exists(input.codexConfigPath)
 }
 
@@ -116,14 +158,21 @@ export function cleanupExternalGstackCheckout(input: {
   rm?: typeof rmSync
   now?: () => number
   backupRoot?: string
-}): { kind: 'skipped-not-present' | 'refused' | 'dry-run' | 'backed-up'; backupPath?: string; path: string } {
+}): {
+  kind: 'skipped-not-present' | 'refused' | 'dry-run' | 'backed-up'
+  backupPath?: string
+  path: string
+} {
   const exists = input.exists ?? existsSync
   if (!exists(input.externalRoot)) return { kind: 'skipped-not-present', path: input.externalRoot }
   if (!input.explicit) return { kind: 'refused', path: input.externalRoot }
   if (input.dryRun) return { kind: 'dry-run', path: input.externalRoot }
   const mkdir = input.mkdir ?? mkdirSync
   const rename = input.rename ?? renameSync
-  const stamp = new Date(input.now?.() ?? Date.now()).toISOString().replaceAll(':', '-').replaceAll('.', '-')
+  const stamp = new Date(input.now?.() ?? Date.now())
+    .toISOString()
+    .replaceAll(':', '-')
+    .replaceAll('.', '-')
   const backupRoot = input.backupRoot ?? defaultExternalBackupRoot(input.externalRoot)
   const backupPath = path.join(backupRoot, `${path.basename(input.externalRoot)}.backup-${stamp}`)
   mkdir(backupRoot, { recursive: true })
@@ -146,13 +195,31 @@ export async function ensureGstack(input: EnsureGstackInput): Promise<EnsureGsta
   const sourceRoot = resolveCatalogSkillsRoot(input.packageRoot)
 
   if (!sourceRoot || !exists(sourceRoot)) {
-    return { kind: 'gstack-setup-failed', command: 'webpresso-skill-install', exitCode: 1, reason: 'missing-package-assets', logPath: sourceRoot ?? 'unresolved-package-root' }
+    return {
+      kind: 'gstack-setup-failed',
+      command: 'webpresso-skill-install',
+      exitCode: 1,
+      reason: 'missing-package-assets',
+      logPath: sourceRoot ?? 'unresolved-package-root',
+    }
   }
 
   const codexDetected = (input.detectCodex ?? defaultDetectCodex)({ exists, codexConfigPath })
-  const collisions = auditGstackSkillCollisions({ claudeSkillsRoot, codexSkillsRoot, exists, readFile: input.readFile })
+  const collisions = auditGstackSkillCollisions({
+    claudeSkillsRoot,
+    codexSkillsRoot,
+    exists,
+    readFile: input.readFile,
+  })
   if (collisions.length > 0) {
-    return { kind: 'gstack-setup-failed', command: 'webpresso-skill-install', exitCode: 1, reason: 'collision', logPath: 'skill-collision-audit', collisions }
+    return {
+      kind: 'gstack-setup-failed',
+      command: 'webpresso-skill-install',
+      exitCode: 1,
+      reason: 'collision',
+      logPath: 'skill-collision-audit',
+      collisions,
+    }
   }
 
   const claudeState = installSkills({ sourceRoot, targetRoot: claudeSkillsRoot, mkdir, cp, exists })
@@ -170,7 +237,9 @@ export async function ensureGstack(input: EnsureGstackInput): Promise<EnsureGsta
     now: input.now,
   })
   if (cleanup.kind === 'refused') {
-    log(`  gstack: external checkout left in place at ${cleanup.path}; set WP_GSTACK_CLEANUP_EXTERNAL=1 to back it up and retire it.`)
+    log(
+      `  gstack: external checkout left in place at ${cleanup.path}; set WP_GSTACK_CLEANUP_EXTERNAL=1 to back it up and retire it.`,
+    )
   } else if (cleanup.kind === 'backed-up') {
     log(`  gstack: external checkout backed up to ${cleanup.backupPath}`)
   }

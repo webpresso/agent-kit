@@ -113,9 +113,11 @@ function validateThresholds(raw: unknown): Record<string, Threshold> {
   const result: Record<string, Threshold> = {}
   for (const [key, val] of Object.entries(raw)) {
     if (!isRecord(val)) throw new Error(`thresholds.${key} must be an object`)
-    if (typeof val['value'] !== 'number') throw new Error(`thresholds.${key}.value must be a number`)
+    if (typeof val['value'] !== 'number')
+      throw new Error(`thresholds.${key}.value must be a number`)
     if (typeof val['unit'] !== 'string') throw new Error(`thresholds.${key}.unit must be a string`)
-    if (typeof val['pass'] !== 'boolean') throw new Error(`thresholds.${key}.pass must be a boolean`)
+    if (typeof val['pass'] !== 'boolean')
+      throw new Error(`thresholds.${key}.pass must be a boolean`)
     result[key] = { value: val['value'], unit: val['unit'], pass: val['pass'] }
   }
   return result

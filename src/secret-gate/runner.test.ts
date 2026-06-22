@@ -12,7 +12,18 @@ describe('secret-gate runner', () => {
 
     expect(command).toEqual({
       command: 'wp',
-      args: ['secrets', 'run', '--sink', 'act', '--profile', 'preview', '--', 'act', '-W', '.github/workflows/ci.yml'],
+      args: [
+        'secrets',
+        'run',
+        '--sink',
+        'act',
+        '--profile',
+        'preview',
+        '--',
+        'act',
+        '-W',
+        '.github/workflows/ci.yml',
+      ],
     })
   })
 

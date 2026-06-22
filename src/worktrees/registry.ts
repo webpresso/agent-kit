@@ -127,7 +127,9 @@ export function removeWorktreeRegistryEntries(
   return removed
 }
 
-export function pruneStaleWorktreeRegistryEntries(options: PruneStaleWorktreeRegistryOptions = {}): {
+export function pruneStaleWorktreeRegistryEntries(
+  options: PruneStaleWorktreeRegistryOptions = {},
+): {
   kept: ManagedWorktreeEntry[]
   removed: ManagedWorktreeEntry[]
 } {

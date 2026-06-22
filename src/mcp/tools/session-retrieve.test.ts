@@ -126,8 +126,9 @@ describe('wp_session_retrieve tool', () => {
   })
 
   it('does not expose a public database path override', () => {
-    expect(sessionRetrieveTool.inputSchema.safeParse({ id: MISSING_ELISION_ID, dbPath: 'x' }).success)
-      .toBe(false)
+    expect(
+      sessionRetrieveTool.inputSchema.safeParse({ id: MISSING_ELISION_ID, dbPath: 'x' }).success,
+    ).toBe(false)
     expect(
       sessionRetrieveTool.inputSchema.safeParse({ id: MISSING_ELISION_ID, indexDbPath: 'x' })
         .success,

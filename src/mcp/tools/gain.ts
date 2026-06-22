@@ -58,7 +58,11 @@ const tool: ToolDescriptor = {
         ? `${input.source} gain read successfully`
         : `${input.source} gain unavailable`,
       exitCode: result.exitCode,
-      counts: { commandCount: 1, passedCount: result.passed ? 1 : 0, failedCount: result.passed ? 0 : 1 },
+      counts: {
+        commandCount: 1,
+        passedCount: result.passed ? 1 : 0,
+        failedCount: result.passed ? 0 : 1,
+      },
       details: {
         cwd,
         source: input.source,

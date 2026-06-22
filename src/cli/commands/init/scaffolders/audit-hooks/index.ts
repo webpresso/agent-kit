@@ -1,14 +1,17 @@
 /**
  * `audit-hooks` scaffolder preset.
  *
- * Extends `.husky/pre-commit` to ensure the shared policy checks are present.
+ * Extends `.husky/pre-commit` to ensure formatting and shared policy checks
+ * are present.
  *
  * Additive: appends the managed audit block only when the audits are not
  * already present (idempotent). Does not remove existing content.
  *
- * The audits are gated on staged source/config so doc/blueprint-only commits
- * skip them — pre-commit must stay fast and scoped to changed things. The
- * whole-repo guardrails suite is CI-owned and is intentionally NOT run here.
+ * Formatting is scoped to staged formattable files and re-stages formatter
+ * rewrites before audits run. The audits are still gated on staged
+ * source/config so doc/blueprint-only commits skip them — pre-commit must stay
+ * fast and scoped to changed things. The whole-repo guardrails suite is
+ * CI-owned and is intentionally NOT run here.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
@@ -28,13 +31,23 @@ export interface ScaffoldAuditHooksResult {
 const AUDIT_HOOK_HEADER = '# webpresso audit hooks (staged mode — fast)'
 
 /**
- * The managed audit block. Audits run only when staged files include
- * source/config — never on doc/blueprint-only commits, never whole-repo
- * on every commit.
+ * The managed audit block. Formatting runs over staged formattable files and
+ * re-stages rewrites. Audits run only when staged files include source/config —
+ * never on doc/blueprint-only commits, never whole-repo on every commit.
  */
 const AUDIT_HOOK_BLOCK = [
   AUDIT_HOOK_HEADER,
-  "if git diff --cached --name-only --diff-filter=ACMR | grep -Eq '\\.(ts|tsx|js|jsx|cjs|mjs|json|ya?ml|sh|tmpl)$|(^|/)\\.env|\\.dev\\.vars$'; then",
+  'STAGED="$(git diff --cached --name-only --diff-filter=ACMR)"',
+  'FORMAT_FILES="$(printf \'%s\\n\' "$STAGED" | grep -E \'\\.(ts|tsx|js|jsx|cjs|mjs|json|ya?ml|sh|tmpl|md|mdx)$\' || true)"',
+  'if [ -n "$FORMAT_FILES" ]; then',
+  '  wp format || exit 1',
+  '  printf \'%s\\n\' "$FORMAT_FILES" | while IFS= read -r file; do',
+  '    [ -n "$file" ] || continue',
+  '    git add -- "$file" || exit 1',
+  '  done',
+  '  STAGED="$(git diff --cached --name-only --diff-filter=ACMR)"',
+  'fi',
+  "if printf '%s\\n' \"$STAGED\" | grep -Eq '\\.(ts|tsx|js|jsx|cjs|mjs|json|ya?ml|sh|tmpl)$|(^|/)\\.env|\\.dev\\.vars$'; then",
   '  wp audit no-dev-vars',
   '  wp audit absolute-path-policy --root .',
   '  wp audit secret-provider-quarantine',
@@ -51,6 +64,10 @@ const SHEBANG = '#!/bin/sh\n'
  */
 function hasAuditBlock(existingContent: string): boolean {
   return (
+    existingContent.includes('wp format') &&
+    existingContent.includes('git add -- "$file"') &&
+    existingContent.includes('md|mdx') &&
+    existingContent.includes('|| exit 1') &&
     (existingContent.includes('audit no-dev-vars') ||
       existingContent.includes('check-no-dev-vars.ts')) &&
     existingContent.includes('audit absolute-path-policy --root .') &&

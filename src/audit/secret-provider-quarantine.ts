@@ -8,13 +8,18 @@ const IGNORED_DIRS = new Set([
   '.git',
   'node_modules',
   '.agent',
+  '.agents',
   '.claude',
   '.codex',
+  '.cursor',
   '.omx',
   '.omc',
+  '.opencode',
+  '_worktrees',
   'blueprints',
   'dist',
   'coverage',
+  'reports',
 ])
 
 const TEXT_FILE_PATTERN = /\.(md|ts|tsx|js|json|ya?ml|toml|txt)$/iu

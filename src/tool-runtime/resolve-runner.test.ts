@@ -61,9 +61,10 @@ describe('resolveRunner', () => {
     })
   })
 
-
   it('resolves vp through the bundled Vite+ bin with the current Node runtime', () => {
-    expect(resolveRunner('vp', { outputPolicy: 'structured', nodeExecPath: '/usr/local/bin/node' })).toEqual({
+    expect(
+      resolveRunner('vp', { outputPolicy: 'structured', nodeExecPath: '/usr/local/bin/node' }),
+    ).toEqual({
       tool: 'vp',
       command: '/usr/local/bin/node',
       args: [expect.stringMatching(/vite-plus.*bin.*vp/)],

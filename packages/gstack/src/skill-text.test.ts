@@ -12,7 +12,9 @@ describe('@repo/gstack skill text contract', () => {
       expect(content).not.toContain('~/.claude/skills/gstack')
       expect(content).not.toContain('~/.codex/skills/gstack')
       expect(content).not.toContain('/tmp/wp-claude-auth')
-      expect(content).not.toMatch(/browse\/dist|design\/dist|make-pdf\/dist|playwright|puppeteer|ngrok|html-to-docx/i)
+      expect(content).not.toMatch(
+        /browse\/dist|design\/dist|make-pdf\/dist|playwright|puppeteer|ngrok|html-to-docx/i,
+      )
     }
   })
 
@@ -29,7 +31,17 @@ describe('@repo/gstack skill text contract', () => {
 
   it('ships Codex and all OpenCode Go model-family reviewer skills', () => {
     const skillsDir = path.resolve(import.meta.dirname, '../skills')
-    const required = ['codex', 'opencode-go', 'deepseek', 'glm', 'kimi', 'minimax', 'mimo', 'qwen', 'hy3']
+    const required = [
+      'codex',
+      'opencode-go',
+      'deepseek',
+      'glm',
+      'kimi',
+      'minimax',
+      'mimo',
+      'qwen',
+      'hy3',
+    ]
     for (const name of required) {
       const content = readFileSync(path.join(skillsDir, `${name}.md`), 'utf8')
       expect(content).toContain(`name: ${name}`)
@@ -70,13 +82,18 @@ describe('@repo/gstack skill text contract', () => {
     ]
 
     for (const name of names) {
-      const source = readFileSync(path.join(repoRoot, 'packages/gstack/skills', `${name}.md`), 'utf8')
-      const catalog = readFileSync(path.join(repoRoot, 'catalog/agent/skills', name, 'SKILL.md'), 'utf8')
+      const source = readFileSync(
+        path.join(repoRoot, 'packages/gstack/skills', `${name}.md`),
+        'utf8',
+      )
+      const catalog = readFileSync(
+        path.join(repoRoot, 'catalog/agent/skills', name, 'SKILL.md'),
+        'utf8',
+      )
       const packageRoot = readFileSync(path.join(repoRoot, 'skills', name, 'SKILL.md'), 'utf8')
 
       expect(catalog).toBe(source)
       expect(packageRoot).toBe(source)
     }
   })
-
 })

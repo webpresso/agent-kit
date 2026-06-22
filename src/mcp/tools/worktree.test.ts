@@ -25,7 +25,8 @@ vi.mock('#cli/utils', async (importOriginal) => {
 
 vi.mock('#worktrees/manager.js', () => ({
   readRepoOriginUrl: () => 'https://github.com/webpresso/agent-kit.git',
-  repoManagedRoot: () => '/home/alice/.agent/worktrees/repos/github.com-webpresso-agent-kit-296ec9af45',
+  repoManagedRoot: () =>
+    '/home/alice/.agent/worktrees/repos/github.com-webpresso-agent-kit-296ec9af45',
 }))
 
 vi.mock('#worktrees/registry.js', () => ({
@@ -123,7 +124,11 @@ describe('wp_worktree tool', () => {
       return spawnResult(1, '', 'unexpected')
     })
 
-    const result = await wpWorktreeTool.handler({ action: 'new', branch: 'feat/auth', execute: true })
+    const result = await wpWorktreeTool.handler({
+      action: 'new',
+      branch: 'feat/auth',
+      execute: true,
+    })
 
     expect(payload(result)).toMatchObject({
       passed: false,
@@ -164,7 +169,14 @@ describe('wp_worktree tool', () => {
     })
     expect(spawnSyncMock).toHaveBeenCalledWith(
       'git',
-      expect.arrayContaining(['worktree', 'add', '-b', 'feat/new-tool', expect.any(String), 'HEAD']),
+      expect.arrayContaining([
+        'worktree',
+        'add',
+        '-b',
+        'feat/new-tool',
+        expect.any(String),
+        'HEAD',
+      ]),
       expect.objectContaining({ cwd: '/repo/main' }),
     )
   })
@@ -187,7 +199,11 @@ describe('wp_worktree tool', () => {
     })
     spawnSyncMock.mockReturnValue(spawnResult(0, ' M file.ts\n'))
 
-    const result = await wpWorktreeTool.handler({ action: 'remove', branch: 'feat/auth', execute: true })
+    const result = await wpWorktreeTool.handler({
+      action: 'remove',
+      branch: 'feat/auth',
+      execute: true,
+    })
 
     expect(payload(result)).toMatchObject({
       passed: false,
@@ -227,7 +243,11 @@ describe('wp_worktree tool', () => {
       return spawnResult(0)
     })
 
-    const result = await wpWorktreeTool.handler({ action: 'remove', branch: 'feat/auth', execute: true })
+    const result = await wpWorktreeTool.handler({
+      action: 'remove',
+      branch: 'feat/auth',
+      execute: true,
+    })
 
     expect(payload(result)).toMatchObject({
       passed: true,
@@ -241,12 +261,15 @@ describe('wp_worktree tool', () => {
     expect(removeRegistryMock).toHaveBeenCalledOnce()
   })
 
-
   it('refuses to remove git worktrees outside the managed registry scope', async () => {
     execFileSyncMock.mockReturnValue(PORCELAIN_WITH_UNMANAGED)
     readRegistryMock.mockReturnValue({ version: 1, entries: [] })
 
-    const result = await wpWorktreeTool.handler({ action: 'remove', branch: 'feat/manual', execute: true })
+    const result = await wpWorktreeTool.handler({
+      action: 'remove',
+      branch: 'feat/manual',
+      execute: true,
+    })
     expect(payload(result)).toMatchObject({
       passed: false,
       action: 'remove',
@@ -274,25 +297,33 @@ describe('wp_worktree tool', () => {
       repoRoot: string
       path: string
     }) => boolean
-    expect(predicate({
-      repoNamespace: 'github.com-webpresso-agent-kit-296ec9af45',
-      repoRoot: '/repo/main',
-      path: '/missing/current',
-    })).toBe(true)
-    expect(predicate({
-      repoNamespace: 'github.com-webpresso-agent-kit-296ec9af45',
-      repoRoot: '/other/clone',
-      path: '/missing/other-clone',
-    })).toBe(false)
-    expect(predicate({
-      repoNamespace: 'other-repo',
-      repoRoot: '/repo/main',
-      path: '/missing/other',
-    })).toBe(false)
-    expect(predicate({
-      repoNamespace: 'github.com-webpresso-agent-kit-296ec9af45',
-      repoRoot: '/repo/main',
-      path: '/present/current',
-    })).toBe(false)
+    expect(
+      predicate({
+        repoNamespace: 'github.com-webpresso-agent-kit-296ec9af45',
+        repoRoot: '/repo/main',
+        path: '/missing/current',
+      }),
+    ).toBe(true)
+    expect(
+      predicate({
+        repoNamespace: 'github.com-webpresso-agent-kit-296ec9af45',
+        repoRoot: '/other/clone',
+        path: '/missing/other-clone',
+      }),
+    ).toBe(false)
+    expect(
+      predicate({
+        repoNamespace: 'other-repo',
+        repoRoot: '/repo/main',
+        path: '/missing/other',
+      }),
+    ).toBe(false)
+    expect(
+      predicate({
+        repoNamespace: 'github.com-webpresso-agent-kit-296ec9af45',
+        repoRoot: '/repo/main',
+        path: '/present/current',
+      }),
+    ).toBe(false)
   })
 })

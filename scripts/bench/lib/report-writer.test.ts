@@ -5,7 +5,12 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { MeasurementArtifact } from './measurement-artifact.js'
-import { renderArtifactMarkdown, renderReport, writeReport, type SessionMemoryReport } from './report-writer'
+import {
+  renderArtifactMarkdown,
+  renderReport,
+  writeReport,
+  type SessionMemoryReport,
+} from './report-writer'
 import { diffStructuralEnvelope, structuralEnvelope } from './schema-envelope.js'
 
 describe('report-writer', () => {
@@ -231,9 +236,7 @@ describe('report-writer', () => {
         variantSet: 'v1',
         warmup: 0,
         repetitions: 2,
-        samples: [
-          { metricKey: 'resumable-task.v1.total_tokens', value: 500, unit: 'tokens' },
-        ],
+        samples: [{ metricKey: 'resumable-task.v1.total_tokens', value: 500, unit: 'tokens' }],
         aggregates: { average_recall_at_5: 0.6 },
         thresholds: {
           post_tool_capture_latency_ms: { value: 750, unit: 'latency_ms', pass: false },
@@ -253,7 +256,11 @@ describe('report-writer', () => {
         environment: artifact.provenance.environment,
         gitCommit: artifact.provenance.gitCommit,
         redactionStatus: artifact.redactionStatus,
-        samples: artifact.samples.map((s) => ({ metricKey: s.metricKey, value: s.value, unit: s.unit })),
+        samples: artifact.samples.map((s) => ({
+          metricKey: s.metricKey,
+          value: s.value,
+          unit: s.unit,
+        })),
         aggregates: artifact.aggregates,
         thresholds: artifact.thresholds,
       }
@@ -261,7 +268,10 @@ describe('report-writer', () => {
       // Verify every field from the artifact appears in the markdown
       const expectedEnvelope = structuralEnvelope(parsedFields)
       const markdownContainsAllKeys = expectedEnvelope
-        .filter((entry) => entry.startsWith('$') && !entry.includes(':object') && !entry.includes(':array'))
+        .filter(
+          (entry) =>
+            entry.startsWith('$') && !entry.includes(':object') && !entry.includes(':array'),
+        )
         .every(() => true) // structure check: md has the artifact's key fields
 
       // Concrete check: no fields from artifact are missing from the rendered markdown

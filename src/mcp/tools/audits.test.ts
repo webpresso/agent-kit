@@ -153,7 +153,13 @@ function parsePayload(result: Awaited<ReturnType<typeof wpAuditsTool.handler>>) 
     passedCount: number
     failedCount: number
     failedKinds: string[]
-    results: Array<{ kind: string; passed: boolean; summary: string; details: unknown; isError?: true }>
+    results: Array<{
+      kind: string
+      passed: boolean
+      summary: string
+      details: unknown
+      isError?: true
+    }>
   }
 }
 

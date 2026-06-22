@@ -27,9 +27,7 @@ describe('process tree termination', () => {
     const kill = vi.spyOn(process, 'kill').mockImplementation(() => {
       throw new Error('no group')
     })
-    const child = { pid: 1234, kill: vi.fn() } as unknown as Parameters<
-      typeof signalProcessTree
-    >[0]
+    const child = { pid: 1234, kill: vi.fn() } as unknown as Parameters<typeof signalProcessTree>[0]
 
     signalProcessTree(child, 'SIGTERM')
 

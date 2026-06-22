@@ -115,6 +115,9 @@ Record durable architecture decisions in the repo's ADR/planning surface if one 
   hook or MCP hangs disappear; follow `.agent/rules/no-timeout-as-fix.md`.
 - Keep these repo-local expectations aligned with `.agent/rules/agent-guide.md`
   and the active blueprint tasks before changing hook or MCP runtime behavior.
+- Formatting is repo-owned: use `wp format` / `wp format --check` instead of
+  invoking formatter binaries such as `prettier` directly. If formatting fails, fix the `wp format` path rather than bypassing
+  the repo facade.
 - **Agent tool: never use `subagent_type=Explore` for multi-step or synthesis tasks.**
   Explore reads excerpts only; complex tasks cause it to emit a meta-comment
   (`"Final summary delivered above."`) as its final text instead of actual content —

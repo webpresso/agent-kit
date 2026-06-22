@@ -1,5 +1,13 @@
 import { createHash } from 'node:crypto'
-import { closeSync, existsSync, mkdirSync, openSync, readSync, realpathSync, statSync } from 'node:fs'
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readSync,
+  realpathSync,
+  statSync,
+} from 'node:fs'
 import { dirname, extname, join, relative, resolve, sep } from 'node:path'
 
 import { z } from 'zod'
