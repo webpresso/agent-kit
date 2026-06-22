@@ -22,6 +22,10 @@ import {
   type SessionMemoryNativeTarget,
 } from '../src/session-memory/native-targets.js'
 import {
+  formatRuntimeTypecheckParityFailures,
+  probeRuntimeTypecheckParity,
+} from '../src/typecheck/runtime-parity.js'
+import {
   listValidBenchmarkResultCards,
   validateBenchmarkResultCard,
 } from './bench/lib/result-card.js'
@@ -50,7 +54,13 @@ export interface RepoVisibilityReadinessInput {
 
 interface RuntimeManifestRecord {
   readonly binaryName?: string
-  readonly targets?: Array<{ id?: string; os?: string; bunTarget?: string; packageName?: string }>
+  readonly targets?: Array<{
+    id?: string
+    os?: string
+    cpu?: string
+    bunTarget?: string
+    packageName?: string
+  }>
 }
 
 interface PluginManifestRecord {
@@ -282,6 +292,61 @@ export function listPackedRuntimePayloadLeaks(packedFiles: readonly string[]): s
       DENIED_PACKED_RUNTIME_PAYLOAD_PREFIXES.some((prefix) => path.startsWith(prefix)) &&
       !isAllowedPackedNativeAddon(path),
   )
+}
+
+type CompiledRuntimeTypecheckParityOptions = {
+  readonly runtimeBinaryPath?: string
+  readonly targetId?: string
+  readonly env?: NodeJS.ProcessEnv
+  readonly probe?: typeof probeRuntimeTypecheckParity
+}
+
+function resolveHostRuntimeBinaryPath(root = ROOT): {
+  targetId?: string
+  runtimeBinaryPath?: string
+} {
+  const manifestPath = resolve(root, 'bin', 'runtime-manifest.json')
+  if (!existsSync(manifestPath)) return {}
+
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as RuntimeManifestRecord
+  const target = (manifest.targets ?? []).find(
+    (candidate) => candidate.os === process.platform && candidate.cpu === process.arch,
+  )
+  if (!target?.id) return {}
+
+  return {
+    targetId: target.id,
+    runtimeBinaryPath: join(
+      root,
+      'bin',
+      'runtime',
+      target.id,
+      target.os === 'win32' ? 'wp.exe' : 'wp',
+    ),
+  }
+}
+
+export function evaluateCompiledRuntimeTypecheckParity(
+  options: CompiledRuntimeTypecheckParityOptions = {},
+): CheckResult {
+  if (!options.runtimeBinaryPath) {
+    return fail(
+      'compiled-runtime-typecheck-parity',
+      'host runtime binary missing for the current platform/arch target',
+    )
+  }
+
+  const probe = (options.probe ?? probeRuntimeTypecheckParity)({
+    command: options.runtimeBinaryPath,
+    env: options.env ?? { ...process.env, WP_SKIP_UPDATE_CHECK: '1' },
+  })
+
+  return probe.ok
+    ? pass(
+        'compiled-runtime-typecheck-parity',
+        `host runtime ${options.targetId ?? 'unknown-target'} exposes --file/--package and resolved scopes`,
+      )
+    : fail('compiled-runtime-typecheck-parity', formatRuntimeTypecheckParityFailures(probe))
 }
 
 function countMatches(paths: string[], patterns: RegExp[]): string[] {
@@ -756,6 +821,15 @@ if (import.meta.main) {
           ),
     )
   }
+
+  const hostRuntime = resolveHostRuntimeBinaryPath()
+  results.push(
+    evaluateCompiledRuntimeTypecheckParity({
+      runtimeBinaryPath: hostRuntime.runtimeBinaryPath,
+      targetId: hostRuntime.targetId,
+      env: { ...process.env, WP_SKIP_UPDATE_CHECK: '1' },
+    }),
+  )
 
   if (typeof pkg.version === 'string') {
     const missingSessionMemoryNativeOptionalDeps =

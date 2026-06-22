@@ -12,11 +12,13 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { delimiter, join } from 'node:path'
 
 import { afterAll, describe, expect, it } from 'vitest'
 
 import { createInstalledBlueprintMigrationSmokeScript } from './scripts/packed-blueprint-migration-smoke.js'
+import { resolveRuntimeTarget, runtimePackageDirName } from './src/build/runtime-targets.js'
+import { probeRuntimeTypecheckParity } from './src/typecheck/runtime-parity.js'
 
 const REPO_ROOT = process.cwd()
 const PACKAGE_JSON_PATH = join(REPO_ROOT, 'package.json')
@@ -81,6 +83,7 @@ type PackedTarballArtifact = {
 
 let packedTarballArtifactCache: PackedTarballArtifact | undefined
 let packedDistBuilt = false
+let packedNativeRuntimeBuilt = false
 
 function parseNpmJson<T>(raw: string): T {
   const start = raw.indexOf('[')
@@ -130,6 +133,28 @@ function ensureBuiltPackedDist() {
     },
   })
   packedDistBuilt = true
+}
+
+function ensureBuiltNativeRuntimeArtifacts() {
+  if (packedNativeRuntimeBuilt) return
+  ensureBuiltPackedDist()
+  execFileSync('bun', ['scripts/build-runtime-binaries.ts'], {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      HUSKY: '0',
+    },
+  })
+  execFileSync('bun', ['scripts/stage-plugin-runtime-artifacts.ts'], {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      HUSKY: '0',
+    },
+  })
+  packedNativeRuntimeBuilt = true
 }
 
 function ensurePackedTarballArtifact() {
@@ -205,6 +230,38 @@ function createPackedTarball(): { tarballPath: string; cleanup: () => void } {
     tarballPath: artifact.tarballPath,
     cleanup: () => {},
   }
+}
+
+function createHostRuntimeTarball(tempRoot: string): { tarballPath: string } {
+  ensureBuiltNativeRuntimeArtifacts()
+  const target = resolveRuntimeTarget()
+  if (!target) {
+    throw new Error(`No compiled host runtime target for ${process.platform}/${process.arch}`)
+  }
+  const packageRoot = join(
+    REPO_ROOT,
+    'dist',
+    'runtime-packages',
+    runtimePackageDirName(target.packageName),
+  )
+  const raw = execFileSync(
+    'npm',
+    ['pack', '--ignore-scripts', '--json', '--pack-destination', tempRoot],
+    {
+      cwd: packageRoot,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        HUSKY: '0',
+      },
+    },
+  )
+  const entries = parseNpmJson<Array<{ filename?: string }>>(raw)
+  const tarballName = entries[0]?.filename
+  if (!tarballName) {
+    throw new Error('npm pack did not return a host runtime tarball filename')
+  }
+  return { tarballPath: join(tempRoot, tarballName) }
 }
 
 afterAll(() => {
@@ -371,4 +428,49 @@ describe('tooling umbrella package integration contract', () => {
       rmSync(tmpRoot, { force: true, recursive: true })
     }
   }, 120_000)
+
+  it('packed global installs keep bare wp typecheck targeting aligned with the host runtime package', () => {
+    const { tarballPath, cleanup } = createPackedTarball()
+    const tmpRoot = mkdtempSync(join(tmpdir(), 'wp-packed-global-typecheck-'))
+    const fakeHome = join(tmpRoot, 'home')
+    const globalPrefix = join(fakeHome, '.vite-plus')
+    const { tarballPath: runtimeTarballPath } = createHostRuntimeTarball(tmpRoot)
+
+    try {
+      const env = {
+        ...process.env,
+        HOME: fakeHome,
+        HUSKY: '0',
+        WP_SKIP_UPDATE_CHECK: '1',
+        npm_config_prefix: globalPrefix,
+        PATH: [join(globalPrefix, 'bin'), globalPrefix, process.env.PATH ?? ''].join(delimiter),
+      }
+
+      execFileSync('npm', ['install', '--global', runtimeTarballPath], {
+        cwd: tmpRoot,
+        encoding: 'utf8',
+        env,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
+      execFileSync('npm', ['install', '--global', tarballPath], {
+        cwd: tmpRoot,
+        encoding: 'utf8',
+        env,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
+
+      const probe = probeRuntimeTypecheckParity({
+        command: 'wp',
+        env,
+      })
+
+      expect(probe.ok).toBe(true)
+      expect(probe.helpOutput).toContain('--file')
+      expect(probe.helpOutput).toContain('--package')
+      expect(probe.fileOutput).toContain('Resolved typecheck scopes: @parity/root, @parity/widget')
+    } finally {
+      cleanup()
+      rmSync(tmpRoot, { force: true, recursive: true })
+    }
+  }, 180_000)
 })

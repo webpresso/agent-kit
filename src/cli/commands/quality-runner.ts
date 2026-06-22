@@ -212,6 +212,8 @@ function renderSummaryLines(
   passed: boolean,
 ): string[] {
   const lines: string[] = []
+  const resolvedScopeLine = formatResolvedScopeLine(entry)
+  if (resolvedScopeLine) lines.push(resolvedScopeLine)
   if (summary.trim().length > 0) lines.push(summary.trim())
 
   const failureLines = formatFailures(transformed.failures)
@@ -236,6 +238,17 @@ function renderSummaryLines(
   }
 
   return lines
+}
+
+function formatResolvedScopeLine(entry: CliLogEntry): string | null {
+  if (entry.command !== 'typecheck') return null
+  const resolvedScopes = entry.options?.resolvedScopes
+  if (!Array.isArray(resolvedScopes)) return null
+  const scopeNames = resolvedScopes.filter(
+    (value): value is string => typeof value === 'string' && value.trim().length > 0,
+  )
+  if (scopeNames.length === 0) return null
+  return `Resolved typecheck scopes: ${scopeNames.join(', ')}`
 }
 
 function formatFailures(failures: readonly Failure[] | undefined): string[] {
