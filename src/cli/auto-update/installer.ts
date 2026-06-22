@@ -120,7 +120,7 @@ export function clearInstallTombstone(): void {
     if (current === null) return
     const next: Record<string, unknown> = { ...readRaw(configPath) }
     delete next.autoInstallInProgress
-    writeJsonFile(configPath, next, { indent: 0, trailingNewline: false })
+    writeJsonFile(configPath, next, { atomic: true, indent: 0, trailingNewline: false })
   } catch {
     // Best-effort — no caller waits on this.
   }
@@ -246,7 +246,7 @@ function writeTombstone(configPath: string, tombstone: Tombstone): void {
   const dir = dirname(configPath)
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
   const merged = { ...readRaw(configPath), ...tombstone }
-  writeJsonFile(configPath, merged, { indent: 0, trailingNewline: false })
+  writeJsonFile(configPath, merged, { atomic: true, indent: 0, trailingNewline: false })
 }
 
 function openLogForAppend(logPath: string): number {

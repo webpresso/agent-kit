@@ -48,6 +48,13 @@ function git(cwd: string, args: readonly string[]): string {
   return execFileSync('git', [...args], { cwd, encoding: 'utf8', env: FAST_GIT_ENV }).toString()
 }
 
+function refs(cwd: string): string[] {
+  return git(cwd, ['for-each-ref', '--format=%(refname:short)', 'refs/heads', 'refs/tags'])
+    .trim()
+    .split('\n')
+    .filter(Boolean)
+}
+
 function runScript(
   cwd: string,
   flags: readonly string[],
@@ -154,25 +161,35 @@ describe('scripts/release.ts', () => {
       expect(result.stdout).toContain('[dry-run]')
       expect(result.stdout).toContain('v9.9.9')
       // Tag must exist locally.
-      const tags = git(f.repoDir, ['tag', '-l']).trim().split('\n').filter(Boolean)
-      expect(tags).toContain('v9.9.9')
-      // Release branch must exist locally.
-      const branches = git(f.repoDir, ['branch', '--list'])
-        .split('\n')
-        .map((l) => l.replace(/^[*+ ]+/, '').trim())
-        .filter(Boolean)
-      expect(branches).toContain('release/v9.9.9')
+      const localRefs = refs(f.repoDir)
+      expect(localRefs).toContain('v9.9.9')
+      expect(localRefs).toContain('release/v9.9.9')
       // Original branch restored.
       const current = git(f.repoDir, ['rev-parse', '--abbrev-ref', 'HEAD']).trim()
       expect(current).toBe('main')
     })
 
-    it('aborts when the working tree is dirty', () => {
+    it('aborts when the working tree is dirty (tracked change)', () => {
       const f = fixture!
       writeFileSync(join(f.repoDir, 'package.json'), '{"name":"dirty"}\n')
       const result = runScript(f.repoDir, ['--dry-run'])
       expect(result.status).not.toBe(0)
       expect(result.stderr + result.stdout).toMatch(/working tree.*not clean|dirty/i)
+    })
+
+    it('proceeds when only untracked files are present', () => {
+      const f = fixture!
+      // Use a filename not matched by .gitignore (which only ignores dist/).
+      // Pre-assert it appears in porcelain output so the test is not vacuous:
+      // an ignored file is absent from porcelain and the test would pass even
+      // against the git-status--porcelain version, proving nothing.
+      const untrackedFile = join(f.repoDir, 'UNTRACKED_PROOF.txt')
+      writeFileSync(untrackedFile, 'untracked\n')
+      const porcelain = git(f.repoDir, ['status', '--porcelain'])
+      expect(porcelain).toContain('UNTRACKED_PROOF.txt')
+
+      const result = runScript(f.repoDir, ['--dry-run'])
+      expect(result.status, `release should proceed with untracked file: ${result.stderr}`).toBe(0)
     })
 
     it('aborts when pnpm build fails', () => {
@@ -205,14 +222,9 @@ describe('scripts/release.ts', () => {
 
       expect(result.status, `script failed: ${result.stderr}`).toBe(0)
       // Tag landed on remote.
-      const remoteTags = git(f.remoteDir, ['tag', '-l']).trim().split('\n').filter(Boolean)
-      expect(remoteTags).toContain('v9.9.9')
-      // Release branch landed on remote.
-      const remoteBranches = git(f.remoteDir, ['branch', '--list'])
-        .split('\n')
-        .map((l) => l.replace(/^[*+ ]+/, '').trim())
-        .filter(Boolean)
-      expect(remoteBranches).toContain('release/v9.9.9')
+      const remoteRefs = refs(f.remoteDir)
+      expect(remoteRefs).toContain('v9.9.9')
+      expect(remoteRefs).toContain('release/v9.9.9')
       // Original branch restored.
       const current = git(f.repoDir, ['rev-parse', '--abbrev-ref', 'HEAD']).trim()
       expect(current).toBe('main')
@@ -220,13 +232,18 @@ describe('scripts/release.ts', () => {
 
     it('tags the mainline commit and keeps the dist commit on the compatibility branch', () => {
       const f = fixture!
-      const mainBefore = git(f.repoDir, ['rev-parse', 'HEAD']).trim()
       const result = runScript(f.repoDir, ['--dry-run'])
 
       expect(result.status, `script failed: ${result.stderr}`).toBe(0)
 
-      const tagCommit = git(f.repoDir, ['rev-parse', 'v9.9.9^{commit}']).trim()
-      const branchCommit = git(f.repoDir, ['rev-parse', 'release/v9.9.9']).trim()
+      const [mainBefore, tagCommit, branchCommit] = git(f.repoDir, [
+        'rev-parse',
+        'main',
+        'v9.9.9^{commit}',
+        'release/v9.9.9',
+      ])
+        .trim()
+        .split('\n')
 
       expect(tagCommit).toBe(mainBefore)
       expect(branchCommit).not.toBe(mainBefore)

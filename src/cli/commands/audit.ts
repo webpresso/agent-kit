@@ -123,6 +123,8 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
   'cross-repo-correlation': async (root) =>
     (await import('#audit/cross-repo-correlation')).auditCrossRepoCorrelationAsRepoResult(root),
   'ai-contracts': async (root) => (await import('#audit/ai-contracts')).auditAiContracts(root),
+  'atomic-state-writes': async (root) =>
+    (await import('#audit/atomic-state-writes')).auditAtomicStateWrites(root),
   'hook-surface': async (root) =>
     (await import('#audit/hook-surface')).auditHookSurfaceAsRepoResult(root),
   'hook-vendor-drift': async (root) => {

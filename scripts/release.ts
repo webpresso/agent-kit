@@ -39,7 +39,7 @@
  * local tag + branch already exist — clean them up before retrying.
  */
 
-import { execSync, spawnSync } from 'node:child_process'
+import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
@@ -94,7 +94,6 @@ function capture(cmd, args) {
 }
 
 function assertCleanWorkingTree() {
-  // `git diff --quiet` exits 1 if unstaged changes exist; same for --cached.
   const unstaged = spawnSync('git', ['diff', '--quiet'], { cwd: REPO_ROOT })
   const staged = spawnSync('git', ['diff', '--cached', '--quiet'], { cwd: REPO_ROOT })
   if (unstaged.status !== 0 || staged.status !== 0) {
@@ -130,7 +129,13 @@ function main() {
   assertCleanWorkingTree()
 
   // Capture original branch so we can restore at the end.
-  const originalBranch = capture('git', ['rev-parse', '--abbrev-ref', 'HEAD'])
+  const [originalBranch, publishedCommit] = capture('git', [
+    'rev-parse',
+    '--abbrev-ref',
+    'HEAD',
+    'HEAD',
+  ]).split('\n')
+  if (!originalBranch || !publishedCommit) fail('could not resolve current branch and HEAD')
   log(`[release] original branch: ${originalBranch}`)
 
   // 2. Build.
@@ -145,7 +150,6 @@ function main() {
   const version = readPackageVersion()
   const tag = `v${version}`
   const releaseBranch = `release/${tag}`
-  const publishedCommit = capture('git', ['rev-parse', 'HEAD'])
   log(`[release] step 3/8: version is ${version} → tag ${tag}, branch ${releaseBranch}`)
 
   // 4. Tag the published/mainline commit explicitly before branching.
@@ -187,10 +191,7 @@ function main() {
         // `--force` (not used) would be needed if we'd dirtied the worktree,
         // but at this point dist/ is committed on the release branch and the
         // worktree is clean — a plain checkout works.
-        execSync(`git checkout "${originalBranch}"`, {
-          cwd: REPO_ROOT,
-          stdio: 'inherit',
-        })
+        run('git', ['checkout', originalBranch])
         log(`[release] restored original branch: ${originalBranch}`)
       } catch (err) {
         process.stderr.write(

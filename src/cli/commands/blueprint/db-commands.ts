@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { execSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { coldStartIfNeeded } from '#db/cold-start.js'
@@ -8,6 +8,7 @@ import { openDb } from '#db/connection.js'
 import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
 import { runTemplate } from '#db/template-runner.js'
 import { reIngestProjection } from '#projection-ready.js'
+import { writeJsonFileAtomic } from '#shared-utils/write-json-file.js'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -223,7 +224,7 @@ export function dbBrowse(projectRoot: string, _execSync: ExecSyncFn = execSync):
     description: 'Blueprint and tech-debt structured store (webpresso)',
     source: 'wp blueprint db build',
   }
-  writeFileSync(metadataPath, JSON.stringify(metadata, null, 2) + '\n', 'utf8')
+  writeJsonFileAtomic(metadataPath, metadata)
 
   // Launch datasette (blocking — inherits stdio so the user sees the URL)
   _execSync(`datasette serve "${dbPath}" --metadata "${metadataPath}"`, { stdio: 'inherit' })

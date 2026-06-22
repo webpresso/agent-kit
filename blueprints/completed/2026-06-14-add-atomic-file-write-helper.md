@@ -2,11 +2,11 @@
 type: blueprint
 title: Add atomic file write helper
 owner: ozby
-status: in-progress
+status: completed
 complexity: S
 created: '2026-06-14'
-last_updated: '2026-06-21'
-progress: '0% (0/4 tasks done, 0 blocked)'
+last_updated: '2026-06-22'
+progress: '100% (4/4 tasks done, 0 blocked, updated 2026-06-22)'
 depends_on:
   - 2026-06-14-shared-filesystem-io-utilities
 cross_repo_depends_on: []
@@ -102,7 +102,7 @@ Instead, the atomicity concern is **folded into the dependency blueprint's helpe
 ## Tasks
 
 #### Task 1.1: Add atomic option to the shared write-json helper
-**Status:** todo
+**Status:** done
 **Depends:** `2026-06-14-shared-filesystem-io-utilities` Task 1.1 (helper `writeJsonFile` exists)
 Extend the dependency blueprint's `writeJsonFile` helper module with an opt-in atomic write path, rather than creating a competing helper. Atomicity is a flag on the existing helper so the dependency blueprint's single migration sweep can mark state-bearing sites atomic without a second rewrite.
 **Files:**
@@ -113,15 +113,15 @@ Extend the dependency blueprint's `writeJsonFile` helper module with an opt-in a
 2. Implement the atomic path → verify PASS
 3. `./bin/wp lint` + `./bin/wp typecheck`
 **Acceptance:**
-- [ ] `writeJsonFile(path, data, { atomic: true })` writes to `path.tmp-<pid>-<id>`, `fs.fdatasync` on fd, `renameSync(tmp, path)`
-- [ ] `writeJsonFileAtomic(path, data, options?)` is a convenience wrapper equivalent to `{ atomic: true }`
-- [ ] A raw-content variant (`writeFileAtomic(path, content, options?)`) exists for non-JSON state-bearing writes (e.g. blueprint markdown)
-- [ ] Atomic path cleans up the temp file on write failure OR rename failure (try/finally)
-- [ ] Cross-device rename fallback: copy + unlink with a logged warning
-- [ ] JSDoc documents the contract (crash-safety, cross-device fallback, cleanup guarantee)
+- [x] `writeJsonFile(path, data, { atomic: true })` writes to `path.tmp-<pid>-<id>`, `fs.fdatasync` on fd, `renameSync(tmp, path)`
+- [x] `writeJsonFileAtomic(path, data, options?)` is a convenience wrapper equivalent to `{ atomic: true }`
+- [x] A raw-content variant (`writeFileAtomic(path, content, options?)`) exists for non-JSON state-bearing writes (e.g. blueprint markdown)
+- [x] Atomic path cleans up the temp file on write failure OR rename failure (try/finally)
+- [x] Cross-device rename fallback: copy + unlink with a logged warning
+- [x] JSDoc documents the contract (crash-safety, cross-device fallback, cleanup guarantee)
 
 #### Task 1.2: Mark high-risk state-bearing writes as atomic
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.1
 Coordinate with the dependency blueprint's migration of these files so each site is touched once: where the dep blueprint converts these writes to `writeJsonFile`/`writeFileAtomic`, pass the atomic flag. List the full set of state-bearing writes so none is missed.
 **Files:**
@@ -134,14 +134,14 @@ Coordinate with the dependency blueprint's migration of these files so each site
 3. Verify all existing tests still pass
 4. `./bin/wp lint` + `./bin/wp typecheck` on modified files
 **Acceptance:**
-- [ ] `src/blueprint/freshness.ts` sidecar uses the atomic write path
-- [ ] `src/mcp/blueprint-server.ts` all 5 state-bearing direct writes (372, 400, 1106, 1244, 2472) use the atomic write path
-- [ ] `src/cli/commands/blueprint/db-commands.ts` metadata write uses the atomic write path
-- [ ] Directory-level rename at line 2465 is left untouched (not a file write)
-- [ ] All existing tests for these modules pass
+- [x] `src/blueprint/freshness.ts` sidecar uses the atomic write path
+- [x] `src/mcp/blueprint-server.ts` all 5 state-bearing direct writes (372, 400, 1106, 1244, 2472) use the atomic write path
+- [x] `src/cli/commands/blueprint/db-commands.ts` metadata write uses the atomic write path
+- [x] Directory-level rename at line 2465 is left untouched (not a file write)
+- [x] All existing tests for these modules pass
 
 #### Task 1.3: Mark remaining state-bearing writes as atomic
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.1
 **Files:**
 - Modify: `src/hooks/guard-switch/state.ts` (guard state)
@@ -153,12 +153,12 @@ Coordinate with the dependency blueprint's migration of these files so each site
 2. Route the write through the helper with `{ atomic: true }`
 3. Verify tests pass; lint + typecheck
 **Acceptance:**
-- [ ] Each listed module uses the atomic write path
-- [ ] `src/cli/commands/config.ts` preserves `{ mode: 0o600 }` via options passthrough
-- [ ] Module-specific tests pass
+- [x] Each listed module uses the atomic write path
+- [x] `src/cli/commands/config.ts` preserves `{ mode: 0o600 }` via options passthrough
+- [x] Module-specific tests pass
 
 #### Task 1.4: Add lint/audit rule for non-atomic state-bearing writes
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.2
 Add a real rule that flags bare `writeFileSync` in the state-bearing modules. The existing `src/audit/ai-contracts.ts` does **not** check writes and must not be cited as a gate; this task creates the check.
 **Files:**
@@ -168,9 +168,9 @@ Add a real rule that flags bare `writeFileSync` in the state-bearing modules. Th
 2. Run the rule; fix any new hits
 3. Add a test asserting the rule fires on a bare `writeFileSync` and is silent when the atomic helper is used
 **Acceptance:**
-- [ ] The new rule flags non-atomic `writeFileSync` in the target state-bearing modules
-- [ ] Running the new rule (e.g. `./bin/wp lint` with the rule active, or `./bin/wp audit <new-kind>`) passes after Tasks 1.2/1.3
-- [ ] The rule's own test verifies it fires on a bare write and is silent on the atomic helper
+- [x] The new rule flags non-atomic `writeFileSync` in the target state-bearing modules
+- [x] Running the new rule (e.g. `./bin/wp lint` with the rule active, or `./bin/wp audit <new-kind>`) passes after Tasks 1.2/1.3
+- [x] The rule's own test verifies it fires on a bare write and is silent on the atomic helper
 
 ## Verification Gates
 
@@ -199,3 +199,26 @@ Add a real rule that flags bare `writeFileSync` in the state-bearing modules. Th
 | Orphan temp files on abnormal exit | The atomic path's try/finally removes the temp file on write/rename failure; partial temp files left by a hard kill are inert (canonical path is never touched until rename succeeds) and overwritten on the next write. No background scanner needed. |
 | Same-file conflict with the dependency blueprint | Atomicity is folded into the dep blueprint's helper; call sites are migrated once (Task 1.2/1.3 only pass the atomic flag, coordinated with that migration). |
 | `blueprint-server.ts` rename at line 2465 is directory-level not file-level | Do not touch directory renames; only route the 5 file `writeFileSync` calls through the atomic helper. |
+
+
+## Completion Evidence
+
+Completed on 2026-06-22.
+
+Implemented:
+- Extended `src/utils/write-json-file.ts` with `writeFileAtomic`, `writeJsonFile(..., { atomic: true })`, and `writeJsonFileAtomic`.
+- Migrated state-bearing blueprint/config writes to atomic helper paths.
+- Added `wp audit atomic-state-writes` and MCP audit coverage to prevent regressions.
+- Fixed inherited slow git-backed test fixtures without increasing timeouts so the full suite can pass.
+
+Verification:
+- `./bin/wp test --file src/utils/write-json-file.test.ts --file src/audit/atomic-state-writes.test.ts --file src/blueprint/freshness.test.ts --file src/hooks/guard-switch/state.test.ts --file src/cli/auto-update/installer.test.ts --file src/cli/commands/config.test.ts --file src/cli/commands/blueprint/db-commands.test.ts --file src/mcp/blueprint-server.test.ts`
+- `./bin/wp test --file scripts/release.test.ts --file src/blueprint/db/paths.test.ts`
+- `./bin/wp test`
+- `./bin/wp typecheck`
+- `./bin/wp lint`
+- `./bin/wp audit atomic-state-writes --json`
+- `./bin/wp audit package-surface --json`
+- `./bin/wp audit blueprint-readme-drift --json`
+- `./bin/wp audit blueprint-lifecycle --base origin/main --json`
+- `git diff --check`
