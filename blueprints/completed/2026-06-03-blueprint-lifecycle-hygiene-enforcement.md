@@ -1112,3 +1112,35 @@ is YAGNI (already flagged drop/merge).
 | Verdict | **IN EXECUTION** — all 9 open questions were resolved via deep-interview (2026-06-03), and the foundation implementation slice is underway. Remaining work is completing the task graph and backfill, not resolving design ambiguity. |
 | Highest risk | False enforcement coverage (C1/C6/0.4): a check that's registered but doesn't actually run on the MCP/CI/pre-ingest surface |
 | Reviews run | plan-refine Phases 1-6 + `/codex review` + deep-interview — three review passes + decision interview |
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-22T00:00:00.000Z
+- verified-head: 45289c257910767ff10aa219afdbf2233c6ca880
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID | Claim | Evidence |
+| -- | ----- | -------- |
+| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-03-blueprint-lifecycle-hygiene-enforcement.md |
+
+### Material Decisions
+
+| ID | Decision | Chosen option | Rejected alternatives | Rationale |
+| -- | -------- | ------------- | --------------------- | --------- |
+| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+
+### Promotion Gates
+
+| Gate | Command | Expected outcome | Last result |
+| ---- | ------- | ---------------- | ----------- |
+| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+
+### Residual Unknowns
+
+None.

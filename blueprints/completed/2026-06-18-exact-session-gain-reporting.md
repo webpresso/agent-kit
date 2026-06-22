@@ -36,3 +36,35 @@ Implement context-mode-style gain reporting for Webpresso session tools with a s
 ## Completion Summary
 
 Implemented exact byte-gain telemetry for `wp_session_execute`, `wp_session_batch_execute`, `wp_session_execute_file` read-text calls, `wp_session_index`, and `wp_session_fetch_and_index`. Added SQLite persistence/aggregation, `wp_session_stats` gain totals, and `wp gain` Webpresso + RTK separated reporting. Added regression coverage for UTF-8 byte math, fixed-point convergence/fallback, zero-gain events, basis choices, batch no-double-counting, stats output, CLI RTK fallback, and docs wording.
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-22T00:00:00.000Z
+- verified-head: 45289c257910767ff10aa219afdbf2233c6ca880
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID | Claim | Evidence |
+| -- | ----- | -------- |
+| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-18-exact-session-gain-reporting.md |
+
+### Material Decisions
+
+| ID | Decision | Chosen option | Rejected alternatives | Rationale |
+| -- | -------- | ------------- | --------------------- | --------- |
+| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+
+### Promotion Gates
+
+| Gate | Command | Expected outcome | Last result |
+| ---- | ------- | ---------------- | ----------- |
+| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+
+### Residual Unknowns
+
+None.

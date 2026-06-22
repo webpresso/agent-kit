@@ -234,3 +234,7 @@ wp blueprint db build    # rebuild after state changes
 wp blueprint db verify   # confirm DB matches markdown (suitable for CI)
 wp blueprint db browse   # open Datasette UI for human exploration
 ```
+
+## Planned as a hard trust state
+
+`planned/` is an execution-ready trust state. A planned blueprint must have zero material unknowns, zero open design questions, a complete Trust Dossier, and passing Promotion Gates. Draft remains the only lifecycle state for unresolved questions or speculative claims. Normal promotion into planned must use `wp blueprint promote <slug> planned`; recovery `move` is not the normal lifecycle path.

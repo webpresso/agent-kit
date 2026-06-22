@@ -149,3 +149,34 @@ reference "see above" or "as described in Task X.Y" — inline all context.]
 | Component | Technology | Version | Why |
 | --------- | ---------- | ------- | --- |
 |           |            |         |     |
+
+## Trust Dossier
+
+Draft note: complete this dossier before promotion to planned.
+
+### Readiness Verdict
+
+- promotion-ready: false
+- unresolved-count: 1
+- verified-at: <ISO-8601 timestamp>
+- verified-head: <full git commit SHA>
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID | Claim | Evidence |
+| -- | ----- | -------- |
+
+### Material Decisions
+
+| ID | Decision | Chosen option | Rejected alternatives | Rationale |
+| -- | -------- | ------------- | --------------------- | --------- |
+
+### Promotion Gates
+
+| Gate | Command | Expected outcome | Last result |
+| ---- | ------- | ---------------- | ----------- |
+
+### Residual Unknowns
+
+Complete before planned promotion.

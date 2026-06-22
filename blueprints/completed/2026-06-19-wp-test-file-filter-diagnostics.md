@@ -52,3 +52,35 @@ canonical write/fix formatter entrypoint.
 ```webpresso-evidence-v1
 [{"command":"vp exec vitest run src/output-transforms/vitest.test.ts src/mcp/tools/test.test.ts src/mcp/runners/test.test.ts src/cli/package-scripts.test.ts package.contract.test.ts --reporter=verbose","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-19T00:10:32+02:00"},{"command":"node -e \"const p=require('./package.json'); if ('format:check' in p.scripts) throw new Error('format:check still exists'); if (p.scripts.format !== './bin/wp format') throw new Error('format script changed unexpectedly'); console.log('package format scripts ok')\"","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-19T00:10:32+02:00"},{"command":"vp run typecheck","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-19T00:10:55+02:00"},{"command":"vp run lint","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-19T00:10:55+02:00"},{"command":"./bin/wp audit ai-contracts && ./bin/wp audit guardrails","exit_code":0,"kind":"audit","result":"pass","ts":"2026-06-19T00:15:00+02:00"}]
 ```
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-22T00:00:00.000Z
+- verified-head: 45289c257910767ff10aa219afdbf2233c6ca880
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID | Claim | Evidence |
+| -- | ----- | -------- |
+| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-wp-test-file-filter-diagnostics.md |
+
+### Material Decisions
+
+| ID | Decision | Chosen option | Rejected alternatives | Rationale |
+| -- | -------- | ------------- | --------------------- | --------- |
+| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+
+### Promotion Gates
+
+| Gate | Command | Expected outcome | Last result |
+| ---- | ------- | ---------------- | ----------- |
+| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+
+### Residual Unknowns
+
+None.

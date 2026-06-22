@@ -193,3 +193,35 @@ Close the durable planning loop after verification. Do not add a changeset unles
 - [x] Blueprint audit passes.
 - [x] Verification evidence is recorded.
 - [x] Release policy is followed if public behavior changed (no additional changeset needed for this proof-only lane).
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-22T00:00:00.000Z
+- verified-head: 45289c257910767ff10aa219afdbf2233c6ca880
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID | Claim | Evidence |
+| -- | ----- | -------- |
+| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-01-mcp-managed-vitest-launcher-finalization.md |
+
+### Material Decisions
+
+| ID | Decision | Chosen option | Rejected alternatives | Rationale |
+| -- | -------- | ------------- | --------------------- | --------- |
+| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+
+### Promotion Gates
+
+| Gate | Command | Expected outcome | Last result |
+| ---- | ------- | ---------------- | ----------- |
+| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+
+### Residual Unknowns
+
+None.

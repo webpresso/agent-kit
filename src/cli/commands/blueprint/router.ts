@@ -631,6 +631,11 @@ export async function moveBlueprint(
       'Blueprint move is recovery-only. Use wp blueprint start/task/finalize for normal lifecycle changes, or pass --force-recovery.',
     )
   }
+  if (location.blueprint.status === 'draft' && nextStatus === 'planned') {
+    throw new Error(
+      'Blueprint move cannot recover a draft directly into planned. Use `wp blueprint promote <slug> planned` so the Trust Dossier gate runs.',
+    )
+  }
 
   assertBlueprintCanMoveToStatus(location.blueprint, nextStatus)
 

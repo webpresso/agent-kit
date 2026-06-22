@@ -405,3 +405,35 @@ effective native launcher correctly after the canonical cutover is in place.
 - [x] Canonical Task 1.5 publish + Claude cutover evidence exists and is referenced here (`v0.29.3`, npm latest `0.29.3`, public-readiness PASS).
 - [x] Residual smoke confirms `wp hooks doctor` / readiness surfaces still match the effective native launcher after canonical cutover.
 - [x] No timeout setting was increased.
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-22T00:00:00.000Z
+- verified-head: 45289c257910767ff10aa219afdbf2233c6ca880
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID | Claim | Evidence |
+| -- | ----- | -------- |
+| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-01-claude-plugin-native-runtime-hardening.md |
+
+### Material Decisions
+
+| ID | Decision | Chosen option | Rejected alternatives | Rationale |
+| -- | -------- | ------------- | --------------------- | --------- |
+| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+
+### Promotion Gates
+
+| Gate | Command | Expected outcome | Last result |
+| ---- | ------- | ---------------- | ----------- |
+| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+
+### Residual Unknowns
+
+None.

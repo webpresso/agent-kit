@@ -66,6 +66,7 @@ import { err, finishPayload, jsonContent, parseStructuredJson } from '#mcp/bluep
 import { bytes, sortKeys, toStr } from '#mcp/blueprint/_shared/payload'
 import { nextActionOutputSchema, summaryEnvelopeOutputSchema } from '#mcp/blueprint/_shared/schema'
 import { readVt, writeVt } from '#mcp/blueprint/_shared/validation-timestamp'
+import { applyPromotionTrustGate } from '../blueprint/trust/promotion.js'
 
 export { _setSyncAdapterFactory }
 export type { SyncAdapter }
@@ -2264,7 +2265,11 @@ async function applyLocalBlueprintTransition(input: {
   }
   const markdown = readFileSync(overviewPath, 'utf8')
   const currentBlueprint = parseBlueprint(markdown, slug)
-  const updated = setBlueprintFrontmatterFields(markdown, {
+  const trustedMarkdown =
+    found.state === 'draft' && to_state === 'planned'
+      ? applyPromotionTrustGate({ repoRoot: projectCwd, file: overviewPath, markdown })
+      : markdown
+  const updated = setBlueprintFrontmatterFields(trustedMarkdown, {
     status: to_state,
     last_updated: todayIsoDate(),
     completed_at: to_state === 'completed' ? todayIsoDate() : undefined,

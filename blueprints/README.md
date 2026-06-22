@@ -57,3 +57,7 @@ _None currently._
 | wp setup phase-aware gstack subprocess hardening | [`completed/2026-06-08-wp-setup-phase-aware-gstack-subprocess-hardening.md`](./completed/2026-06-08-wp-setup-phase-aware-gstack-subprocess-hardening.md) | Quiet setup now emits bounded heartbeat lines for long external gstack phases while preserving inactivity timeout semantics and durable logs. |
 | Codex/Claude shared skill contract and context budget | [`completed/2026-06-08-codex-claude-shared-skill-contract-and-context-budget.md`](./completed/2026-06-08-codex-claude-shared-skill-contract-and-context-budget.md) | Default host-visible skills are now the shared favorites only; non-favorites are opt-in; the generated root `AGENTS.md` stays under the 8 KB budget; and packed-consumer smoke is green. |
 | Root launcher contract and hook ownership alignment | [`completed/2026-06-07-root-launcher-contract-and-hook-ownership-alignment.md`](./completed/2026-06-07-root-launcher-contract-and-hook-ownership-alignment.md) | The root `bin/wp` JavaScript dispatcher contract, externalized runtime payload ownership, and bounded stale OMX hook repair policy are recorded and verified. |
+
+## Planned readiness contract
+
+`planned/` means execution-ready with a valid Trust Dossier: material claims are evidenced, material decisions are closed, Promotion Gates have passing last results, and Residual Unknowns is exactly `None.`

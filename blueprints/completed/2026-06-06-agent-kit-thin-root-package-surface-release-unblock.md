@@ -282,3 +282,35 @@ publish blocker is actually gone.
 | `bin/runtime-manifest.json` is removed too early | Could break current diagnostics/launcher assumptions | Keep the manifest decision explicit in Task 1.2; preserve it for this unblock unless proof shows it is unnecessary |
 | Root staging still writes into publishable trees after `files` changes | Root tarball can still bloat on future releases | Task 1.1 owns both `files` and staging destination decisions |
 | Hosted release fails for a different post-packaging reason | Tarball fix alone may not finish the ship lane | Keep Task 1.3 acceptance specific to root publish completion and fold any new blocker back into the canonical runtime blueprint |
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-22T00:00:00.000Z
+- verified-head: 45289c257910767ff10aa219afdbf2233c6ca880
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID | Claim | Evidence |
+| -- | ----- | -------- |
+| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-06-agent-kit-thin-root-package-surface-release-unblock.md |
+
+### Material Decisions
+
+| ID | Decision | Chosen option | Rejected alternatives | Rationale |
+| -- | -------- | ------------- | --------------------- | --------- |
+| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+
+### Promotion Gates
+
+| Gate | Command | Expected outcome | Last result |
+| ---- | ------- | ---------------- | ----------- |
+| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+
+### Residual Unknowns
+
+None.

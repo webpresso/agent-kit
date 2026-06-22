@@ -25,6 +25,7 @@ import { type BlueprintShape, getBlueprintDocumentPaths } from '#utils/document-
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
 import { reIngestProjection } from '#projection-ready.js'
 import { assertAllTasksHaveCanonicalPassingEvidence } from '#verification.js'
+import { applyPromotionTrustGate } from '../../../blueprint/trust/promotion.js'
 
 // ---------------------------------------------------------------------------
 // Platform-first sync adapter (injectable for tests, Tasks 2.6 + 2.7)
@@ -469,6 +470,13 @@ async function promoteBlueprintLocked(
   // Platform-first: these become derived artifacts; disabled: these are canonical.
   // Update frontmatter in the current location first, then move
   let content = readFileSync(currentDocumentPath, 'utf8')
+  if (currentState === 'draft' && toState === 'planned') {
+    content = applyPromotionTrustGate({
+      repoRoot: cwd,
+      file: currentDocumentPath,
+      markdown: content,
+    })
+  }
   content = updateFrontmatterStatus(content, toState)
   if (toState === 'completed') {
     const today = new Date().toISOString().split('T')[0] ?? new Date().toISOString()

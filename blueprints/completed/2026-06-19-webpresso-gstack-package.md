@@ -470,3 +470,35 @@ Verification evidence:
 - The curated Claude skill now treats first-party auth as present only when `claude auth status --output json` includes an explicit truthy auth field; a JSON payload with `provider: claude.ai` but `loggedIn: false` no longer passes.
 - Public gstack attribution now points to shipped `THIRD-PARTY-NOTICES.md`/manifest summaries instead of private `packages/gstack/...` provenance paths that package consumers cannot read.
 - Regression coverage: `packages/gstack/src/skill-text.test.ts` and `src/audit/package-surface.test.ts`; generated `catalog/agent/skills/claude/SKILL.md` and `skills/claude/SKILL.md` were regenerated from source.
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-22T00:00:00.000Z
+- verified-head: 45289c257910767ff10aa219afdbf2233c6ca880
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID | Claim | Evidence |
+| -- | ----- | -------- |
+| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-webpresso-gstack-package.md |
+
+### Material Decisions
+
+| ID | Decision | Chosen option | Rejected alternatives | Rationale |
+| -- | -------- | ------------- | --------------------- | --------- |
+| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+
+### Promotion Gates
+
+| Gate | Command | Expected outcome | Last result |
+| ---- | ------- | ---------------- | ----------- |
+| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+
+### Residual Unknowns
+
+None.

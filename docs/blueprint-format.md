@@ -331,3 +331,7 @@ exec <slug>` hands the blueprint to a runtime backend (for example the
 OMX `/pll` adapter), which walks the dependencies to run independent
 tasks in parallel — execution is delegated to that adapter, not the
 package core.
+
+## Trust Dossier
+
+Executable blueprints (`planned`, `in-progress`, `completed`) require a `## Trust Dossier` with these subsections: Readiness Verdict, Material Claims, Material Decisions, Promotion Gates, and Residual Unknowns. Trust Dossier evidence is separate from task completion evidence. Material claim evidence supports `repo:<path>`, `web:<url> (<YYYY-MM-DD>)`, and `derived:<claim-id>[,<claim-id>]`. Task dependencies use `**Depends:**`. Residual Unknowns must be exactly `None.`.

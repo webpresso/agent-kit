@@ -72,3 +72,35 @@ Fix three surfaced hardening gaps as one coherent pass: the shipped Claude outsi
 - Changeset status: `@webpresso/agent-kit` patch bump detected.
 - Direct stale-surface scan: passed for `packages/gstack/skills/claude.md`, `catalog/agent/skills/claude/SKILL.md`, and `skills/claude/SKILL.md`.
 - `wp_audits` package-surface + catalog-drift + blueprint-lifecycle: passed earlier in this session; not rerun after final reapply because that long audit reset the worktree.
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-22T00:00:00.000Z
+- verified-head: 45289c257910767ff10aa219afdbf2233c6ca880
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID | Claim | Evidence |
+| -- | ----- | -------- |
+| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-21-claude-skill-and-wp-test-targeting-hardening.md |
+
+### Material Decisions
+
+| ID | Decision | Chosen option | Rejected alternatives | Rationale |
+| -- | -------- | ------------- | --------------------- | --------- |
+| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+
+### Promotion Gates
+
+| Gate | Command | Expected outcome | Last result |
+| ---- | ------- | ---------------- | ----------- |
+| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+
+### Residual Unknowns
+
+None.

@@ -8,6 +8,7 @@ import {
   cleanupTempDir,
   makeProjectionBackedBlueprintHarness,
   parseResult,
+  trustDossierFixture,
   type ToolMap,
 } from './blueprint-server.test-harness.js'
 
@@ -61,6 +62,7 @@ Blueprint used to test atomic transitions.
 
 **Acceptance:**
 - [ ] Task remains pending until transitioned work begins
+${trustDossierFixture()}
 `
 
 let tmpDir: string
