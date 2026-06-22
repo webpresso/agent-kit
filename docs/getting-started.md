@@ -19,7 +19,7 @@ your repo root:
 
 ```bash
 cd your-repo
-npm install -g @webpresso/agent-kit
+vp install -g @webpresso/agent-kit
 wp setup
 ```
 

@@ -33,7 +33,7 @@ Requires Node.js 24 or newer. No private registry setup is required.
 Install the Webpresso CLI globally, then run setup from your repo root. `wp` bundles the package/task facade it needs, so a separate global `vp` install is not required.
 
 ```bash
-npm install -g @webpresso/agent-kit && wp setup
+vp install -g @webpresso/agent-kit && wp setup
 ```
 
 For repeatable consumer-repo setup, keep `wp` global and keep only
