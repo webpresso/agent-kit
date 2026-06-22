@@ -74,9 +74,9 @@ breaks auto-logging and hides real output.
 
 ## Formatting
 
-Use the `wp_format` MCP tool, `wp format`, or the repo script through
-`vp run format`. Do not present raw TypeScript/Bun source-entrypoint commands as
-agent-facing fallbacks; those belong inside source-level tests only. **Never
+Use the `wp_format` MCP tool or `wp format`. Do not present raw
+TypeScript/Bun source-entrypoint commands as agent-facing fallbacks; those
+belong inside source-level tests only. **Never
 invoke `oxfmt` directly without the correct flags** — it requires
 `--ignore-path .gitignore` to skip `.prettierignore` (which contains `*` and
 silently excludes every file), and the binary lives in `node_modules/.bin`, not a

@@ -55,6 +55,42 @@ export async function auditCloudflareDeployContract(root: string): Promise<RepoA
 
   const violations: RepoAuditViolation[] = []
 
+  const manualProductionWorkflowPath = path.join(
+    root,
+    '.github',
+    'workflows',
+    'deploy-production.yml',
+  )
+  if (existsSync(manualProductionWorkflowPath)) {
+    violations.push(
+      violation(
+        '.github/workflows/deploy-production.yml',
+        'production deploys must be gated by the Changesets release workflow; remove the manual deploy-production workflow',
+      ),
+    )
+  }
+
+  const releaseWorkflowPath = path.join(root, '.github', 'workflows', 'release.yml')
+  if (existsSync(releaseWorkflowPath)) {
+    const releaseWorkflow = readFileSync(releaseWorkflowPath, 'utf8')
+    if (/workflow_dispatch:/u.test(releaseWorkflow)) {
+      violations.push(
+        violation(
+          '.github/workflows/release.yml',
+          'production release workflow must run from push to main only, not workflow_dispatch',
+        ),
+      )
+    }
+    if (/release-preflight:/u.test(releaseWorkflow)) {
+      violations.push(
+        violation(
+          '.github/workflows/release.yml',
+          'release workflow must let changesets/action decide whether to open a Version Packages PR or publish; remove release-preflight',
+        ),
+      )
+    }
+  }
+
   const metadataPath = path.join(root, cloudflare.production.metadataPath)
   if (!existsSync(metadataPath)) {
     violations.push(

@@ -126,9 +126,11 @@ describe('SessionMemoryStore exact chunk lookup', () => {
     )
 
     expect(s.count()).toBe(10)
-    expect(s.getChunkById(`elision:${createHash('sha256').update('concurrent elision 3').digest('hex').slice(0, 32)}`)?.text).toBe(
-      'concurrent elision 3',
-    )
+    expect(
+      s.getChunkById(
+        `elision:${createHash('sha256').update('concurrent elision 3').digest('hex').slice(0, 32)}`,
+      )?.text,
+    ).toBe('concurrent elision 3')
   })
 })
 

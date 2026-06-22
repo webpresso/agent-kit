@@ -70,7 +70,11 @@ const tool: ToolDescriptor = {
         ? `bench ${input.suite} ${input.mode} passed`
         : `bench ${input.suite} ${input.mode} failed`,
       exitCode: result.exitCode,
-      counts: { commandCount: 1, passedCount: result.passed ? 1 : 0, failedCount: result.passed ? 0 : 1 },
+      counts: {
+        commandCount: 1,
+        passedCount: result.passed ? 1 : 0,
+        failedCount: result.passed ? 0 : 1,
+      },
       details: {
         cwd,
         suite: input.suite,

@@ -104,9 +104,7 @@ export async function enumerateClaimSurfaces(repoRoot: string): Promise<readonly
   surfaces.push(...docsSurfaces)
 
   const packedPaths = await packedFilePaths(repoRoot)
-  const packedSurfaces = await Promise.all(
-    packedPaths.map((p) => readOptional(join(repoRoot, p))),
-  )
+  const packedSurfaces = await Promise.all(packedPaths.map((p) => readOptional(join(repoRoot, p))))
   for (const s of packedSurfaces) {
     if (s !== null && !surfaces.some((existing) => existing.path === s.path)) {
       surfaces.push(s)

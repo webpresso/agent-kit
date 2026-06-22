@@ -39,7 +39,10 @@ describe('native session-memory CI warmup', () => {
   })
 
   it('warms the native addon before the public CI parallel test suite', () => {
-    const workflow = readFileSync(join(repositoryRoot, '.github', 'workflows', 'ci.agent-kit.yml'), 'utf8')
+    const workflow = readFileSync(
+      join(repositoryRoot, '.github', 'workflows', 'ci.agent-kit.yml'),
+      'utf8',
+    )
 
     expect(workflow).toContain('Warm native session-memory addon')
     expect(workflow.indexOf('Warm native session-memory addon')).toBeLessThan(

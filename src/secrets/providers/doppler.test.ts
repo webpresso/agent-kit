@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  diagnoseDopplerProvider,
-  dopplerProviderPlugin,
-  planDopplerBootstrap,
-} from './doppler.js'
+import { diagnoseDopplerProvider, dopplerProviderPlugin, planDopplerBootstrap } from './doppler.js'
 
 describe('doppler provider adapter', () => {
   it('reports workspace-scoped remediation', () => {

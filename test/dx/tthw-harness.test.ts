@@ -81,7 +81,7 @@ describe('TTHW harness', () => {
       { cwd: root, lane: 'preview_main' },
       {
         stdout: { write: (value: string) => (chunks.push(value), true) },
-        createPlan: async () => ({ steps: [], lane: 'preview_main', mode: 'deploy' } as any),
+        createPlan: async () => ({ steps: [], lane: 'preview_main', mode: 'deploy' }) as any,
       },
     )
 

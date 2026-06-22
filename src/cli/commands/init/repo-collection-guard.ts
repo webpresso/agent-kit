@@ -41,7 +41,6 @@ function listImmediateChildDirs(dir: string): string[] {
   }
 }
 
-
 function listRepoLikeDescendants(repoRoot: string, markerNames: readonly string[]): string[] {
   const matches: string[] = []
   const firstLevel = listImmediateChildDirs(repoRoot)

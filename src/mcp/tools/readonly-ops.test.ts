@@ -48,7 +48,10 @@ describe('read-only ops MCP tools', () => {
       passed: boolean
       summary: string
       counts: { commandCount: number; passedCount: number; failedCount: number }
-      details: { pr: { number: number }; commands: Array<{ command: { command: string; args: string[] } }> }
+      details: {
+        pr: { number: number }
+        commands: Array<{ command: { command: string; args: string[] } }>
+      }
     }
 
     expect(prStatusTool.annotations?.readOnlyHint).toBe(true)
@@ -118,7 +121,10 @@ describe('read-only ops MCP tools', () => {
       passed: boolean
       summary: string
       warnings: string[]
-      details: { pr?: unknown; commands: Array<{ details?: unknown; rawOutput?: string; truncated?: true }> }
+      details: {
+        pr?: unknown
+        commands: Array<{ details?: unknown; rawOutput?: string; truncated?: true }>
+      }
     }
     const serialized = JSON.stringify(payload)
 
@@ -127,12 +133,18 @@ describe('read-only ops MCP tools', () => {
     expect(payload.details.pr).toBeUndefined()
     expect(payload.details.commands[0]?.details).toBeUndefined()
     expect(payload.details.commands[0]?.truncated).toBe(true)
-    expect(payload.warnings.some((warning) => warning.includes('parsed JSON details exceed maxOutputBytes'))).toBe(true)
+    expect(
+      payload.warnings.some((warning) =>
+        warning.includes('parsed JSON details exceed maxOutputBytes'),
+      ),
+    ).toBe(true)
     expect(serialized).not.toContain(hugeTitle)
   })
 
   it('wp_pr_status degrades when gh is missing', async () => {
-    runCommandMock.mockResolvedValueOnce(missingBinary('gh')).mockResolvedValueOnce(missingBinary('gh'))
+    runCommandMock
+      .mockResolvedValueOnce(missingBinary('gh'))
+      .mockResolvedValueOnce(missingBinary('gh'))
 
     const result = await prStatusTool.handler({ cwd })
     const payload = result.structuredContent as { passed: boolean; warnings: string[] }
@@ -142,7 +154,9 @@ describe('read-only ops MCP tools', () => {
   })
 
   it('wp_bench defaults session-memory to dry-run', async () => {
-    runCommandMock.mockResolvedValueOnce(ok(JSON.stringify({ exitCode: 0, dryRun: true, cellCount: 3 })))
+    runCommandMock.mockResolvedValueOnce(
+      ok(JSON.stringify({ exitCode: 0, dryRun: true, cellCount: 3 })),
+    )
 
     const result = await benchTool.handler({ cwd, scenario: 'debug-long-session' })
     const payload = result.structuredContent as {
@@ -254,7 +268,11 @@ describe('read-only ops MCP tools', () => {
       includeChangesetStatus: false,
       includePublicReadiness: false,
     })
-    const payload = result.structuredContent as { passed: boolean; summary: string; counts: Record<string, number> }
+    const payload = result.structuredContent as {
+      passed: boolean
+      summary: string
+      counts: Record<string, number>
+    }
 
     expect(payload.passed).toBe(false)
     expect(payload.summary).toBe('release readiness failed (1/2 checks failed)')
@@ -270,5 +288,4 @@ describe('read-only ops MCP tools', () => {
     expect(payload.rawOutput).toHaveLength(32)
     expect(payload.truncated).toBe(true)
   })
-
 })

@@ -59,9 +59,11 @@ export function buildReplayWorkflowSource(
   return stringify(workflow)
 }
 
-export function createReplayWorkflow(
-  options: { readonly cwd: string; readonly workflowPath: string; readonly eventName: CiActEventName },
-): CiActReplayWorkflow {
+export function createReplayWorkflow(options: {
+  readonly cwd: string
+  readonly workflowPath: string
+  readonly eventName: CiActEventName
+}): CiActReplayWorkflow {
   const sourcePath = resolve(options.cwd, options.workflowPath)
   const sourceYaml = readFileSync(sourcePath, 'utf8')
   const generatedYaml = buildReplayWorkflowSource(sourceYaml, {

@@ -74,7 +74,9 @@ describe('benchmark result-card validator', () => {
       ].join('\n'),
     )
 
-    expect(validateBenchmarkResultCard('docs/bench/result-cards/session-memory-bad.md', root)).toMatchObject({
+    expect(
+      validateBenchmarkResultCard('docs/bench/result-cards/session-memory-bad.md', root),
+    ).toMatchObject({
       valid: false,
       errors: expect.arrayContaining([
         'missing Command',
@@ -122,7 +124,12 @@ describe('benchmark result-card validator', () => {
       ].join('\n'),
     )
 
-    expect(validateBenchmarkResultCard('docs/bench/result-cards/session-memory-native-2026-06-19.md', root)).toMatchObject({
+    expect(
+      validateBenchmarkResultCard(
+        'docs/bench/result-cards/session-memory-native-2026-06-19.md',
+        root,
+      ),
+    ).toMatchObject({
       valid: true,
       errors: [],
     })
@@ -162,7 +169,12 @@ describe('benchmark result-card validator', () => {
       ].join('\n'),
     )
 
-    expect(validateBenchmarkResultCard('docs/bench/result-cards/session-memory-native-2026-06-19.md', root)).toMatchObject({
+    expect(
+      validateBenchmarkResultCard(
+        'docs/bench/result-cards/session-memory-native-2026-06-19.md',
+        root,
+      ),
+    ).toMatchObject({
       valid: false,
       errors: expect.arrayContaining([
         'search_quality_recall_at_5 result 0.92 does not match report observed 0.75',
@@ -209,7 +221,9 @@ describe('benchmark result-card validator', () => {
       ].join('\n'),
     )
 
-    expect(validateBenchmarkResultCard('docs/bench/result-cards/wall-sec-only.md', root)).toMatchObject({
+    expect(
+      validateBenchmarkResultCard('docs/bench/result-cards/wall-sec-only.md', root),
+    ).toMatchObject({
       valid: false,
       errors: expect.arrayContaining([
         'post_tool_capture_latency_ms result 42 does not match report observed n/a',

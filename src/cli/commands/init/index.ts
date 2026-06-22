@@ -379,7 +379,11 @@ async function runUserOnlySetup(input: {
   readonly selectedHosts: readonly string[]
   readonly packageVersion: string
   readonly pruneCaches: boolean
-  readonly reason: 'explicit' | 'repo-collection-root' | 'non-webpresso-project' | 'non-git-directory'
+  readonly reason:
+    | 'explicit'
+    | 'repo-collection-root'
+    | 'non-webpresso-project'
+    | 'non-git-directory'
   readonly startMs: number
 }): Promise<number> {
   const {
@@ -411,7 +415,9 @@ async function runUserOnlySetup(input: {
     '  No repo files will be written here. Project scaffolding, repo hooks, and project .mcp.json entries are skipped.',
   )
   if (reason === 'non-webpresso-project') {
-    console.log('  Re-run with --project-init if you want to bootstrap this repo as a Webpresso project.')
+    console.log(
+      '  Re-run with --project-init if you want to bootstrap this repo as a Webpresso project.',
+    )
   } else if (reason === 'non-git-directory') {
     console.log('  Run `git init` first if you want repo-local Webpresso project scaffolding.')
   }
@@ -457,7 +463,9 @@ async function runUserOnlySetup(input: {
     })
     switch (omxResult.kind) {
       case 'omx-ok':
-        console.log(omxResult.installed ? '  omx setup: ✓ installed + configured' : '  omx setup: ✓')
+        console.log(
+          omxResult.installed ? '  omx setup: ✓ installed + configured' : '  omx setup: ✓',
+        )
         console.log(
           `  omx codex hooks: ${omxResult.codexGlobalHooks.repaired ? '✓ path-stable' : 'already path-stable'} ${omxResult.codexGlobalHooks.targetPath}`,
         )
@@ -717,7 +725,9 @@ async function runUserOnlySetup(input: {
   }
 
   console.log('\nwp init: user-only setup finished.')
-  console.log('  Next: run `wp setup` inside an actual project repo when you want repo hooks or scaffolded project surfaces.')
+  console.log(
+    '  Next: run `wp setup` inside an actual project repo when you want repo hooks or scaffolded project surfaces.',
+  )
   if (omxFailure === 'not-found') return EXIT_SETUP_FAIL
   if (omxFailure === 'spawn-failed') return EXIT_WRITE_FAIL
 
@@ -882,16 +892,15 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     consumer.repoRoot,
     consumer.packageJson,
   )
-  const userOnlyReason =
-    forceUserOnly
-      ? ('explicit' as const)
-      : !hasGitRoot
-        ? ('non-git-directory' as const)
-        : repoCollectionDetection.isCollectionRoot
-          ? ('repo-collection-root' as const)
-          : !initializedWebpressoProject && !forceProjectInit && flags.sourceMaintenance !== true
-            ? ('non-webpresso-project' as const)
-            : null
+  const userOnlyReason = forceUserOnly
+    ? ('explicit' as const)
+    : !hasGitRoot
+      ? ('non-git-directory' as const)
+      : repoCollectionDetection.isCollectionRoot
+        ? ('repo-collection-root' as const)
+        : !initializedWebpressoProject && !forceProjectInit && flags.sourceMaintenance !== true
+          ? ('non-webpresso-project' as const)
+          : null
   const userOnlySetup = userOnlyReason !== null
 
   if (!userOnlySetup) {
@@ -1471,9 +1480,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
           console.log('  agent-kit global: ✓ refreshed global package')
           break
         case 'agent-kit-global-skipped-up-to-date':
-          console.log(
-            `  agent-kit global: already up to date (${agentKitGlobalResult.current})`,
-          )
+          console.log(`  agent-kit global: already up to date (${agentKitGlobalResult.current})`)
           break
         case 'agent-kit-global-skipped-dry-run':
           console.log('  agent-kit global: skipped (--dry-run)')

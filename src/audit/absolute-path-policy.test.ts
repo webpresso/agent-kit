@@ -69,7 +69,10 @@ describe('auditAbsolutePathPolicy', () => {
     mkdirSync(join(root, '.github'), { recursive: true })
     mkdirSync(join(root, 'apps', 'e2e'), { recursive: true })
     symlinkSync('../.agents/skills', join(root, '.github', 'skills'))
-    symlinkSync('../../packages/sdk/schema-engine/generated', join(root, 'apps', 'e2e', '.schema-engine-generated'))
+    symlinkSync(
+      '../../packages/sdk/schema-engine/generated',
+      join(root, 'apps', 'e2e', '.schema-engine-generated'),
+    )
     mkdirSync(join(root, 'src'), { recursive: true })
     writeFileSync(join(root, 'src', 'good.ts'), 'export const ok = true\n', 'utf8')
 

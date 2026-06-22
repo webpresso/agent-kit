@@ -90,6 +90,8 @@ describe('classifyCardMetric', () => {
   })
 
   it('classifies nativeSpeedup metric', () => {
-    expect(classifyCardMetric({ name: 'nativeSpeedup', value: 3.2 })).toStrictEqual('native_speedup')
+    expect(classifyCardMetric({ name: 'nativeSpeedup', value: 3.2 })).toStrictEqual(
+      'native_speedup',
+    )
   })
 })

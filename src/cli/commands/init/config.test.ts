@@ -226,7 +226,11 @@ describe('config', () => {
         installed: { tier3Skills: [] },
         setup: { preservePaths: ['VISION.md', '/tmp/outside.txt', '../escape.txt'] },
         generatedCleanup: {
-          removePaths: ['scripts/resolve-webpresso-cli-versions.js', '/tmp/outside.txt', '../escape.txt'],
+          removePaths: [
+            'scripts/resolve-webpresso-cli-versions.js',
+            '/tmp/outside.txt',
+            '../escape.txt',
+          ],
         },
       }),
     )

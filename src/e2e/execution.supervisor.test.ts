@@ -9,15 +9,17 @@ vi.mock('node:child_process', () => ({
   spawn: spawnMock,
 }))
 
-function fakeChild(opts: {
-  pid?: number
-  hang?: boolean
-  stdout?: string
-  stderr?: string
-  exitCode?: number | null
-  signal?: NodeJS.Signals | null
-  killCapture?: { signal: NodeJS.Signals | null }
-} = {}): unknown {
+function fakeChild(
+  opts: {
+    pid?: number
+    hang?: boolean
+    stdout?: string
+    stderr?: string
+    exitCode?: number | null
+    signal?: NodeJS.Signals | null
+    killCapture?: { signal: NodeJS.Signals | null }
+  } = {},
+): unknown {
   let closeFn: ((code: number | null, signal: NodeJS.Signals | null) => void) | null = null
   return {
     pid: opts.pid ?? 4321,
@@ -65,10 +67,10 @@ describe('e2e execution supervisor', () => {
     spawnMock.mockReturnValue(fakeChild({ pid: 2468, hang: true, killCapture }))
     const controller = new AbortController()
 
-    const promise = runCommandConfigs(
-      [{ command: 'hang', args: [] }],
-      { cwd: '/repo', signal: controller.signal },
-    )
+    const promise = runCommandConfigs([{ command: 'hang', args: [] }], {
+      cwd: '/repo',
+      signal: controller.signal,
+    })
     controller.abort()
     const result = await promise
 
@@ -90,10 +92,10 @@ describe('e2e execution supervisor', () => {
     })
     spawnMock.mockReturnValue(fakeChild({ pid: 2468, hang: true }))
 
-    const promise = runCommandConfigs(
-      [{ command: 'hang', args: [] }],
-      { cwd: '/repo', timeoutMs: 1 },
-    )
+    const promise = runCommandConfigs([{ command: 'hang', args: [] }], {
+      cwd: '/repo',
+      timeoutMs: 1,
+    })
 
     await vi.advanceTimersByTimeAsync(1)
     expect(processKill).toHaveBeenCalledWith(-2468, 'SIGTERM')

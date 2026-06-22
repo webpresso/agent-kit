@@ -7,7 +7,10 @@ const repositoryRoot = process.cwd()
 
 describe('CI workflow Version Packages gating', () => {
   it('skips blueprint-gate for changeset release PR branches', () => {
-    const workflow = readFileSync(join(repositoryRoot, '.github', 'workflows', 'ci.agent-kit.yml'), 'utf8')
+    const workflow = readFileSync(
+      join(repositoryRoot, '.github', 'workflows', 'ci.agent-kit.yml'),
+      'utf8',
+    )
 
     expect(workflow).toContain('blueprint-gate:')
     expect(workflow).toContain(

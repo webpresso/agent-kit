@@ -59,7 +59,6 @@ describe('auditSecretsConfig', () => {
     expect(result.violations.length).toBeGreaterThan(0)
   })
 
-
   test('flags legacy pre-schemaVersion-1 config', () => {
     const root = tempRepo()
     writeFileSync(

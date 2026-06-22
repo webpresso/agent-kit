@@ -284,4 +284,3 @@ function buildChildEnv(command: CliSpawnCommand, cwd: string): NodeJS.ProcessEnv
   })
   return buildRuntimeProcessEnv(cwd, { ...process.env, ...command.env }, resolvedRuntime)
 }
-

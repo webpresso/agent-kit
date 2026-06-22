@@ -50,8 +50,6 @@ describe('createDeployPlan', () => {
     )
   })
 
-
-
   it('resolves production deploy secrets through the production profile environment', async () => {
     mkdirSync(join(root, '.webpresso'), { recursive: true })
     writeFileSync(
@@ -89,7 +87,9 @@ describe('createDeployPlan', () => {
         '',
       ].join('\n'),
     )
-    const fetchSpy = vi.spyOn(managers, 'fetchSecretsForConfig').mockReturnValue({ SECRET_ENV: 'prd' })
+    const fetchSpy = vi
+      .spyOn(managers, 'fetchSecretsForConfig')
+      .mockReturnValue({ SECRET_ENV: 'prd' })
 
     await expect(runDeployPlan({ cwd: root, lane: 'prd' })).resolves.toBe(0)
     expect(fetchSpy).toHaveBeenCalledWith(
@@ -135,7 +135,9 @@ describe('createDeployPlan', () => {
         '',
       ].join('\n'),
     )
-    const fetchSpy = vi.spyOn(managers, 'fetchSecretsForConfig').mockReturnValue({ SECRET_ENV: 'stg' })
+    const fetchSpy = vi
+      .spyOn(managers, 'fetchSecretsForConfig')
+      .mockReturnValue({ SECRET_ENV: 'stg' })
 
     await expect(runDeployPlan({ cwd: root, lane: 'preview_main' })).resolves.toBe(0)
     expect(fetchSpy).toHaveBeenCalledWith(
