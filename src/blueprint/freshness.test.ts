@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -21,17 +21,36 @@ let tmp: string
 let repo: string
 let dbPath: string
 
+const FAST_GIT_ENV = {
+  ...process.env,
+  GIT_AUTHOR_EMAIL: 'test@example.com',
+  GIT_AUTHOR_NAME: 'Freshness Test',
+  GIT_COMMITTER_EMAIL: 'test@example.com',
+  GIT_COMMITTER_NAME: 'Freshness Test',
+  GIT_CONFIG_COUNT: '3',
+  GIT_CONFIG_GLOBAL: '/dev/null',
+  GIT_CONFIG_KEY_0: 'core.fsync',
+  GIT_CONFIG_KEY_1: 'commit.gpgsign',
+  GIT_CONFIG_KEY_2: 'tag.gpgsign',
+  GIT_CONFIG_NOSYSTEM: '1',
+  GIT_CONFIG_VALUE_0: 'none',
+  GIT_CONFIG_VALUE_1: 'false',
+  GIT_CONFIG_VALUE_2: 'false',
+}
+
+function git(at: string, args: readonly string[]): string {
+  return execFileSync('git', [...args], { cwd: at, encoding: 'utf8', env: FAST_GIT_ENV }).trim()
+}
+
 function initGitRepo(at: string): void {
-  execSync('git init -q', { cwd: at })
-  execSync('git config user.email test@example.com', { cwd: at })
-  execSync('git config user.name Test', { cwd: at })
+  git(at, ['init', '-q', '-b', 'main'])
   writeFileSync(path.join(at, 'README.md'), 'init\n')
-  execSync('git add README.md', { cwd: at })
-  execSync('git commit -q -m "init"', { cwd: at })
+  git(at, ['add', 'README.md'])
+  git(at, ['commit', '-q', '-m', 'init'])
 }
 
 function head(at: string): string {
-  return execSync('git rev-parse HEAD', { cwd: at, encoding: 'utf8' }).trim()
+  return git(at, ['rev-parse', 'HEAD'])
 }
 
 function makeDbFile(): void {
@@ -121,8 +140,8 @@ describe('checkFreshness', () => {
 
     // Move HEAD forward
     writeFileSync(path.join(repo, 'b.txt'), 'b\n')
-    execSync('git add b.txt', { cwd: repo })
-    execSync('git commit -q -m b', { cwd: repo })
+    git(repo, ['add', 'b.txt'])
+    git(repo, ['commit', '-q', '-m', 'b'])
 
     const result = checkFreshness(project())
     expect(result.ok).toBe(false)

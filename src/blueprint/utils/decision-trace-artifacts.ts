@@ -4,8 +4,10 @@
  *
  * Inlined so this package has no external runtime dependencies.
  */
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
+
+import { writeJsonFileAtomic } from '#shared-utils/write-json-file.js'
 
 export interface DecisionTraceArtifact {
   timestamp: string
@@ -34,7 +36,7 @@ export function emitTraceArtifact(projectRoot: string, artifact: DecisionTraceAr
   const filename = `${sanitizeTimestamp(artifact.timestamp)}-${artifact.source_kind}.json`
   const filePath = join(traceDir, filename)
 
-  writeFileSync(filePath, JSON.stringify(artifact, null, 2), 'utf-8')
+  writeJsonFileAtomic(filePath, artifact)
 
   return filePath
 }

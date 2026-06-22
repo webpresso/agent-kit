@@ -1,9 +1,22 @@
-import { writeFileSync, type WriteFileOptions } from 'node:fs'
+import {
+  closeSync,
+  copyFileSync,
+  existsSync,
+  fdatasyncSync,
+  openSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+  type Mode,
+  type WriteFileOptions,
+} from 'node:fs'
+import { randomUUID } from 'node:crypto'
 
 export interface WriteJsonFileOptions {
   readonly indent?: number
   readonly trailingNewline?: boolean
   readonly writeFileOptions?: WriteFileOptions
+  readonly atomic?: boolean
 }
 
 export function writeJsonFile(
@@ -15,5 +28,89 @@ export function writeJsonFile(
   const trailingNewline = options.trailingNewline ?? true
   const spacing = indent === 0 ? undefined : indent
   const text = JSON.stringify(data, null, spacing)
-  writeFileSync(path, `${text}${trailingNewline ? '\n' : ''}`, options.writeFileOptions)
+  const content = `${text}${trailingNewline ? '\n' : ''}`
+  if (options.atomic === true) {
+    writeFileAtomic(path, content, options.writeFileOptions)
+    return
+  }
+  writeFileSync(path, content, options.writeFileOptions)
+}
+
+export function writeJsonFileAtomic(
+  path: string,
+  data: unknown,
+  options: Omit<WriteJsonFileOptions, 'atomic'> = {},
+): void {
+  writeJsonFile(path, data, { ...options, atomic: true })
+}
+
+/**
+ * Atomically replace `path` with `content` via write-temp → fdatasync → rename.
+ *
+ * The temp file is created beside the destination so the rename is normally
+ * same-filesystem and atomic. If a platform still reports a cross-device rename
+ * (`EXDEV`), we fall back to copy+unlink and emit a warning. On write, sync, or
+ * rename failure, the temporary file is removed before the error is rethrown.
+ */
+export function writeFileAtomic(
+  path: string,
+  content: string | NodeJS.ArrayBufferView,
+  options?: WriteFileOptions,
+): void {
+  const tmpPath = `${path}.tmp-${process.pid}-${randomUUID()}`
+  const normalized = normalizeWriteFileOptions(options)
+  let fd: number | null = null
+  let installed = false
+
+  try {
+    fd = openSync(tmpPath, 'w', normalized.mode)
+    writeFileSync(fd, content, normalized.writeOptions)
+    fdatasyncSync(fd)
+    closeSync(fd)
+    fd = null
+    try {
+      atomicFileOps.renameSync(tmpPath, path)
+    } catch (error) {
+      if (!isCrossDeviceRenameError(error)) throw error
+      process.stderr.write(
+        `[writeFileAtomic] warning: atomic rename failed across devices for ${path}; falling back to copy+unlink\n`,
+      )
+      atomicFileOps.copyFileSync(tmpPath, path)
+      rmSync(tmpPath, { force: true })
+    }
+    installed = true
+  } finally {
+    if (fd !== null) closeSync(fd)
+    if (!installed && existsSync(tmpPath)) rmSync(tmpPath, { force: true })
+  }
+}
+
+function normalizeWriteFileOptions(options: WriteFileOptions | undefined): {
+  mode: Mode | undefined
+  writeOptions: WriteFileOptions | undefined
+} {
+  if (typeof options === 'string' || options === null || options === undefined) {
+    return { mode: undefined, writeOptions: options }
+  }
+  const { mode, flag: _flag, ...writeOptions } = options
+  return { mode, writeOptions }
+}
+
+function isCrossDeviceRenameError(error: unknown): boolean {
+  if (error === null || typeof error !== 'object') return false
+  const code = (error as { code?: unknown }).code
+  return code === 'EXDEV'
+}
+
+const DEFAULT_ATOMIC_FILE_OPS = { copyFileSync, renameSync }
+let atomicFileOps = DEFAULT_ATOMIC_FILE_OPS
+
+export function _setAtomicFileOpsForTests(
+  overrides: Partial<typeof DEFAULT_ATOMIC_FILE_OPS>,
+): void {
+  atomicFileOps = { ...DEFAULT_ATOMIC_FILE_OPS, ...overrides }
+}
+
+export function _resetAtomicFileOpsForTests(): void {
+  atomicFileOps = DEFAULT_ATOMIC_FILE_OPS
 }

@@ -35,6 +35,7 @@ export const MCP_AUDIT_KINDS = [
   'weakness-mining',
   'harness-overlay-evidence',
   'ai-contracts',
+  'atomic-state-writes',
   'no-relative-package-scripts',
   'toolchain-isolation',
   'open-source-licenses',

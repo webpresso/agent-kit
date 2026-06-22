@@ -13,7 +13,7 @@
  *   markdown-canonical path runs byte-identically to the pre-migration behaviour.
  */
 
-import { existsSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, realpathSync, statSync } from 'node:fs'
 import { createHash, randomUUID } from 'node:crypto'
 import path from 'node:path'
 
@@ -54,6 +54,7 @@ import { aggregateBlueprintRows, type ProjectReader } from '#aggregate.js'
 import { resolveProjectRoot } from '#mcp/tools/_shared/project-root.js'
 import { maybeHint } from './_tail-hints.js'
 import type { ToolHandlerResult, ToolRegistrar } from './auto-discover.js'
+import { writeFileAtomic } from '#shared-utils/write-json-file.js'
 
 import {
   resolveSyncAdapter,
@@ -220,7 +221,7 @@ async function persistBlueprintMarkdown(input: {
   const { projectCwd, slug, blueprintPath, markdown } = input
   mkdirSync(path.dirname(blueprintPath), { recursive: true })
   parseBlueprint(markdown, slug)
-  writeFileSync(blueprintPath, markdown, 'utf8')
+  writeFileAtomic(blueprintPath, markdown, 'utf8')
   refreshBlueprintReadmeIndex(projectCwd)
   await reIngest(projectCwd)
   const refreshed = getCurrentProjectBlueprint(projectCwd, slug)
@@ -900,7 +901,7 @@ async function handleTaskAdvance(
           break
         }
       }
-      writeFileSync(filePath, lines.join('\n'), 'utf8')
+      writeFileAtomic(filePath, lines.join('\n'), 'utf8')
     }
     try {
       await reIngest(projectCwd)
@@ -1038,7 +1039,7 @@ async function handleTaskVerify(
   }
 
   // Write updated markdown back to disk
-  writeFileSync(filePath, result.markdown, 'utf8')
+  writeFileAtomic(filePath, result.markdown, 'utf8')
 
   // Re-ingest so the DB projection reflects the completed status
   try {
@@ -2287,7 +2288,7 @@ async function applyLocalBlueprintTransition(input: {
     )
     finalOverviewPath = found.shape === 'flat' ? destination.flat : destination.folder
   }
-  writeFileSync(finalOverviewPath, updated, 'utf8')
+  writeFileAtomic(finalOverviewPath, updated, 'utf8')
   await reIngest(projectCwd)
   const refreshed = getCurrentProjectBlueprint(projectCwd, slug)
   if (!refreshed.blueprint) {

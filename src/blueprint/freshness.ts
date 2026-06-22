@@ -129,7 +129,7 @@ export function recordProjectionMetadata(input: RecordProjectionMetadataInput): 
     ingested_at: input.ingestedAt,
     worktree_path: input.cwd,
   }
-  writeJsonFile(sidecarPath(input.dbPath), metadata)
+  writeJsonFile(sidecarPath(input.dbPath), metadata, { atomic: true })
   return metadata
 }
 

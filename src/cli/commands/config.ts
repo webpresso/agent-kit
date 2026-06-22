@@ -198,7 +198,7 @@ function readSecretsConfig(cwd?: string): SecretsConfig | null {
 function writeSecretsConfig(config: SecretsConfig, cwd?: string): void {
   const path = getSecretsConfigPath(cwd)
   mkdirSync(dirname(path), { recursive: true })
-  writeJsonFile(path, config, { writeFileOptions: { mode: 0o600 } })
+  writeJsonFile(path, config, { atomic: true, writeFileOptions: { mode: 0o600 } })
 }
 
 function findConfigRoot(cwd: string): string {

@@ -301,6 +301,16 @@ export async function dispatchAudit(input: AkAuditInput): Promise<AuditPayload> 
         details: auditResult,
       }
     }
+    case 'atomic-state-writes': {
+      const { auditAtomicStateWrites } = await import('#audit/atomic-state-writes')
+      const auditResult = auditAtomicStateWrites(input.cwd ?? input.directory ?? process.cwd())
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
+    }
     case 'bundle-budget': {
       const { runBundleBudgetCli } = await import('../../vite/local.js')
       const args = input.directory ? [input.directory] : []

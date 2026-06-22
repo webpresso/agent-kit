@@ -27,5 +27,9 @@ export function isGuardEnabled(): boolean {
 export function setGuardEnabled(enabled: boolean): void {
   const stateFile = getStateFilePath()
   mkdirSync(dirname(stateFile), { recursive: true })
-  writeJsonFile(stateFile, { guardEnabled: enabled }, { indent: 0, trailingNewline: false })
+  writeJsonFile(
+    stateFile,
+    { guardEnabled: enabled },
+    { atomic: true, indent: 0, trailingNewline: false },
+  )
 }
