@@ -34,7 +34,7 @@ export function validateTrustEvidence(
     for (const token of tokens) {
       if (token.startsWith('repo:')) {
         const rel = token.slice('repo:'.length).trim()
-        if (path.isAbsolute(rel) || rel.includes('..'))
+        if (path.isAbsolute(rel) || rel.split(/[\\/]+/u).includes('..'))
           violations.push({
             section: 'Material Claims',
             claimId: claim.id,
@@ -55,13 +55,14 @@ export function validateTrustEvidence(
             message: `web evidence must include URL and date: ${token}`,
           })
         else {
+          const url = match[1] ?? ''
           try {
-            new URL(match[1]!)
+            new URL(url)
           } catch {
             violations.push({
               section: 'Material Claims',
               claimId: claim.id,
-              message: `invalid web evidence URL: ${match[1]}`,
+              message: `invalid web evidence URL: ${url}`,
             })
           }
         }

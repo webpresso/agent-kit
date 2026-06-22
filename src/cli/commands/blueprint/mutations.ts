@@ -25,7 +25,7 @@ import { type BlueprintShape, getBlueprintDocumentPaths } from '#utils/document-
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
 import { reIngestProjection } from '#projection-ready.js'
 import { assertAllTasksHaveCanonicalPassingEvidence } from '#verification.js'
-import { applyPromotionTrustGate } from '../../../blueprint/trust/promotion.js'
+import { applyPromotionTrustGate } from '#trust/promotion.js'
 
 // ---------------------------------------------------------------------------
 // Platform-first sync adapter (injectable for tests, Tasks 2.6 + 2.7)
@@ -447,9 +447,27 @@ async function promoteBlueprintLocked(
     }
   }
 
-  // Platform-first path: push event + pull fresh replica before local move.
+  // Platform freshness must be resolved before trust validation so the proof
+  // applies to the current replica, not stale local markdown.
   // Iron rule: resolveSyncAdapterForCli() returns null when WP_BLUEPRINT_PLATFORM_DISABLED=1.
   const adapter = await resolveSyncAdapterForCli(cwd)
+  if (adapter !== null) {
+    await adapter.ensureFresh({ slug })
+  }
+
+  // Trust must be proven before any platform status_changed event is published.
+  let content = readFileSync(currentDocumentPath, 'utf8')
+  let trustedSource = content
+  if (currentState === 'draft' && toState === 'planned') {
+    content = applyPromotionTrustGate({
+      repoRoot: cwd,
+      file: currentDocumentPath,
+      markdown: content,
+    })
+    trustedSource = readFileSync(currentDocumentPath, 'utf8')
+  }
+
+  // Platform-first path: push event + pull fresh replica before local move.
   if (adapter !== null) {
     await adapter.pushEvent({
       eventId: randomUUID(),
@@ -464,19 +482,22 @@ async function promoteBlueprintLocked(
       },
     })
     await adapter.ensureFresh({ slug })
+    if (currentState === 'draft' && toState === 'planned') {
+      const refreshedSource = readFileSync(currentDocumentPath, 'utf8')
+      if (refreshedSource !== trustedSource) {
+        content = applyPromotionTrustGate({
+          repoRoot: cwd,
+          file: currentDocumentPath,
+          markdown: refreshedSource,
+        })
+        trustedSource = refreshedSource
+      }
+    }
   }
 
   // Always update local markdown + SQLite.
   // Platform-first: these become derived artifacts; disabled: these are canonical.
   // Update frontmatter in the current location first, then move
-  let content = readFileSync(currentDocumentPath, 'utf8')
-  if (currentState === 'draft' && toState === 'planned') {
-    content = applyPromotionTrustGate({
-      repoRoot: cwd,
-      file: currentDocumentPath,
-      markdown: content,
-    })
-  }
   content = updateFrontmatterStatus(content, toState)
   if (toState === 'completed') {
     const today = new Date().toISOString().split('T')[0] ?? new Date().toISOString()

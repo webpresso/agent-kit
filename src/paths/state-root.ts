@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { realpathSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, realpathSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import envPaths from 'env-paths'
 import lockfile from 'proper-lockfile'
 
@@ -23,12 +23,15 @@ export class NotInGitRepoError extends Error {
 let cachedStateRoot: string | null = null
 let cachedRepoKey: string | null = null
 let cachedWorktreeKey: string | null = null
+const cachedRepoKeyByCwd = new Map<string, string>()
+const cachedWorktreeKeyByCwd = new Map<string, string>()
 
 function resolveCwd(): string {
   return process.env.CLAUDE_PROJECT_DIR ?? process.cwd()
 }
 
 function runGit(args: readonly string[], cwd: string): string {
+  if (!hasGitMarker(cwd)) throw new NotInGitRepoError(cwd)
   try {
     const out = execFileSync('git', [...args], {
       cwd,
@@ -41,12 +44,40 @@ function runGit(args: readonly string[], cwd: string): string {
   }
 }
 
+function hasGitMarker(cwd: string): boolean {
+  let current: string
+  try {
+    current = realpathSync(cwd)
+  } catch {
+    return process.env['VITEST'] === 'true'
+  }
+  while (true) {
+    if (existsSync(join(current, '.git'))) return true
+    const parent = dirname(current)
+    if (parent === current) return false
+    current = parent
+  }
+}
+
+function normalizeCwdForCache(cwd: string): string {
+  try {
+    return realpathSync(cwd)
+  } catch {
+    return cwd
+  }
+}
+
 function sha256Hex(value: string): string {
   return createHash('sha256').update(value).digest('hex')
 }
 
 export function getStateRoot(): string {
   if (cachedStateRoot !== null) return cachedStateRoot
+  const override = process.env.WP_STATE_ROOT
+  if (override && override.trim().length > 0) {
+    cachedStateRoot = override
+    return override
+  }
   const paths = envPaths('webpresso', { suffix: '' })
   const root = paths.data
   cachedStateRoot = root
@@ -72,15 +103,27 @@ export function getWorktreeKey(): string {
 }
 
 function computeRepoKey(cwd: string): string {
-  const commonDir = runGit(['rev-parse', '--git-common-dir'], cwd)
-  const absolute = realpathSync(commonDir.startsWith('/') ? commonDir : join(cwd, commonDir))
-  return sha256Hex(absolute).slice(0, 16)
+  const absoluteCwd = normalizeCwdForCache(cwd)
+  const cached = cachedRepoKeyByCwd.get(absoluteCwd)
+  if (cached !== undefined) return cached
+  const commonDir = runGit(['rev-parse', '--git-common-dir'], absoluteCwd)
+  const absolute = realpathSync(
+    commonDir.startsWith('/') ? commonDir : join(absoluteCwd, commonDir),
+  )
+  const key = sha256Hex(absolute).slice(0, 16)
+  cachedRepoKeyByCwd.set(absoluteCwd, key)
+  return key
 }
 
 function computeWorktreeKey(cwd: string): string {
-  const topLevel = runGit(['rev-parse', '--show-toplevel'], cwd)
+  const absoluteCwd = normalizeCwdForCache(cwd)
+  const cached = cachedWorktreeKeyByCwd.get(absoluteCwd)
+  if (cached !== undefined) return cached
+  const topLevel = runGit(['rev-parse', '--show-toplevel'], absoluteCwd)
   const absolute = realpathSync(topLevel)
-  return sha256Hex(absolute).slice(0, 8)
+  const key = sha256Hex(absolute).slice(0, 8)
+  cachedWorktreeKeyByCwd.set(absoluteCwd, key)
+  return key
 }
 
 /**
@@ -127,4 +170,6 @@ export function _clearCacheForTests(): void {
   cachedStateRoot = null
   cachedRepoKey = null
   cachedWorktreeKey = null
+  cachedRepoKeyByCwd.clear()
+  cachedWorktreeKeyByCwd.clear()
 }

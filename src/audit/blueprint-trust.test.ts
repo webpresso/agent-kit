@@ -30,6 +30,38 @@ describe('auditBlueprintTrust', () => {
     expect(result.ok).toBe(false)
     expect(result.checked).toBe(1)
   })
+
+  it('requires dossiers for canonical docs in executable directories even when frontmatter claims draft', () => {
+    const root = fixture()
+    write(root, 'blueprints/planned/lying.md', '---\nstatus: draft\n---\n')
+    const result = auditBlueprintTrust(root)
+    expect(result.ok).toBe(false)
+    expect(result.violations[0]?.file).toBe('blueprints/planned/lying.md')
+  })
+
+  it('fails executable blueprints with ambiguous task sections', () => {
+    const root = fixture()
+    write(
+      root,
+      'blueprints/planned/ambiguous.md',
+      `---
+status: planned
+---
+
+#### Task Ship it
+
+**Status:** todo
+
+TODO decide during implementation
+${VALID_DOSSIER}`,
+    )
+    const result = auditBlueprintTrust(root)
+    expect(result.ok).toBe(false)
+    expect(result.violations.some((violation) => /task sections/i.test(violation.message))).toBe(
+      true,
+    )
+  })
+
   it('passes valid planned dossiers', () => {
     const root = fixture()
     write(root, 'blueprints/planned/good.md', `---\nstatus: planned\n---\n${VALID_DOSSIER}`)

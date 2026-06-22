@@ -201,7 +201,7 @@ others are conventional but not enforced.
 
 #### [lane] Task 1.1: <Name>       # REQUIRED task block
 - [ ] **Status:** todo | in-progress | blocked | done
-- **Depends on:** — | Task 1.2
+- **Depends:** — | Task 1.2
 - **Files:** …
 - **Change:** …
 - **Verify:** …
@@ -248,8 +248,8 @@ The docs-linter flags any of:
    - ❌ `one-point-one`, `A.B`, `task1`
 
 3. **Bare dependency reference.** Use `Task X.Y`, not bare `X.Y`:
-   - ✅ `**Depends on:** Task 1.2, Task 3.4`
-   - ❌ `**Depends on:** 1.2, 3.4`
+   - ✅ `**Depends:** Task 1.2, Task 3.4`
+   - ❌ `**Depends:** 1.2, 3.4`
 
 4. **Non-canonical task status.** Executable blueprints use only these
    statuses: `todo`, `in-progress`, `blocked`, `done`. No `wip`, `pending`,
@@ -323,7 +323,7 @@ See `src/blueprint/lifecycle/engine.ts` for the full intent vocabulary
 
 ## Dependency graph
 
-A blueprint's task dependencies are parsed from the `**Depends on:**`
+A blueprint's task dependencies are parsed from the `**Depends:**`
 lines into a directed acyclic graph and persisted to the SQLite
 projection. The `wp_blueprint_depgraph` MCP tool returns that graph as
 structured `nodes` + `edges` (including cross-repo edges). `wp blueprint

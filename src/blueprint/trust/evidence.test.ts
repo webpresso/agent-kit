@@ -20,19 +20,25 @@ afterEach(() => {
 describe('validateTrustEvidence', () => {
   it('accepts repo, web, and derived evidence', () => {
     const dir = root()
+    writeFileSync(path.join(dir, 'my..notes.md'), '# dotted name\n')
     const md = VALID_DOSSIER.replace(
       '| C1 | Parser exists | repo:README.md |',
-      '| C2 | Second claim | repo:README.md |\n| C1 | Parser exists | repo:README.md; web:https://example.com (2026-06-22); derived:C2 |',
+      '| C2 | Second claim | repo:my..notes.md |\n| C1 | Parser exists | repo:README.md; web:https://example.com (2026-06-22); derived:C2 |',
     )
     const dossier = parseTrustDossier(md).dossier!
     expect(validateTrustEvidence(dir, dossier)).toEqual([])
   })
 
-  it('rejects missing repo paths and derived cycles', () => {
+  it('rejects missing repo paths, path traversal, and derived cycles', () => {
     const dir = root()
-    const md = VALID_DOSSIER.replace('repo:README.md', 'repo:missing.md; derived:C1')
+    const md = VALID_DOSSIER.replace(
+      'repo:README.md',
+      'repo:missing.md; repo:../outside.md; derived:C1',
+    )
     const dossier = parseTrustDossier(md).dossier!
     const errors = validateTrustEvidence(dir, dossier).map((v) => v.message)
-    expect(errors.join('\n')).toMatch(/does not exist|self/)
+    expect(errors.join('\n')).toMatch(/does not exist/)
+    expect(errors.join('\n')).toMatch(/stay under repo root/)
+    expect(errors.join('\n')).toMatch(/self/)
   })
 })

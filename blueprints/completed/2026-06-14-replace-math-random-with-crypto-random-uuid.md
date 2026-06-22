@@ -354,7 +354,7 @@ Verification run:
 
 | ID | Claim | Evidence |
 | -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/in-progress/2026-06-14-replace-math-random-with-crypto-random-uuid.md |
+| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-14-replace-math-random-with-crypto-random-uuid.md |
 
 ### Material Decisions
 

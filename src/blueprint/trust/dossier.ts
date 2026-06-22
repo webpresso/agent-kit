@@ -1,4 +1,4 @@
-export interface TrustReadinessVerdict {
+export type TrustReadinessVerdict = {
   promotionReady: boolean
   unresolvedCount: number
   verifiedAt: string
@@ -6,13 +6,13 @@ export interface TrustReadinessVerdict {
   trustGateVersion: string
 }
 
-export interface TrustMaterialClaim {
+export type TrustMaterialClaim = {
   id: string
   claim: string
   evidence: string
 }
 
-export interface TrustMaterialDecision {
+export type TrustMaterialDecision = {
   id: string
   decision: string
   chosenOption: string
@@ -20,14 +20,14 @@ export interface TrustMaterialDecision {
   rationale: string
 }
 
-export interface TrustPromotionGate {
+export type TrustPromotionGate = {
   gate: string
   command: string
   expectedOutcome: string
   lastResult: string
 }
 
-export interface TrustDossier {
+export type TrustDossier = {
   readiness: TrustReadinessVerdict
   claims: TrustMaterialClaim[]
   decisions: TrustMaterialDecision[]
@@ -35,7 +35,7 @@ export interface TrustDossier {
   residualUnknowns: string
 }
 
-export interface TrustDossierViolation {
+export type TrustDossierViolation = {
   section: string
   claimId?: string
   message: string
@@ -74,40 +74,40 @@ export function parseTrustDossier(markdown: string): {
   }
   if (violations.length > 0) return { violations }
 
-  const readiness = parseReadiness(blocks.get('Readiness Verdict')!, violations)
+  const readiness = parseReadiness(requiredBlock(blocks, 'Readiness Verdict'), violations)
   const claims = parseTable(
-    blocks.get('Material Claims')!,
+    requiredBlock(blocks, 'Material Claims'),
     'Material Claims',
     ['ID', 'Claim', 'Evidence'],
-    (cells) => ({ id: cells[0]!, claim: cells[1]!, evidence: cells[2]! }),
+    ([id = '', claim = '', evidence = '']) => ({ id, claim, evidence }),
     violations,
   )
   const decisions = parseTable(
-    blocks.get('Material Decisions')!,
+    requiredBlock(blocks, 'Material Decisions'),
     'Material Decisions',
     ['ID', 'Decision', 'Chosen option', 'Rejected alternatives', 'Rationale'],
-    (cells) => ({
-      id: cells[0]!,
-      decision: cells[1]!,
-      chosenOption: cells[2]!,
-      rejectedAlternatives: cells[3]!,
-      rationale: cells[4]!,
+    ([id = '', decision = '', chosenOption = '', rejectedAlternatives = '', rationale = '']) => ({
+      id,
+      decision,
+      chosenOption,
+      rejectedAlternatives,
+      rationale,
     }),
     violations,
   )
   const gates = parseTable(
-    blocks.get('Promotion Gates')!,
+    requiredBlock(blocks, 'Promotion Gates'),
     'Promotion Gates',
     ['Gate', 'Command', 'Expected outcome', 'Last result'],
-    (cells) => ({
-      gate: cells[0]!,
-      command: cells[1]!,
-      expectedOutcome: cells[2]!,
-      lastResult: cells[3]!,
+    ([gate = '', command = '', expectedOutcome = '', lastResult = '']) => ({
+      gate,
+      command,
+      expectedOutcome,
+      lastResult,
     }),
     violations,
   )
-  const residualUnknowns = blocks.get('Residual Unknowns')!.trim()
+  const residualUnknowns = requiredBlock(blocks, 'Residual Unknowns').trim()
 
   for (const [section, block] of blocks) {
     if (containsPlaceholder(block))
@@ -147,7 +147,9 @@ function parseReadiness(
   const values = new Map<string, string>()
   for (const line of block.split('\n')) {
     const match = /^-\s*([^:]+):\s*(.+?)\s*$/u.exec(line.trim())
-    if (match) values.set(match[1]!.trim(), match[2]!.trim())
+    const key = match?.[1]
+    const value = match?.[2]
+    if (key !== undefined && value !== undefined) values.set(key.trim(), value.trim())
   }
   const required = [
     'promotion-ready',
@@ -162,11 +164,11 @@ function parseReadiness(
   }
   if (required.some((key) => !values.has(key))) return null
   return {
-    promotionReady: values.get('promotion-ready') === 'true',
-    unresolvedCount: Number.parseInt(values.get('unresolved-count')!, 10),
-    verifiedAt: values.get('verified-at')!,
-    verifiedHead: values.get('verified-head')!,
-    trustGateVersion: values.get('trust-gate-version')!,
+    promotionReady: requiredValue(values, 'promotion-ready') === 'true',
+    unresolvedCount: Number.parseInt(requiredValue(values, 'unresolved-count'), 10),
+    verifiedAt: requiredValue(values, 'verified-at'),
+    verifiedHead: requiredValue(values, 'verified-head'),
+    trustGateVersion: requiredValue(values, 'trust-gate-version'),
   }
 }
 
@@ -185,7 +187,7 @@ function parseTable<T>(
     violations.push({ section, message: 'missing markdown table' })
     return []
   }
-  const header = splitRow(rows[0]!)
+  const header = splitRow(rows[0] ?? '')
   if (header.join('|').toLowerCase() !== expectedHeader.join('|').toLowerCase()) {
     violations.push({ section, message: `malformed table header for ${section}` })
     return []
@@ -200,6 +202,18 @@ function parseTable<T>(
     result.push(build(cells))
   }
   return result
+}
+
+function requiredBlock(blocks: Map<string, string>, key: string): string {
+  const value = blocks.get(key)
+  if (value === undefined) throw new Error(`missing parsed Trust Dossier block: ${key}`)
+  return value
+}
+
+function requiredValue(values: Map<string, string>, key: string): string {
+  const value = values.get(key)
+  if (value === undefined) throw new Error(`missing parsed Readiness Verdict value: ${key}`)
+  return value
 }
 
 function splitRow(row: string): string[] {

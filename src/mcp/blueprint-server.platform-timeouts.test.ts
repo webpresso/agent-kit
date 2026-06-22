@@ -78,7 +78,9 @@ async function makeTools(
 ): Promise<{ tmpDir: string; tools: Map<string, RegisteredTool> }> {
   const tmpDir = mkdtempSync(path.join(tmpdir(), prefix))
   mkdirSync(path.join(tmpDir, '.agent'), { recursive: true })
+  mkdirSync(path.join(tmpDir, 'bin'), { recursive: true })
   writeFileSync(path.join(tmpDir, 'package.json'), JSON.stringify({ name: 'test' }), 'utf8')
+  writeFileSync(path.join(tmpDir, 'bin', 'wp'), '#!/bin/sh\nexit 0\n', { mode: 0o755 })
   if (blueprint) {
     const overviewPath = path.join(
       tmpDir,
@@ -134,6 +136,7 @@ describe('wp_blueprint platform timeout guards', () => {
 
   beforeEach(() => {
     vi.stubEnv('WP_BLUEPRINT_PLATFORM_MUTATION_TIMEOUT_MS', '1')
+    vi.stubEnv('WP_BLUEPRINT_TRUST_GATE_TEST_HEAD', 'a'.repeat(40))
   })
 
   afterEach(() => {
@@ -166,7 +169,7 @@ describe('wp_blueprint platform timeout guards', () => {
         ),
       ]),
     )
-    expect(pushEvent).toHaveBeenCalledOnce()
+    expect(pushEvent).not.toHaveBeenCalled()
     expect(ensureFresh).toHaveBeenCalledOnce()
   })
 

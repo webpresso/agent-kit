@@ -12,7 +12,7 @@
  * therefore exercises every git step end-to-end without depending on tshy.
  */
 import { execFileSync, spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -46,13 +46,6 @@ const fixtureForCwd = new Map<string, Fixture>()
 
 function git(cwd: string, args: readonly string[]): string {
   return execFileSync('git', [...args], { cwd, encoding: 'utf8', env: FAST_GIT_ENV }).toString()
-}
-
-function refs(cwd: string): string[] {
-  return git(cwd, ['for-each-ref', '--format=%(refname:short)', 'refs/heads', 'refs/tags'])
-    .trim()
-    .split('\n')
-    .filter(Boolean)
 }
 
 function runScript(
@@ -164,11 +157,11 @@ describe('scripts/release.ts', () => {
       expect(result.status, `script failed: ${result.stderr}`).toBe(0)
       expect(result.stdout).toContain('[dry-run]')
       expect(result.stdout).toContain('v9.9.9')
-      const localRefs = refs(f.repoDir)
-      expect(localRefs).toContain('v9.9.9')
-      expect(localRefs).toContain('release/v9.9.9')
-      const current = git(f.repoDir, ['rev-parse', '--abbrev-ref', 'HEAD']).trim()
-      expect(current).toBe('main')
+      expect(existsSync(join(f.repoDir, '.git', 'refs', 'tags', 'v9.9.9'))).toBe(true)
+      expect(existsSync(join(f.repoDir, '.git', 'refs', 'heads', 'release', 'v9.9.9'))).toBe(true)
+      expect(readFileSync(join(f.repoDir, '.git', 'HEAD'), 'utf8').trim()).toBe(
+        'ref: refs/heads/main',
+      )
     })
 
     it(
@@ -246,11 +239,11 @@ describe('scripts/release.ts', () => {
       const result = runScript(f.repoDir, ['--no-dry-run'])
 
       expect(result.status, `script failed: ${result.stderr}`).toBe(0)
-      const remoteRefs = refs(f.remoteDir)
-      expect(remoteRefs).toContain('v9.9.9')
-      expect(remoteRefs).toContain('release/v9.9.9')
-      const current = git(f.repoDir, ['rev-parse', '--abbrev-ref', 'HEAD']).trim()
-      expect(current).toBe('main')
+      expect(existsSync(join(f.remoteDir, 'refs', 'tags', 'v9.9.9'))).toBe(true)
+      expect(existsSync(join(f.remoteDir, 'refs', 'heads', 'release', 'v9.9.9'))).toBe(true)
+      expect(readFileSync(join(f.repoDir, '.git', 'HEAD'), 'utf8').trim()).toBe(
+        'ref: refs/heads/main',
+      )
     })
   })
 

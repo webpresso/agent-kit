@@ -97,6 +97,39 @@ the real verification.
 - Tuning the other micro-benches (capture/search/restore) — do so only if they
   flake; no evidence yet.
 
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-22T00:00:00.000Z
+- verified-head: 83d99ec6f8289f843a2fbec8a5ec8a6b6b3b4b61
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID | Claim | Evidence |
+| -- | ----- | -------- |
+| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/planned/2026-06-22-stabilize-snapshot-bench-mean-flake.md |
+| C2 | The plan keeps the `snapshot_50_events` threshold unchanged and stabilizes measurement instead. | repo:blueprints/planned/2026-06-22-stabilize-snapshot-bench-mean-flake.md |
+
+### Material Decisions
+
+| ID | Decision | Chosen option | Rejected alternatives | Rationale |
+| -- | -------- | ------------- | --------------------- | --------- |
+| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+
+### Promotion Gates
+
+| Gate | Command | Expected outcome | Last result |
+| ---- | ------- | ---------------- | ----------- |
+| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+
+### Residual Unknowns
+
+None.
+
 ## Policy gates
 
 - **Engineering principles:** minimal change scoped to the flaky bench; no new

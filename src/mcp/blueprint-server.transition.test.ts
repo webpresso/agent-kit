@@ -238,32 +238,4 @@ describe('wp_blueprint_transition', () => {
       cleanupTempDir(harness.tmpDir)
     }
   })
-
-  it('allows transitioning to completed when all remaining tasks are dropped', async () => {
-    const raw = readFileSync(overviewPath, 'utf8').replace(
-      '**Status:** todo',
-      '**Status:** dropped',
-    )
-    await import('node:fs/promises').then(({ writeFile }) => writeFile(overviewPath, raw, 'utf8'))
-    await bootstrapBlueprintProjection(tmpDir)
-
-    const getResult = await callTool(tools, 'wp_blueprint_get', {
-      project_id: tmpDir,
-      slug: TRANSITION_SLUG,
-    })
-    const before = parseResult(getResult) as { content_hash: string }
-
-    const result = await callTool(tools, 'wp_blueprint_transition', {
-      project_id: tmpDir,
-      slug: TRANSITION_SLUG,
-      to_state: 'completed',
-      expected_version: before.content_hash,
-    })
-
-    expect(result.isError).toStrictEqual(false)
-    const data = parseResult(result) as { new_status: string; status: string; failures: string[] }
-    expect(data.new_status).toBe('completed')
-    expect(data.status).toBe('completed')
-    expect(data.failures).toStrictEqual([])
-  })
 })

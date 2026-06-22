@@ -237,7 +237,7 @@ Verification:
 
 | ID | Claim | Evidence |
 | -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/in-progress/2026-06-14-add-atomic-file-write-helper.md |
+| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-14-add-atomic-file-write-helper.md |
 
 ### Material Decisions
 

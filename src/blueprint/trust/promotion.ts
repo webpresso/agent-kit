@@ -1,8 +1,11 @@
 import { execFileSync, spawnSync } from 'node:child_process'
 import { validateBlueprintTrust } from './validator.js'
 import { parseTrustDossier } from './dossier.js'
+import { parseAllowedWpCommand } from './gates.js'
 
-export interface PromotionTrustInput {
+export { parseAllowedWpCommand }
+
+export type PromotionTrustInput = {
   repoRoot: string
   file: string
   markdown: string
@@ -10,21 +13,38 @@ export interface PromotionTrustInput {
 }
 
 export function applyPromotionTrustGate(input: PromotionTrustInput): string {
-  const head = readHead(input.repoRoot)
-  let markdown = upsertReadinessValue(
-    input.markdown,
-    'verified-at',
-    (input.now ?? new Date()).toISOString(),
+  const now = (input.now ?? new Date()).toISOString()
+  const syntacticMarkdown = upsertReadinessValue(
+    upsertReadinessValue(input.markdown, 'verified-at', now),
+    'verified-head',
+    '0123456789abcdef0123456789abcdef01234567',
   )
+  const parsedBeforeHead = parseTrustDossier(syntacticMarkdown)
+  if (parsedBeforeHead.violations.length > 0)
+    throw new Error(
+      `Blueprint trust gate failed: ${parsedBeforeHead.violations.map((v) => `${v.section}: ${v.message}`).join('; ')}`,
+    )
+
+  const head = readHead(input.repoRoot)
+  let markdown = upsertReadinessValue(input.markdown, 'verified-at', now)
   markdown = upsertReadinessValue(markdown, 'verified-head', head)
+  const preflight = validateBlueprintTrust({
+    repoRoot: input.repoRoot,
+    file: input.file,
+    status: 'draft',
+    markdown,
+    promotionCandidate: true,
+    requirePassingGates: false,
+    scanTaskAmbiguity: true,
+  })
+  if (!preflight.ok)
+    throw new Error(
+      `Blueprint trust gate failed: ${preflight.violations.map((v) => `${v.section}: ${v.message}`).join('; ')}`,
+    )
   const parsed = parseTrustDossier(markdown)
   for (const gate of parsed.dossier?.gates ?? []) {
     runPromotionCommand(input.repoRoot, gate.command)
-    markdown = updateGateLastResult(
-      markdown,
-      gate.gate,
-      `pass at ${(input.now ?? new Date()).toISOString()}`,
-    )
+    markdown = updateGateLastResult(markdown, gate.gate, `pass at ${now}`)
   }
   const validated = validateBlueprintTrust({
     repoRoot: input.repoRoot,
@@ -32,6 +52,7 @@ export function applyPromotionTrustGate(input: PromotionTrustInput): string {
     status: 'draft',
     markdown,
     promotionCandidate: true,
+    scanTaskAmbiguity: true,
   })
   if (!validated.ok)
     throw new Error(
@@ -58,11 +79,14 @@ function readHead(repoRoot: string): string {
 
 export function runPromotionCommand(repoRoot: string, command: string): void {
   const argv = parseAllowedWpCommand(command)
-  const result = spawnSync('./bin/wp', argv.slice(1), {
+  const [binary, ...args] = argv
+  if (binary === undefined) throw new Error(`Promotion gate command is empty: ${command}`)
+  const result = spawnSync(binary, args, {
     cwd: repoRoot,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
     timeout: 30_000,
+    env: { ...process.env, PATH: `${repoRoot}/bin:${process.env['PATH'] ?? ''}` },
   })
   if (result.status !== 0)
     throw new Error(
@@ -70,29 +94,26 @@ export function runPromotionCommand(repoRoot: string, command: string): void {
     )
 }
 
-export function parseAllowedWpCommand(command: string): string[] {
-  if (/[|;&`$<>]|\b&&\b|\b\|\|\b/u.test(command) || command.includes('--fix'))
-    throw new Error(`Rejected unsafe promotion gate command: ${command}`)
-  const argv = command.trim().split(/\s+/u)
-  const binary = argv[0]
-  if (binary !== 'wp' && binary !== './bin/wp')
-    throw new Error(`Promotion gates must use wp facade commands: ${command}`)
-  const sub = argv[1]
-  if (!['audit', 'test', 'typecheck', 'lint', 'sync'].includes(sub ?? ''))
-    throw new Error(`Unsupported promotion gate wp subcommand: ${sub ?? ''}`)
-  return ['wp', ...argv.slice(1)]
-}
-
 function upsertReadinessValue(markdown: string, key: string, value: string): string {
   const re = new RegExp(`^- ${key}: .*$`, 'mu')
-  return re.test(markdown) ? markdown.replace(re, `- ${key}: ${value}`) : markdown
+  if (re.test(markdown)) return markdown.replace(re, `- ${key}: ${value}`)
+
+  const lines = markdown.split('\n')
+  const headingIndex = lines.findIndex((line) => /^###\s+Readiness Verdict\s*$/iu.test(line))
+  if (headingIndex === -1) return markdown
+  let insertIndex = headingIndex + 1
+  while (insertIndex < lines.length && lines[insertIndex]?.trim() === '') insertIndex += 1
+  lines.splice(insertIndex, 0, `- ${key}: ${value}`)
+  return lines.join('\n')
 }
 
 function updateGateLastResult(markdown: string, gate: string, result: string): string {
   const lines = markdown.split('\n')
   for (let i = 0; i < lines.length; i++) {
-    const cells = lines[i]!.trim().startsWith('|')
-      ? lines[i]!.slice(1, -1)
+    const line = lines[i] ?? ''
+    const cells = line.trim().startsWith('|')
+      ? line
+          .slice(1, -1)
           .split('|')
           .map((c) => c.trim())
       : []
