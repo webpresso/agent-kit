@@ -56,9 +56,7 @@ export function auditAtomicStateWrites(rootDirectory: string = process.cwd()): R
 }
 
 function stripComments(source: string): string {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//gu, '')
-    .replace(/\/\/[^\n]*/gu, '')
+  return source.replace(/\/\*[\s\S]*?\*\//gu, '').replace(/\/\/[^\n]*/gu, '')
 }
 
 function findCalls(source: string, callee: string): string[] {

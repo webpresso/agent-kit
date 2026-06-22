@@ -56,3 +56,35 @@ tags:
 - `WP_SKIP_AUTO_INSTALL=1 WP_SKIP_CLAUDE_PLUGIN=1 WP_SKIP_CODEX_PLUGIN=1 WP_SKIP_RTK=1 ./bin/wp setup --cwd <non-git-temp> --dry-run --host none` passed and reported user-only setup.
 
 Validation gap: full `./bin/wp test --file src/cli/commands/init/init.integration.test.ts` and direct full-file Vitest both hung in this worktree after the focused regression tests passed; the affected non-git cases and adjacent init tests were run directly as the bounded substitute.
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-22T00:00:00.000Z
+- verified-head: 45289c257910767ff10aa219afdbf2233c6ca880
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID | Claim | Evidence |
+| -- | ----- | -------- |
+| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-non-git-user-only-setup-global-hooks.md |
+
+### Material Decisions
+
+| ID | Decision | Chosen option | Rejected alternatives | Rationale |
+| -- | -------- | ------------- | --------------------- | --------- |
+| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+
+### Promotion Gates
+
+| Gate | Command | Expected outcome | Last result |
+| ---- | ------- | ---------------- | ----------- |
+| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+
+### Residual Unknowns
+
+None.

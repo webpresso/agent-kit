@@ -91,6 +91,15 @@ export {
   writeVerification,
   type WriteVerificationOptions,
 } from './verification.js'
+export {
+  parseTrustDossier,
+  type TrustDossier,
+  type TrustDossierViolation,
+  type TrustMaterialClaim,
+  type TrustMaterialDecision,
+  type TrustPromotionGate,
+  type TrustReadinessVerdict,
+} from './trust/dossier.js'
 // Utilities (pure functions)
 export { calculateFreshness, type FreshnessScore } from './utils/freshness.js'
 export {

@@ -12,7 +12,7 @@
  * therefore exercises every git step end-to-end without depending on tshy.
  */
 import { execFileSync, spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -46,13 +46,6 @@ const fixtureForCwd = new Map<string, Fixture>()
 
 function git(cwd: string, args: readonly string[]): string {
   return execFileSync('git', [...args], { cwd, encoding: 'utf8', env: FAST_GIT_ENV }).toString()
-}
-
-function refs(cwd: string): string[] {
-  return git(cwd, ['for-each-ref', '--format=%(refname:short)', 'refs/heads', 'refs/tags'])
-    .trim()
-    .split('\n')
-    .filter(Boolean)
 }
 
 function runScript(
@@ -153,21 +146,46 @@ describe('scripts/release.ts', () => {
       fixture = createFixture({ withRemote: false })
     })
 
-    it('creates the release branch and tag locally without pushing', () => {
+    // Real-git release integration is intentionally slower than unit-default
+    // Vitest budgets under full-suite load (measured: release.test.ts ~64–76s
+    // total on this runner). Keep the budget scoped to these end-to-end git
+    // topology tests; do not raise the global testTimeout.
+    it('creates the release branch and tag locally without pushing', { timeout: 30000 }, () => {
       const f = fixture!
       const result = runScript(f.repoDir, ['--dry-run'])
 
       expect(result.status, `script failed: ${result.stderr}`).toBe(0)
       expect(result.stdout).toContain('[dry-run]')
       expect(result.stdout).toContain('v9.9.9')
-      // Tag must exist locally.
-      const localRefs = refs(f.repoDir)
-      expect(localRefs).toContain('v9.9.9')
-      expect(localRefs).toContain('release/v9.9.9')
-      // Original branch restored.
-      const current = git(f.repoDir, ['rev-parse', '--abbrev-ref', 'HEAD']).trim()
-      expect(current).toBe('main')
+      expect(existsSync(join(f.repoDir, '.git', 'refs', 'tags', 'v9.9.9'))).toBe(true)
+      expect(existsSync(join(f.repoDir, '.git', 'refs', 'heads', 'release', 'v9.9.9'))).toBe(true)
+      expect(readFileSync(join(f.repoDir, '.git', 'HEAD'), 'utf8').trim()).toBe(
+        'ref: refs/heads/main',
+      )
     })
+
+    it(
+      'tags the mainline commit and keeps the dist commit on the compatibility branch',
+      { timeout: 30000 },
+      () => {
+        const f = fixture!
+        const result = runScript(f.repoDir, ['--dry-run'])
+
+        expect(result.status, `script failed: ${result.stderr}`).toBe(0)
+
+        const [mainBefore, tagCommit, branchCommit] = git(f.repoDir, [
+          'rev-parse',
+          'main',
+          'v9.9.9^{commit}',
+          'release/v9.9.9',
+        ])
+          .trim()
+          .split('\n')
+
+        expect(tagCommit).toBe(mainBefore)
+        expect(branchCommit).not.toBe(mainBefore)
+      },
+    )
 
     it('aborts when the working tree is dirty (tracked change)', () => {
       const f = fixture!
@@ -216,37 +234,16 @@ describe('scripts/release.ts', () => {
       fixture = createFixture({ withRemote: true })
     })
 
-    it('pushes the tag and release branch to origin', { timeout: 20000 }, () => {
+    it('pushes the tag and release branch to origin', { timeout: 45000 }, () => {
       const f = fixture!
       const result = runScript(f.repoDir, ['--no-dry-run'])
 
       expect(result.status, `script failed: ${result.stderr}`).toBe(0)
-      // Tag landed on remote.
-      const remoteRefs = refs(f.remoteDir)
-      expect(remoteRefs).toContain('v9.9.9')
-      expect(remoteRefs).toContain('release/v9.9.9')
-      // Original branch restored.
-      const current = git(f.repoDir, ['rev-parse', '--abbrev-ref', 'HEAD']).trim()
-      expect(current).toBe('main')
-    })
-
-    it('tags the mainline commit and keeps the dist commit on the compatibility branch', () => {
-      const f = fixture!
-      const result = runScript(f.repoDir, ['--dry-run'])
-
-      expect(result.status, `script failed: ${result.stderr}`).toBe(0)
-
-      const [mainBefore, tagCommit, branchCommit] = git(f.repoDir, [
-        'rev-parse',
-        'main',
-        'v9.9.9^{commit}',
-        'release/v9.9.9',
-      ])
-        .trim()
-        .split('\n')
-
-      expect(tagCommit).toBe(mainBefore)
-      expect(branchCommit).not.toBe(mainBefore)
+      expect(existsSync(join(f.remoteDir, 'refs', 'tags', 'v9.9.9'))).toBe(true)
+      expect(existsSync(join(f.remoteDir, 'refs', 'heads', 'release', 'v9.9.9'))).toBe(true)
+      expect(readFileSync(join(f.repoDir, '.git', 'HEAD'), 'utf8').trim()).toBe(
+        'ref: refs/heads/main',
+      )
     })
   })
 

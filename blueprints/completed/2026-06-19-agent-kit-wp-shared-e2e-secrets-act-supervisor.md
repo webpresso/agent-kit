@@ -102,3 +102,35 @@ supervisor tests in `src/e2e/execution.supervisor.test.ts` and
 - targeted tests for secret profiles / act / supervisor / audits
 - `wp test --file src/runtime/secrets-config.test.ts --file src/ci/act-runner.test.ts --file src/cli/commands/ci.test.ts --file src/e2e/execution.supervisor.test.ts --file src/secret-gate/runner.supervisor.test.ts --file src/audit/secret-provider-quarantine.test.ts --file src/cli/commands/init/config.test.ts --file src/cli/commands/init/scaffold-base-kit.test.ts`
 - `wp typecheck`
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-22T00:00:00.000Z
+- verified-head: 45289c257910767ff10aa219afdbf2233c6ca880
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID | Claim | Evidence |
+| -- | ----- | -------- |
+| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-agent-kit-wp-shared-e2e-secrets-act-supervisor.md |
+
+### Material Decisions
+
+| ID | Decision | Chosen option | Rejected alternatives | Rationale |
+| -- | -------- | ------------- | --------------------- | --------- |
+| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+
+### Promotion Gates
+
+| Gate | Command | Expected outcome | Last result |
+| ---- | ------- | ---------------- | ----------- |
+| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+
+### Residual Unknowns
+
+None.

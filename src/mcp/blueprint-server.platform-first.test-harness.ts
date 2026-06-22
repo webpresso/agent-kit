@@ -9,6 +9,7 @@ import {
   markBlueprintValidated,
   registerBlueprintToolMap,
   writeBlueprintFixture,
+  trustDossierFixture,
   type ToolMap,
 } from './blueprint-server.test-harness.js'
 
@@ -136,6 +137,7 @@ Blueprint used to test promote.
 
 **Acceptance:**
 - [ ] The blueprint is promoted
+${trustDossierFixture()}
 `
 
 export const FINALIZE_BLUEPRINT = `---

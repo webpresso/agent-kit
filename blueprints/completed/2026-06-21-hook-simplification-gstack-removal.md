@@ -63,3 +63,35 @@ Implement the prior hook simplification plan on a dedicated branch/worktree and 
 - `./node_modules/.bin/vitest run src/cli/commands/init/scaffolders/agent-hooks/index.test.ts --no-file-parallelism`
 - `./node_modules/.bin/vitest run src/cli/commands/init/scaffolders/omx/index.test.ts src/cli/commands/init/scaffolders/omx/index.integration.test.ts --no-file-parallelism`
 - `wp sync --check` if available after catalog/template changes.
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-22T00:00:00.000Z
+- verified-head: 99985273d68cbfa1f7a53d0bf098d1495ac15d28
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID | Claim | Evidence |
+| -- | ----- | -------- |
+| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-21-hook-simplification-gstack-removal.md |
+
+### Material Decisions
+
+| ID | Decision | Chosen option | Rejected alternatives | Rationale |
+| -- | -------- | ------------- | --------------------- | --------- |
+| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+
+### Promotion Gates
+
+| Gate | Command | Expected outcome | Last result |
+| ---- | ------- | ---------------- | ----------- |
+| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+
+### Residual Unknowns
+
+None.

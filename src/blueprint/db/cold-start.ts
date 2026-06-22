@@ -2,7 +2,6 @@ import { existsSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
 
 import { openDb } from './connection.js'
-import { pruneProjectionArtifacts } from './gc.js'
 import { ingestAll } from './ingester.js'
 import { resolveBlueprintProjectionDbPath, withProjectionDbWriteLock } from './paths.js'
 import { recordProjectionMetadata } from '#freshness.js'
@@ -18,8 +17,6 @@ export async function coldStartIfNeeded(cwd: string): Promise<ColdStartResult> {
   const start = Date.now()
 
   const target = resolveBlueprintProjectionDbPath(cwd)
-  pruneProjectionArtifacts({ preserveDbPath: target })
-
   if (existsSync(target)) {
     return { rebuilt: false, blueprintsCount: 0, techDebtCount: 0, durationMs: 0 }
   }

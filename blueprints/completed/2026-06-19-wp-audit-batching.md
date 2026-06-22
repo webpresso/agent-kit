@@ -143,3 +143,35 @@ Partial-failure contract:
 - Kept `wp_audit` single-kind compatible by exporting its dispatcher instead of changing its input contract.
 - Registered `wp_audits` in the compiled MCP registry and server advertisement tests.
 - Verification run: `./bin/wp test --file src/mcp/tools/audits.test.ts --file src/mcp/tools/audit.test.ts --file src/mcp/server.integration.test.ts`; `vp run typecheck`; `vp run lint`; `./bin/wp audit tph`; `./bin/wp audit blueprint-readme-drift`; `./bin/wp audit blueprint-pr-coverage --base origin/main`.
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-22T00:00:00.000Z
+- verified-head: 45289c257910767ff10aa219afdbf2233c6ca880
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID | Claim | Evidence |
+| -- | ----- | -------- |
+| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-wp-audit-batching.md |
+
+### Material Decisions
+
+| ID | Decision | Chosen option | Rejected alternatives | Rationale |
+| -- | -------- | ------------- | --------------------- | --------- |
+| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+
+### Promotion Gates
+
+| Gate | Command | Expected outcome | Last result |
+| ---- | ------- | ---------------- | ----------- |
+| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+
+### Residual Unknowns
+
+None.

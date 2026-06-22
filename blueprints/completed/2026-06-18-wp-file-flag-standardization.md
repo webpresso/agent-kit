@@ -80,3 +80,35 @@ the contract/doc updates landed.
 - `./bin/wp typecheck`
 - `./bin/wp lint --file src/cli/commands/lint.ts --file src/cli/commands/lint.test.ts --file src/cli/commands/format.ts --file src/cli/commands/format.test.ts --file src/cli/commands/test.ts --file src/cli/commands/test.test.ts --file src/cli/commands/e2e.ts --file src/cli/commands/e2e.test.ts --file src/cli/cli.test.ts --file src/cli/commands/init/scaffold-base-kit.ts --file src/cli/commands/init/scaffold-base-kit.test.ts --file src/cli/commands/init/init.integration.test.ts --file src/cli/wrapped-wp.test.ts`
 - `./bin/wp audit blueprint-lifecycle`
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-22T00:00:00.000Z
+- verified-head: 45289c257910767ff10aa219afdbf2233c6ca880
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID | Claim | Evidence |
+| -- | ----- | -------- |
+| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-18-wp-file-flag-standardization.md |
+
+### Material Decisions
+
+| ID | Decision | Chosen option | Rejected alternatives | Rationale |
+| -- | -------- | ------------- | --------------------- | --------- |
+| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+
+### Promotion Gates
+
+| Gate | Command | Expected outcome | Last result |
+| ---- | ------- | ---------------- | ----------- |
+| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+
+### Residual Unknowns
+
+None.

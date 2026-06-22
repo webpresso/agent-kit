@@ -82,7 +82,7 @@ describe('wp_blueprint_promote — platform-first', () => {
     })
     expect(typeof eventArg?.eventId).toStrictEqual('string')
     expect(eventArg?.eventId.length).toBeGreaterThan(0)
-    expect(ensureFresh).toHaveBeenCalledOnce()
+    expect(ensureFresh).toHaveBeenCalledTimes(2)
   })
 
   it('does NOT call pushEvent when WP_BLUEPRINT_PLATFORM_DISABLED=1', async () => {
@@ -122,7 +122,7 @@ describe('wp_blueprint_promote — platform-first', () => {
     expect(result.isError).toStrictEqual(true)
     expect(result.content[0]?.text).toMatch(/missing task-local canonical verification evidence/i)
     expect(pushEvent).not.toHaveBeenCalled()
-    expect(ensureFresh).not.toHaveBeenCalled()
+    expect(ensureFresh).toHaveBeenCalledOnce()
   })
 
   it('refuses to promote a zero-task planned blueprint to completed', async () => {
@@ -144,7 +144,7 @@ describe('wp_blueprint_promote — platform-first', () => {
     expect(result.isError).toStrictEqual(true)
     expect(result.content[0]?.text).toMatch(/zero-task|0 tasks|no tasks/i)
     expect(pushEvent).not.toHaveBeenCalled()
-    expect(ensureFresh).not.toHaveBeenCalled()
+    expect(ensureFresh).toHaveBeenCalledOnce()
   })
 
   it('allows promote to completed when all tasks are done and verified', async () => {
@@ -169,6 +169,6 @@ describe('wp_blueprint_promote — platform-first', () => {
     expect(data.to_state).toStrictEqual('completed')
     expect(data.failures).toHaveLength(0)
     expect(pushEvent).toHaveBeenCalledOnce()
-    expect(ensureFresh).toHaveBeenCalledOnce()
+    expect(ensureFresh).toHaveBeenCalledTimes(2)
   })
 })

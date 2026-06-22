@@ -21,6 +21,7 @@ export const MCP_AUDIT_KINDS = [
   'blueprint-readme-drift',
   'blueprint-pr-coverage',
   'blueprint-lifecycle',
+  'blueprint-trust',
   'architecture-drift',
   'cloudflare-deploy-contract',
   'absolute-path-policy',

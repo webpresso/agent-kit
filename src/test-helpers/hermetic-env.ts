@@ -1,4 +1,11 @@
+import { mkdirSync, mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+
 import { beforeEach } from 'vitest'
+
+const TEST_STATE_ROOT = mkdtempSync(path.join(tmpdir(), `wp-state-${process.pid}-`))
+mkdirSync(TEST_STATE_ROOT, { recursive: true })
 
 /**
  * Hermetic environment baseline for the whole test suite.
@@ -29,6 +36,9 @@ import { beforeEach } from 'vitest'
  * - `WP_MCP_TOOL_MODE` / `WP_COMPILED_RUNTIME` — switch MCP discovery to the
  *   compiled registry path. A leaked runtime-mode flag makes filesystem-backed
  *   MCP integration tests miss dynamically-written fixture tools.
+ * - `WP_STATE_ROOT` — points repo/user state at a hermetic per-worker temp dir
+ *   so projection DB tests never mutate or contend on the developer's real
+ *   Webpresso state directory.
  *
  * The fix is isolation, not changing the runtime precedence: reset these before
  * every test so the suite is deterministic regardless of the launching
@@ -52,6 +62,9 @@ export function resetLeakyEnv(): void {
   for (const key of LEAKY_ENV_KEYS) {
     delete process.env[key]
   }
+  process.env.WP_STATE_ROOT = TEST_STATE_ROOT
 }
+
+resetLeakyEnv()
 
 beforeEach(resetLeakyEnv)

@@ -89,7 +89,24 @@ function runAk(args: string[], extraEnv: Record<string, string> = {}): RunResult
 function makeRepo(): string {
   const dir = mkdtempSync(path.join(tmpdir(), 'wp-init-e2e-'))
   spawnSync('git', ['init', '-q'], { cwd: dir })
-  spawnSync('git', ['commit', '--allow-empty', '-q', '-m', 'bootstrap'], { cwd: dir })
+  spawnSync(
+    'git',
+    [
+      '-c',
+      'commit.gpgsign=false',
+      '-c',
+      'user.name=Webpresso Test',
+      '-c',
+      'user.email=test@webpresso.local',
+      'commit',
+      '--allow-empty',
+      '--no-verify',
+      '-q',
+      '-m',
+      'bootstrap',
+    ],
+    { cwd: dir },
+  )
   return dir
 }
 
@@ -513,18 +530,28 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(r.stdout).toContain('vp: ✗ not on PATH')
       expect(r.stdout).toContain('actionlint: ✗ not on PATH')
     })
+  },
+)
 
+describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
+  'wp setup — argv validation e2e',
+  () => {
     it('rejects unknown --with values with exit code 1', () => {
-      const r = runAk([
-        'setup',
-        '--yes',
-        '--project-init',
-        '--with',
-        'definitely-not-a-skill',
-        '--cwd',
-        repo,
-      ])
-      expect(r.code).toBe(1)
+      const repo = makeRepo()
+      try {
+        const r = runAk([
+          'setup',
+          '--yes',
+          '--project-init',
+          '--with',
+          'definitely-not-a-skill',
+          '--cwd',
+          repo,
+        ])
+        expect(r.code).toBe(1)
+      } finally {
+        rmSync(repo, { recursive: true, force: true })
+      }
     })
 
     it('--help text auto-lists every preset (data-driven from PRESETS const)', () => {

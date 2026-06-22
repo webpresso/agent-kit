@@ -54,6 +54,7 @@ describe('blueprint-server test architecture guard', () => {
       'blueprint-server.verify-idempotency.test.ts',
       'blueprint-server.platform-first.task-advance.test.ts',
       'blueprint-server.platform-first.lifecycle.test.ts',
+      'blueprint-server.platform-first.trust-gate.test.ts',
       'blueprint-server.platform-first.finalize.test.ts',
       'blueprint-server.platform-first.scaffold-read.test.ts',
       'blueprint-server.platform-timeouts.test.ts',
@@ -82,6 +83,7 @@ describe('blueprint-server test architecture guard', () => {
       160,
     )
     expect(lineCount('blueprint-server.platform-first.lifecycle.test.ts')).toBeLessThanOrEqual(180)
+    expect(lineCount('blueprint-server.platform-first.trust-gate.test.ts')).toBeLessThanOrEqual(80)
     expect(lineCount('blueprint-server.platform-first.finalize.test.ts')).toBeLessThanOrEqual(120)
     expect(lineCount('blueprint-server.platform-first.scaffold-read.test.ts')).toBeLessThanOrEqual(
       180,

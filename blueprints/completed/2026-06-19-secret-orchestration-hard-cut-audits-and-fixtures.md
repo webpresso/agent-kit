@@ -73,3 +73,35 @@ fixtures under `src/secrets/migrate/fixtures/`.
 - `./bin/wp test --file src/audit/secret-provider-quarantine.test.ts --file src/audit/github-actions-secrets.test.ts --file src/audit/package-surface.test.ts --file src/secrets/migrate/fixtures.test.ts --file src/cli/commands/audit-core.test.ts --file src/mcp/tools/audit.test.ts`
 - `./bin/wp lint --file src/audit/secret-provider-quarantine.ts --file src/audit/secret-provider-quarantine.test.ts --file src/audit/github-actions-secrets.ts --file src/audit/github-actions-secrets.test.ts --file src/audit/package-surface.ts --file src/audit/package-surface.test.ts --file src/secrets/migrate/fixtures.test.ts --file src/cli/commands/audit-core.ts --file src/cli/commands/audit-core.test.ts --file src/mcp/tools/_shared/audit-kinds.ts --file src/mcp/tools/audit.ts --file src/mcp/tools/audit.test.ts`
 - `./bin/wp typecheck`
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-22T00:00:00.000Z
+- verified-head: 45289c257910767ff10aa219afdbf2233c6ca880
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID | Claim | Evidence |
+| -- | ----- | -------- |
+| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-secret-orchestration-hard-cut-audits-and-fixtures.md |
+
+### Material Decisions
+
+| ID | Decision | Chosen option | Rejected alternatives | Rationale |
+| -- | -------- | ------------- | --------------------- | --------- |
+| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+
+### Promotion Gates
+
+| Gate | Command | Expected outcome | Last result |
+| ---- | ------- | ---------------- | ----------- |
+| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+
+### Residual Unknowns
+
+None.

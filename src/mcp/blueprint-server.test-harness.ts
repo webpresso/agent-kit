@@ -51,8 +51,47 @@ export function createTempBlueprintRepo(prefix = 'wp-bs-test-'): string {
   const dir = mkdtempSync(path.join(tmpdir(), prefix))
   mkdirSync(path.join(dir, '.agent'), { recursive: true })
   mkdirSync(path.join(dir, 'blueprints', 'draft'), { recursive: true })
+  mkdirSync(path.join(dir, 'bin'), { recursive: true })
   writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'test' }), 'utf8')
+  writeFileSync(path.join(dir, 'bin', 'wp'), '#!/bin/sh\nexit 0\n', { mode: 0o755 })
+  process.env['WP_BLUEPRINT_TRUST_GATE_TEST_HEAD'] ??= '0123456789abcdef0123456789abcdef01234567'
   return dir
+}
+
+export function trustDossierFixture(evidence = 'repo:package.json'): string {
+  return `
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-22T00:00:00.000Z
+- verified-head: 0123456789abcdef0123456789abcdef01234567
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID | Claim | Evidence |
+| -- | ----- | -------- |
+| C1 | The blueprint has repository-backed evidence. | ${evidence} |
+
+### Material Decisions
+
+| ID | Decision | Chosen option | Rejected alternatives | Rationale |
+| -- | -------- | ------------- | --------------------- | --------- |
+| D1 | Promote through the hard planned gate. | Use the Trust Dossier contract. | Promote without evidence. | Draft-to-planned promotion must be auditable. |
+
+### Promotion Gates
+
+| Gate | Command | Expected outcome | Last result |
+| ---- | ------- | ---------------- | ----------- |
+| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+
+### Residual Unknowns
+
+None.
+`
 }
 
 export function writeBlueprintFixture(

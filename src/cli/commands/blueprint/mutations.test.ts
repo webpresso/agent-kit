@@ -329,6 +329,25 @@ describe('advanceTask', () => {
 // ---------------------------------------------------------------------------
 
 describe('promoteBlueprint', () => {
+  it('does not publish platform status changes when the planned trust gate fails', async () => {
+    tmpRepoDir = makeRepo(
+      'draft-trustless',
+      OVERVIEW_WITH_TASKS.replace('status: planned', 'status: draft'),
+      'draft',
+    )
+    const adapter: SyncAdapter = {
+      pushEvent: vi.fn().mockResolvedValue(undefined),
+      ensureFresh: vi.fn().mockResolvedValue(undefined),
+    }
+    _setSyncAdapterForCli(() => adapter)
+
+    await expect(promoteBlueprint(tmpRepoDir, 'draft-trustless', 'planned')).rejects.toThrow(
+      /Trust Dossier/i,
+    )
+    expect(adapter.pushEvent).not.toHaveBeenCalled()
+    expect(adapter.ensureFresh).toHaveBeenCalledOnce()
+  })
+
   it('moves directory to the target state folder and updates frontmatter', async () => {
     tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
 
@@ -616,7 +635,7 @@ describe('promoteBlueprint — platform-first sync', () => {
         }),
       }),
     )
-    expect(ensureFresh).toHaveBeenCalledOnce()
+    expect(ensureFresh).toHaveBeenCalledTimes(2)
     expect(ensureFresh).toHaveBeenCalledWith({ slug: 'my-feature' })
   })
 

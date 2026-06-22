@@ -180,6 +180,16 @@ export async function dispatchAudit(input: AkAuditInput): Promise<AuditPayload> 
         details: auditResult,
       }
     }
+    case 'blueprint-trust': {
+      const { auditBlueprintTrust } = await import('#audit/blueprint-trust')
+      const auditResult = auditBlueprintTrust(input.cwd ?? input.directory ?? process.cwd())
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
+    }
     case 'architecture-drift': {
       const { auditArchitectureDrift } = await import('#audit/architecture-drift')
       const auditResult = auditArchitectureDrift(input.cwd ?? input.directory ?? process.cwd())

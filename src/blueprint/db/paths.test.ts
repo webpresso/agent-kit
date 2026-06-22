@@ -49,6 +49,7 @@ function createSyntheticLinkedWorktree(repo: string, wtDir: string, name: string
 let stateRootDir: string
 
 beforeEach(() => {
+  delete process.env.WP_STATE_ROOT
   _clearCacheForTests()
   delete process.env.CLAUDE_PROJECT_DIR
   stateRootDir = mkdtempSync(path.join(tmpdir(), 'wp-state-root-'))

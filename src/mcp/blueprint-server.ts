@@ -66,6 +66,7 @@ import { err, finishPayload, jsonContent, parseStructuredJson } from '#mcp/bluep
 import { bytes, sortKeys, toStr } from '#mcp/blueprint/_shared/payload'
 import { nextActionOutputSchema, summaryEnvelopeOutputSchema } from '#mcp/blueprint/_shared/schema'
 import { readVt, writeVt } from '#mcp/blueprint/_shared/validation-timestamp'
+import { applyPromotionTrustGate } from '#trust/promotion.js'
 
 export { _setSyncAdapterFactory }
 export type { SyncAdapter }
@@ -1092,6 +1093,15 @@ async function handlePromote(
   if ('content' in resolvedProject) return resolvedProject
   const projectCwd = resolvedProject.cwd
   const root = resolveBlueprintRoot(projectCwd)
+  const adapter = await resolveSyncAdapter(projectCwd)
+  try {
+    await runPlatformMutationSync(adapter, {
+      label: 'wp_blueprint_promote',
+      ensureFreshSlug: slug,
+    })
+  } catch (e) {
+    return err('wp_blueprint_promote failed', toStr(e))
+  }
   const found = findBlueprintDir(root, slug, ALL_STATES)
   if (!found)
     return err(
@@ -1108,9 +1118,21 @@ async function handlePromote(
       return err('wp_blueprint_promote refused', toStr(error))
     }
   }
+  let trustedMarkdown: string | undefined
+  if (currentState === 'draft' && to_state === 'planned') {
+    try {
+      trustedMarkdown = applyPromotionTrustGate({
+        repoRoot: projectCwd,
+        file: overviewPath,
+        markdown: readFileSync(overviewPath, 'utf8'),
+      })
+    } catch (e) {
+      return err('wp_blueprint_promote failed', toStr(e))
+    }
+  }
+  let trustedSource = trustedMarkdown === undefined ? undefined : readFileSync(overviewPath, 'utf8')
   // Platform-first path: push event + pull fresh replica before local move.
   // Iron rule: resolveSyncAdapter() returns null when WP_BLUEPRINT_PLATFORM_DISABLED=1.
-  const adapter = await resolveSyncAdapter(projectCwd)
   try {
     await runPlatformMutationSync(adapter, {
       label: 'wp_blueprint_promote',
@@ -1131,12 +1153,28 @@ async function handlePromote(
   } catch (e) {
     return err('wp_blueprint_promote failed', toStr(e))
   }
+  if (currentState === 'draft' && to_state === 'planned') {
+    const refreshedSource = readFileSync(overviewPath, 'utf8')
+    if (trustedSource !== undefined && refreshedSource !== trustedSource) {
+      try {
+        trustedMarkdown = applyPromotionTrustGate({
+          repoRoot: projectCwd,
+          file: overviewPath,
+          markdown: refreshedSource,
+        })
+        trustedSource = refreshedSource
+      } catch (e) {
+        return err('wp_blueprint_promote failed', toStr(e))
+      }
+    }
+  }
   try {
     const transitioned = await applyLocalBlueprintTransition({
       found,
       projectCwd,
       slug,
       to_state,
+      trustedMarkdown,
     })
     const payload: Record<string, unknown> = {
       summary: `Blueprint "${slug}" promoted from "${currentState}" to "${to_state}"`,
@@ -2183,6 +2221,15 @@ async function handleBlueprintTransition(
   const resolvedProject = await resolveToolProject(projectResolver, cwd, project_id)
   if ('content' in resolvedProject) return resolvedProject
   const projectCwd = resolvedProject.cwd
+  const adapter = await resolveSyncAdapter(projectCwd)
+  try {
+    await runPlatformMutationSync(adapter, {
+      label: 'wp_blueprint_transition',
+      ensureFreshSlug: slug,
+    })
+  } catch (e) {
+    return err('wp_blueprint_transition failed', toStr(e))
+  }
   await ensureProjectionReady(projectCwd)
   const target = dbPath(projectCwd)
   if (!existsSync(target)) return err('wp_blueprint_transition failed', 'Blueprint DB not found')
@@ -2215,6 +2262,12 @@ async function handleBlueprintTransition(
   // Transitioning to `completed` must satisfy the same open-task gate as
   // finalize/promote — otherwise this path is a hole that completes a blueprint
   // with unfinished work. (terminal = done ∪ dropped, see assertBlueprintCanComplete.)
+  if (found.state === 'draft' && to_state === 'planned') {
+    const structuralValidation = runValidate(found.path)
+    if (!structuralValidation.valid) {
+      return err('wp_blueprint_transition failed', structuralValidation.gaps.join('; '))
+    }
+  }
   if (to_state === 'completed') {
     try {
       assertBlueprintCanComplete(found.path, slug)
@@ -2225,12 +2278,62 @@ async function handleBlueprintTransition(
       )
     }
   }
+  let trustedMarkdown: string | undefined
+  let trustedSource: string | undefined
+  if (found.state === 'draft' && to_state === 'planned') {
+    try {
+      trustedSource = readFileSync(found.path, 'utf8')
+      trustedMarkdown = applyPromotionTrustGate({
+        repoRoot: projectCwd,
+        file: found.path,
+        markdown: trustedSource,
+      })
+    } catch (e) {
+      return err('wp_blueprint_transition failed', toStr(e))
+    }
+  }
+  try {
+    await runPlatformMutationSync(adapter, {
+      label: 'wp_blueprint_transition',
+      event: {
+        eventId: randomUUID(),
+        repoId: process.env['WP_BLUEPRINT_PLATFORM_REPO_ID'] ?? 'local',
+        occurredAt: new Date().toISOString(),
+        type: 'blueprint.status_changed',
+        payload: {
+          type: 'blueprint.status_changed',
+          slug,
+          fromStatus: found.state,
+          toStatus: to_state,
+        },
+      },
+      ensureFreshSlug: slug,
+    })
+  } catch (e) {
+    return err('wp_blueprint_transition failed', toStr(e))
+  }
+  if (found.state === 'draft' && to_state === 'planned') {
+    const refreshedSource = readFileSync(found.path, 'utf8')
+    if (trustedSource !== undefined && refreshedSource !== trustedSource) {
+      try {
+        trustedMarkdown = applyPromotionTrustGate({
+          repoRoot: projectCwd,
+          file: found.path,
+          markdown: refreshedSource,
+        })
+        trustedSource = refreshedSource
+      } catch (e) {
+        return err('wp_blueprint_transition failed', toStr(e))
+      }
+    }
+  }
   try {
     const refreshed = await applyLocalBlueprintTransition({
       found,
       projectCwd,
       slug,
       to_state,
+      trustedMarkdown,
     })
     return finishPayload({
       summary: `Blueprint "${slug}" transitioned to ${to_state}`,
@@ -2254,8 +2357,9 @@ async function applyLocalBlueprintTransition(input: {
   slug: string
   to_state: string
   found: { dir: string; path: string; shape: 'flat' | 'folder'; state: string }
+  trustedMarkdown?: string
 }) {
-  const { projectCwd, slug, to_state, found } = input
+  const { projectCwd, slug, to_state, found, trustedMarkdown: preflightTrustedMarkdown } = input
   const root = resolveBlueprintRoot(projectCwd)
   const overviewPath = found.path
   const parsed = runValidate(overviewPath)
@@ -2264,7 +2368,12 @@ async function applyLocalBlueprintTransition(input: {
   }
   const markdown = readFileSync(overviewPath, 'utf8')
   const currentBlueprint = parseBlueprint(markdown, slug)
-  const updated = setBlueprintFrontmatterFields(markdown, {
+  const trustedMarkdown =
+    preflightTrustedMarkdown ??
+    (found.state === 'draft' && to_state === 'planned'
+      ? applyPromotionTrustGate({ repoRoot: projectCwd, file: overviewPath, markdown })
+      : markdown)
+  const updated = setBlueprintFrontmatterFields(trustedMarkdown, {
     status: to_state,
     last_updated: todayIsoDate(),
     completed_at: to_state === 'completed' ? todayIsoDate() : undefined,

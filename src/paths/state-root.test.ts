@@ -8,6 +8,7 @@ vi.mock('node:child_process', () => ({
 }))
 
 vi.mock('node:fs', () => ({
+  existsSync: vi.fn(() => true),
   realpathSync: vi.fn(),
 }))
 
@@ -50,6 +51,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   _clearCacheForTests()
   delete process.env.CLAUDE_PROJECT_DIR
+  delete process.env.WP_STATE_ROOT
 })
 
 function stubGit(values: Record<string, string>): void {
@@ -64,6 +66,12 @@ function stubGit(values: Record<string, string>): void {
 }
 
 describe('getStateRoot', () => {
+  it('honors WP_STATE_ROOT before env-paths', () => {
+    process.env.WP_STATE_ROOT = '/tmp/wp-test-state-root'
+
+    expect(getStateRoot()).toStrictEqual('/tmp/wp-test-state-root')
+  })
+
   it('resolves the env-paths data directory', () => {
     expect(getStateRoot()).toStrictEqual('/fake/state-root')
   })
@@ -99,7 +107,7 @@ describe('getRepoKey', () => {
 
     expect(second).toStrictEqual(first)
     expect(mockExecFileSync).toHaveBeenCalledTimes(1)
-    expect(mockRealpathSync).toHaveBeenCalledTimes(1)
+    expect(mockRealpathSync).toHaveBeenCalledTimes(2)
   })
 
   it('throws NotInGitRepoError when git rev-parse fails (D6)', () => {

@@ -52,6 +52,12 @@ export {
   validatePlanTemplate,
 } from './index.js'
 
+export {
+  validateBlueprintTrust,
+  type BlueprintTrustViolation,
+  type ValidateBlueprintTrustInput,
+} from './trust/validator.js'
+
 // Services (require filesystem/git)
 export {
   BlueprintCreationService,

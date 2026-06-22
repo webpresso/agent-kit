@@ -174,7 +174,7 @@ describe('blueprint MCP workflow — single worktree smoke', () => {
     // Batch-level wp_test timing is the performance guard for this workflow.
   })
 
-  it('happy path: create → put → transition without direct markdown edits', async () => {
+  it('happy path: create → put leaves a trustless draft until dossier evidence is added', async () => {
     const repoDir = createTempBlueprintRepo('wp-bs-workflow-put-transition-')
     cleanups.push(() => cleanupTempDir(repoDir))
 
@@ -234,30 +234,8 @@ describe('blueprint MCP workflow — single worktree smoke', () => {
     expect(putResult.isError).toBeFalsy()
     expect(putPayload['status']).toBe('draft')
 
-    const transitionResult = await getHandler('wp_blueprint_transition')({
-      project_id: repoDir,
-      slug,
-      to_state: 'planned',
-      expected_version: putPayload['content_hash'],
-    })
-    const transitionPayload = parsePayload(transitionResult)
-    expect(transitionResult.isError).toBeFalsy()
-    expect(transitionPayload['new_status']).toBe('planned')
-
-    const finalGet = await getHandler('wp_blueprint_get')({
-      project_id: repoDir,
-      slug,
-    })
-    const finalPayload = parsePayload(finalGet)
-    const finalBlueprint = finalPayload['blueprint'] as {
-      status: string
-      title: string
-      tasks: Array<{ title: string }>
-    }
-    expect(finalPayload['content_hash']).toBe(transitionPayload['content_hash'])
-    expect(finalBlueprint.status).toBe('planned')
-    expect(finalBlueprint.title).toBe('Structured workflow blueprint')
-    expect(finalBlueprint.tasks[0]?.title).toBe('Author the blueprint through structured input')
+    expect(typeof putPayload['content_hash']).toBe('string')
+    expect(putPayload['status']).toBe('draft')
   })
 
   it('promote now returns revision metadata from the shared transition path', async () => {
@@ -323,11 +301,8 @@ describe('blueprint MCP workflow — single worktree smoke', () => {
       to_state: 'planned',
     })
     const promotePayload = parsePayload(promoteResult)
-    expect(promoteResult.isError).toBeFalsy()
-    expect(promotePayload['to_state']).toBe('planned')
-    expect(typeof promotePayload['content_hash']).toBe('string')
-    expect(promotePayload['revision']).toBe(promotePayload['content_hash'])
-    expect(typeof promotePayload['ingested_at']).toBe('number')
+    expect(promoteResult.isError).toBeTruthy()
+    expect(String(promotePayload['failures'])).toMatch(/Trust Dossier/i)
   })
 })
 

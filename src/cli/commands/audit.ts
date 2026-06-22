@@ -47,6 +47,8 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
       baseRef: options.baseRef ?? options.base,
       changedOnly: options.changedOnly,
     }),
+  'blueprint-trust': async (root) =>
+    (await import('#audit/blueprint-trust')).auditBlueprintTrust(root),
   'roadmap-links': async (root, options) =>
     (await import('#audit/roadmap-links')).auditRoadmapLinks(root, {
       failOrphans: options.strict,

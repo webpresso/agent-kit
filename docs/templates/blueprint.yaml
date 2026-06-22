@@ -109,3 +109,4 @@ task_format:
     - 'Task metadata rules here reflect the current validator contract.'
     - 'Acceptance checkboxes are evidence, not the lifecycle source of truth.'
     - 'Blocked tasks must include a non-empty **Blocked:** reason.'
+# Executable blueprints require a Trust Dossier before planned promotion.
