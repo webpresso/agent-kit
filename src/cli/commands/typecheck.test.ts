@@ -6,7 +6,12 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
 
-import { buildTypecheckCommand, registerTypecheckCommand } from './typecheck'
+import {
+  TYPECHECK_COMMAND_HELP,
+  buildTypecheckCommand,
+  registerTypecheckCommand,
+  runTypecheckCommand,
+} from './typecheck'
 
 function buildFakeCli() {
   let registeredAction: ((flags: Record<string, unknown>) => Promise<number>) | undefined
@@ -89,5 +94,28 @@ describe('wp typecheck command', () => {
     const cli = buildFakeCli()
     registerTypecheckCommand(cli as never)
     expect(cli.getOptions()).toContain('--full')
+  })
+
+  it('registers --file and --package targeting flags', () => {
+    const cli = buildFakeCli()
+    registerTypecheckCommand(cli as never)
+    expect(cli.getOptions()).toContain('--file <path>')
+    expect(cli.getOptions()).toContain('--package <name>')
+  })
+
+  it('documents that --file resolves owning scopes instead of isolated-file tsc', () => {
+    expect(TYPECHECK_COMMAND_HELP).toContain('not isolated-file `tsc`')
+    expect(TYPECHECK_COMMAND_HELP).toContain('wp typecheck --file src/index.ts')
+    expect(TYPECHECK_COMMAND_HELP).toContain('wp typecheck --package @webpresso/agent-kit')
+  })
+
+  it('rejects --file plus --package together', async () => {
+    await expect(
+      runTypecheckCommand({
+        cwd: process.cwd(),
+        files: ['src/index.ts'],
+        packages: ['@webpresso/agent-kit'],
+      }),
+    ).rejects.toThrow(/Cannot use both --file and --package/i)
   })
 })

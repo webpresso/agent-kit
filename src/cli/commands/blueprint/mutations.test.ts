@@ -639,6 +639,25 @@ describe('promoteBlueprint — platform-first sync', () => {
     expect(ensureFresh).toHaveBeenCalledWith({ slug: 'my-feature' })
   })
 
+  it('bounds the pre-refresh before publishing platform status changes', async () => {
+    tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
+    vi.stubEnv('WP_BLUEPRINT_PLATFORM_MUTATION_TIMEOUT_MS', '1')
+    const pushEvent = vi.fn<SyncAdapter['pushEvent']>().mockResolvedValue(undefined)
+    const ensureFresh = vi
+      .fn<SyncAdapter['ensureFresh']>()
+      .mockImplementation(() => new Promise<void>(() => {}))
+    const adapter: SyncAdapter = { pushEvent, ensureFresh }
+    _setSyncAdapterForCli(() => adapter)
+
+    await expect(promoteBlueprint(tmpRepoDir, 'my-feature', 'in-progress')).rejects.toThrow(
+      /wp_blueprint_promote platform sync failed: ensureFresh timed out after 1ms/,
+    )
+
+    expect(ensureFresh).toHaveBeenCalledOnce()
+    expect(pushEvent).not.toHaveBeenCalled()
+    expect(readOverview(tmpRepoDir, 'my-feature', 'planned')).toContain('status: planned')
+  })
+
   it('still moves the directory and updates frontmatter when adapter is available', async () => {
     tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
 

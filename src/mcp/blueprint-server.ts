@@ -2155,16 +2155,16 @@ async function handleBlueprintPut(
 
   const root = resolveBlueprintRoot(projectCwd)
   const found = findBlueprintDir(root, slug, ALL_STATES)
+  if (document.status !== 'draft') {
+    return err(
+      'wp_blueprint_put refused',
+      `wp_blueprint_put only writes draft blueprints; use wp_blueprint_transition for executable lifecycle states.`,
+    )
+  }
   if (found && found.state !== document.status) {
     return err(
       'wp_blueprint_put refused',
       `Blueprint "${slug}" currently lives in "${found.state}" and cannot be rewritten as "${document.status}" without a lifecycle transition.`,
-    )
-  }
-  if (!found && document.status !== 'draft') {
-    return err(
-      'wp_blueprint_put refused',
-      `New blueprint "${slug}" must start in "draft"; use wp_blueprint_transition for later lifecycle moves.`,
     )
   }
 

@@ -84,6 +84,18 @@ logic — import it. Same semantics: `--affected` = staged `ACMR` set;
   can reuse any existing import-scanning surface
   (`src/config/internal-subpath-imports.ts`, `src/config/docs-lint/cli/validators/imports.ts`).
 
+## Delivered groundwork (2026-06-22 follow-up)
+
+This PR delivered the exact-scope planner groundwork without claiming the full
+reverse-dependency `--affected` closure:
+
+- `wp typecheck --file <path>` resolves source files to their owning typecheck
+  scopes and runs the normal scope-level typecheck once per scope.
+- `wp typecheck --package <name>` resolves exact `package.json` names only.
+- MCP `wp_typecheck` and the public `runTypecheck` helper share the same planner.
+- The future `--affected` work remains scoped to reverse-dependency closure and
+  measured narrowing.
+
 ## Acceptance criteria (high level — refine before execution)
 
 - [ ] `wp typecheck --affected [--branch]` wired; `--branch` alone errors.

@@ -166,6 +166,13 @@ vp run lint        # wp lint (oxlint) — no violations
 vp run test        # unit then integration vitest suites — all green
 ```
 
+When you need a narrower typecheck lane, use exact scope targeting:
+
+```bash
+wp typecheck --file src/cli/commands/typecheck.ts          # resolves to owning scope(s), not isolated-file tsc
+wp typecheck --package @webpresso/agent-kit                # exact package.json name only
+```
+
 When you need a single lane, use `wp test --suite unit` or
 `wp test --suite integration`.
 

@@ -134,6 +134,7 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
       <category>dev-workflow</category>
       <trigger>type checking, TypeScript errors, type errors</trigger>
       <forbidden>bun run typecheck, tsc, node ./node_modules/typescript/bin/tsc</forbidden>
+      <usage>Supports package/file scope. File scope resolves owning scope typecheck; it is not isolated-file tsc.</usage>
     </tool>
     <tool name="wp_qa">
       <category>dev-workflow</category>

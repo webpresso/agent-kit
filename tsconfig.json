@@ -187,6 +187,12 @@
       ],
       "#*": [
         "./src/blueprint/*"
+      ],
+      "#typecheck/*.js": [
+        "./src/typecheck/*.ts"
+      ],
+      "#typecheck/*": [
+        "./src/typecheck/*.ts"
       ]
     },
     "rootDir": "./src"

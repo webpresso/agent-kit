@@ -25,6 +25,7 @@ export interface CliRunCommandOptions {
   readonly commandName: CliLogCommandName
   readonly commands: readonly CliSpawnCommand[]
   readonly cwd?: string
+  readonly preambleLines?: readonly string[]
   readonly signal?: AbortSignal
   readonly timeoutMs?: number
   readonly summary: (result: {
@@ -46,6 +47,9 @@ export async function runCliCommandSequence(
   options: CliRunCommandOptions,
 ): Promise<CliRunCommandResult> {
   const sink = createCliLogSink(options.commandName, options.cwd)
+  for (const line of options.preambleLines ?? []) {
+    sink.write(`${line}\n`)
+  }
   let exitCode = 0
   let timedOut = false
   let aborted = false
