@@ -94,10 +94,8 @@ import {
   disableManagedHooksFromManifest,
   type ManagedHookVendor,
   restoreManagedHooksFromManifest,
-  resolveNodeBinaryForManagedHookLaunchers,
   scaffoldAgentHooks,
   trustCodexWebpressoHooksForRepo,
-  trustCodexPresetHooksForUser,
 } from './scaffolders/agent-hooks/index.js'
 import { ensureAgentKitGlobal } from './scaffolders/agent-kit-global/index.js'
 import { scaffoldAuditHooks } from './scaffolders/audit-hooks/index.js'
@@ -105,7 +103,6 @@ import { ensureClaudeCodeUserPlugin } from './scaffolders/claude-plugin/index.js
 import { ensureCodexUserPlugin } from './scaffolders/codex-plugin/index.js'
 import { scaffoldClaudeRules } from './scaffolders/claude-rules/index.js'
 import { ensureCodexCli } from './scaffolders/codex-cli/index.js'
-import { normalizeGlobalCodexHooksFile } from './scaffolders/agent-hooks/codex-global-normalize.js'
 import {
   CONTEXT7_API_KEY_ENV,
   ensureClaudeContext7Mcp,
@@ -466,9 +463,6 @@ async function runUserOnlySetup(input: {
         console.log(
           omxResult.installed ? '  omx setup: ✓ installed + configured' : '  omx setup: ✓',
         )
-        console.log(
-          `  omx codex hooks: ${omxResult.codexGlobalHooks.repaired ? '✓ path-stable' : 'already path-stable'} ${omxResult.codexGlobalHooks.targetPath}`,
-        )
         break
       case 'omx-skipped-dry-run':
         console.log('  omx setup: skipped (--dry-run)')
@@ -536,8 +530,6 @@ async function runUserOnlySetup(input: {
         break
     }
   }
-
-  await trustCodexPresetHooksForUser({ repoRoot, options })
 
   const webpressoMcpResult = ensureCodexWebpressoMcp({ options })
   switch (webpressoMcpResult.kind) {
@@ -797,18 +789,8 @@ async function runHooksRecovery(
     writeHooksManifest(repoRoot, nextManifest.claude, nextManifest.codex, nextManifest.vendorState)
   }
 
-  if (mutationResult.codex !== undefined) {
-    const codexHooksPath = join(repoRoot, '.codex', 'hooks.json')
-    normalizeGlobalCodexHooksFile(
-      codexHooksPath,
-      {
-        nodeBinary: resolveNodeBinaryForManagedHookLaunchers(),
-      },
-      options,
-    )
-    if (restoreHooks) {
-      await trustCodexWebpressoHooksForRepo(scaffoldInput)
-    }
+  if (mutationResult.codex !== undefined && restoreHooks) {
+    await trustCodexWebpressoHooksForRepo(scaffoldInput)
   }
 
   const results = [mutationResult.claude, mutationResult.codex].filter(
@@ -1274,9 +1256,6 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
               `  omx project-scope cleanup: ✓ removed ${omxResult.removedProjectFiles.length} tracked file(s)`,
             )
           }
-          console.log(
-            `  omx codex hooks: ${omxResult.codexGlobalHooks.repaired ? '✓ path-stable' : 'already path-stable'} ${omxResult.codexGlobalHooks.targetPath}`,
-          )
           if (!options.dryRun) {
             toolingOwnership =
               integrations.omx?.scope === 'project' && repoKey !== null
@@ -1391,8 +1370,6 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     // clearing all `[hooks.state]` entries before rehydrating its own hooks.
     // Re-apply webpresso's trust hashes after that possible cleanup.
     await trustCodexWebpressoHooksForRepo({ repoRoot: consumer.repoRoot, options })
-    await trustCodexPresetHooksForUser({ repoRoot: consumer.repoRoot, options })
-
     // Always upsert webpresso's MCP entry into the user's codex config when
     // an install root is discoverable. Codex's config.toml is user-global, so
     // we resolve to whatever absolute install path exists today (Claude

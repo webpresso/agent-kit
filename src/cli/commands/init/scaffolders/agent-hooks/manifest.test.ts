@@ -21,14 +21,24 @@ const sampleClaudeMap: HooksMap = {
   SessionStart: [
     {
       hooks: [
-        { type: 'command', command: 'node_modules/.bin/wp-sessionstart-routing', timeout: 5 },
+        {
+          type: 'command',
+          command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
+          timeout: 5,
+        },
       ],
     },
   ],
   PreToolUse: [
     {
       matcher: 'Bash(*)',
-      hooks: [{ type: 'command', command: 'node_modules/.bin/wp-pretool-guard', timeout: 5 }],
+      hooks: [
+        {
+          type: 'command',
+          command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
+          timeout: 5,
+        },
+      ],
     },
   ],
 }
@@ -37,7 +47,11 @@ const sampleCodexMap: HooksMap = {
   SessionStart: [
     {
       hooks: [
-        { type: 'command', command: '/repo/node_modules/.bin/wp-sessionstart-routing', timeout: 5 },
+        {
+          type: 'command',
+          command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
+          timeout: 5,
+        },
       ],
     },
   ],
@@ -118,8 +132,7 @@ describe('manifest', () => {
               hooks: [
                 {
                   type: 'command',
-                  command:
-                    'export PATH="$HOME/.vite-plus/bin:$PATH"; node_modules/.bin/wp-sessionstart-routing',
+                  command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
                   timeout: 5,
                 },
               ],
@@ -131,8 +144,7 @@ describe('manifest', () => {
               hooks: [
                 {
                   type: 'command',
-                  command:
-                    'export PATH="$HOME/.vite-plus/bin:$PATH"; node_modules/.bin/wp-pretool-guard',
+                  command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
                   timeout: 5,
                 },
               ],
@@ -165,7 +177,15 @@ describe('manifest', () => {
     it('returns unknown verdict when a hook is installed but not in the manifest', () => {
       const extraMap: HooksMap = {
         Stop: [
-          { hooks: [{ type: 'command', command: 'node_modules/.bin/wp-stop-qa', timeout: 10 }] },
+          {
+            hooks: [
+              {
+                type: 'command',
+                command: 'node /pkg/bin/wp hook stop-qa # wp-stop-qa',
+                timeout: 10,
+              },
+            ],
+          },
         ],
       }
       const manifest = {
@@ -190,10 +210,7 @@ describe('manifest', () => {
           {
             hooks: [
               { type: 'command', command: '$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack.sh' },
-              {
-                type: 'command',
-                command: '/repo/.codex/managed-hooks/wp-global-codex-omx-hook.sh',
-              },
+              { type: 'command', command: '/repo/hooks/third-party-omx.sh' },
             ],
           },
         ],
@@ -238,13 +255,23 @@ describe('manifest', () => {
         SessionStart: [
           {
             hooks: [
-              { type: 'command', command: 'node_modules/.bin/wp-sessionstart-routing', timeout: 5 },
+              {
+                type: 'command',
+                command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
+                timeout: 5,
+              },
             ],
           },
         ],
         PreToolUse: [
           {
-            hooks: [{ type: 'command', command: 'node_modules/.bin/wp-pretool-guard', timeout: 5 }],
+            hooks: [
+              {
+                type: 'command',
+                command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
+                timeout: 5,
+              },
+            ],
           },
         ],
       }
@@ -253,12 +280,24 @@ describe('manifest', () => {
         SessionStart: [
           {
             hooks: [
-              { type: 'command', command: 'node_modules/.bin/wp-sessionstart-routing', timeout: 5 },
+              {
+                type: 'command',
+                command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
+                timeout: 5,
+              },
             ],
           },
         ],
         Stop: [
-          { hooks: [{ type: 'command', command: 'node_modules/.bin/wp-stop-qa', timeout: 10 }] },
+          {
+            hooks: [
+              {
+                type: 'command',
+                command: 'node /pkg/bin/wp hook stop-qa # wp-stop-qa',
+                timeout: 10,
+              },
+            ],
+          },
         ],
       }
       const manifest = {

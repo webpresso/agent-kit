@@ -30,7 +30,7 @@ const codexMap: HooksMap = {
       hooks: [
         {
           type: 'command',
-          command: '/repo/.codex/managed-hooks/wp-sessionstart-routing.sh',
+          command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
           timeout: 5,
         },
       ],
@@ -40,14 +40,18 @@ const codexMap: HooksMap = {
     {
       matcher: 'Bash|apply_patch',
       hooks: [
-        { type: 'command', command: '/repo/.codex/managed-hooks/wp-pretool-guard.sh', timeout: 5 },
+        {
+          type: 'command',
+          command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
+          timeout: 5,
+        },
       ],
     },
   ],
   Stop: [
     {
       hooks: [
-        { type: 'command', command: '/repo/.codex/managed-hooks/wp-stop-qa.sh', timeout: 10 },
+        { type: 'command', command: 'node /pkg/bin/wp hook stop-qa # wp-stop-qa', timeout: 10 },
       ],
     },
   ],

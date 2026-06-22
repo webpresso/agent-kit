@@ -9,11 +9,9 @@ import {
 } from '#cli/commands/init/scaffolders/agent-hooks/manifest.js'
 import {
   disableManagedHooksFromManifest,
-  resolveNodeBinaryForManagedHookLaunchers,
   scaffoldAgentHooks,
   trustCodexWebpressoHooksForRepo,
 } from '#cli/commands/init/scaffolders/agent-hooks/index.js'
-import { normalizeGlobalCodexHooksFile } from '#cli/commands/init/scaffolders/agent-hooks/codex-global-normalize.js'
 import { setupCommandForRepo } from '#cli/commands/init/detect-consumer.js'
 import { deriveHookStatus } from '#hooks/status/index.js'
 import { readInstalledHooksMap } from '#hooks/shared/installed-hooks.js'
@@ -151,13 +149,6 @@ export async function upgradeHooksForRepo(
 
   if (options.apply) {
     writeHooksManifest(repoRoot, nextManifest.claude, nextManifest.codex, nextManifest.vendorState)
-    normalizeGlobalCodexHooksFile(
-      path.join(repoRoot, '.codex', 'hooks.json'),
-      {
-        nodeBinary: resolveNodeBinaryForManagedHookLaunchers(),
-      },
-      {},
-    )
     if (options.trustCodexHooks && nextManifest.vendorState.codex === 'enabled') {
       await trustCodexWebpressoHooksForRepo({ repoRoot, options: {}, trustCodexHooks: false })
     }

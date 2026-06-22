@@ -1147,7 +1147,7 @@ describe('hooks/doctor', () => {
       expect(result.detail).toContain('wp setup')
     })
 
-    it('warns when settings.json lacks the managed hook launchers', async () => {
+    it('warns when settings.json lacks direct agent-kit hook commands', async () => {
       mockAccessSync.mockReturnValue(undefined)
       mockReadFileSync.mockReturnValue('{"hooks":{}}')
       const { checkManagedHooksInstalled } = await import('#hooks/doctor')
@@ -1156,10 +1156,10 @@ describe('hooks/doctor', () => {
       expect(result.detail).toContain('wp setup')
     })
 
-    it('passes when settings.json references the managed hook launchers', async () => {
+    it('passes when settings.json references direct agent-kit hook commands', async () => {
       mockAccessSync.mockReturnValue(undefined)
       mockReadFileSync.mockReturnValue(
-        '{"hooks":{"PreToolUse":[{"hooks":[{"command":"[ -x \\"$CLAUDE_PROJECT_DIR/.claude/hooks/managed/wp-pretool-guard.sh\\" ]"}]}]}}',
+        '{"hooks":{"PreToolUse":[{"hooks":[{"command":"node /pkg/bin/wp hook pretool-guard # wp-pretool-guard"}]}]}}',
       )
       const { checkManagedHooksInstalled } = await import('#hooks/doctor')
       const result = checkManagedHooksInstalled('/repo')

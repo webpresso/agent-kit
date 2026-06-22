@@ -14,11 +14,11 @@ function writeJson(path: string, value: unknown): void {
 }
 
 function managedCodexHookCommand(root: string, binName: string): string {
-  return join(root, '.codex', 'managed-hooks', `${binName}.sh`)
+  return `node ${join(root, 'bin', 'wp')} hook ${binName.slice(3)} # ${binName}`
 }
 
 function managedClaudeHookCommand(binName: string): string {
-  return `$CLAUDE_PROJECT_DIR/.claude/hooks/managed/${binName}.sh`
+  return `node /pkg/bin/wp hook ${binName.slice(3)} # ${binName}`
 }
 
 function seedConsumerRepo(root: string): void {
