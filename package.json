@@ -71,6 +71,8 @@
     "#e2e/*.js": "./src/e2e/*.ts",
     "#e2e/*": "./src/e2e/*.ts",
     "#test": "./src/test/index.ts",
+    "#git/*.js": "./src/git/*.ts",
+    "#git/*": "./src/git/*.ts",
     "#symlinker": "./src/symlinker/index.ts",
     "#paths/*.js": "./src/paths/*.ts",
     "#paths/*": "./src/paths/*.ts",

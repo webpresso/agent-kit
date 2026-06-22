@@ -35,6 +35,9 @@
       "#test": [
         "./src/test/index.ts"
       ],
+      "#git/*": [
+        "./src/git/*.ts"
+      ],
       "#symlinker": [
         "./src/symlinker/index.ts"
       ],

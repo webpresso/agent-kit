@@ -2,11 +2,11 @@
 type: blueprint
 title: "Add --affected (and --affected --branch) scoping to all quality commands"
 owner: ozby
-status: planned
+status: completed
 complexity: M
 created: '2026-06-22'
 last_updated: '2026-06-22'
-progress: '0% (planned; fact-checked + refined + codex-reviewed 2026-06-22). typecheck split to a follow-up blueprint.'
+progress: 'implemented and verified (5/5 tasks done, 0 blocked, updated 2026-06-22)'
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -159,166 +159,30 @@ Verified against sources on this branch, 2026-06-22:
 
 ## Tasks
 
-> Resolver contract is **fixed in this blueprint** (see Key Decisions), so the
-> `[cli]` tasks may start against the agreed signature in parallel rather than
-> waiting on Task 1's internals. All commands run via `wp` in the source clone
-> with `WP_FORCE_SOURCE=1`.
+#### [git] Task 1.1: Add a shared changed-files resolver
+- [x] **Status:** done
+- **Files:** `src/git/changed-files.ts`, `src/git/changed-files.test.ts`, `package.json`, `tsconfig.json`
+- **Acceptance:** One shared `#git/changed-files` module now returns `{ files, degraded, reason }`, uses NUL-delimited git output, preserves odd filenames, recognizes `missing-base-ref` / `not-a-repo`, and filters submodule gitlinks from file-scoped runs.
 
-### [git] Task 1: Shared changed-files resolver
+#### [cli] Task 1.2: Wire `wp lint --affected [--branch]`
+- [x] **Status:** done
+- **Files:** `src/cli/commands/lint.ts`, `src/cli/commands/lint.test.ts`
+- **Acceptance:** `wp lint` now accepts `--affected` / `--affected --branch`, errors on `--branch` alone or `--affected` + `--file`, filters to oxlint-lintable files only, falls back to whole-repo lint on degraded read resolution, and fails closed for degraded `--fix` writes.
 
-**Status:** todo
-**Depends:** None
+#### [cli] Task 1.3: Wire `wp format --affected [--branch]`
+- [x] **Status:** done
+- **Files:** `src/cli/commands/format.ts`, `src/cli/commands/format.test.ts`
+- **Acceptance:** `wp format` now accepts `--affected` / `--affected --branch`, errors on `--branch` alone or `--affected` + `--file`, filters to the oxfmt-supported extension set, falls back to whole-repo `--check` on degraded read resolution, and fails closed for degraded write-mode runs.
 
-Create the one resolver that backs all three commands (and the typecheck
-follow-up). It must distinguish a genuinely empty changed-set from a degraded
-probe (F9) and be robust to odd filenames (F1). Pure git via
-`execFileSync('git', …)` — no shell string.
+#### [cli] Task 1.4: Wire `wp test --affected [--branch]`
+- [x] **Status:** done
+- **Files:** `src/cli/commands/test.ts`, `src/cli/commands/test.test.ts`
+- **Acceptance:** `wp test` now accepts `--affected` / `--affected --branch`, errors on `--branch` alone or `--affected` mixed with explicit targets, reuses `discoverTestFiles` from `qa-changed-files.ts`, skips when no colocated tests are found, and falls back to the full test surface on degraded resolution.
 
-**Files:**
-- Create: `src/git/changed-files.ts`
-- Create: `src/git/changed-files.test.ts`
-
-Exports (shared return type `{ files: string[]; degraded: boolean; reason }`,
-`reason ∈ 'ok'|'empty'|'not-a-repo'|'git-error'|'missing-base-ref'`, F15):
-- `getStagedFiles(cwd?)` → `git diff -z --cached --name-only --diff-filter=ACMR`,
-  split on `\0`. No staged files → `{ files: [], degraded: false, reason: 'empty' }`.
-- `getBranchChangedFiles(cwd?, base?)` → `git diff -z --name-only ${base}...HEAD`;
-  `base` defaults to `origin/${process.env.GITHUB_BASE_REF ?? 'main'}` (**not
-  auto-fetched**, F17). Not a repo → `reason:'not-a-repo'`; missing base ref →
-  `reason:'missing-base-ref'`; other git failure → `reason:'git-error'`; all
-  three set `degraded:true`.
-- Exclude submodule paths from `files` (F17).
-
-**Steps (TDD):**
-1. Write failing tests over a temp git repo: staged set, branch set, missing
-   `origin/main` → `degraded:true`, non-git dir → `degraded:true`, filename with
-   a space preserved. (Integration-style, real git, no internal mocks.)
-2. `WP_FORCE_SOURCE=1 wp test --file src/git/changed-files.test.ts` — verify FAIL.
-3. Implement minimal resolver.
-4. `WP_FORCE_SOURCE=1 wp test --file src/git/changed-files.test.ts` — verify PASS.
-5. Refactor (complexity ≤ 8).
-6. `WP_FORCE_SOURCE=1 wp lint --file src/git/changed-files.ts src/git/changed-files.test.ts`
-   and `WP_FORCE_SOURCE=1 wp typecheck`.
-
-**Acceptance:**
-- [ ] `{ files, degraded, reason }` contract; correct `reason` per failure mode.
-- [ ] NUL-delimited; space-in-filename test passes; submodule path excluded.
-- [ ] `wp test --file src/git/changed-files.test.ts` green.
-- [ ] lint + typecheck green.
-
-### [cli] Task 2: `wp lint --affected [--branch]`
-
-**Status:** todo
-**Depends:** Task 1
-
-Add `--affected` and `--branch` to the lint command. Resolve the set (staged, or
-branch when `--branch`), filter to oxlint-lintable extensions
-`ts,tsx,mts,cts,js,jsx,cjs,mjs` (F12), pass as files to `buildLintCommand`.
-Rules: `--affected` + `--file` → error (mutually exclusive, F14); `--branch`
-without `--affected` → error. Degraded read (`lint`) → whole-repo `.` + warning
-(F9); degraded with `--fix` (write) → **exit 1** + rerun hint (F13); empty & not
-degraded → skip, exit 0 + "no staged affected files" notice (F16). Update
-`LINT_COMMAND_HELP` with an `--affected` example + the stage-first note (F7/F16).
-
-**Files:**
-- Modify: `src/cli/commands/lint.ts`
-- Modify: `src/cli/commands/lint.test.ts`
-
-**Steps (TDD):**
-1. Failing tests: staged scoping, branch scoping, `--branch` alone errors,
-   `--affected`+`--file` errors, empty→skip exit 0, degraded read→whole-repo `.`,
-   degraded `--fix`→exit 1.
-2. `WP_FORCE_SOURCE=1 wp test --file src/cli/commands/lint.test.ts` — FAIL.
-3. Implement (inject resolver for testability).
-4. Same command — PASS.
-5. Refactor (≤ 8).
-6. `WP_FORCE_SOURCE=1 wp lint --file src/cli/commands/lint.ts src/cli/commands/lint.test.ts` + `wp typecheck`.
-
-**Acceptance:**
-- [ ] `--affected`/`--branch` wired; `--branch` alone and `--affected`+`--file` error (F14).
-- [ ] Extension filter oxlint-only (F12); degraded read→whole-repo, degraded `--fix`→exit 1 (F9/F13).
-- [ ] HELP updated; tests + lint + typecheck green.
-
-### [cli] Task 3: `wp format --affected [--branch]`
-
-**Status:** todo
-**Depends:** Task 1
-
-Same wiring against `buildFormatCommand`, oxfmt extension set
-(`ts,tsx,…,json,md,mdx,sh,tmpl,ya?ml`). `format` defaults to **write**, so
-degraded write → **exit 1** + rerun hint (F13); `--check` is read-only so
-degraded `--check` → whole-repo check + warning. `--affected`+`--file` → error
-(F14). Empty & not degraded → skip exit 0 + notice. Update `FORMAT_COMMAND_HELP`.
-
-**Files:**
-- Modify: `src/cli/commands/format.ts`
-- Modify: `src/cli/commands/format.test.ts`
-
-**Steps (TDD):** mirror Task 2 against the format command/test.
-1. Failing tests (staged/branch/`--branch`-alone/`--affected`+`--file`/empty-skip/
-   degraded write→exit 1/degraded `--check`→whole-repo).
-2. `WP_FORCE_SOURCE=1 wp test --file src/cli/commands/format.test.ts` — FAIL.
-3. Implement. 4. Re-run — PASS. 5. Refactor (≤ 8).
-6. `WP_FORCE_SOURCE=1 wp lint --file src/cli/commands/format.ts src/cli/commands/format.test.ts` + `wp typecheck`.
-
-**Acceptance:**
-- [ ] `--affected`/`--branch` wired; degraded write→exit 1, degraded `--check`→whole-repo (F13).
-- [ ] oxfmt extension set; `--affected`+`--file` errors (F14); HELP updated; tests + lint + typecheck green.
-
-### [cli] Task 4: `wp test --affected [--branch]`
-
-**Status:** todo
-**Depends:** Task 1
-
-Resolve the set, map changed source files to colocated test files (reuse the
-`findTestFiles` / `discoverTestFiles` logic from `qa-changed-files.ts` —
-import/extract, do not re-implement), forward via the `file[]` target to
-`buildTestCommand`. `degraded` → whole suite + warning; empty & not degraded →
-skip exit 0. Update `TEST_COMMAND_HELP`. Add a HELP note that `--affected` is an
-inner-loop filter, not a coverage gate (F10).
-
-**Files:**
-- Modify: `src/cli/commands/test.ts`
-- Modify: `src/cli/commands/test.test.ts`
-
-**Steps (TDD):**
-1. Failing tests: source→test mapping, changed test file runs itself, staged vs
-   branch, empty→skip, degraded→whole suite.
-2. `WP_FORCE_SOURCE=1 wp test --file src/cli/commands/test.test.ts` — FAIL.
-3. Implement. 4. Re-run — PASS. 5. Refactor (≤ 8).
-6. `WP_FORCE_SOURCE=1 wp lint --file src/cli/commands/test.ts src/cli/commands/test.test.ts` + `wp typecheck`.
-
-**Acceptance:**
-- [ ] Source→test mapping reuses `qa-changed-files` helpers (no duplication).
-- [ ] degraded→whole suite (F9); empty→skip; HELP note re coverage (F10).
-- [ ] tests + lint + typecheck green.
-
-### [docs] Task 5: Document `--affected` across the surface
-
-**Status:** todo
-**Depends:** None
-
-Add a single `--affected` / `--affected --branch` row to the
-`cmd-execution.md` scoped-commands table (single source of truth — do not
-re-list per command elsewhere), including the degraded read/write split (F13),
-mutual-exclusion with `--file`/`--package` (F14), and the staged-vs-branch note
-(F16). Run `wp sync` so the generated `.agent/` / per-IDE surfaces pick up the
-rule change. Per-command HELP text is owned by Tasks 2–4 (F7), not here.
-
-**Files:**
-- Modify: `catalog/agent/rules/cmd-execution.md`
-- Modify: generated agent surfaces (via `wp sync`, not hand-edited)
-
-**Steps:**
-1. Add the `--affected` row + the degraded/empty semantics note.
-2. `WP_FORCE_SOURCE=1 wp sync` (or `wp sync --check` in CI).
-3. `WP_FORCE_SOURCE=1 wp audit docs-frontmatter` if applicable.
-
-**Acceptance:**
-- [ ] `cmd-execution.md` documents `--affected`, `--branch`, degraded fallback.
-- [ ] `wp sync --check` clean.
-
----
+#### [docs] Task 1.5: Document and sync the `--affected` contract
+- [x] **Status:** done
+- **Files:** `catalog/agent/rules/cmd-execution.md`
+- **Acceptance:** The shared command-execution rule now documents `--affected`, `--affected --branch`, degraded read/write behavior, mutual-exclusion with explicit targets, and staged-vs-branch semantics; `wp sync` and `wp sync --check` both ran cleanly after the rule update.
 
 ## Quick Reference (Execution Waves)
 
@@ -348,19 +212,29 @@ S-sized after splitting typecheck out (F5).
 
 ## Acceptance criteria (overall)
 
-- [ ] `lint`, `format`, `test` accept `--affected` and `--affected --branch`;
+- [x] `lint`, `format`, `test` accept `--affected` and `--affected --branch`;
       `--branch` alone errors; `--affected` + `--file`/`--package` errors (F14).
-- [ ] `--affected` = staged `ACMR` set; `--affected --branch` =
+- [x] `--affected` = staged `ACMR` set; `--affected --branch` =
       `origin/${GITHUB_BASE_REF ?? 'main'}...HEAD`.
-- [ ] **Degraded read commands never skip** — fall back to whole-repo + warning
+- [x] **Degraded read commands never skip** — fall back to whole-repo + warning
       (regression-tested), per F9.
-- [ ] **Degraded write commands fail closed** (`format` write, `lint --fix` →
+- [x] **Degraded write commands fail closed** (`format` write, `lint --fix` →
       exit 1 + rerun hint), never a surprise whole-repo write, per F13.
-- [ ] Empty-but-not-degraded: skip exit 0 with an explicit "no staged affected
+- [x] Empty-but-not-degraded: skip exit 0 with an explicit "no staged affected
       files" notice (F16).
-- [ ] One shared `#git/changed-files` resolver (`{files, degraded, reason}`)
+- [x] One shared `#git/changed-files` resolver (`{files, degraded, reason}`)
       backs all three commands.
-- [ ] `wp audit tph`, `wp sync --check`, and `wp typecheck` green.
+- [x] `wp audit tph`, `wp sync --check`, and `wp typecheck` green.
+
+## Verification Evidence
+
+- `WP_FORCE_SOURCE=1 ./bin/wp test --file src/git/changed-files.test.ts --file src/cli/commands/lint.test.ts --file src/cli/commands/format.test.ts --file src/cli/commands/test.test.ts` → passed.
+- `WP_FORCE_SOURCE=1 ./bin/wp lint --file src/git/changed-files.ts --file src/git/changed-files.test.ts --file src/cli/commands/lint.ts --file src/cli/commands/lint.test.ts --file src/cli/commands/format.ts --file src/cli/commands/format.test.ts --file src/cli/commands/test.ts --file src/cli/commands/test.test.ts` → passed.
+- `WP_FORCE_SOURCE=1 ./bin/wp format --check --file src/git/changed-files.ts --file src/git/changed-files.test.ts --file src/cli/commands/lint.ts --file src/cli/commands/lint.test.ts --file src/cli/commands/format.ts --file src/cli/commands/format.test.ts --file src/cli/commands/test.ts --file src/cli/commands/test.test.ts --file package.json --file tsconfig.json --file catalog/agent/rules/cmd-execution.md` → passed after one targeted `wp format` apply.
+- `WP_FORCE_SOURCE=1 ./bin/wp typecheck` → passed.
+- `WP_FORCE_SOURCE=1 ./bin/wp sync` updated generated surfaces; `WP_FORCE_SOURCE=1 ./bin/wp sync --check` then passed clean.
+- `WP_FORCE_SOURCE=1 ./bin/wp audit tph` → passed.
+- `WP_FORCE_SOURCE=1 ./bin/wp audit docs-frontmatter` → passed.
 
 ## Out of scope (follow-up blueprints)
 
@@ -436,7 +310,7 @@ wins immediately; `typecheck --affected` is a named follow-up.
 
 | ID | Claim | Evidence |
 | -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/planned/2026-06-22-affected-flag-across-quality-commands.md |
+| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-22-affected-flag-across-quality-commands.md |
 
 ### Material Decisions
 

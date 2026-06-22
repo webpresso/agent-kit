@@ -32,8 +32,9 @@ Use the narrowest scope that proves your change:
 
 | Concern    | Scoped form                          |
 | ---------- | ------------------------------------ |
-| Lint       | `lint --file <paths...>` / `--package <name>` |
-| Tests      | `test --file <paths...>` / `--package <name>` |
+| Lint       | `lint --file <paths...>` / `--package <name>` / `lint --affected [--branch]` |
+| Tests      | `test --file <paths...>` / `--package <name>` / `test --affected [--branch]` |
+| Format     | `format --file <paths...>` / `format --affected [--branch]` |
 | Typecheck  | `typecheck --package <name>`         |
 
 When this repo exposes the webpresso quality MCP/CLI surface, prefer
@@ -48,6 +49,8 @@ subcommand exit code.
 **Multi-target:** `--file` and `--package` typically accept multiple
 space-separated values. Check your repo's task runner for the exact flag
 surface.
+
+**Affected targeting:** `--affected` means the staged `ACMR` set only; stage files first with `git add`, or use `--affected --branch` for the `origin/${GITHUB_BASE_REF:-main}...HEAD` branch diff. `--branch` requires `--affected`. `--affected` is mutually exclusive with explicit `--file` / `--package` targets. When the repo cannot determine an affected set, read/check commands fall back to whole-repo execution with a warning, but write commands such as `format` and `lint --fix` must fail closed rather than surprise-rewrite the whole tree. An empty non-degraded affected set should skip quickly with an explicit notice.
 
 ### Log Files
 
