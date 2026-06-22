@@ -10,10 +10,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
-import {
-  type HooksMap,
-  WP_HOOK_BIN_NAMES,
-} from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
+import { type HooksMap, WP_HOOK_BIN_NAMES } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
 
 export const HOOK_MANIFEST_VENDORS = ['claude', 'codex'] as const
 export type HookManifestVendor = (typeof HOOK_MANIFEST_VENDORS)[number]

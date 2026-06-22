@@ -59,7 +59,10 @@ export function runMigrateSecretsCommand(options: MigrateSecretsOptions = {}): n
         })
       }
     }
-    if (packageJson.dependencies?.['@webpresso/agent-kit'] || packageJson.devDependencies?.['@webpresso/agent-kit']) {
+    if (
+      packageJson.dependencies?.['@webpresso/agent-kit'] ||
+      packageJson.devDependencies?.['@webpresso/agent-kit']
+    ) {
       patches.push({
         file: 'package.json',
         action: 'remove-dependency',

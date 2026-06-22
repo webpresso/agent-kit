@@ -29,9 +29,7 @@ describe('classifyReleasePackage', () => {
   })
 
   it('classifies native runtime helper packages', () => {
-    expect(classifyReleasePackage('@webpresso/agent-kit-runtime-linux-x64')).toBe(
-      'runtime-helper',
-    )
+    expect(classifyReleasePackage('@webpresso/agent-kit-runtime-linux-x64')).toBe('runtime-helper')
   })
 
   it('classifies session-memory native helper packages', () => {
@@ -44,9 +42,7 @@ describe('classifyReleasePackage', () => {
     expect(classifyReleasePackage('@webpresso/agent-kit-future-native-helper')).toBe(
       'generated-helper',
     )
-    expect(isWorkspaceGithubReleasePackage('@webpresso/agent-kit-future-native-helper')).toBe(
-      false,
-    )
+    expect(isWorkspaceGithubReleasePackage('@webpresso/agent-kit-future-native-helper')).toBe(false)
   })
 
   it('treats other non-root workspace packages as GitHub Release packages', () => {

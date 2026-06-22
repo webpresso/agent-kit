@@ -290,7 +290,6 @@ describe('resolveNewWorktreeTarget', () => {
     ).toThrow('Managed worktrees do not support custom creation paths')
   })
 
-
   it('rejects explicit branch targets that collide with an existing branch', () => {
     expect(() =>
       resolveNewWorktreeTarget({

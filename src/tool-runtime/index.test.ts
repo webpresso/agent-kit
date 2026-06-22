@@ -27,7 +27,6 @@ describe('getManagedRunner', () => {
     expect(unfiltered).not.toBe(filtered)
   })
 
-
   it('caches bundled vp resolutions independently from other tools', () => {
     const first = getManagedRunner('vp', {
       outputPolicy: 'structured',

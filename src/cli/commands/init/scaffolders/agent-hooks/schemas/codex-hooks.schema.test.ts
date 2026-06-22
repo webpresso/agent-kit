@@ -11,7 +11,9 @@ describe('codexHooksSchema', () => {
 
   it('accepts the canonical wrapped shape with no extra keys', () => {
     const result = codexHooksSchema.safeParse({
-      hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: './run.sh' }] }] },
+      hooks: {
+        PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: './run.sh' }] }],
+      },
     })
 
     expect(result.success).toBe(true)

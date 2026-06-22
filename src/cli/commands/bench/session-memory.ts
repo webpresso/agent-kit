@@ -736,10 +736,7 @@ export async function runBenchSessionMemoryCommand(
         okResults.map((result) => result.usage),
         okResults.map((result) => result.local_wall_ms ?? result.usage.duration_ms),
       )
-      const wallSec =
-        okResults.length > 0
-          ? roundMetric(usageSummary.local_wall_ms_mean / 1000)
-          : 0
+      const wallSec = okResults.length > 0 ? roundMetric(usageSummary.local_wall_ms_mean / 1000) : 0
       const recallScores = results.map((result): TranscriptRecallScore => {
         if (!result.ok) {
           return {
@@ -821,13 +818,41 @@ export async function runBenchSessionMemoryCommand(
   )
 
   const artifactSamples: ArtifactSample[] = cells.flatMap((cell) => [
-    { metricKey: `${cell.scenario_id}.${cell.variant}.cost_usd`, value: cell.cost_usd, unit: 'usd' },
-    { metricKey: `${cell.scenario_id}.${cell.variant}.input_tokens`, value: cell.input_tokens, unit: 'tokens' },
-    { metricKey: `${cell.scenario_id}.${cell.variant}.output_tokens`, value: cell.output_tokens, unit: 'tokens' },
-    { metricKey: `${cell.scenario_id}.${cell.variant}.total_tokens`, value: cell.total_tokens, unit: 'tokens' },
-    { metricKey: `${cell.scenario_id}.${cell.variant}.duration_ms_mean`, value: cell.duration_ms_mean, unit: 'ms' },
-    { metricKey: `${cell.scenario_id}.${cell.variant}.local_wall_ms_mean`, value: cell.local_wall_ms_mean, unit: 'ms' },
-    { metricKey: `${cell.scenario_id}.${cell.variant}.recall_at_5`, value: cell.recall_at_5, unit: 'ratio' },
+    {
+      metricKey: `${cell.scenario_id}.${cell.variant}.cost_usd`,
+      value: cell.cost_usd,
+      unit: 'usd',
+    },
+    {
+      metricKey: `${cell.scenario_id}.${cell.variant}.input_tokens`,
+      value: cell.input_tokens,
+      unit: 'tokens',
+    },
+    {
+      metricKey: `${cell.scenario_id}.${cell.variant}.output_tokens`,
+      value: cell.output_tokens,
+      unit: 'tokens',
+    },
+    {
+      metricKey: `${cell.scenario_id}.${cell.variant}.total_tokens`,
+      value: cell.total_tokens,
+      unit: 'tokens',
+    },
+    {
+      metricKey: `${cell.scenario_id}.${cell.variant}.duration_ms_mean`,
+      value: cell.duration_ms_mean,
+      unit: 'ms',
+    },
+    {
+      metricKey: `${cell.scenario_id}.${cell.variant}.local_wall_ms_mean`,
+      value: cell.local_wall_ms_mean,
+      unit: 'ms',
+    },
+    {
+      metricKey: `${cell.scenario_id}.${cell.variant}.recall_at_5`,
+      value: cell.recall_at_5,
+      unit: 'ratio',
+    },
   ])
 
   const artifactAggregates: Record<string, number> = {

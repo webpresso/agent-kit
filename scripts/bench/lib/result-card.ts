@@ -61,8 +61,8 @@ function metricRows(markdown: string): MetricRow[] {
     const axisIndex = normalizedHeader.indexOf('axis')
     const thresholdIndex = normalizedHeader.indexOf('threshold')
     const statusIndex = normalizedHeader.indexOf('status')
-    const valueIndex = normalizedHeader.findIndex((cell) =>
-      cell === 'result' || cell === 'observed' || cell === 'value',
+    const valueIndex = normalizedHeader.findIndex(
+      (cell) => cell === 'result' || cell === 'observed' || cell === 'value',
     )
     if (metricIndex === -1 || thresholdIndex === -1 || valueIndex === -1 || statusIndex === -1) {
       continue
@@ -120,7 +120,9 @@ function validateAgainstReport(
       )
     }
     if (cardRow.status !== reportRow.status) {
-      errors.push(`${cardRow.metric} status ${cardRow.status} does not match report ${reportRow.status}`)
+      errors.push(
+        `${cardRow.metric} status ${cardRow.status} does not match report ${reportRow.status}`,
+      )
     }
     if (
       cardRow.metric.endsWith('latency_ms') &&
@@ -139,7 +141,13 @@ export function validateBenchmarkResultCard(
   const absoluteCardPath = resolve(root, cardPath)
   const errors: string[] = []
   if (!existsSync(absoluteCardPath)) {
-    return { path: cardPath, valid: false, errors: [`missing result card ${cardPath}`], referencedArtifactPaths: [], metricClasses: [] }
+    return {
+      path: cardPath,
+      valid: false,
+      errors: [`missing result card ${cardPath}`],
+      referencedArtifactPaths: [],
+      metricClasses: [],
+    }
   }
 
   const markdown = readFileSync(absoluteCardPath, 'utf8')
@@ -171,8 +179,16 @@ export function validateBenchmarkResultCard(
     validateAgainstReport(rows, reportRows, errors)
   }
 
-  const uniqueClasses = [...new Set(rows.map((row) => classifyCardMetric({ name: row.metric, value: row.value })))]
-  return { path: cardPath, valid: errors.length === 0, errors, referencedArtifactPaths: paths, metricClasses: uniqueClasses }
+  const uniqueClasses = [
+    ...new Set(rows.map((row) => classifyCardMetric({ name: row.metric, value: row.value }))),
+  ]
+  return {
+    path: cardPath,
+    valid: errors.length === 0,
+    errors,
+    referencedArtifactPaths: paths,
+    metricClasses: uniqueClasses,
+  }
 }
 
 export function listBenchmarkResultCards(root = process.cwd()): string[] {

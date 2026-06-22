@@ -165,7 +165,6 @@ describe('auditSecretsPolicy', () => {
     expect(result.violations).toStrictEqual([])
   })
 
-
   test('does not flag e2e file containing GraphQL pk field names', () => {
     const root = tempRepo(true)
     const e2eContent = 'query { projects_by_pk(id: "00000000-0000-0000-0000-000000000000") { id } }'

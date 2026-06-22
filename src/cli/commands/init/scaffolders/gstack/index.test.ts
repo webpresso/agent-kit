@@ -8,7 +8,10 @@ import { cleanupExternalGstackCheckout, ensureGstack, type EnsureGstackInput } f
 
 const roots: string[] = []
 function tmpRoot(): string {
-  const root = path.join(tmpdir(), `gstack-installer-${Date.now()}-${Math.random().toString(16).slice(2)}`)
+  const root = path.join(
+    tmpdir(),
+    `gstack-installer-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+  )
   roots.push(root)
   mkdirSync(root, { recursive: true })
   return root
@@ -17,7 +20,9 @@ function tmpRoot(): string {
 function packageFixture(root: string): string {
   const packageRoot = path.join(root, 'pkg')
   mkdirSync(path.join(packageRoot, 'catalog/agent'), { recursive: true })
-  cpSync(path.resolve('catalog/agent/skills'), path.join(packageRoot, 'catalog/agent/skills'), { recursive: true })
+  cpSync(path.resolve('catalog/agent/skills'), path.join(packageRoot, 'catalog/agent/skills'), {
+    recursive: true,
+  })
   return packageRoot
 }
 
@@ -43,15 +48,25 @@ afterEach(() => {
 describe('ensureGstack', () => {
   it('installs Webpresso-owned Claude skills without cloning upstream', async () => {
     const spawn = vi.fn()
-    const result = await ensureGstack(input({ detectCodex: () => false }) as EnsureGstackInput & { spawn: typeof spawn })
+    const result = await ensureGstack(
+      input({ detectCodex: () => false }) as EnsureGstackInput & { spawn: typeof spawn },
+    )
 
     expect(result).toEqual({
       kind: 'gstack-installed',
       root: expect.stringContaining('.claude/skills'),
-      codex: { kind: 'gstack-codex-skipped', reason: 'not-detected', skillsRoot: expect.stringContaining('.codex/skills') },
+      codex: {
+        kind: 'gstack-codex-skipped',
+        reason: 'not-detected',
+        skillsRoot: expect.stringContaining('.codex/skills'),
+      },
     })
     expect(spawn).not.toHaveBeenCalled()
-    expect(existsSync(path.join(result.kind === 'gstack-installed' ? result.root : '', 'review/SKILL.md'))).toBe(true)
+    expect(
+      existsSync(
+        path.join(result.kind === 'gstack-installed' ? result.root : '', 'review/SKILL.md'),
+      ),
+    ).toBe(true)
   })
 
   it('installs Codex skills when Codex is detected', async () => {
@@ -76,9 +91,17 @@ describe('ensureGstack', () => {
       exitCode: 1,
       reason: 'collision',
       logPath: 'skill-collision-audit',
-      collisions: [{ host: 'claude', name: 'review', path: path.join(testInput.claudeSkillsRoot!, 'review/SKILL.md') }],
+      collisions: [
+        {
+          host: 'claude',
+          name: 'review',
+          path: path.join(testInput.claudeSkillsRoot!, 'review/SKILL.md'),
+        },
+      ],
     })
-    expect(readFileSync(path.join(testInput.claudeSkillsRoot!, 'review/SKILL.md'), 'utf8')).toBe('other review')
+    expect(readFileSync(path.join(testInput.claudeSkillsRoot!, 'review/SKILL.md'), 'utf8')).toBe(
+      'other review',
+    )
   })
 
   it('does not remove external checkout unless explicit cleanup is set', async () => {
@@ -88,11 +111,17 @@ describe('ensureGstack', () => {
     await ensureGstack(testInput)
 
     expect(existsSync(testInput.installRoot!)).toBe(true)
-    expect(testInput.log).toHaveBeenCalledWith(expect.stringContaining('external checkout left in place'))
+    expect(testInput.log).toHaveBeenCalledWith(
+      expect.stringContaining('external checkout left in place'),
+    )
   })
 
   it('backs up external checkout when explicit cleanup is set', async () => {
-    const testInput = input({ detectCodex: () => false, env: { WP_GSTACK_CLEANUP_EXTERNAL: '1' } as NodeJS.ProcessEnv, now: () => Date.UTC(2026, 5, 20) })
+    const testInput = input({
+      detectCodex: () => false,
+      env: { WP_GSTACK_CLEANUP_EXTERNAL: '1' } as NodeJS.ProcessEnv,
+      now: () => Date.UTC(2026, 5, 20),
+    })
     mkdirSync(testInput.installRoot!, { recursive: true })
 
     await ensureGstack(testInput)
@@ -111,12 +140,25 @@ describe('ensureGstack', () => {
 describe('cleanupExternalGstackCheckout', () => {
   it('supports dry-run, refusal, backup, and idempotent missing behavior', () => {
     const root = path.join(tmpRoot(), 'gstack')
-    expect(cleanupExternalGstackCheckout({ externalRoot: root, dryRun: false, explicit: true }).kind).toBe('skipped-not-present')
+    expect(
+      cleanupExternalGstackCheckout({ externalRoot: root, dryRun: false, explicit: true }).kind,
+    ).toBe('skipped-not-present')
     mkdirSync(root, { recursive: true })
-    expect(cleanupExternalGstackCheckout({ externalRoot: root, dryRun: true, explicit: true }).kind).toBe('dry-run')
-    expect(cleanupExternalGstackCheckout({ externalRoot: root, dryRun: false, explicit: false }).kind).toBe('refused')
-    const result = cleanupExternalGstackCheckout({ externalRoot: root, dryRun: false, explicit: true, now: () => 0 })
+    expect(
+      cleanupExternalGstackCheckout({ externalRoot: root, dryRun: true, explicit: true }).kind,
+    ).toBe('dry-run')
+    expect(
+      cleanupExternalGstackCheckout({ externalRoot: root, dryRun: false, explicit: false }).kind,
+    ).toBe('refused')
+    const result = cleanupExternalGstackCheckout({
+      externalRoot: root,
+      dryRun: false,
+      explicit: true,
+      now: () => 0,
+    })
     expect(result.kind).toBe('backed-up')
-    expect(result.backupPath).toBe(path.join(path.dirname(root), '.gstack-backups', 'gstack.backup-1970-01-01T00-00-00-000Z'))
+    expect(result.backupPath).toBe(
+      path.join(path.dirname(root), '.gstack-backups', 'gstack.backup-1970-01-01T00-00-00-000Z'),
+    )
   })
 })

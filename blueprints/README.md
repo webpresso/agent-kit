@@ -23,6 +23,14 @@ Each subdirectory represents a lifecycle state:
 
 
 
+
+<<<<<<< HEAD
+=======
+
+
+
+
+>>>>>>> 525631b5 (fix hook fallbacks and precommit formatting)
 ## Authoring
 
 - Use `docs/templates/blueprint.md` as the starting point.

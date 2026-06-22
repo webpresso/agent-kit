@@ -22,7 +22,9 @@ function makeGitRoot(remoteOrigin?: string): string {
   mkdirSync(join(root, '.git'), { recursive: true })
   writeFileSync(
     join(root, '.git', 'config'),
-    remoteOrigin ? `[remote "origin"]\n\turl = ${remoteOrigin}\n` : '[core]\n\trepositoryformatversion = 0\n',
+    remoteOrigin
+      ? `[remote "origin"]\n\turl = ${remoteOrigin}\n`
+      : '[core]\n\trepositoryformatversion = 0\n',
     'utf8',
   )
   createdRoots.push(root)

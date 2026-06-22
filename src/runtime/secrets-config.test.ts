@@ -4,10 +4,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import {
-  readSecretsConfig,
-  resolveSecretsConfigProfileEnvironment,
-} from './secrets-config.js'
+import { readSecretsConfig, resolveSecretsConfigProfileEnvironment } from './secrets-config.js'
 
 describe('runtime secrets config', () => {
   const roots: string[] = []
@@ -18,7 +15,10 @@ describe('runtime secrets config', () => {
     }
   })
 
-  function tempRepo(config: Record<string, unknown>, runtimeConfig?: Record<string, unknown>): string {
+  function tempRepo(
+    config: Record<string, unknown>,
+    runtimeConfig?: Record<string, unknown>,
+  ): string {
     const root = mkdtempSync(path.join(tmpdir(), 'wp-runtime-secrets-config-'))
     roots.push(root)
     execFileSync('git', ['init'], { cwd: root, stdio: 'ignore' })
@@ -55,7 +55,6 @@ describe('runtime secrets config', () => {
     })
     expect(resolveSecretsConfigProfileEnvironment('e2e-runtime', root)).toBe('dev')
   })
-
 
   it('reads schemaVersion 1 committed config from nested cwd', () => {
     const root = tempRepo({
@@ -129,9 +128,9 @@ describe('runtime secrets config', () => {
       },
     })
 
-    expect(() =>
-      resolveSecretsConfigProfileEnvironment('ctx7sk-reviewleak000000', root),
-    ).toThrow('Unknown secret profile "[redacted]"')
+    expect(() => resolveSecretsConfigProfileEnvironment('ctx7sk-reviewleak000000', root)).toThrow(
+      'Unknown secret profile "[redacted]"',
+    )
     expect(() =>
       resolveSecretsConfigProfileEnvironment('ctx7sk-reviewleak000000', root),
     ).not.toThrow('ctx7sk-reviewleak000000')

@@ -63,9 +63,7 @@ const outputSchema = z.object({
   action: z.enum(ACTIONS),
   executed: z.boolean(),
   worktrees: z.array(worktreeOutputEntry).optional(),
-  created: z
-    .object({ path: z.string(), branch: z.string(), baseRef: z.string() })
-    .optional(),
+  created: z.object({ path: z.string(), branch: z.string(), baseRef: z.string() }).optional(),
   removed: z.object({ path: z.string(), branch: z.string().optional() }).optional(),
   root: z.string().optional(),
   warnings: z.array(z.string()),
@@ -143,7 +141,10 @@ function isPathInside(parent: string, child: string): boolean {
   return rel === '' || (!!rel && !rel.startsWith('..') && !isAbsolute(rel))
 }
 
-function isRegisteredManagedWorktree(resolvedPath: string, context: ManagedWorktreeContext): boolean {
+function isRegisteredManagedWorktree(
+  resolvedPath: string,
+  context: ManagedWorktreeContext,
+): boolean {
   return readWorktreeRegistry().entries.some(
     (entry) =>
       entry.repoNamespace === context.repoNamespace &&
@@ -242,11 +243,13 @@ function handleRemove(input: WpWorktreeInput, repoRoot: string): WpWorktreePaylo
   if (input.force) {
     return {
       passed: false,
-      summary: 'wp_worktree remove refused: force removal is not supported by the MCP safety contract',
+      summary:
+        'wp_worktree remove refused: force removal is not supported by the MCP safety contract',
       action: input.action,
       executed: false,
       warnings: ['force_not_supported'],
-      nextAction: 'Clean the worktree and remove any git worktree lock before retrying without force.',
+      nextAction:
+        'Clean the worktree and remove any git worktree lock before retrying without force.',
     }
   }
 
@@ -306,7 +309,8 @@ function handleRemove(input: WpWorktreeInput, repoRoot: string): WpWorktreePaylo
       action: input.action,
       executed: false,
       warnings: ['locked_worktree'],
-      nextAction: 'Unlock the worktree explicitly with git after confirming it is safe, then retry.',
+      nextAction:
+        'Unlock the worktree explicitly with git after confirming it is safe, then retry.',
     }
   }
   if (isDirty(resolved)) {
@@ -377,14 +381,17 @@ const tool: ToolDescriptor = {
 
       if (input.action === 'root') {
         const root = repoManagedRoot(repoRoot)
-        return result({
-          passed: true,
-          summary: `Managed worktree root: ${root}`,
-          action: input.action,
-          executed: false,
-          root,
-          warnings: [],
-        }, false)
+        return result(
+          {
+            passed: true,
+            summary: `Managed worktree root: ${root}`,
+            action: input.action,
+            executed: false,
+            root,
+            warnings: [],
+          },
+          false,
+        )
       }
 
       if (input.action === 'list') {
@@ -394,14 +401,17 @@ const tool: ToolDescriptor = {
           entries.length > MAX_RETURNED_WORKTREES
             ? [`worktree_output_truncated:${MAX_RETURNED_WORKTREES}`]
             : []
-        return result({
-          passed: true,
-          summary: `Found ${entries.length} git worktree${entries.length === 1 ? '' : 's'}`,
-          action: input.action,
-          executed: false,
-          worktrees,
-          warnings,
-        }, false)
+        return result(
+          {
+            passed: true,
+            summary: `Found ${entries.length} git worktree${entries.length === 1 ? '' : 's'}`,
+            action: input.action,
+            executed: false,
+            worktrees,
+            warnings,
+          },
+          false,
+        )
       }
 
       const gated = mutationGate(input)
@@ -411,13 +421,16 @@ const tool: ToolDescriptor = {
       if (input.action === 'remove') return result(handleRemove(input, repoRoot))
       if (input.action === 'refresh') {
         const updated = refreshManagedEntries(repoRoot)
-        return result({
-          passed: true,
-          summary: `Refreshed ${updated} managed worktree entr${updated === 1 ? 'y' : 'ies'}`,
-          action: input.action,
-          executed: true,
-          warnings: [],
-        }, false)
+        return result(
+          {
+            passed: true,
+            summary: `Refreshed ${updated} managed worktree entr${updated === 1 ? 'y' : 'ies'}`,
+            action: input.action,
+            executed: true,
+            warnings: [],
+          },
+          false,
+        )
       }
 
       const context = managedContext(repoRoot)
@@ -427,13 +440,16 @@ const tool: ToolDescriptor = {
           entry.repoRoot === context.repoRoot &&
           !existsSync(entry.path),
       )
-      return result({
-        passed: true,
-        summary: `Pruned ${pruned.length} stale managed registry entr${pruned.length === 1 ? 'y' : 'ies'}`,
-        action: input.action,
-        executed: true,
-        warnings: [],
-      }, false)
+      return result(
+        {
+          passed: true,
+          summary: `Pruned ${pruned.length} stale managed registry entr${pruned.length === 1 ? 'y' : 'ies'}`,
+          action: input.action,
+          executed: true,
+          warnings: [],
+        },
+        false,
+      )
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       return result({

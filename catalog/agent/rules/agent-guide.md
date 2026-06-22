@@ -218,6 +218,9 @@ checks — the behavior must be deterministic.
   is broken or duplicated, fix the owning scaffolder/setup path and add a
   regression test. Do not treat hand-editing generated `.codex/`, `.claude/`,
   or user-home runtime files as the durable solution.
+- **Formatting is repo-owned.** Use `wp format` / `wp format --check` instead
+  of invoking formatter binaries such as `prettier` directly. If formatting fails, fix the `wp format` path rather than bypassing
+  the repo facade.
 - **Discovery paths must degrade, not hang.** MCP roots fetches, git probes,
   and project/worktree discovery must have explicit budgets and return partial
   structured results with warnings when a dependency is slow or unavailable.

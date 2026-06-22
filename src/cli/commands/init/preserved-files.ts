@@ -32,7 +32,10 @@ export function captureConfiguredPreservedFiles(
   })
 }
 
-export function restoreChangedSnapshots(root: string, snapshots: readonly FileSnapshot[]): string[] {
+export function restoreChangedSnapshots(
+  root: string,
+  snapshots: readonly FileSnapshot[],
+): string[] {
   const restoredPaths: string[] = []
 
   for (const snapshot of snapshots) {

@@ -190,7 +190,10 @@ describe('manifest', () => {
           {
             hooks: [
               { type: 'command', command: '$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack.sh' },
-              { type: 'command', command: '/repo/.codex/managed-hooks/wp-global-codex-omx-hook.sh' },
+              {
+                type: 'command',
+                command: '/repo/.codex/managed-hooks/wp-global-codex-omx-hook.sh',
+              },
             ],
           },
         ],

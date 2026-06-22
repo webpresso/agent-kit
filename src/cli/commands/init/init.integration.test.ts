@@ -290,9 +290,7 @@ describe('wp init end-to-end', { timeout: 40_000 }, () => {
       const hooks = readFileSync(join(repo, '.codex-home', 'hooks.json'), 'utf8')
       expect(hooks).toContain('managed-hooks/wp-global-codex-omx-json-hook.sh')
       expect(
-        existsSync(
-          join(repo, '.codex-home', 'managed-hooks', 'wp-global-codex-omx-json-hook.sh'),
-        ),
+        existsSync(join(repo, '.codex-home', 'managed-hooks', 'wp-global-codex-omx-json-hook.sh')),
       ).toBe(true)
       expect(existsSync(join(badDir, '.webpressorc.json'))).toBe(false)
       expect(existsSync(join(badDir, '.agent'))).toBe(false)
@@ -567,14 +565,14 @@ describe('wp init end-to-end', { timeout: 40_000 }, () => {
         {
           name: '@acme/demo',
           private: true,
-        dependencies: { react: '^18.0.0', hono: '^4.0.0' },
-        devDependencies: {
-          vitest: '^2.0.0',
-          '@webpresso/agent-config': '^0.1.5',
-          '@playwright/test': '^1.55.0',
-          oxlint: '^1.0.0',
-          oxfmt: '^1.0.0',
-        },
+          dependencies: { react: '^18.0.0', hono: '^4.0.0' },
+          devDependencies: {
+            vitest: '^2.0.0',
+            '@webpresso/agent-config': '^0.1.5',
+            '@playwright/test': '^1.55.0',
+            oxlint: '^1.0.0',
+            oxfmt: '^1.0.0',
+          },
         },
         null,
         2,

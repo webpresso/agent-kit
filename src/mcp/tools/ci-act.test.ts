@@ -67,7 +67,9 @@ describe('wp_ci_act tool', () => {
     expect(payload.passed).toBe(true)
     expect(payload.summary).toContain('dry-run')
     const details = payload.details as { command: { command: string; args: string[] } }
-    expect(details.command).toEqual(buildCiActCommand({ workflowPath: '.github/workflows/ci.yml' }, root))
+    expect(details.command).toEqual(
+      buildCiActCommand({ workflowPath: '.github/workflows/ci.yml' }, root),
+    )
     expect(details.command.command).toBe('wp')
     expect(details.command.args.slice(0, 8)).toEqual([
       'secrets',

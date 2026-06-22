@@ -38,29 +38,31 @@ describe('runSessionCommand native backend elisions', () => {
     const secret = 'ghp_abcdefghijklmnopqrstuvwxyz1234567890'
     const rawOutput = `GITHUB_TOKEN=${secret}`
 
-    executeSandboxedMock.mockImplementation(async (path: string, _command: string, label: string) => {
-      const store = new SessionMemoryStore(path)
-      try {
-        store.indexChunk({
-          id: `native-command:${label}:1`,
-          source: label,
-          text: rawOutput,
-          metadata: { executionBackend: 'native' },
-        })
-      } finally {
-        store.close()
-      }
-      return {
-        exitCode: 0,
-        outputBytes: Buffer.byteLength(rawOutput),
-        indexed: true,
-        summary: rawOutput,
-        truncated: false,
-        capturedBytes: Buffer.byteLength(rawOutput),
-        maxCaptureBytes: 1024 * 1024,
-        timedOut: false,
-      }
-    })
+    executeSandboxedMock.mockImplementation(
+      async (path: string, _command: string, label: string) => {
+        const store = new SessionMemoryStore(path)
+        try {
+          store.indexChunk({
+            id: `native-command:${label}:1`,
+            source: label,
+            text: rawOutput,
+            metadata: { executionBackend: 'native' },
+          })
+        } finally {
+          store.close()
+        }
+        return {
+          exitCode: 0,
+          outputBytes: Buffer.byteLength(rawOutput),
+          indexed: true,
+          summary: rawOutput,
+          truncated: false,
+          capturedBytes: Buffer.byteLength(rawOutput),
+          maxCaptureBytes: 1024 * 1024,
+          timedOut: false,
+        }
+      },
+    )
 
     const result = await runSessionCommand({
       command: 'printf native',

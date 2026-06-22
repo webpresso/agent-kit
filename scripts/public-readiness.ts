@@ -21,10 +21,16 @@ import {
   SESSION_MEMORY_NATIVE_TARGETS,
   type SessionMemoryNativeTarget,
 } from '../src/session-memory/native-targets.js'
-import { listValidBenchmarkResultCards, validateBenchmarkResultCard } from './bench/lib/result-card.js'
+import {
+  listValidBenchmarkResultCards,
+  validateBenchmarkResultCard,
+} from './bench/lib/result-card.js'
 import { classifyClaimLine } from './bench/lib/claim-class.js'
 import { scanForRedaction } from './bench/lib/redaction.js'
-import { CAPABILITY_REGISTRY, assertNoUnbackedMeasuredClaim } from './bench/lib/capability-registry.js'
+import {
+  CAPABILITY_REGISTRY,
+  assertNoUnbackedMeasuredClaim,
+} from './bench/lib/capability-registry.js'
 import type { PhaseSummary } from './public-consumer-smoke-phases.js'
 
 type Status = 'PASS' | 'FAIL' | 'BLOCKED'
@@ -506,7 +512,10 @@ export function evaluateMetricClassBindingGate(root = ROOT): CheckResult {
   const unbacked = [...claimedClasses].filter((cls) => !backedClasses.has(cls))
   if (unbacked.length > 0) {
     const detail = unbacked
-      .map((cls) => `Claim of class '${cls}' found in ${claimSources.get(cls) ?? 'unknown'} but no result card proves this class`)
+      .map(
+        (cls) =>
+          `Claim of class '${cls}' found in ${claimSources.get(cls) ?? 'unknown'} but no result card proves this class`,
+      )
       .join('; ')
     return fail('metric-class-binding-gate', detail)
   }
@@ -530,7 +539,10 @@ export function evaluateRedactionGate(root = ROOT): CheckResult {
     }
   }
 
-  for (const docFile of ['docs/bench/result-card-contract.md', 'docs/bench/session-memory-methodology.md']) {
+  for (const docFile of [
+    'docs/bench/result-card-contract.md',
+    'docs/bench/session-memory-methodology.md',
+  ]) {
     if (existsSync(resolve(root, docFile))) filesToScan.push(docFile)
   }
 
@@ -538,7 +550,11 @@ export function evaluateRedactionGate(root = ROOT): CheckResult {
   for (const relPath of filesToScan) {
     const content = readFileSync(resolve(root, relPath), 'utf8')
     for (const finding of scanForRedaction(content, relPath)) {
-      allFindings.push({ path: finding.artifactPath, kind: finding.kind, lineNumber: finding.lineNumber })
+      allFindings.push({
+        path: finding.artifactPath,
+        kind: finding.kind,
+        lineNumber: finding.lineNumber,
+      })
     }
   }
 
@@ -546,9 +562,7 @@ export function evaluateRedactionGate(root = ROOT): CheckResult {
     return pass('redaction-gate', 'no redaction issues found in bench docs and result cards')
   }
 
-  const detail = allFindings
-    .map((f) => `${f.path}:${f.lineNumber} [${f.kind}]`)
-    .join('; ')
+  const detail = allFindings.map((f) => `${f.path}:${f.lineNumber} [${f.kind}]`).join('; ')
   return fail('redaction-gate', detail)
 }
 
@@ -556,14 +570,20 @@ export function evaluateRedactionGate(root = ROOT): CheckResult {
 export function evaluateCapabilityDocsGate(root = ROOT): CheckResult {
   const matrixPath = resolve(root, 'docs/bench/reference-parity-matrix.md')
   if (!existsSync(matrixPath)) {
-    return pass('capability-docs-gate', 'docs/bench/reference-parity-matrix.md not present; skipping')
+    return pass(
+      'capability-docs-gate',
+      'docs/bench/reference-parity-matrix.md not present; skipping',
+    )
   }
 
   const docsText = readFileSync(matrixPath, 'utf8')
   const violations = assertNoUnbackedMeasuredClaim(docsText, CAPABILITY_REGISTRY)
 
   if (violations.length === 0) {
-    return pass('capability-docs-gate', 'all capability claims in reference-parity-matrix.md are backed by registry rows')
+    return pass(
+      'capability-docs-gate',
+      'all capability claims in reference-parity-matrix.md are backed by registry rows',
+    )
   }
 
   return fail('capability-docs-gate', violations.join('; '))
@@ -620,7 +640,9 @@ if (import.meta.main) {
     { ...process.env, WP_SKIP_UPDATE_CHECK: '1' },
     { timeoutMs: PACKED_CONSUMER_SMOKE_TIMEOUT_MS },
   )
-  const smokePhaseStatus: PhaseSummary['phases'][number]['status'] = smokeResult.ok ? 'PASS' : 'FAIL'
+  const smokePhaseStatus: PhaseSummary['phases'][number]['status'] = smokeResult.ok
+    ? 'PASS'
+    : 'FAIL'
   const smokeSummary: PhaseSummary = {
     phases: [
       {
@@ -798,9 +820,14 @@ if (import.meta.main) {
   try {
     syncBlueprintMigrationSqlAssets(ROOT)
     preparePackedManifest(ROOT)
-    pack = runReadinessCommand('npm', ['pack', '--ignore-scripts', '--dry-run', '--json'], process.env, {
-      timeoutMs: NPM_PACK_TIMEOUT_MS,
-    })
+    pack = runReadinessCommand(
+      'npm',
+      ['pack', '--ignore-scripts', '--dry-run', '--json'],
+      process.env,
+      {
+        timeoutMs: NPM_PACK_TIMEOUT_MS,
+      },
+    )
   } finally {
     restorePackedManifest(ROOT)
   }

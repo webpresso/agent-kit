@@ -44,7 +44,9 @@ function checkTypeScriptWorkspace(repoRoot: string): string | null {
 
 function checkVp(): string | null {
   const resolution = getManagedRunner('vp', { outputPolicy: 'structured' })
-  const result = spawnSync(resolution.command, [...resolution.args, '--version'], { encoding: 'utf8' })
+  const result = spawnSync(resolution.command, [...resolution.args, '--version'], {
+    encoding: 'utf8',
+  })
   if (result.error !== undefined || (result.status !== null && result.status !== 0)) {
     return 'bundled Vite+ runner unavailable — reinstall @webpresso/agent-kit without omitting dependencies (see docs)'
   }

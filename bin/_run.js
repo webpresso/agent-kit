@@ -6,7 +6,9 @@ import { basename, dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import {
+  PHASE2_RUNTIME_LANE,
   getDirectBinRuntimeArgs,
+  getWpCommandLane,
   isMigratedRuntimeWpInvocation,
   isRuntimeRequiredDirectBin,
 } from './runtime-lanes.js'
@@ -65,6 +67,46 @@ function runtimeBinaryFilename(manifest, target) {
 
 function runtimePackageDirName(packageName) {
   return String(packageName).split('/').at(-1)
+}
+
+const RUNTIME_HOOK_STATE_RELATIVE_PATH = ['.webpresso', 'runtime-hooks.json']
+
+function readJsonIfExists(path) {
+  if (!existsSync(path)) return null
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'))
+  } catch {
+    return null
+  }
+}
+
+function isAgentKitSourceRepo(repoRoot) {
+  const packageJson = readJsonIfExists(join(repoRoot, 'package.json'))
+  return (
+    packageJson?.name === '@webpresso/agent-kit' &&
+    existsSync(join(repoRoot, 'src', 'cli', 'cli.ts'))
+  )
+}
+
+export function areRuntimeHooksEnabled({
+  repoRoot = resolvePackageRoot(),
+  env = process.env,
+  sourceRepo,
+  statePath = join(repoRoot, ...RUNTIME_HOOK_STATE_RELATIVE_PATH),
+} = {}) {
+  if (env.WP_FORCE_COMPILED_RUNTIME === '1' || env.WP_RUNTIME_HOOKS_ENABLED === '1') return true
+  if (env.WP_RUNTIME_HOOKS_ENABLED === '0') return false
+
+  const isSourceRepo = sourceRepo ?? isAgentKitSourceRepo(repoRoot)
+  if (!isSourceRepo) return true
+  if (!existsSync(statePath)) return false
+
+  try {
+    const state = JSON.parse(readFileSync(statePath, 'utf8'))
+    return state?.runtimeHooksEnabled === true
+  } catch {
+    return false
+  }
 }
 
 function readPackageOptionalDependencies(repoRoot) {
@@ -317,10 +359,14 @@ export function buildLaunchPlan({
   const sourceEntrypoint = join(repoRoot, sourceRelativePath)
   const hasSource = sourceExists ?? existsSync(sourceEntrypoint)
 
+  const wpCommandLane = binName === 'wp' ? getWpCommandLane(forwardedArgs) : null
   const runtimeRequired =
     binName === 'wp'
       ? isMigratedRuntimeWpInvocation(forwardedArgs)
       : isRuntimeRequiredDirectBin(binName)
+  const isSourceCheckout = hasSource && isAgentKitSourceRepo(repoRoot)
+  const preferSourceCheckoutPhase2 =
+    !forceCompiledRuntime && isSourceCheckout && wpCommandLane === PHASE2_RUNTIME_LANE
 
   // WP_FORCE_SOURCE=1 forces agent-kit's own dev CLI gates (audit/test/lint/...) to run
   // from source, so a stale compiled `bin/runtime/<arch>/wp` never gates dev work. It is
@@ -328,7 +374,9 @@ export function buildLaunchPlan({
   // Runtime-owned hook dispatch still goes through the native runtime when present so
   // managed hook launchers exercise the same global `bin/wp hook ...` contract as installs.
   // No-op without source (consumers).
-  const mustUseRuntimeWhenAvailable = binName === 'wp' && forwardedArgs[0] === 'hook'
+  const runtimeHooksEnabled = areRuntimeHooksEnabled({ repoRoot })
+  const isHookDispatch = binName === 'wp' && forwardedArgs[0] === 'hook'
+  const mustUseRuntimeWhenAvailable = isHookDispatch && runtimeHooksEnabled
   if (
     sourceOverride &&
     hasSource &&
@@ -338,18 +386,21 @@ export function buildLaunchPlan({
     return buildSourceLaunchPlan(sourceEntrypoint, forwardedArgs)
   }
 
-  const runtimePlan = buildRuntimeLaunchPlan({
-    binName,
-    repoRoot,
-    forwardedArgs,
-    platform,
-    arch,
-    runtimeManifest,
-    runtimeBinaryExists,
-    runtimeBinaryPath,
-    forceCompiledRuntime,
-    allowRuntimeFallback: !forceCompiledRuntime && hasSource && runtimeRequired,
-  })
+  const runtimePlan =
+    preferSourceCheckoutPhase2 || (isHookDispatch && !runtimeHooksEnabled && !forceCompiledRuntime)
+      ? null
+      : buildRuntimeLaunchPlan({
+          binName,
+          repoRoot,
+          forwardedArgs,
+          platform,
+          arch,
+          runtimeManifest,
+          runtimeBinaryExists,
+          runtimeBinaryPath,
+          forceCompiledRuntime,
+          allowRuntimeFallback: !forceCompiledRuntime && hasSource && runtimeRequired,
+        })
   if (runtimePlan) return runtimePlan
 
   const builtRelativePath = sourceToBuiltRelativePath(sourceRelativePath)
@@ -371,10 +422,11 @@ export function buildLaunchPlan({
             ? statSync(sourceEntrypoint).mtimeMs > statSync(builtEntrypoint).mtimeMs
             : false))
   const shouldPreferSource =
-    !mustUseRuntimeWhenAvailable &&
-    !shouldPreferBuiltDist(binName) &&
-    hasSource &&
-    resolvedSourceNeedsSourceLaunch
+    preferSourceCheckoutPhase2 ||
+    (!mustUseRuntimeWhenAvailable &&
+      !shouldPreferBuiltDist(binName) &&
+      hasSource &&
+      resolvedSourceNeedsSourceLaunch)
 
   if (shouldPreferSource) {
     return buildSourceLaunchPlan(sourceEntrypoint, forwardedArgs)

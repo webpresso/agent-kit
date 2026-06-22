@@ -38,7 +38,12 @@ export type RunCellInput = {
 }
 
 export type ClaudeCliAuthState =
-  | { kind: 'cli-login'; provider: 'firstParty' | string; email?: string; subscriptionType?: string }
+  | {
+      kind: 'cli-login'
+      provider: 'firstParty' | string
+      email?: string
+      subscriptionType?: string
+    }
   | { kind: 'api-key'; source: 'ANTHROPIC_API_KEY' }
   | { kind: 'missing'; reason: string }
   | {
@@ -87,7 +92,11 @@ function resolveClaudeAuth(
   if (input.authMode !== 'claude-login') {
     const envKey = variantEnvKey(input.variant)
     const apiKey = input.apiKeys?.[envKey] ?? process.env[envKey]
-    return { homeDir: cellHomeDir, env: apiKey ? { ANTHROPIC_API_KEY: apiKey } : {}, mode: 'api-key' }
+    return {
+      homeDir: cellHomeDir,
+      env: apiKey ? { ANTHROPIC_API_KEY: apiKey } : {},
+      mode: 'api-key',
+    }
   }
 
   const loggedInHome = input.claudeHome ?? process.env.BENCH_CLAUDE_HOME ?? process.env.HOME
@@ -152,13 +161,14 @@ async function spawnWithBun(
   return { exitCode, stdout, stderr }
 }
 
-
 function parseJsonAuthStatus(raw: string): ClaudeCliAuthState | undefined {
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>
     const loggedIn = parsed['loggedIn'] ?? parsed['logged_in'] ?? parsed['authenticated']
     if (loggedIn !== true) return undefined
-    const provider = String(parsed['provider'] ?? parsed['authProvider'] ?? parsed['source'] ?? 'firstParty')
+    const provider = String(
+      parsed['provider'] ?? parsed['authProvider'] ?? parsed['source'] ?? 'firstParty',
+    )
     const normalizedProvider = /claude\.ai|first.?party|subscription/i.test(provider)
       ? 'firstParty'
       : provider
@@ -360,7 +370,8 @@ export async function runCell(input: RunCellInput): Promise<RunResult> {
     const detected = await detectClaudeCliAuth({ spawn, cwd, env })
     authState = detected
     if (detected.kind !== 'cli-login') {
-      const failureReason = detected.kind === 'execution-failed' ? detected.message : detected.reason
+      const failureReason =
+        detected.kind === 'execution-failed' ? detected.message : detected.reason
       return {
         ok: false,
         error: 'spawn_failed',

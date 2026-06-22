@@ -146,7 +146,8 @@ function parseConfigFile(path: string): AgentkitConfig | null {
           }
         : undefined
     const preservePaths = normalizeManagedRelativePaths(rawSetup?.preservePaths)
-    const normalizedSetup = preservePaths && preservePaths.length > 0 ? { preservePaths } : undefined
+    const normalizedSetup =
+      preservePaths && preservePaths.length > 0 ? { preservePaths } : undefined
     const removePaths = normalizeManagedRelativePaths(rawGeneratedCleanup?.removePaths)
     const normalizedGeneratedCleanup =
       removePaths && removePaths.length > 0 ? { removePaths } : undefined
@@ -286,7 +287,8 @@ export function mergeConfig(
   const mergedPreservePaths = Array.from(
     new Set([...(existing.setup?.preservePaths ?? []), ...(incoming.setup?.preservePaths ?? [])]),
   ).toSorted()
-  const mergedSetup = mergedPreservePaths.length > 0 ? { preservePaths: mergedPreservePaths } : undefined
+  const mergedSetup =
+    mergedPreservePaths.length > 0 ? { preservePaths: mergedPreservePaths } : undefined
   return {
     version: incoming.version,
     installed: { tier3Skills: tier3 },
