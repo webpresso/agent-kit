@@ -117,7 +117,7 @@ these for consistency.
 
 | # | Case | Handling |
 | --- | --- | --- |
-| E1 | `router-dispatch.ts:111` produces a short suffix used as a **filesystem path component** for worktrees. | Use a filesystem-safe charset (base36 or hex), **not** base64url — base64url's `-`/`_` characters can trip worktree path-sanitization elsewhere. `shortId(n)` returns a base36/hex string of exactly `n` characters for this site. |
+| E1 | `router-dispatch.ts:111` produces a short suffix used as a **filesystem path component** for worktrees. | Use a filesystem-safe charset (base36), **not** base64url — base64url's `-`/`_` characters can trip worktree path-sanitization elsewhere. `shortId(n)` returns a base36 string of exactly `n` characters for this site. |
 | E2 | Tests assert exact ID strings (e.g., regex or fixture snapshots). | Update test expectations to match the new format or use length/character-set assertions. |
 
 ## Risks
@@ -151,13 +151,13 @@ F5).
 **Steps (TDD):**
 
 1. Write failing tests in `src/utils/short-id.test.ts`:
-   - `shortId(8)` returns exactly 8 characters from a filesystem-safe charset (base36/hex), no `=` padding.
+   - `shortId(8)` returns exactly 8 characters from a filesystem-safe charset (base36), no `=` padding.
    - `shortId()` with no argument defaults to 8.
    - Two consecutive calls return different values.
 2. Run: `./bin/wp test --file src/utils/short-id.test.ts` — verify FAIL.
 3. Implement `src/utils/short-id.ts`:
    - `shortId(length = 8): string` → derive from `crypto.randomBytes` and
-     encode to a base36/hex (filesystem-safe) string, then slice to exactly
+     encode to a base36 (filesystem-safe) string, then slice to exactly
      `length` characters.
 4. Run: `./bin/wp test --file src/utils/short-id.test.ts` — verify PASS.
 5. Run: `./bin/wp lint` on the two files, then `./bin/wp typecheck`.
@@ -239,7 +239,7 @@ Run in parallel with Task 2.1 (no shared files).
    - `quality-log-store.ts:277`: `slice(2, 8)` → `shortId(6)`.
    - `mutations.ts:209`: temp path → `randomUUID()` (already imported at :17).
    - `router-dispatch.ts:111`: `slice(2, 5).padEnd(3, '0')` → `shortId(3)`
-     (filesystem-safe base36/hex charset — this value is a worktree path
+     (filesystem-safe base36 charset — this value is a worktree path
      component; do NOT use base64url, see E1).
    - `migrate-command.ts:316`: temp path → `crypto.randomUUID()` (direct
      `node:crypto` import — avoids the `../../../../../utils` 5-level relative
@@ -316,7 +316,7 @@ production `src/` file. This `grep`-based gate is the contract the
 | Choice | Rationale |
 | --- | --- |
 | `crypto.randomUUID()` for temp-path sites | Already imported and in use in the exact files being edited (`mutations.ts:17`, `router-dispatch.ts:119`); 122 bits of entropy; zero new helper surface. Reuses the established in-repo convention rather than reinventing it. |
-| `crypto.randomBytes` → base36/hex for `shortId()` | Node built-in; no deps; arbitrary-length short IDs; filesystem-safe characters (base36/hex, not base64url — base64url's `-`/`_` can break worktree path sanitization). |
+| `crypto.randomBytes` → base36 for `shortId()` | Node built-in; no deps; arbitrary-length short IDs; filesystem-safe characters (base36, not base64url — base64url's `-`/`_` can break worktree path sanitization). |
 | Single `shortId()` helper (no `tempSuffix()`) | Only the length-bounded short-slug sites need a shared helper. The temp-path sites are covered by direct `randomUUID()` calls, so a second helper would duplicate an existing in-repo idiom. |
 
 ## Completion Evidence
