@@ -22,9 +22,6 @@ Each subdirectory represents a lifecycle state:
 <!-- END: blueprint-index -->
 
 
-
-
-
 ## Authoring
 
 - Use `docs/templates/blueprint.md` as the starting point.
