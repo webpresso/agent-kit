@@ -8,7 +8,7 @@ last_updated: '2026-06-13'
 Start here:
 
 - Install from the public npm registry with Node.js 24+:
-  `npm install -g @webpresso/agent-kit && wp setup`
+  `vp install -g @webpresso/agent-kit && wp setup`
 - `wp` bundles the package/task facade it needs; a separate global `vp` install is not required.
 - [Getting started](./getting-started.md)
 - [Is webpresso for me?](./is-agent-kit-for-me.md)

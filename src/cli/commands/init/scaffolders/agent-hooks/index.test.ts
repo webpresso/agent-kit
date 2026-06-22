@@ -44,7 +44,7 @@ function codexBinCommand(repoRoot: string, name: string): string {
   if (name === 'wp-pretool-guard') {
     return guardedHookCommand(
       binPath,
-      `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with npm install -g @webpresso/agent-kit and re-run wp setup."}}'`,
+      `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with vp install -g @webpresso/agent-kit and re-run wp setup."}}'`,
     )
   }
   return guardedHookCommand(binPath, 'true')
@@ -58,7 +58,7 @@ function claudeBinCommand(name: string): string {
   if (name === 'wp-pretool-guard') {
     return guardedHookCommand(
       `"${binPath}"`,
-      `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with npm install -g @webpresso/agent-kit and re-run wp setup."}}'`,
+      `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with vp install -g @webpresso/agent-kit and re-run wp setup."}}'`,
     )
   }
   return guardedHookCommand(`"${binPath}"`, 'true')

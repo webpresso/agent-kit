@@ -283,7 +283,7 @@ export function warnIfNonLocalCli(repoRoot: string, cliUrl: string = import.meta
   if (isLocalAgentKitCli(repoRoot, cliPath)) {
     console.error(
       `warning: wp is running from this repo's node_modules (${cliPath}). ` +
-        'Consumers must use the global install: `npm install -g @webpresso/agent-kit`, then run `wp setup`.',
+        'Consumers must use the global install: `vp install -g @webpresso/agent-kit`, then run `wp setup`.',
     )
     return
   }
