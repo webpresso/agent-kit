@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { escapeRegExp } from '#utils/string'
 
 export interface PackageJsonLike {
+  readonly name?: string
   readonly scripts?: Record<string, unknown>
   readonly dependencies?: Record<string, unknown>
   readonly devDependencies?: Record<string, unknown>

@@ -6,7 +6,7 @@
  * workers without rebuilding unrelated cold-start fixtures.
  */
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { z } from 'zod'
@@ -211,6 +211,53 @@ describe('wp_blueprint_put', () => {
     })
     const getData = parseResult(getResult) as { content_hash: string }
     expect(getData.content_hash).toBe(secondData.content_hash)
+  })
+
+  it('refuses to rewrite executable-state blueprints through the draft-only put surface', async () => {
+    const overviewPath = path.join(
+      tmpDir,
+      'blueprints',
+      'planned',
+      'structured-put-blueprint',
+      '_overview.md',
+    )
+    mkdirSync(path.dirname(overviewPath), { recursive: true })
+    const sentinel = 'Existing planned blueprint with a trust dossier sentinel.'
+    writeFileSync(
+      overviewPath,
+      [
+        '---',
+        'type: blueprint',
+        'title: Structured Put Blueprint',
+        'status: planned',
+        "complexity: 'S'",
+        'owner: tester',
+        "created: '2026-05-29'",
+        "last_updated: '2026-05-29'",
+        '---',
+        '',
+        '# Structured Put Blueprint',
+        '',
+        sentinel,
+        '',
+      ].join('\n'),
+      'utf8',
+    )
+
+    const result = await callTool(tools, 'wp_blueprint_put', {
+      project_id: tmpDir,
+      slug: 'structured-put-blueprint',
+      document: {
+        ...document,
+        status: 'planned',
+        summary: 'Attempted executable-state rewrite.',
+      },
+    })
+
+    expect(result.isError).toStrictEqual(true)
+    expect(result.content[0]?.text).toMatch(/only writes draft blueprints/i)
+    expect(readFileSync(overviewPath, 'utf8')).toContain(sentinel)
+    expect(readFileSync(overviewPath, 'utf8')).not.toContain('Attempted executable-state rewrite')
   })
 
   it('returns validation error when required structured fields are missing', async () => {

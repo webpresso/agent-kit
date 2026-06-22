@@ -1,6 +1,6 @@
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -42,6 +42,11 @@ afterEach(() => {
 })
 
 describe('wp_typecheck tool', () => {
+  function write(path: string, content: string): void {
+    mkdirSync(dirname(path), { recursive: true })
+    writeFileSync(path, content, 'utf8')
+  }
+
   it('exposes the expected descriptor surface', () => {
     expect(akTypecheckTool.name).toBe('wp_typecheck')
     expect(typeof akTypecheckTool.description).toBe('string')
@@ -52,7 +57,28 @@ describe('wp_typecheck tool', () => {
     let dir: string
 
     beforeEach(() => {
-      dir = mkdtempSync(join(tmpdir(), `wp-mcp-typecheck-${randomUUID().slice(0, 8)}-`))
+      dir = realpathSync(
+        mkdtempSync(join(tmpdir(), `wp-mcp-typecheck-${randomUUID().slice(0, 8)}-`)),
+      )
+      write(
+        join(dir, 'package.json'),
+        JSON.stringify({ name: '@webpresso/agent-kit', private: true }),
+      )
+      write(join(dir, 'pnpm-workspace.yaml'), 'packages:\n  - packages/*\n')
+      write(join(dir, 'tsconfig.json'), '{"compilerOptions":{"strict":true}}\n')
+      write(
+        join(dir, 'packages/a/package.json'),
+        JSON.stringify({ name: '@scope/a', private: true }),
+      )
+      write(join(dir, 'packages/a/tsconfig.json'), '{"compilerOptions":{"strict":true}}\n')
+      write(join(dir, 'packages/a/src/a.ts'), 'export const a = 1\n')
+      write(
+        join(dir, 'packages/b/package.json'),
+        JSON.stringify({ name: '@scope/b', private: true }),
+      )
+      write(join(dir, 'packages/b/tsconfig.json'), '{"compilerOptions":{"strict":true}}\n')
+      write(join(dir, 'packages/b/src/b.ts'), 'export const b = 1\n')
+      write(join(dir, 'src/root.ts'), 'export const root = 1\n')
       process.env.CLAUDE_PROJECT_DIR = dir
     })
 
@@ -60,18 +86,32 @@ describe('wp_typecheck tool', () => {
       rmSync(dir, { recursive: true, force: true })
     })
 
-    it('spawns once per package with `--noEmit -p <path>` when packages given', async () => {
+    it('spawns once per exact package scope when packages are given', async () => {
       spawnMock.mockReturnValue(fakeChild({ stdout: '', exitCode: 0 }))
 
-      await akTypecheckTool.handler({ packages: ['a', 'b'] })
+      await akTypecheckTool.handler({ packages: ['@scope/a', '@scope/b'] })
 
       expect(spawnMock).toHaveBeenCalledTimes(2)
-      const [cmd0, args0] = spawnMock.mock.calls[0]!
-      const [cmd1, args1] = spawnMock.mock.calls[1]!
-      expect(cmd0).toContain('typescript')
-      expect(args0).toEqual(['--noEmit', '-p', join('a', 'tsconfig.json')])
-      expect(cmd1).toContain('typescript')
-      expect(args1).toEqual(['--noEmit', '-p', join('b', 'tsconfig.json')])
+      const [cmd0, args0, opts0] = spawnMock.mock.calls[0]!
+      const [cmd1, args1, opts1] = spawnMock.mock.calls[1]!
+      expect([cmd0, ...args0].join(' ')).toContain('typescript')
+      expect(args0).toEqual(expect.arrayContaining(['--noEmit', '--pretty', 'false']))
+      expect(opts0).toEqual(expect.objectContaining({ cwd: join(dir, 'packages/a') }))
+      expect([cmd1, ...args1].join(' ')).toContain('typescript')
+      expect(args1).toEqual(expect.arrayContaining(['--noEmit', '--pretty', 'false']))
+      expect(opts1).toEqual(expect.objectContaining({ cwd: join(dir, 'packages/b') }))
+    })
+
+    it('resolves file targets to their owning scopes', async () => {
+      spawnMock.mockReturnValue(fakeChild({ stdout: '', exitCode: 0 }))
+
+      await akTypecheckTool.handler({ files: ['src/root.ts', 'packages/a/src/a.ts'] })
+
+      expect(spawnMock).toHaveBeenCalledTimes(2)
+      expect(spawnMock.mock.calls.map((call) => call[2]?.cwd)).toEqual([
+        dir,
+        join(dir, 'packages/a'),
+      ])
     })
 
     it('spawns plain `tsc --noEmit` when no packages given', async () => {
@@ -81,8 +121,14 @@ describe('wp_typecheck tool', () => {
 
       expect(spawnMock).toHaveBeenCalledTimes(1)
       const [cmd, args] = spawnMock.mock.calls[0]!
-      expect(cmd).toContain('typescript')
-      expect(args).toEqual(['--noEmit'])
+      expect([cmd, ...args].join(' ')).toContain('typescript')
+      expect(args).toEqual(expect.arrayContaining(['--noEmit', '--pretty', 'false']))
+    })
+
+    it('rejects files and packages together', async () => {
+      await expect(
+        akTypecheckTool.handler({ files: ['src/root.ts'], packages: ['@scope/a'] }),
+      ).rejects.toThrow(/Cannot use both files and packages/i)
     })
   })
 

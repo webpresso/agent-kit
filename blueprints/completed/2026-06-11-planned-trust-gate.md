@@ -661,6 +661,7 @@ package-manager wrappers.
 - Updated lifecycle docs, blueprint templates, scaffolded README text, and plan-refine guidance for the hard planned-state contract.
 - Backfilled canonical executable blueprints with Trust Dossiers so the new audit starts from a clean baseline.
 - Fixed pre-existing suite blockers carried forward from earlier ultragoal branches (release fixture subprocess load, blueprint DB path fixture load, and freshness fixture setup).
+- Follow-up hardening closed the post-merge `wp_blueprint_put` executable-state rewrite bypass and bounded direct CLI platform sync waits before trust validation/status publication.
 
 ## Trust Dossier
 

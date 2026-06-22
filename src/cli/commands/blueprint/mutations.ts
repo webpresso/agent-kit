@@ -73,6 +73,7 @@ export interface SyncAdapter {
 }
 
 type SyncAdapterFactory = () => SyncAdapter | null
+type SyncEvent = Parameters<SyncAdapter['pushEvent']>[0]
 
 /**
  * Module-level factory.  `null` = use the production default (loadSyncCredentials
@@ -132,6 +133,69 @@ export async function resolveSyncAdapterForCli(cwd: string): Promise<SyncAdapter
   return {
     pushEvent: (event) => client.pushEvent(event),
     ensureFresh: (opts) => manager.ensureFresh(opts),
+  }
+}
+
+const DEFAULT_PLATFORM_MUTATION_TIMEOUT_MS = 5_000
+
+function readPlatformMutationTimeoutMs(): number {
+  const raw = process.env['WP_BLUEPRINT_PLATFORM_MUTATION_TIMEOUT_MS']
+  if (raw === undefined) return DEFAULT_PLATFORM_MUTATION_TIMEOUT_MS
+  const parsed = Number.parseInt(raw, 10)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_PLATFORM_MUTATION_TIMEOUT_MS
+}
+
+async function awaitPlatformMutationStep<T>(
+  promise: Promise<T>,
+  label: string,
+  step: string,
+  timeoutMs: number,
+): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error(`${step} timed out after ${timeoutMs}ms`)),
+          timeoutMs,
+        )
+      }),
+    ])
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    throw new Error(`${label} platform sync failed: ${message}`)
+  } finally {
+    if (timeout !== undefined) clearTimeout(timeout)
+  }
+}
+
+async function runCliPlatformMutationSync(
+  adapter: SyncAdapter | null,
+  options: {
+    readonly label: string
+    readonly event?: SyncEvent
+    readonly ensureFreshSlug?: string
+  },
+): Promise<void> {
+  if (adapter === null) return
+
+  const timeoutMs = readPlatformMutationTimeoutMs()
+  if (options.event !== undefined) {
+    await awaitPlatformMutationStep(
+      adapter.pushEvent(options.event),
+      options.label,
+      'pushEvent',
+      timeoutMs,
+    )
+  }
+  if (options.ensureFreshSlug !== undefined) {
+    await awaitPlatformMutationStep(
+      adapter.ensureFresh({ slug: options.ensureFreshSlug }),
+      options.label,
+      'ensureFresh',
+      timeoutMs,
+    )
   }
 }
 
@@ -333,8 +397,9 @@ async function advanceTaskLocked(
   // Platform-first path: push event + pull fresh replica before local update.
   // Iron rule: resolveSyncAdapterForCli() returns null when WP_BLUEPRINT_PLATFORM_DISABLED=1.
   const adapter = await resolveSyncAdapterForCli(cwd)
-  if (adapter !== null) {
-    await adapter.pushEvent({
+  await runCliPlatformMutationSync(adapter, {
+    label: 'wp_blueprint_task_advance',
+    event: {
       eventId: randomUUID(),
       repoId: process.env['WP_BLUEPRINT_PLATFORM_REPO_ID'] ?? 'local',
       occurredAt: new Date().toISOString(),
@@ -346,9 +411,9 @@ async function advanceTaskLocked(
         fromStatus: currentStatus,
         toStatus,
       },
-    })
-    await adapter.ensureFresh({ slug: blueprintSlug })
-  }
+    },
+    ensureFreshSlug: blueprintSlug,
+  })
 
   // Always update local markdown + SQLite.
   // Platform-first: these become derived artifacts; disabled: these are canonical.
@@ -451,9 +516,10 @@ async function promoteBlueprintLocked(
   // applies to the current replica, not stale local markdown.
   // Iron rule: resolveSyncAdapterForCli() returns null when WP_BLUEPRINT_PLATFORM_DISABLED=1.
   const adapter = await resolveSyncAdapterForCli(cwd)
-  if (adapter !== null) {
-    await adapter.ensureFresh({ slug })
-  }
+  await runCliPlatformMutationSync(adapter, {
+    label: 'wp_blueprint_promote',
+    ensureFreshSlug: slug,
+  })
 
   // Trust must be proven before any platform status_changed event is published.
   let content = readFileSync(currentDocumentPath, 'utf8')
@@ -468,8 +534,9 @@ async function promoteBlueprintLocked(
   }
 
   // Platform-first path: push event + pull fresh replica before local move.
-  if (adapter !== null) {
-    await adapter.pushEvent({
+  await runCliPlatformMutationSync(adapter, {
+    label: 'wp_blueprint_promote',
+    event: {
       eventId: randomUUID(),
       repoId: process.env['WP_BLUEPRINT_PLATFORM_REPO_ID'] ?? 'local',
       occurredAt: new Date().toISOString(),
@@ -480,8 +547,10 @@ async function promoteBlueprintLocked(
         fromStatus: currentState,
         toStatus: toState,
       },
-    })
-    await adapter.ensureFresh({ slug })
+    },
+    ensureFreshSlug: slug,
+  })
+  if (adapter !== null) {
     if (currentState === 'draft' && toState === 'planned') {
       const refreshedSource = readFileSync(currentDocumentPath, 'utf8')
       if (refreshedSource !== trustedSource) {

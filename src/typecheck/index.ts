@@ -1,20 +1,13 @@
 /**
  * Stable subpath export: `webpresso/typecheck`.
  *
- * Exposes a framework-friendly `runTypecheck` runner that wraps
- * `tsc --noEmit` either at cwd (no `packages` given) or once per resolved
- * package path (each becomes `tsc --noEmit -p <pkg>/tsconfig.json`). Mirrors
- * the semantics of the `wp_typecheck` MCP tool but returns a typed result
- * directly so external scaffolders can consume it without the MCP transport.
+ * Exposes a framework-friendly `runTypecheck` runner that mirrors the
+ * semantics of the `wp_typecheck` MCP tool without the MCP transport.
  */
-
-import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { globSync } from 'glob'
 
 import { isRunFailure, runCommand, type RunResult } from '#mcp/tools/_shared/run-command'
 import { resolveProjectRoot } from '#mcp/tools/_shared/project-root'
-import { getManagedRunner } from '#tool-runtime'
+import { planTypecheckExecution } from './planner.js'
 
 export interface TscError {
   readonly file: string
@@ -34,11 +27,16 @@ export interface TypecheckResult {
 
 export interface RunTypecheckOptions {
   /**
-   * Package paths (relative to cwd). When omitted, runs a single
-   * `tsc --noEmit` at cwd. When provided, runs once per package against
-   * `<pkg>/tsconfig.json`.
+   * Exact package.json names. When provided, runs one normal typecheck per
+   * resolved owning scope.
    */
   readonly packages?: readonly string[]
+  /**
+   * Source files whose owning scope should be typechecked. This never runs
+   * isolated-file TypeScript; it resolves the file(s) to owning scope(s) and
+   * runs the normal scope-level typecheck once per resolved scope.
+   */
+  readonly files?: readonly string[]
   /** Override the resolved project root. */
   readonly cwd?: string
   /** Hard cap on the spawned process(es). Defaults to 10 minutes. */
@@ -53,53 +51,6 @@ const DEFAULT_TYPECHECK_TIMEOUT_MS = 10 * 60 * 1_000
 //   src/foo.ts(5,12): error TS2304: Cannot find name 'bar'.
 //   src/foo.ts:5:12 - error TS2304: Cannot find name 'bar'.
 const ERROR_LINE = /^(.+?)(?:\((\d+),\d+\)|:(\d+):\d+)(?::\s*|\s+-\s+)error TS(\d+):\s*(.*)$/
-
-function readWorkspaceGlobs(cwd: string): string[] | null {
-  const file = join(cwd, 'pnpm-workspace.yaml')
-  if (!existsSync(file)) return null
-  const text = readFileSync(file, 'utf8')
-  const globs: string[] = []
-  for (const line of text.split('\n')) {
-    const m = /^\s*-\s*['"]?([^'"\s#]+)['"]?\s*$/.exec(line)
-    if (m && m[1]) globs.push(m[1])
-  }
-  return globs
-}
-
-function resolveTypecheckTarget(
-  cwd: string,
-  target: string,
-  workspaceGlobs: string[] | null,
-): string {
-  const directTsconfig = join(cwd, target, 'tsconfig.json')
-  if (existsSync(directTsconfig)) return target
-
-  if (!workspaceGlobs || !target.startsWith('@')) return target
-
-  for (const workspaceGlob of workspaceGlobs) {
-    const packageJsonPattern = join(workspaceGlob, 'package.json').replaceAll('\\', '/')
-    const packageJsonPaths = globSync(packageJsonPattern, {
-      cwd,
-      nodir: true,
-      absolute: false,
-    })
-
-    for (const packageJsonPath of packageJsonPaths) {
-      try {
-        const packageJson = JSON.parse(readFileSync(join(cwd, packageJsonPath), 'utf8')) as {
-          name?: string
-        }
-        if (packageJson.name === target) {
-          return packageJsonPath.slice(0, -'/package.json'.length)
-        }
-      } catch {
-        continue
-      }
-    }
-  }
-
-  return target
-}
 
 /**
  * Parse `tsc --noEmit` stdout into structured `{file, line, code, message}`
@@ -127,45 +78,40 @@ export function parseTscOutput(raw: string): TscError[] {
 
 /**
  * Run typecheck and return structured diagnostics. When `packages` is
- * provided, runs `tsc --noEmit -p <pkg>/tsconfig.json` once per entry
- * sequentially and aggregates output; otherwise a single root-level
- * `tsc --noEmit`. Throws on spawn failures (e.g. tsc missing) — those
+ * provided, resolves exact package scopes; when `files` is provided, resolves
+ * each file to its owning scope; otherwise it preserves the existing root
+ * typecheck behavior. Throws on spawn failures (e.g. tsc missing) — those
  * indicate a misconfigured environment, not a typecheck verdict.
  */
 export async function runTypecheck(options: RunTypecheckOptions = {}): Promise<TypecheckResult> {
-  const cwd = resolveProjectRoot(options.cwd ? { explicitCwd: options.cwd } : {})
+  if (
+    options.files &&
+    options.files.length > 0 &&
+    options.packages &&
+    options.packages.length > 0
+  ) {
+    throw new Error('Cannot use both files and packages for typecheck targeting.')
+  }
+
+  const repoRoot = resolveProjectRoot(options.cwd ? { explicitCwd: options.cwd } : {})
   const runOptions = {
     timeoutMs: options.timeoutMs ?? DEFAULT_TYPECHECK_TIMEOUT_MS,
     signal: options.signal,
-    cwd,
+    cwd: repoRoot,
   }
-
-  const targets: readonly string[] | null =
-    options.packages && options.packages.length > 0 ? options.packages : null
-  const workspaceGlobs = targets ? readWorkspaceGlobs(cwd) : null
+  const plan = planTypecheckExecution({
+    repoRoot,
+    defaultScopeRoot: repoRoot,
+    files: options.files,
+    packages: options.packages,
+  })
 
   const runs: RunResult[] = []
-  const resolution = getManagedRunner('tsc', { outputPolicy: 'structured' })
-  if (targets) {
-    for (const pkg of targets) {
-      const resolvedTarget = resolveTypecheckTarget(cwd, pkg, workspaceGlobs)
-      const tsconfig = join(resolvedTarget, 'tsconfig.json')
-      const outcome = await runCommand(
-        resolution.command,
-        [...resolution.args, '--noEmit', '-p', tsconfig],
-        runOptions,
-      )
-      if (isRunFailure(outcome)) {
-        throw outcome.error
-      }
-      runs.push(outcome)
-    }
-  } else {
-    const outcome = await runCommand(
-      resolution.command,
-      [...resolution.args, '--noEmit'],
-      runOptions,
-    )
+  for (const command of plan.commands) {
+    const outcome = await runCommand(command.command, command.args, {
+      ...runOptions,
+      cwd: command.cwd,
+    })
     if (isRunFailure(outcome)) {
       throw outcome.error
     }
@@ -178,12 +124,13 @@ export async function runTypecheck(options: RunTypecheckOptions = {}): Promise<T
   const passed = runs.every((r) => r.exitCode === 0)
   const timedOut = runs.some((r) => r.timedOut)
   const aborted = runs.some((r) => r.aborted)
+  const preamble = plan.preambleLine ? `${plan.preambleLine}\n` : ''
 
   return {
     passed,
     errorCount: errors.length,
     errors,
-    output: [combinedStdout, combinedStderr].filter(Boolean).join(''),
+    output: [preamble, combinedStdout, combinedStderr].filter(Boolean).join(''),
     timedOut: timedOut || undefined,
     aborted: aborted || undefined,
   }
