@@ -1,6 +1,6 @@
 import type { CAC } from 'cac'
 
-import { recordHookError } from '#hooks/errors/index.js'
+import { recordHookError, type HookFallbackAction } from '#hooks/errors/index.js'
 
 const HOOK_NAMES = [
   'pretool-guard',
@@ -13,6 +13,38 @@ const HOOK_NAMES = [
 ] as const
 
 export type HookName = (typeof HOOK_NAMES)[number]
+
+type HookMetadata = {
+  readonly binName: string
+  readonly event: string
+  readonly fallback: HookFallbackAction
+}
+
+const HOOK_METADATA: Readonly<Record<HookName, HookMetadata>> = {
+  'pretool-guard': {
+    binName: 'wp-pretool-guard',
+    event: 'PreToolUse',
+    fallback: 'fail-closed-deny',
+  },
+  'post-tool': { binName: 'wp-post-tool', event: 'PostToolUse', fallback: 'fail-open' },
+  'stop-qa': { binName: 'wp-stop-qa', event: 'Stop', fallback: 'emit-empty-json' },
+  'guard-switch': { binName: 'wp-guard-switch', event: 'UserPromptSubmit', fallback: 'fail-open' },
+  'sessionstart-routing': {
+    binName: 'wp-sessionstart-routing',
+    event: 'SessionStart',
+    fallback: 'fail-open',
+  },
+  'precompact-snapshot': {
+    binName: 'wp-precompact-snapshot',
+    event: 'PreCompact',
+    fallback: 'emit-empty-json',
+  },
+  'test-quality-check': {
+    binName: 'wp-test-quality-check',
+    event: 'TestQualityCheck',
+    fallback: 'fail-open',
+  },
+}
 
 const HOOK_HANDLERS: Readonly<Record<HookName, (args: string[]) => Promise<void> | void>> = {
   'pretool-guard': async () => {
@@ -45,31 +77,8 @@ const HOOK_HANDLERS: Readonly<Record<HookName, (args: string[]) => Promise<void>
   },
 }
 
-const HOOK_EVENT_BY_NAME: Readonly<Record<HookName, string>> = {
-  'pretool-guard': 'PreToolUse',
-  'post-tool': 'PostToolUse',
-  'stop-qa': 'Stop',
-  'guard-switch': 'UserPromptSubmit',
-  'sessionstart-routing': 'SessionStart',
-  'precompact-snapshot': 'PreCompact',
-  'test-quality-check': 'TestQualityCheck',
-}
-
-const JSON_ONLY_HOOKS = new Set<HookName>(['stop-qa', 'precompact-snapshot'])
-
-function binNameFor(hookName: HookName): string {
-  return `wp-${hookName}`
-}
-
-function fallbackActionFor(hookName: HookName): string {
-  if (JSON_ONLY_HOOKS.has(hookName)) return 'emit-empty-json'
-  if (hookName === 'pretool-guard') return 'fail-closed-deny'
-  return 'fail-open'
-}
-
-function truncateDetail(value: unknown): string {
-  const detail = value instanceof Error ? value.stack || value.message : String(value)
-  return detail.length > 1_000 ? `${detail.slice(0, 1_000)}…` : detail
+function errorDetail(error: unknown): string {
+  return error instanceof Error ? error.message : String(error ?? '')
 }
 
 function writePretoolDeny(reason: string): void {
@@ -84,27 +93,31 @@ function writePretoolDeny(reason: string): void {
   )
 }
 
-function handleHookError(name: HookName, error: unknown): void {
-  const fallback = fallbackActionFor(name)
-  const detail = truncateDetail(error)
+function emitFallback(name: HookName, error: unknown): void {
+  const metadata = HOOK_METADATA[name]
+  const detail = errorDetail(error)
   recordHookError({
-    binName: binNameFor(name),
+    binName: metadata.binName,
     hookName: name,
-    event: HOOK_EVENT_BY_NAME[name],
+    event: metadata.event,
     phase: 'handler',
-    fallback,
+    fallback: metadata.fallback,
     detail,
   })
 
-  if (name === 'pretool-guard') {
+  if (metadata.fallback === 'fail-closed-deny') {
     writePretoolDeny(`webpresso pretool guard failed: ${detail}`)
     return
   }
-  if (JSON_ONLY_HOOKS.has(name)) {
+
+  if (metadata.fallback === 'emit-empty-json') {
     process.stdout.write('{}\n')
     return
   }
-  process.stderr.write(`webpresso hook ${binNameFor(name)} failed open: ${detail}\n`)
+
+  process.stderr.write(
+    `webpresso hook ${metadata.binName} degraded: hook=${name} event=${metadata.event} fallback=${metadata.fallback}: ${detail}\n`,
+  )
 }
 
 export function isHookName(value: string): value is HookName {
@@ -115,10 +128,11 @@ export async function runHookCommand(name: string, args: string[] = []): Promise
   if (!isHookName(name)) {
     throw new Error(`Unknown hook "${name}". Expected one of: ${HOOK_NAMES.join(', ')}`)
   }
+
   try {
     await HOOK_HANDLERS[name](args)
   } catch (error) {
-    handleHookError(name, error)
+    emitFallback(name, error)
   }
 }
 

@@ -402,14 +402,7 @@ describe('public release readiness gate wiring', () => {
     for (const workflow of ['bench.yml', 'check.yml', 'mutation.yml']) {
       expect(
         existsSync(
-          join(
-            repositoryRoot,
-            'native',
-            'session-memory-engine',
-            '.github',
-            'workflows',
-            workflow,
-          ),
+          join(repositoryRoot, 'native', 'session-memory-engine', '.github', 'workflows', workflow),
         ),
       ).toBe(false)
     }

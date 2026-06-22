@@ -1,31 +1,31 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  writeFileSync,
-} from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import type { WriteStream } from 'node:tty'
 
 import { getSurfacePath, NotInGitRepoError } from '#paths/state-root.js'
 
-export interface HookErrorEntry {
+export const HOOK_FALLBACK_ACTIONS = ['fail-closed-deny', 'emit-empty-json', 'fail-open'] as const
+
+export type HookFallbackAction = (typeof HOOK_FALLBACK_ACTIONS)[number]
+
+export type HookErrorEntry = {
   readonly timestamp: string
   readonly binName: string
   readonly hookName: string
   readonly event: string
   readonly phase: string
-  readonly fallback: string
+  readonly fallback: HookFallbackAction
   readonly status?: number
   readonly signal?: string
   readonly detail?: string
 }
 
-interface HookErrorIndex {
+type HookErrorIndex = {
   readonly version: 1
   readonly entries: readonly HookErrorEntry[]
 }
+
+export type RecordHookErrorInput = Omit<HookErrorEntry, 'timestamp'>
 
 export interface HooksErrorsOptions {
   readonly json?: boolean
@@ -33,24 +33,29 @@ export interface HooksErrorsOptions {
   readonly cwd?: string
 }
 
-export interface RecordHookErrorInput {
-  readonly binName: string
-  readonly hookName: string
-  readonly event: string
-  readonly phase: string
-  readonly fallback: string
-  readonly status?: number
-  readonly signal?: string
-  readonly detail?: string
-}
-
 const DEFAULT_LIMIT = 10
 const MAX_ERROR_ENTRIES = 50
+const MAX_DETAIL_CHARS = 500
+let recorderWarningEmitted = false
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
   if (value === undefined) return fallback
   const parsed = Number.parseInt(value, 10)
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
+}
+
+function truncateDetail(value: string | undefined): string | undefined {
+  if (!value) return undefined
+  const normalized = value.replace(/\s+/gu, ' ').trim()
+  if (normalized.length <= MAX_DETAIL_CHARS) return normalized
+  return `${normalized.slice(0, MAX_DETAIL_CHARS)}…`
+}
+
+function warnRecorderFailure(error: unknown): void {
+  if (recorderWarningEmitted) return
+  recorderWarningEmitted = true
+  const detail = error instanceof Error ? error.message : String(error ?? '')
+  process.stderr.write(`webpresso hook error recorder unavailable: ${detail}\n`)
 }
 
 export function resolveHookErrorsPath(cwd = process.cwd()): string {
@@ -75,21 +80,28 @@ export function readHookErrors(cwd = process.cwd()): readonly HookErrorEntry[] {
   }
 }
 
-function readHookErrorIndex(cwd = process.cwd()): HookErrorIndex {
-  return { version: 1, entries: readHookErrors(cwd) }
-}
-
-function writeHookErrorIndex(indexPath: string, index: HookErrorIndex): void {
+function writeHookErrorIndex(indexPath: string, entries: readonly HookErrorEntry[]): void {
   mkdirSync(dirname(indexPath), { recursive: true })
-  const tempPath = `${indexPath}.${process.pid}.tmp`
-  writeFileSync(tempPath, `${JSON.stringify(index, null, 2)}\n`, 'utf8')
-  renameSync(tempPath, indexPath)
+  const tmpPath = `${indexPath}.${process.pid}.${Date.now()}.${Math.random()
+    .toString(36)
+    .slice(2)}.tmp`
+  try {
+    writeFileSync(
+      tmpPath,
+      `${JSON.stringify({ version: 1, entries: entries.slice(0, MAX_ERROR_ENTRIES) }, null, 2)}\n`,
+      'utf8',
+    )
+    renameSync(tmpPath, indexPath)
+  } catch (error) {
+    rmSync(tmpPath, { force: true })
+    throw error
+  }
 }
 
 export function recordHookError(input: RecordHookErrorInput, cwd = process.cwd()): void {
   try {
     const indexPath = resolveHookErrorsPath(cwd)
-    const index = readHookErrorIndex(cwd)
+    const entries = readHookErrors(cwd)
     const entry: HookErrorEntry = {
       timestamp: new Date().toISOString(),
       binName: input.binName,
@@ -99,15 +111,11 @@ export function recordHookError(input: RecordHookErrorInput, cwd = process.cwd()
       fallback: input.fallback,
       ...(input.status === undefined ? {} : { status: input.status }),
       ...(input.signal === undefined ? {} : { signal: input.signal }),
-      ...(input.detail === undefined ? {} : { detail: input.detail }),
+      ...(input.detail === undefined ? {} : { detail: truncateDetail(input.detail) }),
     }
-    writeHookErrorIndex(indexPath, {
-      version: 1,
-      entries: [entry, ...index.entries].slice(0, MAX_ERROR_ENTRIES),
-    })
-  } catch {
-    // Hook error recording is diagnostic-only. Event-specific fallbacks must
-    // still run even when the recorder cannot write to disk.
+    writeHookErrorIndex(indexPath, [entry, ...entries])
+  } catch (error) {
+    warnRecorderFailure(error)
   }
 }
 
@@ -117,7 +125,10 @@ function formatStatus(entry: HookErrorEntry): string {
   return 'status=unknown'
 }
 
-export function formatHookErrors(entries: readonly HookErrorEntry[], limit = DEFAULT_LIMIT): string {
+export function formatHookErrors(
+  entries: readonly HookErrorEntry[],
+  limit = DEFAULT_LIMIT,
+): string {
   const shown = entries.slice(0, limit)
   if (shown.length === 0) {
     return 'wp hooks errors: no managed hook errors recorded for this repo\n'

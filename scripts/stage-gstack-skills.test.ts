@@ -9,10 +9,18 @@ import { stageGstackSkills, validateGstackStagingPolicy } from './stage-gstack-s
 const roots: string[] = []
 
 function fixtureRepo(): string {
-  const root = path.join(tmpdir(), `stage-gstack-${Date.now()}-${Math.random().toString(16).slice(2)}`)
+  const root = path.join(
+    tmpdir(),
+    `stage-gstack-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+  )
   roots.push(root)
   mkdirSync(root, { recursive: true })
-  cpSync(path.resolve('packages/gstack'), path.join(root, 'packages/gstack'), { recursive: true, filter: (source) => !source.includes(`${path.sep}node_modules${path.sep}`) && !source.endsWith(`${path.sep}node_modules`) })
+  cpSync(path.resolve('packages/gstack'), path.join(root, 'packages/gstack'), {
+    recursive: true,
+    filter: (source) =>
+      !source.includes(`${path.sep}node_modules${path.sep}`) &&
+      !source.endsWith(`${path.sep}node_modules`),
+  })
   return root
 }
 
@@ -50,8 +58,12 @@ describe('stageGstackSkills', () => {
     expect(stagedClaude).not.toContain('claude auth status --output json')
     expect(stagedClaude).not.toContain('ANTHROPIC_API_KEY')
     expect(stagedClaude).not.toContain('CLAUDE_AUTH=credentials-file')
-    expect(readFileSync(path.join(root, 'catalog/agent/skills/codex/SKILL.md'), 'utf8')).toContain('codex exec --sandbox read-only')
-    expect(readFileSync(path.join(root, 'catalog/agent/skills/qwen/SKILL.md'), 'utf8')).toContain('opencode-go/qwen3.7-max')
+    expect(readFileSync(path.join(root, 'catalog/agent/skills/codex/SKILL.md'), 'utf8')).toContain(
+      'codex exec --sandbox read-only',
+    )
+    expect(readFileSync(path.join(root, 'catalog/agent/skills/qwen/SKILL.md'), 'utf8')).toContain(
+      'opencode-go/qwen3.7-max',
+    )
   })
 
   it('rejects denied paths and missing NOTICE/provenance', () => {
@@ -79,11 +91,14 @@ describe('stageGstackSkills', () => {
     mkdirSync(path.join(root, 'packages/gstack/assets'), { recursive: true })
     writeFileSync(path.join(root, 'packages/gstack/assets/large.txt'), 'x'.repeat(1024))
     const policy = {
-      ...JSON.parse(readFileSync(path.join(root, 'packages/gstack/staging/allowlist.json'), 'utf8')),
+      ...JSON.parse(
+        readFileSync(path.join(root, 'packages/gstack/staging/allowlist.json'), 'utf8'),
+      ),
       sizeBudgetBytes: 512,
     }
 
-    expect(() => validateGstackStagingPolicy(root, policy)).toThrow(/gstack source payload .* exceeds budget/)
+    expect(() => validateGstackStagingPolicy(root, policy)).toThrow(
+      /gstack source payload .* exceeds budget/,
+    )
   })
-
 })

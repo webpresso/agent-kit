@@ -3,7 +3,12 @@ import { z } from 'zod'
 import { clipRawOutput } from './_shared/result.js'
 import { resolveProjectRoot } from './_shared/project-root.js'
 import { redactText } from './_shared/redact.js'
-import { isMissingBinary, isRunFailure, runCommand, type RunOutcome } from './_shared/run-command.js'
+import {
+  isMissingBinary,
+  isRunFailure,
+  runCommand,
+  type RunOutcome,
+} from './_shared/run-command.js'
 
 export const readonlyOpsBaseSchema = z
   .object({
@@ -75,7 +80,10 @@ function sanitizeDetailValue(value: unknown): unknown {
   const entries = Object.entries(value as Record<string, unknown>)
   const limitedEntries = entries.slice(0, MAX_DETAIL_OBJECT_KEYS)
   const sanitized = Object.fromEntries(
-    limitedEntries.map(([key, entryValue]) => [clipDetailString(key), sanitizeDetailValue(entryValue)]),
+    limitedEntries.map(([key, entryValue]) => [
+      clipDetailString(key),
+      sanitizeDetailValue(entryValue),
+    ]),
   ) as Record<string, unknown>
   if (entries.length > MAX_DETAIL_OBJECT_KEYS) {
     sanitized.truncated = true
@@ -174,9 +182,13 @@ export function normalizeCommandOutcome(
   return result
 }
 
-export function summarizeCommands(label: string, commands: readonly ReadonlyCommandResult[]): string {
+export function summarizeCommands(
+  label: string,
+  commands: readonly ReadonlyCommandResult[],
+): string {
   const failed = commands.filter((command) => !command.passed).length
-  if (failed === 0) return `${label} passed (${commands.length} check${commands.length === 1 ? '' : 's'})`
+  if (failed === 0)
+    return `${label} passed (${commands.length} check${commands.length === 1 ? '' : 's'})`
   return `${label} failed (${failed}/${commands.length} check${commands.length === 1 ? '' : 's'} failed)`
 }
 

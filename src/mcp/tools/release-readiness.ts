@@ -29,7 +29,9 @@ const outputSchema = createSummaryOutputSchema({
 type Input = z.infer<typeof inputSchema>
 
 function commandsFor(input: Input): Array<{ id: string; command: string; args: string[] }> {
-  const commands = [{ id: 'package_surface', command: './bin/wp', args: ['audit', 'package-surface'] }]
+  const commands = [
+    { id: 'package_surface', command: './bin/wp', args: ['audit', 'package-surface'] },
+  ]
   if (input.includeReferenceParity) {
     commands.push({
       id: 'reference_parity',

@@ -63,8 +63,7 @@ describe('ensureGroup', () => {
       hooks: [
         {
           type: 'command',
-          command:
-            'node /pkg/bin/wp hook stop-qa # wp-stop-qa',
+          command: 'node /pkg/bin/wp hook stop-qa # wp-stop-qa',
           timeout: 5,
         },
       ],
@@ -73,8 +72,7 @@ describe('ensureGroup', () => {
       hooks: [
         {
           type: 'command',
-          command:
-            'node /other/bin/wp hook stop-qa # wp-stop-qa',
+          command: 'node /other/bin/wp hook stop-qa # wp-stop-qa',
           timeout: 10,
         },
       ],
@@ -92,8 +90,7 @@ describe('ensureGroup', () => {
       hooks: [
         {
           type: 'command',
-          command:
-            'node /pkg/bin/wp hook stop-qa # wp-stop-qa',
+          command: 'node /pkg/bin/wp hook stop-qa # wp-stop-qa',
         },
       ],
     }
@@ -101,8 +98,7 @@ describe('ensureGroup', () => {
       hooks: [
         {
           type: 'command',
-          command:
-            'node /new/bin/wp hook stop-qa # wp-stop-qa',
+          command: 'node /new/bin/wp hook stop-qa # wp-stop-qa',
           timeout: 10,
         },
       ],

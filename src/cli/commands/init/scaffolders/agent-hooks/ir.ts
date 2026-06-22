@@ -35,6 +35,8 @@ export const HOOK_EVENT_NAMES = [
   'PostCompact',
 ] as const
 
+export type HookEventName = (typeof HOOK_EVENT_NAMES)[number]
+
 export type MatcherSet = {
   preToolUse: string
   postToolUse: string

@@ -58,7 +58,9 @@ describe('auditConsumerAgentKitDependency', () => {
     expect(result.violations).toEqual([
       expect.objectContaining({
         file: 'package.json',
-        message: expect.stringContaining('must not depend on @webpresso/agent-kit in devDependencies'),
+        message: expect.stringContaining(
+          'must not depend on @webpresso/agent-kit in devDependencies',
+        ),
       }),
     ])
   })
@@ -96,10 +98,7 @@ describe('auditConsumerAgentKitDependency', () => {
 
   test('fails when a consumer keeps @webpresso/agent-kit in pnpm-workspace catalog', () => {
     const root = tempRepo({ name: '@acme/demo' })
-    writeFileSync(
-      join(root, 'pnpm-workspace.yaml'),
-      `catalog:\n  "@webpresso/agent-kit": ^2.0.2\n`,
-    )
+    writeFileSync(join(root, 'pnpm-workspace.yaml'), `catalog:\n  "@webpresso/agent-kit": ^2.0.2\n`)
 
     const result = auditConsumerAgentKitDependency(root)
 
@@ -107,7 +106,9 @@ describe('auditConsumerAgentKitDependency', () => {
     expect(result.violations).toEqual([
       expect.objectContaining({
         file: 'pnpm-workspace.yaml',
-        message: expect.stringContaining('must not pin @webpresso/agent-kit in pnpm-workspace catalog'),
+        message: expect.stringContaining(
+          'must not pin @webpresso/agent-kit in pnpm-workspace catalog',
+        ),
       }),
     ])
   })
@@ -149,7 +150,10 @@ describe('auditConsumerAgentKitDependency', () => {
   test('fails when a consumer keeps the retired resolve-webpresso-cli-versions helper', () => {
     const root = tempRepo({ name: '@acme/demo' })
     mkdirSync(join(root, 'scripts'), { recursive: true })
-    writeFileSync(join(root, 'scripts', 'resolve-webpresso-cli-versions.js'), 'throw new Error("no")')
+    writeFileSync(
+      join(root, 'scripts', 'resolve-webpresso-cli-versions.js'),
+      'throw new Error("no")',
+    )
 
     const result = auditConsumerAgentKitDependency(root)
 

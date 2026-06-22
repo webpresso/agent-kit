@@ -211,7 +211,9 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(existsSync(path.join(repo, '.husky', 'commit-msg'))).toBe(false)
       expect(existsSync(path.join(repo, '.husky', 'pre-push'))).toBe(false)
       expect(existsSync(path.join(repo, 'scripts', 'check-no-dev-vars.ts'))).toBe(false)
-      expect(existsSync(path.join(repo, 'scripts', 'resolve-webpresso-cli-versions.cjs'))).toBe(true)
+      expect(existsSync(path.join(repo, 'scripts', 'resolve-webpresso-cli-versions.cjs'))).toBe(
+        true,
+      )
 
       // Future-proof guard: PreToolUse should be fail-closed (deny JSON
       // fallback), not silent fail-open `|| true`.
@@ -307,7 +309,9 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(existsSync(path.join(repo, 'scripts', 'audit-secret-provider-quarantine.ts'))).toBe(
         false,
       )
-      expect(existsSync(path.join(repo, 'scripts', 'resolve-webpresso-cli-versions.cjs'))).toBe(true)
+      expect(existsSync(path.join(repo, 'scripts', 'resolve-webpresso-cli-versions.cjs'))).toBe(
+        true,
+      )
       expect(existsSync(path.join(repo, '.husky', 'pre-commit'))).toBe(true)
       expect(existsSync(path.join(repo, '.husky', 'commit-msg'))).toBe(false)
       expect(existsSync(path.join(repo, '.husky', 'pre-push'))).toBe(false)
@@ -334,10 +338,13 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
     })
 
     it('--project + fake omx on PATH: chains project-scoped omx setup', () => {
-      const r = runAk(['setup', '--yes', '--project-init', '--with', 'omx', '--project', '--cwd', repo], {
-        PATH: pathWithFakeOmxOk(),
-        HOME: fakeHome,
-      })
+      const r = runAk(
+        ['setup', '--yes', '--project-init', '--with', 'omx', '--project', '--cwd', repo],
+        {
+          PATH: pathWithFakeOmxOk(),
+          HOME: fakeHome,
+        },
+      )
       expect(r.code).toBe(0)
       expect(r.stdout).toContain('omx setup: ✓')
       expect(r.stdout).toContain('omx-fixture: setup --yes --scope project ran')
@@ -375,12 +382,13 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       ).toBe(true)
       expect(
         sessionCommands.every(
-          (cmd) => !cmd.includes('node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing'),
+          (cmd) =>
+            !cmd.includes('node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing'),
         ),
       ).toBe(true)
-      expect(stopCommands.every((cmd) => !cmd.includes('node /pkg/bin/wp hook stop-qa # wp-stop-qa'))).toBe(
-        true,
-      )
+      expect(
+        stopCommands.every((cmd) => !cmd.includes('node /pkg/bin/wp hook stop-qa # wp-stop-qa')),
+      ).toBe(true)
       expect(sessionCommands.every((cmd) => !cmd.includes('node_modules/.bin'))).toBe(true)
       expect(stopCommands.every((cmd) => !cmd.includes('node_modules/.bin'))).toBe(true)
 
@@ -449,10 +457,13 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       '--with omx,gstack combined: both presets execute against fixtures',
       { timeout: 20_000 },
       () => {
-        const r = runAk(['setup', '--yes', '--project-init', '--with', 'omx,gstack', '--cwd', repo], {
-          PATH: pathWithFakeOmxOk(),
-          HOME: fakeHome,
-        })
+        const r = runAk(
+          ['setup', '--yes', '--project-init', '--with', 'omx,gstack', '--cwd', repo],
+          {
+            PATH: pathWithFakeOmxOk(),
+            HOME: fakeHome,
+          },
+        )
         expect(r.code).toBe(0)
         expect(r.stdout).toContain('omx setup: ✓')
         expect(r.stdout).toContain('gstack: ✓ installed')
@@ -463,10 +474,13 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       'presets run independently: omx failure does NOT skip gstack, exit code reflects partial failure',
       { timeout: 20_000 },
       () => {
-        const r = runAk(['setup', '--yes', '--project-init', '--with', 'omx,gstack', '--cwd', repo], {
-          PATH: pathWithoutOmx(),
-          HOME: fakeHome,
-        })
+        const r = runAk(
+          ['setup', '--yes', '--project-init', '--with', 'omx,gstack', '--cwd', repo],
+          {
+            PATH: pathWithoutOmx(),
+            HOME: fakeHome,
+          },
+        )
         // omx fails (not on PATH) → contributes EXIT_SETUP_FAIL = 1
         expect(r.code).toBe(1)
         expect(r.stderr).toContain('not on PATH')

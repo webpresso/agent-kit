@@ -142,7 +142,7 @@ describe('ensureOmx', () => {
         kind: 'omx-ok',
         installed: false,
         removedProjectFiles: [],
-        })
+      })
       expect(spawn).toHaveBeenCalledTimes(2)
       expect(spawn).toHaveBeenNthCalledWith(1, 'omx', ['--version'], {
         encoding: 'utf8',
@@ -260,8 +260,6 @@ describe('ensureOmx', () => {
       '[features]\nhooks = true\ngoals = true\n\n[mcp_servers.playwright]\nenabled = true\n',
     )
   })
-
-
 })
 
 it('skips vp refresh noise when only a repo-local vp is available', () => {

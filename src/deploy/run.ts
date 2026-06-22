@@ -100,7 +100,6 @@ async function runDeployStep(
   return result.status ?? 1
 }
 
-
 function resolveDeployStepSecretProfile(step: DeployStep, lane: DeployLane): string | undefined {
   const runtimeProfile = step.runtimeProfile?.trim()
   if (!runtimeProfile || isDirectRuntimeProfile(runtimeProfile)) return undefined

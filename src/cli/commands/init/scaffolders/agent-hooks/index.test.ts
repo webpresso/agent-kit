@@ -277,16 +277,24 @@ describe('scaffoldAgentHooks', () => {
     expect(claudeCommands.some((cmd) => cmd.includes('wp-sessionstart-routing'))).toBe(true)
     expect(claudeCommands).toContain(claudeBinCommand(repoRoot, 'wp-sessionstart-routing'))
     expect(codexCommands).toContain(codexBinCommand(repoRoot, 'wp-sessionstart-routing'))
-    expect(existsSync(join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh'))).toBe(false)
-    expect(existsSync(join(repoRoot, '.codex', 'managed-hooks', 'wp-sessionstart-routing.sh'))).toBe(false)
+    expect(
+      existsSync(join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh')),
+    ).toBe(false)
+    expect(
+      existsSync(join(repoRoot, '.codex', 'managed-hooks', 'wp-sessionstart-routing.sh')),
+    ).toBe(false)
   })
 
   it('does not materialize hook launcher scripts on repeated setup', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
 
-    expect(existsSync(join(repoRoot, '.codex', 'managed-hooks', 'wp-sessionstart-routing.sh'))).toBe(false)
-    expect(existsSync(join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh'))).toBe(false)
+    expect(
+      existsSync(join(repoRoot, '.codex', 'managed-hooks', 'wp-sessionstart-routing.sh')),
+    ).toBe(false)
+    expect(
+      existsSync(join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh')),
+    ).toBe(false)
   })
 
   it('uses the absolute package wp hook path instead of node_modules hook shims', async () => {
@@ -296,7 +304,9 @@ describe('scaffoldAgentHooks', () => {
     chmodSync(shimPath, 0o755)
 
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
-    const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as { hooks: { UserPromptSubmit: Array<{ hooks: Array<{ command: string }> }> } }
+    const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
+      hooks: { UserPromptSubmit: Array<{ hooks: Array<{ command: string }> }> }
+    }
     const command = codex.hooks.UserPromptSubmit[0]?.hooks[0]?.command ?? ''
     expect(command).toContain('bin/wp')
     expect(command).toContain(' hook guard-switch')
@@ -326,9 +336,6 @@ describe('scaffoldAgentHooks', () => {
       rmSync(packageRoot, { recursive: true, force: true })
     }
   })
-
-
-
 
   it('dedupes pre-existing wrapped script hooks against the raw incoming form', async () => {
     // Regression: hasCommand previously only extracted node_modules/.bin/<name>
@@ -796,7 +803,11 @@ hooks:
     expect(command).toContain('# from-skill: verify')
     const result = spawnSync('sh', ['-c', command ?? ''], {
       cwd: repoRoot,
-      env: { ...process.env, CLAUDE_PROJECT_DIR: repoRoot, PATH: `${binDir}:${process.env.PATH ?? ''}` },
+      env: {
+        ...process.env,
+        CLAUDE_PROJECT_DIR: repoRoot,
+        PATH: `${binDir}:${process.env.PATH ?? ''}`,
+      },
       encoding: 'utf8',
     })
 
@@ -892,7 +903,11 @@ hooks:
             {
               matcher: 'Bash|Edit|Write',
               hooks: [
-                { type: 'command', command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard', timeout: 5 },
+                {
+                  type: 'command',
+                  command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
+                  timeout: 5,
+                },
               ],
             },
           ],
@@ -964,7 +979,9 @@ hooks:
       group.hooks.map((hook) => hook.command),
     )
 
-    expect(claudePreCompactCommands).toStrictEqual([claudeBinCommand(repoRoot, 'wp-precompact-snapshot')])
+    expect(claudePreCompactCommands).toStrictEqual([
+      claudeBinCommand(repoRoot, 'wp-precompact-snapshot'),
+    ])
     expect(codexPreCompactCommands).toStrictEqual([
       codexBinCommand(repoRoot, 'wp-precompact-snapshot'),
     ])
@@ -974,8 +991,12 @@ hooks:
     expect(result.manifest.codex.PreCompact?.[0]?.hooks[0]?.command).toBe(
       codexBinCommand(repoRoot, 'wp-precompact-snapshot'),
     )
-    expect(existsSync(join(repoRoot, '.claude', 'hooks', 'managed', 'wp-precompact-snapshot.sh'))).toBe(false)
-    expect(existsSync(join(repoRoot, '.codex', 'managed-hooks', 'wp-precompact-snapshot.sh'))).toBe(false)
+    expect(
+      existsSync(join(repoRoot, '.claude', 'hooks', 'managed', 'wp-precompact-snapshot.sh')),
+    ).toBe(false)
+    expect(existsSync(join(repoRoot, '.codex', 'managed-hooks', 'wp-precompact-snapshot.sh'))).toBe(
+      false,
+    )
 
     // Cursor has no supported PreCompact/project-hook equivalent today. The
     // Cursor emitter must degrade explicitly by omitting the managed
@@ -984,12 +1005,6 @@ hooks:
     expect(Object.hasOwn(cursor, 'beforeCompact')).toBe(false)
     expect(JSON.stringify(cursor)).not.toContain('wp-precompact-snapshot')
   })
-
-
-
-
-
-
 
   it('keeps Codex hook commands executable from a sibling cwd instead of failing with 127', async () => {
     initGitRepo(repoRoot)
@@ -1029,8 +1044,6 @@ hooks:
     expect(command).toBe(codexBinCommand(repoRoot, 'wp-stop-qa'))
     expect(result.status).toBe(0)
   })
-
-
 })
 
 describe('classifyWebpressoHookBin', () => {
@@ -1049,12 +1062,21 @@ describe('hoistTopLevelEvents', () => {
   it('moves top-level event keys into the wrapped `hooks` key', async () => {
     const input = {
       SessionStart: [
-        { hooks: [{ type: 'command', command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing' }] },
+        {
+          hooks: [
+            {
+              type: 'command',
+              command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
+            },
+          ],
+        },
       ],
       PreToolUse: [
         {
           matcher: 'Bash',
-          hooks: [{ type: 'command', command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard' }],
+          hooks: [
+            { type: 'command', command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard' },
+          ],
         },
       ],
     }
@@ -1084,11 +1106,25 @@ describe('hoistTopLevelEvents', () => {
   it('dedupes when both top-level and wrapped contain the same wp-* command', async () => {
     const input = {
       SessionStart: [
-        { hooks: [{ type: 'command', command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing' }] },
+        {
+          hooks: [
+            {
+              type: 'command',
+              command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
+            },
+          ],
+        },
       ],
       hooks: {
         SessionStart: [
-          { hooks: [{ type: 'command', command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing' }] },
+          {
+            hooks: [
+              {
+                type: 'command',
+                command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
+              },
+            ],
+          },
         ],
       },
     }
@@ -1106,7 +1142,14 @@ describe('hoistTopLevelEvents', () => {
     const input = {
       $schema: 'https://example.com/schema.json',
       SessionStart: [
-        { hooks: [{ type: 'command', command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing' }] },
+        {
+          hooks: [
+            {
+              type: 'command',
+              command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
+            },
+          ],
+        },
       ],
     }
 
@@ -1193,9 +1236,13 @@ describe('buildWebpressoHookGroups', () => {
       'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
     )
     expect(result.PreToolUse?.[0]?.matcher).toBe('Bash|Edit|Write')
-    expect(result.PreToolUse?.[0]?.hooks[0]?.command).toBe('node /pkg/bin/wp hook pretool-guard # wp-pretool-guard')
+    expect(result.PreToolUse?.[0]?.hooks[0]?.command).toBe(
+      'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
+    )
     expect(result.PostToolUse?.[0]?.matcher).toBe('Edit|Write')
-    expect(result.PostToolUse?.[0]?.hooks[0]?.command).toBe('node /pkg/bin/wp hook post-tool # wp-post-tool')
+    expect(result.PostToolUse?.[0]?.hooks[0]?.command).toBe(
+      'node /pkg/bin/wp hook post-tool # wp-post-tool',
+    )
     expect(result.UserPromptSubmit?.[0]?.hooks[0]?.command).toBe(
       'node /pkg/bin/wp hook guard-switch # wp-guard-switch',
     )
@@ -1265,7 +1312,6 @@ describe('BP1 hotfix: launcher chain, node fallback, gstack stdin scoping, stop-
     expect(stopCommand).toContain('>&2')
     expect(stopCommand).not.toContain('|| true')
   })
-
 
   it('scopes the gstack PreToolUse check to gstack-owned skills via stdin', async () => {
     await scaffoldAgentHooks({

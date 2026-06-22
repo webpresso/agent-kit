@@ -38,7 +38,6 @@ describe('wp dev command', () => {
     )
   })
 
-
   it('toggles source-repo runtime hook dispatch state', () => {
     tmpRoot = mkdtempSync(join(tmpdir(), 'dev-runtime-hooks-'))
     const root = tmpRoot

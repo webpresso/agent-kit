@@ -24,7 +24,10 @@ describe('removeConfiguredGeneratedPaths', () => {
     mkdirSync(join(root, '.github', 'actions', 'setup-webpresso'), { recursive: true })
     writeFileSync(join(root, '.github', 'actions', 'setup-webpresso', 'action.yml'), 'name: setup')
     mkdirSync(join(root, 'scripts'), { recursive: true })
-    writeFileSync(join(root, 'scripts', 'resolve-webpresso-cli-versions.js'), 'throw new Error("no")')
+    writeFileSync(
+      join(root, 'scripts', 'resolve-webpresso-cli-versions.js'),
+      'throw new Error("no")',
+    )
 
     const config = {
       ...defaultConfig(),

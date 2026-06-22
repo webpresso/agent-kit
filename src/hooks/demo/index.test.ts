@@ -17,7 +17,12 @@ describe('simulateHookDemo', () => {
         PreToolUse: [
           {
             matcher: 'Bash|Edit|Write',
-            hooks: [{ type: 'command', command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard' }],
+            hooks: [
+              {
+                type: 'command',
+                command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
+              },
+            ],
           },
         ],
       },
@@ -43,7 +48,12 @@ describe('simulateHookDemo', () => {
         PreToolUse: [
           {
             matcher: 'Bash|Edit|Write',
-            hooks: [{ type: 'command', command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard' }],
+            hooks: [
+              {
+                type: 'command',
+                command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
+              },
+            ],
           },
         ],
       },
@@ -62,7 +72,10 @@ describe('simulateHookDemo', () => {
         SessionStart: [
           {
             hooks: [
-              { type: 'command', command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing' },
+              {
+                type: 'command',
+                command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
+              },
             ],
           },
         ],
@@ -96,7 +109,11 @@ describe('demoCommand', () => {
           {
             matcher: 'Bash|Edit|Write',
             hooks: [
-              { type: 'command', command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard', timeout: 5 },
+              {
+                type: 'command',
+                command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
+                timeout: 5,
+              },
             ],
           },
         ],

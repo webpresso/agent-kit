@@ -162,6 +162,28 @@ describe('auditSecretProviderQuarantine', () => {
     expect(result.violations).toStrictEqual([])
   })
 
+  test('ignores generated agent surfaces, worktrees, and reports', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, '_worktrees', 'stale', '.github', 'workflows'), { recursive: true })
+    mkdirSync(join(root, 'reports', 'mutation'), { recursive: true })
+    mkdirSync(join(root, '.opencode', 'skills'), { recursive: true })
+    mkdirSync(join(root, 'src'), { recursive: true })
+    writeFileSync(
+      join(root, '_worktrees', 'stale', '.github', 'workflows', 'ci.yml'),
+      'with-secrets -- act',
+    )
+    writeFileSync(
+      join(root, 'reports', 'mutation', 'mutation-report.json'),
+      '{"command":"with-secrets -- bun test"}',
+    )
+    writeFileSync(join(root, '.opencode', 'skills', 'generated.md'), 'with-secrets -- bun test')
+    writeFileSync(join(root, 'src', 'index.ts'), 'export const ok = true')
+
+    const result = auditSecretProviderQuarantine(root)
+
+    expect(result.ok).toBe(true)
+  })
+
   test('allows shipped reusable workflows to use provider bootstrapping internally', () => {
     const root = tempRepo()
     mkdirSync(join(root, '.github', 'workflows'), { recursive: true })

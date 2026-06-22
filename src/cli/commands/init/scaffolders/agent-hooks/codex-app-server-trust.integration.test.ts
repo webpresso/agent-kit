@@ -194,6 +194,4 @@ describe('codex app-server trust integration', () => {
     const infoLines = warnLines.filter((line) => line.includes('codex not detected on PATH'))
     expect(infoLines).toHaveLength(1)
   })
-
-
 })

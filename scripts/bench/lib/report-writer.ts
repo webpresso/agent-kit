@@ -117,8 +117,7 @@ export function renderArtifactMarkdown(artifact: MeasurementArtifact): string {
     '| metric_key | value | unit |',
     '| --- | ---: | --- |',
     ...artifact.samples.map(
-      (sample) =>
-        `| ${sample.metricKey} | ${formatNumber(sample.value)} | ${sample.unit} |`,
+      (sample) => `| ${sample.metricKey} | ${formatNumber(sample.value)} | ${sample.unit} |`,
     ),
     '',
     '## Aggregates',

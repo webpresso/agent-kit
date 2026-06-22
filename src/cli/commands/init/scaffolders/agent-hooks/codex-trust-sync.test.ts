@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import type { CodexAppServerApi, CommandHookMetadata, HooksListResponse } from '#codex/app-server/types.js'
+import type {
+  CodexAppServerApi,
+  CommandHookMetadata,
+  HooksListResponse,
+} from '#codex/app-server/types.js'
 import { syncCodexHookTrustWithAppServer } from './codex-trust-sync.js'
 
 const REPO_ROOT = '/repo'

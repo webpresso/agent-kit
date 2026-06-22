@@ -362,7 +362,11 @@ describe('variant-runner', () => {
   it('returns a stale-session failure reason when claude -p fails after auth status succeeds', async () => {
     const spawn: VariantSpawn = async (cmd) => {
       if (cmd.join(' ') === 'claude auth status') {
-        return { exitCode: 0, stdout: 'Logged in to claude.ai as dev@example.com (Max)', stderr: '' }
+        return {
+          exitCode: 0,
+          stdout: 'Logged in to claude.ai as dev@example.com (Max)',
+          stderr: '',
+        }
       }
       return { exitCode: 1, stdout: '', stderr: 'HTTP 401 unauthorized' }
     }
@@ -434,5 +438,4 @@ describe('variant-runner', () => {
       home_dir: join(dir, 'adhoc', 'baseline', 'debug', 'trial-6', 'home'),
     })
   })
-
 })

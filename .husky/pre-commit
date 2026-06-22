@@ -3,6 +3,16 @@ set -eu
 
 ROOT="$(git rev-parse --show-toplevel)"
 STAGED="$(git diff --cached --name-only --diff-filter=ACMR)"
+FORMAT_FILES="$(printf '%s\n' "$STAGED" | grep -E '\.(ts|tsx|js|jsx|cjs|mjs|json|ya?ml|sh|tmpl|md|mdx)$' || true)"
+
+if [ -n "$FORMAT_FILES" ]; then
+  "$ROOT/bin/wp" format || exit 1
+  printf '%s\n' "$FORMAT_FILES" | while IFS= read -r file; do
+    [ -n "$file" ] || continue
+    git add -- "$file" || exit 1
+  done
+  STAGED="$(git diff --cached --name-only --diff-filter=ACMR)"
+fi
 
 # Fast, file-scoped audits — skip entirely on doc/blueprint-only commits.
 if printf '%s\n' "$STAGED" | grep -Eq '\.(ts|tsx|js|jsx|cjs|mjs|json|ya?ml|sh|tmpl)$|(^|/)\.env|\.dev\.vars$'; then

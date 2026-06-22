@@ -68,9 +68,7 @@ describe('vendor hook schemas', () => {
     // { hooks: {}, state: {} } must fail — `state` at top level poisons the Codex hooks.json parser
     expect(codexHooksSchema.safeParse({ hooks: {}, state: {} }).success).toBe(false)
     // A valid wrapped shape with only `hooks` must succeed
-    expect(
-      codexHooksSchema.safeParse({ hooks: { PreToolUse: [] } }).success,
-    ).toBe(true)
+    expect(codexHooksSchema.safeParse({ hooks: { PreToolUse: [] } }).success).toBe(true)
   })
 
   it('buildCursorHooksConfig() output parses against cursorHooksSchema', () => {
@@ -87,7 +85,10 @@ describe('vendor hook schemas', () => {
       preToolUse: [
         {
           hooks: [
-            { type: 'command' as const, command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard' },
+            {
+              type: 'command' as const,
+              command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
+            },
           ],
         },
       ],

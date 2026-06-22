@@ -10,9 +10,7 @@ const repoCandidates = {
   'ozby/edge-matte': [
     '/Users/ozby/repos/ozby/edge-matte/_worktrees/wp-secret-orchestration-20260619',
   ],
-  'ozby/ozby-dev': [
-    '/Users/ozby/repos/ozby/ozby-dev/_worktrees/wp-secret-orchestration-20260619',
-  ],
+  'ozby/ozby-dev': ['/Users/ozby/repos/ozby/ozby-dev/_worktrees/wp-secret-orchestration-20260619'],
   'ozby/aksaprocess.tr': [
     '/Users/ozby/repos/ozby/aksaprocess.tr/_worktrees/wp-secret-orchestration-20260619',
   ],

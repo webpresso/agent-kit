@@ -264,7 +264,11 @@ describe('detectDrift', () => {
   it('TC-03: allows same owner with different commands on the same event', () => {
     const hooks: readonly HookEntry[] = [
       { runtime: 'codex', event: 'Stop', command: 'node /pkg/bin/wp hook stop-qa # wp-stop-qa' },
-      { runtime: 'codex', event: 'Stop', command: 'node /pkg/bin/wp hook guard-switch # wp-guard-switch' },
+      {
+        runtime: 'codex',
+        event: 'Stop',
+        command: 'node /pkg/bin/wp hook guard-switch # wp-guard-switch',
+      },
     ]
     expect(detectDrift(hooks)).toHaveLength(0)
   })
@@ -272,8 +276,16 @@ describe('detectDrift', () => {
   // TC-05: same webpresso bin registered twice → drift
   it('TC-05: flags same webpresso bin registered twice on same event as drift', () => {
     const hooks: readonly HookEntry[] = [
-      { runtime: 'codex', event: 'PreToolUse', command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard' },
-      { runtime: 'codex', event: 'PreToolUse', command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard' },
+      {
+        runtime: 'codex',
+        event: 'PreToolUse',
+        command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
+      },
+      {
+        runtime: 'codex',
+        event: 'PreToolUse',
+        command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
+      },
     ]
     const violations = detectDrift(hooks)
     expect(violations).toHaveLength(1)

@@ -30,7 +30,10 @@ describe('isWebpressoOwnedCodexHook', () => {
   it('accepts direct commands with absolute wp launcher paths', () => {
     expect(
       isWebpressoOwnedCodexHook(
-        ownedHook({ command: '/usr/bin/node /repo/node_modules/@webpresso/agent-kit/bin/wp hook post-tool # wp-post-tool' }),
+        ownedHook({
+          command:
+            '/usr/bin/node /repo/node_modules/@webpresso/agent-kit/bin/wp hook post-tool # wp-post-tool',
+        }),
         EXPECTED_SOURCE_PATHS,
       ),
     ).toBe(true)

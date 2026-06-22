@@ -76,7 +76,10 @@ describe('wp secrets', () => {
       ok: true,
       code: 'WP_GITHUB_BOOTSTRAP_PLANNED',
       plan: {
-        requiredSecrets: ['CI_SECRET_PROVIDER_TOKEN_PREVIEW', 'CI_SECRET_PROVIDER_TOKEN_PRODUCTION'],
+        requiredSecrets: [
+          'CI_SECRET_PROVIDER_TOKEN_PREVIEW',
+          'CI_SECRET_PROVIDER_TOKEN_PRODUCTION',
+        ],
       },
     })
   })
@@ -112,7 +115,13 @@ describe('wp secrets', () => {
     )
 
     expect(invocation.command).toBe('gh')
-    expect(invocation.args).toEqual(['secret', 'set', 'CI_SECRET_PROVIDER_TOKEN_PRODUCTION', '--body-file', '-'])
+    expect(invocation.args).toEqual([
+      'secret',
+      'set',
+      'CI_SECRET_PROVIDER_TOKEN_PRODUCTION',
+      '--body-file',
+      '-',
+    ])
     expect(invocation.args.join(' ')).not.toContain('secret-value')
     expect(invocation.options.input).toBe('secret-value')
     expect(invocation.options.stdio).toEqual(['pipe', 'ignore', 'ignore'])

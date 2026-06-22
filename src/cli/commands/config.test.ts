@@ -126,7 +126,10 @@ describe('wp config secrets', () => {
     const repoRoot = makeRepo()
     writeFileSync(join(repoRoot, 'README.md'), 'seed\n', 'utf8')
     execFileSync('git', ['init'], { cwd: repoRoot, stdio: 'ignore' })
-    execFileSync('git', ['config', 'user.email', 'codex@example.com'], { cwd: repoRoot, stdio: 'ignore' })
+    execFileSync('git', ['config', 'user.email', 'codex@example.com'], {
+      cwd: repoRoot,
+      stdio: 'ignore',
+    })
     execFileSync('git', ['config', 'user.name', 'Codex'], { cwd: repoRoot, stdio: 'ignore' })
     execFileSync('git', ['add', 'README.md'], { cwd: repoRoot, stdio: 'ignore' })
     execFileSync('git', ['commit', '-m', 'init'], { cwd: repoRoot, stdio: 'ignore' })

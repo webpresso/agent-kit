@@ -1,5 +1,6 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { execFileSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
+import { chmod, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -23,6 +24,23 @@ afterEach(async () => {
 
 const preCommitPath = (root: string): string => path.join(root, '.husky', 'pre-commit')
 
+function nestedGitEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env }
+  delete env.GIT_DIR
+  delete env.GIT_WORK_TREE
+  delete env.GIT_INDEX_FILE
+  delete env.GIT_PREFIX
+  return env
+}
+
+function git(
+  args: readonly string[],
+  cwd: string,
+  options: Parameters<typeof execFileSync>[2] = {},
+): Buffer {
+  return execFileSync('git', [...args], { ...options, cwd, env: nestedGitEnv() })
+}
+
 describe('scaffoldAuditHooks', () => {
   it('creates .husky/pre-commit with shebang and comment header when missing', async () => {
     const result = scaffoldAuditHooks({ repoRoot: tmpDir, options: {} })
@@ -32,6 +50,10 @@ describe('scaffoldAuditHooks', () => {
     const content = await readFile(preCommitPath(tmpDir), 'utf8')
     expect(content).toContain('#!/bin/sh')
     expect(content).toContain('# webpresso audit hooks (staged mode — fast)')
+    expect(content).toContain('wp format || exit 1')
+    expect(content).toContain('git add -- "$file"')
+    expect(content).toContain('md|mdx')
+    expect(content).toContain('|| exit 1')
     expect(content).toContain('wp audit no-dev-vars')
     expect(content).toContain('wp audit absolute-path-policy --root .')
     expect(content).toContain('wp audit secret-provider-quarantine')
@@ -44,11 +66,28 @@ describe('scaffoldAuditHooks', () => {
     expect(content).not.toContain('audit guardrails')
   })
 
-  it('is idempotent — returns identical when comment header already present', async () => {
+  it('is idempotent when the managed format and audit block is already present', async () => {
     await mkdir(path.join(tmpDir, '.husky'), { recursive: true })
     await writeFile(
       preCommitPath(tmpDir),
-      '#!/bin/sh\n# webpresso audit hooks (staged mode — fast)\nwp audit no-dev-vars\nwp audit absolute-path-policy --root .\nwp audit secret-provider-quarantine\n',
+      [
+        '#!/bin/sh',
+        '# webpresso audit hooks (staged mode — fast)',
+        'STAGED="$(git diff --cached --name-only --diff-filter=ACMR)"',
+        'FORMAT_FILES="$(printf \'%s\\n\' "$STAGED" | grep -E \'\\.(ts|tsx|js|jsx|cjs|mjs|json|ya?ml|sh|tmpl|md|mdx)$\' || true)"',
+        'if [ -n "$FORMAT_FILES" ]; then',
+        '  wp format || exit 1',
+        '  printf \'%s\\n\' "$FORMAT_FILES" | while IFS= read -r file; do',
+        '    [ -n "$file" ] || continue',
+        '    git add -- "$file" || exit 1',
+        '  done',
+        '  STAGED="$(git diff --cached --name-only --diff-filter=ACMR)"',
+        'fi',
+        'wp audit no-dev-vars',
+        'wp audit absolute-path-policy --root .',
+        'wp audit secret-provider-quarantine',
+        '',
+      ].join('\n'),
       'utf8',
     )
 
@@ -66,10 +105,75 @@ describe('scaffoldAuditHooks', () => {
     const content = await readFile(preCommitPath(tmpDir), 'utf8')
     expect(content).toContain('pnpm lint')
     expect(content).toContain('# webpresso audit hooks (staged mode — fast)')
+    expect(content).toContain('wp format || exit 1')
+    expect(content).toContain('git add -- "$file"')
+    expect(content).toContain('md|mdx')
+    expect(content).toContain('|| exit 1')
     expect(content).toContain('wp audit no-dev-vars')
     expect(content).toContain('wp audit absolute-path-policy --root .')
     expect(content).toContain('wp audit secret-provider-quarantine')
   })
+
+  it('upgrades legacy audit-only hooks to add format and restage behavior', async () => {
+    await mkdir(path.join(tmpDir, '.husky'), { recursive: true })
+    await writeFile(
+      preCommitPath(tmpDir),
+      '#!/bin/sh\n# webpresso audit hooks (staged mode — fast)\nwp audit no-dev-vars\nwp audit absolute-path-policy --root .\nwp audit secret-provider-quarantine\n',
+      'utf8',
+    )
+
+    const result = scaffoldAuditHooks({ repoRoot: tmpDir, options: {} })
+    expect(result.action).toBe('appended')
+
+    const content = await readFile(preCommitPath(tmpDir), 'utf8')
+    expect(content).toContain('wp format || exit 1')
+    expect(content).toContain('git add -- "$file"')
+    expect(content).toContain('md|mdx')
+    expect(content).toContain('|| exit 1')
+    expect((content.match(/wp audit no-dev-vars/g) ?? []).length).toStrictEqual(2)
+  })
+
+  it('formats staged files and re-stages formatter rewrites before commit', async () => {
+    git(['init'], tmpDir, { stdio: 'ignore' })
+    git(['config', 'user.email', 'test@example.com'], tmpDir)
+    git(['config', 'user.name', 'Test User'], tmpDir)
+
+    const fakeBin = path.join(tmpDir, 'fake-bin')
+    await mkdir(fakeBin, { recursive: true })
+    const fakeWp = path.join(fakeBin, 'wp')
+    await writeFile(
+      fakeWp,
+      [
+        '#!/bin/sh',
+        'if [ "$1" = "format" ]; then',
+        '  printf "%s\\n" "const formatted = true" > src/example.ts',
+        '  exit 0',
+        'fi',
+        'if [ "$1" = "audit" ]; then exit 0; fi',
+        'exit 1',
+        '',
+      ].join('\n'),
+      'utf8',
+    )
+    await chmod(fakeWp, 0o755)
+
+    await mkdir(path.join(tmpDir, 'src'), { recursive: true })
+    await writeFile(path.join(tmpDir, 'src', 'example.ts'), 'const unformatted=true\n', 'utf8')
+    git(['add', 'src/example.ts'], tmpDir)
+    scaffoldAuditHooks({ repoRoot: tmpDir, options: {} })
+
+    execFileSync('sh', [preCommitPath(tmpDir)], {
+      cwd: tmpDir,
+      env: { ...nestedGitEnv(), PATH: `${fakeBin}${path.delimiter}${process.env.PATH ?? ''}` },
+    })
+
+    const stagedDiff = git(['diff', '--cached', '--', 'src/example.ts'], tmpDir, {
+      encoding: 'utf8',
+    })
+    const unstagedDiff = git(['diff', '--', 'src/example.ts'], tmpDir, { encoding: 'utf8' })
+    expect(stagedDiff).toContain('const formatted = true')
+    expect(unstagedDiff).toBe('')
+  }, 30_000)
 
   it('is idempotent on a file that had the old dead verbs — does not add them again', async () => {
     // Existing hooks may still have old lines from previous wp setup runs

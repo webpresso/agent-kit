@@ -40,7 +40,11 @@ const codexMap: HooksMap = {
     {
       matcher: 'Bash|apply_patch',
       hooks: [
-        { type: 'command', command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard', timeout: 5 },
+        {
+          type: 'command',
+          command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
+          timeout: 5,
+        },
       ],
     },
   ],

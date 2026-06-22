@@ -46,7 +46,9 @@ export function runGain(options: RunGainOptions = {}): number {
 }
 
 export function registerGainCommand(cli: CAC): void {
-  cli.command('gain', 'Show Webpresso session gain and separate RTK gain totals').action(() => runGain())
+  cli
+    .command('gain', 'Show Webpresso session gain and separate RTK gain totals')
+    .action(() => runGain())
 }
 
 function readWebpressoGainStats(dbPath: string): SessionGainStats {

@@ -45,7 +45,7 @@ describe('wp preview', () => {
         { cwd: root, lane: 'preview_main' },
         {
           stdout: { write: (value: string) => (writes.push(value), true) },
-          createPlan: async () => ({ steps: [], lane: 'preview_main', mode: 'deploy' } as any),
+          createPlan: async () => ({ steps: [], lane: 'preview_main', mode: 'deploy' }) as any,
         },
       )
 

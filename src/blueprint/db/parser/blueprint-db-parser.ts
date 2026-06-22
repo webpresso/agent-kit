@@ -117,7 +117,9 @@ function readGitDirFromFile(dotGitPath: string): string | null {
     const match = gitFile.match(/^gitdir:\s*(.+)$/m)
     if (!match?.[1]) return null
     const gitDir = match[1].trim()
-    return path.isAbsolute(gitDir) ? path.normalize(gitDir) : path.resolve(path.dirname(dotGitPath), gitDir)
+    return path.isAbsolute(gitDir)
+      ? path.normalize(gitDir)
+      : path.resolve(path.dirname(dotGitPath), gitDir)
   } catch {
     return null
   }
@@ -127,9 +129,7 @@ function resolveCommonGitDir(gitDir: string): string {
   try {
     const commonDir = readFileSync(path.join(gitDir, 'commondir'), 'utf8').trim()
     if (commonDir.length === 0) return gitDir
-    return path.isAbsolute(commonDir)
-      ? path.normalize(commonDir)
-      : path.resolve(gitDir, commonDir)
+    return path.isAbsolute(commonDir) ? path.normalize(commonDir) : path.resolve(gitDir, commonDir)
   } catch {
     return gitDir
   }
@@ -198,7 +198,9 @@ function detectOrganization(filePath: string): string {
   let organization = 'unknown'
   const configRemote = readRemoteOriginFromGitConfig(gitRoot)
   if (configRemote.configRead) {
-    organization = configRemote.remote ? (organizationFromRemote(configRemote.remote) ?? 'unknown') : 'unknown'
+    organization = configRemote.remote
+      ? (organizationFromRemote(configRemote.remote) ?? 'unknown')
+      : 'unknown'
   } else {
     try {
       const remote = execSync('git config --get remote.origin.url', {

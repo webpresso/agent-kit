@@ -42,14 +42,20 @@ function walkFiles(root: string): string[] {
   return results.sort()
 }
 
-export function validateGstackStagingPolicy(repoRoot: string, policy = readGstackStagingPolicy(repoRoot)): void {
+export function validateGstackStagingPolicy(
+  repoRoot: string,
+  policy = readGstackStagingPolicy(repoRoot),
+): void {
   const sourceRoot = path.join(repoRoot, policy.sourceRoot)
   const noticePath = path.join(sourceRoot, policy.notice)
   const provenancePath = path.join(sourceRoot, policy.provenance)
   if (!existsSync(noticePath)) throw new Error(`missing gstack NOTICE: ${policy.notice}`)
-  if (!existsSync(provenancePath)) throw new Error(`missing gstack provenance: ${policy.provenance}`)
+  if (!existsSync(provenancePath))
+    throw new Error(`missing gstack provenance: ${policy.provenance}`)
 
-  const allowlisted = new Set(policy.skills.map((skill) => normalizePath(path.join(policy.sourceRoot, skill.source))))
+  const allowlisted = new Set(
+    policy.skills.map((skill) => normalizePath(path.join(policy.sourceRoot, skill.source))),
+  )
   let totalBytes = 0
 
   for (const filePath of walkFiles(sourceRoot)) {
@@ -101,5 +107,7 @@ export function stageGstackSkills(repoRoot = process.cwd()): StageGstackSkillsRe
 
 if (import.meta.main) {
   const result = stageGstackSkills(process.cwd())
-  console.log(`stage-gstack-skills: staged ${result.staged.length} skills (${result.totalBytes} bytes)`)
+  console.log(
+    `stage-gstack-skills: staged ${result.staged.length} skills (${result.totalBytes} bytes)`,
+  )
 }

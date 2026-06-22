@@ -290,11 +290,7 @@ function runResultsToPhaseResult(
   }
 }
 
-function runSingleToPhaseResult(
-  phase: string,
-  startMs: number,
-  result: RunResult,
-): PhaseResult {
+function runSingleToPhaseResult(phase: string, startMs: number, result: RunResult): PhaseResult {
   return {
     phase,
     status: result.ok ? 'PASS' : 'FAIL',

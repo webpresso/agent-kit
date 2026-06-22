@@ -1,8 +1,4 @@
-export type RedactionKind =
-  | 'api_key'
-  | 'auth_env_name'
-  | 'local_abs_path'
-  | 'private_transcript'
+export type RedactionKind = 'api_key' | 'auth_env_name' | 'local_abs_path' | 'private_transcript'
 
 export interface RedactionFinding {
   readonly artifactPath: string

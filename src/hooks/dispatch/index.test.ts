@@ -39,7 +39,12 @@ describe('dispatch', () => {
     const hooksMap: HooksMap = {
       SessionStart: [
         {
-          hooks: [{ type: 'command', command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing' }],
+          hooks: [
+            {
+              type: 'command',
+              command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
+            },
+          ],
         },
       ],
     }
@@ -59,7 +64,9 @@ describe('dispatch', () => {
       PreToolUse: [
         {
           matcher: 'Bash|Edit|Write',
-          hooks: [{ type: 'command', command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard' }],
+          hooks: [
+            { type: 'command', command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard' },
+          ],
         },
       ],
     }
@@ -93,7 +100,9 @@ describe('dispatch', () => {
     const hooksMap: HooksMap = {
       UserPromptSubmit: [
         {
-          hooks: [{ type: 'command', command: 'node /pkg/bin/wp hook guard-switch # wp-guard-switch' }],
+          hooks: [
+            { type: 'command', command: 'node /pkg/bin/wp hook guard-switch # wp-guard-switch' },
+          ],
         },
       ],
     }
@@ -127,15 +136,37 @@ describe('dispatch', () => {
   it('dispatches every managed continuity lifecycle hook command', async () => {
     const hooksMap: HooksMap = {
       SessionStart: [
-        { hooks: [{ type: 'command', command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing' }] },
+        {
+          hooks: [
+            {
+              type: 'command',
+              command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
+            },
+          ],
+        },
       ],
-      PostToolUse: [{ hooks: [{ type: 'command', command: 'node /pkg/bin/wp hook post-tool # wp-post-tool' }] }],
+      PostToolUse: [
+        { hooks: [{ type: 'command', command: 'node /pkg/bin/wp hook post-tool # wp-post-tool' }] },
+      ],
       UserPromptSubmit: [
-        { hooks: [{ type: 'command', command: 'node /pkg/bin/wp hook guard-switch # wp-guard-switch' }] },
+        {
+          hooks: [
+            { type: 'command', command: 'node /pkg/bin/wp hook guard-switch # wp-guard-switch' },
+          ],
+        },
       ],
-      Stop: [{ hooks: [{ type: 'command', command: 'node /pkg/bin/wp hook stop-qa # wp-stop-qa' }] }],
+      Stop: [
+        { hooks: [{ type: 'command', command: 'node /pkg/bin/wp hook stop-qa # wp-stop-qa' }] },
+      ],
       PreCompact: [
-        { hooks: [{ type: 'command', command: 'node /pkg/bin/wp hook precompact-snapshot # wp-precompact-snapshot' }] },
+        {
+          hooks: [
+            {
+              type: 'command',
+              command: 'node /pkg/bin/wp hook precompact-snapshot # wp-precompact-snapshot',
+            },
+          ],
+        },
       ],
     }
 

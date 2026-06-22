@@ -159,6 +159,56 @@ describe('auditCloudflareDeployContract', () => {
     )
   })
 
+  it('rejects manual production deploy workflows and release-preflight gates', async () => {
+    const root = makeRepo(
+      `
+      export const webpressoConfig = {
+        deploy: {
+          cloudflare: {
+            lanes: {
+              dev: { wranglerEnvName: 'dev' },
+              preview_main: { wranglerEnvName: 'preview-main' },
+              preview_pr: { wranglerEnvNamePattern: 'preview-pr-<n>' },
+              prd: { wranglerEnvName: 'production', deployedWorkerNameMode: 'top_level_name' },
+            },
+            production: { metadataPath: 'infra/release-metadata.production.json' },
+            targets: [],
+          },
+        },
+      }
+    `,
+      { writeMetadata: true },
+    )
+    mkdirSync(path.join(root, '.github/workflows'), { recursive: true })
+    writeFileSync(
+      path.join(root, '.github/workflows/deploy-production.yml'),
+      `name: Deploy production
+on:
+  workflow_dispatch:
+`,
+      'utf8',
+    )
+    writeFileSync(
+      path.join(root, '.github/workflows/release.yml'),
+      `name: Release
+on:
+  workflow_dispatch:
+jobs:
+  release-preflight:
+`,
+      'utf8',
+    )
+
+    const result = await auditCloudflareDeployContract(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations?.some((item) => item.file.endsWith('deploy-production.yml'))).toBe(
+      true,
+    )
+    expect(result.violations?.some((item) => item.message.includes('push to main only'))).toBe(true)
+    expect(result.violations?.some((item) => item.message.includes('release-preflight'))).toBe(true)
+  })
+
   it('fails when a custom-domain target omits routeSpec', async () => {
     const root = makeRepo(
       `

@@ -8,7 +8,10 @@ import { auditGstackSkillCollisions } from './collision-audit.js'
 
 const roots: string[] = []
 function tmpRoot(): string {
-  const root = path.join(tmpdir(), `gstack-collision-${Date.now()}-${Math.random().toString(16).slice(2)}`)
+  const root = path.join(
+    tmpdir(),
+    `gstack-collision-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+  )
   roots.push(root)
   return root
 }
@@ -27,9 +30,15 @@ describe('auditGstackSkillCollisions', () => {
     writeFileSync(path.join(claude, 'review', 'SKILL.md'), 'third-party review')
     writeFileSync(path.join(codex, 'plan-eng-review', 'SKILL.md'), 'third-party plan')
 
-    expect(auditGstackSkillCollisions({ claudeSkillsRoot: claude, codexSkillsRoot: codex })).toEqual([
+    expect(
+      auditGstackSkillCollisions({ claudeSkillsRoot: claude, codexSkillsRoot: codex }),
+    ).toEqual([
       { host: 'claude', name: 'review', path: path.join(claude, 'review', 'SKILL.md') },
-      { host: 'codex', name: 'plan-eng-review', path: path.join(codex, 'plan-eng-review', 'SKILL.md') },
+      {
+        host: 'codex',
+        name: 'plan-eng-review',
+        path: path.join(codex, 'plan-eng-review', 'SKILL.md'),
+      },
     ])
   })
 
@@ -43,6 +52,8 @@ describe('auditGstackSkillCollisions', () => {
       '<!-- Derived from MIT-licensed gstack workflow ideas; see packages/gstack/NOTICE.gstack.md. -->',
     )
 
-    expect(auditGstackSkillCollisions({ claudeSkillsRoot: claude, codexSkillsRoot: codex })).toEqual([])
+    expect(
+      auditGstackSkillCollisions({ claudeSkillsRoot: claude, codexSkillsRoot: codex }),
+    ).toEqual([])
   })
 })

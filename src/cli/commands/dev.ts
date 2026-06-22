@@ -71,7 +71,9 @@ export function runRuntimeHooksCommand(
   const statePath = runtimeHooksStatePath(repoRoot)
   const sourceRepo = isAgentKitSourceRepo(repoRoot)
   if (!sourceRepo) {
-    throw new Error('wp dev runtime-hooks is only available in the @webpresso/agent-kit source repo.')
+    throw new Error(
+      'wp dev runtime-hooks is only available in the @webpresso/agent-kit source repo.',
+    )
   }
 
   if (action === 'enable' || action === 'disable') {

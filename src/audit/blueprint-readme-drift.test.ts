@@ -103,8 +103,12 @@ describe('auditBlueprintReadmeDrift', () => {
     const updated = readFileSync(readmePath, 'utf8')
     expect(updated).toContain('| State | Description |')
     expect(updated).toContain('| `planned/` | committed-to specs, ready to pick up. |')
-    expect(updated).toContain('| `in-progress/` | actively being executed. At most 3 active blueprints per lane. |')
-    expect(updated).toContain('| `completed/` | execution finished and verified. Kept for reference. |')
+    expect(updated).toContain(
+      '| `in-progress/` | actively being executed. At most 3 active blueprints per lane. |',
+    )
+    expect(updated).toContain(
+      '| `completed/` | execution finished and verified. Kept for reference. |',
+    )
     expect(updated).not.toContain('| State | Count | Description |')
     expect(updated).toContain('Keep this prose.')
     expect(updated).toContain('## Authoring')

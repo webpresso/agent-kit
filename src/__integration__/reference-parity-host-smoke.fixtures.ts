@@ -51,9 +51,10 @@ function hookSubcommand(name: string): string {
 }
 
 function directFixtureCommand(name: string): string {
-  const fallback = WP_HOOK_SPECS.find((spec) => spec.bin === name)?.jsonOnly === true
-    ? "printf '%s\\n' '{}'"
-    : 'true'
+  const fallback =
+    WP_HOOK_SPECS.find((spec) => spec.bin === name)?.jsonOnly === true
+      ? "printf '%s\\n' '{}'"
+      : 'true'
   return `if [ -x /usr/bin/node ] && [ -f /pkg/bin/wp ]; then /usr/bin/node /pkg/bin/wp hook ${hookSubcommand(name)}; else ${fallback}; fi # ${name}`
 }
 
