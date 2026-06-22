@@ -21,6 +21,7 @@ Each subdirectory represents a lifecycle state:
 | `archived/` | superseded or abandoned. Not deleted — the record matters. |
 <!-- END: blueprint-index -->
 
+
 ## Authoring
 
 - Use `docs/templates/blueprint.md` as the starting point.

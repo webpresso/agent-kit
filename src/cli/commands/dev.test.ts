@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { getDevHelpText, runDevCommand } from './dev'
+import { getDevHelpText, runDevCommand, runRuntimeHooksCommand } from './dev'
 
 const originalEnv = { ...process.env }
 
@@ -32,8 +32,32 @@ describe('wp dev command', () => {
     expect(getDevHelpText()).toContain('--doctor')
     expect(getDevHelpText()).toContain('--clean')
     expect(getDevHelpText()).toContain('--restart')
+    expect(getDevHelpText()).toContain('wp dev runtime-hooks enable|disable|status')
     expect(getDevHelpText()).toContain(
       '--manifest -> WP_APP_MANIFEST -> ./app-manifest.yaml -> error',
+    )
+  })
+
+  it('toggles source-repo runtime hook dispatch state', () => {
+    tmpRoot = mkdtempSync(join(tmpdir(), 'dev-runtime-hooks-'))
+    const root = tmpRoot
+    mkdirSync(join(root, 'src'), { recursive: true })
+    mkdirSync(join(root, '.git'), { recursive: true })
+    writeFileSync(join(root, 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }))
+
+    expect(runRuntimeHooksCommand('status', { cwd: root }).enabled).toBe(false)
+    expect(runRuntimeHooksCommand('enable', { cwd: root }).enabled).toBe(true)
+    expect(runRuntimeHooksCommand('disable', { cwd: root }).enabled).toBe(false)
+  })
+
+  it('refuses runtime hook toggles outside the agent-kit source repo', () => {
+    tmpRoot = mkdtempSync(join(tmpdir(), 'dev-runtime-hooks-consumer-'))
+    const root = tmpRoot
+    mkdirSync(join(root, '.git'), { recursive: true })
+    writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'consumer' }))
+
+    expect(() => runRuntimeHooksCommand('status', { cwd: root })).toThrow(
+      /only available in the @webpresso\/agent-kit source repo/u,
     )
   })
 

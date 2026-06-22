@@ -24,6 +24,23 @@ afterEach(async () => {
 
 const preCommitPath = (root: string): string => path.join(root, '.husky', 'pre-commit')
 
+function nestedGitEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env }
+  delete env.GIT_DIR
+  delete env.GIT_WORK_TREE
+  delete env.GIT_INDEX_FILE
+  delete env.GIT_PREFIX
+  return env
+}
+
+function git(
+  args: readonly string[],
+  cwd: string,
+  options: Parameters<typeof execFileSync>[2] = {},
+): Buffer {
+  return execFileSync('git', [...args], { ...options, cwd, env: nestedGitEnv() })
+}
+
 describe('scaffoldAuditHooks', () => {
   it('creates .husky/pre-commit with shebang and comment header when missing', async () => {
     const result = scaffoldAuditHooks({ repoRoot: tmpDir, options: {} })
@@ -117,9 +134,9 @@ describe('scaffoldAuditHooks', () => {
   })
 
   it('formats staged files and re-stages formatter rewrites before commit', async () => {
-    execFileSync('git', ['init'], { cwd: tmpDir, stdio: 'ignore' })
-    execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: tmpDir })
-    execFileSync('git', ['config', 'user.name', 'Test User'], { cwd: tmpDir })
+    git(['init'], tmpDir, { stdio: 'ignore' })
+    git(['config', 'user.email', 'test@example.com'], tmpDir)
+    git(['config', 'user.name', 'Test User'], tmpDir)
 
     const fakeBin = path.join(tmpDir, 'fake-bin')
     await mkdir(fakeBin, { recursive: true })
@@ -142,22 +159,18 @@ describe('scaffoldAuditHooks', () => {
 
     await mkdir(path.join(tmpDir, 'src'), { recursive: true })
     await writeFile(path.join(tmpDir, 'src', 'example.ts'), 'const unformatted=true\n', 'utf8')
-    execFileSync('git', ['add', 'src/example.ts'], { cwd: tmpDir })
+    git(['add', 'src/example.ts'], tmpDir)
     scaffoldAuditHooks({ repoRoot: tmpDir, options: {} })
 
     execFileSync('sh', [preCommitPath(tmpDir)], {
       cwd: tmpDir,
-      env: { ...process.env, PATH: `${fakeBin}${path.delimiter}${process.env.PATH ?? ''}` },
+      env: { ...nestedGitEnv(), PATH: `${fakeBin}${path.delimiter}${process.env.PATH ?? ''}` },
     })
 
-    const stagedDiff = execFileSync('git', ['diff', '--cached', '--', 'src/example.ts'], {
-      cwd: tmpDir,
+    const stagedDiff = git(['diff', '--cached', '--', 'src/example.ts'], tmpDir, {
       encoding: 'utf8',
     })
-    const unstagedDiff = execFileSync('git', ['diff', '--', 'src/example.ts'], {
-      cwd: tmpDir,
-      encoding: 'utf8',
-    })
+    const unstagedDiff = git(['diff', '--', 'src/example.ts'], tmpDir, { encoding: 'utf8' })
     expect(stagedDiff).toContain('const formatted = true')
     expect(unstagedDiff).toBe('')
   }, 30_000)

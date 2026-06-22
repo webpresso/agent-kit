@@ -257,7 +257,7 @@ describe('wp init end-to-end', { timeout: 40_000 }, () => {
     }
   })
 
-  it('updates path-stable global Codex hooks from a non-git directory when OMX is requested', async () => {
+  it('does not synthesize global Codex OMX managed hook wrappers from a non-git directory', async () => {
     const badDir = join(tmpdir(), `wp-init-nogit-omx-${Date.now()}`)
     mkdirSync(badDir, { recursive: true })
     mkdirSync(join(repo, '.codex-home'), { recursive: true })
@@ -266,16 +266,7 @@ describe('wp init end-to-end', { timeout: 40_000 }, () => {
       JSON.stringify(
         {
           hooks: {
-            Stop: [
-              {
-                hooks: [
-                  {
-                    type: 'command',
-                    command: 'node "/tmp/oh-my-codex/dist/scripts/codex-native-hook.js"',
-                  },
-                ],
-              },
-            ],
+            Stop: [{ hooks: [{ type: 'command', command: 'node /tmp/external-hook.js' }] }],
           },
         },
         null,
@@ -288,10 +279,9 @@ describe('wp init end-to-end', { timeout: 40_000 }, () => {
 
       expect(code).toBe(0)
       const hooks = readFileSync(join(repo, '.codex-home', 'hooks.json'), 'utf8')
-      expect(hooks).toContain('managed-hooks/wp-global-codex-omx-json-hook.sh')
-      expect(
-        existsSync(join(repo, '.codex-home', 'managed-hooks', 'wp-global-codex-omx-json-hook.sh')),
-      ).toBe(true)
+      expect(hooks).toContain('node /tmp/external-hook.js')
+      expect(hooks).not.toContain('managed-hooks/')
+      expect(existsSync(join(repo, '.codex-home', 'managed-hooks'))).toBe(false)
       expect(existsSync(join(badDir, '.webpressorc.json'))).toBe(false)
       expect(existsSync(join(badDir, '.agent'))).toBe(false)
     } finally {

@@ -103,7 +103,7 @@ export function areRuntimeHooksEnabled({
 
   try {
     const state = JSON.parse(readFileSync(statePath, 'utf8'))
-    return state?.runtimeHooksEnabled === true
+    return state?.runtimeHooksEnabled === true || state?.runtimeHooks === true
   } catch {
     return false
   }
@@ -372,13 +372,14 @@ export function buildLaunchPlan({
   // from source, so a stale compiled `bin/runtime/<arch>/wp` never gates dev work. It is
   // the explicit counterpart to WP_FORCE_COMPILED_RUNTIME and wins when both are set.
   // Runtime-owned hook dispatch still goes through the native runtime when present so
-  // managed hook launchers exercise the same global `bin/wp hook ...` contract as installs.
+  // direct hook dispatch exercises the same global `bin/wp hook ...` contract as installs.
   // No-op without source (consumers).
   const runtimeHooksEnabled = areRuntimeHooksEnabled({ repoRoot })
   const isHookDispatch = binName === 'wp' && forwardedArgs[0] === 'hook'
   const mustUseRuntimeWhenAvailable = isHookDispatch && runtimeHooksEnabled
   if (
     sourceOverride &&
+    !forceCompiledRuntime &&
     hasSource &&
     !mustUseRuntimeWhenAvailable &&
     !shouldPreferBuiltDist(binName)
@@ -386,21 +387,23 @@ export function buildLaunchPlan({
     return buildSourceLaunchPlan(sourceEntrypoint, forwardedArgs)
   }
 
-  const runtimePlan =
-    preferSourceCheckoutPhase2 || (isHookDispatch && !runtimeHooksEnabled && !forceCompiledRuntime)
-      ? null
-      : buildRuntimeLaunchPlan({
-          binName,
-          repoRoot,
-          forwardedArgs,
-          platform,
-          arch,
-          runtimeManifest,
-          runtimeBinaryExists,
-          runtimeBinaryPath,
-          forceCompiledRuntime,
-          allowRuntimeFallback: !forceCompiledRuntime && hasSource && runtimeRequired,
-        })
+  const shouldSkipRuntimePlan =
+    (!forceCompiledRuntime && preferSourceCheckoutPhase2) ||
+    (isHookDispatch && !runtimeHooksEnabled && !forceCompiledRuntime)
+  const runtimePlan = shouldSkipRuntimePlan
+    ? null
+    : buildRuntimeLaunchPlan({
+        binName,
+        repoRoot,
+        forwardedArgs,
+        platform,
+        arch,
+        runtimeManifest,
+        runtimeBinaryExists,
+        runtimeBinaryPath,
+        forceCompiledRuntime,
+        allowRuntimeFallback: !forceCompiledRuntime && hasSource && runtimeRequired,
+      })
   if (runtimePlan) return runtimePlan
 
   const builtRelativePath = sourceToBuiltRelativePath(sourceRelativePath)
@@ -422,7 +425,7 @@ export function buildLaunchPlan({
             ? statSync(sourceEntrypoint).mtimeMs > statSync(builtEntrypoint).mtimeMs
             : false))
   const shouldPreferSource =
-    preferSourceCheckoutPhase2 ||
+    (!forceCompiledRuntime && preferSourceCheckoutPhase2) ||
     (!mustUseRuntimeWhenAvailable &&
       !shouldPreferBuiltDist(binName) &&
       hasSource &&

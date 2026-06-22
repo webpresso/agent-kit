@@ -17,7 +17,12 @@ describe('simulateHookDemo', () => {
         PreToolUse: [
           {
             matcher: 'Bash|Edit|Write',
-            hooks: [{ type: 'command', command: './node_modules/.bin/wp-pretool-guard' }],
+            hooks: [
+              {
+                type: 'command',
+                command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
+              },
+            ],
           },
         ],
       },
@@ -26,7 +31,7 @@ describe('simulateHookDemo', () => {
     expect(result.rows).toStrictEqual([
       {
         hook: 'wp-pretool-guard',
-        command: './node_modules/.bin/wp-pretool-guard',
+        command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
         matcher: 'Bash|Edit|Write',
         verdict: 'would-enforce',
         reason: 'guard-class hook would run for this simulated tool/event',
@@ -43,7 +48,12 @@ describe('simulateHookDemo', () => {
         PreToolUse: [
           {
             matcher: 'Bash|Edit|Write',
-            hooks: [{ type: 'command', command: './node_modules/.bin/wp-pretool-guard' }],
+            hooks: [
+              {
+                type: 'command',
+                command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
+              },
+            ],
           },
         ],
       },
@@ -62,7 +72,10 @@ describe('simulateHookDemo', () => {
         SessionStart: [
           {
             hooks: [
-              { type: 'command', command: '/repo/node_modules/.bin/wp-sessionstart-routing' },
+              {
+                type: 'command',
+                command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
+              },
             ],
           },
         ],
@@ -96,7 +109,11 @@ describe('demoCommand', () => {
           {
             matcher: 'Bash|Edit|Write',
             hooks: [
-              { type: 'command', command: './node_modules/.bin/wp-pretool-guard', timeout: 5 },
+              {
+                type: 'command',
+                command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
+                timeout: 5,
+              },
             ],
           },
         ],

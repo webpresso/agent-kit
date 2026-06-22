@@ -114,6 +114,6 @@ hooks:
         `[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/wp" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/wp" audit agents || true # from-skill: verify`,
       ),
     ).toBe(true)
-    expect(isTaggedSkillHook('./node_modules/.bin/wp-stop-qa')).toBe(false)
+    expect(isTaggedSkillHook('node /pkg/bin/wp hook stop-qa # wp-stop-qa')).toBe(false)
   })
 })

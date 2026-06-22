@@ -3,7 +3,6 @@ import { dirname } from 'node:path'
 import type { WriteStream } from 'node:tty'
 
 import { getSurfacePath, NotInGitRepoError } from '#paths/state-root.js'
-import type { HookEventName } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
 
 export const HOOK_FALLBACK_ACTIONS = ['fail-closed-deny', 'emit-empty-json', 'fail-open'] as const
 
@@ -13,7 +12,7 @@ export type HookErrorEntry = {
   readonly timestamp: string
   readonly binName: string
   readonly hookName: string
-  readonly event: HookEventName
+  readonly event: string
   readonly phase: string
   readonly fallback: HookFallbackAction
   readonly status?: number

@@ -39,7 +39,12 @@ describe('dispatch', () => {
     const hooksMap: HooksMap = {
       SessionStart: [
         {
-          hooks: [{ type: 'command', command: './node_modules/.bin/wp-sessionstart-routing' }],
+          hooks: [
+            {
+              type: 'command',
+              command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
+            },
+          ],
         },
       ],
     }
@@ -48,7 +53,7 @@ describe('dispatch', () => {
     expect(result.vendor).toStrictEqual('claude')
     expect(result.hooks).toStrictEqual([
       {
-        command: './node_modules/.bin/wp-sessionstart-routing',
+        command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
         matcher: undefined,
       },
     ])
@@ -59,14 +64,16 @@ describe('dispatch', () => {
       PreToolUse: [
         {
           matcher: 'Bash|Edit|Write',
-          hooks: [{ type: 'command', command: './node_modules/.bin/wp-pretool-guard' }],
+          hooks: [
+            { type: 'command', command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard' },
+          ],
         },
       ],
     }
     const result = await dispatch(hooksMap, { ...BASE_OPTIONS, event: 'PreToolUse' })
     expect(result.hooks).toStrictEqual([
       {
-        command: './node_modules/.bin/wp-pretool-guard',
+        command: 'node /pkg/bin/wp hook pretool-guard # wp-pretool-guard',
         matcher: 'Bash|Edit|Write',
       },
     ])
@@ -76,7 +83,7 @@ describe('dispatch', () => {
     const hooksMap: HooksMap = {
       Stop: [
         {
-          hooks: [{ type: 'command', command: './node_modules/.bin/wp-stop-qa' }],
+          hooks: [{ type: 'command', command: 'node /pkg/bin/wp hook stop-qa # wp-stop-qa' }],
         },
         {
           hooks: [{ type: 'command', command: 'echo extra-stop-hook' }],
@@ -85,7 +92,7 @@ describe('dispatch', () => {
     }
     const result = await dispatch(hooksMap, { ...BASE_OPTIONS, event: 'Stop' })
     expect(result.hooks).toHaveLength(2)
-    expect(result.hooks[0]?.command).toStrictEqual('./node_modules/.bin/wp-stop-qa')
+    expect(result.hooks[0]?.command).toStrictEqual('node /pkg/bin/wp hook stop-qa # wp-stop-qa')
     expect(result.hooks[1]?.command).toStrictEqual('echo extra-stop-hook')
   })
 
@@ -93,13 +100,15 @@ describe('dispatch', () => {
     const hooksMap: HooksMap = {
       UserPromptSubmit: [
         {
-          hooks: [{ type: 'command', command: './node_modules/.bin/wp-guard-switch' }],
+          hooks: [
+            { type: 'command', command: 'node /pkg/bin/wp hook guard-switch # wp-guard-switch' },
+          ],
         },
       ],
     }
     const result = await dispatch(hooksMap, { ...BASE_OPTIONS, event: 'UserPromptSubmit' })
     expect(result.hooks[0]).toStrictEqual({
-      command: './node_modules/.bin/wp-guard-switch',
+      command: 'node /pkg/bin/wp hook guard-switch # wp-guard-switch',
       matcher: undefined,
     })
   })
@@ -127,15 +136,37 @@ describe('dispatch', () => {
   it('dispatches every managed continuity lifecycle hook command', async () => {
     const hooksMap: HooksMap = {
       SessionStart: [
-        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-sessionstart-routing' }] },
+        {
+          hooks: [
+            {
+              type: 'command',
+              command: 'node /pkg/bin/wp hook sessionstart-routing # wp-sessionstart-routing',
+            },
+          ],
+        },
       ],
-      PostToolUse: [{ hooks: [{ type: 'command', command: './node_modules/.bin/wp-post-tool' }] }],
+      PostToolUse: [
+        { hooks: [{ type: 'command', command: 'node /pkg/bin/wp hook post-tool # wp-post-tool' }] },
+      ],
       UserPromptSubmit: [
-        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-guard-switch' }] },
+        {
+          hooks: [
+            { type: 'command', command: 'node /pkg/bin/wp hook guard-switch # wp-guard-switch' },
+          ],
+        },
       ],
-      Stop: [{ hooks: [{ type: 'command', command: './node_modules/.bin/wp-stop-qa' }] }],
+      Stop: [
+        { hooks: [{ type: 'command', command: 'node /pkg/bin/wp hook stop-qa # wp-stop-qa' }] },
+      ],
       PreCompact: [
-        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-precompact-snapshot' }] },
+        {
+          hooks: [
+            {
+              type: 'command',
+              command: 'node /pkg/bin/wp hook precompact-snapshot # wp-precompact-snapshot',
+            },
+          ],
+        },
       ],
     }
 

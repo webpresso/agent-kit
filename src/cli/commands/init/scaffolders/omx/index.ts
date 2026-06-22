@@ -10,26 +10,12 @@
  * `cli/commands/blueprint/execution.ts`).
  */
 import { spawnSync } from 'node:child_process'
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  rmdirSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmdirSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve, sep } from 'node:path'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
 import { resolveBundledVpCommand } from '#cli/auto-update/detect-pm.js'
-import {
-  defaultCodexHooksPathFromConfig,
-  normalizeGlobalCodexHooksFile,
-  resolveInstalledOmxHookScriptPath,
-  resolveBinaryOnPath,
-} from '#cli/commands/init/scaffolders/agent-hooks/codex-global-normalize'
 import {
   appendGlobalCapableVpArgs,
   type GlobalCapableVpCommandInput,
@@ -53,7 +39,6 @@ export type EnsureOmxResult =
       kind: 'omx-ok'
       installed: boolean
       removedProjectFiles: string[]
-      codexGlobalHooks: { readonly repaired: boolean; readonly targetPath: string }
     }
   | { kind: 'omx-skipped-dry-run' }
   | { kind: 'omx-not-found'; hint: string }
@@ -70,9 +55,6 @@ const NOT_FOUND_HINT =
 const PROBE_TIMEOUT_MS = 3000
 type OmxSetupScope = 'user' | 'project'
 type Spawn = typeof spawnSync
-type HookEntry = { type?: string; command?: string; timeout?: number }
-type HookGroup = { matcher?: string; hooks?: HookEntry[] }
-type HooksMap = Record<string, HookGroup[]>
 
 function shouldSkipManagedToolRefresh(env: NodeJS.ProcessEnv = process.env): boolean {
   return env.WP_SKIP_UPDATE_CHECK === '1'
@@ -82,99 +64,6 @@ function defaultCodexConfigPath(): string {
   const codexHome = process.env.CODEX_HOME || join(process.env.HOME || homedir(), '.codex')
   return join(codexHome, 'config.toml')
 }
-
-const OMX_PLUGIN_HOOK_COMMAND_SUFFIX = '${PLUGIN_ROOT}/hooks/codex-native-hook.mjs'
-
-function absolutizeOmxPluginHookCommand(command: string, nodeBinary: string): string {
-  const trimmed = command.trim()
-  if (!trimmed.includes(OMX_PLUGIN_HOOK_COMMAND_SUFFIX)) return command
-  const match = /^node\s+(.+)$/u.exec(trimmed)
-  if (match === null) return command
-  return `${JSON.stringify(nodeBinary)} ${match[1]}`
-}
-
-function rewriteOmxPluginHooksJson(raw: string, nodeBinary: string): string {
-  const parsed = JSON.parse(raw) as { hooks?: HooksMap }
-  if (!parsed.hooks || typeof parsed.hooks !== 'object') return raw
-
-  let changed = false
-  const nextHooks: HooksMap = {}
-  for (const [event, groups] of Object.entries(parsed.hooks)) {
-    nextHooks[event] = (groups ?? []).map((group) => ({
-      ...group,
-      hooks: (group.hooks ?? []).map((hook) => {
-        if (typeof hook.command !== 'string') return hook
-        const nextCommand = absolutizeOmxPluginHookCommand(hook.command, nodeBinary)
-        if (nextCommand !== hook.command) changed = true
-        return nextCommand === hook.command ? hook : { ...hook, command: nextCommand }
-      }),
-    }))
-  }
-
-  if (!changed) return raw
-  return `${JSON.stringify({ ...parsed, hooks: nextHooks }, null, 2)}\n`
-}
-
-function walkDirectories(root: string): string[] {
-  if (!existsSync(root)) return []
-  const stack = [root]
-  const directories: string[] = []
-
-  while (stack.length > 0) {
-    const current = stack.pop()!
-    directories.push(current)
-    let entries: Array<{ isDirectory(): boolean; name: string }>
-    try {
-      entries = readdirSync(current, { withFileTypes: true }) as Array<{
-        isDirectory(): boolean
-        name: string
-      }>
-    } catch {
-      continue
-    }
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue
-      stack.push(join(current, entry.name))
-    }
-  }
-
-  return directories
-}
-
-export function repairInstalledOmxPluginHooks(codexHome: string, nodeBinary: string): string[] {
-  const cacheRoot = join(codexHome, 'plugins', 'cache')
-  const repairedPaths: string[] = []
-
-  for (const directory of walkDirectories(cacheRoot)) {
-    const hooksDir = join(directory, 'hooks')
-    const hooksPath = join(hooksDir, 'hooks.json')
-    const markerPath = join(hooksDir, 'omx-command.json')
-    const scriptPath = join(hooksDir, 'codex-native-hook.mjs')
-    if (!existsSync(hooksPath) || !existsSync(markerPath) || !existsSync(scriptPath)) continue
-
-    let existing: string
-    try {
-      existing = readFileSync(hooksPath, 'utf8')
-    } catch {
-      continue
-    }
-
-    let next: string
-    try {
-      next = rewriteOmxPluginHooksJson(existing, nodeBinary)
-    } catch {
-      continue
-    }
-
-    if (next === existing) continue
-    mkdirSync(dirname(hooksPath), { recursive: true })
-    writeFileSync(hooksPath, next, 'utf8')
-    repairedPaths.push(hooksPath)
-  }
-
-  return repairedPaths
-}
-
 /** Matches any `[hooks.state."<key>"]` TOML section header written by OMX. */
 const HOOK_STATE_SECTION_RE = /^\[hooks\.state\.".+"\]$/
 
@@ -421,15 +310,6 @@ export function ensureOmx(input: EnsureOmxInput): EnsureOmxResult {
   }
 
   migrateDeprecatedCodexHooksFeatureFlagInConfig(configPath)
-  const nodeBinary = resolveBinaryOnPath('node')
-  if (nodeBinary !== null) {
-    repairInstalledOmxPluginHooks(dirname(configPath), nodeBinary)
-  }
-  const globalHooksResult = normalizeGlobalCodexHooksFile(
-    defaultCodexHooksPathFromConfig(configPath),
-    { nodeBinary, omxScriptPath: resolveInstalledOmxHookScriptPath() },
-    input.options,
-  )
   const removedProjectFiles =
     scope === 'user' && previousScope === 'project'
       ? removeTrackedProjectScopedOmxFiles(input.repoRoot, spawn)
@@ -439,10 +319,5 @@ export function ensureOmx(input: EnsureOmxInput): EnsureOmxResult {
     kind: 'omx-ok',
     installed,
     removedProjectFiles,
-    codexGlobalHooks: {
-      repaired:
-        globalHooksResult.action === 'overwritten' || globalHooksResult.action === 'created',
-      targetPath: globalHooksResult.targetPath,
-    },
   }
 }

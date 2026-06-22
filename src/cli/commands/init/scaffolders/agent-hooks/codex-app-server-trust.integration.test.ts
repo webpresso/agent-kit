@@ -6,7 +6,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   scaffoldAgentHooks,
-  trustCodexPresetHooksForUser,
   trustCodexWebpressoHooksForRepo,
   type CodexTrustSyncWarning,
 } from './index.js'
@@ -78,7 +77,7 @@ describe('codex app-server trust integration', () => {
   it('reapplies trust sync through the same app-server-first path after later setup steps', async () => {
     const repoRoot = tempRepo()
     const hooksPath = join(repoRoot, '.codex', 'hooks.json')
-    const managedLauncher = join(repoRoot, '.codex', 'managed-hooks', 'wp-pretool-guard.sh')
+    const directHookCommand = `node /pkg/bin/wp hook pretool-guard # wp-pretool-guard`
     const batchWrites: unknown[] = []
     let listCall = 0
 
@@ -113,7 +112,7 @@ describe('codex app-server trust integration', () => {
                     eventName: 'pre_tool_use',
                     handlerType: 'command',
                     matcher: 'Bash',
-                    command: managedLauncher,
+                    command: directHookCommand,
                     timeoutSec: 5,
                     statusMessage: null,
                     sourcePath: hooksPath,
@@ -194,39 +193,5 @@ describe('codex app-server trust integration', () => {
     expect(warnings).toStrictEqual([])
     const infoLines = warnLines.filter((line) => line.includes('codex not detected on PATH'))
     expect(infoLines).toHaveLength(1)
-  })
-
-  it('trustCodexPresetHooksForUser also skips (no spawn) when codex is absent', async () => {
-    const repoRoot = tempRepo()
-    // A real $CODEX_HOME/hooks.json exists, so the only reason to skip is the
-    // codex-unavailable gate (not the missing-hooks early-return) — proves the gate.
-    const codexHome = mkdtempSync(join(tmpdir(), 'wp-codex-home-'))
-    repos.push(codexHome)
-    writeFileSync(join(codexHome, 'hooks.json'), '{}\n')
-    const previousCodexHome = process.env.CODEX_HOME
-    process.env.CODEX_HOME = codexHome
-
-    let factoryCalls = 0
-    const warnings: CodexTrustSyncWarning[] = []
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    try {
-      await trustCodexPresetHooksForUser({
-        repoRoot,
-        options: {},
-        codexAvailable: () => false,
-        createCodexAppServer: async () => {
-          factoryCalls += 1
-          throw new Error('codex app-server must not be started when codex is absent')
-        },
-        onCodexTrustSyncWarning: (warning) => warnings.push(warning),
-      })
-    } finally {
-      warnSpy.mockRestore()
-      if (previousCodexHome === undefined) delete process.env.CODEX_HOME
-      else process.env.CODEX_HOME = previousCodexHome
-    }
-
-    expect(factoryCalls).toBe(0)
-    expect(warnings).toStrictEqual([])
   })
 })
