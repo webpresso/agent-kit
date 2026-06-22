@@ -1,5 +1,5 @@
-import { execSync } from 'node:child_process'
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
@@ -33,9 +33,17 @@ import {
 import { _clearCacheForTests } from '#paths/state-root.js'
 
 function initGitRepo(dir: string): void {
-  execSync('git init -q', { cwd: dir })
-  execSync('git config user.email test@test.local', { cwd: dir })
-  execSync('git config user.name test', { cwd: dir })
+  execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: dir })
+}
+
+function createSyntheticLinkedWorktree(repo: string, wtDir: string, name: string): void {
+  const worktreeGitDir = path.join(repo, '.git', 'worktrees', name)
+  mkdirSync(worktreeGitDir, { recursive: true })
+  mkdirSync(wtDir, { recursive: true })
+  writeFileSync(path.join(wtDir, '.git'), `gitdir: ${worktreeGitDir}\n`)
+  writeFileSync(path.join(worktreeGitDir, 'commondir'), '../..\n')
+  writeFileSync(path.join(worktreeGitDir, 'gitdir'), `${path.join(wtDir, '.git')}\n`)
+  writeFileSync(path.join(worktreeGitDir, 'HEAD'), `ref: refs/heads/${name}\n`)
 }
 
 let stateRootDir: string
@@ -86,20 +94,13 @@ describe('resolveBlueprintProjectionDbPath', () => {
     const wtDir = path.join(wtParent, 'alt')
     try {
       initGitRepo(repo)
-      writeFileSync(path.join(repo, 'README.md'), 'hi\n')
-      execSync('git add . && git commit -q -m init', { cwd: repo })
-      execSync(`git worktree add -q -b alt "${wtDir}"`, { cwd: repo })
+      createSyntheticLinkedWorktree(repo, wtDir, 'alt')
 
       const dbMain = resolveBlueprintProjectionDbPath(repo)
       _clearCacheForTests()
       const dbAlt = resolveBlueprintProjectionDbPath(wtDir)
       expect(dbMain).toStrictEqual(dbAlt)
     } finally {
-      try {
-        execSync(`git worktree remove --force "${wtDir}"`, { cwd: repo })
-      } catch {
-        /* best effort */
-      }
       rmSync(wtParent, { recursive: true, force: true })
       rmSync(repo, { recursive: true, force: true })
     }
@@ -138,20 +139,13 @@ describe('lock-scope policy', () => {
     const wtDir = path.join(wtParent, 'alt2')
     try {
       initGitRepo(repo)
-      writeFileSync(path.join(repo, 'README.md'), 'hi\n')
-      execSync('git add . && git commit -q -m init', { cwd: repo })
-      execSync(`git worktree add -q -b alt2 "${wtDir}"`, { cwd: repo })
+      createSyntheticLinkedWorktree(repo, wtDir, 'alt2')
 
       const mdMain = resolveBlueprintMarkdownLockPath(repo)
       _clearCacheForTests()
       const mdAlt = resolveBlueprintMarkdownLockPath(wtDir)
       expect(mdMain).toStrictEqual(mdAlt)
     } finally {
-      try {
-        execSync(`git worktree remove --force "${wtDir}"`, { cwd: repo })
-      } catch {
-        /* best effort */
-      }
       rmSync(wtParent, { recursive: true, force: true })
       rmSync(repo, { recursive: true, force: true })
     }
@@ -189,9 +183,7 @@ describe('write-lock acquisition (no silent escape)', () => {
     const wtDir = path.join(wtParent, 'mdlock')
     try {
       initGitRepo(repo)
-      writeFileSync(path.join(repo, 'README.md'), 'hi\n')
-      execSync('git add . && git commit -q -m init', { cwd: repo })
-      execSync(`git worktree add -q -b mdlock "${wtDir}"`, { cwd: repo })
+      createSyntheticLinkedWorktree(repo, wtDir, 'mdlock')
 
       const order: string[] = []
       const first = withMarkdownWriteLock(repo, async () => {
@@ -207,11 +199,6 @@ describe('write-lock acquisition (no silent escape)', () => {
       await Promise.all([first, second])
       expect(order).toStrictEqual(['main-start', 'main-end', 'alt-start', 'alt-end'])
     } finally {
-      try {
-        execSync(`git worktree remove --force "${wtDir}"`, { cwd: repo })
-      } catch {
-        /* best effort */
-      }
       rmSync(wtParent, { recursive: true, force: true })
       rmSync(repo, { recursive: true, force: true })
     }

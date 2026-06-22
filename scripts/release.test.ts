@@ -11,7 +11,7 @@
  * whose `build` script is a no-op (`node -e "process.exit(0)"`). The script
  * therefore exercises every git step end-to-end without depending on tshy.
  */
-import { execSync, spawnSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -20,9 +20,19 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 const SCRIPT_PATH = resolve(__dirname, 'release.ts')
 const FAST_GIT_ENV = {
   ...process.env,
-  GIT_CONFIG_COUNT: '1',
+  GIT_AUTHOR_EMAIL: 'test@example.com',
+  GIT_AUTHOR_NAME: 'Release Test',
+  GIT_COMMITTER_EMAIL: 'test@example.com',
+  GIT_COMMITTER_NAME: 'Release Test',
+  GIT_CONFIG_COUNT: '3',
+  GIT_CONFIG_GLOBAL: '/dev/null',
   GIT_CONFIG_KEY_0: 'core.fsync',
+  GIT_CONFIG_KEY_1: 'commit.gpgsign',
+  GIT_CONFIG_KEY_2: 'tag.gpgsign',
+  GIT_CONFIG_NOSYSTEM: '1',
   GIT_CONFIG_VALUE_0: 'none',
+  GIT_CONFIG_VALUE_1: 'false',
+  GIT_CONFIG_VALUE_2: 'false',
 }
 
 interface Fixture {
@@ -34,8 +44,8 @@ interface Fixture {
 
 const fixtureForCwd = new Map<string, Fixture>()
 
-function git(cwd: string, args: string): string {
-  return execSync(`git ${args}`, { cwd, encoding: 'utf8', env: FAST_GIT_ENV }).toString()
+function git(cwd: string, args: readonly string[]): string {
+  return execFileSync('git', [...args], { cwd, encoding: 'utf8', env: FAST_GIT_ENV }).toString()
 }
 
 function runScript(
@@ -69,11 +79,7 @@ function createFixture({ withRemote = false }: { withRemote?: boolean } = {}): F
 
   // Initialize repo with a default branch named `main` so the assertion below
   // is deterministic across user-level git config differences.
-  git(repoDir, 'init -b main')
-  git(repoDir, 'config user.email "test@example.com"')
-  git(repoDir, 'config user.name "Release Test"')
-  git(repoDir, 'config commit.gpgsign false')
-  git(repoDir, 'config tag.gpgsign false')
+  git(repoDir, ['init', '-q', '-b', 'main'])
 
   // Stub package.json with a no-op build so the script's pnpm build call
   // succeeds without actually invoking tshy. The script invokes `pnpm build`,
@@ -98,15 +104,15 @@ function createFixture({ withRemote = false }: { withRemote?: boolean } = {}): F
     ['#!/bin/sh', "grep -q 'process.exit(1)' package.json && exit 1", 'exit 0', ''].join('\n'),
     'utf8',
   )
-  execSync(`chmod +x "${join(binDir, 'pnpm')}"`)
+  execFileSync('chmod', ['+x', join(binDir, 'pnpm')])
 
-  git(repoDir, 'add package.json .gitignore')
-  git(repoDir, 'commit -m "initial commit"')
+  git(repoDir, ['add', 'package.json', '.gitignore'])
+  git(repoDir, ['commit', '-q', '-m', 'initial commit'])
 
   if (withRemote) {
     mkdirSync(remoteDir, { recursive: true })
-    git(remoteDir, 'init --bare -b main')
-    git(repoDir, `remote add origin "${remoteDir}"`)
+    git(remoteDir, ['init', '--bare', '-q', '-b', 'main'])
+    git(repoDir, ['remote', 'add', 'origin', remoteDir])
   }
 
   const fixture = {
@@ -148,16 +154,16 @@ describe('scripts/release.ts', () => {
       expect(result.stdout).toContain('[dry-run]')
       expect(result.stdout).toContain('v9.9.9')
       // Tag must exist locally.
-      const tags = git(f.repoDir, 'tag -l').trim().split('\n').filter(Boolean)
+      const tags = git(f.repoDir, ['tag', '-l']).trim().split('\n').filter(Boolean)
       expect(tags).toContain('v9.9.9')
       // Release branch must exist locally.
-      const branches = git(f.repoDir, 'branch --list')
+      const branches = git(f.repoDir, ['branch', '--list'])
         .split('\n')
         .map((l) => l.replace(/^[*+ ]+/, '').trim())
         .filter(Boolean)
       expect(branches).toContain('release/v9.9.9')
       // Original branch restored.
-      const current = git(f.repoDir, 'rev-parse --abbrev-ref HEAD').trim()
+      const current = git(f.repoDir, ['rev-parse', '--abbrev-ref', 'HEAD']).trim()
       expect(current).toBe('main')
     })
 
@@ -179,8 +185,8 @@ describe('scripts/release.ts', () => {
         scripts: { build: 'node -e "process.exit(1)"' },
       }
       writeFileSync(join(f.repoDir, 'package.json'), JSON.stringify(pkg, null, 2) + '\n')
-      git(f.repoDir, 'add package.json')
-      git(f.repoDir, 'commit -m "make build fail"')
+      git(f.repoDir, ['add', 'package.json'])
+      git(f.repoDir, ['commit', '-q', '-m', 'make build fail'])
 
       const result = runScript(f.repoDir, ['--dry-run'])
       expect(result.status).not.toBe(0)
@@ -199,28 +205,28 @@ describe('scripts/release.ts', () => {
 
       expect(result.status, `script failed: ${result.stderr}`).toBe(0)
       // Tag landed on remote.
-      const remoteTags = git(f.remoteDir, 'tag -l').trim().split('\n').filter(Boolean)
+      const remoteTags = git(f.remoteDir, ['tag', '-l']).trim().split('\n').filter(Boolean)
       expect(remoteTags).toContain('v9.9.9')
       // Release branch landed on remote.
-      const remoteBranches = git(f.remoteDir, 'branch --list')
+      const remoteBranches = git(f.remoteDir, ['branch', '--list'])
         .split('\n')
         .map((l) => l.replace(/^[*+ ]+/, '').trim())
         .filter(Boolean)
       expect(remoteBranches).toContain('release/v9.9.9')
       // Original branch restored.
-      const current = git(f.repoDir, 'rev-parse --abbrev-ref HEAD').trim()
+      const current = git(f.repoDir, ['rev-parse', '--abbrev-ref', 'HEAD']).trim()
       expect(current).toBe('main')
     })
 
     it('tags the mainline commit and keeps the dist commit on the compatibility branch', () => {
       const f = fixture!
-      const mainBefore = git(f.repoDir, 'rev-parse HEAD').trim()
+      const mainBefore = git(f.repoDir, ['rev-parse', 'HEAD']).trim()
       const result = runScript(f.repoDir, ['--dry-run'])
 
       expect(result.status, `script failed: ${result.stderr}`).toBe(0)
 
-      const tagCommit = git(f.repoDir, 'rev-parse v9.9.9^{commit}').trim()
-      const branchCommit = git(f.repoDir, 'rev-parse release/v9.9.9').trim()
+      const tagCommit = git(f.repoDir, ['rev-parse', 'v9.9.9^{commit}']).trim()
+      const branchCommit = git(f.repoDir, ['rev-parse', 'release/v9.9.9']).trim()
 
       expect(tagCommit).toBe(mainBefore)
       expect(branchCommit).not.toBe(mainBefore)
