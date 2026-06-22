@@ -169,12 +169,27 @@ describe('scripts/release.ts', () => {
       expect(current).toBe('main')
     })
 
-    it('aborts when the working tree is dirty', () => {
+    it('aborts when the working tree is dirty (tracked change)', () => {
       const f = fixture!
       writeFileSync(join(f.repoDir, 'package.json'), '{"name":"dirty"}\n')
       const result = runScript(f.repoDir, ['--dry-run'])
       expect(result.status).not.toBe(0)
       expect(result.stderr + result.stdout).toMatch(/working tree.*not clean|dirty/i)
+    })
+
+    it('proceeds when only untracked files are present', () => {
+      const f = fixture!
+      // Use a filename not matched by .gitignore (which only ignores dist/).
+      // Pre-assert it appears in porcelain output so the test is not vacuous:
+      // an ignored file is absent from porcelain and the test would pass even
+      // against the git-status--porcelain version, proving nothing.
+      const untrackedFile = join(f.repoDir, 'UNTRACKED_PROOF.txt')
+      writeFileSync(untrackedFile, 'untracked\n')
+      const porcelain = git(f.repoDir, ['status', '--porcelain'])
+      expect(porcelain).toContain('UNTRACKED_PROOF.txt')
+
+      const result = runScript(f.repoDir, ['--dry-run'])
+      expect(result.status, `release should proceed with untracked file: ${result.stderr}`).toBe(0)
     })
 
     it('aborts when pnpm build fails', () => {

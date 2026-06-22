@@ -94,8 +94,9 @@ function capture(cmd, args) {
 }
 
 function assertCleanWorkingTree() {
-  const status = capture('git', ['status', '--porcelain'])
-  if (status.length > 0) {
+  const unstaged = spawnSync('git', ['diff', '--quiet'], { cwd: REPO_ROOT })
+  const staged = spawnSync('git', ['diff', '--cached', '--quiet'], { cwd: REPO_ROOT })
+  if (unstaged.status !== 0 || staged.status !== 0) {
     fail(
       'working tree is not clean. Commit, stash, or discard your changes before releasing.\n' +
         '       (run `git status` to see what is dirty.)',

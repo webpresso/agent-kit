@@ -1,6 +1,7 @@
 import * as fs from 'node:fs'
+import { renameSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { writeFileAtomic, writeJsonFile, writeJsonFileAtomic } from './write-json-file.js'
@@ -56,6 +57,26 @@ describe('writeFileAtomic', () => {
     expect(fs.readdirSync(dir).filter((name) => name.includes('.tmp-'))).toStrictEqual([])
   })
 
+  it('fsyncs the parent directory after a successful rename, in order', () => {
+    const dir = tmp()
+    const path = join(dir, 'data.md')
+    const calls: string[] = []
+
+    _setAtomicFileOpsForTests({
+      renameSync: (src, dest) => {
+        calls.push('rename')
+        renameSync(src, dest)
+      },
+      fsyncDir: (d) => {
+        calls.push(`fsyncDir:${d}`)
+      },
+    })
+
+    writeFileAtomic(path, '# hello\n', 'utf8')
+
+    expect(calls).toEqual(['rename', `fsyncDir:${dirname(path)}`])
+  })
+
   it('cleans up the temp file when rename fails', () => {
     const dir = tmp()
     const path = join(dir, 'data.md')
@@ -72,6 +93,7 @@ describe('writeFileAtomic', () => {
   it('falls back to copy and unlink on cross-device rename errors', () => {
     const dir = tmp()
     const path = join(dir, 'data.md')
+    const fsyncDirCalls: string[] = []
     vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
     _setAtomicFileOpsForTests({
       renameSync: () => {
@@ -79,9 +101,13 @@ describe('writeFileAtomic', () => {
         ;(error as Error & { code?: string }).code = 'EXDEV'
         throw error
       },
+      fsyncDir: (d) => {
+        fsyncDirCalls.push(d)
+      },
     })
     writeFileAtomic(path, '# hello\n', 'utf8')
     expect(fs.readFileSync(path, 'utf8')).toBe('# hello\n')
     expect(fs.readdirSync(dir).filter((name) => name.includes('.tmp-'))).toStrictEqual([])
+    expect(fsyncDirCalls).toEqual([dirname(path)])
   })
 })

@@ -63,6 +63,30 @@ describe('auditAtomicStateWrites', () => {
     ])
   })
 
+  it('does not flag writeFileSync in a line comment', () => {
+    const root = fixture()
+    writeFixture(
+      root,
+      'src/blueprint/freshness.ts',
+      "// writeFileSync(path, '{}')\nwriteFileAtomic(path, content)\n",
+    )
+    const result = auditAtomicStateWrites(root)
+    expect(result.ok).toBe(true)
+    expect(result.violations).toStrictEqual([])
+  })
+
+  it('does not flag writeFileSync in a block comment', () => {
+    const root = fixture()
+    writeFixture(
+      root,
+      'src/blueprint/freshness.ts',
+      "/* writeFileSync(path, '{}') */\nwriteFileAtomic(path, content)\n",
+    )
+    const result = auditAtomicStateWrites(root)
+    expect(result.ok).toBe(true)
+    expect(result.violations).toStrictEqual([])
+  })
+
   it('passes atomic helper usage', () => {
     const root = fixture()
     writeFixture(root, 'src/mcp/blueprint-server.ts', "writeFileAtomic(path, content, 'utf8')\n")

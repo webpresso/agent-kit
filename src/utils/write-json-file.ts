@@ -3,6 +3,7 @@ import {
   copyFileSync,
   existsSync,
   fdatasyncSync,
+  fsyncSync,
   openSync,
   renameSync,
   rmSync,
@@ -11,6 +12,7 @@ import {
   type WriteFileOptions,
 } from 'node:fs'
 import { randomUUID } from 'node:crypto'
+import { dirname } from 'node:path'
 
 export interface WriteJsonFileOptions {
   readonly indent?: number
@@ -48,9 +50,16 @@ export function writeJsonFileAtomic(
  * Atomically replace `path` with `content` via write-temp → fdatasync → rename.
  *
  * The temp file is created beside the destination so the rename is normally
- * same-filesystem and atomic. If a platform still reports a cross-device rename
- * (`EXDEV`), we fall back to copy+unlink and emit a warning. On write, sync, or
- * rename failure, the temporary file is removed before the error is rethrown.
+ * same-filesystem and atomic. On a same-filesystem rename the parent directory
+ * is also fsync'd to persist the rename entry.
+ *
+ * If a platform reports a cross-device rename (`EXDEV`), we fall back to
+ * copy+unlink and emit a warning. This path is best-effort and non-atomic —
+ * a reader can observe a partial file. The directory fsync after copy does NOT
+ * make this path crash-safe; it only persists the copy's directory entry.
+ *
+ * On write, sync, or rename failure, the temporary file is removed before the
+ * error is rethrown.
  */
 export function writeFileAtomic(
   path: string,
@@ -79,6 +88,7 @@ export function writeFileAtomic(
       rmSync(tmpPath, { force: true })
     }
     installed = true
+    atomicFileOps.fsyncDir(dirname(path))
   } finally {
     if (fd !== null) closeSync(fd)
     if (!installed && existsSync(tmpPath)) rmSync(tmpPath, { force: true })
@@ -102,7 +112,29 @@ function isCrossDeviceRenameError(error: unknown): boolean {
   return code === 'EXDEV'
 }
 
-const DEFAULT_ATOMIC_FILE_OPS = { copyFileSync, renameSync }
+function isUnsupportedDirFsync(error: unknown): boolean {
+  if (error === null || typeof error !== 'object') return false
+  const code = (error as { code?: unknown }).code
+  // Windows (EPERM/EINVAL) and some platforms do not support fsync on directories.
+  return code === 'EPERM' || code === 'EINVAL' || code === 'EISDIR'
+}
+
+function fsyncDir(dir: string): void {
+  let dirFd: number | null = null
+  try {
+    dirFd = openSync(dir, 'r')
+    fsyncSync(dirFd)
+  } catch (error) {
+    if (!isUnsupportedDirFsync(error)) throw error
+    process.stderr.write(
+      `[writeFileAtomic] warning: directory fsync skipped for ${dir} (unsupported on this platform)\n`,
+    )
+  } finally {
+    if (dirFd !== null) closeSync(dirFd)
+  }
+}
+
+const DEFAULT_ATOMIC_FILE_OPS = { copyFileSync, renameSync, fsyncDir }
 let atomicFileOps = DEFAULT_ATOMIC_FILE_OPS
 
 export function _setAtomicFileOpsForTests(

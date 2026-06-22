@@ -3,6 +3,9 @@ import path from 'node:path'
 
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 
+// TARGET_FILES is an intentional, hand-maintained policy allowlist. It does NOT
+// auto-discover new state-bearing modules (unlike the dir-walking no-math-random.ts).
+// When new state-bearing write sites are added, update this list explicitly.
 const TARGET_FILES = [
   'src/blueprint/freshness.ts',
   'src/mcp/blueprint-server.ts',
@@ -21,16 +24,20 @@ export function auditAtomicStateWrites(rootDirectory: string = process.cwd()): R
     const file = path.join(rootDirectory, relativeFile)
     if (!existsSync(file)) continue
     checked += 1
-    const source = readFileSync(file, 'utf8')
+    // Strip line and block comments before matching to avoid false positives
+    // on commented-out calls. Known remaining limitation: a writeFileSync(
+    // inside a string literal can still flag (YAGNI — target files don't
+    // contain such strings today and a full AST parser is disproportionate).
+    const stripped = stripComments(readFileSync(file, 'utf8'))
 
-    if (/\bwriteFileSync\s*\(/u.test(source)) {
+    if (/\bwriteFileSync\s*\(/u.test(stripped)) {
       violations.push({
         file: relativeFile,
         message: 'state-bearing writes must use writeFileAtomic or writeJsonFile({ atomic: true })',
       })
     }
 
-    for (const call of findCalls(source, 'writeJsonFile')) {
+    for (const call of findCalls(stripped, 'writeJsonFile')) {
       if (!call.includes('atomic: true')) {
         violations.push({
           file: relativeFile,
@@ -46,6 +53,12 @@ export function auditAtomicStateWrites(rootDirectory: string = process.cwd()): R
     checked,
     violations,
   }
+}
+
+function stripComments(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//gu, '')
+    .replace(/\/\/[^\n]*/gu, '')
 }
 
 function findCalls(source: string, callee: string): string[] {
