@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, test } from 'vitest'
@@ -62,5 +62,20 @@ describe('auditAbsolutePathPolicy', () => {
       "// resolve(import.meta.dirname, '../fixtures/data.json')\n",
     )
     expect(result).toEqual([])
+  })
+
+  test('skips broken symlink entries without crashing', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, '.github'), { recursive: true })
+    mkdirSync(join(root, 'apps', 'e2e'), { recursive: true })
+    symlinkSync('../.agents/skills', join(root, '.github', 'skills'))
+    symlinkSync('../../packages/sdk/schema-engine/generated', join(root, 'apps', 'e2e', '.schema-engine-generated'))
+    mkdirSync(join(root, 'src'), { recursive: true })
+    writeFileSync(join(root, 'src', 'good.ts'), 'export const ok = true\n', 'utf8')
+
+    const result = auditAbsolutePathPolicy(root)
+    expect(result.ok).toBe(true)
+    expect(result.violations).toEqual([])
+    expect(result.checked).toBe(1)
   })
 })
