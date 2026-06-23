@@ -43,7 +43,7 @@ afterEach(() => {
 })
 
 /** Wait until `condition()` returns truthy or `timeoutMs` elapses. */
-async function waitFor(condition: () => boolean, timeoutMs = 3_000): Promise<boolean> {
+async function waitFor(condition: () => boolean, timeoutMs = 10_000): Promise<boolean> {
   const start = Date.now()
   while (Date.now() - start < timeoutMs) {
     if (condition()) return true

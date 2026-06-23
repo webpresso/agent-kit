@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
@@ -29,6 +30,21 @@ const NOT_FOUND_HINT =
 // they are user-driven installs with inherited stdio where a fixed deadline
 // would wrongly kill a legitimately slow run.
 const RTK_PROBE_TIMEOUT_MS = 3000
+const RTK_HOOK_RELATIVE_PATH = join('.claude', 'hooks', 'rtk-rewrite.sh')
+const CLAUDE_SETTINGS_RELATIVE_PATH = join('.claude', 'settings.json')
+
+function hasInstalledRtkHook(repoRoot: string): boolean {
+  const hookPath = join(repoRoot, RTK_HOOK_RELATIVE_PATH)
+  const settingsPath = join(repoRoot, CLAUDE_SETTINGS_RELATIVE_PATH)
+  if (!existsSync(hookPath) || !existsSync(settingsPath)) return false
+
+  try {
+    const settings = readFileSync(settingsPath, 'utf8')
+    return settings.includes('rtk-rewrite.sh')
+  } catch {
+    return false
+  }
+}
 
 export function ensureRtk(input: EnsureRtkInput): EnsureRtkResult {
   if (input.options.dryRun) return { kind: 'rtk-skipped-dry-run' }
@@ -71,6 +87,11 @@ export function ensureRtk(input: EnsureRtkInput): EnsureRtkResult {
       return { kind: 'rtk-init-failed', exitCode: -1 }
     }
     console.warn(pinCheck.warning)
+  }
+
+  if (hasInstalledRtkHook(input.repoRoot)) {
+    spinner.succeed('rtk ready')
+    return { kind: 'rtk-ok', installed }
   }
 
   const result = spawn('rtk', ['init', '-g', '--auto-patch'], {

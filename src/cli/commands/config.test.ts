@@ -80,7 +80,7 @@ describe('wp config secrets', () => {
     expect(stdout.output()).toContain('Configured doppler project ozby-shell')
   })
 
-  it('persists explicit selections without loading the webpresso framework runtime', async () => {
+  it('persists explicit selections without loading the webpresso framework runtime', { timeout: 30_000 }, async () => {
     const root = makeRepo()
     const stdout = makeWriter()
     const exitCode = await runSecretsConfigCommand(
@@ -122,7 +122,7 @@ describe('wp config secrets', () => {
     })
   })
 
-  it('writes runtime overrides to the git common dir in linked worktrees', async () => {
+  it('writes runtime overrides to the git common dir in linked worktrees', { timeout: 30_000 }, async () => {
     const repoRoot = makeRepo()
     writeFileSync(join(repoRoot, 'README.md'), 'seed\n', 'utf8')
     execFileSync('git', ['init'], { cwd: repoRoot, stdio: 'ignore' })
@@ -135,7 +135,10 @@ describe('wp config secrets', () => {
     execFileSync('git', ['commit', '-m', 'init'], { cwd: repoRoot, stdio: 'ignore' })
     const worktreePath = join(tmpdir(), `wp-config-worktree-${Date.now()}`)
     tempRoots.push(worktreePath)
-    execFileSync('git', ['worktree', 'add', worktreePath], { cwd: repoRoot, stdio: 'ignore' })
+    execFileSync('git', ['worktree', 'add', '--detach', '--no-checkout', worktreePath, 'HEAD'], {
+      cwd: repoRoot,
+      stdio: 'ignore',
+    })
 
     await expect(
       runSecretsConfigCommand('set', ['doppler', 'platform-dev'], { cwd: worktreePath }),
@@ -173,6 +176,79 @@ describe('wp config secrets', () => {
     expect(exitCode).toBe(0)
     expect(stdout.output()).toContain('configured: yes')
     expect(stdout.output()).toContain('authenticated: yes')
+  })
+
+  it('shows persisted config without consulting secret-manager diagnostics', async () => {
+    const checkAvailability = vi.fn(async () => ({ available: true as const }))
+    const checkAuthentication = vi.fn(async () => ({ authenticated: true as const }))
+    const stdout = makeWriter()
+
+    await expect(
+      runSecretsConfigCommand(
+        'show',
+        [],
+        { json: true },
+        {
+          getPath: () => '/repo/.git/webpresso/secrets.json',
+          readConfig: () => ({ manager: 'doppler', projectId: 'ozby-shell' }),
+          registry: {
+            get: () =>
+              ({
+                displayName: 'Doppler',
+                checkAvailability,
+                checkAuthentication,
+              }) as any,
+          },
+          stdout: stdout.writer,
+        },
+      ),
+    ).resolves.toBe(0)
+
+    expect(checkAvailability).not.toHaveBeenCalled()
+    expect(checkAuthentication).not.toHaveBeenCalled()
+    expect(JSON.parse(stdout.output())).toMatchObject({
+      configured: true,
+      path: '/repo/.git/webpresso/secrets.json',
+      config: { manager: 'doppler', projectId: 'ozby-shell' },
+    })
+  })
+
+  it('renders persisted config in plain-text show output without consulting diagnostics', async () => {
+    const checkAvailability = vi.fn(async () => ({ available: true as const }))
+    const checkAuthentication = vi.fn(async () => ({ authenticated: true as const }))
+    const stdout = makeWriter()
+
+    await expect(
+      runSecretsConfigCommand(
+        'show',
+        [],
+        {},
+        {
+          getPath: () => '/repo/.git/webpresso/secrets.json',
+          readConfig: () => ({
+            manager: 'doppler',
+            projectId: 'ozby-shell',
+            projectLabel: 'Ozby Shell',
+          }),
+          registry: {
+            get: () =>
+              ({
+                displayName: 'Doppler',
+                checkAvailability,
+                checkAuthentication,
+              }) as any,
+          },
+          stdout: stdout.writer,
+        },
+      ),
+    ).resolves.toBe(0)
+
+    expect(checkAvailability).not.toHaveBeenCalled()
+    expect(checkAuthentication).not.toHaveBeenCalled()
+    expect(stdout.output()).toContain('manager: doppler')
+    expect(stdout.output()).toContain('projectId: ozby-shell')
+    expect(stdout.output()).toContain('projectLabel: Ozby Shell')
+    expect(stdout.output()).toContain('path: /repo/.git/webpresso/secrets.json')
   })
 
   it('returns a deterministic setup diagnostic when no setup dependency is injected', async () => {

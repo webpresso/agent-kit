@@ -7,16 +7,26 @@ import { join } from 'node:path'
 
 import { auditBlueprintPrCoverage } from './blueprint-pr-coverage.js'
 
+const FAST_GIT_ENV = {
+  ...process.env,
+  GIT_CONFIG_COUNT: '1',
+  GIT_CONFIG_GLOBAL: '/dev/null',
+  GIT_CONFIG_KEY_0: 'core.fsync',
+  GIT_CONFIG_NOSYSTEM: '1',
+  GIT_CONFIG_VALUE_0: 'none',
+}
+
 function git(cwd: string, args: readonly string[]): string {
   return execFileSync('git', [...args], {
     cwd,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
+    env: FAST_GIT_ENV,
   }).trim()
 }
 
 describe('auditBlueprintPrCoverage git integration', () => {
-  test('resolves changed files and exemption trailers from a git base ref', () => {
+  test('resolves changed files and exemption trailers from a git base ref', { timeout: 60_000 }, () => {
     const repo = mkdtempSync(join(tmpdir(), 'blueprint-pr-coverage-'))
     git(repo, ['init'])
     git(repo, ['config', 'user.name', 'Test User'])

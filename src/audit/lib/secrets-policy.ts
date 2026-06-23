@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 
@@ -78,23 +77,8 @@ export function shouldScanGitFileForSecretValues(relativePath: string): boolean 
   return /\.(?:md|ts|tsx|js|mjs|cjs|json|ya?ml|toml|txt|sh)$/iu.test(relativePath)
 }
 
-function resolveGitTopLevel(cwd: string): string | null {
-  try {
-    const out = execFileSync('git', ['rev-parse', '--show-toplevel'], {
-      cwd,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim()
-    return out || null
-  } catch {
-    return null
-  }
-}
-
 export function resolveSecretsAuditRoot(rootDirectory: string = process.cwd()): string | null {
   const absoluteRoot = resolve(rootDirectory)
-  const gitRoot = resolveGitTopLevel(absoluteRoot)
-  if (gitRoot && existsSync(join(gitRoot, SECRETS_CONFIG_PATH))) return gitRoot
 
   let current = absoluteRoot
   while (true) {
