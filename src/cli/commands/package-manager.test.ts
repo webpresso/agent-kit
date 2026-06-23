@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
 import {
@@ -14,6 +14,10 @@ import {
 } from './package-manager.js'
 
 installManagedRunnerHermeticHooks()
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 const GLOBAL_VP = '/global/bin/vp'
 
@@ -102,11 +106,11 @@ describe('wp package-manager commands', () => {
     )
   })
 
-  it('fails tooling refresh when the updated Claude Code plugin cache cannot be refreshed', () => {
+  it('warns without failing when the updated Claude Code plugin cache cannot be refreshed', () => {
     const run = vi.fn(() => spawnResult(0))
     const refreshClaudePlugin = vi.fn(() => spawnResult(1))
     const refreshCodexPlugin = vi.fn(() => spawnResult(0))
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     expect(
       runPackageManagerCommand('update', {
@@ -120,21 +124,21 @@ describe('wp package-manager commands', () => {
         exists: (target) => String(target) === '/repo/packages/agent-kit/package.json',
         run,
       }),
-    ).toBe(1)
+    ).toBe(0)
 
     expect(run).toHaveBeenCalledWith(GLOBAL_VP, ['install', '-g', '@webpresso/agent-kit'])
     expect(refreshClaudePlugin).toHaveBeenCalledWith(
       '/global/lib/node_modules/@webpresso/agent-kit',
     )
     expect(refreshCodexPlugin).toHaveBeenCalledWith('/global/lib/node_modules/@webpresso/agent-kit')
-    expect(error.mock.calls.join('\n')).toContain('wp update: claude-plugin failed')
+    expect(warn.mock.calls.join('\n')).toContain('wp update: claude-plugin failed')
   })
 
-  it('fails tooling refresh when the updated Codex plugin cache cannot be refreshed', () => {
+  it('warns without failing when the updated Codex plugin cache cannot be refreshed', () => {
     const run = vi.fn(() => spawnResult(0))
     const refreshClaudePlugin = vi.fn(() => spawnResult(0))
     const refreshCodexPlugin = vi.fn(() => spawnResult(1))
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     expect(
       runPackageManagerCommand('update', {
@@ -148,14 +152,14 @@ describe('wp package-manager commands', () => {
         exists: (target) => String(target) === '/repo/packages/agent-kit/package.json',
         run,
       }),
-    ).toBe(1)
+    ).toBe(0)
 
     expect(run).toHaveBeenCalledWith(GLOBAL_VP, ['install', '-g', '@webpresso/agent-kit'])
     expect(refreshClaudePlugin).toHaveBeenCalledWith(
       '/global/lib/node_modules/@webpresso/agent-kit',
     )
     expect(refreshCodexPlugin).toHaveBeenCalledWith('/global/lib/node_modules/@webpresso/agent-kit')
-    expect(error.mock.calls.join('\n')).toContain('wp update: codex-plugin failed')
+    expect(warn.mock.calls.join('\n')).toContain('wp update: codex-plugin failed')
   })
 
   it('wraps Windows command-script vp launch plans for tooling refresh commands', () => {
@@ -362,7 +366,7 @@ describe('wp package-manager commands', () => {
       'update',
       '--scope',
       'user',
-      'oh-my-claudecode',
+      'oh-my-claudecode@omc',
     ])
     expect(run).toHaveBeenNthCalledWith(3, GLOBAL_VP, ['install', '-g', '@webpresso/agent-kit'])
     expect(run.mock.calls.flat().join(' ')).not.toContain('github.com/garrytan/gstack')
@@ -397,7 +401,7 @@ describe('wp package-manager commands', () => {
       'update',
       '--scope',
       'project',
-      'oh-my-claudecode',
+      'oh-my-claudecode@omc',
     ])
     expect(run).toHaveBeenNthCalledWith(2, GLOBAL_VP, ['install', '-g', '@webpresso/agent-kit'])
     expect(refreshClaudePlugin).toHaveBeenCalledWith(
@@ -471,10 +475,11 @@ describe('wp package-manager commands', () => {
     expect(refreshCodexPlugin).toHaveBeenCalledWith('/global/lib/node_modules/@webpresso/agent-kit')
   })
 
-  it('continues global update steps after a failure and exits non-zero', () => {
+  it('continues global update steps after an optional integration failure and exits zero', () => {
     const run = vi.fn((command: string) => spawnResult(command === 'claude' ? 3 : 0))
     const { refreshClaudePlugin, refreshCodexPlugin } = successfulPluginRefreshes()
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     let ownershipState = defaultToolingOwnershipState()
     ownershipState = claimUserOwnedTool(ownershipState, 'omx')
     ownershipState = claimUserOwnedTool(ownershipState, 'omc')
@@ -492,6 +497,42 @@ describe('wp package-manager commands', () => {
         gstackRoot: '/fake-home/.claude/skills/gstack',
         run,
       }),
+    ).toBe(0)
+
+    expect(run).toHaveBeenCalledTimes(3)
+    expect(refreshClaudePlugin).toHaveBeenCalledWith(
+      '/global/lib/node_modules/@webpresso/agent-kit',
+    )
+    expect(refreshCodexPlugin).toHaveBeenCalledWith('/global/lib/node_modules/@webpresso/agent-kit')
+    expect(warn.mock.calls.join('\n')).toContain('omc')
+    expect(warn.mock.calls.join('\n')).toContain('exit 3')
+    expect(warn.mock.calls.join('\n')).toContain('wp update: omc failed')
+    expect(error).not.toHaveBeenCalled()
+    expect(warn.mock.calls.join('\n')).not.toContain('wp update --global')
+  })
+
+  it('still exits non-zero when the core wp package refresh fails', () => {
+    const run = vi.fn((command: string, args: readonly string[]) =>
+      command === GLOBAL_VP && args.join(' ') === 'install -g @webpresso/agent-kit'
+        ? spawnResult(3)
+        : spawnResult(0),
+    )
+    const { refreshClaudePlugin, refreshCodexPlugin } = successfulPluginRefreshes()
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    let ownershipState = defaultToolingOwnershipState()
+    ownershipState = claimUserOwnedTool(ownershipState, 'omx')
+    ownershipState = claimUserOwnedTool(ownershipState, 'omc')
+
+    expect(
+      runPackageManagerCommand('update', {
+        argv: ['node', 'wp', 'update', '-g'],
+        resolveVpCommand: () => GLOBAL_VP,
+        ownershipState,
+        packageRoot: '/global/lib/node_modules/@webpresso/agent-kit',
+        refreshClaudePlugin,
+        refreshCodexPlugin,
+        run,
+      }),
     ).toBe(1)
 
     expect(run).toHaveBeenCalledTimes(3)
@@ -499,10 +540,38 @@ describe('wp package-manager commands', () => {
       '/global/lib/node_modules/@webpresso/agent-kit',
     )
     expect(refreshCodexPlugin).toHaveBeenCalledWith('/global/lib/node_modules/@webpresso/agent-kit')
-    expect(error.mock.calls.join('\n')).toContain('omc')
+    expect(error.mock.calls.join('\n')).toContain('wp')
     expect(error.mock.calls.join('\n')).toContain('exit 3')
-    expect(error.mock.calls.join('\n')).toContain('wp update: omc failed')
     expect(error.mock.calls.join('\n')).not.toContain('wp update --global')
+  })
+
+  it('warns without failing when the optional Codex plugin refresh times out', () => {
+    const run = vi.fn(() => spawnResult(0))
+    const refreshClaudePlugin = vi.fn(() => spawnResult(0))
+    const refreshCodexPlugin = vi.fn(() => spawnResult(1, new Error('codex-plugin-timed-out')))
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    expect(
+      runPackageManagerCommand('update', {
+        argv: ['node', 'wp', 'update', '-g'],
+        resolveVpCommand: () => GLOBAL_VP,
+        ownershipState: defaultToolingOwnershipState(),
+        packageRoot: '/global/lib/node_modules/@webpresso/agent-kit',
+        refreshClaudePlugin,
+        refreshCodexPlugin,
+        run,
+      }),
+    ).toBe(0)
+
+    expect(run).toHaveBeenCalledWith(GLOBAL_VP, ['install', '-g', '@webpresso/agent-kit'])
+    expect(refreshClaudePlugin).toHaveBeenCalledWith(
+      '/global/lib/node_modules/@webpresso/agent-kit',
+    )
+    expect(refreshCodexPlugin).toHaveBeenCalledWith('/global/lib/node_modules/@webpresso/agent-kit')
+    expect(warn.mock.calls.join('\n')).toContain('wp update: codex-plugin failed')
+    expect(warn.mock.calls.join('\n')).toContain('codex-plugin-timed-out')
+    expect(error).not.toHaveBeenCalled()
   })
 
   it('reports missing global tools without throwing', () => {
@@ -512,6 +581,7 @@ describe('wp package-manager commands', () => {
     })
     const { refreshClaudePlugin, refreshCodexPlugin } = successfulPluginRefreshes()
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     let ownershipState = defaultToolingOwnershipState()
     ownershipState = claimUserOwnedTool(ownershipState, 'omx')
     ownershipState = claimUserOwnedTool(ownershipState, 'omc')
@@ -534,7 +604,7 @@ describe('wp package-manager commands', () => {
     )
     expect(refreshCodexPlugin).toHaveBeenCalledWith('/global/lib/node_modules/@webpresso/agent-kit')
     expect(error.mock.calls.join('\n')).toContain('spawn vp ENOENT')
-    expect(error.mock.calls.join('\n')).toContain('omc')
-    expect(error.mock.calls.join('\n')).toContain('spawn claude ENOENT')
+    expect(warn.mock.calls.join('\n')).toContain('omc')
+    expect(warn.mock.calls.join('\n')).toContain('spawn claude ENOENT')
   })
 })

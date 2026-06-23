@@ -27,7 +27,7 @@ describe('resolveGlobalCapableVp', () => {
   it('skips runtime-local and project-local vp candidates before returning the global executable realpath', () => {
     const root = mkroot()
     try {
-      const runtimeBin = join(root, '.vite-plus', 'js_runtime', 'node', '24.16.0', 'bin')
+      const runtimeBin = join(root, '.vite-plus', 'js_runtime', 'node', '24.17.0', 'bin')
       const projectBin = join(root, 'repo', 'node_modules', '.bin')
       const globalBin = join(root, '.vite-plus', 'bin')
       mkdirSync(runtimeBin, { recursive: true })
@@ -50,7 +50,7 @@ describe('resolveGlobalCapableVp', () => {
     const root = mkroot()
     try {
       const shimBin = join(root, 'shim-bin')
-      const runtimeBin = join(root, '.vite-plus', 'js_runtime', 'node', '24.16.0', 'bin')
+      const runtimeBin = join(root, '.vite-plus', 'js_runtime', 'node', '24.17.0', 'bin')
       const globalBin = join(root, '.vite-plus', 'bin')
       mkdirSync(shimBin, { recursive: true })
       mkdirSync(runtimeBin, { recursive: true })

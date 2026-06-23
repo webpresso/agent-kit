@@ -41,7 +41,7 @@ function createBenchToolFixtureBin(): string {
   )
   writeExecutable(
     join(tempDir, 'node'),
-    `#!/usr/bin/env sh\nif [ "$1" = "--version" ]; then\n  echo "v24.16.0"\n  exit 0\nfi\nexec ${JSON.stringify(actualNode)} "$@"\n`,
+    `#!/usr/bin/env sh\nif [ "$1" = "--version" ]; then\n  echo "v24.17.0"\n  exit 0\nfi\nexec ${JSON.stringify(actualNode)} "$@"\n`,
   )
 
   return tempDir

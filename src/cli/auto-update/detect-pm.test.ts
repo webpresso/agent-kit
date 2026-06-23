@@ -106,7 +106,7 @@ describe('buildNpmGlobalInstallCommand', () => {
 
 describe('parseUserAgent', () => {
   it('detects vp', () => {
-    expect(parseUserAgent('vp/0.1.24 node/v24.16.0 darwin arm64')).toStrictEqual('vp')
+    expect(parseUserAgent('vp/0.1.24 node/v24.17.0 darwin arm64')).toStrictEqual('vp')
   })
 
   it('detects npm', () => {

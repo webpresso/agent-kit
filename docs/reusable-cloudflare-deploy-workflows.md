@@ -49,7 +49,7 @@ This keeps CI aligned with the repo-local operator contract:
 
 The reusable workflows own only the common setup shell:
 
-- Node `24.16.0`
+- Node `24.17.0`
 - Corepack enabled
 - pnpm derived from the caller repo `package.json#packageManager`
 - Bun via `oven-sh/setup-bun`
