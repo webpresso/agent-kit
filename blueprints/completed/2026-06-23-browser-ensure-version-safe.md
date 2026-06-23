@@ -53,8 +53,8 @@ installer must resolve through the same package/runtime source that doctor uses.
 
 - promotion-ready: true
 - unresolved-count: 0
-- verified-at: 2026-06-23T00:00:00.000Z
-- verified-head: 0000000000000000000000000000000000000000
+- verified-at: 2026-06-23T21:50:20.000Z
+- verified-head: c9c54d0d2e23385ffe26af5036db95d36e6aec80
 - trust-gate-version: v1
 
 ### Material Claims
@@ -74,7 +74,7 @@ installer must resolve through the same package/runtime source that doctor uses.
 | Gate | Command | Expected outcome | Last result |
 | ---- | ------- | ---------------- | ----------- |
 | lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-23T00:00:00.000Z |
-| trust | wp audit blueprint-trust | pass | pass at 2026-06-23T00:00:00.000Z |
+| trust | wp audit blueprint-trust | pass | pass at 2026-06-23T21:50:20.000Z |
 
 ### Residual Unknowns
 
