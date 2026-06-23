@@ -11,7 +11,7 @@ vi.mock('@vitejs/plugin-react', () => ({
   default: () => ({ name: 'vite:react' }),
 }))
 
-const ROOT = process.cwd()
+const VITEST_DIR = import.meta.dirname
 
 type ModuleExports = Record<string, unknown>
 
@@ -35,15 +35,13 @@ const configExpectations = {
 } as const
 
 async function importLocal(file: string): Promise<ModuleExports> {
-  return import(pathToFileURL(join(ROOT, 'src/config/vitest', file)).href) as Promise<ModuleExports>
+  return import(pathToFileURL(join(VITEST_DIR, file)).href) as Promise<ModuleExports>
 }
 
 function normalize(value: unknown): unknown {
   if (typeof value === 'function') return `[Function:${value.name || 'anonymous'}]`
   if (typeof value === 'string') {
-    return value
-      .replaceAll('/src/config/vitest/', '/<vitest-root>/')
-      .replaceAll(`/packages/${'agent-vitest'}/`, '/<vitest-root>/')
+    return value.replaceAll(`${VITEST_DIR}/`, '/<vitest-root>/')
   }
   if (value instanceof RegExp) return value.toString()
   if (Array.isArray(value)) return value.map(normalize)
@@ -89,7 +87,7 @@ describe('folded vitest config parity', () => {
     await expect(importLocal('react-setup.ts')).resolves.toHaveProperty('__reactSetupModule', true)
   })
 
-  it('keeps folded runtime files local to src/config/vitest', () => {
+  it('keeps folded runtime files local to src/vitest', () => {
     const foldedFiles = [
       'node.ts',
       'react.ts',
@@ -101,7 +99,7 @@ describe('folded vitest config parity', () => {
     ]
 
     for (const file of foldedFiles) {
-      const source = readFileSync(join(ROOT, 'src/config/vitest', file), 'utf8')
+      const source = readFileSync(join(VITEST_DIR, file), 'utf8')
       expect(source).not.toContain(`packages/${'agent-vitest'}`)
       expect(source).not.toMatch(/from\s+['"]\.\.\//)
       expect(source).not.toMatch(/import\(['"]\.\.\//)

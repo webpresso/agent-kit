@@ -54,6 +54,7 @@ describe('@webpresso/agent-config export isolation', () => {
     expect(exports).toHaveProperty('./vitest/workers')
     expect(exports).toHaveProperty('./vitest/react-setup')
     expect(exports).toHaveProperty('./vitest/flakiness-reporter')
+    expect(exports).toHaveProperty('./vitest/source-conditions')
 
     // stryker group
     expect(exports).toHaveProperty('./stryker')

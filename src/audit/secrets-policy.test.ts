@@ -7,6 +7,18 @@ import { afterEach, describe, expect, test } from 'vitest'
 import { auditSecretsPolicy } from './secrets-policy.js'
 
 const tempDirs: string[] = []
+const FAST_GIT_ENV = {
+  ...process.env,
+  GIT_CONFIG_COUNT: '1',
+  GIT_CONFIG_GLOBAL: '/dev/null',
+  GIT_CONFIG_KEY_0: 'core.fsync',
+  GIT_CONFIG_NOSYSTEM: '1',
+  GIT_CONFIG_VALUE_0: 'none',
+}
+
+function git(cwd: string, args: readonly string[]): void {
+  execFileSync('git', [...args], { cwd, env: FAST_GIT_ENV, stdio: 'ignore' })
+}
 
 function tempRepo(withGit = false): string {
   const root = mkdtempSync(join(tmpdir(), 'wp-secrets-policy-'))
@@ -22,11 +34,7 @@ function tempRepo(withGit = false): string {
     }),
   )
   if (withGit) {
-    execFileSync('git', ['init'], { cwd: root, stdio: 'ignore' })
-    execFileSync('git', ['config', 'user.email', 'test@test.com'], { cwd: root, stdio: 'ignore' })
-    execFileSync('git', ['config', 'user.name', 'Test'], { cwd: root, stdio: 'ignore' })
-    execFileSync('git', ['add', '.'], { cwd: root, stdio: 'ignore' })
-    execFileSync('git', ['commit', '-m', 'init', '--allow-empty'], { cwd: root, stdio: 'ignore' })
+    git(root, ['init', '-q'])
   }
   return root
 }
@@ -120,10 +128,14 @@ describe('auditSecretsPolicy', () => {
     expect(result.ok).toBe(true)
   })
 
-  test('flags tracked forbidden path in git', () => {
+  // These tests exercise the real git index via `git add` + `git ls-files`.
+  // On this runner they stay well under 10s in isolation but can exceed the
+  // default budget under full-suite process contention, so keep the timeout
+  // scoped to the git-backed cases only.
+  test('flags tracked forbidden path in git', { timeout: 30000 }, () => {
     const root = tempRepo(true)
     writeFileSync(join(root, '.env'), 'API_KEY=value')
-    execFileSync('git', ['add', '.env'], { cwd: root, stdio: 'ignore' })
+    git(root, ['add', '.env'])
 
     const result = auditSecretsPolicy(root)
 
@@ -137,11 +149,11 @@ describe('auditSecretsPolicy', () => {
     )
   })
 
-  test('flags tracked file with secret-like value pattern', () => {
+  test('flags tracked file with secret-like value pattern', { timeout: 30000 }, () => {
     const root = tempRepo(true)
     const secretContent = 'token: ghp_aAbBcCdDeEfFgGhH123456789012'
     writeFileSync(join(root, 'config.json'), JSON.stringify({ info: secretContent }))
-    execFileSync('git', ['add', 'config.json'], { cwd: root, stdio: 'ignore' })
+    git(root, ['add', 'config.json'])
 
     const result = auditSecretsPolicy(root)
 
@@ -151,13 +163,13 @@ describe('auditSecretsPolicy', () => {
     ])
   })
 
-  test('does not flag test file containing fake secret-like fixtures', () => {
+  test('does not flag test file containing fake secret-like fixtures', { timeout: 30000 }, () => {
     const root = tempRepo(true)
     // Langfuse-style test fixture keys — real format, intentionally fake values
     const testContent =
       'const env = { LANGFUSE_PUBLIC_KEY: "pk-lf-test", LANGFUSE_SECRET_KEY: "sk-lf-test" }'
     writeFileSync(join(root, 'service.test.ts'), testContent)
-    execFileSync('git', ['add', 'service.test.ts'], { cwd: root, stdio: 'ignore' })
+    git(root, ['add', 'service.test.ts'])
 
     const result = auditSecretsPolicy(root)
 
@@ -165,11 +177,11 @@ describe('auditSecretsPolicy', () => {
     expect(result.violations).toStrictEqual([])
   })
 
-  test('does not flag e2e file containing GraphQL pk field names', () => {
+  test('does not flag e2e file containing GraphQL pk field names', { timeout: 30000 }, () => {
     const root = tempRepo(true)
     const e2eContent = 'query { projects_by_pk(id: "00000000-0000-0000-0000-000000000000") { id } }'
     writeFileSync(join(root, 'flow.e2e.ts'), e2eContent)
-    execFileSync('git', ['add', 'flow.e2e.ts'], { cwd: root, stdio: 'ignore' })
+    git(root, ['add', 'flow.e2e.ts'])
 
     const result = auditSecretsPolicy(root)
 
@@ -177,10 +189,10 @@ describe('auditSecretsPolicy', () => {
     expect(result.violations).toStrictEqual([])
   })
 
-  test('passes for clean git repo', () => {
+  test('passes for clean git repo', { timeout: 30000 }, () => {
     const root = tempRepo(true)
     writeFileSync(join(root, 'readme.md'), '# My project')
-    execFileSync('git', ['add', 'readme.md'], { cwd: root, stdio: 'ignore' })
+    git(root, ['add', 'readme.md'])
 
     const result = auditSecretsPolicy(root)
 

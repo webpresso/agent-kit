@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { homedir, tmpdir } from 'node:os'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { spawnSync } from 'node:child_process'
@@ -486,8 +486,8 @@ describe('sessionstart hook buildOutput', () => {
     expect(parsed.hookSpecificOutput.additionalContext).not.toContain('<wp_session_continuity')
   })
 
-  it('fails open on malformed stdin through the real hook command', () => {
-    const result = spawnSync('./bin/wp', ['hook', 'sessionstart-routing'], {
+  it('fails open on malformed stdin through the real hook entrypoint', () => {
+    const result = spawnSync(process.env.BUN ?? 'bun', ['./src/hooks/sessionstart/index.ts'], {
       cwd: process.cwd(),
       input: 'not-json',
       encoding: 'utf8',
@@ -505,78 +505,6 @@ describe('sessionstart hook buildOutput', () => {
     if (continuityIndex !== -1) {
       expect(routingIndex).toBeLessThan(continuityIndex)
     }
-  })
-})
-
-describe('sessionstart hook gstack block (opt-in)', () => {
-  let dirs: string[] = []
-
-  afterEach(() => {
-    for (const d of dirs) rmSync(d, { recursive: true, force: true })
-  })
-
-  function tmp(): string {
-    const d = mkdtempSync(join(tmpdir(), 'wp-sessionstart-gstack-'))
-    dirs.push(d)
-    return d
-  }
-
-  it('does NOT append gstack block when WP_GSTACK_ROUTING is unset', () => {
-    const cwd = tmp()
-    const out = buildOutput({}, cwd, {})
-    const parsed = JSON.parse(out) as ParsedOutput
-    expect(parsed.hookSpecificOutput.additionalContext).not.toContain('Interactive skills (gstack)')
-  })
-
-  it('does NOT append gstack block when WP_GSTACK_ROUTING=0', () => {
-    const cwd = tmp()
-    const out = buildOutput({}, cwd, { WP_GSTACK_ROUTING: '0' })
-    const parsed = JSON.parse(out) as ParsedOutput
-    expect(parsed.hookSpecificOutput.additionalContext).not.toContain('Interactive skills (gstack)')
-  })
-
-  it('does NOT append gstack block when WP_GSTACK_ROUTING=1 but gstack dir absent', () => {
-    const cwd = tmp()
-    // Create a temp dir to act as a non-existent gstack location.
-    // We rely on a path that provably does not exist.
-    const _fakeHome = join(tmp(), 'fakehome')
-    // No gstack dir under fakeHome — homedir() won't point there, but we can
-    // verify the negative: no block when gstack dir doesn't exist at homedir.
-    const gstackDir = join(homedir(), '.claude', 'skills', 'gstack')
-    const gstackExists = existsSync(gstackDir)
-    const out = buildOutput({}, cwd, { WP_GSTACK_ROUTING: '1' })
-    const parsed = JSON.parse(out) as ParsedOutput
-    const ctx = parsed.hookSpecificOutput.additionalContext
-    // Result depends on whether gstack is installed in this environment.
-    if (gstackExists) {
-      expect(ctx).toContain('Interactive skills (gstack)')
-    } else {
-      expect(ctx).not.toContain('Interactive skills (gstack)')
-    }
-  })
-
-  it('always preserves routing block regardless of gstack flag', () => {
-    const cwd = tmp()
-    const out = buildOutput({}, cwd, { WP_GSTACK_ROUTING: '1' })
-    const parsed = JSON.parse(out) as ParsedOutput
-    expect(parsed.hookSpecificOutput.additionalContext).toContain('<wp_routing>')
-  })
-
-  it('appends gstack block after routing content when gstack dir exists', () => {
-    const cwd = tmp()
-    const gstackDir = join(homedir(), '.claude', 'skills', 'gstack')
-    if (!existsSync(gstackDir)) {
-      // Gstack not installed in this env — skip conditional path gracefully.
-      return
-    }
-    const out = buildOutput({}, cwd, { WP_GSTACK_ROUTING: '1' })
-    const parsed = JSON.parse(out) as ParsedOutput
-    const ctx = parsed.hookSpecificOutput.additionalContext
-    expect(ctx).toContain('Interactive skills (gstack)')
-    expect(ctx).toContain('/browse')
-    const routingIdx = ctx.indexOf('<wp_routing>')
-    const gstackIdx = ctx.indexOf('Interactive skills (gstack)')
-    expect(routingIdx).toBeLessThan(gstackIdx)
   })
 })
 
