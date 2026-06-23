@@ -371,10 +371,12 @@ describe('public release readiness gate wiring', () => {
   it('exercises host fallback skill projection in the packed consumer smoke', () => {
     const source = readFileSync(join(repositoryRoot, 'scripts', 'public-consumer-smoke.ts'), 'utf8')
 
+    expect(source).toContain("'--project-init'")
     expect(source).toContain("WP_SKIP_CLAUDE_PLUGIN: '1'")
     expect(source).toContain("WP_SKIP_CODEX_PLUGIN: '1'")
-    expect(source).toContain("'--host', 'all'")
-    expect(source).not.toContain("'--host', 'none'")
+    expect(source).toContain("'--host'")
+    expect(source).toContain("'all'")
+    expect(source).not.toContain("'none'")
   })
 
   it('evaluates public repository visibility from explicit history evidence', () => {

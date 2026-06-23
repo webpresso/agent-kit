@@ -89,7 +89,7 @@ wp skill install tanstack-query
 
 ### Curated plan/review workflows
 
-Agent-kit also ships a lightweight Webpresso-owned set of unprefixed workflow skills derived from MIT-licensed gstack ideas: `claude`, `plan-eng-review`, `plan-ceo-review`, `plan-design-review`, and `review`. They are staged from the private gstack workspace package through an allowlist, include provenance/NOTICE metadata, and do not require or install an external `~/.claude/skills/gstack` checkout.
+Agent-kit also ships a lightweight Webpresso-owned set of unprefixed workflow skills derived from MIT-licensed gstack ideas: `claude`, `plan-eng-review`, `plan-ceo-review`, `plan-design-review`, and `review`. They are staged from the private gstack workspace package through an allowlist, include provenance/NOTICE metadata, and do not require or install an external gstack checkout under a Claude home directory.
 
 External checkout cleanup is explicit only: `wp setup --with gstack` leaves an existing checkout in place unless `WP_GSTACK_CLEANUP_EXTERNAL=1` is set, in which case the directory is backed up before retirement.
 

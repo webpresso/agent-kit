@@ -8,7 +8,7 @@ last_updated: '2026-06-13'
 Start here:
 
 - Install from the public npm registry with Node.js 24+:
-  `vp install -g @webpresso/agent-kit && wp setup`
+  `vp install -g @webpresso/agent-kit && wp setup --project-init`
 - `wp` bundles the package/task facade it needs; a separate global `vp` install is not required.
 - [Getting started](./getting-started.md)
 - [Is webpresso for me?](./is-agent-kit-for-me.md)
@@ -28,5 +28,6 @@ Maintainer release gate:
 - Run `vp run public:readiness -- --require-repo-visibility` only when the
   history/public-visibility strategy has also been executed.
 
-The product surface should stay simple: install the package, run `wp setup`, and
-let the repo own one shared agent contract.
+The product surface should stay simple: install the package, run
+`wp setup --project-init` for a fresh repo, and let the repo own one shared
+agent contract.
