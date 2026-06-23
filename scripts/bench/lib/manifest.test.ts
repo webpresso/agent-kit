@@ -192,7 +192,7 @@ describe('manifest capture and validation', () => {
     const captured: Manifest = {
       bun: '1.3.13',
       claude: '2.1.177 (Claude Code)',
-      node: 'v24.16.0',
+      node: 'v24.17.0',
       model: 'unknown',
       plugins: {
         main: '1111111111111111111111111111111111111111',
@@ -216,7 +216,7 @@ describe('manifest capture and validation', () => {
     const captured: Manifest = {
       bun: '1.3.13',
       claude: '2.1.177 (Claude Code)',
-      node: 'v24.16.0',
+      node: 'v24.17.0',
       model: 'unknown',
       plugins: {
         main: '1111111111111111111111111111111111111111',
@@ -242,7 +242,7 @@ describe('manifest capture and validation', () => {
     const captured: Manifest = {
       bun: '1.3.13',
       claude: 'DIFFERENT',
-      node: 'v24.16.0',
+      node: 'v24.17.0',
       model: 'unknown',
       plugins: {
         main: '1111111111111111111111111111111111111111',
@@ -269,7 +269,7 @@ describe('manifest capture and validation', () => {
     const captured: Manifest = {
       bun: '1.3.13',
       claude: '2.1.177 (Claude Code)',
-      node: 'v24.16.0',
+      node: 'v24.17.0',
       model: 'unknown',
       plugins: {
         main: 'current-head',

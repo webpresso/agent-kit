@@ -222,8 +222,8 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       // --with is omitted.
       expect(existsSync(path.join(repo, '.actrc'))).toBe(true)
       expect(existsSync(path.join(repo, 'Brewfile'))).toBe(false)
-      expect(existsSync(path.join(repo, '.node-version'))).toBe(true)
-      expect(existsSync(path.join(repo, '.nvmrc'))).toBe(true)
+      expect(existsSync(path.join(repo, '.node-version'))).toBe(false)
+      expect(existsSync(path.join(repo, '.nvmrc'))).toBe(false)
       expect(existsSync(path.join(repo, '.husky', 'pre-commit'))).toBe(true)
       expect(existsSync(path.join(repo, '.husky', 'commit-msg'))).toBe(false)
       expect(existsSync(path.join(repo, '.husky', 'pre-push'))).toBe(false)
@@ -334,8 +334,8 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(existsSync(path.join(repo, '.husky', 'pre-push'))).toBe(false)
       expect(existsSync(path.join(repo, '.actrc'))).toBe(true)
       expect(existsSync(path.join(repo, 'Brewfile'))).toBe(false)
-      expect(existsSync(path.join(repo, '.node-version'))).toBe(true)
-      expect(existsSync(path.join(repo, '.nvmrc'))).toBe(true)
+      expect(existsSync(path.join(repo, '.node-version'))).toBe(false)
+      expect(existsSync(path.join(repo, '.nvmrc'))).toBe(false)
       expect(existsSync(path.join(repo, 'test', '.gitkeep'))).toBe(true)
       expect(existsSync(path.join(repo, 'e2e', '.gitkeep'))).toBe(true)
       expect(

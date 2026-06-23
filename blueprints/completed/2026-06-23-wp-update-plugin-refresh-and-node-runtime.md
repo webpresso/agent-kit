@@ -31,6 +31,7 @@ use the marketplace-qualified `oh-my-claudecode@omc` plugin id.
   and do not fail the core `wp update` command.
 - [x] Core `@webpresso/agent-kit` package refresh failures still return nonzero.
 - [x] Focused tests cover optional plugin warning behavior and OMC id routing.
+- [x] Base-kit setup no longer scaffolds `.node-version` / `.nvmrc` exact patch pins.
 
 ## Verification
 
@@ -56,6 +57,7 @@ use the marketplace-qualified `oh-my-claudecode@omc` plugin id.
 | C1 | `wp update` OMC refreshes use a marketplace-qualified plugin id. | repo:src/cli/commands/package-manager.ts |
 | C2 | Optional host plugin refresh failures warn without failing core package update. | repo:src/cli/commands/package-manager.test.ts |
 | C3 | OMC setup/install also uses the marketplace-qualified plugin id. | repo:src/cli/commands/init/scaffolders/omc/index.ts |
+| C4 | Base-kit setup does not recreate exact Node patch pin files. | repo:src/cli/commands/init/scaffold-base-kit.ts |
 
 ### Material Decisions
 

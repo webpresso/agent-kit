@@ -1,7 +1,6 @@
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -21,8 +20,6 @@ import {
   formatCommandLaneSummary,
   getWpCommandLane,
 } from '../bin/runtime-lanes.js'
-
-const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 const RUNTIME_MANIFEST = {
   binaryName: 'wp',
@@ -61,8 +58,8 @@ describe('bin launcher', () => {
         builtExists: true,
         sourceExists: true,
         nodeExecPath: '/usr/bin/node',
-        currentNodeVersion: 'v24.16.0',
-        pinnedNodeVersion: '24.16.0',
+        currentNodeVersion: 'v24.17.0',
+        pinnedNodeVersion: '24.17.0',
         runtimeManager: null,
       }),
     ).toEqual({
@@ -93,8 +90,8 @@ describe('bin launcher', () => {
         builtExists: true,
         sourceExists: true,
         nodeExecPath: '/usr/bin/node',
-        currentNodeVersion: 'v24.16.0',
-        pinnedNodeVersion: '24.16.0',
+        currentNodeVersion: 'v24.17.0',
+        pinnedNodeVersion: '24.17.0',
         runtimeManager: null,
       })
 
@@ -116,8 +113,8 @@ describe('bin launcher', () => {
       builtExists: true,
       sourceExists: true,
       nodeExecPath: '/usr/bin/node',
-      currentNodeVersion: 'v24.16.0',
-      pinnedNodeVersion: '24.16.0',
+      currentNodeVersion: 'v24.17.0',
+      pinnedNodeVersion: '24.17.0',
       runtimeManager: null,
     })
 
@@ -139,8 +136,8 @@ describe('bin launcher', () => {
         builtExists: true,
         sourceExists: true,
         nodeExecPath: '/usr/bin/node',
-        currentNodeVersion: 'v24.16.0',
-        pinnedNodeVersion: '24.16.0',
+        currentNodeVersion: 'v24.17.0',
+        pinnedNodeVersion: '24.17.0',
         runtimeManager: null,
       })
 
@@ -163,8 +160,8 @@ describe('bin launcher', () => {
         builtExists: true,
         sourceExists: true,
         nodeExecPath: '/usr/bin/node',
-        currentNodeVersion: 'v24.16.0',
-        pinnedNodeVersion: '24.16.0',
+        currentNodeVersion: 'v24.17.0',
+        pinnedNodeVersion: '24.17.0',
         runtimeManager: null,
       }),
     ).toEqual({
@@ -190,8 +187,8 @@ describe('bin launcher', () => {
         builtExists: true,
         sourceExists: true,
         nodeExecPath: '/usr/bin/node',
-        currentNodeVersion: 'v24.16.0',
-        pinnedNodeVersion: '24.16.0',
+        currentNodeVersion: 'v24.17.0',
+        pinnedNodeVersion: '24.17.0',
         runtimeManager: null,
       })
 
@@ -217,8 +214,8 @@ describe('bin launcher', () => {
       builtExists: true,
       sourceExists: true,
       nodeExecPath: '/usr/bin/node',
-      currentNodeVersion: 'v24.16.0',
-      pinnedNodeVersion: '24.16.0',
+      currentNodeVersion: 'v24.17.0',
+      pinnedNodeVersion: '24.17.0',
       runtimeManager: null,
     })
 
@@ -246,8 +243,8 @@ describe('bin launcher', () => {
         sourceExists: true,
         sourceNeedsSourceLaunch: false,
         nodeExecPath: '/usr/bin/node',
-        currentNodeVersion: 'v24.16.0',
-        pinnedNodeVersion: '24.16.0',
+        currentNodeVersion: 'v24.17.0',
+        pinnedNodeVersion: '24.17.0',
         runtimeManager: null,
       }).mode,
     ).toBe('built')
@@ -266,8 +263,8 @@ describe('bin launcher', () => {
         builtExists: false,
         sourceExists: true,
         nodeExecPath: '/usr/bin/node',
-        currentNodeVersion: 'v24.16.0',
-        pinnedNodeVersion: '24.16.0',
+        currentNodeVersion: 'v24.17.0',
+        pinnedNodeVersion: '24.17.0',
         runtimeManager: null,
       }),
     ).toEqual({
@@ -292,8 +289,8 @@ describe('bin launcher', () => {
         builtExists: true,
         sourceExists: true,
         nodeExecPath: '/usr/bin/node',
-        currentNodeVersion: 'v24.16.0',
-        pinnedNodeVersion: '24.16.0',
+        currentNodeVersion: 'v24.17.0',
+        pinnedNodeVersion: '24.17.0',
         runtimeManager: null,
       }),
     ).toThrow(/unsupported platform\/arch target freebsd\/x64/)
@@ -317,8 +314,8 @@ describe('bin launcher', () => {
             builtExists: true,
             sourceExists: false,
             nodeExecPath: '/usr/bin/node',
-            currentNodeVersion: 'v24.16.0',
-            pinnedNodeVersion: '24.16.0',
+            currentNodeVersion: 'v24.17.0',
+            pinnedNodeVersion: '24.17.0',
             runtimeManager: null,
           }),
         forwardedArgs.join(' '),
@@ -337,8 +334,8 @@ describe('bin launcher', () => {
         builtExists: true,
         sourceExists: false,
         nodeExecPath: '/usr/bin/node',
-        currentNodeVersion: 'v24.16.0',
-        pinnedNodeVersion: '24.16.0',
+        currentNodeVersion: 'v24.17.0',
+        pinnedNodeVersion: '24.17.0',
         runtimeManager: null,
       }),
     ).toThrow(/required compiled runtime manifest is missing/)
@@ -357,8 +354,8 @@ describe('bin launcher', () => {
         builtExists: true,
         sourceExists: false,
         nodeExecPath: '/usr/bin/node',
-        currentNodeVersion: 'v24.16.0',
-        pinnedNodeVersion: '24.16.0',
+        currentNodeVersion: 'v24.17.0',
+        pinnedNodeVersion: '24.17.0',
         runtimeManager: null,
       }),
     ).toThrow(/unsupported platform\/arch target freebsd\/riscv64/)
@@ -388,8 +385,8 @@ describe('bin launcher', () => {
         builtExists: true,
         sourceExists: false,
         nodeExecPath: '/usr/bin/node',
-        currentNodeVersion: 'v24.16.0',
-        pinnedNodeVersion: '24.16.0',
+        currentNodeVersion: 'v24.17.0',
+        pinnedNodeVersion: '24.17.0',
         runtimeManager: null,
       }),
     ).toThrow(
@@ -410,8 +407,8 @@ describe('bin launcher', () => {
         builtExists: true,
         sourceExists: false,
         nodeExecPath: '/usr/bin/node',
-        currentNodeVersion: 'v24.16.0',
-        pinnedNodeVersion: '24.16.0',
+        currentNodeVersion: 'v24.17.0',
+        pinnedNodeVersion: '24.17.0',
         runtimeManager: null,
       }),
     ).toThrow(/required platform runtime @webpresso\/agent-kit-runtime-linux-x64/)
@@ -446,8 +443,8 @@ describe('bin launcher', () => {
         sourceExists: true,
         sourceNeedsSourceLaunch: true,
         nodeExecPath: '/usr/bin/node',
-        currentNodeVersion: 'v24.16.0',
-        pinnedNodeVersion: '24.16.0',
+        currentNodeVersion: 'v24.17.0',
+        pinnedNodeVersion: '24.17.0',
         runtimeManager: null,
       }),
     ).toEqual({
@@ -467,8 +464,8 @@ describe('bin launcher', () => {
         builtExists: true,
         sourceExists: true,
         nodeExecPath: '/usr/bin/node',
-        currentNodeVersion: 'v24.16.0',
-        pinnedNodeVersion: '24.16.0',
+        currentNodeVersion: 'v24.17.0',
+        pinnedNodeVersion: '24.17.0',
         runtimeManager: null,
       }),
     ).toThrow(/Unknown webpresso bin: wp-guard-switch/)
@@ -484,7 +481,7 @@ describe('bin launcher', () => {
         sourceExists: true,
         nodeExecPath: '/usr/bin/node',
         currentNodeVersion: 'v25.9.0',
-        pinnedNodeVersion: '24.16.0',
+        pinnedNodeVersion: '24.17.0',
         runtimeManager: { kind: 'mise', command: 'mise' },
       }),
     ).toEqual({
@@ -492,7 +489,7 @@ describe('bin launcher', () => {
       runtime: 'mise',
       args: [
         'exec',
-        'node@24.16.0',
+        'node@24.17.0',
         '--',
         '/usr/bin/node',
         '/repo/dist/esm/cli/cli.js',
@@ -513,10 +510,10 @@ describe('bin launcher', () => {
         sourceExists: true,
         nodeExecPath: '/usr/bin/node',
         currentNodeVersion: 'v25.9.0',
-        pinnedNodeVersion: '24.16.0',
+        pinnedNodeVersion: '24.17.0',
         runtimeManager: null,
       }),
-    ).toThrow(/pins Node 24\.16\.0/)
+    ).toThrow(/pins Node 24\.17\.0/)
   })
 
   it('throws a repair-oriented error when neither dist nor source exists', () => {
@@ -528,8 +525,8 @@ describe('bin launcher', () => {
         builtExists: false,
         sourceExists: false,
         nodeExecPath: '/usr/bin/node',
-        currentNodeVersion: 'v24.16.0',
-        pinnedNodeVersion: '24.16.0',
+        currentNodeVersion: 'v24.17.0',
+        pinnedNodeVersion: '24.17.0',
         runtimeManager: null,
       }),
     ).toThrow(/wp hooks doctor/)
@@ -540,8 +537,17 @@ describe('bin launcher', () => {
     expect(resolveInvokedBinName(['/repo/bin/docs-lint.js'])).toBe('docs-lint')
   })
 
-  it('reads the pinned exact Node version from package metadata when present', () => {
-    expect(resolvePinnedNodeVersion(REPO_ROOT)).toBe('24.16.0')
+  it('does not force an exact Node patch when a package relies on system-wide Node', () => {
+    const packageRoot = mkdtempSync(join(tmpdir(), 'wp-launcher-no-node-pin-'))
+    try {
+      writeFileSync(
+        join(packageRoot, 'package.json'),
+        JSON.stringify({ name: 'no-node-pin', engines: { node: '>=24' } }),
+      )
+      expect(resolvePinnedNodeVersion(packageRoot)).toBeNull()
+    } finally {
+      rmSync(packageRoot, { recursive: true, force: true })
+    }
   })
 })
 
@@ -555,8 +561,8 @@ describe('WP_FORCE_SOURCE sourceOverride', () => {
       sourceExists: true,
       builtExists: false,
       nodeExecPath: '/usr/bin/node',
-      currentNodeVersion: 'v24.16.0',
-      pinnedNodeVersion: '24.16.0',
+      currentNodeVersion: 'v24.17.0',
+      pinnedNodeVersion: '24.17.0',
       runtimeManager: null,
       platform: 'linux',
       arch: 'x64',
@@ -581,8 +587,8 @@ describe('WP_FORCE_SOURCE sourceOverride', () => {
       sourceExists: true,
       builtExists: false,
       nodeExecPath: '/usr/bin/node',
-      currentNodeVersion: 'v24.16.0',
-      pinnedNodeVersion: '24.16.0',
+      currentNodeVersion: 'v24.17.0',
+      pinnedNodeVersion: '24.17.0',
       runtimeManager: null,
       platform: 'linux',
       arch: 'x64',
@@ -602,8 +608,8 @@ describe('WP_FORCE_SOURCE sourceOverride', () => {
       sourceExists: false,
       builtExists: false,
       nodeExecPath: '/usr/bin/node',
-      currentNodeVersion: 'v24.16.0',
-      pinnedNodeVersion: '24.16.0',
+      currentNodeVersion: 'v24.17.0',
+      pinnedNodeVersion: '24.17.0',
       runtimeManager: null,
       platform: 'linux',
       arch: 'x64',
@@ -623,8 +629,8 @@ describe('WP_FORCE_SOURCE sourceOverride', () => {
       sourceExists: true,
       builtExists: false,
       nodeExecPath: '/usr/bin/node',
-      currentNodeVersion: 'v24.16.0',
-      pinnedNodeVersion: '24.16.0',
+      currentNodeVersion: 'v24.17.0',
+      pinnedNodeVersion: '24.17.0',
       runtimeManager: null,
       platform: 'linux',
       arch: 'x64',

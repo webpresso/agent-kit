@@ -26,8 +26,8 @@ describe('scaffoldBaseKit', () => {
     expect(actions).not.toContain('skipped-dry')
 
     expect(existsSync(join(repoRoot, '.gitignore'))).toBe(true)
-    expect(existsSync(join(repoRoot, '.node-version'))).toBe(true)
-    expect(existsSync(join(repoRoot, '.nvmrc'))).toBe(true)
+    expect(existsSync(join(repoRoot, '.node-version'))).toBe(false)
+    expect(existsSync(join(repoRoot, '.nvmrc'))).toBe(false)
     expect(existsSync(join(repoRoot, '.actrc'))).toBe(true)
     expect(existsSync(join(repoRoot, '.editorconfig'))).toBe(true)
     expect(existsSync(join(repoRoot, 'pnpm-workspace.yaml'))).toBe(true)
@@ -94,8 +94,6 @@ describe('scaffoldBaseKit', () => {
     expect(releaseWorkflow).not.toContain('workflow_dispatch:')
     expect(releaseWorkflow).not.toContain('release-preflight:')
 
-    expect(readFileSync(join(repoRoot, '.node-version'), 'utf8').trim()).toBe('24.16.0')
-    expect(readFileSync(join(repoRoot, '.nvmrc'), 'utf8').trim()).toBe('24.16.0')
     const preCommit = readFileSync(join(repoRoot, '.husky', 'pre-commit'), 'utf8')
     expect(preCommit).toContain('git diff --cached --name-only --diff-filter=ACMR')
     expect(preCommit).toContain('wp format || exit 1')
