@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.3.3
+
+### Patch Changes
+
+- 9998527: Simplify generated Claude/Codex hooks to dispatch directly through `wp hook <name>`, remove legacy JS shim and shell-wrapper hook surfaces, and drop agent-kit-owned gstack/OMX wrapper normalization from the normal setup path.
+
+  Add affected-only blueprint lifecycle pre-push coverage so local verification catches PR-touched blueprint lifecycle failures without sweeping unrelated blueprint debt.
+
+- 7acefb7: Make `wp setup` verify Codex plugin install state before and after the bounded install command so successful installs are not reported as timeouts.
+
+  Route generated Claude/Codex hooks through direct `wp hook <name>` commands, move fallback/error capture into `wp hook`, and remove the retired JS shim/shell-wrapper path including agent-kit-owned OMX global hook wrapper normalization.
+
+  Release evidence: `docs/bench/reference-parity-matrix.md`, `docs/bench/session-memory-methodology.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, and `src/__integration__/reference-parity-tool-surface.integration.test.ts`.
+
+- 8d92d14: Fix the public-readiness preflight surfaces by aligning fresh-repo setup docs and smoke coverage with `wp setup --project-init`, trimming the generated AGENTS template back under the 8 KB budget, and moving the context-management parity matrix out of public product docs into research-only docs.
+
 ## 2.3.2
 
 ### Patch Changes
