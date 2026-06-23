@@ -22,6 +22,7 @@ import { resolveBundledVpCommand } from '#cli/auto-update/detect-pm.js'
 import { resolveAgentKitPackageRoot } from '#cli/commands/init/package-root'
 import { ensureClaudeCodeUserPlugin } from '#cli/commands/init/scaffolders/claude-plugin/index.js'
 import { ensureCodexUserPlugin } from '#cli/commands/init/scaffolders/codex-plugin/index.js'
+import { OMC_PLUGIN_ID } from '#cli/commands/init/scaffolders/omc/index.js'
 import { getManagedRunner } from '#tool-runtime'
 
 export const PACKAGE_MANAGER_VERBS = ['install', 'add', 'remove', 'update', 'exec', 'run'] as const
@@ -68,12 +69,14 @@ const HELP_BY_VERB: Readonly<Record<PackageManagerVerb, string>> = {
 
 interface PackageManagerCommandConfigWithId extends PackageManagerCommandConfig {
   readonly id: string
+  readonly optional?: boolean
 }
 
 type GlobalUpdateStep =
   | PackageManagerCommandConfigWithId
   | {
       readonly id: string
+      readonly optional?: boolean
       readonly run: (deps: RequiredGlobalUpdateDeps) => SpawnSyncReturns<string>
     }
 
@@ -188,12 +191,22 @@ function runGlobalUpdateCommand(deps: PackageManagerCommandDeps): number {
     try {
       const result = runGlobalUpdateStep(step, globalDeps)
       if (result.status !== 0) {
-        failed = true
-        console.error(formatGlobalUpdateFailure(step, result))
+        const message = formatGlobalUpdateFailure(step, result)
+        if (step.optional === true) {
+          console.warn(message)
+        } else {
+          failed = true
+          console.error(message)
+        }
       }
     } catch (error) {
-      failed = true
-      console.error(formatGlobalUpdateThrownFailure(step, error))
+      const message = formatGlobalUpdateThrownFailure(step, error)
+      if (step.optional === true) {
+        console.warn(message)
+      } else {
+        failed = true
+        console.error(message)
+      }
     }
   }
 
@@ -212,6 +225,7 @@ function buildGlobalUpdateSteps(
     const command = appendGlobalCapableVpArgs(deps.vpCommand, ['update', '-g', 'oh-my-codex'])
     steps.push({
       id: 'omx',
+      optional: true,
       command: command[0],
       args: command.slice(1),
     })
@@ -220,22 +234,25 @@ function buildGlobalUpdateSteps(
   if (isUserOwnedTool(deps.ownershipState, 'omc')) {
     steps.push({
       id: 'omc',
+      optional: true,
       command: 'claude',
-      args: ['plugin', 'update', '--scope', 'user', 'oh-my-claudecode'],
+      args: ['plugin', 'update', '--scope', 'user', OMC_PLUGIN_ID],
     })
   }
 
   if (isProjectOwnedTool(deps.ownershipState, 'omc', deps.repoKey)) {
     steps.push({
       id: 'omc-project',
+      optional: true,
       command: 'claude',
-      args: ['plugin', 'update', '--scope', 'project', 'oh-my-claudecode'],
+      args: ['plugin', 'update', '--scope', 'project', OMC_PLUGIN_ID],
     })
   }
 
   if (isUserOwnedTool(deps.ownershipState, 'gstack')) {
     steps.push({
       id: 'gstack',
+      optional: true,
       run: refreshGstack,
     })
   }
@@ -253,11 +270,13 @@ function buildGlobalUpdateSteps(
 
   steps.push({
     id: 'claude-plugin',
+    optional: true,
     run: refreshClaudePlugin,
   })
 
   steps.push({
     id: 'codex-plugin',
+    optional: true,
     run: refreshCodexPlugin,
   })
 

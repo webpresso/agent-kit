@@ -392,7 +392,7 @@ describe('runInit() — omx + gstack presets (integration)', { timeout: 20_000 }
       ])
       expect(claudeCalls).toContainEqual([
         'claude',
-        ['plugin', 'install', '--scope', 'user', 'oh-my-claudecode'],
+        ['plugin', 'install', '--scope', 'user', 'oh-my-claudecode@omc'],
         expect.any(Object),
       ])
     })
@@ -423,7 +423,7 @@ describe('runInit() — omx + gstack presets (integration)', { timeout: 20_000 }
         (c) =>
           c[0] === 'claude' &&
           Array.isArray(c[1]) &&
-          (c[1] as string[]).includes('oh-my-claudecode'),
+          (c[1] as string[]).includes('oh-my-claudecode@omc'),
       )
       expect(omcClaudeCalls).toHaveLength(0)
     })
@@ -531,7 +531,7 @@ describe('runInit() — omx + gstack presets (integration)', { timeout: 20_000 }
       expect(omxCalls[1]?.[1]).toEqual(['setup', '--yes', '--scope', 'user'])
       expect(claudeCalls).toContainEqual([
         'claude',
-        ['plugin', 'install', '--scope', 'user', 'oh-my-claudecode'],
+        ['plugin', 'install', '--scope', 'user', 'oh-my-claudecode@omc'],
         expect.any(Object),
       ])
     })
@@ -545,7 +545,7 @@ describe('runInit() — omx + gstack presets (integration)', { timeout: 20_000 }
       expect(omxCalls[1]?.[1]).toEqual(['setup', '--yes', '--scope', 'project'])
       expect(claudeCalls).toContainEqual([
         'claude',
-        ['plugin', 'install', '--scope', 'project', 'oh-my-claudecode'],
+        ['plugin', 'install', '--scope', 'project', 'oh-my-claudecode@omc'],
         expect.any(Object),
       ])
     })

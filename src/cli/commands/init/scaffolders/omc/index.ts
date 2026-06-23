@@ -4,7 +4,9 @@ import type { MergeOptions } from '#cli/commands/init/merge'
 import { commandExists as defaultCommandExists } from '#runtime/command-exists.js'
 
 export const OMC_MARKETPLACE = 'https://github.com/Yeachan-Heo/oh-my-claudecode'
-export const OMC_PLUGIN_ID = 'oh-my-claudecode'
+export const OMC_PLUGIN_NAME = 'oh-my-claudecode'
+export const OMC_MARKETPLACE_NAME = 'omc'
+export const OMC_PLUGIN_ID = `${OMC_PLUGIN_NAME}@${OMC_MARKETPLACE_NAME}`
 export const OMC_SETUP_COMMAND = '/oh-my-claudecode:omc-setup'
 
 export type OmcSetupScope = 'user' | 'project'
