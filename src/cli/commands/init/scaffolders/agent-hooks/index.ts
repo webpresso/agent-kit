@@ -538,6 +538,11 @@ function shouldSkipCodexTrustSync(input: ScaffoldAgentHooksInput): boolean {
 export interface ScaffoldAgentHooksInput {
   repoRoot: string
   options: MergeOptions
+  /**
+   * Legacy compatibility shim. Older callers may still pass this setup-time
+   * hint even though hook scaffolding no longer branches on it.
+   */
+  gstackEnabled?: boolean
   createCodexAppServer?: CodexAppServerFactory
   onCodexTrustSyncWarning?: (warning: CodexTrustSyncWarning) => void
   trustCodexHooks?: boolean
