@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 import type { SpinnerFactory } from '../spinner.js'
 import { ensureRtk } from './index.js'
@@ -34,6 +37,43 @@ function makeSpinnerFactory(): {
 }
 
 describe('ensureRtk', () => {
+  it('skips rtk init when the RTK hook is already installed', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'wp-ensure-rtk-'))
+    try {
+      mkdirSync(join(repoRoot, '.claude', 'hooks'), { recursive: true })
+      writeFileSync(join(repoRoot, '.claude', 'hooks', 'rtk-rewrite.sh'), '#!/bin/sh\n')
+      writeFileSync(
+        join(repoRoot, '.claude', 'settings.json'),
+        JSON.stringify({
+          hooks: {
+            PreToolUse: [
+              {
+                matcher: 'Bash',
+                hooks: [{ type: 'command', command: '$CLAUDE_PROJECT_DIR/.claude/hooks/rtk-rewrite.sh' }],
+              },
+            ],
+          },
+        }),
+      )
+
+      const spawn = makeSpawn([{ status: 0 }])
+      const result = ensureRtk({
+        repoRoot,
+        options: { overwrite: false, dryRun: false },
+        spawn,
+      })
+
+      expect(result).toEqual({ kind: 'rtk-ok', installed: false })
+      expect(spawn).toHaveBeenCalledTimes(1)
+      expect(spawn).toHaveBeenCalledWith('rtk', ['--version'], {
+        encoding: 'utf8',
+        timeout: 3000,
+      })
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
   it('returns rtk-skipped-dry-run without spawning anything', () => {
     const spawn = makeSpawn([])
     const result = ensureRtk({

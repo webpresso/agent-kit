@@ -65,6 +65,8 @@ export interface SecretsConfigStatus {
   readonly detail?: string
 }
 
+type StoredSecretsConfigStatus = Pick<SecretsConfigStatus, 'configured' | 'path' | 'config'>
+
 export interface SecretsConfigCommandDeps {
   readonly getPath?: (cwd?: string) => string
   readonly readConfig?: (cwd?: string) => SecretsConfig | null
@@ -292,7 +294,21 @@ async function getStatus(
   }
 }
 
-function formatShowMessage(status: SecretsConfigStatus): string {
+function getStoredSecretsConfig(
+  cwd: string | undefined,
+  deps: SecretsConfigCommandDeps,
+): StoredSecretsConfigStatus {
+  const runtime = localSecretsRuntime
+  const path = (deps.getPath ?? runtime.getSecretsConfigPath)(cwd)
+  const config = (deps.readConfig ?? runtime.readSecretsConfig)(cwd)
+  return {
+    configured: config !== null,
+    path,
+    config,
+  }
+}
+
+function formatShowMessage(status: StoredSecretsConfigStatus): string {
   if (!status.configured || !status.config) {
     return `No secret profile configured.\nCommit a valid .webpresso/secrets.config.json and run: wp secrets doctor --profile preview --json`
   }
@@ -333,10 +349,10 @@ export async function runSecretsConfigCommand(
 
   switch (action) {
     case 'show': {
-      const status = await getStatus(cwd, deps)
-      if (options.json) writeJson(stdout, status)
-      else writeLine(stdout, formatShowMessage(status))
-      return status.configured ? 0 : 1
+      const stored = getStoredSecretsConfig(cwd, deps)
+      if (options.json) writeJson(stdout, stored)
+      else writeLine(stdout, formatShowMessage(stored))
+      return stored.configured ? 0 : 1
     }
     case 'status': {
       const status = await getStatus(cwd, deps)

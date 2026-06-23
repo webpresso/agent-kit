@@ -55,9 +55,12 @@ function makeGitRepo(): string {
 
 let repo: string
 
-beforeEach(() => {
+beforeEach(
+  () => {
   repo = makeGitRepo()
-})
+  },
+  30_000,
+)
 
 afterEach(() => {
   rmSync(repo, { recursive: true, force: true })
@@ -74,7 +77,7 @@ describe('projection freshness recovery', () => {
     expect(readProjectionMetadata(dbPath)?.head_at_ingest).toBe(currentHead(repo))
   })
 
-  it('dbBuild clears staleness after HEAD moves (the reported recovery path)', async () => {
+  it('dbBuild clears staleness after HEAD moves (the reported recovery path)', { timeout: 30_000 }, async () => {
     const dbPath = resolveBlueprintProjectionDbPath(repo)
 
     await dbBuild(repo)

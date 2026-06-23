@@ -41,6 +41,8 @@ const webpressoInline = {
   deps: { inline: [/webpresso/] },
 } as const
 
+export type ResolveAliasEntry = { find: string | RegExp; replacement: string }
+
 export interface CreateNodeProjectsOptions {
   unitInclude?: string[]
   unitExclude?: string[]
@@ -49,6 +51,23 @@ export interface CreateNodeProjectsOptions {
   fileParallelism?: boolean
   isolate?: boolean
   testTimeout?: number
+  /**
+   * Extra resolve aliases appended (after the built-ins) to BOTH the unit and
+   * integration projects. Lets a consumer inject repo-specific module rewrites
+   * without copying the canonical node config.
+   */
+  extraAlias?: readonly ResolveAliasEntry[]
+  /**
+   * Extra `server.deps.inline` entries merged (after the built-in webpresso
+   * inline) into BOTH projects, so the consumer's aliases apply to additional
+   * packages imported from node_modules.
+   */
+  extraInline?: readonly (string | RegExp)[]
+  /**
+   * Extra setup files appended to BOTH projects (the integration project keeps
+   * its built-in node-setup; extras run after it).
+   */
+  extraSetupFiles?: readonly string[]
 }
 
 /**
@@ -82,17 +101,22 @@ export function createNodeProjects(
   const projectFileParallelism = options.fileParallelism
   const projectIsolate = options.isolate
   const projectTestTimeout = options.testTimeout
+  const extraAlias = options.extraAlias ?? []
+  const extraSetupFiles = options.extraSetupFiles ?? []
   const sharedResolve = {
-    alias: [...generatedRuntimeAliases, ...bunSqliteAlias],
+    alias: [...generatedRuntimeAliases, ...bunSqliteAlias, ...extraAlias],
     tsconfigPaths: true,
   } as unknown as UserWorkspaceConfig['resolve']
+  const projectInline = {
+    deps: { inline: [...webpressoInline.deps.inline, ...(options.extraInline ?? [])] },
+  } as const
 
   return [
     {
       resolve: sharedResolve,
-      server: webpressoInline as unknown as UserWorkspaceConfig['server'],
+      server: projectInline as unknown as UserWorkspaceConfig['server'],
       test: {
-        server: webpressoInline,
+        server: projectInline,
         name: `${name}/unit`,
         globals: true,
         restoreMocks: true,
@@ -102,6 +126,7 @@ export function createNodeProjects(
         fileParallelism: projectFileParallelism,
         isolate: projectIsolate,
         ...(projectTestTimeout !== undefined && { testTimeout: projectTestTimeout }),
+        ...(extraSetupFiles.length > 0 && { setupFiles: [...extraSetupFiles] }),
         include: unitInclude,
         exclude: [
           '**/*.integration.test.ts',
@@ -113,7 +138,7 @@ export function createNodeProjects(
     },
     {
       resolve: sharedResolve,
-      server: webpressoInline as unknown as UserWorkspaceConfig['server'],
+      server: projectInline as unknown as UserWorkspaceConfig['server'],
       test: {
         name: `${name}/integration`,
         globals: true,
@@ -127,7 +152,7 @@ export function createNodeProjects(
         execArgv: resolvedExecArgv,
         onConsoleLog: () => false,
         silent: process.env.VITEST_CONSOLE === '1' ? false : 'passed-only',
-        setupFiles: [join(configDir, 'node-setup.js')],
+        setupFiles: [join(configDir, 'node-setup.js'), ...extraSetupFiles],
         include: integrationInclude,
         exclude: ['**/.stryker-tmp/**', 'node_modules/**'],
         reporters: ['default', createFlakinessReporter()],

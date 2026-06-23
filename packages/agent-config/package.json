@@ -25,12 +25,103 @@
     "LICENSE",
     "README.md"
   ],
-  "exports": {},
+  "exports": {
+    "./tsconfig/base.json": {
+      "import": {
+        "types": "./dist/esm/tsconfig/base.json",
+        "default": "./dist/esm/tsconfig/base.json"
+      }
+    },
+    "./tsconfig/cloudflare.json": {
+      "import": {
+        "types": "./dist/esm/tsconfig/cloudflare.json",
+        "default": "./dist/esm/tsconfig/cloudflare.json"
+      }
+    },
+    "./tsconfig/library.json": {
+      "import": {
+        "types": "./dist/esm/tsconfig/library.json",
+        "default": "./dist/esm/tsconfig/library.json"
+      }
+    },
+    "./tsconfig/react-library.json": {
+      "import": {
+        "types": "./dist/esm/tsconfig/react-library.json",
+        "default": "./dist/esm/tsconfig/react-library.json"
+      }
+    },
+    "./tsconfig/react-router.json": {
+      "import": {
+        "types": "./dist/esm/tsconfig/react-router.json",
+        "default": "./dist/esm/tsconfig/react-router.json"
+      }
+    },
+    "./vitest/node": {
+      "import": {
+        "types": "./dist/esm/vitest/node.d.ts",
+        "default": "./dist/esm/vitest/node.js"
+      }
+    },
+    "./vitest/react": {
+      "import": {
+        "types": "./dist/esm/vitest/react.d.ts",
+        "default": "./dist/esm/vitest/react.js"
+      }
+    },
+    "./vitest/react-router": {
+      "import": {
+        "types": "./dist/esm/vitest/react-router.d.ts",
+        "default": "./dist/esm/vitest/react-router.js"
+      }
+    },
+    "./vitest/workers": {
+      "import": {
+        "types": "./dist/esm/vitest/workers.d.ts",
+        "default": "./dist/esm/vitest/workers.js"
+      }
+    },
+    "./vitest/react-setup": {
+      "import": {
+        "types": "./dist/esm/vitest/react-setup.d.ts",
+        "default": "./dist/esm/vitest/react-setup.js"
+      }
+    },
+    "./vitest/react-setup.ts": {
+      "import": {
+        "types": "./dist/esm/vitest/react-setup.d.ts",
+        "default": "./dist/esm/vitest/react-setup.js"
+      }
+    },
+    "./vitest/flakiness-reporter": {
+      "import": {
+        "types": "./dist/esm/vitest/flakiness-reporter.d.ts",
+        "default": "./dist/esm/vitest/flakiness-reporter.js"
+      }
+    },
+    "./vitest/source-conditions": {
+      "import": {
+        "types": "./dist/esm/vitest/source-conditions.d.ts",
+        "default": "./dist/esm/vitest/source-conditions.js"
+      }
+    },
+    "./stryker": {
+      "import": {
+        "types": "./dist/esm/stryker/index.d.ts",
+        "default": "./dist/esm/stryker/index.js"
+      }
+    },
+    "./workers-test": {
+      "import": {
+        "types": "./dist/esm/workers-test/index.d.ts",
+        "default": "./dist/esm/workers-test/index.js"
+      }
+    }
+  },
   "scripts": {
     "build": "tshy",
     "prepublishOnly": "vp run build",
     "typecheck": "tsc --noEmit",
-    "lint:pkg": "publint && attw --pack ."
+    "lint:pkg": "publint && attw --pack . --profile esm-only"
   },
   "dependencies": {
     "@vitejs/plugin-react": "catalog:",
@@ -99,6 +190,7 @@
       "./vitest/react-setup": "./src/vitest/react-setup.ts",
       "./vitest/react-setup.ts": "./src/vitest/react-setup.ts",
       "./vitest/flakiness-reporter": "./src/vitest/flakiness-reporter.ts",
+      "./vitest/source-conditions": "./src/vitest/source-conditions.ts",
       "./stryker": "./src/stryker/index.ts",
       "./workers-test": "./src/workers-test/index.ts"
     },
