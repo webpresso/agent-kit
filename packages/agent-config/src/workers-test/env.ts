@@ -107,7 +107,9 @@ export function createMockHyperdrive(overrides?: Partial<Hyperdrive>): Hyperdriv
  * const env = createMockEnv<MyWorkerEnv>({ MY_API_KEY: 'test-key' })
  * ```
  */
-export function createMockEnv<T extends BaseWorkerEnv>(overrides: Partial<T> = {}): T {
+export function createMockEnv<T extends BaseWorkerEnv>(
+  overrides: Partial<BaseWorkerEnv & T> = {},
+): BaseWorkerEnv & T {
   const defaultEnv: BaseWorkerEnv = {
     ENVIRONMENT: 'test',
     DATABASE_URL: 'postgresql://localhost/test',
@@ -117,5 +119,5 @@ export function createMockEnv<T extends BaseWorkerEnv>(overrides: Partial<T> = {
   return {
     ...defaultEnv,
     ...overrides,
-  } as T
+  } as BaseWorkerEnv & T
 }

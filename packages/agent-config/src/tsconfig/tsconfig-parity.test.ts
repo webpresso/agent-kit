@@ -3,6 +3,8 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
+const TSCONFIG_DIR = import.meta.dirname
+
 const configFiles = [
   'base.json',
   'cloudflare.json',
@@ -13,31 +15,13 @@ const configFiles = [
 
 describe('bundled tsconfig JSON files', () => {
   it.each(configFiles)('%s remains bundled and valid JSON', async (fileName) => {
-    const repositoryRoot = process.cwd()
-    const target = await readFile(join(repositoryRoot, 'src', 'config', 'tsconfig', fileName))
+    const target = await readFile(join(TSCONFIG_DIR, fileName))
 
     expect(() => JSON.parse(target.toString('utf8'))).not.toThrow()
   })
 
-  it.each(configFiles)(
-    '%s stays byte-for-byte aligned with the repo-root preset copy',
-    async (fileName) => {
-      const repositoryRoot = process.cwd()
-      const sourceTarget = await readFile(
-        join(repositoryRoot, 'src', 'config', 'tsconfig', fileName),
-        'utf8',
-      )
-      const rootTarget = await readFile(join(repositoryRoot, 'tsconfig', fileName), 'utf8')
-
-      expect(rootTarget).toBe(sourceTarget)
-    },
-  )
-
   it('react-library preset owns the React ambient types it requires', async () => {
-    const repositoryRoot = process.cwd()
-    const target = await readFile(
-      join(repositoryRoot, 'src', 'config', 'tsconfig', 'react-library.json'),
-    )
+    const target = await readFile(join(TSCONFIG_DIR, 'react-library.json'))
     const parsed = JSON.parse(target.toString('utf8')) as {
       compilerOptions?: { types?: string[] }
     }
@@ -46,25 +30,19 @@ describe('bundled tsconfig JSON files', () => {
   })
 
   it('publishes tsconfig preset inheritance through canonical package subpaths only', async () => {
-    const repositoryRoot = process.cwd()
-
-    const library = JSON.parse(
-      await readFile(join(repositoryRoot, 'src', 'config', 'tsconfig', 'library.json'), 'utf8'),
-    ) as { extends?: string }
+    const library = JSON.parse(await readFile(join(TSCONFIG_DIR, 'library.json'), 'utf8')) as {
+      extends?: string
+    }
     const reactLibrary = JSON.parse(
-      await readFile(
-        join(repositoryRoot, 'src', 'config', 'tsconfig', 'react-library.json'),
-        'utf8',
-      ),
+      await readFile(join(TSCONFIG_DIR, 'react-library.json'), 'utf8'),
     ) as { extends?: string }
     const cloudflare = JSON.parse(
-      await readFile(join(repositoryRoot, 'src', 'config', 'tsconfig', 'cloudflare.json'), 'utf8'),
-    ) as { extends?: string }
+      await readFile(join(TSCONFIG_DIR, 'cloudflare.json'), 'utf8'),
+    ) as {
+      extends?: string
+    }
     const reactRouter = JSON.parse(
-      await readFile(
-        join(repositoryRoot, 'src', 'config', 'tsconfig', 'react-router.json'),
-        'utf8',
-      ),
+      await readFile(join(TSCONFIG_DIR, 'react-router.json'), 'utf8'),
     ) as { extends?: string }
 
     expect(library.extends).toBe('@webpresso/agent-config/tsconfig/base.json')

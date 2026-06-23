@@ -41,3 +41,36 @@ external workflow checkout identity from setup, hooks, and update paths.
 - `./bin/wp audit legacy-workflow-identity`
 - Focused workflow/browser/setup/update/hook tests documented in the final task
   report.
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-23T15:44:02.000Z
+- verified-head: b1b876e3676a71173c65ed1bc27891c5b4ee2528
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID | Claim | Evidence |
+| -- | ----- | -------- |
+| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-23-workflow-browser-skills-defaults.md |
+
+### Material Decisions
+
+| ID | Decision | Chosen option | Rejected alternatives | Rationale |
+| -- | -------- | ------------- | --------------------- | --------- |
+| D1 | Preserve executable lifecycle state under the hard completed-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+
+### Promotion Gates
+
+| Gate | Command | Expected outcome | Last result |
+| ---- | ------- | ---------------- | ----------- |
+| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-23T00:00:00.000Z |
+| trust | wp audit blueprint-trust | pass | pass at 2026-06-23T15:44:02.000Z |
+
+### Residual Unknowns
+
+None.
