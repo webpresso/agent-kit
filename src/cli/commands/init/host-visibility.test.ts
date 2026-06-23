@@ -44,14 +44,7 @@ describe('host skill visibility', () => {
   it('treats the shared favorites as core required capabilities', () => {
     expect(REQUIRED_CORE_CAPABILITIES).toEqual(SHARED_FAVORITE_SKILLS)
     expect(REQUIRED_CORE_CAPABILITIES).toEqual(
-      expect.arrayContaining([
-        'fix',
-        'verify',
-        'testing-philosophy',
-        'plan-refine',
-        'pll',
-        'best-practice-research',
-      ]),
+      expect.arrayContaining(['fix', 'verify', 'plan-refine', 'browse', 'qa', 'review']),
     )
   })
 

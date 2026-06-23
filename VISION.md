@@ -71,7 +71,7 @@ and make the right thing the easiest thing.
 
 **Out of scope**
 
-- Owning peer tools such as gstack, OMX/OMC, or RTK.
+- Owning peer tools such as OMX/OMC or RTK.
 - Replacing application test/build systems.
 - Model selection, prompt marketplaces, or AI-agent hosting.
 

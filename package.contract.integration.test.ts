@@ -358,7 +358,6 @@ describe('tooling umbrella package integration contract', () => {
             HOME: fakeHome,
             HUSKY: '0',
             WP_SKIP_CLAUDE_PLUGIN: '1',
-            WP_SKIP_GSTACK: '1',
             WP_SKIP_OMC: '1',
             WP_SKIP_RTK: '1',
             WP_SKIP_UPDATE_CHECK: '1',

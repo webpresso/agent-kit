@@ -165,7 +165,6 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
 
     const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--cwd', repo], repo, {
       CODEX_HOME: codexHome,
-      WP_SKIP_GSTACK: '1',
       WP_SKIP_RTK: '1',
       WP_SKIP_OMC: '1',
     })
@@ -188,7 +187,6 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
 
     const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--cwd', repo], repo, {
       CODEX_HOME: codexHome,
-      WP_SKIP_GSTACK: '1',
       WP_SKIP_RTK: '1',
       WP_SKIP_OMC: '1',
     })
@@ -243,7 +241,6 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
     expect(install.code).toBe(0)
     const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--cwd', repo], repo, {
       CODEX_HOME: codexHome,
-      WP_SKIP_GSTACK: '1',
       WP_SKIP_RTK: '1',
       WP_SKIP_OMC: '1',
     })
@@ -313,7 +310,6 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
     expect(install.code).toBe(0)
     const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--cwd', repo], repo, {
       CODEX_HOME: codexHome,
-      WP_SKIP_GSTACK: '1',
       WP_SKIP_RTK: '1',
       WP_SKIP_OMC: '1',
     })
@@ -331,7 +327,6 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
     expect(install.code).toBe(0)
     const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--cwd', repo], repo, {
       CODEX_HOME: codexHome,
-      WP_SKIP_GSTACK: '1',
       WP_SKIP_RTK: '1',
       WP_RUN_HOST_SMOKE: '1',
       WP_SKIP_OMC: '1',

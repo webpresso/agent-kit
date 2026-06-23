@@ -12,7 +12,7 @@ export const CONFIG_VERSION = '1'
 export const CONFIG_FILENAME = '.webpressorc.json'
 export const LEGACY_CONFIG_FILENAME = '.agent-kitrc.json'
 export const DEFAULT_DURABLE_PLANNING_ROOT = '.agent/planning/'
-export const EXTERNAL_INTEGRATIONS = ['omx', 'omc', 'gstack'] as const
+export const EXTERNAL_INTEGRATIONS = ['omx', 'omc'] as const
 export type ExternalIntegrationName = (typeof EXTERNAL_INTEGRATIONS)[number]
 export type ExternalIntegrationScope = 'user' | 'project'
 

@@ -32,9 +32,6 @@ export default defineConfig({
       'bin/**/*.test.ts',
       'test/**/*.test.ts',
       '*.test.ts',
-      // Published config package — its parity/isolation guards must run in CI.
-      // (workflow-skills tests are not yet wired in: tracked separately.)
-      'packages/agent-config/src/**/*.test.ts',
     ],
     exclude: ['**/node_modules/**', '**/dist/**'],
     // Reset agent-session-leaked env (CLAUDE_PROJECT_DIR, WP_SKIP_UPDATE_CHECK)

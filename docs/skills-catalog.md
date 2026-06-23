@@ -89,9 +89,9 @@ wp skill install tanstack-query
 
 ### Curated plan/review workflows
 
-Agent-kit also ships a lightweight Webpresso-owned set of unprefixed workflow skills derived from MIT-licensed gstack ideas: `claude`, `plan-eng-review`, `plan-ceo-review`, `plan-design-review`, and `review`. They are staged from the private gstack workspace package through an allowlist, include provenance/NOTICE metadata, and do not require or install an external gstack checkout under a Claude home directory.
+Agent-kit ships a Webpresso-owned default bundle of unprefixed workflow and browser QA skills, including `claude`, `review`, `autoplan`, `investigate`, `health`, plan-review skills, `browse`, `qa-only`, `qa`, `devex-review`, and `design-review`. They are staged from the private `packages/workflow-skills` source package through an allowlist, include minimal provenance metadata, and do not require or install any external workflow checkout under a Claude home directory.
 
-External checkout cleanup is explicit only: `wp setup --with gstack` leaves an existing checkout in place unless `WP_GSTACK_CLEANUP_EXTERNAL=1` is set, in which case the directory is backed up before retirement.
+Browser skills use the Webpresso Playwright runtime. Run `wp browser doctor` for Chromium availability and `wp browser ensure chromium` when browser binaries are missing.
 
 ### Operational/domain catalog skills
 
@@ -137,7 +137,7 @@ At `.agent/rules/*.md`. Short enforceable rules that cite and diff well.
 | `engineering-principles.md` | General implementation quality principles. |
 | `extraction-parity.md` | Keep extracted/shared surfaces behaviorally equivalent. |
 | `generated-code-governance.md` | Do not hand-edit generated files; regenerate from source truth. |
-| `gstack-routing.md` | gstack integration routing and ownership rules. |
+| `workflow-skills-routing.md` | Workflow/browser skill routing and ownership rules. |
 | `no-timeout-as-fix.md` | Treat timeout failures as diagnostics, not fixes. |
 | `package-conventions.md` | Workspace/package conventions, import boundaries, and publish rules. |
 | `pre-implementation.md` | Blueprint-before-nontrivial-implementation gate. |

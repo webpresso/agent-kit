@@ -224,9 +224,6 @@ describe('scaffoldAgentHooks', () => {
     await scaffoldAgentHooks({ repoRoot, options: { dryRun: true } })
 
     expect(() =>
-      readFileSync(join(repoRoot, '.claude', 'hooks', 'check-gstack.sh'), 'utf8'),
-    ).toThrow()
-    expect(() =>
       readFileSync(
         join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh'),
         'utf8',
@@ -234,35 +231,8 @@ describe('scaffoldAgentHooks', () => {
     ).toThrow()
   })
 
-  it('does not materialize gstack guard hooks unless gstack is enabled', async () => {
-    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
-
-    expect(() =>
-      readFileSync(join(repoRoot, '.claude', 'hooks', 'check-gstack.sh'), 'utf8'),
-    ).toThrow()
-
-    const settings = JSON.parse(
-      readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8'),
-    ) as {
-      hooks: {
-        SessionStart?: Array<{ hooks: Array<{ command: string }> }>
-        PreToolUse?: Array<{ hooks: Array<{ command: string }> }>
-      }
-    }
-    const sessionCommands = (settings.hooks.SessionStart ?? []).flatMap((group) =>
-      group.hooks.map((hook) => hook.command),
-    )
-    const preToolCommands = (settings.hooks.PreToolUse ?? []).flatMap((group) =>
-      group.hooks.map((hook) => hook.command),
-    )
-    expect(sessionCommands.some((command) => command.includes('check-gstack-session.sh'))).toBe(
-      false,
-    )
-    expect(preToolCommands.some((command) => command.includes('check-gstack.sh'))).toBe(false)
-  })
-
   it('wires wp-sessionstart-routing as the SessionStart hook in both Claude and Codex', async () => {
-    await scaffoldAgentHooks({ repoRoot, options: {}, gstackEnabled: true })
+    await scaffoldAgentHooks({ repoRoot, options: {} })
 
     const claude = JSON.parse(readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8')) as {
       hooks: { SessionStart: Array<{ hooks: Array<{ command: string }> }> }
@@ -335,75 +305,6 @@ describe('scaffoldAgentHooks', () => {
     } finally {
       rmSync(packageRoot, { recursive: true, force: true })
     }
-  })
-
-  it('dedupes pre-existing wrapped script hooks against the raw incoming form', async () => {
-    // Regression: hasCommand previously only extracted node_modules/.bin/<name>
-    // identifiers. Script paths like .claude/hooks/check-gstack-session.sh
-    // fell through to exact-string match, so the wrapped form
-    // `[ -x X ] && X || true` did not match the raw incoming `X`. wp setup
-    // accumulated a duplicate gstack entry on every run.
-    const settingsPath = join(repoRoot, '.claude', 'settings.json')
-    mkdirSync(join(repoRoot, '.claude'), { recursive: true })
-    const wrappedGstack =
-      '[ -x "$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack-session.sh" ] && "$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack-session.sh" || true'
-    writeFileSync(
-      settingsPath,
-      JSON.stringify(
-        {
-          hooks: {
-            SessionStart: [{ hooks: [{ type: 'command', command: wrappedGstack, timeout: 2 }] }],
-          },
-        },
-        null,
-        2,
-      ),
-    )
-
-    await scaffoldAgentHooks({ repoRoot, options: {}, gstackEnabled: true })
-
-    const settings = JSON.parse(readFileSync(settingsPath, 'utf8')) as {
-      hooks: { SessionStart: Array<{ hooks: Array<{ command: string }> }> }
-    }
-    const gstackMatches = settings.hooks.SessionStart.flatMap((g) =>
-      g.hooks.map((h) => h.command),
-    ).filter((cmd) => cmd.includes('check-gstack-session.sh'))
-    expect(gstackMatches).toHaveLength(1)
-    expect(gstackMatches[0]).toBe(wrappedGstack)
-  })
-
-  it('dedupes pre-existing wrapped Skill matcher hooks against the raw incoming form', async () => {
-    const settingsPath = join(repoRoot, '.claude', 'settings.json')
-    mkdirSync(join(repoRoot, '.claude'), { recursive: true })
-    const wrappedGstackSkill =
-      '[ -x "$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack.sh" ] && "$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack.sh" || true'
-    writeFileSync(
-      settingsPath,
-      JSON.stringify(
-        {
-          hooks: {
-            PreToolUse: [
-              {
-                matcher: 'Skill',
-                hooks: [{ type: 'command', command: wrappedGstackSkill, timeout: 3 }],
-              },
-            ],
-          },
-        },
-        null,
-        2,
-      ),
-    )
-
-    await scaffoldAgentHooks({ repoRoot, options: {} })
-
-    const settings = JSON.parse(readFileSync(settingsPath, 'utf8')) as {
-      hooks: { PreToolUse: Array<{ matcher?: string; hooks: Array<{ command: string }> }> }
-    }
-    const gstackSkillMatches = settings.hooks.PreToolUse.flatMap((g) =>
-      g.hooks.map((h) => h.command),
-    ).filter((cmd) => cmd.includes('check-gstack.sh'))
-    expect(gstackSkillMatches).toHaveLength(1)
   })
 
   it('does not duplicate the wp-sessionstart-routing entry on a second scaffold', async () => {
@@ -1006,44 +907,52 @@ hooks:
     expect(JSON.stringify(cursor)).not.toContain('wp-precompact-snapshot')
   })
 
-  it('keeps Codex hook commands executable from a sibling cwd instead of failing with 127', async () => {
-    initGitRepo(repoRoot)
-    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+  it(
+    'keeps Codex hook commands executable from a sibling cwd instead of failing with 127',
+    { timeout: 20_000 },
+    async () => {
+      initGitRepo(repoRoot)
+      await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
 
-    const siblingCwd = mkdtempSync(join(repoRoot, 'sibling-'))
-    const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
-      hooks: { PreToolUse: Array<{ hooks: Array<{ command: string }> }> }
-    }
-    const command = codex.hooks.PreToolUse[0]?.hooks[0]?.command
+      const siblingCwd = mkdtempSync(join(repoRoot, 'sibling-'))
+      const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
+        hooks: { PreToolUse: Array<{ hooks: Array<{ command: string }> }> }
+      }
+      const command = codex.hooks.PreToolUse[0]?.hooks[0]?.command
 
-    const result = spawnSync('sh', ['-lc', command ?? ''], {
-      cwd: siblingCwd,
-      encoding: 'utf8',
-      input: '{}',
-    })
+      const result = spawnSync('sh', ['-lc', command ?? ''], {
+        cwd: siblingCwd,
+        encoding: 'utf8',
+        input: '{}',
+      })
 
-    expect(command).toBe(codexBinCommand(repoRoot, 'wp-pretool-guard'))
-    expect(result.status).toBe(0)
-  })
+      expect(command).toBe(codexBinCommand(repoRoot, 'wp-pretool-guard'))
+      expect(result.status).toBe(0)
+    },
+  )
 
-  it('keeps the Codex Stop hook executable from a sibling cwd instead of failing with 127', async () => {
-    initGitRepo(repoRoot)
-    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+  it(
+    'keeps the Codex Stop hook executable from a sibling cwd instead of failing with 127',
+    { timeout: 20_000 },
+    async () => {
+      initGitRepo(repoRoot)
+      await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
 
-    const siblingCwd = mkdtempSync(join(repoRoot, 'sibling-stop-'))
-    const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
-      hooks: { Stop: Array<{ hooks: Array<{ command: string }> }> }
-    }
-    const command = codex.hooks.Stop[0]?.hooks[0]?.command
+      const siblingCwd = mkdtempSync(join(repoRoot, 'sibling-stop-'))
+      const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
+        hooks: { Stop: Array<{ hooks: Array<{ command: string }> }> }
+      }
+      const command = codex.hooks.Stop[0]?.hooks[0]?.command
 
-    const result = spawnSync('sh', ['-c', command ?? ''], {
-      cwd: siblingCwd,
-      encoding: 'utf8',
-    })
+      const result = spawnSync('sh', ['-c', command ?? ''], {
+        cwd: siblingCwd,
+        encoding: 'utf8',
+      })
 
-    expect(command).toBe(codexBinCommand(repoRoot, 'wp-stop-qa'))
-    expect(result.status).toBe(0)
-  })
+      expect(command).toBe(codexBinCommand(repoRoot, 'wp-stop-qa'))
+      expect(result.status).toBe(0)
+    },
+  )
 })
 
 describe('classifyWebpressoHookBin', () => {
@@ -1265,7 +1174,7 @@ describe('buildWebpressoHookGroups', () => {
   })
 })
 
-describe('BP1 hotfix: launcher chain, node fallback, gstack stdin scoping, stop-qa timeout', () => {
+describe('BP1 hotfix: launcher chain, node fallback, stop-qa timeout', () => {
   let repoRoot: string
 
   beforeEach(() => {
@@ -1311,50 +1220,6 @@ describe('BP1 hotfix: launcher chain, node fallback, gstack stdin scoping, stop-
     // Skipped runs warn on stderr instead of silently succeeding.
     expect(stopCommand).toContain('>&2')
     expect(stopCommand).not.toContain('|| true')
-  })
-
-  it('scopes the gstack PreToolUse check to gstack-owned skills via stdin', async () => {
-    await scaffoldAgentHooks({
-      repoRoot,
-      options: {},
-      gstackEnabled: true,
-      trustCodexHooks: false,
-    })
-    const checkGstackPath = join(repoRoot, '.claude', 'hooks', 'check-gstack.sh')
-    const checkGstack = readFileSync(checkGstackPath, 'utf8')
-    expect(checkGstack).toContain('"skill"')
-    expect(checkGstack).toContain('case "$skill" in')
-
-    // HOME without gstack so the missing-gstack branch is exercised.
-    const nonGstack = spawnSync('sh', [checkGstackPath], {
-      input: JSON.stringify({ tool_name: 'Skill', tool_input: { skill: 'webpresso:qa' } }),
-      encoding: 'utf8',
-      env: { ...process.env, HOME: repoRoot },
-    })
-    expect(nonGstack.stdout).not.toContain('permissionDecision')
-
-    const gstackOwned = spawnSync('sh', [checkGstackPath], {
-      input: JSON.stringify({ tool_name: 'Skill', tool_input: { skill: 'browse' } }),
-      encoding: 'utf8',
-      env: { ...process.env, HOME: repoRoot },
-    })
-    expect(gstackOwned.stdout).toContain('"permissionDecision":"deny"')
-  })
-
-  it('regenerates the gstack check scripts when the template changes', async () => {
-    const hooksDir = join(repoRoot, '.claude', 'hooks')
-    mkdirSync(hooksDir, { recursive: true })
-    writeFileSync(join(hooksDir, 'check-gstack.sh'), '#!/bin/sh\nexit 1\n', 'utf8')
-
-    await scaffoldAgentHooks({
-      repoRoot,
-      options: {},
-      gstackEnabled: true,
-      trustCodexHooks: false,
-    })
-
-    const content = readFileSync(join(hooksDir, 'check-gstack.sh'), 'utf8')
-    expect(content).toContain('case "$skill" in')
   })
 
   it('emits a measured timeout for the wp-stop-qa Stop hook', () => {

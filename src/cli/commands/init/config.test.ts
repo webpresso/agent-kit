@@ -71,7 +71,6 @@ describe('config', () => {
       installed: { tier3Skills: ['tanstack-query'] },
       integrations: {
         omx: { enabled: true, scope: 'user' },
-        gstack: { enabled: true },
       },
       mcp: { serverName: 'webpresso', toolPrefix: 'wp_' },
       rules: { overrides: ['repo-restrictions'] },
@@ -89,7 +88,6 @@ describe('config', () => {
     expect(readBack?.installed.tier3Skills).toEqual(['tanstack-query'])
     expect(readBack?.integrations).toEqual({
       omx: { enabled: true, scope: 'user' },
-      gstack: { enabled: true },
     })
     expect(readBack?.mcp).toEqual({ serverName: 'webpresso', toolPrefix: 'wp_' })
     expect(readBack?.rules.overrides).toEqual(['repo-restrictions'])
@@ -114,7 +112,7 @@ describe('config', () => {
     const incoming = {
       ...defaultConfig(),
       installed: { tier3Skills: ['tanstack-query'] },
-      integrations: { gstack: { enabled: true as const } },
+      integrations: { omc: { enabled: true as const, scope: 'user' as const } },
       mcp: { serverName: 'custom-server' },
       rules: { overrides: ['claude-rules'] },
       scripts: { 'setup-agent': 'wp setup' },
@@ -128,7 +126,7 @@ describe('config', () => {
     }
     const merged = mergeConfig(existing, incoming)
     expect(merged.installed.tier3Skills.toSorted()).toEqual(['react-doctor', 'tanstack-query'])
-    expect(merged.integrations).toEqual({ gstack: { enabled: true } })
+    expect(merged.integrations).toEqual({ omc: { enabled: true, scope: 'user' } })
     expect(merged.mcp).toEqual({ serverName: 'custom-server', toolPrefix: 'wp_' })
     expect(merged.rules.overrides).toEqual(['agent-hooks', 'claude-rules'])
     expect(merged.scripts['setup-agent']).toBe('wp setup')
@@ -169,14 +167,13 @@ describe('config', () => {
         integrations: {
           omx: { enabled: true, scope: 'project' },
           omc: { enabled: false, scope: 'user' },
-          gstack: { enabled: true, scope: 'bogus' },
+          legacyWorkflow: { enabled: true, scope: 'bogus' },
         },
       }),
     )
 
     expect(readConfig(dir)?.integrations).toEqual({
       omx: { enabled: true, scope: 'project' },
-      gstack: { enabled: true },
     })
   })
 

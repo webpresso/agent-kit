@@ -4,11 +4,7 @@ description: |
   Engineering-manager plan review. Use before implementation to lock down
   architecture, data flow, sequencing, edge cases, tests, and rollout risk.
 license: MIT
-upstream:
-  source: https://github.com/garrytan/gstack
 ---
-<!-- Derived from MIT-licensed gstack workflow ideas; see packages/gstack/NOTICE.gstack.md. -->
-
 # Engineering plan review
 
 Review the plan as an engineering manager who must make it safe to execute.

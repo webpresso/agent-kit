@@ -99,7 +99,7 @@ function fixtureSecretlintFinding(stageRoot: string): unknown {
 describe('parseNpmPackJsonOutput', () => {
   test('parses npm JSON after lifecycle stdout prelude', () => {
     const parsed = parseNpmPackJsonOutput(
-      '$ bun scripts/stage-gstack-skills.ts\nstage-gstack-skills: staged 5 skills\n[{"name":"@webpresso/agent-kit","files":[{"path":"package.json","size":42}]}]',
+      '$ bun scripts/stage-workflow-skills.ts\nstage-workflow-skills: staged 5 skills\n[{"name":"@webpresso/agent-kit","files":[{"path":"package.json","size":42}]}]',
     )
 
     expect(parsed).toEqual([
@@ -128,7 +128,7 @@ describe('package-surface audit', () => {
     expect(pkg.tshy?.exports?.['./wp-extension']).toBe('./src/wp-extension/index.ts')
   })
 
-  test('public gstack attribution does not point package consumers to private source paths', () => {
+  test('public workflow skill attribution does not point package consumers to private source paths', () => {
     const root = resolve(import.meta.dirname, '..', '..')
     const notices = readFileSync(join(root, 'THIRD-PARTY-NOTICES.md'), 'utf8')
     const manifest = readFileSync(
@@ -136,9 +136,9 @@ describe('package-surface audit', () => {
       'utf8',
     )
 
-    expect(notices).toContain('gstack-derived workflow skills')
-    expect(`${notices}\n${manifest}`).not.toContain('packages/gstack/')
-    expect(`${notices}\n${manifest}`).not.toContain('packages/gstack provenance')
+    expect(notices).toContain('workflow skill provenance')
+    expect(`${notices}\n${manifest}`).not.toContain('packages/workflow-skills/')
+    expect(`${notices}\n${manifest}`).not.toContain('packages/workflow-skills provenance')
   })
 
   test('flags publishable @webpresso packages outside the contract', () => {

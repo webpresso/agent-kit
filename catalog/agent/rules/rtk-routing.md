@@ -36,11 +36,11 @@ that webpresso does not own.
 - Never wrap the `rtk` prefix behind `wp rtk`.
 - Keep `wp_*` and `rtk *` as independent lanes.
 
-## Lane 4: gstack (interactive/browser workflows)
+## Lane 4: Webpresso workflow/browser skills
 
-gstack owns interactive/browser workflows (slash-skill invocation, AskUserQuestion-gated).
+Webpresso owns workflow, browser, QA, design, and DX skills as native package assets.
+Browser runtime checks and lightweight page inspection route through `wp browser`.
 This rule is fallback-only; it should not compete with SessionStart routing.
-Owned by: ~/.claude/skills/gstack/
 
 ## Subprocess coverage note
 

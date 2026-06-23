@@ -11,12 +11,12 @@ bootstrap.
 - **Default repo bootstrap:** `base-kit` creates the starter quality scaffold
   and package scripts when files are absent.
 - **Default shared Webpresso skills:** `fix`, `verify`, `testing-philosophy`,
-  `plan-refine`, `pll`, and `best-practice-research` are projected into
-  supported host-visible surfaces by default.
+  `plan-refine`, `pll`, `best-practice-research`, plus workflow/browser QA
+  skills such as `autoplan`, `investigate`, `browse`, `qa-only`, and `qa`, are
+  projected into supported host-visible surfaces by default.
 - **Default workstation presets:** `vision` and `rtk`.
-- **External tools:** OMX, OMC, and gstack are intentionally self-managed.
-  Install and update them with their native installers if you choose to use
-  them.
+- **External tools:** OMX and OMC are intentionally self-managed. Install and
+  update them with their native installers if you choose to use them.
 
 Most repos should only run:
 
@@ -54,7 +54,6 @@ remembers or replays their installation on reruns:
 | --- | --- | --- |
 | [`omx`](https://oh-my-codex.dev/docs.html) | `npm install -g oh-my-codex`, then `omx setup` / `omx update` | official OMX docs |
 | `omc` | Claude Code `/plugin` or `claude plugin` marketplace commands | [Claude Code plugin docs](https://code.claude.com/docs/en/settings) |
-| [`gstack`](https://github.com/garrytan/gstack) | Clone the repo and run `./setup` | upstream README |
 
 See [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) for vendored catalog skills and
 integration license notes.

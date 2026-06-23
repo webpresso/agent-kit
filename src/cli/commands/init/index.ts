@@ -112,7 +112,6 @@ import {
   ensureCodexPlaywrightMcp,
 } from './scaffolders/codex-mcp/index.js'
 import { scaffoldExampleSkill } from './scaffolders/example-skill/index.js'
-import { ensureGstack } from './scaffolders/gstack/index.js'
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
 import { ensureOmx } from './scaffolders/omx/index.js'
 import { ensureOmc, OMC_SETUP_COMMAND } from './scaffolders/omc/index.js'
@@ -136,7 +135,6 @@ import {
 
 const PRESETS = [
   'example-skill',
-  'gstack',
   'lore-commits',
   'omc',
   'omx',
@@ -147,8 +145,7 @@ const PRESETS = [
 type Preset = (typeof PRESETS)[number]
 const DEFAULT_PRESETS: readonly Preset[] = ['vision', 'rtk']
 const USER_VISIBLE_PRESETS = PRESETS.filter(
-  (preset): preset is Exclude<Preset, 'gstack' | 'omc' | 'omx'> =>
-    preset !== 'gstack' && preset !== 'omc' && preset !== 'omx',
+  (preset): preset is Exclude<Preset, 'omc' | 'omx'> => preset !== 'omc' && preset !== 'omx',
 )
 const RTK_REQUESTED_MARKER = join('.agent', '.rtk-requested')
 
@@ -683,12 +680,6 @@ async function runUserOnlySetup(input: {
     }
   }
 
-  if (integrations.gstack?.enabled === true) {
-    console.log(
-      '  gstack: - skipped in user-only mode (run `wp setup` inside a project repo when you need repo-local gstack integration)',
-    )
-  }
-
   if (presets.includes('rtk')) {
     console.log(
       '  rtk: - skipped in user-only mode (RTK setup in this repo also records project-local markers and pins)',
@@ -1122,7 +1113,6 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     let agentHooksResult = await scaffoldAgentHooks({
       repoRoot: consumer.repoRoot,
       options,
-      gstackEnabled: integrations.gstack?.enabled === true,
       trustCodexHooks: false,
     })
 
@@ -1212,7 +1202,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     }
 
     // CI runners (GitHub Actions, etc.) set CI=true but don't have optional
-    // developer-workstation tools (omx, gstack, rtk) available.
+    // developer-workstation tools (omx, rtk) available.
     // Failures from these installations must not fail the postinstall in that
     // context.
     const isCiEnvironment = process.env.CI === 'true' || process.env.CI === '1'
@@ -1320,7 +1310,6 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
       agentHooksResult = await scaffoldAgentHooks({
         repoRoot: consumer.repoRoot,
         options,
-        gstackEnabled: integrations.gstack?.enabled === true,
         trustCodexHooks: false,
       })
     }
@@ -1573,102 +1562,6 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
       }
     }
 
-    let gstackFailure: 'setup-failed' | null = null
-    if (process.env.WP_SKIP_GSTACK === '1') {
-      console.warn('  gstack: ⚠ WP_SKIP_GSTACK=1 — skipping optional gstack integration.')
-    } else if (isCiEnvironment && presets.includes('gstack')) {
-      console.log('  gstack: - skipped (CI environment)')
-    } else if (presets.includes('gstack')) {
-      const gstackResult = await ensureGstack({ repoRoot: consumer.repoRoot, options })
-      switch (gstackResult.kind) {
-        case 'gstack-installed':
-          console.log(`  gstack: ✓ installed at ${gstackResult.root}`)
-          if (!options.dryRun) {
-            toolingOwnership = claimUserOwnedTool(toolingOwnership, 'gstack')
-            toolingOwnershipChanged = true
-          }
-          switch (gstackResult.codex.kind) {
-            case 'gstack-codex-installed':
-              console.log(`  gstack (codex): ✓ installed at ${gstackResult.codex.skillsRoot}`)
-              break
-            case 'gstack-codex-updated':
-              console.log(`  gstack (codex): ✓ updated at ${gstackResult.codex.skillsRoot}`)
-              break
-            case 'gstack-codex-already-configured':
-              console.log(
-                `  gstack (codex): already configured at ${gstackResult.codex.skillsRoot}`,
-              )
-              break
-            case 'gstack-codex-skipped':
-              console.log(`  gstack (codex): - skipped (${gstackResult.codex.reason})`)
-              break
-          }
-          break
-        case 'gstack-updated':
-          console.log(`  gstack: ✓ updated at ${gstackResult.root}`)
-          if (!options.dryRun) {
-            toolingOwnership = claimUserOwnedTool(toolingOwnership, 'gstack')
-            toolingOwnershipChanged = true
-          }
-          switch (gstackResult.codex.kind) {
-            case 'gstack-codex-installed':
-              console.log(`  gstack (codex): ✓ installed at ${gstackResult.codex.skillsRoot}`)
-              break
-            case 'gstack-codex-updated':
-              console.log(`  gstack (codex): ✓ updated at ${gstackResult.codex.skillsRoot}`)
-              break
-            case 'gstack-codex-already-configured':
-              console.log(
-                `  gstack (codex): already configured at ${gstackResult.codex.skillsRoot}`,
-              )
-              break
-            case 'gstack-codex-skipped':
-              console.log(`  gstack (codex): - skipped (${gstackResult.codex.reason})`)
-              break
-          }
-          break
-        case 'gstack-already-configured':
-          console.log(
-            `  gstack: already configured at ${gstackResult.root} (set WP_GSTACK_REFRESH=1 to refresh)`,
-          )
-          if (!options.dryRun) {
-            toolingOwnership = claimUserOwnedTool(toolingOwnership, 'gstack')
-            toolingOwnershipChanged = true
-          }
-          switch (gstackResult.codex.kind) {
-            case 'gstack-codex-installed':
-              console.log(`  gstack (codex): ✓ installed at ${gstackResult.codex.skillsRoot}`)
-              break
-            case 'gstack-codex-updated':
-              console.log(`  gstack (codex): ✓ updated at ${gstackResult.codex.skillsRoot}`)
-              break
-            case 'gstack-codex-already-configured':
-              console.log(
-                `  gstack (codex): already configured at ${gstackResult.codex.skillsRoot}`,
-              )
-              break
-            case 'gstack-codex-skipped':
-              console.log(`  gstack (codex): - skipped (${gstackResult.codex.reason})`)
-              break
-          }
-          break
-        case 'gstack-skipped-dry-run':
-          console.log('  gstack: skipped (--dry-run)')
-          break
-        case 'gstack-setup-failed':
-          console.error(
-            gstackResult.reason === 'signal-interrupted'
-              ? `  gstack: ✗ interrupted while running ./setup ${gstackResult.command}`
-              : gstackResult.reason === 'inactivity-timeout'
-                ? `  gstack: ✗ ./setup ${gstackResult.command} timed out after inactivity`
-                : `  gstack: ✗ ./setup ${gstackResult.command} exited with ${gstackResult.exitCode}`,
-          )
-          console.error(`  gstack: log ${gstackResult.logPath}`)
-          gstackFailure = 'setup-failed'
-          break
-      }
-    }
-
     if (!options.dryRun && repoKey !== null) {
       if (
         withoutEntries.includes('omx') &&
@@ -1870,7 +1763,6 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     console.log('\nwp init: setup phases finished.')
     if (omxFailure === 'not-found') return EXIT_SETUP_FAIL
     if (omxFailure === 'spawn-failed') return EXIT_WRITE_FAIL
-    if (gstackFailure === 'setup-failed') return EXIT_WRITE_FAIL
     if (rtkFailure === 'not-found') return EXIT_SETUP_FAIL
     if (rtkFailure === 'init-failed') return EXIT_WRITE_FAIL
 
@@ -1893,9 +1785,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         'Ownership lanes:',
         '  Lane 1 wp_*   blueprint · audit · quality',
         '  Lane 2 rtk    shell-tool token filtering',
-        integrations.gstack?.enabled === true
-          ? '  Lane 3 external tools (legacy compatibility preset requested this run)'
-          : '  Lane 3 external tools (self-managed; install OMX/OMC/gstack separately if desired)',
+        '  Lane 3 external tools (self-managed; install OMX/OMC separately if desired)',
       ].join('\n'),
     )
 
@@ -1942,11 +1832,11 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
 
   // Help text is data-driven so adding a preset (PRESETS) automatically
   // updates --help. Prevents the docs/code drift we discovered when
-  // omx + gstack landed without surfacing in --help.
+  // omx landed without surfacing in --help.
   const withHelp =
     `Comma-separated opt-in skills and/or presets to install ` +
     `(non-interactive). Presets: ${USER_VISIBLE_PRESETS.join(', ')}. ` +
-    `Legacy compatibility presets (omx, omc, gstack) are intentionally omitted; ` +
+    `Legacy compatibility presets (omx, omc) are intentionally omitted; ` +
     `install those tools with their native installers instead. ` +
     `Opt-in skills are listed by 'wp skill list'.`
   const withoutHelp = `Comma-separated opt-in skills and/or presets to opt out of for this run.`
