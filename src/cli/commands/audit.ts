@@ -63,6 +63,8 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
       visionPath: options.visionPath,
     }),
   'tech-debt': async (root) => (await import('#audit/tech-debt')).auditTechDebt(root),
+  'supported-agent-clis': async (root) =>
+    (await import('#audit/supported-agent-clis')).auditSupportedAgentClis(root),
   'no-relative-parent-imports': async (root) =>
     (await import('#audit/repo-guardrails')).auditNoRelativeParentImports(root, {
       // config/docs-lint is a published package that uses within-package relative

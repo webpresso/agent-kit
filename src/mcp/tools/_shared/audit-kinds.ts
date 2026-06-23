@@ -31,6 +31,7 @@ export const MCP_AUDIT_KINDS = [
   'bundle-budget',
   'commit-message',
   'tech-debt',
+  'supported-agent-clis',
   'hook-surface',
   'harness-surfaces',
   'weakness-mining',
