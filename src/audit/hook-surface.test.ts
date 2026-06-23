@@ -242,11 +242,6 @@ describe('extractOwner', () => {
     expect(extractOwner('rtk hook claude')).toBe('rtk')
   })
 
-  it('classifies gstack scripts', () => {
-    expect(extractOwner('"$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack.sh"')).toBe('gstack')
-    expect(extractOwner('/some/path/gstack-hook.sh')).toBe('gstack')
-  })
-
   it('returns unknown for unrecognised commands', () => {
     expect(extractOwner('some-other-tool --hook')).toBe('unknown')
     expect(extractOwner('')).toBe('unknown')

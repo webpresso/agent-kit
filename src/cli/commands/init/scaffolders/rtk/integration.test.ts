@@ -60,7 +60,6 @@ describe('rtk scaffolder integration', () => {
   let previousPath: string | undefined
   let previousCodeHome: string | undefined
   let previousCi: string | undefined
-  let previousAkSkipGstack: string | undefined
   let previousAkSkipClaudePlugin: string | undefined
   let previousAkSkipOmc: string | undefined
   let previousWpSkipCodexTrustSync: string | undefined
@@ -76,7 +75,6 @@ describe('rtk scaffolder integration', () => {
     previousPath = process.env.PATH
     previousCodeHome = process.env.CODEX_HOME
     previousCi = process.env.CI
-    previousAkSkipGstack = process.env.WP_SKIP_GSTACK
     previousAkSkipClaudePlugin = process.env.WP_SKIP_CLAUDE_PLUGIN
     previousAkSkipOmc = process.env.WP_SKIP_OMC
     previousWpSkipCodexTrustSync = process.env.WP_SKIP_CODEX_TRUST_SYNC
@@ -85,7 +83,6 @@ describe('rtk scaffolder integration', () => {
     process.env.CODEX_HOME = join(repo, '.codex-home')
     process.env.PATH = [fakeRtkBin, previousPath ?? ''].filter(Boolean).join(':')
     delete process.env.CI
-    process.env.WP_SKIP_GSTACK = '1'
     process.env.WP_SKIP_CLAUDE_PLUGIN = '1'
     process.env.WP_SKIP_OMC = '1'
     process.env.WP_SKIP_CODEX_TRUST_SYNC = '1'
@@ -105,8 +102,6 @@ describe('rtk scaffolder integration', () => {
     else process.env.CODEX_HOME = previousCodeHome
     if (previousCi === undefined) delete process.env.CI
     else process.env.CI = previousCi
-    if (previousAkSkipGstack === undefined) delete process.env.WP_SKIP_GSTACK
-    else process.env.WP_SKIP_GSTACK = previousAkSkipGstack
     if (previousAkSkipClaudePlugin === undefined) delete process.env.WP_SKIP_CLAUDE_PLUGIN
     else process.env.WP_SKIP_CLAUDE_PLUGIN = previousAkSkipClaudePlugin
     if (previousAkSkipOmc === undefined) delete process.env.WP_SKIP_OMC

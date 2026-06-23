@@ -65,7 +65,7 @@ describe('generated agent-surface gitignore block', () => {
         '.webpresso/hooks-manifest.json',
         '.claude/settings.json',
         '.claude/settings.local.json',
-        '.claude/hooks/check-gstack.sh',
+        '.claude/hooks/custom-tool.sh',
         '_worktrees/agent-fix-login/.git',
         '.stryker-tmp/sandbox.json',
         'reports/mutation/mutation-report.html',
@@ -76,7 +76,7 @@ describe('generated agent-surface gitignore block', () => {
     )
     expect(ignored.status).toBe(0)
     expect(ignored.stdout.trim().split('\n').toSorted()).toEqual([
-      '.claude/hooks/check-gstack.sh',
+      '.claude/hooks/custom-tool.sh',
       '.claude/settings.json',
       '.claude/settings.local.json',
       '.codex/agents/planner.toml',

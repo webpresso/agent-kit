@@ -1,7 +1,7 @@
 /**
  * End-to-end tests that spawn the actual `wp` CLI as a subprocess with
  * env manipulation (PATH / HOME) to simulate every preset code path
- * against fixtures instead of real omx/gstack/etc.
+ * against fixtures instead of real omx/omc/etc.
  *
  * These are slower than the unit + integration tests (subprocess fork
  * per case) but verify the full binary boundary: argv parsing, exit
@@ -64,7 +64,7 @@ function runAk(args: string[], extraEnv: Record<string, string> = {}): RunResult
   // Build a clean base env: inherit process.env but strip CI sentinels so
   // the subprocess behaves like a developer workstation. Without this,
   // GitHub Actions' CI=true causes isCiEnvironment to be true inside the
-  // spawned wp binary, which skips omx/omc/gstack/rtk preset execution and
+  // spawned wp binary, which skips omx/omc/rtk preset execution and
   // makes every preset e2e test assert on output that is never produced.
   // Individual tests can re-add CI=true via extraEnv if they need CI behaviour.
   const { CI: _ci, GITHUB_ACTIONS: _ga, ...baseEnv } = process.env
@@ -291,7 +291,6 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       const r = runAk(['setup', '--yes', '--prune', '--cwd', repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
-        WP_SKIP_GSTACK: '1',
       })
 
       expect(r.code).toBe(0)
@@ -311,7 +310,6 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       const r = runAk(['setup', '--yes', '--project-init', '--with', 'base-kit', '--cwd', repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
-        WP_SKIP_GSTACK: '1',
       })
       expect(r.code).toBe(0)
       expect(r.stdout).toContain('wp init: setup phases finished.')
@@ -444,69 +442,6 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(r.stderr).toContain('exited with 5')
     })
 
-    it('--with gstack + fake HOME with legacy checkout: exits 0, installs Webpresso skills', () => {
-      const r = runAk(['setup', '--yes', '--project-init', '--with', 'gstack', '--cwd', repo], {
-        PATH: pathWithFakeOmxOk(),
-        HOME: fakeHome,
-      })
-      expect(r.code).toBe(0)
-      expect(r.stdout).toContain('gstack: ✓ installed')
-      expect(r.stdout).toContain(path.join(fakeHome, '.claude', 'skills', 'gstack'))
-    })
-
-    it('--with gstack + detected codex: materializes codex skills from the canonical checkout', () => {
-      mkdirSync(path.join(fakeHome, '.codex'), { recursive: true })
-      writeFileSync(path.join(fakeHome, '.codex', 'config.toml'), 'model = "gpt-5.4"\n')
-
-      const r = runAk(['setup', '--yes', '--project-init', '--with', 'gstack', '--cwd', repo], {
-        PATH: pathWithFakeOmxOk(),
-        HOME: fakeHome,
-      })
-
-      expect(r.code).toBe(0)
-      expect(r.stdout).toContain('gstack: ✓ installed')
-      expect(r.stdout).toContain(
-        `gstack (codex): ✓ installed at ${path.join(fakeHome, '.codex', 'skills')}`,
-      )
-    })
-
-    it(
-      '--with omx,gstack combined: both presets execute against fixtures',
-      { timeout: 20_000 },
-      () => {
-        const r = runAk(
-          ['setup', '--yes', '--project-init', '--with', 'omx,gstack', '--cwd', repo],
-          {
-            PATH: pathWithFakeOmxOk(),
-            HOME: fakeHome,
-          },
-        )
-        expect(r.code).toBe(0)
-        expect(r.stdout).toContain('omx setup: ✓')
-        expect(r.stdout).toContain('gstack: ✓ installed')
-      },
-    )
-
-    it(
-      'presets run independently: omx failure does NOT skip gstack, exit code reflects partial failure',
-      { timeout: 20_000 },
-      () => {
-        const r = runAk(
-          ['setup', '--yes', '--project-init', '--with', 'omx,gstack', '--cwd', repo],
-          {
-            PATH: pathWithoutOmx(),
-            HOME: fakeHome,
-          },
-        )
-        // omx fails (not on PATH) → contributes EXIT_SETUP_FAIL = 1
-        expect(r.code).toBe(1)
-        expect(r.stderr).toContain('not on PATH')
-        // gstack still runs after omx fails — independent presets aren't
-        // coupled. Verify it succeeded against the fake-home fixture.
-        expect(r.stdout).toContain('gstack: ✓ installed')
-      },
-    )
-
     it('runtime check: prints bun + vp + actionlint status regardless of presets', () => {
       const r = runAk(['setup', '--yes', '--cwd', repo], {
         PATH: pathWithFakeOmxOk(),
@@ -566,7 +501,6 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(r.stdout).toContain('omx')
       expect(r.stdout).toContain('playwright-mcp')
       expect(r.stdout).toContain('rtk')
-      expect(r.stdout).toContain('gstack')
       expect(r.stdout).toContain("'wp skill list'")
     })
   },

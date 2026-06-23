@@ -4,11 +4,7 @@ description: |
   Codex CLI wrapper for non-Codex hosts. Use for outside-voice code review,
   plan challenge, or read-only consultation when the user asks for Codex.
 license: MIT
-upstream:
-  source: https://github.com/garrytan/gstack
 ---
-<!-- Derived from MIT-licensed gstack workflow ideas; see packages/gstack/NOTICE.gstack.md. -->
-
 # Codex outside voice
 
 Use this skill from Claude or another non-Codex host when the user wants Codex to independently review a diff, challenge a plan, or answer a repo question. Keep Codex read-only by default and treat its answer as external advice until independently verified.

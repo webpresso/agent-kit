@@ -4,11 +4,7 @@ description: |
   OpenCode Go outside-voice reviewer using Qwen reviewer. Use for read-only review,
   plan challenge, or implementation critique through the opencode CLI.
 license: MIT
-upstream:
-  source: https://github.com/garrytan/gstack
 ---
-<!-- Derived from MIT-licensed gstack workflow ideas; see packages/gstack/NOTICE.gstack.md. -->
-
 # Qwen reviewer via OpenCode Go
 
 Use this skill when the user asks for a Qwen reviewer / OpenCode Go review from either the Claude plugin or the Codex plugin. It calls `opencode run` under the hood and should be treated as external advice until independently verified.

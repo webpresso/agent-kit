@@ -164,6 +164,8 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
     }),
   'harness-overlay-evidence': async (root) =>
     (await import('#audit/harness-overlay-evidence')).auditHarnessOverlayEvidence(root),
+  'legacy-workflow-identity': async (root) =>
+    (await import('#audit/legacy-workflow-identity')).auditLegacyWorkflowIdentity(root),
   rules: async (root) => runContentAudit(root, 'rule'),
   skills: async (root) => runContentAudit(root, 'skill'),
 }

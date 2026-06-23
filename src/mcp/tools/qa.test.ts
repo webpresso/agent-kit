@@ -604,7 +604,9 @@ describe('wp_qa tool', () => {
 
     expect(payload.passed).toBe(true)
     expect(payload.summary).toContain('qa passed')
-    expect(payload.summary).toContain('Static QA passed. For visual/UX QA, run /qa (gstack).')
+    expect(payload.summary).toContain(
+      'Static QA passed. For visual/UX QA, run /qa or /qa-only with the Webpresso browser skills.',
+    )
   })
 
   it('does NOT append the UI tail-hint when QA fails even with UI files', async () => {

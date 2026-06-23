@@ -15,8 +15,8 @@
  * Always emits — never returns null. WP_ROUTING_BLOCK is always prepended.
  * If `.agent/routing.md` exists and is non-empty, it is appended after the block.
  */
-import { existsSync, readFileSync, statSync } from 'node:fs'
-import { homedir, tmpdir } from 'node:os'
+import { readFileSync, statSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { performance } from 'node:perf_hooks'
 import { join } from 'node:path'
 
@@ -361,20 +361,11 @@ export function buildOutput(
     // ENOENT / ENOTDIR: no routing.md, that's fine — emit routing block alone.
   }
 
-  let gstackBlock: string | null = null
-  if (env.WP_GSTACK_ROUTING === '1') {
-    const gstackDir = join(homedir(), '.claude', 'skills', 'gstack')
-    if (existsSync(gstackDir)) {
-      gstackBlock =
-        '\n\n## Interactive skills (gstack)\nSkills like /browse, /qa, /ship, /investigate, /review available. Use /browse for all web browsing.'
-    }
-  }
-
   const resumeContext = buildResumeContext(input, projectDir, env, deps)
   const updateBanner = readUpdateBanner(env as NodeJS.ProcessEnv)
   const additionalContext = renderSessionStartInstructionContext({
     projectRoutingMarkdown: routingMd,
-    extraSections: [gstackBlock, resumeContext, updateBanner],
+    extraSections: [resumeContext, updateBanner],
   })
 
   const finalContext = truncateUtf8(additionalContext, MAX_BYTES)

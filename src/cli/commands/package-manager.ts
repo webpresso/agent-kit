@@ -3,7 +3,6 @@ import type { SpawnSyncReturns } from 'node:child_process'
 
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync } from 'node:fs'
-import { homedir } from 'node:os'
 import path from 'node:path'
 
 import {
@@ -42,7 +41,6 @@ export interface PackageManagerCommandDeps {
   readonly argv?: readonly string[]
   readonly cwd?: string
   readonly exists?: typeof existsSync
-  readonly gstackRoot?: string
   readonly mkdir?: typeof mkdirSync
   readonly ownershipState?: ToolingOwnershipState
   readonly repoKey?: string | null
@@ -62,7 +60,7 @@ const HELP_BY_VERB: Readonly<Record<PackageManagerVerb, string>> = {
   add: 'Add dependencies through the managed package/task facade.',
   remove: 'Remove dependencies through the managed package/task facade.',
   update:
-    'Refresh wp and any optional OMX/OMC/gstack integrations previously installed by wp; use --deps for local dependency updates through the managed package/task facade.',
+    'Refresh wp and any optional OMX/OMC integrations previously installed by wp; use --deps for local dependency updates through the managed package/task facade.',
   exec: 'Run a binary through the managed package/task facade.',
   run: 'Run a package script through the managed package/task facade.',
 }
@@ -82,7 +80,6 @@ type GlobalUpdateStep =
 
 interface RequiredGlobalUpdateDeps {
   readonly exists: typeof existsSync
-  readonly gstackRoot: string
   readonly mkdir: typeof mkdirSync
   readonly ownershipState: ToolingOwnershipState
   readonly repoKey: string | null
@@ -171,7 +168,6 @@ function runGlobalUpdateCommand(deps: PackageManagerCommandDeps): number {
 
   const globalDeps: RequiredGlobalUpdateDeps = {
     exists: deps.exists ?? existsSync,
-    gstackRoot: deps.gstackRoot ?? defaultGstackRoot(),
     mkdir: deps.mkdir ?? mkdirSync,
     ownershipState: deps.ownershipState ?? readToolingOwnershipState(),
     packageRoot:
@@ -249,14 +245,6 @@ function buildGlobalUpdateSteps(
     })
   }
 
-  if (isUserOwnedTool(deps.ownershipState, 'gstack')) {
-    steps.push({
-      id: 'gstack',
-      optional: true,
-      run: refreshGstack,
-    })
-  }
-
   const command = appendGlobalCapableVpArgs(deps.vpCommand, [
     'install',
     '-g',
@@ -289,13 +277,6 @@ function runGlobalUpdateStep(
 ): SpawnSyncReturns<string> {
   if ('command' in step) return deps.run(step.command, step.args)
   return step.run(deps)
-}
-
-function refreshGstack(_deps: RequiredGlobalUpdateDeps): SpawnSyncReturns<string> {
-  // Curated Webpresso-owned skills are shipped with @webpresso/agent-kit.
-  // `wp update` refreshes the package and host plugins; it must not clone, pull,
-  // or run upstream setup from an external checkout.
-  return spawnLike(0)
 }
 
 function refreshCodexPlugin(deps: RequiredGlobalUpdateDeps): SpawnSyncReturns<string> {
@@ -361,10 +342,6 @@ function spawnLike(status: number, error?: Error): SpawnSyncReturns<string> {
     stderr: '',
     stdout: '',
   }
-}
-
-function defaultGstackRoot(): string {
-  return path.join(process.env.HOME || homedir(), '.claude', 'skills', 'gstack')
 }
 
 function resolveNearestPackageRoot(startCwd: string, exists: typeof existsSync): string | null {
