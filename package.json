@@ -1,6 +1,6 @@
 {
   "name": "@webpresso/agent-kit",
-  "version": "2.3.2",
+  "version": "2.3.3",
   "private": false,
   "repository": {
     "type": "git",
@@ -14,7 +14,7 @@
     "registry": "https://registry.npmjs.org/",
     "access": "public"
   },
-  "description": "TypeScript infrastructure for AI-agent-driven development: the `wp` CLI + MCP server give agents planning (blueprints), tests, mutation, e2e, CI, docs, and tech-debt \u2014 summary-first so they keep context, and enforced as pre-commit/CI contracts. Manages AGENTS.md / CLAUDE.md and per-agent surfaces.",
+  "description": "TypeScript infrastructure for AI-agent-driven development: the `wp` CLI + MCP server give agents planning (blueprints), tests, mutation, e2e, CI, docs, and tech-debt — summary-first so they keep context, and enforced as pre-commit/CI contracts. Manages AGENTS.md / CLAUDE.md and per-agent surfaces.",
   "keywords": [
     "agent",
     "webpresso",
