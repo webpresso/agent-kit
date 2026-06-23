@@ -53,6 +53,33 @@ describe('parseDocCliIds', () => {
     ])
   })
 
+  it('still parses when later column headers are renamed', () => {
+    // Table detection anchors on column 1 (`| CLI |`); renaming "Provider model"
+    // must not drop the table and falsely report the CLIs as missing.
+    const renamed = CLEAN_DOC.replace(/\| Provider model \|/g, '| Runtime |')
+    expect([...parseDocCliIds(renamed)].sort()).toStrictEqual([
+      'claude',
+      'codex',
+      'cursor',
+      'opencode',
+    ])
+  })
+
+  it('ignores a header-shaped line that has no separator row', () => {
+    const decoy = `Prose mentioning a fake row.
+
+| CLI | Provider |
+some text, not a table row with (\`ghost\`) in it
+
+${CLEAN_DOC}`
+    expect([...parseDocCliIds(decoy)].sort()).toStrictEqual([
+      'claude',
+      'codex',
+      'cursor',
+      'opencode',
+    ])
+  })
+
   it('does not harvest backtick decoys from non-CLI columns', () => {
     // `-f json` and `opencode stats` live in the caveat column; `/codex` and the
     // Tier-3 prose `Aider` must never appear. Only column-1 ids are returned.

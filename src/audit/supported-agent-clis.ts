@@ -48,33 +48,37 @@ export const EXPECTED_CLI_IDS: readonly string[] = Object.keys(CLI_ID_PRESENCE)
 
 // Matches the format-stable column-1 identifier token, e.g. `**Claude Code** (`claude`)`.
 const COLUMN1_CLI_ID = /\(`([a-z][a-z0-9-]*)`\)/
-const TABLE_HEADER = /^\|\s*CLI\s*\|\s*Provider model\s*\|/i
+// Anchor on the first column only (`| CLI |`), so renaming later columns does
+// not drop the table. Other columns may legitimately change wording.
+const TABLE_HEADER = /^\|\s*CLI\s*\|/i
 const TABLE_SEPARATOR = /^\|[\s:|-]+\|\s*$/
 
+// Harvests column-1 ids from the data rows that follow a confirmed table, so
+// backtick decoys in other columns (`/codex`, `-f json`, `opencode stats`) and
+// stray prose are never picked up.
+function harvestTableIds(lines: readonly string[], firstDataRow: number, ids: Set<string>): void {
+  for (let i = firstDataRow; i < lines.length; i++) {
+    const row = lines[i] ?? ''
+    if (!row.trimStart().startsWith('|')) return
+    const id = COLUMN1_CLI_ID.exec(row.split('|')[1] ?? '')?.[1]
+    if (id) ids.add(id)
+  }
+}
+
 /**
- * Extracts CLI identifiers from the rule doc's tables. Parses ONLY column 1 of
- * each data row, so backtick decoys living in other columns (`/codex`,
- * `-f json`, `opencode stats`) are never harvested.
+ * Extracts CLI identifiers from the rule doc's tables. A table is recognised
+ * only by a `| CLI | … |` header immediately followed by a `|---|` separator
+ * row, so a header-shaped line in prose (or a decoy table without a separator)
+ * is not harvested. Parses ONLY column 1 of each data row.
  */
 export function parseDocCliIds(markdown: string): Set<string> {
   const ids = new Set<string>()
-  let inTable = false
+  const lines = markdown.split(/\r?\n/)
 
-  for (const line of markdown.split(/\r?\n/)) {
-    if (TABLE_HEADER.test(line)) {
-      inTable = true
-      continue
+  for (let i = 0; i < lines.length; i++) {
+    if (TABLE_HEADER.test(lines[i] ?? '') && TABLE_SEPARATOR.test(lines[i + 1] ?? '')) {
+      harvestTableIds(lines, i + 2, ids)
     }
-    if (!inTable) continue
-    if (TABLE_SEPARATOR.test(line)) continue
-    if (!line.trimStart().startsWith('|')) {
-      inTable = false
-      continue
-    }
-
-    const firstCell = line.split('|')[1] ?? ''
-    const id = COLUMN1_CLI_ID.exec(firstCell)?.[1]
-    if (id) ids.add(id)
   }
 
   return ids
