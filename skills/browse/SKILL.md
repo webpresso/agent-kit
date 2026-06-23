@@ -7,7 +7,7 @@ license: MIT
 
 # Browse
 
-Use `wp browser doctor` first if browser availability is unknown; if it reports a missing browser, run `wp browser install chromium`. Prefer repo-local preview or dev-server URLs; if none are discoverable, ask for a URL.
+Use `wp browser doctor` first if browser availability is unknown; if it reports a missing browser, run `wp browser ensure chromium`. Prefer repo-local preview or dev-server URLs; if none are discoverable, ask for a URL.
 
 ## Read-only inspection
 

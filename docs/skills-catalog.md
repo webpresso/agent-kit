@@ -91,7 +91,7 @@ wp skill install tanstack-query
 
 Agent-kit ships a Webpresso-owned default bundle of unprefixed workflow and browser QA skills, including `claude`, `review`, `autoplan`, `investigate`, `health`, plan-review skills, `browse`, `qa-only`, `qa`, `devex-review`, and `design-review`. They are staged from the private `packages/workflow-skills` source package through an allowlist, include minimal provenance metadata, and do not require or install any external workflow checkout under a Claude home directory.
 
-Browser skills use the Webpresso Playwright runtime. Run `wp browser doctor` for Chromium availability and `wp browser install chromium` when browser binaries are missing.
+Browser skills use the Webpresso Playwright runtime. Run `wp browser doctor` for Chromium availability and `wp browser ensure chromium` when browser binaries are missing.
 
 ### Operational/domain catalog skills
 

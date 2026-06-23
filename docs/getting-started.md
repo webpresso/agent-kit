@@ -68,7 +68,7 @@ wp browser doctor
 If the doctor reports a missing browser binary, install the managed browser with:
 
 ```bash
-wp browser install chromium
+wp browser ensure chromium
 ```
 
 The browser runtime is local and explicit: browser skills prefer repo-local

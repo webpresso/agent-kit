@@ -37,14 +37,14 @@ afterEach(() => {
 })
 
 describe('wp browser command', () => {
-  it('registers JSON-capable browser helpers', () => {
+  it('registers ensure and JSON-capable browser helpers', () => {
     const cli = buildFakeCli()
     registerBrowserCommand(cli as never)
 
     expect(cli.getOptions()).toContain('--json')
   })
 
-  it('prints an actionable install command when doctor reports a missing browser', async () => {
+  it('prints an actionable ensure command when doctor reports a missing browser', async () => {
     const cli = buildFakeCli()
     const stdout = captureConsole()
     registerBrowserCommand(cli as never, {
@@ -56,26 +56,69 @@ describe('wp browser command', () => {
         executablePath: '/cache/chromium/missing',
         executableExists: false,
         cachePath: '/cache/ms-playwright',
-        hint: 'Playwright chromium is not installed; run `wp browser install chromium`.',
-        installCommand: 'wp browser install chromium',
+        hint: 'Playwright chromium is not installed; run `wp browser ensure chromium`.',
+        installCommand: 'wp browser ensure chromium',
       }),
     })
 
     await expect(cli.getAction()?.('doctor', undefined, {})).rejects.toMatchObject({ exitCode: 1 })
-    expect(stdout.join('\n')).toContain('Install: wp browser install chromium')
+    expect(stdout.join('\n')).toContain('Install: wp browser ensure chromium')
     expect(stdout.join('\n')).toContain('Hint: Playwright chromium is not installed')
   })
 
-  it('returns the install status for browser install', async () => {
+  it('runs ensure and reports already-installed browsers without installing', async () => {
     const cli = buildFakeCli()
-    const installBrowser = vi.fn(() => ({ status: 0 }))
-    registerBrowserCommand(cli as never, { installBrowser })
+    const stdout = captureConsole()
+    const ensureBrowser = vi.fn(async () => ({
+      ok: true,
+      browser: 'chromium' as const,
+      alreadyInstalled: true,
+      installed: false,
+      doctor: {
+        ok: true,
+        packageAvailable: true,
+        browser: 'chromium' as const,
+        executableExists: true,
+        executablePath: '/cache/chromium/browser',
+        cachePath: '/cache/ms-playwright',
+      },
+      errors: [],
+      installCommand: 'wp browser ensure chromium',
+    }))
+    registerBrowserCommand(cli as never, { ensureBrowser })
 
-    await expect(cli.getAction()?.('install', 'firefox', {})).resolves.toBe(0)
-    expect(installBrowser).toHaveBeenCalledWith({ browser: 'firefox' })
+    await expect(cli.getAction()?.('ensure', 'chromium', {})).resolves.toBe(0)
+    expect(ensureBrowser).toHaveBeenCalledWith({ browser: 'chromium' })
+    expect(stdout.join('\n')).toContain('Playwright chromium already installed.')
   })
 
-  it('preflights open failures with the same install command', async () => {
+  it('returns an actionable ensure error when ensure cannot install the browser', async () => {
+    const cli = buildFakeCli()
+    const stdout = captureConsole()
+    registerBrowserCommand(cli as never, {
+      ensureBrowser: async () => ({
+        ok: false,
+        browser: 'chromium',
+        alreadyInstalled: false,
+        installed: false,
+        doctor: {
+          ok: false,
+          packageAvailable: true,
+          browser: 'chromium',
+          executableExists: false,
+          cachePath: '/cache/ms-playwright',
+        },
+        errors: ['Failed to install; rerun `wp browser ensure chromium`.'],
+        installCommand: 'wp browser ensure chromium',
+      }),
+    })
+
+    await expect(cli.getAction()?.('ensure', 'chromium', {})).rejects.toMatchObject({ exitCode: 1 })
+    expect(stdout.join('\n')).toContain('Install: wp browser ensure chromium')
+    expect(stdout.join('\n')).toContain('Error: Failed to install')
+  })
+
+  it('preflights open failures with the same ensure command', async () => {
     const cli = buildFakeCli()
     const stdout = captureConsole()
     registerBrowserCommand(cli as never, {
@@ -83,16 +126,16 @@ describe('wp browser command', () => {
         ok: false,
         browser: 'chromium',
         requestedUrl: 'https://example.test',
-        errors: ['Playwright chromium is not installed; run `wp browser install chromium`.'],
-        hint: 'Playwright chromium is not installed; run `wp browser install chromium`.',
-        installCommand: 'wp browser install chromium',
+        errors: ['Playwright chromium is not installed; run `wp browser ensure chromium`.'],
+        hint: 'Playwright chromium is not installed; run `wp browser ensure chromium`.',
+        installCommand: 'wp browser ensure chromium',
       }),
     })
 
     await expect(cli.getAction()?.('open', 'https://example.test', {})).rejects.toMatchObject({
       exitCode: 1,
     })
-    expect(stdout.join('\n')).toContain('Install: wp browser install chromium')
+    expect(stdout.join('\n')).toContain('Install: wp browser ensure chromium')
     expect(stdout.join('\n')).toContain('Errors:')
   })
 })
