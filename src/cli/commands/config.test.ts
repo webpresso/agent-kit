@@ -54,6 +54,41 @@ describe('wp config secrets', () => {
     expect(stdout.output()).toContain('wp secrets doctor --profile preview --json')
   })
 
+  it('shows missing config without consulting secret-manager diagnostics', async () => {
+    const checkAvailability = vi.fn(async () => ({ available: true as const }))
+    const checkAuthentication = vi.fn(async () => ({ authenticated: true as const }))
+    const stdout = makeWriter()
+
+    await expect(
+      runSecretsConfigCommand(
+        'show',
+        [],
+        { json: true },
+        {
+          getPath: () => '/repo/.git/webpresso/secrets.json',
+          readConfig: () => null,
+          registry: {
+            get: () =>
+              ({
+                displayName: 'Doppler',
+                checkAvailability,
+                checkAuthentication,
+              }) as any,
+          },
+          stdout: stdout.writer,
+        },
+      ),
+    ).resolves.toBe(1)
+
+    expect(checkAvailability).not.toHaveBeenCalled()
+    expect(checkAuthentication).not.toHaveBeenCalled()
+    expect(JSON.parse(stdout.output())).toMatchObject({
+      configured: false,
+      path: '/repo/.git/webpresso/secrets.json',
+      config: null,
+    })
+  })
+
   it('writes an explicit manager/project selection', async () => {
     const writeConfig = vi.fn()
     const stdout = makeWriter()
@@ -80,7 +115,10 @@ describe('wp config secrets', () => {
     expect(stdout.output()).toContain('Configured doppler project ozby-shell')
   })
 
-  it('persists explicit selections without loading the webpresso framework runtime', { timeout: 30_000 }, async () => {
+  it(
+    'persists explicit selections without loading the webpresso framework runtime',
+    { timeout: 30_000 },
+    async () => {
     const root = makeRepo()
     const stdout = makeWriter()
     const exitCode = await runSecretsConfigCommand(
@@ -122,7 +160,10 @@ describe('wp config secrets', () => {
     })
   })
 
-  it('writes runtime overrides to the git common dir in linked worktrees', { timeout: 30_000 }, async () => {
+  it(
+    'writes runtime overrides to the git common dir in linked worktrees',
+    { timeout: 30_000 },
+    async () => {
     const repoRoot = makeRepo()
     writeFileSync(join(repoRoot, 'README.md'), 'seed\n', 'utf8')
     execFileSync('git', ['init'], { cwd: repoRoot, stdio: 'ignore' })

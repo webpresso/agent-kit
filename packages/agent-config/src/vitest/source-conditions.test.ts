@@ -46,4 +46,10 @@ describe('webpresso source resolve conditions', () => {
     expect(config.resolve.alias).toStrictEqual(alias)
     expect(config.resolve.dedupe).toStrictEqual(['react'])
   })
+
+  it('preserves an explicit tsconfigPaths: false override', () => {
+    const config = createWebpressoSourceResolveConfig({ tsconfigPaths: false })
+
+    expect(config.resolve.tsconfigPaths).toBe(false)
+  })
 })

@@ -245,6 +245,19 @@ describe('scripts/release.ts', () => {
       expect(result.status).not.toBe(0)
       expect(result.stderr + result.stdout).toMatch(/build/i)
     })
+
+    it('restores the original branch when a later release step fails', { timeout: 30000 }, () => {
+      const f = fixture!
+      rmSync(join(f.repoDir, 'dist'), { recursive: true, force: true })
+
+      const result = runScript(f.repoDir, ['--dry-run'])
+
+      expect(result.status).not.toBe(0)
+      expect(result.stderr + result.stdout).toMatch(/dist|pathspec/i)
+      expect(readFileSync(join(f.repoDir, '.git', 'HEAD'), 'utf8').trim()).toBe(
+        'ref: refs/heads/main',
+      )
+    })
   })
 
   describe('--no-dry-run', () => {
