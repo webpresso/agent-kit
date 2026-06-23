@@ -91,6 +91,7 @@ import {
   writeHooksManifest,
 } from './scaffolders/agent-hooks/manifest.js'
 import {
+  buildCurrentManagedHooksManifest,
   disableManagedHooksFromManifest,
   type ManagedHookVendor,
   restoreManagedHooksFromManifest,
@@ -782,7 +783,11 @@ async function runHooksRecovery(
     : disableManagedHooksFromManifest(scaffoldInput, manifest, selectedVendors)
 
   const nextManifest = restoreHooks
-    ? withHookVendorState(manifest, ['claude', 'codex'], 'enabled')
+    ? withHookVendorState(
+        buildCurrentManagedHooksManifest(repoRoot),
+        ['claude', 'codex'],
+        'enabled',
+      )
     : withHookVendorState(manifest, selectedVendors as readonly HookManifestVendor[], 'disabled')
 
   if (!options.dryRun) {
@@ -1125,6 +1130,23 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
       gstackEnabled: integrations.gstack?.enabled === true,
       trustCodexHooks: false,
     })
+
+    if (!options.dryRun && previousHooksManifest !== null) {
+      const disabledVendors = (['claude', 'codex'] as const).filter(
+        (vendor) => previousHooksManifest.vendorState[vendor] === 'disabled',
+      )
+      if (disabledVendors.length > 0) {
+        disableManagedHooksFromManifest(
+          { repoRoot: consumer.repoRoot, options, trustCodexHooks: false },
+          agentHooksResult.manifest,
+          disabledVendors,
+        )
+        agentHooksResult = {
+          ...agentHooksResult,
+          manifest: withHookVendorState(agentHooksResult.manifest, disabledVendors, 'disabled'),
+        }
+      }
+    }
 
     if (options.dryRun) {
       const proposedMap = buildProposedHooksMapFromSpecs(WP_HOOK_SPECS)

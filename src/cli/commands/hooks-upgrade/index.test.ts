@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
@@ -69,23 +69,82 @@ function writeInstalledHooks(repoRoot: string): void {
 }
 
 describe('upgradeHooksForRepo', () => {
-  it('reports a missing manifest as a bounded warning instead of writing blindly', async () => {
+  it('bootstraps legacy/no-manifest repos in dry-run mode instead of bailing out', async () => {
     const repoRoot = makeRepo('hooks-upgrade-no-manifest')
+    writeInstalledHooks(repoRoot)
     const report = await upgradeHooksForRepo(repoRoot, { apply: false, trustCodexHooks: false })
-    expect(report.beforeSummary).toBe('manifest-missing')
-    expect(report.warnings[0]).toContain('run `wp setup`')
+    expect(report.beforeSummary).toBe('legacy/no-manifest')
+    expect(report.results.length).toBeGreaterThan(0)
+    expect(report.warnings).toContain(
+      'bootstrapping from legacy/no-manifest hook state using the current scaffolder contract',
+    )
   })
 
-  it('reports source-maintenance setup guidance for the agent-kit source repo when the manifest is missing', async () => {
-    const repoRoot = makeRepo('hooks-upgrade-self-repo')
+  it('creates a fresh manifest and rewrites legacy wrapper commands on apply when the manifest is missing', async () => {
+    const repoRoot = makeRepo('hooks-upgrade-apply-no-manifest')
     writeFileSync(
-      path.join(repoRoot, 'package.json'),
-      JSON.stringify({ name: '@webpresso/agent-kit' }, null, 2),
+      path.join(repoRoot, '.codex', 'hooks.json'),
+      JSON.stringify(
+        {
+          hooks: {
+            SessionStart: [
+              {
+                hooks: [
+                  {
+                    type: 'command',
+                    command: `if [ -x '${repoRoot}/.codex/managed-hooks/wp-sessionstart-routing.sh' ]; then '${repoRoot}/.codex/managed-hooks/wp-sessionstart-routing.sh'; else true; fi`,
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+    )
+    writeFileSync(
+      path.join(repoRoot, '.claude', 'settings.json'),
+      JSON.stringify(
+        {
+          hooks: {
+            SessionStart: [
+              {
+                hooks: [
+                  {
+                    type: 'command',
+                    command:
+                      '[ -x "$CLAUDE_PROJECT_DIR/.claude/hooks/managed/wp-sessionstart-routing.sh" ] && "$CLAUDE_PROJECT_DIR/.claude/hooks/managed/wp-sessionstart-routing.sh" || true',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
     )
 
-    const report = await upgradeHooksForRepo(repoRoot, { apply: false, trustCodexHooks: false })
-    expect(report.beforeSummary).toBe('manifest-missing')
-    expect(report.warnings[0]).toContain('wp setup --source-maintenance')
+    const report = await upgradeHooksForRepo(repoRoot, { apply: true, trustCodexHooks: false })
+
+    expect(report.beforeSummary).toBe('legacy/no-manifest')
+    expect(report.warnings).toContain(
+      'bootstrapping from legacy/no-manifest hook state using the current scaffolder contract',
+    )
+    expect(
+      JSON.parse(readFileSync(path.join(repoRoot, '.codex', 'hooks.json'), 'utf8')).hooks
+        .SessionStart[0].hooks[0].command,
+    ).toContain(' hook sessionstart-routing')
+    expect(readFileSync(path.join(repoRoot, '.codex', 'hooks.json'), 'utf8')).not.toContain(
+      '/.codex/managed-hooks/',
+    )
+    expect(readFileSync(path.join(repoRoot, '.claude', 'settings.json'), 'utf8')).not.toContain(
+      '/.claude/hooks/managed/',
+    )
+    expect(
+      readFileSync(path.join(repoRoot, '.webpresso', 'hooks-manifest.json'), 'utf8'),
+    ).toContain('hook sessionstart-routing')
   })
 
   it('keeps disabled vendors disabled in the projected summary', async () => {

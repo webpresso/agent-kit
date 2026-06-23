@@ -20,6 +20,7 @@ import {
   hoistTopLevelEvents,
   hookSubcommandFor,
   resolvePackageRootForHookLaunchers,
+  restoreManagedHooksFromManifest,
   scaffoldAgentHooks,
   trustCodexWebpressoHooksForRepo,
 } from './index.js'
@@ -435,11 +436,80 @@ describe('scaffoldAgentHooks', () => {
     expect(codexCommands).not.toContain('wp-global-codex-omx-hook.sh')
   })
 
-  it('removes obsolete managed hook directories on non-dry-run scaffold', async () => {
+  it('preserves custom hook commands whose basenames collide with managed hook names', async () => {
+    mkdirSync(join(repoRoot, '.codex'), { recursive: true })
+    mkdirSync(join(repoRoot, '.claude'), { recursive: true })
+    writeFileSync(
+      join(repoRoot, '.codex', 'hooks.json'),
+      JSON.stringify(
+        {
+          hooks: {
+            PreToolUse: [
+              {
+                matcher: 'Bash|apply_patch|Edit|Write|mcp__.*',
+                hooks: [
+                  {
+                    type: 'command',
+                    command: '/custom/wp-pretool-guard.sh --keep-me',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+    )
+    writeFileSync(
+      join(repoRoot, '.claude', 'settings.json'),
+      JSON.stringify(
+        {
+          hooks: {
+            SessionStart: [
+              {
+                hooks: [
+                  {
+                    type: 'command',
+                    command: '/custom/wp-sessionstart-routing.sh --keep-me',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+    )
+
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+
+    const codex = readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')
+    const claude = readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8')
+
+    expect(codex).toContain('/custom/wp-pretool-guard.sh --keep-me')
+    expect(claude).toContain('/custom/wp-sessionstart-routing.sh --keep-me')
+    expect(codex).toContain(' hook pretool-guard')
+    expect(claude).toContain(' hook sessionstart-routing')
+  })
+
+  it('removes only known generated legacy hook files and preserves unrelated files', async () => {
     mkdirSync(join(repoRoot, '.codex', 'managed-hooks'), { recursive: true })
     mkdirSync(join(repoRoot, '.claude', 'hooks', 'managed'), { recursive: true })
+    mkdirSync(join(repoRoot, '.claude', 'hooks'), { recursive: true })
     writeFileSync(
       join(repoRoot, '.codex', 'managed-hooks', 'wp-pretool-guard.sh'),
+      '#!/bin/sh\nexit 0\n',
+      'utf8',
+    )
+    writeFileSync(
+      join(repoRoot, '.codex', 'managed-hooks', 'keep-me.sh'),
+      '#!/bin/sh\nexit 0\n',
+      'utf8',
+    )
+    writeFileSync(
+      join(repoRoot, '.codex', 'managed-hooks', 'wp-check-dev-link.sh'),
       '#!/bin/sh\nexit 0\n',
       'utf8',
     )
@@ -448,11 +518,43 @@ describe('scaffoldAgentHooks', () => {
       '#!/bin/sh\nexit 0\n',
       'utf8',
     )
+    writeFileSync(
+      join(repoRoot, '.claude', 'hooks', 'managed', 'keep-me.sh'),
+      '#!/bin/sh\nexit 0\n',
+      'utf8',
+    )
+    writeFileSync(
+      join(repoRoot, '.claude', 'hooks', 'check-gstack.sh'),
+      '#!/bin/sh\nexit 0\n',
+      'utf8',
+    )
+    writeFileSync(
+      join(repoRoot, '.claude', 'hooks', 'check-gstack-session.sh'),
+      '#!/bin/sh\nexit 0\n',
+      'utf8',
+    )
+    writeFileSync(
+      join(repoRoot, '.claude', 'hooks', 'custom-guard.sh'),
+      '#!/bin/sh\nexit 0\n',
+      'utf8',
+    )
 
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
 
-    expect(existsSync(join(repoRoot, '.codex', 'managed-hooks'))).toBe(false)
-    expect(existsSync(join(repoRoot, '.claude', 'hooks', 'managed'))).toBe(false)
+    expect(existsSync(join(repoRoot, '.codex', 'managed-hooks', 'wp-pretool-guard.sh'))).toBe(false)
+    expect(existsSync(join(repoRoot, '.codex', 'managed-hooks', 'wp-check-dev-link.sh'))).toBe(
+      false,
+    )
+    expect(existsSync(join(repoRoot, '.claude', 'hooks', 'managed', 'wp-pretool-guard.sh'))).toBe(
+      false,
+    )
+    expect(existsSync(join(repoRoot, '.claude', 'hooks', 'check-gstack.sh'))).toBe(false)
+    expect(existsSync(join(repoRoot, '.claude', 'hooks', 'check-gstack-session.sh'))).toBe(false)
+    expect(existsSync(join(repoRoot, '.codex', 'managed-hooks'))).toBe(true)
+    expect(existsSync(join(repoRoot, '.claude', 'hooks', 'managed'))).toBe(true)
+    expect(existsSync(join(repoRoot, '.codex', 'managed-hooks', 'keep-me.sh'))).toBe(true)
+    expect(existsSync(join(repoRoot, '.claude', 'hooks', 'managed', 'keep-me.sh'))).toBe(true)
+    expect(existsSync(join(repoRoot, '.claude', 'hooks', 'custom-guard.sh'))).toBe(true)
   })
 
   it('invokes app-server trust sync only after .codex/hooks.json exists', async () => {
@@ -991,6 +1093,58 @@ hooks:
     expect(sessionCommands).toContain(codexBinCommand(repoRoot, 'wp-sessionstart-routing'))
     expect(preToolCommands).toContain(codexBinCommand(repoRoot, 'wp-pretool-guard'))
     expect(postToolCommands).toContain(codexBinCommand(repoRoot, 'wp-post-tool'))
+  })
+
+  it('restores current direct hook commands instead of replaying stale wrapper commands from an old manifest', async () => {
+    mkdirSync(join(repoRoot, '.codex'), { recursive: true })
+    mkdirSync(join(repoRoot, '.claude'), { recursive: true })
+    writeFileSync(join(repoRoot, '.codex', 'hooks.json'), JSON.stringify({ hooks: {} }, null, 2))
+    writeFileSync(
+      join(repoRoot, '.claude', 'settings.json'),
+      JSON.stringify({ hooks: {} }, null, 2),
+    )
+
+    restoreManagedHooksFromManifest(
+      { repoRoot, options: { overwrite: true }, trustCodexHooks: false },
+      {
+        version: 1,
+        generatedAt: '2026-06-23T00:00:00.000Z',
+        claude: {
+          SessionStart: [
+            {
+              hooks: [
+                {
+                  type: 'command',
+                  command:
+                    '[ -x "$CLAUDE_PROJECT_DIR/.claude/hooks/managed/wp-sessionstart-routing.sh" ] && "$CLAUDE_PROJECT_DIR/.claude/hooks/managed/wp-sessionstart-routing.sh" || true',
+                },
+              ],
+            },
+          ],
+        },
+        codex: {
+          SessionStart: [
+            {
+              hooks: [
+                {
+                  type: 'command',
+                  command: `if [ -x '${repoRoot}/.codex/managed-hooks/wp-sessionstart-routing.sh' ]; then '${repoRoot}/.codex/managed-hooks/wp-sessionstart-routing.sh'; else true; fi`,
+                },
+              ],
+            },
+          ],
+        },
+        vendorState: { claude: 'enabled', codex: 'disabled' },
+      },
+    )
+
+    const codex = readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')
+    const claude = readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8')
+
+    expect(codex).toContain(' hook sessionstart-routing')
+    expect(claude).toContain(' hook sessionstart-routing')
+    expect(codex).not.toContain('/.codex/managed-hooks/')
+    expect(claude).not.toContain('/.claude/hooks/managed/')
   })
 
   it('wires the managed PreCompact lane for Claude and Codex but not unsupported Cursor output', async () => {

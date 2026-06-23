@@ -54,6 +54,7 @@ vi.mock('node:child_process', async () => {
 
 import { resolveCatalogDir, runInit } from './index.js'
 import { scaffoldAgent } from './scaffold-agent.js'
+import { writeHooksManifest } from './scaffolders/agent-hooks/manifest.js'
 
 // Tier-3 skill directories are populated incrementally as catalog content
 // lands. Skip Tier-3 install assertions when the underlying catalog content
@@ -761,6 +762,85 @@ describe('wp init end-to-end', { timeout: 40_000 }, () => {
     expect(JSON.stringify(restoredCodex)).toContain('wp-pretool-guard')
     expect(restoredManifest.vendorState.codex).toBe('enabled')
     expect(restoredManifest.vendorState.claude).toBe('enabled')
+  })
+
+  it('keeps previously disabled vendors disabled on a normal follow-up setup run', async () => {
+    expect(await runInit({ cwd: repo, yes: true })).toBe(0)
+    expect(await runInit({ cwd: repo, yes: true, disableHooks: 'codex' })).toBe(0)
+
+    expect(await runInit({ cwd: repo, yes: true })).toBe(0)
+
+    const codexHooksPath = join(repo, '.codex', 'hooks.json')
+    const manifestPath = join(repo, '.webpresso', 'hooks-manifest.json')
+    const codexHooks = readFileSync(codexHooksPath, 'utf8')
+    const manifest = readJsonFile<{
+      vendorState: { claude: 'enabled' | 'disabled'; codex: 'enabled' | 'disabled' }
+    }>(manifestPath)
+
+    expect(codexHooks).not.toContain('wp-pretool-guard')
+    expect(manifest.vendorState.codex).toBe('disabled')
+    expect(manifest.vendorState.claude).toBe('enabled')
+  })
+
+  it('restore-hooks rebuilds the current direct-hook contract instead of replaying stale wrapper commands', async () => {
+    expect(await runInit({ cwd: repo, yes: true })).toBe(0)
+
+    const codexHooksPath = join(repo, '.codex', 'hooks.json')
+    const claudeSettingsPath = join(repo, '.claude', 'settings.json')
+    const manifestPath = join(repo, '.webpresso', 'hooks-manifest.json')
+
+    writeFileSync(codexHooksPath, JSON.stringify({ hooks: {} }, null, 2))
+    writeFileSync(claudeSettingsPath, JSON.stringify({ hooks: {} }, null, 2))
+    writeHooksManifest(
+      repo,
+      {
+        SessionStart: [
+          {
+            hooks: [
+              {
+                type: 'command',
+                command:
+                  '[ -x "$CLAUDE_PROJECT_DIR/.claude/hooks/managed/wp-sessionstart-routing.sh" ] && "$CLAUDE_PROJECT_DIR/.claude/hooks/managed/wp-sessionstart-routing.sh" || true',
+              },
+            ],
+          },
+        ],
+      },
+      {
+        SessionStart: [
+          {
+            hooks: [
+              {
+                type: 'command',
+                command: `if [ -x '${repo}/.codex/managed-hooks/wp-sessionstart-routing.sh' ]; then '${repo}/.codex/managed-hooks/wp-sessionstart-routing.sh'; else true; fi`,
+              },
+            ],
+          },
+        ],
+      },
+      { claude: 'enabled', codex: 'enabled' },
+    )
+
+    expect(await runInit({ cwd: repo, yes: true, restoreHooks: true })).toBe(0)
+
+    const codexHooks = readFileSync(codexHooksPath, 'utf8')
+    const claudeSettings = readFileSync(claudeSettingsPath, 'utf8')
+    const manifest = readJsonFile<{
+      claude: Record<string, unknown>
+      codex: Record<string, unknown>
+      vendorState: { claude: 'enabled' | 'disabled'; codex: 'enabled' | 'disabled' }
+    }>(manifestPath)
+
+    expect(codexHooks).toContain(' hook sessionstart-routing')
+    expect(claudeSettings).toContain(' hook sessionstart-routing')
+    expect(codexHooks).not.toContain('/.codex/managed-hooks/')
+    expect(claudeSettings).not.toContain('/.claude/hooks/managed/')
+    expect(JSON.stringify(manifest.codex)).toContain(' hook sessionstart-routing')
+    expect(JSON.stringify(manifest.claude)).toContain(' hook sessionstart-routing')
+    expect(JSON.stringify(manifest.codex)).not.toContain('/.codex/managed-hooks/')
+    expect(JSON.stringify(manifest.claude)).not.toContain('/.claude/hooks/managed/')
+    expect(manifest.vendorState.codex).toBe('enabled')
+    expect(manifest.vendorState.claude).toBe('enabled')
   })
 
   it('does not mutate hook configs in disable-hooks dry-run mode', async () => {

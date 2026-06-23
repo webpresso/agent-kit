@@ -12,7 +12,6 @@ import {
   scaffoldAgentHooks,
   trustCodexWebpressoHooksForRepo,
 } from '#cli/commands/init/scaffolders/agent-hooks/index.js'
-import { setupCommandForRepo } from '#cli/commands/init/detect-consumer.js'
 import { deriveHookStatus } from '#hooks/status/index.js'
 import { readInstalledHooksMap } from '#hooks/shared/installed-hooks.js'
 import type { MergeOptions, MergeResult } from '#cli/commands/init/merge.js'
@@ -102,50 +101,40 @@ export async function upgradeHooksForRepo(
   options: { apply: boolean; trustCodexHooks: boolean },
 ): Promise<HooksUpgradeTargetReport> {
   const manifest = readHooksManifest(repoRoot)
-  if (manifest === null) {
-    const setupCommand = setupCommandForRepo(repoRoot)
-    return {
-      repoRoot,
-      mode: 'single',
-      apply: options.apply,
-      results: [],
-      warnings: [
-        `missing .webpresso/hooks-manifest.json — run \`${setupCommand}\` before hooks upgrades`,
-      ],
-      beforeSummary: 'manifest-missing',
-      projectedSummary: 'manifest-missing',
-    }
-  }
-
-  const beforeSummary = summarizeProjectedState(repoRoot, manifest.vendorState)
   const mergeOptions: MergeOptions = options.apply ? {} : { dryRun: true }
   const scaffoldInput = { repoRoot, options: mergeOptions, trustCodexHooks: false } as const
 
   const scaffolded = await scaffoldAgentHooks(scaffoldInput)
   let nextManifest = withHookVendorState(scaffolded.manifest, ['claude', 'codex'], 'enabled')
   let results: MergeResult[] = [scaffolded.claude, scaffolded.codex]
+  const warnings = [
+    manifest === null
+      ? 'bootstrapping from legacy/no-manifest hook state using the current scaffolder contract'
+      : '',
+    ...(options.apply
+      ? []
+      : ['dry-run only — re-run with `--apply` after reviewing the projected delta']),
+  ].filter((warning): warning is string => warning.length > 0)
 
-  const disabledVendors = (['claude', 'codex'] as const).filter(
-    (vendor) => manifest.vendorState[vendor] === 'disabled',
-  )
-  if (disabledVendors.length > 0) {
-    const disabledMutation = disableManagedHooksFromManifest(
-      scaffoldInput,
-      nextManifest,
-      disabledVendors,
+  if (manifest !== null) {
+    const disabledVendors = (['claude', 'codex'] as const).filter(
+      (vendor) => manifest.vendorState[vendor] === 'disabled',
     )
-    results = [
-      ...results,
-      ...[disabledMutation.claude, disabledMutation.codex].filter(
-        (result): result is MergeResult => result !== undefined,
-      ),
-    ]
-    nextManifest = withHookVendorState(nextManifest, disabledVendors, 'disabled')
+    if (disabledVendors.length > 0) {
+      const disabledMutation = disableManagedHooksFromManifest(
+        scaffoldInput,
+        nextManifest,
+        disabledVendors,
+      )
+      results = [
+        ...results,
+        ...[disabledMutation.claude, disabledMutation.codex].filter(
+          (result): result is MergeResult => result !== undefined,
+        ),
+      ]
+      nextManifest = withHookVendorState(nextManifest, disabledVendors, 'disabled')
+    }
   }
-
-  const warnings = options.apply
-    ? []
-    : ['dry-run only — re-run with `--apply` after reviewing the projected delta']
 
   if (options.apply) {
     writeHooksManifest(repoRoot, nextManifest.claude, nextManifest.codex, nextManifest.vendorState)
@@ -160,7 +149,10 @@ export async function upgradeHooksForRepo(
     apply: options.apply,
     results,
     warnings,
-    beforeSummary,
+    beforeSummary:
+      manifest === null
+        ? 'legacy/no-manifest'
+        : summarizeProjectedState(repoRoot, manifest.vendorState),
     projectedSummary: summarizeProjectedState(repoRoot, nextManifest.vendorState),
   }
 }
