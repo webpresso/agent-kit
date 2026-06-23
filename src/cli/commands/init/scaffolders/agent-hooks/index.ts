@@ -9,7 +9,7 @@
  *
  * Runs by default on every `wp setup`.
  */
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, rmSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 
@@ -106,6 +106,11 @@ const CODEX_BIN = (repoRoot: string) => (name: string) => buildDirectWpHookComma
 
 // Derived from the WP_HOOK_BIN_NAMES single source of truth (ir.ts).
 const WEBPRESSO_HOOK_BIN_NAMES = new Set(WP_HOOK_BIN_NAMES)
+const LEGACY_MANAGED_ONLY_HOOK_FILES = new Set([
+  'wp-check-dev-link.sh',
+  'wp-global-codex-omx-hook.sh',
+  'wp-global-codex-omx-json-hook.sh',
+])
 
 type WebpressoHookBinClassification = { kind: 'canonical'; binName: string }
 
@@ -117,11 +122,11 @@ export function classifyWebpressoHookBin(
 }
 
 function extractAgentKitCodexBinName(command: string): string | null {
-  return extractWpHookCommandBinName(command)
+  return extractWpHookCommandBinName(command) ?? extractLegacyManagedHookBinName(command)
 }
 
 function extractClaudeBinName(command: string): string | null {
-  return extractWpHookCommandBinName(command)
+  return extractWpHookCommandBinName(command) ?? extractLegacyManagedHookBinName(command)
 }
 
 function extractWpHookCommandBinName(command: string): string | null {
@@ -130,6 +135,16 @@ function extractWpHookCommandBinName(command: string): string | null {
   if (!subcommand || !isHookName(subcommand)) return null
   const binName = `wp-${subcommand}`
   return WEBPRESSO_HOOK_BIN_NAMES.has(binName) ? binName : null
+}
+
+function extractLegacyManagedHookBinName(command: string): string | null {
+  const match = /(?:^|\/)(wp-[a-z0-9-]+)\.(?:sh|js)\b/u.exec(command)
+  const binName = match?.[1]
+  return binName && WEBPRESSO_HOOK_BIN_NAMES.has(binName) ? binName : null
+}
+
+function isLegacyManagedOnlyHookCommand(command: string): boolean {
+  return [...LEGACY_MANAGED_ONLY_HOOK_FILES].some((fileName) => command.includes(fileName))
 }
 
 // ensureGroup and mergeAgentKitGroups are imported from ./merge.js
@@ -215,7 +230,7 @@ function normalizeCodexAgentKitCommands(hooks: HooksMap): HooksMap {
           const command = hook.command
           if (typeof command !== 'string') return hook
           const classification = classifyWebpressoHookBin(extractAgentKitCodexBinName(command))
-          if (classification === null) return hook
+          if (classification === null && !isLegacyManagedOnlyHookCommand(command)) return hook
           return []
         }),
       }
@@ -240,7 +255,7 @@ function normalizeClaudeAgentKitCommands(hooks: HooksMap): HooksMap {
           const command = hook.command
           if (typeof command !== 'string') return hook
           const classification = classifyWebpressoHookBin(extractClaudeBinName(command))
-          if (classification === null) return hook
+          if (classification === null && !isLegacyManagedOnlyHookCommand(command)) return hook
           return []
         }),
       }
@@ -326,7 +341,6 @@ function patchClaudeSettings(
   existing: Record<string, unknown>,
   repoRoot: string,
   skillHooks: readonly SkillHook[],
-  gstackEnabled: boolean,
 ): Record<string, unknown> {
   const existingHooks = normalizeClaudeAgentKitCommands((existing.hooks ?? {}) as HooksMap)
   // Strip stale skill-managed hooks from existing before merging; current
@@ -334,7 +348,7 @@ function patchClaudeSettings(
   const cleanedExistingHooks = mergeSkillHooks(existingHooks, [])
   const merged = mergeAgentKitGroups(
     cleanedExistingHooks,
-    buildManagedClaudeHooks(repoRoot, skillHooks, gstackEnabled),
+    buildManagedClaudeHooks(repoRoot, skillHooks),
   )
 
   return withClaudeWorktreeSettings(existing, {
@@ -347,7 +361,6 @@ function withClaudeWorktreeSettings(
   existing: Record<string, unknown>,
   hooks: HooksMap,
 ): Record<string, unknown> {
-  // Claude-only extras: gstack soft-warning at SessionStart (non-blocking)
   const worktree = existing.worktree as Record<string, unknown> | undefined
   const symlinkDirectories = Array.isArray(worktree?.symlinkDirectories)
     ? worktree?.symlinkDirectories.filter((value): value is string => typeof value === 'string')
@@ -390,46 +403,15 @@ function patchCodexHooks(
   }
 }
 
-function buildManagedClaudeHooks(
-  repoRoot: string,
-  skillHooks: readonly SkillHook[],
-  gstackEnabled: boolean,
-): HooksMap {
+function buildManagedClaudeHooks(repoRoot: string, skillHooks: readonly SkillHook[]): HooksMap {
   const withSkills = mergeSkillHooks({}, skillHooks)
   const webpresso = buildWebpressoHookGroups({
     resolveBin: CC_BIN(repoRoot),
     matchers: CLAUDE_MATCHERS,
   })
   const merged = mergeAgentKitGroups(withSkills, webpresso)
-
-  if (!gstackEnabled) {
-    return {
-      ...merged,
-      Stop: orderStopGroups(merged.Stop ?? []),
-    }
-  }
-
   return {
     ...merged,
-    SessionStart: ensureGroup(merged.SessionStart ?? [], {
-      hooks: [
-        {
-          type: 'command',
-          command: '"$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack-session.sh"',
-          timeout: 2,
-        },
-      ],
-    }),
-    PreToolUse: ensureGroup(merged.PreToolUse ?? [], {
-      matcher: 'Skill',
-      hooks: [
-        {
-          type: 'command',
-          command: '"$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack.sh"',
-          timeout: 3,
-        },
-      ],
-    }),
     Stop: orderStopGroups(merged.Stop ?? []),
   }
 }
@@ -556,7 +538,6 @@ function shouldSkipCodexTrustSync(input: ScaffoldAgentHooksInput): boolean {
 export interface ScaffoldAgentHooksInput {
   repoRoot: string
   options: MergeOptions
-  gstackEnabled?: boolean
   createCodexAppServer?: CodexAppServerFactory
   onCodexTrustSyncWarning?: (warning: CodexTrustSyncWarning) => void
   trustCodexHooks?: boolean
@@ -575,22 +556,14 @@ export interface ScaffoldAgentHooksResult {
   manifest: HooksManifest
 }
 
+function pruneLegacyManagedHookDirectories(repoRoot: string): void {
+  rmSync(join(repoRoot, '.codex', 'managed-hooks'), { recursive: true, force: true })
+  rmSync(join(repoRoot, '.claude', 'hooks', 'managed'), { recursive: true, force: true })
+}
+
 export type ManagedHookVendor = 'claude' | 'codex'
 
 type ManagedHookMutationResult = Partial<Record<ManagedHookVendor, MergeResult>>
-
-function manifestIncludesGstackHooks(manifest: HooksManifest): boolean {
-  return Object.values(manifest.claude).some((groups) =>
-    groups.some((group) =>
-      group.hooks.some(
-        (hook) =>
-          typeof hook.command === 'string' &&
-          (hook.command.includes('check-gstack.sh') ||
-            hook.command.includes('check-gstack-session.sh')),
-      ),
-    ),
-  )
-}
 
 function patchClaudeHooksFromManifest(
   existing: Record<string, unknown>,
@@ -643,9 +616,6 @@ export function restoreManagedHooksFromManifest(
   manifest: HooksManifest,
   vendors: readonly ManagedHookVendor[] = ['claude', 'codex'],
 ): ManagedHookMutationResult {
-  if (manifestIncludesGstackHooks(manifest)) {
-    ensureGstackHooks(input.repoRoot, input.options)
-  }
   const result: ManagedHookMutationResult = {}
   if (vendors.includes('claude')) {
     result.claude = patchJsonFile(
@@ -689,108 +659,6 @@ export function disableManagedHooksFromManifest(
   return result
 }
 
-// Fast existence check — no network, no install, sub-10ms.
-// Installation is handled either by gstack's native installer or the legacy
-// `wp setup --with gstack` compatibility path when explicitly requested.
-// Reads the Skill tool payload from stdin and denies ONLY gstack-owned
-// skills; an unconditional deny used to block every skill (webpresso, OMC,
-// …) whenever gstack was missing (2026-06 audit).
-const GSTACK_OWNED_SKILLS = [
-  '_gstack-command',
-  'autoplan',
-  'benchmark',
-  'benchmark-models',
-  'browse',
-  'canary',
-  'careful',
-  'codex',
-  'connect-chrome',
-  'context-restore',
-  'context-save',
-  'cso',
-  'design-consultation',
-  'design-html',
-  'design-review',
-  'design-shotgun',
-  'devex-review',
-  'document-generate',
-  'document-release',
-  'freeze',
-  'gstack-upgrade',
-  'guard',
-  'health',
-  'investigate',
-  'land-and-deploy',
-  'landing-report',
-  'learn',
-  'make-pdf',
-  'office-hours',
-  'pair-agent',
-  'plan-ceo-review',
-  'plan-design-review',
-  'plan-devex-review',
-  'plan-eng-review',
-  'plan-tune',
-  'qa',
-  'qa-only',
-  'retro',
-  'review',
-  'scrape',
-  'setup-browser-cookies',
-  'setup-deploy',
-  'setup-gbrain',
-  'ship',
-  'skillify',
-  'spec',
-  'sync-gbrain',
-  'unfreeze',
-] as const
-
-const GSTACK_CHECK_SH = `#!/bin/sh
-if [ -d "$HOME/.claude/skills/gstack/bin" ]; then
-  exit 0
-fi
-payload="$(cat 2>/dev/null || true)"
-skill="$(printf '%s' "$payload" | sed -n 's/.*"skill"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p' | head -n 1)"
-case "$skill" in
-  ${GSTACK_OWNED_SKILLS.join('|')}|ios-*)
-    printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"gstack is not installed (a gstack-owned skill was requested). Fix: run \`wp setup\` then restart Claude Code."}}\\n'
-    ;;
-  *)
-    exit 0
-    ;;
-esac
-`
-
-// SessionStart soft warning — emits additionalContext, never blocks.
-const GSTACK_SESSION_SH = `#!/bin/sh
-if [ -d "$HOME/.claude/skills/gstack/bin" ]; then
-  exit 0
-fi
-printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"WARNING: gstack is not installed. Skills like /browse, /qa, /ship are unavailable. Fix: run \`wp setup\` then restart."}}\n'
-`
-
-function ensureGstackHooks(repoRoot: string, options: MergeOptions = {}): void {
-  if (options.dryRun) return
-  const hooksDir = join(repoRoot, '.claude', 'hooks')
-  mkdirSync(hooksDir, { recursive: true })
-
-  // Overwrite-on-change (mirrors hook template overwrite behavior) so
-  // template fixes actually reach existing repos on regen — write-once kept
-  // the unconditional-deny bug alive in every previously scaffolded repo.
-  const gstackScripts: ReadonlyArray<readonly [string, string]> = [
-    ['check-gstack.sh', GSTACK_CHECK_SH],
-    ['check-gstack-session.sh', GSTACK_SESSION_SH],
-  ]
-  for (const [name, content] of gstackScripts) {
-    const scriptPath = join(hooksDir, name)
-    if (!existsSync(scriptPath) || readFileSync(scriptPath, 'utf8') !== content) {
-      writeFileSync(scriptPath, content, 'utf8')
-    }
-    chmodSync(scriptPath, 0o755)
-  }
-}
-
 export type ResolvePackageRootForHookLaunchersOptions = ResolveAgentKitPackageRootOptions
 
 export function resolvePackageRootForHookLaunchers(
@@ -814,22 +682,18 @@ export function hookSubcommandFor(binName: string): string | undefined {
 export async function scaffoldAgentHooks(
   input: ScaffoldAgentHooksInput,
 ): Promise<ScaffoldAgentHooksResult> {
-  const gstackEnabled = input.gstackEnabled === true
-  if (gstackEnabled) {
-    ensureGstackHooks(input.repoRoot, input.options)
-  }
   const skillHooks = extractSkillHooks(join(input.repoRoot, '.agent', 'skills'))
   const manifest: HooksManifest = {
     version: 1,
     generatedAt: new Date().toISOString(),
-    claude: buildManagedClaudeHooks(input.repoRoot, skillHooks, gstackEnabled),
+    claude: buildManagedClaudeHooks(input.repoRoot, skillHooks),
     codex: buildManagedCodexHooks(input.repoRoot),
     vendorState: { claude: 'enabled', codex: 'enabled' },
   }
   const result = {
     claude: patchJsonFile(
       join(input.repoRoot, '.claude', 'settings.json'),
-      (existing) => patchClaudeSettings(existing, input.repoRoot, skillHooks, gstackEnabled),
+      (existing) => patchClaudeSettings(existing, input.repoRoot, skillHooks),
       input.options,
     ),
     codex: patchJsonFile(
@@ -843,6 +707,9 @@ export async function scaffoldAgentHooks(
       input.options,
     ),
     manifest,
+  }
+  if (!input.options.dryRun) {
+    pruneLegacyManagedHookDirectories(input.repoRoot)
   }
   if (input.trustCodexHooks !== false) {
     await trustCodexWebpressoHooksForRepo(input)

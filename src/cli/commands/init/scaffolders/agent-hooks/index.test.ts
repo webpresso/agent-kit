@@ -224,9 +224,6 @@ describe('scaffoldAgentHooks', () => {
     await scaffoldAgentHooks({ repoRoot, options: { dryRun: true } })
 
     expect(() =>
-      readFileSync(join(repoRoot, '.claude', 'hooks', 'check-gstack.sh'), 'utf8'),
-    ).toThrow()
-    expect(() =>
       readFileSync(
         join(repoRoot, '.claude', 'hooks', 'managed', 'wp-sessionstart-routing.sh'),
         'utf8',
@@ -234,35 +231,8 @@ describe('scaffoldAgentHooks', () => {
     ).toThrow()
   })
 
-  it('does not materialize gstack guard hooks unless gstack is enabled', async () => {
-    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
-
-    expect(() =>
-      readFileSync(join(repoRoot, '.claude', 'hooks', 'check-gstack.sh'), 'utf8'),
-    ).toThrow()
-
-    const settings = JSON.parse(
-      readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8'),
-    ) as {
-      hooks: {
-        SessionStart?: Array<{ hooks: Array<{ command: string }> }>
-        PreToolUse?: Array<{ hooks: Array<{ command: string }> }>
-      }
-    }
-    const sessionCommands = (settings.hooks.SessionStart ?? []).flatMap((group) =>
-      group.hooks.map((hook) => hook.command),
-    )
-    const preToolCommands = (settings.hooks.PreToolUse ?? []).flatMap((group) =>
-      group.hooks.map((hook) => hook.command),
-    )
-    expect(sessionCommands.some((command) => command.includes('check-gstack-session.sh'))).toBe(
-      false,
-    )
-    expect(preToolCommands.some((command) => command.includes('check-gstack.sh'))).toBe(false)
-  })
-
   it('wires wp-sessionstart-routing as the SessionStart hook in both Claude and Codex', async () => {
-    await scaffoldAgentHooks({ repoRoot, options: {}, gstackEnabled: true })
+    await scaffoldAgentHooks({ repoRoot, options: {} })
 
     const claude = JSON.parse(readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8')) as {
       hooks: { SessionStart: Array<{ hooks: Array<{ command: string }> }> }
@@ -337,75 +307,6 @@ describe('scaffoldAgentHooks', () => {
     }
   })
 
-  it('dedupes pre-existing wrapped script hooks against the raw incoming form', async () => {
-    // Regression: hasCommand previously only extracted node_modules/.bin/<name>
-    // identifiers. Script paths like .claude/hooks/check-gstack-session.sh
-    // fell through to exact-string match, so the wrapped form
-    // `[ -x X ] && X || true` did not match the raw incoming `X`. wp setup
-    // accumulated a duplicate gstack entry on every run.
-    const settingsPath = join(repoRoot, '.claude', 'settings.json')
-    mkdirSync(join(repoRoot, '.claude'), { recursive: true })
-    const wrappedGstack =
-      '[ -x "$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack-session.sh" ] && "$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack-session.sh" || true'
-    writeFileSync(
-      settingsPath,
-      JSON.stringify(
-        {
-          hooks: {
-            SessionStart: [{ hooks: [{ type: 'command', command: wrappedGstack, timeout: 2 }] }],
-          },
-        },
-        null,
-        2,
-      ),
-    )
-
-    await scaffoldAgentHooks({ repoRoot, options: {}, gstackEnabled: true })
-
-    const settings = JSON.parse(readFileSync(settingsPath, 'utf8')) as {
-      hooks: { SessionStart: Array<{ hooks: Array<{ command: string }> }> }
-    }
-    const gstackMatches = settings.hooks.SessionStart.flatMap((g) =>
-      g.hooks.map((h) => h.command),
-    ).filter((cmd) => cmd.includes('check-gstack-session.sh'))
-    expect(gstackMatches).toHaveLength(1)
-    expect(gstackMatches[0]).toBe(wrappedGstack)
-  })
-
-  it('dedupes pre-existing wrapped Skill matcher hooks against the raw incoming form', async () => {
-    const settingsPath = join(repoRoot, '.claude', 'settings.json')
-    mkdirSync(join(repoRoot, '.claude'), { recursive: true })
-    const wrappedGstackSkill =
-      '[ -x "$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack.sh" ] && "$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack.sh" || true'
-    writeFileSync(
-      settingsPath,
-      JSON.stringify(
-        {
-          hooks: {
-            PreToolUse: [
-              {
-                matcher: 'Skill',
-                hooks: [{ type: 'command', command: wrappedGstackSkill, timeout: 3 }],
-              },
-            ],
-          },
-        },
-        null,
-        2,
-      ),
-    )
-
-    await scaffoldAgentHooks({ repoRoot, options: {} })
-
-    const settings = JSON.parse(readFileSync(settingsPath, 'utf8')) as {
-      hooks: { PreToolUse: Array<{ matcher?: string; hooks: Array<{ command: string }> }> }
-    }
-    const gstackSkillMatches = settings.hooks.PreToolUse.flatMap((g) =>
-      g.hooks.map((h) => h.command),
-    ).filter((cmd) => cmd.includes('check-gstack.sh'))
-    expect(gstackSkillMatches).toHaveLength(1)
-  })
-
   it('does not duplicate the wp-sessionstart-routing entry on a second scaffold', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {} })
     await scaffoldAgentHooks({ repoRoot, options: {} })
@@ -418,6 +319,140 @@ describe('scaffoldAgentHooks', () => {
       (cmd) => cmd.includes('wp-sessionstart-routing'),
     )
     expect(matches).toHaveLength(1)
+  })
+
+  it('migrates legacy managed-wrapper hook commands to direct hook commands', async () => {
+    mkdirSync(join(repoRoot, '.codex'), { recursive: true })
+    mkdirSync(join(repoRoot, '.claude'), { recursive: true })
+    writeFileSync(
+      join(repoRoot, '.codex', 'hooks.json'),
+      JSON.stringify(
+        {
+          hooks: {
+            SessionStart: [
+              {
+                hooks: [
+                  {
+                    type: 'command',
+                    command: `if [ -x '${repoRoot}/.codex/managed-hooks/wp-sessionstart-routing.sh' ]; then '${repoRoot}/.codex/managed-hooks/wp-sessionstart-routing.sh'; else true; fi`,
+                    timeout: 5,
+                  },
+                  {
+                    type: 'command',
+                    command: `[ -x '${repoRoot}/.codex/managed-hooks/wp-check-dev-link.sh' ] && '${repoRoot}/.codex/managed-hooks/wp-check-dev-link.sh' || true`,
+                    timeout: 5,
+                  },
+                  {
+                    type: 'command',
+                    command: `"${repoRoot}/.codex/managed-hooks/wp-global-codex-omx-hook.sh"`,
+                  },
+                ],
+              },
+            ],
+            PreToolUse: [
+              {
+                matcher: 'Bash|apply_patch|Edit|Write|mcp__.*',
+                hooks: [
+                  {
+                    type: 'command',
+                    command: `if [ -x '${repoRoot}/.codex/managed-hooks/wp-pretool-guard.sh' ]; then '${repoRoot}/.codex/managed-hooks/wp-pretool-guard.sh'; else printf '%s\\\\n' '{}' ; fi`,
+                    timeout: 5,
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+    )
+    writeFileSync(
+      join(repoRoot, '.claude', 'settings.json'),
+      JSON.stringify(
+        {
+          hooks: {
+            SessionStart: [
+              {
+                hooks: [
+                  {
+                    type: 'command',
+                    command:
+                      '[ -x "$CLAUDE_PROJECT_DIR/.claude/hooks/managed/wp-sessionstart-routing.sh" ] && "$CLAUDE_PROJECT_DIR/.claude/hooks/managed/wp-sessionstart-routing.sh" || true',
+                    timeout: 5,
+                  },
+                ],
+              },
+            ],
+            PreToolUse: [
+              {
+                matcher: 'Bash|Read|Grep|WebFetch|Agent|Write|Edit|MultiEdit|mcp__.*',
+                hooks: [
+                  {
+                    type: 'command',
+                    command:
+                      '[ -x "$CLAUDE_PROJECT_DIR/.claude/hooks/managed/wp-pretool-guard.sh" ] && "$CLAUDE_PROJECT_DIR/.claude/hooks/managed/wp-pretool-guard.sh" || printf \'%s\\\\n\' \'{}\'',
+                    timeout: 5,
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+    )
+
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+
+    const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
+      hooks: {
+        SessionStart: Array<{ hooks: Array<{ command: string }> }>
+        PreToolUse: Array<{ hooks: Array<{ command: string }> }>
+      }
+    }
+    const claude = JSON.parse(readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8')) as {
+      hooks: {
+        SessionStart: Array<{ hooks: Array<{ command: string }> }>
+        PreToolUse: Array<{ hooks: Array<{ command: string }> }>
+      }
+    }
+
+    const codexCommands = JSON.stringify(codex.hooks)
+    const claudeCommands = JSON.stringify(claude.hooks)
+    expect(codexCommands).not.toContain('/.codex/managed-hooks/')
+    expect(claudeCommands).not.toContain('/.claude/hooks/managed/')
+    expect(codexCommands).toContain(' hook sessionstart-routing')
+    expect(codexCommands).toContain(' hook pretool-guard')
+    expect(claudeCommands).toContain(' hook sessionstart-routing')
+    expect(claudeCommands).toContain(' hook pretool-guard')
+    expect(codexCommands.match(/wp-sessionstart-routing/g)).toHaveLength(1)
+    expect(codexCommands.match(/wp-pretool-guard/g)).toHaveLength(1)
+    expect(claudeCommands.match(/wp-sessionstart-routing/g)).toHaveLength(1)
+    expect(claudeCommands.match(/wp-pretool-guard/g)).toHaveLength(1)
+    expect(codexCommands).not.toContain('wp-check-dev-link.sh')
+    expect(codexCommands).not.toContain('wp-global-codex-omx-hook.sh')
+  })
+
+  it('removes obsolete managed hook directories on non-dry-run scaffold', async () => {
+    mkdirSync(join(repoRoot, '.codex', 'managed-hooks'), { recursive: true })
+    mkdirSync(join(repoRoot, '.claude', 'hooks', 'managed'), { recursive: true })
+    writeFileSync(
+      join(repoRoot, '.codex', 'managed-hooks', 'wp-pretool-guard.sh'),
+      '#!/bin/sh\nexit 0\n',
+      'utf8',
+    )
+    writeFileSync(
+      join(repoRoot, '.claude', 'hooks', 'managed', 'wp-pretool-guard.sh'),
+      '#!/bin/sh\nexit 0\n',
+      'utf8',
+    )
+
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+
+    expect(existsSync(join(repoRoot, '.codex', 'managed-hooks'))).toBe(false)
+    expect(existsSync(join(repoRoot, '.claude', 'hooks', 'managed'))).toBe(false)
   })
 
   it('invokes app-server trust sync only after .codex/hooks.json exists', async () => {
@@ -1265,7 +1300,7 @@ describe('buildWebpressoHookGroups', () => {
   })
 })
 
-describe('BP1 hotfix: launcher chain, node fallback, gstack stdin scoping, stop-qa timeout', () => {
+describe('BP1 hotfix: launcher chain, node fallback, stop-qa timeout', () => {
   let repoRoot: string
 
   beforeEach(() => {
@@ -1311,50 +1346,6 @@ describe('BP1 hotfix: launcher chain, node fallback, gstack stdin scoping, stop-
     // Skipped runs warn on stderr instead of silently succeeding.
     expect(stopCommand).toContain('>&2')
     expect(stopCommand).not.toContain('|| true')
-  })
-
-  it('scopes the gstack PreToolUse check to gstack-owned skills via stdin', async () => {
-    await scaffoldAgentHooks({
-      repoRoot,
-      options: {},
-      gstackEnabled: true,
-      trustCodexHooks: false,
-    })
-    const checkGstackPath = join(repoRoot, '.claude', 'hooks', 'check-gstack.sh')
-    const checkGstack = readFileSync(checkGstackPath, 'utf8')
-    expect(checkGstack).toContain('"skill"')
-    expect(checkGstack).toContain('case "$skill" in')
-
-    // HOME without gstack so the missing-gstack branch is exercised.
-    const nonGstack = spawnSync('sh', [checkGstackPath], {
-      input: JSON.stringify({ tool_name: 'Skill', tool_input: { skill: 'webpresso:qa' } }),
-      encoding: 'utf8',
-      env: { ...process.env, HOME: repoRoot },
-    })
-    expect(nonGstack.stdout).not.toContain('permissionDecision')
-
-    const gstackOwned = spawnSync('sh', [checkGstackPath], {
-      input: JSON.stringify({ tool_name: 'Skill', tool_input: { skill: 'browse' } }),
-      encoding: 'utf8',
-      env: { ...process.env, HOME: repoRoot },
-    })
-    expect(gstackOwned.stdout).toContain('"permissionDecision":"deny"')
-  })
-
-  it('regenerates the gstack check scripts when the template changes', async () => {
-    const hooksDir = join(repoRoot, '.claude', 'hooks')
-    mkdirSync(hooksDir, { recursive: true })
-    writeFileSync(join(hooksDir, 'check-gstack.sh'), '#!/bin/sh\nexit 1\n', 'utf8')
-
-    await scaffoldAgentHooks({
-      repoRoot,
-      options: {},
-      gstackEnabled: true,
-      trustCodexHooks: false,
-    })
-
-    const content = readFileSync(join(hooksDir, 'check-gstack.sh'), 'utf8')
-    expect(content).toContain('case "$skill" in')
   })
 
   it('emits a measured timeout for the wp-stop-qa Stop hook', () => {
