@@ -51,7 +51,6 @@ const requiredFiles = [
   'vitest.config.ts',
   'stryker.config.ts',
   'playwright.config.ts',
-  '.github/actions/setup-webpresso/action.yml',
   'src/quality-sample.ts',
   'src/quality-sample.test.ts',
   'e2e/fixtures/smoke.html',
@@ -393,7 +392,19 @@ try {
     }
     const setupResult = run(
       'npm',
-      ['exec', '--yes', '--package', tarball, '--', 'wp', 'setup', '--yes', '--host', 'all'],
+      [
+        'exec',
+        '--yes',
+        '--package',
+        tarball,
+        '--',
+        'wp',
+        'setup',
+        '--yes',
+        '--project-init',
+        '--host',
+        'all',
+      ],
       repo,
       setupEnv,
     )

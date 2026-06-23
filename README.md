@@ -33,7 +33,7 @@ Requires Node.js 24 or newer. No private registry setup is required.
 Install the Webpresso CLI globally, then run setup from your repo root. `wp` bundles the package/task facade it needs, so a separate global `vp` install is not required.
 
 ```bash
-vp install -g @webpresso/agent-kit && wp setup
+vp install -g @webpresso/agent-kit && wp setup --project-init
 ```
 
 For repeatable consumer-repo setup, keep `wp` global and keep only
@@ -56,7 +56,7 @@ wp secrets doctor
 wp preview --json
 ```
 
-**Success signal:** `wp setup` completes and is idempotent. On a fresh repo it
+**Success signal:** `wp setup --project-init` completes and is idempotent. On a fresh repo it
 scaffolds the `base-kit` quality assets (`tsconfig`, Vitest, Oxlint, Stryker,
 Playwright, unit-test and file-based e2e smoke assets), wires `AGENTS.md` /
 `CLAUDE.md` plus per-agent command/skill/hook surfaces, and prints
@@ -309,4 +309,4 @@ set before promotion: `docs/bench/reference-parity-matrix.md`,
 
 ### Curated review skills
 
-`wp setup --with gstack` installs Webpresso-owned, unprefixed workflow skills for outside-voice review and plan critique (`claude`, `plan-eng-review`, `plan-ceo-review`, `plan-design-review`, `review`). These are curated Markdown assets shipped with agent-kit; they do not clone or run an external gstack checkout. To retire an old `~/.claude/skills/gstack` checkout, rerun setup with `WP_GSTACK_CLEANUP_EXTERNAL=1`; the checkout is backed up instead of deleted in place.
+`wp setup --with gstack` installs Webpresso-owned, unprefixed workflow skills for outside-voice review and plan critique (`claude`, `plan-eng-review`, `plan-ceo-review`, `plan-design-review`, `review`). These are curated Markdown assets shipped with agent-kit; they do not clone or run an external gstack checkout. To retire an old gstack checkout from your Claude home directory, rerun setup with `WP_GSTACK_CLEANUP_EXTERNAL=1`; the checkout is backed up instead of deleted in place.

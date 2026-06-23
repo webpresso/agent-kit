@@ -20,7 +20,7 @@ your repo root:
 ```bash
 cd your-repo
 vp install -g @webpresso/agent-kit
-wp setup
+wp setup --project-init
 ```
 
 Done. The fresh-repo promise is zero hand-wiring: setup creates the starter
@@ -55,7 +55,7 @@ wp preview --json
 ```
 
 For the full operator path from repo checkout to preview URL, see
-[`docs/guides/repo-to-preview-url.md`](./repo-to-preview-url.md).
+[`docs/guides/repo-to-preview-url.md`](./guides/repo-to-preview-url.md).
 
 If `wp setup` needs gstack tuning on a workstation with multiple agent CLIs
 installed, use:

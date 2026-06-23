@@ -4,18 +4,8 @@
   Current-state agent-kit scaffolding (`wp setup`) renders this file with:
   - Repository map: bulleted list of workspace packages inferred from
     pnpm-workspace.yaml / package.json workspaces.
-  - Tech stack: short description generated from package.json + detected
-    frameworks (React, Hono, Drizzle, etc.).
-  - Escalation map: user-edited section. Left as a TODO placeholder if
-    not specified.
-  - Durable planning root: defaults to `.agent/planning/`. Override via
-    .webpressorc.json.
-  - Blueprints directory: defaults to `blueprints`. Override via
-    .webpressorc.json#blueprintsDir.
-
-  Managed sections in this file are refreshed by agent-kit. Sync uses `wp sync`.
-  Repo-specific edits belong only inside `user-owned` blocks; agent-kit preserves
-  those blocks verbatim when it rewrites managed content.
+  Managed sections refresh via `wp sync`; repo-specific edits belong in
+  `user-owned` blocks and are preserved verbatim.
 -->
 
 <!-- >>> managed by webpresso (operating-contract) -->
