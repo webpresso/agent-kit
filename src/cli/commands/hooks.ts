@@ -4,6 +4,7 @@ import { printHooksDoctor } from '#hooks/doctor'
 
 type HooksCommandOptions = {
   skipMcp?: boolean
+  probeDecisions?: boolean
   fix?: boolean
   hosts?: 'auto' | 'skip' | 'required'
   host?: Array<'codex' | 'opencode' | 'claude'> | 'codex' | 'opencode' | 'claude'
@@ -25,6 +26,7 @@ async function runDoctor(options: HooksCommandOptions): Promise<number> {
 
   return await printHooksDoctor({
     skipMcp: options.skipMcp,
+    probeDecisions: options.probeDecisions,
     fix: options.fix,
     hosts: options.hosts,
     hostNames,
@@ -38,6 +40,10 @@ export function registerHooksCommand(cli: CAC): void {
       'Verify plugin hook installation health (subcommands: doctor, status, errors, dispatch, demo, upgrade)',
     )
     .option('--skip-mcp', 'Skip MCP server liveness check (for CI)')
+    .option(
+      '--probe-decisions',
+      'Fire the smallest allow/deny conformance rows at pretool-guard and assert the routing decision (doctor only)',
+    )
     .option(
       '--fix',
       'Attempt the safe manifest-backed hook restore path when doctor finds fixable drift',

@@ -52,6 +52,18 @@ With `--vendor` flag to check one vendor:
 wp hooks doctor --vendor codex
 ```
 
+Semantic decision probe — fires the smallest allow/deny conformance rows at the
+real `pretool-guard` and asserts the routing decision (a legitimate `gh pr
+merge` is allowed; a `gh pr view` is denied):
+
+```bash
+wp hooks doctor --probe-decisions
+```
+
+The default run stays cheap (empty-stdin liveness only). `--probe-decisions` is
+operator-side confirmation; CI already enforces the same decisions through the
+conformance-matrix boundary suite, so a green doctor and green CI agree.
+
 Attempt the safe auto-repair lane:
 
 ```bash
