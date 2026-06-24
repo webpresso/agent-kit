@@ -182,6 +182,10 @@ export function assertConformance(row: ConformanceRow, result: HookRunResult): v
             `[${row.name}] expected a PreToolUse deny, got ${decision ?? 'allow'} (exit ${result.exitCode ?? 'null'}, stdout: ${result.stdout.slice(0, 160)})`,
           )
         }
+        // A deny must still be a CLEAN exit (0 for an envelope deny, or 2 for the
+        // exit-code deny convention). A deny envelope printed just before the hook
+        // crashes (exit 1) is not a valid decision.
+        assertExitCode(row, result, true)
       } else {
         if (decision === 'deny') {
           throw new Error(

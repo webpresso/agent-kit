@@ -121,6 +121,13 @@ describe('hook conformance matrix', () => {
     expect(() => assertConformance(deny, { stdout: '', exitCode: 2 })).not.toThrow()
   })
 
+  it('rejects a deny envelope printed just before a crash (deny + exit 1)', () => {
+    const deny = rowByName('claude:pretool deny gh pr view')
+    expect(() => assertConformance(deny, { stdout: DENY_STDOUT, exitCode: 1 })).toThrow(
+      /exited with 1/,
+    )
+  })
+
   it('requires fail-open and SessionStart hooks to exit 0', () => {
     const stop = rowByName('claude:stop')
     expect(() => assertConformance(stop, { stdout: '{}', exitCode: 1 })).toThrow(/exited with 1/)
