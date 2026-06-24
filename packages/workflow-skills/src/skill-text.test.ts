@@ -30,6 +30,19 @@ describe('@repo/workflow-skills skill text contract', () => {
     expect(claudeSkill).not.toContain('claude.ai')
   })
 
+  it('documents the bounded Claude review contract', () => {
+    const claudeSkill = readFileSync(
+      path.resolve(import.meta.dirname, '../skills/claude.md'),
+      'utf8',
+    )
+
+    expect(claudeSkill).toContain('claude --print')
+    expect(claudeSkill).toContain('CLAUDE_REVIEW_TIMEOUT')
+    expect(claudeSkill).toContain('Bounded prompt payload')
+    expect(claudeSkill).toContain('single-file / single-question first')
+    expect(claudeSkill).toContain('Split-and-retry-once fallback')
+  })
+
   it('ships Codex and all OpenCode Go model-family reviewer skills', () => {
     const skillsDir = path.resolve(import.meta.dirname, '../skills')
     const required = [
