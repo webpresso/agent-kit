@@ -11,9 +11,11 @@ If hook configs become corrupted or manually edited, restore from the last known
 
 ```bash
 wp setup --restore-hooks
+# agent-kit source repo:
+WP_FORCE_SOURCE=1 wp setup --restore-hooks --source-maintenance
 ```
 
-This reads `.webpresso/hooks-manifest.json` and overwrites the vendor configs to match.
+This reads `.webpresso/hooks-manifest.json` and overwrites the vendor configs to match. Source-repo restores keep direct hook commands but force JIT/source mode with `WP_FORCE_SOURCE=1`.
 
 ## Per-vendor disable
 
@@ -24,7 +26,7 @@ wp setup --disable-hooks codex
 ```
 
 This removes the hooks from `.codex/hooks.json` while keeping the manifest intact.
-Re-enable with `wp setup --restore-hooks`.
+Re-enable with `wp setup --restore-hooks` (source repo: `WP_FORCE_SOURCE=1 wp setup --restore-hooks --source-maintenance`).
 
 ## Full cleanup
 

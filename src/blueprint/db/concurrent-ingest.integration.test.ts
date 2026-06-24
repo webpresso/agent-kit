@@ -94,33 +94,37 @@ afterEach(() => {
 })
 
 describe('concurrent ingest — projection DB lock (worktree scope)', () => {
-  it('two ingest paths in the same worktree serialize via the projection lock', { timeout: 30_000 }, async () => {
-    const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
-    try {
-      initGitRepo(repo)
-      writeBlueprintFixture(repo, 'fixture-a')
+  it(
+    'two ingest paths in the same worktree serialize via the projection lock',
+    { timeout: 30_000 },
+    async () => {
+      const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
+      try {
+        initGitRepo(repo)
+        writeBlueprintFixture(repo, 'fixture-a')
 
-      const spans: Span[] = []
-      const runOne = async (label: string): Promise<void> => {
-        await withProjectionDbWriteLock(repo, async () => {
-          const start = performance.now()
-          // Simulate ingest work — non-trivial duration so overlap would be
-          // detectable if the lock did not serialize.
-          await new Promise<void>((resolve) => setTimeout(resolve, 60))
-          spans.push({ label, start, end: performance.now() })
-        })
+        const spans: Span[] = []
+        const runOne = async (label: string): Promise<void> => {
+          await withProjectionDbWriteLock(repo, async () => {
+            const start = performance.now()
+            // Simulate ingest work — non-trivial duration so overlap would be
+            // detectable if the lock did not serialize.
+            await new Promise<void>((resolve) => setTimeout(resolve, 60))
+            spans.push({ label, start, end: performance.now() })
+          })
+        }
+
+        await Promise.all([runOne('A'), runOne('B')])
+
+        expect(spans).toHaveLength(2)
+        const [first, second] =
+          spans[0]!.start < spans[1]!.start ? [spans[0]!, spans[1]!] : [spans[1]!, spans[0]!]
+        expect(overlaps(first, second)).toBe(false)
+      } finally {
+        rmSync(repo, { recursive: true, force: true })
       }
-
-      await Promise.all([runOne('A'), runOne('B')])
-
-      expect(spans).toHaveLength(2)
-      const [first, second] =
-        spans[0]!.start < spans[1]!.start ? [spans[0]!, spans[1]!] : [spans[1]!, spans[0]!]
-      expect(overlaps(first, second)).toBe(false)
-    } finally {
-      rmSync(repo, { recursive: true, force: true })
-    }
-  })
+    },
+  )
 })
 
 describe('concurrent ingest — markdown lock (repo scope, cross-worktree)', () => {
@@ -128,42 +132,42 @@ describe('concurrent ingest — markdown lock (repo scope, cross-worktree)', () 
     'two ingest paths in different worktrees of the same repo serialize via the markdown lock',
     { timeout: 60_000 },
     async () => {
-    const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
-    const wtParent = mkdtempSync(path.join(tmpdir(), 'wp-wt-parent-'))
-    const wtDir = path.join(wtParent, 'alt')
-    try {
-      initGitRepo(repo)
-      writeBlueprintFixture(repo, 'fixture-a')
-      execSync('git add . && git commit -q -m init', { cwd: repo })
-      execSync(`git worktree add -q -b alt-wt "${wtDir}"`, { cwd: repo })
-
-      // Now both `repo` and `wtDir` are valid worktrees of the same repo.
-      // Their markdown lock paths are equal (repo-scoped); their projection
-      // DBs are distinct (worktree-scoped).
-      const spans: Span[] = []
-      const runOne = async (label: string, cwd: string): Promise<void> => {
-        await withMarkdownWriteLock(cwd, async () => {
-          const start = performance.now()
-          await new Promise<void>((resolve) => setTimeout(resolve, 60))
-          spans.push({ label, start, end: performance.now() })
-        })
-      }
-
-      await Promise.all([runOne('main', repo), runOne('alt', wtDir)])
-
-      expect(spans).toHaveLength(2)
-      const [first, second] =
-        spans[0]!.start < spans[1]!.start ? [spans[0]!, spans[1]!] : [spans[1]!, spans[0]!]
-      expect(overlaps(first, second)).toBe(false)
-    } finally {
+      const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
+      const wtParent = mkdtempSync(path.join(tmpdir(), 'wp-wt-parent-'))
+      const wtDir = path.join(wtParent, 'alt')
       try {
-        execSync(`git worktree remove --force "${wtDir}"`, { cwd: repo })
-      } catch {
-        /* best effort */
+        initGitRepo(repo)
+        writeBlueprintFixture(repo, 'fixture-a')
+        execSync('git add . && git commit -q -m init', { cwd: repo })
+        execSync(`git worktree add -q -b alt-wt "${wtDir}"`, { cwd: repo })
+
+        // Now both `repo` and `wtDir` are valid worktrees of the same repo.
+        // Their markdown lock paths are equal (repo-scoped); their projection
+        // DBs are distinct (worktree-scoped).
+        const spans: Span[] = []
+        const runOne = async (label: string, cwd: string): Promise<void> => {
+          await withMarkdownWriteLock(cwd, async () => {
+            const start = performance.now()
+            await new Promise<void>((resolve) => setTimeout(resolve, 60))
+            spans.push({ label, start, end: performance.now() })
+          })
+        }
+
+        await Promise.all([runOne('main', repo), runOne('alt', wtDir)])
+
+        expect(spans).toHaveLength(2)
+        const [first, second] =
+          spans[0]!.start < spans[1]!.start ? [spans[0]!, spans[1]!] : [spans[1]!, spans[0]!]
+        expect(overlaps(first, second)).toBe(false)
+      } finally {
+        try {
+          execSync(`git worktree remove --force "${wtDir}"`, { cwd: repo })
+        } catch {
+          /* best effort */
+        }
+        rmSync(wtParent, { recursive: true, force: true })
+        rmSync(repo, { recursive: true, force: true })
       }
-      rmSync(wtParent, { recursive: true, force: true })
-      rmSync(repo, { recursive: true, force: true })
-    }
     },
   )
 
@@ -171,42 +175,42 @@ describe('concurrent ingest — markdown lock (repo scope, cross-worktree)', () 
     'cross-worktree projection DB writers share the same repo-scoped lock',
     { timeout: 60_000 },
     async () => {
-    const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
-    const wtParent = mkdtempSync(path.join(tmpdir(), 'wp-wt-parent-'))
-    const wtDir = path.join(wtParent, 'alt')
-    try {
-      initGitRepo(repo)
-      writeBlueprintFixture(repo, 'fixture-a')
-      execSync('git add . && git commit -q -m init', { cwd: repo })
-      execSync(`git worktree add -q -b alt-wt2 "${wtDir}"`, { cwd: repo })
-
-      expect(resolveBlueprintProjectionDbLockPath(repo)).toBe(
-        resolveBlueprintProjectionDbLockPath(wtDir),
-      )
-
-      const spans: Span[] = []
-      const runOne = async (label: string, cwd: string): Promise<void> => {
-        await withProjectionDbWriteLock(cwd, async () => {
-          const start = performance.now()
-          await new Promise<void>((resolve) => setTimeout(resolve, 60))
-          spans.push({ label, start, end: performance.now() })
-        })
-      }
-
-      await Promise.all([runOne('main', repo), runOne('alt', wtDir)])
-      expect(spans).toHaveLength(2)
-      const [first, second] =
-        spans[0]!.start < spans[1]!.start ? [spans[0]!, spans[1]!] : [spans[1]!, spans[0]!]
-      expect(overlaps(first, second)).toBe(false)
-    } finally {
+      const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
+      const wtParent = mkdtempSync(path.join(tmpdir(), 'wp-wt-parent-'))
+      const wtDir = path.join(wtParent, 'alt')
       try {
-        execSync(`git worktree remove --force "${wtDir}"`, { cwd: repo })
-      } catch {
-        /* best effort */
+        initGitRepo(repo)
+        writeBlueprintFixture(repo, 'fixture-a')
+        execSync('git add . && git commit -q -m init', { cwd: repo })
+        execSync(`git worktree add -q -b alt-wt2 "${wtDir}"`, { cwd: repo })
+
+        expect(resolveBlueprintProjectionDbLockPath(repo)).toBe(
+          resolveBlueprintProjectionDbLockPath(wtDir),
+        )
+
+        const spans: Span[] = []
+        const runOne = async (label: string, cwd: string): Promise<void> => {
+          await withProjectionDbWriteLock(cwd, async () => {
+            const start = performance.now()
+            await new Promise<void>((resolve) => setTimeout(resolve, 60))
+            spans.push({ label, start, end: performance.now() })
+          })
+        }
+
+        await Promise.all([runOne('main', repo), runOne('alt', wtDir)])
+        expect(spans).toHaveLength(2)
+        const [first, second] =
+          spans[0]!.start < spans[1]!.start ? [spans[0]!, spans[1]!] : [spans[1]!, spans[0]!]
+        expect(overlaps(first, second)).toBe(false)
+      } finally {
+        try {
+          execSync(`git worktree remove --force "${wtDir}"`, { cwd: repo })
+        } catch {
+          /* best effort */
+        }
+        rmSync(wtParent, { recursive: true, force: true })
+        rmSync(repo, { recursive: true, force: true })
       }
-      rmSync(wtParent, { recursive: true, force: true })
-      rmSync(repo, { recursive: true, force: true })
-    }
     },
   )
 })

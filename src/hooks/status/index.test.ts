@@ -2,13 +2,14 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
   deriveHookStatus,
   deriveHostSurfaceStatus,
   formatHostSurfaceStatusLine,
   WP_HOOK_SPECS,
+  statusCommand,
 } from './index.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -303,5 +304,33 @@ describe('deriveHostSurfaceStatus', () => {
     expect(line).toContain('active=plugin-bridge')
     expect(line).toContain('lifecycle=degraded')
     expect(line.length).toBeLessThan(180)
+  })
+})
+
+describe('statusCommand source-repo guidance', () => {
+  it('prints source-aware setup guidance when the source repo manifest is missing', async () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'wp-hooks-status-source-'))
+    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }))
+    mkdirSync(join(repoRoot, 'src', 'cli'), { recursive: true })
+    writeFileSync(join(repoRoot, 'src', 'cli', 'cli.ts'), '')
+    const previousCwd = process.cwd()
+    let output = ''
+    const writeSpy = vi
+      .spyOn(process.stdout, 'write')
+      .mockImplementation((chunk: string | Uint8Array) => {
+        output += String(chunk)
+        return true
+      })
+
+    try {
+      process.chdir(repoRoot)
+      await statusCommand(['--vendor', 'codex'])
+    } finally {
+      process.chdir(previousCwd)
+      writeSpy.mockRestore()
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+
+    expect(output).toContain('WP_FORCE_SOURCE=1 wp setup --source-maintenance')
   })
 })

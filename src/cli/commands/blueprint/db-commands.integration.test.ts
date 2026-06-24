@@ -55,12 +55,9 @@ function makeGitRepo(): string {
 
 let repo: string
 
-beforeEach(
-  () => {
+beforeEach(() => {
   repo = makeGitRepo()
-  },
-  30_000,
-)
+}, 30_000)
 
 afterEach(() => {
   rmSync(repo, { recursive: true, force: true })
@@ -77,25 +74,29 @@ describe('projection freshness recovery', () => {
     expect(readProjectionMetadata(dbPath)?.head_at_ingest).toBe(currentHead(repo))
   })
 
-  it('dbBuild clears staleness after HEAD moves (the reported recovery path)', { timeout: 30_000 }, async () => {
-    const dbPath = resolveBlueprintProjectionDbPath(repo)
+  it(
+    'dbBuild clears staleness after HEAD moves (the reported recovery path)',
+    { timeout: 30_000 },
+    async () => {
+      const dbPath = resolveBlueprintProjectionDbPath(repo)
 
-    await dbBuild(repo)
+      await dbBuild(repo)
 
-    // A commit that does not touch blueprints/ still moves HEAD → projection stale.
-    writeFileSync(path.join(repo, 'README.md'), 'unrelated\n', 'utf8')
-    git(repo, ['add', '-A'])
-    git(repo, ['commit', '-q', '-m', 'unrelated change'])
+      // A commit that does not touch blueprints/ still moves HEAD → projection stale.
+      writeFileSync(path.join(repo, 'README.md'), 'unrelated\n', 'utf8')
+      git(repo, ['add', '-A'])
+      git(repo, ['commit', '-q', '-m', 'unrelated change'])
 
-    const stale = checkFreshness({ db_path: dbPath, worktree_path: repo })
-    expect(stale.ok).toBe(false)
+      const stale = checkFreshness({ db_path: dbPath, worktree_path: repo })
+      expect(stale.ok).toBe(false)
 
-    // The documented recovery must actually clear it.
-    await dbBuild(repo)
+      // The documented recovery must actually clear it.
+      await dbBuild(repo)
 
-    const recovered = checkFreshness({ db_path: dbPath, worktree_path: repo })
-    expect(recovered.ok).toBe(true)
-  })
+      const recovered = checkFreshness({ db_path: dbPath, worktree_path: repo })
+      expect(recovered.ok).toBe(true)
+    },
+  )
 
   it('reIngestProjection returns ingest counts and records freshness metadata', async () => {
     const dbPath = resolveBlueprintProjectionDbPath(repo)
