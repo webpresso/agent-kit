@@ -301,6 +301,16 @@ export async function dispatchAudit(input: AkAuditInput): Promise<AuditPayload> 
         details: auditResult,
       }
     }
+    case 'supported-agent-clis': {
+      const { auditSupportedAgentClis } = await import('#audit/supported-agent-clis')
+      const auditResult = auditSupportedAgentClis(input.cwd ?? input.directory ?? process.cwd())
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
+    }
     case 'ai-contracts': {
       const { auditAiContracts } = await import('#audit/ai-contracts')
       const auditResult = auditAiContracts(input.cwd ?? input.directory ?? process.cwd())
