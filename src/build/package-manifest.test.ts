@@ -105,6 +105,33 @@ const forbiddenPluginArtifactText = [
 ] as const
 
 describe('createPackedManifest', () => {
+  it('prepares non-root public packages without agent-kit runtime optional dependencies', () => {
+    const manifest = createPackedManifest(
+      {
+        name: '@webpresso/agent-config',
+        version: '0.1.6',
+        dependencies: {
+          '@vitejs/plugin-react': 'catalog:',
+          vite: 'catalog:',
+        },
+      },
+      {
+        catalog: {
+          '@vitejs/plugin-react': '^6.0.2',
+          vite: '^8.0.14',
+        },
+      },
+      { includeRuntimeOptionalDependencies: false },
+    )
+
+    expect(manifest.dependencies).toEqual({
+      '@vitejs/plugin-react': '^6.0.2',
+      vite: '^8.0.14',
+    })
+    expect(manifest.optionalDependencies).toBeUndefined()
+    expect(JSON.stringify(manifest)).not.toContain('catalog:')
+    expect(JSON.stringify(manifest)).not.toContain('@webpresso/agent-kit-runtime')
+  })
   it('keeps transient prepack backup artifacts gitignored', () => {
     const gitignore = readFileSync(join(repoRoot, '.gitignore'), 'utf8')
 

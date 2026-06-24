@@ -62,6 +62,10 @@ describe('release-publish runtime lane', () => {
     expect(source).toContain(
       'for (const workspacePackage of discoverWorkspacePackages(packageRoot))',
     )
+    expect(source).toContain('preparePackedManifest(pkg.root, {')
+    expect(source).toContain('includeRuntimeOptionalDependencies: false')
+    expect(source).toContain('restorePackedManifest(pkg.root)')
+    expect(source).toContain("'--ignore-scripts'")
     expect(source.indexOf('publishSimpleWorkspacePackage(workspacePackage)')).toBeLessThan(
       source.indexOf("const buildResult = run('pnpm', ['run', 'build'])"),
     )

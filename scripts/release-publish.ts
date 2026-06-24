@@ -182,17 +182,33 @@ function publishSimpleWorkspacePackage(pkg: PublishablePackage): PublishState | 
   const buildResult = run('pnpm', ['--filter', pkg.name, 'run', 'build'], packageRoot)
   if (exitCode(buildResult) !== 0) process.exit(exitCode(buildResult))
 
-  const publishResult = run('npm', ['publish', '--provenance', '--access', 'public'], pkg.root)
-  if (exitCode(publishResult) === 0) return 'published'
+  let prepared = false
+  try {
+    preparePackedManifest(pkg.root, {
+      assertBlueprintMigrationAssets: false,
+      includeRuntimeOptionalDependencies: false,
+      workspaceRoot: packageRoot,
+    })
+    prepared = true
 
-  const combinedOutput = `${publishResult.stdout ?? ''}\n${publishResult.stderr ?? ''}`
-  if (ALREADY_PUBLISHED_PATTERNS.some((pattern) => pattern.test(combinedOutput))) {
-    process.stdout.write(
-      `[release:publish] ${pkg.name}@${pkg.version} already published; treating as success\n`,
+    const publishResult = run(
+      'npm',
+      ['publish', '--ignore-scripts', '--provenance', '--access', 'public'],
+      pkg.root,
     )
-    return 'already-published'
+    if (exitCode(publishResult) === 0) return 'published'
+
+    const combinedOutput = `${publishResult.stdout ?? ''}\n${publishResult.stderr ?? ''}`
+    if (ALREADY_PUBLISHED_PATTERNS.some((pattern) => pattern.test(combinedOutput))) {
+      process.stdout.write(
+        `[release:publish] ${pkg.name}@${pkg.version} already published; treating as success\n`,
+      )
+      return 'already-published'
+    }
+    process.exit(exitCode(publishResult))
+  } finally {
+    if (prepared) restorePackedManifest(pkg.root)
   }
-  process.exit(exitCode(publishResult))
 }
 
 function publishPreparedPackage(packageRoot: string, label: string): PublishState {
