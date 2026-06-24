@@ -1,8 +1,10 @@
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { createRequire } from 'node:module'
 import { homedir, platform } from 'node:os'
 import path from 'node:path'
+import { createRequire } from 'node:module'
+
+import { getManagedRunner } from '#tool-runtime'
 
 export type BrowserName = 'chromium' | 'firefox' | 'webkit'
 
@@ -35,11 +37,46 @@ export interface BrowserInstallOptions {
   run?: (command: string, args: readonly string[]) => SpawnSyncReturns<string>
 }
 
+export interface BrowserEnsureOptions {
+  browser?: BrowserName
+  doctor?: (browser: BrowserName) => Promise<BrowserDoctorResult>
+  install?: (options: BrowserInstallOptions) => SpawnSyncReturns<string>
+  run?: (command: string, args: readonly string[]) => SpawnSyncReturns<string>
+}
+
+export interface BrowserEnsureResult {
+  ok: boolean
+  browser: BrowserName
+  alreadyInstalled: boolean
+  installed: boolean
+  doctor: BrowserDoctorResult
+  installResult?: {
+    status: number | null
+    signal: NodeJS.Signals | null
+    stdout: string
+    stderr: string
+  }
+  errors: string[]
+  installCommand: string
+}
+
 const require = createRequire(import.meta.url)
 const PLAYWRIGHT_TEST_PACKAGE = ['@playwright', 'test'].join('/')
 
-export function browserInstallCommand(browser: BrowserName = 'chromium'): string {
-  return `wp browser install ${browser}`
+export function browserEnsureCommand(browser: BrowserName = 'chromium'): string {
+  return `wp browser ensure ${browser}`
+}
+
+function managedPlaywrightInstallCommand(browser: BrowserName): {
+  command: string
+  args: readonly string[]
+} {
+  const runner = getManagedRunner('playwright', { outputPolicy: 'structured' })
+  return { command: runner.command, args: [...runner.args, 'install', browser] }
+}
+
+function commandToString(command: string, args: readonly string[]): string {
+  return [command, ...args].join(' ')
 }
 
 function defaultBrowserCachePath(): string {
@@ -107,8 +144,8 @@ export async function browserDoctor(
     ...(executableExists
       ? {}
       : {
-          hint: `Playwright ${browser} is not installed; run \`${browserInstallCommand(browser)}\`.`,
-          installCommand: browserInstallCommand(browser),
+          hint: `Playwright ${browser} is not installed; run \`${browserEnsureCommand(browser)}\`.`,
+          installCommand: browserEnsureCommand(browser),
         }),
   }
 }
@@ -116,7 +153,98 @@ export async function browserDoctor(
 export function installBrowser(options: BrowserInstallOptions = {}): SpawnSyncReturns<string> {
   const browser = options.browser ?? 'chromium'
   const run = options.run ?? ((command, args) => spawnSync(command, args, { encoding: 'utf8' }))
-  return run('npx', ['playwright', 'install', browser])
+  const install = managedPlaywrightInstallCommand(browser)
+  return run(install.command, install.args)
+}
+
+export async function ensureBrowser(
+  options: BrowserEnsureOptions = {},
+): Promise<BrowserEnsureResult> {
+  const browser = options.browser ?? 'chromium'
+  const doctor = options.doctor ?? browserDoctor
+  const install =
+    options.install ?? ((installOptions: BrowserInstallOptions) => installBrowser(installOptions))
+  const installCommand = browserEnsureCommand(browser)
+
+  const before = await doctor(browser)
+  if (before.ok) {
+    return {
+      ok: true,
+      browser,
+      alreadyInstalled: true,
+      installed: false,
+      doctor: before,
+      errors: [],
+      installCommand,
+    }
+  }
+
+  if (!before.packageAvailable) {
+    return {
+      ok: false,
+      browser,
+      alreadyInstalled: false,
+      installed: false,
+      doctor: before,
+      errors: [before.hint ?? '@playwright/test is not installed.'],
+      installCommand,
+    }
+  }
+
+  const installResult = install({ browser, run: options.run })
+  const normalizedInstallResult = {
+    status: installResult.status,
+    signal: installResult.signal,
+    stdout: installResult.stdout ?? '',
+    stderr: installResult.stderr ?? '',
+  }
+
+  if (installResult.status !== 0) {
+    const managed = managedPlaywrightInstallCommand(browser)
+    return {
+      ok: false,
+      browser,
+      alreadyInstalled: false,
+      installed: false,
+      doctor: before,
+      installResult: normalizedInstallResult,
+      errors: [
+        `Failed to install Playwright ${browser} with \`${commandToString(
+          managed.command,
+          managed.args,
+        )}\`; rerun \`${installCommand}\` after fixing the install error.`,
+      ],
+      installCommand,
+    }
+  }
+
+  const after = await doctor(browser)
+  if (!after.ok) {
+    return {
+      ok: false,
+      browser,
+      alreadyInstalled: false,
+      installed: true,
+      doctor: after,
+      installResult: normalizedInstallResult,
+      errors: [
+        after.hint ??
+          `Playwright ${browser} is still missing after install; rerun \`${installCommand}\`.`,
+      ],
+      installCommand,
+    }
+  }
+
+  return {
+    ok: true,
+    browser,
+    alreadyInstalled: false,
+    installed: true,
+    doctor: after,
+    installResult: normalizedInstallResult,
+    errors: [],
+    installCommand,
+  }
 }
 
 export async function openBrowserUrl(

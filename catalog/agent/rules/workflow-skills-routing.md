@@ -44,7 +44,7 @@ Use these skills when their descriptions match the user's intent. They are unpre
 
 ## Runtime boundary
 
-Do not bundle dependency directories, generated host surfaces, native artifacts, or prebuilt browser payloads. Browser skills use Webpresso's Playwright-based runtime surface (`wp browser doctor`, `wp browser install`, `wp browser open`) and project-local preview/dev-server URLs when available.
+Do not bundle dependency directories, generated host surfaces, native artifacts, or prebuilt browser payloads. Browser skills use Webpresso's Playwright-based runtime surface (`wp browser doctor`, `wp browser ensure`, `wp browser open`) and project-local preview/dev-server URLs when available.
 
 ## Mutation boundary
 

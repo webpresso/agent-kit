@@ -2,20 +2,23 @@ import type { CAC } from 'cac'
 
 import {
   browserDoctor,
+  ensureBrowser,
   installBrowser,
   openBrowserUrl,
   type BrowserName,
   type BrowserDoctorResult,
+  type BrowserEnsureResult,
   type BrowserInstallOptions,
   type BrowserOpenResult,
 } from '#browser/runtime.js'
 
-export const BROWSER_COMMAND_HELP = 'Browser runtime helpers (doctor, install, open)'
+export const BROWSER_COMMAND_HELP = 'Browser runtime helpers (doctor, ensure, install, open)'
 
-type BrowserAction = 'doctor' | 'install' | 'open'
+type BrowserAction = 'doctor' | 'ensure' | 'install' | 'open'
 
 export interface BrowserCommandDependencies {
   browserDoctor?: typeof browserDoctor
+  ensureBrowser?: typeof ensureBrowser
   installBrowser?: (options: BrowserInstallOptions) => { status: number | null }
   openBrowserUrl?: typeof openBrowserUrl
 }
@@ -37,6 +40,20 @@ function printDoctor(result: BrowserDoctorResult): void {
   console.log(`Cache: ${result.cachePath}`)
   if (result.installCommand) console.log(`Install: ${result.installCommand}`)
   if (result.hint) console.log(`Hint: ${result.hint}`)
+}
+
+function printEnsure(result: BrowserEnsureResult): void {
+  if (result.alreadyInstalled) {
+    console.log(`Playwright ${result.browser} already installed.`)
+    return
+  }
+  if (result.ok) {
+    console.log(`Playwright ${result.browser} installed.`)
+    return
+  }
+  console.log(`Playwright ${result.browser} is not installed.`)
+  console.log(`Install: ${result.installCommand}`)
+  for (const error of result.errors) console.log(`Error: ${error}`)
 }
 
 function printOpen(result: BrowserOpenResult): void {
@@ -63,13 +80,14 @@ export function registerBrowserCommand(
   dependencies: BrowserCommandDependencies = {},
 ): void {
   const runDoctor = dependencies.browserDoctor ?? browserDoctor
+  const runEnsure = dependencies.ensureBrowser ?? ensureBrowser
   const runInstall = dependencies.installBrowser ?? installBrowser
   const runOpen = dependencies.openBrowserUrl ?? openBrowserUrl
   cli
     .command('browser <action> [target]', BROWSER_COMMAND_HELP)
     .option('--browser <browser>', 'Browser engine: chromium, firefox, webkit')
     .option('--headed', 'Run headed instead of headless for `browser open`')
-    .option('--json', 'Print machine-readable JSON for `doctor` and `open`')
+    .option('--json', 'Print machine-readable JSON for `doctor`, `ensure`, and `open`')
     .action(
       async (
         action: string,
@@ -81,6 +99,14 @@ export function registerBrowserCommand(
           if (flags.json) printJson(result)
           else printDoctor(result)
           if (!result.ok) throwExit('browser doctor failed', 1)
+          return 0
+        }
+
+        if (action === 'ensure') {
+          const result = await runEnsure({ browser: parseBrowser(target ?? flags.browser) })
+          if (flags.json) printJson(result)
+          else printEnsure(result)
+          if (!result.ok) throwExit('browser ensure failed', 1)
           return 0
         }
 

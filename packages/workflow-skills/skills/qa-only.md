@@ -13,5 +13,5 @@ Use for browser QA reports when fixes are not requested.
 
 - Report only; do not edit files.
 - Prefer local preview/dev-server URLs when available, otherwise use the user-provided URL.
-- Start with `wp browser doctor`; if it reports a missing browser, run `wp browser install chromium`, then use `wp browser open <url> --json` as a smoke check.
+- Start with `wp browser doctor`; if it reports a missing browser, run `wp browser ensure chromium`, then use `wp browser open <url> --json` as a smoke check.
 - Include reproduction steps, expected vs actual, severity, evidence, and suggested fixes.
