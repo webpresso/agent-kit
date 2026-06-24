@@ -4,7 +4,7 @@ status: draft
 complexity: L
 created: '2026-06-24'
 last_updated: '2026-06-24'
-progress: '20% (P0 landed)'
+progress: '90% (P0-P5 landed; doctor-probe + live-drift job are follow-ups)'
 depends_on: []
 cross_repo_depends_on: []
 tags: [hooks, pretool-guard, reliability, testing, ci]
@@ -121,6 +121,27 @@ required CI in `.github/workflows/ci.agent-kit.yml`.
 | Smoke (P2) | matrix vs generated commands | All pass |
 | Parity (P4) | `WP_FORCE_COMPILED_RUNTIME=1` matrix replay | All pass; stale fixture fails |
 | Meta-proof | re-broaden a prefix to `gh pr` | routing/smoke test goes RED |
+
+## Status (delivered, PR #257)
+
+- **P0** routing over-match fix + regression tests — landed.
+- **P1** conformance matrix (`src/hooks/__conformance__/matrix.ts`) with host-aware,
+  exit-code-checked `assertConformance` — landed.
+- **P2** generated-command boundary smoke (`boundary.smoke.test.ts`) — landed.
+- **P3** Codex sibling-cwd e2e (`host-sim.e2e.test.ts`) — landed.
+- **P4** compiled-runtime parity + stale-runtime negative fixture (`parity.*`) — landed.
+- **P5 core** golden Codex-schema contract pin (`codex-contract.test.ts`); all suites
+  run under the existing CI `Test` job — landed. Code-review: Codex APPROVE.
+- All suites: dev-routing (61) + conformance (120) + spawned e2e (43) green.
+
+## Follow-ups (non-required / scheduled)
+
+- `wp hooks doctor --probe-decisions` firing `PROBE_ROWS` for operator-side semantic
+  checks (the matrix already CI-enforces decisions; this is operator convenience).
+- A scheduled (non-required) drift job running `codex app-server generate-json-schema`
+  + `@anthropic-ai/claude-agent-sdk` type assertion to detect upstream contract drift.
+- Surfaced robustness note: pretool-guard exits non-zero outside a git repo and Codex's
+  wrapper turns that into a misleading "wp not found" deny — worth a graceful-degrade fix.
 
 ## Non-goals
 - Cursor/OpenCode full lifecycle parity (tracked separately).
