@@ -478,7 +478,7 @@
     "version": "changeset version && vp run sync-marketplace-version",
     "release:publish": "bun scripts/release-publish.ts",
     "typecheck": "./bin/wp typecheck",
-    "test": "vitest run --exclude '**/*.integration.test.ts' --exclude '**/*.e2e.test.ts' && vitest run --no-file-parallelism .integration.test.ts .e2e.test.ts --testTimeout 30000",
+    "test": "vitest run",
     "test:mutation": "bun stryker run stryker.config.ts",
     "eval": "bun src/runners/evals/index.ts",
     "lint": "./bin/wp lint",
