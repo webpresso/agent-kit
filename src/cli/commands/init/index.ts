@@ -111,6 +111,7 @@ import { scaffoldSubagents } from './scaffolders/subagents/index.js'
 import { maybeRunVisionInterview } from './scaffolders/vision/interview.js'
 import { scaffoldVision } from './scaffolders/vision/index.js'
 import { scaffoldWorkspaceConfig } from './scaffolders/workspace-config/index.js'
+import { runSelfHostSetup } from './self-host.js'
 
 const PRESETS = [
   'example-skill',
@@ -152,7 +153,10 @@ export interface InitFlags {
   cwd?: string
   strict?: boolean
   project?: boolean
-  sourceMaintenance?: boolean
+  apply?: boolean
+  phase?: string
+  cleanupGitignoredIndex?: boolean
+  'cleanup-gitignored-index'?: boolean
 }
 
 export const EXIT_SUCCESS = 0
@@ -336,23 +340,20 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     return EXIT_SETUP_FAIL
   }
 
-  // Self-repo guard: agent-kit is the SOURCE of every agent-surface template
-  // (catalog/, the tracked .agent/.claude surfaces). Scaffolding into its own
-  // working tree overwrites those canonical sources — the footgun where a stray
-  // `wp setup` reported `overwritten: 2, drifted: 11, git index cleanup: 6
-  // untracked` against the live repo. Refuse loudly and write nothing unless the
-  // maintainer explicitly opts in with source-maintenance mode.
-  if (
-    isAgentKitTemplateSourceRepo(consumer.packageJson?.name) &&
-    flags.sourceMaintenance !== true
-  ) {
-    console.error(
-      `wp setup: refusing to scaffold @webpresso/agent-kit's own repo (${consumer.repoRoot}).\n` +
-        `  This repo is the source of the agent-surface templates; running setup here\n` +
-        `  overwrites the canonical sources under catalog/ and the tracked .agent/.claude surfaces.\n` +
-        `  To deliberately maintain agent-kit's own setup surfaces, re-run with --source-maintenance.`,
-    )
-    return EXIT_SETUP_FAIL
+  if (isAgentKitTemplateSourceRepo(consumer.packageJson?.name)) {
+    let catalogDir: string
+    try {
+      catalogDir = resolveCatalogDir()
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error))
+      return EXIT_SETUP_FAIL
+    }
+    const selfHostResult = await runSelfHostSetup({ consumer, catalogDir, flags })
+    if (!selfHostResult.ok) {
+      console.error(selfHostResult.reason)
+      return EXIT_SETUP_FAIL
+    }
+    return EXIT_SUCCESS
   }
 
   warnIfNonLocalCli(consumer.repoRoot)
@@ -932,7 +933,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     let gstackFailure: 'clone-failed' | 'pull-failed' | 'setup-failed' | null = null
     if (process.env.WP_SKIP_GSTACK === '1') {
       console.warn(
-        '  gstack: ⚠ WP_SKIP_GSTACK=1 — skipping. Most consumer repos treat gstack as a hard prerequisite.',
+        '  gstack: ⚠ WP_SKIP_GSTACK=1 — skipping optional gstack integration.',
       )
     } else if (isCiEnvironment && presets.includes('gstack')) {
       console.log('  gstack: - skipped (CI environment)')
@@ -1297,9 +1298,14 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
     .option('--cwd <dir>', 'Working tree to scaffold into (default: process.cwd())')
     .option('--strict', 'Abort if any compatibility check fails (default: warn and continue)')
     .option('--project', 'Configure OMX/OMC in project scope instead of the default user scope')
+    .option('--apply', 'Apply a source-repo self-host phase (agent-kit source repo only)')
     .option(
-      '--source-maintenance',
-      "Override the self-repo guard for @webpresso/agent-kit's own setup-surface maintenance (maintainers only)",
+      '--phase <phase>',
+      'Source-repo self-host phase: hook-contracts, projections, agents-md, gitignore, runtime-hooks, all-safe',
+    )
+    .option(
+      '--cleanup-gitignored-index',
+      'With --apply --phase gitignore, also run git rm --cached for generated gitignored paths',
     )
     .action(async (flags: InitFlags) => {
       const code = await runInit(flags)

@@ -6,6 +6,7 @@
  * `pnpm-workspace.yaml` when present to power downstream template rendering.
  */
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs'
+import type { SelfHostPhase } from './self-host.js'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -311,12 +312,15 @@ export function isAgentKitTemplateSourceRepo(packageName: string | undefined): b
 
 export function setupCommandForRepo(
   repoRoot: string,
-  options: { readonly restoreHooks?: boolean } = {},
+  options: { readonly restoreHooks?: boolean; readonly selfHostPhase?: SelfHostPhase } = {},
 ): string {
   const packageName = readPackageJson(repoRoot).info?.name
+  if (isAgentKitTemplateSourceRepo(packageName)) {
+    const phase = options.selfHostPhase ?? (options.restoreHooks === true ? 'hook-contracts' : null)
+    return phase === null ? 'wp setup' : `wp setup --apply --phase ${phase}`
+  }
   const restoreHooks = options.restoreHooks === true ? ' --restore-hooks' : ''
-  const sourceMaintenance = isAgentKitTemplateSourceRepo(packageName) ? ' --source-maintenance' : ''
-  return `wp setup${restoreHooks}${sourceMaintenance}`
+  return `wp setup${restoreHooks}`
 }
 
 export function detectConsumer(startDir: string = process.cwd()): ConsumerContext | null {

@@ -9,6 +9,7 @@ import {
   findGitRoot,
   parseWorkspaceGlobs,
   readPackageJson,
+  setupCommandForRepo,
 } from './detect-consumer.js'
 
 function makeTempDir(prefix = 'wp-detect'): string {
@@ -26,6 +27,38 @@ function makeDir(root: string, name: string): string {
 function writeJson(filePath: string, data: Record<string, unknown>): void {
   writeFileSync(filePath, JSON.stringify(data))
 }
+
+// ---------------------------------------------------------------------------
+// setupCommandForRepo
+// ---------------------------------------------------------------------------
+describe('setupCommandForRepo', () => {
+  it('uses the normal setup command for consumer repos', () => {
+    const dir = makeTempDir()
+    try {
+      writeJson(join(dir, 'package.json'), { name: '@acme/app' })
+      expect(setupCommandForRepo(dir)).toBe('wp setup')
+      expect(setupCommandForRepo(dir, { restoreHooks: true })).toBe('wp setup --restore-hooks')
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('uses explicit self-host command shapes for the agent-kit source repo', () => {
+    const dir = makeTempDir()
+    try {
+      writeJson(join(dir, 'package.json'), { name: '@webpresso/agent-kit' })
+      expect(setupCommandForRepo(dir)).toBe('wp setup')
+      expect(setupCommandForRepo(dir, { restoreHooks: true })).toBe(
+        'wp setup --apply --phase hook-contracts',
+      )
+      expect(setupCommandForRepo(dir, { selfHostPhase: 'runtime-hooks' })).toBe(
+        'wp setup --apply --phase runtime-hooks',
+      )
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
 
 // ---------------------------------------------------------------------------
 // findGitRoot

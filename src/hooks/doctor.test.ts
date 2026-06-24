@@ -1402,31 +1402,6 @@ describe('hooks/doctor', () => {
       ])
     })
 
-    it('returns source-maintenance setup guidance for the agent-kit source repo when the hooks manifest is missing', async () => {
-      const knownPaths = new Set([
-        '/repo/package.json',
-        '/repo/.claude/settings.json',
-        '/repo/.codex/hooks.json',
-      ])
-
-      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
-        if (knownPaths.has(String(path))) return
-        throw new Error('ENOENT')
-      }) as typeof accessSync)
-      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
-        if (String(path) === '/repo/package.json') {
-          return JSON.stringify({ name: '@webpresso/agent-kit' })
-        }
-        throw new Error(`unexpected read: ${String(path)}`)
-      }) as typeof readFileSync)
-
-      const { buildHooksDoctorFixPlan } = await import('#hooks/doctor')
-      const result = buildHooksDoctorFixPlan('/repo')
-
-      expect(result.status).toBe('requires-approval')
-      expect(result.nextCommand).toBe('wp setup --source-maintenance')
-    })
-
     it('returns blocked when installed hooks are unknown to the manifest', async () => {
       const manifestPath = '/repo/.webpresso/hooks-manifest.json'
       const settingsPath = '/repo/.claude/settings.json'

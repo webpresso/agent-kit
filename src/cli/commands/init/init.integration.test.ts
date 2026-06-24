@@ -234,9 +234,7 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     }
   })
 
-  it("refuses to scaffold agent-kit's own template-source repo and writes nothing", async () => {
-    // Re-identify the temp repo as agent-kit's own package — the source tree
-    // for every agent-surface template. Setup must refuse rather than overwrite.
+  it("runs agent-kit's own source repo in check-only self-host mode by default", async () => {
     writeFileSync(
       join(repo, 'package.json'),
       JSON.stringify({ name: '@webpresso/agent-kit', private: true }, null, 2),
@@ -244,15 +242,17 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
 
     const code = await runInit({ cwd: repo, yes: true })
 
-    expect(code).toBe(1)
-    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('refusing to scaffold'))
-    // Writes nothing: no agent surface, no rc file, no AGENTS.md.
+    expect(code).toBe(0)
+    expect(consoleErrorSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('refusing to scaffold'),
+    )
+    // Check mode writes nothing: no consumer rc, no projected agent surface, no AGENTS.md.
     expect(existsSync(join(repo, '.webpressorc.json'))).toBe(false)
     expect(existsSync(join(repo, '.agent'))).toBe(false)
     expect(existsSync(join(repo, 'AGENTS.md'))).toBe(false)
   })
 
-  it('proceeds past the self-repo guard when --source-maintenance is set', async () => {
+  it('applies only the selected self-host hook contract phase for agent-kit source repos', async () => {
     writeFileSync(
       join(repo, 'package.json'),
       JSON.stringify(
@@ -262,11 +262,14 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
       ),
     )
 
-    const code = await runInit({ cwd: repo, yes: true, sourceMaintenance: true })
+    const code = await runInit({ cwd: repo, yes: true, apply: true, phase: 'hook-contracts' })
 
     expect(code).toBe(0)
-    // Proceeding past the guard scaffolds the workspace config marker.
-    expect(existsSync(join(repo, '.webpressorc.json'))).toBe(true)
+    expect(existsSync(join(repo, '.claude', 'settings.json'))).toBe(true)
+    expect(existsSync(join(repo, '.codex', 'hooks.json'))).toBe(true)
+    expect(existsSync(join(repo, '.claude', 'hooks'))).toBe(false)
+    expect(existsSync(join(repo, '.codex', 'managed-hooks'))).toBe(false)
+    expect(existsSync(join(repo, '.webpressorc.json'))).toBe(false)
   })
 
   it('migrates legacy .agent-kitrc.json state into .webpressorc.json on setup', async () => {

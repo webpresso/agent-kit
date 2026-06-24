@@ -104,7 +104,7 @@ export async function upgradeHooksForRepo(
 ): Promise<HooksUpgradeTargetReport> {
   const manifest = readHooksManifest(repoRoot)
   if (manifest === null) {
-    const setupCommand = setupCommandForRepo(repoRoot)
+    const setupCommand = setupCommandForRepo(repoRoot, { selfHostPhase: 'runtime-hooks' })
     return {
       repoRoot,
       mode: 'single',

@@ -9,12 +9,17 @@
  *
  * Runs by default on every `wp setup`.
  */
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 import { isHookName } from '#cli/commands/hook.js'
-import { type MergeOptions, type MergeResult, patchJsonFile } from '#cli/commands/init/merge'
+import {
+  type MergeOptions,
+  type MergeResult,
+  patchJsonFile,
+  writeFileMerged,
+} from '#cli/commands/init/merge'
 import {
   type ResolveAgentKitPackageRootOptions,
   resolveAgentKitPackageRootOrThrow,
@@ -598,6 +603,10 @@ export interface ScaffoldAgentHooksInput {
   createCodexAppServer?: CodexAppServerFactory
   onCodexTrustSyncWarning?: (warning: CodexTrustSyncWarning) => void
   trustCodexHooks?: boolean
+  /** Write repo-local runtime launcher scripts. Defaults to true for consumer setup. */
+  includeRuntimeHookFiles?: boolean
+  /** Write Claude Code user-scope plugin settings. Defaults to true for consumer setup. */
+  includeClaudeUserSettings?: boolean
 }
 
 export interface ScaffoldAgentHooksResult {
@@ -708,8 +717,34 @@ export function disableManagedHooksFromManifest(
   return result
 }
 
+export interface ScaffoldAgentHookRuntimeFilesResult {
+  readonly manifest: HooksManifest
+  readonly results: readonly MergeResult[]
+}
+
+export function scaffoldAgentHookRuntimeFiles(
+  input: ScaffoldAgentHooksInput,
+): ScaffoldAgentHookRuntimeFilesResult {
+  const results = [
+    ...ensureGstackHooks(input.repoRoot, input.options),
+    ...ensureManagedWebpressoHookLaunchers(input.repoRoot, input.options),
+  ]
+  const skillHooks = extractSkillHooks(join(input.repoRoot, '.agent', 'skills'))
+  return {
+    manifest: {
+      version: 1,
+      generatedAt: new Date().toISOString(),
+      claude: buildManagedClaudeHooks(skillHooks),
+      codex: buildManagedCodexHooks(input.repoRoot),
+      vendorState: { claude: 'enabled', codex: 'enabled' },
+    },
+    results,
+  }
+}
+
 // Fast existence check — no network, no install, sub-10ms.
-// Installation is handled by `wp setup` (gstack scaffolder runs by default).
+// Installation is handled by `wp setup --with gstack` when that optional
+// integration is enabled for the repo.
 // Reads the Skill tool payload from stdin and denies ONLY gstack-owned
 // skills; an unconditional deny used to block every skill (webpresso, OMC,
 // …) whenever gstack was missing (2026-06 audit).
@@ -788,10 +823,9 @@ fi
 printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"WARNING: gstack is not installed. Skills like /browse, /qa, /ship are unavailable. Fix: run \`wp setup\` then restart."}}\n'
 `
 
-function ensureGstackHooks(repoRoot: string, options: MergeOptions = {}): void {
-  if (options.dryRun) return
+function ensureGstackHooks(repoRoot: string, options: MergeOptions = {}): MergeResult[] {
   const hooksDir = join(repoRoot, '.claude', 'hooks')
-  mkdirSync(hooksDir, { recursive: true })
+  if (!options.dryRun) mkdirSync(hooksDir, { recursive: true })
 
   // Overwrite-on-change (mirrors ensureManagedWebpressoHookLaunchers) so
   // template fixes actually reach existing repos on regen — write-once kept
@@ -800,13 +834,15 @@ function ensureGstackHooks(repoRoot: string, options: MergeOptions = {}): void {
     ['check-gstack.sh', GSTACK_CHECK_SH],
     ['check-gstack-session.sh', GSTACK_SESSION_SH],
   ]
-  for (const [name, content] of gstackScripts) {
+  return gstackScripts.map(([name, content]) => {
     const scriptPath = join(hooksDir, name)
-    if (!existsSync(scriptPath) || readFileSync(scriptPath, 'utf8') !== content) {
-      writeFileSync(scriptPath, content, 'utf8')
-    }
-    chmodSync(scriptPath, 0o755)
-  }
+    const result = writeFileMerged(scriptPath, content, {
+      ...options,
+      ownership: 'generated-whole-file',
+    })
+    if (!options.dryRun) chmodSync(scriptPath, 0o755)
+    return result
+  })
 }
 
 export type ResolvePackageRootForHookLaunchersOptions = ResolveAgentKitPackageRootOptions
@@ -886,32 +922,39 @@ exit 0
 `
 }
 
-function ensureManagedWebpressoHookLaunchers(repoRoot: string, options: MergeOptions = {}): void {
-  if (options.dryRun) return
-
+function ensureManagedWebpressoHookLaunchers(
+  repoRoot: string,
+  options: MergeOptions = {},
+): MergeResult[] {
+  const results: MergeResult[] = []
   const launcherTargets = [
     join(repoRoot, CLAUDE_MANAGED_HOOK_SUBDIR),
     join(repoRoot, CODEX_MANAGED_HOOK_SUBDIR),
   ]
 
   for (const directory of launcherTargets) {
-    mkdirSync(directory, { recursive: true })
+    if (!options.dryRun) mkdirSync(directory, { recursive: true })
     for (const binName of WEBPRESSO_HOOK_BIN_NAMES) {
       const launcherPath = join(directory, `${binName}.sh`)
       const content = renderManagedWebpressoHookLauncher(repoRoot, binName)
-      if (!existsSync(launcherPath) || readFileSync(launcherPath, 'utf8') !== content) {
-        writeFileSync(launcherPath, content, 'utf8')
-      }
-      chmodSync(launcherPath, 0o755)
+      const result = writeFileMerged(launcherPath, content, {
+        ...options,
+        ownership: 'generated-whole-file',
+      })
+      if (!options.dryRun) chmodSync(launcherPath, 0o755)
+      results.push(result)
     }
   }
+  return results
 }
 
 export async function scaffoldAgentHooks(
   input: ScaffoldAgentHooksInput,
 ): Promise<ScaffoldAgentHooksResult> {
-  ensureGstackHooks(input.repoRoot, input.options)
-  ensureManagedWebpressoHookLaunchers(input.repoRoot, input.options)
+  if (input.includeRuntimeHookFiles !== false) {
+    ensureGstackHooks(input.repoRoot, input.options)
+    ensureManagedWebpressoHookLaunchers(input.repoRoot, input.options)
+  }
   const skillHooks = extractSkillHooks(join(input.repoRoot, '.agent', 'skills'))
   const manifest: HooksManifest = {
     version: 1,
@@ -931,11 +974,18 @@ export async function scaffoldAgentHooks(
       (existing) => patchCodexHooks(existing, input.repoRoot),
       input.options,
     ),
-    claudeUser: patchJsonFile(
-      defaultClaudeUserSettingsPath(),
-      (existing) => patchClaudeUserSettings(existing),
-      input.options,
-    ),
+    claudeUser:
+      input.includeClaudeUserSettings === false
+        ? ({
+            targetPath: defaultClaudeUserSettingsPath(),
+            action: 'identical',
+            note: 'skipped by repo-local self-host phase',
+          } satisfies MergeResult)
+        : patchJsonFile(
+            defaultClaudeUserSettingsPath(),
+            (existing) => patchClaudeUserSettings(existing),
+            input.options,
+          ),
     manifest,
   }
   const codexHooksPath = join(input.repoRoot, '.codex', 'hooks.json')

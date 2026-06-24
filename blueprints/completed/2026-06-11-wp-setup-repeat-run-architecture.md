@@ -69,8 +69,8 @@ That makes repeat runs surprisingly expensive. It also makes source-repo repair 
 
 **Acceptance:**
 
-- [x] Add a clear `--source-maintenance` flag for agent-kit source maintenance.
-- [x] Remove `--allow-self-scaffold`; `--source-maintenance` is the only maintainer path.
+- [x] Add an explicit self-host maintenance path for agent-kit source repair.
+- [x] Source writes require `wp setup --apply --phase <phase>`.
 
 **Verification:** `wp_test` for `src/cli/commands/init/init.integration.test.ts`.
 
@@ -92,4 +92,4 @@ That makes repeat runs surprisingly expensive. It also makes source-repo repair 
 
 - [x] Repeat `wp setup` does not invoke gstack `git pull` or upstream setup when gstack + requested skills are already present.
 - [x] Users have a documented explicit refresh path.
-- [x] Source repo repair uses source-maintenance language only.
+- [x] Source repo repair uses explicit `--apply --phase <phase>` language only.

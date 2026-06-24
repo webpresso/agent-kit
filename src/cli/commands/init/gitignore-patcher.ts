@@ -96,7 +96,7 @@ export const GENERATED_PATHS_BLOCK: GitignoreBlock = {
   ],
 }
 
-function generatedPathspecs(block: GitignoreBlock): string[] {
+export function generatedPathspecs(block: GitignoreBlock): string[] {
   return block.patterns
     .map((pattern) => pattern.trim())
     .filter((pattern) => pattern.length > 0)

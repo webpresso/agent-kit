@@ -76,7 +76,7 @@ describe('upgradeHooksForRepo', () => {
     expect(report.warnings[0]).toContain('run `wp setup`')
   })
 
-  it('reports source-maintenance setup guidance for the agent-kit source repo when the manifest is missing', async () => {
+  it('reports self-host runtime-hooks setup guidance for the agent-kit source repo when the manifest is missing', async () => {
     const repoRoot = makeRepo('hooks-upgrade-self-repo')
     writeFileSync(
       path.join(repoRoot, 'package.json'),
@@ -85,7 +85,7 @@ describe('upgradeHooksForRepo', () => {
 
     const report = await upgradeHooksForRepo(repoRoot, { apply: false, trustCodexHooks: false })
     expect(report.beforeSummary).toBe('manifest-missing')
-    expect(report.warnings[0]).toContain('wp setup --source-maintenance')
+    expect(report.warnings[0]).toContain('wp setup --apply --phase runtime-hooks')
   })
 
   it('keeps disabled vendors disabled in the projected summary', async () => {
