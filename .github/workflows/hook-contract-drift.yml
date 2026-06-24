@@ -1,0 +1,63 @@
+name: Hook contract drift (scheduled, non-required)
+
+# Detects upstream drift in the Codex hook-event contract. This workflow is
+# intentionally NOT part of the required PR check set: an upstream `codex`
+# version bump must never turn the required gate red on its own. It runs on a
+# schedule (and on demand) so a real contract change surfaces as a reviewable
+# signal rather than a surprise on the next feature PR.
+#
+# The required, deterministic contract pin lives in the normal Test job
+# (src/hooks/__conformance__/codex-contract.test.ts validates our emitted deny
+# envelope against the checked-in golden schema). This job adds the live,
+# tool-dependent check that cannot be a required gate.
+
+on:
+  schedule:
+    # Mondays 06:17 UTC. Off-hour minute to avoid the top-of-hour scheduler surge.
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  codex-hook-event-drift:
+    name: Codex hook-event drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: latest
+      - run: pnpm install --frozen-lockfile
+      - name: Install codex CLI (best-effort)
+        continue-on-error: true
+        run: npm install -g @openai/codex
+      - name: Check Codex hook-event drift
+        # Exits 1 only on real drift. When codex is unavailable the script
+        # reports SKIPPED and exits 0, so the scheduled job stays green unless
+        # the upstream hook-event set actually changed.
+        run: bun scripts/contract/codex-hook-event-drift.ts
+
+  claude-hook-contract:
+    name: Claude hook contract (type pin)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '24.16.0'
+      - name: Install Claude Agent SDK (type-only) + tsc
+        # Installed ephemerally — never a repo dependency. The assertion is a
+        # pure `import type`; the binary optional deps the SDK pulls are unused.
+        run: npm install --no-save typescript @anthropic-ai/claude-agent-sdk
+      - name: Typecheck the Claude hook contract assertion
+        # Fails only if our emitted deny envelope / stdin understanding no longer
+        # matches the published SDK types (e.g. permissionDecision drops "deny",
+        # or the snake_case stdin fields are renamed).
+        run: npx tsc --noEmit -p scripts/contract/tsconfig.claude-contract.json
