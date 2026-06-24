@@ -5,46 +5,91 @@ import { createVitestAliasEntriesFromPackageImports } from './src/config/interna
 
 const derivedInternalAliases = createVitestAliasEntriesFromPackageImports()
 
+// All test trees discovered by the suite. Carried verbatim into the `unit`
+// project — dropping any glob silently drops that tree from `wp test`.
+export const TEST_INCLUDE = [
+  'src/**/*.test.ts',
+  'src/**/*.integration.test.ts',
+  'scripts/**/*.test.ts',
+  'bin/**/*.test.ts',
+  'test/**/*.test.ts',
+  '*.test.ts',
+  // Published config package — its parity/isolation guards must run in CI.
+  'packages/agent-config/src/**/*.test.ts',
+]
+
+// `.claude/worktrees/` and `_worktrees/` hold full repo copies (locked OMC/agent
+// worktrees). The unit project's tree-scoped includes never matched them, but the
+// subprocess project's `**/*.<suffix>.test.ts` globs would — exclude them so we
+// don't run duplicate/stale test files from nested worktrees.
+const BASE_EXCLUDE = [
+  '**/node_modules/**',
+  '**/dist/**',
+  '**/.claude/**',
+  '**/_worktrees/**',
+]
+
+// Subprocess-heavy lane, classified by filename SUFFIX (not a maintained list):
+//   - *.integration.test.ts / *.e2e.test.ts — established conventions
+//   - *.subprocess.test.ts — plain unit tests that spawn real git/bun/node
+// Tests matching these spawn external processes; running them in the parallel
+// pool oversubscribes the machine and trips the 10s budget (see the original
+// maxWorkers note). They run serially (fileParallelism:false) at a 30s budget.
+// The list is a SUFFIX GLOB, so it carries no agent-kit-internal filenames and
+// never needs editing when a new heavy test is added — the author names the file.
+export const SUBPROCESS_SUFFIX_GLOBS = [
+  '**/*.integration.test.ts',
+  '**/*.e2e.test.ts',
+  '**/*.subprocess.test.ts',
+]
+
 export default defineConfig({
   resolve: {
     alias: [
       { find: 'bun:sqlite', replacement: resolve(__dirname, 'src/__mocks__/bun-sqlite.ts') },
       // package.json#imports is the source of truth for internal `#...` modules.
-      // Vitest derives its runtime aliases from that contract so new aliases
-      // land in Node + dist + tests together instead of drifting per-surface.
       { find: /^#local$/, replacement: resolve(__dirname, 'src/blueprint/index.ts') },
       { find: /^#index$/, replacement: resolve(__dirname, 'src/blueprint/index.ts') },
       ...derivedInternalAliases,
     ],
   },
   test: {
+    // Shared root config — inherited by every project via `extends: true`.
     environment: 'node',
-    // This repo has many subprocess-heavy "unit" tests (git, bun/wp entrypoints,
-    // blueprint ingestion, hook binaries). At the platform default worker count
-    // they oversubscribe the machine and push otherwise-correct tests over the
-    // 10s per-test budget. Four workers keeps the suite parallel without
-    // inducing broad timeout flakes.
-    maxWorkers: 4,
-    include: [
-      'src/**/*.test.ts',
-      'src/**/*.integration.test.ts',
-      'scripts/**/*.test.ts',
-      'bin/**/*.test.ts',
-      'test/**/*.test.ts',
-      '*.test.ts',
-      // Published config package — its parity/isolation guards must run in CI.
-      // (workflow-skills tests are not yet wired in: tracked separately.)
-      'packages/agent-config/src/**/*.test.ts',
-    ],
-    exclude: ['**/node_modules/**', '**/dist/**'],
+    globals: false,
     // Reset agent-session-leaked env (CLAUDE_PROJECT_DIR, WP_SKIP_UPDATE_CHECK)
     // before every test so the suite is hermetic regardless of launch env.
-    globalSetup: ['./src/test-helpers/global-setup.ts'],
     setupFiles: ['./src/test-helpers/hermetic-env.ts'],
-    globals: false,
-    testTimeout: 10_000,
-    typecheck: {
-      tsconfig: './tsconfig.test.json',
-    },
+    typecheck: { tsconfig: './tsconfig.test.json' },
+    exclude: BASE_EXCLUDE,
+    // Root-only: builds dist once before workers fork (idempotent via sentinel).
+    globalSetup: ['./src/test-helpers/global-setup.ts'],
+
+    // Two pools. `unit` runs parallel (fast); `subprocess` runs serial so the
+    // process-spawning tests can't oversubscribe the machine. Routing is by the
+    // include globs above, so the default `vitest run`, `vitest run <file>`, and
+    // MCP shard runs all land each file in the correct pool with no CLI changes.
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'unit',
+          include: TEST_INCLUDE,
+          exclude: [...BASE_EXCLUDE, ...SUBPROCESS_SUFFIX_GLOBS],
+          maxWorkers: 4,
+          testTimeout: 10_000,
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'subprocess',
+          include: SUBPROCESS_SUFFIX_GLOBS,
+          exclude: BASE_EXCLUDE,
+          fileParallelism: false,
+          testTimeout: 30_000,
+        },
+      },
+    ],
   },
 })

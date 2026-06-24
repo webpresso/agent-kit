@@ -58,6 +58,14 @@ enforced by review and the repo's quality gates.
 
 - **Every test file sits next to its subject** (`foo.ts` → `foo.test.ts`), except integration/e2e tests which live under `tests/`.
 - **Test file names include the suite level**: `foo.test.ts`, `foo.integration.test.ts`, `foo.e2e.test.ts`.
+- **Spawn-heavy unit tests use the `*.subprocess.test.ts` suffix.** If a plain
+  unit test shells out to a real subprocess (`git`, `bun`, `node`, `wp`) via
+  `node:child_process`, name it `foo.subprocess.test.ts`. The suffix routes it
+  into the serial vitest project (`vitest.config.ts`, `fileParallelism:false`,
+  30s) and the MCP shard runner's serialized lane, so it can't oversubscribe the
+  parallel pool and trip the 10s budget. This is a SUFFIX convention (not a
+  maintained list) — just name the file. Tests that only *mock* child_process
+  (e.g. a `stubGit`) stay plain `*.test.ts`.
 - **No `.skip` / `.only`** checked in. Hook blocks these.
 - **Assertions are strict**: `expect(value).toStrictEqual(...)`, not `.toMatchObject` unless intentional.
 - **One behavior per test**. If you need `&& expect`, split the test.

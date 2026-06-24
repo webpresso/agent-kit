@@ -16,10 +16,12 @@ const WORKSPACE_SHARD_MIN_FILES = 6
 const WORKSPACE_TARGET_FILES_PER_SHARD = 5
 const WORKSPACE_MAX_SHARDS = 8
 const WORKSPACE_MAX_DEFAULT_CONCURRENCY = 4
-// Integration/e2e tests are small in bytes but expensive at runtime; use a
-// fixed high weight so the greedy balancer distributes them evenly.
+// Integration/e2e/subprocess tests are small in bytes but expensive at runtime
+// (they spawn real git/bun/node); use a fixed high weight so the greedy balancer
+// distributes them evenly and they don't pile concurrent subprocesses onto one
+// shard. `.subprocess` is the plain-unit-test counterpart of the same hazard.
 const INTEGRATION_E2E_SHARD_WEIGHT = 200_000
-const INTEGRATION_E2E_FILE_PATTERN = /\.(integration|e2e)\.test\.[jt]sx?$/
+const INTEGRATION_E2E_FILE_PATTERN = /\.(integration|e2e|subprocess)\.test\.[jt]sx?$/
 const VITEST_DEFAULT_INCLUDE = '**/*.{test,spec}.?(c|m)[jt]s?(x)'
 const VITEST_DEFAULT_IGNORE = [
   '**/node_modules/**',
