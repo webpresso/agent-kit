@@ -71,8 +71,7 @@ TARGET_FILE=${TARGET_FILE:?set TARGET_FILE to one changed file}
   git diff --name-only "$BASE_BRANCH"...HEAD
   printf '\nTarget file: %s\n' "$TARGET_FILE"
   printf 'Bounded target diff (max 12000 bytes):\n'
-  git diff --unified=3 "$BASE_BRANCH"...HEAD -- "$TARGET_FILE" | \
-    python3 -c 'import sys; sys.stdout.write(sys.stdin.read(12000))'
+  git diff --unified=3 "$BASE_BRANCH"...HEAD -- "$TARGET_FILE" | head -c 12000
   printf '\n\nQuestion: Identify the highest-signal correctness, security, data-loss, or maintainability risk in %s. Quote only the smallest relevant excerpt. If context is insufficient, answer INSUFFICIENT_CONTEXT.\n' "$TARGET_FILE"
 } >"$PROMPT_FILE"
 ```
@@ -85,32 +84,23 @@ Run the review through a timeout wrapper. Use `claude --print`; do not recommend
 CLAUDE_REVIEW_TIMEOUT_SECONDS=${CLAUDE_REVIEW_TIMEOUT_SECONDS:-180}
 CLAUDE_REVIEW_TIMEOUT_SENTINEL=CLAUDE_REVIEW_TIMEOUT
 
-python3 - "$PROMPT_FILE" "$CLAUDE_REVIEW_TIMEOUT_SECONDS" "$CLAUDE_REVIEW_TIMEOUT_SENTINEL" <<'PY'
-from pathlib import Path
-import subprocess
-import sys
-
-prompt_path, timeout_seconds, sentinel = sys.argv[1], int(sys.argv[2]), sys.argv[3]
-prompt = Path(prompt_path).read_text()
-
-try:
-    result = subprocess.run(
-        ["claude", "--print", prompt],
-        text=True,
-        capture_output=True,
-        timeout=timeout_seconds,
-        check=False,
-    )
-except subprocess.TimeoutExpired:
-    print(sentinel, file=sys.stderr)
-    sys.exit(124)
-
-if result.stdout:
-    sys.stdout.write(result.stdout)
-if result.stderr:
-    sys.stderr.write(result.stderr)
-sys.exit(result.returncode)
-PY
+node -e '
+const { spawnSync } = require("node:child_process");
+const { readFileSync } = require("node:fs");
+const [promptPath, timeoutSeconds, sentinel] = process.argv.slice(1);
+const result = spawnSync("claude", ["--print", readFileSync(promptPath, "utf8")], {
+  encoding: "utf8",
+  timeout: Number(timeoutSeconds) * 1000,
+  maxBuffer: 64 * 1024 * 1024,
+});
+if (result.error && result.error.code === "ETIMEDOUT") {
+  process.stderr.write(sentinel + "\n");
+  process.exit(124);
+}
+if (result.stdout) process.stdout.write(result.stdout);
+if (result.stderr) process.stderr.write(result.stderr);
+process.exit(result.status == null ? 1 : result.status);
+' "$PROMPT_FILE" "$CLAUDE_REVIEW_TIMEOUT_SECONDS" "$CLAUDE_REVIEW_TIMEOUT_SENTINEL"
 ```
 
 #### Split-and-retry-once fallback
