@@ -108,6 +108,26 @@ describe('hook conformance matrix', () => {
     expect(() => assertConformance(claudeDeny, askEnvelope)).not.toThrow()
   })
 
+  it('treats a non-zero exit as failure on an allow row (crash != allow)', () => {
+    const allow = rowByName('claude:pretool allow gh pr merge')
+    expect(() => assertConformance(allow, { stdout: '', exitCode: 1 })).toThrow(/exited with 1/)
+    expect(() => assertConformance(allow, { stdout: '', exitCode: null })).toThrow(
+      /exited with null/,
+    )
+  })
+
+  it('accepts a PreToolUse deny via exit code 2 (exit-code deny convention)', () => {
+    const deny = rowByName('claude:pretool deny gh pr view')
+    expect(() => assertConformance(deny, { stdout: '', exitCode: 2 })).not.toThrow()
+  })
+
+  it('requires fail-open and SessionStart hooks to exit 0', () => {
+    const stop = rowByName('claude:stop')
+    expect(() => assertConformance(stop, { stdout: '{}', exitCode: 1 })).toThrow(/exited with 1/)
+    const session = rowByName('claude:sessionstart')
+    expect(() => assertConformance(session, { stdout: '', exitCode: 3 })).toThrow(/exited with 3/)
+  })
+
   it('fail-open events accept empty stdout and valid JSON', () => {
     const stop = rowByName('claude:stop')
     expect(() => assertConformance(stop, { stdout: '', exitCode: 0 })).not.toThrow()

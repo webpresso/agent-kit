@@ -20,6 +20,7 @@ import { describe, expect, it } from 'vitest'
 import { buildDenyEnvelope } from '#hooks/shared/types.js'
 
 type JsonSchema = {
+  readonly type?: string
   readonly additionalProperties?: boolean
   readonly properties?: Record<string, JsonSchema>
   readonly required?: readonly string[]
@@ -64,8 +65,11 @@ function resolveRef(schema: JsonSchema): JsonSchema {
 function validate(value: unknown, schema: JsonSchema, path: string): string[] {
   const errors: string[] = []
   const resolved = resolveRef(schema)
-  if (resolved.enum && typeof value === 'string' && !resolved.enum.includes(value)) {
-    errors.push(`${path}: "${value}" not in enum [${resolved.enum.join(', ')}]`)
+  if (resolved.type === 'string' && value !== undefined && typeof value !== 'string') {
+    errors.push(`${path}: expected type string, got ${typeof value}`)
+  }
+  if (resolved.enum && !resolved.enum.includes(value as string)) {
+    errors.push(`${path}: "${String(value)}" not in enum [${resolved.enum.join(', ')}]`)
   }
   if (resolved.const !== undefined && value !== resolved.const) {
     errors.push(`${path}: expected const "${resolved.const}", got "${String(value)}"`)
@@ -114,5 +118,13 @@ describe('codex output contract (golden schema)', () => {
     const bad = { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'maybe' } }
     const errors = validate(bad, root, 'output')
     expect(errors.some((e) => e.includes('not in enum'))).toBe(true)
+  })
+
+  it('the validator rejects a non-string where the schema requires a string type', () => {
+    const bad = {
+      hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecisionReason: 42 },
+    }
+    const errors = validate(bad, root, 'output')
+    expect(errors.some((e) => e.includes('expected type string'))).toBe(true)
   })
 })

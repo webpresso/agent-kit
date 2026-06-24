@@ -150,6 +150,21 @@ function assertNoCodexUnsupportedFields(
   }
 }
 
+/**
+ * Exit-code expectation. A non-zero exit means the hook process errored/crashed — a
+ * crashing hook that prints nothing would otherwise pass an "allow" row (empty stdout),
+ * the exact false-confidence this matrix guards against. A PreToolUse deny is the one
+ * place a non-zero exit (2) is a legitimate signal (the exit-code deny convention).
+ */
+function assertExitCode(row: ConformanceRow, result: HookRunResult, allowExitTwo: boolean): void {
+  const exit = result.exitCode
+  if (exit === 0) return
+  if (allowExitTwo && exit === 2) return
+  throw new Error(
+    `[${row.name}] hook exited with ${exit ?? 'null'} (expected ${allowExitTwo ? '0 or 2' : '0'}) — a non-zero exit means the hook crashed/errored, not a clean decision`,
+  )
+}
+
 /** Validate a hook run result against the row's per-event contract. Throws on failure. */
 export function assertConformance(row: ConformanceRow, result: HookRunResult): void {
   const obj = parseStdout(row, result)
@@ -160,25 +175,32 @@ export function assertConformance(row: ConformanceRow, result: HookRunResult): v
     case 'PreToolUse': {
       const decision = denyDecision(obj)
       if (row.expect === 'deny') {
-        if (decision !== 'deny') {
+        // A deny is signalled by the envelope OR a hard exit 2 (exit-code deny convention).
+        const denied = decision === 'deny' || result.exitCode === 2
+        if (!denied) {
           throw new Error(
-            `[${row.name}] expected a PreToolUse deny, got ${decision ?? 'allow'} (stdout: ${result.stdout.slice(0, 160)})`,
+            `[${row.name}] expected a PreToolUse deny, got ${decision ?? 'allow'} (exit ${result.exitCode ?? 'null'}, stdout: ${result.stdout.slice(0, 160)})`,
           )
         }
-      } else if (decision === 'deny') {
-        throw new Error(
-          `[${row.name}] expected PreToolUse allow but hook DENIED (stdout: ${result.stdout.slice(0, 160)})`,
-        )
+      } else {
+        if (decision === 'deny') {
+          throw new Error(
+            `[${row.name}] expected PreToolUse allow but hook DENIED (stdout: ${result.stdout.slice(0, 160)})`,
+          )
+        }
+        // An allow must be a CLEAN exit — a crashed hook (non-zero) is not an allow.
+        assertExitCode(row, result, false)
       }
       return
     }
     case 'SessionStart':
-      // SessionStart routing emits additionalContext (or empty); only the JSON-validity
-      // + Codex-unsupported-field checks above are contractually required here.
+      // SessionStart routing emits additionalContext (or empty) and must exit cleanly.
+      assertExitCode(row, result, false)
       return
     default:
       // Stop / PostToolUse / UserPromptSubmit / PreCompact are fail-open: empty stdout or
-      // valid JSON are both acceptable; parseStdout already enforced JSON validity.
+      // valid JSON, but must still exit 0 — a crash is a real failure, not "fail-open".
+      assertExitCode(row, result, false)
       return
   }
 }
