@@ -136,7 +136,7 @@ function assertNoCodexUnsupportedFields(
 ): void {
   if (row.host !== 'codex' || obj === null) return
   for (const field of CODEX_UNSUPPORTED_TOP_LEVEL) {
-    if (field in obj) {
+    if (Object.hasOwn(obj, field)) {
       throw new Error(
         `[${row.name}] Codex-bound hook output must not contain unsupported field "${field}"`,
       )

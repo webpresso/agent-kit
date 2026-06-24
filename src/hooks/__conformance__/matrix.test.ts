@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
+import { WP_HOOK_BIN_NAMES } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
+
 import {
   CONFORMANCE_MATRIX,
   PROBE_ROWS,
+  WEBPRESSO_HOOK_BINS,
   assertConformance,
   bashPayload,
   type ConformanceRow,
@@ -36,6 +39,14 @@ describe('hook conformance matrix', () => {
     expect(codexPre.length).toBeGreaterThan(0)
     // PreToolUse rows include both allow and deny expectations.
     expect(new Set(claudePre.map((r) => r.expect))).toStrictEqual(new Set(['allow', 'deny']))
+  })
+
+  it('keeps WEBPRESSO_HOOK_BINS in sync with the WP_HOOK_BIN_NAMES SSOT (ir.ts)', () => {
+    // The matrix hand-types its bin tuple to anchor the WebpressoHookBin literal
+    // union; ir.ts derives WP_HOOK_BIN_NAMES from WP_HOOK_SPECS. This guard fails
+    // if a 7th hook spec is added to ir.ts without a matching conformance bin (or
+    // vice-versa), so a new managed hook cannot silently miss conformance rows.
+    expect([...WEBPRESSO_HOOK_BINS].sort()).toStrictEqual([...WP_HOOK_BIN_NAMES].sort())
   })
 
   it('builds host-shaped stdin (codex adds tool_use_id/turn_id; claude does not)', () => {
