@@ -31,6 +31,12 @@ type WorkspaceCatalogs = {
   workspacePackages?: Record<string, string>
 }
 
+interface PackedManifestOptions {
+  assertBlueprintMigrationAssets?: boolean
+  includeRuntimeOptionalDependencies?: boolean
+  workspaceRoot?: string
+}
+
 const DEPENDENCY_SECTIONS = [
   'dependencies',
   'devDependencies',
@@ -191,8 +197,10 @@ function assertPublishableDependencySpecifier(
 export function createPackedManifest(
   manifest: PackageManifest,
   workspaceCatalogs: WorkspaceCatalogs,
+  options: PackedManifestOptions = {},
 ): PackageManifest {
   const packedManifest: PackageManifest = { ...manifest }
+  const includeRuntimeOptionalDependencies = options.includeRuntimeOptionalDependencies ?? true
 
   for (const section of DEPENDENCY_SECTIONS) {
     const dependencies = manifest[section]
@@ -232,7 +240,7 @@ export function createPackedManifest(
   // devDependencies section from the packed manifest entirely.
   delete packedManifest.devDependencies
 
-  if (typeof manifest.version === 'string') {
+  if (includeRuntimeOptionalDependencies && typeof manifest.version === 'string') {
     packedManifest.optionalDependencies = {
       ...packedManifest.optionalDependencies,
       ...Object.fromEntries(
@@ -375,9 +383,10 @@ function restorePackedSourcemapComments(rootDir: string) {
   rmSync(backupDir, { force: true, recursive: true })
 }
 
-export function preparePackedManifest(rootDir: string) {
+export function preparePackedManifest(rootDir: string, options: PackedManifestOptions = {}) {
   const packageJsonPath = join(rootDir, 'package.json')
-  const workspacePath = join(rootDir, 'pnpm-workspace.yaml')
+  const workspaceRoot = options.workspaceRoot ?? rootDir
+  const workspacePath = join(workspaceRoot, 'pnpm-workspace.yaml')
   const backupPath = join(rootDir, BACKUP_FILENAME)
   if (existsSync(backupPath)) {
     throw new Error(`Packed-manifest backup already exists at ${backupPath}`)
@@ -385,9 +394,15 @@ export function preparePackedManifest(rootDir: string) {
 
   const originalManifestText = readFileSync(packageJsonPath, 'utf8')
   const manifest = JSON.parse(originalManifestText) as PackageManifest
-  const packedManifest = createPackedManifest(manifest, readWorkspaceCatalogs(workspacePath))
+  const packedManifest = createPackedManifest(
+    manifest,
+    readWorkspaceCatalogs(workspacePath),
+    options,
+  )
 
-  assertBuiltBlueprintMigrationSqlAssets(rootDir)
+  if (options.assertBlueprintMigrationAssets ?? true) {
+    assertBuiltBlueprintMigrationSqlAssets(rootDir)
+  }
   writeText(backupPath, originalManifestText)
   pruneOrphanedDistSubtrees(rootDir)
   stripPackedSourcemapComments(rootDir)
