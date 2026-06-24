@@ -44,9 +44,7 @@ export class MockContainer {
   fetch: ReturnType<typeof vi.fn> = vi.fn<(...args: unknown[]) => unknown>()
   destroy: ReturnType<typeof vi.fn> = vi.fn<(...args: unknown[]) => unknown>()
   startAndWaitForPorts: ReturnType<typeof vi.fn> = vi.fn<(...args: unknown[]) => unknown>()
-  getState: ReturnType<typeof vi.fn> = vi
-    .fn<(...args: unknown[]) => unknown>()
-    .mockResolvedValue({ status: 'running' })
+  getState = vi.fn<() => Promise<{ status: string }>>().mockResolvedValue({ status: 'running' })
 }
 
 // ============================================================================

@@ -988,7 +988,6 @@ describe('DX output: lane framing and next-steps block', { timeout: 15_000 }, ()
           integrations: {
             omx: { enabled: true, scope: 'user' },
             omc: { enabled: true, scope: 'user' },
-            gstack: { enabled: true },
           },
           rules: { overrides: [] },
           scripts: {},
@@ -1009,14 +1008,10 @@ describe('DX output: lane framing and next-steps block', { timeout: 15_000 }, ()
         Array.isArray(call[1]) &&
         ['plugin', 'marketplace'].includes(String(call[1][0])),
     )
-    const gstackCalls = spawnMock.mock.calls.filter(
-      (call) => call[0] === 'git' || call[0] === './setup',
-    )
     const rewritten = readJsonFile<Record<string, unknown>>(join(repo, '.webpressorc.json'))
 
     expect(omxCalls).toHaveLength(0)
     expect(omcCalls).toHaveLength(0)
-    expect(gstackCalls).toHaveLength(0)
     expect(allOutput).toContain('wp setup no longer remembers them across reruns')
     expect(rewritten.integrations ?? {}).toEqual({})
   })

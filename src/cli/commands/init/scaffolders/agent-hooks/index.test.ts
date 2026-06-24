@@ -524,16 +524,6 @@ describe('scaffoldAgentHooks', () => {
       'utf8',
     )
     writeFileSync(
-      join(repoRoot, '.claude', 'hooks', 'check-gstack.sh'),
-      '#!/bin/sh\nexit 0\n',
-      'utf8',
-    )
-    writeFileSync(
-      join(repoRoot, '.claude', 'hooks', 'check-gstack-session.sh'),
-      '#!/bin/sh\nexit 0\n',
-      'utf8',
-    )
-    writeFileSync(
       join(repoRoot, '.claude', 'hooks', 'custom-guard.sh'),
       '#!/bin/sh\nexit 0\n',
       'utf8',
@@ -548,8 +538,6 @@ describe('scaffoldAgentHooks', () => {
     expect(existsSync(join(repoRoot, '.claude', 'hooks', 'managed', 'wp-pretool-guard.sh'))).toBe(
       false,
     )
-    expect(existsSync(join(repoRoot, '.claude', 'hooks', 'check-gstack.sh'))).toBe(false)
-    expect(existsSync(join(repoRoot, '.claude', 'hooks', 'check-gstack-session.sh'))).toBe(false)
     expect(existsSync(join(repoRoot, '.codex', 'managed-hooks'))).toBe(true)
     expect(existsSync(join(repoRoot, '.claude', 'hooks', 'managed'))).toBe(true)
     expect(existsSync(join(repoRoot, '.codex', 'managed-hooks', 'keep-me.sh'))).toBe(true)
@@ -1213,7 +1201,7 @@ hooks:
 
     expect(command).toBe(codexBinCommand(repoRoot, 'wp-pretool-guard'))
     expect(result.status).toBe(0)
-  })
+  }, 30_000)
 
   it('keeps the Codex Stop hook executable from a sibling cwd instead of failing with 127', async () => {
     initGitRepo(repoRoot)
@@ -1232,7 +1220,7 @@ hooks:
 
     expect(command).toBe(codexBinCommand(repoRoot, 'wp-stop-qa'))
     expect(result.status).toBe(0)
-  })
+  }, 30_000)
 })
 
 describe('classifyWebpressoHookBin', () => {

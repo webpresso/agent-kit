@@ -20,6 +20,7 @@ const VERSION = readPackageVersion(import.meta.url)
 
 const SUPPORTED_COMMANDS = [
   'blueprint',
+  'browser',
   'config',
   'secrets',
   'roadmap',
@@ -70,6 +71,7 @@ const ROOT_HELP = [
   'Core:',
   '  setup                 Scaffold a consumer repo with the agent surface',
   '  blueprint             Manage blueprints (list, new, show, exec, audit, ...)',
+  '  browser               Browser runtime helpers (doctor, ensure, install, open)',
   '  config                Repo configuration (secrets set/show/status/setup)',
   '  secrets               Secret orchestration commands (doctor)',
   '  gain                  Show Webpresso gain metadata plus separate RTK gain totals',
@@ -78,7 +80,7 @@ const ROOT_HELP = [
   '  install               Install dependencies through the managed package/task facade',
   '  add                   Add dependencies through the managed package/task facade',
   '  remove                Remove dependencies through the managed package/task facade',
-  '  update                Refresh wp and any wp-managed optional OMX/OMC/gstack integrations by default; use --deps for local dependencies (--global is an alias)',
+  '  update                Refresh wp and any wp-managed optional OMX/OMC integrations by default; use --deps for local dependencies (--global is an alias)',
   '  exec                  Run a binary through the managed package/task facade',
   '  run                   Run a package script through the managed package/task facade',
   '',
@@ -190,6 +192,11 @@ export async function main(): Promise<number> {
     case 'blueprint': {
       const { registerBlueprintRouter } = await import('./commands/blueprint/router.js')
       registerBlueprintRouter(cli)
+      break
+    }
+    case 'browser': {
+      const { registerBrowserCommand } = await import('./commands/browser.js')
+      registerBrowserCommand(cli)
       break
     }
     case 'config': {

@@ -1,7 +1,7 @@
 /**
  * Tests for blueprint-db-parser
  *
- * Covers: field extraction, gstack-vocabulary tolerance, dependency extraction,
+ * Covers: field extraction, workflow-skill vocabulary tolerance, dependency extraction,
  * risk-table parsing, and a snapshot test against a real completed blueprint.
  */
 
@@ -143,29 +143,29 @@ describe('parseBlueprintForDb', () => {
   })
 
   // ---------------------------------------------------------------------------
-  // Gstack vocabulary tolerance
+  // Workflow-skill vocabulary tolerance
   // ---------------------------------------------------------------------------
 
-  describe('gstack-vocabulary tolerance', () => {
-    it('parses gstack skill names in acceptance criteria cleanly without warnings', () => {
+  describe('workflow-skill vocabulary tolerance', () => {
+    it('parses workflow skill names in acceptance criteria cleanly without warnings', () => {
       const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
 
       const result = parseBlueprintForDb(FIXTURE_CONTENT, FIXTURE_PATH, FIXTURE_SLUG)
 
-      // The task with gstack skills in acceptance criteria
-      const gstackTask = result.tasks.find((t) => t.taskId === '1.3')
-      expect(gstackTask).toBeDefined()
+      // The task with workflow skills in acceptance criteria
+      const workflowSkillTask = result.tasks.find((t) => t.taskId === '1.3')
+      expect(workflowSkillTask).toBeDefined()
 
-      const criteria = gstackTask?.acceptanceCriteria ?? []
+      const criteria = workflowSkillTask?.acceptanceCriteria ?? []
       expect(criteria.some((c) => c.includes('/qa'))).toBe(true)
       expect(criteria.some((c) => c.includes('/design-review'))).toBe(true)
       expect(criteria.some((c) => c.includes('/investigate'))).toBe(true)
       expect(criteria.some((c) => c.includes('/review'))).toBe(true)
       expect(criteria.some((c) => c.includes('/ship'))).toBe(true)
 
-      // No validation warnings should have been emitted for gstack skill names
+      // No validation warnings should have been emitted for workflow skill names
       const stderrCalls = stderrSpy.mock.calls.map((c) => String(c[0]))
-      const gstackWarnings = stderrCalls.filter(
+      const workflowSkillWarnings = stderrCalls.filter(
         (msg) =>
           msg.includes('/qa') ||
           msg.includes('/design-review') ||
@@ -173,12 +173,12 @@ describe('parseBlueprintForDb', () => {
           msg.includes('/review') ||
           msg.includes('/ship'),
       )
-      expect(gstackWarnings).toHaveLength(0)
+      expect(workflowSkillWarnings).toHaveLength(0)
 
       stderrSpy.mockRestore()
     })
 
-    it('parses all acceptance criteria lines including gstack skill references', () => {
+    it('parses all acceptance criteria lines including workflow skill references', () => {
       const result = parseBlueprintForDb(FIXTURE_CONTENT, FIXTURE_PATH, FIXTURE_SLUG)
       const task = result.tasks.find((t) => t.taskId === '1.3')
       expect(task?.acceptanceCriteria).toHaveLength(5)

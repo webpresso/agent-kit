@@ -87,10 +87,7 @@ describe('wp package-manager commands', () => {
         refreshCodexPlugin,
         cwd: '/repo/packages/agent-kit',
         ownershipState: defaultToolingOwnershipState(),
-        exists: (target) =>
-          String(target) === '/repo/packages/agent-kit/package.json' ||
-          String(target) === '/fake-home/.claude/skills/gstack/.git',
-        gstackRoot: '/fake-home/.claude/skills/gstack',
+        exists: (target) => String(target) === '/repo/packages/agent-kit/package.json',
         run,
       }),
     ).toBe(0)
@@ -344,7 +341,6 @@ describe('wp package-manager commands', () => {
     let ownershipState = defaultToolingOwnershipState()
     ownershipState = claimUserOwnedTool(ownershipState, 'omx')
     ownershipState = claimUserOwnedTool(ownershipState, 'omc')
-    ownershipState = claimUserOwnedTool(ownershipState, 'gstack')
 
     expect(
       runPackageManagerCommand('update', {
@@ -355,7 +351,6 @@ describe('wp package-manager commands', () => {
         refreshClaudePlugin,
         refreshCodexPlugin,
         exists: () => true,
-        gstackRoot: '/fake-home/.claude/skills/gstack',
         run,
       }),
     ).toBe(0)
@@ -369,8 +364,6 @@ describe('wp package-manager commands', () => {
       'oh-my-claudecode@omc',
     ])
     expect(run).toHaveBeenNthCalledWith(3, GLOBAL_VP, ['install', '-g', '@webpresso/agent-kit'])
-    expect(run.mock.calls.flat().join(' ')).not.toContain('github.com/garrytan/gstack')
-    expect(run.mock.calls.flat().join(' ')).not.toContain('./setup')
     expect(refreshClaudePlugin).toHaveBeenCalledWith(
       '/global/lib/node_modules/@webpresso/agent-kit',
     )
@@ -444,37 +437,6 @@ describe('wp package-manager commands', () => {
     expect(refreshCodexPlugin).toHaveBeenCalledWith('/global/lib/node_modules/@webpresso/agent-kit')
   })
 
-  it('does not clone gstack when the canonical checkout is missing and wp owns gstack', () => {
-    const run = vi.fn(() => spawnResult(0))
-    const mkdir = vi.fn()
-    const { refreshClaudePlugin, refreshCodexPlugin } = successfulPluginRefreshes()
-    let ownershipState = defaultToolingOwnershipState()
-    ownershipState = claimUserOwnedTool(ownershipState, 'gstack')
-
-    expect(
-      runPackageManagerCommand('update', {
-        argv: ['node', 'wp', 'update', '--global'],
-        resolveVpCommand: () => GLOBAL_VP,
-        ownershipState,
-        packageRoot: '/global/lib/node_modules/@webpresso/agent-kit',
-        refreshClaudePlugin,
-        refreshCodexPlugin,
-        exists: (target) => String(target) !== '/fake-home/.claude/skills/gstack/.git',
-        gstackRoot: '/fake-home/.claude/skills/gstack',
-        mkdir,
-        run,
-      }),
-    ).toBe(0)
-
-    expect(mkdir).not.toHaveBeenCalled()
-    expect(run.mock.calls.flat().join(' ')).not.toContain('github.com/garrytan/gstack')
-    expect(run.mock.calls.flat().join(' ')).not.toContain('./setup')
-    expect(refreshClaudePlugin).toHaveBeenCalledWith(
-      '/global/lib/node_modules/@webpresso/agent-kit',
-    )
-    expect(refreshCodexPlugin).toHaveBeenCalledWith('/global/lib/node_modules/@webpresso/agent-kit')
-  })
-
   it('continues global update steps after an optional integration failure and exits zero', () => {
     const run = vi.fn((command: string) => spawnResult(command === 'claude' ? 3 : 0))
     const { refreshClaudePlugin, refreshCodexPlugin } = successfulPluginRefreshes()
@@ -483,7 +445,6 @@ describe('wp package-manager commands', () => {
     let ownershipState = defaultToolingOwnershipState()
     ownershipState = claimUserOwnedTool(ownershipState, 'omx')
     ownershipState = claimUserOwnedTool(ownershipState, 'omc')
-    ownershipState = claimUserOwnedTool(ownershipState, 'gstack')
 
     expect(
       runPackageManagerCommand('update', {
@@ -494,7 +455,6 @@ describe('wp package-manager commands', () => {
         refreshClaudePlugin,
         refreshCodexPlugin,
         exists: () => true,
-        gstackRoot: '/fake-home/.claude/skills/gstack',
         run,
       }),
     ).toBe(0)

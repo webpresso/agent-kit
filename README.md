@@ -307,6 +307,6 @@ set before promotion: `docs/bench/reference-parity-matrix.md`,
 `src/__integration__/reference-parity-tool-surface.integration.test.ts`, and
 `docs/bench/session-memory-methodology.md`.
 
-### Curated review skills
+### Workflow and browser skills
 
-`wp setup --with gstack` installs Webpresso-owned, unprefixed workflow skills for outside-voice review and plan critique (`claude`, `plan-eng-review`, `plan-ceo-review`, `plan-design-review`, `review`). These are curated Markdown assets shipped with agent-kit; they do not clone or run an external gstack checkout. To retire an old gstack checkout from your Claude home directory, rerun setup with `WP_GSTACK_CLEANUP_EXTERNAL=1`; the checkout is backed up instead of deleted in place.
+`wp setup` installs Webpresso-owned, unprefixed workflow skills by default. The default bundle includes outside-voice review and plan critique (`claude`, `review`, `autoplan`, `plan-eng-review`, `plan-ceo-review`, `plan-design-review`, `plan-devex-review`), debugging/quality (`investigate`, `health`), and browser/DX/QA (`browse`, `qa-only`, `qa`, `devex-review`, `design-review`). Browser skills use the Webpresso Playwright runtime; run `wp browser doctor` to verify local browser availability or `wp browser ensure chromium` when Chromium is missing.

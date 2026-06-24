@@ -76,6 +76,6 @@ expansion.
 ## See also
 
 - `package-conventions.md` for which packages may import which CLI
-- `gstack-routing.md` for how interactive workflows route to CLIs
+- `workflow-skills-routing.md` for how workflow and browser skills route
 - `docs/research/2026-05-14-token-savings-benchmark-methodology.md` for the
   benchmark methodology that exercises this CLI matrix

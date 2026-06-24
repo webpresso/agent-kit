@@ -644,3 +644,7 @@ Agents 1-3 run in parallel. Phases 4-6 (Cross-Plan, Blueprint Enforcement, Apply
 - `/soa <target>` — Apply SOA 2026 quality standards (TDD, complexity ≤8, mutation ≥85%)
 
 **Parallel Execution:** Refined plans should execute through the current workflow surface while Blueprint remains the durable lifecycle source of truth via `wp blueprint start|task|finalize`. See `.agent/commands/pll.md` for the current operator guidance.
+
+## Planned eligibility verdict
+
+Before declaring a blueprint planned-eligible, complete its Trust Dossier, evidence material claims, close material decisions, define Promotion Gates, and emit exactly one verdict: `planned-eligible` or `not-planned-eligible`. Reject speculative abstractions, unverifiable material claims, and "decide during implementation" placeholders. Blueprints implementing this gate before it lands may document that the dossier becomes required once the gate exists.

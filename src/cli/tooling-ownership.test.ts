@@ -43,7 +43,6 @@ describe('tooling ownership', () => {
   it('writes and reads user/project ownership entries', () => {
     const path = makeOwnershipPath()
     let state = defaultToolingOwnershipState()
-    state = claimUserOwnedTool(state, 'gstack')
     state = claimUserOwnedTool(state, 'omx')
     state = claimProjectOwnedTool(state, 'omc', 'repo-a')
     writeToolingOwnershipState(state, path)
@@ -51,7 +50,6 @@ describe('tooling ownership', () => {
     expect(JSON.parse(readFileSync(path, 'utf8'))).toMatchObject({
       version: 1,
       tools: {
-        gstack: { user: { managedBy: 'wp' } },
         omx: { user: { managedBy: 'wp' } },
         omc: { projects: ['repo-a'] },
       },
@@ -66,7 +64,6 @@ describe('tooling ownership', () => {
         tools: {
           omx: { user: { managedBy: 'wp' }, projects: ['repo-a', 42] },
           omc: { projects: [] },
-          gstack: { user: { managedBy: 'other' } },
         },
       }),
     ).toEqual({

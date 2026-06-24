@@ -3,7 +3,6 @@ import { spawnSync } from 'node:child_process'
 import type { RepoAuditResult } from './repo-guardrails.js'
 
 const TITLE = 'Blueprint PR coverage'
-const GIT_TIMEOUT_MS = 5_000
 const BLUEPRINT_EXEMPT_PATTERN = /^Blueprint-exempt:\s*(\S.*)$/im
 
 export interface BlueprintPrCoverageOptions {
@@ -97,7 +96,6 @@ function resolveChangedFiles(
     cwd,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
-    timeout: GIT_TIMEOUT_MS,
   })
 
   if (result.status !== 0 || result.error) {
@@ -128,7 +126,6 @@ function readCommitMessages(cwd: string, baseRef: string | undefined): readonly 
     cwd,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
-    timeout: GIT_TIMEOUT_MS,
   })
 
   if (result.status !== 0 || result.error) return []
@@ -143,7 +140,6 @@ function isGitHistoryAvailable(cwd: string): boolean {
     cwd,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
-    timeout: 1_500,
   })
   return result.status === 0 && !result.error
 }

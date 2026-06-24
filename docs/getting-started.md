@@ -57,27 +57,23 @@ wp preview --json
 For the full operator path from repo checkout to preview URL, see
 [`docs/guides/repo-to-preview-url.md`](./guides/repo-to-preview-url.md).
 
-If `wp setup` needs gstack tuning on a workstation with multiple agent CLIs
-installed, use:
+Workflow and browser skills are bundled with `wp setup`; there is no external
+workflow checkout to tune. For browser-backed skills, verify local Playwright
+readiness with:
 
-- `WP_GSTACK_MODE=full wp setup` to refresh every detected gstack host
-- `WP_GSTACK_HOSTS=codex wp setup` or `WP_GSTACK_HOSTS=claude,codex wp setup`
-  to pin the host set explicitly
-- `WP_VERBOSE_GSTACK=1 wp setup` to show raw upstream gstack output alongside
-  the bounded phase progress
-- `WP_GSTACK_INACTIVITY_MS=900000 wp setup` to raise the inactivity guard on
-  slow or proxied networks; if you still need more detail, pair it with
-  `WP_VERBOSE_GSTACK=1`
-- `WP_SKIP_GSTACK=1 wp setup` only when you intentionally want to skip gstack
-  entirely
+```bash
+wp browser doctor
+```
 
-`wp setup` writes one gstack session log per run under webpresso's state-root
-storage and prints the log path on failures. In quiet mode, the wrapper stays
-concise but now emits periodic "still running" heartbeat lines when an external
-gstack step is alive without fresh output; that keeps long phases like browser
-install/extraction from looking dead without dumping raw child logs by default.
-On Windows, timeout/interrupt cleanup is best-effort direct-child termination
-only; the wrapper does not guarantee grandchild teardown there.
+If the doctor reports a missing browser binary, install the managed browser with:
+
+```bash
+wp browser ensure chromium
+```
+
+The browser runtime is local and explicit: browser skills prefer repo-local
+preview/dev-server URLs when available, and otherwise need a URL supplied by the
+operator or calling workflow.
 
 ## What changed
 
@@ -118,11 +114,11 @@ provider injects the secret at runtime:
 `wp secrets run --sink dev-server --profile preview -- codex` or
 `wp secrets run --sink dev-server --profile preview -- claude`.
 
-Consecutive setup runs keep heavyweight integrations cheap by default. If the
-canonical gstack checkout and requested host skills already exist, setup reports
-them as already configured instead of pulling and reinstalling. Use
-`WP_GSTACK_REFRESH=1 wp setup` or `WP_GSTACK_MODE=full wp setup` for an explicit
-refresh; `WP_GSTACK_HOSTS=...` only selects hosts and does not force refresh.
+Consecutive setup runs keep heavyweight integrations cheap by default. Workflow
+and browser QA skills are package-owned defaults, so setup projects them from the
+local catalog instead of cloning or refreshing an external workflow checkout.
+Use `wp browser doctor` when a browser-backed skill reports missing Chromium or
+Playwright compatibility issues.
 
 ### Default shared skills vs opt-ins
 
@@ -136,6 +132,13 @@ Guaranteed by default across Codex and Claude host-visible surfaces:
 - `plan-refine`
 - `pll`
 - `best-practice-research`
+- `claude`
+- `review`
+- `autoplan`
+- `investigate`
+- `health`
+- plan-review skills
+- browser QA skills (`browse`, `qa-only`, `qa`, `devex-review`, `design-review`)
 
 Available as explicit opt-ins rather than default prompt baggage:
 

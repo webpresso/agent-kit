@@ -63,6 +63,8 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
       visionPath: options.visionPath,
     }),
   'tech-debt': async (root) => (await import('#audit/tech-debt')).auditTechDebt(root),
+  'supported-agent-clis': async (root) =>
+    (await import('#audit/supported-agent-clis')).auditSupportedAgentClis(root),
   'no-relative-parent-imports': async (root) =>
     (await import('#audit/repo-guardrails')).auditNoRelativeParentImports(root, {
       // config/docs-lint is a published package that uses within-package relative
@@ -164,6 +166,8 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
     }),
   'harness-overlay-evidence': async (root) =>
     (await import('#audit/harness-overlay-evidence')).auditHarnessOverlayEvidence(root),
+  'legacy-workflow-identity': async (root) =>
+    (await import('#audit/legacy-workflow-identity')).auditLegacyWorkflowIdentity(root),
   rules: async (root) => runContentAudit(root, 'rule'),
   skills: async (root) => runContentAudit(root, 'skill'),
 }

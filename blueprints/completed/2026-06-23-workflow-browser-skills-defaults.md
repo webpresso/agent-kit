@@ -39,8 +39,11 @@ external workflow checkout identity from setup, hooks, and update paths.
 
 - `vp run typecheck`
 - `./bin/wp audit legacy-workflow-identity`
-- Focused workflow/browser/setup/update/hook tests documented in the final task
-  report.
+- `vp exec vitest run --maxWorkers=1 --fileParallelism=false src/browser/runtime.test.ts src/cli/commands/browser.test.ts src/cli/commands/package-manager.test.ts src/cli/commands/hooks-upgrade/index.test.ts src/cli/commands/init/scaffolders/agent-hooks/index.test.ts src/cli/commands/init/host-visibility.test.ts scripts/audit-workflow-skills-coverage.test.ts scripts/stage-workflow-skills.test.ts`
+- `vp exec vitest run --maxWorkers=1 --fileParallelism=false src/cli/commands/init/init.presets.integration.test.ts -t "returns SUCCESS and invokes rtk --version then rtk init -g --auto-patch|--dry-run does not invoke rtk at all|keeps external integrations opt-in while still probing bun/vp/actionlint without --with flags|accepts CLI-normalized dryRun and skips external setup work|whitespace around comma-separated presets is tolerated"`
+- `vp exec vitest run --maxWorkers=1 --fileParallelism=false src/cli/commands/init/init.integration.test.ts -t "installs opt-in skills when --with is passed|projects skills per host: OpenCode dir, plugins for Claude/Codex|disables and restores managed hooks through the manifest|keeps previously disabled vendors disabled on a normal follow-up setup run|restore-hooks rebuilds the current direct-hook contract instead of replaying stale wrapper commands|refreshes generated .agent content by default on rerun|keeps fresh-only .agent files conservative on rerun"`
+- `cd packages/workflow-skills && vp exec vitest run --config vitest.config.ts`
+- `vp exec vitest run --maxWorkers=1 --fileParallelism=false package.contract.integration.test.ts`
 
 ## Trust Dossier
 
@@ -48,8 +51,8 @@ external workflow checkout identity from setup, hooks, and update paths.
 
 - promotion-ready: true
 - unresolved-count: 0
-- verified-at: 2026-06-23T00:00:00.000Z
-- verified-head: 92666c2105276e899ee15818212cfab45ed19141
+- verified-at: 2026-06-23T21:41:02.000Z
+- verified-head: 235178c2b985b34de78248d31f3ceb5bdfc8dd51
 - trust-gate-version: v1
 
 ### Material Claims
@@ -69,7 +72,7 @@ external workflow checkout identity from setup, hooks, and update paths.
 | Gate | Command | Expected outcome | Last result |
 | ---- | ------- | ---------------- | ----------- |
 | lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-23T00:00:00.000Z |
-| trust | wp audit blueprint-trust | pass | pass at 2026-06-23T00:00:00.000Z |
+| trust | wp audit blueprint-trust | pass | pass at 2026-06-23T21:41:02.000Z |
 
 ### Residual Unknowns
 

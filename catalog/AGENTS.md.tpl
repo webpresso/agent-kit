@@ -24,7 +24,7 @@ agent-kit's catalog is the single source of truth for generated agent surfaces.
 Agent-kit owns the generated agent surfaces in this file; the Webpresso CLI host owns the end-user command surface.
 
 Defaults worth preserving:
-- External tools such as `omx`, `omc`, and `gstack` are self-installed and updated with their native installers when you choose to use them.
+- External tools such as `omx` and `omc` are self-installed and updated with their native installers when you choose to use them; Webpresso workflow/browser skills are package defaults.
 - `wp setup` repairs the managed `.gitignore` block for regenerated surfaces.
 - Consumer repos use the global `wp` install and keep only `@webpresso/agent-config` locally; do not add a consumer-local `@webpresso/agent-kit` dependency.
 - Track repo-owned instruction sources (`AGENTS.md`, `agent-rules/`, `agent-skills/`).

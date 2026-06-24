@@ -51,6 +51,7 @@ export type AuditKind =
   | 'harness-surfaces'
   | 'weakness-mining'
   | 'harness-overlay-evidence'
+  | 'legacy-workflow-identity'
 
 export type AuditOutcome =
   | { kind: 'invalid-usage'; message: string }

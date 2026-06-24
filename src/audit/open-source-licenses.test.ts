@@ -9,12 +9,13 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { describe, expect, test } from 'vitest'
+import { afterAll, describe, expect, test } from 'vitest'
 
 import { auditOpenSourceLicenses } from './open-source-licenses.js'
 import { createPackedManifest, readWorkspaceCatalogs } from '#build/package-manifest.js'
 
 const repoRoot = findRepoRoot(import.meta.dirname)
+const auditSourceSnapshotRoot = makeAuditSourceSnapshot()
 
 function findRepoRoot(startDir: string): string {
   let current = startDir
@@ -32,12 +33,8 @@ function writeJson(path: string, value: unknown) {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`)
 }
 
-/**
- * Copy the minimal set of files that auditOpenSourceLicenses needs into a
- * tmpdir so the test never mutates the live working tree.
- */
-function makeAuditFixture(): string {
-  const root = mkdtempSync(join(tmpdir(), 'webpresso-oss-license-fixture-'))
+function makeAuditSourceSnapshot(): string {
+  const root = mkdtempSync(join(tmpdir(), 'webpresso-oss-license-source-'))
   for (const file of ['LICENSE', 'THIRD-PARTY-NOTICES.md', 'package.json', 'pnpm-workspace.yaml']) {
     cpSync(join(repoRoot, file), join(root, file))
   }
@@ -52,12 +49,44 @@ function makeAuditFixture(): string {
   return root
 }
 
+/**
+ * Copy the minimal set of files that auditOpenSourceLicenses needs into a
+ * tmpdir so the test never mutates the live working tree.
+ */
+function makeAuditFixture(): string {
+  const root = mkdtempSync(join(tmpdir(), 'webpresso-oss-license-fixture-'))
+  for (const file of ['LICENSE', 'THIRD-PARTY-NOTICES.md', 'package.json', 'pnpm-workspace.yaml']) {
+    cpSync(join(auditSourceSnapshotRoot, file), join(root, file))
+  }
+  cpSync(
+    join(auditSourceSnapshotRoot, 'catalog', 'agent', 'skills'),
+    join(root, 'catalog', 'agent', 'skills'),
+    {
+      recursive: true,
+    },
+  )
+  cpSync(
+    join(auditSourceSnapshotRoot, 'packages', 'agent-config', 'package.json'),
+    join(root, 'packages', 'agent-config', 'package.json'),
+    { recursive: true },
+  )
+  return root
+}
+
+afterAll(() => {
+  rmSync(auditSourceSnapshotRoot, { force: true, recursive: true })
+})
+
 describe('open-source-licenses audit', () => {
   test('passes for the agent-kit repository', () => {
-    const result = auditOpenSourceLicenses(repoRoot)
-
-    expect(result.ok).toBe(true)
-    expect(result.violations).toEqual([])
+    const root = makeAuditFixture()
+    try {
+      const result = auditOpenSourceLicenses(root)
+      expect(result.ok).toBe(true)
+      expect(result.violations).toEqual([])
+    } finally {
+      rmSync(root, { force: true, recursive: true })
+    }
   })
 
   test('keeps the repo and packed manifest on Elastic License 2.0', () => {

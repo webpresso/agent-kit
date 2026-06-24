@@ -94,7 +94,7 @@ afterEach(() => {
 })
 
 describe('concurrent ingest — projection DB lock (worktree scope)', () => {
-  it('two ingest paths in the same worktree serialize via the projection lock', async () => {
+  it('two ingest paths in the same worktree serialize via the projection lock', { timeout: 30_000 }, async () => {
     const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
     try {
       initGitRepo(repo)
@@ -124,7 +124,10 @@ describe('concurrent ingest — projection DB lock (worktree scope)', () => {
 })
 
 describe('concurrent ingest — markdown lock (repo scope, cross-worktree)', () => {
-  it('two ingest paths in different worktrees of the same repo serialize via the markdown lock', async () => {
+  it(
+    'two ingest paths in different worktrees of the same repo serialize via the markdown lock',
+    { timeout: 60_000 },
+    async () => {
     const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
     const wtParent = mkdtempSync(path.join(tmpdir(), 'wp-wt-parent-'))
     const wtDir = path.join(wtParent, 'alt')
@@ -161,9 +164,13 @@ describe('concurrent ingest — markdown lock (repo scope, cross-worktree)', () 
       rmSync(wtParent, { recursive: true, force: true })
       rmSync(repo, { recursive: true, force: true })
     }
-  })
+    },
+  )
 
-  it('cross-worktree projection DB writers share the same repo-scoped lock', async () => {
+  it(
+    'cross-worktree projection DB writers share the same repo-scoped lock',
+    { timeout: 60_000 },
+    async () => {
     const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
     const wtParent = mkdtempSync(path.join(tmpdir(), 'wp-wt-parent-'))
     const wtDir = path.join(wtParent, 'alt')
@@ -200,5 +207,6 @@ describe('concurrent ingest — markdown lock (repo scope, cross-worktree)', () 
       rmSync(wtParent, { recursive: true, force: true })
       rmSync(repo, { recursive: true, force: true })
     }
-  })
+    },
+  )
 })

@@ -319,4 +319,4 @@ From debugging sessions:
 
 ## See also
 
-- `/investigate` (gstack) — interactive variant with live browser controls, freeze hooks, and human-in-the-loop debugging. Choose `/investigate` when you need to interact with a running UI. Use this skill for headless agent runs without a human in the loop.
+- `/investigate` — Webpresso workflow variant for root-cause debugging. Pair with `/browse` or `/qa-only` when you need browser evidence. Use this skill for headless agent runs without a human in the loop.

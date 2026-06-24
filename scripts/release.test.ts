@@ -1,23 +1,29 @@
 /**
  * Integration test for `scripts/release.ts`.
  *
- * Strategy: build a temp git repo on disk (with optional bare remote) and
- * execute the real release script against it. This exercises the actual git
- * invocations rather than mocking them, which catches argv/escaping bugs that
- * a pure unit test would miss.
+ * Strategy: build a temp git repo on disk and invoke the real release CLI
+ * owner in-process, while still exercising the actual git and pnpm child
+ * processes on disk. This avoids Bun/TS cold-start overhead that was pushing
+ * the integration tests over the suite timeout budget, without mocking the
+ * git topology or release steps.
  *
  * The script under test runs `pnpm build` as part of its sequence. To keep
  * this test hermetic and fast, the fixture repo provides a stub `package.json`
  * whose `build` script is a no-op (`node -e "process.exit(0)"`). The script
  * therefore exercises every git step end-to-end without depending on tshy.
  */
-import { execFileSync, spawnSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 const SCRIPT_PATH = resolve(__dirname, 'release.ts')
+let runReleaseCli: typeof import('./release.ts').runReleaseCli
+
+beforeAll(async () => {
+  ;({ runReleaseCli } = await import('./release.ts'))
+})
 const FAST_GIT_ENV = {
   ...process.env,
   GIT_AUTHOR_EMAIL: 'test@example.com',
@@ -52,20 +58,32 @@ function runScript(
   cwd: string,
   flags: readonly string[],
 ): { stdout: string; stderr: string; status: number } {
-  const result = spawnSync('bun', [SCRIPT_PATH, ...flags], {
+  let stdout = ''
+  let stderr = ''
+  const status = runReleaseCli(flags, {
     cwd,
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
     env: {
       ...FAST_GIT_ENV,
       PATH: [fixtureForCwd.get(cwd)?.binDir, process.env.PATH].filter(Boolean).join(':'),
     },
+    stdout: {
+      write: (value: string) => {
+        stdout += value
+        return true
+      },
+    },
+    stderr: {
+      write: (value: string) => {
+        stderr += value
+        return true
+      },
+    },
   })
 
   return {
-    stdout: result.stdout ?? '',
-    stderr: result.stderr ?? '',
-    status: result.status ?? 1,
+    stdout,
+    stderr,
+    status,
   }
 }
 
@@ -144,7 +162,7 @@ describe('scripts/release.ts', () => {
   describe('--dry-run (default)', () => {
     beforeEach(() => {
       fixture = createFixture({ withRemote: false })
-    })
+    }, 30_000)
 
     // Real-git release integration is intentionally slower than unit-default
     // Vitest budgets under full-suite load (measured: release.test.ts ~64–76s
@@ -195,7 +213,7 @@ describe('scripts/release.ts', () => {
       expect(result.stderr + result.stdout).toMatch(/working tree.*not clean|dirty/i)
     })
 
-    it('proceeds when only untracked files are present', () => {
+    it('proceeds when only untracked files are present', { timeout: 30000 }, () => {
       const f = fixture!
       // Use a filename not matched by .gitignore (which only ignores dist/).
       // Pre-assert it appears in porcelain output so the test is not vacuous:
@@ -227,12 +245,25 @@ describe('scripts/release.ts', () => {
       expect(result.status).not.toBe(0)
       expect(result.stderr + result.stdout).toMatch(/build/i)
     })
+
+    it('restores the original branch when a later release step fails', { timeout: 30000 }, () => {
+      const f = fixture!
+      rmSync(join(f.repoDir, 'dist'), { recursive: true, force: true })
+
+      const result = runScript(f.repoDir, ['--dry-run'])
+
+      expect(result.status).not.toBe(0)
+      expect(result.stderr + result.stdout).toMatch(/dist|pathspec/i)
+      expect(readFileSync(join(f.repoDir, '.git', 'HEAD'), 'utf8').trim()).toBe(
+        'ref: refs/heads/main',
+      )
+    })
   })
 
   describe('--no-dry-run', () => {
     beforeEach(() => {
       fixture = createFixture({ withRemote: true })
-    })
+    }, 30_000)
 
     it('pushes the tag and release branch to origin', { timeout: 45000 }, () => {
       const f = fixture!

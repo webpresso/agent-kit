@@ -33,7 +33,7 @@ import {
   isTaggedSkillHook,
   type SkillHook,
 } from './skill-hooks.js'
-import type { HooksManifest } from './manifest.js'
+import type { HooksManifest, HookVendorStateMap } from './manifest.js'
 import { buildClaudeHookGroups } from './emitters/claude.js'
 import {
   type HookGroup,
@@ -124,10 +124,6 @@ const LEGACY_MANAGED_ONLY_HOOK_PATHS = [
   '.codex/managed-hooks/wp-global-codex-omx-hook.sh',
   '.codex/managed-hooks/wp-global-codex-omx-json-hook.sh',
 ] as const
-const RETIRED_GSTACK_HOOK_PATHS = [
-  '.claude/hooks/check-gstack.sh',
-  '.claude/hooks/check-gstack-session.sh',
-] as const
 
 type WebpressoHookBinClassification = { kind: 'canonical'; binName: string }
 
@@ -165,10 +161,6 @@ function extractOwnedLegacyManagedHookBinName(command: string): string | null {
 
 function isLegacyManagedOnlyHookCommand(command: string): boolean {
   return LEGACY_MANAGED_ONLY_HOOK_PATHS.some((filePath) => command.includes(filePath))
-}
-
-function isRetiredGstackHookCommand(command: string): boolean {
-  return RETIRED_GSTACK_HOOK_PATHS.some((filePath) => command.includes(filePath))
 }
 
 // ensureGroup and mergeAgentKitGroups are imported from ./merge.js
@@ -279,13 +271,7 @@ function normalizeClaudeAgentKitCommands(hooks: HooksMap): HooksMap {
           const command = hook.command
           if (typeof command !== 'string') return hook
           const classification = classifyWebpressoHookBin(extractClaudeBinName(command))
-          if (
-            classification === null &&
-            !isLegacyManagedOnlyHookCommand(command) &&
-            !isRetiredGstackHookCommand(command)
-          ) {
-            return hook
-          }
+          if (classification === null && !isLegacyManagedOnlyHookCommand(command)) return hook
           return []
         }),
       }
@@ -453,22 +439,18 @@ function buildManagedCodexHooks(repoRoot: string): HooksMap {
   })
 }
 
-function buildManagedHooksManifest(
+export function buildManagedHooksManifest(
   repoRoot: string,
-  skillHooks: readonly SkillHook[],
+  vendorState: HookVendorStateMap = { claude: 'enabled', codex: 'enabled' },
 ): HooksManifest {
+  const skillHooks = extractSkillHooks(join(repoRoot, '.agent', 'skills'))
   return {
     version: 1,
     generatedAt: new Date().toISOString(),
     claude: buildManagedClaudeHooks(repoRoot, skillHooks),
     codex: buildManagedCodexHooks(repoRoot),
-    vendorState: { claude: 'enabled', codex: 'enabled' },
+    vendorState,
   }
-}
-
-export function buildCurrentManagedHooksManifest(repoRoot: string): HooksManifest {
-  const skillHooks = extractSkillHooks(join(repoRoot, '.agent', 'skills'))
-  return buildManagedHooksManifest(repoRoot, skillHooks)
 }
 
 function collectManagedCommandSet(hooks: HooksMap): ReadonlyMap<string, ReadonlySet<string>> {
@@ -586,11 +568,6 @@ function shouldSkipCodexTrustSync(input: ScaffoldAgentHooksInput): boolean {
 export interface ScaffoldAgentHooksInput {
   repoRoot: string
   options: MergeOptions
-  /**
-   * Legacy compatibility shim. Older callers may still pass this setup-time
-   * hint even though hook scaffolding no longer branches on it.
-   */
-  gstackEnabled?: boolean
   createCodexAppServer?: CodexAppServerFactory
   onCodexTrustSyncWarning?: (warning: CodexTrustSyncWarning) => void
   trustCodexHooks?: boolean
@@ -607,40 +584,6 @@ export interface ScaffoldAgentHooksResult {
   codex: MergeResult
   claudeUser: MergeResult
   manifest: HooksManifest
-}
-
-function removeDirectoryIfEmpty(directoryPath: string): void {
-  if (!existsSync(directoryPath)) return
-  if (readdirSync(directoryPath).length > 0) return
-  rmSync(directoryPath, { recursive: false, force: true })
-}
-
-function pruneLegacyGeneratedHookFiles(
-  repoRoot: string,
-  directorySegments: readonly string[],
-  fileNames: readonly string[],
-): void {
-  const directoryPath = join(repoRoot, ...directorySegments)
-  for (const fileName of fileNames) {
-    rmSync(join(directoryPath, fileName), { force: true })
-  }
-  removeDirectoryIfEmpty(directoryPath)
-}
-
-function pruneLegacyManagedHookDirectories(repoRoot: string): void {
-  const managedHookFiles = WP_HOOK_BIN_NAMES.map((binName) => `${binName}.sh`)
-  pruneLegacyGeneratedHookFiles(
-    repoRoot,
-    ['.codex', 'managed-hooks'],
-    [...managedHookFiles, ...LEGACY_MANAGED_ONLY_HOOK_FILES],
-  )
-  pruneLegacyGeneratedHookFiles(repoRoot, ['.claude', 'hooks', 'managed'], managedHookFiles)
-  pruneLegacyGeneratedHookFiles(
-    repoRoot,
-    ['.claude', 'hooks'],
-    RETIRED_GSTACK_HOOK_PATHS.map((path) => path.split('/').at(-1)!),
-  )
-  removeDirectoryIfEmpty(join(repoRoot, '.claude', 'hooks'))
 }
 
 export type ManagedHookVendor = 'claude' | 'codex'
@@ -673,6 +616,9 @@ export function restoreManagedHooksFromManifest(
   _manifest: HooksManifest,
   vendors: readonly ManagedHookVendor[] = ['claude', 'codex'],
 ): ManagedHookMutationResult {
+  // Rebuild managed hooks from current repo truth rather than replaying the
+  // stored manifest: an old manifest may carry retired wrapper commands
+  // (.codex/managed-hooks/…) that must not be re-materialized on restore.
   const skillHooks = extractSkillHooks(join(input.repoRoot, '.agent', 'skills'))
   const result: ManagedHookMutationResult = {}
   if (vendors.includes('claude')) {
@@ -737,11 +683,47 @@ export function hookSubcommandFor(binName: string): string | undefined {
   return isHookName(sub) ? sub : undefined
 }
 
+function removeDirectoryIfEmpty(directoryPath: string): void {
+  let entries: readonly string[]
+  try {
+    entries = readdirSync(directoryPath)
+  } catch (error: unknown) {
+    // Already gone or not a directory (concurrent delete / unexpected file): nothing to prune.
+    const code = (error as NodeJS.ErrnoException).code
+    if (code === 'ENOENT' || code === 'ENOTDIR') return
+    throw error
+  }
+  if (entries.length > 0) return
+  rmSync(directoryPath, { recursive: false, force: true })
+}
+
+function pruneLegacyGeneratedHookFiles(
+  repoRoot: string,
+  directorySegments: readonly string[],
+  fileNames: readonly string[],
+): void {
+  const directoryPath = join(repoRoot, ...directorySegments)
+  for (const fileName of fileNames) {
+    rmSync(join(directoryPath, fileName), { force: true })
+  }
+  removeDirectoryIfEmpty(directoryPath)
+}
+
+function pruneLegacyManagedHookDirectories(repoRoot: string): void {
+  const managedHookFiles = WP_HOOK_BIN_NAMES.map((binName) => `${binName}.sh`)
+  pruneLegacyGeneratedHookFiles(
+    repoRoot,
+    ['.codex', 'managed-hooks'],
+    [...managedHookFiles, ...LEGACY_MANAGED_ONLY_HOOK_FILES],
+  )
+  pruneLegacyGeneratedHookFiles(repoRoot, ['.claude', 'hooks', 'managed'], managedHookFiles)
+}
+
 export async function scaffoldAgentHooks(
   input: ScaffoldAgentHooksInput,
 ): Promise<ScaffoldAgentHooksResult> {
   const skillHooks = extractSkillHooks(join(input.repoRoot, '.agent', 'skills'))
-  const manifest = buildManagedHooksManifest(input.repoRoot, skillHooks)
+  const manifest = buildManagedHooksManifest(input.repoRoot)
   const result = {
     claude: patchJsonFile(
       join(input.repoRoot, '.claude', 'settings.json'),

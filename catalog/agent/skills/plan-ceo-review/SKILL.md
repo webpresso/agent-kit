@@ -4,11 +4,7 @@ description: |
   CEO/founder-mode plan review. Use to rethink scope, ambition, product wedge,
   customer value, sequencing, and whether the plan is the right bet.
 license: MIT
-upstream:
-  source: https://github.com/garrytan/gstack
 ---
-<!-- Derived from MIT-licensed gstack workflow ideas; see packages/gstack/NOTICE.gstack.md. -->
-
 # CEO plan review
 
 Review the plan as a founder accountable for product leverage and customer value.

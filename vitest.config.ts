@@ -19,6 +19,12 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    // This repo has many subprocess-heavy "unit" tests (git, bun/wp entrypoints,
+    // blueprint ingestion, hook binaries). At the platform default worker count
+    // they oversubscribe the machine and push otherwise-correct tests over the
+    // 10s per-test budget. Four workers keeps the suite parallel without
+    // inducing broad timeout flakes.
+    maxWorkers: 4,
     include: [
       'src/**/*.test.ts',
       'src/**/*.integration.test.ts',
@@ -26,6 +32,9 @@ export default defineConfig({
       'bin/**/*.test.ts',
       'test/**/*.test.ts',
       '*.test.ts',
+      // Published config package — its parity/isolation guards must run in CI.
+      // (workflow-skills tests are not yet wired in: tracked separately.)
+      'packages/agent-config/src/**/*.test.ts',
     ],
     exclude: ['**/node_modules/**', '**/dist/**'],
     // Reset agent-session-leaked env (CLAUDE_PROJECT_DIR, WP_SKIP_UPDATE_CHECK)

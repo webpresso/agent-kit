@@ -79,13 +79,12 @@ interface ParsedSettings {
 /**
  * Determines the canonical owner of a hook command using priority-ordered
  * pattern matching. Returns one of: 'webpresso', 'omx',
- * 'rtk', 'gstack', or 'unknown'.
+ * 'rtk', or 'unknown'.
  */
 export function extractOwner(command: string): string {
   if (/\bwp[-_][a-z]/.test(command)) return 'webpresso'
   if (/omx|oh-my-codex/.test(command)) return 'omx'
   if (/\brtk\b/.test(command)) return 'rtk'
-  if (/gstack|check-gstack/.test(command)) return 'gstack'
   return 'unknown'
 }
 

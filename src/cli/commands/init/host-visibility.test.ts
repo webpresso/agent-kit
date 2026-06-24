@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { SHARED_FAVORITE_SKILLS } from './scaffold-agent.js'
 import {
   REQUIRED_CORE_CAPABILITIES,
   auditHostSkillVisibility,
@@ -41,14 +42,20 @@ describe('host skill visibility', () => {
   })
 
   it('treats the shared favorites as core required capabilities', () => {
-    expect(REQUIRED_CORE_CAPABILITIES).toEqual([
-      'fix',
-      'verify',
-      'testing-philosophy',
-      'plan-refine',
-      'pll',
-      'best-practice-research',
-    ])
+    expect(REQUIRED_CORE_CAPABILITIES).toEqual(SHARED_FAVORITE_SKILLS)
+    expect(REQUIRED_CORE_CAPABILITIES).toEqual(
+      expect.arrayContaining([
+        'fix',
+        'verify',
+        'testing-philosophy',
+        'plan-refine',
+        'pll',
+        'best-practice-research',
+        'browse',
+        'qa',
+        'review',
+      ]),
+    )
   })
 
   it('parses explicit host selections without aliases', () => {
@@ -94,14 +101,13 @@ describe('host skill visibility', () => {
     writeSkill(join(repoRoot, '.claude', 'skills'), 'plan-refine')
 
     const audit = auditHostSkillVisibility({ repoRoot, homeDir, hosts: ['opencode'] })
-    expect(audit.results.map((r) => [r.capability, r.status])).toEqual([
-      ['fix', 'not-visible'],
-      ['verify', 'visible-after-restart'],
-      ['testing-philosophy', 'not-visible'],
-      ['plan-refine', 'visible-after-restart'],
-      ['pll', 'not-visible'],
-      ['best-practice-research', 'not-visible'],
-    ])
+    const visibleAfterRestart = new Set(['verify', 'plan-refine'])
+    expect(audit.results.map((r) => [r.capability, r.status])).toEqual(
+      REQUIRED_CORE_CAPABILITIES.map((capability) => [
+        capability,
+        visibleAfterRestart.has(capability) ? 'visible-after-restart' : 'not-visible',
+      ]),
+    )
   })
 
   it('treats plugin hosts as visible via the canonical .agent/skills SSOT (plugin delivery)', () => {
