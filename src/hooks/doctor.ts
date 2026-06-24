@@ -506,14 +506,25 @@ function probeDecisionRow(
   return new Promise<{ ok: boolean; detail?: string }>((resolve) => {
     const child = spawn(wpCli.command, [...wpCli.args, 'hook', hookName], {
       stdio: ['pipe', 'pipe', 'pipe'],
+      detached: process.platform !== 'win32',
     })
     let stdout = ''
     let settled = false
-    const settle = (result: { ok: boolean; detail?: string }) => {
+    let cancelEscalation: (() => void) | null = null
+    const timeoutMs = hookProbeTimeoutMs()
+    const settle = (result: { ok: boolean; detail?: string }, kill = false) => {
       if (settled) return
       settled = true
+      clearTimeout(timer)
+      if (kill) cancelEscalation = terminateProcessTreeWithEscalation(child)
       resolve(result)
     }
+    // Bound the probe the same way probeJsonStdin/probeExitZero do — a hung hook
+    // bin must not block `doctor --probe-decisions` indefinitely.
+    const timer = setTimeout(() => {
+      settle({ ok: false, detail: `decision probe timed out after ${timeoutMs}ms` }, true)
+    }, timeoutMs)
+    timer.unref?.()
     child.stdout.on('data', (chunk) => {
       stdout += String(chunk)
     })
@@ -527,6 +538,7 @@ function probeDecisionRow(
       settle({ ok: false, detail: String(err.message) })
     })
     child.on('close', (code) => {
+      cancelEscalation?.()
       try {
         assertConformance(row, { stdout, exitCode: code })
         settle({ ok: true })

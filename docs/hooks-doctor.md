@@ -64,6 +64,12 @@ The default run stays cheap (empty-stdin liveness only). `--probe-decisions` is
 operator-side confirmation; CI already enforces the same decisions through the
 conformance-matrix boundary suite, so a green doctor and green CI agree.
 
+Each hook probe (liveness and `--probe-decisions`) is bounded so a hung hook bin
+can't stall `doctor`. The deadline defaults to **5000ms**; on slow CI runners
+raise it with `WP_DOCTOR_HOOK_TIMEOUT_MS` (milliseconds), e.g.
+`WP_DOCTOR_HOOK_TIMEOUT_MS=15000 wp hooks doctor`. A probe that exceeds the
+deadline reports `… timed out after <ms>ms` and the process tree is killed.
+
 Attempt the safe auto-repair lane:
 
 ```bash
