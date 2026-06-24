@@ -1,6 +1,6 @@
 {
   "name": "agent-kit",
-  "version": "2.3.3",
+  "version": "2.4.0",
   "description": "Webpresso agent-kit: blueprints, skills, hooks, and MCP server",
   "author": {
     "name": "Webpresso",
