@@ -1,5 +1,11 @@
 # @webpresso/agent-config
 
+## 0.2.0
+
+### Minor Changes
+
+- 4234e0f: Add `createNodeProjects` extension seams for extra aliases, inline deps, and setup files, and publish a new `@webpresso/agent-config/vitest/source-conditions` helper for `@webpresso/source` resolver wiring.
+
 ## 0.1.5
 
 ### Patch Changes

@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.4.0
+
+### Minor Changes
+
+- ec6f45b: Add `wp audit supported-agent-clis`: a drift gate that asserts the CLI
+  identifiers listed in `catalog/agent/rules/supported-agent-clis.md` match the
+  authoritative code lists (`AgentHostName` ∪ `CapabilityMatrixHost`) in both
+  directions. This makes real the gate both CLAUDE.md files already reference.
+  Also exposed via the `wp_audit` MCP tool and the `wp audit guardrails` composite.
+- ce766ba: Bundle workflow and browser QA skills as Webpresso defaults, add the `wp browser` Playwright doctor/install/open helpers, and retire the old active external workflow checkout setup/update/hook path.
+
+### Patch Changes
+
+- 9ae5755: Fix `wp update` OMC refreshes by using the marketplace-qualified `oh-my-claudecode@omc` plugin id, treat optional host/plugin integration refresh failures as warnings after the core package refresh succeeds, and stop scaffolding exact Node patch pin files so repos use the system-wide Node runtime.
+
+  no reference-parity contract changes were made; keep existing generated-changelog context tied to `docs/bench/reference-parity-matrix.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, `src/__integration__/reference-parity-tool-surface.integration.test.ts`, and `docs/bench/session-memory-methodology.md`.
+
+- 26b2940: Harden Claude outside-review skill prompts and make hooks doctor fail loudly when hook probes hang.
+
 ## 2.3.3
 
 ### Patch Changes
