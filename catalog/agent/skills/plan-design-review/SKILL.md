@@ -4,11 +4,7 @@ description: |
   Designer's-eye plan review for UI/UX work. Use before implementation to rate
   clarity, hierarchy, interaction quality, accessibility, and visual coherence.
 license: MIT
-upstream:
-  source: https://github.com/garrytan/gstack
 ---
-<!-- Derived from MIT-licensed gstack workflow ideas; see packages/gstack/NOTICE.gstack.md. -->
-
 # Design plan review
 
 Review the plan as a product designer before code is written.

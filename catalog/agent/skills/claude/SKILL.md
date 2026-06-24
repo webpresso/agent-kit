@@ -5,11 +5,7 @@ description: |
   adversarial challenge, or read-only consultation when the user asks for a
   second opinion from Claude.
 license: MIT
-upstream:
-  source: https://github.com/garrytan/gstack
 ---
-<!-- Derived from MIT-licensed gstack workflow ideas; see packages/gstack/NOTICE.gstack.md. -->
-
 # Claude outside voice
 
 Use this skill when the user wants Claude to independently review a diff, challenge a plan, or answer a repo question from a non-Claude host. Keep the call bounded, read-only unless the user explicitly asks otherwise, and report Claude's conclusions as external advice rather than as verified fact.

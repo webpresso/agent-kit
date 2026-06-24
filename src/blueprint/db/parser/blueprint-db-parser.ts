@@ -78,11 +78,11 @@ export interface ParsedBlueprintForDb {
 }
 
 // ---------------------------------------------------------------------------
-// Gstack-recognized skill names — treated as plain text, no validation needed.
+// Workflow skill names — treated as plain text, no validation needed.
 // These appear in acceptance criteria lines and must parse cleanly.
 // ---------------------------------------------------------------------------
-const _GSTACK_SKILL_PATTERN =
-  /\/(?:qa|design-review|investigate|review|ship|browse|autoplan|plan-eng-review|plan-ceo-review|plan-design-review|design-consultation|canary|land-and-deploy|retro|codex|cso|devex-review|plan-devex-review|careful|freeze|guard|unfreeze|gstack-upgrade|learn|document-release|design-shotgun|design-html|context-save|context-restore)/g
+const _WORKFLOW_SKILL_PATTERN =
+  /\/(?:qa|qa-only|design-review|investigate|review|browse|autoplan|plan-eng-review|plan-ceo-review|plan-design-review|devex-review|plan-devex-review|health|claude)/g
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -278,14 +278,14 @@ function deriveStatusFromCheckboxes(body: string): ParsedTask['status'] {
 }
 
 /** Extract acceptance criteria lines (- [ ] and - [x]) from a task body.
- *  Gstack skill names in these lines are treated as plain text — no warning emitted. */
+ *  Workflow skill names in these lines are treated as plain text — no warning emitted. */
 function extractAcceptanceCriteria(body: string): string[] {
   const lines: string[] = []
   for (const line of body.split('\n')) {
     if (/^- \[[ x]\]/.test(line)) {
-      // Strip the gstack skill tokens so they pass through without any external validation.
+      // Strip the workflow skill tokens so they pass through without any external validation.
       // We intentionally keep the full original line — the regex match just confirms it's a
-      // valid checklist item; the gstack skill names are plain text and need no processing.
+      // valid checklist item; the workflow skill names are plain text and need no processing.
       lines.push(line.trim())
     }
   }

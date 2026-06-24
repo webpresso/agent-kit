@@ -4,11 +4,7 @@ description: |
   Pre-landing code review. Analyze the current diff for correctness, security,
   trust boundaries, data-loss risk, test quality, and maintainability before merge.
 license: MIT
-upstream:
-  source: https://github.com/garrytan/gstack
 ---
-<!-- Derived from MIT-licensed gstack workflow ideas; see packages/gstack/NOTICE.gstack.md. -->
-
 # Pre-landing review
 
 Use this skill before landing a branch or when the user asks for a code review.

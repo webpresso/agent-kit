@@ -40,9 +40,6 @@ function readJsonObject(filePath: string): JsonObject {
 }
 
 function loadDryRunPackagePaths(): string[] {
-  const contract = JSON.parse(readFileSync(join(repoRoot, 'package-surface.json'), 'utf8')) as {
-    cliBins?: { internalHooks?: string[] }
-  }
   const expectedSessionMemoryToolDescriptors = sessionMemoryToolNames.flatMap((toolName) => {
     const fileBase = toolName.replace(/^wp_/u, '').replaceAll('_', '-')
     return [`dist/esm/mcp/tools/${fileBase}.js`, `dist/esm/mcp/tools/${fileBase}.d.ts`]

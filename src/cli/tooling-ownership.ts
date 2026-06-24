@@ -5,7 +5,7 @@ import { getSurfacePath, NotInGitRepoError } from '#paths/state-root.js'
 
 export const TOOLING_OWNERSHIP_FILENAME = 'tooling-ownership.json'
 
-export const MANAGED_TOOL_NAMES = ['omx', 'omc', 'gstack'] as const
+export const MANAGED_TOOL_NAMES = ['omx', 'omc'] as const
 export type ManagedToolName = (typeof MANAGED_TOOL_NAMES)[number]
 
 export interface ToolingOwnershipRecord {

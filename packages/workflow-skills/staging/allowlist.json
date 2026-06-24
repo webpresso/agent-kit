@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 1,
+  "sizeBudgetBytes": 125000,
+  "sourceRoot": "packages/workflow-skills",
+  "notice": "NOTICE.workflow-skills.md",
+  "provenance": "provenance/upstream-workflow-skills.json",
+  "skills": [
+    {
+      "name": "claude",
+      "source": "skills/claude.md",
+      "target": "catalog/agent/skills/claude/SKILL.md"
+    },
+    {
+      "name": "review",
+      "source": "skills/review.md",
+      "target": "catalog/agent/skills/review/SKILL.md"
+    },
+    {
+      "name": "autoplan",
+      "source": "skills/autoplan.md",
+      "target": "catalog/agent/skills/autoplan/SKILL.md"
+    },
+    {
+      "name": "investigate",
+      "source": "skills/investigate.md",
+      "target": "catalog/agent/skills/investigate/SKILL.md"
+    },
+    {
+      "name": "health",
+      "source": "skills/health.md",
+      "target": "catalog/agent/skills/health/SKILL.md"
+    },
+    {
+      "name": "plan-eng-review",
+      "source": "skills/plan-eng-review.md",
+      "target": "catalog/agent/skills/plan-eng-review/SKILL.md"
+    },
+    {
+      "name": "plan-ceo-review",
+      "source": "skills/plan-ceo-review.md",
+      "target": "catalog/agent/skills/plan-ceo-review/SKILL.md"
+    },
+    {
+      "name": "plan-design-review",
+      "source": "skills/plan-design-review.md",
+      "target": "catalog/agent/skills/plan-design-review/SKILL.md"
+    },
+    {
+      "name": "plan-devex-review",
+      "source": "skills/plan-devex-review.md",
+      "target": "catalog/agent/skills/plan-devex-review/SKILL.md"
+    },
+    {
+      "name": "browse",
+      "source": "skills/browse.md",
+      "target": "catalog/agent/skills/browse/SKILL.md"
+    },
+    {
+      "name": "qa-only",
+      "source": "skills/qa-only.md",
+      "target": "catalog/agent/skills/qa-only/SKILL.md"
+    },
+    {
+      "name": "qa",
+      "source": "skills/qa.md",
+      "target": "catalog/agent/skills/qa/SKILL.md"
+    },
+    {
+      "name": "devex-review",
+      "source": "skills/devex-review.md",
+      "target": "catalog/agent/skills/devex-review/SKILL.md"
+    },
+    {
+      "name": "design-review",
+      "source": "skills/design-review.md",
+      "target": "catalog/agent/skills/design-review/SKILL.md"
+    },
+    {
+      "name": "codex",
+      "source": "skills/codex.md",
+      "target": "catalog/agent/skills/codex/SKILL.md"
+    },
+    {
+      "name": "opencode-go",
+      "source": "skills/opencode-go.md",
+      "target": "catalog/agent/skills/opencode-go/SKILL.md"
+    },
+    {
+      "name": "deepseek",
+      "source": "skills/deepseek.md",
+      "target": "catalog/agent/skills/deepseek/SKILL.md"
+    },
+    {
+      "name": "glm",
+      "source": "skills/glm.md",
+      "target": "catalog/agent/skills/glm/SKILL.md"
+    },
+    {
+      "name": "kimi",
+      "source": "skills/kimi.md",
+      "target": "catalog/agent/skills/kimi/SKILL.md"
+    },
+    {
+      "name": "minimax",
+      "source": "skills/minimax.md",
+      "target": "catalog/agent/skills/minimax/SKILL.md"
+    },
+    {
+      "name": "mimo",
+      "source": "skills/mimo.md",
+      "target": "catalog/agent/skills/mimo/SKILL.md"
+    },
+    {
+      "name": "qwen",
+      "source": "skills/qwen.md",
+      "target": "catalog/agent/skills/qwen/SKILL.md"
+    },
+    {
+      "name": "hy3",
+      "source": "skills/hy3.md",
+      "target": "catalog/agent/skills/hy3/SKILL.md"
+    }
+  ],
+  "deniedPathPatterns": [
+    "node_modules/",
+    ".git/",
+    ".agents/",
+    ".claude/",
+    ".codex/",
+    "browse/dist/",
+    "design/dist/",
+    "make-pdf/dist/",
+    ".node"
+  ],
+  "deniedContentPatterns": [
+    "puppeteer",
+    "huggingface",
+    "ngrok",
+    "html-to-docx"
+  ]
+}

@@ -9,8 +9,7 @@
  * Skill-set exports remain because the init orchestrator uses them to compute
  * the allowed-skill set passed to the unified sync filter.
  *
- * - Shared favorites (fix, verify, testing-philosophy, plan-refine, pll,
- *   best-practice-research) —
+ * - Shared favorites (quality, planning, workflow, and browser/DX/QA skills) —
  *   guaranteed across Codex + Claude by default.
  * - Shared add-ons (systematic-debugging, test-driven-development,
  *   deep-research) — opt-in.
@@ -35,6 +34,20 @@ export const SHARED_FAVORITE_SKILLS = [
   'plan-refine',
   'pll',
   'best-practice-research',
+  'claude',
+  'review',
+  'autoplan',
+  'investigate',
+  'health',
+  'plan-eng-review',
+  'plan-ceo-review',
+  'plan-design-review',
+  'plan-devex-review',
+  'browse',
+  'qa-only',
+  'qa',
+  'devex-review',
+  'design-review',
 ] as const
 export const TIER1_SKILLS = SHARED_FAVORITE_SKILLS
 

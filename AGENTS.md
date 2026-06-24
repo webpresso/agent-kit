@@ -4,18 +4,8 @@
   Current-state agent-kit scaffolding (`wp setup`) renders this file with:
   - Repository map: bulleted list of workspace packages inferred from
     pnpm-workspace.yaml / package.json workspaces.
-  - Tech stack: short description generated from package.json + detected
-    frameworks (React, Hono, Drizzle, etc.).
-  - Escalation map: user-edited section. Left as a TODO placeholder if
-    not specified.
-  - Durable planning root: defaults to `.agent/planning/`. Override via
-    .webpressorc.json.
-  - Blueprints directory: defaults to `blueprints`. Override via
-    .webpressorc.json#blueprintsDir.
-
-  Managed sections in this file are refreshed by agent-kit. Sync uses `wp sync`.
-  Repo-specific edits belong only inside `user-owned` blocks; agent-kit preserves
-  those blocks verbatim when it rewrites managed content.
+  Managed sections refresh via `wp sync`; repo-specific edits belong in
+  `user-owned` blocks and are preserved verbatim.
 -->
 
 <!-- >>> managed by webpresso (operating-contract) -->
@@ -34,7 +24,7 @@ agent-kit's catalog is the single source of truth for generated agent surfaces.
 Agent-kit owns the generated agent surfaces in this file; the Webpresso CLI host owns the end-user command surface.
 
 Defaults worth preserving:
-- External tools such as `omx`, `omc`, and `gstack` are self-installed and updated with their native installers when you choose to use them.
+- External tools such as `omx` and `omc` are self-installed and updated with their native installers when you choose to use them.
 - `wp setup` repairs the managed `.gitignore` block for regenerated surfaces.
 - Consumer repos use the global `wp` install and keep only `@webpresso/agent-config` locally; do not add a consumer-local `@webpresso/agent-kit` dependency.
 - Track repo-owned instruction sources (`AGENTS.md`, `agent-rules/`, `agent-skills/`).
@@ -180,7 +170,7 @@ Full details: `.agent/rules/package-conventions.md`
 
 ## Repository map
 
-- `@repo/gstack` — `packages/gstack`
+- `@repo/workflow-skills` — `packages/workflow-skills`
 - `@webpresso/agent-config` — `packages/agent-config`
 - `@webpresso/agent-kit` — `.`
 

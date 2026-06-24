@@ -42,7 +42,7 @@ license separately when an integration is installed.
 | Integration | Default behavior | Upstream | License |
 | --- | --- | --- | --- |
 | `playwright-mcp` | Opt-in. | [microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp) | Apache-2.0 |
-| `gstack-derived skills` | Curated Markdown skill assets staged from the private gstack workspace package; no upstream runtime checkout or binaries bundled. | [garrytan/gstack](https://github.com/garrytan/gstack) | MIT |
+| `workflow skill provenance` | Curated Markdown skill assets adapted from an MIT-licensed upstream workflow project; no upstream runtime checkout or binaries bundled. | [garrytan/gstack](https://github.com/garrytan/gstack) | MIT |
 | `omx` / `oh-my-codex` | In the default preset set; skipped in CI. | [oh-my-codex](https://oh-my-codex.dev/) | MIT |
 | `omc` / `oh-my-claudecode` | In the default preset set; skipped when `WP_SKIP_OMC=1` or the `claude` CLI is unavailable. | [Yeachan-Heo/oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) | MIT |
 | `rtk` | In the default preset set; skipped in CI or when `WP_SKIP_RTK=1`. | [rtk-ai/rtk](https://github.com/rtk-ai/rtk) | Apache-2.0 |
@@ -55,8 +55,8 @@ checkout for the current dependency license report.
 
 This file is an engineering attribution inventory, not legal advice.
 
-## gstack-derived workflow skills
+## workflow skill provenance
 
-This package includes Webpresso-owned, manually curated workflow skill assets derived from ideas in the MIT-licensed gstack project by Garry Tan and contributors: https://github.com/garrytan/gstack
+This package includes Webpresso-owned, manually curated workflow skill assets adapted from an MIT-licensed upstream workflow project by Garry Tan and contributors: https://github.com/garrytan/gstack
 
-The curated assets are small Markdown-only skill sources. Upstream binaries, generated host directories, dependency payloads, and heavyweight runtime surfaces are intentionally excluded. Public provenance is summarized in this notice and the machine-readable third-party manifest shipped with the package.
+The curated assets are small Markdown-only skill sources. Upstream binaries, generated host directories, dependency payloads, and heavyweight runtime surfaces are intentionally excluded. Public provenance is summarized here and in the machine-readable third-party manifest shipped with the package.

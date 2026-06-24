@@ -51,6 +51,9 @@ describe('host skill visibility', () => {
         'plan-refine',
         'pll',
         'best-practice-research',
+        'browse',
+        'qa',
+        'review',
       ]),
     )
   })

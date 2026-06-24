@@ -193,6 +193,12 @@
       ],
       "#typecheck/*": [
         "./src/typecheck/*.ts"
+      ],
+      "#browser/*.js": [
+        "./src/browser/*.ts"
+      ],
+      "#browser/*": [
+        "./src/browser/*.ts"
       ]
     },
     "rootDir": "./src"

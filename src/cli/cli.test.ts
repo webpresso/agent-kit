@@ -51,7 +51,7 @@ describe('wp root command surface', () => {
       'install               Install dependencies through the managed package/task facade',
     )
     expect(result.stdout.join('\n')).toContain(
-      'Refresh wp and any wp-managed optional OMX/OMC/gstack integrations by default; use --deps for local dependencies',
+      'Refresh wp and any wp-managed optional OMX/OMC integrations by default; use --deps for local dependencies',
     )
     expect(result.stdout.join('\n')).not.toContain('Update local dependencies by default')
     expect(result.stdout.join('\n')).toContain(

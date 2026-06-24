@@ -233,7 +233,8 @@ function toCompactLeaf(
   }
 }
 
-const UI_QA_HINT = 'Static QA passed. For visual/UX QA, run /qa (gstack).'
+const UI_QA_HINT =
+  'Static QA passed. For visual/UX QA, run /qa or /qa-only with the Webpresso browser skills.'
 
 function withDefinedValues<T extends Record<string, unknown>>(input: T): Partial<T> {
   return Object.fromEntries(
