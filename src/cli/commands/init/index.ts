@@ -31,13 +31,13 @@ import {
 import {
   type ConsumerContext,
   detectConsumer,
-  isAgentKitTemplateSourceRepo,
   readPackageJson,
   setupCommandForRepo,
   warnIfNonLocalCli,
 } from './detect-consumer.js'
 import { runPreflight, DOCS_URL } from './preflight.js'
 import { detectRepoCollectionRoot, isInitializedWebpressoProject } from './repo-collection-guard.js'
+import { isAgentKitSourceRepo } from './source-repo-hook-policy.js'
 import { type MergeOptions, type MergeResult, summarizeResults } from './merge.js'
 import { resolveTier3Selection } from './prompts.js'
 import {
@@ -850,15 +850,12 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
   // `wp setup` reported `overwritten: 2, drifted: 11, git index cleanup: 6
   // untracked` against the live repo. Refuse loudly and write nothing unless the
   // maintainer explicitly opts in with source-maintenance mode.
-  if (
-    isAgentKitTemplateSourceRepo(consumer.packageJson?.name) &&
-    flags.sourceMaintenance !== true
-  ) {
+  if (isAgentKitSourceRepo(consumer.repoRoot) && flags.sourceMaintenance !== true) {
     console.error(
       `wp setup: refusing to scaffold @webpresso/agent-kit's own repo (${consumer.repoRoot}).\n` +
         `  This repo is the source of the agent-surface templates; running setup here\n` +
         `  overwrites the canonical sources under catalog/ and the tracked .agent/.claude surfaces.\n` +
-        `  To deliberately maintain agent-kit's own setup surfaces, re-run with --source-maintenance.`,
+        `  To deliberately maintain agent-kit's own setup surfaces, run: ${setupCommandForRepo(consumer.repoRoot)}`,
     )
     return EXIT_SETUP_FAIL
   }
@@ -874,7 +871,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     ? ('explicit' as const)
     : !hasGitRoot
       ? ('non-git-directory' as const)
-      : repoCollectionDetection.isCollectionRoot
+      : repoCollectionDetection.isCollectionRoot && flags.sourceMaintenance !== true
         ? ('repo-collection-root' as const)
         : !initializedWebpressoProject && !forceProjectInit && flags.sourceMaintenance !== true
           ? ('non-webpresso-project' as const)

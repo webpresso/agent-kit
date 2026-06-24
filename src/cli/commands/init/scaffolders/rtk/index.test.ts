@@ -49,7 +49,9 @@ describe('ensureRtk', () => {
             PreToolUse: [
               {
                 matcher: 'Bash',
-                hooks: [{ type: 'command', command: '$CLAUDE_PROJECT_DIR/.claude/hooks/rtk-rewrite.sh' }],
+                hooks: [
+                  { type: 'command', command: '$CLAUDE_PROJECT_DIR/.claude/hooks/rtk-rewrite.sh' },
+                ],
               },
             ],
           },

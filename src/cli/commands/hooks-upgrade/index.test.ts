@@ -125,6 +125,8 @@ describe('upgradeHooksForRepo', () => {
         2,
       ),
     )
+    mkdirSync(path.join(repoRoot, 'src', 'cli'), { recursive: true })
+    writeFileSync(path.join(repoRoot, 'src', 'cli', 'cli.ts'), '')
 
     const report = await upgradeHooksForRepo(repoRoot, { apply: true, trustCodexHooks: false })
 

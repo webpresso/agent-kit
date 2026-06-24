@@ -237,9 +237,11 @@ source runs.
 Do not use `vp run wp`, `pnpm run wp`, or `bun run wp`. If you want an explicit
 repo-local source alias, use `vp run wp:source -- <args>`.
 
-`WP_FORCE_SOURCE=1` is scoped: it routes dev CLI gates to source but keeps the
-latency-sensitive `wp-pretool-guard` / `wp-post-tool` hook bins on the compiled
-binary (see `bin/_run.js`). Iterate on hook code with `bun src/hooks/…` directly.
+`WP_FORCE_SOURCE=1` is scoped: in this source repo, `wp setup --source-maintenance`
+writes direct Claude/Codex hook commands that include `WP_FORCE_SOURCE=1`, so
+hooks self-host through the JIT/source lane. To temporarily test compiled hook
+dispatch, run `wp dev runtime-hooks enable`; `wp dev runtime-hooks disable`
+returns to JIT-first hook dispatch.
 
 ## Contribute / Security / License
 

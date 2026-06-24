@@ -122,6 +122,86 @@ describe('buildLaunchPlan', () => {
     })
   })
 
+  it('uses source for source-repo hook dispatch when generated commands force source and runtime hooks are disabled', () => {
+    const repoRoot = createSourceRepo()
+    const plan = buildLaunchPlan({
+      binName: 'wp',
+      repoRoot,
+      forwardedArgs: ['hook', 'pretool-guard'],
+      platform: 'linux',
+      arch: 'x64',
+      runtimeManifest: {
+        binaryName: 'wp',
+        targets: [
+          {
+            id: 'linux-x64',
+            os: 'linux',
+            cpu: 'x64',
+            packageName: '@webpresso/agent-kit-runtime-linux-x64',
+          },
+        ],
+      },
+      runtimeBinaryPath: '/runtime/wp',
+      runtimeBinaryExists: () => true,
+      builtExists: true,
+      sourceExists: true,
+      sourceNeedsSourceLaunch: false,
+      sourceOverride: true,
+      pinnedNodeVersion: null,
+      runtimeManager: null,
+    })
+    rmSync(repoRoot, { recursive: true, force: true })
+
+    expect(plan).toMatchObject({
+      mode: 'source',
+      entrypoint: join(repoRoot, 'src', 'cli', 'cli.ts'),
+      args: [join(repoRoot, 'src', 'cli', 'cli.ts'), 'hook', 'pretool-guard'],
+    })
+  })
+
+  it('lets runtime-hooks enable override forced source hook dispatch in the source repo', () => {
+    const repoRoot = createSourceRepo()
+    mkdirSync(join(repoRoot, '.webpresso'), { recursive: true })
+    writeFileSync(
+      join(repoRoot, '.webpresso', 'runtime-hooks.json'),
+      JSON.stringify({ runtimeHooksEnabled: true }),
+    )
+
+    const plan = buildLaunchPlan({
+      binName: 'wp',
+      repoRoot,
+      forwardedArgs: ['hook', 'pretool-guard'],
+      platform: 'linux',
+      arch: 'x64',
+      runtimeManifest: {
+        binaryName: 'wp',
+        targets: [
+          {
+            id: 'linux-x64',
+            os: 'linux',
+            cpu: 'x64',
+            packageName: '@webpresso/agent-kit-runtime-linux-x64',
+          },
+        ],
+      },
+      runtimeBinaryPath: '/runtime/wp',
+      runtimeBinaryExists: () => true,
+      builtExists: true,
+      sourceExists: true,
+      sourceNeedsSourceLaunch: false,
+      sourceOverride: true,
+      pinnedNodeVersion: null,
+      runtimeManager: null,
+    })
+    rmSync(repoRoot, { recursive: true, force: true })
+
+    expect(plan).toMatchObject({
+      mode: 'runtime',
+      runtime: '/runtime/wp',
+      args: ['hook', 'pretool-guard'],
+    })
+  })
+
   it('still honors forced compiled runtime for source-checkout phase-2 commands', () => {
     const repoRoot = createSourceRepo()
     const plan = buildLaunchPlan({
