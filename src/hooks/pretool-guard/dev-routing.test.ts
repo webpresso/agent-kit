@@ -287,6 +287,64 @@ describe('routeCommand', () => {
     }
   })
 
+  it('does NOT over-deny sibling subcommands of multi-word native-CLI prefixes', async () => {
+    // Regression: getRuleDirectToolBins used to register the top-level binary (gh,
+    // wrangler, rtk) as a direct-tool bin for multi-word prefixes, so EVERY `gh *` /
+    // `wrangler *` / `rtk *` command was denied. Only the exact read-only prefixes
+    // (gh pr view/checks/status, wrangler tail, rtk gain) should route to an MCP tool.
+    const routeCommand = await getRoute()
+    for (const command of [
+      'gh pr merge 248 --squash',
+      'gh pr close 256',
+      'gh pr create --title x --body y',
+      'gh pr list --state open',
+      'gh issue list',
+      'gh api repos/webpresso/agent-kit/pulls/248',
+      'gh release list',
+      'gh auth status',
+      'wrangler deploy',
+      'wrangler d1 execute DB --command "select 1"',
+      'wrangler dev',
+      'rtk discover',
+      'rtk proxy git status',
+    ]) {
+      const result = routeCommand(command)
+      // Allowed commands route to null (unknown -> caller decides) or an explicit
+      // passthrough — never a deny.
+      expect(result?.action.action, command).not.toBe('deny')
+    }
+  })
+
+  it('still denies the exact read-only multi-word prefixes (no under-matching)', async () => {
+    const routeCommand = await getRoute()
+    for (const [command, expectedTool] of [
+      ['gh pr view 182', 'wp_pr_status'],
+      ['gh pr checks 182', 'wp_pr_status'],
+      ['gh pr status', 'wp_pr_status'],
+      ['wrangler tail my-worker', 'wp_worker_tail'],
+      ['rtk gain --format json', 'wp_gain'],
+    ] as const) {
+      const result = routeCommand(command)
+      expect(result?.action.action, command).toBe('deny')
+      if (result?.action.action === 'deny') expect(result.action.tool, command).toBe(expectedTool)
+    }
+  })
+
+  it('still denies single-token tool prefixes and pm-exec forms (no regression)', async () => {
+    const routeCommand = await getRoute()
+    for (const [command, expectedTool] of [
+      ['act --workflow ci', 'wp_ci_act'],
+      ['vitest run', 'wp_test'],
+      ['oxlint src', 'wp_lint'],
+      ['vp exec vitest run', 'wp_test'],
+      ['pnpm exec oxlint .', 'wp_lint'],
+    ] as const) {
+      const result = routeCommand(command)
+      expect(result?.action.action, command).toBe('deny')
+      if (result?.action.action === 'deny') expect(result.action.tool, command).toBe(expectedTool)
+    }
+  })
+
   it('raw and wrapped CI act source entrypoints deny with secret-aware MCP guidance', async () => {
     const routeCommand = await getRoute()
     for (const command of [

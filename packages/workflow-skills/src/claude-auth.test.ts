@@ -49,6 +49,14 @@ describe('Claude skill helper snippets', () => {
     }
   })
 
+  it('keeps the Claude review timeout long enough for first-party CLI latency', () => {
+    for (const skillPath of skillPaths) {
+      const skill = readFileSync(skillPath, 'utf8')
+      expect(skill, skillPath).toContain('CLAUDE_REVIEW_TIMEOUT_SECONDS=${CLAUDE_REVIEW_TIMEOUT_SECONDS:-180}')
+      expect(skill, skillPath).not.toContain('CLAUDE_REVIEW_TIMEOUT_SECONDS=${CLAUDE_REVIEW_TIMEOUT_SECONDS:-45}')
+    }
+  })
+
   it('uses portable Darwin-safe mktemp patterns', () => {
     expect(content).toContain('mktemp -t wp-claude-auth.XXXXXX')
     expect(content).toContain('mktemp -t wp-claude-review.XXXXXX')

@@ -44,10 +44,83 @@ trap 'rm -f "$PROMPT_FILE"' EXIT
 
 ### Review
 
-1. Capture the current branch, base branch, and `git diff --stat`.
-2. Write a concise prompt asking Claude to find correctness, security, data-loss, and maintainability risks.
-3. Run `claude -p "$(cat "$PROMPT_FILE")"` from the repo root.
-4. Summarize findings with severity, evidence, and whether you independently verified them.
+Use single-file / single-question first for any non-trivial diff. Do not send a whole PR unless it already fits within the bounded payload below.
+
+#### Bounded prompt payload
+
+Always include:
+
+- current branch and base branch
+- `git diff --stat`
+- changed file list
+- one targeted file diff or one narrow snippet/hunk only, capped to a fixed size
+
+Prefer a cap of roughly 12 KB or ~200 lines of diff/snippet text per Claude call. Split large reviews into multiple focused calls instead of increasing the cap.
+
+```bash
+BASE_BRANCH=${BASE_BRANCH:-origin/main}
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+TARGET_FILE=${TARGET_FILE:?set TARGET_FILE to one changed file}
+
+{
+  printf 'Outside review mode: focused diff review\n'
+  printf 'Base branch: %s\nCurrent branch: %s\n\n' "$BASE_BRANCH" "$CURRENT_BRANCH"
+  printf 'git diff --stat %s...HEAD\n' "$BASE_BRANCH"
+  git diff --stat "$BASE_BRANCH"...HEAD
+  printf '\nChanged files:\n'
+  git diff --name-only "$BASE_BRANCH"...HEAD
+  printf '\nTarget file: %s\n' "$TARGET_FILE"
+  printf 'Bounded target diff (max 12000 bytes):\n'
+  git diff --unified=3 "$BASE_BRANCH"...HEAD -- "$TARGET_FILE" | \
+    python3 -c 'import sys; sys.stdout.write(sys.stdin.read(12000))'
+  printf '\n\nQuestion: Identify the highest-signal correctness, security, data-loss, or maintainability risk in %s. Quote only the smallest relevant excerpt. If context is insufficient, answer INSUFFICIENT_CONTEXT.\n' "$TARGET_FILE"
+} >"$PROMPT_FILE"
+```
+
+#### Timed Claude wrapper
+
+Run the review through a timeout wrapper. Use `claude --print`; do not recommend `--bare` for this path, because it breaks the intended first-party CLI-login mode in the reproduced environment.
+
+```bash
+CLAUDE_REVIEW_TIMEOUT_SECONDS=${CLAUDE_REVIEW_TIMEOUT_SECONDS:-180}
+CLAUDE_REVIEW_TIMEOUT_SENTINEL=CLAUDE_REVIEW_TIMEOUT
+
+python3 - "$PROMPT_FILE" "$CLAUDE_REVIEW_TIMEOUT_SECONDS" "$CLAUDE_REVIEW_TIMEOUT_SENTINEL" <<'PY'
+from pathlib import Path
+import subprocess
+import sys
+
+prompt_path, timeout_seconds, sentinel = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+prompt = Path(prompt_path).read_text()
+
+try:
+    result = subprocess.run(
+        ["claude", "--print", prompt],
+        text=True,
+        capture_output=True,
+        timeout=timeout_seconds,
+        check=False,
+    )
+except subprocess.TimeoutExpired:
+    print(sentinel, file=sys.stderr)
+    sys.exit(124)
+
+if result.stdout:
+    sys.stdout.write(result.stdout)
+if result.stderr:
+    sys.stderr.write(result.stderr)
+sys.exit(result.returncode)
+PY
+```
+
+#### Split-and-retry-once fallback
+
+1. First attempt: one file, one review question.
+2. If that bounded call returns `CLAUDE_REVIEW_TIMEOUT`, retry once with an even smaller prompt: one hunk or one narrower question from the same file.
+3. If the retry also returns `CLAUDE_REVIEW_TIMEOUT`, report Claude as unavailable for this review and stop.
+4. Do not retry indefinitely and do not fall back to an unbounded `claude -p` / whole-PR prompt.
+
+Summarize findings with severity, evidence, and whether you independently verified them.
 
 ### Challenge
 
