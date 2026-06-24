@@ -15,6 +15,12 @@ import { spawn } from 'node:child_process'
 import { platform } from 'node:os'
 import { join, resolve } from 'node:path'
 
+import {
+  PROBE_ROWS,
+  assertConformance,
+  type ConformanceRow,
+} from '#hooks/__conformance__/matrix.js'
+
 import type { HooksMap } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
 import {
   diffHooksManifest,
@@ -101,6 +107,14 @@ export interface RunHooksDoctorOptions {
   cwd?: string
   /** Test seam for the safe restore path used by `wp hooks doctor --fix`. */
   runRestoreFix?: (cwd: string) => Promise<number>
+  /**
+   * Fire the smallest allow/deny conformance rows (PROBE_ROWS) against the real
+   * pretool-guard and assert the routing decision. Off by default — the default
+   * doctor stays cheap (empty-stdin liveness only). This is operator-side
+   * semantic confirmation; CI already enforces decisions via the conformance
+   * matrix boundary suite.
+   */
+  probeDecisions?: boolean
 }
 
 export type HookFixStatus = 'fixed' | 'prepared' | 'requires-approval' | 'blocked'
@@ -439,6 +453,50 @@ function probeJsonStdin(
         settle({ ok: true })
       } catch {
         settle({ ok: false, detail: `invalid JSON on stdout: ${stdout.trim().slice(0, 80)}` })
+      }
+    })
+  })
+}
+
+/**
+ * Fire one conformance row's stdin at the real `wp hook <sub>` and assert the
+ * routing decision via the shared conformance matrix. Returns ok=false (never
+ * throws) so a single bad row degrades to a failing check, not a doctor crash.
+ */
+function probeDecisionRow(
+  wpCli: { command: string; args: string[] },
+  row: ConformanceRow,
+): Promise<{ ok: boolean; detail?: string }> {
+  const hookName = row.hookBin.replace(/^wp-/u, '')
+  return new Promise<{ ok: boolean; detail?: string }>((resolve) => {
+    const child = spawn(wpCli.command, [...wpCli.args, 'hook', hookName], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
+    let stdout = ''
+    let settled = false
+    const settle = (result: { ok: boolean; detail?: string }) => {
+      if (settled) return
+      settled = true
+      resolve(result)
+    }
+    child.stdout.on('data', (chunk) => {
+      stdout += String(chunk)
+    })
+    child.stdin.on?.('error', (err) => {
+      settle({ ok: false, detail: `stdin write failed: ${err.message}` })
+    })
+    child.stdin.write(`${row.stdin}\n`, () => {
+      child.stdin.end()
+    })
+    child.on('error', (err) => {
+      settle({ ok: false, detail: String(err.message) })
+    })
+    child.on('close', (code) => {
+      try {
+        assertConformance(row, { stdout, exitCode: code })
+        settle({ ok: true })
+      } catch (error) {
+        settle({ ok: false, detail: error instanceof Error ? error.message : String(error) })
       }
     })
   })
@@ -1539,6 +1597,17 @@ export async function runHooksDoctor(opts: RunHooksDoctorOptions = {}): Promise<
 
     const probe = await probeHookBin(wpCli, bin.hookName, bin.checkStdin)
     checks.push({ name: bin.name, ok: probe.ok, detail: probe.detail })
+  }
+
+  if (opts.probeDecisions && wpCli) {
+    for (const row of PROBE_ROWS) {
+      const decision = await probeDecisionRow(wpCli, row)
+      checks.push({
+        name: `decision probe: ${row.name}`,
+        ok: decision.ok,
+        detail: decision.detail ?? 'decision matches conformance matrix',
+      })
+    }
   }
 
   checks.push(checkConsumerCodexHookPaths(opts.cwd))

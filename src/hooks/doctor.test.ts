@@ -100,6 +100,61 @@ describe('hooks/doctor', () => {
     })
   }
 
+  // Decision-aware guard mock: empty-stdin liveness probes get `{}`; full
+  // conformance payloads get a routing decision derived from the command
+  // (`gh pr view` denies, everything else allows). `denyWrongly` inverts the
+  // decision to simulate a broken guard so the probe must flag it.
+  function mockDecisionAwareProbe(opts: { denyWrongly?: boolean } = {}): void {
+    const DENY = JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'deny',
+        permissionDecisionReason: 'Use wp_pr_status MCP tool instead',
+      },
+    })
+    mockSpawn.mockImplementation(() => {
+      const child = new EventEmitter() as EventEmitter & {
+        stdout: EventEmitter
+        stderr: EventEmitter
+        stdin: { write: (chunk: string, cb?: () => void) => void; end: () => void; on?: () => void }
+        kill: () => boolean
+      }
+      child.stdout = new EventEmitter()
+      child.stderr = new EventEmitter()
+      let written = ''
+      child.stdin = {
+        on: () => {},
+        write: (chunk: string, cb?: () => void) => {
+          written += chunk
+          cb?.()
+        },
+        end: () => {
+          queueMicrotask(() => {
+            let command = ''
+            try {
+              command =
+                (JSON.parse(written.trim()) as { tool_input?: { command?: string } })?.tool_input
+                  ?.command ?? ''
+            } catch {
+              command = ''
+            }
+            if (command.length === 0) {
+              child.stdout.emit('data', Buffer.from('{}'))
+              child.emit('close', 0)
+              return
+            }
+            const shouldDeny = command.includes('gh pr view')
+            const emitDeny = opts.denyWrongly ? !shouldDeny : shouldDeny
+            child.stdout.emit('data', Buffer.from(emitDeny ? DENY : '{}'))
+            child.emit('close', 0)
+          })
+        },
+      }
+      child.kill = () => true
+      return child as unknown as ReturnType<typeof spawn>
+    })
+  }
+
   describe('runHooksDoctor', () => {
     it('returns false when no bins are found', async () => {
       mockAccessSync.mockImplementation(() => {
@@ -219,6 +274,54 @@ describe('hooks/doctor', () => {
       const pretoolCheck = result.checks.find((c) => c.name === 'pretool-guard')
       expect(pretoolCheck?.detail).not.toBe('exists but not executable')
       expect(pretoolCheck?.ok).toBe(true)
+    })
+
+    it('does not run decision probes by default (cheap doctor)', async () => {
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (String(path) === rtkMarker) throw new Error('ENOENT')
+        return true
+      }) as typeof accessSync)
+      mockStatSync.mockReturnValue({ mode: 0o755 } as unknown as ReturnType<typeof statSync>)
+      mockDecisionAwareProbe()
+      vi.stubGlobal('process', fakeProcess())
+
+      const { runHooksDoctor } = await import('#hooks/doctor')
+      const result = await runHooksDoctor({ skipMcp: true })
+      expect(result.checks.some((c) => c.name.startsWith('decision probe:'))).toBe(false)
+    })
+
+    it('passes decision probes when the guard routes allow/deny correctly', async () => {
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (String(path) === rtkMarker) throw new Error('ENOENT')
+        return true
+      }) as typeof accessSync)
+      mockStatSync.mockReturnValue({ mode: 0o755 } as unknown as ReturnType<typeof statSync>)
+      mockDecisionAwareProbe()
+      vi.stubGlobal('process', fakeProcess())
+
+      const { runHooksDoctor } = await import('#hooks/doctor')
+      const result = await runHooksDoctor({ skipMcp: true, probeDecisions: true })
+      const decisionChecks = result.checks.filter((c) => c.name.startsWith('decision probe:'))
+      expect(decisionChecks.length).toBeGreaterThanOrEqual(2)
+      expect(decisionChecks.every((c) => c.ok)).toBe(true)
+      expect(decisionChecks.some((c) => c.name.includes('allow gh pr merge'))).toBe(true)
+      expect(decisionChecks.some((c) => c.name.includes('deny gh pr view'))).toBe(true)
+    })
+
+    it('fails the decision probe when the guard returns the wrong decision', async () => {
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (String(path) === rtkMarker) throw new Error('ENOENT')
+        return true
+      }) as typeof accessSync)
+      mockStatSync.mockReturnValue({ mode: 0o755 } as unknown as ReturnType<typeof statSync>)
+      mockDecisionAwareProbe({ denyWrongly: true })
+      vi.stubGlobal('process', fakeProcess())
+
+      const { runHooksDoctor } = await import('#hooks/doctor')
+      const result = await runHooksDoctor({ skipMcp: true, probeDecisions: true })
+      const decisionChecks = result.checks.filter((c) => c.name.startsWith('decision probe:'))
+      expect(decisionChecks.some((c) => !c.ok)).toBe(true)
+      expect(result.ok).toBe(false)
     })
 
     it('skips MCP check when skipMcp is true', async () => {
