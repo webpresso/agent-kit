@@ -9,7 +9,9 @@ import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'n
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const AGENT_KIT_PACKAGE_NAMES = new Set(['@webpresso/agent-kit'])
+import { AGENT_KIT_PACKAGE_NAME, setupCommandForHookPolicy } from './source-repo-hook-policy.js'
+
+const AGENT_KIT_PACKAGE_NAMES = new Set([AGENT_KIT_PACKAGE_NAME])
 
 export interface ConsumerPackageInfo {
   name: string
@@ -318,7 +320,7 @@ function isPublishedSemverRange(value: string): boolean {
  * unless explicitly overridden. Only `@webpresso/agent-kit` hosts the catalog
  * templates.
  */
-export const AGENT_KIT_PACKAGE_NAME = '@webpresso/agent-kit'
+export { AGENT_KIT_PACKAGE_NAME } from './source-repo-hook-policy.js'
 
 /** True when the consumer being scaffolded is agent-kit's own template-source repo. */
 export function isAgentKitTemplateSourceRepo(packageName: string | undefined): boolean {
@@ -329,10 +331,7 @@ export function setupCommandForRepo(
   repoRoot: string,
   options: { readonly restoreHooks?: boolean } = {},
 ): string {
-  const packageName = readPackageJson(repoRoot).info?.name
-  const restoreHooks = options.restoreHooks === true ? ' --restore-hooks' : ''
-  const sourceMaintenance = isAgentKitTemplateSourceRepo(packageName) ? ' --source-maintenance' : ''
-  return `wp setup${restoreHooks}${sourceMaintenance}`
+  return setupCommandForHookPolicy(repoRoot, options)
 }
 
 export function detectConsumer(startDir: string = process.cwd()): ConsumerContext | null {

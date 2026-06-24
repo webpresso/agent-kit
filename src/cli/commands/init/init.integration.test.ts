@@ -318,6 +318,8 @@ describe('wp init end-to-end', { timeout: 40_000 }, () => {
       join(repo, 'package.json'),
       JSON.stringify({ name: '@webpresso/agent-kit', private: true }, null, 2),
     )
+    mkdirSync(join(repo, 'src', 'cli'), { recursive: true })
+    writeFileSync(join(repo, 'src', 'cli', 'cli.ts'), '')
 
     const code = await runInit({ cwd: repo, yes: true })
 
@@ -338,12 +340,15 @@ describe('wp init end-to-end', { timeout: 40_000 }, () => {
         2,
       ),
     )
+    mkdirSync(join(repo, 'src', 'cli'), { recursive: true })
+    writeFileSync(join(repo, 'src', 'cli', 'cli.ts'), '')
 
     const code = await runInit({ cwd: repo, yes: true, sourceMaintenance: true })
 
     expect(code).toBe(0)
-    // Proceeding past the guard scaffolds the workspace config marker.
+    // Proceeding past the guard runs project setup, not user-only setup.
     expect(existsSync(join(repo, '.webpressorc.json'))).toBe(true)
+    expect(readFileSync(join(repo, '.codex', 'hooks.json'), 'utf8')).toContain('WP_FORCE_SOURCE=1')
   })
 
   it('migrates legacy .agent-kitrc.json state into .webpressorc.json on setup', async () => {
@@ -841,6 +846,75 @@ describe('wp init end-to-end', { timeout: 40_000 }, () => {
     expect(JSON.stringify(manifest.claude)).not.toContain('/.claude/hooks/managed/')
     expect(manifest.vendorState.codex).toBe('enabled')
     expect(manifest.vendorState.claude).toBe('enabled')
+  })
+
+  it('restore-hooks rebuilds stale source-repo wrapper manifests as direct JIT-first commands', async () => {
+    writeFileSync(
+      join(repo, 'package.json'),
+      JSON.stringify({
+        name: '@webpresso/agent-kit',
+        private: true,
+        devDependencies: { vitest: '^2.0.0' },
+      }),
+    )
+    mkdirSync(join(repo, 'src', 'cli'), { recursive: true })
+    writeFileSync(join(repo, 'src', 'cli', 'cli.ts'), '')
+
+    expect(await runInit({ cwd: repo, yes: true, sourceMaintenance: true })).toBe(0)
+
+    const codexHooksPath = join(repo, '.codex', 'hooks.json')
+    const claudeSettingsPath = join(repo, '.claude', 'settings.json')
+    const manifestPath = join(repo, '.webpresso', 'hooks-manifest.json')
+
+    writeFileSync(codexHooksPath, JSON.stringify({ hooks: {} }, null, 2))
+    writeFileSync(claudeSettingsPath, JSON.stringify({ hooks: {} }, null, 2))
+    writeHooksManifest(
+      repo,
+      {
+        SessionStart: [
+          {
+            hooks: [
+              {
+                type: 'command',
+                command:
+                  '[ -x "$CLAUDE_PROJECT_DIR/.claude/hooks/managed/wp-sessionstart-routing.sh" ] && "$CLAUDE_PROJECT_DIR/.claude/hooks/managed/wp-sessionstart-routing.sh" || true',
+              },
+            ],
+          },
+        ],
+      },
+      {
+        SessionStart: [
+          {
+            hooks: [
+              {
+                type: 'command',
+                command: `${repo}/.codex/managed-hooks/wp-sessionstart-routing.sh`,
+              },
+            ],
+          },
+        ],
+      },
+      { claude: 'enabled', codex: 'enabled' },
+    )
+
+    expect(
+      await runInit({ cwd: repo, yes: true, restoreHooks: true, sourceMaintenance: true }),
+    ).toBe(0)
+
+    const codexHooks = readFileSync(codexHooksPath, 'utf8')
+    const claudeSettings = readFileSync(claudeSettingsPath, 'utf8')
+    const manifest = readJsonFile<{
+      claude: Record<string, unknown>
+      codex: Record<string, unknown>
+    }>(manifestPath)
+
+    expect(codexHooks).toContain('WP_FORCE_SOURCE=1')
+    expect(claudeSettings).toContain('WP_FORCE_SOURCE=1')
+    expect(codexHooks).not.toContain('/.codex/managed-hooks/')
+    expect(claudeSettings).not.toContain('/.claude/hooks/managed/')
+    expect(JSON.stringify(manifest.codex)).toContain('WP_FORCE_SOURCE=1')
+    expect(JSON.stringify(manifest.claude)).toContain('WP_FORCE_SOURCE=1')
   })
 
   it('does not mutate hook configs in disable-hooks dry-run mode', async () => {

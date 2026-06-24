@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 import {
   checkFreshness,
@@ -20,6 +20,16 @@ import type { BlueprintProjectLike } from './freshness.js'
 let tmp: string
 let repo: string
 let dbPath: string
+
+// One immutable git repo shared by every read-only test. Each `git` call is a
+// synchronous subprocess; re-initializing a repo per test (init + add + commit)
+// is the dominant cost in this file and, multiplied across the suite's fork
+// pool, is exactly the subprocess oversubscription that pushes otherwise-correct
+// tests past the 10s budget (see vitest.config.ts maxWorkers note). Tests that
+// MUTATE HEAD or need a non-git dir still create their own repo below.
+let sharedRepo: string
+let sharedRepoTmp: string
+let sharedHead: string
 
 const FAST_GIT_ENV = {
   ...process.env,
@@ -39,17 +49,20 @@ const FAST_GIT_ENV = {
 }
 
 function git(at: string, args: readonly string[]): string {
-  return execFileSync('git', [...args], { cwd: at, encoding: 'utf8', env: FAST_GIT_ENV }).trim()
+  // Bounded so a contended subprocess fails loudly and fast instead of silently
+  // eating the whole 10s per-test budget (no-timeout-as-fix: surface the stall).
+  return execFileSync('git', [...args], {
+    cwd: at,
+    encoding: 'utf8',
+    env: FAST_GIT_ENV,
+    timeout: 8_000,
+  }).trim()
 }
 
-function initGitRepo(at: string): void {
+// Minimal HEAD: `init` + one empty commit — two spawns, no working-tree write.
+function initGitRepo(at: string): string {
   git(at, ['init', '-q', '-b', 'main'])
-  writeFileSync(path.join(at, 'README.md'), 'init\n')
-  git(at, ['add', 'README.md'])
-  git(at, ['commit', '-q', '-m', 'init'])
-}
-
-function head(at: string): string {
+  git(at, ['commit', '-q', '--allow-empty', '-m', 'init'])
   return git(at, ['rev-parse', 'HEAD'])
 }
 
@@ -66,6 +79,17 @@ function project(overrides?: Partial<BlueprintProjectLike>): BlueprintProjectLik
     ...overrides,
   }
 }
+
+beforeAll(() => {
+  sharedRepoTmp = mkdtempSync(path.join(tmpdir(), 'wp-freshness-shared-'))
+  sharedRepo = path.join(sharedRepoTmp, 'repo')
+  mkdirSync(sharedRepo, { recursive: true })
+  sharedHead = initGitRepo(sharedRepo)
+})
+
+afterAll(() => {
+  rmSync(sharedRepoTmp, { recursive: true, force: true })
+})
 
 beforeEach(() => {
   tmp = mkdtempSync(path.join(tmpdir(), 'wp-freshness-'))
@@ -84,18 +108,16 @@ afterEach(() => {
 
 describe('projection metadata sidecar', () => {
   it('records and reads HEAD-at-ingest + ingested_at', () => {
-    initGitRepo(repo)
     makeDbFile()
-    const headSha = head(repo)
     const t = 1_700_000_000_000
 
     const written = recordProjectionMetadata({
       dbPath,
-      cwd: repo,
+      cwd: sharedRepo,
       ingestedAt: t,
     })
 
-    expect(written.head_at_ingest).toBe(headSha)
+    expect(written.head_at_ingest).toBe(sharedHead)
     expect(written.ingested_at).toBe(t)
 
     const read = readProjectionMetadata(dbPath)
@@ -125,23 +147,21 @@ describe('projection metadata sidecar', () => {
 
 describe('checkFreshness', () => {
   it('returns ok=true when HEAD matches the recorded ingest HEAD', () => {
-    initGitRepo(repo)
     makeDbFile()
-    recordProjectionMetadata({ dbPath, cwd: repo, ingestedAt: 1 })
+    recordProjectionMetadata({ dbPath, cwd: sharedRepo, ingestedAt: 1 })
 
-    const result = checkFreshness(project())
-    expect(result).toStrictEqual({ ok: true, head: head(repo), ingestedAt: 1 })
+    const result = checkFreshness(project({ worktree_path: sharedRepo }))
+    expect(result).toStrictEqual({ ok: true, head: sharedHead, ingestedAt: 1 })
   })
 
   it('returns ok=false with next_action.kind=reingest_project when HEAD has changed', () => {
+    // This test mutates HEAD, so it needs its own repo (not the shared one).
     initGitRepo(repo)
     makeDbFile()
     recordProjectionMetadata({ dbPath, cwd: repo, ingestedAt: 1 })
 
     // Move HEAD forward
-    writeFileSync(path.join(repo, 'b.txt'), 'b\n')
-    git(repo, ['add', 'b.txt'])
-    git(repo, ['commit', '-q', '-m', 'b'])
+    git(repo, ['commit', '-q', '--allow-empty', '-m', 'b'])
 
     const result = checkFreshness(project())
     expect(result.ok).toBe(false)
@@ -151,19 +171,17 @@ describe('checkFreshness', () => {
   })
 
   it('returns ok=false with next_action.kind=rebuild_db when the projection DB is missing', () => {
-    initGitRepo(repo)
-    // No makeDbFile() — db missing entirely.
-    const result = checkFreshness(project())
+    // DB missing → checkFreshness returns before touching git; no repo needed.
+    const result = checkFreshness(project({ worktree_path: sharedRepo }))
     expect(result.ok).toBe(false)
     if (result.ok) throw new Error('unreachable')
     expect(result.next_action.kind).toBe('rebuild_db')
   })
 
   it('returns ok=false with next_action.kind=reingest_project when metadata sidecar is missing', () => {
-    initGitRepo(repo)
     makeDbFile()
     // No recordProjectionMetadata — sidecar missing.
-    const result = checkFreshness(project())
+    const result = checkFreshness(project({ worktree_path: sharedRepo }))
     expect(result.ok).toBe(false)
     if (result.ok) throw new Error('unreachable')
     expect(result.next_action.kind).toBe('reingest_project')
@@ -178,12 +196,11 @@ describe('checkFreshness', () => {
   })
 
   it('overriding ingestedAt via recordProjectionMetadata updates the sidecar', () => {
-    initGitRepo(repo)
     makeDbFile()
-    recordProjectionMetadata({ dbPath, cwd: repo, ingestedAt: 1 })
+    recordProjectionMetadata({ dbPath, cwd: sharedRepo, ingestedAt: 1 })
     const second: ProjectionMetadata = recordProjectionMetadata({
       dbPath,
-      cwd: repo,
+      cwd: sharedRepo,
       ingestedAt: 999,
     })
     expect(second.ingested_at).toBe(999)

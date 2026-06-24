@@ -9,7 +9,7 @@ import {
 } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { CLAUDE_PLUGIN_ID } from '#cli/commands/init/scaffolders/claude-plugin/index.js'
 import { buildCursorHooksConfig } from './emitters/cursor.js'
@@ -29,9 +29,18 @@ function quoteShell(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`
 }
 
-function directWpHookCommand(repoRoot: string, name: string): string {
+function directWpHookCommand(
+  repoRoot: string,
+  name: string,
+  options: { forceSource?: boolean } = {},
+): string {
   const wpPath = quoteShell(join(process.cwd(), 'bin', 'wp'))
-  const nodePath = quoteShell(process.execPath)
+  const nodeExecutable = basename(process.execPath).startsWith('node')
+    ? process.execPath
+    : (process.env.PATH?.split(':')
+        .map((entry) => join(entry, 'node'))
+        .find((candidate) => existsSync(candidate)) ?? process.execPath)
+  const nodePath = quoteShell(nodeExecutable)
   const repoRootPath = quoteShell(repoRoot)
   const hookName = name.startsWith('wp-') ? name.slice(3) : name
   const fallback =
@@ -40,7 +49,8 @@ function directWpHookCommand(repoRoot: string, name: string): string {
       : name === 'wp-pretool-guard'
         ? `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp not found on PATH. Install with vp install -g @webpresso/agent-kit and re-run wp setup."}}'`
         : 'true'
-  return `if [ -x ${nodePath} ] && [ -f ${wpPath} ]; then (cd ${repoRootPath} && ${nodePath} ${wpPath} hook ${hookName}); status=$?; if [ "$status" -eq 2 ]; then exit 2; elif [ "$status" -ne 0 ]; then ${fallback}; fi; else ${fallback}; fi # ${name}`
+  const envPrefix = options.forceSource === true ? 'WP_FORCE_SOURCE=1 ' : ''
+  return `if [ -x ${nodePath} ] && [ -f ${wpPath} ]; then (cd ${repoRootPath} && ${envPrefix}${nodePath} ${wpPath} hook ${hookName}); status=$?; if [ "$status" -eq 2 ]; then exit 2; elif [ "$status" -ne 0 ]; then ${fallback}; fi; else ${fallback}; fi # ${name}`
 }
 
 function codexBinCommand(repoRoot: string, name: string): string {
@@ -1133,6 +1143,55 @@ hooks:
     expect(claude).toContain(' hook sessionstart-routing')
     expect(codex).not.toContain('/.codex/managed-hooks/')
     expect(claude).not.toContain('/.claude/hooks/managed/')
+  })
+
+  it('uses node instead of bun when source-mode setup emits hook commands', async () => {
+    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }))
+    mkdirSync(join(repoRoot, 'src', 'cli'), { recursive: true })
+    writeFileSync(join(repoRoot, 'src', 'cli', 'cli.ts'), '')
+
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+
+    const claude = JSON.parse(readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8')) as {
+      hooks: { PreToolUse: Array<{ hooks: Array<{ command: string }> }> }
+    }
+    const command = claude.hooks.PreToolUse.flatMap((g) => g.hooks.map((h) => h.command)).find(
+      (candidate) => candidate.includes('wp-pretool-guard'),
+    )
+
+    expect(command).toContain('WP_FORCE_SOURCE=1')
+    expect(command).toContain('/node')
+    expect(command).not.toContain('/bun')
+  })
+
+  it('writes source-repo hook commands as direct wp invocations with forced source mode', async () => {
+    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }))
+    mkdirSync(join(repoRoot, 'src', 'cli'), { recursive: true })
+    writeFileSync(join(repoRoot, 'src', 'cli', 'cli.ts'), '')
+
+    const result = await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+
+    const claude = JSON.parse(readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8')) as {
+      hooks: { SessionStart: Array<{ hooks: Array<{ command: string }> }> }
+    }
+    const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
+      hooks: { SessionStart: Array<{ hooks: Array<{ command: string }> }> }
+    }
+    const expected = directWpHookCommand(repoRoot, 'wp-sessionstart-routing', { forceSource: true })
+
+    expect(claude.hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command))).toContain(
+      expected,
+    )
+    expect(codex.hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command))).toContain(
+      expected,
+    )
+    expect(result.manifest.codex.SessionStart?.[0]?.hooks[0]?.command).toBe(expected)
+    expect(codex.hooks.SessionStart[0]?.hooks[0]?.timeout).toBe(20)
+    expect(claude.hooks.SessionStart[0]?.hooks[0]?.timeout).toBe(20)
+
+    expect(JSON.stringify(codex)).toContain('WP_FORCE_SOURCE=1')
+    expect(existsSync(join(repoRoot, '.claude', 'hooks', 'managed'))).toBe(false)
+    expect(existsSync(join(repoRoot, '.codex', 'managed-hooks'))).toBe(false)
   })
 
   it('wires the managed PreCompact lane for Claude and Codex but not unsupported Cursor output', async () => {
