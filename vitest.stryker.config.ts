@@ -34,6 +34,9 @@ export default mergeConfig(
         // freshness recovery; subprocess + filesystem scan exceed the forks-pool
         // unit-test timeout
         'src/cli/commands/blueprint/db-commands.integration.test.ts',
+        // scaffolds hooks + spawns the real generated `node bin/wp hook ...` command per
+        // matrix row (one process each); cold-start exceeds the forks-pool unit timeout
+        'src/hooks/__conformance__/boundary.smoke.test.ts',
       ],
     },
   }),
