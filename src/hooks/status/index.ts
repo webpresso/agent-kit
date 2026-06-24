@@ -24,6 +24,7 @@ import {
 } from '#cli/commands/init/scaffolders/agent-hooks/capability-matrix.js'
 import type { HookGroup, HooksMap } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
 import { WP_HOOK_SPECS as IR_HOOK_SPECS } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
+import { setupCommandForRepo } from '#cli/commands/init/detect-consumer.js'
 
 // ── Canonical hook spec list ──────────────────────────────────────────────────
 
@@ -327,7 +328,7 @@ export async function statusCommand(argv: readonly string[]): Promise<void> {
 
   if (!manifestExists) {
     process.stdout.write(
-      'No hooks manifest found. Run `wp setup` to regenerate managed hook state.\n',
+      `No hooks manifest found. Run \`${setupCommandForRepo(repoRoot)}\` to regenerate managed hook state.\n`,
     )
   }
 

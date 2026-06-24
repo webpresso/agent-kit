@@ -11,7 +11,7 @@
  */
 import { existsSync, readdirSync, rmSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { basename, join, resolve } from 'node:path'
 
 import { isHookName } from '#cli/commands/hook.js'
 import { type MergeOptions, type MergeResult, patchJsonFile } from '#cli/commands/init/merge'
@@ -21,8 +21,12 @@ import {
 } from '#cli/commands/init/package-root'
 import { CodexAppServerClient } from '#codex/app-server/client.js'
 import type { CodexAppServerApi } from '#codex/app-server/types.js'
-import { commandExists as defaultCommandExists } from '#runtime/command-exists.js'
+import { commandExists as defaultCommandExists, pathCandidates } from '#runtime/command-exists.js'
 import { CLAUDE_PLUGIN_ID } from '#cli/commands/init/scaffolders/claude-plugin/index.js'
+import {
+  hookCommandEnvPrefix,
+  sourceRepoHooksMustForceSource,
+} from '#cli/commands/init/source-repo-hook-policy.js'
 import {
   syncCodexHookTrustWithAppServer,
   type SyncCodexHookTrustResult,
@@ -72,6 +76,11 @@ function resolveWpHookLauncherPath(): string {
   return resolve(resolvePackageRootForHookLaunchers(), 'bin', 'wp')
 }
 
+function resolveNodeForHookLauncher(): string {
+  if (basename(process.execPath).startsWith('node')) return process.execPath
+  return pathCandidates('node').find((candidate) => existsSync(candidate)) ?? process.execPath
+}
+
 const HOOK_SPEC_BY_BIN = new Map(WP_HOOK_SPECS.map((spec) => [spec.bin, spec]))
 
 function isJsonOnlyHookBin(name: string): boolean {
@@ -94,11 +103,12 @@ function hookSubcommandForRequired(binName: string): string {
 
 function buildDirectWpHookCommand(repoRoot: string, name: string): string {
   const wpPath = quoteShell(resolveWpHookLauncherPath())
-  const nodePath = quoteShell(process.execPath)
+  const nodePath = quoteShell(resolveNodeForHookLauncher())
   const repoRootPath = quoteShell(repoRoot)
   const hookName = hookSubcommandForRequired(name)
   const fallback = missingLauncherFallbackCommand(name)
-  return `if [ -x ${nodePath} ] && [ -f ${wpPath} ]; then (cd ${repoRootPath} && ${nodePath} ${wpPath} hook ${hookName}); status=$?; if [ "$status" -eq 2 ]; then exit 2; elif [ "$status" -ne 0 ]; then ${fallback}; fi; else ${fallback}; fi # ${name}`
+  const envPrefix = hookCommandEnvPrefix(repoRoot)
+  return `if [ -x ${nodePath} ] && [ -f ${wpPath} ]; then (cd ${repoRootPath} && ${envPrefix}${nodePath} ${wpPath} hook ${hookName}); status=$?; if [ "$status" -eq 2 ]; then exit 2; elif [ "$status" -ne 0 ]; then ${fallback}; fi; else ${fallback}; fi # ${name}`
 }
 
 const CC_BIN = (repoRoot: string) => (name: string) => buildDirectWpHookCommand(repoRoot, name)
@@ -145,9 +155,20 @@ function extractClaudeBinName(command: string): string | null {
 function extractWpHookCommandBinName(command: string): string | null {
   const match = /\bwp["']?\s+hook\s+([a-z0-9-]+)/u.exec(command)
   const subcommand = match?.[1]
-  if (!subcommand || !isHookName(subcommand)) return null
-  const binName = `wp-${subcommand}`
-  return WEBPRESSO_HOOK_BIN_NAMES.has(binName) ? binName : null
+  if (subcommand && isHookName(subcommand)) {
+    const binName = `wp-${subcommand}`
+    if (WEBPRESSO_HOOK_BIN_NAMES.has(binName)) return binName
+  }
+
+  const isLegacyManagedWrapper =
+    command.includes('/.codex/managed-hooks/') || command.includes('/.claude/hooks/managed/')
+  if (isLegacyManagedWrapper) {
+    for (const binName of WEBPRESSO_HOOK_BIN_NAMES) {
+      if (command.includes(binName)) return binName
+    }
+  }
+
+  return null
 }
 
 function extractOwnedLegacyManagedHookBinName(command: string): string | null {
@@ -419,12 +440,34 @@ function patchCodexHooks(
   }
 }
 
+const SOURCE_REPO_JIT_HOOK_TIMEOUT_SECONDS = 20
+
+function withSourceRepoJitTimeouts(repoRoot: string, hooks: HooksMap): HooksMap {
+  if (!sourceRepoHooksMustForceSource(repoRoot)) return hooks
+  return Object.fromEntries(
+    Object.entries(hooks).map(([event, groups]) => [
+      event,
+      groups.map((group) => ({
+        ...group,
+        hooks: group.hooks.map((hook) => ({
+          ...hook,
+          // ponytail: source/JIT cold starts are slower; consumer runtime timeouts stay unchanged.
+          timeout: Math.max(hook.timeout ?? 0, SOURCE_REPO_JIT_HOOK_TIMEOUT_SECONDS),
+        })),
+      })),
+    ]),
+  ) as HooksMap
+}
+
 function buildManagedClaudeHooks(repoRoot: string, skillHooks: readonly SkillHook[]): HooksMap {
   const withSkills = mergeSkillHooks({}, skillHooks)
-  const webpresso = buildWebpressoHookGroups({
-    resolveBin: CC_BIN(repoRoot),
-    matchers: CLAUDE_MATCHERS,
-  })
+  const webpresso = withSourceRepoJitTimeouts(
+    repoRoot,
+    buildWebpressoHookGroups({
+      resolveBin: CC_BIN(repoRoot),
+      matchers: CLAUDE_MATCHERS,
+    }),
+  )
   const merged = mergeAgentKitGroups(withSkills, webpresso)
   return {
     ...merged,
@@ -433,10 +476,13 @@ function buildManagedClaudeHooks(repoRoot: string, skillHooks: readonly SkillHoo
 }
 
 function buildManagedCodexHooks(repoRoot: string): HooksMap {
-  return buildWebpressoHookGroups({
-    resolveBin: CODEX_BIN(repoRoot),
-    matchers: CODEX_MATCHERS,
-  })
+  return withSourceRepoJitTimeouts(
+    repoRoot,
+    buildWebpressoHookGroups({
+      resolveBin: CODEX_BIN(repoRoot),
+      matchers: CODEX_MATCHERS,
+    }),
+  )
 }
 
 export function buildManagedHooksManifest(

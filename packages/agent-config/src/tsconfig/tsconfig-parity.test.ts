@@ -36,7 +36,9 @@ describe('bundled tsconfig JSON files', () => {
     const reactLibrary = JSON.parse(
       await readFile(join(TSCONFIG_DIR, 'react-library.json'), 'utf8'),
     ) as { extends?: string }
-    const cloudflare = JSON.parse(await readFile(join(TSCONFIG_DIR, 'cloudflare.json'), 'utf8')) as {
+    const cloudflare = JSON.parse(
+      await readFile(join(TSCONFIG_DIR, 'cloudflare.json'), 'utf8'),
+    ) as {
       extends?: string
     }
     const reactRouter = JSON.parse(
