@@ -1,0 +1,16 @@
+{
+  "source": "codex app-server generate-json-schema --out <dir> → v2/HooksListResponse.json → definitions.HookEventName.enum",
+  "capturedFromCodexVersion": "0.142.0",
+  "eventNames": [
+    "preToolUse",
+    "permissionRequest",
+    "postToolUse",
+    "preCompact",
+    "postCompact",
+    "sessionStart",
+    "userPromptSubmit",
+    "subagentStart",
+    "subagentStop",
+    "stop"
+  ]
+}
