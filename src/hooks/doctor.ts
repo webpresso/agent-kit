@@ -1364,7 +1364,15 @@ function existingHookConfigPaths(cwd: string): readonly string[] {
 
 async function defaultRunRestoreFix(cwd: string): Promise<number> {
   const { runInit } = await import('#cli/commands/init/index.js')
-  return await runInit({ cwd, yes: true, restoreHooks: true }, { stdout: { write: () => true } })
+  return await runInit(
+    {
+      cwd,
+      yes: true,
+      restoreHooks: true,
+      sourceMaintenance: setupCommandForRepo(cwd).startsWith('WP_FORCE_SOURCE=1 '),
+    },
+    { stdout: { write: () => true } },
+  )
 }
 
 export function buildHooksDoctorFixPlan(cwd = process.cwd()): HookFixResult {
@@ -1496,7 +1504,7 @@ async function applyHooksDoctorFixPlan(
   if (exitCode === 0) {
     return {
       status: 'fixed',
-      detail: 'restored managed hooks from the manifest via `wp setup --restore-hooks`',
+      detail: `restored managed hooks from the manifest via \`${setupCommandForRepo(cwd, { restoreHooks: true })}\``,
       preservedFiles: plan.preservedFiles,
     }
   }
@@ -1682,9 +1690,11 @@ export async function printHooksDoctor(opts: RunHooksDoctorOptions = {}): Promis
   if (!result.ok) {
     console.error('')
     console.error('Repair hints:')
-    console.error('  • Refresh local hook/plugin surfaces: `wp setup`')
     console.error(
-      '  • Consumers: run `vp install -g @webpresso/agent-kit && wp setup`; source checkout: enable `WP_FORCE_SOURCE=1` (direnv allow).',
+      `  • Refresh local hook/plugin surfaces: \`${setupCommandForRepo(opts.cwd ?? process.cwd())}\``,
+    )
+    console.error(
+      '  • Consumers: run `vp install -g @webpresso/agent-kit && wp setup`; source checkout: run `WP_FORCE_SOURCE=1 wp setup --source-maintenance`.',
     )
     console.error(
       '  • If install failed resolving @webpresso/agent-kit: make sure this repo uses the public npm registry, then rerun `vp install`',

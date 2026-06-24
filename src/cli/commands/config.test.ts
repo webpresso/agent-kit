@@ -119,34 +119,35 @@ describe('wp config secrets', () => {
     'persists explicit selections without loading the webpresso framework runtime',
     { timeout: 30_000 },
     async () => {
-    const root = makeRepo()
-    const stdout = makeWriter()
-    const exitCode = await runSecretsConfigCommand(
-      'set',
-      ['infisical', 'shell-worker'],
-      { cwd: root, label: 'Shell Worker' },
-      { stdout: stdout.writer },
-    )
+      const root = makeRepo()
+      const stdout = makeWriter()
+      const exitCode = await runSecretsConfigCommand(
+        'set',
+        ['infisical', 'shell-worker'],
+        { cwd: root, label: 'Shell Worker' },
+        { stdout: stdout.writer },
+      )
 
-    const configPath = join(root, '.git', 'webpresso', 'secrets.json')
-    expect(exitCode).toBe(0)
-    expect(existsSync(configPath)).toBe(true)
-    expect(JSON.parse(readFileSync(configPath, 'utf8'))).toEqual({
-      manager: 'infisical',
-      projectId: 'shell-worker',
-      projectLabel: 'Shell Worker',
-    })
+      const configPath = join(root, '.git', 'webpresso', 'secrets.json')
+      expect(exitCode).toBe(0)
+      expect(existsSync(configPath)).toBe(true)
+      expect(JSON.parse(readFileSync(configPath, 'utf8'))).toEqual({
+        manager: 'infisical',
+        projectId: 'shell-worker',
+        projectLabel: 'Shell Worker',
+      })
 
-    const show = makeWriter()
-    await expect(
-      runSecretsConfigCommand('show', [], { cwd: root, json: true }, { stdout: show.writer }),
-    ).resolves.toBe(0)
-    expect(JSON.parse(show.output())).toMatchObject({
-      configured: true,
-      path: configPath,
-      config: { manager: 'infisical', projectId: 'shell-worker' },
-    })
-  })
+      const show = makeWriter()
+      await expect(
+        runSecretsConfigCommand('show', [], { cwd: root, json: true }, { stdout: show.writer }),
+      ).resolves.toBe(0)
+      expect(JSON.parse(show.output())).toMatchObject({
+        configured: true,
+        path: configPath,
+        config: { manager: 'infisical', projectId: 'shell-worker' },
+      })
+    },
+  )
 
   it('reports invalid persisted secrets config with a path-specific command error', async () => {
     const root = makeRepo()
@@ -164,34 +165,35 @@ describe('wp config secrets', () => {
     'writes runtime overrides to the git common dir in linked worktrees',
     { timeout: 30_000 },
     async () => {
-    const repoRoot = makeRepo()
-    writeFileSync(join(repoRoot, 'README.md'), 'seed\n', 'utf8')
-    execFileSync('git', ['init'], { cwd: repoRoot, stdio: 'ignore' })
-    execFileSync('git', ['config', 'user.email', 'codex@example.com'], {
-      cwd: repoRoot,
-      stdio: 'ignore',
-    })
-    execFileSync('git', ['config', 'user.name', 'Codex'], { cwd: repoRoot, stdio: 'ignore' })
-    execFileSync('git', ['add', 'README.md'], { cwd: repoRoot, stdio: 'ignore' })
-    execFileSync('git', ['commit', '-m', 'init'], { cwd: repoRoot, stdio: 'ignore' })
-    const worktreePath = join(tmpdir(), `wp-config-worktree-${Date.now()}`)
-    tempRoots.push(worktreePath)
-    execFileSync('git', ['worktree', 'add', '--detach', '--no-checkout', worktreePath, 'HEAD'], {
-      cwd: repoRoot,
-      stdio: 'ignore',
-    })
+      const repoRoot = makeRepo()
+      writeFileSync(join(repoRoot, 'README.md'), 'seed\n', 'utf8')
+      execFileSync('git', ['init'], { cwd: repoRoot, stdio: 'ignore' })
+      execFileSync('git', ['config', 'user.email', 'codex@example.com'], {
+        cwd: repoRoot,
+        stdio: 'ignore',
+      })
+      execFileSync('git', ['config', 'user.name', 'Codex'], { cwd: repoRoot, stdio: 'ignore' })
+      execFileSync('git', ['add', 'README.md'], { cwd: repoRoot, stdio: 'ignore' })
+      execFileSync('git', ['commit', '-m', 'init'], { cwd: repoRoot, stdio: 'ignore' })
+      const worktreePath = join(tmpdir(), `wp-config-worktree-${Date.now()}`)
+      tempRoots.push(worktreePath)
+      execFileSync('git', ['worktree', 'add', '--detach', '--no-checkout', worktreePath, 'HEAD'], {
+        cwd: repoRoot,
+        stdio: 'ignore',
+      })
 
-    await expect(
-      runSecretsConfigCommand('set', ['doppler', 'platform-dev'], { cwd: worktreePath }),
-    ).resolves.toBe(0)
+      await expect(
+        runSecretsConfigCommand('set', ['doppler', 'platform-dev'], { cwd: worktreePath }),
+      ).resolves.toBe(0)
 
-    const commonConfigPath = join(repoRoot, '.git', 'webpresso', 'secrets.json')
-    expect(existsSync(commonConfigPath)).toBe(true)
-    expect(JSON.parse(readFileSync(commonConfigPath, 'utf8'))).toMatchObject({
-      manager: 'doppler',
-      projectId: 'platform-dev',
-    })
-  })
+      const commonConfigPath = join(repoRoot, '.git', 'webpresso', 'secrets.json')
+      expect(existsSync(commonConfigPath)).toBe(true)
+      expect(JSON.parse(readFileSync(commonConfigPath, 'utf8'))).toMatchObject({
+        manager: 'doppler',
+        projectId: 'platform-dev',
+      })
+    },
+  )
 
   it('reports healthy status when the selected adapter is available and authenticated', async () => {
     const stdout = makeWriter()

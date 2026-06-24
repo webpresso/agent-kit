@@ -1862,6 +1862,7 @@ describe('hooks/doctor', () => {
     it('returns source-maintenance setup guidance for the agent-kit source repo when the hooks manifest is missing', async () => {
       const knownPaths = new Set([
         '/repo/package.json',
+        '/repo/src/cli/cli.ts',
         '/repo/.claude/settings.json',
         '/repo/.codex/hooks.json',
       ])
@@ -1881,7 +1882,7 @@ describe('hooks/doctor', () => {
       const result = buildHooksDoctorFixPlan('/repo')
 
       expect(result.status).toBe('requires-approval')
-      expect(result.nextCommand).toBe('wp setup --source-maintenance')
+      expect(result.nextCommand).toBe('WP_FORCE_SOURCE=1 wp setup --source-maintenance')
     })
 
     it('returns blocked when installed hooks are unknown to the manifest', async () => {

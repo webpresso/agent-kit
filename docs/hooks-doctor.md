@@ -26,7 +26,7 @@ It also reports the public precedence model:
 | Verdict | Meaning | Resolution |
 |---|---|---|
 | `ok` | Hook matches manifest and current spec | Nothing to do |
-| `missing` | Hook in manifest but absent from installed config | Re-run `wp setup --with hooks` |
+| `missing` | Hook in manifest but absent from installed config | Re-run the printed setup/restore command |
 | `unknown` | Hook in installed config but not in manifest | Run `wp hooks status` to investigate |
 
 ## Running
@@ -71,7 +71,13 @@ wp hooks doctor --fix
 
 The hooks were never installed or the config was reset. Re-run:
 ```bash
-wp setup --with hooks
+wp setup
+```
+
+In the agent-kit source repo, use the source-aware form:
+
+```bash
+WP_FORCE_SOURCE=1 wp setup --source-maintenance
 ```
 
 If a manifest already exists, `wp hooks doctor --fix` can use the narrower
@@ -79,6 +85,8 @@ restore path:
 
 ```bash
 wp setup --restore-hooks
+# source repo:
+WP_FORCE_SOURCE=1 wp setup --restore-hooks --source-maintenance
 ```
 
 ### Codex hooks show `pending-trust`
@@ -95,7 +103,7 @@ preserved files it left untouched.
 ### Manifest absent
 
 If `.webpresso/hooks-manifest.json` is missing, doctor treats all installed hooks as `unknown`.
-Re-run `wp setup` to regenerate the manifest. `wp hooks doctor --fix` reports
+Re-run the exact command printed by doctor/status to regenerate the manifest. `wp hooks doctor --fix` reports
 this as `requires-approval` instead of silently running the broader setup flow
 for you.
 
@@ -105,7 +113,8 @@ Before shipping hook-bin, typed continuity events, operator docs, or packaged
 artifact changes, run the bounded release gate from the repo root:
 
 ```bash
-./bin/wp hooks doctor --skip-mcp
+WP_FORCE_SOURCE=1 ./bin/wp hooks status --vendor codex
+WP_FORCE_SOURCE=1 ./bin/wp hooks doctor --skip-mcp
 ./bin/wp audit blueprint-lifecycle
 ./bin/wp audit reference-parity-matrix --json
 ./bin/wp audit package-surface

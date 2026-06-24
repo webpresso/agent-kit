@@ -217,9 +217,7 @@ export function runReleaseCli(
     log('[release] done.')
     return 0
   } catch (err) {
-    stderr.write(
-      `[release] ERROR: ${err instanceof Error ? err.message : String(err)}\n`,
-    )
+    stderr.write(`[release] ERROR: ${err instanceof Error ? err.message : String(err)}\n`)
     return 1
   }
 }
