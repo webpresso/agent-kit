@@ -520,6 +520,45 @@ function getRuleDirectToolBins(prefixes: string[]): Set<string> {
   return bins
 }
 
+/**
+ * Bins eligible for BARE-BIN matching (matchesDirectToolCommand /
+ * matchesPackageManager*). A rule may deny a command by its bin alone ONLY when the
+ * prefix names a single tool with no subcommand — i.e. a single-token prefix
+ * (`act`, `vitest`) or the exact `<pm> exec <bin>` form (3 tokens).
+ *
+ * Multi-word native-CLI prefixes (`gh pr view`, `wrangler tail`, `rtk gain`,
+ * `vp exec wrangler tail`) are deliberately EXCLUDED: matching them on the top-level
+ * binary alone over-denies every sibling subcommand (`gh pr merge`, `wrangler deploy`,
+ * `rtk discover`). Those rely on matchesPrefix against the path-normalized command,
+ * which only matches the exact multi-word prefix. The broad getRuleDirectToolBins set
+ * is still used for path normalization (stripping `/path/to/wrangler`), which is safe
+ * because the stripped command is then re-checked by matchesPrefix.
+ */
+function getRuleDirectMatchBins(prefixes: string[]): Set<string> {
+  const bins = new Set<string>()
+
+  for (const prefix of prefixes) {
+    const tokens = prefix.split(/\s+/u)
+    const [command, subcommand, bin] = tokens
+
+    if (command === 'vp' || command === 'pnpm') {
+      if (subcommand === 'exec' && bin && tokens.length === 3) bins.add(bin)
+      continue
+    }
+
+    if (
+      command &&
+      tokens.length === 1 &&
+      !PACKAGE_MANAGER_PREFIXES.has(command) &&
+      !SECRET_WRAPPER_BINS.has(command)
+    ) {
+      bins.add(command)
+    }
+  }
+
+  return bins
+}
+
 function getRuleRunScriptPrefixes(prefixes: string[]): Set<string> {
   const scripts = new Set<string>()
 
@@ -552,14 +591,14 @@ function matchesPackageManagerRunScriptCommand(script: string, rule: RoutingRule
     }
   }
 
-  const directBins = getRuleDirectToolBins(rule.prefixes)
+  const directBins = getRuleDirectMatchBins(rule.prefixes)
   const bin = directToolBasename(normalizedScript)
   return bin ? directBins.has(bin) : false
 }
 
 function matchesDirectToolCommand(command: string, rule: RoutingRule): boolean {
   const firstToken = command.split(/\s+/u)[0]
-  return firstToken ? getRuleDirectToolBins(rule.prefixes).has(firstToken) : false
+  return firstToken ? getRuleDirectMatchBins(rule.prefixes).has(firstToken) : false
 }
 
 function tokenizeCommand(command: string): string[] {
@@ -674,7 +713,7 @@ function matchesPackageManagerDirectToolCommand(command: string, rule: RoutingRu
     return matchesPackageManagerRunScriptCommand(script, rule)
   }
 
-  return bin ? getRuleDirectToolBins(rule.prefixes).has(bin) : false
+  return bin ? getRuleDirectMatchBins(rule.prefixes).has(bin) : false
 }
 
 function sourceEntrypointScript(command: string): string | null {
