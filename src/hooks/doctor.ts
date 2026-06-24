@@ -36,6 +36,7 @@ import {
   formatRuntimeTypecheckParityFailures,
   probeRuntimeTypecheckParity,
 } from '#typecheck/runtime-parity.js'
+import { terminateProcessTreeWithEscalation } from '#cli/process-tree.js'
 import { isMcpReady } from './shared/mcp-sentinel.js'
 
 export interface DoctorCheck {
@@ -76,6 +77,8 @@ interface RuntimeManifestLike {
 const RTK_REQUESTED_MARKER = join('.agent', '.rtk-requested')
 const RTK_INSTALL_HINT = 'rtk requested via --with rtk but not on PATH; brew install rtk'
 const HOST_SMOKE_ENV = 'WP_RUN_HOST_SMOKE'
+const HOOK_PROBE_TIMEOUT_ENV = 'WP_DOCTOR_HOOK_TIMEOUT_MS'
+const DEFAULT_HOOK_PROBE_TIMEOUT_MS = 5000
 const OPERATOR_PRECEDENCE_DETAIL =
   'MCP first (`wp_*` tools), direct `wp` only as fallback, and never `bun run wp` / `pnpm run wp` / `npm run wp` / `yarn wp` / `vp run wp`'
 
@@ -213,6 +216,11 @@ function tryAccess(file: string): boolean {
   } catch {
     return false
   }
+}
+
+function hookProbeTimeoutMs(): number {
+  const value = Number(process.env[HOOK_PROBE_TIMEOUT_ENV] ?? DEFAULT_HOOK_PROBE_TIMEOUT_MS)
+  return Number.isFinite(value) && value > 0 ? value : DEFAULT_HOOK_PROBE_TIMEOUT_MS
 }
 
 const ABS_BIN_PATTERN = /["'](?<path>\/[^"']*node_modules\/\.bin\/wp-[\w-]+)["']/gu
@@ -379,17 +387,33 @@ function probeExitZero(
   return new Promise<{ ok: boolean; detail?: string }>((resolve) => {
     const child = spawn(wpCli.command, [...wpCli.args, 'hook', hookName], {
       stdio: ['pipe', 'pipe', 'pipe'],
+      detached: process.platform !== 'win32',
     })
     let stderr = ''
+    let settled = false
+    let cancelEscalation: (() => void) | null = null
+    const timeoutMs = hookProbeTimeoutMs()
+    const settle = (result: { ok: boolean; detail?: string }, kill = false) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      if (kill) cancelEscalation = terminateProcessTreeWithEscalation(child)
+      resolve(result)
+    }
+    const timer = setTimeout(() => {
+      settle({ ok: false, detail: `hook probe timed out after ${timeoutMs}ms` }, true)
+    }, timeoutMs)
+    timer.unref?.()
     child.stdin.end()
     child.stderr?.on('data', (chunk) => {
       stderr += String(chunk)
     })
     child.on('error', (err) => {
-      resolve({ ok: false, detail: String(err.message) })
+      settle({ ok: false, detail: String(err.message) })
     })
     child.on('close', (code) => {
-      resolve(
+      cancelEscalation?.()
+      settle(
         code === 0
           ? { ok: true }
           : { ok: false, detail: `exit ${code}${stderr ? `: ${stderr.trim()}` : ''}` },
@@ -405,15 +429,24 @@ function probeJsonStdin(
   return new Promise<{ ok: boolean; detail?: string }>((resolve) => {
     const child = spawn(wpCli.command, [...wpCli.args, 'hook', hookName], {
       stdio: ['pipe', 'pipe', 'pipe'],
+      detached: process.platform !== 'win32',
     })
     let stdout = ''
     let stderr = ''
     let settled = false
-    const settle = (result: { ok: boolean; detail?: string }) => {
+    let cancelEscalation: (() => void) | null = null
+    const timeoutMs = hookProbeTimeoutMs()
+    const settle = (result: { ok: boolean; detail?: string }, kill = false) => {
       if (settled) return
       settled = true
+      clearTimeout(timer)
+      if (kill) cancelEscalation = terminateProcessTreeWithEscalation(child)
       resolve(result)
     }
+    const timer = setTimeout(() => {
+      settle({ ok: false, detail: `hook probe timed out after ${timeoutMs}ms` }, true)
+    }, timeoutMs)
+    timer.unref?.()
     child.stdout.on('data', (chunk) => {
       stdout += String(chunk)
     })
@@ -430,6 +463,7 @@ function probeJsonStdin(
       settle({ ok: false, detail: String(err.message) })
     })
     child.on('close', (code) => {
+      cancelEscalation?.()
       if (code !== 0) {
         settle({ ok: false, detail: `exit ${code}${stderr ? `: ${stderr.trim()}` : ''}` })
         return

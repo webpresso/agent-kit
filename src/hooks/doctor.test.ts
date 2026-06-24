@@ -238,6 +238,47 @@ describe('hooks/doctor', () => {
       expect(mcpCheck?.detail).toContain('skipped')
     })
 
+    it('fails a hung hook probe instead of hanging hooks doctor', async () => {
+      vi.stubEnv('WP_DOCTOR_HOOK_TIMEOUT_MS', '5')
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (String(path) === rtkMarker) throw new Error('ENOENT')
+        return true
+      }) as typeof accessSync)
+      mockStatSync.mockReturnValue({ mode: 0o755 } as unknown as ReturnType<typeof statSync>)
+      const kills: string[] = []
+      mockSpawn.mockImplementation(() => {
+        const child = new EventEmitter() as EventEmitter & {
+          stdout: EventEmitter
+          stderr: EventEmitter
+          stdin: { write: (chunk: string, cb?: () => void) => void; end: () => void }
+          kill: () => boolean
+        }
+        child.stdout = new EventEmitter()
+        child.stderr = new EventEmitter()
+        child.stdin = {
+          write: (_chunk: string, cb?: () => void) => {
+            cb?.()
+          },
+          end: () => {},
+        }
+        child.kill = () => {
+          kills.push('killed')
+          return true
+        }
+        return child as unknown as ReturnType<typeof spawn>
+      })
+
+      vi.stubGlobal('process', fakeProcess())
+
+      const { runHooksDoctor } = await import('#hooks/doctor')
+      const result = await runHooksDoctor({ skipMcp: true, hosts: 'skip' })
+      const pretoolCheck = result.checks.find((c) => c.name === 'pretool-guard')
+
+      expect(result.ok).toBe(false)
+      expect(pretoolCheck?.detail).toBe('hook probe timed out after 5ms')
+      expect(kills.length).toBeGreaterThan(0)
+    })
+
     it('reports the managed PreCompact snapshot hook when skipMcp is true', async () => {
       mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
         if (String(path) === rtkMarker) throw new Error('ENOENT')
@@ -1409,7 +1450,7 @@ describe('hooks/doctor', () => {
       expect(result.ok).toBe(false)
       expect(result.detail).toContain('launchMode=stale-node-launcher')
       expect(result.detail).toContain('reason=staged native launcher missing')
-      expect(result.detail).not.toContain('timeout')
+      expect(result.detail).not.toContain('timed out')
     })
 
     it('fails when the target runtime binary is missing even if root bin/wp is the JS selector', async () => {
