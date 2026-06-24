@@ -254,7 +254,6 @@ describe("release workflow publish path", () => {
     expect(workspaceReleaseStep).toContain('HUSKY: "0"');
     expect(workspaceReleaseStep).toContain("execFileSync('git', ['push', '--force', 'origin'");
   });
-
   it("builds every native runtime target and attaches them to a GitHub Release in the publish path", () => {
     const workflow = readWorkflow(join(repositoryRoot, ".github", "workflows", "release.yml"));
     const changesetsActionIndex = workflow.indexOf("uses: changesets/action@");
@@ -292,7 +291,7 @@ describe("release workflow publish path", () => {
     expect(releasePublish).toContain("SESSION_MEMORY_NATIVE_ARTIFACTS_DIR_ENV");
     expect(releasePublish).toContain("function requireSessionMemoryNativeArtifactsDir()");
     expect(releasePublish).toContain("is required to publish the session-memory native matrix");
-    expect(releasePublish).toContain("'--source-dir'");
+    expect(releasePublish).toContain("--source-dir");
     expect(releasePublish).not.toContain(
       "'build:session-memory-native',\n    '--',\n    '--target',\n    'host'",
     );
