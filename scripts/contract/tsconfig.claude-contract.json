@@ -1,0 +1,13 @@
+{
+  "//": "Standalone tsconfig for the scheduled Claude hook-contract drift check. NOT part of required CI. The hook-contract-drift workflow installs @anthropic-ai/claude-agent-sdk and runs `tsc -p` against this file. Self-contained on purpose: the assertion inlines our envelope shape, so no repo path aliases are needed.",
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "target": "es2022",
+    "skipLibCheck": true,
+    "types": []
+  },
+  "include": ["claude-hook-contract.assert.ts"]
+}
