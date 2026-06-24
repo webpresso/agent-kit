@@ -40,7 +40,8 @@ vi.mock('#cli/auto-update/log.js', () => ({
 }))
 
 // Import after mocks are registered
-const { bootstrapAk, isInformationalVerb, NotInGitRepoError } = await import('#cli/bootstrap.js')
+const { bootstrapAk, isInformationalVerb, isGitRepoOptionalCommand, NotInGitRepoError } =
+  await import('#cli/bootstrap.js')
 const { getRepoKey } = await import('#paths/state-root.js')
 const { shouldSkipUpdateCheck } = await import('#cli/auto-update/skip.js')
 const { runUpdateFlow } = await import('#cli/auto-update/run.js')
@@ -72,6 +73,24 @@ describe('isInformationalVerb', () => {
   })
 })
 
+describe('isGitRepoOptionalCommand', () => {
+  it('returns true for hook', () => {
+    expect(isGitRepoOptionalCommand(['node', 'wp', 'hook', 'pretool-guard'])).toBe(true)
+  })
+
+  it('returns true for mcp', () => {
+    expect(isGitRepoOptionalCommand(['node', 'wp', 'mcp'])).toBe(true)
+  })
+
+  it('returns false for a normal repo-bound command', () => {
+    expect(isGitRepoOptionalCommand(['node', 'wp', 'blueprint'])).toBe(false)
+  })
+
+  it('returns false when no subcommand is present', () => {
+    expect(isGitRepoOptionalCommand(['node', 'wp'])).toBe(false)
+  })
+})
+
 describe('bootstrapAk', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -100,6 +119,25 @@ describe('bootstrapAk', () => {
       NotInGitRepoError,
     )
     expect(runUpdateFlow).not.toHaveBeenCalled()
+  })
+
+  it('hook lane: not in git repo → short-circuits before getRepoKey, does not throw', async () => {
+    // A missing git repo must never hard-fail a hook: the host wrapper turns a
+    // non-zero exit into a misleading "wp not found" deny.
+    vi.mocked(getRepoKey).mockImplementation(() => {
+      throw new NotInGitRepoError('/some/path')
+    })
+    await expect(bootstrapAk('0.16.0', ['node', 'wp', 'hook', 'pretool-guard'])).resolves.toBeUndefined()
+    expect(getRepoKey).not.toHaveBeenCalled()
+    expect(runUpdateFlow).not.toHaveBeenCalled()
+  })
+
+  it('mcp lane: not in git repo → short-circuits before getRepoKey, does not throw', async () => {
+    vi.mocked(getRepoKey).mockImplementation(() => {
+      throw new NotInGitRepoError('/some/path')
+    })
+    await expect(bootstrapAk('0.16.0', ['node', 'wp', 'mcp'])).resolves.toBeUndefined()
+    expect(getRepoKey).not.toHaveBeenCalled()
   })
 
   it('D8: non-informational + in git + CI=true → runUpdateFlow NOT called', async () => {

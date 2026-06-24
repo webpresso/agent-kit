@@ -23,6 +23,17 @@ export { NotInGitRepoError }
 const INFORMATIONAL_FLAGS = new Set(['--version', '-v', '--help', '-h'])
 
 /**
+ * Runtime-lane subcommands whose dispatch must work from any cwd: Codex fires
+ * a `hook` with cwd at a sibling repo, a freshly cloned / un-`git init`'d repo
+ * still needs its pretool-guard, and the `mcp` server can run outside a
+ * checkout. These lanes never consume git-repo state and already skip the
+ * update flow, so a missing git repo must NOT hard-fail. A crashing
+ * pretool-guard is worse than useless: the host hook wrapper mistranslates a
+ * non-zero/non-2 exit into a misleading "wp not found" deny.
+ */
+const GIT_REPO_OPTIONAL_SUBCOMMANDS = new Set(['hook', 'mcp'])
+
+/**
  * Returns true when argv contains an informational flag anywhere after the
  * first two entries (runtime + script path).
  */
@@ -32,6 +43,14 @@ export function isInformationalVerb(argv: string[]): boolean {
     if (arg !== undefined && INFORMATIONAL_FLAGS.has(arg)) return true
   }
   return false
+}
+
+/**
+ * Returns true when the invoked subcommand (argv[2]) is a runtime lane exempt
+ * from the git-repo hard-fail.
+ */
+export function isGitRepoOptionalCommand(argv: string[]): boolean {
+  return argv[2] !== undefined && GIT_REPO_OPTIONAL_SUBCOMMANDS.has(argv[2])
 }
 
 /**
@@ -45,6 +64,11 @@ export function isInformationalVerb(argv: string[]): boolean {
 export async function bootstrapAk(version: string, argv: string[] = process.argv): Promise<void> {
   // D19 — informational verbs short-circuit before any git repo check.
   if (isInformationalVerb(argv)) return
+
+  // hook / mcp runtime lanes must degrade gracefully outside a git repo — they
+  // never use repo state and already skip the update flow, so short-circuit
+  // before the hard-fail rather than crash (see GIT_REPO_OPTIONAL_SUBCOMMANDS).
+  if (isGitRepoOptionalCommand(argv)) return
 
   // D6 — hard-fail outside git repo. NotInGitRepoError propagates to cli.ts.
   getRepoKey() // throws NotInGitRepoError if not in git; return value not needed here
