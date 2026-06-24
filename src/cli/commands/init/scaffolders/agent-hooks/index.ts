@@ -9,7 +9,7 @@
  *
  * Runs by default on every `wp setup`.
  */
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, rmSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 
@@ -64,6 +64,10 @@ function quoteShell(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+}
+
 function resolveWpHookLauncherPath(): string {
   return resolve(resolvePackageRootForHookLaunchers(), 'bin', 'wp')
 }
@@ -106,6 +110,20 @@ const CODEX_BIN = (repoRoot: string) => (name: string) => buildDirectWpHookComma
 
 // Derived from the WP_HOOK_BIN_NAMES single source of truth (ir.ts).
 const WEBPRESSO_HOOK_BIN_NAMES = new Set(WP_HOOK_BIN_NAMES)
+const LEGACY_MANAGED_ONLY_HOOK_FILES = new Set([
+  'wp-check-dev-link.sh',
+  'wp-global-codex-omx-hook.sh',
+  'wp-global-codex-omx-json-hook.sh',
+])
+const LEGACY_MANAGED_HOOK_DIRECTORY_SEGMENTS = [
+  '.codex/managed-hooks',
+  '.claude/hooks/managed',
+] as const
+const LEGACY_MANAGED_ONLY_HOOK_PATHS = [
+  '.codex/managed-hooks/wp-check-dev-link.sh',
+  '.codex/managed-hooks/wp-global-codex-omx-hook.sh',
+  '.codex/managed-hooks/wp-global-codex-omx-json-hook.sh',
+] as const
 
 type WebpressoHookBinClassification = { kind: 'canonical'; binName: string }
 
@@ -117,11 +135,11 @@ export function classifyWebpressoHookBin(
 }
 
 function extractAgentKitCodexBinName(command: string): string | null {
-  return extractWpHookCommandBinName(command)
+  return extractWpHookCommandBinName(command) ?? extractOwnedLegacyManagedHookBinName(command)
 }
 
 function extractClaudeBinName(command: string): string | null {
-  return extractWpHookCommandBinName(command)
+  return extractWpHookCommandBinName(command) ?? extractOwnedLegacyManagedHookBinName(command)
 }
 
 function extractWpHookCommandBinName(command: string): string | null {
@@ -130,6 +148,19 @@ function extractWpHookCommandBinName(command: string): string | null {
   if (!subcommand || !isHookName(subcommand)) return null
   const binName = `wp-${subcommand}`
   return WEBPRESSO_HOOK_BIN_NAMES.has(binName) ? binName : null
+}
+
+function extractOwnedLegacyManagedHookBinName(command: string): string | null {
+  const match = new RegExp(
+    `(?:${LEGACY_MANAGED_HOOK_DIRECTORY_SEGMENTS.map((segment) => escapeRegExp(segment)).join('|')})\\/(wp-[a-z0-9-]+)\\.sh\\b`,
+    'u',
+  ).exec(command)
+  const binName = match?.[1]
+  return binName && WEBPRESSO_HOOK_BIN_NAMES.has(binName) ? binName : null
+}
+
+function isLegacyManagedOnlyHookCommand(command: string): boolean {
+  return LEGACY_MANAGED_ONLY_HOOK_PATHS.some((filePath) => command.includes(filePath))
 }
 
 // ensureGroup and mergeAgentKitGroups are imported from ./merge.js
@@ -215,7 +246,7 @@ function normalizeCodexAgentKitCommands(hooks: HooksMap): HooksMap {
           const command = hook.command
           if (typeof command !== 'string') return hook
           const classification = classifyWebpressoHookBin(extractAgentKitCodexBinName(command))
-          if (classification === null) return hook
+          if (classification === null && !isLegacyManagedOnlyHookCommand(command)) return hook
           return []
         }),
       }
@@ -240,7 +271,7 @@ function normalizeClaudeAgentKitCommands(hooks: HooksMap): HooksMap {
           const command = hook.command
           if (typeof command !== 'string') return hook
           const classification = classifyWebpressoHookBin(extractClaudeBinName(command))
-          if (classification === null) return hook
+          if (classification === null && !isLegacyManagedOnlyHookCommand(command)) return hook
           return []
         }),
       }
@@ -559,31 +590,6 @@ export type ManagedHookVendor = 'claude' | 'codex'
 
 type ManagedHookMutationResult = Partial<Record<ManagedHookVendor, MergeResult>>
 
-function patchClaudeHooksFromManifest(
-  existing: Record<string, unknown>,
-  manifest: HooksManifest,
-): Record<string, unknown> {
-  const existingHooks = normalizeClaudeAgentKitCommands((existing.hooks ?? {}) as HooksMap)
-  const merged = mergeAgentKitGroups(existingHooks, manifest.claude)
-  return withClaudeWorktreeSettings(existing, {
-    ...merged,
-    Stop: orderStopGroups(merged.Stop ?? []),
-  })
-}
-
-function patchCodexHooksFromManifest(
-  existing: Record<string, unknown>,
-  repoRoot: string,
-  manifest: HooksManifest,
-): Record<string, unknown> {
-  const migrated = hoistTopLevelEvents(existing)
-  const existingHooks = normalizeCodexAgentKitCommands((migrated.hooks ?? {}) as HooksMap)
-  return {
-    ...migrated,
-    hooks: mergeAgentKitGroups(existingHooks, manifest.codex),
-  }
-}
-
 function disableClaudeHooksFromManifest(
   existing: Record<string, unknown>,
   manifest: HooksManifest,
@@ -607,21 +613,25 @@ function disableCodexHooksFromManifest(
 
 export function restoreManagedHooksFromManifest(
   input: ScaffoldAgentHooksInput,
-  manifest: HooksManifest,
+  _manifest: HooksManifest,
   vendors: readonly ManagedHookVendor[] = ['claude', 'codex'],
 ): ManagedHookMutationResult {
+  // Rebuild managed hooks from current repo truth rather than replaying the
+  // stored manifest: an old manifest may carry retired wrapper commands
+  // (.codex/managed-hooks/…) that must not be re-materialized on restore.
+  const skillHooks = extractSkillHooks(join(input.repoRoot, '.agent', 'skills'))
   const result: ManagedHookMutationResult = {}
   if (vendors.includes('claude')) {
     result.claude = patchJsonFile(
       join(input.repoRoot, '.claude', 'settings.json'),
-      (existing) => patchClaudeHooksFromManifest(existing, manifest),
+      (existing) => patchClaudeSettings(existing, input.repoRoot, skillHooks),
       input.options,
     )
   }
   if (vendors.includes('codex')) {
     result.codex = patchJsonFile(
       join(input.repoRoot, '.codex', 'hooks.json'),
-      (existing) => patchCodexHooksFromManifest(existing, input.repoRoot, manifest),
+      (existing) => patchCodexHooks(existing, input.repoRoot),
       input.options,
     )
   }
@@ -673,6 +683,42 @@ export function hookSubcommandFor(binName: string): string | undefined {
   return isHookName(sub) ? sub : undefined
 }
 
+function removeDirectoryIfEmpty(directoryPath: string): void {
+  let entries: readonly string[]
+  try {
+    entries = readdirSync(directoryPath)
+  } catch (error: unknown) {
+    // Already gone or not a directory (concurrent delete / unexpected file): nothing to prune.
+    const code = (error as NodeJS.ErrnoException).code
+    if (code === 'ENOENT' || code === 'ENOTDIR') return
+    throw error
+  }
+  if (entries.length > 0) return
+  rmSync(directoryPath, { recursive: false, force: true })
+}
+
+function pruneLegacyGeneratedHookFiles(
+  repoRoot: string,
+  directorySegments: readonly string[],
+  fileNames: readonly string[],
+): void {
+  const directoryPath = join(repoRoot, ...directorySegments)
+  for (const fileName of fileNames) {
+    rmSync(join(directoryPath, fileName), { force: true })
+  }
+  removeDirectoryIfEmpty(directoryPath)
+}
+
+function pruneLegacyManagedHookDirectories(repoRoot: string): void {
+  const managedHookFiles = WP_HOOK_BIN_NAMES.map((binName) => `${binName}.sh`)
+  pruneLegacyGeneratedHookFiles(
+    repoRoot,
+    ['.codex', 'managed-hooks'],
+    [...managedHookFiles, ...LEGACY_MANAGED_ONLY_HOOK_FILES],
+  )
+  pruneLegacyGeneratedHookFiles(repoRoot, ['.claude', 'hooks', 'managed'], managedHookFiles)
+}
+
 export async function scaffoldAgentHooks(
   input: ScaffoldAgentHooksInput,
 ): Promise<ScaffoldAgentHooksResult> {
@@ -695,6 +741,9 @@ export async function scaffoldAgentHooks(
       input.options,
     ),
     manifest,
+  }
+  if (!input.options.dryRun) {
+    pruneLegacyManagedHookDirectories(input.repoRoot)
   }
   if (input.trustCodexHooks !== false) {
     await trustCodexWebpressoHooksForRepo(input)
