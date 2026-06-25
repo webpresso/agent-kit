@@ -25,13 +25,7 @@ export const TEST_INCLUDE = [
 // subprocess project's `**/*.<suffix>.test.ts` globs would — exclude them so we
 // don't run duplicate/stale test files from nested worktrees.
 const BASE_EXCLUDE = ["**/node_modules/**", "**/dist/**", "**/.claude/**", "**/_worktrees/**"];
-const IS_CI = process.env.CI === "true";
-// CI runners are 2-core, so 2 workers matches the hardware. Locally, leave most
-// cores busy without globally serializing: the genuine shared-resource offenders
-// are isolated into the serial-subprocess project below, so the rest of the
-// subprocess lane can run with bounded parallelism safely.
-const UNIT_WORKERS = IS_CI ? 2 : "75%";
-const SUBPROCESS_WORKERS = IS_CI ? 2 : 4;
+const BOUNDED_WORKERS = process.env.CI === "true" ? 2 : 3;
 
 // Subprocess-heavy lane, classified by filename SUFFIX (not a maintained list):
 //   - *.integration.test.ts / *.e2e.test.ts — established conventions
@@ -99,7 +93,7 @@ export default defineConfig({
           include: TEST_INCLUDE,
           exclude: [...BASE_EXCLUDE, ...SUBPROCESS_SUFFIX_GLOBS],
           pool: "forks",
-          maxWorkers: UNIT_WORKERS,
+          maxWorkers: BOUNDED_WORKERS,
           testTimeout: 10_000,
         },
       },
@@ -110,7 +104,7 @@ export default defineConfig({
           include: SUBPROCESS_SUFFIX_GLOBS,
           exclude: [...BASE_EXCLUDE, ...SERIAL_SUBPROCESS_GLOBS],
           pool: "forks",
-          maxWorkers: SUBPROCESS_WORKERS,
+          maxWorkers: BOUNDED_WORKERS,
           testTimeout: 30_000,
         },
       },
@@ -122,6 +116,7 @@ export default defineConfig({
           exclude: BASE_EXCLUDE,
           pool: "forks",
           fileParallelism: false,
+          sequence: { groupOrder: 1 },
           testTimeout: 30_000,
         },
       },
