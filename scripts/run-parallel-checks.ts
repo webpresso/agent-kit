@@ -64,6 +64,14 @@ function stopChildren(children: Set<ChildProcessWithoutNullStreams>): void {
   for (const child of children) {
     if (!child.killed) child.kill("SIGTERM");
   }
+  // Escalate to SIGKILL for any child that ignores SIGTERM, so an interrupted
+  // run can't hang forever on a stuck worker. `.unref()` keeps the timer from
+  // holding the event loop open if everything already exited cleanly.
+  setTimeout(() => {
+    for (const child of children) {
+      if (!child.killed) child.kill("SIGKILL");
+    }
+  }, 5_000).unref();
 }
 
 async function main(): Promise<void> {
@@ -89,7 +97,10 @@ async function main(): Promise<void> {
     process.stdout.write(`- ${status} ${result.check.name} (${detail})\n`);
   }
 
-  if (failed.length > 0) {
+  // Don't clobber an interrupt code: a SIGINT/SIGTERM handler already set
+  // exitCode (130/143) and SIGTERM'd children resolve here as "failed". Only
+  // assign the failure code when the run completed without a signal.
+  if (failed.length > 0 && process.exitCode === undefined) {
     process.exitCode = 1;
   }
 }
