@@ -5,65 +5,65 @@
  * workspaces — single-package projects are fine). Reads `package.json` and
  * `pnpm-workspace.yaml` when present to power downstream template rendering.
  */
-import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-import { AGENT_KIT_PACKAGE_NAME, setupCommandForHookPolicy } from './source-repo-hook-policy.js'
+import { AGENT_KIT_PACKAGE_NAME, setupCommandForHookPolicy } from "./source-repo-hook-policy.js";
 
-const AGENT_KIT_PACKAGE_NAMES = new Set([AGENT_KIT_PACKAGE_NAME])
+const AGENT_KIT_PACKAGE_NAMES = new Set([AGENT_KIT_PACKAGE_NAME]);
 
 export interface ConsumerPackageInfo {
-  name: string
-  version?: string
-  dependencies: Record<string, string>
-  devDependencies: Record<string, string>
+  name: string;
+  version?: string;
+  dependencies: Record<string, string>;
+  devDependencies: Record<string, string>;
 }
 
 export interface WorkspacePackageInfo {
-  name: string
-  relativePath: string
-  absolutePath: string
-  shortName: string
+  name: string;
+  relativePath: string;
+  absolutePath: string;
+  shortName: string;
 }
 
 export interface ConsumerContext {
-  repoRoot: string
-  packageJsonPath: string | null
-  packageJson: ConsumerPackageInfo | null
-  hasPnpmWorkspace: boolean
-  workspacePackages: WorkspacePackageInfo[]
+  repoRoot: string;
+  packageJsonPath: string | null;
+  packageJson: ConsumerPackageInfo | null;
+  hasPnpmWorkspace: boolean;
+  workspacePackages: WorkspacePackageInfo[];
 }
 
 export function findGitRoot(startDir: string): string | null {
-  let current = path.resolve(startDir)
+  let current = path.resolve(startDir);
   for (;;) {
-    if (existsSync(path.join(current, '.git'))) return current
-    const parent = path.dirname(current)
-    if (parent === current) return null
-    current = parent
+    if (existsSync(path.join(current, ".git"))) return current;
+    const parent = path.dirname(current);
+    if (parent === current) return null;
+    current = parent;
   }
 }
 
 export function readPackageJson(repoRoot: string): {
-  path: string | null
-  info: ConsumerPackageInfo | null
+  path: string | null;
+  info: ConsumerPackageInfo | null;
 } {
-  const candidate = path.join(repoRoot, 'package.json')
-  if (!existsSync(candidate)) return { path: null, info: null }
+  const candidate = path.join(repoRoot, "package.json");
+  if (!existsSync(candidate)) return { path: null, info: null };
   try {
-    const raw = readFileSync(candidate, 'utf8')
-    const parsed = JSON.parse(raw) as Record<string, unknown>
-    const name = typeof parsed['name'] === 'string' ? parsed['name'] : path.basename(repoRoot)
-    const version = typeof parsed['version'] === 'string' ? parsed['version'] : undefined
-    const deps = (parsed['dependencies'] ?? {}) as Record<string, string>
-    const devDeps = (parsed['devDependencies'] ?? {}) as Record<string, string>
+    const raw = readFileSync(candidate, "utf8");
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const name = typeof parsed["name"] === "string" ? parsed["name"] : path.basename(repoRoot);
+    const version = typeof parsed["version"] === "string" ? parsed["version"] : undefined;
+    const deps = (parsed["dependencies"] ?? {}) as Record<string, string>;
+    const devDeps = (parsed["devDependencies"] ?? {}) as Record<string, string>;
     return {
       path: candidate,
       info: { name, version, dependencies: deps, devDependencies: devDeps },
-    }
+    };
   } catch {
-    return { path: candidate, info: null }
+    return { path: candidate, info: null };
   }
 }
 
@@ -73,37 +73,37 @@ export function readPackageJson(repoRoot: string): {
  * we only need the `packages:` block.
  */
 export function parseWorkspaceGlobs(repoRoot: string): string[] | null {
-  const wsPath = path.join(repoRoot, 'pnpm-workspace.yaml')
-  if (!existsSync(wsPath)) return null
+  const wsPath = path.join(repoRoot, "pnpm-workspace.yaml");
+  if (!existsSync(wsPath)) return null;
   try {
-    const raw = readFileSync(wsPath, 'utf8')
-    const globs: string[] = []
-    let inPackages = false
-    for (const rawLine of raw.split('\n')) {
-      const line = rawLine.replace(/\r$/, '')
+    const raw = readFileSync(wsPath, "utf8");
+    const globs: string[] = [];
+    let inPackages = false;
+    for (const rawLine of raw.split("\n")) {
+      const line = rawLine.replace(/\r$/, "");
       if (/^packages:\s*$/.test(line)) {
-        inPackages = true
-        continue
+        inPackages = true;
+        continue;
       }
       if (inPackages) {
-        const trimmed = line.trim()
+        const trimmed = line.trim();
         // Stop at a new top-level key
         if (
           line.length > 0 &&
-          !line.startsWith(' ') &&
-          !line.startsWith('-') &&
-          !line.startsWith('\t')
+          !line.startsWith(" ") &&
+          !line.startsWith("-") &&
+          !line.startsWith("\t")
         ) {
-          inPackages = false
-          continue
+          inPackages = false;
+          continue;
         }
-        const match = /^-\s*['"]?([^'"\s#]+)['"]?/.exec(trimmed)
-        if (match && match[1]) globs.push(match[1])
+        const match = /^-\s*['"]?([^'"\s#]+)['"]?/.exec(trimmed);
+        if (match && match[1]) globs.push(match[1]);
       }
     }
-    return globs
+    return globs;
   } catch {
-    return null
+    return null;
   }
 }
 
@@ -116,145 +116,145 @@ export function parseWorkspaceGlobs(repoRoot: string): string[] | null {
  */
 function safeReaddir(dir: string): string[] {
   try {
-    return readdirSync(dir)
+    return readdirSync(dir);
   } catch {
-    return []
+    return [];
   }
 }
 
 function safeRealpath(target: string): string | null {
   try {
-    return realpathSync(target)
+    return realpathSync(target);
   } catch {
-    return null
+    return null;
   }
 }
 
 function isWithinPath(target: string, root: string): boolean {
-  const relative = path.relative(root, target)
-  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
+  const relative = path.relative(root, target);
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
 function discoverInstalledAgentKitRoots(repoRoot: string): string[] {
-  const roots = new Set<string>()
+  const roots = new Set<string>();
 
-  for (const directRoot of [path.join(repoRoot, 'node_modules', '@webpresso', 'agent-kit')]) {
-    if (existsSync(path.join(directRoot, 'package.json'))) {
-      roots.add(directRoot)
+  for (const directRoot of [path.join(repoRoot, "node_modules", "@webpresso", "agent-kit")]) {
+    if (existsSync(path.join(directRoot, "package.json"))) {
+      roots.add(directRoot);
     }
   }
 
-  const pnpmRoot = path.join(repoRoot, 'node_modules', '.pnpm')
+  const pnpmRoot = path.join(repoRoot, "node_modules", ".pnpm");
   for (const entry of safeReaddir(pnpmRoot)) {
-    const candidates: string[] = []
-    if (entry.startsWith('@webpresso+agent-kit@')) {
-      candidates.push(path.join(pnpmRoot, entry, 'node_modules', '@webpresso', 'agent-kit'))
+    const candidates: string[] = [];
+    if (entry.startsWith("@webpresso+agent-kit@")) {
+      candidates.push(path.join(pnpmRoot, entry, "node_modules", "@webpresso", "agent-kit"));
     }
     for (const candidate of candidates) {
-      if (existsSync(path.join(candidate, 'package.json'))) {
-        roots.add(candidate)
+      if (existsSync(path.join(candidate, "package.json"))) {
+        roots.add(candidate);
       }
     }
   }
 
-  return [...roots]
+  return [...roots];
 }
 
 function isLocalAgentKitCli(repoRoot: string, cliPath: string): boolean {
   const cliCandidates = [
     ...new Set([cliPath, safeRealpath(cliPath)].filter((p): p is string => p !== null)),
-  ]
-  if (cliCandidates.length === 0) return false
+  ];
+  if (cliCandidates.length === 0) return false;
 
   for (const root of discoverInstalledAgentKitRoots(repoRoot)) {
     const rootCandidates = [
       ...new Set([root, safeRealpath(root)].filter((p): p is string => p !== null)),
-    ]
+    ];
     for (const candidate of cliCandidates) {
       if (rootCandidates.some((rootPath) => isWithinPath(candidate, rootPath))) {
-        return true
+        return true;
       }
     }
   }
 
-  return false
+  return false;
 }
 
 function isDirectory(full: string): boolean {
   try {
-    return statSync(full).isDirectory()
+    return statSync(full).isDirectory();
   } catch {
-    return false
+    return false;
   }
 }
 
 function expandGlob(repoRoot: string, glob: string): string[] {
-  const segments = glob.split('/').filter((s) => s.length > 0)
-  let frontier: string[] = [repoRoot]
+  const segments = glob.split("/").filter((s) => s.length > 0);
+  let frontier: string[] = [repoRoot];
 
   for (const segment of segments) {
-    const next: string[] = []
+    const next: string[] = [];
     for (const dir of frontier) {
-      if (!existsSync(dir)) continue
-      if (segment === '**') {
-        const stack: string[] = [dir]
+      if (!existsSync(dir)) continue;
+      if (segment === "**") {
+        const stack: string[] = [dir];
         while (stack.length > 0) {
-          const popped = stack.pop()
-          if (popped === undefined) break
-          next.push(popped)
+          const popped = stack.pop();
+          if (popped === undefined) break;
+          next.push(popped);
           for (const entry of safeReaddir(popped)) {
-            if (entry === 'node_modules' || entry.startsWith('.')) continue
-            const full = path.join(popped, entry)
-            if (isDirectory(full)) stack.push(full)
+            if (entry === "node_modules" || entry.startsWith(".")) continue;
+            const full = path.join(popped, entry);
+            if (isDirectory(full)) stack.push(full);
           }
         }
-      } else if (segment === '*') {
+      } else if (segment === "*") {
         for (const entry of safeReaddir(dir)) {
-          if (entry === 'node_modules' || entry.startsWith('.')) continue
-          const full = path.join(dir, entry)
-          if (isDirectory(full)) next.push(full)
+          if (entry === "node_modules" || entry.startsWith(".")) continue;
+          const full = path.join(dir, entry);
+          if (isDirectory(full)) next.push(full);
         }
       } else {
-        const full = path.join(dir, segment)
-        if (isDirectory(full)) next.push(full)
+        const full = path.join(dir, segment);
+        if (isDirectory(full)) next.push(full);
       }
     }
-    frontier = next
+    frontier = next;
   }
 
-  return frontier
+  return frontier;
 }
 
 export function discoverWorkspacePackages(
   repoRoot: string,
   globs: string[] | null,
 ): WorkspacePackageInfo[] {
-  if (!globs || globs.length === 0) return []
-  const seen = new Set<string>()
-  const out: WorkspacePackageInfo[] = []
+  if (!globs || globs.length === 0) return [];
+  const seen = new Set<string>();
+  const out: WorkspacePackageInfo[] = [];
   for (const glob of globs) {
     for (const dir of expandGlob(repoRoot, glob)) {
-      const pkgPath = path.join(dir, 'package.json')
-      if (seen.has(dir)) continue
-      if (!existsSync(pkgPath)) continue
-      seen.add(dir)
+      const pkgPath = path.join(dir, "package.json");
+      if (seen.has(dir)) continue;
+      if (!existsSync(pkgPath)) continue;
+      seen.add(dir);
       try {
-        const raw = readFileSync(pkgPath, 'utf8')
-        const parsed = JSON.parse(raw) as { name?: string }
-        const fullName = typeof parsed.name === 'string' ? parsed.name : path.basename(dir)
-        const shortName = fullName.includes('/') ? (fullName.split('/')[1] ?? fullName) : fullName
+        const raw = readFileSync(pkgPath, "utf8");
+        const parsed = JSON.parse(raw) as { name?: string };
+        const fullName = typeof parsed.name === "string" ? parsed.name : path.basename(dir);
+        const shortName = fullName.includes("/") ? (fullName.split("/")[1] ?? fullName) : fullName;
         out.push({
           name: fullName,
-          relativePath: path.relative(repoRoot, dir) || '.',
+          relativePath: path.relative(repoRoot, dir) || ".",
           absolutePath: dir,
           shortName,
-        })
+        });
       } catch {
         /* skip malformed package */
       }
     }
   }
-  return out.toSorted((a, b) => a.name.localeCompare(b.name))
+  return out.toSorted((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
@@ -263,54 +263,54 @@ export function discoverWorkspacePackages(
  * presets. Source/JIT mode is reserved for this repo via `WP_FORCE_SOURCE=1`.
  */
 export function warnIfNonLocalCli(repoRoot: string, cliUrl: string = import.meta.url): void {
-  const ourPkg = readPackageJson(repoRoot).info
-  if (ourPkg?.name !== undefined && AGENT_KIT_PACKAGE_NAMES.has(ourPkg.name)) return
+  const ourPkg = readPackageJson(repoRoot).info;
+  if (ourPkg?.name !== undefined && AGENT_KIT_PACKAGE_NAMES.has(ourPkg.name)) return;
 
-  let cliPath: string
+  let cliPath: string;
   try {
-    cliPath = fileURLToPath(cliUrl)
+    cliPath = fileURLToPath(cliUrl);
   } catch {
-    return
+    return;
   }
 
   const localAgentKitVersion =
-    ourPkg?.dependencies['@webpresso/agent-kit'] ??
-    ourPkg?.devDependencies['@webpresso/agent-kit'] ??
-    null
+    ourPkg?.dependencies["@webpresso/agent-kit"] ??
+    ourPkg?.devDependencies["@webpresso/agent-kit"] ??
+    null;
   const configVersion =
-    ourPkg?.dependencies['@webpresso/agent-config'] ??
-    ourPkg?.devDependencies['@webpresso/agent-config'] ??
-    null
+    ourPkg?.dependencies["@webpresso/agent-config"] ??
+    ourPkg?.devDependencies["@webpresso/agent-config"] ??
+    null;
 
   if (isLocalAgentKitCli(repoRoot, cliPath)) {
     console.error(
       `warning: wp is running from this repo's node_modules (${cliPath}). ` +
-        'Consumers must use the global install: `vp install -g @webpresso/agent-kit`, then run `wp setup`.',
-    )
-    return
+        "Consumers must use the global install: `vp install -g @webpresso/agent-kit`, then run `wp setup`.",
+    );
+    return;
   }
 
-  if (typeof localAgentKitVersion === 'string') {
+  if (typeof localAgentKitVersion === "string") {
     console.error(
-      'warning: unsupported consumer-local @webpresso/agent-kit dependency. ' +
-        'Use the global `wp` install and keep only @webpresso/agent-config as the local preset dependency.',
-    )
+      "warning: unsupported consumer-local @webpresso/agent-kit dependency. " +
+        "Use the global `wp` install and keep only @webpresso/agent-config as the local preset dependency.",
+    );
   }
 
-  if (typeof configVersion !== 'string' || !isPublishedSemverRange(configVersion)) {
+  if (typeof configVersion !== "string" || !isPublishedSemverRange(configVersion)) {
     console.error(
-      'warning: missing or invalid @webpresso/agent-config dependency pin. ' +
-        'Consumers must pin a published semver range in package.json, install dependencies, then use global `wp setup`.',
-    )
+      "warning: missing or invalid @webpresso/agent-config dependency pin. " +
+        "Consumers must pin a published semver range in package.json, install dependencies, then use global `wp setup`.",
+    );
   }
 }
 
 function isPublishedSemverRange(value: string): boolean {
-  const trimmed = value.trim()
-  if (trimmed.length === 0) return false
-  if (trimmed === 'latest') return false
-  if (/^(workspace|file|link):/u.test(trimmed)) return false
-  return /^(?:[~^]?\d+\.\d+\.\d+|[><=]|\*)/u.test(trimmed)
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return false;
+  if (trimmed === "latest") return false;
+  if (/^(workspace|file|link):/u.test(trimmed)) return false;
+  return /^(?:[~^]?\d+\.\d+\.\d+|[><=]|\*)/u.test(trimmed);
 }
 
 /**
@@ -320,31 +320,31 @@ function isPublishedSemverRange(value: string): boolean {
  * unless explicitly overridden. Only `@webpresso/agent-kit` hosts the catalog
  * templates.
  */
-export { AGENT_KIT_PACKAGE_NAME } from './source-repo-hook-policy.js'
+export { AGENT_KIT_PACKAGE_NAME } from "./source-repo-hook-policy.js";
 
 /** True when the consumer being scaffolded is agent-kit's own template-source repo. */
 export function isAgentKitTemplateSourceRepo(packageName: string | undefined): boolean {
-  return packageName === AGENT_KIT_PACKAGE_NAME
+  return packageName === AGENT_KIT_PACKAGE_NAME;
 }
 
 export function setupCommandForRepo(
   repoRoot: string,
   options: { readonly restoreHooks?: boolean } = {},
 ): string {
-  return setupCommandForHookPolicy(repoRoot, options)
+  return setupCommandForHookPolicy(repoRoot, options);
 }
 
 export function detectConsumer(startDir: string = process.cwd()): ConsumerContext | null {
-  const repoRoot = findGitRoot(startDir)
-  if (!repoRoot) return null
-  const { path: pkgPath, info } = readPackageJson(repoRoot)
-  const globs = parseWorkspaceGlobs(repoRoot)
-  const workspacePackages = discoverWorkspacePackages(repoRoot, globs)
+  const repoRoot = findGitRoot(startDir);
+  if (!repoRoot) return null;
+  const { path: pkgPath, info } = readPackageJson(repoRoot);
+  const globs = parseWorkspaceGlobs(repoRoot);
+  const workspacePackages = discoverWorkspacePackages(repoRoot, globs);
   return {
     repoRoot,
     packageJsonPath: pkgPath,
     packageJson: info,
     hasPnpmWorkspace: globs !== null,
     workspacePackages,
-  }
+  };
 }

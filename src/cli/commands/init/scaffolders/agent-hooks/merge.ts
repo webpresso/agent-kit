@@ -5,21 +5,21 @@
  * merge logic without pulling in the full scaffolder surface.
  */
 
-import type { HookEntry, HookGroup, HooksMap } from './ir.js'
+import type { HookEntry, HookGroup, HooksMap } from "./ir.js";
 
 function findHookIndexByCommand(hooks: HookEntry[], command: string): number {
-  return hooks.findIndex((hook) => commandMatches(hook.command, command))
+  return hooks.findIndex((hook) => commandMatches(hook.command, command));
 }
 
-const SCRIPT_EXTENSIONS = ['sh', 'ts', 'js', 'mjs', 'cjs', 'py'] as const
+const SCRIPT_EXTENSIONS = ["sh", "ts", "js", "mjs", "cjs", "py"] as const;
 const SCRIPT_BASENAME_PATTERN = new RegExp(
-  String.raw`([\w-]+\.(?:${SCRIPT_EXTENSIONS.join('|')}))(?=$|["'\s])`,
-  'u',
-)
+  String.raw`([\w-]+\.(?:${SCRIPT_EXTENSIONS.join("|")}))(?=$|["'\s])`,
+  "u",
+);
 
 function extractAgentKitBinName(command: string): string | null {
-  const match = /\bwp["']?\s+hook\s+([a-z0-9-]+)/u.exec(command)
-  return match?.[1] ? `wp-${match[1]}` : null
+  const match = /\bwp["']?\s+hook\s+([a-z0-9-]+)/u.exec(command);
+  return match?.[1] ? `wp-${match[1]}` : null;
 }
 
 /**
@@ -28,11 +28,11 @@ function extractAgentKitBinName(command: string): string | null {
  * `commandMatches` for dedup across wrapped/raw invocation forms.
  */
 function extractCommandTarget(command: string): string | null {
-  const binName = extractAgentKitBinName(command)
-  if (binName !== null) return `bin:${binName}`
-  const scriptMatch = SCRIPT_BASENAME_PATTERN.exec(command)
-  if (scriptMatch !== null) return `script:${scriptMatch[1]}`
-  return null
+  const binName = extractAgentKitBinName(command);
+  if (binName !== null) return `bin:${binName}`;
+  const scriptMatch = SCRIPT_BASENAME_PATTERN.exec(command);
+  if (scriptMatch !== null) return `script:${scriptMatch[1]}`;
+  return null;
 }
 
 /**
@@ -41,9 +41,9 @@ function extractCommandTarget(command: string): string | null {
  * script path noise for user-owned scripts.
  */
 function commandMatches(left: string, right: string): boolean {
-  if (left === right) return true
-  const leftTarget = extractCommandTarget(left)
-  return leftTarget !== null && extractCommandTarget(right) === leftTarget
+  if (left === right) return true;
+  const leftTarget = extractCommandTarget(left);
+  return leftTarget !== null && extractCommandTarget(right) === leftTarget;
 }
 
 /**
@@ -53,15 +53,15 @@ function commandMatches(left: string, right: string): boolean {
  * matching hook is found, append the group.
  */
 export function ensureGroup(groups: HookGroup[], group: HookGroup): HookGroup[] {
-  const incomingHook = group.hooks[0]
-  if (!incomingHook) return groups
+  const incomingHook = group.hooks[0];
+  if (!incomingHook) return groups;
 
-  let changed = false
+  let changed = false;
   const nextGroups = groups.map((existingGroup) => {
-    const hookIndex = findHookIndexByCommand(existingGroup.hooks, incomingHook.command)
-    if (hookIndex === -1) return existingGroup
+    const hookIndex = findHookIndexByCommand(existingGroup.hooks, incomingHook.command);
+    if (hookIndex === -1) return existingGroup;
 
-    changed = true
+    changed = true;
     const hooks = existingGroup.hooks.map((hook, index) =>
       index === hookIndex
         ? {
@@ -73,16 +73,16 @@ export function ensureGroup(groups: HookGroup[], group: HookGroup): HookGroup[] 
             command: hook.command,
           }
         : hook,
-    )
+    );
     return {
       ...existingGroup,
       ...(group.matcher !== undefined ? { matcher: group.matcher } : {}),
       hooks,
-    }
-  })
+    };
+  });
 
-  if (changed) return nextGroups
-  return [...groups, group]
+  if (changed) return nextGroups;
+  return [...groups, group];
 }
 
 /**
@@ -90,13 +90,13 @@ export function ensureGroup(groups: HookGroup[], group: HookGroup): HookGroup[] 
  * `ensureGroup`. Returns a new HooksMap; does not mutate inputs.
  */
 export function mergeAgentKitGroups(existing: HooksMap, addition: HooksMap): HooksMap {
-  const result: HooksMap = { ...existing }
+  const result: HooksMap = { ...existing };
   for (const [event, groups] of Object.entries(addition)) {
-    let target = result[event] ?? []
+    let target = result[event] ?? [];
     for (const group of groups) {
-      target = ensureGroup(target, group)
+      target = ensureGroup(target, group);
     }
-    result[event] = target
+    result[event] = target;
   }
-  return result
+  return result;
 }

@@ -1,14 +1,14 @@
-import { z } from 'zod'
+import { z } from "zod";
 
-import { clipRawOutput } from './_shared/result.js'
-import { resolveProjectRoot } from './_shared/project-root.js'
-import { redactText } from './_shared/redact.js'
+import { clipRawOutput } from "./_shared/result.js";
+import { resolveProjectRoot } from "./_shared/project-root.js";
+import { redactText } from "./_shared/redact.js";
 import {
   isMissingBinary,
   isRunFailure,
   runCommand,
   type RunOutcome,
-} from './_shared/run-command.js'
+} from "./_shared/run-command.js";
 
 export const readonlyOpsBaseSchema = z
   .object({
@@ -17,90 +17,90 @@ export const readonlyOpsBaseSchema = z
     maxOutputBytes: z.number().int().positive().max(64_000).optional().default(4_000),
     timeoutMs: z.number().int().positive().max(300_000).optional().default(120_000),
   })
-  .strict()
+  .strict();
 
-export type ReadonlyOpsBaseInput = z.infer<typeof readonlyOpsBaseSchema>
+export type ReadonlyOpsBaseInput = z.infer<typeof readonlyOpsBaseSchema>;
 
 export interface CommandDetails {
-  readonly command: string
-  readonly args: readonly string[]
+  readonly command: string;
+  readonly args: readonly string[];
 }
 
 export interface ReadonlyCommandResult {
-  readonly id: string
-  readonly command: CommandDetails
-  readonly passed: boolean
-  readonly exitCode?: number
-  readonly timedOut?: boolean
-  readonly aborted?: boolean
-  readonly missingBinary?: boolean
-  readonly rawOutput?: string
-  readonly truncated?: true
-  readonly logPath?: string
-  readonly warnings?: string[]
-  readonly details?: unknown
+  readonly id: string;
+  readonly command: CommandDetails;
+  readonly passed: boolean;
+  readonly exitCode?: number;
+  readonly timedOut?: boolean;
+  readonly aborted?: boolean;
+  readonly missingBinary?: boolean;
+  readonly rawOutput?: string;
+  readonly truncated?: true;
+  readonly logPath?: string;
+  readonly warnings?: string[];
+  readonly details?: unknown;
 }
 
-export function resolveReadonlyCwd(input: Pick<ReadonlyOpsBaseInput, 'cwd' | 'directory'>): string {
+export function resolveReadonlyCwd(input: Pick<ReadonlyOpsBaseInput, "cwd" | "directory">): string {
   return resolveProjectRoot(
     input.cwd ? { cwd: input.cwd } : input.directory ? { cwd: input.directory } : {},
-  )
+  );
 }
 
 export function parseJsonObject(text: string): Record<string, unknown> | undefined {
-  const trimmed = text.trim()
-  if (!trimmed) return undefined
-  const parsed = JSON.parse(trimmed) as unknown
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return undefined
-  return parsed as Record<string, unknown>
+  const trimmed = text.trim();
+  if (!trimmed) return undefined;
+  const parsed = JSON.parse(trimmed) as unknown;
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return undefined;
+  return parsed as Record<string, unknown>;
 }
 
-const MAX_DETAIL_STRING_CHARS = 1_000
-const MAX_DETAIL_ARRAY_ITEMS = 50
-const MAX_DETAIL_OBJECT_KEYS = 50
+const MAX_DETAIL_STRING_CHARS = 1_000;
+const MAX_DETAIL_ARRAY_ITEMS = 50;
+const MAX_DETAIL_OBJECT_KEYS = 50;
 
 function clipDetailString(value: string): string {
-  const redacted = redactText(value) ?? ''
+  const redacted = redactText(value) ?? "";
   return redacted.length <= MAX_DETAIL_STRING_CHARS
     ? redacted
-    : `${redacted.slice(0, MAX_DETAIL_STRING_CHARS)}…[truncated]`
+    : `${redacted.slice(0, MAX_DETAIL_STRING_CHARS)}…[truncated]`;
 }
 
 function sanitizeDetailValue(value: unknown): unknown {
-  if (typeof value === 'string') return clipDetailString(value)
-  if (typeof value !== 'object' || value === null) return value
+  if (typeof value === "string") return clipDetailString(value);
+  if (typeof value !== "object" || value === null) return value;
 
   if (Array.isArray(value)) {
-    const items = value.slice(0, MAX_DETAIL_ARRAY_ITEMS).map(sanitizeDetailValue)
+    const items = value.slice(0, MAX_DETAIL_ARRAY_ITEMS).map(sanitizeDetailValue);
     return value.length <= MAX_DETAIL_ARRAY_ITEMS
       ? items
-      : [...items, { truncated: true, omittedItems: value.length - MAX_DETAIL_ARRAY_ITEMS }]
+      : [...items, { truncated: true, omittedItems: value.length - MAX_DETAIL_ARRAY_ITEMS }];
   }
 
-  const entries = Object.entries(value as Record<string, unknown>)
-  const limitedEntries = entries.slice(0, MAX_DETAIL_OBJECT_KEYS)
+  const entries = Object.entries(value as Record<string, unknown>);
+  const limitedEntries = entries.slice(0, MAX_DETAIL_OBJECT_KEYS);
   const sanitized = Object.fromEntries(
     limitedEntries.map(([key, entryValue]) => [
       clipDetailString(key),
       sanitizeDetailValue(entryValue),
     ]),
-  ) as Record<string, unknown>
+  ) as Record<string, unknown>;
   if (entries.length > MAX_DETAIL_OBJECT_KEYS) {
-    sanitized.truncated = true
-    sanitized.omittedKeys = entries.length - MAX_DETAIL_OBJECT_KEYS
+    sanitized.truncated = true;
+    sanitized.omittedKeys = entries.length - MAX_DETAIL_OBJECT_KEYS;
   }
-  return sanitized
+  return sanitized;
 }
 
 function sanitizeParsedDetails(
   parsed: Record<string, unknown>,
   maxOutputBytes: number,
 ): Record<string, unknown> {
-  const sanitized = sanitizeDetailValue(parsed) as Record<string, unknown>
-  const serialized = JSON.stringify(sanitized)
-  if (Buffer.byteLength(serialized, 'utf8') <= maxOutputBytes) return sanitized
+  const sanitized = sanitizeDetailValue(parsed) as Record<string, unknown>;
+  const serialized = JSON.stringify(sanitized);
+  if (Buffer.byteLength(serialized, "utf8") <= maxOutputBytes) return sanitized;
 
-  throw new Error(`parsed JSON details exceed maxOutputBytes (${maxOutputBytes})`)
+  throw new Error(`parsed JSON details exceed maxOutputBytes (${maxOutputBytes})`);
 }
 
 export async function runReadonlyCommand(
@@ -108,19 +108,19 @@ export async function runReadonlyCommand(
   command: string,
   args: readonly string[],
   options: {
-    readonly cwd: string
-    readonly timeoutMs: number
-    readonly maxOutputBytes: number
-    readonly signal?: AbortSignal
-    readonly parseJson?: boolean
+    readonly cwd: string;
+    readonly timeoutMs: number;
+    readonly maxOutputBytes: number;
+    readonly signal?: AbortSignal;
+    readonly parseJson?: boolean;
   },
 ): Promise<ReadonlyCommandResult> {
   const outcome = await runCommand(command, args, {
     cwd: options.cwd,
     timeoutMs: options.timeoutMs,
     signal: options.signal,
-  })
-  return normalizeCommandOutcome(id, { command, args }, outcome, options)
+  });
+  return normalizeCommandOutcome(id, { command, args }, outcome, options);
 }
 
 export function normalizeCommandOutcome(
@@ -128,8 +128,8 @@ export function normalizeCommandOutcome(
   command: CommandDetails,
   outcome: RunOutcome,
   options: {
-    readonly maxOutputBytes: number
-    readonly parseJson?: boolean
+    readonly maxOutputBytes: number;
+    readonly parseJson?: boolean;
   },
 ): ReadonlyCommandResult {
   if (isRunFailure(outcome)) {
@@ -143,14 +143,14 @@ export function normalizeCommandOutcome(
           ? `missing binary: ${command.command}`
           : `failed to spawn ${command.command}: ${outcome.error.message}`,
       ],
-    }
+    };
   }
 
-  const combined = redactText([outcome.stdout, outcome.stderr].filter(Boolean).join('\n'))
+  const combined = redactText([outcome.stdout, outcome.stderr].filter(Boolean).join("\n"));
   const clipped = clipRawOutput(combined, options.maxOutputBytes, {
     toolName: `wp_${id}`,
     persistOverflow: false,
-  })
+  });
   const result: ReadonlyCommandResult = {
     id,
     command,
@@ -159,14 +159,14 @@ export function normalizeCommandOutcome(
     timedOut: outcome.timedOut || undefined,
     aborted: outcome.aborted || undefined,
     ...clipped,
-  }
+  };
 
   if (options.parseJson && outcome.exitCode === 0) {
     try {
-      const parsed = parseJsonObject(outcome.stdout)
+      const parsed = parseJsonObject(outcome.stdout);
       return parsed
         ? { ...result, details: sanitizeParsedDetails(parsed, options.maxOutputBytes) }
-        : result
+        : result;
     } catch (error) {
       return {
         ...result,
@@ -175,21 +175,21 @@ export function normalizeCommandOutcome(
           ...(result.warnings ?? []),
           `could not parse JSON output from ${command.command}: ${(error as Error).message}`,
         ],
-      }
+      };
     }
   }
 
-  return result
+  return result;
 }
 
 export function summarizeCommands(
   label: string,
   commands: readonly ReadonlyCommandResult[],
 ): string {
-  const failed = commands.filter((command) => !command.passed).length
+  const failed = commands.filter((command) => !command.passed).length;
   if (failed === 0)
-    return `${label} passed (${commands.length} check${commands.length === 1 ? '' : 's'})`
-  return `${label} failed (${failed}/${commands.length} check${commands.length === 1 ? '' : 's'} failed)`
+    return `${label} passed (${commands.length} check${commands.length === 1 ? "" : "s"})`;
+  return `${label} failed (${failed}/${commands.length} check${commands.length === 1 ? "" : "s"} failed)`;
 }
 
 export function commandCounts(commands: readonly ReadonlyCommandResult[]): Record<string, number> {
@@ -197,5 +197,5 @@ export function commandCounts(commands: readonly ReadonlyCommandResult[]): Recor
     commandCount: commands.length,
     passedCount: commands.filter((command) => command.passed).length,
     failedCount: commands.filter((command) => !command.passed).length,
-  }
+  };
 }

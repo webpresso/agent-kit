@@ -26,7 +26,7 @@ specialized, validated subagents and composes them for new tasks.
 
 - The accumulation pattern rhymes with agent-kit's **catalog**: skills and
   rules are the accumulated, reusable units. The delta is that AgentFactory's
-  units are *earned* through task evidence, while catalog entries are
+  units are _earned_ through task evidence, while catalog entries are
   human-authored — weakness mining is the bridge (evidence proposes catalog
   additions).
 - Validation-before-reuse for each accumulated unit maps to the

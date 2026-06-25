@@ -6,8 +6,8 @@ status: active
 scope: repo
 applies_to: [agents]
 related: []
-created: '2026-05-07'
-last_reviewed: '2026-05-07'
+created: "2026-05-07"
+last_reviewed: "2026-05-07"
 name: deep-research
 description: Deep web research with credible pro/con sentiment, 2026 best practices, project vision alignment analysis, and timestamped output to docs/research/
 argument-hint: "<subject or question to research>"
@@ -18,18 +18,20 @@ Deep Research is a multi-phase web research workflow that produces a balanced, c
 </Purpose>
 
 <Use_When>
+
 - Evaluating a technology, library, pattern, or product direction
 - Comparing alternatives before making an architectural or product decision
 - The user says "research", "deep research", "investigate", or "what does the community think about"
 - You need a balanced view of trade-offs before recommending something
-</Use_When>
+  </Use_When>
 
 <Do_Not_Use_When>
+
 - The user wants a quick factual lookup (use WebSearch directly)
 - The user wants codebase exploration (use explore)
 - The user wants a requirements interview (use deep-interview)
 - The answer is already well-established and non-controversial
-</Do_Not_Use_When>
+  </Do_Not_Use_When>
 
 <Output_Contract>
 A single markdown file written to:
@@ -70,6 +72,7 @@ Run **5-8 parallel WebSearch queries** covering different angles:
 8. **(If applicable)** Domain-specific query based on the project's problem space
 
 For each search, record:
+
 - Source URL
 - Source type (docs, blog, forum, official, academic)
 - Key claims or data points
@@ -80,12 +83,14 @@ For each search, record:
 From Phase 1 results, identify the **5-10 most credible and information-dense sources**.
 
 Use `WebFetch` on each to extract deeper detail. Prioritize:
+
 - Official documentation or announcements
 - Production experience reports (postmortems, migration stories)
 - Benchmark data or technical comparisons
 - Strong critical takes with specific evidence
 
 For each fetched source, extract:
+
 - Specific claims with evidence
 - Sentiment and strength (strong positive, mild positive, neutral, mild negative, strong negative)
 - Credibility assessment (official docs > production experience > blog opinion > forum anecdote)
@@ -121,9 +126,9 @@ Write the report to `docs/research/{YYYY-MM-DD}-{slug}.md` using this template:
 type: research
 title: "{Title}"
 subject: "{subject}"
-date: {YYYY-MM-DD}
-confidence: {high|medium|low}
-verdict: {adopt|trial|assess|hold|reject}
+date: { YYYY-MM-DD }
+confidence: { high|medium|low }
+verdict: { adopt|trial|assess|hold|reject }
 ---
 
 # {Title}
@@ -149,9 +154,11 @@ Evidence-backed reasons in favor. Group by theme.
 Each point should cite its source and note credibility level.
 
 ### {Theme 1}
+
 - ...
 
 ### {Theme 2}
+
 - ...
 
 ## Negative Signals
@@ -160,9 +167,11 @@ Evidence-backed criticism and risks. Group by theme.
 Each point should cite its source and note credibility level.
 
 ### {Theme 1}
+
 - ...
 
 ### {Theme 2}
+
 - ...
 
 ## Community Sentiment
@@ -173,12 +182,15 @@ Note the balance: if sentiment skews one way, say so explicitly.
 ## Project Alignment
 
 ### Vision Fit
+
 How this relates to the project's current goals.
 
 ### Tech Stack Fit
+
 Integration with the project's stack (from `package.json`, framework configs).
 
 ### Trade-offs for Current Stage
+
 What matters most given where the project is now.
 
 ## Recommendation
@@ -189,12 +201,14 @@ Include conditions under which the recommendation would change.
 ## Sources
 
 Numbered list of all sources used, with:
+
 - [N] [Title](url) — type, credibility, sentiment direction
 ```
 
 ## Phase 6: Present Summary
 
 After writing the file, present to the user:
+
 1. The output file path
 2. The verdict and confidence
 3. A 3-line summary of the key finding
@@ -203,6 +217,7 @@ After writing the file, present to the user:
 </Steps>
 
 <Quality_Gates>
+
 - Minimum 8 distinct sources cited
 - At least 2 sources per major claim
 - Both positive AND negative signals sections must be substantive (not token)
@@ -210,31 +225,34 @@ After writing the file, present to the user:
 - Vision alignment section must reference specific project goals (not generic)
 - All inline citations must be clickable links
 - Frontmatter must include confidence and verdict fields
-</Quality_Gates>
+  </Quality_Gates>
 
 <Verdict_Scale>
+
 - **adopt**: Strong evidence, clear fit, community consensus positive. Use it.
 - **trial**: Promising evidence, worth a bounded experiment. Try it in a limited scope.
 - **assess**: Mixed signals or insufficient evidence. Research more before committing.
 - **hold**: Significant concerns or poor fit. Don't invest now, revisit later.
 - **reject**: Clear evidence against. Don't use this.
-</Verdict_Scale>
+  </Verdict_Scale>
 
 <Tool_Usage>
+
 - `WebSearch` for broad discovery (Phase 1) and gap-filling (Phase 3)
 - `WebFetch` for deep source extraction (Phase 2)
 - `Read` for loading vision and tech stack context (Phase 0)
 - `Write` for the final report (Phase 5)
 - `Agent` with `subagent_type=Explore` if codebase context is needed for alignment analysis
 - Use parallel tool calls wherever searches are independent
-</Tool_Usage>
+  </Tool_Usage>
 
 <Common_Mistakes>
+
 - Writing a report that's all positive or all negative — always find both sides
 - Citing marketing material as if it were neutral evidence — flag vendor bias
 - Making alignment claims without reading the actual vision doc
 - Using stale search results — always include "2026" in queries
 - Writing the report before triangulating — don't just concatenate search results
-</Common_Mistakes>
+  </Common_Mistakes>
 
 Task: {{ARGUMENTS}}

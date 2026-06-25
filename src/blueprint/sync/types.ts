@@ -38,7 +38,7 @@ export interface BlueprintPlatformClient {
    * `eventId` has already been processed for this `repoId`.  Callers should
    * persist unacknowledged events locally and retry when reconnected (Q1).
    */
-  pushEvent(payload: BlueprintPlatformEvent): Promise<void>
+  pushEvent(payload: BlueprintPlatformEvent): Promise<void>;
 
   /**
    * Pull the current state from the platform replica.
@@ -47,13 +47,13 @@ export interface BlueprintPlatformClient {
    * When `opts.slug` is supplied only that blueprint's data is returned;
    * omitting it returns the full repo snapshot.
    */
-  getSnapshot(opts?: { readonly slug?: string }): Promise<BlueprintSnapshot>
+  getSnapshot(opts?: { readonly slug?: string }): Promise<BlueprintSnapshot>;
 
   /**
    * Enumerate available blueprint templates from the configured GitHub source
    * (Q5).  Returns an empty array when the template source is unreachable.
    */
-  listTemplates(): Promise<readonly BlueprintTemplateEntry[]>
+  listTemplates(): Promise<readonly BlueprintTemplateEntry[]>;
 
   /**
    * Check connectivity and OAuth token validity.
@@ -61,7 +61,7 @@ export interface BlueprintPlatformClient {
    * Returns `ok: false` and a non-zero `latencyMs` on network failure or
    * auth errors so callers can surface status to the user without crashing.
    */
-  healthCheck(): Promise<{ readonly ok: boolean; readonly latencyMs: number }>
+  healthCheck(): Promise<{ readonly ok: boolean; readonly latencyMs: number }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -75,14 +75,14 @@ export interface BlueprintPlatformClient {
  * with a `never` default branch.
  */
 export type BlueprintEventType =
-  | 'blueprint.created'
-  | 'blueprint.status_changed'
-  | 'blueprint.archived'
-  | 'blueprint.finalized'
-  | 'blueprint.metadata_updated'
-  | 'task.created'
-  | 'task.status_changed'
-  | 'runner.event'
+  | "blueprint.created"
+  | "blueprint.status_changed"
+  | "blueprint.archived"
+  | "blueprint.finalized"
+  | "blueprint.metadata_updated"
+  | "task.created"
+  | "task.status_changed"
+  | "runner.event";
 
 /**
  * A single mutation event delivered to the platform.
@@ -93,19 +93,19 @@ export type BlueprintEventType =
  */
 export interface BlueprintPlatformEvent {
   /** UUID v4, client-generated, used as the idempotency key. */
-  readonly eventId: string
+  readonly eventId: string;
 
   /** Signed repo identifier supplied by the platform during OAuth (Q2). */
-  readonly repoId: string
+  readonly repoId: string;
 
   /** ISO 8601 timestamp of when the mutation occurred on the client. */
-  readonly occurredAt: string
+  readonly occurredAt: string;
 
   /** Discriminant that matches the `payload.type` field. */
-  readonly type: BlueprintEventType
+  readonly type: BlueprintEventType;
 
   /** Structured payload whose shape is determined by `type`. */
-  readonly payload: BlueprintEventPayload
+  readonly payload: BlueprintEventPayload;
 }
 
 /**
@@ -117,58 +117,58 @@ export interface BlueprintPlatformEvent {
  */
 export type BlueprintEventPayload =
   | {
-      readonly type: 'blueprint.created'
-      readonly slug: string
-      readonly title: string
-      readonly complexity: string
-      readonly status: string
+      readonly type: "blueprint.created";
+      readonly slug: string;
+      readonly title: string;
+      readonly complexity: string;
+      readonly status: string;
     }
   | {
-      readonly type: 'blueprint.status_changed'
-      readonly slug: string
-      readonly fromStatus: string
-      readonly toStatus: string
+      readonly type: "blueprint.status_changed";
+      readonly slug: string;
+      readonly fromStatus: string;
+      readonly toStatus: string;
     }
   | {
-      readonly type: 'blueprint.archived'
-      readonly slug: string
+      readonly type: "blueprint.archived";
+      readonly slug: string;
     }
   | {
-      readonly type: 'blueprint.finalized'
-      readonly slug: string
+      readonly type: "blueprint.finalized";
+      readonly slug: string;
     }
   | {
-      readonly type: 'blueprint.metadata_updated'
-      readonly slug: string
+      readonly type: "blueprint.metadata_updated";
+      readonly slug: string;
       /** Sparse map of the fields that changed (key = field name, value = new value). */
-      readonly changes: Readonly<Record<string, unknown>>
+      readonly changes: Readonly<Record<string, unknown>>;
     }
   | {
-      readonly type: 'task.created'
-      readonly blueprintSlug: string
-      readonly taskId: string
-      readonly title: string
+      readonly type: "task.created";
+      readonly blueprintSlug: string;
+      readonly taskId: string;
+      readonly title: string;
     }
   | {
-      readonly type: 'task.status_changed'
-      readonly blueprintSlug: string
-      readonly taskId: string
-      readonly fromStatus: string
-      readonly toStatus: string
+      readonly type: "task.status_changed";
+      readonly blueprintSlug: string;
+      readonly taskId: string;
+      readonly fromStatus: string;
+      readonly toStatus: string;
     }
   | {
-      readonly type: 'runner.event'
-      readonly blueprintSlug: string
+      readonly type: "runner.event";
+      readonly blueprintSlug: string;
       /** Matches the `handle` field of the RunnerEvent from Wave 1 runner work. */
-      readonly executionHandle: string
+      readonly executionHandle: string;
       /** Monotonically increasing position in the runner event stream. */
-      readonly sequence: number
+      readonly sequence: number;
       /**
        * Discriminant that mirrors `RunnerEvent.type` (e.g. 'started',
        * 'progress', 'stdout', 'completed', 'failed').
        */
-      readonly kind: string
-    }
+      readonly kind: string;
+    };
 
 // ---------------------------------------------------------------------------
 // Snapshot types
@@ -178,27 +178,27 @@ export type BlueprintEventPayload =
  * Full or partial replica of blueprint state returned by `getSnapshot()`.
  */
 export interface BlueprintSnapshot {
-  readonly blueprints: readonly SnapshotBlueprint[]
+  readonly blueprints: readonly SnapshotBlueprint[];
   /** ISO 8601 timestamp of when the platform generated this snapshot. */
-  readonly fetchedAt: string
+  readonly fetchedAt: string;
 }
 
 /** A single blueprint's state as stored in the platform replica. */
 export interface SnapshotBlueprint {
-  readonly slug: string
-  readonly title: string
-  readonly status: string
-  readonly complexity: string
-  readonly tasks: readonly SnapshotTask[]
+  readonly slug: string;
+  readonly title: string;
+  readonly status: string;
+  readonly complexity: string;
+  readonly tasks: readonly SnapshotTask[];
 }
 
 /** A single task within a blueprint snapshot. */
 export interface SnapshotTask {
-  readonly id: string
-  readonly title: string
-  readonly status: string
+  readonly id: string;
+  readonly title: string;
+  readonly status: string;
   /** Task IDs that must complete before this task can start. */
-  readonly dependsOn: readonly string[]
+  readonly dependsOn: readonly string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -212,8 +212,8 @@ export interface SnapshotTask {
  * `wp blueprint new --template <slug>` fetches the scaffold.
  */
 export interface BlueprintTemplateEntry {
-  readonly name: string
-  readonly slug: string
-  readonly url: string
-  readonly description?: string
+  readonly name: string;
+  readonly slug: string;
+  readonly url: string;
+  readonly description?: string;
 }

@@ -3,11 +3,11 @@ type: rule
 slug: ts-coding-conventions
 title: TypeScript coding conventions
 status: active
-scope: 'path:**/*.{ts,tsx}'
+scope: "path:**/*.{ts,tsx}"
 applies_to: [agents, humans]
 related: []
-created: '2026-05-06'
-last_reviewed: '2026-05-06'
+created: "2026-05-06"
+last_reviewed: "2026-05-06"
 ---
 
 # TypeScript coding conventions
@@ -64,7 +64,7 @@ enforced by review and the repo's quality gates.
   into the serial vitest project (`vitest.config.ts`, `fileParallelism:false`,
   30s) and the MCP shard runner's serialized lane, so it can't oversubscribe the
   parallel pool and trip the 10s budget. This is a SUFFIX convention (not a
-  maintained list) — just name the file. Tests that only *mock* child_process
+  maintained list) — just name the file. Tests that only _mock_ child_process
   (e.g. a `stubGit`) stay plain `*.test.ts`.
 - **No `.skip` / `.only`** checked in. Hook blocks these.
 - **Assertions are strict**: `expect(value).toStrictEqual(...)`, not `.toMatchObject` unless intentional.

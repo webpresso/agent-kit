@@ -29,7 +29,6 @@ tags:
 Implemented in PR #139 on branch `work/ultragoal-9-blueprints-20260614221933`.
 Task status and acceptance checkboxes below were reconciled from the landed code paths and focused verification evidence in this PR. The file is parked because CI enforces the legal first transition from `planned`; finalization can move parked/resumed work through the lifecycle after merge.
 
-
 ## Product wedge anchor
 
 - **Stage outcome:** the "model-specific adaptation" ❌ row in
@@ -62,19 +61,19 @@ keeping canonical content as the base and keeping speculative overlays out.
 
 ## Fact-Check Summary
 
-| Claim | Reality | Fix applied to this plan |
-| --- | --- | --- |
-| Symlinker already has an overlay merge order to extend | Current sync loads only canonical + consumer content, then projects it | Task 1.1 now adds overlay loading explicitly instead of assuming it exists |
-| The current docs already describe overlays | `docs/symlinker.md` has no overlay section today | Task 2.1 requires doc updates after the mechanism lands |
+| Claim                                                             | Reality                                                                     | Fix applied to this plan                                                          |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Symlinker already has an overlay merge order to extend            | Current sync loads only canonical + consumer content, then projects it      | Task 1.1 now adds overlay loading explicitly instead of assuming it exists        |
+| The current docs already describe overlays                        | `docs/symlinker.md` has no overlay section today                            | Task 2.1 requires doc updates after the mechanism lands                           |
 | Overlay eligibility can be described by re-listing supported CLIs | Repo policy says docs/plans must link the rule, not duplicate the tier list | This blueprint now links `supported-agent-clis.md` instead of restating the tiers |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable |
-| --- | --- | --- | --- |
-| **Wave 0** | 1.1 | None | 1 agent |
-| **Wave 1** | 1.2 | Task 1.1 | 1 agent |
-| **Wave 2** | 2.1 | Task 1.2 | 1 agent |
+| Wave       | Tasks | Dependencies | Parallelizable |
+| ---------- | ----- | ------------ | -------------- |
+| **Wave 0** | 1.1   | None         | 1 agent        |
+| **Wave 1** | 1.2   | Task 1.1     | 1 agent        |
+| **Wave 2** | 2.1   | Task 1.2     | 1 agent        |
 
 ## Phases
 
@@ -149,7 +148,6 @@ keeping canonical content as the base and keeping speculative overlays out.
 - No overlays without evidence.
 - No automatic overlay generation.
 
-
 ## 2026-06-14 alignment note
 
 The refined `2026-06-10-harness-surface-manifest` plan preserves the current
@@ -161,11 +159,11 @@ MCP consumers.
 
 ## Cross-Plan References
 
-| Reference | Relationship |
-| --- | --- |
-| `2026-06-10-self-improving-harness-roadmap` | Parent roadmap (Wave 3) |
-| `2026-06-10-weakness-mining-audit` | Evidence source |
-| `2026-06-10-harness-regression-gate` | Promotion proof |
-| `2026-06-10-harness-surface-manifest` | Overlay target vocabulary; consume the current `lifecycle: locked|governed|experimental` manifest shape and do not assume the earlier `editable|locked` schema (aligned 2026-06-14) |
-| `docs/symlinker.md` | Mechanism documentation home |
-| `catalog/agent/rules/supported-agent-clis.md` | Single source of truth for which CLI roots may receive overlays |
+| Reference                                     | Relationship                                                      |
+| --------------------------------------------- | ----------------------------------------------------------------- | -------- | ------------------------------------------------------------------ | ----------------------------------- |
+| `2026-06-10-self-improving-harness-roadmap`   | Parent roadmap (Wave 3)                                           |
+| `2026-06-10-weakness-mining-audit`            | Evidence source                                                   |
+| `2026-06-10-harness-regression-gate`          | Promotion proof                                                   |
+| `2026-06-10-harness-surface-manifest`         | Overlay target vocabulary; consume the current `lifecycle: locked | governed | experimental`manifest shape and do not assume the earlier`editable | locked` schema (aligned 2026-06-14) |
+| `docs/symlinker.md`                           | Mechanism documentation home                                      |
+| `catalog/agent/rules/supported-agent-clis.md` | Single source of truth for which CLI roots may receive overlays   |

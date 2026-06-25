@@ -1,15 +1,15 @@
-import type { ParsedBlueprintForDb } from '#db/parser/blueprint-db-parser'
+import type { ParsedBlueprintForDb } from "#db/parser/blueprint-db-parser";
 
-import { emitConstitution } from './constitution.js'
-import { emitPlan } from './plan.js'
-import { emitSpec } from './spec.js'
-import { emitTasks } from './tasks.js'
+import { emitConstitution } from "./constitution.js";
+import { emitPlan } from "./plan.js";
+import { emitSpec } from "./spec.js";
+import { emitTasks } from "./tasks.js";
 
 export interface SpecKitBundle {
-  readonly spec: string
-  readonly plan: string
-  readonly tasks: string
-  readonly constitution: string
+  readonly spec: string;
+  readonly plan: string;
+  readonly tasks: string;
+  readonly constitution: string;
 }
 
 /**
@@ -22,5 +22,5 @@ export function blueprintToSpecKit(parsed: ParsedBlueprintForDb, repoRoot: strin
     plan: emitPlan(parsed),
     tasks: emitTasks(parsed),
     constitution: emitConstitution(parsed, repoRoot),
-  }
+  };
 }

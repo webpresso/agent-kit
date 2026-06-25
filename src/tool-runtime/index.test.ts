@@ -1,84 +1,84 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from "vitest";
 
-import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
-import { getManagedRunner, setRtkAvailabilityProbeForTest } from './index.js'
+import { installManagedRunnerHermeticHooks } from "#test-helpers/managed-runner";
+import { getManagedRunner, setRtkAvailabilityProbeForTest } from "./index.js";
 
-installManagedRunnerHermeticHooks()
+installManagedRunnerHermeticHooks();
 
-describe('getManagedRunner', () => {
-  it('caches identical resolutions without leaking output mode across cache entries', () => {
-    const filtered = getManagedRunner('vitest')
-    const filteredAgain = getManagedRunner('vitest')
-    const unfiltered = getManagedRunner('vitest', { outputPolicy: 'structured' })
+describe("getManagedRunner", () => {
+  it("caches identical resolutions without leaking output mode across cache entries", () => {
+    const filtered = getManagedRunner("vitest");
+    const filteredAgain = getManagedRunner("vitest");
+    const unfiltered = getManagedRunner("vitest", { outputPolicy: "structured" });
 
-    expect(filteredAgain).toBe(filtered)
+    expect(filteredAgain).toBe(filtered);
     expect(filtered).toEqual({
-      tool: 'vitest',
-      command: 'rtk',
-      args: [expect.stringContaining('vitest')],
-      source: 'managed',
-    })
+      tool: "vitest",
+      command: "rtk",
+      args: [expect.stringContaining("vitest")],
+      source: "managed",
+    });
     expect(unfiltered).toEqual({
-      tool: 'vitest',
-      command: expect.stringContaining('vitest'),
+      tool: "vitest",
+      command: expect.stringContaining("vitest"),
       args: [],
-      source: 'managed',
-    })
-    expect(unfiltered).not.toBe(filtered)
-  })
+      source: "managed",
+    });
+    expect(unfiltered).not.toBe(filtered);
+  });
 
-  it('caches bundled vp resolutions independently from other tools', () => {
-    const first = getManagedRunner('vp', {
-      outputPolicy: 'structured',
-      nodeExecPath: '/usr/local/bin/node',
-    })
-    const second = getManagedRunner('vp', {
-      outputPolicy: 'structured',
-      nodeExecPath: '/usr/local/bin/node',
-    })
+  it("caches bundled vp resolutions independently from other tools", () => {
+    const first = getManagedRunner("vp", {
+      outputPolicy: "structured",
+      nodeExecPath: "/usr/local/bin/node",
+    });
+    const second = getManagedRunner("vp", {
+      outputPolicy: "structured",
+      nodeExecPath: "/usr/local/bin/node",
+    });
 
-    expect(second).toBe(first)
+    expect(second).toBe(first);
     expect(first).toEqual({
-      tool: 'vp',
-      command: '/usr/local/bin/node',
+      tool: "vp",
+      command: "/usr/local/bin/node",
       args: [expect.stringMatching(/vite-plus.*bin.*vp/)],
-      source: 'managed',
-    })
-  })
+      source: "managed",
+    });
+  });
 
-  it('does not reuse bundled vp cache entries across different node executables', () => {
-    const first = getManagedRunner('vp', {
-      outputPolicy: 'structured',
-      nodeExecPath: '/usr/local/bin/node',
-    })
-    const second = getManagedRunner('vp', {
-      outputPolicy: 'structured',
-      nodeExecPath: '/opt/node/bin/node',
-    })
+  it("does not reuse bundled vp cache entries across different node executables", () => {
+    const first = getManagedRunner("vp", {
+      outputPolicy: "structured",
+      nodeExecPath: "/usr/local/bin/node",
+    });
+    const second = getManagedRunner("vp", {
+      outputPolicy: "structured",
+      nodeExecPath: "/opt/node/bin/node",
+    });
 
-    expect(first.command).toBe('/usr/local/bin/node')
-    expect(second.command).toBe('/opt/node/bin/node')
-    expect(second).not.toBe(first)
-  })
+    expect(first.command).toBe("/usr/local/bin/node");
+    expect(second.command).toBe("/opt/node/bin/node");
+    expect(second).not.toBe(first);
+  });
 
-  it('supports legacy filterOutput opt-out callers', () => {
-    const legacy = getManagedRunner('vitest', { filterOutput: false })
+  it("supports legacy filterOutput opt-out callers", () => {
+    const legacy = getManagedRunner("vitest", { filterOutput: false });
     expect(legacy).toEqual({
-      tool: 'vitest',
-      command: expect.stringContaining('vitest'),
+      tool: "vitest",
+      command: expect.stringContaining("vitest"),
       args: [],
-      source: 'managed',
-    })
-  })
+      source: "managed",
+    });
+  });
 
-  it('degrades filtered output requests when rtk is unavailable', () => {
-    setRtkAvailabilityProbeForTest(false)
+  it("degrades filtered output requests when rtk is unavailable", () => {
+    setRtkAvailabilityProbeForTest(false);
 
-    expect(getManagedRunner('vitest')).toEqual({
-      tool: 'vitest',
-      command: expect.stringContaining('vitest'),
+    expect(getManagedRunner("vitest")).toEqual({
+      tool: "vitest",
+      command: expect.stringContaining("vitest"),
       args: [],
-      source: 'managed',
-    })
-  })
-})
+      source: "managed",
+    });
+  });
+});

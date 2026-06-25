@@ -4,12 +4,9 @@ set -eu
 wp format --affected || exit 1
 
 # Re-stage formatter rewrites for files that were already staged.
-STAGED_AFTER_FORMAT="$(git diff --cached --name-only --diff-filter=ACMR)"
-if [ -n "$STAGED_AFTER_FORMAT" ]; then
-  printf '%s\n' "$STAGED_AFTER_FORMAT" | while IFS= read -r file; do
-    [ -n "$file" ] || continue
-    git add -- "$file" || exit 1
-  done
+if ! git diff --cached --quiet --diff-filter=ACMR; then
+  git diff -z --cached --name-only --diff-filter=ACMR |
+    git add --pathspec-from-file=- --pathspec-file-nul || exit 1
 fi
 
 wp audit guardrails --affected

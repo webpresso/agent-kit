@@ -1,29 +1,29 @@
-import type { CAC } from 'cac'
+import type { CAC } from "cac";
 
-import { buildRoadmapModel } from '#local'
-import type { ShowBlueprintResult } from './blueprint/router.js'
+import { buildRoadmapModel } from "#local";
+import type { ShowBlueprintResult } from "./blueprint/router.js";
 
-import { listBlueprints, showBlueprint } from './blueprint/router.js'
+import { listBlueprints, showBlueprint } from "./blueprint/router.js";
 import {
   formatBlueprintDetails,
   formatBlueprintSummaries,
   printBlueprintOutput,
-} from './blueprint/router-output.js'
+} from "./blueprint/router-output.js";
 
-const ROADMAP_HELP = ['wp roadmap', '', 'Commands:', '  list [status]', '  show <slug>'].join('\n')
+const ROADMAP_HELP = ["wp roadmap", "", "Commands:", "  list [status]", "  show <slug>"].join("\n");
 
 export function getRoadmapHelpText(): string {
-  return ROADMAP_HELP
+  return ROADMAP_HELP;
 }
 
 export function assertParentRoadmap(result: ShowBlueprintResult): ShowBlueprintResult {
-  if (result.blueprint.type !== 'parent-roadmap') {
+  if (result.blueprint.type !== "parent-roadmap") {
     throw new Error(
       `Blueprint ${result.slug} is type=${result.blueprint.type}, not type=parent-roadmap. Use 'wp blueprint show ${result.slug}' instead.`,
-    )
+    );
   }
 
-  return result
+  return result;
 }
 
 export function formatRoadmapDetails(
@@ -34,32 +34,32 @@ export function formatRoadmapDetails(
     childResults.length > 0
       ? childResults.map(
           (child) =>
-            `- ${child.slug} status=${child.blueprint.status} tasks=${child.blueprint.tasks.filter((task) => task.status === 'done').length}/${child.blueprint.tasks.length} done`,
+            `- ${child.slug} status=${child.blueprint.status} tasks=${child.blueprint.tasks.filter((task) => task.status === "done").length}/${child.blueprint.tasks.length} done`,
         )
-      : ['- No child blueprints declared']
+      : ["- No child blueprints declared"];
 
   const blockerLines = childResults.flatMap((child) =>
     child.blueprint.tasks
-      .filter((task) => task.status === 'blocked')
+      .filter((task) => task.status === "blocked")
       .map((task) => `- ${child.slug} Task ${task.id}: ${task.blockedReason ?? task.title}`),
-  )
+  );
 
   return [
     formatBlueprintDetails(result),
-    '',
-    'children:',
+    "",
+    "children:",
     ...childLines,
-    '',
-    'blockers:',
-    ...(blockerLines.length > 0 ? blockerLines : ['- None']),
-  ].join('\n')
+    "",
+    "blockers:",
+    ...(blockerLines.length > 0 ? blockerLines : ["- None"]),
+  ].join("\n");
 }
 
 export function registerRoadmapCommand(cli: CAC): void {
   cli
-    .command('roadmap [subcommand] [...args]', 'List or show parent roadmaps')
-    .option('--json', 'Emit JSON output')
-    .option('--project-root <path>', 'Override the project root')
+    .command("roadmap [subcommand] [...args]", "List or show parent roadmaps")
+    .option("--json", "Emit JSON output")
+    .option("--project-root <path>", "Override the project root")
     .action(
       async (
         subcommand: string | undefined,
@@ -68,11 +68,11 @@ export function registerRoadmapCommand(cli: CAC): void {
       ) => {
         switch (subcommand) {
           case undefined:
-            printBlueprintOutput(ROADMAP_HELP, false)
-            return
-          case 'list': {
+            printBlueprintOutput(ROADMAP_HELP, false);
+            return;
+          case "list": {
             if (args.length > 1) {
-              throw new Error('Usage: wp roadmap list [status]')
+              throw new Error("Usage: wp roadmap list [status]");
             }
 
             const summaries = await listBlueprints({
@@ -80,47 +80,47 @@ export function registerRoadmapCommand(cli: CAC): void {
               onlyRoadmaps: true,
               projectRoot: options.projectRoot,
               status: args[0],
-            })
+            });
             printBlueprintOutput(
               options.json ? summaries : formatBlueprintSummaries(summaries),
               options.json,
-            )
-            return
+            );
+            return;
           }
-          case 'show': {
-            const slug = args[0]
+          case "show": {
+            const slug = args[0];
             if (!slug) {
-              throw new Error('Usage: wp roadmap show <slug>')
+              throw new Error("Usage: wp roadmap show <slug>");
             }
 
             const result = assertParentRoadmap(
               await showBlueprint(slug, { json: options.json, projectRoot: options.projectRoot }),
-            )
-            const summaries = await listBlueprints({ projectRoot: options.projectRoot })
-            const model = buildRoadmapModel(summaries)
+            );
+            const summaries = await listBlueprints({ projectRoot: options.projectRoot });
+            const model = buildRoadmapModel(summaries);
             const roadmapNode = model.roadmaps.find(
               (entry) =>
                 entry.roadmap.name === result.slug ||
                 entry.roadmap.name === result.blueprint.name ||
                 entry.roadmap.name.endsWith(`/${result.slug}`),
-            )
-            const childResults = []
+            );
+            const childResults = [];
             for (const child of roadmapNode?.children ?? []) {
               childResults.push(
                 await showBlueprint(child.name, { projectRoot: options.projectRoot }),
-              )
+              );
             }
             printBlueprintOutput(
               options.json
                 ? { ...result, children: childResults }
                 : formatRoadmapDetails(result, childResults),
               options.json,
-            )
-            return
+            );
+            return;
           }
           default:
-            throw new Error(`Unknown roadmap subcommand: ${subcommand}\n\nUse one of: list, show`)
+            throw new Error(`Unknown roadmap subcommand: ${subcommand}\n\nUse one of: list, show`);
         }
       },
-    )
+    );
 }

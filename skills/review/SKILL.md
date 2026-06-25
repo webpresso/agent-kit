@@ -5,6 +5,7 @@ description: |
   trust boundaries, data-loss risk, test quality, and maintainability before merge.
 license: MIT
 ---
+
 # Pre-landing review
 
 Use this skill before landing a branch or when the user asks for a code review.

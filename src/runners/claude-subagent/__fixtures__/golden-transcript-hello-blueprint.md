@@ -3,8 +3,8 @@ type: blueprint
 title: hello world (Task 0.0 baseline-capture fixture)
 status: in-progress
 complexity: XS
-created: '2026-05-11'
-last_updated: '2026-05-11'
+created: "2026-05-11"
+last_updated: "2026-05-11"
 tags:
   - fixture
   - runner-baseline
@@ -74,41 +74,46 @@ returns the literal string `'hello, webpresso'`. Add a colocated
 `src/hello.test.ts` asserting the return value via `toStrictEqual`.
 
 **Files:**
+
 - Create: `src/hello.ts`
 - Create: `src/hello.test.ts`
 
 **Steps (TDD):**
-1. Write `hello.test.ts`:
-   ```ts
-   import { describe, expect, it } from 'vitest'
-   import { hello } from './hello'
 
-   describe('hello', () => {
-     it('returns the deterministic greeting', () => {
-       expect(hello()).toStrictEqual('hello, webpresso')
-     })
-   })
+1. Write `hello.test.ts`:
+
+   ```ts
+   import { describe, expect, it } from "vitest";
+   import { hello } from "./hello";
+
+   describe("hello", () => {
+     it("returns the deterministic greeting", () => {
+       expect(hello()).toStrictEqual("hello, webpresso");
+     });
+   });
    ```
+
 2. `pnpm test src/hello.test.ts` — verify FAIL (module not found).
 3. Write `hello.ts`:
    ```ts
    export function hello(): string {
-     return 'hello, webpresso'
+     return "hello, webpresso";
    }
    ```
 4. `pnpm test src/hello.test.ts` — verify PASS.
 5. `vp run lint -- src/hello.ts src/hello.test.ts` — verify clean.
 
 **Acceptance:**
+
 - [ ] `src/hello.ts` exists with the documented signature.
 - [ ] `src/hello.test.ts` exists with the strict-equality assertion.
 - [ ] Test passes; lint passes.
 
 ## Quick Reference
 
-| Wave | Tasks | Dependencies |
-|---|---|---|
-| Wave 0 | 0.1 | None |
+| Wave   | Tasks | Dependencies |
+| ------ | ----- | ------------ |
+| Wave 0 | 0.1   | None         |
 
 Total tasks: 1. Critical path: 1 wave.
 

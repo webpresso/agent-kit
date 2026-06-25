@@ -4,9 +4,9 @@ title: Replace Math.random with crypto-derived IDs
 owner: ozby
 status: completed
 complexity: S
-created: '2026-06-14'
-last_updated: '2026-06-22'
-progress: '100% (3/3 tasks done, 0 blocked, updated 2026-06-22)'
+created: "2026-06-14"
+last_updated: "2026-06-22"
+progress: "100% (3/3 tasks done, 0 blocked, updated 2026-06-22)"
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -14,8 +14,8 @@ tags:
   - crypto
   - id-generation
   - temp-files
-worktree_owner_id: ''
-worktree_owner_branch: ''
+worktree_owner_id: ""
+worktree_owner_branch: ""
 ---
 
 # Replace Math.random with crypto-derived IDs
@@ -43,39 +43,39 @@ predictable temp paths are the most realistic vector.
 
 ## Refinement Summary
 
-| Metric | Value |
-| --- | --- |
-| Findings total | 5 |
-| Critical | 0 |
-| High | 1 (HIGH: tempSuffix reinvents an in-scope randomUUID convention) |
-| Medium | 1 (F3: predictable temp paths) |
-| Low | 3 |
-| Fixes applied | 5/5 |
-| Cross-plans updated | 0 |
-| Edge cases documented | 2 |
-| Risks documented | 2 |
+| Metric                    | Value                                                                     |
+| ------------------------- | ------------------------------------------------------------------------- |
+| Findings total            | 5                                                                         |
+| Critical                  | 0                                                                         |
+| High                      | 1 (HIGH: tempSuffix reinvents an in-scope randomUUID convention)          |
+| Medium                    | 1 (F3: predictable temp paths)                                            |
+| Low                       | 3                                                                         |
+| Fixes applied             | 5/5                                                                       |
+| Cross-plans updated       | 0                                                                         |
+| Edge cases documented     | 2                                                                         |
+| Risks documented          | 2                                                                         |
 | **Parallelization score** | B (CPR=1.5, below 2.5 target but inherent to sequenced S-complexity plan) |
-| **Critical path** | 2 waves |
-| **Max parallel agents** | 2 (Wave 1) |
-| **Total tasks** | 3 |
+| **Critical path**         | 2 waves                                                                   |
+| **Max parallel agents**   | 2 (Wave 1)                                                                |
+| **Total tasks**           | 3                                                                         |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort |
-| --- | --- | --- | --- | --- |
-| **Wave 0** | 1.1 | None | 1 agent | S |
-| **Wave 1** | 2.1, 2.2 | 1.1 | 2 agents | XS, XS |
-| **Wave 2** | 3.1 | 2.1, 2.2 | 1 agent | XS |
-| **Critical path** | 1.1 → 2.1/2.2 → 3.1 | — | 2 waves | S |
+| Wave              | Tasks               | Dependencies | Parallelizable | Effort |
+| ----------------- | ------------------- | ------------ | -------------- | ------ |
+| **Wave 0**        | 1.1                 | None         | 1 agent        | S      |
+| **Wave 1**        | 2.1, 2.2            | 1.1          | 2 agents       | XS, XS |
+| **Wave 2**        | 3.1                 | 2.1, 2.2     | 1 agent        | XS     |
+| **Critical path** | 1.1 → 2.1/2.2 → 3.1 | —            | 2 waves        | S      |
 
 ## Parallel Metrics Snapshot
 
-| Metric | Formula / Meaning | Target | Actual |
-| --- | --- | --- | --- |
-| RW0 | Ready tasks in Wave 0 | ≥ planned/2 | 1 |
-| CPR | total_tasks / critical_path_length | ≥ 2.5 | 3/2 = 1.5 |
-| DD | dependency_edges / total_tasks | ≤ 2.0 | 3/3 = 1.0 |
-| CP | same-file overlaps per wave | 0 | 0 |
+| Metric | Formula / Meaning                  | Target      | Actual    |
+| ------ | ---------------------------------- | ----------- | --------- |
+| RW0    | Ready tasks in Wave 0              | ≥ planned/2 | 1         |
+| CPR    | total_tasks / critical_path_length | ≥ 2.5       | 3/2 = 1.5 |
+| DD     | dependency_edges / total_tasks     | ≤ 2.0       | 3/3 = 1.0 |
+| CP     | same-file overlaps per wave        | 0           | 0         |
 
 **Refinement delta:** CPR misses 2.5 target because Wave 0 has a single
 dependency-free task (helper creation) and all replacements are gated on it.
@@ -86,28 +86,28 @@ actual 3 tasks: CPR 4/2→3/2, DD 3/4→3/3.)
 
 ## Fact-Check Findings
 
-| ID | Severity | Claim | Verified Reality |
-| --- | --- | --- | --- |
-| F1 | LOW | `Math.random()` used 10+ times across 8+ production files. | **Confirmed.** 10 usages across exactly 8 non-test `src/**/*.ts` files. Verified via `grep -rn "Math\.random" src --include="*.ts"` (excluding `*.test.ts`). Full list below. |
-| F2 | LOW | None of these uses are security-sensitive (no auth tokens or session IDs). | **Confirmed.** All 10 usages generate: row/session ids, temp-file suffixes, worktree short suffixes, checkpoint/thread identifiers. No auth tokens, secrets, or session-cookie generation. |
-| F3 | MEDIUM | Predictable temp paths can enable local symlink attacks if the directory is world-writable. | **Risk remains valid.** The `quality-log-store.ts`, `migrate-command.ts`, and `mutations.ts` usages write to temp paths under writable directories. `crypto.randomUUID()` eliminates the predictability vector. |
-| F4 | LOW | `crypto.randomUUID()` is available in Node 24. | **Confirmed.** `crypto.randomUUID()` is available since Node 14.17.0 (v15.6.0 for the global alias). Node runtime: v24.16.0. `crypto.randomBytes()` is also available and preferred for short-ID generation (arbitrary length). |
-| F5 | HIGH | Task 1.1 creates a new `src/utils/short-id.ts` with `shortId()` **and** `tempSuffix()` as "the single point of change"; Task 2.2 replaces the temp-path sites with `tempSuffix()`. | **Reinvention confirmed — corrected.** `node:crypto.randomUUID` is **already imported and in scope** in `src/cli/commands/blueprint/mutations.ts:17` (used at :345 and :457), and the identical atomic-write temp-path pattern `path.join(tmpDir, ` + "`${randomUUID()}.md`" + `)` already exists one directory over at `src/cli/commands/blueprint/router-dispatch.ts:119`. The codebase has an established `randomUUID()` convention for exactly this use. **Fix:** the three temp-path sites use `crypto.randomUUID()` **directly** (no helper); the `tempSuffix()` helper is **deleted** (DRY/YAGNI). `shortId()` is kept only for the length-bounded short-slug sites. This also removes the `../../../../../utils` 5-level relative ladder from `migrate-command.ts` (which would violate `ts-coding-conventions.md`), since `crypto.randomUUID()` is imported directly from `node:crypto`. |
+| ID  | Severity | Claim                                                                                                                                                                              | Verified Reality                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| --- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1  | LOW      | `Math.random()` used 10+ times across 8+ production files.                                                                                                                         | **Confirmed.** 10 usages across exactly 8 non-test `src/**/*.ts` files. Verified via `grep -rn "Math\.random" src --include="*.ts"` (excluding `*.test.ts`). Full list below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| F2  | LOW      | None of these uses are security-sensitive (no auth tokens or session IDs).                                                                                                         | **Confirmed.** All 10 usages generate: row/session ids, temp-file suffixes, worktree short suffixes, checkpoint/thread identifiers. No auth tokens, secrets, or session-cookie generation.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| F3  | MEDIUM   | Predictable temp paths can enable local symlink attacks if the directory is world-writable.                                                                                        | **Risk remains valid.** The `quality-log-store.ts`, `migrate-command.ts`, and `mutations.ts` usages write to temp paths under writable directories. `crypto.randomUUID()` eliminates the predictability vector.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| F4  | LOW      | `crypto.randomUUID()` is available in Node 24.                                                                                                                                     | **Confirmed.** `crypto.randomUUID()` is available since Node 14.17.0 (v15.6.0 for the global alias). Node runtime: v24.16.0. `crypto.randomBytes()` is also available and preferred for short-ID generation (arbitrary length).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| F5  | HIGH     | Task 1.1 creates a new `src/utils/short-id.ts` with `shortId()` **and** `tempSuffix()` as "the single point of change"; Task 2.2 replaces the temp-path sites with `tempSuffix()`. | **Reinvention confirmed — corrected.** `node:crypto.randomUUID` is **already imported and in scope** in `src/cli/commands/blueprint/mutations.ts:17` (used at :345 and :457), and the identical atomic-write temp-path pattern `path.join(tmpDir, ` + "`${randomUUID()}.md`" + `)` already exists one directory over at `src/cli/commands/blueprint/router-dispatch.ts:119`. The codebase has an established `randomUUID()` convention for exactly this use. **Fix:** the three temp-path sites use `crypto.randomUUID()` **directly** (no helper); the `tempSuffix()` helper is **deleted** (DRY/YAGNI). `shortId()` is kept only for the length-bounded short-slug sites. This also removes the `../../../../../utils` 5-level relative ladder from `migrate-command.ts` (which would violate `ts-coding-conventions.md`), since `crypto.randomUUID()` is imported directly from `node:crypto`. |
 
 ## Production Math.random Inventory
 
-| # | File | Line | Pattern | Replacement Strategy |
-| --- | --- | --- | --- | --- |
-| 1 | `src/ai-memory/checkpoint/saver.ts` | 52 | `Math.random().toString(36).substring(2, 10)` | `shortId(8)` |
-| 2 | `src/ai-memory/checkpoint/saver.ts` | 58 | `Math.random().toString(36).substring(2, 10)` | `shortId(8)` |
-| 3 | `src/ai-memory/facts/extractor.ts` | 145 | `Math.random().toString(36).substring(2, 8)` | `shortId(6)` |
-| 4 | `src/ai-memory/store/sqlite-store.ts` | 93 | `Math.random().toString(36).slice(2, 10)` | `shortId(8)` |
-| 5 | `src/cli/commands/quality-log-store.ts` | 200 | `Math.random().toString(36).slice(2)` | `crypto.randomUUID()` (temp path) |
-| 6 | `src/cli/commands/quality-log-store.ts` | 277 | `Math.random().toString(36).slice(2, 8)` | `shortId(6)` |
-| 7 | `src/cli/commands/blueprint/mutations.ts` | 209 | `Math.random().toString(36).slice(2)` | `crypto.randomUUID()` (temp path; `randomUUID` already imported at :17) |
-| 8 | `src/cli/commands/worktree/router-dispatch.ts` | 111 | `Math.random().toString(36).slice(2, 5).padEnd(3, '0')` | `shortId(3)` (filesystem-safe charset — see E1) |
-| 9 | `src/config/docs-lint/cli/commands/migrate-command.ts` | 316 | `Math.random().toString(36).slice(2)` | `crypto.randomUUID()` (temp path; direct `node:crypto` import) |
-| 10 | `src/session-memory/session.ts` | 117 | `Math.random().toString(36).slice(2, 10)` | `shortId(8)` |
+| #   | File                                                   | Line | Pattern                                                 | Replacement Strategy                                                    |
+| --- | ------------------------------------------------------ | ---- | ------------------------------------------------------- | ----------------------------------------------------------------------- |
+| 1   | `src/ai-memory/checkpoint/saver.ts`                    | 52   | `Math.random().toString(36).substring(2, 10)`           | `shortId(8)`                                                            |
+| 2   | `src/ai-memory/checkpoint/saver.ts`                    | 58   | `Math.random().toString(36).substring(2, 10)`           | `shortId(8)`                                                            |
+| 3   | `src/ai-memory/facts/extractor.ts`                     | 145  | `Math.random().toString(36).substring(2, 8)`            | `shortId(6)`                                                            |
+| 4   | `src/ai-memory/store/sqlite-store.ts`                  | 93   | `Math.random().toString(36).slice(2, 10)`               | `shortId(8)`                                                            |
+| 5   | `src/cli/commands/quality-log-store.ts`                | 200  | `Math.random().toString(36).slice(2)`                   | `crypto.randomUUID()` (temp path)                                       |
+| 6   | `src/cli/commands/quality-log-store.ts`                | 277  | `Math.random().toString(36).slice(2, 8)`                | `shortId(6)`                                                            |
+| 7   | `src/cli/commands/blueprint/mutations.ts`              | 209  | `Math.random().toString(36).slice(2)`                   | `crypto.randomUUID()` (temp path; `randomUUID` already imported at :17) |
+| 8   | `src/cli/commands/worktree/router-dispatch.ts`         | 111  | `Math.random().toString(36).slice(2, 5).padEnd(3, '0')` | `shortId(3)` (filesystem-safe charset — see E1)                         |
+| 9   | `src/config/docs-lint/cli/commands/migrate-command.ts` | 316  | `Math.random().toString(36).slice(2)`                   | `crypto.randomUUID()` (temp path; direct `node:crypto` import)          |
+| 10  | `src/session-memory/session.ts`                        | 117  | `Math.random().toString(36).slice(2, 10)`               | `shortId(8)`                                                            |
 
 Additionally, 49 test-file usages across 47 `*.test.ts` files follow the same
 `Date.now() + Math.random()` temp-path pattern. A follow-up task replaces
@@ -115,17 +115,17 @@ these for consistency.
 
 ## Edge Cases
 
-| # | Case | Handling |
-| --- | --- | --- |
-| E1 | `router-dispatch.ts:111` produces a short suffix used as a **filesystem path component** for worktrees. | Use a filesystem-safe charset (base36), **not** base64url — base64url's `-`/`_` characters can trip worktree path-sanitization elsewhere. `shortId(n)` returns a base36 string of exactly `n` characters for this site. |
-| E2 | Tests assert exact ID strings (e.g., regex or fixture snapshots). | Update test expectations to match the new format or use length/character-set assertions. |
+| #   | Case                                                                                                    | Handling                                                                                                                                                                                                                |
+| --- | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| E1  | `router-dispatch.ts:111` produces a short suffix used as a **filesystem path component** for worktrees. | Use a filesystem-safe charset (base36), **not** base64url — base64url's `-`/`_` characters can trip worktree path-sanitization elsewhere. `shortId(n)` returns a base36 string of exactly `n` characters for this site. |
+| E2  | Tests assert exact ID strings (e.g., regex or fixture snapshots).                                       | Update test expectations to match the new format or use length/character-set assertions.                                                                                                                                |
 
 ## Risks
 
-| Risk | Mitigation |
-| --- | --- |
+| Risk                                                  | Mitigation                                                                                                                                                                                        |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `shortId` collides with prior IDs in the same system. | 8 chars of crypto-random base36 ≈ 41 bits of entropy; birthday-problem collision probability is negligible at project-local scope. The temp-path sites use full `crypto.randomUUID()` (122 bits). |
-| Behavior change in tests asserting exact ID format. | Use `expect(id).toMatch(/^[A-Za-z0-9]+$/)` instead of exact-string matchers. Update any snapshot fixtures. |
+| Behavior change in tests asserting exact ID format.   | Use `expect(id).toMatch(/^[A-Za-z0-9]+$/)` instead of exact-string matchers. Update any snapshot fixtures.                                                                                        |
 
 ## Tasks
 
@@ -294,14 +294,14 @@ production `src/` file. This `grep`-based gate is the contract the
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-| --- | --- | --- |
-| Type safety | `./bin/wp typecheck` | Zero errors. |
-| Tests | `./bin/wp test --file src/utils/short-id.test.ts` then `./bin/wp test` | All pass. |
-| Lint | `./bin/wp lint` on modified files | Zero violations. |
-| Audit | `grep -rn "Math\.random" src --include="*.ts" \| grep -v "\.test\."` | Zero hits. |
-| Crypto source | `grep -rn "crypto\.randomBytes" src/utils/short-id.ts` | One match (the helper). |
-| No reinvention | `grep -rn "tempSuffix" src --include="*.ts"` | Zero hits (temp paths use `randomUUID()`). |
+| Gate           | Command                                                                | Success Criteria                           |
+| -------------- | ---------------------------------------------------------------------- | ------------------------------------------ |
+| Type safety    | `./bin/wp typecheck`                                                   | Zero errors.                               |
+| Tests          | `./bin/wp test --file src/utils/short-id.test.ts` then `./bin/wp test` | All pass.                                  |
+| Lint           | `./bin/wp lint` on modified files                                      | Zero violations.                           |
+| Audit          | `grep -rn "Math\.random" src --include="*.ts" \| grep -v "\.test\."`   | Zero hits.                                 |
+| Crypto source  | `grep -rn "crypto\.randomBytes" src/utils/short-id.ts`                 | One match (the helper).                    |
+| No reinvention | `grep -rn "tempSuffix" src --include="*.ts"`                           | Zero hits (temp paths use `randomUUID()`). |
 
 ## Non-goals
 
@@ -313,11 +313,11 @@ production `src/` file. This `grep`-based gate is the contract the
 
 ## Technology Choices
 
-| Choice | Rationale |
-| --- | --- |
-| `crypto.randomUUID()` for temp-path sites | Already imported and in use in the exact files being edited (`mutations.ts:17`, `router-dispatch.ts:119`); 122 bits of entropy; zero new helper surface. Reuses the established in-repo convention rather than reinventing it. |
-| `crypto.randomBytes` → base36 for `shortId()` | Node built-in; no deps; arbitrary-length short IDs; filesystem-safe characters (base36, not base64url — base64url's `-`/`_` can break worktree path sanitization). |
-| Single `shortId()` helper (no `tempSuffix()`) | Only the length-bounded short-slug sites need a shared helper. The temp-path sites are covered by direct `randomUUID()` calls, so a second helper would duplicate an existing in-repo idiom. |
+| Choice                                        | Rationale                                                                                                                                                                                                                      |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `crypto.randomUUID()` for temp-path sites     | Already imported and in use in the exact files being edited (`mutations.ts:17`, `router-dispatch.ts:119`); 122 bits of entropy; zero new helper surface. Reuses the established in-repo convention rather than reinventing it. |
+| `crypto.randomBytes` → base36 for `shortId()` | Node built-in; no deps; arbitrary-length short IDs; filesystem-safe characters (base36, not base64url — base64url's `-`/`_` can break worktree path sanitization).                                                             |
+| Single `shortId()` helper (no `tempSuffix()`) | Only the length-bounded short-slug sites need a shared helper. The temp-path sites are covered by direct `randomUUID()` calls, so a second helper would duplicate an existing in-repo idiom.                                   |
 
 ## Completion Evidence
 
@@ -352,21 +352,21 @@ Verification run:
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-14-replace-math-random-with-crypto-random-uuid.md |
+| ID  | Claim                                                          | Evidence                                                                            |
+| --- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-14-replace-math-random-with-crypto-random-uuid.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

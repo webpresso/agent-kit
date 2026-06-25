@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from "vitest";
 
-import { validatePlanTemplate } from './template.js'
+import { validatePlanTemplate } from "./template.js";
 
-describe('validatePlanTemplate', () => {
-  describe('valid complete plans', () => {
-    it('should validate plan with all required sections (Overview variant)', () => {
+describe("validatePlanTemplate", () => {
+  describe("valid complete plans", () => {
+    it("should validate plan with all required sections (Overview variant)", () => {
       const markdown = `
 # My Plan
 
@@ -17,13 +17,13 @@ This is the overview
 
 ## Phases
 Phase details here
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(true)
-      expect(result.error).toBe(undefined)
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(true);
+      expect(result.error).toBe(undefined);
+    });
 
-    it('should validate plan with Problem Statement instead of Overview', () => {
+    it("should validate plan with Problem Statement instead of Overview", () => {
       const markdown = `
 # My Plan
 
@@ -35,12 +35,12 @@ The problem we're solving
 
 ## Tasks
 Task details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(true)
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(true);
+    });
 
-    it('should validate plan with Problem & Goal instead of Overview', () => {
+    it("should validate plan with Problem & Goal instead of Overview", () => {
       const markdown = `
 # My Plan
 
@@ -52,12 +52,12 @@ Problem and goal description
 
 ## Implementation
 Implementation details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(true)
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(true);
+    });
 
-    it('should validate plan with embedded phases', () => {
+    it("should validate plan with embedded phases", () => {
       const markdown = `
 # My Plan
 
@@ -72,12 +72,12 @@ Phase 1 details
 
 ### Phase 2
 Phase 2 details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(true)
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(true);
+    });
 
-    it('should validate plan with Tasks section', () => {
+    it("should validate plan with Tasks section", () => {
       const markdown = `
 # Plan
 
@@ -90,12 +90,12 @@ Content
 ## Tasks
 - Task 1
 - Task 2
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(true)
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(true);
+    });
 
-    it('should validate plan with Implementation section', () => {
+    it("should validate plan with Implementation section", () => {
       const markdown = `
 # Plan
 
@@ -107,14 +107,14 @@ Content
 
 ## Implementation
 Implementation steps
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(true)
-    })
-  })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(true);
+    });
+  });
 
-  describe('missing Overview section', () => {
-    it('should fail when Overview missing', () => {
+  describe("missing Overview section", () => {
+    it("should fail when Overview missing", () => {
       const markdown = `
 # Plan
 
@@ -123,13 +123,13 @@ Implementation steps
 
 ## Phases
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(false)
-      expect(result.error).toContain('missing required section: ## Overview')
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("missing required section: ## Overview");
+    });
 
-    it('should fail with no overview variant', () => {
+    it("should fail with no overview variant", () => {
       const markdown = `
 # Plan
 
@@ -141,27 +141,27 @@ Content
 
 ## Phases
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(false)
-      expect(result.error).toContain('## Overview')
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("## Overview");
+    });
 
-    it('should suggest Problem Statement in error', () => {
+    it("should suggest Problem Statement in error", () => {
       const markdown = `
 ## Acceptance Criteria
 - [ ] Task
 ## Phases
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(false)
-      expect(result.error).toContain('## Problem Statement')
-    })
-  })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("## Problem Statement");
+    });
+  });
 
-  describe('missing Acceptance Criteria section', () => {
-    it('should fail when Acceptance Criteria header missing and no checkboxes', () => {
+  describe("missing Acceptance Criteria section", () => {
+    it("should fail when Acceptance Criteria header missing and no checkboxes", () => {
       const markdown = `
 # Plan
 
@@ -170,13 +170,13 @@ Content
 
 ## Phases
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(false)
-      expect(result.error).toContain('missing required section: ## Acceptance Criteria')
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("missing required section: ## Acceptance Criteria");
+    });
 
-    it('should pass when no header but checkboxes exist', () => {
+    it("should pass when no header but checkboxes exist", () => {
       const markdown = `
 # Plan
 
@@ -188,12 +188,12 @@ Content
 
 ## Phases
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(true)
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(true);
+    });
 
-    it('should pass when header exists even without checkboxes', () => {
+    it("should pass when header exists even without checkboxes", () => {
       const markdown = `
 ## Overview
 Content
@@ -203,13 +203,13 @@ No checkboxes here
 
 ## Phases
 Details
-      `
-      const result = validatePlanTemplate(markdown)
+      `;
+      const result = validatePlanTemplate(markdown);
       // Header presence is sufficient - checkboxes not strictly required
-      expect(result.valid).toBe(true)
-    })
+      expect(result.valid).toBe(true);
+    });
 
-    it('should pass with header and checkboxes', () => {
+    it("should pass with header and checkboxes", () => {
       const markdown = `
 ## Overview
 Content
@@ -219,14 +219,14 @@ Content
 
 ## Phases
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(true)
-    })
-  })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(true);
+    });
+  });
 
-  describe('missing Implementation section', () => {
-    it('should fail when no Phases, Tasks, or Implementation section', () => {
+  describe("missing Implementation section", () => {
+    it("should fail when no Phases, Tasks, or Implementation section", () => {
       const markdown = `
 ## Overview
 Content
@@ -236,14 +236,14 @@ Content
 
 ## Other Section
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(false)
-      expect(result.error).toContain('missing required section: ## Phases')
-      expect(result.error).toContain('or ## Tasks or ## Implementation')
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("missing required section: ## Phases");
+      expect(result.error).toContain("or ## Tasks or ## Implementation");
+    });
 
-    it('should pass with Phases section', () => {
+    it("should pass with Phases section", () => {
       const markdown = `
 ## Overview
 Content
@@ -251,12 +251,12 @@ Content
 - [ ] Task
 ## Phases
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(true)
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(true);
+    });
 
-    it('should pass with Tasks section', () => {
+    it("should pass with Tasks section", () => {
       const markdown = `
 ## Overview
 Content
@@ -264,12 +264,12 @@ Content
 - [ ] Task
 ## Tasks
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(true)
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(true);
+    });
 
-    it('should pass with Implementation section', () => {
+    it("should pass with Implementation section", () => {
       const markdown = `
 ## Overview
 Content
@@ -277,12 +277,12 @@ Content
 - [ ] Task
 ## Implementation
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(true)
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(true);
+    });
 
-    it('should pass with embedded phase headers', () => {
+    it("should pass with embedded phase headers", () => {
       const markdown = `
 ## Overview
 Content
@@ -290,26 +290,26 @@ Content
 - [ ] Task
 ### Phase 1
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(true)
-    })
-  })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(true);
+    });
+  });
 
-  describe('section header variations', () => {
-    it('should match case-sensitive headers', () => {
+  describe("section header variations", () => {
+    it("should match case-sensitive headers", () => {
       const markdown = `
 ## overview
 ## acceptance criteria
 - [ ] Task
 ## phases
-      `
-      const result = validatePlanTemplate(markdown)
+      `;
+      const result = validatePlanTemplate(markdown);
       // Should fail because lowercase headers don't match
-      expect(result.valid).toBe(false)
-    })
+      expect(result.valid).toBe(false);
+    });
 
-    it('should match headers at start of line only', () => {
+    it("should match headers at start of line only", () => {
       const markdown = `
 Some text ## Overview
 
@@ -318,13 +318,13 @@ Some text ## Overview
 
 ## Phases
 Details
-      `
-      const result = validatePlanTemplate(markdown)
+      `;
+      const result = validatePlanTemplate(markdown);
       // First line doesn't match because ## not at start
-      expect(result.valid).toBe(false)
-    })
+      expect(result.valid).toBe(false);
+    });
 
-    it('should handle headers with extra content', () => {
+    it("should handle headers with extra content", () => {
       const markdown = `
 ## Overview: The Big Picture
 
@@ -333,12 +333,12 @@ Details
 
 ## Phases and Milestones
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(true)
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(true);
+    });
 
-    it('should handle ### for Phase headers', () => {
+    it("should handle ### for Phase headers", () => {
       const markdown = `
 ## Overview
 Content
@@ -348,12 +348,12 @@ Content
 
 ### Phase 1
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(true)
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(true);
+    });
 
-    it('should require ## Phases not ## Phase N', () => {
+    it("should require ## Phases not ## Phase N", () => {
       const markdown = `
 ## Overview
 Content
@@ -363,13 +363,13 @@ Content
 
 ## Phase 2
 Details
-      `
-      const result = validatePlanTemplate(markdown)
+      `;
+      const result = validatePlanTemplate(markdown);
       // Only matches "## Phases" not "## Phase 2"
-      expect(result.valid).toBe(false)
-    })
+      expect(result.valid).toBe(false);
+    });
 
-    it('should require Problem Statement at start of line', () => {
+    it("should require Problem Statement at start of line", () => {
       // Tests regex anchor for Problem Statement
       const markdown = `
 text ## Problem Statement
@@ -379,13 +379,13 @@ text ## Problem Statement
 
 ## Phases
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(false)
-      expect(result.error).toContain('## Overview')
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("## Overview");
+    });
 
-    it('should require Problem & Goal at start of line', () => {
+    it("should require Problem & Goal at start of line", () => {
       // Tests regex anchor for Problem & Goal
       const markdown = `
 text ## Problem & Goal
@@ -395,13 +395,13 @@ text ## Problem & Goal
 
 ## Phases
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(false)
-      expect(result.error).toContain('## Overview')
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("## Overview");
+    });
 
-    it('should require Acceptance Criteria at start of line', () => {
+    it("should require Acceptance Criteria at start of line", () => {
       // Tests regex anchor for Acceptance Criteria
       // The markdown has "text ## Acceptance Criteria" mid-line with no checkboxes
       const markdown = `
@@ -413,14 +413,14 @@ No checkboxes here
 
 ## Phases
 Details
-      `
-      const result = validatePlanTemplate(markdown)
+      `;
+      const result = validatePlanTemplate(markdown);
       // Should fail because header not at start of line and no checkboxes
-      expect(result.valid).toBe(false)
-      expect(result.error).toContain('Acceptance Criteria')
-    })
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("Acceptance Criteria");
+    });
 
-    it('should require Phases at start of line', () => {
+    it("should require Phases at start of line", () => {
       // Tests regex anchor for Phases
       const markdown = `
 ## Overview
@@ -431,13 +431,13 @@ Content
 
 text ## Phases
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(false)
-      expect(result.error).toContain('## Phases')
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("## Phases");
+    });
 
-    it('should require Tasks at start of line', () => {
+    it("should require Tasks at start of line", () => {
       // Tests regex anchor for Tasks
       const markdown = `
 ## Overview
@@ -448,13 +448,13 @@ Content
 
 text ## Tasks
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(false)
-      expect(result.error).toContain('## Phases')
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("## Phases");
+    });
 
-    it('should require Implementation at start of line', () => {
+    it("should require Implementation at start of line", () => {
       // Tests regex anchor for Implementation
       const markdown = `
 ## Overview
@@ -465,13 +465,13 @@ Content
 
 text ## Implementation
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(false)
-      expect(result.error).toContain('## Phases')
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("## Phases");
+    });
 
-    it('should require ### Phase N at start of line', () => {
+    it("should require ### Phase N at start of line", () => {
       // Tests regex anchor for ### Phase N
       const markdown = `
 ## Overview
@@ -482,25 +482,25 @@ Content
 
 text ### Phase 1
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(false)
-      expect(result.error).toContain('## Phases')
-    })
-  })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("## Phases");
+    });
+  });
 
-  describe('edge cases', () => {
-    it('should handle empty markdown', () => {
-      const result = validatePlanTemplate('')
-      expect(result.valid).toBe(false)
-    })
+  describe("edge cases", () => {
+    it("should handle empty markdown", () => {
+      const result = validatePlanTemplate("");
+      expect(result.valid).toBe(false);
+    });
 
-    it('should handle markdown with only whitespace', () => {
-      const result = validatePlanTemplate('   \n\n  \n')
-      expect(result.valid).toBe(false)
-    })
+    it("should handle markdown with only whitespace", () => {
+      const result = validatePlanTemplate("   \n\n  \n");
+      expect(result.valid).toBe(false);
+    });
 
-    it('should validate minimal valid plan', () => {
+    it("should validate minimal valid plan", () => {
       const markdown = `
 ## Overview
 x
@@ -508,12 +508,12 @@ x
 - [ ] x
 ## Phases
 x
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(true)
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(true);
+    });
 
-    it('should handle plans with frontmatter', () => {
+    it("should handle plans with frontmatter", () => {
       const markdown = `
 ---
 status: draft
@@ -527,12 +527,12 @@ Content
 
 ## Phases
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(true)
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(true);
+    });
 
-    it('should handle plans with code blocks', () => {
+    it("should handle plans with code blocks", () => {
       const markdown = `
 ## Overview
 Content
@@ -546,21 +546,21 @@ Content
 
 ## Phases
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(true)
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(true);
+    });
 
-    it('should handle Windows line endings', () => {
+    it("should handle Windows line endings", () => {
       const markdown =
-        '## Overview\r\nContent\r\n## Acceptance Criteria\r\n- [ ] Task\r\n## Phases\r\nDetails\r\n'
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(true)
-    })
-  })
+        "## Overview\r\nContent\r\n## Acceptance Criteria\r\n- [ ] Task\r\n## Phases\r\nDetails\r\n";
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(true);
+    });
+  });
 
-  describe('multiple sections', () => {
-    it('should allow multiple Overview variants in same document', () => {
+  describe("multiple sections", () => {
+    it("should allow multiple Overview variants in same document", () => {
       const markdown = `
 ## Overview
 First overview
@@ -573,12 +573,12 @@ Also has problem statement
 
 ## Phases
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(true)
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(true);
+    });
 
-    it('should allow multiple implementation variants', () => {
+    it("should allow multiple implementation variants", () => {
       const markdown = `
 ## Overview
 Content
@@ -594,37 +594,37 @@ Task content
 
 ## Implementation
 Implementation content
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(true)
-    })
-  })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(true);
+    });
+  });
 
-  describe('validation order', () => {
-    it('should fail on first missing section (Overview)', () => {
+  describe("validation order", () => {
+    it("should fail on first missing section (Overview)", () => {
       const markdown = `
 ## Something Else
 Content
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(false)
-      expect(result.error).toContain('Overview')
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("Overview");
+    });
 
-    it('should fail on Acceptance Criteria if Overview exists', () => {
+    it("should fail on Acceptance Criteria if Overview exists", () => {
       const markdown = `
 ## Overview
 Content
 
 ## Something Else
 Content
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(false)
-      expect(result.error).toContain('Acceptance Criteria')
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("Acceptance Criteria");
+    });
 
-    it('should fail on Implementation if others exist', () => {
+    it("should fail on Implementation if others exist", () => {
       const markdown = `
 ## Overview
 Content
@@ -634,13 +634,13 @@ Content
 
 ## Something Else
 Content
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(false)
-      expect(result.error).toContain('Phases')
-    })
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("Phases");
+    });
 
-    it('should return simple valid object when all sections pass', () => {
+    it("should return simple valid object when all sections pass", () => {
       // This kills the mutation that always returns hasImplementation
       // When implementation is valid, we should get { valid: true } without error property
       const markdown = `
@@ -652,13 +652,13 @@ Content
 
 ## Phases
 Details
-      `
-      const result = validatePlanTemplate(markdown)
-      expect(result.valid).toBe(true)
-      expect(result.error).toBe(undefined)
+      `;
+      const result = validatePlanTemplate(markdown);
+      expect(result.valid).toBe(true);
+      expect(result.error).toBe(undefined);
       // hasImplementation would have valid: true but could have other properties
       // the final return is just { valid: true }
-      expect(Object.keys(result)).toEqual(['valid'])
-    })
-  })
-})
+      expect(Object.keys(result)).toEqual(["valid"]);
+    });
+  });
+});

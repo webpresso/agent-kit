@@ -2,9 +2,9 @@
 type: blueprint
 status: draft
 complexity: L
-created: '2026-06-17'
-last_updated: '2026-06-17'
-progress: '0% (drafted for separate PR lane)'
+created: "2026-06-17"
+last_updated: "2026-06-17"
+progress: "0% (drafted for separate PR lane)"
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -26,19 +26,19 @@ tags:
 
 ## Key decisions
 
-| Decision | Choice | Rationale |
-| --- | --- | --- |
-| Canonical framework package | `@webpresso/framework` | Matches the intended new public identity. |
-| Compatibility | none | Policy should not preserve the deprecated package name after the cut. |
-| Scope | audits, package-surface rules, docs, examples | All must agree or downstream repos will keep drifting. |
+| Decision                    | Choice                                        | Rationale                                                             |
+| --------------------------- | --------------------------------------------- | --------------------------------------------------------------------- |
+| Canonical framework package | `@webpresso/framework`                        | Matches the intended new public identity.                             |
+| Compatibility               | none                                          | Policy should not preserve the deprecated package name after the cut. |
+| Scope                       | audits, package-surface rules, docs, examples | All must agree or downstream repos will keep drifting.                |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort |
-| --- | --- | --- | --- | --- |
-| **Wave 0** | 1.1, 1.2 | None | 2 agents | XS-S |
-| **Wave 1** | 2.1 | Wave 0 | 1 agent | S |
-| **Critical path** | 1.1 → 2.1 | — | 2 waves | L |
+| Wave              | Tasks     | Dependencies | Parallelizable | Effort |
+| ----------------- | --------- | ------------ | -------------- | ------ |
+| **Wave 0**        | 1.1, 1.2  | None         | 2 agents       | XS-S   |
+| **Wave 1**        | 2.1       | Wave 0       | 1 agent        | S      |
+| **Critical path** | 1.1 → 2.1 | —            | 2 waves        | L      |
 
 ### Phase 1: Policy and audit convergence [Complexity: S]
 
@@ -96,20 +96,20 @@ Clean up remaining docs/examples/fixtures that would reintroduce the deprecated 
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-| --- | --- | --- |
-| Package-surface tests | focused `package-surface` tests | pass |
-| Quality-engine tests | focused `package-import-rules` tests | pass |
-| Lint/typecheck | repo lint + typecheck | pass |
-| Blueprint audit | `./bin/wp audit blueprint-lifecycle blueprints/draft/framework-package-surface-alignment-and-policy-convergence.md` | passes |
+| Gate                  | Command                                                                                                             | Success Criteria |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| Package-surface tests | focused `package-surface` tests                                                                                     | pass             |
+| Quality-engine tests  | focused `package-import-rules` tests                                                                                | pass             |
+| Lint/typecheck        | repo lint + typecheck                                                                                               | pass             |
+| Blueprint audit       | `./bin/wp audit blueprint-lifecycle blueprints/draft/framework-package-surface-alignment-and-policy-convergence.md` | passes           |
 
 ## Cross-Plan References
 
-| Type | Blueprint | Relationship |
-| --- | --- | --- |
-| Upstream | framework package identity cutover and surface reduction | policy targets the new framework identity |
-| Upstream | monorepo framework package cutover and surface enforcement | downstream monorepo gates depend on these policy updates |
-| Downstream | framework package consumer cutover | consumer audits should consume the updated package-surface doctrine |
+| Type       | Blueprint                                                  | Relationship                                                        |
+| ---------- | ---------------------------------------------------------- | ------------------------------------------------------------------- |
+| Upstream   | framework package identity cutover and surface reduction   | policy targets the new framework identity                           |
+| Upstream   | monorepo framework package cutover and surface enforcement | downstream monorepo gates depend on these policy updates            |
+| Downstream | framework package consumer cutover                         | consumer audits should consume the updated package-surface doctrine |
 
 ## Non-goals
 

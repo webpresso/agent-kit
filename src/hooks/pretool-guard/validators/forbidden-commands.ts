@@ -1,191 +1,191 @@
-import type { ToolInput, ValidationResult } from '#hooks/shared/types'
+import type { ToolInput, ValidationResult } from "#hooks/shared/types";
 
-import { escapeRegex } from '#utils/string'
-import { readConfig } from '#cli/commands/init/config'
+import { escapeRegex } from "#utils/string";
+import { readConfig } from "#cli/commands/init/config";
 import {
   getLegalLifecycleTargets,
   isLegalLifecycleTransition,
   parseLifecycleBlueprintStatus,
-} from '#lifecycle/transition-matrix.js'
-import { getCommand, isBashInput } from '#hooks/shared/types'
-import { MCP_AUDIT_KINDS } from '#mcp/tools/_shared/audit-kinds'
-import { createSkipResult } from './skip-result.js'
-import { buildRedirectMessage, type MCPRedirectConfig } from './mcp-redirect.js'
+} from "#lifecycle/transition-matrix.js";
+import { getCommand, isBashInput } from "#hooks/shared/types";
+import { MCP_AUDIT_KINDS } from "#mcp/tools/_shared/audit-kinds";
+import { createSkipResult } from "./skip-result.js";
+import { buildRedirectMessage, type MCPRedirectConfig } from "./mcp-redirect.js";
 
 export type CommandCategory =
-  | 'test'
-  | 'lint'
-  | 'typecheck'
-  | 'format'
-  | 'blueprint'
-  | 'e2e'
-  | 'unknown'
+  | "test"
+  | "lint"
+  | "typecheck"
+  | "format"
+  | "blueprint"
+  | "e2e"
+  | "unknown";
 
 export interface CommandRule {
-  pattern: RegExp
-  category: CommandCategory
-  suggestion: string
+  pattern: RegExp;
+  category: CommandCategory;
+  suggestion: string;
 }
 
 export interface SuggestionModifier {
-  pattern: RegExp
-  category: CommandCategory
-  suggestion: string
+  pattern: RegExp;
+  category: CommandCategory;
+  suggestion: string;
 }
 
 export interface BlockedCommandResult extends ValidationResult {
-  command: string
-  suggestion: string
-  category: CommandCategory
-  docsRef: string
-  matchedPattern: string
+  command: string;
+  suggestion: string;
+  category: CommandCategory;
+  docsRef: string;
+  matchedPattern: string;
 }
 
 interface BlockedToolSpec {
-  tool: string
-  category: CommandCategory
-  suggestion: string
-  runners: ('exec' | 'direct' | 'bare')[]
+  tool: string;
+  category: CommandCategory;
+  suggestion: string;
+  runners: ("exec" | "direct" | "bare")[];
 }
 
 interface BlockedScriptSpec {
-  script: string
-  category: CommandCategory
-  suggestion: string
+  script: string;
+  category: CommandCategory;
+  suggestion: string;
 }
 
 interface BlockedRawNodeModulesToolSpec {
-  modulePath: string
-  category: CommandCategory
-  suggestion: string
+  modulePath: string;
+  category: CommandCategory;
+  suggestion: string;
 }
 
 interface RedirectOptions {
-  mcpReady?: boolean
-  mcp?: MCPRedirectConfig
+  mcpReady?: boolean;
+  mcp?: MCPRedirectConfig;
 }
 
-export const VALIDATOR_NAME = 'forbidden-commands'
-export const SKIP_ENV_VAR = 'FORBIDDEN_COMMANDS_SKIP'
-export const AUDIT_MODE_ENV = 'FORBIDDEN_COMMANDS_AUDIT'
-export const DOCS_REF = 'AGENTS.md "Forbidden Commands (CRITICAL)" section'
+export const VALIDATOR_NAME = "forbidden-commands";
+export const SKIP_ENV_VAR = "FORBIDDEN_COMMANDS_SKIP";
+export const AUDIT_MODE_ENV = "FORBIDDEN_COMMANDS_AUDIT";
+export const DOCS_REF = 'AGENTS.md "Forbidden Commands (CRITICAL)" section';
 
-const DB_HINT = 'Use the database MCP/tooling entrypoint instead of direct CLI execution'
+const DB_HINT = "Use the database MCP/tooling entrypoint instead of direct CLI execution";
 const BLUEPRINT_HINT =
-  'wp blueprint new|list|audit — use wp_blueprint MCP tool for lifecycle transitions'
-const BLUEPRINT_LIFECYCLE_DIRS = '(draft|planned|in-progress|parked|completed|archived)'
+  "wp blueprint new|list|audit — use wp_blueprint MCP tool for lifecycle transitions";
+const BLUEPRINT_LIFECYCLE_DIRS = "(draft|planned|in-progress|parked|completed|archived)";
 const BLUEPRINT_GIT_MV_RULE: CommandRule = {
   pattern: /^git\s+mv\b/,
-  category: 'blueprint',
+  category: "blueprint",
   suggestion: BLUEPRINT_HINT,
-}
-const LINT_BASE = 'wp_lint MCP tool with package/file scope'
-const LINT_HINT = `${LINT_BASE} [--fix] [--fix-unsafe]`
-const FORMAT_HINT = 'wp_format MCP tool'
-const QA_HINT = 'wp_qa MCP tool'
-const TEST_HINT = 'wp_test MCP tool with package/file scope'
-const MUTATION_HINT = 'wp_test mutation workflow'
-const TYPECHECK_HINT = 'wp_typecheck MCP tool with package/file scope'
-const E2E_HINT = 'wp_e2e MCP tool'
-const ENV_HINT = 'Use the repo-approved environment wrapper for secret-bearing commands'
-const TASK_TARGET_HINT = 'Use the repo-approved vp facade or MCP tool instead of raw execution'
+};
+const LINT_BASE = "wp_lint MCP tool with package/file scope";
+const LINT_HINT = `${LINT_BASE} [--fix] [--fix-unsafe]`;
+const FORMAT_HINT = "wp_format MCP tool";
+const QA_HINT = "wp_qa MCP tool";
+const TEST_HINT = "wp_test MCP tool with package/file scope";
+const MUTATION_HINT = "wp_test mutation workflow";
+const TYPECHECK_HINT = "wp_typecheck MCP tool with package/file scope";
+const E2E_HINT = "wp_e2e MCP tool";
+const ENV_HINT = "Use the repo-approved environment wrapper for secret-bearing commands";
+const TASK_TARGET_HINT = "Use the repo-approved vp facade or MCP tool instead of raw execution";
 
 const EXEC_RUNNERS = [
-  'vp exec',
-  'pnpm exec',
-  'npm exec',
-  'npm exec --',
-  'npx',
-  'pnpx',
-  'yarn exec',
-  'yarn dlx',
-  'bunx',
-] as const
-const DIRECT_RUNNERS = ['vp', 'pnpm', 'yarn', 'yarnpkg'] as const
-const SCRIPT_RUNNERS = ['vp run', 'vp', 'pnpm', 'pnpm run', 'just'] as const
+  "vp exec",
+  "pnpm exec",
+  "npm exec",
+  "npm exec --",
+  "npx",
+  "pnpx",
+  "yarn exec",
+  "yarn dlx",
+  "bunx",
+] as const;
+const DIRECT_RUNNERS = ["vp", "pnpm", "yarn", "yarnpkg"] as const;
+const SCRIPT_RUNNERS = ["vp run", "vp", "pnpm", "pnpm run", "just"] as const;
 
 export const BLOCKED_TOOLS: BlockedToolSpec[] = [
   {
-    tool: 'drizzle-kit',
-    category: 'unknown',
+    tool: "drizzle-kit",
+    category: "unknown",
     suggestion: DB_HINT,
-    runners: ['exec', 'direct', 'bare'],
+    runners: ["exec", "direct", "bare"],
   },
-  { tool: 'vitest', category: 'test', suggestion: TEST_HINT, runners: ['exec', 'direct', 'bare'] },
-  { tool: 'oxlint', category: 'lint', suggestion: LINT_HINT, runners: ['exec', 'direct', 'bare'] },
-  { tool: 'oxfmt', category: 'lint', suggestion: FORMAT_HINT, runners: ['exec', 'direct', 'bare'] },
+  { tool: "vitest", category: "test", suggestion: TEST_HINT, runners: ["exec", "direct", "bare"] },
+  { tool: "oxlint", category: "lint", suggestion: LINT_HINT, runners: ["exec", "direct", "bare"] },
+  { tool: "oxfmt", category: "lint", suggestion: FORMAT_HINT, runners: ["exec", "direct", "bare"] },
   {
-    tool: 'prettier',
-    category: 'format',
+    tool: "prettier",
+    category: "format",
     suggestion: FORMAT_HINT,
-    runners: ['exec', 'direct', 'bare'],
+    runners: ["exec", "direct", "bare"],
   },
-  { tool: 'stryker', category: 'test', suggestion: MUTATION_HINT, runners: ['exec', 'bare'] },
+  { tool: "stryker", category: "test", suggestion: MUTATION_HINT, runners: ["exec", "bare"] },
   {
-    tool: 'tsc',
-    category: 'typecheck',
+    tool: "tsc",
+    category: "typecheck",
     suggestion: TYPECHECK_HINT,
-    runners: ['exec', 'direct', 'bare'],
+    runners: ["exec", "direct", "bare"],
   },
   {
-    tool: 'tsgo',
-    category: 'typecheck',
+    tool: "tsgo",
+    category: "typecheck",
     suggestion: TYPECHECK_HINT,
-    runners: ['exec', 'direct', 'bare'],
+    runners: ["exec", "direct", "bare"],
   },
-]
+];
 
 export const BLOCKED_SCRIPTS: BlockedScriptSpec[] = [
-  { script: 'test', category: 'test', suggestion: TEST_HINT },
-  { script: 'lint', category: 'lint', suggestion: LINT_HINT },
-  { script: 'typecheck', category: 'typecheck', suggestion: TYPECHECK_HINT },
-  { script: 'e2e', category: 'e2e', suggestion: E2E_HINT },
-  { script: 'qa', category: 'unknown', suggestion: QA_HINT },
-]
+  { script: "test", category: "test", suggestion: TEST_HINT },
+  { script: "lint", category: "lint", suggestion: LINT_HINT },
+  { script: "typecheck", category: "typecheck", suggestion: TYPECHECK_HINT },
+  { script: "e2e", category: "e2e", suggestion: E2E_HINT },
+  { script: "qa", category: "unknown", suggestion: QA_HINT },
+];
 
 export const BLOCKED_RAW_NODE_MODULE_TOOLS: BlockedRawNodeModulesToolSpec[] = [
-  { modulePath: 'vitest/vitest.mjs', category: 'test', suggestion: TEST_HINT },
-  { modulePath: 'typescript/bin/tsc', category: 'typecheck', suggestion: TYPECHECK_HINT },
-  { modulePath: 'oxlint/bin/oxlint', category: 'lint', suggestion: LINT_HINT },
-]
+  { modulePath: "vitest/vitest.mjs", category: "test", suggestion: TEST_HINT },
+  { modulePath: "typescript/bin/tsc", category: "typecheck", suggestion: TYPECHECK_HINT },
+  { modulePath: "oxlint/bin/oxlint", category: "lint", suggestion: LINT_HINT },
+];
 
 function buildToolPattern(prefix: string, tool: string): RegExp {
-  const escaped = prefix ? `${escapeRegex(prefix)} ${escapeRegex(tool)}` : escapeRegex(tool)
-  return new RegExp(`^${escaped}(\\s|$)`)
+  const escaped = prefix ? `${escapeRegex(prefix)} ${escapeRegex(tool)}` : escapeRegex(tool);
+  return new RegExp(`^${escaped}(\\s|$)`);
 }
 
 function buildRawNodeModulesToolPattern(modulePath: string): RegExp {
-  return new RegExp(`^node\\s+(?:\\.\\/)?node_modules\\/${escapeRegex(modulePath)}(?:\\s|$)`)
+  return new RegExp(`^node\\s+(?:\\.\\/)?node_modules\\/${escapeRegex(modulePath)}(?:\\s|$)`);
 }
 
 export function generateRules(): CommandRule[] {
-  const rules: CommandRule[] = []
+  const rules: CommandRule[] = [];
 
   for (const spec of BLOCKED_TOOLS) {
-    if (spec.runners.includes('exec')) {
+    if (spec.runners.includes("exec")) {
       for (const runner of EXEC_RUNNERS) {
         rules.push({
           pattern: buildToolPattern(runner, spec.tool),
           category: spec.category,
           suggestion: spec.suggestion,
-        })
+        });
       }
     }
-    if (spec.runners.includes('direct')) {
+    if (spec.runners.includes("direct")) {
       for (const runner of DIRECT_RUNNERS) {
         rules.push({
           pattern: buildToolPattern(runner, spec.tool),
           category: spec.category,
           suggestion: spec.suggestion,
-        })
+        });
       }
     }
-    if (spec.runners.includes('bare')) {
+    if (spec.runners.includes("bare")) {
       rules.push({
-        pattern: buildToolPattern('', spec.tool),
+        pattern: buildToolPattern("", spec.tool),
         category: spec.category,
         suggestion: spec.suggestion,
-      })
+      });
     }
   }
 
@@ -195,7 +195,7 @@ export function generateRules(): CommandRule[] {
         pattern: buildToolPattern(runner, spec.script),
         category: spec.category,
         suggestion: spec.suggestion,
-      })
+      });
     }
   }
 
@@ -204,96 +204,96 @@ export function generateRules(): CommandRule[] {
       pattern: buildRawNodeModulesToolPattern(spec.modulePath),
       category: spec.category,
       suggestion: spec.suggestion,
-    })
+    });
   }
 
   rules.push(
     {
       pattern: /^vp exec markdownlint-cli2\b/,
-      category: 'unknown',
+      category: "unknown",
       suggestion: QA_HINT,
     },
-    { pattern: /^markdownlint-cli2\b/, category: 'unknown', suggestion: QA_HINT },
+    { pattern: /^markdownlint-cli2\b/, category: "unknown", suggestion: QA_HINT },
     {
       pattern: new RegExp(`^mv\\b.*blueprints\\/${BLUEPRINT_LIFECYCLE_DIRS}`),
-      category: 'blueprint',
+      category: "blueprint",
       suggestion: BLUEPRINT_HINT,
     },
     {
       pattern: new RegExp(`^mkdir\\b.*blueprints\\/${BLUEPRINT_LIFECYCLE_DIRS}`),
-      category: 'blueprint',
+      category: "blueprint",
       suggestion: BLUEPRINT_HINT,
     },
-    { pattern: /^doppler run/, category: 'unknown', suggestion: ENV_HINT },
-    { pattern: /^DATABASE_URL=/, category: 'unknown', suggestion: ENV_HINT },
-    { pattern: /^vp exec\b/, category: 'unknown', suggestion: TASK_TARGET_HINT },
-    { pattern: /^vp run\b/, category: 'unknown', suggestion: TASK_TARGET_HINT },
-  )
+    { pattern: /^doppler run/, category: "unknown", suggestion: ENV_HINT },
+    { pattern: /^DATABASE_URL=/, category: "unknown", suggestion: ENV_HINT },
+    { pattern: /^vp exec\b/, category: "unknown", suggestion: TASK_TARGET_HINT },
+    { pattern: /^vp run\b/, category: "unknown", suggestion: TASK_TARGET_HINT },
+  );
 
-  return rules
+  return rules;
 }
 
-export const COMMAND_RULES: CommandRule[] = generateRules()
+export const COMMAND_RULES: CommandRule[] = generateRules();
 
 export const SUGGESTION_MODIFIERS: SuggestionModifier[] = [
   {
     pattern: /--fix-dangerous|--write.*--unsafe|--unsafe.*--write/,
-    category: 'lint',
+    category: "lint",
     suggestion: `${LINT_BASE} --fix-unsafe`,
   },
-  { pattern: /--fix|--write/, category: 'lint', suggestion: `${LINT_BASE} --fix` },
-]
+  { pattern: /--fix|--write/, category: "lint", suggestion: `${LINT_BASE} --fix` },
+];
 
-const LOGICAL_OPERATOR_REGEX = /(?:&&|\|\||;)/
+const LOGICAL_OPERATOR_REGEX = /(?:&&|\|\||;)/;
 
 const VP_SCOPE_FLAG_REGEX =
-  /\s+(?:(?:--filter|-F|--dir|-C)\s+(?:"[^"]+"|'[^']+'|\S+)|(?:--workspace-root|-w))/
+  /\s+(?:(?:--filter|-F|--dir|-C)\s+(?:"[^"]+"|'[^']+'|\S+)|(?:--workspace-root|-w))/;
 
 const PNPM_SCOPE_FLAG_REGEX =
-  /(?:\s+(?:(?:--filter|-F|--dir|-C)\s+(?:"[^"]+"|'[^']+'|\S+)|(?:--workspace-root|-w|--recursive|-r|--workspace))(?=\s|$))/
+  /(?:\s+(?:(?:--filter|-F|--dir|-C)\s+(?:"[^"]+"|'[^']+'|\S+)|(?:--workspace-root|-w|--recursive|-r|--workspace))(?=\s|$))/;
 
 function stripVpScopeFlags(command: string): string {
-  if (!command.startsWith('vp ')) {
-    return command
+  if (!command.startsWith("vp ")) {
+    return command;
   }
 
-  let next = command
+  let next = command;
   while (VP_SCOPE_FLAG_REGEX.test(next)) {
-    const updated = next.replace(VP_SCOPE_FLAG_REGEX, '')
+    const updated = next.replace(VP_SCOPE_FLAG_REGEX, "");
     if (updated === next) {
-      break
+      break;
     }
-    next = updated
+    next = updated;
   }
 
-  return next.replace(/\s+/g, ' ').trim()
+  return next.replace(/\s+/g, " ").trim();
 }
 
 function stripPnPmScopeFlags(command: string): string {
-  if (!command.startsWith('pnpm ')) {
-    return command
+  if (!command.startsWith("pnpm ")) {
+    return command;
   }
 
-  let next = command
+  let next = command;
   while (PNPM_SCOPE_FLAG_REGEX.test(next)) {
-    const updated = next.replace(PNPM_SCOPE_FLAG_REGEX, '')
-    if (updated === next) break
-    next = updated.replace(/\s+/g, ' ').trim()
+    const updated = next.replace(PNPM_SCOPE_FLAG_REGEX, "");
+    if (updated === next) break;
+    next = updated.replace(/\s+/g, " ").trim();
   }
 
-  return next
+  return next;
 }
 
 function stripKnownScopeFlags(command: string): string {
-  let normalized = command
+  let normalized = command;
 
-  if (normalized.startsWith('vp ')) {
-    normalized = stripVpScopeFlags(normalized)
-  } else if (normalized.startsWith('pnpm ')) {
-    normalized = stripPnPmScopeFlags(normalized)
+  if (normalized.startsWith("vp ")) {
+    normalized = stripVpScopeFlags(normalized);
+  } else if (normalized.startsWith("pnpm ")) {
+    normalized = stripPnPmScopeFlags(normalized);
   }
 
-  return normalized
+  return normalized;
 }
 
 /**
@@ -308,227 +308,227 @@ function stripKnownScopeFlags(command: string): string {
  * command segments (e.g. git commit -m "$(cat <<'EOF'\n...&&...\nEOF\n)").
  */
 export function splitTopLevelCommands(command: string): string[] {
-  const segments: string[] = []
-  let current = ''
-  let depth = 0
-  let inSingleQuote = false
-  let inDoubleQuote = false
-  let inBacktick = false
-  let i = 0
+  const segments: string[] = [];
+  let current = "";
+  let depth = 0;
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  let inBacktick = false;
+  let i = 0;
 
   while (i < command.length) {
-    const ch = command[i]
-    const next = i + 1 < command.length ? command[i + 1] : ''
+    const ch = command[i];
+    const next = i + 1 < command.length ? command[i + 1] : "";
 
     if (inSingleQuote) {
-      current += ch
-      if (ch === "'") inSingleQuote = false
-      i++
-      continue
+      current += ch;
+      if (ch === "'") inSingleQuote = false;
+      i++;
+      continue;
     }
 
     if (inBacktick) {
-      current += ch
-      if (ch === '`') inBacktick = false
-      i++
-      continue
+      current += ch;
+      if (ch === "`") inBacktick = false;
+      i++;
+      continue;
     }
 
     if (depth > 0) {
-      if (ch === '$' && next === '(') {
-        depth++
-        current += ch + next
-        i += 2
-      } else if (ch === ')') {
-        depth--
-        current += ch
-        i++
+      if (ch === "$" && next === "(") {
+        depth++;
+        current += ch + next;
+        i += 2;
+      } else if (ch === ")") {
+        depth--;
+        current += ch;
+        i++;
       } else if (ch === "'") {
-        inSingleQuote = true
-        current += ch
-        i++
-      } else if (ch === '`') {
-        inBacktick = true
-        current += ch
-        i++
+        inSingleQuote = true;
+        current += ch;
+        i++;
+      } else if (ch === "`") {
+        inBacktick = true;
+        current += ch;
+        i++;
       } else {
-        current += ch
-        i++
+        current += ch;
+        i++;
       }
-      continue
+      continue;
     }
 
     if (inDoubleQuote) {
       if (ch === '"') {
-        inDoubleQuote = false
-        current += ch
-        i++
-      } else if (ch === '$' && next === '(') {
-        depth++
-        current += ch + next
-        i += 2
-      } else if (ch === '\\') {
-        current += ch + next
-        i += 2
+        inDoubleQuote = false;
+        current += ch;
+        i++;
+      } else if (ch === "$" && next === "(") {
+        depth++;
+        current += ch + next;
+        i += 2;
+      } else if (ch === "\\") {
+        current += ch + next;
+        i += 2;
       } else {
-        current += ch
-        i++
+        current += ch;
+        i++;
       }
-      continue
+      continue;
     }
 
     // Top-level context — check for operators before recording the character.
     if (ch === "'") {
-      inSingleQuote = true
-      current += ch
-      i++
+      inSingleQuote = true;
+      current += ch;
+      i++;
     } else if (ch === '"') {
-      inDoubleQuote = true
-      current += ch
-      i++
-    } else if (ch === '`') {
-      inBacktick = true
-      current += ch
-      i++
-    } else if (ch === '$' && next === '(') {
-      depth++
-      current += ch + next
-      i += 2
-    } else if (ch === '&' && next === '&') {
-      const seg = current.trim()
-      if (seg) segments.push(seg)
-      current = ''
-      i += 2
-    } else if (ch === '|' && next === '|') {
-      const seg = current.trim()
-      if (seg) segments.push(seg)
-      current = ''
-      i += 2
-    } else if (ch === '|') {
-      const seg = current.trim()
-      if (seg) segments.push(seg)
-      current = ''
-      i++
-    } else if (ch === ';') {
-      const seg = current.trim()
-      if (seg) segments.push(seg)
-      current = ''
-      i++
+      inDoubleQuote = true;
+      current += ch;
+      i++;
+    } else if (ch === "`") {
+      inBacktick = true;
+      current += ch;
+      i++;
+    } else if (ch === "$" && next === "(") {
+      depth++;
+      current += ch + next;
+      i += 2;
+    } else if (ch === "&" && next === "&") {
+      const seg = current.trim();
+      if (seg) segments.push(seg);
+      current = "";
+      i += 2;
+    } else if (ch === "|" && next === "|") {
+      const seg = current.trim();
+      if (seg) segments.push(seg);
+      current = "";
+      i += 2;
+    } else if (ch === "|") {
+      const seg = current.trim();
+      if (seg) segments.push(seg);
+      current = "";
+      i++;
+    } else if (ch === ";") {
+      const seg = current.trim();
+      if (seg) segments.push(seg);
+      current = "";
+      i++;
     } else {
-      current += ch
-      i++
+      current += ch;
+      i++;
     }
   }
 
-  const last = current.trim()
-  if (last) segments.push(last)
-  return segments
+  const last = current.trim();
+  if (last) segments.push(last);
+  return segments;
 }
 
 function splitShellArgs(command: string): string[] {
-  return command.match(/"[^"]*"|'[^']*'|\S+/g) ?? []
+  return command.match(/"[^"]*"|'[^']*'|\S+/g) ?? [];
 }
 
 function unquoteShellArg(arg: string): string {
-  return arg.replace(/^['"]|['"]$/g, '')
+  return arg.replace(/^['"]|['"]$/g, "");
 }
 
 function extractBlueprintLifecycleStatusFromPathArg(
   arg: string,
 ): ReturnType<typeof parseLifecycleBlueprintStatus> {
-  const normalized = unquoteShellArg(arg).replace(/\\/g, '/')
+  const normalized = unquoteShellArg(arg).replace(/\\/g, "/");
   const match = normalized.match(
     /(?:^|\/)blueprints\/(draft|planned|in-progress|parked|completed|archived)(?:\/|$)/,
-  )
-  return parseLifecycleBlueprintStatus(match?.[1] ?? '')
+  );
+  return parseLifecycleBlueprintStatus(match?.[1] ?? "");
 }
 
 function findIllegalBlueprintGitMv(command: string): {
-  segment: string
-  from: NonNullable<ReturnType<typeof parseLifecycleBlueprintStatus>>
-  to: NonNullable<ReturnType<typeof parseLifecycleBlueprintStatus>>
+  segment: string;
+  from: NonNullable<ReturnType<typeof parseLifecycleBlueprintStatus>>;
+  to: NonNullable<ReturnType<typeof parseLifecycleBlueprintStatus>>;
 } | null {
   for (const segment of splitTopLevelCommands(command.trim())) {
-    if (!/^git\s+mv\b/.test(segment)) continue
-    const args = splitShellArgs(segment)
-    if (args.length < 4) continue
-    const from = extractBlueprintLifecycleStatusFromPathArg(args[2] ?? '')
-    const to = extractBlueprintLifecycleStatusFromPathArg(args[3] ?? '')
-    if (!from || !to) continue
-    if (isLegalLifecycleTransition(from, to)) return null
-    return { segment, from, to }
+    if (!/^git\s+mv\b/.test(segment)) continue;
+    const args = splitShellArgs(segment);
+    if (args.length < 4) continue;
+    const from = extractBlueprintLifecycleStatusFromPathArg(args[2] ?? "");
+    const to = extractBlueprintLifecycleStatusFromPathArg(args[3] ?? "");
+    if (!from || !to) continue;
+    if (isLegalLifecycleTransition(from, to)) return null;
+    return { segment, from, to };
   }
-  return null
+  return null;
 }
 
 export function findMatchingRule(command: string): CommandRule | undefined {
   for (const variant of getCommandVariants(command)) {
-    const rule = COMMAND_RULES.find((r) => r.pattern.test(variant))
-    if (rule) return rule
+    const rule = COMMAND_RULES.find((r) => r.pattern.test(variant));
+    if (rule) return rule;
   }
-  return undefined
+  return undefined;
 }
 
 export function applySuggestionModifiers(command: string, rule: CommandRule): string {
   for (const modifier of SUGGESTION_MODIFIERS) {
     if (modifier.category === rule.category && modifier.pattern.test(command))
-      return modifier.suggestion
+      return modifier.suggestion;
   }
-  return rule.suggestion
+  return rule.suggestion;
 }
 
 export function getApprovedEquivalent(command: string): string {
-  const rule = findMatchingRule(command)
-  if (!rule) return 'repo-approved MCP/tooling entrypoint'
-  return applySuggestionModifiers(command, rule)
+  const rule = findMatchingRule(command);
+  if (!rule) return "repo-approved MCP/tooling entrypoint";
+  return applySuggestionModifiers(command, rule);
 }
 
 export function getCommandVariants(command: string): string[] {
-  const normalized = command.trim()
-  const variants = normalized ? [normalized] : []
+  const normalized = command.trim();
+  const variants = normalized ? [normalized] : [];
 
-  if (normalized.startsWith('vp ')) {
+  if (normalized.startsWith("vp ")) {
     const logicalSegments = normalized
       .split(LOGICAL_OPERATOR_REGEX)
       .map((s) => s.trim())
-      .filter(Boolean)
+      .filter(Boolean);
     for (const segment of logicalSegments) {
-      const beforePipe = segment.split(/\s*\|\s*/)[0]?.trim()
+      const beforePipe = segment.split(/\s*\|\s*/)[0]?.trim();
       if (beforePipe && beforePipe !== segment && !variants.includes(beforePipe))
-        variants.push(beforePipe)
-      if (segment !== normalized && !variants.includes(segment)) variants.push(segment)
+        variants.push(beforePipe);
+      if (segment !== normalized && !variants.includes(segment)) variants.push(segment);
     }
   } else {
     for (const segment of splitTopLevelCommands(normalized)) {
-      if (!variants.includes(segment)) variants.push(segment)
+      if (!variants.includes(segment)) variants.push(segment);
     }
   }
 
-  const initialVariantCount = variants.length
+  const initialVariantCount = variants.length;
   for (let index = 0; index < initialVariantCount; index += 1) {
-    const variant = variants[index]
-    if (!variant) continue
-    const strippedVpVariant = stripVpScopeFlags(variant)
+    const variant = variants[index];
+    if (!variant) continue;
+    const strippedVpVariant = stripVpScopeFlags(variant);
     if (strippedVpVariant !== variant && !variants.includes(strippedVpVariant)) {
-      variants.push(strippedVpVariant)
+      variants.push(strippedVpVariant);
     }
 
-    const strippedCommandVariant = stripKnownScopeFlags(variant)
+    const strippedCommandVariant = stripKnownScopeFlags(variant);
     if (strippedCommandVariant !== variant && !variants.includes(strippedCommandVariant)) {
-      variants.push(strippedCommandVariant)
+      variants.push(strippedCommandVariant);
     }
   }
 
-  return variants
+  return variants;
 }
 
 export function getCommandCategory(command: string): CommandCategory {
-  return findMatchingRule(command)?.category ?? 'unknown'
+  return findMatchingRule(command)?.category ?? "unknown";
 }
 
 function loadRedirectConfig(): MCPRedirectConfig | undefined {
-  const repoRoot = process.env.CLAUDE_PROJECT_DIR ?? process.cwd()
-  return readConfig(repoRoot)?.mcp
+  const repoRoot = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
+  return readConfig(repoRoot)?.mcp;
 }
 
 export function createBlockedResult(
@@ -536,7 +536,7 @@ export function createBlockedResult(
   rule: CommandRule,
   options: RedirectOptions = {},
 ): BlockedCommandResult {
-  const suggestion = applySuggestionModifiers(command, rule)
+  const suggestion = applySuggestionModifiers(command, rule);
   return {
     validator: VALIDATOR_NAME,
     passed: false,
@@ -552,7 +552,7 @@ export function createBlockedResult(
     category: rule.category,
     docsRef: DOCS_REF,
     matchedPattern: rule.pattern.source,
-  }
+  };
 }
 
 export function createAuditResult(
@@ -560,7 +560,7 @@ export function createAuditResult(
   rule: CommandRule,
   options: RedirectOptions = {},
 ): BlockedCommandResult {
-  const suggestion = applySuggestionModifiers(command, rule)
+  const suggestion = applySuggestionModifiers(command, rule);
   return {
     validator: VALIDATOR_NAME,
     passed: true,
@@ -576,52 +576,52 @@ export function createAuditResult(
     category: rule.category,
     docsRef: DOCS_REF,
     matchedPattern: rule.pattern.source,
-  }
+  };
 }
 
-const AUDIT_KIND_SET: ReadonlySet<string> = new Set(MCP_AUDIT_KINDS)
-const WP_AUDIT_RE = /^wp\s+audit\s+([a-z0-9-]+)\b/u
-const SCRIPT_INVOCATION_RE = /^(?:pnpm run|vp run|npm run|pnpm|npm)\s+([A-Za-z0-9:_-]+)/u
-const RAW_PM_RE = /^(?:pnpm|npm)\b/u
+const AUDIT_KIND_SET: ReadonlySet<string> = new Set(MCP_AUDIT_KINDS);
+const WP_AUDIT_RE = /^wp\s+audit\s+([a-z0-9-]+)\b/u;
+const SCRIPT_INVOCATION_RE = /^(?:pnpm run|vp run|npm run|pnpm|npm)\s+([A-Za-z0-9:_-]+)/u;
+const RAW_PM_RE = /^(?:pnpm|npm)\b/u;
 
-function loadGuardConfig(): NonNullable<ReturnType<typeof readConfig>>['guard'] {
-  const repoRoot = process.env.CLAUDE_PROJECT_DIR ?? process.cwd()
-  return readConfig(repoRoot)?.guard
+function loadGuardConfig(): NonNullable<ReturnType<typeof readConfig>>["guard"] {
+  const repoRoot = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
+  return readConfig(repoRoot)?.guard;
 }
 
 /** Build a guard redirect result; non-blocking ("[AUDIT] Would block") in audit mode. */
 function guardRedirect(message: string): ValidationResult {
-  if (process.env[AUDIT_MODE_ENV] === '1') {
-    return { validator: VALIDATOR_NAME, passed: true, message: `[AUDIT] Would block:\n${message}` }
+  if (process.env[AUDIT_MODE_ENV] === "1") {
+    return { validator: VALIDATOR_NAME, passed: true, message: `[AUDIT] Would block:\n${message}` };
   }
-  return { validator: VALIDATOR_NAME, passed: false, message }
+  return { validator: VALIDATOR_NAME, passed: false, message };
 }
 
 /** `wp audit <kind>` (CLI) → MCP audit tools. Generic; not gated on config. */
 function findWpAuditRedirect(command: string): string | undefined {
-  const knownKinds: string[] = []
-  let firstKnownVariant: string | undefined
+  const knownKinds: string[] = [];
+  let firstKnownVariant: string | undefined;
 
   for (const variant of getCommandVariants(command)) {
-    const kind = WP_AUDIT_RE.exec(variant)?.[1]
-    if (kind === 'guardrails') {
-      return `"${variant}" denied — use the MCP batch audit tool: mcp__webpresso__wp_audits(preset="guardrails"). Returns aggregate structured, summary-first results.`
+    const kind = WP_AUDIT_RE.exec(variant)?.[1];
+    if (kind === "guardrails") {
+      return `"${variant}" denied — use the MCP batch audit tool: mcp__webpresso__wp_audits(preset="guardrails"). Returns aggregate structured, summary-first results.`;
     }
-    if (!kind || !AUDIT_KIND_SET.has(kind)) continue
-    if (!firstKnownVariant) firstKnownVariant = variant
-    if (!knownKinds.includes(kind)) knownKinds.push(kind)
+    if (!kind || !AUDIT_KIND_SET.has(kind)) continue;
+    if (!firstKnownVariant) firstKnownVariant = variant;
+    if (!knownKinds.includes(kind)) knownKinds.push(kind);
   }
 
   if (knownKinds.length > 1) {
-    return `Multiple wp audit commands denied — use the MCP batch audit tool: mcp__webpresso__wp_audits(kinds=[${knownKinds.map((kind) => `"${kind}"`).join(', ')}]). Returns aggregate structured, summary-first results.`
+    return `Multiple wp audit commands denied — use the MCP batch audit tool: mcp__webpresso__wp_audits(kinds=[${knownKinds.map((kind) => `"${kind}"`).join(", ")}]). Returns aggregate structured, summary-first results.`;
   }
 
-  const kind = knownKinds[0]
+  const kind = knownKinds[0];
   if (kind && firstKnownVariant) {
-    return `"${firstKnownVariant}" denied — use the MCP audit tool: mcp__webpresso__wp_audit(kind="${kind}"). Returns structured, summary-first results.`
+    return `"${firstKnownVariant}" denied — use the MCP audit tool: mcp__webpresso__wp_audit(kind="${kind}"). Returns structured, summary-first results.`;
   }
 
-  return undefined
+  return undefined;
 }
 
 /** Repo-declared `guard.scriptRoutes`: a package script mapped to an audit kind. */
@@ -630,72 +630,72 @@ function findScriptRouteRedirect(
   routes: Record<string, string>,
 ): string | undefined {
   for (const variant of getCommandVariants(command)) {
-    const script = SCRIPT_INVOCATION_RE.exec(variant)?.[1]
-    if (!script) continue
-    const kind = routes[script]
-    if (!kind) continue
+    const script = SCRIPT_INVOCATION_RE.exec(variant)?.[1];
+    if (!script) continue;
+    const kind = routes[script];
+    if (!kind) continue;
     if (!AUDIT_KIND_SET.has(kind)) {
       process.stderr.write(
         `[forbidden-commands] guard.scriptRoutes["${script}"] -> "${kind}" is not a known audit kind; ignoring\n`,
-      )
-      continue
+      );
+      continue;
     }
-    return `"${variant}" denied — this repo routes \`${script}\` to an audit: mcp__webpresso__wp_audit(kind="${kind}").`
+    return `"${variant}" denied — this repo routes \`${script}\` to an audit: mcp__webpresso__wp_audit(kind="${kind}").`;
   }
-  return undefined
+  return undefined;
 }
 
 /** `guard.packageManager: 'vp-only'`: route any remaining raw pnpm/npm to the vp facade. */
 function findVpOnlyRedirect(command: string): string | undefined {
   for (const variant of getCommandVariants(command)) {
     if (RAW_PM_RE.test(variant)) {
-      return `"${variant}" denied — this repo is vp-only. Use the vp facade (\`vp install\`, \`vp run <script>\`, \`vp exec <bin>\`) or the matching wp_* MCP tool.`
+      return `"${variant}" denied — this repo is vp-only. Use the vp facade (\`vp install\`, \`vp run <script>\`, \`vp exec <bin>\`) or the matching wp_* MCP tool.`;
     }
   }
-  return undefined
+  return undefined;
 }
 
 export function validateForbiddenCommands(
   input: ToolInput,
 ): ValidationResult | BlockedCommandResult {
-  if (process.env[SKIP_ENV_VAR] === '1') return createSkipResult(VALIDATOR_NAME)
-  if (!isBashInput(input)) return createSkipResult(VALIDATOR_NAME, 'Not a Bash command')
+  if (process.env[SKIP_ENV_VAR] === "1") return createSkipResult(VALIDATOR_NAME);
+  if (!isBashInput(input)) return createSkipResult(VALIDATOR_NAME, "Not a Bash command");
 
-  const command = getCommand(input)
-  if (!command) return createSkipResult(VALIDATOR_NAME, 'No command found')
+  const command = getCommand(input);
+  if (!command) return createSkipResult(VALIDATOR_NAME, "No command found");
 
-  const illegalBlueprintGitMv = findIllegalBlueprintGitMv(command)
+  const illegalBlueprintGitMv = findIllegalBlueprintGitMv(command);
   if (illegalBlueprintGitMv) {
     const decoratedRule: CommandRule = {
       ...BLUEPRINT_GIT_MV_RULE,
       suggestion:
         `${BLUEPRINT_HINT}. Illegal transition ${illegalBlueprintGitMv.from} → ` +
         `${illegalBlueprintGitMv.to}; legal targets: ` +
-        `${getLegalLifecycleTargets(illegalBlueprintGitMv.from).join(', ') || '(none)'}`,
-    }
-    if (process.env[AUDIT_MODE_ENV] === '1')
-      return createAuditResult(illegalBlueprintGitMv.segment, decoratedRule)
-    return createBlockedResult(illegalBlueprintGitMv.segment, decoratedRule)
+        `${getLegalLifecycleTargets(illegalBlueprintGitMv.from).join(", ") || "(none)"}`,
+    };
+    if (process.env[AUDIT_MODE_ENV] === "1")
+      return createAuditResult(illegalBlueprintGitMv.segment, decoratedRule);
+    return createBlockedResult(illegalBlueprintGitMv.segment, decoratedRule);
   }
 
-  const rule = findMatchingRule(command)
+  const rule = findMatchingRule(command);
   if (rule) {
-    if (process.env[AUDIT_MODE_ENV] === '1') return createAuditResult(command, rule)
-    return createBlockedResult(command, rule)
+    if (process.env[AUDIT_MODE_ENV] === "1") return createAuditResult(command, rule);
+    return createBlockedResult(command, rule);
   }
 
-  const wpAuditRedirect = findWpAuditRedirect(command)
-  if (wpAuditRedirect) return guardRedirect(wpAuditRedirect)
+  const wpAuditRedirect = findWpAuditRedirect(command);
+  if (wpAuditRedirect) return guardRedirect(wpAuditRedirect);
 
-  const guard = loadGuardConfig()
+  const guard = loadGuardConfig();
   if (guard?.scriptRoutes) {
-    const redirect = findScriptRouteRedirect(command, guard.scriptRoutes)
-    if (redirect) return guardRedirect(redirect)
+    const redirect = findScriptRouteRedirect(command, guard.scriptRoutes);
+    if (redirect) return guardRedirect(redirect);
   }
-  if (guard?.packageManager === 'vp-only') {
-    const redirect = findVpOnlyRedirect(command)
-    if (redirect) return guardRedirect(redirect)
+  if (guard?.packageManager === "vp-only") {
+    const redirect = findVpOnlyRedirect(command);
+    if (redirect) return guardRedirect(redirect);
   }
 
-  return { validator: VALIDATOR_NAME, passed: true }
+  return { validator: VALIDATOR_NAME, passed: true };
 }

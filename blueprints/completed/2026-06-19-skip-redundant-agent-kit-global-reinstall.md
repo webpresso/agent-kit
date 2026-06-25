@@ -26,11 +26,13 @@ Prevent `wp setup` from repeatedly running `vp install -g @webpresso/agent-kit` 
 **Status:** done
 **Wave:** 0
 **Files:**
+
 - `src/cli/commands/init/scaffolders/agent-kit-global/index.ts`
 - `src/cli/auto-update/version.ts`
 - `src/cli/auto-update/run.ts`
 
 **Acceptance:**
+
 - [x] `ensureAgentKitGlobal` skips `vp install -g @webpresso/agent-kit` when the installed package version is at or ahead of the fresh cached latest release.
 - [x] Unknown cache or unknown current version remains conservative and preserves the previous refresh path.
 - [x] The existing root `bin/wp` launcher repair still runs when the install is skipped as already up to date.
@@ -40,10 +42,12 @@ Prevent `wp setup` from repeatedly running `vp install -g @webpresso/agent-kit` 
 **Status:** done
 **Wave:** 0
 **Files:**
+
 - `src/cli/commands/init/index.ts`
 - `src/cli/commands/init/scaffolders/agent-kit-global/index.test.ts`
 
 **Acceptance:**
+
 - [x] `wp setup` reports `agent-kit global: already up to date (...)` for the new skip result.
 - [x] Regression tests cover the up-to-date skip path and the newer-version refresh path.
 - [x] Failure-path tests are isolated from the real update cache.
@@ -67,21 +71,21 @@ Prevent `wp setup` from repeatedly running `vp install -g @webpresso/agent-kit` 
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-skip-redundant-agent-kit-global-reinstall.md |
+| ID  | Claim                                                          | Evidence                                                                          |
+| --- | -------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-skip-redundant-agent-kit-global-reinstall.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

@@ -12,48 +12,48 @@
  *    AND were created more than 90 days ago.
  */
 
-import { existsSync } from 'node:fs'
+import { existsSync } from "node:fs";
 
-import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
-import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
+import { resolveBlueprintProjectionDbPath } from "#db/paths.js";
+import type { RepoAuditResult, RepoAuditViolation } from "./repo-guardrails.js";
 
 interface TechDebtRow {
-  slug: string
-  file_path: string
-  severity: string
-  review_cadence: string
-  next_review: string | null
-  last_reviewed: string | null
-  created: string | null
+  slug: string;
+  file_path: string;
+  severity: string;
+  review_cadence: string;
+  next_review: string | null;
+  last_reviewed: string | null;
+  created: string | null;
 }
 
 export async function auditTechDebtCadence(cwd: string): Promise<RepoAuditResult> {
-  if (!process.env['WP_USE_SQL_AUDITS']) {
+  if (!process.env["WP_USE_SQL_AUDITS"]) {
     return {
       ok: true,
-      title: 'Tech-debt cadence (SQL) — disabled (set WP_USE_SQL_AUDITS=1)',
+      title: "Tech-debt cadence (SQL) — disabled (set WP_USE_SQL_AUDITS=1)",
       checked: 0,
       violations: [],
-    }
+    };
   }
 
-  const dbFile = resolveBlueprintProjectionDbPath(cwd)
+  const dbFile = resolveBlueprintProjectionDbPath(cwd);
   if (!existsSync(dbFile)) {
     return {
       ok: true,
-      title: 'Tech-debt cadence (SQL)',
+      title: "Tech-debt cadence (SQL)",
       checked: 0,
       violations: [],
-    }
+    };
   }
 
-  const { Database } = await import('#db/sqlite.js')
-  const db = new Database(dbFile, { readonly: true })
+  const { Database } = await import("#db/sqlite.js");
+  const db = new Database(dbFile, { readonly: true });
 
-  const violations: RepoAuditViolation[] = []
+  const violations: RepoAuditViolation[] = [];
 
   try {
-    const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
     // -----------------------------------------------------------------------
     // 1. Items with next_review in the past (overdue)
@@ -65,13 +65,13 @@ export async function auditTechDebtCadence(cwd: string): Promise<RepoAuditResult
          WHERE next_review IS NOT NULL
            AND next_review < ?`,
       )
-      .all(today)
+      .all(today);
 
     for (const row of overdue) {
       violations.push({
         file: row.file_path,
         message: `Tech-debt item '${row.slug}' is overdue for review (next_review: ${row.next_review})`,
-      })
+      });
     }
 
     // -----------------------------------------------------------------------
@@ -84,21 +84,21 @@ export async function auditTechDebtCadence(cwd: string): Promise<RepoAuditResult
          WHERE severity = 'critical'
            AND review_cadence != 'weekly'`,
       )
-      .all()
+      .all();
 
     for (const row of criticalNonWeekly) {
       violations.push({
         file: row.file_path,
         message: `Critical tech-debt item '${row.slug}' has cadence '${row.review_cadence}' — critical items require weekly cadence`,
-      })
+      });
     }
 
     // -----------------------------------------------------------------------
     // 3. Never-reviewed items created more than 90 days ago
     // -----------------------------------------------------------------------
-    const cutoff = new Date()
-    cutoff.setDate(cutoff.getDate() - 90)
-    const cutoffDate = cutoff.toISOString().slice(0, 10)
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 90);
+    const cutoffDate = cutoff.toISOString().slice(0, 10);
 
     const neverReviewed = db
       .prepare<[string], TechDebtRow>(
@@ -108,24 +108,24 @@ export async function auditTechDebtCadence(cwd: string): Promise<RepoAuditResult
            AND created IS NOT NULL
            AND created < ?`,
       )
-      .all(cutoffDate)
+      .all(cutoffDate);
 
     for (const row of neverReviewed) {
       violations.push({
         file: row.file_path,
         message: `Tech-debt item '${row.slug}' has never been reviewed and was created on ${row.created} (>${90} days ago)`,
-      })
+      });
     }
 
-    const checked = overdue.length + criticalNonWeekly.length + neverReviewed.length
+    const checked = overdue.length + criticalNonWeekly.length + neverReviewed.length;
 
     return {
       ok: violations.length === 0,
-      title: 'Tech-debt cadence (SQL)',
+      title: "Tech-debt cadence (SQL)",
       checked,
       violations,
-    }
+    };
   } finally {
-    db.close()
+    db.close();
   }
 }

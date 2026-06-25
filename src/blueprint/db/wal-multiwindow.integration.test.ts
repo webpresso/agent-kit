@@ -1,33 +1,33 @@
-import { spawn, spawnSync } from 'node:child_process'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import path from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { spawn, spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 
-const tempRoots: string[] = []
+const tempRoots: string[] = [];
 
 function createTempRoot(): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'wp-blueprint-wal-'))
-  tempRoots.push(root)
-  return root
+  const root = mkdtempSync(path.join(tmpdir(), "wp-blueprint-wal-"));
+  tempRoots.push(root);
+  return root;
 }
 
 function resolveBunPath(): string {
-  const fromEnv = process.env.BUN_PATH
-  if (fromEnv) return fromEnv
+  const fromEnv = process.env.BUN_PATH;
+  if (fromEnv) return fromEnv;
   // Look up bun from PATH so the test works on both macOS and Linux CI runners.
-  const which = spawnSync('which', ['bun'], { encoding: 'utf8' })
-  const fromPath = which.stdout.trim()
-  if (fromPath) return fromPath
+  const which = spawnSync("which", ["bun"], { encoding: "utf8" });
+  const fromPath = which.stdout.trim();
+  if (fromPath) return fromPath;
   // Last-resort well-known locations
-  return '/opt/homebrew/bin/bun'
+  return "/opt/homebrew/bin/bun";
 }
 
 type WorkerResult = {
-  code: number
-  stdout: string
-  stderr: string
-}
+  code: number;
+  stdout: string;
+  stderr: string;
+};
 
 async function runWorkerScript(
   cwd: string,
@@ -38,32 +38,32 @@ async function runWorkerScript(
     const child = spawn(resolveBunPath(), [scriptPath, ...args], {
       cwd,
       env: process.env,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
+      stdio: ["ignore", "pipe", "pipe"],
+    });
 
-    let stdout = ''
-    let stderr = ''
-    child.stdout.on('data', (chunk: Buffer) => {
-      stdout += chunk.toString('utf8')
-    })
-    child.stderr.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString('utf8')
-    })
-    child.on('error', reject)
-    child.on('close', (code) => {
-      resolve({ code: code ?? -1, stdout, stderr })
-    })
-  })
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString("utf8");
+    });
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString("utf8");
+    });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      resolve({ code: code ?? -1, stdout, stderr });
+    });
+  });
 }
 
 async function readCount(cwd: string, dbPath: string, sql: string, key: string): Promise<number> {
   const readerScript = path.join(
     createTempRoot(),
     `reader-${Math.random().toString(36).slice(2)}.ts`,
-  )
+  );
   writeFileSync(
     readerScript,
-    `import { openDb } from ${JSON.stringify(path.join(import.meta.dirname, 'connection.ts'))}
+    `import { openDb } from ${JSON.stringify(path.join(import.meta.dirname, "connection.ts"))}
 
 const [dbPath] = process.argv.slice(2)
 if (!dbPath) throw new Error('missing dbPath')
@@ -75,27 +75,27 @@ try {
   conn.close()
 }
 `,
-    'utf8',
-  )
-  const result = await runWorkerScript(cwd, readerScript, [dbPath])
-  expect(result.code, result.stderr).toBe(0)
-  const parsed = JSON.parse(result.stdout) as Record<string, number>
-  return parsed[key] ?? 0
+    "utf8",
+  );
+  const result = await runWorkerScript(cwd, readerScript, [dbPath]);
+  expect(result.code, result.stderr).toBe(0);
+  const parsed = JSON.parse(result.stdout) as Record<string, number>;
+  return parsed[key] ?? 0;
 }
 
 afterEach(() => {
   for (const root of tempRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true })
+    rmSync(root, { recursive: true, force: true });
   }
-})
+});
 
-describe('shared SQLite WAL multi-window safety', () => {
-  it('persists all runner_events rows across 4 concurrent writer processes for 10 runs', async () => {
-    const repoRoot = path.resolve(import.meta.dirname, '..', '..', '..')
-    const workerScript = path.join(createTempRoot(), 'runner-events-worker.ts')
+describe("shared SQLite WAL multi-window safety", () => {
+  it("persists all runner_events rows across 4 concurrent writer processes for 10 runs", async () => {
+    const repoRoot = path.resolve(import.meta.dirname, "..", "..", "..");
+    const workerScript = path.join(createTempRoot(), "runner-events-worker.ts");
     writeFileSync(
       workerScript,
-      `import { openDb } from ${JSON.stringify(path.join(import.meta.dirname, 'connection.ts'))}
+      `import { openDb } from ${JSON.stringify(path.join(import.meta.dirname, "connection.ts"))}
 
 const [dbPath, workerId, countArg] = process.argv.slice(2)
 if (!dbPath || !workerId || !countArg) throw new Error('missing args')
@@ -112,36 +112,36 @@ try {
   conn.close()
 }
 `,
-      'utf8',
-    )
+      "utf8",
+    );
 
     for (let run = 0; run < 10; run += 1) {
-      const root = createTempRoot()
-      const dbPath = path.join(root, 'wal-runner-events.db')
+      const root = createTempRoot();
+      const dbPath = path.join(root, "wal-runner-events.db");
       const workers = await Promise.all(
         Array.from({ length: 4 }, (_, index) =>
-          runWorkerScript(repoRoot, workerScript, [dbPath, String(index), '25']),
+          runWorkerScript(repoRoot, workerScript, [dbPath, String(index), "25"]),
         ),
-      )
+      );
 
       for (const worker of workers) {
-        expect(worker.code, worker.stderr).toBe(0)
-        expect(worker.stderr).not.toContain('SQLITE_BUSY')
-        expect(worker.stderr).not.toContain('database is locked')
+        expect(worker.code, worker.stderr).toBe(0);
+        expect(worker.stderr).not.toContain("SQLITE_BUSY");
+        expect(worker.stderr).not.toContain("database is locked");
       }
 
       expect(
-        await readCount(repoRoot, dbPath, 'SELECT COUNT(*) as count FROM runner_events', 'count'),
-      ).toBe(100)
+        await readCount(repoRoot, dbPath, "SELECT COUNT(*) as count FROM runner_events", "count"),
+      ).toBe(100);
     }
-  }, 120_000)
+  }, 120_000);
 
-  it('persists all blueprint rows across 4 concurrent writer processes for 10 runs', async () => {
-    const repoRoot = path.resolve(import.meta.dirname, '..', '..', '..')
-    const workerScript = path.join(createTempRoot(), 'blueprints-worker.ts')
+  it("persists all blueprint rows across 4 concurrent writer processes for 10 runs", async () => {
+    const repoRoot = path.resolve(import.meta.dirname, "..", "..", "..");
+    const workerScript = path.join(createTempRoot(), "blueprints-worker.ts");
     writeFileSync(
       workerScript,
-      `import { openDb } from ${JSON.stringify(path.join(import.meta.dirname, 'connection.ts'))}
+      `import { openDb } from ${JSON.stringify(path.join(import.meta.dirname, "connection.ts"))}
 
 const [dbPath, workerId, countArg] = process.argv.slice(2)
 if (!dbPath || !workerId || !countArg) throw new Error('missing args')
@@ -169,22 +169,22 @@ try {
   conn.close()
 }
 `,
-      'utf8',
-    )
+      "utf8",
+    );
 
     for (let run = 0; run < 10; run += 1) {
-      const root = createTempRoot()
-      const dbPath = path.join(root, 'wal-blueprints.db')
+      const root = createTempRoot();
+      const dbPath = path.join(root, "wal-blueprints.db");
       const workers = await Promise.all(
         Array.from({ length: 4 }, (_, index) =>
-          runWorkerScript(repoRoot, workerScript, [dbPath, String(index), '25']),
+          runWorkerScript(repoRoot, workerScript, [dbPath, String(index), "25"]),
         ),
-      )
+      );
 
       for (const worker of workers) {
-        expect(worker.code, worker.stderr).toBe(0)
-        expect(worker.stderr).not.toContain('SQLITE_BUSY')
-        expect(worker.stderr).not.toContain('database is locked')
+        expect(worker.code, worker.stderr).toBe(0);
+        expect(worker.stderr).not.toContain("SQLITE_BUSY");
+        expect(worker.stderr).not.toContain("database is locked");
       }
 
       expect(
@@ -192,9 +192,9 @@ try {
           repoRoot,
           dbPath,
           "SELECT COUNT(*) as count FROM blueprints WHERE slug LIKE 'worker-%'",
-          'count',
+          "count",
         ),
-      ).toBe(100)
+      ).toBe(100);
     }
-  }, 120_000)
-})
+  }, 120_000);
+});

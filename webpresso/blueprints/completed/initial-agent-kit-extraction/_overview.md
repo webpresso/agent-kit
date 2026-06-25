@@ -2,9 +2,9 @@
 type: blueprint
 status: completed
 complexity: S
-created: '2026-01-01'
-last_updated: '2026-04-25'
-progress: '100% (completed)'
+created: "2026-01-01"
+last_updated: "2026-04-25"
+progress: "100% (completed)"
 depends_on: []
 tags: [agent-kit, extraction]
 ---
@@ -27,9 +27,9 @@ webpresso/monorepo/packages/agent-kit/ → webpresso/agent-kit/ (standalone repo
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable |
-|------|-------|--------------|----------------|
-| **Wave 0** | 1.1 | None | 1 agent |
+| Wave       | Tasks | Dependencies | Parallelizable |
+| ---------- | ----- | ------------ | -------------- |
+| **Wave 0** | 1.1   | None         | 1 agent        |
 
 ### Phase 1: Extraction
 
@@ -42,18 +42,20 @@ webpresso/monorepo/packages/agent-kit/ → webpresso/agent-kit/ (standalone repo
 Move agent-kit source into a standalone public repo.
 
 **Files:**
+
 - Create: `webpresso/agent-kit/package.json`
 
 **Acceptance:**
+
 - [x] Package builds in isolation
 - [x] Published to npm as @webpresso/agent-kit
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-|------|---------|-----------------|
-| Build | `pnpm build` | Clean |
-| Tests | `pnpm test` | All pass |
+| Gate  | Command      | Success Criteria |
+| ----- | ------------ | ---------------- |
+| Build | `pnpm build` | Clean            |
+| Tests | `pnpm test`  | All pass         |
 
 ## Non-goals
 

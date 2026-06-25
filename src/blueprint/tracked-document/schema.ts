@@ -11,7 +11,7 @@
  * - Foundation for discriminated unions when multiple document types exist
  */
 
-import { z } from 'zod'
+import { z } from "zod";
 
 // =============================================================================
 // Shared Status Enum
@@ -21,15 +21,15 @@ import { z } from 'zod'
  * Valid tracked document status values (aligned with blueprint lifecycle).
  */
 export const trackedDocumentStatusSchema = z.enum([
-  'draft',
-  'planned',
-  'parked',
-  'in-progress',
-  'completed',
-  'archived',
-])
+  "draft",
+  "planned",
+  "parked",
+  "in-progress",
+  "completed",
+  "archived",
+]);
 
-export type TrackedDocumentStatus = z.infer<typeof trackedDocumentStatusSchema>
+export type TrackedDocumentStatus = z.infer<typeof trackedDocumentStatusSchema>;
 
 // =============================================================================
 // Branded Slug Types (Nominal Typing)
@@ -42,10 +42,10 @@ export type TrackedDocumentStatus = z.infer<typeof trackedDocumentStatusSchema>
  */
 export const BlueprintSlug = z
   .string()
-  .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'Must be kebab-case')
-  .brand<'BlueprintSlug'>()
+  .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Must be kebab-case")
+  .brand<"BlueprintSlug">();
 
-export type BlueprintSlug = z.infer<typeof BlueprintSlug>
+export type BlueprintSlug = z.infer<typeof BlueprintSlug>;
 
 /**
  * TechDebt slug - kebab-case identifier for a tech debt item
@@ -54,10 +54,10 @@ export type BlueprintSlug = z.infer<typeof BlueprintSlug>
  */
 export const TechDebtSlug = z
   .string()
-  .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'Must be kebab-case')
-  .brand<'TechDebtSlug'>()
+  .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Must be kebab-case")
+  .brand<"TechDebtSlug">();
 
-export type TechDebtSlug = z.infer<typeof TechDebtSlug>
+export type TechDebtSlug = z.infer<typeof TechDebtSlug>;
 
 // =============================================================================
 // Base Frontmatter Schema
@@ -79,9 +79,9 @@ export const trackedDocumentFrontmatterSchema = z.object({
   status: trackedDocumentStatusSchema,
   last_updated: z.union([z.string(), z.date()]).optional(),
   created: z.union([z.string(), z.date()]).optional(),
-})
+});
 
-export type TrackedDocumentFrontmatter = z.infer<typeof trackedDocumentFrontmatterSchema>
+export type TrackedDocumentFrontmatter = z.infer<typeof trackedDocumentFrontmatterSchema>;
 
 // =============================================================================
 // Discriminated Union Foundation

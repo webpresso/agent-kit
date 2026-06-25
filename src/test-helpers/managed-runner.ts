@@ -1,9 +1,9 @@
-import { afterEach, beforeEach } from 'vitest'
+import { afterEach, beforeEach } from "vitest";
 
-import { clearManagedRunnerCache, setRtkAvailabilityProbeForTest } from '#tool-runtime'
+import { clearManagedRunnerCache, setRtkAvailabilityProbeForTest } from "#tool-runtime";
 
 export interface ManagedRunnerHarnessOptions {
-  readonly rtkAvailable?: boolean
+  readonly rtkAvailable?: boolean;
 }
 
 /**
@@ -14,14 +14,14 @@ export interface ManagedRunnerHarnessOptions {
  * their own body; this hook only establishes the per-test baseline.
  */
 export function installManagedRunnerHermeticHooks(options: ManagedRunnerHarnessOptions = {}): void {
-  const { rtkAvailable = true } = options
+  const { rtkAvailable = true } = options;
 
   beforeEach(() => {
-    setRtkAvailabilityProbeForTest(rtkAvailable)
-  })
+    setRtkAvailabilityProbeForTest(rtkAvailable);
+  });
 
   afterEach(() => {
-    setRtkAvailabilityProbeForTest(null)
-    clearManagedRunnerCache()
-  })
+    setRtkAvailabilityProbeForTest(null);
+    clearManagedRunnerCache();
+  });
 }

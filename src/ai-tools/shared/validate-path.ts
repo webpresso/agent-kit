@@ -8,21 +8,21 @@
  * - Starts with `\\` (Windows UNC)
  */
 export function isValidRelativePath(path: string): boolean {
-  if (path.includes('..')) {
-    return false
+  if (path.includes("..")) {
+    return false;
   }
 
-  if (path.startsWith('/')) {
-    return false
+  if (path.startsWith("/")) {
+    return false;
   }
 
   if (/^[A-Za-z]:[\\/]/.test(path)) {
-    return false
+    return false;
   }
 
-  if (path.startsWith('\\\\')) {
-    return false
+  if (path.startsWith("\\\\")) {
+    return false;
   }
 
-  return true
+  return true;
 }

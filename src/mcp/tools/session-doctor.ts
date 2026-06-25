@@ -1,11 +1,11 @@
-import { z } from 'zod'
+import { z } from "zod";
 
-import type { ToolDescriptor } from '#mcp/auto-discover'
+import type { ToolDescriptor } from "#mcp/auto-discover";
 
-import { SessionMemorySessionStore } from '#session-memory/session.js'
-import { SessionMemoryStore } from '#session-memory/store.js'
-import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
-import { defaultIndexDbPath, defaultSessionDbPath } from './session-restore.js'
+import { SessionMemorySessionStore } from "#session-memory/session.js";
+import { SessionMemoryStore } from "#session-memory/store.js";
+import { createSummaryOutputSchema, createSummaryResult } from "./_shared/result.js";
+import { defaultIndexDbPath, defaultSessionDbPath } from "./session-restore.js";
 
 const inputSchema = z
   .object({
@@ -13,7 +13,7 @@ const inputSchema = z
     sessionDbPath: z.string().optional(),
     indexDbPath: z.string().optional(),
   })
-  .strict()
+  .strict();
 
 const outputSchema = createSummaryOutputSchema({
   counts: z.object({
@@ -30,73 +30,73 @@ const outputSchema = createSummaryOutputSchema({
   }),
 }).extend({
   warnings: z.array(z.string()),
-})
+});
 
 function boundedWarning(scope: string, error: unknown): string {
-  const name = error instanceof Error ? error.name : 'Error'
-  return `${scope} diagnostic failed: ${name}`
+  const name = error instanceof Error ? error.name : "Error";
+  return `${scope} diagnostic failed: ${name}`;
 }
 
 const tool: ToolDescriptor = {
-  name: 'wp_session_doctor',
-  description: 'Report bounded local diagnostics for session-memory continuity and index stores.',
+  name: "wp_session_doctor",
+  description: "Report bounded local diagnostics for session-memory continuity and index stores.",
   inputSchema,
   outputSchema,
   annotations: {
-    title: 'Session doctor',
+    title: "Session doctor",
     readOnlyHint: true,
     destructiveHint: false,
     idempotentHint: true,
     openWorldHint: false,
   },
   handler: async (raw) => {
-    const input = inputSchema.parse(raw ?? {})
-    const warnings: string[] = []
-    let eventCount = 0
-    let repoCount = 0
-    let sessionCount = 0
-    let snapshotCount = 0
-    let chunkCount = 0
-    let sourceCount = 0
+    const input = inputSchema.parse(raw ?? {});
+    const warnings: string[] = [];
+    let eventCount = 0;
+    let repoCount = 0;
+    let sessionCount = 0;
+    let snapshotCount = 0;
+    let chunkCount = 0;
+    let sourceCount = 0;
 
     try {
       const sessionStore = new SessionMemorySessionStore(
         input.sessionDbPath ?? defaultSessionDbPath(input.cwd),
-      )
+      );
       try {
-        const result = sessionStore.doctor()
-        eventCount = result.eventCount
-        repoCount = result.repoCount
-        sessionCount = result.sessionCount
-        snapshotCount = result.snapshotCount
-        warnings.push(...result.warnings)
+        const result = sessionStore.doctor();
+        eventCount = result.eventCount;
+        repoCount = result.repoCount;
+        sessionCount = result.sessionCount;
+        snapshotCount = result.snapshotCount;
+        warnings.push(...result.warnings);
       } finally {
-        sessionStore.close()
+        sessionStore.close();
       }
     } catch (error) {
-      warnings.push(boundedWarning('session store', error))
+      warnings.push(boundedWarning("session store", error));
     }
 
     try {
-      const indexStore = new SessionMemoryStore(input.indexDbPath ?? defaultIndexDbPath(input.cwd))
+      const indexStore = new SessionMemoryStore(input.indexDbPath ?? defaultIndexDbPath(input.cwd));
       try {
-        const result = indexStore.doctor()
-        chunkCount = result.chunkCount
-        sourceCount = result.sourceCount
-        warnings.push(...result.warnings)
+        const result = indexStore.doctor();
+        chunkCount = result.chunkCount;
+        sourceCount = result.sourceCount;
+        warnings.push(...result.warnings);
       } finally {
-        indexStore.close()
+        indexStore.close();
       }
     } catch (error) {
-      warnings.push(boundedWarning('index store', error))
+      warnings.push(boundedWarning("index store", error));
     }
 
-    const passed = warnings.length === 0
+    const passed = warnings.length === 0;
     const payload = {
       passed,
       summary: passed
-        ? 'session doctor found healthy stores'
-        : 'session doctor found store warnings',
+        ? "session doctor found healthy stores"
+        : "session doctor found store warnings",
       warnings,
       counts: {
         eventCount,
@@ -108,9 +108,9 @@ const tool: ToolDescriptor = {
         warningCount: warnings.length,
       },
       details: { warnings },
-    }
-    return createSummaryResult(payload, passed ? {} : { isError: true })
+    };
+    return createSummaryResult(payload, passed ? {} : { isError: true });
   },
-}
+};
 
-export default tool
+export default tool;

@@ -7,7 +7,7 @@ historical_verification_gap_waiver: true
 complexity: L
 created: "2026-06-02"
 last_updated: "2026-06-07"
-progress: "COMPLETED (2026-06-04): the shipped deploy/audit surfaces were grounded as already present; the remaining repo-local delta (`react-library.json` owning `types: [\"react\", \"react-dom\"]`) is implemented and covered by regression proof. Repo-local closeout proof passed via `wp test --file src/cli/commands/init/config.test.ts --file src/cli/commands/init/init.integration.test.ts`, `wp typecheck`, `wp lint --file src/cli/commands/init/config.ts --file src/cli/commands/init/index.ts --file src/cli/commands/init/config.test.ts --file src/cli/commands/init/init.integration.test.ts`, `wp audit blueprint-lifecycle --legacy-omx`, `wp test --file src/config/tsconfig/tsconfig-parity.test.ts --file src/config/export-resolution.test.ts`, and `bun scripts/public-consumer-smoke.ts --setup-only --skip-build`. Downstream consumer dry-run adoption remains owned by their blueprints."
+progress: 'COMPLETED (2026-06-04): the shipped deploy/audit surfaces were grounded as already present; the remaining repo-local delta (`react-library.json` owning `types: ["react", "react-dom"]`) is implemented and covered by regression proof. Repo-local closeout proof passed via `wp test --file src/cli/commands/init/config.test.ts --file src/cli/commands/init/init.integration.test.ts`, `wp typecheck`, `wp lint --file src/cli/commands/init/config.ts --file src/cli/commands/init/index.ts --file src/cli/commands/init/config.test.ts --file src/cli/commands/init/init.integration.test.ts`, `wp audit blueprint-lifecycle --legacy-omx`, `wp test --file src/config/tsconfig/tsconfig-parity.test.ts --file src/config/export-resolution.test.ts`, and `bun scripts/public-consumer-smoke.ts --setup-only --skip-build`. Downstream consumer dry-run adoption remains owned by their blueprints.'
 review_target: internal multi-repo platform work
 depends_on: []
 tags:
@@ -21,7 +21,7 @@ tags:
 
 # agent-kit: wp deploy orchestrator + toolchain-isolation audit
 
-**Goal:** Make `@webpresso/agent-kit` own the generic dev/deploy *toolchain*
+**Goal:** Make `@webpresso/agent-kit` own the generic dev/deploy _toolchain_
 runtime so a consumer can build, test, typecheck, lint, and deploy a
 Cloudflare Worker through the **global `wp` + required `wp setup`** contract.
 This does **not** mean "zero install" or "no repo-local shared packages":
@@ -104,24 +104,24 @@ AFTER
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-| -------- | ------ | --------- |
-| Toolchain ownership vs deploy plumbing | Separate them. agent-kit owns generic tools as package deps; provider plumbing stays in consumer adapters. | Reviewer V1 pushback: putting Cloudflare/Pulumi plumbing in agent-kit violates `catalog/agent/rules/extraction-parity.md` §5 and `public-package-safety.md`. |
-| `wp deploy` shape | Provider-agnostic orchestrator + `deploy.adapterModule` contract; extend the existing `deploy.cloudflare` contract validation, don't replace it. | Keep the documented lane/env/metadata safety; record an intentional **contract delta**, not a pure relocation. |
-| Lane IDs | `dev`, `preview_main`, `preview_pr_<n>`, `prd` (underscores). | V1 used dashed `preview-main`/`preview-pr-<n>` — violates the canonical internal lane IDs in `extraction-parity.md`. Cloud/provider-facing names are derived separately and dash-safe. |
-| Reuse `launch` primitive | Build `wp deploy` on the existing `./launch` / `@webpresso/agent-tools-launch` primitive instead of a parallel stack. | V1 duplicated launch. Avoid two orchestration stacks. |
-| Heavy dependency footprint | Accepted for the toolchain that ozby.dev's strict model requires; do not silently balloon all consumers. | Forcing every consumer to pull wrangler/vite/etc. as agent-kit hard deps was a V1 cost flagged by reviewers; gate behind managed-runner resolution so weight is opt-in via what the consumer actually invokes. |
-| Toolchain isolation semantics | "Strict" means no consumer-owned generic tool runtime, not "no bootstrap" and not "no root shared-package deps ever". | The finalized contract is global `wp` + `wp setup`, with `.webpressorc.json` as the live repo config and root `@webpresso/agent-kit` still allowed where subpath imports require it. |
-| Provider plumbing publication | Cloudflare/Pulumi helper stays private/internal by default. | Mirrors the edge-matte deploy-contract blueprint boundary; any public promotion needs a separate package-surface blueprint + tarball/denied-content audit. |
+| Decision                               | Choice                                                                                                                                           | Rationale                                                                                                                                                                                                      |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Toolchain ownership vs deploy plumbing | Separate them. agent-kit owns generic tools as package deps; provider plumbing stays in consumer adapters.                                       | Reviewer V1 pushback: putting Cloudflare/Pulumi plumbing in agent-kit violates `catalog/agent/rules/extraction-parity.md` §5 and `public-package-safety.md`.                                                   |
+| `wp deploy` shape                      | Provider-agnostic orchestrator + `deploy.adapterModule` contract; extend the existing `deploy.cloudflare` contract validation, don't replace it. | Keep the documented lane/env/metadata safety; record an intentional **contract delta**, not a pure relocation.                                                                                                 |
+| Lane IDs                               | `dev`, `preview_main`, `preview_pr_<n>`, `prd` (underscores).                                                                                    | V1 used dashed `preview-main`/`preview-pr-<n>` — violates the canonical internal lane IDs in `extraction-parity.md`. Cloud/provider-facing names are derived separately and dash-safe.                         |
+| Reuse `launch` primitive               | Build `wp deploy` on the existing `./launch` / `@webpresso/agent-tools-launch` primitive instead of a parallel stack.                            | V1 duplicated launch. Avoid two orchestration stacks.                                                                                                                                                          |
+| Heavy dependency footprint             | Accepted for the toolchain that ozby.dev's strict model requires; do not silently balloon all consumers.                                         | Forcing every consumer to pull wrangler/vite/etc. as agent-kit hard deps was a V1 cost flagged by reviewers; gate behind managed-runner resolution so weight is opt-in via what the consumer actually invokes. |
+| Toolchain isolation semantics          | "Strict" means no consumer-owned generic tool runtime, not "no bootstrap" and not "no root shared-package deps ever".                            | The finalized contract is global `wp` + `wp setup`, with `.webpressorc.json` as the live repo config and root `@webpresso/agent-kit` still allowed where subpath imports require it.                           |
+| Provider plumbing publication          | Cloudflare/Pulumi helper stays private/internal by default.                                                                                      | Mirrors the edge-matte deploy-contract blueprint boundary; any public promotion needs a separate package-surface blueprint + tarball/denied-content audit.                                                     |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable |
-| ---- | ----- | ------------ | -------------- |
-| **Wave 0** | 1.1, 1.2, 1.3 | None | 3 agents |
-| **Wave 1** | 2.1, 2.2 | Wave 0 | 2 agents |
-| **Wave 2** | 3.1 | Wave 1 | 1 agent |
-| **Critical path** | 1.1 → 2.1 → 3.1 | — | 3 waves |
+| Wave              | Tasks           | Dependencies | Parallelizable |
+| ----------------- | --------------- | ------------ | -------------- |
+| **Wave 0**        | 1.1, 1.2, 1.3   | None         | 3 agents       |
+| **Wave 1**        | 2.1, 2.2        | Wave 0       | 2 agents       |
+| **Wave 2**        | 3.1             | Wave 1       | 1 agent        |
+| **Critical path** | 1.1 → 2.1 → 3.1 | —            | 3 waves        |
 
 T-shirt sizing per task below (XS/S/M/L/XL).
 
@@ -200,7 +200,7 @@ sibling `react-router.json` preset already overrides `types`
 `"types": ["react", "react-dom"]` to `react-library.json` so React consumers
 inherit it and can drop their override.
 
-**Blast radius (verified 2026-06-03):** the only live consumers of *agent-kit's*
+**Blast radius (verified 2026-06-03):** the only live consumers of _agent-kit's_
 `react-library.json` are `ozby-dev` and `ingest-lens/packages/ui`, and **both
 already override `types`** — so this is zero-change for them and pure benefit for
 future consumers. The ~30 monorepo `react-library.json` matches extend
@@ -317,13 +317,13 @@ consumer blueprints.
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-| ---- | ------- | ---------------- |
-| Type safety | repo typecheck recipe | Zero errors |
-| Lint | repo lint recipe (scoped) | Zero violations |
-| Tests | repo test recipe (scoped) | All pass |
-| Mutation | repo mutation recipe | No drop vs baseline (extraction-parity tolerance) |
-| Public surface | package/tarball safety check | Intended dependency/export surface only |
+| Gate           | Command                      | Success Criteria                                  |
+| -------------- | ---------------------------- | ------------------------------------------------- |
+| Type safety    | repo typecheck recipe        | Zero errors                                       |
+| Lint           | repo lint recipe (scoped)    | Zero violations                                   |
+| Tests          | repo test recipe (scoped)    | All pass                                          |
+| Mutation       | repo mutation recipe         | No drop vs baseline (extraction-parity tolerance) |
+| Public surface | package/tarball safety check | Intended dependency/export surface only           |
 
 ## Risks and Edge Cases
 
@@ -345,7 +345,7 @@ consumer blueprints.
 ## Appendix A — recovered V1 (maximal, superseded)
 
 The 09:59 reviewer flagged V1 as over-scoped: it forced wrangler/vite/etc. as
-agent-kit *package* deps, used generated (uncommitted) Wrangler config, and put
+agent-kit _package_ deps, used generated (uncommitted) Wrangler config, and put
 Cloudflare deploy plumbing inside agent-kit. Blocking issues: provider plumbing
 in agent-kit (`extraction-parity.md` §5, `public-package-safety.md`); dashed
 lane IDs (`preview-main`); duplication of the `launch` primitive; install bloat
@@ -364,21 +364,21 @@ record is the V2 body above.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-02-agent-kit-wp-deploy-orchestrator-toolchain-isolation.md |
+| ID  | Claim                                                          | Evidence                                                                                     |
+| --- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-02-agent-kit-wp-deploy-orchestrator-toolchain-isolation.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

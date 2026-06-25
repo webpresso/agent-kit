@@ -46,13 +46,13 @@ The plan execution surface has three layers:
 
 ## Core Rules
 
-| Rule                                      | Implementation                                                                   |
-| ----------------------------------------- | -------------------------------------------------------------------------------- |
+| Rule                                      | Implementation                                                                          |
+| ----------------------------------------- | --------------------------------------------------------------------------------------- |
 | **Blueprint is canonical**                | Task / lifecycle truth lives in the blueprint file plus shipped `wp blueprint` commands |
-| **No direct `move` for normal execution** | `move` is recovery-only; use `start`, `task ...`, and `finalize`                 |
-| **Operator UX is separate**               | `/pll` and lane commands are orchestration surfaces, not durable state stores    |
-| **Generic engine vs adapter**             | The parallel engine is reusable; `/pll` is the blueprint-aware adapter           |
-| **Verification stays repo-owned**         | Use `wp blueprint audit`, targeted tests, lint, and typecheck to prove completion |
+| **No direct `move` for normal execution** | `move` is recovery-only; use `start`, `task ...`, and `finalize`                        |
+| **Operator UX is separate**               | `/pll` and lane commands are orchestration surfaces, not durable state stores           |
+| **Generic engine vs adapter**             | The parallel engine is reusable; `/pll` is the blueprint-aware adapter                  |
+| **Verification stays repo-owned**         | Use `wp blueprint audit`, targeted tests, lint, and typecheck to prove completion       |
 
 > [!NOTE]
 > Blueprint markdown is allowed to be historically mixed. For execution

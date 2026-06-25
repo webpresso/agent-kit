@@ -6,8 +6,8 @@ status: active
 scope: repo
 applies_to: [agents]
 related: [testing-philosophy]
-created: '2026-06-13'
-last_reviewed: '2026-06-13'
+created: "2026-06-13"
+last_reviewed: "2026-06-13"
 name: tph
 description: Literal /tph shortcut for the testing-philosophy skill and wp audit tph. Use when reviewing test quality, detecting over-mocking or weak assertions, or enforcing integration-first testing.
 ---

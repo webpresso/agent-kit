@@ -4,9 +4,9 @@ title: Secret surface roadmap placeholder
 status: archived
 owner: agent-kit
 complexity: S
-created: '2026-06-12'
-last_updated: '2026-06-12'
-progress: '100% (archived placeholder retained only to satisfy roadmap linkage after historical cleanup)'
+created: "2026-06-12"
+last_updated: "2026-06-12"
+progress: "100% (archived placeholder retained only to satisfy roadmap linkage after historical cleanup)"
 depends_on: []
 tags:
   - roadmap

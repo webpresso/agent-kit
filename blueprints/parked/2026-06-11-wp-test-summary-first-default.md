@@ -4,8 +4,8 @@ title: "Codify wp test summary-first default with full opt-out"
 owner: ozby
 status: parked
 complexity: S
-created: '2026-06-11'
-last_updated: '2026-06-15'
+created: "2026-06-11"
+last_updated: "2026-06-15"
 progress: "Implemented in PR #139; parked for legal lifecycle transition from planned pending finalization"
 tags:
   - cli
@@ -21,7 +21,6 @@ tags:
 Implemented in PR #139 on branch `work/ultragoal-9-blueprints-20260614221933`.
 Task status and acceptance checkboxes below were reconciled from the landed code paths and focused verification evidence in this PR. The file is parked because CI enforces the legal first transition from `planned`; finalization can move parked/resumed work through the lifecycle after merge.
 
-
 ## Planning Summary
 
 The original draft assumed `wp test` still needed to be changed to default to a
@@ -35,16 +34,16 @@ behavior is intentional, stable, and clearly owned. (F1-F8)
 
 ## Fact-Check Summary
 
-| ID | Severity | Claim checked | Repo evidence | Planning consequence |
-| -- | -------- | ------------- | ------------- | -------------------- |
-| F1 | HIGH | `wp test` already exposes a full-output opt-out flag. | `src/cli/commands/test.ts` registers `--full` with help text “Print the full raw output instead of the default summary-first view”. | Do not plan a net-new flag or default flip. |
-| F2 | HIGH | Summary-first rendering is shared infra, not `wp test`-local logic. | `src/cli/commands/quality-runner.ts` implements `emitCliCommandOutput(...)` and returns raw logs only when `full` or `rawMode` is set. | Put owner-side hardening at the shared quality-runner boundary. |
-| F3 | HIGH | Shared behavior already has baseline tests. | `src/cli/commands/quality-runner.test.ts` verifies summary-first default and raw output with `--full`. | Strengthen exact raw-only assertions instead of duplicating the whole renderer in command tests. |
-| F4 | MEDIUM | `wp test` command tests only verify flag exposure, not end-to-end output behavior. | `src/cli/commands/test.test.ts` currently checks that `--full` exists but does not assert its help wording or command-action passthrough semantics. | Add targeted command-layer tests so `wp test` explicitly owns its contract too. |
-| F5 | MEDIUM | Other quality commands use the same summary-first contract. | `src/cli/commands/audit.ts`, `format.ts`, `lint.ts`, `qa.ts`, `typecheck.ts`, and `e2e.ts` also expose the same `--full` help text and pass `full: Boolean(flags.full)` to the shared renderer. | Keep this blueprint narrowly about `wp test`; do not fragment the shared CLI contract. |
-| F6 | MEDIUM | Current test helper cannot inspect option descriptions or execute the registered action. | `buildFakeCli()` in `src/cli/commands/test.test.ts` records only option names and discards the action callback. | First harden the test harness, then add `wp test` contract assertions. |
-| F7 | MEDIUM | The shared full-mode test allows extra raw-output text as long as it omits the log hint. | `quality-runner.test.ts` checks `fullWrites` contains the raw TypeScript line and omits `Full log: ...`, but does not assert equality with the persisted log content. | Add an exact raw-only assertion so summary text, transformed snippets, and hints cannot leak into full mode. |
-| F8 | LOW | Repo command examples in recent blueprints use `./bin/wp ...` for focused gates. | Planned blueprints such as `2026-06-13-multi-host-plugin-and-instruction-surface-expansion.md` use repeated `--file` flags with `./bin/wp test`. | Use repo-local `./bin/wp` commands in task steps and verification gates. |
+| ID  | Severity | Claim checked                                                                            | Repo evidence                                                                                                                                                                                   | Planning consequence                                                                                         |
+| --- | -------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| F1  | HIGH     | `wp test` already exposes a full-output opt-out flag.                                    | `src/cli/commands/test.ts` registers `--full` with help text “Print the full raw output instead of the default summary-first view”.                                                             | Do not plan a net-new flag or default flip.                                                                  |
+| F2  | HIGH     | Summary-first rendering is shared infra, not `wp test`-local logic.                      | `src/cli/commands/quality-runner.ts` implements `emitCliCommandOutput(...)` and returns raw logs only when `full` or `rawMode` is set.                                                          | Put owner-side hardening at the shared quality-runner boundary.                                              |
+| F3  | HIGH     | Shared behavior already has baseline tests.                                              | `src/cli/commands/quality-runner.test.ts` verifies summary-first default and raw output with `--full`.                                                                                          | Strengthen exact raw-only assertions instead of duplicating the whole renderer in command tests.             |
+| F4  | MEDIUM   | `wp test` command tests only verify flag exposure, not end-to-end output behavior.       | `src/cli/commands/test.test.ts` currently checks that `--full` exists but does not assert its help wording or command-action passthrough semantics.                                             | Add targeted command-layer tests so `wp test` explicitly owns its contract too.                              |
+| F5  | MEDIUM   | Other quality commands use the same summary-first contract.                              | `src/cli/commands/audit.ts`, `format.ts`, `lint.ts`, `qa.ts`, `typecheck.ts`, and `e2e.ts` also expose the same `--full` help text and pass `full: Boolean(flags.full)` to the shared renderer. | Keep this blueprint narrowly about `wp test`; do not fragment the shared CLI contract.                       |
+| F6  | MEDIUM   | Current test helper cannot inspect option descriptions or execute the registered action. | `buildFakeCli()` in `src/cli/commands/test.test.ts` records only option names and discards the action callback.                                                                                 | First harden the test harness, then add `wp test` contract assertions.                                       |
+| F7  | MEDIUM   | The shared full-mode test allows extra raw-output text as long as it omits the log hint. | `quality-runner.test.ts` checks `fullWrites` contains the raw TypeScript line and omits `Full log: ...`, but does not assert equality with the persisted log content.                           | Add an exact raw-only assertion so summary text, transformed snippets, and hints cannot leak into full mode. |
+| F8  | LOW      | Repo command examples in recent blueprints use `./bin/wp ...` for focused gates.         | Planned blueprints such as `2026-06-13-multi-host-plugin-and-instruction-surface-expansion.md` use repeated `--file` flags with `./bin/wp test`.                                                | Use repo-local `./bin/wp` commands in task steps and verification gates.                                     |
 
 ## Scope
 
@@ -65,20 +64,20 @@ behavior is intentional, stable, and clearly owned. (F1-F8)
 
 ## Technology Choices
 
-| Surface | Current choice | Refinement decision | Evidence / fix tag |
-| ------- | -------------- | ------------------- | ------------------ |
-| Command runner | `runCliCommandSequence(...)` plus `emitCliCommandOutput(...)` in `quality-runner.ts` | Preserve shared ownership; do not move rendering policy into `test.ts`. | F2, F5 |
-| Raw-output opt-out | `--full` flag passed as `full: Boolean(flags.full)` | Keep as the only full raw-output opt-out for `wp test`. | F1 |
-| Test command | `./bin/wp test --file ...` | Use repeated `--file` flags for focused test slices. | F8 |
-| Testability | Existing fake CAC chain in `test.test.ts` | Extend locally to capture option metadata/action instead of adding broad abstractions. | F6 |
+| Surface            | Current choice                                                                       | Refinement decision                                                                    | Evidence / fix tag |
+| ------------------ | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- | ------------------ |
+| Command runner     | `runCliCommandSequence(...)` plus `emitCliCommandOutput(...)` in `quality-runner.ts` | Preserve shared ownership; do not move rendering policy into `test.ts`.                | F2, F5             |
+| Raw-output opt-out | `--full` flag passed as `full: Boolean(flags.full)`                                  | Keep as the only full raw-output opt-out for `wp test`.                                | F1                 |
+| Test command       | `./bin/wp test --file ...`                                                           | Use repeated `--file` flags for focused test slices.                                   | F8                 |
+| Testability        | Existing fake CAC chain in `test.test.ts`                                            | Extend locally to capture option metadata/action instead of adding broad abstractions. | F6                 |
 
 ## Key Decisions
 
-| Decision | Rationale | Consequence |
-| -------- | --------- | ----------- |
-| Preserve behavior and add tests before production edits. | The repo already has the desired default and opt-out behavior. | Most work should be test hardening; production source changes are allowed only for a minimal command-action testability seam or help wording correction. |
-| Keep rendering semantics in `quality-runner.ts`. | Other quality commands share the same output contract. | `test.ts` must not duplicate summary rendering or log hint logic. |
-| Treat README/package docs as out of scope unless a test exposes stale public wording. | Public docs are package-surface material and add release-safety scope. | If docs are touched anyway, add package-surface/secret checks before completion. |
+| Decision                                                                              | Rationale                                                              | Consequence                                                                                                                                              |
+| ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Preserve behavior and add tests before production edits.                              | The repo already has the desired default and opt-out behavior.         | Most work should be test hardening; production source changes are allowed only for a minimal command-action testability seam or help wording correction. |
+| Keep rendering semantics in `quality-runner.ts`.                                      | Other quality commands share the same output contract.                 | `test.ts` must not duplicate summary rendering or log hint logic.                                                                                        |
+| Treat README/package docs as out of scope unless a test exposes stale public wording. | Public docs are package-surface material and add release-safety scope. | If docs are touched anyway, add package-surface/secret checks before completion.                                                                         |
 
 ## Architecture Notes
 
@@ -95,22 +94,22 @@ behavior is intentional, stable, and clearly owned. (F1-F8)
 
 ## Edge Cases
 
-| ID | Severity | Edge case | Mitigation |
-| -- | -------- | --------- | ---------- |
-| E1 | HIGH | `--full` prints raw log content plus summary-first text or `Full log: ...`, making the opt-out incomplete. | Task 1.2 asserts full-mode output equals the persisted raw log. (F7) |
-| E2 | HIGH | A future refactor drops or inverts `flags.full`, so `wp test --full` still emits summary-first output. | Task 2.1 adds a command-level regression test around action wiring. (F4, F6) |
-| E3 | MEDIUM | Command tests assert only option presence while help wording drifts away from the shared contract. | Task 1.1 captures option descriptions and asserts summary-first/raw wording. (F1, F6) |
-| E4 | MEDIUM | `wp test` introduces command-local rendering logic that diverges from `lint`, `typecheck`, `qa`, and `e2e`. | Acceptance criteria prohibit duplicate rendering logic in `test.ts`. (F2, F5) |
-| E5 | MEDIUM | Public docs are edited with local-path or package-surface leaks. | Keep docs out of scope by default; if touched, run package-surface/secret gates. |
+| ID  | Severity | Edge case                                                                                                   | Mitigation                                                                            |
+| --- | -------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| E1  | HIGH     | `--full` prints raw log content plus summary-first text or `Full log: ...`, making the opt-out incomplete.  | Task 1.2 asserts full-mode output equals the persisted raw log. (F7)                  |
+| E2  | HIGH     | A future refactor drops or inverts `flags.full`, so `wp test --full` still emits summary-first output.      | Task 2.1 adds a command-level regression test around action wiring. (F4, F6)          |
+| E3  | MEDIUM   | Command tests assert only option presence while help wording drifts away from the shared contract.          | Task 1.1 captures option descriptions and asserts summary-first/raw wording. (F1, F6) |
+| E4  | MEDIUM   | `wp test` introduces command-local rendering logic that diverges from `lint`, `typecheck`, `qa`, and `e2e`. | Acceptance criteria prohibit duplicate rendering logic in `test.ts`. (F2, F5)         |
+| E5  | MEDIUM   | Public docs are edited with local-path or package-surface leaks.                                            | Keep docs out of scope by default; if touched, run package-surface/secret gates.      |
 
 ## Risks
 
-| ID | Severity | Risk | Mitigation |
-| -- | -------- | ---- | ---------- |
-| R1 | HIGH | Tests overfit implementation internals rather than the user-visible `--full` behavior. | Prefer action-level or output-level assertions; keep helper seams minimal and named around command behavior. |
-| R2 | HIGH | Shared quality-runner changes unintentionally alter other quality commands. | Task 1.2 is shared-runner-only; final verification includes focused runner tests and `./bin/wp typecheck`. |
-| R3 | MEDIUM | Parallel agents contend for `test.test.ts` or `quality-runner.test.ts`. | Execution waves serialize same-file edits; Wave 0 tasks touch separate files. |
-| R4 | MEDIUM | Scope expands into docs/package surfaces. | Treat docs as conditional; if touched, add `./bin/wp audit package-surface` and secret/path checks before completion. |
+| ID  | Severity | Risk                                                                                   | Mitigation                                                                                                            |
+| --- | -------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| R1  | HIGH     | Tests overfit implementation internals rather than the user-visible `--full` behavior. | Prefer action-level or output-level assertions; keep helper seams minimal and named around command behavior.          |
+| R2  | HIGH     | Shared quality-runner changes unintentionally alter other quality commands.            | Task 1.2 is shared-runner-only; final verification includes focused runner tests and `./bin/wp typecheck`.            |
+| R3  | MEDIUM   | Parallel agents contend for `test.test.ts` or `quality-runner.test.ts`.                | Execution waves serialize same-file edits; Wave 0 tasks touch separate files.                                         |
+| R4  | MEDIUM   | Scope expands into docs/package surfaces.                                              | Treat docs as conditional; if touched, add `./bin/wp audit package-surface` and secret/path checks before completion. |
 
 ## Cross-Plan References
 
@@ -120,22 +119,22 @@ behavior is intentional, stable, and clearly owned. (F1-F8)
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
-| ---- | ----- | ------------ | -------------- | ---------------- |
-| **Wave 0** | 1.1, 1.2 | None | 2 agents | XS |
-| **Wave 1** | 2.1 | Task 1.1 | 1 agent | S |
-| **Wave 2** | 3.1, 3.2 | Tasks 1.2, 2.1 | 2 agents | XS-S |
-| **Wave 3** | 3.3 | Tasks 3.1, 3.2 | 1 agent | XS |
-| **Critical path** | 1.1 → 2.1 → 3.1 → 3.3 | — | 4 waves | S |
+| Wave              | Tasks                 | Dependencies   | Parallelizable | Effort (T-shirt) |
+| ----------------- | --------------------- | -------------- | -------------- | ---------------- |
+| **Wave 0**        | 1.1, 1.2              | None           | 2 agents       | XS               |
+| **Wave 1**        | 2.1                   | Task 1.1       | 1 agent        | S                |
+| **Wave 2**        | 3.1, 3.2              | Tasks 1.2, 2.1 | 2 agents       | XS-S             |
+| **Wave 3**        | 3.3                   | Tasks 3.1, 3.2 | 1 agent        | XS               |
+| **Critical path** | 1.1 → 2.1 → 3.1 → 3.3 | —              | 4 waves        | S                |
 
 ### Parallel Metrics Snapshot
 
-| Metric | Formula / Meaning | Target | Actual |
-| ------ | ----------------- | ------ | ------ |
-| RW0 | Ready tasks in Wave 0 | ≥ planned agents / 2 | 2 |
-| CPR | total_tasks / critical_path_length | ≥ 2.5 | 6 / 4 = 1.5 |
-| DD | dependency_edges / total_tasks | ≤ 2.0 | 6 / 6 = 1.0 |
-| CP | same-file overlaps per wave | 0 | 0 |
+| Metric | Formula / Meaning                  | Target               | Actual      |
+| ------ | ---------------------------------- | -------------------- | ----------- |
+| RW0    | Ready tasks in Wave 0              | ≥ planned agents / 2 | 2           |
+| CPR    | total_tasks / critical_path_length | ≥ 2.5                | 6 / 4 = 1.5 |
+| DD     | dependency_edges / total_tasks     | ≤ 2.0                | 6 / 6 = 1.0 |
+| CP     | same-file overlaps per wave        | 0                    | 0           |
 
 **Parallelization score:** C. This is an intentionally small S-sized hardening
 plan; task splitting improved same-wave file conflict pressure to zero, but the
@@ -340,15 +339,15 @@ complete. (R4)
 
 ## Verification Matrix
 
-| Gate | Command | Required when | Expected result |
-| ---- | ------- | ------------- | --------------- |
-| Command tests | `./bin/wp test --file src/cli/commands/test.test.ts` | Tasks 1.1 and 2.1 | Pass |
-| Shared runner tests | `./bin/wp test --file src/cli/commands/quality-runner.test.ts` | Task 1.2 | Pass |
-| Focused output contract | `./bin/wp test --file src/cli/commands/test.test.ts --file src/cli/commands/quality-runner.test.ts` | Task 3.1 and final verification | Pass |
-| Typecheck | `./bin/wp typecheck` | Any source/test edit | Pass |
-| Lint | `./bin/wp lint` | Any source/test edit | Pass |
-| Package surface | `./bin/wp audit package-surface` | Only if docs/package/public surfaces are touched | Pass with no leaks |
-| Full QA | `./bin/wp qa` | Before merge if maintainers require full gate or shared runner behavior changed beyond tests | Pass or documented blocker |
+| Gate                    | Command                                                                                             | Required when                                                                                | Expected result            |
+| ----------------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------- |
+| Command tests           | `./bin/wp test --file src/cli/commands/test.test.ts`                                                | Tasks 1.1 and 2.1                                                                            | Pass                       |
+| Shared runner tests     | `./bin/wp test --file src/cli/commands/quality-runner.test.ts`                                      | Task 1.2                                                                                     | Pass                       |
+| Focused output contract | `./bin/wp test --file src/cli/commands/test.test.ts --file src/cli/commands/quality-runner.test.ts` | Task 3.1 and final verification                                                              | Pass                       |
+| Typecheck               | `./bin/wp typecheck`                                                                                | Any source/test edit                                                                         | Pass                       |
+| Lint                    | `./bin/wp lint`                                                                                     | Any source/test edit                                                                         | Pass                       |
+| Package surface         | `./bin/wp audit package-surface`                                                                    | Only if docs/package/public surfaces are touched                                             | Pass with no leaks         |
+| Full QA                 | `./bin/wp qa`                                                                                       | Before merge if maintainers require full gate or shared runner behavior changed beyond tests | Pass or documented blocker |
 
 ## Merge Criteria
 

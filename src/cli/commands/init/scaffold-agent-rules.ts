@@ -4,13 +4,13 @@
  * `.cursor/rules/`, etc.) by the symlink/sync layer. Source-of-truth lives in
  * `agent-rules/` and is committed; the projected surfaces are gitignored.
  */
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
-import { renderInstructionSurface } from '#hooks/shared/instruction-surfaces'
+import { renderInstructionSurface } from "#hooks/shared/instruction-surfaces";
 
-import { patchGitignore } from './gitignore-patcher.js'
-import { type MergeOptions, type MergeResult, writeFileMerged } from './merge.js'
+import { patchGitignore } from "./gitignore-patcher.js";
+import { type MergeOptions, type MergeResult, writeFileMerged } from "./merge.js";
 
 const AGENT_RULES_README = `# agent-rules/
 
@@ -29,55 +29,55 @@ of behavioural guidelines that get projected into per-tool surfaces
 - Files in \`agent-rules/\` are committed.
 - Projected surfaces (\`.agent/rules/\`, \`.cursor/rules/\`, …) are gitignored.
 - Run \`wp sync\` after editing to refresh derived surfaces.
-`
+`;
 
 export interface ScaffoldAgentRulesOptions {
-  cwd: string
-  dryRun?: boolean
-  overwrite?: boolean
+  cwd: string;
+  dryRun?: boolean;
+  overwrite?: boolean;
 }
 
 export interface ScaffoldAgentRulesResult {
-  results: readonly MergeResult[]
+  results: readonly MergeResult[];
 }
 
-export const WEBPRESSO_ROUTING_RULE_FILENAME = 'webpresso-routing.md'
+export const WEBPRESSO_ROUTING_RULE_FILENAME = "webpresso-routing.md";
 
-const RULE_IGNORE_PATTERNS = ['.agent/rules/', '.cursor/rules/', '.claude/rules/'] as const
+const RULE_IGNORE_PATTERNS = [".agent/rules/", ".cursor/rules/", ".claude/rules/"] as const;
 
 export function scaffoldAgentRules(opts: ScaffoldAgentRulesOptions): ScaffoldAgentRulesResult {
-  const { cwd, dryRun, overwrite } = opts
-  const mergeOpts: MergeOptions = { dryRun, overwrite }
-  const dir = join(cwd, 'agent-rules')
-  const gitkeep = join(dir, '.gitkeep')
-  const results: MergeResult[] = []
+  const { cwd, dryRun, overwrite } = opts;
+  const mergeOpts: MergeOptions = { dryRun, overwrite };
+  const dir = join(cwd, "agent-rules");
+  const gitkeep = join(dir, ".gitkeep");
+  const results: MergeResult[] = [];
 
-  const gitkeepExisted = existsSync(gitkeep)
+  const gitkeepExisted = existsSync(gitkeep);
   if (!dryRun) {
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
-    if (!gitkeepExisted) writeFileSync(gitkeep, '')
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    if (!gitkeepExisted) writeFileSync(gitkeep, "");
   }
   results.push({
     targetPath: gitkeep,
-    action: gitkeepExisted ? 'identical' : dryRun ? 'skipped-dry' : 'created',
-  })
+    action: gitkeepExisted ? "identical" : dryRun ? "skipped-dry" : "created",
+  });
 
-  results.push(writeFileMerged(join(dir, 'README.md'), AGENT_RULES_README, mergeOpts))
+  results.push(writeFileMerged(join(dir, "README.md"), AGENT_RULES_README, mergeOpts));
   results.push(
     writeFileMerged(
       join(dir, WEBPRESSO_ROUTING_RULE_FILENAME),
-      renderInstructionSurface({ host: 'cursor' }).content + '\n',
+      renderInstructionSurface({ host: "cursor" }).content + "\n",
       mergeOpts,
     ),
-  )
+  );
 
   results.push(
     patchGitignore(
-      join(cwd, '.gitignore'),
-      { id: 'rule-sync', patterns: [...RULE_IGNORE_PATTERNS] },
+      join(cwd, ".gitignore"),
+      { id: "rule-sync", patterns: [...RULE_IGNORE_PATTERNS] },
       mergeOpts,
     ),
-  )
+  );
 
-  return { results }
+  return { results };
 }

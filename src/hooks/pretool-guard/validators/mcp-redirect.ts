@@ -1,69 +1,69 @@
-import { isMcpReady } from '#hooks/shared/mcp-sentinel'
+import { isMcpReady } from "#hooks/shared/mcp-sentinel";
 
-import type { CommandCategory } from './forbidden-commands.js'
+import type { CommandCategory } from "./forbidden-commands.js";
 
 export interface MCPRedirectConfig {
-  serverName?: string
-  toolPrefix?: string
+  serverName?: string;
+  toolPrefix?: string;
 }
 
 export interface MCPRedirectContext {
-  category: CommandCategory
-  command: string
-  mcpReady?: boolean | (() => boolean)
-  fallbackHint?: string
-  mcp?: MCPRedirectConfig
+  category: CommandCategory;
+  command: string;
+  mcpReady?: boolean | (() => boolean);
+  fallbackHint?: string;
+  mcp?: MCPRedirectConfig;
 }
 
-const DEFAULT_SERVER_NAME = 'webpresso'
-const DEFAULT_TOOL_PREFIX = 'wp_'
+const DEFAULT_SERVER_NAME = "webpresso";
+const DEFAULT_TOOL_PREFIX = "wp_";
 
-export function resolveMcpReady(value: MCPRedirectContext['mcpReady']): boolean {
-  if (typeof value === 'function') return value()
-  if (typeof value === 'boolean') return value
-  return isMcpReady()
+export function resolveMcpReady(value: MCPRedirectContext["mcpReady"]): boolean {
+  if (typeof value === "function") return value();
+  if (typeof value === "boolean") return value;
+  return isMcpReady();
 }
 
-export function resolveMcpConfig(mcp: MCPRedirectContext['mcp']): Required<MCPRedirectConfig> {
+export function resolveMcpConfig(mcp: MCPRedirectContext["mcp"]): Required<MCPRedirectConfig> {
   return {
     serverName: mcp?.serverName?.trim() || DEFAULT_SERVER_NAME,
     toolPrefix: mcp?.toolPrefix?.trim() || DEFAULT_TOOL_PREFIX,
-  }
+  };
 }
 
 function toolSuffixForCategory(category: CommandCategory): string {
   switch (category) {
-    case 'test':
-      return 'test'
-    case 'lint':
-      return 'lint'
-    case 'typecheck':
-      return 'typecheck'
-    case 'format':
-      return 'format'
-    case 'e2e':
-      return 'e2e'
-    case 'blueprint':
-      return 'blueprint'
-    case 'unknown':
+    case "test":
+      return "test";
+    case "lint":
+      return "lint";
+    case "typecheck":
+      return "typecheck";
+    case "format":
+      return "format";
+    case "e2e":
+      return "e2e";
+    case "blueprint":
+      return "blueprint";
+    case "unknown":
     default:
-      return 'qa'
+      return "qa";
   }
 }
 
 export function buildRedirectMessage(ctx: MCPRedirectContext): string {
-  const fallbackHint = ctx.fallbackHint ?? 'repo-approved MCP/tooling entrypoint'
+  const fallbackHint = ctx.fallbackHint ?? "repo-approved MCP/tooling entrypoint";
   if (!resolveMcpReady(ctx.mcpReady)) {
-    return `"${ctx.command}" denied — MCP not ready. Use: ${fallbackHint}`
+    return `"${ctx.command}" denied — MCP not ready. Use: ${fallbackHint}`;
   }
 
-  const { serverName, toolPrefix } = resolveMcpConfig(ctx.mcp)
-  const toolMatcher = `mcp__${serverName}__${toolPrefix}${toolSuffixForCategory(ctx.category)}(...)`
+  const { serverName, toolPrefix } = resolveMcpConfig(ctx.mcp);
+  const toolMatcher = `mcp__${serverName}__${toolPrefix}${toolSuffixForCategory(ctx.category)}(...)`;
 
   return [
     `"${ctx.command}" denied — use wp MCP tool:`,
     `  ${toolMatcher}`,
-    'Returns structured, summary-first results. Raw output is clipped; overflow may include a log path for deeper investigation.',
+    "Returns structured, summary-first results. Raw output is clipped; overflow may include a log path for deeper investigation.",
     `Fallback if MCP unavailable: ${fallbackHint}`,
-  ].join('\n')
+  ].join("\n");
 }

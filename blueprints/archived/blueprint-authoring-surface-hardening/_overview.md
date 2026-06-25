@@ -4,9 +4,9 @@ title: Blueprint authoring surface hardening
 status: archived
 owner: agent-kit
 complexity: M
-created: '2026-05-26'
-last_updated: '2026-05-29'
-progress: '100% (superseded by completed structured blueprint authoring control-plane work; placeholder retired on 2026-05-29)'
+created: "2026-05-26"
+last_updated: "2026-05-29"
+progress: "100% (superseded by completed structured blueprint authoring control-plane work; placeholder retired on 2026-05-29)"
 depends_on: []
 tags:
   - blueprint-authoring
@@ -61,11 +61,11 @@ The retired placeholder had preserved these potential areas:
 
 ## Cross-plan references
 
-| Blueprint | Relationship |
-| --- | --- |
-| `completed/secret-aware-worker-tail-mcp` | Historical scope donor; no longer owns blueprint-authoring tasks. |
-| `parked/mcp-first-secret-surface-hard-cut-roadmap` | Historical sibling roadmap only; this placeholder is not a child lane. |
-| `completed/replace-markdown-first-blueprint-authoring-with-a-structured-wp-mcp-surface` | Replacement authoritative implementation record. |
+| Blueprint                                                                               | Relationship                                                           |
+| --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `completed/secret-aware-worker-tail-mcp`                                                | Historical scope donor; no longer owns blueprint-authoring tasks.      |
+| `parked/mcp-first-secret-surface-hard-cut-roadmap`                                      | Historical sibling roadmap only; this placeholder is not a child lane. |
+| `completed/replace-markdown-first-blueprint-authoring-with-a-structured-wp-mcp-surface` | Replacement authoritative implementation record.                       |
 
 ## Archived tasks
 

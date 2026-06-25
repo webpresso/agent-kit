@@ -11,11 +11,11 @@
  */
 export interface WriteInfo {
   /** Content being written */
-  content: string
+  content: string;
   /** Timestamp of the write */
-  timestamp: Date
+  timestamp: Date;
   /** Author/actor performing the write */
-  author: string
+  author: string;
 }
 
 /**
@@ -23,9 +23,9 @@ export interface WriteInfo {
  */
 export interface ConflictInfo {
   /** Path of the conflicting file */
-  filePath: string
+  filePath: string;
   /** All competing writes to this file */
-  writes: WriteInfo[]
+  writes: WriteInfo[];
 }
 
 /**
@@ -33,15 +33,15 @@ export interface ConflictInfo {
  */
 export interface ResolvedConflict {
   /** Path of the resolved file */
-  filePath: string
+  filePath: string;
   /** Content that won the conflict */
-  winningContent: string
+  winningContent: string;
   /** Author whose write won */
-  winningAuthor: string
+  winningAuthor: string;
   /** Timestamp of the winning write */
-  winningTimestamp: Date
+  winningTimestamp: Date;
   /** All writes that lost the conflict */
-  losingWrites: WriteInfo[]
+  losingWrites: WriteInfo[];
 }
 
 /**
@@ -49,11 +49,11 @@ export interface ResolvedConflict {
  */
 export interface ConflictResolution {
   /** All resolved conflicts */
-  resolved: ResolvedConflict[]
+  resolved: ResolvedConflict[];
   /** Total number of conflicts processed */
-  totalConflicts: number
+  totalConflicts: number;
   /** Number of conflicts successfully resolved */
-  resolvedCount: number
+  resolvedCount: number;
 }
 
 /**
@@ -61,17 +61,17 @@ export interface ConflictResolution {
  */
 export interface ConflictAuditEntry {
   /** Timestamp when resolution occurred */
-  timestamp: Date
+  timestamp: Date;
   /** Path of the conflicting file */
-  filePath: string
+  filePath: string;
   /** The winning write */
-  winner: WriteInfo
+  winner: WriteInfo;
   /** All losing writes */
-  losers: WriteInfo[]
+  losers: WriteInfo[];
   /** Reason for the resolution decision */
-  reason: string
+  reason: string;
   /** Optional project identifier */
-  projectId?: string
+  projectId?: string;
 }
 
 /**
@@ -79,7 +79,7 @@ export interface ConflictAuditEntry {
  */
 export interface ConflictResolverConfig {
   /** Project identifier for audit entries */
-  projectId?: string
+  projectId?: string;
 }
 
 /**
@@ -90,11 +90,11 @@ export interface ConflictResolverConfig {
  * and accountability.
  */
 export class ConflictResolver {
-  private readonly auditLog: ConflictAuditEntry[] = []
-  private readonly projectId?: string
+  private readonly auditLog: ConflictAuditEntry[] = [];
+  private readonly projectId?: string;
 
   constructor(config: ConflictResolverConfig = {}) {
-    this.projectId = config.projectId
+    this.projectId = config.projectId;
   }
 
   /**
@@ -107,13 +107,13 @@ export class ConflictResolver {
    * @returns Resolution result with all resolved conflicts
    */
   resolve(conflicts: ConflictInfo[]): ConflictResolution {
-    const resolved: ResolvedConflict[] = []
+    const resolved: ResolvedConflict[] = [];
 
     for (const conflict of conflicts) {
-      const resolution = this.resolveSingleConflict(conflict)
+      const resolution = this.resolveSingleConflict(conflict);
       if (resolution) {
-        resolved.push(resolution)
-        this.recordAuditEntry(conflict.filePath, resolution)
+        resolved.push(resolution);
+        this.recordAuditEntry(conflict.filePath, resolution);
       }
     }
 
@@ -121,7 +121,7 @@ export class ConflictResolver {
       resolved,
       totalConflicts: conflicts.length,
       resolvedCount: resolved.length,
-    }
+    };
   }
 
   /**
@@ -130,14 +130,14 @@ export class ConflictResolver {
    * @returns Array of all audit entries
    */
   getAuditLog(): ConflictAuditEntry[] {
-    return [...this.auditLog]
+    return [...this.auditLog];
   }
 
   /**
    * Clear the audit log
    */
   clearAuditLog(): void {
-    this.auditLog.length = 0
+    this.auditLog.length = 0;
   }
 
   /**
@@ -145,20 +145,20 @@ export class ConflictResolver {
    */
   private resolveSingleConflict(conflict: ConflictInfo): ResolvedConflict | null {
     if (!conflict.writes.length) {
-      return null
+      return null;
     }
 
     // Sort by timestamp descending (newest first)
     const sortedWrites = [...conflict.writes].toSorted(
       (a, b) => b.timestamp.getTime() - a.timestamp.getTime(),
-    )
+    );
 
-    const winner = sortedWrites[0]
+    const winner = sortedWrites[0];
     if (!winner) {
-      return null
+      return null;
     }
 
-    const losers = sortedWrites.slice(1)
+    const losers = sortedWrites.slice(1);
 
     return {
       filePath: conflict.filePath,
@@ -166,7 +166,7 @@ export class ConflictResolver {
       winningAuthor: winner.author,
       winningTimestamp: winner.timestamp,
       losingWrites: losers,
-    }
+    };
   }
 
   /**
@@ -182,14 +182,14 @@ export class ConflictResolver {
         author: resolution.winningAuthor,
       },
       losers: resolution.losingWrites,
-      reason: 'last-write-wins: timestamp comparison',
-    }
+      reason: "last-write-wins: timestamp comparison",
+    };
 
     if (this.projectId) {
-      entry.projectId = this.projectId
+      entry.projectId = this.projectId;
     }
 
-    this.auditLog.push(entry)
+    this.auditLog.push(entry);
   }
 }
 
@@ -200,5 +200,5 @@ export class ConflictResolver {
  * @returns New ConflictResolver instance
  */
 export function createConflictResolver(config?: ConflictResolverConfig): ConflictResolver {
-  return new ConflictResolver(config)
+  return new ConflictResolver(config);
 }

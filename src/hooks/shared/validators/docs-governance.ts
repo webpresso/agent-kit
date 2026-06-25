@@ -1,40 +1,40 @@
-import type { ToolInput, ValidationResult } from '#hooks/shared/types'
+import type { ToolInput, ValidationResult } from "#hooks/shared/types";
 
-import { getFilePath } from '#hooks/shared/types'
+import { getFilePath } from "#hooks/shared/types";
 
-const ALLOWED_ROOT_FILES = new Set(['docs/README.md', 'docs/FILE-TYPE-TAXONOMY.md'])
+const ALLOWED_ROOT_FILES = new Set(["docs/README.md", "docs/FILE-TYPE-TAXONOMY.md"]);
 
 export function validateDocsGovernance(
   input: ToolInput,
-  skipEnvVar: string = 'DOCS_GOVERNANCE_SKIP',
+  skipEnvVar: string = "DOCS_GOVERNANCE_SKIP",
 ): ValidationResult {
-  const filePath = getFilePath(input)
+  const filePath = getFilePath(input);
 
-  if (typeof process !== 'undefined' && process.env?.[skipEnvVar] === '1') {
+  if (typeof process !== "undefined" && process.env?.[skipEnvVar] === "1") {
     return {
-      validator: 'docs-governance',
+      validator: "docs-governance",
       passed: true,
       skipped: true,
-      skipReason: 'Bypass enabled',
-    }
+      skipReason: "Bypass enabled",
+    };
   }
 
-  if (!filePath) return { validator: 'docs-governance', passed: true }
+  if (!filePath) return { validator: "docs-governance", passed: true };
 
-  const normalized = filePath.startsWith('/') ? filePath.slice(1) : filePath
+  const normalized = filePath.startsWith("/") ? filePath.slice(1) : filePath;
 
-  if (!normalized.startsWith('docs/')) return { validator: 'docs-governance', passed: true }
-  if (!normalized.endsWith('.md')) return { validator: 'docs-governance', passed: true }
+  if (!normalized.startsWith("docs/")) return { validator: "docs-governance", passed: true };
+  if (!normalized.endsWith(".md")) return { validator: "docs-governance", passed: true };
 
-  const isRootLevel = /^docs\/[^/]+\.md$/.test(normalized)
+  const isRootLevel = /^docs\/[^/]+\.md$/.test(normalized);
 
   if (isRootLevel && !ALLOWED_ROOT_FILES.has(normalized)) {
     return {
-      validator: 'docs-governance',
+      validator: "docs-governance",
       passed: false,
       message: `Root docs/*.md files must be README.md or FILE-TYPE-TAXONOMY.md. Got: ${normalized}`,
-    }
+    };
   }
 
-  return { validator: 'docs-governance', passed: true }
+  return { validator: "docs-governance", passed: true };
 }

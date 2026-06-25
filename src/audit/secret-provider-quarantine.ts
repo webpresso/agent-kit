@@ -1,251 +1,251 @@
-import { readdirSync, readFileSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
 
-import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
-import { resolveSecretsAuditRoot } from './lib/secrets-policy.js'
+import type { RepoAuditResult, RepoAuditViolation } from "./repo-guardrails.js";
+import { resolveSecretsAuditRoot } from "./lib/secrets-policy.js";
 
 const IGNORED_DIRS = new Set([
-  '.git',
-  'node_modules',
-  '.agent',
-  '.agents',
-  '.claude',
-  '.codex',
-  '.cursor',
-  '.omx',
-  '.omc',
-  '.opencode',
-  '_worktrees',
-  'blueprints',
-  'dist',
-  'coverage',
-  'reports',
-])
+  ".git",
+  "node_modules",
+  ".agent",
+  ".agents",
+  ".claude",
+  ".codex",
+  ".cursor",
+  ".omx",
+  ".omc",
+  ".opencode",
+  "_worktrees",
+  "blueprints",
+  "dist",
+  "coverage",
+  "reports",
+]);
 
-const TEXT_FILE_PATTERN = /\.(md|ts|tsx|js|json|ya?ml|toml|txt)$/iu
+const TEXT_FILE_PATTERN = /\.(md|ts|tsx|js|json|ya?ml|toml|txt)$/iu;
 const ALLOWED_PROVIDER_BOOTSTRAP_PATHS = new Set([
-  '.github/workflows/cloudflare-preview.yml',
-  '.github/workflows/cloudflare-production.yml',
-  'docs/reusable-cloudflare-deploy-workflows.md',
-  'src/build/reusable-cloudflare-workflows.test.ts',
-])
+  ".github/workflows/cloudflare-preview.yml",
+  ".github/workflows/cloudflare-production.yml",
+  "docs/reusable-cloudflare-deploy-workflows.md",
+  "src/build/reusable-cloudflare-workflows.test.ts",
+]);
 
-type BannedPattern = { readonly pattern: RegExp; readonly message: string }
+type BannedPattern = { readonly pattern: RegExp; readonly message: string };
 
 const BANNED_PATH_PATTERNS: ReadonlyArray<{
-  readonly pattern: RegExp
-  readonly message: string
+  readonly pattern: RegExp;
+  readonly message: string;
 }> = [
   {
     pattern: /(^|\/)act-with-webpresso\.[^./]+$/u,
-    message: 'delete local act-with-webpresso clones; use `wp ci act`',
+    message: "delete local act-with-webpresso clones; use `wp ci act`",
   },
   {
     pattern: /(^|\/)act-secret-profile\.[^./]+$/u,
     message:
-      'delete local act-secret-profile clones; use repo-owned .webpresso/secrets.config.json profiles',
+      "delete local act-secret-profile clones; use repo-owned .webpresso/secrets.config.json profiles",
   },
-]
+];
 
 // RegExp instances built from parts to avoid self-triggering this audit scan
-const p = (parts: readonly string[]): RegExp => new RegExp(parts.join(''), 'u')
+const p = (parts: readonly string[]): RegExp => new RegExp(parts.join(""), "u");
 
 const BANNED_PATTERNS: readonly BannedPattern[] = [
   {
-    pattern: p([String.raw`\b`, 'doppler', ' run', String.raw`\b`]),
+    pattern: p([String.raw`\b`, "doppler", " run", String.raw`\b`]),
     message:
-      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of direct doppler invocation',
+      "use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of direct doppler invocation",
   },
   {
-    pattern: p([String.raw`\b`, 'infisical', ' run', String.raw`\b`]),
+    pattern: p([String.raw`\b`, "infisical", " run", String.raw`\b`]),
     message:
-      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of direct infisical invocation',
+      "use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of direct infisical invocation",
   },
   {
-    pattern: p([String.raw`\b`, 'infisical', ' export', String.raw`\b`]),
-    message: 'load secrets through runtime/env, not direct infisical exports',
+    pattern: p([String.raw`\b`, "infisical", " export", String.raw`\b`]),
+    message: "load secrets through runtime/env, not direct infisical exports",
   },
   {
-    pattern: p([String.raw`\bwith-secrets\s+`, '--doppler', String.raw`\b`]),
+    pattern: p([String.raw`\bwith-secrets\s+`, "--doppler", String.raw`\b`]),
     message:
-      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of provider flags',
+      "use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of provider flags",
   },
   {
-    pattern: p([String.raw`\bwith-secrets\s+`, '--infisical', String.raw`\b`]),
+    pattern: p([String.raw`\bwith-secrets\s+`, "--infisical", String.raw`\b`]),
     message:
-      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of provider flags',
+      "use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of provider flags",
   },
   {
     pattern: /\bwith-secrets\s+--(?!doppler\b|infisical\b)/u,
     message:
-      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of the legacy with-secrets wrapper',
+      "use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of the legacy with-secrets wrapper",
   },
   {
     pattern: /\bwith-secrets\s+(?:act|node|vp|pnpm|bun|wrangler)\b/u,
     message:
-      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of the legacy with-secrets wrapper',
+      "use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of the legacy with-secrets wrapper",
   },
   {
-    pattern: p([String.raw`\b`, 'doppler secrets' + ' download', String.raw`\b`]),
-    message: 'load secrets through runtime/env, not direct provider downloads',
+    pattern: p([String.raw`\b`, "doppler secrets" + " download", String.raw`\b`]),
+    message: "load secrets through runtime/env, not direct provider downloads",
   },
   {
     pattern: /runtime\/process\/secret-runner/u,
-    message: 'use `@webpresso/framework/runtime/env` instead of secret-runner',
+    message: "use `@webpresso/framework/runtime/env` instead of secret-runner",
   },
   {
     pattern: /\bwith-secrets\s+--\s*act\b/u,
-    message: 'use `wp ci act` instead of raw `with-secrets -- act`',
+    message: "use `wp ci act` instead of raw `with-secrets -- act`",
   },
   {
     pattern: /\bwith-secrets\s+act\b/u,
-    message: 'use `wp ci act` instead of raw `with-secrets act`',
+    message: "use `wp ci act` instead of raw `with-secrets act`",
   },
   {
     pattern: /\bact-with-webpresso(?:\.[a-z]+)?\b/u,
     message:
-      'remove legacy local act-with-webpresso helpers and route local workflow execution through `wp ci act`',
+      "remove legacy local act-with-webpresso helpers and route local workflow execution through `wp ci act`",
   },
   {
     pattern: /\bact-secret-profile(?:\.[a-z]+)?\b/u,
     message:
-      'remove legacy act-secret-profile helpers and use the selected manager runtime contract instead',
+      "remove legacy act-secret-profile helpers and use the selected manager runtime contract instead",
   },
   {
     pattern: /\bsecretEnvProfile\b/u,
     message:
-      'use repo-owned secretProfile names instead of provider-specific secretEnvProfile wiring',
+      "use repo-owned secretProfile names instead of provider-specific secretEnvProfile wiring",
   },
   {
     pattern: /\b--secret-env-profile\b/u,
     message:
-      'use repo-owned secretProfile names instead of provider-specific --secret-env-profile wiring',
+      "use repo-owned secretProfile names instead of provider-specific --secret-env-profile wiring",
   },
   {
     pattern: /\bsetup-webpresso(?:-[a-z0-9-]+)?\b/u,
-    message: 'remove legacy local setup clone helpers and use the global `wp` setup path instead',
+    message: "remove legacy local setup clone helpers and use the global `wp` setup path instead",
   },
-]
+];
 
 const LEGACY_CI_TOKEN_PATTERNS: readonly BannedPattern[] = [
   {
     pattern: /\bDOPPLER_SERVICE_TOKEN\b/u,
-    message: 'OIDC-only CI: do not use DOPPLER_SERVICE_TOKEN fallback in workflows',
+    message: "OIDC-only CI: do not use DOPPLER_SERVICE_TOKEN fallback in workflows",
   },
   {
     pattern: /\bDOPPLER_TOKEN\b/u,
-    message: 'OIDC-only CI: do not use DOPPLER_TOKEN fallback in workflows',
+    message: "OIDC-only CI: do not use DOPPLER_TOKEN fallback in workflows",
   },
-]
+];
 
-const THIRD_PARTY_ACTION_USE_PATTERN = /^\s*(?:-\s+)?uses:\s+([^@\s]+)@([^\s#]+)\s*$/gmu
-const FULL_SHA_PATTERN = /^[a-f0-9]{40}$/u
+const THIRD_PARTY_ACTION_USE_PATTERN = /^\s*(?:-\s+)?uses:\s+([^@\s]+)@([^\s#]+)\s*$/gmu;
+const FULL_SHA_PATTERN = /^[a-f0-9]{40}$/u;
 
 function isWorkflowFile(relPath: string): boolean {
-  return /^\.github\/workflows\/.+\.ya?ml$/u.test(relPath)
+  return /^\.github\/workflows\/.+\.ya?ml$/u.test(relPath);
 }
 
 function fileNeedsSecretWorkflowAudit(content: string): boolean {
   return (
-    content.includes('with-secrets') ||
-    content.includes('.webpresso/secrets.config.json') ||
-    content.includes('secret-profile') ||
-    content.includes('secret_profile') ||
-    content.includes('ci_secret_provider_token') ||
-    content.includes('secrets:')
-  )
+    content.includes("with-secrets") ||
+    content.includes(".webpresso/secrets.config.json") ||
+    content.includes("secret-profile") ||
+    content.includes("secret_profile") ||
+    content.includes("ci_secret_provider_token") ||
+    content.includes("secrets:")
+  );
 }
 
 function fileNeedsOidc(content: string): boolean {
   return (
-    content.includes('doppler_identity_id') ||
-    content.includes('infisical_identity_id') ||
-    content.includes('auth-method: oidc') ||
+    content.includes("doppler_identity_id") ||
+    content.includes("infisical_identity_id") ||
+    content.includes("auth-method: oidc") ||
     content.includes('method: "oidc"') ||
     content.includes("method: 'oidc'")
-  )
+  );
 }
 
 function scanFile(fullPath: string, relPath: string, violations: RepoAuditViolation[]): void {
   for (const { pattern, message } of BANNED_PATH_PATTERNS) {
     if (pattern.test(relPath)) {
-      violations.push({ file: relPath, message: `${relPath}: ${message}` })
+      violations.push({ file: relPath, message: `${relPath}: ${message}` });
     }
   }
 
-  const content = readFileSync(fullPath, 'utf8')
+  const content = readFileSync(fullPath, "utf8");
   for (const { pattern, message } of BANNED_PATTERNS) {
     if (
       ALLOWED_PROVIDER_BOOTSTRAP_PATHS.has(relPath) &&
-      (message.includes('direct infisical invocation') ||
-        message.includes('direct doppler invocation') ||
-        message.includes('direct infisical exports') ||
-        message.includes('direct provider downloads'))
+      (message.includes("direct infisical invocation") ||
+        message.includes("direct doppler invocation") ||
+        message.includes("direct infisical exports") ||
+        message.includes("direct provider downloads"))
     ) {
-      continue
+      continue;
     }
     if (pattern.test(content)) {
-      violations.push({ file: relPath, message: `${relPath}: ${message}` })
+      violations.push({ file: relPath, message: `${relPath}: ${message}` });
     }
   }
 
-  if (!isWorkflowFile(relPath)) return
+  if (!isWorkflowFile(relPath)) return;
 
   for (const { pattern, message } of LEGACY_CI_TOKEN_PATTERNS) {
     if (pattern.test(content)) {
-      violations.push({ file: relPath, message: `${relPath}: ${message}` })
+      violations.push({ file: relPath, message: `${relPath}: ${message}` });
     }
   }
 
-  if (!fileNeedsSecretWorkflowAudit(content) && !fileNeedsOidc(content)) return
+  if (!fileNeedsSecretWorkflowAudit(content) && !fileNeedsOidc(content)) return;
 
   if (fileNeedsOidc(content) && !/\bid-token:\s*write\b/u.test(content)) {
     violations.push({
       file: relPath,
       message: `${relPath}: OIDC-capable workflow must request \`id-token: write\` for OIDC`,
-    })
+    });
   }
 
   for (const match of content.matchAll(THIRD_PARTY_ACTION_USE_PATTERN)) {
-    const target = match[1]
-    const ref = match[2]
-    if (!target || !ref) continue
-    if (target.startsWith('./') || target.startsWith('docker://')) continue
-    if (FULL_SHA_PATTERN.test(ref)) continue
+    const target = match[1];
+    const ref = match[2];
+    if (!target || !ref) continue;
+    if (target.startsWith("./") || target.startsWith("docker://")) continue;
+    if (FULL_SHA_PATTERN.test(ref)) continue;
     violations.push({
       file: relPath,
       message: `${relPath}: secret-bearing workflow must SHA-pin third-party action ${target}@${ref}`,
-    })
+    });
   }
 }
 
 function walkDir(dir: string, root: string, violations: RepoAuditViolation[]): number {
-  let checked = 0
-  for (const entry of readdirSync(dir, { withFileTypes: true, encoding: 'utf8' })) {
-    if (IGNORED_DIRS.has(entry.name)) continue
-    const fullPath = join(dir, entry.name)
+  let checked = 0;
+  for (const entry of readdirSync(dir, { withFileTypes: true, encoding: "utf8" })) {
+    if (IGNORED_DIRS.has(entry.name)) continue;
+    const fullPath = join(dir, entry.name);
     if (entry.isDirectory()) {
-      checked += walkDir(fullPath, root, violations)
-      continue
+      checked += walkDir(fullPath, root, violations);
+      continue;
     }
-    if (!entry.isFile() || !TEXT_FILE_PATTERN.test(entry.name)) continue
-    checked += 1
-    const relPath = relative(root, fullPath).replace(/\\/gu, '/')
-    scanFile(fullPath, relPath, violations)
+    if (!entry.isFile() || !TEXT_FILE_PATTERN.test(entry.name)) continue;
+    checked += 1;
+    const relPath = relative(root, fullPath).replace(/\\/gu, "/");
+    scanFile(fullPath, relPath, violations);
   }
-  return checked
+  return checked;
 }
 
 export function auditSecretProviderQuarantine(
   rootDirectory: string = process.cwd(),
 ): RepoAuditResult {
-  const auditRoot = resolveSecretsAuditRoot(rootDirectory)
+  const auditRoot = resolveSecretsAuditRoot(rootDirectory);
   if (!auditRoot) {
-    return { ok: true, title: 'secret-provider-quarantine', checked: 0, violations: [] }
+    return { ok: true, title: "secret-provider-quarantine", checked: 0, violations: [] };
   }
 
-  const violations: RepoAuditViolation[] = []
-  const checked = walkDir(auditRoot, auditRoot, violations)
+  const violations: RepoAuditViolation[] = [];
+  const checked = walkDir(auditRoot, auditRoot, violations);
 
-  return { ok: violations.length === 0, title: 'secret-provider-quarantine', checked, violations }
+  return { ok: violations.length === 0, title: "secret-provider-quarantine", checked, violations };
 }

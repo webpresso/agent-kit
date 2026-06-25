@@ -17,22 +17,22 @@
  * ```
  */
 
-import type { ViteUserConfigExport } from 'vite-plus/test/config'
+import type { ViteUserConfigExport } from "vite-plus/test/config";
 
-import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite-plus/test/config'
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite-plus/test/config";
 
-import { createFlakinessReporter } from './flakiness-reporter.js'
-import { generatedRuntimeAliases, generatedRuntimeDedupe } from './generated-runtime-aliases.js'
+import { createFlakinessReporter } from "./flakiness-reporter.js";
+import { generatedRuntimeAliases, generatedRuntimeDedupe } from "./generated-runtime-aliases.js";
 import {
   resolvedExecArgv,
   resolvedMaxWorkers,
   resolvedMinWorkers,
   resolvedPool,
-} from './pool-defaults.js'
-import { assertNonWorkersVitest4 } from './version-guard.js'
+} from "./pool-defaults.js";
+import { assertNonWorkersVitest4 } from "./version-guard.js";
 
-assertNonWorkersVitest4({ caller: 'reactConfig' })
+assertNonWorkersVitest4({ caller: "reactConfig" });
 
 export const reactConfig = defineConfig({
   plugins: [react()],
@@ -44,7 +44,7 @@ export const reactConfig = defineConfig({
   test: {
     globals: true,
     restoreAllMocks: true,
-    environment: 'happy-dom',
+    environment: "happy-dom",
     setupFiles: [],
     onConsoleLog: () => false, // Suppress all console output
     pool: resolvedPool,
@@ -52,28 +52,28 @@ export const reactConfig = defineConfig({
     minWorkers: resolvedMinWorkers,
     // Cap each fork worker's V8 heap to 2GB (Node 24 default is 4.2GB).
     execArgv: resolvedExecArgv,
-    include: ['src/**/*.test.{ts,tsx}', 'src/**/__tests__/**/*.{ts,tsx}'],
-    exclude: ['**/.stryker-tmp/**', 'node_modules/**'],
-    reporters: ['default', createFlakinessReporter()],
+    include: ["src/**/*.test.{ts,tsx}", "src/**/__tests__/**/*.{ts,tsx}"],
+    exclude: ["**/.stryker-tmp/**", "node_modules/**"],
+    reporters: ["default", createFlakinessReporter()],
     retry: process.env.CI ? 2 : 0,
     coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html', 'lcov'],
-      include: ['src/**/*.{ts,tsx}'],
+      provider: "v8",
+      reporter: ["text", "json", "html", "lcov"],
+      include: ["src/**/*.{ts,tsx}"],
       exclude: [
-        'node_modules/',
-        'test/',
-        '**/*.d.ts',
-        '**/*.config.*',
-        '**/mockData',
-        'build/',
-        'dist/',
-        '**/*.test.{ts,tsx}',
-        '**/*.spec.{ts,tsx}',
-        '**/index.{ts,tsx}', // Common exclusion for barrel exports
-        '**/types.ts',
-        '**/types.tsx',
-        '**/types/**',
+        "node_modules/",
+        "test/",
+        "**/*.d.ts",
+        "**/*.config.*",
+        "**/mockData",
+        "build/",
+        "dist/",
+        "**/*.test.{ts,tsx}",
+        "**/*.spec.{ts,tsx}",
+        "**/index.{ts,tsx}", // Common exclusion for barrel exports
+        "**/types.ts",
+        "**/types.tsx",
+        "**/types/**",
       ],
       // Industry-standard 80% coverage thresholds (Atlassian recommendation)
       // 80% catches critical gaps without excessive build failures
@@ -89,8 +89,8 @@ export const reactConfig = defineConfig({
   // Pre-optimize React dependencies to prevent first-run failures
   // See: https://github.com/storybookjs/storybook/issues/32049
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react/jsx-runtime', 'react/jsx-dev-runtime'],
+    include: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
   },
-} as unknown as ViteUserConfigExport)
+} as unknown as ViteUserConfigExport);
 
-export default reactConfig
+export default reactConfig;

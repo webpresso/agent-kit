@@ -51,14 +51,16 @@ describe("scaffoldAuditHooks", () => {
     expect(content).toContain("#!/bin/sh");
     expect(content).toContain("# webpresso audit hooks (affected mode — fast)");
     expect(content).toContain("wp format --affected || exit 1");
-    expect(content).toContain('git add -- "$file"');
+    expect(content).toContain("git add --pathspec-from-file=- --pathspec-file-nul");
     expect(content).toContain("|| exit 1");
     expect(content).toContain("wp audit guardrails --affected");
     expect(content).not.toContain("skill-sizes");
     expect(content).not.toContain("broken-refs");
     // Audits are scoped by wp --affected; the full guardrails suite
     // is never run per-commit.
-    expect(content).toContain("git diff --cached --name-only --diff-filter=ACMR");
+    expect(content).toContain("git diff -z --cached --name-only --diff-filter=ACMR");
+    expect(content).not.toContain("while IFS= read -r file");
+    expect(content).not.toContain('git add -- "$file"');
     expect(content).not.toContain("(ts|tsx|js|jsx");
     expect(content).not.toContain("grep -Eq");
   });
@@ -71,12 +73,9 @@ describe("scaffoldAuditHooks", () => {
         "#!/bin/sh",
         "# webpresso audit hooks (affected mode — fast)",
         "  wp format --affected || exit 1",
-        'STAGED_AFTER_FORMAT="$(git diff --cached --name-only --diff-filter=ACMR)"',
-        'if [ -n "$STAGED_AFTER_FORMAT" ]; then',
-        "  printf '%s\\n' \"$STAGED_AFTER_FORMAT\" | while IFS= read -r file; do",
-        '    [ -n "$file" ] || continue',
-        '    git add -- "$file" || exit 1',
-        "  done",
+        "if ! git diff --cached --quiet --diff-filter=ACMR; then",
+        "  git diff -z --cached --name-only --diff-filter=ACMR |",
+        "    git add --pathspec-from-file=- --pathspec-file-nul || exit 1",
         "fi",
         "wp audit guardrails --affected",
         "",
@@ -99,7 +98,7 @@ describe("scaffoldAuditHooks", () => {
     expect(content).toContain("pnpm lint");
     expect(content).toContain("# webpresso audit hooks (affected mode — fast)");
     expect(content).toContain("wp format --affected || exit 1");
-    expect(content).toContain('git add -- "$file"');
+    expect(content).toContain("git add --pathspec-from-file=- --pathspec-file-nul");
     expect(content).toContain("|| exit 1");
     expect(content).toContain("wp audit guardrails --affected");
   });
@@ -117,7 +116,7 @@ describe("scaffoldAuditHooks", () => {
 
     const content = await readFile(preCommitPath(tmpDir), "utf8");
     expect(content).toContain("wp format --affected || exit 1");
-    expect(content).toContain('git add -- "$file"');
+    expect(content).toContain("git add --pathspec-from-file=- --pathspec-file-nul");
     expect(content).toContain("|| exit 1");
     expect(content).toContain("wp audit no-dev-vars");
     expect(content).toContain("wp audit guardrails --affected");
@@ -184,7 +183,7 @@ describe("scaffoldAuditHooks", () => {
     expect((content.match(/wp audit skill-sizes/g) ?? []).length).toStrictEqual(1);
     // The real affected-safe guardrails command is now present.
     expect(content).toContain("wp audit guardrails --affected");
-    expect(content).toContain("git diff --cached --name-only --diff-filter=ACMR");
+    expect(content).toContain("git diff -z --cached --name-only --diff-filter=ACMR");
   });
 
   it("skips writes in dry-run mode", async () => {

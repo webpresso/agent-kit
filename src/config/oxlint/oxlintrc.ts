@@ -16,7 +16,7 @@
  *   config-file directory, so `dist`/`node_modules`/etc. ignore the consumer's
  *   tree even though the config lives inside node_modules.
  */
-import { rules } from './index.js'
+import { rules } from "./index.js";
 
 /**
  * Compiled plugin module basenames shipped next to the generated oxlintrc.json.
@@ -24,20 +24,20 @@ import { rules } from './index.js'
  * test in `oxlintrc.test.ts`, which asserts one entry per registered plugin).
  */
 export const OXLINT_PLUGIN_BASENAMES = [
-  'code-safety',
-  'foundation-purity',
-  'graphql-conventions',
-  'import-hygiene',
-  'monorepo-paths',
-  'query-patterns',
-  'testing-quality',
-  'tier-boundaries',
-] as const
+  "code-safety",
+  "foundation-purity",
+  "graphql-conventions",
+  "import-hygiene",
+  "monorepo-paths",
+  "query-patterns",
+  "testing-quality",
+  "tier-boundaries",
+] as const;
 
 /** jsPlugins specifiers, sibling-relative to the shipped oxlintrc.json. */
 export const OXLINT_JS_PLUGIN_FILES: readonly string[] = OXLINT_PLUGIN_BASENAMES.map(
   (name) => `./${name}.js`,
-)
+);
 
 /**
  * Standard ignore patterns for every webpresso consumer: build output, vendored
@@ -46,23 +46,23 @@ export const OXLINT_JS_PLUGIN_FILES: readonly string[] = OXLINT_PLUGIN_BASENAMES
  * `.oxlintignore`, never here.
  */
 export const STANDARD_IGNORE_PATTERNS: readonly string[] = [
-  'dist',
-  'node_modules',
-  'reports',
-  '.stryker-tmp',
-  '.agent',
-  '.agents',
-  '.claude',
-  '.codex',
-  '.cursor',
-  '.opencode',
-  '.omx',
-]
+  "dist",
+  "node_modules",
+  "reports",
+  ".stryker-tmp",
+  ".agent",
+  ".agents",
+  ".claude",
+  ".codex",
+  ".cursor",
+  ".opencode",
+  ".omx",
+];
 
 export interface ResolvedOxlintRc {
-  readonly jsPlugins: readonly string[]
-  readonly rules: Readonly<Record<string, 'error'>>
-  readonly ignorePatterns: readonly string[]
+  readonly jsPlugins: readonly string[];
+  readonly rules: Readonly<Record<string, "error">>;
+  readonly ignorePatterns: readonly string[];
 }
 
 /**
@@ -75,5 +75,5 @@ export function buildOxlintrc(): ResolvedOxlintRc {
     jsPlugins: OXLINT_JS_PLUGIN_FILES,
     rules,
     ignorePatterns: STANDARD_IGNORE_PATTERNS,
-  }
+  };
 }

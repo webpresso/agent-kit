@@ -4,9 +4,9 @@ title: Changesets-only production deploys
 owner: ozby
 status: draft
 complexity: M
-created: '2026-06-22'
-last_updated: '2026-06-22'
-progress: '0% (draft)'
+created: "2026-06-22"
+last_updated: "2026-06-22"
+progress: "0% (draft)"
 tags:
   - deploy
   - changesets

@@ -6,8 +6,8 @@ status: active
 scope: repo
 applies_to: [agents]
 related: [verify, systematic-debugging, test-driven-development]
-created: '2026-05-13'
-last_reviewed: '2026-05-22'
+created: "2026-05-13"
+last_reviewed: "2026-05-22"
 name: fix
 description: Root-cause fix workflow for debugging and implementation. Use when the user asks to fix an issue, bug, failing test, error, broken behavior, or asks for `/fix <target>` / `$fix <target>`. Enforces root-cause analysis, minimal correct changes, regression tests, and scoped verification before claiming done.
 argument-hint: '<target> where target is: file|symptom|error|test|"free-text description"'

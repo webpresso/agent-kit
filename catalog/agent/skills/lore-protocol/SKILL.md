@@ -6,8 +6,8 @@ status: active
 scope: repo
 applies_to: [agents]
 related: []
-created: '2026-05-07'
-last_reviewed: '2026-05-07'
+created: "2026-05-07"
+last_reviewed: "2026-05-07"
 name: lore-protocol
 description: Use Lore commit-message trailers manually with `wp audit commit-message`; hook enforcement is intentionally not installed because PRs use squash commits.
 ---
@@ -18,8 +18,8 @@ Use Lore commit-message trailers manually with `wp audit commit-message`. Hook e
 
 Lore is a lightweight protocol for embedding decision context directly into
 commit messages — constraints, rejected alternatives, confidence, and
-forward-looking directives — so future engineers understand *why* a change
-was made, not just *what* changed.
+forward-looking directives — so future engineers understand _why_ a change
+was made, not just _what_ changed.
 
 ## Quick start
 
@@ -56,15 +56,15 @@ Not-tested: <known gaps in verification>
 
 ## Required trailers (for `--require-lore` or `[lore]` subject tag)
 
-| Trailer | Required | Allowed values |
-|---------|----------|---------------|
-| `Confidence:` | yes | `low`, `medium`, `high` |
-| `Constraint:` or `Rejected:` or `Directive:` | at least one | free text |
-| `Scope-risk:` | optional | `narrow`, `moderate`, `broad` |
-| `Reversibility:` | optional | `clean`, `messy`, `irreversible` |
-| `Tested:` | optional | free text |
-| `Not-tested:` | optional | free text |
-| `Related:` | optional | free text |
+| Trailer                                      | Required     | Allowed values                   |
+| -------------------------------------------- | ------------ | -------------------------------- |
+| `Confidence:`                                | yes          | `low`, `medium`, `high`          |
+| `Constraint:` or `Rejected:` or `Directive:` | at least one | free text                        |
+| `Scope-risk:`                                | optional     | `narrow`, `moderate`, `broad`    |
+| `Reversibility:`                             | optional     | `clean`, `messy`, `irreversible` |
+| `Tested:`                                    | optional     | free text                        |
+| `Not-tested:`                                | optional     | free text                        |
+| `Related:`                                   | optional     | free text                        |
 
 ## Example commit
 

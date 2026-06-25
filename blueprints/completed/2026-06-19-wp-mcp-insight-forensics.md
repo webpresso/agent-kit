@@ -63,33 +63,33 @@ privacy defaults.
 
 ## Contract Deliverables
 
-| Deliverable | Location | Status |
-| --- | --- | --- |
-| Privacy/output contract | [`docs/mcp-insight-forensics-contract.md`](../../docs/mcp-insight-forensics-contract.md) | Complete |
+| Deliverable                              | Location                                                                                                                                       | Status   |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| Privacy/output contract                  | [`docs/mcp-insight-forensics-contract.md`](../../docs/mcp-insight-forensics-contract.md)                                                       | Complete |
 | Data-source inventory and privacy matrix | [`docs/mcp-insight-forensics-contract.md#data-source-privacy-matrix`](../../docs/mcp-insight-forensics-contract.md#data-source-privacy-matrix) | Complete |
-| Redaction and size rules | [`docs/mcp-insight-forensics-contract.md#redaction-and-size-rules`](../../docs/mcp-insight-forensics-contract.md#redaction-and-size-rules) | Complete |
-| Fixture/test plan | [`docs/mcp-insight-forensics-contract.md#contract-fixture-plan`](../../docs/mcp-insight-forensics-contract.md#contract-fixture-plan) | Complete |
-| Runtime registration guardrail | `src/mcp/tools/_registry.test.ts` | Complete |
+| Redaction and size rules                 | [`docs/mcp-insight-forensics-contract.md#redaction-and-size-rules`](../../docs/mcp-insight-forensics-contract.md#redaction-and-size-rules)     | Complete |
+| Fixture/test plan                        | [`docs/mcp-insight-forensics-contract.md#contract-fixture-plan`](../../docs/mcp-insight-forensics-contract.md#contract-fixture-plan)           | Complete |
+| Runtime registration guardrail           | `src/mcp/tools/_registry.test.ts`                                                                                                              | Complete |
 
 ## Candidate MCP Contracts
 
 ```ts
 type WpRepoForensicsInput = {
-  cwd?: string
-  focus: 'branches' | 'prs' | 'ci' | 'commits' | 'blueprints' | 'all'
-  baseRef?: string
-  since?: string
-  includeRemote?: boolean
-  maxItems?: number
-}
+  cwd?: string;
+  focus: "branches" | "prs" | "ci" | "commits" | "blueprints" | "all";
+  baseRef?: string;
+  since?: string;
+  includeRemote?: boolean;
+  maxItems?: number;
+};
 
 type WpSessionInsightInput = {
-  cwd?: string
-  source: 'wp-session' | 'omx-state' | 'local-artifacts'
-  question?: string
-  maxBytes?: number
-  includeRaw?: boolean
-}
+  cwd?: string;
+  source: "wp-session" | "omx-state" | "local-artifacts";
+  question?: string;
+  maxBytes?: number;
+  includeRaw?: boolean;
+};
 ```
 
 Required defaults:
@@ -136,20 +136,20 @@ Forbidden in this contract:
 
 ## Data-Source Inventory and Privacy Matrix
 
-| Evidence source | Default | Opt-in | Forbidden | Output boundary |
-| --- | --- | --- | --- | --- |
-| Local Git refs/branches/commit subjects | Allowed | N/A | Full patches by default | Bounded list + summary |
-| Local diff stats | Allowed | Full diff excerpts require future raw/diff opt-in | Large/binary/secret-looking hunks | File paths + line counts |
-| Current-repo PR/check metadata | Denied by default | `includeRemote: true` | Cross-repo/org enumeration | URL, title, state, conclusion |
-| Blueprints under `blueprints/` | Allowed | Bounded longer excerpts | Using blueprint text to justify secret reads | Path + task/heading excerpts |
-| Docs and tracked repo Markdown | Allowed | Bounded longer excerpts | Generated/runtime surfaces as default docs | Path + summary |
-| Source paths/symbol names | Allowed | Source excerpts require future source-excerpt contract | Secret-bearing files; source dumps | Path/symbol citation only |
-| `wp_session_*` indexes/summaries | Allowed when repo-scoped | Raw stored payload via `includeRaw: true` | Persisting raw payloads | Summary + citation IDs |
-| `.omx/state/` and repo-local runtime metadata | Summary only when selected | Bounded raw snippets via `includeRaw: true` | Copying runtime state to tracked files | Summary + warnings |
-| Agent transcripts outside repo indexes | Forbidden | Future explicit transcript contract required | Global transcript scraping | Not returned |
-| Secret-bearing files/credential stores | Forbidden | No MCP opt-in | Reading/excerpting contents | Denial reason only |
-| Sibling repos/worktrees/parent dirs | Forbidden | Future cross-scope contract required | Silent aggregation | Not returned |
-| Network uploads/third-party analysis | Forbidden | No hidden opt-in | Sending local session data remotely | Not performed |
+| Evidence source                               | Default                    | Opt-in                                                 | Forbidden                                    | Output boundary               |
+| --------------------------------------------- | -------------------------- | ------------------------------------------------------ | -------------------------------------------- | ----------------------------- |
+| Local Git refs/branches/commit subjects       | Allowed                    | N/A                                                    | Full patches by default                      | Bounded list + summary        |
+| Local diff stats                              | Allowed                    | Full diff excerpts require future raw/diff opt-in      | Large/binary/secret-looking hunks            | File paths + line counts      |
+| Current-repo PR/check metadata                | Denied by default          | `includeRemote: true`                                  | Cross-repo/org enumeration                   | URL, title, state, conclusion |
+| Blueprints under `blueprints/`                | Allowed                    | Bounded longer excerpts                                | Using blueprint text to justify secret reads | Path + task/heading excerpts  |
+| Docs and tracked repo Markdown                | Allowed                    | Bounded longer excerpts                                | Generated/runtime surfaces as default docs   | Path + summary                |
+| Source paths/symbol names                     | Allowed                    | Source excerpts require future source-excerpt contract | Secret-bearing files; source dumps           | Path/symbol citation only     |
+| `wp_session_*` indexes/summaries              | Allowed when repo-scoped   | Raw stored payload via `includeRaw: true`              | Persisting raw payloads                      | Summary + citation IDs        |
+| `.omx/state/` and repo-local runtime metadata | Summary only when selected | Bounded raw snippets via `includeRaw: true`            | Copying runtime state to tracked files       | Summary + warnings            |
+| Agent transcripts outside repo indexes        | Forbidden                  | Future explicit transcript contract required           | Global transcript scraping                   | Not returned                  |
+| Secret-bearing files/credential stores        | Forbidden                  | No MCP opt-in                                          | Reading/excerpting contents                  | Denial reason only            |
+| Sibling repos/worktrees/parent dirs           | Forbidden                  | Future cross-scope contract required                   | Silent aggregation                           | Not returned                  |
+| Network uploads/third-party analysis          | Forbidden                  | No hidden opt-in                                       | Sending local session data remotely          | Not performed                 |
 
 ## Output Contract
 
@@ -157,19 +157,27 @@ Future implementations must return a summary-first schema equivalent to:
 
 ```ts
 type SensitiveInsightResponse = {
-  summary: string
+  summary: string;
   evidence: Array<{
-    source: 'git' | 'remote-pr' | 'remote-ci' | 'blueprint' | 'doc' | 'session-index' | 'runtime-state' | 'local-artifact'
-    citation: string
-    excerpt?: string
-    redacted?: boolean
-  }>
-  warnings: string[]
-  denied: Array<{ source: string; reason: string }>
-  limits: { maxItems: number; maxBytes?: number; truncated: boolean }
-  confidence: 'low' | 'medium' | 'high'
-  nextActions: string[]
-}
+    source:
+      | "git"
+      | "remote-pr"
+      | "remote-ci"
+      | "blueprint"
+      | "doc"
+      | "session-index"
+      | "runtime-state"
+      | "local-artifact";
+    citation: string;
+    excerpt?: string;
+    redacted?: boolean;
+  }>;
+  warnings: string[];
+  denied: Array<{ source: string; reason: string }>;
+  limits: { maxItems: number; maxBytes?: number; truncated: boolean };
+  confidence: "low" | "medium" | "high";
+  nextActions: string[];
+};
 ```
 
 Output rules:
@@ -182,9 +190,9 @@ Output rules:
 
 ## Side-effect Classification
 
-| Tool | Side effects | Safety rule |
-| ---- | ------------ | ----------- |
-| `wp_repo_forensics` | Read-only local/remote query | Remote metadata only when `includeRemote: true`; current repo only |
+| Tool                 | Side effects                           | Safety rule                                                            |
+| -------------------- | -------------------------------------- | ---------------------------------------------------------------------- |
+| `wp_repo_forensics`  | Read-only local/remote query           | Remote metadata only when `includeRemote: true`; current repo only     |
 | `wp_session_insight` | Read-only local artifact/session query | Raw excerpts require `includeRaw: true`, redaction, and hard byte caps |
 
 ## Phases
@@ -260,7 +268,7 @@ Required for future implementation PRs:
 - [x] No implementation code is added in this planning PR.
 - [x] Follow-up implementation lanes are deferred until contracts are accepted.
 - [x] Guardrail test confirms `wp_repo_forensics` and `wp_session_insight` are
-  not registered in this contract-only PR.
+      not registered in this contract-only PR.
 
 ## Trust Dossier
 
@@ -274,21 +282,21 @@ Required for future implementation PRs:
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-wp-mcp-insight-forensics.md |
+| ID  | Claim                                                          | Evidence                                                         |
+| --- | -------------------------------------------------------------- | ---------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-wp-mcp-insight-forensics.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

@@ -13,71 +13,71 @@
  * Wave 0 left `record.parsedFrontmatter` as `unknown`; this audit is the first
  * caller to wire the schemas to the loader output.
  */
-import { basename, dirname } from 'node:path'
+import { basename, dirname } from "node:path";
 
-import { z } from 'zod'
+import { z } from "zod";
 
-import { loadContent, type ContentKind, type ContentRecord } from './loader.js'
+import { loadContent, type ContentKind, type ContentRecord } from "./loader.js";
 import {
   ruleFrontmatterSchema,
   skillFrontmatterSchema,
   type RuleFrontmatter,
   type SkillFrontmatter,
-} from './schema.js'
+} from "./schema.js";
 
 export interface AuditFinding {
-  readonly severity: 'error' | 'warning'
-  readonly kind: ContentKind
-  readonly slug: string
-  readonly filePath: string
-  readonly message: string
+  readonly severity: "error" | "warning";
+  readonly kind: ContentKind;
+  readonly slug: string;
+  readonly filePath: string;
+  readonly message: string;
 }
 
 export interface AuditResult {
-  readonly findings: readonly AuditFinding[]
-  readonly passed: boolean
+  readonly findings: readonly AuditFinding[];
+  readonly passed: boolean;
 }
 
 export interface AuditOptions {
-  readonly catalogDir: string
-  readonly consumerRoot?: string
-  readonly kind: ContentKind
-  readonly staleReviewDays?: number
+  readonly catalogDir: string;
+  readonly consumerRoot?: string;
+  readonly kind: ContentKind;
+  readonly staleReviewDays?: number;
 }
 
-const DEFAULT_STALE_DAYS = 180
-const MS_PER_DAY = 24 * 60 * 60 * 1000
+const DEFAULT_STALE_DAYS = 180;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-type ParsedFrontmatter = RuleFrontmatter | SkillFrontmatter
+type ParsedFrontmatter = RuleFrontmatter | SkillFrontmatter;
 
 function schemaFor(kind: ContentKind): z.ZodType<ParsedFrontmatter> {
   return (
-    kind === 'rule' ? ruleFrontmatterSchema : skillFrontmatterSchema
-  ) as z.ZodType<ParsedFrontmatter>
+    kind === "rule" ? ruleFrontmatterSchema : skillFrontmatterSchema
+  ) as z.ZodType<ParsedFrontmatter>;
 }
 
 function diskSlug(record: ContentRecord): string {
-  if (record.kind === 'rule') {
-    return basename(record.filePath).replace(/\.md$/, '')
+  if (record.kind === "rule") {
+    return basename(record.filePath).replace(/\.md$/, "");
   }
   // skill: SKILL.md sits inside <slug>/ — use the parent dir name
-  return basename(dirname(record.filePath))
+  return basename(dirname(record.filePath));
 }
 
 export function auditContent(options: AuditOptions): AuditResult {
-  const { catalogDir, consumerRoot, kind, staleReviewDays = DEFAULT_STALE_DAYS } = options
+  const { catalogDir, consumerRoot, kind, staleReviewDays = DEFAULT_STALE_DAYS } = options;
 
   // Always load both kinds so `related` cross-kind refs resolve. We filter
   // findings to the requested kind below.
-  const { records, collisions } = loadContent({ catalogDir, consumerRoot })
-  const findings: AuditFinding[] = []
+  const { records, collisions } = loadContent({ catalogDir, consumerRoot });
+  const findings: AuditFinding[] = [];
 
   // Build the universe of known slugs across both kinds + sources for `related`.
-  const knownSlugs = new Set<string>()
-  for (const r of records) knownSlugs.add(r.slug)
+  const knownSlugs = new Set<string>();
+  for (const r of records) knownSlugs.add(r.slug);
 
-  const schema = schemaFor(kind)
-  const recordsOfKind = records.filter((r) => r.kind === kind)
+  const schema = schemaFor(kind);
+  const recordsOfKind = records.filter((r) => r.kind === kind);
 
   // Schema-validation scope:
   //  - rules: validate both catalog and consumer entries (same content schema
@@ -88,120 +88,120 @@ export function auditContent(options: AuditOptions): AuditResult {
   //    would flood the audit with false positives that the catalog can never
   //    satisfy without abandoning the upstream format.
   const recordsToValidate =
-    kind === 'skill' ? recordsOfKind.filter((r) => r.source === 'consumer') : recordsOfKind
+    kind === "skill" ? recordsOfKind.filter((r) => r.source === "consumer") : recordsOfKind;
 
   // Track parsed frontmatter for each record we successfully validate.
-  const parsedByRecord = new Map<ContentRecord, ParsedFrontmatter>()
+  const parsedByRecord = new Map<ContentRecord, ParsedFrontmatter>();
 
   for (const record of recordsToValidate) {
-    const parseResult = schema.safeParse(record.rawFrontmatter)
+    const parseResult = schema.safeParse(record.rawFrontmatter);
     if (!parseResult.success) {
       for (const issue of parseResult.error.issues) {
-        const fieldPath = issue.path.length > 0 ? ` (${issue.path.join('.')})` : ''
+        const fieldPath = issue.path.length > 0 ? ` (${issue.path.join(".")})` : "";
         findings.push({
-          severity: 'error',
+          severity: "error",
           kind: record.kind,
           slug: record.slug,
           filePath: record.filePath,
           message: `Schema validation failed${fieldPath}: ${issue.message}`,
-        })
+        });
       }
-      continue
+      continue;
     }
-    parsedByRecord.set(record, parseResult.data)
+    parsedByRecord.set(record, parseResult.data);
   }
 
   // Check 2: filename / dir vs. frontmatter slug.
   for (const [record, fm] of parsedByRecord) {
-    const onDisk = diskSlug(record)
+    const onDisk = diskSlug(record);
     if (fm.slug !== onDisk) {
-      const what = record.kind === 'rule' ? 'filename stem' : 'directory name'
+      const what = record.kind === "rule" ? "filename stem" : "directory name";
       findings.push({
-        severity: 'error',
+        severity: "error",
         kind: record.kind,
         slug: record.slug,
         filePath: record.filePath,
         message: `Frontmatter slug "${fm.slug}" does not match ${what} "${onDisk}"`,
-      })
+      });
     }
   }
 
   // Check 3: duplicate consumer-source slug within the audited kind. Dedup on
   // the union of disk slug and parsed frontmatter slug — either flavor of
   // collision is a problem.
-  const consumerByEffectiveSlug = new Map<string, ContentRecord[]>()
+  const consumerByEffectiveSlug = new Map<string, ContentRecord[]>();
   for (const record of recordsOfKind) {
-    if (record.source !== 'consumer') continue
-    const fm = parsedByRecord.get(record)
-    const effective = fm?.slug ?? record.slug
-    const list = consumerByEffectiveSlug.get(effective) ?? []
-    list.push(record)
-    consumerByEffectiveSlug.set(effective, list)
+    if (record.source !== "consumer") continue;
+    const fm = parsedByRecord.get(record);
+    const effective = fm?.slug ?? record.slug;
+    const list = consumerByEffectiveSlug.get(effective) ?? [];
+    list.push(record);
+    consumerByEffectiveSlug.set(effective, list);
   }
   for (const [slug, dupes] of consumerByEffectiveSlug) {
-    if (dupes.length < 2) continue
+    if (dupes.length < 2) continue;
     for (const dup of dupes) {
       findings.push({
-        severity: 'error',
+        severity: "error",
         kind,
         slug,
         filePath: dup.filePath,
         message: `Duplicate consumer slug "${slug}" — also defined in ${dupes
           .filter((d) => d !== dup)
           .map((d) => d.filePath)
-          .join(', ')}`,
-      })
+          .join(", ")}`,
+      });
     }
   }
 
   // Check 4: catalog collisions (loader-supplied), filtered to this kind.
   for (const collision of collisions) {
-    if (collision.kind !== kind) continue
+    if (collision.kind !== kind) continue;
     findings.push({
-      severity: 'error',
+      severity: "error",
       kind: collision.kind,
       slug: collision.slug,
       filePath: collision.consumer,
       message:
         `Catalog collision: consumer slug "${collision.slug}" shadows canonical at ` +
         `${collision.canonical}. Rename the consumer entry.`,
-    })
+    });
   }
 
   // Check 5: broken `related` refs.
   for (const [record, fm] of parsedByRecord) {
     for (const ref of fm.related ?? []) {
-      if (knownSlugs.has(ref)) continue
+      if (knownSlugs.has(ref)) continue;
       findings.push({
-        severity: 'error',
+        severity: "error",
         kind: record.kind,
         slug: record.slug,
         filePath: record.filePath,
         message: `Broken \`related\` ref: "${ref}" does not resolve to any known rule or skill`,
-      })
+      });
     }
   }
 
   // Check 6: stale last_reviewed (warning).
-  const todayStr = new Date().toISOString().slice(0, 10)
-  const todayMs = Date.parse(`${todayStr}T00:00:00Z`)
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayMs = Date.parse(`${todayStr}T00:00:00Z`);
   for (const [record, fm] of parsedByRecord) {
-    const reviewedMs = Date.parse(`${fm.last_reviewed}T00:00:00Z`)
-    if (Number.isNaN(reviewedMs)) continue
-    const ageDays = (todayMs - reviewedMs) / MS_PER_DAY
+    const reviewedMs = Date.parse(`${fm.last_reviewed}T00:00:00Z`);
+    if (Number.isNaN(reviewedMs)) continue;
+    const ageDays = (todayMs - reviewedMs) / MS_PER_DAY;
     if (ageDays >= staleReviewDays) {
       findings.push({
-        severity: 'warning',
+        severity: "warning",
         kind: record.kind,
         slug: record.slug,
         filePath: record.filePath,
         message:
           `last_reviewed ${fm.last_reviewed} is ${Math.floor(ageDays)} days old ` +
           `(threshold: ${staleReviewDays})`,
-      })
+      });
     }
   }
 
-  const passed = !findings.some((f) => f.severity === 'error')
-  return { findings, passed }
+  const passed = !findings.some((f) => f.severity === "error");
+  return { findings, passed };
 }

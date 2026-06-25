@@ -6,7 +6,7 @@ complexity: M
 owner: "ozby"
 created: 2026-06-23
 last_updated: 2026-06-23
-completed_at: '2026-06-23'
+completed_at: "2026-06-23"
 ---
 
 ## Product wedge anchor
@@ -40,9 +40,11 @@ to thin layers and add a CI gate.
 **Status:** done
 **Wave:** 0
 **Files:**
+
 - packages/agent-config/src/vitest/node.ts
 
 **Acceptance:**
+
 - [x] `CreateNodeProjectsOptions` gains optional `extraAlias`, `extraInline`, `extraSetupFiles`.
 - [x] Extras applied to BOTH `${name}/unit` and `${name}/integration` projects
       (alias appended to `resolve.alias`; inline merged into `deps.inline`;
@@ -55,10 +57,12 @@ to thin layers and add a CI gate.
 **Status:** done
 **Wave:** 0
 **Files:**
+
 - packages/agent-config/src/vitest/source-conditions.ts (new)
 - packages/agent-config/package.json (tshy.exports)
 
 **Acceptance:**
+
 - [x] Exports `webpressoSourceCondition`, `webpressoSourceResolveConditions`,
       `webpressoSourceSsrResolveConditions`, `createWebpressoSourceResolveConfig`.
 - [x] `"./vitest/source-conditions"` added to `tshy.exports`.
@@ -69,10 +73,12 @@ to thin layers and add a CI gate.
 **Status:** done
 **Wave:** 1
 **Files:**
+
 - packages/agent-config/src/vitest/node.test.ts
 - packages/agent-config/src/vitest/source-conditions.test.ts (new)
 
 **Acceptance:**
+
 - [x] Test: `createNodeProjects('x', { extraAlias:[...], extraInline:[...], extraSetupFiles:[...] })`
       → both projects include the extras; default call unchanged.
 - [x] Test: `createWebpressoSourceResolveConfig()` returns the documented
@@ -84,9 +90,11 @@ to thin layers and add a CI gate.
 **Status:** done
 **Wave:** 2
 **Files:**
+
 - .changeset/<slug>.md
 
 **Acceptance:**
+
 - [x] Minor-bump changeset added for `@webpresso/agent-config` describing the
       additive seams. Committed on the feature branch. CI owns publish.
 
@@ -116,22 +124,22 @@ to thin layers and add a CI gate.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This completed blueprint is now stored under the completed lifecycle lane with matching frontmatter. | repo:blueprints/completed/agent-config-extension-seams-for-zero-duplication-convergence.md |
+| ID  | Claim                                                                                                | Evidence                                                                                   |
+| --- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| C1  | This completed blueprint is now stored under the completed lifecycle lane with matching frontmatter. | repo:blueprints/completed/agent-config-extension-seams-for-zero-duplication-convergence.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Resolve the pre-existing lifecycle failure by promoting the finished blueprint into the completed lane. | Move the blueprint to `blueprints/completed/` and mark it completed. | Leave it in `draft/`; reopen already-finished tasks. | The work was already terminal, so completed-state metadata is the smallest truthful repair. |
+| ID  | Decision                                                                                                | Chosen option                                                        | Rejected alternatives                                | Rationale                                                                                   |
+| --- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| D1  | Resolve the pre-existing lifecycle failure by promoting the finished blueprint into the completed lane. | Move the blueprint to `blueprints/completed/` and mark it completed. | Leave it in `draft/`; reopen already-finished tasks. | The work was already terminal, so completed-state metadata is the smallest truthful repair. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| trust | wp audit blueprint-trust | pass | pass at 2026-06-23T16:03:21.000Z |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-23T16:03:21.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| trust     | wp audit blueprint-trust     | pass             | pass at 2026-06-23T16:03:21.000Z |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-23T16:03:21.000Z |
 
 ### Residual Unknowns
 

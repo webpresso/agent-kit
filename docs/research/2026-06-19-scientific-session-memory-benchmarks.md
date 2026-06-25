@@ -2,7 +2,7 @@
 type: research
 title: Scientific session-memory benchmarks — evidence basis
 date: 2026-06-19
-last_updated: '2026-06-19'
+last_updated: "2026-06-19"
 status: active
 confidence: high
 related_blueprints:
@@ -214,15 +214,15 @@ The following metric classes are distinct and require separate measurement
 methodologies. Mixing them in a single claim, or using one as a proxy for
 another, produces misleading results.
 
-| Metric class | Definition | Unit | Measurement requires |
-|---|---|---|---|
-| `byte_proxy` | Bytes filtered or compacted before context injection | Bytes (raw delta) | Before/after byte count for the same content, same session |
-| `provider_tokens_cost` | Tokens billed by the provider for a given turn | Tokens (provider-reported) | Provider API response with usage field; specify cache hit/miss |
-| `recall` | Fraction of relevant session entries retrieved by the search | Recall@K (0.0–1.0) | Ground-truth relevance labels; specified K; test corpus |
-| `hook_latency` | Wall-clock time for a hook execution round-trip | Milliseconds (p50/p95) | Warmup; sample count ≥ 50; stable environment |
-| `native_speedup` | Ratio of native backend latency to baseline backend latency | Dimensionless ratio | Same workload, same environment, same sample count for both |
-| `replacement_parity` | Whether native backend output is byte-equivalent to baseline | Pass/fail (diff output) | Byte-exact comparison on a fixed test corpus |
-| `rtk_context_mode` | RTK's active filtering mode during a session | Enum (standard/compact/ultra) | RTK session log; not a performance metric |
+| Metric class           | Definition                                                   | Unit                          | Measurement requires                                           |
+| ---------------------- | ------------------------------------------------------------ | ----------------------------- | -------------------------------------------------------------- |
+| `byte_proxy`           | Bytes filtered or compacted before context injection         | Bytes (raw delta)             | Before/after byte count for the same content, same session     |
+| `provider_tokens_cost` | Tokens billed by the provider for a given turn               | Tokens (provider-reported)    | Provider API response with usage field; specify cache hit/miss |
+| `recall`               | Fraction of relevant session entries retrieved by the search | Recall@K (0.0–1.0)            | Ground-truth relevance labels; specified K; test corpus        |
+| `hook_latency`         | Wall-clock time for a hook execution round-trip              | Milliseconds (p50/p95)        | Warmup; sample count ≥ 50; stable environment                  |
+| `native_speedup`       | Ratio of native backend latency to baseline backend latency  | Dimensionless ratio           | Same workload, same environment, same sample count for both    |
+| `replacement_parity`   | Whether native backend output is byte-equivalent to baseline | Pass/fail (diff output)       | Byte-exact comparison on a fixed test corpus                   |
+| `rtk_context_mode`     | RTK's active filtering mode during a session                 | Enum (standard/compact/ultra) | RTK session log; not a performance metric                      |
 
 **Why each class needs its own methodology:**
 

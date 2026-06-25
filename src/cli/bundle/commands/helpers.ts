@@ -1,24 +1,24 @@
-import type { CliCommand } from '@webpresso/cli-contract'
+import type { CliCommand } from "@webpresso/cli-contract";
 
 function notImplementedMessage(scope: string, name: string): string {
-  return `${scope} bundle command "${name}" is not implemented yet.`
+  return `${scope} bundle command "${name}" is not implemented yet.`;
 }
 
 export function getCommandRawArgs(
-  context: Parameters<NonNullable<CliCommand['run']>>[0] & {
-    readonly rawArgs?: readonly string[]
+  context: Parameters<NonNullable<CliCommand["run"]>>[0] & {
+    readonly rawArgs?: readonly string[];
   },
 ): readonly string[] {
-  return context.rawArgs ?? []
+  return context.rawArgs ?? [];
 }
 
 export function placeholderCommand(scope: string, name: string, description: string): CliCommand {
   return {
     meta: { description, name },
     run: () => {
-      throw new Error(notImplementedMessage(scope, name))
+      throw new Error(notImplementedMessage(scope, name));
     },
-  }
+  };
 }
 
 export function placeholderGroup(
@@ -35,5 +35,5 @@ export function placeholderGroup(
         () => command,
       ]),
     ),
-  }
+  };
 }

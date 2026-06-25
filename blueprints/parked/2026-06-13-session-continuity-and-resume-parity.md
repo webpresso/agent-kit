@@ -4,9 +4,9 @@ title: Session continuity and resume parity
 owner: ozby
 status: parked
 complexity: XL
-created: '2026-06-13'
-last_updated: '2026-06-21'
-progress: '0% (0/8 tasks done, 0 blocked, updated 2026-06-21)'
+created: "2026-06-13"
+last_updated: "2026-06-21"
+progress: "0% (0/8 tasks done, 0 blocked, updated 2026-06-21)"
 parked_reason: >-
   Refresh needed before execution/completion: current implementation migrates legacy rows
   instead of fail-closed behavior and SessionStart timeout proof gap remains.
@@ -57,57 +57,57 @@ host hook events
 
 ## Fact-Check Findings
 
-| ID | Severity | Claim / assumption checked | Reality verified in repo | Blueprint fix |
-| -- | -------- | -------------------------- | ------------------------ | ------------- |
-| F1 | HIGH | Session memory already captures enough structure for resume and can absorb typed events without migration design. | `src/session-memory/types.ts` and `src/session-memory/session.ts` currently persist `{ toolName, content }` into `session_events`; no typed event kind, priority, summary, or resume visibility exists, and the live SQLite + FTS layout needs an explicit schema-version / rebuild plan when rows gain new typed fields. | Task 1.1 now owns a hard-cut typed event envelope, schema-version guard, explicit rejection of untyped flat rows, and migration-safe tests including FTS rebuild coverage. |
-| F2 | HIGH | A managed pre-compaction hook can be added by creating only a hook file. | Managed hook ownership is derived from `WP_HOOK_SPECS`, launcher/runtime bin lists, doctor/status/audit expectations, and generated host emitters. | Task 1.2 now includes IR, launcher/runtime, status/doctor, audit, and direct-bin tests. |
-| F3 | MEDIUM | Verification commands using repeated `--files` are valid. | `./bin/wp test --help` exposes repeated `--file`; `./bin/wp lint --help` exposes repeated `--file <path>` flags. | All task and gate commands now use `./bin/wp test --file ...` and `./bin/wp lint --file ...`. |
-| F4 | HIGH | Host parity can be claimed uniformly. | `src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.ts` marks `PreCompact` as partial for Claude/Codex/OpenCode and unsupported for Cursor; current managed `wp-*` surface does not install a dedicated hook. | Host tasks must degrade explicitly, update capability notes, and test no unsupported Cursor claim. |
-| F5 | MEDIUM | Post-tool, prompt, and stop hooks can share one implementation task. | Current hook files are independent hot paths: `src/hooks/post-tool/lint-after-edit.ts`, `src/hooks/guard-switch/index.ts`, and `src/hooks/stop/qa-changed-files.ts`. | Split into Tasks 2.1, 2.2, and 2.3 so agents can work without same-file conflicts. |
-| F6 | HIGH | Package safety is unaffected because hooks are internal. | Adding a managed hook bin touches generated launchers, direct runtime bin maps, docs, and possibly public package surface tests. | Task 1.2 and whole-plan gates now require bin-surface, dry tarball, and secret checks before release claims. |
-| F7 | MEDIUM | Downstream plans can consume this blueprint as a whole. | Related blueprints depend on specific task outputs: session event model, lifecycle contract, and host fixtures. | Cross-plan references now name the exact dependency outputs downstream work may rely on. |
+| ID  | Severity | Claim / assumption checked                                                                                        | Reality verified in repo                                                                                                                                                                                                                                                                                                  | Blueprint fix                                                                                                                                                              |
+| --- | -------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1  | HIGH     | Session memory already captures enough structure for resume and can absorb typed events without migration design. | `src/session-memory/types.ts` and `src/session-memory/session.ts` currently persist `{ toolName, content }` into `session_events`; no typed event kind, priority, summary, or resume visibility exists, and the live SQLite + FTS layout needs an explicit schema-version / rebuild plan when rows gain new typed fields. | Task 1.1 now owns a hard-cut typed event envelope, schema-version guard, explicit rejection of untyped flat rows, and migration-safe tests including FTS rebuild coverage. |
+| F2  | HIGH     | A managed pre-compaction hook can be added by creating only a hook file.                                          | Managed hook ownership is derived from `WP_HOOK_SPECS`, launcher/runtime bin lists, doctor/status/audit expectations, and generated host emitters.                                                                                                                                                                        | Task 1.2 now includes IR, launcher/runtime, status/doctor, audit, and direct-bin tests.                                                                                    |
+| F3  | MEDIUM   | Verification commands using repeated `--files` are valid.                                                         | `./bin/wp test --help` exposes repeated `--file`; `./bin/wp lint --help` exposes repeated `--file <path>` flags.                                                                                                                                                                                                          | All task and gate commands now use `./bin/wp test --file ...` and `./bin/wp lint --file ...`.                                                                              |
+| F4  | HIGH     | Host parity can be claimed uniformly.                                                                             | `src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.ts` marks `PreCompact` as partial for Claude/Codex/OpenCode and unsupported for Cursor; current managed `wp-*` surface does not install a dedicated hook.                                                                                                | Host tasks must degrade explicitly, update capability notes, and test no unsupported Cursor claim.                                                                         |
+| F5  | MEDIUM   | Post-tool, prompt, and stop hooks can share one implementation task.                                              | Current hook files are independent hot paths: `src/hooks/post-tool/lint-after-edit.ts`, `src/hooks/guard-switch/index.ts`, and `src/hooks/stop/qa-changed-files.ts`.                                                                                                                                                      | Split into Tasks 2.1, 2.2, and 2.3 so agents can work without same-file conflicts.                                                                                         |
+| F6  | HIGH     | Package safety is unaffected because hooks are internal.                                                          | Adding a managed hook bin touches generated launchers, direct runtime bin maps, docs, and possibly public package surface tests.                                                                                                                                                                                          | Task 1.2 and whole-plan gates now require bin-surface, dry tarball, and secret checks before release claims.                                                               |
+| F7  | MEDIUM   | Downstream plans can consume this blueprint as a whole.                                                           | Related blueprints depend on specific task outputs: session event model, lifecycle contract, and host fixtures.                                                                                                                                                                                                           | Cross-plan references now name the exact dependency outputs downstream work may rely on.                                                                                   |
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-| -------- | ------ | --------- |
-| Storage owner | `src/session-memory/**` remains the only continuity store (F1) | Avoid parallel stores and keep recall/search behavior convergent. |
-| Event model | Typed envelope with hard-cut schema expansion (F1) | Requires event kind, summary, priority, and resume visibility; untyped flat rows fail closed with an explicit diagnostic. |
-| Resume contract | Hook-driven with explicit tool fallback | Automatic continuity is required, but operators still need manual recovery tools. |
-| Host strategy | One canonical lifecycle IR with host-specific degradations (F4) | Claude, Codex, Cursor, and OpenCode differ; unsupported lifecycle paths must be visible rather than silently claimed. |
-| Hot-path safety | Bounded capture, no broad shell-outs, fail-open except policy guard | Hooks fire frequently; capture must never block the agent or emit invalid host output. |
-| Public package safety | Treat new hook bins/docs as package-surface changes (F6) | This is a public package; real pack tarball, package lint, dev-var carrier, secret-policy, and path checks must prove no private or generated-only surface leaks. |
-| Simplicity gate | No new dependency or daemon for this blueprint | Existing SQLite/FTS and hook infrastructure are sufficient; new abstractions need a current task-owned caller. |
+| Decision              | Choice                                                              | Rationale                                                                                                                                                         |
+| --------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Storage owner         | `src/session-memory/**` remains the only continuity store (F1)      | Avoid parallel stores and keep recall/search behavior convergent.                                                                                                 |
+| Event model           | Typed envelope with hard-cut schema expansion (F1)                  | Requires event kind, summary, priority, and resume visibility; untyped flat rows fail closed with an explicit diagnostic.                                         |
+| Resume contract       | Hook-driven with explicit tool fallback                             | Automatic continuity is required, but operators still need manual recovery tools.                                                                                 |
+| Host strategy         | One canonical lifecycle IR with host-specific degradations (F4)     | Claude, Codex, Cursor, and OpenCode differ; unsupported lifecycle paths must be visible rather than silently claimed.                                             |
+| Hot-path safety       | Bounded capture, no broad shell-outs, fail-open except policy guard | Hooks fire frequently; capture must never block the agent or emit invalid host output.                                                                            |
+| Public package safety | Treat new hook bins/docs as package-surface changes (F6)            | This is a public package; real pack tarball, package lint, dev-var carrier, secret-policy, and path checks must prove no private or generated-only surface leaks. |
+| Simplicity gate       | No new dependency or daemon for this blueprint                      | Existing SQLite/FTS and hook infrastructure are sufficient; new abstractions need a current task-owned caller.                                                    |
 
 ## Technology Choices and Safety Notes
 
-| Area | Choice | Safety / verification note |
-| ---- | ------ | -------------------------- |
-| Storage | Existing SQLite-backed `SessionMemorySessionStore` | Keep WAL/busy-timeout behavior; add bounded serialization and restore tests before schema changes. |
-| Search | Existing FTS/event restore path | Do not introduce a second search backend; downstream tool-surface work can unify recall after typed events exist. |
-| Hook execution | Existing `runHook` bootstrap and managed launcher generation | Preserve valid JSON/no-op behavior for malformed stdin and unsupported host events. |
-| Runtime bins | Existing direct-bin map in `bin/_run.js` and `bin/runtime-lanes.js` | Adding `wp-precompact-snapshot` is an internal managed hook-bin change; package-surface tests must prove public `bin` intent. |
-| Public package | No new dependency, no secret-bearing fixtures, no local absolute paths | Run real pack tarball/package/dev-var carrier/secret-policy/path checks before any release or README parity claim. |
+| Area           | Choice                                                                 | Safety / verification note                                                                                                    |
+| -------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Storage        | Existing SQLite-backed `SessionMemorySessionStore`                     | Keep WAL/busy-timeout behavior; add bounded serialization and restore tests before schema changes.                            |
+| Search         | Existing FTS/event restore path                                        | Do not introduce a second search backend; downstream tool-surface work can unify recall after typed events exist.             |
+| Hook execution | Existing `runHook` bootstrap and managed launcher generation           | Preserve valid JSON/no-op behavior for malformed stdin and unsupported host events.                                           |
+| Runtime bins   | Existing direct-bin map in `bin/_run.js` and `bin/runtime-lanes.js`    | Adding `wp-precompact-snapshot` is an internal managed hook-bin change; package-surface tests must prove public `bin` intent. |
+| Public package | No new dependency, no secret-bearing fixtures, no local absolute paths | Run real pack tarball/package/dev-var carrier/secret-policy/path checks before any release or README parity claim.            |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
-| ---- | ----- | ------------ | -------------- | ---------------- |
-| **Wave 0** | 1.1, 1.2 | None | 2 agents | S-M |
-| **Wave 1** | 2.1, 2.2, 2.3, 2.4 | Task 1.1; Task 2.4 also uses existing SessionStart contract | 4 agents | S-M |
-| **Wave 2** | 3.1 | Task 1.2, Task 2.1, Task 2.2, Task 2.3, Task 2.4 | 1 agent | M |
-| **Wave 3** | 3.2 | Task 3.1 | 1 agent | S |
-| **Critical path** | 1.1 → 2.1 → 3.1 → 3.2 | — | 4 waves | XL |
+| Wave              | Tasks                 | Dependencies                                                | Parallelizable | Effort (T-shirt) |
+| ----------------- | --------------------- | ----------------------------------------------------------- | -------------- | ---------------- |
+| **Wave 0**        | 1.1, 1.2              | None                                                        | 2 agents       | S-M              |
+| **Wave 1**        | 2.1, 2.2, 2.3, 2.4    | Task 1.1; Task 2.4 also uses existing SessionStart contract | 4 agents       | S-M              |
+| **Wave 2**        | 3.1                   | Task 1.2, Task 2.1, Task 2.2, Task 2.3, Task 2.4            | 1 agent        | M                |
+| **Wave 3**        | 3.2                   | Task 3.1                                                    | 1 agent        | S                |
+| **Critical path** | 1.1 → 2.1 → 3.1 → 3.2 | —                                                           | 4 waves        | XL               |
 
 ### Parallel Metrics Snapshot
 
-| Metric | Formula / Meaning | Target | Actual |
-| ------ | ----------------- | ------ | ------ |
-| RW0 | Ready tasks in Wave 0 | ≥ planned agents / 2 | 2 for 4 planned agents |
-| RW1 | Ready tasks in Wave 1 | Keep planned agents busy | 4 |
-| CPR | total_tasks / critical_path_length | ≥ 2.5 | 8 / 4 = 2.0 |
-| DD | dependency_edges / total_tasks | ≤ 2.0 | 10 / 8 = 1.25 |
-| CP | same-file overlaps per wave | 0 | 0 |
+| Metric | Formula / Meaning                  | Target                   | Actual                 |
+| ------ | ---------------------------------- | ------------------------ | ---------------------- |
+| RW0    | Ready tasks in Wave 0              | ≥ planned agents / 2     | 2 for 4 planned agents |
+| RW1    | Ready tasks in Wave 1              | Keep planned agents busy | 4                      |
+| CPR    | total_tasks / critical_path_length | ≥ 2.5                    | 8 / 4 = 2.0            |
+| DD     | dependency_edges / total_tasks     | ≤ 2.0                    | 10 / 8 = 1.25          |
+| CP     | same-file overlaps per wave        | 0                        | 0                      |
 
 **Parallelization score:** B. The initial wave is intentionally narrow because
 Task 1.1 defines the shared typed event contract and Task 1.2 defines the
@@ -413,50 +413,50 @@ secret checks.
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-| ---- | ------- | ---------------- |
-| Type safety | `./bin/wp typecheck` | Zero errors |
-| Lint | `./bin/wp lint --file src/hooks --file src/session-memory --file src/cli/commands/init --file src/audit --file docs/guides/session-memory.md --file docs/hook-matrix.md --file docs/hooks-doctor.md --file README.md` | Zero violations |
-| Focused tests | `./bin/wp test --file src/session-memory/session.test.ts --file src/session-memory/session-failure.test.ts --file src/session-memory/hook-capture.test.ts --file src/hooks/precompact/index.test.ts --file src/hooks/post-tool/lint-after-edit.test.ts --file src/hooks/guard-switch/index.test.ts --file src/hooks/stop/qa-changed-files.test.ts --file src/hooks/sessionstart/index.test.ts --file src/hooks/dispatch/index.test.ts` | All pass |
-| Hook scaffolder tests | `./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/ir.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/index.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/__fixtures__/vendor-io-conformance.test.ts` | Managed lifecycle and host fixture coverage pass |
-| Hook health | `./bin/wp hooks doctor --skip-mcp` | Reports installed lifecycle accurately |
-| Lifecycle audit | `./bin/wp audit blueprint-lifecycle` | Pass |
-| Package surface | `npm pack --dry-run --json` and `vp run lint:pkg` | Real pack tarball and package checks show only intentional public files/bins |
-| Secret and path safety | `vp run verify:secrets`, `./bin/wp audit secrets-policy`, `./bin/wp audit no-dev-vars`, `./bin/wp audit secret-provider-quarantine`, `./bin/wp audit secrets-config`, `vp run verify:paths` | Dev-var carriers, secret-policy violations, and path-policy violations are absent |
+| Gate                   | Command                                                                                                                                                                                                                                                                                                                                                                                                                                | Success Criteria                                                                  |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Type safety            | `./bin/wp typecheck`                                                                                                                                                                                                                                                                                                                                                                                                                   | Zero errors                                                                       |
+| Lint                   | `./bin/wp lint --file src/hooks --file src/session-memory --file src/cli/commands/init --file src/audit --file docs/guides/session-memory.md --file docs/hook-matrix.md --file docs/hooks-doctor.md --file README.md`                                                                                                                                                                                                                  | Zero violations                                                                   |
+| Focused tests          | `./bin/wp test --file src/session-memory/session.test.ts --file src/session-memory/session-failure.test.ts --file src/session-memory/hook-capture.test.ts --file src/hooks/precompact/index.test.ts --file src/hooks/post-tool/lint-after-edit.test.ts --file src/hooks/guard-switch/index.test.ts --file src/hooks/stop/qa-changed-files.test.ts --file src/hooks/sessionstart/index.test.ts --file src/hooks/dispatch/index.test.ts` | All pass                                                                          |
+| Hook scaffolder tests  | `./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/ir.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/index.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/__fixtures__/vendor-io-conformance.test.ts`                                                                                                      | Managed lifecycle and host fixture coverage pass                                  |
+| Hook health            | `./bin/wp hooks doctor --skip-mcp`                                                                                                                                                                                                                                                                                                                                                                                                     | Reports installed lifecycle accurately                                            |
+| Lifecycle audit        | `./bin/wp audit blueprint-lifecycle`                                                                                                                                                                                                                                                                                                                                                                                                   | Pass                                                                              |
+| Package surface        | `npm pack --dry-run --json` and `vp run lint:pkg`                                                                                                                                                                                                                                                                                                                                                                                      | Real pack tarball and package checks show only intentional public files/bins      |
+| Secret and path safety | `vp run verify:secrets`, `./bin/wp audit secrets-policy`, `./bin/wp audit no-dev-vars`, `./bin/wp audit secret-provider-quarantine`, `./bin/wp audit secrets-config`, `vp run verify:paths`                                                                                                                                                                                                                                            | Dev-var carriers, secret-policy violations, and path-policy violations are absent |
 
 ## Cross-Plan References
 
-| Type | Blueprint | Relationship | Required alignment |
-| ---- | --------- | ------------ | ------------------ |
-| Downstream | `2026-06-13-sandboxed-knowledge-tool-surface-parity` | Consumes Task 1.1 typed event model and Task 3.2 docs | Its `wp_session_*` restore/search semantics should rely on typed continuity events, not a second store. |
-| Downstream | `2026-06-13-multi-host-plugin-and-instruction-surface-expansion` | Consumes Task 1.2 lifecycle contract and Task 3.1 host fixtures | Plugin/host packaging must preserve this blueprint's degraded-mode matrix. |
-| Downstream | `2026-06-13-reference-parity-regression-and-host-smoke-gate` | Consumes Task 3.1 host proofs and Task 3.2 release/package gates | Parity claims must remain blocked until this blueprint's tests and package-safety gates are green. |
-| Reference evidence | `2026-06-10-harness-regression-gate` / `2026-06-10-harness-surface-manifest` | Later benchmark thresholds can measure this continuity surface | This blueprint does not add benchmark thresholds; it only creates capture/restore behavior to measure. |
+| Type               | Blueprint                                                                    | Relationship                                                     | Required alignment                                                                                      |
+| ------------------ | ---------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Downstream         | `2026-06-13-sandboxed-knowledge-tool-surface-parity`                         | Consumes Task 1.1 typed event model and Task 3.2 docs            | Its `wp_session_*` restore/search semantics should rely on typed continuity events, not a second store. |
+| Downstream         | `2026-06-13-multi-host-plugin-and-instruction-surface-expansion`             | Consumes Task 1.2 lifecycle contract and Task 3.1 host fixtures  | Plugin/host packaging must preserve this blueprint's degraded-mode matrix.                              |
+| Downstream         | `2026-06-13-reference-parity-regression-and-host-smoke-gate`                 | Consumes Task 3.1 host proofs and Task 3.2 release/package gates | Parity claims must remain blocked until this blueprint's tests and package-safety gates are green.      |
+| Reference evidence | `2026-06-10-harness-regression-gate` / `2026-06-10-harness-surface-manifest` | Later benchmark thresholds can measure this continuity surface   | This blueprint does not add benchmark thresholds; it only creates capture/restore behavior to measure.  |
 
 ## Edge Cases and Error Handling
 
-| ID | Edge Case | Risk | Solution | Task |
-| -- | --------- | ---- | -------- | ---- |
-| F1 | Existing flat session rows lack typed metadata | Silent restore/search regression | Reject missing kind with an explicit diagnostic; test hard-cut failure behavior | 1.1 |
-| F1 | Snapshot grows beyond host prompt budget | Compaction/resume injects too much text | Apply byte caps, priority ordering, and partial status metadata | 1.1, 2.4 |
-| F2 | New managed hook bin missed by one launcher/runtime surface | Installed hooks fail at runtime | Derive from `WP_HOOK_SPECS` where possible and test IR, launcher, runtime, doctor/status, and audit surfaces | 1.2 |
-| F3 | Invalid command flags in blueprint tasks | Agents waste time on nonexistent commands | Use verified `./bin/wp test --file`, positional `./bin/wp lint`, and whole-repo `./bin/wp typecheck` | all |
-| F4 | Host does not support a lifecycle event | False parity claim or invalid emitted config | Emit only supported hook config; document degraded modes in capability matrix and docs | 1.2, 3.1, 3.2 |
-| F5 | Parallel tasks edit the same file in the same wave | Merge conflict or non-deterministic execution | Wave table keeps overlapping files serialized; hook capture lanes are file-disjoint in Wave 1 | all |
-| F6 | Hook-bin/doc changes leak private surface into public package | Public package disclosure issue | Require real pack tarball, package lint, dev-var carrier, secret-policy, and path checks before release claims | 1.2, 3.2 |
-| F6 | Hook input contains secrets or huge payloads | Sensitive or noisy local state stored/resumed | Store summaries with caps; exclude raw oversized payloads and token-shaped content where detectable | 1.1, 2.1, 2.2, 2.3, 2.4 |
-| F7 | Downstream plans assume benchmark/search parity too early | Later plans build on unproved behavior | Cross-plan references name only the outputs this blueprint actually owns | 3.2 |
+| ID  | Edge Case                                                     | Risk                                          | Solution                                                                                                       | Task                    |
+| --- | ------------------------------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| F1  | Existing flat session rows lack typed metadata                | Silent restore/search regression              | Reject missing kind with an explicit diagnostic; test hard-cut failure behavior                                | 1.1                     |
+| F1  | Snapshot grows beyond host prompt budget                      | Compaction/resume injects too much text       | Apply byte caps, priority ordering, and partial status metadata                                                | 1.1, 2.4                |
+| F2  | New managed hook bin missed by one launcher/runtime surface   | Installed hooks fail at runtime               | Derive from `WP_HOOK_SPECS` where possible and test IR, launcher, runtime, doctor/status, and audit surfaces   | 1.2                     |
+| F3  | Invalid command flags in blueprint tasks                      | Agents waste time on nonexistent commands     | Use verified `./bin/wp test --file`, positional `./bin/wp lint`, and whole-repo `./bin/wp typecheck`           | all                     |
+| F4  | Host does not support a lifecycle event                       | False parity claim or invalid emitted config  | Emit only supported hook config; document degraded modes in capability matrix and docs                         | 1.2, 3.1, 3.2           |
+| F5  | Parallel tasks edit the same file in the same wave            | Merge conflict or non-deterministic execution | Wave table keeps overlapping files serialized; hook capture lanes are file-disjoint in Wave 1                  | all                     |
+| F6  | Hook-bin/doc changes leak private surface into public package | Public package disclosure issue               | Require real pack tarball, package lint, dev-var carrier, secret-policy, and path checks before release claims | 1.2, 3.2                |
+| F6  | Hook input contains secrets or huge payloads                  | Sensitive or noisy local state stored/resumed | Store summaries with caps; exclude raw oversized payloads and token-shaped content where detectable            | 1.1, 2.1, 2.2, 2.3, 2.4 |
+| F7  | Downstream plans assume benchmark/search parity too early     | Later plans build on unproved behavior        | Cross-plan references name only the outputs this blueprint actually owns                                       | 3.2                     |
 
 ## Risks
 
-| ID | Risk | Impact | Mitigation | Owner task |
-| -- | ---- | ------ | ---------- | ---------- |
-| F1 | Schema churn breaks manual session-memory tools | Restore/search regressions | Backfill tests before changing handlers; test hard-cut schema failure and operator reset guidance | 1.1 |
-| F2 | Hook lifecycle addition drifts across IR, launchers, runtime bins, and doctor/status | Broken hooks after setup | Keep `WP_HOOK_SPECS` central and test every downstream surface | 1.2 |
-| F4 | Host wire mismatch | Broken hooks on one vendor | Fixture-test each emitter and keep unsupported events degraded | 3.1 |
-| F5 | Hook latency regression | User-visible slowdown | Pure summaries only; no broad shell-outs; byte caps in every hot path | 2.1, 2.2, 2.3, 2.4 |
-| F6 | Public package leak or unintended public CLI | Release/disclosure failure | Real pack tarball, package lint, package-manifest tests, dev-var carrier, secret-policy, and path checks | 1.2, 3.2 |
-| F7 | Docs outrun implementation | False replacement claims | Docs task depends on host proofs and must state tested degradations | 3.2 |
+| ID  | Risk                                                                                 | Impact                     | Mitigation                                                                                               | Owner task         |
+| --- | ------------------------------------------------------------------------------------ | -------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------ |
+| F1  | Schema churn breaks manual session-memory tools                                      | Restore/search regressions | Backfill tests before changing handlers; test hard-cut schema failure and operator reset guidance        | 1.1                |
+| F2  | Hook lifecycle addition drifts across IR, launchers, runtime bins, and doctor/status | Broken hooks after setup   | Keep `WP_HOOK_SPECS` central and test every downstream surface                                           | 1.2                |
+| F4  | Host wire mismatch                                                                   | Broken hooks on one vendor | Fixture-test each emitter and keep unsupported events degraded                                           | 3.1                |
+| F5  | Hook latency regression                                                              | User-visible slowdown      | Pure summaries only; no broad shell-outs; byte caps in every hot path                                    | 2.1, 2.2, 2.3, 2.4 |
+| F6  | Public package leak or unintended public CLI                                         | Release/disclosure failure | Real pack tarball, package lint, package-manifest tests, dev-var carrier, secret-policy, and path checks | 1.2, 3.2           |
+| F7  | Docs outrun implementation                                                           | False replacement claims   | Docs task depends on host proofs and must state tested degradations                                      | 3.2                |
 
 ## Non-goals
 
@@ -469,19 +469,19 @@ secret checks.
 
 ## Refinement Summary
 
-| Metric | Value |
-| ------ | ----- |
-| Findings total | 7 |
-| Critical | 0 |
-| High | 4 |
-| Medium | 3 |
-| Low | 0 |
-| Fixes applied | 7/7 |
-| Cross-plans updated | 0 (read-only per refinement scope) |
-| Edge cases documented | 8 |
-| Risks documented | 6 |
-| Parallelization score | B (Wave 1 reaches 4 disjoint agents; CP = 0) |
-| Critical path | 4 waves |
-| Max parallel agents | 4 |
-| Total tasks | 8 |
-| Blueprint compliant | 8/8 tasks include status, dependencies, files, TDD steps, and acceptance |
+| Metric                | Value                                                                    |
+| --------------------- | ------------------------------------------------------------------------ |
+| Findings total        | 7                                                                        |
+| Critical              | 0                                                                        |
+| High                  | 4                                                                        |
+| Medium                | 3                                                                        |
+| Low                   | 0                                                                        |
+| Fixes applied         | 7/7                                                                      |
+| Cross-plans updated   | 0 (read-only per refinement scope)                                       |
+| Edge cases documented | 8                                                                        |
+| Risks documented      | 6                                                                        |
+| Parallelization score | B (Wave 1 reaches 4 disjoint agents; CP = 0)                             |
+| Critical path         | 4 waves                                                                  |
+| Max parallel agents   | 4                                                                        |
+| Total tasks           | 8                                                                        |
+| Blueprint compliant   | 8/8 tasks include status, dependencies, files, TDD steps, and acceptance |

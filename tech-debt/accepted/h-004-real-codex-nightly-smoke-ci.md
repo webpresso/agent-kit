@@ -4,10 +4,10 @@ status: accepted
 severity: medium
 category: testing
 review_cadence: monthly
-last_reviewed: '2026-05-11'
-created: '2026-05-11'
-linked_blueprints: ['agent-kit-v1-evidence-ledger']
-affected_modules: ['src/runners/codex-exec']
+last_reviewed: "2026-05-11"
+created: "2026-05-11"
+linked_blueprints: ["agent-kit-v1-evidence-ledger"]
+affected_modules: ["src/runners/codex-exec"]
 ---
 
 # real-codex nightly smoke CI
@@ -78,7 +78,7 @@ Implement this item when **any one** of:
      secrets (`CODEX_AUTH_TOKEN`).
    - Runs a deterministic blueprint (the hello-world fixture from
      `src/runners/claude-subagent/__fixtures__/golden-transcript-hello
-     -blueprint.md`) through `codex-exec` Runner.
+-blueprint.md`) through `codex-exec` Runner.
    - Asserts: same exit code, same RunnerEvent kinds, no orphan
      processes (via `ps` check after AbortSignal test).
 2. Document the secret rotation procedure (every 90 days, per the

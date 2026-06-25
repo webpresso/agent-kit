@@ -6,12 +6,12 @@ status: active
 scope: repo
 applies_to: [agents]
 related: []
-created: '2026-05-07'
-last_reviewed: '2026-05-07'
-paths: 
-  - '**/*.ts'
-  - '**/*.tsx'
-  - '**/*.test.ts'
+created: "2026-05-07"
+last_reviewed: "2026-05-07"
+paths:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.test.ts"
 ---
 
 # Repository Restriction Guide
@@ -21,14 +21,14 @@ paths:
 
 ## Enforcement Layers (Priority Order)
 
-| Layer                      | Mechanism                                                      | When It Runs                    | Catches                                       |
-| -------------------------- | -------------------------------------------------------------- | ------------------------------- | --------------------------------------------- |
-| **1. Linter**              | Built-in rules + plugins (e.g. oxlint, eslint)                 | `lint`, pre-commit, CI          | Import paths, code patterns, safety, perf     |
-| **2. Pre-commit Hook**     | Husky / repo pre-commit script                                 | Every `git commit`              | Lint, typecheck, drift, quality               |
-| **3. Agent Hooks**         | Agent-tool pretool guard (Claude Code / Cursor / etc.)         | Every Write/Edit in agent tool  | Forbidden commands, test quality, conventions |
-| **4. Agent Instructions**  | `AGENTS.md`, `.agent/rules/*.md`, `.agent/guides/*.md`         | Agent context loading           | Soft enforcement for all AI agents            |
-| **5. CI Workflows**        | `.github/workflows/*.yml` or equivalent                        | PRs and pushes                  | Full QA, security, drift detection            |
-| **6. Boundaries Lint**     | `eslint-plugin-boundaries` or similar tier enforcer            | `lint-boundaries`               | Architectural tier violations                 |
+| Layer                     | Mechanism                                              | When It Runs                   | Catches                                       |
+| ------------------------- | ------------------------------------------------------ | ------------------------------ | --------------------------------------------- |
+| **1. Linter**             | Built-in rules + plugins (e.g. oxlint, eslint)         | `lint`, pre-commit, CI         | Import paths, code patterns, safety, perf     |
+| **2. Pre-commit Hook**    | Husky / repo pre-commit script                         | Every `git commit`             | Lint, typecheck, drift, quality               |
+| **3. Agent Hooks**        | Agent-tool pretool guard (Claude Code / Cursor / etc.) | Every Write/Edit in agent tool | Forbidden commands, test quality, conventions |
+| **4. Agent Instructions** | `AGENTS.md`, `.agent/rules/*.md`, `.agent/guides/*.md` | Agent context loading          | Soft enforcement for all AI agents            |
+| **5. CI Workflows**       | `.github/workflows/*.yml` or equivalent                | PRs and pushes                 | Full QA, security, drift detection            |
+| **6. Boundaries Lint**    | `eslint-plugin-boundaries` or similar tier enforcer    | `lint-boundaries`              | Architectural tier violations                 |
 
 ## Import Path Restrictions
 
@@ -77,13 +77,13 @@ duplicate scanner when the repo has been scaffolded by agent-kit.
 
 ### Step 1: Choose the Right Mechanism
 
-| What You Want to Ban                        | Use This                                |
-| ------------------------------------------- | --------------------------------------- |
-| Import path pattern (`from 'xxx'`)          | Linter plugin                           |
-| Structural code pattern (AST node matching) | Linter plugin                           |
-| String content in function args             | Linter plugin + agent instructions      |
-| Command execution pattern                   | Agent hooks (forbidden-commands)        |
-| File naming / placement                     | Agent hooks + pre-commit                |
+| What You Want to Ban                        | Use This                           |
+| ------------------------------------------- | ---------------------------------- |
+| Import path pattern (`from 'xxx'`)          | Linter plugin                      |
+| Structural code pattern (AST node matching) | Linter plugin                      |
+| String content in function args             | Linter plugin + agent instructions |
+| Command execution pattern                   | Agent hooks (forbidden-commands)   |
+| File naming / placement                     | Agent hooks + pre-commit           |
 
 ### Step 2: Implement
 

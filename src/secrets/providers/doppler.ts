@@ -8,63 +8,63 @@ import type {
   SecretProviderPlugin,
   SecretProviderRedactionInput,
   SecretProviderRedactionPolicy,
-} from './types.js'
+} from "./types.js";
 
-import { BUILTIN_SECRET_SINKS } from '#secrets/sinks/types.js'
+import { BUILTIN_SECRET_SINKS } from "#secrets/sinks/types.js";
 
 export function createDopplerRedactionPolicy(
   input: SecretProviderRedactionInput,
 ): SecretProviderRedactionPolicy {
-  return { values: [...new Set(input.values.filter(Boolean))] }
+  return { values: [...new Set(input.values.filter(Boolean))] };
 }
 
 export function diagnoseDopplerProvider(input: ProviderDoctorInput): ProviderDoctorReport {
-  const workspace = input.provider.workspace ?? 'unknown-workspace'
+  const workspace = input.provider.workspace ?? "unknown-workspace";
   return {
     ok: true,
-    code: 'WP_SECRETS_PROVIDER_READY',
+    code: "WP_SECRETS_PROVIDER_READY",
     problem: `doppler profile "${input.profileName}" is configured.`,
     fix: `If auth drifts, run: doppler login --scope ${workspace}`,
     evidence: `provider=doppler workspace=${workspace} environment=${input.environment}`,
-  }
+  };
 }
 
 export function fetchDopplerProfile(input: ProviderProfileFetchInput): ResolvedSecretMaterial {
-  const project = input.provider.project ?? input.provider.projectId ?? input.provider.projectSlug
+  const project = input.provider.project ?? input.provider.projectId ?? input.provider.projectSlug;
   return {
     environment: {},
     redactedValues: [project, input.environment].filter((value): value is string => Boolean(value)),
-  }
+  };
 }
 
 export function planDopplerBootstrap(input: ProviderBootstrapInput): ProviderBootstrapPlan {
   const requiredSecrets = [
     ...new Set(
       input.lanes.map((lane) =>
-        lane === 'prd' ? 'CI_SECRET_PROVIDER_TOKEN_PRODUCTION' : 'CI_SECRET_PROVIDER_TOKEN_PREVIEW',
+        lane === "prd" ? "CI_SECRET_PROVIDER_TOKEN_PRODUCTION" : "CI_SECRET_PROVIDER_TOKEN_PREVIEW",
       ),
     ),
-  ]
+  ];
   return {
-    mode: 'service-token',
+    mode: "service-token",
     lanes: input.lanes,
     requiredSecrets,
-  }
+  };
 }
 
 export const dopplerProviderPlugin: SecretProviderPlugin = {
-  id: 'doppler',
+  id: "doppler",
   authModes: {
-    local: 'cli-login',
-    ci: ['oidc', 'service-token'],
+    local: "cli-login",
+    ci: ["oidc", "service-token"],
   },
   capabilities: {
-    profiles: ['preview', 'production'],
+    profiles: ["preview", "production"],
     sinks: BUILTIN_SECRET_SINKS,
-    bootstrap: ['github-actions-bootstrap', 'manual'],
+    bootstrap: ["github-actions-bootstrap", "manual"],
   },
   redactionPolicy: createDopplerRedactionPolicy,
   diagnose: diagnoseDopplerProvider,
   fetchProfile: fetchDopplerProfile,
   planBootstrap: planDopplerBootstrap,
-}
+};

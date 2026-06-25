@@ -5,18 +5,18 @@
  * Tested by execution-state.test.ts.
  */
 
-import type { BlueprintExecutionArtifacts } from '#index'
+import type { BlueprintExecutionArtifacts } from "#index";
 
-import { uniqueStrings } from './execution-spec.js'
+import { uniqueStrings } from "./execution-spec.js";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export interface BlueprintExecutionCompletionEvidence {
-  artifacts: string[]
-  logPath?: string
-  verifications: string[]
+  artifacts: string[];
+  logPath?: string;
+  verifications: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -24,7 +24,7 @@ export interface BlueprintExecutionCompletionEvidence {
 // ---------------------------------------------------------------------------
 
 export function normalizeEvidenceArray(values: string[]): string[] {
-  return values.map((value) => value.trim()).filter((value) => value.length > 0)
+  return values.map((value) => value.trim()).filter((value) => value.length > 0);
 }
 
 export function normalizeCompletionEvidence(
@@ -34,19 +34,19 @@ export function normalizeCompletionEvidence(
     artifacts: normalizeEvidenceArray(evidence.artifacts),
     logPath: evidence.logPath?.trim() || undefined,
     verifications: normalizeEvidenceArray(evidence.verifications),
-  }
+  };
 }
 
 export function mergeExecutionArtifacts(
   current: BlueprintExecutionArtifacts | null,
   next: BlueprintExecutionCompletionEvidence,
 ): BlueprintExecutionArtifacts {
-  const normalized = normalizeCompletionEvidence(next)
+  const normalized = normalizeCompletionEvidence(next);
   return {
     artifacts: uniqueStrings([...(current?.artifacts ?? []), ...normalized.artifacts]),
     logPath: normalized.logPath ?? current?.logPath,
     verifications: uniqueStrings([...(current?.verifications ?? []), ...normalized.verifications]),
-  }
+  };
 }
 
 export function assertCompletionEvidence(
@@ -56,14 +56,14 @@ export function assertCompletionEvidence(
   if (!evidence || evidence.verifications.length === 0) {
     throw new Error(
       `Blueprint execution ${executionId} cannot record completion without named verification output.`,
-    )
+    );
   }
 
   if (evidence.artifacts.length === 0 && !evidence.logPath) {
     throw new Error(
       `Blueprint execution ${executionId} cannot record completion without artifact or log identity.`,
-    )
+    );
   }
 
-  return evidence
+  return evidence;
 }

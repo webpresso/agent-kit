@@ -1,73 +1,73 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from "vitest";
 
-import { formatStatusLine, HOOK_STATUS, type HookStatusDetail } from './vocabulary.js'
+import { formatStatusLine, HOOK_STATUS, type HookStatusDetail } from "./vocabulary.js";
 
-describe('HOOK_STATUS', () => {
-  it('all values are non-empty strings', () => {
+describe("HOOK_STATUS", () => {
+  it("all values are non-empty strings", () => {
     for (const value of Object.values(HOOK_STATUS)) {
-      expect(typeof value).toStrictEqual('string')
-      expect(value.length).toBeGreaterThan(0)
+      expect(typeof value).toStrictEqual("string");
+      expect(value.length).toBeGreaterThan(0);
     }
-  })
+  });
 
-  it('all values are unique', () => {
-    const values = Object.values(HOOK_STATUS)
-    const unique = new Set(values)
-    expect(unique.size).toStrictEqual(values.length)
-  })
-})
+  it("all values are unique", () => {
+    const values = Object.values(HOOK_STATUS);
+    const unique = new Set(values);
+    expect(unique.size).toStrictEqual(values.length);
+  });
+});
 
-describe('formatStatusLine', () => {
+describe("formatStatusLine", () => {
   const base: HookStatusDetail = {
-    hook: 'wp-pretool-guard',
-    event: 'PreToolUse',
-    vendor: 'claude',
-    status: 'enforcing',
-  }
+    hook: "wp-pretool-guard",
+    event: "PreToolUse",
+    vendor: "claude",
+    status: "enforcing",
+  };
 
-  it('includes hook name', () => {
-    const line = formatStatusLine(base)
-    expect(line).toContain('wp-pretool-guard')
-  })
+  it("includes hook name", () => {
+    const line = formatStatusLine(base);
+    expect(line).toContain("wp-pretool-guard");
+  });
 
-  it('includes event', () => {
-    const line = formatStatusLine(base)
-    expect(line).toContain('PreToolUse')
-  })
+  it("includes event", () => {
+    const line = formatStatusLine(base);
+    expect(line).toContain("PreToolUse");
+  });
 
-  it('includes vendor', () => {
-    const line = formatStatusLine(base)
-    expect(line).toContain('claude')
-  })
+  it("includes vendor", () => {
+    const line = formatStatusLine(base);
+    expect(line).toContain("claude");
+  });
 
-  it('includes status', () => {
-    const line = formatStatusLine(base)
-    expect(line).toContain('enforcing')
-  })
+  it("includes status", () => {
+    const line = formatStatusLine(base);
+    expect(line).toContain("enforcing");
+  });
 
-  it('includes reason when present', () => {
+  it("includes reason when present", () => {
     const detail: HookStatusDetail = {
       ...base,
-      status: 'disabled',
-      reason: 'binary not found',
-    }
-    const line = formatStatusLine(detail)
-    expect(line).toContain('binary not found')
-  })
+      status: "disabled",
+      reason: "binary not found",
+    };
+    const line = formatStatusLine(detail);
+    expect(line).toContain("binary not found");
+  });
 
-  it('includes nextCommand when present', () => {
+  it("includes nextCommand when present", () => {
     const detail: HookStatusDetail = {
       ...base,
-      status: 'disabled',
-      nextCommand: 'wp setup',
-    }
-    const line = formatStatusLine(detail)
-    expect(line).toContain('wp setup')
-  })
+      status: "disabled",
+      nextCommand: "wp setup",
+    };
+    const line = formatStatusLine(detail);
+    expect(line).toContain("wp setup");
+  });
 
-  it('does not include reason or nextCommand suffix when absent', () => {
-    const line = formatStatusLine(base)
-    expect(line).not.toContain('reason:')
-    expect(line).not.toContain('→ run:')
-  })
-})
+  it("does not include reason or nextCommand suffix when absent", () => {
+    const line = formatStatusLine(base);
+    expect(line).not.toContain("reason:");
+    expect(line).not.toContain("→ run:");
+  });
+});

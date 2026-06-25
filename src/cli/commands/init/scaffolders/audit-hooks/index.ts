@@ -31,18 +31,16 @@ const AUDIT_HOOK_HEADER = "# webpresso audit hooks (affected mode — fast)";
 
 /**
  * The managed audit block. Formatting and audit selection are delegated to wp.
- * The only shell-side file loop re-stages formatter rewrites for files that
- * were already staged.
+ * The only shell-side file selection re-stages formatter rewrites for files
+ * that were already staged. Keep this batched: large formatting-only commits
+ * must not spawn one `git add` process per file.
  */
 const AUDIT_HOOK_BLOCK = [
   AUDIT_HOOK_HEADER,
   "wp format --affected || exit 1",
-  'STAGED_AFTER_FORMAT="$(git diff --cached --name-only --diff-filter=ACMR)"',
-  'if [ -n "$STAGED_AFTER_FORMAT" ]; then',
-  "  printf '%s\\n' \"$STAGED_AFTER_FORMAT\" | while IFS= read -r file; do",
-  '    [ -n "$file" ] || continue',
-  '    git add -- "$file" || exit 1',
-  "  done",
+  "if ! git diff --cached --quiet --diff-filter=ACMR; then",
+  "  git diff -z --cached --name-only --diff-filter=ACMR |",
+  "    git add --pathspec-from-file=- --pathspec-file-nul || exit 1",
   "fi",
   "wp audit guardrails --affected",
 ].join("\n");
@@ -58,7 +56,7 @@ const SHEBANG = "#!/bin/sh\n";
 function hasAuditBlock(existingContent: string): boolean {
   return (
     existingContent.includes("wp format --affected") &&
-    existingContent.includes('git add -- "$file"') &&
+    existingContent.includes("git add --pathspec-from-file=- --pathspec-file-nul") &&
     existingContent.includes("|| exit 1") &&
     existingContent.includes("audit guardrails --affected")
   );

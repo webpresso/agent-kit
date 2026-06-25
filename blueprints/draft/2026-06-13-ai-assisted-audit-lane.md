@@ -50,18 +50,19 @@ a required gate until it is calibrated against human judgment.
 
 ## Fact-Check Summary
 
-| ID | Severity | Claim checked | Repo evidence | Planning consequence |
-| -- | -------- | ------------- | ------------- | -------------------- |
-| F1 | HIGH | Current `wp audit` registry is predominantly deterministic. | `src/cli/commands/audit.ts`, `src/cli/commands/audit-core.ts` enumerate repo/file/AST/schema-based audits only. | AI should be layered in as a new lane, not woven into existing hard gates. |
-| F2 | HIGH | Existing “AI contracts” audit is still deterministic. | `src/audit/ai-contracts.ts` checks docs, interfaces, and source predicates via TS AST inspection. | Reuse its style of strict structured output, but not its implementation model. |
-| F3 | HIGH | No AI audit kind exists today. | `src/mcp/tools/_shared/audit-kinds.ts` has no AI-assisted audit entry; `src/mcp/tools/audit.ts` has no provider-backed audit path. | Treat `docs-rubric-ai` as net-new end-to-end work, not a small extension of an existing lane. |
-| F4 | MEDIUM | MCP/CLI output contracts are already summary-first and structured. | `src/mcp/tools/_shared/result.ts`, `src/mcp/tools/audit.ts`, `src/cli/commands/audit.ts`. | AI audit should emit a narrow structured schema rather than prose blobs. |
-| F5 | MEDIUM | The repo already has an internal pattern for LLM interface abstraction. | `src/ai-memory/facts/extractor.ts` defines `FactExtractionLLM` and uses a narrow injected interface. | Reuse that design style for provider abstraction instead of inventing ad hoc call sites. |
-| F6 | HIGH | External best practice favors deterministic grading first, then LLM grading for nuanced judgment. | OpenAI evaluation best-practices docs; Anthropic eval docs and agent-evals guidance. | Keep AI audit advisory at first; require rubric, fixtures, and calibration before trust. |
+| ID  | Severity | Claim checked                                                                                     | Repo evidence                                                                                                                      | Planning consequence                                                                          |
+| --- | -------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| F1  | HIGH     | Current `wp audit` registry is predominantly deterministic.                                       | `src/cli/commands/audit.ts`, `src/cli/commands/audit-core.ts` enumerate repo/file/AST/schema-based audits only.                    | AI should be layered in as a new lane, not woven into existing hard gates.                    |
+| F2  | HIGH     | Existing “AI contracts” audit is still deterministic.                                             | `src/audit/ai-contracts.ts` checks docs, interfaces, and source predicates via TS AST inspection.                                  | Reuse its style of strict structured output, but not its implementation model.                |
+| F3  | HIGH     | No AI audit kind exists today.                                                                    | `src/mcp/tools/_shared/audit-kinds.ts` has no AI-assisted audit entry; `src/mcp/tools/audit.ts` has no provider-backed audit path. | Treat `docs-rubric-ai` as net-new end-to-end work, not a small extension of an existing lane. |
+| F4  | MEDIUM   | MCP/CLI output contracts are already summary-first and structured.                                | `src/mcp/tools/_shared/result.ts`, `src/mcp/tools/audit.ts`, `src/cli/commands/audit.ts`.                                          | AI audit should emit a narrow structured schema rather than prose blobs.                      |
+| F5  | MEDIUM   | The repo already has an internal pattern for LLM interface abstraction.                           | `src/ai-memory/facts/extractor.ts` defines `FactExtractionLLM` and uses a narrow injected interface.                               | Reuse that design style for provider abstraction instead of inventing ad hoc call sites.      |
+| F6  | HIGH     | External best practice favors deterministic grading first, then LLM grading for nuanced judgment. | OpenAI evaluation best-practices docs; Anthropic eval docs and agent-evals guidance.                                               | Keep AI audit advisory at first; require rubric, fixtures, and calibration before trust.      |
 
 ## Scope
 
 ### In scope
+
 - Add one new `wp audit` kind for advisory AI-assisted review
 - Restrict its domain to docs/tool-description/PR-quality judgment
 - Define a strict rubric and machine-readable result schema
@@ -69,6 +70,7 @@ a required gate until it is calibrated against human judgment.
 - Make CI integration non-blocking at first
 
 ### Out of scope
+
 - Replacing secrets/package/path/lifecycle audits with AI
 - Letting AI decide merge-blocking hard invariants
 - Broad “review the whole repo with an LLM” behavior
@@ -100,12 +102,12 @@ a required gate until it is calibrated against human judgment.
 
 ## Quick Reference
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort |
-| ---- | ----- | ------------ | -------------- | ------ |
-| 0 | 1.1, 1.2, 1.3 | None | Yes | S |
-| 1 | 0.1, 2.1, 2.2 | 1.1, 1.2, 1.3 | Yes | S-M |
-| 2 | 3.1, 3.2 | 0.1, 2.1, 2.2 | Yes | M |
-| 3 | 4.1 | 3.1, 3.2 | No | S |
+| Wave | Tasks         | Dependencies  | Parallelizable | Effort |
+| ---- | ------------- | ------------- | -------------- | ------ |
+| 0    | 1.1, 1.2, 1.3 | None          | Yes            | S      |
+| 1    | 0.1, 2.1, 2.2 | 1.1, 1.2, 1.3 | Yes            | S-M    |
+| 2    | 3.1, 3.2      | 0.1, 2.1, 2.2 | Yes            | M      |
+| 3    | 4.1           | 3.1, 3.2      | No             | S      |
 
 ## Phases
 
@@ -262,6 +264,7 @@ a required gate until it is calibrated against human judgment.
 ## Merge Criteria
 
 Do not mark this blueprint complete until:
+
 - one advisory AI audit kind exists end to end in the normal `wp audit` surface
 - its result schema is strict and fixture-tested
 - its domain is explicitly limited to qualitative judgment surfaces

@@ -29,5 +29,5 @@ what SWE-agent did by hand.
 ## What agent-kit takes from it
 
 - Legitimacy for the whole product category: agent-kit's rules, hooks, and
-  summary-first MCP tools *are* ACI design. The 2024→2026 arc (hand-built ACI
+  summary-first MCP tools _are_ ACI design. The 2024→2026 arc (hand-built ACI
   → automated ACI optimization) is the roadmap argument in one line.

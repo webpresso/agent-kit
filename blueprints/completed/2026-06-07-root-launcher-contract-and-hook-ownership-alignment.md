@@ -3,11 +3,11 @@ type: blueprint
 title: Root launcher contract and hook ownership alignment
 owner: ozby
 status: completed
-completed_at: '2026-06-07'
+completed_at: "2026-06-07"
 complexity: M
-created: '2026-06-07'
-last_updated: '2026-06-07'
-progress: '100% (6/6 tasks done, 0 blocked, verified and finalized 2026-06-07)'
+created: "2026-06-07"
+last_updated: "2026-06-07"
+progress: "100% (6/6 tasks done, 0 blocked, verified and finalized 2026-06-07)"
 depends_on: []
 tags:
   - distribution
@@ -78,16 +78,16 @@ Runtime/plugin payloads
 
 ## Key Decisions
 
-| Decision | Rationale |
-| --- | --- |
-| Add one shared launcher-policy module. | Avoid duplicated heuristics across setup, readiness, package-surface, and hooks doctor. |
-| Set `rootContractMode = "js-dispatcher-externalized-runtime"`. | Names the shipped split: JS dispatcher in root, native runtime payloads externalized. |
-| Keep `package.json#bin.wp = bin/wp`; do **not** move to `bin/wp.js`. | npm `bin` already maps the public `wp` command to a package-local executable. |
-| Validate root `bin/wp` as a real JS dispatcher file. | It must be executable, have a Node shebang, not be a symlinked runtime target, and not be a native payload. |
-| Keep pure-native/no-node only on plugin-owned native launch surfaces. | Completed plugin hardening remains true without misapplying plugin constraints to the root npm dispatcher. |
-| Bound agent-kit repairs to agent-kit's own root launcher. | Agent-kit must not become permanent owner of external plugin caches. |
-| Treat OMX cache rewriting as bounded stale-surface repair only. | Durable ownership belongs in OMX setup/plugin generation. |
-| Describe `Brewfile` only as Node bootstrap. | `.node-version` and `.nvmrc` own exact `24.16.0`; Homebrew formulae are not exact patch locks. |
+| Decision                                                              | Rationale                                                                                                   |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Add one shared launcher-policy module.                                | Avoid duplicated heuristics across setup, readiness, package-surface, and hooks doctor.                     |
+| Set `rootContractMode = "js-dispatcher-externalized-runtime"`.        | Names the shipped split: JS dispatcher in root, native runtime payloads externalized.                       |
+| Keep `package.json#bin.wp = bin/wp`; do **not** move to `bin/wp.js`.  | npm `bin` already maps the public `wp` command to a package-local executable.                               |
+| Validate root `bin/wp` as a real JS dispatcher file.                  | It must be executable, have a Node shebang, not be a symlinked runtime target, and not be a native payload. |
+| Keep pure-native/no-node only on plugin-owned native launch surfaces. | Completed plugin hardening remains true without misapplying plugin constraints to the root npm dispatcher.  |
+| Bound agent-kit repairs to agent-kit's own root launcher.             | Agent-kit must not become permanent owner of external plugin caches.                                        |
+| Treat OMX cache rewriting as bounded stale-surface repair only.       | Durable ownership belongs in OMX setup/plugin generation.                                                   |
+| Describe `Brewfile` only as Node bootstrap.                           | `.node-version` and `.nvmrc` own exact `24.16.0`; Homebrew formulae are not exact patch locks.              |
 
 ## Ownership boundary
 
@@ -104,12 +104,12 @@ plugin-cache hook surfaces across a fresh setup and upgraded existing-user cache
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort |
-| --- | --- | --- | --- | --- |
-| Wave 0 | 1.1, 1.4 | None | 2 agents | S, XS |
-| Wave 1 | 1.2, 1.3, 1.5 | 1.1 | 3 agents | M, M, S |
-| Wave 2 | 1.6 | 1.2, 1.3, 1.5 | 1 agent | S |
-| Critical path | 1.1 → 1.2 → 1.6 | — | 3 waves | M |
+| Wave          | Tasks           | Dependencies  | Parallelizable | Effort  |
+| ------------- | --------------- | ------------- | -------------- | ------- |
+| Wave 0        | 1.1, 1.4        | None          | 2 agents       | S, XS   |
+| Wave 1        | 1.2, 1.3, 1.5   | 1.1           | 3 agents       | M, M, S |
+| Wave 2        | 1.6             | 1.2, 1.3, 1.5 | 1 agent        | S       |
+| Critical path | 1.1 → 1.2 → 1.6 | —             | 3 waves        | M       |
 
 ### Phase 1: shared launcher contract [Complexity: M]
 
@@ -150,6 +150,7 @@ symlinked runtime targets.
 - [x] Shared module exports expected root bin path `bin/wp`.
 - [x] Validator accepts a real executable JS dispatcher with a Node shebang.
 - [x] Validator rejects native payload bytes, symlinks, and symlinked runtime targets.
+
 #### [setup] Task 1.2: Use the shared contract in global self-refresh / launcher repair
 
 **Status:** done
@@ -184,6 +185,7 @@ surfaces.
 - [x] Repair code does not clobber plugin-owned native launch surfaces.
 - [x] Diagnostic output names `js-dispatcher-externalized-runtime`.
 - [x] No `package.json#bin.wp` move to `bin/wp.js` is introduced.
+
 #### [audit] Task 1.3: Reuse the shared contract in public-readiness and package-surface
 
 **Status:** done
@@ -220,6 +222,7 @@ launcher contract, not local heuristics.
 - [x] Package-surface reports the shared root contract mode.
 - [x] Thin-root acceptance does not come from local duplicated heuristics.
 - [x] Denials for `bin/runtime/**`, `dist/runtime/**`, and `dist/runtime-packages/**` remain intact.
+
 #### [docs] Task 1.4: Align Node bootstrap docs and config with official version semantics
 
 **Status:** done
@@ -256,6 +259,7 @@ Clean docs/templates so `Brewfile` is described only as bootstrap for `node@24`;
 - [x] `Brewfile` is described only as bootstrap for `node@24`.
 - [x] `.node-version` and `.nvmrc` remain the exact `24.16.0` owners.
 - [x] zsh startup-file docs do not encourage noisy or TTY-assuming `.zshenv` snippets.
+
 #### [hooks] Task 1.5: Bound hooks doctor root-contract reporting and OMX compatibility detection
 
 **Status:** done
@@ -295,6 +299,7 @@ ownership belongs to OMX setup/plugin generation.
 - [x] OMX plugin-cache rewriting is labeled bounded stale-surface repair.
 - [x] Unrelated plugin caches are not rewritten.
 - [x] Diagnostics state durable ownership belongs to OMX setup/plugin generation.
+
 #### [qa] Task 1.6: Prove the end-to-end launcher contract and real paths
 
 **Status:** done
@@ -333,18 +338,18 @@ Run focused and broad verification gates, including real-path smoke proofs.
 
 ## Verification Gates
 
-| Gate | Tool / command | Success Criteria |
-| --- | --- | --- |
-| Focused tests | `wp_test` on touched files | Shared contract, setup repair, hooks doctor, readiness, and package-surface tests pass. |
-| Typecheck | `wp_typecheck` | No TypeScript errors. |
-| Lint | `wp_lint` | No lint/style errors. |
-| Package surface | `wp_audit(kind="package-surface")` | Thin-root acceptance is shared-contract based; native payload trees stay denied. |
-| Docs frontmatter | `wp_audit(kind="docs-frontmatter")` | Blueprint/docs metadata remains valid. |
-| Blueprint lifecycle | `wp_audit(kind="blueprint-lifecycle")` | New blueprint remains planned; completed blueprints stay completed. |
-| Roadmap links | `wp_audit(kind="roadmap-links")` if cross-links change | All cross-blueprint links resolve. |
-| Setup help smoke | `wp setup --help` | Root launcher starts from the expected path. |
-| Temp setup dry run | temp repo `wp setup --dry-run --host none --without base-kit --yes` | Setup resolves without mutating external plugin ownership. |
-| Hooks doctor smoke | `wp hooks doctor --skip-mcp` | Doctor reports bounded root contract and compatibility diagnostics. |
+| Gate                | Tool / command                                                      | Success Criteria                                                                        |
+| ------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Focused tests       | `wp_test` on touched files                                          | Shared contract, setup repair, hooks doctor, readiness, and package-surface tests pass. |
+| Typecheck           | `wp_typecheck`                                                      | No TypeScript errors.                                                                   |
+| Lint                | `wp_lint`                                                           | No lint/style errors.                                                                   |
+| Package surface     | `wp_audit(kind="package-surface")`                                  | Thin-root acceptance is shared-contract based; native payload trees stay denied.        |
+| Docs frontmatter    | `wp_audit(kind="docs-frontmatter")`                                 | Blueprint/docs metadata remains valid.                                                  |
+| Blueprint lifecycle | `wp_audit(kind="blueprint-lifecycle")`                              | New blueprint remains planned; completed blueprints stay completed.                     |
+| Roadmap links       | `wp_audit(kind="roadmap-links")` if cross-links change              | All cross-blueprint links resolve.                                                      |
+| Setup help smoke    | `wp setup --help`                                                   | Root launcher starts from the expected path.                                            |
+| Temp setup dry run  | temp repo `wp setup --dry-run --host none --without base-kit --yes` | Setup resolves without mutating external plugin ownership.                              |
+| Hooks doctor smoke  | `wp hooks doctor --skip-mcp`                                        | Doctor reports bounded root contract and compatibility diagnostics.                     |
 
 ## Cross-Plan References
 
@@ -365,11 +370,11 @@ Run focused and broad verification gates, including real-path smoke proofs.
 
 ## Risks
 
-| Risk | Impact | Mitigation |
-| --- | --- | --- |
-| Shared contract validates plugin-native surfaces as root surfaces. | False failures or clobbering valid native plugin launchers. | Keep the module explicitly scoped to root package `bin/wp`. |
-| OMX stale-surface repair becomes permanent. | Ownership drift from OMX into agent-kit. | Keep the repair bounded, diagnostic, and removable once OMX owns the stale-hook fix. |
-| Docs imply Brewfile exact patch locking. | Contributors trust a non-locking mechanism for exact Node control. | Make `.node-version` / `.nvmrc` the only exact `24.16.0` owners. |
+| Risk                                                               | Impact                                                             | Mitigation                                                                           |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| Shared contract validates plugin-native surfaces as root surfaces. | False failures or clobbering valid native plugin launchers.        | Keep the module explicitly scoped to root package `bin/wp`.                          |
+| OMX stale-surface repair becomes permanent.                        | Ownership drift from OMX into agent-kit.                           | Keep the repair bounded, diagnostic, and removable once OMX owns the stale-hook fix. |
+| Docs imply Brewfile exact patch locking.                           | Contributors trust a non-locking mechanism for exact Node control. | Make `.node-version` / `.nvmrc` the only exact `24.16.0` owners.                     |
 
 ## Trust Dossier
 
@@ -383,21 +388,21 @@ Run focused and broad verification gates, including real-path smoke proofs.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-07-root-launcher-contract-and-hook-ownership-alignment.md |
+| ID  | Claim                                                          | Evidence                                                                                    |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-07-root-launcher-contract-and-hook-ownership-alignment.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

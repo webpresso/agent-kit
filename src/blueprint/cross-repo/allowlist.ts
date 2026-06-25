@@ -11,17 +11,17 @@
  *     - trusted-partner
  */
 
-import { execSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
-import path from 'node:path'
+import { execSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 
-import { load as yamlLoad } from 'js-yaml'
-import { z } from 'zod'
+import { load as yamlLoad } from "js-yaml";
+import { z } from "zod";
 
-import type { AllowlistEntry } from './resolver.js'
-import { bothSidesAllowlistEntries } from './resolver.js'
+import type { AllowlistEntry } from "./resolver.js";
+import { bothSidesAllowlistEntries } from "./resolver.js";
 
-export type { AllowlistEntry }
+export type { AllowlistEntry };
 
 // ---------------------------------------------------------------------------
 // Schema
@@ -29,7 +29,7 @@ export type { AllowlistEntry }
 
 const correlateAllowSchema = z.object({
   permits: z.array(z.string()).default([]),
-})
+});
 
 // ---------------------------------------------------------------------------
 // Loader
@@ -43,24 +43,24 @@ const correlateAllowSchema = z.object({
  * Missing file or invalid YAML returns an empty array (no error thrown).
  */
 export function loadAllowlist(cwd: string): AllowlistEntry[] {
-  const filePath = path.join(cwd, '.agent', 'correlate.allow.yaml')
-  if (!existsSync(filePath)) return []
+  const filePath = path.join(cwd, ".agent", "correlate.allow.yaml");
+  if (!existsSync(filePath)) return [];
 
-  let raw: unknown
+  let raw: unknown;
   try {
-    raw = yamlLoad(readFileSync(filePath, 'utf8'))
+    raw = yamlLoad(readFileSync(filePath, "utf8"));
   } catch {
-    return []
+    return [];
   }
 
-  const parsed = correlateAllowSchema.safeParse(raw ?? {})
-  if (!parsed.success) return []
+  const parsed = correlateAllowSchema.safeParse(raw ?? {});
+  if (!parsed.success) return [];
 
-  const sourceOrg = detectOrgFromCwd(cwd)
+  const sourceOrg = detectOrgFromCwd(cwd);
   return parsed.data.permits.map((permittedOrg) => ({
     source_org: sourceOrg,
     permitted_org: permittedOrg,
-  }))
+  }));
 }
 
 /**
@@ -72,7 +72,7 @@ export function bothSidesAllowlist(
   targetOrg: string,
   allowlist: readonly AllowlistEntry[],
 ): boolean {
-  return bothSidesAllowlistEntries(sourceOrg, targetOrg, allowlist)
+  return bothSidesAllowlistEntries(sourceOrg, targetOrg, allowlist);
 }
 
 // ---------------------------------------------------------------------------
@@ -86,16 +86,16 @@ export function bothSidesAllowlist(
  */
 function detectOrgFromCwd(cwd: string): string {
   try {
-    const remote = execSync('git remote get-url origin', {
+    const remote = execSync("git remote get-url origin", {
       cwd,
-      stdio: ['ignore', 'pipe', 'ignore'],
-      encoding: 'utf8',
+      stdio: ["ignore", "pipe", "ignore"],
+      encoding: "utf8",
       timeout: 5000,
-    }).trim()
-    const match = remote.match(/[:/]([^/]+)\/[^/]+(?:\.git)?$/)
-    if (match?.[1]) return match[1]
+    }).trim();
+    const match = remote.match(/[:/]([^/]+)\/[^/]+(?:\.git)?$/);
+    if (match?.[1]) return match[1];
   } catch {
     // silent — no remote or git not available
   }
-  return 'unknown'
+  return "unknown";
 }

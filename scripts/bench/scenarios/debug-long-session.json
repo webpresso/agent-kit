@@ -75,11 +75,7 @@
       "estimated_tokens": 31000
     }
   ],
-  "expected_tool_calls": [
-    "search_files",
-    "read_file",
-    "wp_session_search"
-  ],
+  "expected_tool_calls": ["search_files", "read_file", "wp_session_search"],
   "qrels": [
     {
       "qrel_id": "debug-long-session-q1",

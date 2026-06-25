@@ -6,10 +6,10 @@ status: active
 scope: repo
 applies_to: [agents, humans]
 related: [package-conventions]
-created: '2026-05-14'
-last_reviewed: '2026-05-14'
+created: "2026-05-14"
+last_reviewed: "2026-05-14"
 paths:
-  - '**/*'
+  - "**/*"
 ---
 
 # Supported Agent CLIs
@@ -20,12 +20,13 @@ plugins MUST honor this tier list. Do not add a CLI without tier classification.
 
 ## Tier 1 — must work perfectly (P0)
 
-| CLI | Provider model | Why Tier 1 |
-|---|---|---|
-| **Claude Code** (`claude`) | Anthropic | webpresso's native plugin runtime; primary reference consumer uses it |
-| **Codex CLI** (`codex`) | OpenAI (configurable) | Already integrated via `/codex` skill for second-opinion review; widely used by webpresso engineers |
+| CLI                        | Provider model        | Why Tier 1                                                                                          |
+| -------------------------- | --------------------- | --------------------------------------------------------------------------------------------------- |
+| **Claude Code** (`claude`) | Anthropic             | webpresso's native plugin runtime; primary reference consumer uses it                               |
+| **Codex CLI** (`codex`)    | OpenAI (configurable) | Already integrated via `/codex` skill for second-opinion review; widely used by webpresso engineers |
 
 Tier 1 requirements:
+
 - Per-call token-usage extraction (stream-json or equivalent)
 - Plugin/extension surface with isolatable scope (`--plugin-dir`, etc.)
 - Reproducible session lifecycle (`--no-session-persistence` or equivalent)
@@ -33,12 +34,13 @@ Tier 1 requirements:
 
 ## Tier 2 — fairly well, best-effort (P1)
 
-| CLI | Provider model | Tier 2 caveats |
-|---|---|---|
-| **Cursor** (`cursor`) | Anthropic/OpenAI via Cursor IDE | Project hooks emitter is schema-tested, but live hook execution still depends on the IDE’s opt-in third-party compatibility path and has not met Tier 1 promotion gates yet |
-| **OpenCode** (`opencode`) | Provider-agnostic (Anthropic, OpenAI, local, etc.) | Session-level token totals only (`-f json` + `opencode stats`); no per-call granularity; cache isolation depends on dispatched provider |
+| CLI                       | Provider model                                     | Tier 2 caveats                                                                                                                                                              |
+| ------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Cursor** (`cursor`)     | Anthropic/OpenAI via Cursor IDE                    | Project hooks emitter is schema-tested, but live hook execution still depends on the IDE’s opt-in third-party compatibility path and has not met Tier 1 promotion gates yet |
+| **OpenCode** (`opencode`) | Provider-agnostic (Anthropic, OpenAI, local, etc.) | Session-level token totals only (`-f json` + `opencode stats`); no per-call granularity; cache isolation depends on dispatched provider                                     |
 
 Tier 2 requirements:
+
 - At minimum: session-level token totals captured
 - Best-effort: per-call attribution if the CLI exposes it
 - Documented degradation in any benchmark/report cell using a Tier 2 CLI

@@ -25,7 +25,9 @@ last_updated: 2026-06-14
 **Status:** todo
 **Wave:** 0
 **Files:**
+
 - (path)
 
 **Acceptance:**
+
 - [ ] <criterion>

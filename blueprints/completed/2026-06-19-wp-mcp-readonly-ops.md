@@ -26,6 +26,7 @@ Claude review warned that MCP tools cost context budget and should not wrap CLI 
 ## Scope
 
 ### In scope
+
 - `wp_pr_status`: summarize current branch PR, checks, review state, and base.
 - `wp_bench`: run/list bounded benchmark flows already present in repo scripts.
 - `wp_gain`: expose existing session-memory/gain report data in structured form.
@@ -33,6 +34,7 @@ Claude review warned that MCP tools cost context budget and should not wrap CLI 
 - Routing/native tool docs so agents know when to use these tools.
 
 ### Out of scope
+
 - Creating, merging, closing, or editing PRs.
 - Publishing packages or changing release state.
 - Inventing new benchmark methodology.
@@ -44,45 +46,45 @@ All tools return summary-first structured results using existing MCP helper patt
 
 ```ts
 type ReadonlyOpsBase = {
-  cwd?: string
-  directory?: string
-  maxOutputBytes?: number
-}
+  cwd?: string;
+  directory?: string;
+  maxOutputBytes?: number;
+};
 
 type WpPrStatusInput = ReadonlyOpsBase & {
-  branch?: string
-  includeChecks?: boolean
-  includeReviews?: boolean
-}
+  branch?: string;
+  includeChecks?: boolean;
+  includeReviews?: boolean;
+};
 
 type WpBenchInput = ReadonlyOpsBase & {
-  suite: 'session-memory'
-  mode?: 'dry-run' | 'live'
-  scenario?: string
-}
+  suite: "session-memory";
+  mode?: "dry-run" | "live";
+  scenario?: string;
+};
 
 type WpGainInput = ReadonlyOpsBase & {
-  source?: 'session-memory' | 'rtk'
-  format?: 'summary' | 'json'
-}
+  source?: "session-memory" | "rtk";
+  format?: "summary" | "json";
+};
 
 type WpReleaseReadinessInput = ReadonlyOpsBase & {
-  includePublicReadiness?: boolean
-  includeChangesetStatus?: boolean
-  includeReferenceParity?: boolean
-}
+  includePublicReadiness?: boolean;
+  includeChangesetStatus?: boolean;
+  includeReferenceParity?: boolean;
+};
 ```
 
 `wp_bench` defaults to dry-run unless live execution is explicit.
 
 ## Side-effect Classification
 
-| Tool | Side effects | Safety rule |
-| ---- | ------------ | ----------- |
-| `wp_pr_status` | Read-only remote/local query | No PR mutation; tolerate missing `gh` |
-| `wp_bench` | May write benchmark output artifacts/caches | Default dry-run; live mode explicit |
-| `wp_gain` | Read-only report generation | No hidden persistence beyond existing CLI behavior |
-| `wp_release_readiness` | Read-only checks | Must not publish, tag, version, or merge |
+| Tool                   | Side effects                                | Safety rule                                        |
+| ---------------------- | ------------------------------------------- | -------------------------------------------------- |
+| `wp_pr_status`         | Read-only remote/local query                | No PR mutation; tolerate missing `gh`              |
+| `wp_bench`             | May write benchmark output artifacts/caches | Default dry-run; live mode explicit                |
+| `wp_gain`              | Read-only report generation                 | No hidden persistence beyond existing CLI behavior |
+| `wp_release_readiness` | Read-only checks                            | Must not publish, tag, version, or merge           |
 
 ## Tasks
 
@@ -174,21 +176,21 @@ type WpReleaseReadinessInput = ReadonlyOpsBase & {
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-wp-mcp-readonly-ops.md |
+| ID  | Claim                                                          | Evidence                                                    |
+| --- | -------------------------------------------------------------- | ----------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-wp-mcp-readonly-ops.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

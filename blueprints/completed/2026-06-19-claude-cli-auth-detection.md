@@ -25,6 +25,7 @@ This blueprint hardens repo-owned Claude execution paths so auth diagnostics mat
 ## Scope
 
 ### In scope
+
 - Identify repo-owned Claude invocation/auth-check paths in agent-kit.
 - Prefer `claude auth status` for CLI login detection where Claude CLI is the execution backend.
 - Treat `ANTHROPIC_API_KEY` as optional fallback, not a requirement, for local single-workspace Claude CLI login flows.
@@ -32,6 +33,7 @@ This blueprint hardens repo-owned Claude execution paths so auth diagnostics mat
 - Update benchmark/review docs and tests that still imply API key is always required.
 
 ### Out of scope
+
 - Editing generated gstack skill files inside user cache.
 - Changing Claude CLI itself.
 - Making isolated benchmark proof runs use one shared Claude login; API keys remain required for isolated workspace proof mode.
@@ -41,13 +43,24 @@ This blueprint hardens repo-owned Claude execution paths so auth diagnostics mat
 
 ```ts
 type ClaudeCliAuthState =
-  | { kind: 'cli-login'; provider: 'firstParty' | string; email?: string; subscriptionType?: string }
-  | { kind: 'api-key'; source: 'ANTHROPIC_API_KEY' }
-  | { kind: 'missing'; reason: string }
-  | { kind: 'execution-failed'; auth: 'cli-login' | 'api-key' | 'unknown'; status?: number; message: string }
+  | {
+      kind: "cli-login";
+      provider: "firstParty" | string;
+      email?: string;
+      subscriptionType?: string;
+    }
+  | { kind: "api-key"; source: "ANTHROPIC_API_KEY" }
+  | { kind: "missing"; reason: string }
+  | {
+      kind: "execution-failed";
+      auth: "cli-login" | "api-key" | "unknown";
+      status?: number;
+      message: string;
+    };
 ```
 
 Rules:
+
 - `claude auth status` success with `loggedIn: true` is valid CLI auth even without `ANTHROPIC_API_KEY`.
 - `ANTHROPIC_API_KEY` remains valid API-key auth.
 - If auth status is valid but `claude -p` returns `401`, report stale/broken Claude CLI execution auth and recommend refreshing Claude CLI login/session.
@@ -56,11 +69,11 @@ Rules:
 
 ## Side-effect Classification
 
-| Operation | Side effects | Safety rule |
-| --------- | ------------ | ----------- |
-| `claude auth status` | Read-only | Safe diagnostic |
-| `claude -p` smoke probe | External network/API call | Use only when explicitly validating execution path; keep prompt minimal |
-| Benchmark/review invocation | External network/API call | Existing explicit command behavior; no credential persistence |
+| Operation                   | Side effects              | Safety rule                                                             |
+| --------------------------- | ------------------------- | ----------------------------------------------------------------------- |
+| `claude auth status`        | Read-only                 | Safe diagnostic                                                         |
+| `claude -p` smoke probe     | External network/API call | Use only when explicitly validating execution path; keep prompt minimal |
+| Benchmark/review invocation | External network/API call | Existing explicit command behavior; no credential persistence           |
 
 ## Tasks
 
@@ -103,7 +116,6 @@ Rules:
 - [x] API-key proof mode semantics are unchanged.
 - [x] No credentials are written, printed, or committed.
 
-
 ## Implementation Evidence
 
 - Added mockable Claude CLI auth-status parsing and execution-failure classification in `scripts/bench/lib/variant-runner.ts`.
@@ -130,21 +142,21 @@ Rules:
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-claude-cli-auth-detection.md |
+| ID  | Claim                                                          | Evidence                                                          |
+| --- | -------------------------------------------------------------- | ----------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-claude-cli-auth-detection.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

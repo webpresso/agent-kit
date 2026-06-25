@@ -3,11 +3,11 @@
  */
 export interface CodeBlockContext {
   /** Text preceding the code block (e.g., heading, paragraph) */
-  precedingText?: string
+  precedingText?: string;
   /** File path if mentioned in context */
-  filePath?: string
+  filePath?: string;
   /** Line number where code block starts */
-  line?: number
+  line?: number;
 }
 
 /**
@@ -15,31 +15,31 @@ export interface CodeBlockContext {
  */
 export interface LanguageInference {
   /** Inferred language identifier */
-  language: string
+  language: string;
   /** Confidence level (0-1) */
-  confidence: number
+  confidence: number;
   /** Reason for inference */
-  reason: string
+  reason: string;
 }
 
 /**
  * Detect if content is JSON
  */
 function isJSON(content: string): boolean {
-  const trimmed = content.trim()
-  if (!trimmed) return false
+  const trimmed = content.trim();
+  if (!trimmed) return false;
 
   // Must start with { or [
-  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
-    return false
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+    return false;
   }
 
   // Try to parse as JSON
   try {
-    JSON.parse(trimmed)
-    return true
+    JSON.parse(trimmed);
+    return true;
   } catch {
-    return false
+    return false;
   }
 }
 
@@ -55,9 +55,9 @@ function isTypeScript(content: string): boolean {
     /\bas\s+\w+/,
     /\bnamespace\s+\w+/,
     /\benum\s+\w+/,
-  ]
+  ];
 
-  return tsPatterns.some((pattern) => pattern.test(content))
+  return tsPatterns.some((pattern) => pattern.test(content));
 }
 
 /**
@@ -72,9 +72,9 @@ function isJavaScript(content: string): boolean {
     /\bimport\s+.*\bfrom\b/,
     /\bexport\s+(default|const|function|class)/,
     /\brequire\(['"].*['"]\)/,
-  ]
+  ];
 
-  return jsPatterns.some((pattern) => pattern.test(content))
+  return jsPatterns.some((pattern) => pattern.test(content));
 }
 
 /**
@@ -88,33 +88,33 @@ function isShell(content: string): boolean {
     /\|\s*\w+/,
     /&&|\|\|/,
     /\bexport\s+\w+=/,
-  ]
+  ];
 
-  return shellPatterns.some((pattern) => pattern.test(content))
+  return shellPatterns.some((pattern) => pattern.test(content));
 }
 
 /**
  * Count YAML-like lines in content
  */
 function countYamlLines(lines: string[]): number {
-  let count = 0
+  let count = 0;
   for (const line of lines) {
-    const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith('#')) continue
-    if (/^\w+:\s*.+/.test(trimmed)) count++
-    if (/^-\s+\w+/.test(trimmed)) count++
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    if (/^\w+:\s*.+/.test(trimmed)) count++;
+    if (/^-\s+\w+/.test(trimmed)) count++;
   }
-  return count
+  return count;
 }
 
 /**
  * Detect if content is YAML
  */
 function isYAML(content: string): boolean {
-  const lines = content.split('\n')
-  const yamlLikeLines = countYamlLines(lines)
-  const nonEmptyLines = lines.filter((l) => l.trim()).length
-  return nonEmptyLines > 0 && yamlLikeLines / nonEmptyLines > 0.5
+  const lines = content.split("\n");
+  const yamlLikeLines = countYamlLines(lines);
+  const nonEmptyLines = lines.filter((l) => l.trim()).length;
+  return nonEmptyLines > 0 && yamlLikeLines / nonEmptyLines > 0.5;
 }
 
 /**
@@ -129,68 +129,68 @@ function isSQL(content: string): boolean {
     /\bCREATE\s+(TABLE|INDEX|VIEW)\b/i,
     /\bALTER\s+TABLE\b/i,
     /\bDROP\s+(TABLE|INDEX)\b/i,
-  ]
+  ];
 
-  return sqlPatterns.some((pattern) => pattern.test(content))
+  return sqlPatterns.some((pattern) => pattern.test(content));
 }
 
 /**
  * Extract language hint from context text
  */
 function extractLanguageFromContext(text: string): string | null {
-  const lowerText = text.toLowerCase()
+  const lowerText = text.toLowerCase();
 
   // Check for language mentions in headings or text
   const languageHints: Record<string, string[]> = {
-    typescript: ['typescript', '.ts', '.tsx'],
-    javascript: ['javascript', '', '.jsx'],
-    json: ['json', '.json'],
-    bash: ['bash', 'shell', 'sh', 'terminal', 'command'],
-    yaml: ['yaml', '.yaml', '.yml'],
-    sql: ['sql', 'query', 'database'],
-    python: ['python', '.py'],
-    go: ['go', 'golang', '.go'],
-    rust: ['rust', '.rs'],
-  }
+    typescript: ["typescript", ".ts", ".tsx"],
+    javascript: ["javascript", "", ".jsx"],
+    json: ["json", ".json"],
+    bash: ["bash", "shell", "sh", "terminal", "command"],
+    yaml: ["yaml", ".yaml", ".yml"],
+    sql: ["sql", "query", "database"],
+    python: ["python", ".py"],
+    go: ["go", "golang", ".go"],
+    rust: ["rust", ".rs"],
+  };
 
   for (const [lang, hints] of Object.entries(languageHints)) {
     if (hints.some((hint) => lowerText.includes(hint))) {
-      return lang
+      return lang;
     }
   }
 
-  return null
+  return null;
 }
 
 /** Content-based language detectors in priority order */
 const CONTENT_DETECTORS: Array<{
-  detect: (content: string) => boolean
-  language: string
-  confidence: number
-  reason: string
+  detect: (content: string) => boolean;
+  language: string;
+  confidence: number;
+  reason: string;
 }> = [
-  { detect: isJSON, language: 'json', confidence: 0.95, reason: 'Valid JSON syntax' },
-  { detect: isSQL, language: 'sql', confidence: 0.9, reason: 'SQL keywords detected' },
+  { detect: isJSON, language: "json", confidence: 0.95, reason: "Valid JSON syntax" },
+  { detect: isSQL, language: "sql", confidence: 0.9, reason: "SQL keywords detected" },
   {
     detect: isTypeScript,
-    language: 'typescript',
+    language: "typescript",
     confidence: 0.85,
-    reason: 'TypeScript syntax detected',
+    reason: "TypeScript syntax detected",
   },
   {
     detect: isShell,
-    language: 'bash',
+    language: "bash",
     confidence: 0.85,
-    reason: 'Shell command patterns detected',
+    reason: "Shell command patterns detected",
   },
-  { detect: isYAML, language: 'yaml', confidence: 0.8, reason: 'YAML structure detected' },
+  { detect: isYAML, language: "yaml", confidence: 0.8, reason: "YAML structure detected" },
   {
     detect: isJavaScript,
-    language: 'javascript',
+    language: "javascript",
     confidence: 0.75,
-    reason: 'JavaScript syntax detected',
+    reason: "JavaScript syntax detected",
   },
-]
+];
 
 /**
  * Try content-based language detection
@@ -198,27 +198,27 @@ const CONTENT_DETECTORS: Array<{
 function tryContentBasedInference(content: string): LanguageInference | null {
   for (const { detect, language, confidence, reason } of CONTENT_DETECTORS) {
     if (detect(content)) {
-      return { language, confidence, reason }
+      return { language, confidence, reason };
     }
   }
-  return null
+  return null;
 }
 
 /**
  * Try context-based language detection
  */
 function tryContextBasedInference(context: CodeBlockContext): LanguageInference | null {
-  if (!context.precedingText) return null
+  if (!context.precedingText) return null;
 
-  const contextLang = extractLanguageFromContext(context.precedingText)
+  const contextLang = extractLanguageFromContext(context.precedingText);
   if (contextLang) {
     return {
       language: contextLang,
       confidence: 0.6,
       reason: `Language mentioned in context: "${context.precedingText.slice(0, 50)}..."`,
-    }
+    };
   }
-  return null
+  return null;
 }
 
 /**
@@ -228,29 +228,29 @@ export function inferCodeLanguage(
   codeContent: string,
   context: CodeBlockContext = {},
 ): LanguageInference {
-  const trimmed = codeContent.trim()
+  const trimmed = codeContent.trim();
 
   if (!trimmed) {
-    return { language: 'text', confidence: 1.0, reason: 'Empty code block' }
+    return { language: "text", confidence: 1.0, reason: "Empty code block" };
   }
 
-  const contentInference = tryContentBasedInference(trimmed)
-  if (contentInference) return contentInference
+  const contentInference = tryContentBasedInference(trimmed);
+  if (contentInference) return contentInference;
 
-  const contextInference = tryContextBasedInference(context)
-  if (contextInference) return contextInference
+  const contextInference = tryContextBasedInference(context);
+  if (contextInference) return contextInference;
 
   return {
-    language: 'text',
+    language: "text",
     confidence: 0.3,
-    reason: 'Could not determine language from content or context',
-  }
+    reason: "Could not determine language from content or context",
+  };
 }
 
 interface CodeBlockState {
-  inCodeBlock: boolean
-  codeBlockStart: number
-  precedingText: string
+  inCodeBlock: boolean;
+  codeBlockStart: number;
+  precedingText: string;
 }
 
 /**
@@ -262,15 +262,15 @@ function handleCodeBlockStart(
   state: CodeBlockState,
   result: string[],
 ): void {
-  const language = line.trim().slice(3).trim()
+  const language = line.trim().slice(3).trim();
 
   if (!language) {
-    state.codeBlockStart = lineIndex
-    state.inCodeBlock = true
+    state.codeBlockStart = lineIndex;
+    state.inCodeBlock = true;
   } else {
-    state.precedingText = ''
+    state.precedingText = "";
   }
-  result.push(line)
+  result.push(line);
 }
 
 /**
@@ -283,25 +283,25 @@ function handleCodeBlockEnd(
   filePath: string,
   minConfidence: number,
 ): number {
-  const codeLines = result.slice(state.codeBlockStart + 1)
-  const codeContent = codeLines.join('\n')
+  const codeLines = result.slice(state.codeBlockStart + 1);
+  const codeContent = codeLines.join("\n");
 
   const inference = inferCodeLanguage(codeContent, {
     precedingText: state.precedingText,
     filePath,
     line: state.codeBlockStart + 1,
-  })
+  });
 
-  let changeCount = 0
+  let changeCount = 0;
   if (inference.confidence >= minConfidence) {
-    result[state.codeBlockStart] = `\`\`\`${inference.language}`
-    changeCount = 1
+    result[state.codeBlockStart] = `\`\`\`${inference.language}`;
+    changeCount = 1;
   }
 
-  result.push(line)
-  state.inCodeBlock = false
-  state.precedingText = ''
-  return changeCount
+  result.push(line);
+  state.inCodeBlock = false;
+  state.precedingText = "";
+  return changeCount;
 }
 
 /**
@@ -309,9 +309,9 @@ function handleCodeBlockEnd(
  */
 function updatePrecedingText(state: CodeBlockState, line: string): void {
   if (!state.inCodeBlock && line.trim()) {
-    state.precedingText += `${line}\n`
+    state.precedingText += `${line}\n`;
     if (state.precedingText.length > 500) {
-      state.precedingText = state.precedingText.slice(-500)
+      state.precedingText = state.precedingText.slice(-500);
     }
   }
 }
@@ -327,17 +327,17 @@ function processCodeBlockLine(
   filePath: string,
   minConfidence: number,
 ): number {
-  if (line.trim().startsWith('```')) {
+  if (line.trim().startsWith("```")) {
     if (!state.inCodeBlock) {
-      handleCodeBlockStart(line, lineIndex, state, result)
-      return 0
+      handleCodeBlockStart(line, lineIndex, state, result);
+      return 0;
     }
-    return handleCodeBlockEnd(line, state, result, filePath, minConfidence)
+    return handleCodeBlockEnd(line, state, result, filePath, minConfidence);
   }
 
-  result.push(line)
-  updatePrecedingText(state, line)
-  return 0
+  result.push(line);
+  updatePrecedingText(state, line);
+  return 0;
 }
 
 /**
@@ -348,17 +348,17 @@ export function fixCodeBlockLanguages(
   filePath: string,
   minConfidence = 0.7,
 ): { fixed: string; changes: number } {
-  const lines = content.split('\n')
-  const result: string[] = []
-  let changes = 0
-  const state: CodeBlockState = { inCodeBlock: false, codeBlockStart: -1, precedingText: '' }
+  const lines = content.split("\n");
+  const result: string[] = [];
+  let changes = 0;
+  const state: CodeBlockState = { inCodeBlock: false, codeBlockStart: -1, precedingText: "" };
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    if (line === undefined) continue
+    const line = lines[i];
+    if (line === undefined) continue;
 
-    changes += processCodeBlockLine(line, i, state, result, filePath, minConfidence)
+    changes += processCodeBlockLine(line, i, state, result, filePath, minConfidence);
   }
 
-  return { fixed: result.join('\n'), changes }
+  return { fixed: result.join("\n"), changes };
 }

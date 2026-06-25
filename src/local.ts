@@ -7,7 +7,7 @@
  * Populated in Phase 1.
  */
 
-export type __WebpressoLocalEntrypointReserved = never
+export type __WebpressoLocalEntrypointReserved = never;
 
 export {
   buildRuntimeProcessEnv,
@@ -16,15 +16,15 @@ export {
   resolveRuntimeEnvironment,
   spawnRuntimeCommand,
   spawnRuntimeCommandSync,
-} from './runtime/index.js'
+} from "./runtime/index.js";
 export type {
   ResolveRuntimeEnvironmentOptions,
   RuntimeCommandOptions,
   RuntimeEnvCache,
   RuntimeSpawnOptions,
-} from './runtime/index.js'
+} from "./runtime/index.js";
 
-export { auditAiContracts } from './audit/ai-contracts.js'
+export { auditAiContracts } from "./audit/ai-contracts.js";
 export {
   auditBlueprintLifecycle,
   auditCatalogDrift,
@@ -32,7 +32,7 @@ export {
   auditDocsFrontmatter,
   formatRepoAuditReport,
   validateCommitMessage,
-} from './audit/repo-guardrails.js'
+} from "./audit/repo-guardrails.js";
 export type {
   BlueprintLifecycleOptions,
   CatalogDriftOptions,
@@ -40,21 +40,21 @@ export type {
   DocsFrontmatterOptions,
   RepoAuditResult,
   RepoAuditViolation,
-} from './audit/repo-guardrails.js'
-export { auditVision } from './audit/vision-doc.js'
-export type { VisionOptions, VisionRequiredSection } from './audit/vision-doc.js'
+} from "./audit/repo-guardrails.js";
+export { auditVision } from "./audit/vision-doc.js";
+export type { VisionOptions, VisionRequiredSection } from "./audit/vision-doc.js";
 
 export {
   analyzeViteDistBundleBudget,
   bundleBudgetCliHelp,
   parseBundleBudgetCliArgs,
   runBundleBudgetCli,
-} from './vite/local.js'
-export type { AnalyzeViteDistBundleBudgetOptions, BundleBudgetCliOptions } from './vite/local.js'
+} from "./vite/local.js";
+export type { AnalyzeViteDistBundleBudgetOptions, BundleBudgetCliOptions } from "./vite/local.js";
 
-export { buildSecretGateCommand, runSecretGateCommand } from './secret-gate/runner.js'
+export { buildSecretGateCommand, runSecretGateCommand } from "./secret-gate/runner.js";
 export type {
   SecretGateCommand,
   SecretGateCommandOptions,
   SecretGateRunResult,
-} from './secret-gate/runner.js'
+} from "./secret-gate/runner.js";

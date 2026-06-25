@@ -1,21 +1,21 @@
-import { createHash } from 'node:crypto'
-import { homedir } from 'node:os'
-import { basename, join } from 'node:path'
+import { createHash } from "node:crypto";
+import { homedir } from "node:os";
+import { basename, join } from "node:path";
 
-export const MANAGED_WORKTREE_ROOT_RELATIVE = '.agent/worktrees'
+export const MANAGED_WORKTREE_ROOT_RELATIVE = ".agent/worktrees";
 
 export interface RepoNamespaceInput {
-  readonly originUrl?: string | null
-  readonly repoRoot: string
+  readonly originUrl?: string | null;
+  readonly repoRoot: string;
 }
 
 export interface WorktreeLocationOptions {
-  readonly homeDir?: string
-  readonly originUrl?: string | null
+  readonly homeDir?: string;
+  readonly originUrl?: string | null;
 }
 
 function shortHash(value: string): string {
-  return createHash('sha256').update(value).digest('hex').slice(0, 10)
+  return createHash("sha256").update(value).digest("hex").slice(0, 10);
 }
 
 function sanitizeNamespaceSegment(value: string): string {
@@ -23,30 +23,30 @@ function sanitizeNamespaceSegment(value: string): string {
     value
       .trim()
       .toLowerCase()
-      .replace(/^git\+/, '')
-      .replace(/^ssh:\/\//, '')
-      .replace(/^https?:\/\//, '')
-      .replace(/^git@([^:]+):/, '$1/')
-      .replace(/\.git$/i, '')
-      .replace(/[^a-z0-9_.-]+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'repo'
-  )
+      .replace(/^git\+/, "")
+      .replace(/^ssh:\/\//, "")
+      .replace(/^https?:\/\//, "")
+      .replace(/^git@([^:]+):/, "$1/")
+      .replace(/\.git$/i, "")
+      .replace(/[^a-z0-9_.-]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "") || "repo"
+  );
 }
 
 export function resolveManagedWorktreeRoot(homeDir = homedir()): string {
-  return join(homeDir, MANAGED_WORKTREE_ROOT_RELATIVE)
+  return join(homeDir, MANAGED_WORKTREE_ROOT_RELATIVE);
 }
 
 export function deriveRepoNamespace(input: RepoNamespaceInput): string {
-  const origin = input.originUrl?.trim()
+  const origin = input.originUrl?.trim();
   if (origin) {
-    const normalized = sanitizeNamespaceSegment(origin)
-    return `${normalized}-${shortHash(origin.toLowerCase())}`
+    const normalized = sanitizeNamespaceSegment(origin);
+    return `${normalized}-${shortHash(origin.toLowerCase())}`;
   }
 
-  const repoName = sanitizeNamespaceSegment(basename(input.repoRoot))
-  return `local-${repoName}-${shortHash(input.repoRoot)}`
+  const repoName = sanitizeNamespaceSegment(basename(input.repoRoot));
+  return `local-${repoName}-${shortHash(input.repoRoot)}`;
 }
 
 /**
@@ -61,9 +61,9 @@ export function resolveWorktreeRoot(
 ): string {
   return join(
     resolveManagedWorktreeRoot(options.homeDir),
-    'repos',
+    "repos",
     deriveRepoNamespace({ repoRoot, originUrl: options.originUrl }),
-  )
+  );
 }
 
 export function resolveBlueprintWorktreeRoot(
@@ -71,7 +71,7 @@ export function resolveBlueprintWorktreeRoot(
   slug: string,
   options: WorktreeLocationOptions = {},
 ): string {
-  return join(resolveWorktreeRoot(repoRoot, options), 'blueprints', slug)
+  return join(resolveWorktreeRoot(repoRoot, options), "blueprints", slug);
 }
 
 export function resolveOwnerWorktreePath(
@@ -79,7 +79,7 @@ export function resolveOwnerWorktreePath(
   slug: string,
   options: WorktreeLocationOptions = {},
 ): string {
-  return join(resolveBlueprintWorktreeRoot(repoRoot, slug, options), 'owner')
+  return join(resolveBlueprintWorktreeRoot(repoRoot, slug, options), "owner");
 }
 
 export function resolveScratchWorktreePath(
@@ -91,14 +91,14 @@ export function resolveScratchWorktreePath(
 ): string {
   return join(
     resolveBlueprintWorktreeRoot(repoRoot, slug, options),
-    '.scratch',
+    ".scratch",
     `${sanitizeNamespaceSegment(lane)}-${sanitizeNamespaceSegment(id)}`,
-  )
+  );
 }
 
 /**
  * Resolve a generated child worktree path below the shared worktree root.
  */
 export function resolveGeneratedWorktreePath(worktreeRoot: string, slug: string): string {
-  return join(worktreeRoot, slug)
+  return join(worktreeRoot, slug);
 }

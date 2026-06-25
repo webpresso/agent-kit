@@ -6,6 +6,7 @@ last_updated: 2026-06-13
 # wp hooks doctor
 
 `wp hooks doctor` is the canonical post-setup operator success check. It performs a 3-way comparison:
+
 1. What `wp setup` wrote (the hooks manifest at `.webpresso/hooks-manifest.json`)
 2. What is actually installed (`.claude/settings.json`, `.codex/hooks.json`)
 3. What `wp` currently expects from the canonical hook specs
@@ -23,11 +24,11 @@ It also reports the public precedence model:
 
 ## Verdicts
 
-| Verdict | Meaning | Resolution |
-|---|---|---|
-| `ok` | Hook matches manifest and current spec | Nothing to do |
+| Verdict   | Meaning                                           | Resolution                               |
+| --------- | ------------------------------------------------- | ---------------------------------------- |
+| `ok`      | Hook matches manifest and current spec            | Nothing to do                            |
 | `missing` | Hook in manifest but absent from installed config | Re-run the printed setup/restore command |
-| `unknown` | Hook in installed config but not in manifest | Run `wp hooks status` to investigate |
+| `unknown` | Hook in installed config but not in manifest      | Run `wp hooks status` to investigate     |
 
 ## Running
 
@@ -48,6 +49,7 @@ wp_audit(kind="docs-frontmatter")
 ```
 
 With `--vendor` flag to check one vendor:
+
 ```bash
 wp hooks doctor --vendor codex
 ```
@@ -88,6 +90,7 @@ wp hooks doctor --fix
 ### All hooks show `missing`
 
 The hooks were never installed or the config was reset. Re-run:
+
 ```bash
 wp setup
 ```
@@ -161,7 +164,6 @@ notes. `npm pack --dry-run --json`, `vp run lint:pkg`,
 `vp run verify:secrets`, the four `wp audit secret*`/`no-dev-vars` gates, and
 `vp run verify:paths` are prerequisites for hook-bin or public docs release
 claims.
-
 
 ## session-memory enforcement repair
 

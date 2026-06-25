@@ -13,8 +13,8 @@
  *   bun apps/scripts/src/audit/audit-tph-e2e.ts
  */
 
-import { printResults, runTphE2eAudit } from './audit-tph-e2e-runner.js'
+import { printResults, runTphE2eAudit } from "./audit-tph-e2e-runner.js";
 
-const result = await runTphE2eAudit(process.cwd())
-printResults(result)
-if (result.errorCount > 0) process.exit(1)
+const result = await runTphE2eAudit(process.cwd());
+printResults(result);
+if (result.errorCount > 0) process.exit(1);

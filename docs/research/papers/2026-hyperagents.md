@@ -33,4 +33,4 @@ alignment does not generally hold beyond coding domains).
   keeps the meta-level (the audit gates, the promotion rule, the locked
   surfaces) **fixed and human-owned**. Hyperagents is what the fully
   self-referential end of the spectrum looks like — useful for explaining
-  *why* agent-kit's locked-surface stance exists.
+  _why_ agent-kit's locked-surface stance exists.

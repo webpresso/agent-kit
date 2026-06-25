@@ -9,11 +9,11 @@ export {
   type BundleBudgetResult,
   type BundleBudgetViolation,
   type BundleBudgetViolationKind,
-} from './bundle-budget.js'
+} from "./bundle-budget.js";
 export {
   installChunkLoadRecovery,
   type ChunkLoadRecoveryEvent,
   type ChunkLoadRecoveryStorage,
   type ChunkLoadRecoveryTarget,
   type InstallChunkLoadRecoveryOptions,
-} from './chunk-load-recovery.js'
+} from "./chunk-load-recovery.js";

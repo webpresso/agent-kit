@@ -15,55 +15,55 @@
  * `@webpresso/agent-kit` package.
  */
 
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
-import { z } from 'zod'
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { z } from "zod";
 
-import { getStateRoot } from '#paths/state-root.js'
+import { getStateRoot } from "#paths/state-root.js";
 
-import { UPDATE_CACHE_FILENAME, UPDATE_CHECK_INTERVAL_MS } from './cache.js'
-import { detect } from './detect-pm.js'
-import { scheduleDeferredInstall } from './installer.js'
-import { logUpdateError } from './log.js'
-import { shouldSkipAutoInstall } from './skip.js'
-import { isNewerVersion } from './version.js'
+import { UPDATE_CACHE_FILENAME, UPDATE_CHECK_INTERVAL_MS } from "./cache.js";
+import { detect } from "./detect-pm.js";
+import { scheduleDeferredInstall } from "./installer.js";
+import { logUpdateError } from "./log.js";
+import { shouldSkipAutoInstall } from "./skip.js";
+import { isNewerVersion } from "./version.js";
 
-const PUBLIC_NPM_URL = 'https://registry.npmjs.org/@webpresso%2Fagent-kit'
+const PUBLIC_NPM_URL = "https://registry.npmjs.org/@webpresso%2Fagent-kit";
 interface UpdateCache {
-  latest: string
-  current: string
-  lastUpdateCheck: number
+  latest: string;
+  current: string;
+  lastUpdateCheck: number;
 }
 
 const UpdateCacheSchema = z.object({
   latest: z.string(),
   current: z.string(),
   lastUpdateCheck: z.number(),
-})
+});
 
 async function readCache(cachePath: string): Promise<UpdateCache | null> {
   try {
-    const raw = await readFile(cachePath, 'utf-8')
-    const parsedUnknown: unknown = JSON.parse(raw)
-    const parsed = parsedUnknown as Partial<UpdateCache>
+    const raw = await readFile(cachePath, "utf-8");
+    const parsedUnknown: unknown = JSON.parse(raw);
+    const parsed = parsedUnknown as Partial<UpdateCache>;
     if (
-      typeof parsed.latest === 'string' &&
-      typeof parsed.current === 'string' &&
-      typeof parsed.lastUpdateCheck === 'number'
+      typeof parsed.latest === "string" &&
+      typeof parsed.current === "string" &&
+      typeof parsed.lastUpdateCheck === "number"
     ) {
-      const result = UpdateCacheSchema.safeParse(parsedUnknown)
-      return result.success ? result.data : null
+      const result = UpdateCacheSchema.safeParse(parsedUnknown);
+      return result.success ? result.data : null;
     }
-    return null
+    return null;
   } catch {
-    return null
+    return null;
   }
 }
 
 async function writeCache(cachePath: string, data: UpdateCache): Promise<void> {
   try {
-    await mkdir(dirname(cachePath), { recursive: true })
-    await writeFile(cachePath, JSON.stringify(data, null, 2) + '\n')
+    await mkdir(dirname(cachePath), { recursive: true });
+    await writeFile(cachePath, JSON.stringify(data, null, 2) + "\n");
   } catch {
     // Cache write failure is non-fatal
   }
@@ -75,12 +75,12 @@ export async function fetchLatestRelease(): Promise<string | null> {
     // for the full TCP connect timeout (~2 min) when the registry is slow.
     signal: AbortSignal.timeout(5000),
     headers: {
-      Accept: 'application/json',
+      Accept: "application/json",
     },
-  })
-  if (!res.ok) return null
-  const data = (await res.json()) as { 'dist-tags'?: { latest?: string } }
-  return data['dist-tags']?.latest ?? null
+  });
+  if (!res.ok) return null;
+  const data = (await res.json()) as { "dist-tags"?: { latest?: string } };
+  return data["dist-tags"]?.latest ?? null;
 }
 
 /**
@@ -89,39 +89,39 @@ export async function fetchLatestRelease(): Promise<string | null> {
  */
 export async function runUpdateFlow(version: string): Promise<void> {
   try {
-    const cachePath = join(getStateRoot(), UPDATE_CACHE_FILENAME)
-    const now = Date.now()
+    const cachePath = join(getStateRoot(), UPDATE_CACHE_FILENAME);
+    const now = Date.now();
 
     // Check 24-hour interval via cache
-    const cached = await readCache(cachePath)
-    let latest: string
+    const cached = await readCache(cachePath);
+    let latest: string;
 
     if (cached !== null && now - cached.lastUpdateCheck < UPDATE_CHECK_INTERVAL_MS) {
-      latest = cached.latest
+      latest = cached.latest;
     } else {
-      const fetched = await fetchLatestRelease()
-      if (fetched === null) return
-      latest = fetched
-      await writeCache(cachePath, { latest, current: version, lastUpdateCheck: now })
+      const fetched = await fetchLatestRelease();
+      if (fetched === null) return;
+      latest = fetched;
+      await writeCache(cachePath, { latest, current: version, lastUpdateCheck: now });
     }
 
-    if (!isNewerVersion(latest, version)) return
+    if (!isNewerVersion(latest, version)) return;
 
     // Notify on stderr — safe for all modes (MCP is gated upstream via shouldSkipUpdateCheck)
     process.stderr.write(
       `\n  @webpresso/agent-kit ${version} → ${latest} available\n  Auto-install scheduled for next \`wp\` invocation.\n\n`,
-    )
+    );
 
-    if (shouldSkipAutoInstall(process.env)) return
+    if (shouldSkipAutoInstall(process.env)) return;
 
-    const plan = detect(process.env, process.argv[1] ?? '')
-    if ('abort' in plan) {
-      logUpdateError(new Error(plan.abort))
-      return
+    const plan = detect(process.env, process.argv[1] ?? "");
+    if ("abort" in plan) {
+      logUpdateError(new Error(plan.abort));
+      return;
     }
 
-    scheduleDeferredInstall({ command: plan.command })
+    scheduleDeferredInstall({ command: plan.command });
   } catch (err) {
-    logUpdateError(err)
+    logUpdateError(err);
   }
 }

@@ -5,7 +5,7 @@
  * Inlined as a pure helper to keep this package self-contained.
  */
 export function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-export const escapeRegExp = escapeRegex
+export const escapeRegExp = escapeRegex;

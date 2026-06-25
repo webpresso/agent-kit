@@ -15,15 +15,15 @@
  *  - Structured log on every pushEvent call.
  */
 
-import { randomUUID } from 'node:crypto'
+import { randomUUID } from "node:crypto";
 
-import type { SyncCredentials } from './auth.js'
+import type { SyncCredentials } from "./auth.js";
 import type {
   BlueprintPlatformClient,
   BlueprintPlatformEvent,
   BlueprintSnapshot,
   BlueprintTemplateEntry,
-} from './types.js'
+} from "./types.js";
 
 // ---------------------------------------------------------------------------
 // Error classes
@@ -31,15 +31,15 @@ import type {
 
 export class AuthError extends Error {
   constructor(message: string) {
-    super(message)
-    this.name = 'AuthError'
+    super(message);
+    this.name = "AuthError";
   }
 }
 
 export class SyncDisabledError extends Error {
   constructor(message: string) {
-    super(message)
-    this.name = 'SyncDisabledError'
+    super(message);
+    this.name = "SyncDisabledError";
   }
 }
 
@@ -49,41 +49,41 @@ export class SyncDisabledError extends Error {
 
 export interface RetryOptions {
   /** Base delay in ms for exponential backoff (default: 200). */
-  readonly baseDelayMs?: number
+  readonly baseDelayMs?: number;
   /** Maximum number of attempts (default: 3). */
-  readonly maxAttempts?: number
+  readonly maxAttempts?: number;
 }
 
 const DEFAULT_RETRY: Required<RetryOptions> = {
   baseDelayMs: 200,
   maxAttempts: 3,
-}
+};
 
 const DEFAULT_TEMPLATES_URL =
-  'https://raw.githubusercontent.com/webpresso/webpresso/main/catalog/blueprint-templates/index.json'
+  "https://raw.githubusercontent.com/webpresso/webpresso/main/catalog/blueprint-templates/index.json";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function isDisabled(): boolean {
-  return process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] === '1'
+  return process.env["WP_BLUEPRINT_PLATFORM_DISABLED"] === "1";
 }
 
 function resolveEventId(id: string): string {
-  return id.length > 0 ? id : randomUUID()
+  return id.length > 0 ? id : randomUUID();
 }
 
 function isRetryableStatus(status: number): boolean {
-  return status === 429 || (status >= 500 && status <= 599)
+  return status === 429 || (status >= 500 && status <= 599);
 }
 
 function emptySnapshot(): BlueprintSnapshot {
-  return { blueprints: [], fetchedAt: new Date().toISOString() }
+  return { blueprints: [], fetchedAt: new Date().toISOString() };
 }
 
 // ---------------------------------------------------------------------------
@@ -91,14 +91,14 @@ function emptySnapshot(): BlueprintSnapshot {
 // ---------------------------------------------------------------------------
 
 export class BlueprintSyncClient implements BlueprintPlatformClient {
-  private readonly retryOpts: Required<RetryOptions>
+  private readonly retryOpts: Required<RetryOptions>;
 
   constructor(
     private readonly creds: SyncCredentials,
     private readonly fetchFn: typeof globalThis.fetch = globalThis.fetch,
     retryOptions: RetryOptions = {},
   ) {
-    this.retryOpts = { ...DEFAULT_RETRY, ...retryOptions }
+    this.retryOpts = { ...DEFAULT_RETRY, ...retryOptions };
   }
 
   // -------------------------------------------------------------------------
@@ -106,31 +106,31 @@ export class BlueprintSyncClient implements BlueprintPlatformClient {
   // -------------------------------------------------------------------------
 
   async pushEvent(payload: BlueprintPlatformEvent): Promise<void> {
-    if (isDisabled()) return
+    if (isDisabled()) return;
 
-    const eventId = resolveEventId(payload.eventId)
-    const body: BlueprintPlatformEvent = { ...payload, eventId }
-    const url = `${this.creds.platformUrl}/v1/blueprint-events`
+    const eventId = resolveEventId(payload.eventId);
+    const body: BlueprintPlatformEvent = { ...payload, eventId };
+    const url = `${this.creds.platformUrl}/v1/blueprint-events`;
 
     await this.retryFetch(
       url,
       {
-        method: 'POST',
+        method: "POST",
         headers: this.authHeaders(),
         body: JSON.stringify(body),
       },
       (status, durationMs) => {
         console.log(
           JSON.stringify({
-            level: 'info',
+            level: "info",
             eventType: payload.type,
             eventId,
             httpStatus: status,
             durationMs,
           }),
-        )
+        );
       },
-    )
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -138,22 +138,22 @@ export class BlueprintSyncClient implements BlueprintPlatformClient {
   // -------------------------------------------------------------------------
 
   async getSnapshot(opts?: { readonly slug?: string }): Promise<BlueprintSnapshot> {
-    if (isDisabled()) return emptySnapshot()
+    if (isDisabled()) return emptySnapshot();
 
     const path =
       opts?.slug != null && opts.slug.length > 0
         ? `/v1/blueprints/${encodeURIComponent(opts.slug)}`
-        : '/v1/blueprints'
+        : "/v1/blueprints";
 
-    const url = `${this.creds.platformUrl}${path}`
+    const url = `${this.creds.platformUrl}${path}`;
 
     const response = await this.fetchOnce(url, {
-      method: 'GET',
+      method: "GET",
       headers: this.authHeaders(),
-    })
+    });
 
-    const json = (await response.json()) as BlueprintSnapshot
-    return json
+    const json = (await response.json()) as BlueprintSnapshot;
+    return json;
   }
 
   // -------------------------------------------------------------------------
@@ -161,17 +161,17 @@ export class BlueprintSyncClient implements BlueprintPlatformClient {
   // -------------------------------------------------------------------------
 
   async listTemplates(): Promise<readonly BlueprintTemplateEntry[]> {
-    if (isDisabled()) return []
+    if (isDisabled()) return [];
 
-    const url = process.env['WP_BLUEPRINT_TEMPLATES_URL'] ?? DEFAULT_TEMPLATES_URL
+    const url = process.env["WP_BLUEPRINT_TEMPLATES_URL"] ?? DEFAULT_TEMPLATES_URL;
 
     try {
-      const response = await this.fetchFn(url, { method: 'GET' })
-      if (!response.ok) return []
-      const json = (await response.json()) as BlueprintTemplateEntry[]
-      return json
+      const response = await this.fetchFn(url, { method: "GET" });
+      if (!response.ok) return [];
+      const json = (await response.json()) as BlueprintTemplateEntry[];
+      return json;
     } catch {
-      return []
+      return [];
     }
   }
 
@@ -180,20 +180,20 @@ export class BlueprintSyncClient implements BlueprintPlatformClient {
   // -------------------------------------------------------------------------
 
   async healthCheck(): Promise<{ readonly ok: boolean; readonly latencyMs: number }> {
-    if (isDisabled()) return { ok: false, latencyMs: 0 }
+    if (isDisabled()) return { ok: false, latencyMs: 0 };
 
-    const url = `${this.creds.platformUrl}/health`
-    const start = Date.now()
+    const url = `${this.creds.platformUrl}/health`;
+    const start = Date.now();
 
     try {
       const response = await this.fetchFn(url, {
-        method: 'GET',
+        method: "GET",
         headers: this.authHeaders(),
-      })
-      const latencyMs = Date.now() - start
-      return { ok: response.ok, latencyMs }
+      });
+      const latencyMs = Date.now() - start;
+      return { ok: response.ok, latencyMs };
     } catch {
-      return { ok: false, latencyMs: 0 }
+      return { ok: false, latencyMs: 0 };
     }
   }
 
@@ -204,8 +204,8 @@ export class BlueprintSyncClient implements BlueprintPlatformClient {
   private authHeaders(): Record<string, string> {
     return {
       Authorization: `Bearer ${this.creds.token}`,
-      'Content-Type': 'application/json',
-    }
+      "Content-Type": "application/json",
+    };
   }
 
   /**
@@ -213,17 +213,17 @@ export class BlueprintSyncClient implements BlueprintPlatformClient {
    * Throws on non-ok responses (except 409 which is treated as success).
    */
   private async fetchOnce(url: string, init: RequestInit): Promise<Response> {
-    const response = await this.fetchFn(url, init)
+    const response = await this.fetchFn(url, init);
 
     if (response.status === 401) {
-      throw new AuthError(`401 Unauthorized — re-authentication required for ${url}`)
+      throw new AuthError(`401 Unauthorized — re-authentication required for ${url}`);
     }
 
     if (!response.ok && response.status !== 409) {
-      throw new Error(`HTTP ${response.status} from ${url}`)
+      throw new Error(`HTTP ${response.status} from ${url}`);
     }
 
-    return response
+    return response;
   }
 
   /**
@@ -242,68 +242,68 @@ export class BlueprintSyncClient implements BlueprintPlatformClient {
     init: RequestInit,
     onAttempt?: (status: number, durationMs: number) => void,
   ): Promise<Response> {
-    const { maxAttempts, baseDelayMs } = this.retryOpts
-    let lastError: unknown
+    const { maxAttempts, baseDelayMs } = this.retryOpts;
+    let lastError: unknown;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      const start = Date.now()
+      const start = Date.now();
 
       try {
-        const response = await this.fetchFn(url, init)
-        const durationMs = Date.now() - start
-        onAttempt?.(response.status, durationMs)
+        const response = await this.fetchFn(url, init);
+        const durationMs = Date.now() - start;
+        onAttempt?.(response.status, durationMs);
 
         if (response.status === 401) {
-          throw new AuthError(`401 Unauthorized — re-authentication required for ${url}`)
+          throw new AuthError(`401 Unauthorized — re-authentication required for ${url}`);
         }
 
         if (response.status === 409) {
-          return response // idempotent — treat as success
+          return response; // idempotent — treat as success
         }
 
         if (isRetryableStatus(response.status)) {
-          lastError = new Error(`HTTP ${response.status} from ${url}`)
+          lastError = new Error(`HTTP ${response.status} from ${url}`);
 
           if (attempt < maxAttempts) {
-            await sleep(baseDelayMs * 2 ** (attempt - 1))
-            continue
+            await sleep(baseDelayMs * 2 ** (attempt - 1));
+            continue;
           }
 
-          throw lastError
+          throw lastError;
         }
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status} from ${url}`)
+          throw new Error(`HTTP ${response.status} from ${url}`);
         }
 
-        return response
+        return response;
       } catch (error: unknown) {
-        if (error instanceof AuthError) throw error
+        if (error instanceof AuthError) throw error;
 
-        const durationMs = Date.now() - start
-        onAttempt?.(0, durationMs)
+        const durationMs = Date.now() - start;
+        onAttempt?.(0, durationMs);
 
-        lastError = error
+        lastError = error;
 
         if (attempt < maxAttempts) {
-          await sleep(baseDelayMs * 2 ** (attempt - 1))
-          continue
+          await sleep(baseDelayMs * 2 ** (attempt - 1));
+          continue;
         }
 
         // Final attempt failed — wrap with offline context if it looks like a
         // network error (not an HTTP error we re-threw above).
-        const msg = error instanceof Error ? error.message : String(error)
-        const isNetworkError = !msg.startsWith('HTTP ')
+        const msg = error instanceof Error ? error.message : String(error);
+        const isNetworkError = !msg.startsWith("HTTP ");
 
         if (isNetworkError) {
-          throw new Error(`Network error (offline?): ${msg}. Check connectivity and retry.`)
+          throw new Error(`Network error (offline?): ${msg}. Check connectivity and retry.`);
         }
 
-        throw error
+        throw error;
       }
     }
 
     // Unreachable, but satisfies TypeScript's exhaustive analysis.
-    throw lastError
+    throw lastError;
   }
 }

@@ -1,6 +1,6 @@
 ---
 type: system
-last_updated: '2026-04-25'
+last_updated: "2026-04-25"
 ---
 
 # Blueprint format specification
@@ -44,14 +44,14 @@ explicit:
 ```yaml
 ---
 # Required
-type: blueprint                    # "blueprint" or "parent-roadmap"
-status: planned                    # state (see lifecycle.md)
-complexity: M                      # XS | S | M | L | XL
+type: blueprint # "blueprint" or "parent-roadmap"
+status: planned # state (see lifecycle.md)
+complexity: M # XS | S | M | L | XL
 
 # Typically required
-created: 2026-04-22                # YYYY-MM-DD
-last_updated: 2026-04-22           # YYYY-MM-DD
-progress: '0% (0 of N tasks completed)'   # human-readable string
+created: 2026-04-22 # YYYY-MM-DD
+last_updated: 2026-04-22 # YYYY-MM-DD
+progress: "0% (0 of N tasks completed)" # human-readable string
 
 # Optional — dependencies between blueprints
 depends_on:
@@ -111,9 +111,9 @@ last_updated: 2026-05-06
 ```markdown
 ## Quick Reference (Execution Waves)
 
-| Wave | Blueprints | Dependencies |
-| --- | --- | --- |
-| Wave 0 | `agent-kit-public-release-scrub` | None |
+| Wave   | Blueprints                        | Dependencies                     |
+| ------ | --------------------------------- | -------------------------------- |
+| Wave 0 | `agent-kit-public-release-scrub`  | None                             |
 | Wave 1 | `ai-reliability-contract-roadmap` | `agent-kit-public-release-scrub` |
 ```
 
@@ -165,10 +165,10 @@ Canonical documentary cross-plan link example:
 ```markdown
 ## Cross-Plan References
 
-| Blueprint | Relationship | Required alignment |
-| --- | --- | --- |
-| [ozby/ingest-lens: 2026-06-02-ingest-lens-wp-deploy-adapter-toolchain-isolation](https://github.com/ozby/ingest-lens/blob/main/blueprints/planned/2026-06-02-ingest-lens-wp-deploy-adapter-toolchain-isolation.md) | Downstream `wp`-first thin-consumer lane | Use shipped `wp deploy`, `wp ci act`, and canonical `wp_*` tool names; keep deploy specifics behind the local adapter seam. |
-| [ozby/edge-matte: 2026-06-02-edge-matte-wp-deploy-adapter-toolchain-isolation](https://github.com/ozby/edge-matte/blob/main/blueprints/planned/2026-06-02-edge-matte-wp-deploy-adapter-toolchain-isolation.md) | Downstream split-consumer lane | Preserve the `vp` + `wp` split and local deploy specifics; only remove direct tool ownership when the shared surface already exists. |
+| Blueprint                                                                                                                                                                                                          | Relationship                             | Required alignment                                                                                                                   |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| [ozby/ingest-lens: 2026-06-02-ingest-lens-wp-deploy-adapter-toolchain-isolation](https://github.com/ozby/ingest-lens/blob/main/blueprints/planned/2026-06-02-ingest-lens-wp-deploy-adapter-toolchain-isolation.md) | Downstream `wp`-first thin-consumer lane | Use shipped `wp deploy`, `wp ci act`, and canonical `wp_*` tool names; keep deploy specifics behind the local adapter seam.          |
+| [ozby/edge-matte: 2026-06-02-edge-matte-wp-deploy-adapter-toolchain-isolation](https://github.com/ozby/edge-matte/blob/main/blueprints/planned/2026-06-02-edge-matte-wp-deploy-adapter-toolchain-isolation.md)     | Downstream split-consumer lane           | Preserve the `vp` + `wp` split and local deploy specifics; only remove direct tool ownership when the shared surface already exists. |
 ```
 
 Validation and discovery surfaces:
@@ -188,18 +188,24 @@ others are conventional but not enforced.
 ```markdown
 # <Short descriptive title>
 
-## Product wedge anchor            # required for infra-tier blueprints per blueprint-scoping rule
-## Planning Summary
-## Architecture Overview           # optional
-## Key Decisions                   # optional
-## Quick Reference (Execution Waves)   # optional summary of phase-1 ready work
-## Fact-Check Summary              # optional — table of verified claims
+## Product wedge anchor # required for infra-tier blueprints per blueprint-scoping rule
 
-## Phases                          # REQUIRED
+## Planning Summary
+
+## Architecture Overview # optional
+
+## Key Decisions # optional
+
+## Quick Reference (Execution Waves) # optional summary of phase-1 ready work
+
+## Fact-Check Summary # optional — table of verified claims
+
+## Phases # REQUIRED
 
 ### Phase 1: <Name> [Complexity: <S|M|L>]
 
-#### [lane] Task 1.1: <Name>       # REQUIRED task block
+#### [lane] Task 1.1: <Name> # REQUIRED task block
+
 - [ ] **Status:** todo | in-progress | blocked | done
 - **Depends:** — | Task 1.2
 - **Files:** …
@@ -211,12 +217,17 @@ others are conventional but not enforced.
 
 ### Phase 2: …
 
-## Verification Gates              # optional — whole-plan gates
-## Cross-Plan References           # optional
-## Edge Cases and Error Handling   # optional
-## Non-goals                       # strongly recommended
-## Risks                           # optional
-## Technology Choices              # optional
+## Verification Gates # optional — whole-plan gates
+
+## Cross-Plan References # optional
+
+## Edge Cases and Error Handling # optional
+
+## Non-goals # strongly recommended
+
+## Risks # optional
+
+## Technology Choices # optional
 ```
 
 ## Public wording and command names
@@ -299,21 +310,18 @@ import {
   type Task,
   type Phase,
   planFrontmatterSchema,
-} from 'webpresso/blueprint'
+} from "webpresso/blueprint";
 
-const parsed = parseBlueprint(await readFile(blueprintPath, 'utf-8'))
+const parsed = parseBlueprint(await readFile(blueprintPath, "utf-8"));
 // parsed: { frontmatter, tasks, phases, acceptanceCriteria, ... }
 ```
 
 For lifecycle transitions:
 
 ```typescript
-import {
-  applyBlueprintLifecycle,
-  applyBlueprintLifecycleToFile,
-} from 'webpresso/blueprint/local'
+import { applyBlueprintLifecycle, applyBlueprintLifecycleToFile } from "webpresso/blueprint/local";
 
-await applyBlueprintLifecycleToFile(projectRoot, 'planned/my-blueprint', { type: 'start' })
+await applyBlueprintLifecycleToFile(projectRoot, "planned/my-blueprint", { type: "start" });
 // Updates frontmatter status and task[0].status; rewrites the file.
 ```
 

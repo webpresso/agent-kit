@@ -1,12 +1,12 @@
 ---
 type: guide
-last_updated: '2026-06-08'
+last_updated: "2026-06-08"
 ---
 
 # Hooks Quickstart
 
 webpresso ships a typed hooks-orchestrator for Claude Code, Codex CLI, and Cursor.
-Hooks let wp-* binaries intercept agent tool calls, enforce policies, and log decisions.
+Hooks let wp-\* binaries intercept agent tool calls, enforce policies, and log decisions.
 
 ## Install
 

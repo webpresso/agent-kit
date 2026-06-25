@@ -7,25 +7,25 @@
  * Git-Native SSoT: Checkbox state derives status, no external state.
  */
 
-import type { BlueprintTaskStatus } from '#core/schema'
+import type { BlueprintTaskStatus } from "#core/schema";
 
-import { isTaskHeaderLine } from '#markdown/task-heading'
+import { isTaskHeaderLine } from "#markdown/task-heading";
 
 /**
  * Checkbox status with derived task state
  */
 export interface CheckboxStatus {
-  total: number
-  checked: number
-  status: BlueprintTaskStatus
+  total: number;
+  checked: number;
+  status: BlueprintTaskStatus;
 }
 
 /**
  * Acceptance criteria tracking
  */
 export interface AcceptanceCriteria {
-  total: number
-  checked: number
+  total: number;
+  checked: number;
 }
 
 /**
@@ -52,23 +52,23 @@ export interface AcceptanceCriteria {
  * ```
  */
 export function extractCheckboxStatus(section: string): CheckboxStatus {
-  const checkboxRegex = /^- \[([ x])\]/gm
-  const matches = Array.from(section.matchAll(checkboxRegex))
+  const checkboxRegex = /^- \[([ x])\]/gm;
+  const matches = Array.from(section.matchAll(checkboxRegex));
 
-  const total = matches.length
-  const checked = matches.filter((m) => m[1] === 'x').length
+  const total = matches.length;
+  const checked = matches.filter((m) => m[1] === "x").length;
 
   // Derive status from checkbox state (Git-Native SSoT)
-  let status: BlueprintTaskStatus = 'todo'
+  let status: BlueprintTaskStatus = "todo";
   if (total > 0) {
     if (checked === total) {
-      status = 'done'
+      status = "done";
     } else if (checked > 0) {
-      status = 'in-progress'
+      status = "in-progress";
     }
   }
 
-  return { total, checked, status }
+  return { total, checked, status };
 }
 
 /**
@@ -78,8 +78,8 @@ export function extractCheckboxStatus(section: string): CheckboxStatus {
  * @returns Checkbox counts
  */
 export function extractAcceptanceCriteria(section: string): AcceptanceCriteria {
-  const { total, checked } = extractCheckboxStatus(section)
-  return { total, checked }
+  const { total, checked } = extractCheckboxStatus(section);
+  return { total, checked };
 }
 
 /**
@@ -101,16 +101,16 @@ export function extractAcceptanceCriteria(section: string): AcceptanceCriteria {
  * ```
  */
 export function extractDepends(section: string): string[] {
-  const dependsMatch = section.match(/\*\*Depends:\*\*\s*(.+)/i)
-  if (!dependsMatch?.[1]) return []
+  const dependsMatch = section.match(/\*\*Depends:\*\*\s*(.+)/i);
+  if (!dependsMatch?.[1]) return [];
 
-  const dependsText = dependsMatch[1].trim()
-  if (dependsText.toLowerCase() === 'none') return []
+  const dependsText = dependsMatch[1].trim();
+  if (dependsText.toLowerCase() === "none") return [];
 
   // Extract task IDs from various formats
-  const taskIdRegex = /(?:Tasks?\s+)?(\d+(?:\.\d+)+)/gi
-  const ids = Array.from(dependsText.matchAll(taskIdRegex), (m) => m[1] ?? '')
-  return ids.filter((id) => id !== '')
+  const taskIdRegex = /(?:Tasks?\s+)?(\d+(?:\.\d+)+)/gi;
+  const ids = Array.from(dependsText.matchAll(taskIdRegex), (m) => m[1] ?? "");
+  return ids.filter((id) => id !== "");
 }
 
 /**
@@ -126,17 +126,17 @@ export function extractDepends(section: string): string[] {
  * ```
  */
 export function extractBlocked(section: string): string | undefined {
-  const blockedMatch = section.match(/\*\*Blocked:\*\*\s*(.+)/i)
-  if (!blockedMatch?.[1]) return undefined
+  const blockedMatch = section.match(/\*\*Blocked:\*\*\s*(.+)/i);
+  if (!blockedMatch?.[1]) return undefined;
 
-  const blockedText = blockedMatch[1].trim()
+  const blockedText = blockedMatch[1].trim();
 
   // Handle missing/empty reason gracefully
-  if (blockedText === '' || blockedText.toLowerCase() === 'none') {
-    return undefined
+  if (blockedText === "" || blockedText.toLowerCase() === "none") {
+    return undefined;
   }
 
-  return blockedText
+  return blockedText;
 }
 
 /**
@@ -155,12 +155,12 @@ export function findTaskSectionEnd(
   taskStart: number,
   nextTaskIndex: number,
 ): number {
-  const contentAfterTask = content.slice(taskStart)
-  const sectionDelimiterMatch = contentAfterTask.match(/\n(?:##\s|---\n)/)
+  const contentAfterTask = content.slice(taskStart);
+  const sectionDelimiterMatch = contentAfterTask.match(/\n(?:##\s|---\n)/);
   const sectionDelimiterIndex = sectionDelimiterMatch
     ? taskStart + (sectionDelimiterMatch.index ?? content.length) + 1
-    : content.length
-  return Math.min(nextTaskIndex, sectionDelimiterIndex)
+    : content.length;
+  return Math.min(nextTaskIndex, sectionDelimiterIndex);
 }
 
 /**
@@ -176,58 +176,58 @@ export function findTaskSectionEnd(
  * @returns Description text, or undefined if no description
  */
 export function extractTaskDescription(section: string): string | undefined {
-  const lines = section.split('\n')
-  const descriptionLines: string[] = []
+  const lines = section.split("\n");
+  const descriptionLines: string[] = [];
 
-  let inDescription = false
+  let inDescription = false;
   for (const line of lines) {
     // Skip task header
     if (isTaskHeader(line)) {
-      inDescription = true
-      continue
+      inDescription = true;
+      continue;
     }
 
     // Skip lines until we're in description
     if (shouldSkipLine(line, inDescription, descriptionLines.length)) {
-      continue
+      continue;
     }
 
-    descriptionLines.push(line)
+    descriptionLines.push(line);
   }
 
-  const description = descriptionLines.join('\n').trim()
-  return description.length > 0 ? description : undefined
+  const description = descriptionLines.join("\n").trim();
+  return description.length > 0 ? description : undefined;
 }
 
 /**
  * Check if line is a task header using the shared strict blueprint grammar.
  */
 function isTaskHeader(line: string): boolean {
-  return isTaskHeaderLine(line)
+  return isTaskHeaderLine(line);
 }
 
 /**
  * Check if line is a metadata field (Depends, Blocked, Status)
  */
 function isMetadataLine(line: string): boolean {
-  return /^\*\*(Depends|Blocked|Status):\*\*/i.test(line)
+  return /^\*\*(Depends|Blocked|Status):\*\*/i.test(line);
 }
 
 /**
  * Check if line is a checklist item
  */
 function isChecklistItem(line: string): boolean {
-  return /^-\s*\[([ x])\]/.test(line)
+  return /^-\s*\[([ x])\]/.test(line);
 }
 
 /**
  * Determine if a line should be skipped during description extraction
  */
 function shouldSkipLine(line: string, inDescription: boolean, collectedCount: number): boolean {
-  if (isTaskHeader(line)) return true
-  if (isMetadataLine(line)) return true
-  if (isChecklistItem(line)) return true
-  if (!inDescription) return true
-  if (line.trim() === '' && collectedCount === 0) return true
-  return false
+  if (isTaskHeader(line)) return true;
+  if (isMetadataLine(line)) return true;
+  if (isChecklistItem(line)) return true;
+  if (!inDescription) return true;
+  if (line.trim() === "" && collectedCount === 0) return true;
+  return false;
 }

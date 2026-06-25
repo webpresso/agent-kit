@@ -1,6 +1,6 @@
-import type { CriteriaResult, ValidationResult } from './index.js'
+import type { CriteriaResult, ValidationResult } from "./index.js";
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from "vitest";
 
 import {
   checkAcceptanceCriteria,
@@ -9,37 +9,37 @@ import {
   validatePlanLinks,
   validatePlanState,
   validatePlanTemplate,
-} from './index.js'
+} from "./index.js";
 
-describe('plan-validation package exports', () => {
-  describe('function exports', () => {
-    it('should export checkAcceptanceCriteria', () => {
-      expect(typeof checkAcceptanceCriteria).toBe('function')
-    })
+describe("plan-validation package exports", () => {
+  describe("function exports", () => {
+    it("should export checkAcceptanceCriteria", () => {
+      expect(typeof checkAcceptanceCriteria).toBe("function");
+    });
 
-    it('should export checkChangelog', () => {
-      expect(typeof checkChangelog).toBe('function')
-    })
+    it("should export checkChangelog", () => {
+      expect(typeof checkChangelog).toBe("function");
+    });
 
-    it('should export validatePlanLinks', () => {
-      expect(typeof validatePlanLinks).toBe('function')
-    })
+    it("should export validatePlanLinks", () => {
+      expect(typeof validatePlanLinks).toBe("function");
+    });
 
-    it('should export validateEmbeddedPhases', () => {
-      expect(typeof validateEmbeddedPhases).toBe('function')
-    })
+    it("should export validateEmbeddedPhases", () => {
+      expect(typeof validateEmbeddedPhases).toBe("function");
+    });
 
-    it('should export validatePlanState', () => {
-      expect(typeof validatePlanState).toBe('function')
-    })
+    it("should export validatePlanState", () => {
+      expect(typeof validatePlanState).toBe("function");
+    });
 
-    it('should export validatePlanTemplate', () => {
-      expect(typeof validatePlanTemplate).toBe('function')
-    })
-  })
+    it("should export validatePlanTemplate", () => {
+      expect(typeof validatePlanTemplate).toBe("function");
+    });
+  });
 
-  describe('integration - full plan validation', () => {
-    it('should validate a complete valid plan', () => {
+  describe("integration - full plan validation", () => {
+    it("should validate a complete valid plan", () => {
       const markdown = `
 ---
 status: draft
@@ -59,24 +59,24 @@ Initial setup tasks
 
 ### Phase 2: Implementation
 Core implementation
-      `
+      `;
 
-      const criteria = checkAcceptanceCriteria(markdown)
-      expect(criteria.total).toBe(3)
-      expect(criteria.checked).toBe(0)
+      const criteria = checkAcceptanceCriteria(markdown);
+      expect(criteria.total).toBe(3);
+      expect(criteria.checked).toBe(0);
 
-      const template = validatePlanTemplate(markdown)
-      expect(template.valid).toBe(true)
+      const template = validatePlanTemplate(markdown);
+      expect(template.valid).toBe(true);
 
-      const state = validatePlanState(markdown, 'draft/my-plan/plan.md')
-      expect(state.valid).toBe(true)
+      const state = validatePlanState(markdown, "draft/my-plan/plan.md");
+      expect(state.valid).toBe(true);
 
-      const phases = validateEmbeddedPhases(markdown)
-      expect(phases.hasEmbedded).toBe(true)
-      expect(phases.phases).toHaveLength(2)
-    })
+      const phases = validateEmbeddedPhases(markdown);
+      expect(phases.hasEmbedded).toBe(true);
+      expect(phases.phases).toHaveLength(2);
+    });
 
-    it('should validate a completed plan', () => {
+    it("should validate a completed plan", () => {
       const markdown = `
 ---
 status: completed
@@ -92,23 +92,23 @@ We needed to improve performance
 
 ## Implementation
 See phase files for details
-      `
+      `;
 
-      const criteria = checkAcceptanceCriteria(markdown)
-      expect(criteria.allChecked).toBe(true)
+      const criteria = checkAcceptanceCriteria(markdown);
+      expect(criteria.allChecked).toBe(true);
 
-      const template = validatePlanTemplate(markdown)
-      expect(template.valid).toBe(true)
+      const template = validatePlanTemplate(markdown);
+      expect(template.valid).toBe(true);
 
-      const state = validatePlanState(markdown, 'completed/perf-improvement/plan.md')
-      expect(state.valid).toBe(true)
+      const state = validatePlanState(markdown, "completed/perf-improvement/plan.md");
+      expect(state.valid).toBe(true);
 
-      const changelog = checkChangelog('/completed/perf-improvement/plan.md')
-      expect(changelog.hasChangelog).toBe(false)
-      expect(typeof changelog.warning).toBe('string')
-    })
+      const changelog = checkChangelog("/completed/perf-improvement/plan.md");
+      expect(changelog.hasChangelog).toBe(false);
+      expect(typeof changelog.warning).toBe("string");
+    });
 
-    it('should catch validation errors across validators', () => {
+    it("should catch validation errors across validators", () => {
       const markdown = `
 ---
 status: completed
@@ -123,45 +123,45 @@ Invalid plan
 
 ## Phases
 Details
-      `
+      `;
 
-      const state = validatePlanState(markdown, 'in-progress/plan.md')
-      expect(state.valid).toBe(false)
-      expect(state.error).toContain('not in completed/ folder')
+      const state = validatePlanState(markdown, "in-progress/plan.md");
+      expect(state.valid).toBe(false);
+      expect(state.error).toContain("not in completed/ folder");
 
-      const criteria = checkAcceptanceCriteria(markdown)
-      expect(criteria.allChecked).toBe(false)
-    })
-  })
+      const criteria = checkAcceptanceCriteria(markdown);
+      expect(criteria.allChecked).toBe(false);
+    });
+  });
 
-  describe('type exports', () => {
-    it('should have CriteriaResult type', () => {
+  describe("type exports", () => {
+    it("should have CriteriaResult type", () => {
       const result: CriteriaResult = {
         total: 5,
         checked: 3,
         allChecked: false,
-      }
-      expect(result.total).toBe(5)
-    })
+      };
+      expect(result.total).toBe(5);
+    });
 
-    it('should have ValidationResult type', () => {
+    it("should have ValidationResult type", () => {
       const result: ValidationResult = {
         valid: false,
-        error: 'Something went wrong',
-      }
-      expect(result.valid).toBe(false)
-    })
+        error: "Something went wrong",
+      };
+      expect(result.valid).toBe(false);
+    });
 
-    it('should allow ValidationResult without error', () => {
+    it("should allow ValidationResult without error", () => {
       const result: ValidationResult = {
         valid: true,
-      }
-      expect(result.error).toBe(undefined)
-    })
-  })
+      };
+      expect(result.error).toBe(undefined);
+    });
+  });
 
-  describe('integration - realistic scenarios', () => {
-    it('should validate plan moving from draft to in-progress', () => {
+  describe("integration - realistic scenarios", () => {
+    it("should validate plan moving from draft to in-progress", () => {
       const draftMarkdown = `
 status: draft
 ## Overview
@@ -171,10 +171,10 @@ Feature plan
 - [ ] Task 2
 ## Phases
 Details
-      `
+      `;
 
-      const draftState = validatePlanState(draftMarkdown, 'draft/feature/plan.md')
-      expect(draftState.valid).toBe(true)
+      const draftState = validatePlanState(draftMarkdown, "draft/feature/plan.md");
+      expect(draftState.valid).toBe(true);
 
       const inProgressMarkdown = `
 status: in-progress
@@ -185,13 +185,13 @@ Feature plan
 - [ ] Task 2
 ## Phases
 Details
-      `
+      `;
 
-      const inProgressState = validatePlanState(inProgressMarkdown, 'in-progress/feature/plan.md')
-      expect(inProgressState.valid).toBe(true)
-    })
+      const inProgressState = validatePlanState(inProgressMarkdown, "in-progress/feature/plan.md");
+      expect(inProgressState.valid).toBe(true);
+    });
 
-    it('should validate plan moving from in-progress to completed', () => {
+    it("should validate plan moving from in-progress to completed", () => {
       const completedMarkdown = `
 status: completed
 ## Overview
@@ -201,16 +201,16 @@ Content
 - [x] Task 2
 ## Phases
 Details
-      `
+      `;
 
-      const completedState = validatePlanState(completedMarkdown, 'completed/feature/plan.md')
-      expect(completedState.valid).toBe(true)
+      const completedState = validatePlanState(completedMarkdown, "completed/feature/plan.md");
+      expect(completedState.valid).toBe(true);
 
-      const criteria = checkAcceptanceCriteria(completedMarkdown)
-      expect(criteria.allChecked).toBe(true)
-    })
+      const criteria = checkAcceptanceCriteria(completedMarkdown);
+      expect(criteria.allChecked).toBe(true);
+    });
 
-    it('should detect common mistakes', () => {
+    it("should detect common mistakes", () => {
       const markdown = `
 status: completed
 ## Overview
@@ -220,15 +220,15 @@ Content
 - [ ] Task 2
 ## Phases
 Details
-      `
+      `;
 
       // Completed but in wrong folder
-      const state1 = validatePlanState(markdown, 'in-progress/plan.md')
-      expect(state1.valid).toBe(false)
+      const state1 = validatePlanState(markdown, "in-progress/plan.md");
+      expect(state1.valid).toBe(false);
 
       // Completed but not all criteria checked
-      const state2 = validatePlanState(markdown, 'completed/plan.md')
-      expect(state2.valid).toBe(false)
-    })
-  })
-})
+      const state2 = validatePlanState(markdown, "completed/plan.md");
+      expect(state2.valid).toBe(false);
+    });
+  });
+});

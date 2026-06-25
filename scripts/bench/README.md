@@ -28,21 +28,21 @@ repo's existing Bun-based runtime and the `wp` CLI surface.
 
 Each run writes `scripts/bench/runs/<run-id>/report.md`.
 
-| Field | Meaning |
-| ----- | ------- |
-| `scenario` | Versioned scenario id, for example `debug-long-session` |
-| `variant` | `baseline`, `v1`, or `v2` |
-| `trials` | Number of executions per cell |
-| `status` | `ok`, `rate_limit`, or `spawn_failed` |
-| `cost_usd` | Aggregated USD cost for successful samples in the cell |
-| `cost_mean_usd` / `cost_std_usd` | Per-sample USD mean and population standard deviation |
-| `input_tokens` / `output_tokens` | Provider-reported input and output tokens summed across successful samples |
-| `cache_write_tokens` / `cache_read_tokens` | Provider-reported cache token categories summed across successful samples |
-| `total_tokens` | Sum of the provider token categories above; not a “tokens saved” field |
-| `provider_duration_ms_mean` / `provider_duration_ms_std` | Provider-reported duration summary |
-| `local_wall_ms_mean` / `local_wall_ms_std` | Local monotonic wall-clock summary around the spawned provider process |
-| `recall@5` | Recall score computed from scenario qrels |
-| `wall_sec` | `local_wall_ms_mean / 1000`; not hook latency |
+| Field                                                    | Meaning                                                                    |
+| -------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `scenario`                                               | Versioned scenario id, for example `debug-long-session`                    |
+| `variant`                                                | `baseline`, `v1`, or `v2`                                                  |
+| `trials`                                                 | Number of executions per cell                                              |
+| `status`                                                 | `ok`, `rate_limit`, or `spawn_failed`                                      |
+| `cost_usd`                                               | Aggregated USD cost for successful samples in the cell                     |
+| `cost_mean_usd` / `cost_std_usd`                         | Per-sample USD mean and population standard deviation                      |
+| `input_tokens` / `output_tokens`                         | Provider-reported input and output tokens summed across successful samples |
+| `cache_write_tokens` / `cache_read_tokens`               | Provider-reported cache token categories summed across successful samples  |
+| `total_tokens`                                           | Sum of the provider token categories above; not a “tokens saved” field     |
+| `provider_duration_ms_mean` / `provider_duration_ms_std` | Provider-reported duration summary                                         |
+| `local_wall_ms_mean` / `local_wall_ms_std`               | Local monotonic wall-clock summary around the spawned provider process     |
+| `recall@5`                                               | Recall score computed from scenario qrels                                  |
+| `wall_sec`                                               | `local_wall_ms_mean / 1000`; not hook latency                              |
 
 The CLI also prints a compact JSON summary with `runId`, `dryRun`, `reportPath`,
 `cellCount`, and `thresholdReport`. Measured threshold failures return a nonzero
@@ -69,13 +69,13 @@ verification gate targets a smoke cost below `$1` for that one-cell path.
 
 ## Troubleshooting
 
-| Symptom | Likely cause | Fix |
-| ------- | ------------ | --- |
-| `Missing workspace API keys` | Required API-key env vars are not set | Follow [`./PREFLIGHT.md`](./PREFLIGHT.md), or use `BENCH_AUTH_MODE=claude-login` for a local single-workspace smoke run with an already logged-in Claude CLI |
-| `Workspace mode unspecified` | `BENCH_WORKSPACE_MODE` is missing | Export `BENCH_WORKSPACE_MODE=isolated` or `BENCH_WORKSPACE_MODE=single-workspace` |
-| `rate_limit` in the report | Anthropic throttled the cell | Re-run later or reduce the number of cells/trials |
-| `spawn_failed` in the report | `claude` failed before a valid transcript was recorded | Check `failure_reason`; if `claude auth status` is logged in but execution returned `401`, refresh the Claude CLI login/session rather than adding an API key |
-| `Manifest mismatch` | Pinned tool or plugin versions drifted from `manifest.lock.json` | Re-pin deliberately or restore the expected tool/plugin versions |
+| Symptom                      | Likely cause                                                     | Fix                                                                                                                                                           |
+| ---------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Missing workspace API keys` | Required API-key env vars are not set                            | Follow [`./PREFLIGHT.md`](./PREFLIGHT.md), or use `BENCH_AUTH_MODE=claude-login` for a local single-workspace smoke run with an already logged-in Claude CLI  |
+| `Workspace mode unspecified` | `BENCH_WORKSPACE_MODE` is missing                                | Export `BENCH_WORKSPACE_MODE=isolated` or `BENCH_WORKSPACE_MODE=single-workspace`                                                                             |
+| `rate_limit` in the report   | Anthropic throttled the cell                                     | Re-run later or reduce the number of cells/trials                                                                                                             |
+| `spawn_failed` in the report | `claude` failed before a valid transcript was recorded           | Check `failure_reason`; if `claude auth status` is logged in but execution returned `401`, refresh the Claude CLI login/session rather than adding an API key |
+| `Manifest mismatch`          | Pinned tool or plugin versions drifted from `manifest.lock.json` | Re-pin deliberately or restore the expected tool/plugin versions                                                                                              |
 
 ## Harness regression gate
 

@@ -3,19 +3,19 @@ type: blueprint
 title: Managed hook launchers preserve real failure diagnostics
 status: completed
 historical_zero_task_waiver: true
-historical_zero_task_rationale: 'Historical completed record created before strict task-block requirements; preserved as an audited zero-task completion note.'
+historical_zero_task_rationale: "Historical completed record created before strict task-block requirements; preserved as an audited zero-task completion note."
 complexity: M
 owner: agent-kit
-created: '2026-06-17'
-last_updated: '2026-06-17'
-progress: '100% (completed 2026-06-17)'
+created: "2026-06-17"
+last_updated: "2026-06-17"
+progress: "100% (completed 2026-06-17)"
 tags:
   - hooks
   - codex
   - claude
   - diagnostics
   - scaffolder
-completed_at: '2026-06-17'
+completed_at: "2026-06-17"
 ---
 
 # Managed hook launchers preserve real failure diagnostics
@@ -55,21 +55,21 @@ form and the new `if/then/else` wrapper.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-17-managed-hook-launcher-real-failure-diagnostics.md |
+| ID  | Claim                                                          | Evidence                                                                               |
+| --- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-17-managed-hook-launcher-real-failure-diagnostics.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

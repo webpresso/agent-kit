@@ -1,9 +1,9 @@
-import { readdirSync } from 'node:fs'
-import path from 'node:path'
+import { readdirSync } from "node:fs";
+import path from "node:path";
 
-import { resolvePackageAssetPreferred } from '#utils/package-assets.js'
+import { resolvePackageAssetPreferred } from "#utils/package-assets.js";
 
-export type TemplateEntry = { name: string; path: string }
+export type TemplateEntry = { name: string; path: string };
 
 /**
  * Default templates directory: docs/templates/ in a source checkout, falling
@@ -13,10 +13,10 @@ export type TemplateEntry = { name: string; path: string }
 function defaultTemplatesDir(): string {
   return path.dirname(
     resolvePackageAssetPreferred([
-      'docs/templates/blueprint.md',
-      'catalog/docs/templates/blueprint.md',
+      "docs/templates/blueprint.md",
+      "catalog/docs/templates/blueprint.md",
     ]),
-  )
+  );
 }
 
 /**
@@ -27,26 +27,26 @@ function defaultTemplatesDir(): string {
  * Each entry carries the absolute path to the `.md` file.
  */
 export function listTemplates(templatesDir?: string): readonly TemplateEntry[] {
-  const dir = templatesDir ?? defaultTemplatesDir()
-  let entries: string[]
+  const dir = templatesDir ?? defaultTemplatesDir();
+  let entries: string[];
   try {
-    entries = readdirSync(dir)
+    entries = readdirSync(dir);
   } catch {
-    return []
+    return [];
   }
 
-  const seen = new Set<string>()
-  const result: TemplateEntry[] = []
+  const seen = new Set<string>();
+  const result: TemplateEntry[] = [];
 
   for (const entry of entries) {
-    if (!entry.endsWith('.md')) continue
-    const name = path.basename(entry, '.md')
-    if (seen.has(name)) continue
-    seen.add(name)
-    result.push({ name, path: path.join(dir, entry) })
+    if (!entry.endsWith(".md")) continue;
+    const name = path.basename(entry, ".md");
+    if (seen.has(name)) continue;
+    seen.add(name);
+    result.push({ name, path: path.join(dir, entry) });
   }
 
-  return result
+  return result;
 }
 
 /**
@@ -55,11 +55,11 @@ export function listTemplates(templatesDir?: string): readonly TemplateEntry[] {
  * Returns `null` if no matching template exists in `templatesDir`.
  */
 export function resolveTemplate(name: string, templatesDir?: string): string | null {
-  const dir = templatesDir ?? defaultTemplatesDir()
-  const candidate = path.join(dir, `${name}.md`)
-  const templates = listTemplates(dir)
-  const found = templates.find((t) => t.name === name)
-  if (!found) return null
+  const dir = templatesDir ?? defaultTemplatesDir();
+  const candidate = path.join(dir, `${name}.md`);
+  const templates = listTemplates(dir);
+  const found = templates.find((t) => t.name === name);
+  if (!found) return null;
   // Confirm the path matches what we computed (extra safety)
-  return candidate
+  return candidate;
 }

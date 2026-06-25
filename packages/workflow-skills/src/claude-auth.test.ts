@@ -20,11 +20,13 @@ describe("Claude skill helper snippets", () => {
     expect(content).toContain("claude --print");
     expect(content).toContain("CLAUDE_REVIEW_TIMEOUT");
     expect(content).toContain("do not recommend `--bare`");
+    expect(content).toContain("Do not add artificial budget caps");
     expect(content).not.toContain("claude auth status --output json");
     expect(content).not.toContain('claude -p "$(cat "$PROMPT_FILE")"');
     expect(content).not.toContain("claude -p");
     expect(content).not.toContain("claude --bare");
     expect(content).not.toContain("claude --print --bare");
+    expect(content).not.toContain("--max-budget-usd");
     expect(content).not.toContain("ANTHROPIC_API_KEY");
     expect(content).not.toContain("CLAUDE_API_KEY");
     expect(content).not.toContain("CLAUDE_AUTH=api-key");
@@ -44,12 +46,14 @@ describe("Claude skill helper snippets", () => {
       expect(skill, skillPath).toContain("Bounded prompt payload");
       expect(skill, skillPath).toContain("single-file / single-question first");
       expect(skill, skillPath).toContain("do not recommend `--bare`");
+      expect(skill, skillPath).toContain("Do not add artificial budget caps");
       expect(skill, skillPath).not.toContain("python3");
       expect(skill, skillPath).not.toContain("import subprocess");
       expect(skill, skillPath).not.toContain("claude auth status --output json");
       expect(skill, skillPath).not.toContain('claude -p "$(cat "$PROMPT_FILE")"');
       expect(skill, skillPath).not.toContain("claude --bare");
       expect(skill, skillPath).not.toContain("claude --print --bare");
+      expect(skill, skillPath).not.toContain("--max-budget-usd");
       expect(skill, skillPath).not.toContain("ANTHROPIC_API_KEY");
       expect(skill, skillPath).not.toContain("CLAUDE_API_KEY");
       expect(skill, skillPath).not.toContain("CLAUDE_AUTH=api-key");

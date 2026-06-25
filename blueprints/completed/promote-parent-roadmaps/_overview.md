@@ -6,10 +6,10 @@ historical_verification_gap_waiver: true
 historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 status: completed
 complexity: M
-created: '2026-04-25'
-last_updated: '2026-05-06'
-progress: '100% (7 of 7 tasks completed — roadmap list/show/new/audit/docs/pll shipped)'
-completed_at: '2026-05-06'
+created: "2026-04-25"
+last_updated: "2026-05-06"
+progress: "100% (7 of 7 tasks completed — roadmap list/show/new/audit/docs/pll shipped)"
+completed_at: "2026-05-06"
 depends_on: []
 tags:
   - agent-kit
@@ -17,16 +17,16 @@ tags:
   - blueprint-hierarchy
   - dx
   - pll
-parent_roadmap: 'cross-repo: webpresso/monorepo → webpresso/blueprints/completed/webpresso-public-extraction-roadmap'
+parent_roadmap: "cross-repo: webpresso/monorepo → webpresso/blueprints/completed/webpresso-public-extraction-roadmap"
 ---
 
 # Promote Parent Roadmaps to First-Class
+
 ## Product wedge anchor
 
 - **Stage outcome:** the completed Promote Parent Roadmaps to First-Class work remains truthfully represented in the blueprint lifecycle and continues to describe the shipped outcome of this lane.
 - **Consuming surface:** the repo-local agent-kit surfaces and docs touched by this completed lane.
 - **New user-visible capability:** none new in this cleanup pass; the capability shipped already, and this blueprint now stays structurally valid as a completed record.
-
 
 **Goal:** Stop hiding `type: parent-roadmap` blueprints from `wp blueprint list`. Make the parent → child → `/pll` lane dispatch chain explicit and audited, so a single `wp blueprint list` invocation gives both strategic context (which roadmaps are active) and tactical options (which child lanes are pickable).
 
@@ -294,12 +294,12 @@ Update docs/help and run the end-to-end gates.
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort |
-| --- | --- | --- | --- | --- |
-| Wave 0 | 1.1 | None | no | M |
-| Wave 1 | 1.2, 2.1, 2.2 | Task 1.1 | yes | S-M |
-| Wave 2 | 3.1, 4.1 | Tasks 1.2/2.1 | yes | S-M |
-| Wave 3 | 4.2 | Tasks 2.2, 3.1, 4.1 | no | S |
+| Wave   | Tasks         | Dependencies        | Parallelizable | Effort |
+| ------ | ------------- | ------------------- | -------------- | ------ |
+| Wave 0 | 1.1           | None                | no             | M      |
+| Wave 1 | 1.2, 2.1, 2.2 | Task 1.1            | yes            | S-M    |
+| Wave 2 | 3.1, 4.1      | Tasks 1.2/2.1       | yes            | S-M    |
+| Wave 3 | 4.2           | Tasks 2.2, 3.1, 4.1 | no             | S      |
 
 Critical path: 1.1 → 1.2/2.1 → 3.1 → 4.2.
 
@@ -322,21 +322,21 @@ Critical path: 1.1 → 1.2/2.1 → 3.1 → 4.2.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/promote-parent-roadmaps/_overview.md |
+| ID  | Claim                                                          | Evidence                                                        |
+| --- | -------------------------------------------------------------- | --------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/promote-parent-roadmaps/\_overview.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

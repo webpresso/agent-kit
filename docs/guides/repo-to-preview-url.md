@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-06-19'
+last_updated: "2026-06-19"
 ---
 
 # Repo checkout to preview URL
@@ -44,6 +44,7 @@ wp preview --json
 ```
 
 Expected outcome:
+
 - either a live preview URL
 - or a structured JSON report with problem, cause, fix, docs URL, and redacted
   evidence

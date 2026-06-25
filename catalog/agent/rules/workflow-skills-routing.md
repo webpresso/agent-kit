@@ -5,8 +5,8 @@ title: Webpresso workflow and browser skills
 applies_to:
   - agents
   - humans
-created: '2026-05-11'
-last_reviewed: '2026-06-23'
+created: "2026-05-11"
+last_reviewed: "2026-06-23"
 ---
 
 # Webpresso workflow and browser skills

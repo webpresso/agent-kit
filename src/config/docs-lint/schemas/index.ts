@@ -1,32 +1,38 @@
-import type { ZodSchema } from 'zod'
+import type { ZodSchema } from "zod";
 
-import { baseFrontmatter } from './common.js'
-import { decisionFrontmatter } from './decision.js'
-import { implementationPlanFrontmatter, implementationPlanSections } from './implementation-plan.js'
+import { baseFrontmatter } from "./common.js";
+import { decisionFrontmatter } from "./decision.js";
+import {
+  implementationPlanFrontmatter,
+  implementationPlanSections,
+} from "./implementation-plan.js";
 
-export { baseFrontmatter } from './common.js'
-export { decisionFrontmatter } from './decision.js'
-export { implementationPlanFrontmatter, implementationPlanSections } from './implementation-plan.js'
+export { baseFrontmatter } from "./common.js";
+export { decisionFrontmatter } from "./decision.js";
+export {
+  implementationPlanFrontmatter,
+  implementationPlanSections,
+} from "./implementation-plan.js";
 
-const BLUEPRINTS_ROOT = 'webpresso/blueprints'
+const BLUEPRINTS_ROOT = "webpresso/blueprints";
 
-export type DocType = 'guide' | 'system' | 'research' | 'blueprint' | 'decision' | 'unknown'
+export type DocType = "guide" | "system" | "research" | "blueprint" | "decision" | "unknown";
 
 export interface DocTypeConfig {
-  type: DocType
-  pathPatterns: RegExp[]
-  schema: ZodSchema
-  requiredSections?: string[]
+  type: DocType;
+  pathPatterns: RegExp[];
+  schema: ZodSchema;
+  requiredSections?: string[];
 }
 
 export interface ValidationError {
-  file: string
-  line?: number
-  column?: number
-  severity: 'error' | 'warning'
-  source: 'schema' | 'markdownlint' | 'vale' | 'structure' | 'context-limits' | 'blueprint-format'
-  message: string
-  ruleId?: string
+  file: string;
+  line?: number;
+  column?: number;
+  severity: "error" | "warning";
+  source: "schema" | "markdownlint" | "vale" | "structure" | "context-limits" | "blueprint-format";
+  message: string;
+  ruleId?: string;
 }
 
 /**
@@ -41,7 +47,7 @@ export const schemaRegistry: Record<DocType, ZodSchema> = {
   blueprint: implementationPlanFrontmatter,
   decision: decisionFrontmatter,
   unknown: baseFrontmatter,
-}
+};
 
 /**
  * Configuration for each doc type including path patterns and required sections.
@@ -49,13 +55,13 @@ export const schemaRegistry: Record<DocType, ZodSchema> = {
  */
 export const docTypeConfigs: DocTypeConfig[] = [
   {
-    type: 'blueprint',
+    type: "blueprint",
     pathPatterns: [new RegExp(`^${BLUEPRINTS_ROOT}/`)],
     schema: implementationPlanFrontmatter,
     requiredSections: [...implementationPlanSections],
   },
   {
-    type: 'decision',
+    type: "decision",
     pathPatterns: [
       /^docs\/architecture\/decisions\//,
       /^docs\/decisions\//,
@@ -64,17 +70,17 @@ export const docTypeConfigs: DocTypeConfig[] = [
     schema: decisionFrontmatter,
   },
   {
-    type: 'system',
+    type: "system",
     pathPatterns: [/^docs\/system\//],
     schema: baseFrontmatter,
   },
   {
-    type: 'research',
+    type: "research",
     pathPatterns: [/^docs\/research\//],
     schema: baseFrontmatter,
   },
   {
-    type: 'guide',
+    type: "guide",
     pathPatterns: [
       /^docs\//,
       /^\.agent\/rules\/agent-guide\.md$/,
@@ -86,22 +92,22 @@ export const docTypeConfigs: DocTypeConfig[] = [
     ],
     schema: baseFrontmatter,
   },
-]
+];
 
 /**
  * Normalize a type value to a valid DocType.
  * Returns 'unknown' for unrecognized values.
  */
 export function normalizeDocType(typeValue: string | undefined): DocType {
-  if (!typeValue) return 'unknown'
+  if (!typeValue) return "unknown";
 
   // Check if it's already a valid DocType
-  const validTypes: DocType[] = ['guide', 'system', 'research', 'blueprint', 'decision', 'unknown']
+  const validTypes: DocType[] = ["guide", "system", "research", "blueprint", "decision", "unknown"];
   if (validTypes.includes(typeValue as DocType)) {
-    return typeValue as DocType
+    return typeValue as DocType;
   }
 
-  return 'unknown'
+  return "unknown";
 }
 
 /**
@@ -110,17 +116,17 @@ export function normalizeDocType(typeValue: string | undefined): DocType {
  */
 export function detectDocType(filePath: string): DocType {
   // Normalize path separators
-  const normalizedPath = filePath.replace(/\\/g, '/')
+  const normalizedPath = filePath.replace(/\\/g, "/");
 
   for (const config of docTypeConfigs) {
     for (const pattern of config.pathPatterns) {
       if (pattern.test(normalizedPath)) {
-        return config.type
+        return config.type;
       }
     }
   }
 
-  return 'unknown'
+  return "unknown";
 }
 
 /**
@@ -128,12 +134,12 @@ export function detectDocType(filePath: string): DocType {
  * Falls back to baseFrontmatter for unknown types.
  */
 export function getSchema(docType: DocType): ZodSchema {
-  return schemaRegistry[docType] ?? baseFrontmatter
+  return schemaRegistry[docType] ?? baseFrontmatter;
 }
 
 /**
  * Get the config for a doc type.
  */
 export function getConfig(docType: DocType): DocTypeConfig | undefined {
-  return docTypeConfigs.find((c) => c.type === docType)
+  return docTypeConfigs.find((c) => c.type === docType);
 }

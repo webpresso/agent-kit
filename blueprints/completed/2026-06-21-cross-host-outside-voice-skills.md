@@ -4,9 +4,9 @@ title: Cross-host outside-voice skills for Codex, Claude, and OpenCode Go
 owner: ozby
 status: completed
 complexity: M
-created: '2026-06-21'
-last_updated: '2026-06-21'
-progress: '100% (implemented; focused verification passed)'
+created: "2026-06-21"
+last_updated: "2026-06-21"
+progress: "100% (implemented; focused verification passed)"
 depends_on:
   - blueprints/completed/2026-06-19-webpresso-gstack-package.md
 cross_repo_depends_on: []
@@ -17,8 +17,8 @@ tags:
   - opencode
   - gstack
   - package-surface
-worktree_owner_id: ''
-worktree_owner_branch: ''
+worktree_owner_id: ""
+worktree_owner_branch: ""
 ---
 
 # Cross-host outside-voice skills for Codex, Claude, and OpenCode Go
@@ -87,21 +87,21 @@ Official OpenCode sources checked on 2026-06-21:
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-21-cross-host-outside-voice-skills.md |
+| ID  | Claim                                                          | Evidence                                                                |
+| --- | -------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-21-cross-host-outside-voice-skills.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

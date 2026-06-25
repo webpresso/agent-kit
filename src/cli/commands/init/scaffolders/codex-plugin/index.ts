@@ -1,11 +1,11 @@
-import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
-import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
-import type { MergeOptions } from '#cli/commands/init/merge'
-import { isPackageLifecycleEnvironment } from '#cli/auto-update/skip.js'
-import { commandExists as defaultCommandExists } from '#runtime/command-exists.js'
+import type { MergeOptions } from "#cli/commands/init/merge";
+import { isPackageLifecycleEnvironment } from "#cli/auto-update/skip.js";
+import { commandExists as defaultCommandExists } from "#runtime/command-exists.js";
 
 /**
  * Codex consumes agent-kit skills through its native plugin system (verified
@@ -24,57 +24,57 @@ import { commandExists as defaultCommandExists } from '#runtime/command-exists.j
  * dir only needs to exist at setup time; we keep it at a stable cache path so
  * re-runs are idempotent.
  */
-export const CODEX_MARKETPLACE_NAME = 'webpresso'
-export const CODEX_PLUGIN_ID = `agent-kit@${CODEX_MARKETPLACE_NAME}`
+export const CODEX_MARKETPLACE_NAME = "webpresso";
+export const CODEX_PLUGIN_ID = `agent-kit@${CODEX_MARKETPLACE_NAME}`;
 
 export interface EnsureCodexPluginInput {
-  options: MergeOptions
-  packageRoot: string
+  options: MergeOptions;
+  packageRoot: string;
   /** Stable dir where the staging marketplace is built. Defaults to a cache path. */
-  stagingRoot?: string
-  configPath?: string
-  env?: NodeJS.ProcessEnv
-  commandExists?: (command: string) => boolean
+  stagingRoot?: string;
+  configPath?: string;
+  env?: NodeJS.ProcessEnv;
+  commandExists?: (command: string) => boolean;
   runCommand?: (
     command: string,
     args: readonly string[],
     options?: { timeoutMs?: number },
-  ) => CodexCommandResult
+  ) => CodexCommandResult;
 }
 
 interface CodexCommandResult {
-  exitCode: number
-  timedOut?: boolean
-  stdout?: string
-  stderr?: string
+  exitCode: number;
+  timedOut?: boolean;
+  stdout?: string;
+  stderr?: string;
 }
 
 export type EnsureCodexPluginResult =
-  | { kind: 'codex-plugin-installed'; packageRoot: string; pluginId: string; stagingRoot: string }
-  | { kind: 'codex-plugin-skipped-dry-run'; packageRoot: string }
-  | { kind: 'codex-plugin-skipped-opt-out'; packageRoot: string }
-  | { kind: 'codex-plugin-skipped-package-lifecycle'; packageRoot: string }
-  | { kind: 'codex-plugin-skipped-no-cli'; packageRoot: string }
-  | { kind: 'codex-plugin-unavailable'; packageRoot: string }
+  | { kind: "codex-plugin-installed"; packageRoot: string; pluginId: string; stagingRoot: string }
+  | { kind: "codex-plugin-skipped-dry-run"; packageRoot: string }
+  | { kind: "codex-plugin-skipped-opt-out"; packageRoot: string }
+  | { kind: "codex-plugin-skipped-package-lifecycle"; packageRoot: string }
+  | { kind: "codex-plugin-skipped-no-cli"; packageRoot: string }
+  | { kind: "codex-plugin-unavailable"; packageRoot: string }
   | {
-      kind: 'codex-plugin-timed-out'
-      packageRoot: string
-      pluginId: string
-      stagingRoot: string
-      step: 'plugin-add'
-      timeoutMs: number
+      kind: "codex-plugin-timed-out";
+      packageRoot: string;
+      pluginId: string;
+      stagingRoot: string;
+      step: "plugin-add";
+      timeoutMs: number;
     }
   | {
-      kind: 'codex-plugin-failed'
-      packageRoot: string
-      pluginId: string
-      stagingRoot: string
-      step: 'marketplace-add' | 'plugin-add'
-      exitCode: number
-    }
+      kind: "codex-plugin-failed";
+      packageRoot: string;
+      pluginId: string;
+      stagingRoot: string;
+      step: "marketplace-add" | "plugin-add";
+      exitCode: number;
+    };
 
-const CODEX_PLUGIN_ADD_TIMEOUT_MS = 8_000
-const CODEX_PLUGIN_LIST_TIMEOUT_MS = 2_000
+const CODEX_PLUGIN_ADD_TIMEOUT_MS = 8_000;
+const CODEX_PLUGIN_LIST_TIMEOUT_MS = 2_000;
 
 function defaultRunCommand(
   command: string,
@@ -82,28 +82,28 @@ function defaultRunCommand(
   options: { timeoutMs?: number } = {},
 ): CodexCommandResult {
   const result = spawnSync(command, [...args], {
-    stdio: 'pipe',
-    encoding: 'utf8',
+    stdio: "pipe",
+    encoding: "utf8",
     env: process.env,
     timeout: options.timeoutMs,
-  })
+  });
 
   if (result.error) {
-    if ('code' in result.error && result.error.code === 'ETIMEDOUT') {
+    if ("code" in result.error && result.error.code === "ETIMEDOUT") {
       return {
         exitCode: result.status ?? 124,
         timedOut: true,
-        stdout: result.stdout ?? '',
-        stderr: result.stderr ?? '',
-      }
+        stdout: result.stdout ?? "",
+        stderr: result.stderr ?? "",
+      };
     }
-    throw result.error
+    throw result.error;
   }
-  return { exitCode: result.status ?? 1, stdout: result.stdout ?? '', stderr: result.stderr ?? '' }
+  return { exitCode: result.status ?? 1, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
 }
 
 function defaultStagingRoot(): string {
-  return join(homedir(), '.webpresso', 'cache', 'agent-kit', 'codex-marketplace')
+  return join(homedir(), ".webpresso", "cache", "agent-kit", "codex-marketplace");
 }
 
 /**
@@ -111,43 +111,43 @@ function defaultStagingRoot(): string {
  * the real package plus a Codex-native `.agents/plugins/marketplace.json`.
  */
 export function buildCodexStagingMarketplace(stagingRoot: string, packageRoot: string): void {
-  const pluginsDir = join(stagingRoot, 'plugins')
-  const marketplaceDir = join(stagingRoot, '.agents', 'plugins')
-  mkdirSync(pluginsDir, { recursive: true })
-  mkdirSync(marketplaceDir, { recursive: true })
+  const pluginsDir = join(stagingRoot, "plugins");
+  const marketplaceDir = join(stagingRoot, ".agents", "plugins");
+  mkdirSync(pluginsDir, { recursive: true });
+  mkdirSync(marketplaceDir, { recursive: true });
 
-  const link = join(pluginsDir, 'agent-kit')
-  rmSync(link, { force: true })
-  symlinkSync(packageRoot, link, 'dir')
+  const link = join(pluginsDir, "agent-kit");
+  rmSync(link, { force: true });
+  symlinkSync(packageRoot, link, "dir");
 
   const marketplace = {
     name: CODEX_MARKETPLACE_NAME,
-    interface: { displayName: 'Webpresso' },
+    interface: { displayName: "Webpresso" },
     plugins: [
       {
-        name: 'agent-kit',
-        source: { source: 'local', path: './plugins/agent-kit' },
-        policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL' },
+        name: "agent-kit",
+        source: { source: "local", path: "./plugins/agent-kit" },
+        policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
         description:
-          'Webpresso agent-kit: blueprints, skills, lore commit protocol, tech-debt lifecycle',
-        category: 'Productivity',
+          "Webpresso agent-kit: blueprints, skills, lore commit protocol, tech-debt lifecycle",
+        category: "Productivity",
       },
     ],
-  }
+  };
   writeFileSync(
-    join(marketplaceDir, 'marketplace.json'),
-    JSON.stringify(marketplace, null, 2) + '\n',
-  )
+    join(marketplaceDir, "marketplace.json"),
+    JSON.stringify(marketplace, null, 2) + "\n",
+  );
 }
 
 function readExpectedPluginVersion(pluginManifestPath: string): string | undefined {
   try {
-    const manifest = JSON.parse(readFileSync(pluginManifestPath, 'utf8')) as { version?: unknown }
-    return typeof manifest.version === 'string' && manifest.version.length > 0
+    const manifest = JSON.parse(readFileSync(pluginManifestPath, "utf8")) as { version?: unknown };
+    return typeof manifest.version === "string" && manifest.version.length > 0
       ? manifest.version
-      : undefined
+      : undefined;
   } catch {
-    return undefined
+    return undefined;
   }
 }
 
@@ -155,17 +155,17 @@ function outputConfirmsExpectedPluginInstalled(
   stdout: string | undefined,
   expectedVersion: string | undefined,
 ): boolean {
-  if (expectedVersion === undefined) return false
-  if (!stdout) return false
+  if (expectedVersion === undefined) return false;
+  if (!stdout) return false;
   try {
     const parsed = JSON.parse(stdout) as {
       installed?: Array<{
-        pluginId?: unknown
-        installed?: unknown
-        enabled?: unknown
-        version?: unknown
-      }>
-    }
+        pluginId?: unknown;
+        installed?: unknown;
+        enabled?: unknown;
+        version?: unknown;
+      }>;
+    };
     return (
       parsed.installed?.some(
         (plugin) =>
@@ -174,130 +174,130 @@ function outputConfirmsExpectedPluginInstalled(
           plugin.enabled === true &&
           plugin.version === expectedVersion,
       ) === true
-    )
+    );
   } catch {
-    return false
+    return false;
   }
 }
 
 function expectedPluginIsInstalled(
-  runCommand: EnsureCodexPluginInput['runCommand'],
+  runCommand: EnsureCodexPluginInput["runCommand"],
   expectedVersion: string | undefined,
 ): boolean {
   const listResult = runCommand?.(
-    'codex',
-    ['plugin', 'list', '--marketplace', CODEX_MARKETPLACE_NAME, '--json'],
+    "codex",
+    ["plugin", "list", "--marketplace", CODEX_MARKETPLACE_NAME, "--json"],
     { timeoutMs: CODEX_PLUGIN_LIST_TIMEOUT_MS },
-  )
+  );
   return (
     listResult?.exitCode === 0 &&
     listResult.timedOut !== true &&
     outputConfirmsExpectedPluginInstalled(listResult.stdout, expectedVersion)
-  )
+  );
 }
 
 export function ensureCodexUserPlugin(input: EnsureCodexPluginInput): EnsureCodexPluginResult {
-  const packageRoot = input.packageRoot
-  const pluginManifestPath = join(packageRoot, '.codex-plugin', 'plugin.json')
+  const packageRoot = input.packageRoot;
+  const pluginManifestPath = join(packageRoot, ".codex-plugin", "plugin.json");
   if (!existsSync(pluginManifestPath)) {
-    return { kind: 'codex-plugin-unavailable', packageRoot }
+    return { kind: "codex-plugin-unavailable", packageRoot };
   }
 
   if (input.options.dryRun) {
-    return { kind: 'codex-plugin-skipped-dry-run', packageRoot }
+    return { kind: "codex-plugin-skipped-dry-run", packageRoot };
   }
 
-  const env = input.env ?? process.env
+  const env = input.env ?? process.env;
   if (isPackageLifecycleEnvironment(env)) {
-    return { kind: 'codex-plugin-skipped-package-lifecycle', packageRoot }
+    return { kind: "codex-plugin-skipped-package-lifecycle", packageRoot };
   }
 
-  if (env.WP_SKIP_CODEX_PLUGIN === '1') {
-    return { kind: 'codex-plugin-skipped-opt-out', packageRoot }
+  if (env.WP_SKIP_CODEX_PLUGIN === "1") {
+    return { kind: "codex-plugin-skipped-opt-out", packageRoot };
   }
 
-  const commandExists = input.commandExists ?? defaultCommandExists
-  if (!commandExists('codex')) {
-    return { kind: 'codex-plugin-skipped-no-cli', packageRoot }
+  const commandExists = input.commandExists ?? defaultCommandExists;
+  if (!commandExists("codex")) {
+    return { kind: "codex-plugin-skipped-no-cli", packageRoot };
   }
 
-  const stagingRoot = input.stagingRoot ?? defaultStagingRoot()
-  buildCodexStagingMarketplace(stagingRoot, packageRoot)
-  const expectedVersion = readExpectedPluginVersion(pluginManifestPath)
+  const stagingRoot = input.stagingRoot ?? defaultStagingRoot();
+  buildCodexStagingMarketplace(stagingRoot, packageRoot);
+  const expectedVersion = readExpectedPluginVersion(pluginManifestPath);
 
-  const runCommand = input.runCommand ?? defaultRunCommand
+  const runCommand = input.runCommand ?? defaultRunCommand;
   // Best-effort: drop any stale `webpresso` marketplace (e.g. an earlier
   // registration that pointed at the package root) so the staging dir is used.
-  runCommand('codex', ['plugin', 'marketplace', 'remove', CODEX_MARKETPLACE_NAME, '--json'])
+  runCommand("codex", ["plugin", "marketplace", "remove", CODEX_MARKETPLACE_NAME, "--json"]);
 
   const steps = [
     {
-      step: 'marketplace-add' as const,
-      args: ['plugin', 'marketplace', 'add', stagingRoot, '--json'],
+      step: "marketplace-add" as const,
+      args: ["plugin", "marketplace", "add", stagingRoot, "--json"],
     },
-  ]
+  ];
 
   for (const { step, args } of steps) {
-    const { exitCode } = runCommand('codex', args)
+    const { exitCode } = runCommand("codex", args);
     if (exitCode !== 0) {
       return {
-        kind: 'codex-plugin-failed',
+        kind: "codex-plugin-failed",
         packageRoot,
         pluginId: CODEX_PLUGIN_ID,
         stagingRoot,
         step,
         exitCode,
-      }
+      };
     }
   }
 
   if (expectedPluginIsInstalled(runCommand, expectedVersion)) {
     return {
-      kind: 'codex-plugin-installed',
+      kind: "codex-plugin-installed",
       packageRoot,
       pluginId: CODEX_PLUGIN_ID,
       stagingRoot,
-    }
+    };
   }
 
   const pluginAdd = runCommand(
-    'codex',
-    ['plugin', 'add', 'agent-kit', '--marketplace', CODEX_MARKETPLACE_NAME, '--json'],
+    "codex",
+    ["plugin", "add", "agent-kit", "--marketplace", CODEX_MARKETPLACE_NAME, "--json"],
     { timeoutMs: CODEX_PLUGIN_ADD_TIMEOUT_MS },
-  )
+  );
   if (pluginAdd.timedOut) {
     if (expectedPluginIsInstalled(runCommand, expectedVersion)) {
       return {
-        kind: 'codex-plugin-installed',
+        kind: "codex-plugin-installed",
         packageRoot,
         pluginId: CODEX_PLUGIN_ID,
         stagingRoot,
-      }
+      };
     }
     return {
-      kind: 'codex-plugin-timed-out',
+      kind: "codex-plugin-timed-out",
       packageRoot,
       pluginId: CODEX_PLUGIN_ID,
       stagingRoot,
-      step: 'plugin-add',
+      step: "plugin-add",
       timeoutMs: CODEX_PLUGIN_ADD_TIMEOUT_MS,
-    }
+    };
   }
   if (pluginAdd.exitCode !== 0) {
     return {
-      kind: 'codex-plugin-failed',
+      kind: "codex-plugin-failed",
       packageRoot,
       pluginId: CODEX_PLUGIN_ID,
       stagingRoot,
-      step: 'plugin-add',
+      step: "plugin-add",
       exitCode: pluginAdd.exitCode,
-    }
+    };
   }
 
   return {
-    kind: 'codex-plugin-installed',
+    kind: "codex-plugin-installed",
     packageRoot,
     pluginId: CODEX_PLUGIN_ID,
     stagingRoot,
-  }
+  };
 }

@@ -3,9 +3,7 @@
   "additionalProperties": false,
   "definitions": {
     "BlockDecisionWire": {
-      "enum": [
-        "block"
-      ],
+      "enum": ["block"],
       "type": "string"
     },
     "UserPromptSubmitHookSpecificOutputWire": {
@@ -20,9 +18,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "hookEventName"
-      ],
+      "required": ["hookEventName"],
       "type": "object"
     }
   },

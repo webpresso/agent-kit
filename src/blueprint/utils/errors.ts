@@ -7,21 +7,21 @@
  * Includes structured data for fuzzy matching and helpful error messages.
  */
 export class BlueprintNotFoundError extends Error {
-  public readonly searchedPath: string
-  public readonly availableSlugs: readonly string[]
-  public readonly requestedSlug: string
+  public readonly searchedPath: string;
+  public readonly availableSlugs: readonly string[];
+  public readonly requestedSlug: string;
 
   constructor(slug: string, searchedPath: string, availableSlugs: readonly string[]) {
-    const message = buildPlanNotFoundMessage(slug, searchedPath, availableSlugs)
-    super(message)
-    this.name = 'BlueprintNotFoundError'
-    this.requestedSlug = slug
-    this.searchedPath = searchedPath
-    this.availableSlugs = availableSlugs
+    const message = buildPlanNotFoundMessage(slug, searchedPath, availableSlugs);
+    super(message);
+    this.name = "BlueprintNotFoundError";
+    this.requestedSlug = slug;
+    this.searchedPath = searchedPath;
+    this.availableSlugs = availableSlugs;
 
     // Maintains proper stack trace for where our error was thrown (V8 only)
     if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, BlueprintNotFoundError)
+      Error.captureStackTrace(this, BlueprintNotFoundError);
     }
   }
 }
@@ -34,16 +34,16 @@ function buildErrorParts(
   searchedPath: string,
   availableSlugs: readonly string[],
 ): string[] {
-  const parts = [`Plan ${slug} not found.`, `Searched: ${searchedPath}`]
+  const parts = [`Plan ${slug} not found.`, `Searched: ${searchedPath}`];
 
   if (!availableSlugs.length) {
-    parts.push('No plans available.')
-    return parts
+    parts.push("No plans available.");
+    return parts;
   }
 
-  parts.push(`Available plans: ${availableSlugs.join(', ')}`)
+  parts.push(`Available plans: ${availableSlugs.join(", ")}`);
 
-  return parts
+  return parts;
 }
 
 /**
@@ -55,5 +55,5 @@ function buildPlanNotFoundMessage(
   searchedPath: string,
   availableSlugs: readonly string[],
 ): string {
-  return buildErrorParts(slug, searchedPath, availableSlugs).join('\n')
+  return buildErrorParts(slug, searchedPath, availableSlugs).join("\n");
 }

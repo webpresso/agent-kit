@@ -4,9 +4,9 @@ title: "typecheck --affected via reverse-dependency import-graph closure"
 owner: ozby
 status: planned
 complexity: L
-created: '2026-06-22'
-last_updated: '2026-06-22'
-progress: '0% (planned; split out of the file-based --affected blueprint during /codex review)'
+created: "2026-06-22"
+last_updated: "2026-06-22"
+progress: "0% (planned; split out of the file-based --affected blueprint during /codex review)"
 depends_on:
   - 2026-06-22-affected-flag-across-quality-commands
 cross_repo_depends_on: []
@@ -33,8 +33,8 @@ Split out during the `/codex` outside-voice review of the parent blueprint. It i
 a different class of work from the file-based commands:
 
 - **A naive `tsc <changed files>` is unsound.** `tsc` loads the changed files and
-  *their imports* (downstream) but **not their importers** (upstream). A
-  shared-type change in `a.ts` that breaks an *unchanged* `b.ts` (which imports
+  _their imports_ (downstream) but **not their importers** (upstream). A
+  shared-type change in `a.ts` that breaks an _unchanged_ `b.ts` (which imports
   `a`) reports a **false green** — the one failure mode a typechecker must never
   have. (Parent finding F4/F5.)
 - **Package-scoping doesn't narrow anything here.** `pnpm-workspace.yaml` is
@@ -106,7 +106,7 @@ reverse-dependency `--affected` closure:
 
 - [ ] `wp typecheck --affected [--branch]` wired; `--branch` alone errors.
 - [ ] **Soundness guard test:** a shared-type change in `a.ts` that breaks an
-      *unchanged* `b.ts` importing it IS caught by `--affected` (no false green).
+      _unchanged_ `b.ts` importing it IS caught by `--affected` (no false green).
 - [ ] Closure respects `#` subpath + tsconfig path mapping (aliased importers
       included), proven by test.
 - [ ] Degraded / can't-narrow → whole-repo `tsc --noEmit` + notice, never skip.
@@ -138,21 +138,21 @@ reverse-dependency `--affected` closure:
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/planned/2026-06-22-affected-flag-typecheck-followup.md |
+| ID  | Claim                                                          | Evidence                                                               |
+| --- | -------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/planned/2026-06-22-affected-flag-typecheck-followup.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

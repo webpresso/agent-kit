@@ -1,17 +1,17 @@
-import { getPackageShortName, type ResolvedTarget } from './target-resolver.js'
+import { getPackageShortName, type ResolvedTarget } from "./target-resolver.js";
 
-import { join } from 'node:path'
+import { join } from "node:path";
 
 export interface GenerateLogPathOptions {
-  context?: string
-  logsDir?: string
-  includeDateFolder?: boolean
-  now?: Date
+  context?: string;
+  logsDir?: string;
+  includeDateFolder?: boolean;
+  now?: Date;
 }
 
 export interface ExtractLogContextOptions {
-  packageContext?: (filters: string[]) => string | undefined
-  fileContext?: (files: string[]) => string | undefined
+  packageContext?: (filters: string[]) => string | undefined;
+  fileContext?: (files: string[]) => string | undefined;
 }
 
 /**
@@ -31,48 +31,48 @@ export interface ExtractLogContextOptions {
  * @returns Relative path to log file (e.g., "logs/12-02-2026/14-23-45_test.log")
  */
 export function generateLogPath(
-  command: 'test' | 'lint' | 'typecheck' | 'qa' | 'build',
+  command: "test" | "lint" | "typecheck" | "qa" | "build",
   options: GenerateLogPathOptions = {},
 ): string {
-  const { context, logsDir = 'logs', includeDateFolder = true, now = new Date() } = options
+  const { context, logsDir = "logs", includeDateFolder = true, now = new Date() } = options;
 
   // Date folder: DD-MM-YYYY
   const dateFolder = [
-    String(now.getDate()).padStart(2, '0'),
-    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, "0"),
+    String(now.getMonth() + 1).padStart(2, "0"),
     now.getFullYear(),
-  ].join('-')
+  ].join("-");
 
   // Time prefix: HH-MM-SS
   const timePrefix = [
-    String(now.getHours()).padStart(2, '0'),
-    String(now.getMinutes()).padStart(2, '0'),
-    String(now.getSeconds()).padStart(2, '0'),
-  ].join('-')
+    String(now.getHours()).padStart(2, "0"),
+    String(now.getMinutes()).padStart(2, "0"),
+    String(now.getSeconds()).padStart(2, "0"),
+  ].join("-");
 
   // Filename: HH-MM-SS_command[-context].log
-  const contextSuffix = context ? `-${context}` : ''
-  const filename = `${timePrefix}_${command}${contextSuffix}.log`
+  const contextSuffix = context ? `-${context}` : "";
+  const filename = `${timePrefix}_${command}${contextSuffix}.log`;
 
-  return includeDateFolder ? join(logsDir, dateFolder, filename) : join(logsDir, filename)
+  return includeDateFolder ? join(logsDir, dateFolder, filename) : join(logsDir, filename);
 }
 
 export function extractPackageLogContext(filter: string): string | undefined {
-  const packageName = filter.replace(/^--filter=/, '').trim()
+  const packageName = filter.replace(/^--filter=/, "").trim();
 
   if (!packageName) {
-    return undefined
+    return undefined;
   }
 
-  return getPackageShortName(packageName)
+  return getPackageShortName(packageName);
 }
 
 export function defaultPackageLogContext(filters: string[]): string | undefined {
   const packages = filters
     .map((filter) => extractPackageLogContext(filter))
-    .filter((value): value is string => Boolean(value))
+    .filter((value): value is string => Boolean(value));
 
-  return packages.length > 0 ? packages.join('-') : undefined
+  return packages.length > 0 ? packages.join("-") : undefined;
 }
 
 /**
@@ -92,15 +92,15 @@ export function extractLogContext(
   options: ExtractLogContextOptions = {},
 ): string | undefined {
   const { packageContext = defaultPackageLogContext, fileContext = () => String(Date.now()) } =
-    options
+    options;
 
-  if (resolved.type === 'package' && resolved.value.length > 0) {
-    return packageContext(resolved.value)
+  if (resolved.type === "package" && resolved.value.length > 0) {
+    return packageContext(resolved.value);
   }
 
-  if (resolved.type === 'file' && resolved.value.length > 0) {
-    return fileContext(resolved.value)
+  if (resolved.type === "file" && resolved.value.length > 0) {
+    return fileContext(resolved.value);
   }
 
-  return undefined
+  return undefined;
 }

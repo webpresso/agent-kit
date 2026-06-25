@@ -9,9 +9,9 @@
  */
 const noop = () => {
   // Intentionally empty - suppresses console output
-}
-global.console.error = noop
-global.console.warn = noop
-global.console.log = noop
+};
+global.console.error = noop;
+global.console.warn = noop;
+global.console.log = noop;
 
-export const __nodeSetupModule = true
+export const __nodeSetupModule = true;

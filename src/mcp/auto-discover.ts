@@ -11,22 +11,22 @@
  * `server.ts` required.
  */
 
-import { readdir } from 'node:fs/promises'
-import { extname, join } from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { z, type ZodType } from 'zod'
-import { zodToJsonSchema } from 'zod-to-json-schema'
+import { readdir } from "node:fs/promises";
+import { extname, join } from "node:path";
+import { pathToFileURL } from "node:url";
+import { z, type ZodType } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 export interface ContentBlock {
-  readonly type: string
-  readonly text?: string
-  readonly [key: string]: unknown
+  readonly type: string;
+  readonly text?: string;
+  readonly [key: string]: unknown;
 }
 
 export interface ToolHandlerResult {
-  readonly content: readonly ContentBlock[]
-  readonly structuredContent?: Record<string, unknown>
-  readonly isError?: boolean
+  readonly content: readonly ContentBlock[];
+  readonly structuredContent?: Record<string, unknown>;
+  readonly isError?: boolean;
 }
 
 /**
@@ -36,26 +36,26 @@ export interface ToolHandlerResult {
  * intentionally pessimistic.
  */
 export interface ToolAnnotations {
-  readonly title?: string
-  readonly readOnlyHint?: boolean
-  readonly destructiveHint?: boolean
-  readonly idempotentHint?: boolean
-  readonly openWorldHint?: boolean
+  readonly title?: string;
+  readonly readOnlyHint?: boolean;
+  readonly destructiveHint?: boolean;
+  readonly idempotentHint?: boolean;
+  readonly openWorldHint?: boolean;
 }
 
 export interface ToolHandlerExtra {
-  readonly signal?: AbortSignal
+  readonly signal?: AbortSignal;
 }
 
-export type ToolHandler = (input: unknown, extra?: ToolHandlerExtra) => Promise<ToolHandlerResult>
+export type ToolHandler = (input: unknown, extra?: ToolHandlerExtra) => Promise<ToolHandlerResult>;
 
 export interface ToolDescriptor {
-  readonly name: string
-  readonly description: string
-  readonly inputSchema: ZodType<unknown> | { _def: unknown; parse: (x: unknown) => unknown }
-  readonly outputSchema?: ZodType<unknown> | { _def: unknown; parse: (x: unknown) => unknown }
-  readonly handler: ToolHandler
-  readonly annotations?: ToolAnnotations
+  readonly name: string;
+  readonly description: string;
+  readonly inputSchema: ZodType<unknown> | { _def: unknown; parse: (x: unknown) => unknown };
+  readonly outputSchema?: ZodType<unknown> | { _def: unknown; parse: (x: unknown) => unknown };
+  readonly handler: ToolHandler;
+  readonly annotations?: ToolAnnotations;
 }
 
 /**
@@ -72,15 +72,15 @@ export interface ToolRegistrar {
     outputSchema: Record<string, unknown> | undefined,
     handler: ToolHandler,
     annotations?: ToolAnnotations,
-  ): void
+  ): void;
 }
 
 export function registerToolDescriptor(
   server: ToolRegistrar,
   descriptor: ToolDescriptor,
 ): ToolDescriptor {
-  const jsonSchema = toJsonSchema(descriptor.inputSchema)
-  const outputSchema = descriptor.outputSchema ? toJsonSchema(descriptor.outputSchema) : undefined
+  const jsonSchema = toJsonSchema(descriptor.inputSchema);
+  const outputSchema = descriptor.outputSchema ? toJsonSchema(descriptor.outputSchema) : undefined;
   server.registerTool(
     descriptor.name,
     descriptor.description,
@@ -88,36 +88,36 @@ export function registerToolDescriptor(
     outputSchema,
     descriptor.handler,
     descriptor.annotations,
-  )
-  return descriptor
+  );
+  return descriptor;
 }
 
 export function registerToolDescriptors(
   server: ToolRegistrar,
   descriptors: readonly ToolDescriptor[],
 ): ToolDescriptor[] {
-  return descriptors.map((descriptor) => registerToolDescriptor(server, descriptor))
+  return descriptors.map((descriptor) => registerToolDescriptor(server, descriptor));
 }
 
-const SKIP_SUFFIXES = ['.test.ts', '.test.js', '.integration.test.ts', '.integration.test.js']
-const SUPPORTED_EXTENSIONS = new Set(['.ts', '.js', '.mjs', '.cjs'])
+const SKIP_SUFFIXES = [".test.ts", ".test.js", ".integration.test.ts", ".integration.test.js"];
+const SUPPORTED_EXTENSIONS = new Set([".ts", ".js", ".mjs", ".cjs"]);
 
 function shouldSkip(file: string): boolean {
-  if (file.startsWith('_')) return true
-  if (file.endsWith('.d.ts') || file.endsWith('.d.ts.map')) return true
-  if (file.endsWith('.js.map') || file.endsWith('.ts.map')) return true
+  if (file.startsWith("_")) return true;
+  if (file.endsWith(".d.ts") || file.endsWith(".d.ts.map")) return true;
+  if (file.endsWith(".js.map") || file.endsWith(".ts.map")) return true;
   for (const suffix of SKIP_SUFFIXES) {
-    if (file.endsWith(suffix)) return true
+    if (file.endsWith(suffix)) return true;
   }
-  const ext = extname(file)
-  if (!SUPPORTED_EXTENSIONS.has(ext)) return true
-  return false
+  const ext = extname(file);
+  if (!SUPPORTED_EXTENSIONS.has(ext)) return true;
+  return false;
 }
 
-type ZodToJsonSchemaInput = Parameters<typeof zodToJsonSchema>[0]
+type ZodToJsonSchemaInput = Parameters<typeof zodToJsonSchema>[0];
 
 function isPlainObjectSchema(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === 'object' && Object.keys(value as object).length > 1
+  return Boolean(value) && typeof value === "object" && Object.keys(value as object).length > 1;
 }
 
 /**
@@ -138,67 +138,69 @@ function isPlainObjectSchema(value: unknown): value is Record<string, unknown> {
 // `bareShape: true` JSON Schema (no silent fallback), and neither input
 // reaches an exception-swallowing try/catch.
 function isZodV4Instance(schema: unknown): schema is ZodToJsonSchemaInput {
-  return Boolean(schema) && typeof schema === 'object' && '_zod' in (schema as object)
+  return Boolean(schema) && typeof schema === "object" && "_zod" in (schema as object);
 }
 
 function isBareShapeDuck(schema: unknown): boolean {
   return (
     Boolean(schema) &&
-    typeof schema === 'object' &&
-    '_def' in (schema as object) &&
-    'parse' in (schema as object)
-  )
+    typeof schema === "object" &&
+    "_def" in (schema as object) &&
+    "parse" in (schema as object)
+  );
 }
 
-function toJsonSchema(schema: ToolDescriptor['inputSchema']): Record<string, unknown> {
+function toJsonSchema(schema: ToolDescriptor["inputSchema"]): Record<string, unknown> {
   if (isZodV4Instance(schema)) {
     const ztoj = (z as unknown as { toJSONSchema?: (s: unknown) => Record<string, unknown> })
-      .toJSONSchema
-    if (typeof ztoj === 'function') {
-      const result = ztoj(schema)
-      if (isPlainObjectSchema(result)) return result
+      .toJSONSchema;
+    if (typeof ztoj === "function") {
+      const result = ztoj(schema);
+      if (isPlainObjectSchema(result)) return result;
     }
 
-    const v3Result = zodToJsonSchema(schema) as unknown
-    if (isPlainObjectSchema(v3Result)) return v3Result
+    const v3Result = zodToJsonSchema(schema) as unknown;
+    if (isPlainObjectSchema(v3Result)) return v3Result;
 
     throw new Error(
-      'Cannot derive JSON Schema from zod schema — ' +
-        'neither zod v4 toJSONSchema nor zod-to-json-schema produced a usable result',
-    )
+      "Cannot derive JSON Schema from zod schema — " +
+        "neither zod v4 toJSONSchema nor zod-to-json-schema produced a usable result",
+    );
   }
 
   if (isBareShapeDuck(schema)) {
-    return { type: 'object', bareShape: true }
+    return { type: "object", bareShape: true };
   }
 
-  throw new Error('Tool input schema is neither a zod schema nor a recognised bare shape')
+  throw new Error("Tool input schema is neither a zod schema nor a recognised bare shape");
 }
 
 export async function discoverTools(
   server: ToolRegistrar,
   toolsDir: string,
 ): Promise<ToolDescriptor[]> {
-  const entries = await readdir(toolsDir, { withFileTypes: true })
-  const loaded: ToolDescriptor[] = []
+  const entries = await readdir(toolsDir, { withFileTypes: true });
+  const loaded: ToolDescriptor[] = [];
 
   for (const entry of entries) {
-    if (!entry.isFile()) continue
-    if (shouldSkip(entry.name)) continue
+    if (!entry.isFile()) continue;
+    if (shouldSkip(entry.name)) continue;
 
-    const fullPath = join(toolsDir, entry.name)
-    const moduleUrl = pathToFileURL(fullPath).href
-    const mod = (await import(moduleUrl)) as { default?: ToolDescriptor }
-    const descriptor = mod.default
-    if (!descriptor || typeof descriptor !== 'object') {
-      throw new Error(`Tool file ${fullPath} has no default export`)
+    const fullPath = join(toolsDir, entry.name);
+    const moduleUrl = pathToFileURL(fullPath).href;
+    const mod = (await import(moduleUrl)) as { default?: ToolDescriptor };
+    const descriptor = mod.default;
+    if (!descriptor || typeof descriptor !== "object") {
+      throw new Error(`Tool file ${fullPath} has no default export`);
     }
-    if (typeof descriptor.name !== 'string' || typeof descriptor.handler !== 'function') {
-      throw new Error(`Tool file ${fullPath} default export is malformed (missing name or handler)`)
+    if (typeof descriptor.name !== "string" || typeof descriptor.handler !== "function") {
+      throw new Error(
+        `Tool file ${fullPath} default export is malformed (missing name or handler)`,
+      );
     }
 
-    loaded.push(descriptor)
+    loaded.push(descriptor);
   }
 
-  return registerToolDescriptors(server, loaded)
+  return registerToolDescriptors(server, loaded);
 }

@@ -1,9 +1,9 @@
-import { z } from 'zod'
+import { z } from "zod";
 
 // Five minutes is the explicit upper bound for MCP-mediated test runs: long
 // enough for a full workspace verification pass, but still finite so a stalled
 // test transport returns control with structured diagnostics.
-export const MCP_SAFE_TEST_BUDGET_MS = 300_000
+export const MCP_SAFE_TEST_BUDGET_MS = 300_000;
 
 export const workspaceShardingInputSchema = z
   .object({
@@ -14,17 +14,17 @@ export const workspaceShardingInputSchema = z
     concurrency: z.number().int().min(1).max(32).optional(),
     totalBudgetMs: z.number().int().min(1_000).max(MCP_SAFE_TEST_BUDGET_MS).optional(),
   })
-  .strict()
+  .strict();
 
 interface TestBudgetLike {
-  readonly timeoutMs?: number
+  readonly timeoutMs?: number;
   readonly workspaceSharding?: {
-    readonly totalBudgetMs?: number
-  }
+    readonly totalBudgetMs?: number;
+  };
 }
 
 export function refineTestBudgetContract(input: TestBudgetLike, ctx: z.RefinementCtx): void {
-  const totalBudgetMs = input.workspaceSharding?.totalBudgetMs
+  const totalBudgetMs = input.workspaceSharding?.totalBudgetMs;
   if (
     input.timeoutMs !== undefined &&
     totalBudgetMs !== undefined &&
@@ -32,8 +32,8 @@ export function refineTestBudgetContract(input: TestBudgetLike, ctx: z.Refinemen
   ) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      path: ['workspaceSharding', 'totalBudgetMs'],
-      message: 'workspaceSharding.totalBudgetMs must be less than or equal to timeoutMs',
-    })
+      path: ["workspaceSharding", "totalBudgetMs"],
+      message: "workspaceSharding.totalBudgetMs must be less than or equal to timeoutMs",
+    });
   }
 }

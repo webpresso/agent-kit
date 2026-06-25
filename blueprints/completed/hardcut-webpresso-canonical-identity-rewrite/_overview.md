@@ -2,14 +2,14 @@
 type: blueprint
 title: Hardcut webpresso canonical identity rewrite
 status: completed
-completed_at: '2026-05-25'
+completed_at: "2026-05-25"
 complexity: L
 owner: agent
 historical_verification_gap_waiver: true
 historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
-created: '2026-05-23'
-last_updated: '2026-05-25'
-progress: '100% (9/9 tasks done, 0 blocked, updated 2026-05-25)'
+created: "2026-05-23"
+last_updated: "2026-05-25"
+progress: "100% (9/9 tasks done, 0 blocked, updated 2026-05-25)"
 depends_on:
   - >-
     consolidate-all-webpresso-agent-sub-packages-into-webpresso-itself-with-subpath-exports-consumers-go-from-6-8-pinned-devdeps-down-to-one-webpresso
@@ -53,19 +53,19 @@ remain after completion.
 
 ## Identity surfaces matrix
 
-| Surface | Current value | Target value |
-| --- | --- | --- |
-| Product / brand | `webpresso` | `webpresso` |
-| Canonical npm package name | `@webpresso/agent-kit` | `webpresso` |
-| Legacy helper packages | `@webpresso/agent-*` | removed |
-| Claude marketplace package name | `agent-kit` | `webpresso` |
-| Claude plugin manifest package name | `webpresso-agent-kit` | `webpresso` |
-| Claude plugin install ID | `agent-kit@agent-kit` | `webpresso@webpresso` |
-| Claude MCP server ID | `agent-kit` | `webpresso` |
-| Skill namespace | `/webpresso-agent-kit:*` | `/webpresso:*` |
-| State-root app key | `webpresso-agent-kit` | `webpresso` |
-| GitHub repository slug | `webpresso/agent-kit` | `webpresso/webpresso` |
-| Release model | GitHub Packages + staged npm alias | direct npmjs publish from root package |
+| Surface                             | Current value                      | Target value                           |
+| ----------------------------------- | ---------------------------------- | -------------------------------------- |
+| Product / brand                     | `webpresso`                        | `webpresso`                            |
+| Canonical npm package name          | `@webpresso/agent-kit`             | `webpresso`                            |
+| Legacy helper packages              | `@webpresso/agent-*`               | removed                                |
+| Claude marketplace package name     | `agent-kit`                        | `webpresso`                            |
+| Claude plugin manifest package name | `webpresso-agent-kit`              | `webpresso`                            |
+| Claude plugin install ID            | `agent-kit@agent-kit`              | `webpresso@webpresso`                  |
+| Claude MCP server ID                | `agent-kit`                        | `webpresso`                            |
+| Skill namespace                     | `/webpresso-agent-kit:*`           | `/webpresso:*`                         |
+| State-root app key                  | `webpresso-agent-kit`              | `webpresso`                            |
+| GitHub repository slug              | `webpresso/agent-kit`              | `webpresso/webpresso`                  |
+| Release model                       | GitHub Packages + staged npm alias | direct npmjs publish from root package |
 
 ## Fact-checked context
 
@@ -94,45 +94,45 @@ remain after completion.
 
 ## Key decisions
 
-| Decision | Choice | Rationale |
-| --- | --- | --- |
-| Package identity | Rename the root package to `webpresso`. | Avoid permanent dual-identity drift. |
-| Release model | Publish the root package directly to npmjs. | State-of-the-art is one canonical artifact identity. |
-| Legacy package family | Delete all `packages/agent-*` workspaces. | Hardcut means no compatibility code or helper-package transition window. |
-| Plugin identity | Use `webpresso` / `webpresso@webpresso` / `webpresso` for marketplace, install ID, and MCP server ID. | One coherent plugin identity across docs, manifests, and setup. |
-| Skill namespace | Use `/webpresso:*`. | Remove product/plugin naming ambiguity. |
-| Repo slug | Prepare code/docs for `webpresso/webpresso`; treat GitHub rename as an explicit ops step. | Avoid redirect assumptions in manifests and docs. |
-| Registry cleanup | Track as external ops after in-repo hardcut. | npm policy limits hard deletion of previously published names. |
+| Decision              | Choice                                                                                                | Rationale                                                                |
+| --------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Package identity      | Rename the root package to `webpresso`.                                                               | Avoid permanent dual-identity drift.                                     |
+| Release model         | Publish the root package directly to npmjs.                                                           | State-of-the-art is one canonical artifact identity.                     |
+| Legacy package family | Delete all `packages/agent-*` workspaces.                                                             | Hardcut means no compatibility code or helper-package transition window. |
+| Plugin identity       | Use `webpresso` / `webpresso@webpresso` / `webpresso` for marketplace, install ID, and MCP server ID. | One coherent plugin identity across docs, manifests, and setup.          |
+| Skill namespace       | Use `/webpresso:*`.                                                                                   | Remove product/plugin naming ambiguity.                                  |
+| Repo slug             | Prepare code/docs for `webpresso/webpresso`; treat GitHub rename as an explicit ops step.             | Avoid redirect assumptions in manifests and docs.                        |
+| Registry cleanup      | Track as external ops after in-repo hardcut.                                                          | npm policy limits hard deletion of previously published names.           |
 
 ## Refinement findings
 
-| ID | Severity | Finding | Applied fix |
-| --- | --- | --- | --- |
-| F1 | CRITICAL | Current consolidation blueprint assumes legacy package/install surfaces remain valid during a migration window. | Supersede it with a hardcut blueprint that deletes legacy package surfaces entirely. |
-| F2 | HIGH | npm/package/plugin/runtime/repo identities use different names today, so “rename agent-kit” is too vague to execute safely. | Added an identity surfaces matrix and explicit target values for every live surface. |
-| F3 | HIGH | Current release workflow still implements dual identity through GitHub Packages plus staged npm publish. | Added dedicated release-hardcut tasks that remove staged dual-publish behavior. |
-| F4 | HIGH | Claude plugin identity is fragmented across marketplace manifest, plugin manifest, install ID, skill namespace, and MCP server ID. | Split plugin identity work into its own lane with explicit file ownership. |
-| F5 | MEDIUM | Repo slug rename cannot rely on redirects for all consumers. | Added a dedicated repo-slug scrub task and an external ops note. |
-| F6 | MEDIUM | Registry cleanup for published old names is not fully controllable from repo code. | Separated registry cleanup into an explicit ops task with no compatibility-code fallback. |
-| F7 | HIGH | Latest repo scan shows identity drift is also embedded in generated markers, auto-update/dev-link flows, compiler manifests, and workflow comments/tests beyond the original file lists. | Expanded task ownership so each lane explicitly covers those additional live surfaces and regression gates. |
+| ID  | Severity | Finding                                                                                                                                                                                  | Applied fix                                                                                                 |
+| --- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| F1  | CRITICAL | Current consolidation blueprint assumes legacy package/install surfaces remain valid during a migration window.                                                                          | Supersede it with a hardcut blueprint that deletes legacy package surfaces entirely.                        |
+| F2  | HIGH     | npm/package/plugin/runtime/repo identities use different names today, so “rename agent-kit” is too vague to execute safely.                                                              | Added an identity surfaces matrix and explicit target values for every live surface.                        |
+| F3  | HIGH     | Current release workflow still implements dual identity through GitHub Packages plus staged npm publish.                                                                                 | Added dedicated release-hardcut tasks that remove staged dual-publish behavior.                             |
+| F4  | HIGH     | Claude plugin identity is fragmented across marketplace manifest, plugin manifest, install ID, skill namespace, and MCP server ID.                                                       | Split plugin identity work into its own lane with explicit file ownership.                                  |
+| F5  | MEDIUM   | Repo slug rename cannot rely on redirects for all consumers.                                                                                                                             | Added a dedicated repo-slug scrub task and an external ops note.                                            |
+| F6  | MEDIUM   | Registry cleanup for published old names is not fully controllable from repo code.                                                                                                       | Separated registry cleanup into an explicit ops task with no compatibility-code fallback.                   |
+| F7  | HIGH     | Latest repo scan shows identity drift is also embedded in generated markers, auto-update/dev-link flows, compiler manifests, and workflow comments/tests beyond the original file lists. | Expanded task ownership so each lane explicitly covers those additional live surfaces and regression gates. |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
-| --- | --- | --- | --- | --- |
-| **Wave 0** | 1.1, 1.2, 1.3, 1.4 | None | 4 agents | S-M |
-| **Wave 1** | 2.1, 2.2, 2.3 | Wave 0 (partial) | 3 agents | S |
-| **Wave 2** | 3.1, 3.2 | Wave 1 | 2 agents | XS-S |
-| **Critical path** | 1.1 → 2.1 → 3.1 | — | 3 waves | M |
+| Wave              | Tasks              | Dependencies     | Parallelizable | Effort (T-shirt) |
+| ----------------- | ------------------ | ---------------- | -------------- | ---------------- |
+| **Wave 0**        | 1.1, 1.2, 1.3, 1.4 | None             | 4 agents       | S-M              |
+| **Wave 1**        | 2.1, 2.2, 2.3      | Wave 0 (partial) | 3 agents       | S                |
+| **Wave 2**        | 3.1, 3.2           | Wave 1           | 2 agents       | XS-S             |
+| **Critical path** | 1.1 → 2.1 → 3.1    | —                | 3 waves        | M                |
 
 ### Parallel Metrics Snapshot
 
-| Metric | Formula / Meaning | Target | Actual |
-| --- | --- | --- | --- |
-| RW0 | Ready tasks in Wave 0 | ≥ planned agents / 2 | 4 |
-| CPR | total tasks / critical path length | ≥ 2.5 | 9 / 3 = 3.0 |
-| DD | dependency edges / total tasks | ≤ 2.0 | 8 / 9 = 0.89 |
-| CP | same-file overlaps per wave | 0 | 0 if package/plugin/docs ownership stays split as planned |
+| Metric | Formula / Meaning                  | Target               | Actual                                                    |
+| ------ | ---------------------------------- | -------------------- | --------------------------------------------------------- |
+| RW0    | Ready tasks in Wave 0              | ≥ planned agents / 2 | 4                                                         |
+| CPR    | total tasks / critical path length | ≥ 2.5                | 9 / 3 = 3.0                                               |
+| DD     | dependency edges / total tasks     | ≤ 2.0                | 8 / 9 = 0.89                                              |
+| CP     | same-file overlaps per wave        | 0                    | 0 if package/plugin/docs ownership stays split as planned |
 
 **Parallelization score:** A. The only substantial fan-in is the final
 verification/release lane after package/plugin/docs hardcut work lands.
@@ -178,9 +178,10 @@ release-workflow identity changes so no other parallel task edits those files.
 
 - [x] Root package name is `webpresso`.
 - [x] Release workflow no longer references GitHub Packages publish or
-  `scripts/publish-webpresso.ts`.
+      `scripts/publish-webpresso.ts`.
 - [x] Migration-notice path is removed.
 - [x] `wp_lint` and `wp_typecheck` pass for changed files.
+
 #### [plugin] Task 1.2: Hardcut plugin, marketplace, MCP, and namespace identity
 
 **Status:** done
@@ -221,6 +222,7 @@ language, and state-root naming so the identity change is coherent.
 - [x] MCP server ID is `webpresso`.
 - [x] Skill namespace references use `/webpresso:*`.
 - [x] State-root key is `webpresso`.
+
 #### [cleanup] Task 1.3: Delete legacy helper workspaces and helper-package transition logic
 
 **Status:** done
@@ -305,6 +307,7 @@ than supported migration inputs. Historical research docs may remain untouched.
 - [x] Docs checks pass.
 
 ## Phase 2: Integration and slug-cutover lanes [Complexity: S]
+
 #### [integration] Task 2.1: Update exports, public API tests, and self-host detection for `webpresso`
 
 **Status:** done
@@ -498,69 +501,70 @@ handoff checklist and evidence needed to finish the hardcut outside git.
 
 ## Verification Gates
 
-| Gate | Command / tool | Success Criteria |
-| --- | --- | --- |
-| Scoped task tests | `wp_test` scoped to changed files | Failing-before/passing-after evidence per task |
-| Type safety | `wp_typecheck` | Zero diagnostics |
-| Lint | `wp_lint` | Zero violations |
-| QA | `wp_qa` | Full quality pass |
-| Blueprint lifecycle | `vp run blueprints:check` | Blueprint lifecycle passes |
-| Repo-slug scrub | `wp_test` identity scrub gate | No banned live references remain |
-| Release dry-run | post-hardcut dry-run path | Canonical `webpresso` package release path works |
+| Gate                | Command / tool                    | Success Criteria                                 |
+| ------------------- | --------------------------------- | ------------------------------------------------ |
+| Scoped task tests   | `wp_test` scoped to changed files | Failing-before/passing-after evidence per task   |
+| Type safety         | `wp_typecheck`                    | Zero diagnostics                                 |
+| Lint                | `wp_lint`                         | Zero violations                                  |
+| QA                  | `wp_qa`                           | Full quality pass                                |
+| Blueprint lifecycle | `vp run blueprints:check`         | Blueprint lifecycle passes                       |
+| Repo-slug scrub     | `wp_test` identity scrub gate     | No banned live references remain                 |
+| Release dry-run     | post-hardcut dry-run path         | Canonical `webpresso` package release path works |
 
 ## Cross-Plan References
 
-| Type | Reference | Relationship |
-| --- | --- | --- |
-| Supersedes | `consolidate-all-webpresso-agent-sub-packages-into-webpresso-itself-with-subpath-exports-consumers-go-from-6-8-pinned-devdeps-down-to-one-webpresso` | This blueprint replaces the migration-window release strategy with a hardcut identity rewrite. |
-| Related completed | `wp-blueprint-mcp-resource-oriented-tools-with-freshness-and-idempotency` | Keep `wp_*` nomenclature stable while package/plugin identities change. |
+| Type              | Reference                                                                                                                                            | Relationship                                                                                   |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Supersedes        | `consolidate-all-webpresso-agent-sub-packages-into-webpresso-itself-with-subpath-exports-consumers-go-from-6-8-pinned-devdeps-down-to-one-webpresso` | This blueprint replaces the migration-window release strategy with a hardcut identity rewrite. |
+| Related completed | `wp-blueprint-mcp-resource-oriented-tools-with-freshness-and-idempotency`                                                                            | Keep `wp_*` nomenclature stable while package/plugin identities change.                        |
 
 ## Edge Cases and Error Handling
 
-| Edge Case | Risk | Solution | Task |
-| --- | --- | --- | --- |
-| Live package/plugin/repo surfaces drift to mixed naming again | HIGH — consumers and setup flows break inconsistently | Add explicit identity-scrub tests and dedicate ownership by surface | 1.2, 2.3 |
+| Edge Case                                                                                                     | Risk                                                            | Solution                                                                                            | Task               |
+| ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------ |
+| Live package/plugin/repo surfaces drift to mixed naming again                                                 | HIGH — consumers and setup flows break inconsistently           | Add explicit identity-scrub tests and dedicate ownership by surface                                 | 1.2, 2.3           |
 | Generated markers and self-host helpers keep emitting `@webpresso/agent-kit` even after root metadata changes | HIGH — newly scaffolded repos immediately regress to old naming | Expand file ownership to scaffolders/templates/auto-update lanes and protect with grep-backed tests | 1.3, 2.1, 2.2, 2.3 |
-| Release workflow still assumes dual-publish staging | HIGH — wrong artifact gets published | Put all root-release metadata under Task 1.1 ownership | 1.1 |
-| Repo rename redirects are assumed to cover action-like consumers | MEDIUM — stale source refs keep breaking installs | Add explicit slug scrub plus external rename handoff | 2.3, 3.2 |
-| Published old npm names cannot be fully removed | MEDIUM — registry history remains | Keep cleanup as external ops with no compatibility-code fallback | 3.2 |
+| Release workflow still assumes dual-publish staging                                                           | HIGH — wrong artifact gets published                            | Put all root-release metadata under Task 1.1 ownership                                              | 1.1                |
+| Repo rename redirects are assumed to cover action-like consumers                                              | MEDIUM — stale source refs keep breaking installs               | Add explicit slug scrub plus external rename handoff                                                | 2.3, 3.2           |
+| Published old npm names cannot be fully removed                                                               | MEDIUM — registry history remains                               | Keep cleanup as external ops with no compatibility-code fallback                                    | 3.2                |
 
 ## Risks
 
-| Risk | Impact | Mitigation |
-| --- | --- | --- |
-| Root package rename has broader blast radius than helper-package fold | HIGH | Isolate root package/release work in its own lane and rely on full verification in Task 3.1. |
-| Plugin ecosystem still caches old IDs after rename | HIGH | Hardcut manifests, install IDs, settings patchers, and docs together in Task 1.2. |
-| Helper-package deletion leaves hidden references in tests or docs | HIGH | Use legacy-reference grep/assertion gates and workspace deletion in one lane. |
-| Generated templates and auto-update/dev-link helpers silently preserve old identity strings | HIGH | Explicitly include scaffolders/templates/auto-update/dev-link files in task ownership and enforce with identity-scrub tests. |
-| External npm/GitHub operations lag behind repo changes | MEDIUM | Capture a strict ops handoff without reintroducing compatibility code. |
+| Risk                                                                                        | Impact | Mitigation                                                                                                                   |
+| ------------------------------------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| Root package rename has broader blast radius than helper-package fold                       | HIGH   | Isolate root package/release work in its own lane and rely on full verification in Task 3.1.                                 |
+| Plugin ecosystem still caches old IDs after rename                                          | HIGH   | Hardcut manifests, install IDs, settings patchers, and docs together in Task 1.2.                                            |
+| Helper-package deletion leaves hidden references in tests or docs                           | HIGH   | Use legacy-reference grep/assertion gates and workspace deletion in one lane.                                                |
+| Generated templates and auto-update/dev-link helpers silently preserve old identity strings | HIGH   | Explicitly include scaffolders/templates/auto-update/dev-link files in task ownership and enforce with identity-scrub tests. |
+| External npm/GitHub operations lag behind repo changes                                      | MEDIUM | Capture a strict ops handoff without reintroducing compatibility code.                                                       |
 
 ## Technology Choices
 
-| Component | Technology | Version / constraint | Why |
-| --- | --- | --- | --- |
-| Canonical package distribution | direct npmjs publish from root package | current Changesets-based release flow, simplified | One artifact identity is cleaner than staged alias publish. |
-| Claude plugin surface | `.claude-plugin` manifests + init scaffolders | current repo | Existing integration path; only identity values change. |
-| Identity regression protection | grep/assertion tests | current Vitest stack | Best way to stop legacy-name drift from returning. |
+| Component                      | Technology                                    | Version / constraint                              | Why                                                         |
+| ------------------------------ | --------------------------------------------- | ------------------------------------------------- | ----------------------------------------------------------- |
+| Canonical package distribution | direct npmjs publish from root package        | current Changesets-based release flow, simplified | One artifact identity is cleaner than staged alias publish. |
+| Claude plugin surface          | `.claude-plugin` manifests + init scaffolders | current repo                                      | Existing integration path; only identity values change.     |
+| Identity regression protection | grep/assertion tests                          | current Vitest stack                              | Best way to stop legacy-name drift from returning.          |
 
 ## Refinement Summary
 
-| Metric | Value |
-| --- | --- |
-| Findings total | 6 |
-| Critical | 1 |
-| High | 4 |
-| Medium | 2 |
-| Low | 0 |
-| Fixes applied | 7/7 |
-| Cross-plans updated | 1 |
-| Edge cases documented | 5 |
-| Risks documented | 5 |
-| Parallelization score | A |
-| Critical path | 3 waves |
-| Max parallel agents | 4 |
-| Total tasks | 9 |
-| Blueprint compliant | 9/9 |
+| Metric                | Value   |
+| --------------------- | ------- |
+| Findings total        | 6       |
+| Critical              | 1       |
+| High                  | 4       |
+| Medium                | 2       |
+| Low                   | 0       |
+| Fixes applied         | 7/7     |
+| Cross-plans updated   | 1       |
+| Edge cases documented | 5       |
+| Risks documented      | 5       |
+| Parallelization score | A       |
+| Critical path         | 3 waves |
+| Max parallel agents   | 4       |
+| Total tasks           | 9       |
+| Blueprint compliant   | 9/9     |
+
 ## Historical verification note
 
 This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
@@ -577,21 +581,21 @@ This blueprint contains done tasks recorded before the current per-task `**Verif
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/hardcut-webpresso-canonical-identity-rewrite/_overview.md |
+| ID  | Claim                                                          | Evidence                                                                             |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/hardcut-webpresso-canonical-identity-rewrite/\_overview.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

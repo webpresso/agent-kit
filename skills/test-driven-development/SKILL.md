@@ -6,8 +6,8 @@ status: active
 scope: repo
 applies_to: [agents]
 related: []
-created: '2026-05-07'
-last_reviewed: '2026-05-07'
+created: "2026-05-07"
+last_reviewed: "2026-05-07"
 name: test-driven-development
 description: Provides test-driven development methodology for implementing features and bugfixes. Requires writing tests before implementation code
 ---
@@ -321,10 +321,10 @@ Tests-first force edge case discovery before implementing. Tests-after verify yo
 **RED**
 
 ```typescript
-test('rejects empty email', async () => {
-  const result = await submitForm({ email: '' })
-  expect(result.error).toBe('Email required')
-})
+test("rejects empty email", async () => {
+  const result = await submitForm({ email: "" });
+  expect(result.error).toBe("Email required");
+});
 ```
 
 **Verify RED**
@@ -339,7 +339,7 @@ FAIL: expected 'Email required', got undefined
 ```typescript
 function submitForm(data: FormData) {
   if (!data.email?.trim()) {
-    return { error: 'Email required' }
+    return { error: "Email required" };
   }
   // ...
 }

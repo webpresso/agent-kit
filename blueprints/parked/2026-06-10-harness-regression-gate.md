@@ -27,7 +27,6 @@ tags:
 Implemented in PR #139 on branch `work/ultragoal-9-blueprints-20260614221933`.
 Task status and acceptance checkboxes below were reconciled from the landed code paths and focused verification evidence in this PR. The file is parked because CI enforces the legal first transition from `planned`; finalization can move parked/resumed work through the lifecycle after merge.
 
-
 ## Product wedge anchor
 
 - **Stage outcome:** the "evals & verification of the harness itself" ❌ row
@@ -59,19 +58,19 @@ references for split and environment controls only.
 
 ## Fact-Check Summary
 
-| Claim | Reality | Fix applied to this plan |
-| --- | --- | --- |
-| A new benchmark stack is required | `scripts/bench/` and `docs/bench/session-memory-methodology.md` already provide the reproducibility spine | Tasks now extend the existing bench substrate instead of forking a second runner |
-| Reference consumers still need a suite-hosting concept invented | ingest-lens already ships `apps/e2e/src/agent-kit-host-adapter.ts` and `e2e-suite-manifest.ts`; edge-matte already maintains explicit confidence suites | Task 1.1 now reuses those surfaces |
-| Cross-repo body refs can stay informal | Blueprint rules require GitHub links for cross-repo refs in body text | All cross-repo references below are GitHub URLs |
+| Claim                                                           | Reality                                                                                                                                                 | Fix applied to this plan                                                         |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| A new benchmark stack is required                               | `scripts/bench/` and `docs/bench/session-memory-methodology.md` already provide the reproducibility spine                                               | Tasks now extend the existing bench substrate instead of forking a second runner |
+| Reference consumers still need a suite-hosting concept invented | ingest-lens already ships `apps/e2e/src/agent-kit-host-adapter.ts` and `e2e-suite-manifest.ts`; edge-matte already maintains explicit confidence suites | Task 1.1 now reuses those surfaces                                               |
+| Cross-repo body refs can stay informal                          | Blueprint rules require GitHub links for cross-repo refs in body text                                                                                   | All cross-repo references below are GitHub URLs                                  |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable |
-| --- | --- | --- | --- |
-| **Wave 0** | 1.1 | None | 1 agent |
-| **Wave 1** | 1.2 | Task 1.1 | 1 agent |
-| **Wave 2** | 2.1 | Task 1.2 | 1 agent |
+| Wave       | Tasks | Dependencies | Parallelizable |
+| ---------- | ----- | ------------ | -------------- |
+| **Wave 0** | 1.1   | None         | 1 agent        |
+| **Wave 1** | 1.2   | Task 1.1     | 1 agent        |
+| **Wave 2** | 2.1   | Task 1.2     | 1 agent        |
 
 ## Phases
 
@@ -146,7 +145,6 @@ references for split and environment controls only.
 - No automatic merge or promotion.
 - No required Tier 2 / Tier 3 benchmark lane.
 
-
 ## 2026-06-14 alignment note
 
 The refined `2026-06-10-harness-surface-manifest` plan preserves the current
@@ -158,13 +156,13 @@ MCP consumers.
 
 ## Cross-Plan References
 
-| Reference | Relationship |
-| --- | --- |
-| `2026-06-10-self-improving-harness-roadmap` | Parent roadmap (Wave 2) |
-| `2026-06-10-harness-surface-manifest` | Defines the trigger surface; use its current `lifecycle: locked|governed|experimental` vocabulary and wait for the refined drift audit to distinguish concrete vs projected paths before deriving CI triggers (aligned 2026-06-14) |
-| `docs/research/2026-05-14-token-savings-benchmark-methodology.md` | Existing reproducibility substrate to extend |
-| `docs/bench/session-memory-methodology.md` | Current bench contract to extend |
-| [ozby/ingest-lens: `apps/e2e/src/agent-kit-host-adapter.ts`](https://github.com/ozby/ingest-lens/blob/main/apps/e2e/src/agent-kit-host-adapter.ts) | Existing consumer host-adapter surface |
-| [ozby/ingest-lens: `apps/e2e/src/e2e-suite-manifest.ts`](https://github.com/ozby/ingest-lens/blob/main/apps/e2e/src/e2e-suite-manifest.ts) | Existing consumer suite-manifest surface |
-| [ozby/edge-matte: `2026-05-29-edge-matte-e2e-confidence-suite.md`](https://github.com/ozby/edge-matte/blob/main/blueprints/in-progress/2026-05-29-edge-matte-e2e-confidence-suite.md) | Existing confidence-suite contract |
+| Reference                                                                                                                                                                                                             | Relationship                                                            |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `2026-06-10-self-improving-harness-roadmap`                                                                                                                                                                           | Parent roadmap (Wave 2)                                                 |
+| `2026-06-10-harness-surface-manifest`                                                                                                                                                                                 | Defines the trigger surface; use its current `lifecycle: locked         | governed | experimental` vocabulary and wait for the refined drift audit to distinguish concrete vs projected paths before deriving CI triggers (aligned 2026-06-14) |
+| `docs/research/2026-05-14-token-savings-benchmark-methodology.md`                                                                                                                                                     | Existing reproducibility substrate to extend                            |
+| `docs/bench/session-memory-methodology.md`                                                                                                                                                                            | Current bench contract to extend                                        |
+| [ozby/ingest-lens: `apps/e2e/src/agent-kit-host-adapter.ts`](https://github.com/ozby/ingest-lens/blob/main/apps/e2e/src/agent-kit-host-adapter.ts)                                                                    | Existing consumer host-adapter surface                                  |
+| [ozby/ingest-lens: `apps/e2e/src/e2e-suite-manifest.ts`](https://github.com/ozby/ingest-lens/blob/main/apps/e2e/src/e2e-suite-manifest.ts)                                                                            | Existing consumer suite-manifest surface                                |
+| [ozby/edge-matte: `2026-05-29-edge-matte-e2e-confidence-suite.md`](https://github.com/ozby/edge-matte/blob/main/blueprints/in-progress/2026-05-29-edge-matte-e2e-confidence-suite.md)                                 | Existing confidence-suite contract                                      |
 | [ozby/edge-matte: `2026-06-02-edge-matte-wp-deploy-adapter-toolchain-isolation.md`](https://github.com/ozby/edge-matte/blob/main/blueprints/completed/2026-06-02-edge-matte-wp-deploy-adapter-toolchain-isolation.md) | Evidence that `wp`-owned deploy / E2E surfaces already exist downstream |

@@ -10,24 +10,24 @@
  * Every answer is optional. Skipped fields fall back to the template's
  * prose stubs so the audit (`wp audit vision`) still passes minimally.
  */
-import { createInterface, type Interface } from 'node:readline/promises'
+import { createInterface, type Interface } from "node:readline/promises";
 
 export interface VisionInterviewInput {
-  repoName: string
-  isTTY?: boolean
-  yesFlag?: boolean
-  visionExists: boolean
-  inputStream?: NodeJS.ReadableStream
-  outputStream?: NodeJS.WritableStream
+  repoName: string;
+  isTTY?: boolean;
+  yesFlag?: boolean;
+  visionExists: boolean;
+  inputStream?: NodeJS.ReadableStream;
+  outputStream?: NodeJS.WritableStream;
 }
 
 export interface VisionAnswers {
-  oneLiner: string
-  tagline: string
-  problem: string
-  inScope: readonly string[]
-  outOfScope: readonly string[]
-  principles: readonly string[]
+  oneLiner: string;
+  tagline: string;
+  problem: string;
+  inScope: readonly string[];
+  outOfScope: readonly string[];
+  principles: readonly string[];
 }
 
 /**
@@ -37,30 +37,30 @@ export interface VisionAnswers {
 export async function maybeRunVisionInterview(
   input: VisionInterviewInput,
 ): Promise<VisionAnswers | null> {
-  if (input.visionExists) return null
-  if (input.yesFlag) return null
-  if (!input.isTTY) return null
+  if (input.visionExists) return null;
+  if (input.yesFlag) return null;
+  if (!input.isTTY) return null;
 
   const rl = createInterface({
     input: input.inputStream ?? process.stdin,
     output: input.outputStream ?? process.stdout,
-  })
-  const out = input.outputStream ?? process.stdout
+  });
+  const out = input.outputStream ?? process.stdout;
 
   try {
-    out.write(`\n📜 Seeding VISION.md for ${input.repoName} (press Enter to skip any line)\n\n`)
-    const oneLiner = await ask(rl, '  In one sentence, what does this repo do? ')
-    const tagline = await ask(rl, '  North-star tagline (the sticker — short!): ')
-    const problem = await ask(rl, '  What pain does this solve? (1-2 sentences): ')
-    const inScopeRaw = await ask(rl, '  In scope (comma-separated, blank to skip): ')
+    out.write(`\n📜 Seeding VISION.md for ${input.repoName} (press Enter to skip any line)\n\n`);
+    const oneLiner = await ask(rl, "  In one sentence, what does this repo do? ");
+    const tagline = await ask(rl, "  North-star tagline (the sticker — short!): ");
+    const problem = await ask(rl, "  What pain does this solve? (1-2 sentences): ");
+    const inScopeRaw = await ask(rl, "  In scope (comma-separated, blank to skip): ");
     const outOfScopeRaw = await ask(
       rl,
-      '  Out of scope (comma-separated; mention where they belong): ',
-    )
+      "  Out of scope (comma-separated; mention where they belong): ",
+    );
     const principlesRaw = await askMultiline(
       rl,
-      '  Design principles (one per line, blank line to finish):',
-    )
+      "  Design principles (one per line, blank line to finish):",
+    );
 
     return {
       oneLiner,
@@ -69,32 +69,32 @@ export async function maybeRunVisionInterview(
       inScope: splitList(inScopeRaw),
       outOfScope: splitList(outOfScopeRaw),
       principles: principlesRaw,
-    }
+    };
   } finally {
-    rl.close()
+    rl.close();
   }
 }
 
 async function ask(rl: Interface, prompt: string): Promise<string> {
-  const answer = (await rl.question(prompt)).trim()
-  return answer
+  const answer = (await rl.question(prompt)).trim();
+  return answer;
 }
 
 async function askMultiline(rl: Interface, prompt: string): Promise<readonly string[]> {
-  const out = (rl as unknown as { output?: NodeJS.WritableStream }).output ?? process.stdout
-  out.write(`${prompt}\n`)
-  const collected: string[] = []
+  const out = (rl as unknown as { output?: NodeJS.WritableStream }).output ?? process.stdout;
+  out.write(`${prompt}\n`);
+  const collected: string[] = [];
   while (true) {
-    const line = (await rl.question('    - ')).trim()
-    if (line.length === 0) break
-    collected.push(line)
+    const line = (await rl.question("    - ")).trim();
+    if (line.length === 0) break;
+    collected.push(line);
   }
-  return collected
+  return collected;
 }
 
 function splitList(raw: string): readonly string[] {
   return raw
-    .split(',')
+    .split(",")
     .map((s) => s.trim())
-    .filter((s) => s.length > 0)
+    .filter((s) => s.length > 0);
 }

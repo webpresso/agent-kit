@@ -1,11 +1,11 @@
-import { existsSync, readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { existsSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 
-import { readTrustedJsonFile } from '#shared-utils/read-json-file.js'
+import { readTrustedJsonFile } from "#shared-utils/read-json-file.js";
 
-import type { CapabilityMatrixHost } from '#cli/commands/init/scaffolders/agent-hooks/capability-matrix'
-import type { AgentHostName } from '#symlinker/consumers'
-import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
+import type { CapabilityMatrixHost } from "#cli/commands/init/scaffolders/agent-hooks/capability-matrix";
+import type { AgentHostName } from "#symlinker/consumers";
+import type { RepoAuditResult, RepoAuditViolation } from "./repo-guardrails.js";
 
 /**
  * Audits that the prose rule doc `catalog/agent/rules/supported-agent-clis.md`
@@ -17,8 +17,8 @@ import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
  * typed unions, with the doc parsed narrowly for its one format-stable token.
  */
 
-const RULE_DOC_REL = 'catalog/agent/rules/supported-agent-clis.md'
-const AGENT_KIT_PACKAGE = '@webpresso/agent-kit'
+const RULE_DOC_REL = "catalog/agent/rules/supported-agent-clis.md";
+const AGENT_KIT_PACKAGE = "@webpresso/agent-kit";
 
 /**
  * Exhaustiveness lock binding the runtime CLI set to the code source of truth.
@@ -42,26 +42,26 @@ const CLI_ID_PRESENCE: Record<CapabilityMatrixHost | AgentHostName, true> = {
   codex: true,
   cursor: true,
   opencode: true,
-}
+};
 
-export const EXPECTED_CLI_IDS: readonly string[] = Object.keys(CLI_ID_PRESENCE)
+export const EXPECTED_CLI_IDS: readonly string[] = Object.keys(CLI_ID_PRESENCE);
 
 // Matches the format-stable column-1 identifier token, e.g. `**Claude Code** (`claude`)`.
-const COLUMN1_CLI_ID = /\(`([a-z][a-z0-9-]*)`\)/
+const COLUMN1_CLI_ID = /\(`([a-z][a-z0-9-]*)`\)/;
 // Anchor on the first column only (`| CLI |`), so renaming later columns does
 // not drop the table. Other columns may legitimately change wording.
-const TABLE_HEADER = /^\|\s*CLI\s*\|/i
-const TABLE_SEPARATOR = /^\|[\s:|-]+\|\s*$/
+const TABLE_HEADER = /^\|\s*CLI\s*\|/i;
+const TABLE_SEPARATOR = /^\|[\s:|-]+\|\s*$/;
 
 // Harvests column-1 ids from the data rows that follow a confirmed table, so
 // backtick decoys in other columns (`/codex`, `-f json`, `opencode stats`) and
 // stray prose are never picked up.
 function harvestTableIds(lines: readonly string[], firstDataRow: number, ids: Set<string>): void {
   for (let i = firstDataRow; i < lines.length; i++) {
-    const row = lines[i] ?? ''
-    if (!row.trimStart().startsWith('|')) return
-    const id = COLUMN1_CLI_ID.exec(row.split('|')[1] ?? '')?.[1]
-    if (id) ids.add(id)
+    const row = lines[i] ?? "";
+    if (!row.trimStart().startsWith("|")) return;
+    const id = COLUMN1_CLI_ID.exec(row.split("|")[1] ?? "")?.[1];
+    if (id) ids.add(id);
   }
 }
 
@@ -72,16 +72,16 @@ function harvestTableIds(lines: readonly string[], firstDataRow: number, ids: Se
  * is not harvested. Parses ONLY column 1 of each data row.
  */
 export function parseDocCliIds(markdown: string): Set<string> {
-  const ids = new Set<string>()
-  const lines = markdown.split(/\r?\n/)
+  const ids = new Set<string>();
+  const lines = markdown.split(/\r?\n/);
 
   for (let i = 0; i < lines.length; i++) {
-    if (TABLE_HEADER.test(lines[i] ?? '') && TABLE_SEPARATOR.test(lines[i + 1] ?? '')) {
-      harvestTableIds(lines, i + 2, ids)
+    if (TABLE_HEADER.test(lines[i] ?? "") && TABLE_SEPARATOR.test(lines[i + 1] ?? "")) {
+      harvestTableIds(lines, i + 2, ids);
     }
   }
 
-  return ids
+  return ids;
 }
 
 /**
@@ -93,15 +93,15 @@ export function compareCliIds(
   docIds: ReadonlySet<string>,
   expectedIds: readonly string[],
 ): RepoAuditViolation[] {
-  const violations: RepoAuditViolation[] = []
-  const expected = new Set(expectedIds)
+  const violations: RepoAuditViolation[] = [];
+  const expected = new Set(expectedIds);
 
   for (const id of expected) {
     if (!docIds.has(id)) {
       violations.push({
         file: RULE_DOC_REL,
         message: `code-has-not-in-doc: \`${id}\` is a supported CLI in code but is not listed in the rule doc.`,
-      })
+      });
     }
   }
   for (const id of docIds) {
@@ -109,19 +109,19 @@ export function compareCliIds(
       violations.push({
         file: RULE_DOC_REL,
         message: `doc-has-not-in-code: \`${id}\` is listed in the rule doc but is not modeled in code (AgentHostName ∪ CapabilityMatrixHost).`,
-      })
+      });
     }
   }
 
-  return violations
+  return violations;
 }
 
 export function auditSupportedAgentClis(rootDirectory: string = process.cwd()): RepoAuditResult {
-  const root = resolve(rootDirectory)
-  const title = 'Supported agent CLIs'
-  const packageJson = readTrustedJsonFile<Record<string, unknown>>(join(root, 'package.json'))
-  const isSelfHost = packageJson.name === AGENT_KIT_PACKAGE
-  const docPath = join(root, RULE_DOC_REL)
+  const root = resolve(rootDirectory);
+  const title = "Supported agent CLIs";
+  const packageJson = readTrustedJsonFile<Record<string, unknown>>(join(root, "package.json"));
+  const isSelfHost = packageJson.name === AGENT_KIT_PACKAGE;
+  const docPath = join(root, RULE_DOC_REL);
 
   if (!existsSync(docPath)) {
     // The rule doc is an agent-kit catalog asset; absent elsewhere it is simply
@@ -132,18 +132,18 @@ export function auditSupportedAgentClis(rootDirectory: string = process.cwd()): 
         title,
         checked: 1,
         violations: [{ file: RULE_DOC_REL, message: `Rule doc ${RULE_DOC_REL} is missing.` }],
-      }
+      };
     }
-    return { ok: true, title, checked: 0, violations: [] }
+    return { ok: true, title, checked: 0, violations: [] };
   }
 
-  const docIds = parseDocCliIds(readFileSync(docPath, 'utf8'))
-  const violations = compareCliIds(docIds, EXPECTED_CLI_IDS)
+  const docIds = parseDocCliIds(readFileSync(docPath, "utf8"));
+  const violations = compareCliIds(docIds, EXPECTED_CLI_IDS);
 
   return {
     ok: violations.length === 0,
     title,
     checked: EXPECTED_CLI_IDS.length + docIds.size,
     violations,
-  }
+  };
 }

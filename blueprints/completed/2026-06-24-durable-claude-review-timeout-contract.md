@@ -4,9 +4,9 @@ title: Durable Claude outside-review timeout contract
 owner: ozby
 status: completed
 complexity: S
-created: '2026-06-24'
-last_updated: '2026-06-24'
-progress: '100% (implemented, regenerated, installed locally, and verified)'
+created: "2026-06-24"
+last_updated: "2026-06-24"
+progress: "100% (implemented, regenerated, installed locally, and verified)"
 depends_on:
   - blueprints/completed/2026-06-21-cross-host-outside-voice-skills.md
 cross_repo_depends_on: []
@@ -15,8 +15,8 @@ tags:
   - skills
   - plugin
   - timeout
-worktree_owner_id: ''
-worktree_owner_branch: ''
+worktree_owner_id: ""
+worktree_owner_branch: ""
 ---
 
 # Durable Claude outside-review timeout contract
@@ -43,21 +43,25 @@ Keep the durable Claude outside-voice skill usable in Codex by replacing the cur
 ## Tasks
 
 #### [skill] Task 1.1: Replace unbounded Claude review guidance
+
 - [x] **Status:** done
 - **Files:** `packages/workflow-skills/skills/claude.md`
 - **Acceptance:** Review mode documents bounded payload construction, `claude --print`, a stable timeout sentinel, split-and-retry-once fallback, and explicitly avoids `--bare`.
 
 #### [tests] Task 1.2: Lock the new review contract in text tests
+
 - [x] **Status:** done
 - **Files:** `packages/workflow-skills/src/skill-text.test.ts`, `packages/workflow-skills/src/claude-auth.test.ts`, `scripts/stage-workflow-skills.test.ts`
 - **Acceptance:** Tests assert the new review markers and prevent regressions to raw `claude -p` or `--bare`.
 
 #### [projection] Task 1.3: Regenerate staged and packaged skill surfaces
+
 - [x] **Status:** done
 - **Files:** `catalog/agent/skills/claude/SKILL.md`, `skills/claude/SKILL.md`
 - **Acceptance:** Generated surfaces are byte-identical to the updated source skill.
 
 #### [rollout] Task 1.4: Refresh the local Codex plugin install
+
 - [x] **Status:** done
 - **Files:** local user/plugin install only
 - **Acceptance:** The refreshed local Codex-installed skill bundle resolves from the updated durable source repo.
@@ -99,26 +103,26 @@ Keep the durable Claude outside-voice skill usable in Codex by replacing the cur
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | Claude review guidance is bounded and timeout-sentinel based. | repo:packages/workflow-skills/skills/claude.md; repo:packages/workflow-skills/src/claude-auth.test.ts; repo:packages/workflow-skills/src/skill-text.test.ts |
-| C2 | Hooks doctor no longer hangs forever when hook-bin probes hang. | repo:src/hooks/doctor.ts; repo:src/hooks/doctor.test.ts |
+| ID  | Claim                                                           | Evidence                                                                                                                                                    |
+| --- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C1  | Claude review guidance is bounded and timeout-sentinel based.   | repo:packages/workflow-skills/skills/claude.md; repo:packages/workflow-skills/src/claude-auth.test.ts; repo:packages/workflow-skills/src/skill-text.test.ts |
+| C2  | Hooks doctor no longer hangs forever when hook-bin probes hang. | repo:src/hooks/doctor.ts; repo:src/hooks/doctor.test.ts                                                                                                     |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Bound hook-bin diagnostic probes. | Add a small probe timeout and process-tree termination in the shared probe helpers. | Raise outer CI/doctor timeouts or patch individual hooks. | Fixes the owner once and preserves loud failure diagnostics. |
+| ID  | Decision                          | Chosen option                                                                       | Rejected alternatives                                     | Rationale                                                    |
+| --- | --------------------------------- | ----------------------------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------ |
+| D1  | Bound hook-bin diagnostic probes. | Add a small probe timeout and process-tree termination in the shared probe helpers. | Raise outer CI/doctor timeouts or patch individual hooks. | Fixes the owner once and preserves loud failure diagnostics. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| tests | wp test | pass | pass |
-| typecheck | wp typecheck | pass | pass |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass |
-| catalog | wp audit catalog-drift | pass | pass |
-| trust | wp audit blueprint-trust | pass | pass after Trust Dossier backfill |
+| Gate      | Command                      | Expected outcome | Last result                       |
+| --------- | ---------------------------- | ---------------- | --------------------------------- |
+| tests     | wp test                      | pass             | pass                              |
+| typecheck | wp typecheck                 | pass             | pass                              |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass                              |
+| catalog   | wp audit catalog-drift       | pass             | pass                              |
+| trust     | wp audit blueprint-trust     | pass             | pass after Trust Dossier backfill |
 
 ### Residual Unknowns
 

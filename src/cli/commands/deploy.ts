@@ -1,29 +1,29 @@
-import type { CAC } from 'cac'
+import type { CAC } from "cac";
 
-import { runDeployPlan } from '#deploy/run.js'
+import { runDeployPlan } from "#deploy/run.js";
 
 export const DEPLOY_COMMAND_HELP = [
-  'Run a consumer-owned deploy adapter through the managed wp deploy surface.',
-  '',
-  'Examples:',
-  '  wp deploy --lane prd --dry-run',
-  '  wp deploy --lane preview_pr_123 --plan-json',
-  '  wp deploy --lane preview_pr_123 --destroy',
-].join('\n')
+  "Run a consumer-owned deploy adapter through the managed wp deploy surface.",
+  "",
+  "Examples:",
+  "  wp deploy --lane prd --dry-run",
+  "  wp deploy --lane preview_pr_123 --plan-json",
+  "  wp deploy --lane preview_pr_123 --destroy",
+].join("\n");
 
 export function registerDeployCommand(cli: CAC): void {
   cli
-    .command('deploy', DEPLOY_COMMAND_HELP)
-    .option('--lane <lane>', 'Deploy lane: dev, preview_main, preview_pr_<n>, or prd')
-    .option('--dry-run', 'Ask the adapter for its dry-run deploy plan')
-    .option('--destroy', 'Request destroy mode from the deploy adapter')
-    .option('--release-version <version>', 'Release version to thread into the deploy request')
-    .option('--plan-json', 'Print the validated deploy plan JSON without executing steps')
+    .command("deploy", DEPLOY_COMMAND_HELP)
+    .option("--lane <lane>", "Deploy lane: dev, preview_main, preview_pr_<n>, or prd")
+    .option("--dry-run", "Ask the adapter for its dry-run deploy plan")
+    .option("--destroy", "Request destroy mode from the deploy adapter")
+    .option("--release-version <version>", "Release version to thread into the deploy request")
+    .option("--plan-json", "Print the validated deploy plan JSON without executing steps")
     .action(async (options: Record<string, unknown>) => {
-      const lane = typeof options.lane === 'string' ? options.lane : undefined
+      const lane = typeof options.lane === "string" ? options.lane : undefined;
       if (!lane) {
-        console.error('Usage: wp deploy --lane <dev|preview_main|preview_pr_<n>|prd>')
-        return 1
+        console.error("Usage: wp deploy --lane <dev|preview_main|preview_pr_<n>|prd>");
+        return 1;
       }
       try {
         return await runDeployPlan({
@@ -32,12 +32,12 @@ export function registerDeployCommand(cli: CAC): void {
           dryRun: Boolean(options.dryRun),
           destroy: Boolean(options.destroy),
           releaseVersion:
-            typeof options.releaseVersion === 'string' ? options.releaseVersion : undefined,
+            typeof options.releaseVersion === "string" ? options.releaseVersion : undefined,
           planJson: Boolean(options.planJson),
-        })
+        });
       } catch (error) {
-        console.error(error instanceof Error ? error.message : String(error))
-        return 1
+        console.error(error instanceof Error ? error.message : String(error));
+        return 1;
       }
-    })
+    });
 }

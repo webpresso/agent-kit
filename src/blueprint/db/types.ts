@@ -1,8 +1,8 @@
-import { z } from 'zod'
+import { z } from "zod";
 
-import { blueprintComplexitySchema, blueprintStatusSchema, taskStatusSchema } from './enums.js'
+import { blueprintComplexitySchema, blueprintStatusSchema, taskStatusSchema } from "./enums.js";
 
-const nullableTextSchema = z.string().nullable()
+const nullableTextSchema = z.string().nullable();
 
 export const TaskRowSchema = z.looseObject({
   id: z.number().int(),
@@ -12,7 +12,7 @@ export const TaskRowSchema = z.looseObject({
   lane: nullableTextSchema,
   title: z.string(),
   status: taskStatusSchema,
-})
+});
 
 export const TaskRowCompactSchema = TaskRowSchema.pick({
   task_id: true,
@@ -20,7 +20,7 @@ export const TaskRowCompactSchema = TaskRowSchema.pick({
   status: true,
   wave: true,
   lane: true,
-})
+});
 
 export const BpRowSchema = z.looseObject({
   slug: z.string(),
@@ -32,10 +32,10 @@ export const BpRowSchema = z.looseObject({
   content_hash: z.string(),
   ingested_at: z.number().int(),
   file_path: z.string(),
-})
-export const BpDetailRowSchema = BpRowSchema
+});
+export const BpDetailRowSchema = BpRowSchema;
 
-export type TaskRow = z.infer<typeof TaskRowSchema>
-export type TaskRowCompact = z.infer<typeof TaskRowCompactSchema>
-export type BpRow = z.infer<typeof BpRowSchema>
-export type BpDetailRow = z.infer<typeof BpDetailRowSchema>
+export type TaskRow = z.infer<typeof TaskRowSchema>;
+export type TaskRowCompact = z.infer<typeof TaskRowCompactSchema>;
+export type BpRow = z.infer<typeof BpRowSchema>;
+export type BpDetailRow = z.infer<typeof BpDetailRowSchema>;

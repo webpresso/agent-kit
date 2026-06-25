@@ -1,20 +1,20 @@
 #!/usr/bin/env bun
 
-import { resolve } from 'node:path'
+import { resolve } from "node:path";
 
-import { stagePublishableTarballSurface } from '../src/audit/package-surface.ts'
-import { syncBlueprintMigrationSqlAssets } from '../src/build/blueprint-migration-assets.ts'
+import { stagePublishableTarballSurface } from "../src/audit/package-surface.ts";
+import { syncBlueprintMigrationSqlAssets } from "../src/build/blueprint-migration-assets.ts";
 
-const target = process.argv[2]
+const target = process.argv[2];
 if (!target) {
-  console.error('Usage: bun scripts/stage-packed-surface.ts <destination-dir> [root-dir]')
-  process.exit(1)
+  console.error("Usage: bun scripts/stage-packed-surface.ts <destination-dir> [root-dir]");
+  process.exit(1);
 }
 
-const root = resolve(process.argv[3] ?? process.cwd())
-const destination = resolve(target)
-syncBlueprintMigrationSqlAssets(root)
-const result = stagePublishableTarballSurface(root, destination)
+const root = resolve(process.argv[3] ?? process.cwd());
+const destination = resolve(target);
+syncBlueprintMigrationSqlAssets(root);
+const result = stagePublishableTarballSurface(root, destination);
 console.log(
   JSON.stringify(
     {
@@ -26,4 +26,4 @@ console.log(
     null,
     2,
   ),
-)
+);

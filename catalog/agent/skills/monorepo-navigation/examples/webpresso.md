@@ -14,16 +14,16 @@ Delete if not useful.
 
 ### Core Packages
 
-| Package           | Path                              | Purpose                         | Common Files                                    |
-| ----------------- | --------------------------------- | ------------------------------- | ----------------------------------------------- |
-| **platform-api**  | `apps/platform/workers/platform-api/`      | Main API, GraphQL, handlers     | `src/routes/`, `src/handlers/`, `src/services/` |
-| **platform-web**  | `apps/platform/web/platform-web/`        | Platform web UI                 | `app/routes/`, `app/components/`                |
-| **admin-api**     | `apps/platform/workers/admin-api/`         | Admin API                       | `src/routes/`, `src/services/`                  |
-| **admin-web**     | `apps/platform/web/admin-web/`           | Admin web UI                    | `app/routes/`, `app/components/`                |
-| **schema-engine** | `packages/sdk/schema-engine/` | Entity schemas, GraphQL codegen | `src/`, emitters                                |
-| **database**      | `packages/core/database/`         | Drizzle schemas, migrations     | `src/schemas/`, `migrations/`                   |
-| **test-utils**    | `packages/core/test-utils/`       | Test utilities, mocks           | `src/`, `src/playwright/`                       |
-| **cli2**          | `apps/cli2/`                      | CLI tool, just commands         | `src/commands/`, `src/lib/`                     |
+| Package           | Path                                  | Purpose                         | Common Files                                    |
+| ----------------- | ------------------------------------- | ------------------------------- | ----------------------------------------------- |
+| **platform-api**  | `apps/platform/workers/platform-api/` | Main API, GraphQL, handlers     | `src/routes/`, `src/handlers/`, `src/services/` |
+| **platform-web**  | `apps/platform/web/platform-web/`     | Platform web UI                 | `app/routes/`, `app/components/`                |
+| **admin-api**     | `apps/platform/workers/admin-api/`    | Admin API                       | `src/routes/`, `src/services/`                  |
+| **admin-web**     | `apps/platform/web/admin-web/`        | Admin web UI                    | `app/routes/`, `app/components/`                |
+| **schema-engine** | `packages/sdk/schema-engine/`         | Entity schemas, GraphQL codegen | `src/`, emitters                                |
+| **database**      | `packages/core/database/`             | Drizzle schemas, migrations     | `src/schemas/`, `migrations/`                   |
+| **test-utils**    | `packages/core/test-utils/`           | Test utilities, mocks           | `src/`, `src/playwright/`                       |
+| **cli2**          | `apps/cli2/`                          | CLI tool, just commands         | `src/commands/`, `src/lib/`                     |
 
 ### Key Locations
 
@@ -92,24 +92,25 @@ rg -n "projects:" apps/platform/workers/platform-api/src/handlers/
 
 ```typescript
 // From generated artifacts (real workspace package rooted at .webpresso/generated/)
-import { projectFragment } from '@workspace/generated/graphql'
-import * as schema from '@workspace/generated/drizzle/schemas'
+import { projectFragment } from "@workspace/generated/graphql";
+import * as schema from "@workspace/generated/drizzle/schemas";
 
 // From test-utils
-import { createIntegrationContext } from '@workspace/test-utils'
-import { projectsFactory } from '@workspace/generated/factories'
+import { createIntegrationContext } from "@workspace/test-utils";
+import { projectsFactory } from "@workspace/generated/factories";
 
 // From database
-import { db } from '@workspace/database/client'
-import { projects } from '@workspace/database/schemas'
+import { db } from "@workspace/database/client";
+import { projects } from "@workspace/database/schemas";
 
 // From ui (shared components)
-import { Button } from '@webpresso/ui'
+import { Button } from "@webpresso/ui";
 ```
 
 ### Package Names
 
 Two npm scopes coexist after the `6 degrees of seperation` rename:
+
 - Internal workspace packages use `@workspace/*` scope (e.g. `@workspace/platform-api`, `@workspace/platform-web`, `@workspace/chef`, `@workspace/neon`, `@workspace/e2e`, `@workspace/docs-linter`)
 - Externally published packages keep `@webpresso/*` scope (e.g. `@webpresso/schema-engine`, `@webpresso/cli-wp`, `webpresso`, `@webpresso/ui`, `@workspace/generated`)
 

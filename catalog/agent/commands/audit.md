@@ -1,6 +1,6 @@
 ---
-description: 'Unified audit command for code quality, test quality, duplication, and UX audits'
-argument-hint: '<type> [target] where type is: code|test|dup|ux|all'
+description: "Unified audit command for code quality, test quality, duplication, and UX audits"
+argument-hint: "<type> [target] where type is: code|test|dup|ux|all"
 allowed-tools: Bash, Read, Glob, Grep, Task
 ---
 

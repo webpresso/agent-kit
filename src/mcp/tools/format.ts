@@ -16,73 +16,73 @@
  * the tool returns `isError: true` with a clear install hint.
  */
 
-import { z } from 'zod'
+import { z } from "zod";
 
-import type { ToolDescriptor } from '#mcp/auto-discover'
-import { runFormat } from '#format/index'
+import type { ToolDescriptor } from "#mcp/auto-discover";
+import { runFormat } from "#format/index";
 
-import { formatMcpToolOutput } from './_shared/full-output.js'
-import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
+import { formatMcpToolOutput } from "./_shared/full-output.js";
+import { createSummaryOutputSchema, createSummaryResult } from "./_shared/result.js";
 
 const inputSchema = z.object({
   check: z.boolean().optional().default(false),
   cwd: z.string().optional(),
   files: z.array(z.string()).optional(),
   full: z.boolean().optional().default(false),
-})
+});
 
-export type AkFormatInput = z.infer<typeof inputSchema>
+export type AkFormatInput = z.infer<typeof inputSchema>;
 
 const outputSchema = createSummaryOutputSchema({
   details: z.object({
     spawnError: z.string().optional(),
   }),
-})
+});
 
 const tool: ToolDescriptor = {
-  name: 'wp_format',
+  name: "wp_format",
   description:
-    'Run formatter via the repo formatting surface. By default writes fixes in place; pass `check: true` to verify without writing.',
+    "Run formatter via the repo formatting surface. By default writes fixes in place; pass `check: true` to verify without writing.",
   inputSchema,
   outputSchema,
   annotations: {
-    title: 'Format',
+    title: "Format",
     readOnlyHint: false,
     destructiveHint: false,
     idempotentHint: true,
     openWorldHint: false,
   },
   handler: async (raw, extra) => {
-    const input = inputSchema.parse(raw ?? {})
-    let formatResult
+    const input = inputSchema.parse(raw ?? {});
+    let formatResult;
     try {
       formatResult = await runFormat({
         check: input.check,
         cwd: input.cwd,
         files: input.files,
         signal: extra?.signal,
-      })
+      });
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
+      const message = error instanceof Error ? error.message : String(error);
       return createSummaryResult(
         {
           passed: false,
           summary: /binary not found/u.test(message)
-            ? 'format could not start: formatter backend missing on PATH'
-            : 'format could not start',
+            ? "format could not start: formatter backend missing on PATH"
+            : "format could not start",
           exitCode: 1,
           details: { spawnError: message },
         },
         { isError: true },
-      )
+      );
     }
 
-    const combined = formatResult.output
+    const combined = formatResult.output;
     const compact = formatMcpToolOutput(combined, {
-      toolName: 'wp_format',
+      toolName: "wp_format",
       full: input.full,
       cwd: input.cwd,
-    })
+    });
 
     const payload = {
       passed: formatResult.passed,
@@ -98,24 +98,24 @@ const tool: ToolDescriptor = {
       ...compact,
       timedOut: formatResult.timedOut || undefined,
       aborted: formatResult.aborted || undefined,
-    }
-    return createSummaryResult(payload)
+    };
+    return createSummaryResult(payload);
   },
-}
+};
 
 function summarizeFormatResult(options: {
-  passed: boolean
-  check: boolean
-  exitCode: number
-  timedOut?: boolean
-  aborted?: boolean
+  passed: boolean;
+  check: boolean;
+  exitCode: number;
+  timedOut?: boolean;
+  aborted?: boolean;
 }): string {
-  if (options.timedOut) return 'format timed out'
-  if (options.aborted) return 'format aborted'
-  if (options.passed) return options.check ? 'format check passed' : 'format applied'
+  if (options.timedOut) return "format timed out";
+  if (options.aborted) return "format aborted";
+  if (options.passed) return options.check ? "format check passed" : "format applied";
   return options.check
     ? `format check failed (exit ${options.exitCode}) — run \`wp format\` to apply fixes`
-    : `format failed (exit ${options.exitCode})`
+    : `format failed (exit ${options.exitCode})`;
 }
 
-export default tool
+export default tool;

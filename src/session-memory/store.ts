@@ -1,6 +1,6 @@
-import { createHash } from 'node:crypto'
+import { createHash } from "node:crypto";
 
-import { Database } from '#db/sqlite.js'
+import { Database } from "#db/sqlite.js";
 
 import type {
   IndexedSessionMemoryChunk,
@@ -12,51 +12,55 @@ import type {
   SearchOptions,
   SessionMemoryUnifiedResult,
   SessionMemoryExactChunk,
-} from './types.js'
-import type { SessionGainEventInput, SessionGainStats, SessionGainToolStats } from './gain-types.js'
+} from "./types.js";
+import type {
+  SessionGainEventInput,
+  SessionGainStats,
+  SessionGainToolStats,
+} from "./gain-types.js";
 
 type ChunkRow = {
-  id: string
-  source: string
-  text: string
-  metadata_json: string
-  created_at: string
-}
+  id: string;
+  source: string;
+  text: string;
+  metadata_json: string;
+  created_at: string;
+};
 
-type SearchTier = SessionMemorySearchResult['tier']
+type SearchTier = SessionMemorySearchResult["tier"];
 
 export interface SessionMemoryIndexStats {
-  chunkCount: number
-  sourceCount: number
-  sources: string[]
+  chunkCount: number;
+  sourceCount: number;
+  sources: string[];
 }
 
 export interface SessionMemoryIndexPurgeOptions {
-  source?: string
-  confirm?: boolean
-  allowGlobal?: boolean
+  source?: string;
+  confirm?: boolean;
+  allowGlobal?: boolean;
 }
 
 export interface SessionMemoryIndexPurgeResult {
-  dryRun: boolean
-  matchedCount: number
-  deletedCount: number
-  matchedGainEventCount: number
-  deletedGainEventCount: number
-  source?: string
-  warnings: string[]
+  dryRun: boolean;
+  matchedCount: number;
+  deletedCount: number;
+  matchedGainEventCount: number;
+  deletedGainEventCount: number;
+  source?: string;
+  warnings: string[];
 }
 
 export interface SessionMemoryIndexDoctorResult {
-  ok: boolean
-  chunkCount: number
-  sourceCount: number
-  warnings: string[]
+  ok: boolean;
+  chunkCount: number;
+  sourceCount: number;
+  warnings: string[];
 }
 
 // Search fallback uses a three-tier local ranking design:
 // porter FTS, then trigram FTS, then IDF-weighted Levenshtein.
-const OPTIMIZE_INTERVAL = 50
+const OPTIMIZE_INTERVAL = 50;
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS session_memory_chunks (
@@ -87,73 +91,73 @@ CREATE INDEX IF NOT EXISTS idx_session_memory_gain_events_tool
   ON session_memory_gain_events(tool_name);
 CREATE INDEX IF NOT EXISTS idx_session_memory_gain_events_created
   ON session_memory_gain_events(created_at);
-`
+`;
 
 function byteLength(value: string): number {
-  return Buffer.byteLength(value, 'utf8')
+  return Buffer.byteLength(value, "utf8");
 }
 
 function truncateUtf8(value: string, maxBytes: number): string {
-  if (maxBytes < 0 || byteLength(value) <= maxBytes) return value
-  let bytes = 0
-  let output = ''
+  if (maxBytes < 0 || byteLength(value) <= maxBytes) return value;
+  let bytes = 0;
+  let output = "";
   for (const char of value) {
-    const charBytes = byteLength(char)
-    if (bytes + charBytes > maxBytes) break
-    output += char
-    bytes += charBytes
+    const charBytes = byteLength(char);
+    if (bytes + charBytes > maxBytes) break;
+    output += char;
+    bytes += charBytes;
   }
-  return output
+  return output;
 }
 
 function contentFingerprint(value: string): string {
-  return createHash('sha256').update(value).digest('hex').slice(0, 24)
+  return createHash("sha256").update(value).digest("hex").slice(0, 24);
 }
 
 function normalizeLimit(value: number | undefined, fallback: number, max = 50): number {
-  if (value === undefined || !Number.isFinite(value) || value <= 0) return fallback
-  return Math.min(Math.trunc(value), max)
+  if (value === undefined || !Number.isFinite(value) || value <= 0) return fallback;
+  return Math.min(Math.trunc(value), max);
 }
 
 function tokenize(value: string): string[] {
   return value
     .toLowerCase()
     .split(/[^a-z0-9]+/u)
-    .filter((token) => token.length > 0)
+    .filter((token) => token.length > 0);
 }
 
 function escapeFtsQuery(query: string): string {
   return tokenize(query)
     .map((token) => `"${token.replaceAll('"', '""')}"`)
-    .join(' ')
+    .join(" ");
 }
 
 function levenshtein(a: string, b: string): number {
-  const previous = Array.from({ length: b.length + 1 }, (_, index) => index)
-  const current = Array<number>(b.length + 1).fill(0)
+  const previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+  const current = Array<number>(b.length + 1).fill(0);
   for (let i = 1; i <= a.length; i += 1) {
-    current[0] = i
+    current[0] = i;
     for (let j = 1; j <= b.length; j += 1) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1
-      current[j] = Math.min(current[j - 1]! + 1, previous[j]! + 1, previous[j - 1]! + cost)
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      current[j] = Math.min(current[j - 1]! + 1, previous[j]! + 1, previous[j - 1]! + cost);
     }
-    previous.splice(0, previous.length, ...current)
+    previous.splice(0, previous.length, ...current);
   }
-  return previous[b.length] ?? 0
+  return previous[b.length] ?? 0;
 }
 
 function parseMetadata(raw: string): Record<string, unknown> {
-  const parsed = JSON.parse(raw) as unknown
-  return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+  const parsed = JSON.parse(raw) as unknown;
+  return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
     ? (parsed as Record<string, unknown>)
-    : {}
+    : {};
 }
 
 function dedupeUnifiedResults(
   results: SessionMemoryUnifiedResult[],
   limit: number,
 ): SessionMemoryUnifiedResult[] {
-  const seen = new Set<string>()
+  const seen = new Set<string>();
   return results
     .sort(
       (a, b) =>
@@ -162,33 +166,33 @@ function dedupeUnifiedResults(
         a.provenance.id.localeCompare(b.provenance.id),
     )
     .filter((result) => {
-      if (seen.has(result.dedupeKey)) return false
-      seen.add(result.dedupeKey)
-      return true
+      if (seen.has(result.dedupeKey)) return false;
+      seen.add(result.dedupeKey);
+      return true;
     })
-    .slice(0, limit)
+    .slice(0, limit);
 }
 
 export class SessionMemoryStore {
-  private readonly db: Database
-  private insertsSinceOptimize = 0
+  private readonly db: Database;
+  private insertsSinceOptimize = 0;
 
   constructor(dbPath: string | { readonly memory: true }) {
-    this.db = new Database(typeof dbPath === 'string' ? dbPath : ':memory:')
-    this.db.exec('PRAGMA journal_mode = WAL')
-    this.db.exec('PRAGMA synchronous = NORMAL')
-    this.db.exec('PRAGMA mmap_size = 268435456')
-    this.db.exec('PRAGMA busy_timeout = 5000')
-    this.db.exec(SCHEMA_SQL)
+    this.db = new Database(typeof dbPath === "string" ? dbPath : ":memory:");
+    this.db.exec("PRAGMA journal_mode = WAL");
+    this.db.exec("PRAGMA synchronous = NORMAL");
+    this.db.exec("PRAGMA mmap_size = 268435456");
+    this.db.exec("PRAGMA busy_timeout = 5000");
+    this.db.exec(SCHEMA_SQL);
   }
 
   close(): void {
-    this.db.close()
+    this.db.close();
   }
 
   indexChunk(chunk: SessionMemoryChunk): void {
-    const createdAt = chunk.createdAt ?? new Date().toISOString()
-    const metadataJson = JSON.stringify(chunk.metadata ?? {})
+    const createdAt = chunk.createdAt ?? new Date().toISOString();
+    const metadataJson = JSON.stringify(chunk.metadata ?? {});
     this.db
       .prepare<[string, string, string, string, string]>(
         `INSERT INTO session_memory_chunks (id, source, text, metadata_json, created_at)
@@ -199,76 +203,76 @@ export class SessionMemoryStore {
            metadata_json = excluded.metadata_json,
            created_at = excluded.created_at`,
       )
-      .run(chunk.id, chunk.source, chunk.text, metadataJson, createdAt)
-    this.db.prepare<[string]>('DELETE FROM session_memory_chunks_fts WHERE id = ?').run(chunk.id)
-    this.db.prepare<[string]>('DELETE FROM session_memory_chunks_tri WHERE id = ?').run(chunk.id)
+      .run(chunk.id, chunk.source, chunk.text, metadataJson, createdAt);
+    this.db.prepare<[string]>("DELETE FROM session_memory_chunks_fts WHERE id = ?").run(chunk.id);
+    this.db.prepare<[string]>("DELETE FROM session_memory_chunks_tri WHERE id = ?").run(chunk.id);
     this.db
       .prepare<[string, string, string]>(
-        'INSERT INTO session_memory_chunks_fts (id, source, text) VALUES (?, ?, ?)',
+        "INSERT INTO session_memory_chunks_fts (id, source, text) VALUES (?, ?, ?)",
       )
-      .run(chunk.id, chunk.source, chunk.text)
+      .run(chunk.id, chunk.source, chunk.text);
     this.db
       .prepare<[string, string, string]>(
-        'INSERT INTO session_memory_chunks_tri (id, source, text) VALUES (?, ?, ?)',
+        "INSERT INTO session_memory_chunks_tri (id, source, text) VALUES (?, ?, ?)",
       )
-      .run(chunk.id, chunk.source, chunk.text)
-    this.insertsSinceOptimize += 1
+      .run(chunk.id, chunk.source, chunk.text);
+    this.insertsSinceOptimize += 1;
     if (this.insertsSinceOptimize >= OPTIMIZE_INTERVAL) {
       this.db.exec(
         "INSERT INTO session_memory_chunks_fts(session_memory_chunks_fts) VALUES('optimize')",
-      )
+      );
       this.db.exec(
         "INSERT INTO session_memory_chunks_tri(session_memory_chunks_tri) VALUES('optimize')",
-      )
-      this.insertsSinceOptimize = 0
+      );
+      this.insertsSinceOptimize = 0;
     }
   }
 
   indexChunks(chunks: readonly SessionMemoryChunk[]): void {
     const tx = this.db.transaction((items: unknown) => {
-      for (const chunk of items as readonly SessionMemoryChunk[]) this.indexChunk(chunk)
-    })
-    tx(chunks)
+      for (const chunk of items as readonly SessionMemoryChunk[]) this.indexChunk(chunk);
+    });
+    tx(chunks);
   }
 
   search(options: SessionMemorySearchOptions): SessionMemorySearchResult[] {
-    const limit = options.limit ?? 5
-    const ftsQuery = escapeFtsQuery(options.query)
-    if (!ftsQuery) return []
-    const scoped = this.searchFts('porter', ftsQuery, options.source, limit)
-    if (scoped.length > 0) return scoped
-    const trigram = this.searchFts('trigram', ftsQuery, options.source, limit)
-    if (trigram.length > 0) return trigram
-    const fuzzy = this.searchLevenshtein(options.query, options.source, limit)
-    if (fuzzy.length > 0) return fuzzy
-    return options.source ? this.search({ ...options, source: undefined }) : []
+    const limit = options.limit ?? 5;
+    const ftsQuery = escapeFtsQuery(options.query);
+    if (!ftsQuery) return [];
+    const scoped = this.searchFts("porter", ftsQuery, options.source, limit);
+    if (scoped.length > 0) return scoped;
+    const trigram = this.searchFts("trigram", ftsQuery, options.source, limit);
+    if (trigram.length > 0) return trigram;
+    const fuzzy = this.searchLevenshtein(options.query, options.source, limit);
+    if (fuzzy.length > 0) return fuzzy;
+    return options.source ? this.search({ ...options, source: undefined }) : [];
   }
 
   searchUnified(options: SessionMemorySearchOptions): SessionMemoryUnifiedResult[] {
-    if (options.sourceTypes && !options.sourceTypes.includes('indexed_chunk')) return []
-    const limit = normalizeLimit(options.limit, 5)
-    const ftsQuery = escapeFtsQuery(options.query)
-    if (!ftsQuery) return []
-    let raw = this.searchFts('porter', ftsQuery, options.source, Math.max(limit * 2, limit))
+    if (options.sourceTypes && !options.sourceTypes.includes("indexed_chunk")) return [];
+    const limit = normalizeLimit(options.limit, 5);
+    const ftsQuery = escapeFtsQuery(options.query);
+    if (!ftsQuery) return [];
+    let raw = this.searchFts("porter", ftsQuery, options.source, Math.max(limit * 2, limit));
     if (raw.length === 0) {
-      raw = this.searchFts('trigram', ftsQuery, options.source, Math.max(limit * 2, limit))
+      raw = this.searchFts("trigram", ftsQuery, options.source, Math.max(limit * 2, limit));
     }
     if (raw.length === 0) {
-      raw = this.searchLevenshtein(options.query, options.source, Math.max(limit * 2, limit))
+      raw = this.searchLevenshtein(options.query, options.source, Math.max(limit * 2, limit));
     }
     return dedupeUnifiedResults(
       raw.map((result) => this.mapUnifiedResult(result, options.maxPreviewBytes)),
       limit,
-    )
+    );
   }
 
   getChunkById(id: string): SessionMemoryExactChunk | undefined {
     const row = this.db
       .prepare<[string], ChunkRow>(
-        'SELECT id, source, text, metadata_json, created_at FROM session_memory_chunks WHERE id = ?',
+        "SELECT id, source, text, metadata_json, created_at FROM session_memory_chunks WHERE id = ?",
       )
-      .get(id)
-    if (!row) return undefined
+      .get(id);
+    if (!row) return undefined;
     return {
       id: row.id,
       source: row.source,
@@ -276,7 +280,7 @@ export class SessionMemoryStore {
       metadata: parseMetadata(row.metadata_json),
       createdAt: row.created_at,
       bytes: byteLength(row.text),
-    }
+    };
   }
 
   getChunksBySource(source: string): SessionMemoryExactChunk[] {
@@ -295,47 +299,47 @@ export class SessionMemoryStore {
         metadata: parseMetadata(row.metadata_json),
         createdAt: row.created_at,
         bytes: byteLength(row.text),
-      }))
+      }));
   }
 
   count(): number {
     const row = this.db
-      .prepare<[], { count: number }>('SELECT COUNT(*) AS count FROM session_memory_chunks')
-      .get()
-    return row?.count ?? 0
+      .prepare<[], { count: number }>("SELECT COUNT(*) AS count FROM session_memory_chunks")
+      .get();
+    return row?.count ?? 0;
   }
 
   stats(): SessionMemoryIndexStats {
-    const chunkCount = this.count()
+    const chunkCount = this.count();
     const sources = this.db
       .prepare<[], { source: string }>(
-        'SELECT DISTINCT source FROM session_memory_chunks ORDER BY source ASC',
+        "SELECT DISTINCT source FROM session_memory_chunks ORDER BY source ASC",
       )
       .all()
-      .map((row) => row.source)
-    return { chunkCount, sourceCount: sources.length, sources }
+      .map((row) => row.source);
+    return { chunkCount, sourceCount: sources.length, sources };
   }
 
   recordGainEvent(event: SessionGainEventInput): string {
-    const createdAt = event.createdAt ?? new Date().toISOString()
-    const baseId = createHash('sha256')
+    const createdAt = event.createdAt ?? new Date().toISOString();
+    const baseId = createHash("sha256")
       .update(event.toolName)
-      .update('\0')
+      .update("\0")
       .update(createdAt)
-      .update('\0')
+      .update("\0")
       .update(String(event.rawBasisBytes))
-      .update('\0')
+      .update("\0")
       .update(String(event.returnedToolResultBytes))
-      .update('\0')
+      .update("\0")
       .update(String(event.gainBytes))
-      .update('\0')
+      .update("\0")
       .update(String(event.approxTokensSaved))
-      .update('\0')
+      .update("\0")
       .update(event.rawBytesBasis)
-      .update('\0')
+      .update("\0")
       .update(event.precision)
-      .digest('hex')
-      .slice(0, 32)
+      .digest("hex")
+      .slice(0, 32);
     const insert = this.db.prepare<
       [string, string, number, number, number, number, string, string, string]
     >(
@@ -343,9 +347,9 @@ export class SessionMemoryStore {
          (id, tool_name, raw_basis_bytes, returned_tool_result_bytes, gain_bytes,
           approx_tokens_saved, raw_bytes_basis, precision, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
+    );
     for (let suffix = 0; suffix < 1_000; suffix += 1) {
-      const id = suffix === 0 ? baseId : `${baseId}-${suffix}`
+      const id = suffix === 0 ? baseId : `${baseId}-${suffix}`;
       const result = insert.run(
         id,
         event.toolName,
@@ -356,10 +360,10 @@ export class SessionMemoryStore {
         event.rawBytesBasis,
         event.precision,
         createdAt,
-      )
-      if (result.changes > 0) return id
+      );
+      if (result.changes > 0) return id;
     }
-    throw new Error('unable to allocate session gain event id')
+    throw new Error("unable to allocate session gain event id");
   }
 
   gainStats(): SessionGainStats {
@@ -367,11 +371,11 @@ export class SessionMemoryStore {
       .prepare<
         [],
         {
-          eventCount: number
-          rawBasisBytes: number | null
-          returnedToolResultBytes: number | null
-          gainBytes: number | null
-          approxTokensSaved: number | null
+          eventCount: number;
+          rawBasisBytes: number | null;
+          returnedToolResultBytes: number | null;
+          gainBytes: number | null;
+          approxTokensSaved: number | null;
         }
       >(
         `SELECT
@@ -382,17 +386,17 @@ export class SessionMemoryStore {
            SUM(approx_tokens_saved) AS approxTokensSaved
          FROM session_memory_gain_events`,
       )
-      .get()
+      .get();
     const byTool = this.db
       .prepare<
         [],
         {
-          toolName: string
-          eventCount: number
-          rawBasisBytes: number | null
-          returnedToolResultBytes: number | null
-          gainBytes: number | null
-          approxTokensSaved: number | null
+          toolName: string;
+          eventCount: number;
+          rawBasisBytes: number | null;
+          returnedToolResultBytes: number | null;
+          gainBytes: number | null;
+          approxTokensSaved: number | null;
         }
       >(
         `SELECT
@@ -416,7 +420,7 @@ export class SessionMemoryStore {
           gainBytes: row.gainBytes ?? 0,
           approxTokensSaved: row.approxTokensSaved ?? 0,
         }),
-      )
+      );
     return {
       eventCount: totals?.eventCount ?? 0,
       rawBasisBytes: totals?.rawBasisBytes ?? 0,
@@ -424,25 +428,25 @@ export class SessionMemoryStore {
       gainBytes: totals?.gainBytes ?? 0,
       approxTokensSaved: totals?.approxTokensSaved ?? 0,
       byTool,
-    }
+    };
   }
 
   purge(options: SessionMemoryIndexPurgeOptions = {}): SessionMemoryIndexPurgeResult {
     const ids = options.source
       ? this.db
           .prepare<[string], { id: string }>(
-            'SELECT id FROM session_memory_chunks WHERE source = ? ORDER BY id ASC',
+            "SELECT id FROM session_memory_chunks WHERE source = ? ORDER BY id ASC",
           )
           .all(options.source)
       : this.db
-          .prepare<[], { id: string }>('SELECT id FROM session_memory_chunks ORDER BY id ASC')
-          .all()
-    const matchedCount = ids.length
-    const matchedGainEventCount = options.source ? 0 : this.gainStats().eventCount
-    const dryRun = options.confirm !== true
-    const warnings: string[] = []
+          .prepare<[], { id: string }>("SELECT id FROM session_memory_chunks ORDER BY id ASC")
+          .all();
+    const matchedCount = ids.length;
+    const matchedGainEventCount = options.source ? 0 : this.gainStats().eventCount;
+    const dryRun = options.confirm !== true;
+    const warnings: string[] = [];
     if (options.confirm === true && !options.source && options.allowGlobal !== true) {
-      warnings.push('global purge requires allowGlobal=true')
+      warnings.push("global purge requires allowGlobal=true");
       return {
         dryRun: true,
         matchedCount,
@@ -450,7 +454,7 @@ export class SessionMemoryStore {
         matchedGainEventCount,
         deletedGainEventCount: 0,
         warnings,
-      }
+      };
     }
     if (dryRun || (matchedCount === 0 && matchedGainEventCount === 0)) {
       return {
@@ -461,25 +465,25 @@ export class SessionMemoryStore {
         deletedGainEventCount: 0,
         ...(options.source ? { source: options.source } : {}),
         warnings,
-      }
+      };
     }
 
     const tx = this.db.transaction((rawIds: unknown) => {
       for (const row of rawIds as Array<{ id: string }>) {
-        this.db.prepare<[string]>('DELETE FROM session_memory_chunks_fts WHERE id = ?').run(row.id)
-        this.db.prepare<[string]>('DELETE FROM session_memory_chunks_tri WHERE id = ?').run(row.id)
-        this.db.prepare<[string]>('DELETE FROM session_memory_chunks WHERE id = ?').run(row.id)
+        this.db.prepare<[string]>("DELETE FROM session_memory_chunks_fts WHERE id = ?").run(row.id);
+        this.db.prepare<[string]>("DELETE FROM session_memory_chunks_tri WHERE id = ?").run(row.id);
+        this.db.prepare<[string]>("DELETE FROM session_memory_chunks WHERE id = ?").run(row.id);
       }
       if (options.source) {
-        this.deleteNativeSourceTables(options.source)
+        this.deleteNativeSourceTables(options.source);
       } else {
-        this.deleteNativeSourceTables()
+        this.deleteNativeSourceTables();
       }
       if (!options.source) {
-        this.db.prepare('DELETE FROM session_memory_gain_events').run()
+        this.db.prepare("DELETE FROM session_memory_gain_events").run();
       }
-    })
-    tx(ids)
+    });
+    tx(ids);
     return {
       dryRun: false,
       matchedCount,
@@ -488,18 +492,18 @@ export class SessionMemoryStore {
       deletedGainEventCount: options.source ? 0 : matchedGainEventCount,
       ...(options.source ? { source: options.source } : {}),
       warnings,
-    }
+    };
   }
 
   private deleteNativeSourceTables(source?: string): void {
-    for (const table of ['chunks', 'chunks_trigram'] as const) {
-      if (!this.tableExists(table)) continue
-      if (source) this.db.prepare<[string]>(`DELETE FROM ${table} WHERE source = ?`).run(source)
-      else this.db.prepare(`DELETE FROM ${table}`).run()
+    for (const table of ["chunks", "chunks_trigram"] as const) {
+      if (!this.tableExists(table)) continue;
+      if (source) this.db.prepare<[string]>(`DELETE FROM ${table} WHERE source = ?`).run(source);
+      else this.db.prepare(`DELETE FROM ${table}`).run();
     }
-    if (!this.tableExists('sources')) return
-    if (source) this.db.prepare<[string]>('DELETE FROM sources WHERE label = ?').run(source)
-    else this.db.prepare('DELETE FROM sources').run()
+    if (!this.tableExists("sources")) return;
+    if (source) this.db.prepare<[string]>("DELETE FROM sources WHERE label = ?").run(source);
+    else this.db.prepare("DELETE FROM sources").run();
   }
 
   private tableExists(name: string): boolean {
@@ -507,34 +511,34 @@ export class SessionMemoryStore {
       .prepare<[string], { count: number }>(
         "SELECT COUNT(*) AS count FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?",
       )
-      .get(name)
-    return (row?.count ?? 0) > 0
+      .get(name);
+    return (row?.count ?? 0) > 0;
   }
 
   doctor(): SessionMemoryIndexDoctorResult {
-    const warnings: string[] = []
-    const quickCheck = this.db.prepare<[], { quick_check: string }>('PRAGMA quick_check').get()
-    if (quickCheck?.quick_check !== 'ok') warnings.push('index store quick_check failed')
-    const stats = this.stats()
+    const warnings: string[] = [];
+    const quickCheck = this.db.prepare<[], { quick_check: string }>("PRAGMA quick_check").get();
+    if (quickCheck?.quick_check !== "ok") warnings.push("index store quick_check failed");
+    const stats = this.stats();
     return {
       ok: warnings.length === 0,
       chunkCount: stats.chunkCount,
       sourceCount: stats.sourceCount,
       warnings,
-    }
+    };
   }
 
   private searchFts(
-    tier: Exclude<SearchTier, 'levenshtein'>,
+    tier: Exclude<SearchTier, "levenshtein">,
     query: string,
     source: string | undefined,
     limit: number,
   ): SessionMemorySearchResult[] {
-    const table = tier === 'porter' ? 'session_memory_chunks_fts' : 'session_memory_chunks_tri'
-    const sourceFilter = source ? 'AND c.source = ?' : ''
+    const table = tier === "porter" ? "session_memory_chunks_fts" : "session_memory_chunks_tri";
+    const sourceFilter = source ? "AND c.source = ?" : "";
     const params = source
       ? ([query, source, limit] as [string, string, number])
-      : ([query, limit] as [string, number])
+      : ([query, limit] as [string, number]);
     const rows = this.db
       .prepare<typeof params, ChunkRow & { score: number }>(
         `SELECT c.id, c.source, c.text, c.metadata_json, c.created_at, bm25(${table}) * -1 AS score
@@ -544,8 +548,8 @@ export class SessionMemoryStore {
          ORDER BY score DESC
          LIMIT ?`,
       )
-      .all(...params)
-    return rows.map((row) => this.mapResult(row, row.score, tier))
+      .all(...params);
+    return rows.map((row) => this.mapResult(row, row.score, tier));
   }
 
   private searchLevenshtein(
@@ -553,56 +557,56 @@ export class SessionMemoryStore {
     source: string | undefined,
     limit: number,
   ): SessionMemorySearchResult[] {
-    const cappedLimit = normalizeLimit(limit, 5, 50)
+    const cappedLimit = normalizeLimit(limit, 5, 50);
     const rows = source
       ? this.db
           .prepare<[string], ChunkRow>(
-            'SELECT id, source, text, metadata_json, created_at FROM session_memory_chunks WHERE source = ?',
+            "SELECT id, source, text, metadata_json, created_at FROM session_memory_chunks WHERE source = ?",
           )
           .all(source)
       : this.db
           .prepare<[], ChunkRow>(
-            'SELECT id, source, text, metadata_json, created_at FROM session_memory_chunks',
+            "SELECT id, source, text, metadata_json, created_at FROM session_memory_chunks",
           )
-          .all()
-    const queryTokens = tokenize(query)
+          .all();
+    const queryTokens = tokenize(query);
     return rows
       .map((row) => {
-        const textTokens = tokenize(row.text)
+        const textTokens = tokenize(row.text);
         const bestDistance = Math.min(
           ...queryTokens.map((needle) =>
             Math.min(...textTokens.map((token) => levenshtein(needle, token))),
           ),
-        )
-        const idfWeight = 1 + Math.log(1 + rows.length / Math.max(1, textTokens.length))
-        return { row, score: idfWeight / (1 + bestDistance) }
+        );
+        const idfWeight = 1 + Math.log(1 + rows.length / Math.max(1, textTokens.length));
+        return { row, score: idfWeight / (1 + bestDistance) };
       })
       .filter((item) => Number.isFinite(item.score) && item.score > 0.15)
       .sort((a, b) => b.score - a.score)
       .slice(0, cappedLimit)
-      .map((item) => this.mapResult(item.row, item.score, 'levenshtein'))
+      .map((item) => this.mapResult(item.row, item.score, "levenshtein"));
   }
 
   private mapUnifiedResult(
     result: SessionMemorySearchResult,
     maxPreviewBytes: number | undefined,
   ): SessionMemoryUnifiedResult {
-    const dedupeKey = `indexed_chunk:${result.source}:${contentFingerprint(result.text)}`
+    const dedupeKey = `indexed_chunk:${result.source}:${contentFingerprint(result.text)}`;
     return {
-      sourceType: 'indexed_chunk',
-      provenance: { kind: 'indexed_chunk', id: result.id, source: result.source },
+      sourceType: "indexed_chunk",
+      provenance: { kind: "indexed_chunk", id: result.id, source: result.source },
       dedupeKey,
       score: result.score,
       tier:
-        result.tier === 'porter'
-          ? 'chunk_porter'
-          : result.tier === 'trigram'
-            ? 'chunk_trigram'
-            : 'chunk_levenshtein',
+        result.tier === "porter"
+          ? "chunk_porter"
+          : result.tier === "trigram"
+            ? "chunk_trigram"
+            : "chunk_levenshtein",
       timestamp: result.createdAt,
       preview: truncateUtf8(result.text, normalizeLimit(maxPreviewBytes, 1024)),
       metadata: result.metadata,
-    }
+    };
   }
 
   private mapResult(row: ChunkRow, score: number, tier: SearchTier): SessionMemorySearchResult {
@@ -612,50 +616,50 @@ export class SessionMemoryStore {
       text: row.text,
       metadata: parseMetadata(row.metadata_json),
       createdAt: row.created_at,
-    }
-    return { ...chunk, score, tier }
+    };
+    return { ...chunk, score, tier };
   }
 }
 
-const DEFAULT_SEARCH_LIMIT = 5
+const DEFAULT_SEARCH_LIMIT = 5;
 
 export interface SessionStore {
-  insertChunks(chunks: readonly ChunkInsertInput[]): void
-  search(options: SearchOptions): readonly SearchHit[]
-  getDbPath(): string
+  insertChunks(chunks: readonly ChunkInsertInput[]): void;
+  search(options: SearchOptions): readonly SearchHit[];
+  getDbPath(): string;
 }
 
 class LocalSessionStore implements SessionStore {
-  private readonly store: SessionMemoryStore
-  private insertedChunkCount = 0
+  private readonly store: SessionMemoryStore;
+  private insertedChunkCount = 0;
 
   constructor(private readonly dbPath: string) {
-    this.store = new SessionMemoryStore(dbPath)
+    this.store = new SessionMemoryStore(dbPath);
   }
 
   insertChunks(chunks: readonly ChunkInsertInput[]): void {
     for (const chunk of chunks) {
-      const sequence = this.insertedChunkCount
-      this.insertedChunkCount += 1
-      const id = createHash('sha256')
+      const sequence = this.insertedChunkCount;
+      this.insertedChunkCount += 1;
+      const id = createHash("sha256")
         .update(chunk.source)
-        .update('\0')
+        .update("\0")
         .update(String(sequence))
-        .update('\0')
+        .update("\0")
         .update(chunk.content)
-        .digest('hex')
-        .slice(0, 32)
+        .digest("hex")
+        .slice(0, 32);
       this.store.indexChunk({
         id: `chunk:${id}`,
         source: chunk.source,
         text: chunk.content,
-        metadata: { kind: 'session_memory_chunk', sequence },
-      })
+        metadata: { kind: "session_memory_chunk", sequence },
+      });
     }
   }
 
   search(options: SearchOptions): readonly SearchHit[] {
-    if (options.query.trim().length === 0) return []
+    if (options.query.trim().length === 0) return [];
     return this.store
       .search({
         query: options.query,
@@ -668,31 +672,31 @@ class LocalSessionStore implements SessionStore {
         source: hit.source,
         rank: index + 1,
         tier: hit.tier,
-      }))
+      }));
   }
 
   close(): void {
-    this.store.close()
+    this.store.close();
   }
 
   getDbPath(): string {
-    return this.dbPath
+    return this.dbPath;
   }
 }
 
-const storeCache = new Map<string, SessionStore>()
+const storeCache = new Map<string, SessionStore>();
 
 export function getStore(dbPath: string): SessionStore {
-  const cached = storeCache.get(dbPath)
-  if (cached !== undefined) return cached
-  const store = new LocalSessionStore(dbPath)
-  storeCache.set(dbPath, store)
-  return store
+  const cached = storeCache.get(dbPath);
+  if (cached !== undefined) return cached;
+  const store = new LocalSessionStore(dbPath);
+  storeCache.set(dbPath, store);
+  return store;
 }
 
 export function resetStoreCacheForTests(): void {
   for (const store of storeCache.values()) {
-    if ('close' in store && typeof store.close === 'function') store.close()
+    if ("close" in store && typeof store.close === "function") store.close();
   }
-  storeCache.clear()
+  storeCache.clear();
 }

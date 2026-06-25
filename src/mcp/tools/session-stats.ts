@@ -1,11 +1,11 @@
-import { z } from 'zod'
+import { z } from "zod";
 
-import type { ToolDescriptor } from '#mcp/auto-discover'
+import type { ToolDescriptor } from "#mcp/auto-discover";
 
-import { SessionMemorySessionStore } from '#session-memory/session.js'
-import { SessionMemoryStore } from '#session-memory/store.js'
-import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
-import { defaultIndexDbPath, defaultSessionDbPath } from './session-restore.js'
+import { SessionMemorySessionStore } from "#session-memory/session.js";
+import { SessionMemoryStore } from "#session-memory/store.js";
+import { createSummaryOutputSchema, createSummaryResult } from "./_shared/result.js";
+import { defaultIndexDbPath, defaultSessionDbPath } from "./session-restore.js";
 
 const inputSchema = z
   .object({
@@ -13,7 +13,7 @@ const inputSchema = z
     sessionDbPath: z.string().optional(),
     indexDbPath: z.string().optional(),
   })
-  .strict()
+  .strict();
 
 const outputSchema = createSummaryOutputSchema({
   counts: z.object({
@@ -29,32 +29,32 @@ const outputSchema = createSummaryOutputSchema({
   }),
 }).extend({
   sources: z.array(z.string()),
-})
+});
 
 const tool: ToolDescriptor = {
-  name: 'wp_session_stats',
-  description: 'Report bounded local session-memory continuity and index counts.',
+  name: "wp_session_stats",
+  description: "Report bounded local session-memory continuity and index counts.",
   inputSchema,
   outputSchema,
   annotations: {
-    title: 'Session stats',
+    title: "Session stats",
     readOnlyHint: true,
     destructiveHint: false,
     idempotentHint: true,
     openWorldHint: false,
   },
   handler: async (raw) => {
-    const input = inputSchema.parse(raw ?? {})
+    const input = inputSchema.parse(raw ?? {});
     const sessionStore = new SessionMemorySessionStore(
       input.sessionDbPath ?? defaultSessionDbPath(input.cwd),
-    )
-    const indexStore = new SessionMemoryStore(input.indexDbPath ?? defaultIndexDbPath(input.cwd))
+    );
+    const indexStore = new SessionMemoryStore(input.indexDbPath ?? defaultIndexDbPath(input.cwd));
     try {
-      const sessionStats = sessionStore.stats()
-      const indexStats = indexStore.stats()
+      const sessionStats = sessionStore.stats();
+      const indexStats = indexStore.stats();
       const payload = {
         passed: true,
-        summary: `session stats found ${sessionStats.eventCount} event${sessionStats.eventCount === 1 ? '' : 's'} and ${indexStats.chunkCount} chunk${indexStats.chunkCount === 1 ? '' : 's'}`,
+        summary: `session stats found ${sessionStats.eventCount} event${sessionStats.eventCount === 1 ? "" : "s"} and ${indexStats.chunkCount} chunk${indexStats.chunkCount === 1 ? "" : "s"}`,
         counts: {
           ...sessionStats,
           chunkCount: indexStats.chunkCount,
@@ -62,13 +62,13 @@ const tool: ToolDescriptor = {
         },
         sources: indexStats.sources,
         details: { sources: indexStats.sources },
-      }
-      return createSummaryResult(payload)
+      };
+      return createSummaryResult(payload);
     } finally {
-      sessionStore.close()
-      indexStore.close()
+      sessionStore.close();
+      indexStore.close();
     }
   },
-}
+};
 
-export default tool
+export default tool;

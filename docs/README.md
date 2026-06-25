@@ -1,6 +1,6 @@
 ---
 type: docs-index
-last_updated: '2026-06-13'
+last_updated: "2026-06-13"
 ---
 
 # webpresso docs

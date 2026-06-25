@@ -6,13 +6,13 @@ status: active
 scope: repo
 applies_to: [agents]
 related: []
-created: '2026-05-07'
-last_reviewed: '2026-05-07'
-paths: 
-  - 'schema/**/*.yaml'
-  - '**/*.ts'
-  - '**/*.tsx'
-  - 'legacy task-runner file'
+created: "2026-05-07"
+last_reviewed: "2026-05-07"
+paths:
+  - "schema/**/*.yaml"
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "legacy task-runner file"
 ---
 
 # Agent Rules
@@ -131,24 +131,32 @@ resolution; the `tsconfig.json` paths enable within-package typechecking.
 
 ```typescript
 // ✅ Cross-directory imports with #
-import { foo } from '#lib/utils'
-import { bar } from '#services/auth'
-import { baz } from '#database/schema'
+import { foo } from "#lib/utils";
+import { bar } from "#services/auth";
+import { baz } from "#database/schema";
 
 // ✅ Same-directory imports with ./
-import { helpers } from './helpers'
-import type { User } from './types'
+import { helpers } from "./helpers";
+import type { User } from "./types";
 
 // ❌ Wrong - relative parent imports
-import { bar } from '../../services/auth'
+import { bar } from "../../services/auth";
 
 // ✅ vi.mock with # alias (matches source imports)
-vi.mock('#services/auth', () => ({ /* ... */ }))
-vi.mock('#database', () => ({ /* ... */ }))
+vi.mock("#services/auth", () => ({
+  /* ... */
+}));
+vi.mock("#database", () => ({
+  /* ... */
+}));
 
 // ❌ Wrong - relative vi.mock paths (may not match resolved module ID)
-vi.mock('../../services/auth', () => ({ /* ... */ }))
-vi.mock('../src/database', () => ({ /* ... */ }))
+vi.mock("../../services/auth", () => ({
+  /* ... */
+}));
+vi.mock("../src/database", () => ({
+  /* ... */
+}));
 ```
 
 ### Infrastructure

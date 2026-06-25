@@ -38,11 +38,11 @@
  *                  resulting bytes (reserved for non-symlink, non-copy hosts)
  */
 
-import type { ContentKind, ContentRecord } from '#content/loader'
+import type { ContentKind, ContentRecord } from "#content/loader";
 
 export interface ConsumerConfig {
-  dir: string
-  sourcePrefix: string
+  dir: string;
+  sourcePrefix: string;
 }
 
 export const DEFAULT_CONSUMERS: ConsumerConfig[] = [
@@ -52,18 +52,18 @@ export const DEFAULT_CONSUMERS: ConsumerConfig[] = [
   // (~/.codex/prompts/) even before deprecation — project-local
   // `.codex/prompts/` is never discovered by Codex.
   // See https://developers.openai.com/codex/custom-prompts
-]
+];
 
-export const ALLOWED_REAL_FILES = new Set(['README.md', '.markdownlint.json'])
+export const ALLOWED_REAL_FILES = new Set(["README.md", ".markdownlint.json"]);
 
 export interface SkillsConsumerConfig {
-  linkPath: string
-  target: string
+  linkPath: string;
+  target: string;
 }
 
 export const DEFAULT_SKILLS_CONSUMERS: SkillsConsumerConfig[] = [
   // .claude/skills removed — covered by the Claude Code plugin (primary channel).
-]
+];
 
 /**
  * Per-skill consumer — creates one directory symlink per skill in
@@ -74,58 +74,58 @@ export const DEFAULT_SKILLS_CONSUMERS: SkillsConsumerConfig[] = [
  * produced by `runUnifiedSync`.
  */
 export interface PerSkillConsumerConfig {
-  dir: string
+  dir: string;
 }
 
 export const DEFAULT_PER_SKILL_CONSUMERS: PerSkillConsumerConfig[] = [
   {
-    dir: '.agents/skills',
+    dir: ".agents/skills",
   },
-]
+];
 
 // ---------------------------------------------------------------------------
 // Unified consumer registry — per-IDE projection of unified rule/skill content
 // ---------------------------------------------------------------------------
 
-export type UnifiedStrategy = 'symlink' | 'copy' | 'transform'
+export type UnifiedStrategy = "symlink" | "copy" | "transform";
 
 export interface UnifiedTransformInput {
-  readonly record: ContentRecord
-  readonly targetPath: string
+  readonly record: ContentRecord;
+  readonly targetPath: string;
 }
 
 export interface UnifiedConsumerConfig {
   /** Human-readable id (used in logs and tests). */
-  readonly id: string
+  readonly id: string;
   /** Repo-root-relative directory that receives projected content. */
-  readonly dir: string
+  readonly dir: string;
   /** Which content kind this consumer accepts (one entry per kind). */
-  readonly acceptsKind: ContentKind
+  readonly acceptsKind: ContentKind;
   /** Projection strategy. */
-  readonly strategy: UnifiedStrategy
+  readonly strategy: UnifiedStrategy;
   /**
    * Output extension for rules (single-file). Default '.md'. Cursor uses
    * '.mdc'.
    */
-  readonly ruleExtension?: string
+  readonly ruleExtension?: string;
   /**
    * Optional transform applied when strategy is 'transform'. Receives the
    * record body and returns the bytes to write at targetPath.
    */
-  readonly transform?: (input: UnifiedTransformInput) => string
+  readonly transform?: (input: UnifiedTransformInput) => string;
   /**
    * Agent host this consumer's directory belongs to. When set, the consumer is
    * projected only if the host is selected (see `selectUnifiedConsumers`).
    * Omitted for host-agnostic surfaces (the canonical `.agent/` SSOT, Cursor
    * rules) which always project.
    */
-  readonly host?: AgentHostName
+  readonly host?: AgentHostName;
   /**
    * When true, the host receives skills through a native plugin, so this
    * skill-dir consumer is a fallback that projects only when the plugin is
    * opted out (`WP_SKIP_<HOST>_PLUGIN=1`).
    */
-  readonly pluginHost?: boolean
+  readonly pluginHost?: boolean;
 }
 
 /**
@@ -133,24 +133,24 @@ export interface UnifiedConsumerConfig {
  * union (not imported from the CLI layer) so `src/symlinker` does not depend on
  * `src/cli`, which would create an import cycle (init → unified-sync → cli).
  */
-export type AgentHostName = 'codex' | 'claude' | 'opencode'
+export type AgentHostName = "codex" | "claude" | "opencode";
 
 /**
  * Env var whose value `'1'` opts a plugin host out of plugin-based skill
  * delivery, re-enabling its skill-dir fallback consumer.
  */
 export const PLUGIN_SKILL_HOST_ENV = {
-  claude: 'WP_SKIP_CLAUDE_PLUGIN',
-  codex: 'WP_SKIP_CODEX_PLUGIN',
-} as const satisfies Partial<Record<AgentHostName, string>>
+  claude: "WP_SKIP_CLAUDE_PLUGIN",
+  codex: "WP_SKIP_CODEX_PLUGIN",
+} as const satisfies Partial<Record<AgentHostName, string>>;
 
 /**
  * Default-output filename for a rule record under a given consumer.
  * Pure helper — no I/O — so tests can assert it directly.
  */
 export function unifiedRuleFilename(consumer: UnifiedConsumerConfig, slug: string): string {
-  const ext = consumer.ruleExtension ?? '.md'
-  return `${slug}${ext}`
+  const ext = consumer.ruleExtension ?? ".md";
+  return `${slug}${ext}`;
 }
 
 /**
@@ -170,27 +170,27 @@ export function unifiedRuleFilename(consumer: UnifiedConsumerConfig, slug: strin
  */
 export const DEFAULT_UNIFIED_CONSUMERS: readonly UnifiedConsumerConfig[] = [
   // Working dir: split into rules/ and skills/ siblings under .agent/ (SSOT).
-  { id: 'agent-rules', dir: '.agent/rules', acceptsKind: 'rule', strategy: 'symlink' },
-  { id: 'agent-skills', dir: '.agent/skills', acceptsKind: 'skill', strategy: 'symlink' },
+  { id: "agent-rules", dir: ".agent/rules", acceptsKind: "rule", strategy: "symlink" },
+  { id: "agent-skills", dir: ".agent/skills", acceptsKind: "skill", strategy: "symlink" },
   // Cursor: rules only, copy, .mdc extension
   {
-    id: 'cursor-rules',
-    dir: '.cursor/rules',
-    acceptsKind: 'rule',
-    strategy: 'copy',
-    ruleExtension: '.mdc',
+    id: "cursor-rules",
+    dir: ".cursor/rules",
+    acceptsKind: "rule",
+    strategy: "copy",
+    ruleExtension: ".mdc",
   },
   // Claude: rules are scaffolded to .claude/rules; skills come from the plugin.
-  { id: 'claude-rules', dir: '.claude/rules', acceptsKind: 'rule', strategy: 'symlink' },
+  { id: "claude-rules", dir: ".claude/rules", acceptsKind: "rule", strategy: "symlink" },
   // OpenCode: skills via its primary `.opencode/skills/` root (host-gated).
   {
-    id: 'opencode-skills',
-    dir: '.opencode/skills',
-    acceptsKind: 'skill',
-    strategy: 'symlink',
-    host: 'opencode',
+    id: "opencode-skills",
+    dir: ".opencode/skills",
+    acceptsKind: "skill",
+    strategy: "symlink",
+    host: "opencode",
   },
-] as const
+] as const;
 
 /**
  * Skill-dir consumers for hosts whose skills are normally delivered by a native
@@ -201,22 +201,22 @@ export const DEFAULT_UNIFIED_CONSUMERS: readonly UnifiedConsumerConfig[] = [
  */
 export const PLUGIN_FALLBACK_SKILL_CONSUMERS: readonly UnifiedConsumerConfig[] = [
   {
-    id: 'claude-skills',
-    dir: '.claude/skills',
-    acceptsKind: 'skill',
-    strategy: 'symlink',
-    host: 'claude',
+    id: "claude-skills",
+    dir: ".claude/skills",
+    acceptsKind: "skill",
+    strategy: "symlink",
+    host: "claude",
     pluginHost: true,
   },
   {
-    id: 'portable-skills',
-    dir: '.agents/skills',
-    acceptsKind: 'skill',
-    strategy: 'symlink',
-    host: 'codex',
+    id: "portable-skills",
+    dir: ".agents/skills",
+    acceptsKind: "skill",
+    strategy: "symlink",
+    host: "codex",
     pluginHost: true,
   },
-] as const
+] as const;
 
 /**
  * Resolve the active unified-consumer set for the selected hosts.
@@ -233,13 +233,15 @@ export function selectUnifiedConsumers(
   hosts: readonly string[] | undefined,
   env: NodeJS.ProcessEnv = process.env,
 ): readonly UnifiedConsumerConfig[] {
-  const selected = new Set(hosts ?? [])
-  const base = DEFAULT_UNIFIED_CONSUMERS.filter((c) => c.host === undefined || selected.has(c.host))
-  const envByHost: Record<string, string | undefined> = PLUGIN_SKILL_HOST_ENV
+  const selected = new Set(hosts ?? []);
+  const base = DEFAULT_UNIFIED_CONSUMERS.filter(
+    (c) => c.host === undefined || selected.has(c.host),
+  );
+  const envByHost: Record<string, string | undefined> = PLUGIN_SKILL_HOST_ENV;
   const fallbacks = PLUGIN_FALLBACK_SKILL_CONSUMERS.filter((c) => {
-    if (c.host === undefined || !selected.has(c.host)) return false
-    const envVar = envByHost[c.host]
-    return envVar !== undefined && env[envVar] === '1'
-  })
-  return [...base, ...fallbacks]
+    if (c.host === undefined || !selected.has(c.host)) return false;
+    const envVar = envByHost[c.host];
+    return envVar !== undefined && env[envVar] === "1";
+  });
+  return [...base, ...fallbacks];
 }

@@ -5,38 +5,38 @@
  * Handles various directory structures including group/initiative, standalone, and special folders.
  */
 
-import { existsSync, readdirSync, statSync } from 'node:fs'
-import { isAbsolute, join, relative, resolve } from 'node:path'
+import { existsSync, readdirSync, statSync } from "node:fs";
+import { isAbsolute, join, relative, resolve } from "node:path";
 
-import { resolveBlueprintRoot } from '#utils/blueprint-root'
+import { resolveBlueprintRoot } from "#utils/blueprint-root";
 import {
   BLUEPRINT_OVERVIEW_FILENAME,
   parseBlueprintDocumentRelativePath,
-} from '#utils/document-paths.js'
+} from "#utils/document-paths.js";
 
 const BLUEPRINT_STATUS_FOLDERS = new Set([
-  'draft',
-  'planned',
-  'parked',
-  'in-progress',
-  'completed',
-  'archived',
-])
+  "draft",
+  "planned",
+  "parked",
+  "in-progress",
+  "completed",
+  "archived",
+]);
 
 /**
  * Represents a scanned plan with path and metadata extracted from directory structure.
  */
 export interface ScannedBlueprint {
   /** Full absolute path to the _overview.md file */
-  path: string
+  path: string;
   /** Slug derived from directory structure (e.g., 'in-progress/schema-driven-admin-ui-permissions') */
-  slug: string
+  slug: string;
   /** Parent group (e.g., 'in-progress', 'completed'), null for standalone plans */
-  group: string | null
+  group: string | null;
   /** True if the plan is in a special folder (_completed, _future, _deprioritized) */
-  isSpecialFolder: boolean
+  isSpecialFolder: boolean;
   /** Type of special folder if isSpecialFolder is true */
-  specialFolderType?: '_completed' | '_future' | '_deprioritized'
+  specialFolderType?: "_completed" | "_future" | "_deprioritized";
 }
 
 /**
@@ -44,9 +44,9 @@ export interface ScannedBlueprint {
  */
 export interface ScanOptions {
   /** Base directory to scan (default: 'webpresso/blueprints') */
-  baseDir?: string
+  baseDir?: string;
   /** Include plans in special folders (_completed, _future, _deprioritized) (default: false) */
-  includeSpecialFolders?: boolean
+  includeSpecialFolders?: boolean;
 }
 
 /**
@@ -54,23 +54,23 @@ export interface ScanOptions {
  */
 export interface GenericScanOptions {
   /** Base directory to scan (relative to monorepo root or absolute) */
-  baseDir: string
+  baseDir: string;
   /** File pattern to match (e.g., '_overview.md', '_task.md') */
-  filePattern: string
+  filePattern: string;
   /** Include files in special folders (_completed, _future, _deprioritized) (default: false) */
-  includeSpecialFolders?: boolean
+  includeSpecialFolders?: boolean;
 }
 
 /** Special folder prefixes that indicate archived/deferred plans */
-const SPECIAL_FOLDERS = ['_completed', '_future', '_deprioritized'] as const
-type SpecialFolderType = (typeof SPECIAL_FOLDERS)[number]
+const SPECIAL_FOLDERS = ["_completed", "_future", "_deprioritized"] as const;
+type SpecialFolderType = (typeof SPECIAL_FOLDERS)[number];
 
 /** Standard plan overview filename */
 /**
  * Check if a path component is a special folder.
  */
 function isSpecialFolder(name: string): name is SpecialFolderType {
-  return SPECIAL_FOLDERS.includes(name as SpecialFolderType)
+  return SPECIAL_FOLDERS.includes(name as SpecialFolderType);
 }
 
 /**
@@ -79,14 +79,14 @@ function isSpecialFolder(name: string): name is SpecialFolderType {
 function findSpecialFolderType(pathSegments: string[]): SpecialFolderType | undefined {
   for (const segment of pathSegments) {
     if (isSpecialFolder(segment)) {
-      return segment
+      return segment;
     }
   }
-  return undefined
+  return undefined;
 }
 
 function isStatusFolder(name: string): boolean {
-  return BLUEPRINT_STATUS_FOLDERS.has(name)
+  return BLUEPRINT_STATUS_FOLDERS.has(name);
 }
 
 /**
@@ -105,72 +105,72 @@ function extractSlugAndGroup(
   baseDir: string,
   filePattern: string = BLUEPRINT_OVERVIEW_FILENAME,
 ): { slug: string; group: string | null } {
-  const relPath = relative(baseDir, fullPath)
-  const canonicalDocument = parseBlueprintDocumentRelativePath(relPath)
+  const relPath = relative(baseDir, fullPath);
+  const canonicalDocument = parseBlueprintDocumentRelativePath(relPath);
 
   if (canonicalDocument) {
-    const slug = `${canonicalDocument.state}/${canonicalDocument.slug}`
+    const slug = `${canonicalDocument.state}/${canonicalDocument.slug}`;
     return {
       slug,
       group: canonicalDocument.state,
-    }
+    };
   }
 
-  const relSegments = relPath.split('/').filter((s) => s !== '')
-  const segments = [...relSegments]
+  const relSegments = relPath.split("/").filter((s) => s !== "");
+  const segments = [...relSegments];
 
   if (!segments.length) {
-    return { slug: '', group: null }
+    return { slug: "", group: null };
   }
 
   if (filePattern === BLUEPRINT_OVERVIEW_FILENAME) {
     if (segments[segments.length - 1] === filePattern) {
-      segments.pop()
+      segments.pop();
     }
-  } else if (filePattern.toLowerCase() === 'readme.md') {
+  } else if (filePattern.toLowerCase() === "readme.md") {
     if (segments[segments.length - 1] === filePattern) {
-      segments.pop()
+      segments.pop();
     }
   } else {
-    const last = segments[segments.length - 1] ?? ''
+    const last = segments[segments.length - 1] ?? "";
     if (last === filePattern) {
-      segments[segments.length - 1] = last.replace(/\.md$/i, '')
+      segments[segments.length - 1] = last.replace(/\.md$/i, "");
     }
   }
 
   if (!segments.length) {
-    return { slug: '', group: null }
+    return { slug: "", group: null };
   }
 
   // Filter out archival special folders from group determination. Lifecycle
   // status folders are part of the public slug and remain valid groups.
-  const nonSpecialSegments = segments.filter((s) => !isSpecialFolder(s))
+  const nonSpecialSegments = segments.filter((s) => !isSpecialFolder(s));
 
   // The slug is the full path (including special folders)
-  const slug = segments.join('/')
+  const slug = segments.join("/");
 
   // Determine group:
   // - If we have 2+ non-special segments, first non-special is the group
   // - If we have 1 non-special segment, it's a standalone (group = null)
   // - Special folders at root don't count as groups
-  let group: string | null = null
+  let group: string | null = null;
 
   // Find the first non-special segment
-  const firstNonSpecialIndex = segments.findIndex((s) => !isSpecialFolder(s))
+  const firstNonSpecialIndex = segments.findIndex((s) => !isSpecialFolder(s));
 
   if (firstNonSpecialIndex >= 0 && nonSpecialSegments.length >= 2) {
     // There's a group structure: first non-special segment is the group
-    group = segments[firstNonSpecialIndex] ?? null
+    group = segments[firstNonSpecialIndex] ?? null;
   }
 
-  return { slug, group }
+  return { slug, group };
 }
 
 /**
  * Check if an entry should be skipped during directory traversal.
  */
 function shouldSkipEntry(entry: string): boolean {
-  return entry.startsWith('.') || entry.startsWith('__') || entry === 'node_modules'
+  return entry.startsWith(".") || entry.startsWith("__") || entry === "node_modules";
 }
 
 /**
@@ -178,9 +178,9 @@ function shouldSkipEntry(entry: string): boolean {
  */
 function safeStatSync(fullPath: string): ReturnType<typeof statSync> | null {
   try {
-    return statSync(fullPath)
+    return statSync(fullPath);
   } catch {
-    return null
+    return null;
   }
 }
 
@@ -193,9 +193,9 @@ function safeStatSync(fullPath: string): ReturnType<typeof statSync> | null {
  */
 function getValidEntries(dir: string): string[] {
   try {
-    return readdirSync(dir).filter((entry) => !shouldSkipEntry(entry))
+    return readdirSync(dir).filter((entry) => !shouldSkipEntry(entry));
   } catch {
-    return []
+    return [];
   }
 }
 
@@ -203,8 +203,8 @@ function getValidEntries(dir: string): string[] {
  * Check if a relative path contains hidden directory components (segments starting with '.').
  */
 function containsHiddenDirectory(relativePath: string): boolean {
-  const segments = relativePath.split('/')
-  return segments.some((segment) => segment.startsWith('.') && segment !== '' && segment !== '.')
+  const segments = relativePath.split("/");
+  return segments.some((segment) => segment.startsWith(".") && segment !== "" && segment !== ".");
 }
 
 /**
@@ -219,41 +219,41 @@ function processEntry(
   results: ScannedBlueprint[],
   queue: string[],
 ): void {
-  const fullPath = join(dir, entry)
-  const stat = safeStatSync(fullPath)
+  const fullPath = join(dir, entry);
+  const stat = safeStatSync(fullPath);
 
-  if (!stat) return
+  if (!stat) return;
 
   if (stat.isDirectory()) {
     // Skip directories if the relative path from baseDir contains hidden directory components
-    const relativePath = relative(baseDir, fullPath)
+    const relativePath = relative(baseDir, fullPath);
     if (!containsHiddenDirectory(relativePath)) {
-      queue.push(fullPath)
+      queue.push(fullPath);
     }
-    return
+    return;
   }
 
   // Only accept files matching the pattern
   if (entry === filePattern) {
-    const plan = processPlanFile(fullPath, baseDir, includeSpecialFolders, filePattern)
+    const plan = processPlanFile(fullPath, baseDir, includeSpecialFolders, filePattern);
     if (plan) {
-      results.push(plan)
+      results.push(plan);
     }
-    return
+    return;
   }
 
   if (
     filePattern === BLUEPRINT_OVERVIEW_FILENAME &&
-    entry.endsWith('.md') &&
-    entry !== 'README.md'
+    entry.endsWith(".md") &&
+    entry !== "README.md"
   ) {
     const relativeParentSegments = relative(baseDir, dir)
-      .split('/')
-      .filter((s) => s !== '')
-    if (relativeParentSegments.length === 1 && isStatusFolder(relativeParentSegments[0] ?? '')) {
-      const plan = processPlanFile(fullPath, baseDir, includeSpecialFolders, entry)
+      .split("/")
+      .filter((s) => s !== "");
+    if (relativeParentSegments.length === 1 && isStatusFolder(relativeParentSegments[0] ?? "")) {
+      const plan = processPlanFile(fullPath, baseDir, includeSpecialFolders, entry);
       if (plan) {
-        results.push(plan)
+        results.push(plan);
       }
     }
   }
@@ -268,37 +268,37 @@ function processPlanFile(
   includeSpecialFolders: boolean,
   filePattern: string = BLUEPRINT_OVERVIEW_FILENAME,
 ): ScannedBlueprint | null {
-  const relativePath = relative(baseDir, fullPath)
+  const relativePath = relative(baseDir, fullPath);
 
   // Skip files in hidden directories (defense-in-depth check)
   if (containsHiddenDirectory(relativePath)) {
-    return null
+    return null;
   }
 
-  const pathSegments = relativePath.split('/')
+  const pathSegments = relativePath.split("/");
 
-  const specialFolderType = findSpecialFolderType(pathSegments)
-  const isInSpecialFolder = specialFolderType !== undefined
+  const specialFolderType = findSpecialFolderType(pathSegments);
+  const isInSpecialFolder = specialFolderType !== undefined;
 
   // Skip special folders unless explicitly included
   if (isInSpecialFolder && !includeSpecialFolders) {
-    return null
+    return null;
   }
 
-  const { slug, group } = extractSlugAndGroup(fullPath, baseDir, filePattern)
+  const { slug, group } = extractSlugAndGroup(fullPath, baseDir, filePattern);
 
   const scannedPlan: ScannedBlueprint = {
     path: fullPath,
     slug,
     group,
     isSpecialFolder: isInSpecialFolder,
-  }
+  };
 
   if (specialFolderType) {
-    scannedPlan.specialFolderType = specialFolderType
+    scannedPlan.specialFolderType = specialFolderType;
   }
 
-  return scannedPlan
+  return scannedPlan;
 }
 
 /**
@@ -311,15 +311,15 @@ function scanDirectory(
   includeSpecialFolders: boolean,
   results: ScannedBlueprint[],
 ): void {
-  const queue = [startDir]
+  const queue = [startDir];
 
   while (queue.length > 0) {
-    const dir = queue.shift()
-    if (!dir) continue
+    const dir = queue.shift();
+    if (!dir) continue;
 
-    const entries = getValidEntries(dir)
+    const entries = getValidEntries(dir);
     for (const entry of entries) {
-      processEntry(entry, dir, baseDir, filePattern, includeSpecialFolders, results, queue)
+      processEntry(entry, dir, baseDir, filePattern, includeSpecialFolders, results, queue);
     }
   }
 }
@@ -331,44 +331,44 @@ function scanDirectory(
  * @returns Array of scanned documents with path and metadata
  */
 export function scanDocumentDirectory(options: GenericScanOptions): ScannedBlueprint[] {
-  const { baseDir, filePattern, includeSpecialFolders = false } = options
+  const { baseDir, filePattern, includeSpecialFolders = false } = options;
 
-  let absoluteBaseDir: string
+  let absoluteBaseDir: string;
 
   if (isAbsolute(baseDir)) {
     // Already absolute, use as-is
-    absoluteBaseDir = baseDir
+    absoluteBaseDir = baseDir;
   } else {
     // Relative path - resolve from cwd
-    absoluteBaseDir = resolve(process.cwd(), baseDir)
+    absoluteBaseDir = resolve(process.cwd(), baseDir);
   }
 
   if (!existsSync(absoluteBaseDir)) {
-    return []
+    return [];
   }
 
-  const results: ScannedBlueprint[] = []
-  scanDirectory(absoluteBaseDir, absoluteBaseDir, filePattern, includeSpecialFolders, results)
+  const results: ScannedBlueprint[] = [];
+  scanDirectory(absoluteBaseDir, absoluteBaseDir, filePattern, includeSpecialFolders, results);
 
-  const duplicates = new Map<string, string[]>()
+  const duplicates = new Map<string, string[]>();
   for (const result of results) {
-    const existing = duplicates.get(result.slug)
+    const existing = duplicates.get(result.slug);
     if (existing) {
-      existing.push(result.path)
+      existing.push(result.path);
     } else {
-      duplicates.set(result.slug, [result.path])
+      duplicates.set(result.slug, [result.path]);
     }
   }
 
-  const duplicate = Array.from(duplicates.entries()).find(([, paths]) => paths.length > 1)
+  const duplicate = Array.from(duplicates.entries()).find(([, paths]) => paths.length > 1);
   if (duplicate) {
-    const [slug, paths] = duplicate
+    const [slug, paths] = duplicate;
     throw new Error(
-      `Duplicate blueprint slug "${slug}" found in multiple canonical shapes: ${paths.join(', ')}`,
-    )
+      `Duplicate blueprint slug "${slug}" found in multiple canonical shapes: ${paths.join(", ")}`,
+    );
   }
 
-  return results
+  return results;
 }
 
 /**
@@ -378,12 +378,12 @@ export function scanDocumentDirectory(options: GenericScanOptions): ScannedBluep
  * @returns Array of scanned plans with path and metadata
  */
 export function scanBlueprintDirectory(options?: ScanOptions): ScannedBlueprint[] {
-  const baseDir = options?.baseDir ?? resolveBlueprintRoot()
-  const includeSpecialFolders = options?.includeSpecialFolders ?? false
+  const baseDir = options?.baseDir ?? resolveBlueprintRoot();
+  const includeSpecialFolders = options?.includeSpecialFolders ?? false;
 
   return scanDocumentDirectory({
     baseDir,
     filePattern: BLUEPRINT_OVERVIEW_FILENAME,
     includeSpecialFolders,
-  })
+  });
 }

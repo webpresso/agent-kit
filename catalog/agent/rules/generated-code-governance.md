@@ -6,12 +6,12 @@ status: active
 scope: repo
 applies_to: [agents]
 related: []
-created: '2026-05-07'
-last_reviewed: '2026-05-07'
-paths: 
-  - 'schema/**/*.yaml'
-  - '.generated/**'
-  - 'apps/**/generated/**'
+created: "2026-05-07"
+last_reviewed: "2026-05-07"
+paths:
+  - "schema/**/*.yaml"
+  - ".generated/**"
+  - "apps/**/generated/**"
 last_updated: 2026-04-22
 ---
 

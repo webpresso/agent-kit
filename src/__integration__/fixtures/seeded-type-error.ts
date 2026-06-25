@@ -1,1 +1,1 @@
-export const seededTypeErrorSource = 'export const agentKitTypeSeed: string = 42\n'
+export const seededTypeErrorSource = "export const agentKitTypeSeed: string = 42\n";

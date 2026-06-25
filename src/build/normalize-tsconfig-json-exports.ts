@@ -1,61 +1,61 @@
-import { readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { readFileSync, renameSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 type ExportEntry =
   | string
   | {
-      import?: string | { default?: string; types?: string }
-      default?: string
-    }
+      import?: string | { default?: string; types?: string };
+      default?: string;
+    };
 
 type PackageManifest = {
-  exports?: Record<string, ExportEntry>
-}
+  exports?: Record<string, ExportEntry>;
+};
 
-const TSCONFIG_EXPORT_PREFIX = './tsconfig/'
+const TSCONFIG_EXPORT_PREFIX = "./tsconfig/";
 
 export function normalizeTsconfigJsonExports(manifest: PackageManifest): PackageManifest {
-  if (!manifest.exports) return manifest
+  if (!manifest.exports) return manifest;
 
-  let changed = false
-  const normalizedExports: Record<string, ExportEntry> = { ...manifest.exports }
+  let changed = false;
+  const normalizedExports: Record<string, ExportEntry> = { ...manifest.exports };
 
   for (const [subpath, entry] of Object.entries(manifest.exports)) {
-    if (!subpath.startsWith(TSCONFIG_EXPORT_PREFIX) || !subpath.endsWith('.json')) continue
-    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue
+    if (!subpath.startsWith(TSCONFIG_EXPORT_PREFIX) || !subpath.endsWith(".json")) continue;
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
 
     const importDefault =
-      typeof entry.import === 'string'
+      typeof entry.import === "string"
         ? entry.import
-        : entry.import && typeof entry.import === 'object'
+        : entry.import && typeof entry.import === "object"
           ? entry.import.default
-          : undefined
+          : undefined;
 
-    const nextDefault = typeof entry.default === 'string' ? entry.default : importDefault
-    if (typeof nextDefault !== 'string') continue
+    const nextDefault = typeof entry.default === "string" ? entry.default : importDefault;
+    if (typeof nextDefault !== "string") continue;
 
     const nextImport =
-      typeof entry.import === 'string'
+      typeof entry.import === "string"
         ? entry.import
-        : entry.import && typeof entry.import === 'object'
+        : entry.import && typeof entry.import === "object"
           ? entry.import.default
             ? { default: entry.import.default }
             : undefined
-          : undefined
+          : undefined;
 
     const nextEntry = {
       ...entry,
       ...(nextImport === undefined ? {} : { import: nextImport }),
       default: nextDefault,
-    } satisfies Exclude<ExportEntry, string>
+    } satisfies Exclude<ExportEntry, string>;
 
-    if (JSON.stringify(nextEntry) === JSON.stringify(entry)) continue
+    if (JSON.stringify(nextEntry) === JSON.stringify(entry)) continue;
 
-    normalizedExports[subpath] = nextEntry
-    changed = true
+    normalizedExports[subpath] = nextEntry;
+    changed = true;
   }
 
-  return changed ? { ...manifest, exports: normalizedExports } : manifest
+  return changed ? { ...manifest, exports: normalizedExports } : manifest;
 }
 
 /**
@@ -64,16 +64,16 @@ export function normalizeTsconfigJsonExports(manifest: PackageManifest): Package
  * truncated or empty intermediate state.
  */
 export function atomicWriteFile(destPath: string, content: string): void {
-  const tmpPath = `${destPath}.writing`
-  writeFileSync(tmpPath, content, 'utf8')
-  renameSync(tmpPath, destPath)
+  const tmpPath = `${destPath}.writing`;
+  writeFileSync(tmpPath, content, "utf8");
+  renameSync(tmpPath, destPath);
 }
 
 if (import.meta.main) {
-  const packageJsonPath = join(process.cwd(), 'package.json')
-  const manifest = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as PackageManifest
-  const normalized = normalizeTsconfigJsonExports(manifest)
+  const packageJsonPath = join(process.cwd(), "package.json");
+  const manifest = JSON.parse(readFileSync(packageJsonPath, "utf8")) as PackageManifest;
+  const normalized = normalizeTsconfigJsonExports(manifest);
   if (normalized !== manifest) {
-    atomicWriteFile(packageJsonPath, `${JSON.stringify(normalized, null, 2)}\n`)
+    atomicWriteFile(packageJsonPath, `${JSON.stringify(normalized, null, 2)}\n`);
   }
 }

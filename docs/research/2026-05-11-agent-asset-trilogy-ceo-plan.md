@@ -57,19 +57,19 @@ Total: ~32 tasks (was 54 in original drafts; 41% reduction after research + sele
 
 ## Decision log
 
-| # | Decision | Outcome | Rationale |
-|---|---|---|---|
-| 1 | Adopt `rulesync` as dep for multi-runtime emission | ACCEPTED | 175k weekly npm dl, MIT, covers all 6 targeted IDEs |
-| 2 | Pivot compiler to plugin-manifest-emitter for 4 IDEs | ACCEPTED | Claude/Codex/Cursor/Gemini have plugin marketplaces; file-write only for Windsurf/OpenCode |
-| 3 | Shelve vs minimal-slice for blueprint #2 | MINIMAL SLICE | GitNexus is stable but PolyForm-NC blocks reuse + wrong domain; q-* pain is zero; monorepo has 4 oversized files needing audit today; tech-debt loop dormant |
-| 4 | Custom MCP vs `mcp-server-sqlite` | CUSTOM (~300 LOC) | mcp-server-sqlite is archived; raw rows violate summary-first contract; mutations bypass markdown-canonical |
-| 5 | State export/import for Routines | SKIP — document rebuild-from-markdown | Routines clone repo fresh; canonical markdown is accessible; SQLite is derived projection |
-| D3 | GitHub Action `webpresso/agent-kit-action@v1` | ACCEPTED → v0.11.0 | High leverage per consumer + 3rd-party; compounds with every audit added |
-| D4 | Pre-commit hooks via `wp setup --with husky` | ACCEPTED → v0.12.0 | Cheapest drift-catch point; extends existing scaffolder |
-| D5 | `wp blueprint browse` Datasette wrapper | ACCEPTED → v0.13.0 | Lowest-effort candidate; free dev UX win |
-| D6 | PR auto-comment with structured drift summary | ACCEPTED → v0.11.0/v0.12.0 | Compounds D3; differentiates action vs generic-audit |
-| D7 | Memory rotation (`op: rotate` directive) | ACCEPTED → v0.11.0 | Solves monorepo's 29KB AGENTS.md pain; shares parser with merger |
-| D8 | Cross-repo correlation **with permission/org-aware constraint** | ACCEPTED → v0.13.0 | Real workspace value; **load-bearing constraint: cannot ship without permission model** |
+| #   | Decision                                                        | Outcome                               | Rationale                                                                                                                                                     |
+| --- | --------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Adopt `rulesync` as dep for multi-runtime emission              | ACCEPTED                              | 175k weekly npm dl, MIT, covers all 6 targeted IDEs                                                                                                           |
+| 2   | Pivot compiler to plugin-manifest-emitter for 4 IDEs            | ACCEPTED                              | Claude/Codex/Cursor/Gemini have plugin marketplaces; file-write only for Windsurf/OpenCode                                                                    |
+| 3   | Shelve vs minimal-slice for blueprint #2                        | MINIMAL SLICE                         | GitNexus is stable but PolyForm-NC blocks reuse + wrong domain; q-\* pain is zero; monorepo has 4 oversized files needing audit today; tech-debt loop dormant |
+| 4   | Custom MCP vs `mcp-server-sqlite`                               | CUSTOM (~300 LOC)                     | mcp-server-sqlite is archived; raw rows violate summary-first contract; mutations bypass markdown-canonical                                                   |
+| 5   | State export/import for Routines                                | SKIP — document rebuild-from-markdown | Routines clone repo fresh; canonical markdown is accessible; SQLite is derived projection                                                                     |
+| D3  | GitHub Action `webpresso/agent-kit-action@v1`                   | ACCEPTED → v0.11.0                    | High leverage per consumer + 3rd-party; compounds with every audit added                                                                                      |
+| D4  | Pre-commit hooks via `wp setup --with husky`                    | ACCEPTED → v0.12.0                    | Cheapest drift-catch point; extends existing scaffolder                                                                                                       |
+| D5  | `wp blueprint browse` Datasette wrapper                         | ACCEPTED → v0.13.0                    | Lowest-effort candidate; free dev UX win                                                                                                                      |
+| D6  | PR auto-comment with structured drift summary                   | ACCEPTED → v0.11.0/v0.12.0            | Compounds D3; differentiates action vs generic-audit                                                                                                          |
+| D7  | Memory rotation (`op: rotate` directive)                        | ACCEPTED → v0.11.0                    | Solves monorepo's 29KB AGENTS.md pain; shares parser with merger                                                                                              |
+| D8  | Cross-repo correlation **with permission/org-aware constraint** | ACCEPTED → v0.13.0                    | Real workspace value; **load-bearing constraint: cannot ship without permission model**                                                                       |
 
 ## D8 hard requirements — cross-repo correlation permission model
 
@@ -108,23 +108,23 @@ These are non-negotiable acceptance criteria. Cross-repo correlation cannot ship
 
 ## Cross-blueprint vision alignment
 
-| Layer | Blueprint | Stores | Operates on | Idiom |
-|---|---|---|---|---|
-| Distribution | `agent-asset-compiler-multi-runtime` (v0.11.0) | Filesystem (`.agent/` → 6 runtimes via rulesync + plugin manifests) | Skills, commands, agents, memory | Markdown + YAML |
-| Detection | `agent-knowledge-graph-mcp` (v0.12.0, minimal slice) | None — pure regex/remark walks; tech-debt items committed as markdown | Drift, broken refs, size budgets | CLI audits + tech-debt lifecycle |
-| State | `blueprint-structured-store` (v0.13.0) | SQLite (`.blueprints.db`) | Blueprints, tasks, risks, tech-debt, cross-repo correlations | SQL templates via custom MCP |
+| Layer        | Blueprint                                            | Stores                                                                | Operates on                                                  | Idiom                            |
+| ------------ | ---------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------ | -------------------------------- |
+| Distribution | `agent-asset-compiler-multi-runtime` (v0.11.0)       | Filesystem (`.agent/` → 6 runtimes via rulesync + plugin manifests)   | Skills, commands, agents, memory                             | Markdown + YAML                  |
+| Detection    | `agent-knowledge-graph-mcp` (v0.12.0, minimal slice) | None — pure regex/remark walks; tech-debt items committed as markdown | Drift, broken refs, size budgets                             | CLI audits + tech-debt lifecycle |
+| State        | `blueprint-structured-store` (v0.13.0)               | SQLite (`.blueprints.db`)                                             | Blueprints, tasks, risks, tech-debt, cross-repo correlations | SQL templates via custom MCP     |
 
 All three: markdown is canonical, embedded DBs are derived, watchers (or audit cmds) keep them fresh, MCP tools answer agent questions in the right idiom for the question shape.
 
 ## Risks to monitor across the trilogy
 
-| ID | Severity | Risk | Mitigation owner |
-|---|---|---|---|
-| T1 | HIGH | `rulesync` upstream breakage (single-maintainer, 15+ minors/recent weeks) | Blueprint #1: pin `^8.15`, contract test on every minor bump |
-| T2 | MEDIUM | Plugin marketplace volatility (Cursor/Codex are new) | Blueprint #1: version-pin each manifest's schema, audit on monthly cadence |
-| T3 | MEDIUM | Cross-repo permission model leaks (D8) | Blueprint #3: `wp audit cross-repo-correlation` in CI for every consumer |
-| T4 | MEDIUM | Memory rotation surprises users (lost context) | Blueprint #1: strong defaults, opt-in directive, clear logging on every rotation |
-| T5 | LOW | Datasette Python dep adds friction (D5) | Blueprint #3: document `pip install datasette`; non-blocking if absent |
+| ID  | Severity | Risk                                                                      | Mitigation owner                                                                 |
+| --- | -------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| T1  | HIGH     | `rulesync` upstream breakage (single-maintainer, 15+ minors/recent weeks) | Blueprint #1: pin `^8.15`, contract test on every minor bump                     |
+| T2  | MEDIUM   | Plugin marketplace volatility (Cursor/Codex are new)                      | Blueprint #1: version-pin each manifest's schema, audit on monthly cadence       |
+| T3  | MEDIUM   | Cross-repo permission model leaks (D8)                                    | Blueprint #3: `wp audit cross-repo-correlation` in CI for every consumer         |
+| T4  | MEDIUM   | Memory rotation surprises users (lost context)                            | Blueprint #1: strong defaults, opt-in directive, clear logging on every rotation |
+| T5  | LOW      | Datasette Python dep adds friction (D5)                                   | Blueprint #3: document `pip install datasette`; non-blocking if absent           |
 
 ## Outside voice (skipped)
 

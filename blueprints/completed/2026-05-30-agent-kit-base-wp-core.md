@@ -4,9 +4,9 @@ title: "Agent Kit: base `wp` core"
 owner: ozby
 status: completed
 complexity: L
-created: '2026-05-30'
-last_updated: '2026-05-31'
-progress: '100% (completed)'
+created: "2026-05-30"
+last_updated: "2026-05-31"
+progress: "100% (completed)"
 depends_on:
   - 2026-05-30-cross-project-wp-execution-map
 tags:
@@ -43,30 +43,30 @@ user/CI
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-| -------- | ------ | --------- |
-| Package verb owner | `agent-kit` | Base `wp` must be useful without framework installed |
-| Internal delegate | `vp` | Vite+ already owns package-manager orchestration |
-| Public policy | `wp` first | Users should not need to know whether a flow is `vp`, `tsc`, or `vitest` underneath |
-| Recursion policy | wrapper-safe by default | package scripts must not loop when switched to `wp` |
+| Decision           | Choice                  | Rationale                                                                           |
+| ------------------ | ----------------------- | ----------------------------------------------------------------------------------- |
+| Package verb owner | `agent-kit`             | Base `wp` must be useful without framework installed                                |
+| Internal delegate  | `vp`                    | Vite+ already owns package-manager orchestration                                    |
+| Public policy      | `wp` first              | Users should not need to know whether a flow is `vp`, `tsc`, or `vitest` underneath |
+| Recursion policy   | wrapper-safe by default | package scripts must not loop when switched to `wp`                                 |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
-| ---- | ----- | ------------ | -------------- | ---------------- |
-| **Wave 0** | 1.1, 1.2 | None | 2 agents | S |
-| **Wave 1** | 1.3, 1.4 | Wave 0 | 2 agents | S-M |
-| **Wave 2** | 2.1 | Wave 1 | 1 agent | S |
-| **Critical path** | 1.1 → 1.3 → 2.1 | -- | 3 waves | M |
+| Wave              | Tasks           | Dependencies | Parallelizable | Effort (T-shirt) |
+| ----------------- | --------------- | ------------ | -------------- | ---------------- |
+| **Wave 0**        | 1.1, 1.2        | None         | 2 agents       | S                |
+| **Wave 1**        | 1.3, 1.4        | Wave 0       | 2 agents       | S-M              |
+| **Wave 2**        | 2.1             | Wave 1       | 1 agent        | S                |
+| **Critical path** | 1.1 → 1.3 → 2.1 | --           | 3 waves        | M                |
 
 ### Parallel Metrics Snapshot
 
-| Metric | Formula / Meaning | Target | Actual |
-| ------ | ----------------- | ------ | ------ |
-| RW0 | Ready tasks in Wave 0 | ≥ 1 | 2 |
-| CPR | total_tasks / critical_path_length | ≥ 2.5 | 1.67 |
-| DD | dependency_edges / total_tasks | ≤ 2.0 | 1.0 |
-| CP | same-file overlaps per wave | 0 | 0 |
+| Metric | Formula / Meaning                  | Target | Actual |
+| ------ | ---------------------------------- | ------ | ------ |
+| RW0    | Ready tasks in Wave 0              | ≥ 1    | 2      |
+| CPR    | total_tasks / critical_path_length | ≥ 2.5  | 1.67   |
+| DD     | dependency_edges / total_tasks     | ≤ 2.0  | 1.0    |
+| CP     | same-file overlaps per wave        | 0      | 0      |
 
 Refinement delta: The public-verb lane and managed-runner lane run separately,
 but package-surface cleanup stays downstream to avoid export/bin conflicts.
@@ -234,30 +234,30 @@ verification must be part of the plan, not an afterthought.
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-| ---- | ------- | ---------------- |
-| Type safety | `wp typecheck` | Zero errors |
-| Lint | `wp lint` | Zero violations |
-| Tests | `wp test` | All targeted tests pass |
-| Audits | `wp audit` | Relevant guardrail audits pass |
+| Gate            | Command                    | Success Criteria                   |
+| --------------- | -------------------------- | ---------------------------------- |
+| Type safety     | `wp typecheck`             | Zero errors                        |
+| Lint            | `wp lint`                  | Zero violations                    |
+| Tests           | `wp test`                  | All targeted tests pass            |
+| Audits          | `wp audit`                 | Relevant guardrail audits pass     |
 | Package surface | repo tarball/export checks | No leaked or broken public surface |
 
 ## Cross-Plan References
 
-| Type | Blueprint | Relationship |
-| ---- | --------- | ------------ |
-| Upstream | `2026-05-30-cross-project-wp-execution-map` | umbrella execution order |
-| Downstream | `2026-05-30-framework-wp-extension` | consumes base command model |
-| Downstream | `2026-05-30-ingest-lens-wp-thin-consumer` | thin-consumer migration depends on base verbs |
-| Downstream | `2026-05-30-edge-matte-wp-thin-consumer` | thin-consumer migration depends on base verbs |
+| Type       | Blueprint                                         | Relationship                                      |
+| ---------- | ------------------------------------------------- | ------------------------------------------------- |
+| Upstream   | `2026-05-30-cross-project-wp-execution-map`       | umbrella execution order                          |
+| Downstream | `2026-05-30-framework-wp-extension`               | consumes base command model                       |
+| Downstream | `2026-05-30-ingest-lens-wp-thin-consumer`         | thin-consumer migration depends on base verbs     |
+| Downstream | `2026-05-30-edge-matte-wp-thin-consumer`          | thin-consumer migration depends on base verbs     |
 | Downstream | `2026-05-30-monorepo-wp-first-framework-consumer` | framework consumer adoption depends on base verbs |
 
 ## Edge Cases and Error Handling
 
-| Edge Case | Risk | Solution | Task |
-| --------- | ---- | -------- | ---- |
-| New package verb still leaks raw `vp` guidance publicly | UX drift | lock docs/scripts with contract tests | 1.3 |
-| Package script calls `wp` recursively | infinite loop | keep recursion-safe bypass logic | 1.4 |
+| Edge Case                                               | Risk          | Solution                              | Task |
+| ------------------------------------------------------- | ------------- | ------------------------------------- | ---- |
+| New package verb still leaks raw `vp` guidance publicly | UX drift      | lock docs/scripts with contract tests | 1.3  |
+| Package script calls `wp` recursively                   | infinite loop | keep recursion-safe bypass logic      | 1.4  |
 
 ## Non-goals
 
@@ -266,17 +266,17 @@ verification must be part of the plan, not an afterthought.
 
 ## Risks
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-| Public package surfaces change unsafely | High | make tarball/export verification mandatory |
-| `wp` still feels incomplete after the change | High | land package verbs and managed runners before consumer migration |
+| Risk                                         | Impact | Mitigation                                                       |
+| -------------------------------------------- | ------ | ---------------------------------------------------------------- |
+| Public package surfaces change unsafely      | High   | make tarball/export verification mandatory                       |
+| `wp` still feels incomplete after the change | High   | land package verbs and managed runners before consumer migration |
 
 ## Technology Choices
 
-| Component | Technology | Version | Why |
-| --------- | ---------- | ------- | --- |
-| Package-manager delegate | `vite-plus (vp)` | current repo version | Underlying package-manager orchestration |
-| Public CLI owner | `@webpresso/agent-kit` | workspace | Base `wp` surface |
+| Component                | Technology             | Version              | Why                                      |
+| ------------------------ | ---------------------- | -------------------- | ---------------------------------------- |
+| Package-manager delegate | `vite-plus (vp)`       | current repo version | Underlying package-manager orchestration |
+| Public CLI owner         | `@webpresso/agent-kit` | workspace            | Base `wp` surface                        |
 
 ## Trust Dossier
 
@@ -290,21 +290,21 @@ verification must be part of the plan, not an afterthought.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-05-30-agent-kit-base-wp-core.md |
+| ID  | Claim                                                          | Evidence                                                       |
+| --- | -------------------------------------------------------------- | -------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-05-30-agent-kit-base-wp-core.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

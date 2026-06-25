@@ -2,9 +2,9 @@
 type: blueprint
 status: draft
 complexity: L
-created: '2026-06-19'
-last_updated: '2026-06-19'
-progress: '0% (drafted)'
+created: "2026-06-19"
+last_updated: "2026-06-19"
+progress: "0% (drafted)"
 depends_on: []
 cross_repo_depends_on: []
 tags: []
@@ -113,13 +113,13 @@ reference "see above" or "as described in Task X.Y" — inline all context.]
 
 ## Verification Gates
 
-| Gate        | Command                            | Success Criteria |
-| ----------- | ---------------------------------- | ---------------- |
-| Type safety | repo typecheck recipe              | Zero errors      |
-| Lint        | repo lint recipe (scoped)          | Zero violations  |
-| Tests       | repo test recipe (scoped)          | All pass         |
-| Full QA     | repo full-QA recipe                | All pass         |
-| Perf        | bundle / runtime measurement       | No regression vs baseline (or N/A — delete row) |
+| Gate        | Command                      | Success Criteria                                |
+| ----------- | ---------------------------- | ----------------------------------------------- |
+| Type safety | repo typecheck recipe        | Zero errors                                     |
+| Lint        | repo lint recipe (scoped)    | Zero violations                                 |
+| Tests       | repo test recipe (scoped)    | All pass                                        |
+| Full QA     | repo full-QA recipe          | All pass                                        |
+| Perf        | bundle / runtime measurement | No regression vs baseline (or N/A — delete row) |
 
 ## Cross-Plan References
 

@@ -4,15 +4,15 @@ title: User-only setup fallback for non-Webpresso repos
 status: completed
 complexity: M
 owner: agent-kit
-created: '2026-06-19'
-last_updated: '2026-06-19'
-progress: '100% (3/3 tasks done, 0 blocked, updated 2026-06-19)'
+created: "2026-06-19"
+last_updated: "2026-06-19"
+progress: "100% (3/3 tasks done, 0 blocked, updated 2026-06-19)"
 tags:
   - cli
   - setup
   - safety
   - ux
-completed_at: '2026-06-19'
+completed_at: "2026-06-19"
 ---
 
 # User-only setup fallback for non-Webpresso repos
@@ -39,6 +39,7 @@ Prevent accidental scaffolding into umbrella directories such as `~/repos` or pl
 Add repo-shape detection that recognizes collection roots (including org-folder layouts) and initialized Webpresso repos via managed markers or local package pins.
 
 **Acceptance:**
+
 - [x] Repo collection roots are detected before repo-local setup writes happen.
 - [x] Initialized Webpresso repos are not forced into user-only mode.
 - [x] Detection logic has direct regression coverage.
@@ -55,6 +56,7 @@ Add repo-shape detection that recognizes collection roots (including org-folder 
 Keep global/user setup available outside project repos while skipping repo hooks, scaffold files, and project `.mcp.json` writes. Add `--user-only` and `--project-init` to make the intent explicit.
 
 **Acceptance:**
+
 - [x] `wp setup` auto-falls back to user-only mode for repo collections and non-Webpresso repos.
 - [x] `--user-only` forces the safe global-only path.
 - [x] `--project-init` preserves explicit bootstrap of plain repos.
@@ -71,6 +73,7 @@ Keep global/user setup available outside project repos while skipping repo hooks
 Update the existing setup e2e suite so normal repo scaffolding is explicit with `--project-init`, and add subprocess coverage for automatic user-only fallback and explicit `--user-only` behavior.
 
 **Acceptance:**
+
 - [x] Existing setup e2e coverage still validates normal repo bootstrap via `--project-init`.
 - [x] New e2e cases cover automatic user-only fallback and explicit `--user-only` mode.
 - [x] Lint, typecheck, TPH audit, and agents audit pass for the touched surface.
@@ -87,21 +90,21 @@ Update the existing setup e2e suite so normal repo scaffolding is explicit with 
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/user-only-setup-fallback-for-non-webpresso-repos.md |
+| ID  | Claim                                                          | Evidence                                                                      |
+| --- | -------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/user-only-setup-fallback-for-non-webpresso-repos.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

@@ -22,19 +22,19 @@
  */
 
 export interface LoreValidationOptions {
-  requireLore?: boolean
-  loreWarn?: boolean
+  requireLore?: boolean;
+  loreWarn?: boolean;
 }
 
 export interface LoreValidationResult {
-  valid: boolean
-  violations: string[]
-  warnings: string[]
+  valid: boolean;
+  violations: string[];
+  warnings: string[];
 }
 
-const CONFIDENCE_VALUES = ['low', 'medium', 'high'] as const
-const SCOPE_RISK_VALUES = ['narrow', 'moderate', 'broad'] as const
-const REVERSIBILITY_VALUES = ['clean', 'messy', 'irreversible'] as const
+const CONFIDENCE_VALUES = ["low", "medium", "high"] as const;
+const SCOPE_RISK_VALUES = ["narrow", "moderate", "broad"] as const;
+const REVERSIBILITY_VALUES = ["clean", "messy", "irreversible"] as const;
 
 /**
  * Extract trailers from a commit message using a regex fallback.
@@ -44,25 +44,25 @@ const REVERSIBILITY_VALUES = ['clean', 'messy', 'irreversible'] as const
  * separated from the body by a blank line.
  */
 function extractTrailers(message: string): Map<string, string[]> {
-  const trailers = new Map<string, string[]>()
+  const trailers = new Map<string, string[]>();
 
   // Split into lines and scan for trailer-like patterns (Key: value)
   // A trailer key: starts with a capital letter or known multi-word key,
   // followed by ': ', followed by content.
-  const TRAILER_PATTERN = /^([A-Za-z][A-Za-z0-9-]*): (.+)$/
+  const TRAILER_PATTERN = /^([A-Za-z][A-Za-z0-9-]*): (.+)$/;
 
   for (const line of message.split(/\r?\n/)) {
-    const match = TRAILER_PATTERN.exec(line.trim())
+    const match = TRAILER_PATTERN.exec(line.trim());
     if (match?.[1] && match[2] !== undefined) {
-      const key = match[1]
-      const value = match[2].trim()
-      const existing = trailers.get(key) ?? []
-      existing.push(value)
-      trailers.set(key, existing)
+      const key = match[1];
+      const value = match[2].trim();
+      const existing = trailers.get(key) ?? [];
+      existing.push(value);
+      trailers.set(key, existing);
     }
   }
 
-  return trailers
+  return trailers;
 }
 
 /**
@@ -77,74 +77,74 @@ export function validateLoreTrailers(
   message: string,
   options: LoreValidationOptions,
 ): LoreValidationResult {
-  const { requireLore = false, loreWarn = false } = options
+  const { requireLore = false, loreWarn = false } = options;
 
   // If neither flag is set, Lore validation is off
   if (!requireLore && !loreWarn) {
-    return { valid: true, violations: [], warnings: [] }
+    return { valid: true, violations: [], warnings: [] };
   }
 
-  const trailers = extractTrailers(message)
-  const violations: string[] = []
-  const warnings: string[] = []
+  const trailers = extractTrailers(message);
+  const violations: string[] = [];
+  const warnings: string[] = [];
 
   // --- Enum value validation (always hard-fail regardless of mode) ---
 
-  const confidenceValues = trailers.get('Confidence') ?? []
+  const confidenceValues = trailers.get("Confidence") ?? [];
   for (const val of confidenceValues) {
     if (!(CONFIDENCE_VALUES as readonly string[]).includes(val)) {
       violations.push(
-        `Confidence: '${val}' is not valid. Must be one of: ${CONFIDENCE_VALUES.join(', ')}`,
-      )
+        `Confidence: '${val}' is not valid. Must be one of: ${CONFIDENCE_VALUES.join(", ")}`,
+      );
     }
   }
 
-  const scopeRiskValues = trailers.get('Scope-risk') ?? []
+  const scopeRiskValues = trailers.get("Scope-risk") ?? [];
   for (const val of scopeRiskValues) {
     if (!(SCOPE_RISK_VALUES as readonly string[]).includes(val)) {
       violations.push(
-        `Scope-risk: '${val}' is not valid. Must be one of: ${SCOPE_RISK_VALUES.join(', ')}`,
-      )
+        `Scope-risk: '${val}' is not valid. Must be one of: ${SCOPE_RISK_VALUES.join(", ")}`,
+      );
     }
   }
 
-  const reversibilityValues = trailers.get('Reversibility') ?? []
+  const reversibilityValues = trailers.get("Reversibility") ?? [];
   for (const val of reversibilityValues) {
     if (!(REVERSIBILITY_VALUES as readonly string[]).includes(val)) {
       violations.push(
-        `Reversibility: '${val}' is not valid. Must be one of: ${REVERSIBILITY_VALUES.join(', ')}`,
-      )
+        `Reversibility: '${val}' is not valid. Must be one of: ${REVERSIBILITY_VALUES.join(", ")}`,
+      );
     }
   }
 
   // --- Required trailer presence checks ---
   // Missing trailers: hard-fail in requireLore mode, warnings in loreWarn mode.
 
-  const hasConfidence = confidenceValues.length > 0
+  const hasConfidence = confidenceValues.length > 0;
   const hasConstraintOrRejectedOrDirective =
-    trailers.has('Constraint') || trailers.has('Rejected') || trailers.has('Directive')
+    trailers.has("Constraint") || trailers.has("Rejected") || trailers.has("Directive");
 
   if (!hasConfidence) {
-    const msg = 'Lore commits must include a Confidence: trailer (low|medium|high)'
+    const msg = "Lore commits must include a Confidence: trailer (low|medium|high)";
     if (requireLore) {
-      violations.push(msg)
+      violations.push(msg);
     } else {
-      warnings.push(msg)
+      warnings.push(msg);
     }
   }
 
   if (!hasConstraintOrRejectedOrDirective) {
     const msg =
-      'Lore commits must include at least one of: Constraint:, Rejected:, Directive: trailer'
+      "Lore commits must include at least one of: Constraint:, Rejected:, Directive: trailer";
     if (requireLore) {
-      violations.push(msg)
+      violations.push(msg);
     } else {
-      warnings.push(msg)
+      warnings.push(msg);
     }
   }
 
   // In loreWarn mode, only enum validation errors make it invalid
-  const isValid = loreWarn ? violations.length === 0 : violations.length === 0
+  const isValid = loreWarn ? violations.length === 0 : violations.length === 0;
 
-  return { valid: isValid, violations, warnings }
+  return { valid: isValid, violations, warnings };
 }

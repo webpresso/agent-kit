@@ -5,6 +5,7 @@ description: |
   clarity, hierarchy, interaction quality, accessibility, and visual coherence.
 license: MIT
 ---
+
 # Design plan review
 
 Review the plan as a product designer before code is written.

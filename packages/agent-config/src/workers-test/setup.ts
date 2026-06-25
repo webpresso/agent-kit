@@ -1,16 +1,16 @@
-import { vi } from 'vitest'
+import { vi } from "vitest";
 
-import type { BaseWorkerEnv } from './env.js'
-import type { MockExecutionContext } from './execution-context.js'
+import type { BaseWorkerEnv } from "./env.js";
+import type { MockExecutionContext } from "./execution-context.js";
 
-import { createMockEnv } from './env.js'
-import { createMockExecutionContext } from './execution-context.js'
-import { createCloudflareRuntimeMocks } from './durable-objects.js'
+import { createMockEnv } from "./env.js";
+import { createMockExecutionContext } from "./execution-context.js";
+import { createCloudflareRuntimeMocks } from "./durable-objects.js";
 import {
   createAuthenticatedRequest,
   createUnauthenticatedRequest,
   createCorsRequest,
-} from './requests.js'
+} from "./requests.js";
 
 // ============================================================================
 // Type Definitions
@@ -21,7 +21,7 @@ import {
  */
 export interface WorkerTestOptions {
   /** Enable Cloudflare Workers runtime mocking (DurableObject, Container) (default: true) */
-  mockCloudflareRuntime?: boolean
+  mockCloudflareRuntime?: boolean;
 }
 
 // ============================================================================
@@ -56,24 +56,24 @@ export function setupWorkerTest<T extends BaseWorkerEnv>(
   options: WorkerTestOptions = {},
 ): {
   mocks: {
-    cloudflareRuntime: ReturnType<typeof createCloudflareRuntimeMocks> | null
-  }
-  mockEnv: T
-  mockCtx: MockExecutionContext
-  createAuthenticatedRequest: typeof createAuthenticatedRequest
-  createUnauthenticatedRequest: typeof createUnauthenticatedRequest
-  createCorsRequest: typeof createCorsRequest
-  createMockExecutionContext: typeof createMockExecutionContext
-  clearAllMocks: () => void
+    cloudflareRuntime: ReturnType<typeof createCloudflareRuntimeMocks> | null;
+  };
+  mockEnv: T;
+  mockCtx: MockExecutionContext;
+  createAuthenticatedRequest: typeof createAuthenticatedRequest;
+  createUnauthenticatedRequest: typeof createUnauthenticatedRequest;
+  createCorsRequest: typeof createCorsRequest;
+  createMockExecutionContext: typeof createMockExecutionContext;
+  clearAllMocks: () => void;
 } {
-  const { mockCloudflareRuntime = true } = options
+  const { mockCloudflareRuntime = true } = options;
 
   const mocks = {
     cloudflareRuntime: mockCloudflareRuntime ? createCloudflareRuntimeMocks() : null,
-  }
+  };
 
-  const mockEnv = createMockEnv<T>(envOverrides)
-  const mockCtx = createMockExecutionContext()
+  const mockEnv = createMockEnv<T>(envOverrides);
+  const mockCtx = createMockExecutionContext();
 
   return {
     mocks,
@@ -84,7 +84,7 @@ export function setupWorkerTest<T extends BaseWorkerEnv>(
     createCorsRequest,
     createMockExecutionContext,
     clearAllMocks: () => vi.clearAllMocks(),
-  }
+  };
 }
 
 // ============================================================================
@@ -104,25 +104,25 @@ export function setupWorkerTest<T extends BaseWorkerEnv>(
  * ```
  */
 export function suppressConsole(): { restore: () => void } {
-  const originalLog = console.log
-  const originalError = console.error
-  const originalWarn = console.warn
+  const originalLog = console.log;
+  const originalError = console.error;
+  const originalWarn = console.warn;
 
-  vi.spyOn(console, 'log').mockImplementation(() => {
+  vi.spyOn(console, "log").mockImplementation(() => {
     // Intentionally empty - suppressing console output
-  })
-  vi.spyOn(console, 'error').mockImplementation(() => {
+  });
+  vi.spyOn(console, "error").mockImplementation(() => {
     // Intentionally empty - suppressing console output
-  })
-  vi.spyOn(console, 'warn').mockImplementation(() => {
+  });
+  vi.spyOn(console, "warn").mockImplementation(() => {
     // Intentionally empty - suppressing console output
-  })
+  });
 
   return {
     restore: () => {
-      console.log = originalLog
-      console.error = originalError
-      console.warn = originalWarn
+      console.log = originalLog;
+      console.error = originalError;
+      console.warn = originalWarn;
     },
-  }
+  };
 }

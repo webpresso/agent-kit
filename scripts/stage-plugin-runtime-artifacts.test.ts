@@ -1,84 +1,86 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from "vitest";
 
 import {
   buildRuntimeStageOperations,
   renderRuntimePackageManifest,
   stageRuntimeArtifacts,
-} from './stage-plugin-runtime-artifacts.js'
+} from "./stage-plugin-runtime-artifacts.js";
 
-describe('stage-plugin-runtime-artifacts', () => {
-  it('maps compiled artifacts into plugin and runtime-package destinations', () => {
-    const operations = buildRuntimeStageOperations({ rootDir: '/repo' })
+describe("stage-plugin-runtime-artifacts", () => {
+  it("maps compiled artifacts into plugin and runtime-package destinations", () => {
+    const operations = buildRuntimeStageOperations({ rootDir: "/repo" });
 
     expect(operations[0]).toMatchObject({
-      source: '/repo/dist/runtime/darwin-arm64/wp',
-      pluginDestination: '/repo/bin/runtime/darwin-arm64/wp',
-      packageBinaryDestination: '/repo/dist/runtime-packages/agent-kit-runtime-darwin-arm64/bin/wp',
+      source: "/repo/dist/runtime/darwin-arm64/wp",
+      pluginDestination: "/repo/bin/runtime/darwin-arm64/wp",
+      packageBinaryDestination: "/repo/dist/runtime-packages/agent-kit-runtime-darwin-arm64/bin/wp",
       packageManifestDestination:
-        '/repo/dist/runtime-packages/agent-kit-runtime-darwin-arm64/package.json',
-    })
-  })
+        "/repo/dist/runtime-packages/agent-kit-runtime-darwin-arm64/package.json",
+    });
+  });
 
-  it('renders public npm platform package metadata', () => {
-    const [operation] = buildRuntimeStageOperations({ rootDir: '/repo' })
-    const manifest = JSON.parse(renderRuntimePackageManifest(operation!.target, '1.2.3'))
+  it("renders public npm platform package metadata", () => {
+    const [operation] = buildRuntimeStageOperations({ rootDir: "/repo" });
+    const manifest = JSON.parse(renderRuntimePackageManifest(operation!.target, "1.2.3"));
 
     expect(manifest).toMatchObject({
-      name: '@webpresso/agent-kit-runtime-darwin-arm64',
-      version: '1.2.3',
+      name: "@webpresso/agent-kit-runtime-darwin-arm64",
+      version: "1.2.3",
       repository: {
-        type: 'git',
-        url: 'https://github.com/webpresso/agent-kit',
+        type: "git",
+        url: "https://github.com/webpresso/agent-kit",
       },
-      os: ['darwin'],
-      cpu: ['arm64'],
+      os: ["darwin"],
+      cpu: ["arm64"],
       publishConfig: {
-        registry: 'https://registry.npmjs.org/',
-        access: 'public',
+        registry: "https://registry.npmjs.org/",
+        access: "public",
       },
-      bin: { wp: 'bin/wp' },
-      files: ['bin'],
-    })
-  })
+      bin: { wp: "bin/wp" },
+      files: ["bin"],
+    });
+  });
 
-  it('copies compiled artifacts and writes runtime package manifests', () => {
-    const root = mkdtempSync(join(tmpdir(), 'wp-runtime-stage-'))
+  it("copies compiled artifacts and writes runtime package manifests", () => {
+    const root = mkdtempSync(join(tmpdir(), "wp-runtime-stage-"));
 
     try {
       writeFileSync(
-        join(root, 'package.json'),
-        `${JSON.stringify({ name: '@webpresso/agent-kit', version: '9.8.7' })}\n`,
-        'utf8',
-      )
+        join(root, "package.json"),
+        `${JSON.stringify({ name: "@webpresso/agent-kit", version: "9.8.7" })}\n`,
+        "utf8",
+      );
       for (const operation of buildRuntimeStageOperations({ rootDir: root })) {
-        mkdirSync(dirname(operation.source), { recursive: true })
-        writeFileSync(operation.source, `runtime:${operation.target.id}`, 'utf8')
+        mkdirSync(dirname(operation.source), { recursive: true });
+        writeFileSync(operation.source, `runtime:${operation.target.id}`, "utf8");
       }
-      const migrationSourceDir = join(root, 'src', 'blueprint', 'db', 'migrations')
-      mkdirSync(migrationSourceDir, { recursive: true })
-      writeFileSync(join(migrationSourceDir, '0001_seed.sql'), 'CREATE TABLE blueprints();\n')
+      const migrationSourceDir = join(root, "src", "blueprint", "db", "migrations");
+      mkdirSync(migrationSourceDir, { recursive: true });
+      writeFileSync(join(migrationSourceDir, "0001_seed.sql"), "CREATE TABLE blueprints();\n");
 
-      const staged = stageRuntimeArtifacts({ rootDir: root })
+      const staged = stageRuntimeArtifacts({ rootDir: root });
 
-      const [operation] = buildRuntimeStageOperations({ rootDir: root })
-      expect(readFileSync(operation!.pluginDestination, 'utf8')).toBe('runtime:darwin-arm64')
-      expect(readFileSync(operation!.packageBinaryDestination, 'utf8')).toBe('runtime:darwin-arm64')
-      expect(existsSync(operation!.packageManifestDestination)).toBe(true)
-      expect(JSON.parse(readFileSync(operation!.packageManifestDestination, 'utf8')).version).toBe(
-        '9.8.7',
-      )
-      const migrationDistDir = join(root, 'dist', 'esm', 'blueprint', 'db', 'migrations')
-      expect(staged).toContain(migrationDistDir)
-      expect(readFileSync(join(migrationDistDir, '0001_seed.sql'), 'utf8')).toBe(
-        'CREATE TABLE blueprints();\n',
-      )
-      expect(existsSync(join(root, 'bin', 'wp'))).toBe(false)
+      const [operation] = buildRuntimeStageOperations({ rootDir: root });
+      expect(readFileSync(operation!.pluginDestination, "utf8")).toBe("runtime:darwin-arm64");
+      expect(readFileSync(operation!.packageBinaryDestination, "utf8")).toBe(
+        "runtime:darwin-arm64",
+      );
+      expect(existsSync(operation!.packageManifestDestination)).toBe(true);
+      expect(JSON.parse(readFileSync(operation!.packageManifestDestination, "utf8")).version).toBe(
+        "9.8.7",
+      );
+      const migrationDistDir = join(root, "dist", "esm", "blueprint", "db", "migrations");
+      expect(staged).toContain(migrationDistDir);
+      expect(readFileSync(join(migrationDistDir, "0001_seed.sql"), "utf8")).toBe(
+        "CREATE TABLE blueprints();\n",
+      );
+      expect(existsSync(join(root, "bin", "wp"))).toBe(false);
     } finally {
-      rmSync(root, { force: true, recursive: true })
+      rmSync(root, { force: true, recursive: true });
     }
-  })
-})
+  });
+});

@@ -5,285 +5,285 @@
  * Phase 2: Sandbox routing (rewrite Bash → wp_session_* for data-heavy commands)
  * Phase 3: Security validators (block dangerous/forbidden commands)
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 async function getRunner() {
-  const { processValidation } = await import('./runner.js')
-  return (inputJson: string) => processValidation(inputJson)
+  const { processValidation } = await import("./runner.js");
+  return (inputJson: string) => processValidation(inputJson);
 }
 
 function makeBashInput(command: string): string {
-  return JSON.stringify({ tool_name: 'Bash', tool_input: { command } })
+  return JSON.stringify({ tool_name: "Bash", tool_input: { command } });
 }
 
 function makeEditInput(filePath: string): string {
   return JSON.stringify({
-    tool_name: 'Edit',
-    tool_input: { file_path: filePath, old_string: 'a', new_string: 'b' },
-  })
+    tool_name: "Edit",
+    tool_input: { file_path: filePath, old_string: "a", new_string: "b" },
+  });
 }
 
 function makeContextExecuteInput(code: string): string {
   return JSON.stringify({
-    tool_name: 'wp_session_execute',
-    tool_input: { language: 'javascript', code },
-  })
+    tool_name: "wp_session_execute",
+    tool_input: { language: "javascript", code },
+  });
 }
 
-describe('coordinated routing pipeline', () => {
-  let stdoutOutput: string[]
+describe("coordinated routing pipeline", () => {
+  let stdoutOutput: string[];
 
   beforeEach(() => {
-    vi.resetAllMocks()
-    stdoutOutput = []
+    vi.resetAllMocks();
+    stdoutOutput = [];
 
     // Capture stdout and exit
-    vi.spyOn(process.stdout, 'write').mockImplementation((data) => {
-      stdoutOutput.push(String(data))
-      return true
-    })
-    vi.spyOn(console, 'log').mockImplementation((data: unknown) => {
-      stdoutOutput.push(String(data))
-    })
-    vi.spyOn(process, 'exit').mockImplementation((code?: number | string | null) => {
-      throw new Error(`process.exit(${String(code)})`)
-    })
-    vi.spyOn(console, 'error').mockImplementation(() => {})
-  })
+    vi.spyOn(process.stdout, "write").mockImplementation((data) => {
+      stdoutOutput.push(String(data));
+      return true;
+    });
+    vi.spyOn(console, "log").mockImplementation((data: unknown) => {
+      stdoutOutput.push(String(data));
+    });
+    vi.spyOn(process, "exit").mockImplementation((code?: number | string | null) => {
+      throw new Error(`process.exit(${String(code)})`);
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
 
   afterEach(() => {
-    vi.restoreAllMocks()
-  })
+    vi.restoreAllMocks();
+  });
 
   function getLastOutput(): string {
-    return stdoutOutput[stdoutOutput.length - 1] ?? ''
+    return stdoutOutput[stdoutOutput.length - 1] ?? "";
   }
 
   // Category 1: Dev-workflow commands → deny
-  describe('Phase 1: dev-workflow → deny', () => {
+  describe("Phase 1: dev-workflow → deny", () => {
     const devCommands = [
-      'vp exec vitest run',
-      'pnpm exec vitest run',
-      'npm exec -- vitest run',
-      'npx vitest run',
-      'yarn vitest run',
-      'bunx vitest run',
-      'vitest src/',
-      'bun run test',
-      'bun run test:slice',
-      'bun run vitest run src/hooks/pretool-guard/dev-routing.test.ts',
-      'bun run lint',
-      'vp exec oxlint .',
-      'oxlint .',
-      'vp exec tsc --noEmit',
-      'tsc --noEmit',
-      'vp exec prettier README.md --write',
-      'vp exec markdownlint-cli2 README.md',
-      'markdownlint-cli2 README.md',
-    ]
+      "vp exec vitest run",
+      "pnpm exec vitest run",
+      "npm exec -- vitest run",
+      "npx vitest run",
+      "yarn vitest run",
+      "bunx vitest run",
+      "vitest src/",
+      "bun run test",
+      "bun run test:slice",
+      "bun run vitest run src/hooks/pretool-guard/dev-routing.test.ts",
+      "bun run lint",
+      "vp exec oxlint .",
+      "oxlint .",
+      "vp exec tsc --noEmit",
+      "tsc --noEmit",
+      "vp exec prettier README.md --write",
+      "vp exec markdownlint-cli2 README.md",
+      "markdownlint-cli2 README.md",
+    ];
 
     for (const cmd of devCommands) {
       it(`${cmd} → deny with permissionDecision`, async () => {
-        const processValidation = await getRunner()
+        const processValidation = await getRunner();
         try {
-          processValidation(makeBashInput(cmd))
+          processValidation(makeBashInput(cmd));
         } catch {
           // process.exit throws
         }
-        const output = getLastOutput()
+        const output = getLastOutput();
         const parsed = JSON.parse(output) as {
-          hookSpecificOutput?: { permissionDecision?: string; permissionDecisionReason?: string }
-        }
-        expect(parsed.hookSpecificOutput?.permissionDecision).toBe('deny')
-        expect(parsed.hookSpecificOutput?.permissionDecisionReason).toContain('wp_')
-      })
+          hookSpecificOutput?: { permissionDecision?: string; permissionDecisionReason?: string };
+        };
+        expect(parsed.hookSpecificOutput?.permissionDecision).toBe("deny");
+        expect(parsed.hookSpecificOutput?.permissionDecisionReason).toContain("wp_");
+      });
     }
-  })
+  });
 
   // Category 2: Data-heavy commands → sandbox
-  describe('Phase 2: data-heavy → sandbox', () => {
+  describe("Phase 2: data-heavy → sandbox", () => {
     const sandboxCommands = [
-      'grep -r foo src/',
+      "grep -r foo src/",
       'find . -name "*.ts"',
-      'cat package.json',
-      'curl https://api.example.com',
-      'git log --oneline',
-      'vp run build',
-    ]
+      "cat package.json",
+      "curl https://api.example.com",
+      "git log --oneline",
+      "vp run build",
+    ];
 
     for (const cmd of sandboxCommands) {
       it(`${cmd} → sandbox redirect`, async () => {
-        const processValidation = await getRunner()
+        const processValidation = await getRunner();
         try {
-          processValidation(makeBashInput(cmd))
+          processValidation(makeBashInput(cmd));
         } catch {
           // process.exit throws
         }
-        const output = getLastOutput()
+        const output = getLastOutput();
         const parsed = JSON.parse(output) as {
-          hookSpecificOutput?: { permissionDecision?: string }
-        }
-        expect(parsed.hookSpecificOutput?.permissionDecision).toBe('deny')
+          hookSpecificOutput?: { permissionDecision?: string };
+        };
+        expect(parsed.hookSpecificOutput?.permissionDecision).toBe("deny");
         const reason = (
           parsed.hookSpecificOutput as { permissionDecisionReason?: string } | undefined
-        )?.permissionDecisionReason
-        expect(reason).toContain('bounded')
-      })
+        )?.permissionDecisionReason;
+        expect(reason).toContain("bounded");
+      });
     }
-  })
+  });
 
-  describe('Phase 2: raw host context-heavy tools → session-memory sandbox', () => {
-    it('unbounded Grep content input → wp_session_batch_execute guidance', async () => {
-      const processValidation = await getRunner()
+  describe("Phase 2: raw host context-heavy tools → session-memory sandbox", () => {
+    it("unbounded Grep content input → wp_session_batch_execute guidance", async () => {
+      const processValidation = await getRunner();
       try {
         processValidation(
           JSON.stringify({
-            tool_name: 'Grep',
-            tool_input: { pattern: 'wp_session', output_mode: 'content' },
+            tool_name: "Grep",
+            tool_input: { pattern: "wp_session", output_mode: "content" },
           }),
-        )
+        );
       } catch {
         // process.exit throws
       }
       const parsed = JSON.parse(getLastOutput()) as {
-        hookSpecificOutput?: { permissionDecision?: string; permissionDecisionReason?: string }
-      }
-      expect(parsed.hookSpecificOutput?.permissionDecision).toBe('deny')
+        hookSpecificOutput?: { permissionDecision?: string; permissionDecisionReason?: string };
+      };
+      expect(parsed.hookSpecificOutput?.permissionDecision).toBe("deny");
       expect(parsed.hookSpecificOutput?.permissionDecisionReason).toContain(
-        'wp_session_batch_execute',
-      )
-    })
+        "wp_session_batch_execute",
+      );
+    });
 
-    it('safe host tools and third-party MCP calls pass through raw tool-input session fallback', async () => {
-      const processValidation = await getRunner()
+    it("safe host tools and third-party MCP calls pass through raw tool-input session fallback", async () => {
+      const processValidation = await getRunner();
       for (const input of [
-        { tool_name: 'Read', tool_input: { file_path: 'src/small.ts', limit: 80 } },
+        { tool_name: "Read", tool_input: { file_path: "src/small.ts", limit: 80 } },
         {
-          tool_name: 'Grep',
-          tool_input: { pattern: 'wp_session', output_mode: 'files_with_matches' },
+          tool_name: "Grep",
+          tool_input: { pattern: "wp_session", output_mode: "files_with_matches" },
         },
-        { tool_name: 'WebFetch', tool_input: { url: 'https://example.com/docs' } },
-        { tool_name: 'Task', tool_input: { prompt: 'inspect a subsystem' } },
-        { tool_name: 'mcp__github__get_pull_request', tool_input: { owner: 'webpresso' } },
+        { tool_name: "WebFetch", tool_input: { url: "https://example.com/docs" } },
+        { tool_name: "Task", tool_input: { prompt: "inspect a subsystem" } },
+        { tool_name: "mcp__github__get_pull_request", tool_input: { owner: "webpresso" } },
       ]) {
         try {
-          processValidation(JSON.stringify(input))
+          processValidation(JSON.stringify(input));
         } catch {
           // process.exit throws
         }
-        expect(getLastOutput(), input.tool_name).toBe('{}')
+        expect(getLastOutput(), input.tool_name).toBe("{}");
       }
-    })
-  })
+    });
+  });
 
-  it('canonical Webpresso MCP wp tools pass through raw tool-input session fallback', async () => {
-    const processValidation = await getRunner()
+  it("canonical Webpresso MCP wp tools pass through raw tool-input session fallback", async () => {
+    const processValidation = await getRunner();
     try {
-      processValidation(JSON.stringify({ tool_name: 'mcp__webpresso__wp_test', tool_input: {} }))
+      processValidation(JSON.stringify({ tool_name: "mcp__webpresso__wp_test", tool_input: {} }));
     } catch {
       // process.exit throws
     }
-    expect(getLastOutput()).toBe('{}')
-  })
+    expect(getLastOutput()).toBe("{}");
+  });
 
   // Category 3: Passthrough commands
-  describe('Phase 3: safe commands → passthrough ({})', () => {
+  describe("Phase 3: safe commands → passthrough ({})", () => {
     const passthroughCommands = [
-      'git status',
-      'git add .',
+      "git status",
+      "git add .",
       'git commit -m "msg"',
-      'ls -la',
-      'mkdir foo',
-    ]
+      "ls -la",
+      "mkdir foo",
+    ];
 
     for (const cmd of passthroughCommands) {
       it(`${cmd} → passthrough`, async () => {
-        const processValidation = await getRunner()
+        const processValidation = await getRunner();
         try {
-          processValidation(makeBashInput(cmd))
+          processValidation(makeBashInput(cmd));
         } catch {
           // process.exit throws
         }
-        const output = getLastOutput()
-        expect(output).toBe('{}')
-      })
+        const output = getLastOutput();
+        expect(output).toBe("{}");
+      });
     }
-  })
+  });
 
   // Category 5: Edit/Write inputs → fall through to validators (passthrough for safe files)
-  describe('Edit/Write → pass through to validators', () => {
-    it('Edit safe file → passthrough', async () => {
-      const processValidation = await getRunner()
+  describe("Edit/Write → pass through to validators", () => {
+    it("Edit safe file → passthrough", async () => {
+      const processValidation = await getRunner();
       try {
-        processValidation(makeEditInput('src/foo.ts'))
+        processValidation(makeEditInput("src/foo.ts"));
       } catch {
         // process.exit throws
       }
-      const output = getLastOutput()
-      expect(output).toBe('{}')
-    })
-  })
+      const output = getLastOutput();
+      expect(output).toBe("{}");
+    });
+  });
 
   // Category 6: Unknown Bash → passthrough
-  describe('Unknown Bash commands → passthrough', () => {
-    it('some-random-tool --flag → passthrough', async () => {
-      const processValidation = await getRunner()
+  describe("Unknown Bash commands → passthrough", () => {
+    it("some-random-tool --flag → passthrough", async () => {
+      const processValidation = await getRunner();
       try {
-        processValidation(makeBashInput('some-random-tool --flag'))
+        processValidation(makeBashInput("some-random-tool --flag"));
       } catch {
         // process.exit throws
       }
-      const output = getLastOutput()
-      expect(output).toBe('{}')
-    })
-  })
+      const output = getLastOutput();
+      expect(output).toBe("{}");
+    });
+  });
 
-  describe('wp_session_execute dev-workflow commands → deny before execution', () => {
-    it('wp_session_execute wrapping vp test → deny with wp_test guidance', async () => {
-      const processValidation = await getRunner()
+  describe("wp_session_execute dev-workflow commands → deny before execution", () => {
+    it("wp_session_execute wrapping vp test → deny with wp_test guidance", async () => {
+      const processValidation = await getRunner();
       try {
         processValidation(
           makeContextExecuteInput(
             "execFileSync('vp',['run','--filter=webpresso','test'," +
               "'src/audit/gitignore-agent-surfaces.test.ts'])",
           ),
-        )
+        );
       } catch {
         // process.exit throws
       }
-      const output = getLastOutput()
+      const output = getLastOutput();
       const parsed = JSON.parse(output) as {
         hookSpecificOutput?: {
-          permissionDecision?: string
-          permissionDecisionReason?: string
-        }
-      }
-      expect(parsed.hookSpecificOutput?.permissionDecision).toBe('deny')
-      expect(parsed.hookSpecificOutput?.permissionDecisionReason).toContain('wp_test')
-    })
+          permissionDecision?: string;
+          permissionDecisionReason?: string;
+        };
+      };
+      expect(parsed.hookSpecificOutput?.permissionDecision).toBe("deny");
+      expect(parsed.hookSpecificOutput?.permissionDecisionReason).toContain("wp_test");
+    });
 
-    it('wp_session_execute shell code with env-prefixed vitest → deny with wp_test guidance', async () => {
-      const processValidation = await getRunner()
+    it("wp_session_execute shell code with env-prefixed vitest → deny with wp_test guidance", async () => {
+      const processValidation = await getRunner();
       try {
         processValidation(
           makeContextExecuteInput(
-            'WP_SKIP_UPDATE_CHECK=1 vp exec vitest run src/mcp/blueprint-server.test.ts 2>&1 | tail -120',
+            "WP_SKIP_UPDATE_CHECK=1 vp exec vitest run src/mcp/blueprint-server.test.ts 2>&1 | tail -120",
           ),
-        )
+        );
       } catch {
         // process.exit throws
       }
-      const output = getLastOutput()
+      const output = getLastOutput();
       const parsed = JSON.parse(output) as {
         hookSpecificOutput?: {
-          permissionDecision?: string
-          permissionDecisionReason?: string
-        }
-      }
-      expect(parsed.hookSpecificOutput?.permissionDecision).toBe('deny')
-      expect(parsed.hookSpecificOutput?.permissionDecisionReason).toContain('wp_test')
-    })
-  })
+          permissionDecision?: string;
+          permissionDecisionReason?: string;
+        };
+      };
+      expect(parsed.hookSpecificOutput?.permissionDecision).toBe("deny");
+      expect(parsed.hookSpecificOutput?.permissionDecisionReason).toContain("wp_test");
+    });
+  });
 
   // Category 7: Double-fire idempotency (OMC + wp concurrent PreToolUse model)
   //
@@ -301,88 +301,88 @@ describe('coordinated routing pipeline', () => {
   // OMC hooks live in ~/.claude/plugins/cache/omc/oh-my-claudecode/<version>/hooks/hooks.json
   // (plugin-owned). `omc update` replaces the plugin cache directory but never
   // touches settings.json, so wp hooks survive by design.
-  describe('OMC + wp double-fire coexistence', () => {
-    it('deny output is identical across two rapid calls (concurrent double-fire model)', async () => {
-      const processValidation = await getRunner()
+  describe("OMC + wp double-fire coexistence", () => {
+    it("deny output is identical across two rapid calls (concurrent double-fire model)", async () => {
+      const processValidation = await getRunner();
 
       try {
-        processValidation(makeBashInput('vp exec vitest run'))
+        processValidation(makeBashInput("vp exec vitest run"));
       } catch {
         // process.exit throws in tests
       }
-      const firstOutput = getLastOutput()
-      stdoutOutput = []
+      const firstOutput = getLastOutput();
+      stdoutOutput = [];
 
       try {
-        processValidation(makeBashInput('vp exec vitest run'))
+        processValidation(makeBashInput("vp exec vitest run"));
       } catch {
         // process.exit throws in tests
       }
-      const secondOutput = getLastOutput()
+      const secondOutput = getLastOutput();
 
       // The decision and reason must be identical across concurrent invocations.
       type HookOutput = {
-        hookSpecificOutput?: { permissionDecision?: string; permissionDecisionReason?: string }
-      }
-      const first = JSON.parse(firstOutput) as HookOutput
-      const second = JSON.parse(secondOutput) as HookOutput
-      expect(first.hookSpecificOutput?.permissionDecision).toBe('deny')
-      expect(second.hookSpecificOutput?.permissionDecision).toBe('deny')
+        hookSpecificOutput?: { permissionDecision?: string; permissionDecisionReason?: string };
+      };
+      const first = JSON.parse(firstOutput) as HookOutput;
+      const second = JSON.parse(secondOutput) as HookOutput;
+      expect(first.hookSpecificOutput?.permissionDecision).toBe("deny");
+      expect(second.hookSpecificOutput?.permissionDecision).toBe("deny");
       expect(first.hookSpecificOutput?.permissionDecisionReason).toStrictEqual(
         second.hookSpecificOutput?.permissionDecisionReason,
-      )
-    })
+      );
+    });
 
-    it('passthrough {} output is identical across two rapid calls', async () => {
-      const processValidation = await getRunner()
+    it("passthrough {} output is identical across two rapid calls", async () => {
+      const processValidation = await getRunner();
 
       try {
-        processValidation(makeBashInput('git status'))
+        processValidation(makeBashInput("git status"));
       } catch {
         // process.exit throws in tests
       }
-      const firstOutput = getLastOutput()
-      stdoutOutput = []
+      const firstOutput = getLastOutput();
+      stdoutOutput = [];
 
       try {
-        processValidation(makeBashInput('git status'))
+        processValidation(makeBashInput("git status"));
       } catch {
         // process.exit throws in tests
       }
-      const secondOutput = getLastOutput()
+      const secondOutput = getLastOutput();
 
-      expect(firstOutput).toBe('{}')
-      expect(secondOutput).toBe('{}')
-    })
-  })
+      expect(firstOutput).toBe("{}");
+      expect(secondOutput).toBe("{}");
+    });
+  });
 
   // Category 8: Repeated dev-workflow commands stay denied
-  describe('dev-workflow denials stay hard-blocked', () => {
-    it('vp exec vitest run → denied on repeated invocations', async () => {
-      const processValidation = await getRunner()
+  describe("dev-workflow denials stay hard-blocked", () => {
+    it("vp exec vitest run → denied on repeated invocations", async () => {
+      const processValidation = await getRunner();
       try {
-        processValidation(makeBashInput('vp exec vitest run'))
+        processValidation(makeBashInput("vp exec vitest run"));
       } catch {
         // process.exit throws
       }
-      const firstOutput = getLastOutput()
+      const firstOutput = getLastOutput();
       const firstParsed = JSON.parse(firstOutput) as {
-        hookSpecificOutput?: { permissionDecision?: string }
-      }
-      expect(firstParsed.hookSpecificOutput?.permissionDecision).toBe('deny')
+        hookSpecificOutput?: { permissionDecision?: string };
+      };
+      expect(firstParsed.hookSpecificOutput?.permissionDecision).toBe("deny");
 
-      stdoutOutput = []
+      stdoutOutput = [];
 
       try {
-        processValidation(makeBashInput('vp exec vitest run'))
+        processValidation(makeBashInput("vp exec vitest run"));
       } catch {
         // process.exit throws
       }
-      const secondOutput = getLastOutput()
+      const secondOutput = getLastOutput();
       const secondParsed = JSON.parse(secondOutput) as {
-        hookSpecificOutput?: { permissionDecision?: string }
-      }
-      expect(secondParsed.hookSpecificOutput?.permissionDecision).toBe('deny')
-    })
-  })
-})
+        hookSpecificOutput?: { permissionDecision?: string };
+      };
+      expect(secondParsed.hookSpecificOutput?.permissionDecision).toBe("deny");
+    });
+  });
+});

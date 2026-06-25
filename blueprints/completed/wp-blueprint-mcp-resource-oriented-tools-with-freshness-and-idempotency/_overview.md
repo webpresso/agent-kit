@@ -6,9 +6,9 @@ complexity: M
 owner: "agent"
 historical_verification_gap_waiver: true
 historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
-created: '2026-05-22'
-last_updated: '2026-05-22'
-progress: '100% (8/8 tasks done)'
+created: "2026-05-22"
+last_updated: "2026-05-22"
+progress: "100% (8/8 tasks done)"
 depends_on:
   - consolidate-all-webpresso-agent-sub-packages-into-webpresso-itself-with-subpath-exports-consumers-go-from-6-8-pinned-devdeps-down-to-one-webpresso
 tags:
@@ -119,11 +119,11 @@ drift test.
 
 ### Viable options considered
 
-| Option | Pros | Cons | Verdict |
-| --- | --- | --- | --- |
-| A. Big-bang rename all `ak_*` to `wp_*` and delete legacy names | Cleanest final surface | Breaks hidden consumers and makes rollback harder | Rejected |
-| B. `wp_*` canonical surface with documented legacy aliases and deprecation tests | Best DX, safest migration, supports gradual cleanup | Slightly larger tool registry during transition | Chosen |
-| C. Docs-only rename | Fast | Leaves implementation drift and user-facing breakage | Rejected |
+| Option                                                                           | Pros                                                | Cons                                                 | Verdict  |
+| -------------------------------------------------------------------------------- | --------------------------------------------------- | ---------------------------------------------------- | -------- |
+| A. Big-bang rename all `ak_*` to `wp_*` and delete legacy names                  | Cleanest final surface                              | Breaks hidden consumers and makes rollback harder    | Rejected |
+| B. `wp_*` canonical surface with documented legacy aliases and deprecation tests | Best DX, safest migration, supports gradual cleanup | Slightly larger tool registry during transition      | Chosen   |
+| C. Docs-only rename                                                              | Fast                                                | Leaves implementation drift and user-facing breakage | Rejected |
 
 ### Architect review
 
@@ -247,7 +247,7 @@ docs from the nested worktree by accident.
 **Acceptance:**
 
 - [x] Task notes identify the implementation worktree HEAD and any stashes used
-  only as reference material.
+      only as reference material.
 - [x] No stale `ak_blueprint_*` docs are copied forward without `wp_*` rewrite.
 
 **Notes:**
@@ -292,7 +292,7 @@ alias layer, not as the primary docs/examples path.
 - [x] Canonical tools are registered under `wp_blueprint_*`.
 - [x] Any `ak_blueprint_*` alias is documented as legacy and covered by tests.
 - [x] No implementation error summary tells users to call an `ak_*` tool when a
-  `wp_*` equivalent exists.
+      `wp_*` equivalent exists.
 
 #### Task 1.2: [mcp] Add precise input and output schemas for canonical tools
 
@@ -321,7 +321,7 @@ MCP SDK surface supports it, an `outputSchema`.
 **Acceptance:**
 
 - [x] `wp_blueprint_projects`, `list`, `get`, `context`, `create`,
-  `task_advance`, and `task_verify` have explicit input schemas.
+      `task_advance`, and `task_verify` have explicit input schemas.
 - [x] Structured outputs are stable enough for docs examples and tests.
 - [x] Tool list order is deterministic.
 
@@ -389,7 +389,7 @@ Make retries safe for `create`, `task_advance`, and `task_verify`.
 - [x] Exact retry of a mutating request is safe and idempotent.
 - [x] Conflicting reuse of `request_id` fails with a clear error.
 - [x] `request_id` docs specify UUID/random high-entropy guidance and warn
-  against sensitive data.
+      against sensitive data.
 
 ### Phase 3: Docs, commands, and drift guards [Complexity: S]
 
@@ -509,14 +509,14 @@ the implementation changes the published public surface.
 
 ## Verification gates
 
-| Gate | Tool / command surface | Success criteria |
-| --- | --- | --- |
-| Registry tests | `wp_test` scoped to MCP registry tests | Canonical `wp_blueprint_*` names present; aliases intentional |
-| Docs drift | `wp_test` scoped to docs-drift tests | Docs and implementation agree |
-| Type safety | `wp_typecheck` | Zero diagnostics |
-| Lint | `wp_lint` | Zero violations |
-| QA | `wp_qa` | Full quality pass or documented unrelated failures |
-| Blueprint/docs audits | `wp_audit` | Blueprint lifecycle/docs checks pass |
+| Gate                  | Tool / command surface                 | Success criteria                                              |
+| --------------------- | -------------------------------------- | ------------------------------------------------------------- |
+| Registry tests        | `wp_test` scoped to MCP registry tests | Canonical `wp_blueprint_*` names present; aliases intentional |
+| Docs drift            | `wp_test` scoped to docs-drift tests   | Docs and implementation agree                                 |
+| Type safety           | `wp_typecheck`                         | Zero diagnostics                                              |
+| Lint                  | `wp_lint`                              | Zero violations                                               |
+| QA                    | `wp_qa`                                | Full quality pass or documented unrelated failures            |
+| Blueprint/docs audits | `wp_audit`                             | Blueprint lifecycle/docs checks pass                          |
 
 ## Available agent-types roster
 
@@ -554,6 +554,7 @@ the implementation changes the published public surface.
 - `$team` — use with `$ultragoal` if parallelizing implementation lanes.
 - `$autoresearch-goal` — not needed unless new MCP/API evidence conflicts.
 - `$performance-goal` — not applicable; this is an API/DX correctness change.
+
 ## Historical verification note
 
 This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
@@ -570,21 +571,21 @@ This blueprint contains done tasks recorded before the current per-task `**Verif
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/wp-blueprint-mcp-resource-oriented-tools-with-freshness-and-idempotency/_overview.md |
+| ID  | Claim                                                          | Evidence                                                                                                        |
+| --- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/wp-blueprint-mcp-resource-oriented-tools-with-freshness-and-idempotency/\_overview.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

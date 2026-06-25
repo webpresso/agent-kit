@@ -4,9 +4,9 @@ title: "Public readiness smoke and visibility gate fix"
 owner: agent-kit
 status: completed
 complexity: S
-created: '2026-06-16'
-last_updated: '2026-06-16'
-progress: '100% (2 of 2 tasks completed)'
+created: "2026-06-16"
+last_updated: "2026-06-16"
+progress: "100% (2 of 2 tasks completed)"
 tags:
   - public-readiness
   - release
@@ -34,9 +34,9 @@ tags:
 **Acceptance:**
 
 - [x] Packed consumer smoke selects all hosts while opting Claude and Codex
-  plugin delivery out.
+      plugin delivery out.
 - [x] Shared favorite skill projections are asserted in both `.agents/skills`
-  and `.claude/skills`.
+      and `.claude/skills`.
 - [x] Regression coverage rejects returning the smoke to `--host none`.
 
 #### [release] Task 1.2: Point repo visibility readiness at public-release scrub evidence
@@ -67,21 +67,21 @@ tags:
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-16-public-readiness-smoke-and-visibility-fix.md |
+| ID  | Claim                                                          | Evidence                                                                          |
+| --- | -------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-16-public-readiness-smoke-and-visibility-fix.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

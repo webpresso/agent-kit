@@ -55,22 +55,28 @@ Produce a cited, reusable best-practice answer or handoff that separates current
 ## Best-Practice Research: <question>
 
 ### Direct Recommendation
+
 <actionable guidance or decision support>
 
 ### Evidence Used
+
 - Official/upstream: <source URL> — <what it establishes>
 - Supplemental, if any: <source URL> — <why it is secondary>
 
 ### Version / Date Context
+
 <versions, dates, release channels, or unknowns>
 
 ### Repo-Local Context
+
 <facts from explore, or "not needed">
 
 ### Boundaries / Non-goals
+
 <what this research does not decide>
 
 ### Handoff
+
 <planning/execution/test implications>
 ```
 

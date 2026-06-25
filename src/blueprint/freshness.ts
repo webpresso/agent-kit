@@ -22,11 +22,11 @@
  * handlers (`wp_blueprint_list`, `_get`, `_context`).
  */
 
-import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 
-import { writeJsonFile } from '#shared-utils/write-json-file.js'
-import { makeNextAction, type NextAction } from './next-action.js'
+import { writeJsonFile } from "#shared-utils/write-json-file.js";
+import { makeNextAction, type NextAction } from "./next-action.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -38,8 +38,8 @@ import { makeNextAction, type NextAction } from './next-action.js'
  * freshness so the helper stays usable without the full resolver.
  */
 export interface BlueprintProjectLike {
-  readonly worktree_path: string
-  readonly db_path: string
+  readonly worktree_path: string;
+  readonly db_path: string;
 }
 
 export interface ProjectionMetadata {
@@ -47,21 +47,21 @@ export interface ProjectionMetadata {
    * `git rev-parse HEAD` captured at ingest time, or `null` when the worktree
    * was not a git repo.
    */
-  readonly head_at_ingest: string | null
+  readonly head_at_ingest: string | null;
   /** Epoch milliseconds at which the projection was last written. */
-  readonly ingested_at: number
+  readonly ingested_at: number;
   /** Absolute worktree path that produced this projection, when known. */
-  readonly worktree_path?: string
+  readonly worktree_path?: string;
 }
 
 export type FreshnessResult =
   | { readonly ok: true; readonly head: string | null; readonly ingestedAt: number }
-  | { readonly ok: false; readonly next_action: NextAction }
+  | { readonly ok: false; readonly next_action: NextAction };
 
 export interface RecordProjectionMetadataInput {
-  readonly dbPath: string
-  readonly cwd: string
-  readonly ingestedAt: number
+  readonly dbPath: string;
+  readonly cwd: string;
+  readonly ingestedAt: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -69,31 +69,31 @@ export interface RecordProjectionMetadataInput {
 // ---------------------------------------------------------------------------
 
 function sidecarPath(dbPath: string): string {
-  return `${dbPath}.meta.json`
+  return `${dbPath}.meta.json`;
 }
 
 /** Run `git rev-parse HEAD` in cwd; return null when not a git repo / no commits. */
 export function readCurrentHead(cwd: string): string | null {
   try {
-    const sha = execFileSync('git', ['rev-parse', 'HEAD'], {
+    const sha = execFileSync("git", ["rev-parse", "HEAD"], {
       cwd,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
       timeout: 5_000,
-    }).trim()
-    return sha.length > 0 ? sha : null
+    }).trim();
+    return sha.length > 0 ? sha : null;
   } catch {
-    return null
+    return null;
   }
 }
 
 function isProjectionMetadata(value: unknown): value is ProjectionMetadata {
-  if (value === null || typeof value !== 'object') return false
-  const obj = value as { head_at_ingest?: unknown; ingested_at?: unknown; worktree_path?: unknown }
-  const headOk = obj.head_at_ingest === null || typeof obj.head_at_ingest === 'string'
-  const tsOk = typeof obj.ingested_at === 'number' && Number.isFinite(obj.ingested_at)
-  const worktreeOk = obj.worktree_path === undefined || typeof obj.worktree_path === 'string'
-  return headOk && tsOk && worktreeOk
+  if (value === null || typeof value !== "object") return false;
+  const obj = value as { head_at_ingest?: unknown; ingested_at?: unknown; worktree_path?: unknown };
+  const headOk = obj.head_at_ingest === null || typeof obj.head_at_ingest === "string";
+  const tsOk = typeof obj.ingested_at === "number" && Number.isFinite(obj.ingested_at);
+  const worktreeOk = obj.worktree_path === undefined || typeof obj.worktree_path === "string";
+  return headOk && tsOk && worktreeOk;
 }
 
 // ---------------------------------------------------------------------------
@@ -102,21 +102,21 @@ function isProjectionMetadata(value: unknown): value is ProjectionMetadata {
 
 /** Read the sidecar metadata for a projection DB. Returns null on miss/parse-failure. */
 export function readProjectionMetadata(dbPath: string): ProjectionMetadata | null {
-  const file = sidecarPath(dbPath)
-  if (!existsSync(file)) return null
-  let raw: string
+  const file = sidecarPath(dbPath);
+  if (!existsSync(file)) return null;
+  let raw: string;
   try {
-    raw = readFileSync(file, 'utf8')
+    raw = readFileSync(file, "utf8");
   } catch {
-    return null
+    return null;
   }
-  let parsed: unknown
+  let parsed: unknown;
   try {
-    parsed = JSON.parse(raw)
+    parsed = JSON.parse(raw);
   } catch {
-    return null
+    return null;
   }
-  return isProjectionMetadata(parsed) ? parsed : null
+  return isProjectionMetadata(parsed) ? parsed : null;
 }
 
 /**
@@ -128,9 +128,9 @@ export function recordProjectionMetadata(input: RecordProjectionMetadataInput): 
     head_at_ingest: readCurrentHead(input.cwd),
     ingested_at: input.ingestedAt,
     worktree_path: input.cwd,
-  }
-  writeJsonFile(sidecarPath(input.dbPath), metadata, { atomic: true })
-  return metadata
+  };
+  writeJsonFile(sidecarPath(input.dbPath), metadata, { atomic: true });
+  return metadata;
 }
 
 /**
@@ -150,33 +150,33 @@ export function checkFreshness(project: BlueprintProjectLike): FreshnessResult {
     return {
       ok: false,
       next_action: makeNextAction(
-        'rebuild_db',
+        "rebuild_db",
         `Projection DB missing at ${project.db_path}; run ingest to rebuild.`,
       ),
-    }
+    };
   }
 
-  const metadata = readProjectionMetadata(project.db_path)
+  const metadata = readProjectionMetadata(project.db_path);
   if (metadata === null) {
     return {
       ok: false,
       next_action: makeNextAction(
-        'reingest_project',
+        "reingest_project",
         `Projection metadata missing for ${project.db_path}; re-ingest the project.`,
       ),
-    }
+    };
   }
 
-  const current = readCurrentHead(project.worktree_path)
+  const current = readCurrentHead(project.worktree_path);
   if (metadata.head_at_ingest !== current) {
     return {
       ok: false,
       next_action: makeNextAction(
-        'reingest_project',
-        `HEAD changed since ingest (was ${metadata.head_at_ingest ?? 'none'}, now ${current ?? 'none'}); re-ingest the project.`,
+        "reingest_project",
+        `HEAD changed since ingest (was ${metadata.head_at_ingest ?? "none"}, now ${current ?? "none"}); re-ingest the project.`,
       ),
-    }
+    };
   }
 
-  return { ok: true, head: current, ingestedAt: metadata.ingested_at }
+  return { ok: true, head: current, ingestedAt: metadata.ingested_at };
 }

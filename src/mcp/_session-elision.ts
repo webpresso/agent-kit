@@ -1,14 +1,14 @@
-import { createHash } from 'node:crypto'
-import { mkdirSync } from 'node:fs'
-import { dirname } from 'node:path'
+import { createHash } from "node:crypto";
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 
-import { SessionMemoryStore } from '#session-memory/store.js'
+import { SessionMemoryStore } from "#session-memory/store.js";
 import {
   WP_SESSION_RETRIEVE_TOOL_NAME,
   type SessionElision,
   type SessionElisionKind,
-} from './_session-elision-schema.js'
-import { defaultIndexDbPath } from './tools/session-restore.js'
+} from "./_session-elision-schema.js";
+import { defaultIndexDbPath } from "./tools/session-restore.js";
 
 export {
   WP_SESSION_RETRIEVE_TOOL_NAME,
@@ -16,59 +16,59 @@ export {
   sessionElisionSchema,
   type SessionElision,
   type SessionElisionKind,
-} from './_session-elision-schema.js'
+} from "./_session-elision-schema.js";
 
 export interface SessionElisionRecordInput {
-  readonly source: string
-  readonly kind: SessionElisionKind
-  readonly text: string
-  readonly returnedText?: string
-  readonly rawBytes?: number
-  readonly returnedBytes?: number
-  readonly metadata?: Record<string, unknown>
+  readonly source: string;
+  readonly kind: SessionElisionKind;
+  readonly text: string;
+  readonly returnedText?: string;
+  readonly rawBytes?: number;
+  readonly returnedBytes?: number;
+  readonly metadata?: Record<string, unknown>;
 }
 
 export interface SessionElisionRecordResult {
-  readonly elision?: SessionElision
-  readonly warning?: string
+  readonly elision?: SessionElision;
+  readonly warning?: string;
 }
 
 export interface SessionElisionRecorder {
-  record(input: SessionElisionRecordInput): SessionElisionRecordResult
+  record(input: SessionElisionRecordInput): SessionElisionRecordResult;
 }
 
 const noopRecorder: SessionElisionRecorder = {
   record() {
-    return {}
+    return {};
   },
-}
+};
 
 export function createNoopSessionElisionRecorder(): SessionElisionRecorder {
-  return noopRecorder
+  return noopRecorder;
 }
 
 export function contentHashElisionId(text: string): string {
-  return `elision:${createHash('sha256').update(text).digest('hex').slice(0, 32)}`
+  return `elision:${createHash("sha256").update(text).digest("hex").slice(0, 32)}`;
 }
 
 export function createSessionElisionRecorder(options: {
-  readonly cwd?: string
-  readonly sourcePrefix: string
-  readonly dbPath?: string
+  readonly cwd?: string;
+  readonly sourcePrefix: string;
+  readonly dbPath?: string;
 }): SessionElisionRecorder {
-  const dbPath = options.dbPath ?? defaultIndexDbPath(options.cwd)
+  const dbPath = options.dbPath ?? defaultIndexDbPath(options.cwd);
 
   return {
     record(input) {
-      const rawBytes = input.rawBytes ?? utf8ByteLength(input.text)
+      const rawBytes = input.rawBytes ?? utf8ByteLength(input.text);
       const returnedBytes =
         input.returnedBytes ??
-        (input.returnedText === undefined ? 0 : utf8ByteLength(input.returnedText))
-      const id = contentHashElisionId(input.text)
-      const source = `${options.sourcePrefix}:${input.source}`
+        (input.returnedText === undefined ? 0 : utf8ByteLength(input.returnedText));
+      const id = contentHashElisionId(input.text);
+      const source = `${options.sourcePrefix}:${input.source}`;
       try {
-        mkdirSync(dirname(dbPath), { recursive: true })
-        const store = new SessionMemoryStore(dbPath)
+        mkdirSync(dirname(dbPath), { recursive: true });
+        const store = new SessionMemoryStore(dbPath);
         try {
           store.indexChunk({
             id,
@@ -88,9 +88,9 @@ export function createSessionElisionRecorder(options: {
                   returnedBytes,
                   retrieveTool: WP_SESSION_RETRIEVE_TOOL_NAME,
                 },
-          })
+          });
         } finally {
-          store.close()
+          store.close();
         }
         return {
           elision: {
@@ -101,17 +101,17 @@ export function createSessionElisionRecorder(options: {
             returnedBytes,
             retrieveTool: WP_SESSION_RETRIEVE_TOOL_NAME,
           },
-        }
+        };
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error)
+        const message = error instanceof Error ? error.message : String(error);
         return {
           warning: `elision record failed for ${input.source}: ${message}`,
-        }
+        };
       }
     },
-  }
+  };
 }
 
 function utf8ByteLength(value: string): number {
-  return Buffer.byteLength(value, 'utf8')
+  return Buffer.byteLength(value, "utf8");
 }

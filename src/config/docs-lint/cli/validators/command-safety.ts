@@ -1,77 +1,77 @@
-import type { ValidationError } from '#config/docs-lint/index'
+import type { ValidationError } from "#config/docs-lint/index";
 
 /**
  * Dangerous command patterns to detect in bash code blocks
  * Inspired by @felixgeelhaar/cclint command-safety rule
  */
 const DANGEROUS_PATTERNS: Array<{
-  pattern: RegExp
-  message: string
-  severity: 'error' | 'warning'
+  pattern: RegExp;
+  message: string;
+  severity: "error" | "warning";
 }> = [
   // Destructive commands
   {
     pattern: /rm\s+(-rf?|--force)\s+[/~]/,
-    message: 'Dangerous: rm with force flag on root/home path',
-    severity: 'error',
+    message: "Dangerous: rm with force flag on root/home path",
+    severity: "error",
   },
   {
     pattern: /rm\s+-rf?\s+\$[A-Z_]+/,
-    message: 'Dangerous: rm with force flag on variable (could be empty)',
-    severity: 'warning',
+    message: "Dangerous: rm with force flag on variable (could be empty)",
+    severity: "warning",
   },
   {
     pattern: />\s*\/dev\/sd[a-z]/,
-    message: 'Dangerous: writing directly to disk device',
-    severity: 'error',
+    message: "Dangerous: writing directly to disk device",
+    severity: "error",
   },
   {
     pattern: /mkfs\./,
-    message: 'Dangerous: filesystem formatting command',
-    severity: 'error',
+    message: "Dangerous: filesystem formatting command",
+    severity: "error",
   },
   {
     pattern: /dd\s+.*of=\/dev\//,
-    message: 'Dangerous: dd writing to device',
-    severity: 'error',
+    message: "Dangerous: dd writing to device",
+    severity: "error",
   },
 
   // Remote code execution
   {
     pattern: /curl\s+.*\|\s*(ba)?sh/,
-    message: 'Dangerous: piping curl to shell (remote code execution)',
-    severity: 'error',
+    message: "Dangerous: piping curl to shell (remote code execution)",
+    severity: "error",
   },
   {
     pattern: /wget\s+.*\|\s*(ba)?sh/,
-    message: 'Dangerous: piping wget to shell (remote code execution)',
-    severity: 'error',
+    message: "Dangerous: piping wget to shell (remote code execution)",
+    severity: "error",
   },
   {
     pattern: /curl\s+.*>\s*.*\.sh\s*&&\s*(ba)?sh/,
-    message: 'Dangerous: downloading and executing script',
-    severity: 'warning',
+    message: "Dangerous: downloading and executing script",
+    severity: "warning",
   },
 
   // Privilege escalation without audit trail
   {
     pattern: /chmod\s+777/,
-    message: 'Insecure: chmod 777 grants all permissions',
-    severity: 'warning',
+    message: "Insecure: chmod 777 grants all permissions",
+    severity: "warning",
   },
   {
     pattern: /chmod\s+\+s/,
-    message: 'Dangerous: setting SUID/SGID bit',
-    severity: 'error',
+    message: "Dangerous: setting SUID/SGID bit",
+    severity: "error",
   },
 
   // Missing error handling
   {
     pattern: /^(?!.*set\s+-e).*&&.*&&.*&&/m,
     message: "Consider: Long command chain without 'set -e' for error handling",
-    severity: 'warning',
+    severity: "warning",
   },
-]
+];
 
 /**
  * Patterns that indicate good practices (reduce false positives)
@@ -83,41 +83,41 @@ const SAFE_CONTEXTS = [
   /--dry-run/, // Dry run mode
   /#.*example/i, // Commented as example
   /#.*don't|do not/i, // Negative example
-]
+];
 
 /** Shell-like languages to check for dangerous patterns */
-const BASH_LANGUAGES = new Set(['bash', 'sh', 'shell', 'zsh', ''])
+const BASH_LANGUAGES = new Set(["bash", "sh", "shell", "zsh", ""]);
 
 /**
  * Check if a language string indicates a bash/shell block
  */
 function isBashLanguage(lang: string): boolean {
-  return BASH_LANGUAGES.has(lang.toLowerCase())
+  return BASH_LANGUAGES.has(lang.toLowerCase());
 }
 
 /**
  * Process a code block start line and return language info
  */
 function parseCodeBlockStart(line: string): { isBash: boolean } {
-  const lang = line.slice(3).trim()
-  return { isBash: isBashLanguage(lang) }
+  const lang = line.slice(3).trim();
+  return { isBash: isBashLanguage(lang) };
 }
 
 interface BashBlockState {
-  inBlock: boolean
-  blockStart: number
-  blockContent: string[]
-  isBash: boolean
+  inBlock: boolean;
+  blockStart: number;
+  blockContent: string[];
+  isBash: boolean;
 }
 
 /**
  * Handle the start of a code block
  */
 function handleBashBlockStart(line: string, lineIndex: number, state: BashBlockState): void {
-  state.inBlock = true
-  state.blockStart = lineIndex + 1
-  state.blockContent = []
-  state.isBash = parseCodeBlockStart(line).isBash
+  state.inBlock = true;
+  state.blockStart = lineIndex + 1;
+  state.blockContent = [];
+  state.isBash = parseCodeBlockStart(line).isBash;
 }
 
 /**
@@ -128,10 +128,10 @@ function handleBashBlockEnd(
   blocks: Array<{ code: string; line: number }>,
 ): void {
   if (state.isBash && state.blockContent.length > 0) {
-    blocks.push({ code: state.blockContent.join('\n'), line: state.blockStart + 1 })
+    blocks.push({ code: state.blockContent.join("\n"), line: state.blockStart + 1 });
   }
-  state.inBlock = false
-  state.isBash = false
+  state.inBlock = false;
+  state.isBash = false;
 }
 
 /**
@@ -143,14 +143,14 @@ function processBashBlockLine(
   state: BashBlockState,
   blocks: Array<{ code: string; line: number }>,
 ): void {
-  if (line.startsWith('```')) {
+  if (line.startsWith("```")) {
     if (!state.inBlock) {
-      handleBashBlockStart(line, lineIndex, state)
+      handleBashBlockStart(line, lineIndex, state);
     } else {
-      handleBashBlockEnd(state, blocks)
+      handleBashBlockEnd(state, blocks);
     }
   } else if (state.inBlock) {
-    state.blockContent.push(line)
+    state.blockContent.push(line);
   }
 }
 
@@ -158,24 +158,24 @@ function processBashBlockLine(
  * Extract bash code blocks from markdown content
  */
 function extractBashBlocks(content: string): Array<{ code: string; line: number }> {
-  const blocks: Array<{ code: string; line: number }> = []
-  const lines = content.split('\n')
-  const state: BashBlockState = { inBlock: false, blockStart: 0, blockContent: [], isBash: false }
+  const blocks: Array<{ code: string; line: number }> = [];
+  const lines = content.split("\n");
+  const state: BashBlockState = { inBlock: false, blockStart: 0, blockContent: [], isBash: false };
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    if (line === undefined) continue
-    processBashBlockLine(line, i, state, blocks)
+    const line = lines[i];
+    if (line === undefined) continue;
+    processBashBlockLine(line, i, state, blocks);
   }
 
-  return blocks
+  return blocks;
 }
 
 /**
  * Check if a code block has safe context indicators
  */
 function hasSafeContext(code: string): boolean {
-  return SAFE_CONTEXTS.some((pattern) => pattern.test(code))
+  return SAFE_CONTEXTS.some((pattern) => pattern.test(code));
 }
 
 /**
@@ -187,13 +187,13 @@ function hasSafeContext(code: string): boolean {
  * Inspired by @felixgeelhaar/cclint
  */
 export function validateCommandSafety(filePath: string, content: string): ValidationError[] {
-  const errors: ValidationError[] = []
-  const bashBlocks = extractBashBlocks(content)
+  const errors: ValidationError[] = [];
+  const bashBlocks = extractBashBlocks(content);
 
   for (const block of bashBlocks) {
     // Skip blocks with safe context
     if (hasSafeContext(block.code)) {
-      continue
+      continue;
     }
 
     for (const { pattern, message, severity } of DANGEROUS_PATTERNS) {
@@ -202,15 +202,15 @@ export function validateCommandSafety(filePath: string, content: string): Valida
           file: filePath,
           line: block.line,
           severity,
-          source: 'structure',
+          source: "structure",
           message: `Command safety: ${message}`,
-          ruleId: 'command-safety',
-        })
+          ruleId: "command-safety",
+        });
       }
     }
   }
 
-  return errors
+  return errors;
 }
 
 /**
@@ -218,19 +218,19 @@ export function validateCommandSafety(filePath: string, content: string): Valida
  * Utility for programmatic use
  */
 export function isCommandSafe(command: string): {
-  safe: boolean
-  issues: string[]
+  safe: boolean;
+  issues: string[];
 } {
-  const issues: string[] = []
+  const issues: string[] = [];
 
   for (const { pattern, message } of DANGEROUS_PATTERNS) {
     if (pattern.test(command)) {
-      issues.push(message)
+      issues.push(message);
     }
   }
 
   return {
     safe: !issues.length,
     issues,
-  }
+  };
 }

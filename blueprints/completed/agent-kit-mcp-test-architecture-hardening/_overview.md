@@ -1,6 +1,6 @@
 ---
 type: blueprint
-title: 'Agent-Kit MCP test architecture hardening for deterministic, fast verification'
+title: "Agent-Kit MCP test architecture hardening for deterministic, fast verification"
 status: completed
 complexity: L
 owner: agent
@@ -8,7 +8,7 @@ historical_verification_gap_waiver: true
 historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 created: 2026-05-27T00:00:00.000Z
 last_updated: 2026-05-28T00:00:00.000Z
-completed_at: '2026-05-28'
+completed_at: "2026-05-28"
 ---
 
 ## Product wedge anchor
@@ -67,26 +67,26 @@ Harden the MCP blueprint-server test architecture by splitting monolithic covera
 
 ## Cross-plan references
 
-| Blueprint | Relationship | Required alignment |
-| --- | --- | --- |
+| Blueprint                                                           | Relationship                    | Required alignment                                                                                                                                           |
+| ------------------------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `blueprints/draft/codex-global-hook-runtime-hardening/_overview.md` | Sibling runtime-hardening child | Shares the same no-timeout-as-fix and deterministic-boundary rules; hook runtime and blueprint MCP discovery must converge on bounded, path-stable behavior. |
 
 ## Quick Reference (Remaining Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
-| --- | --- | --- | --- | --- |
-| **Wave 0** | 6.1, 6.2 | None | 2 agents | XS-S |
-| **Wave 1** | 6.3 | 6.1, 6.2 | 1 agent | S |
-| **Critical path** | 6.1 → 6.3 | — | 2 waves | S |
+| Wave              | Tasks     | Dependencies | Parallelizable | Effort (T-shirt) |
+| ----------------- | --------- | ------------ | -------------- | ---------------- |
+| **Wave 0**        | 6.1, 6.2  | None         | 2 agents       | XS-S             |
+| **Wave 1**        | 6.3       | 6.1, 6.2     | 1 agent        | S                |
+| **Critical path** | 6.1 → 6.3 | —            | 2 waves        | S                |
 
 ### Parallel Metrics Snapshot (Remaining Work)
 
-| Metric | Formula / Meaning | Target | Actual |
-| --- | --- | --- | --- |
-| RW0 | Ready tasks in Wave 0 | ≥ 2 | 2 |
-| CPR | total_tasks / critical_path_length | ≥ 2.5 | 3 / 2 = 1.5 |
-| DD | dependency_edges / total_tasks | ≤ 2.0 | 2 / 3 = 0.67 |
-| CP | same-file overlaps per wave | 0 | 0 |
+| Metric | Formula / Meaning                  | Target | Actual       |
+| ------ | ---------------------------------- | ------ | ------------ |
+| RW0    | Ready tasks in Wave 0              | ≥ 2    | 2            |
+| CPR    | total_tasks / critical_path_length | ≥ 2.5  | 3 / 2 = 1.5  |
+| DD     | dependency_edges / total_tasks     | ≤ 2.0  | 2 / 3 = 0.67 |
+| CP     | same-file overlaps per wave        | 0      | 0            |
 
 Refinement delta: this lane stays intentionally narrow because the remaining work is a bounded hardening pass over shared discovery code, not a fresh multi-surface feature build.
 
@@ -125,6 +125,7 @@ Refinement delta: this lane stays intentionally narrow because the remaining wor
 **Status:** done
 
 **Acceptance:**
+
 - [x] The blueprint records explicit timeout and behavior invariants.
 - [x] Later tasks cannot “fix” this by raising limits or weakening read contracts.
 
@@ -133,6 +134,7 @@ Refinement delta: this lane stays intentionally narrow because the remaining wor
 **Status:** done
 
 **Acceptance:**
+
 - [x] Boilerplate is removed from blueprint-server test files.
 - [x] Tests can opt into lazy/no-projection or projection-backed setup.
 
@@ -141,6 +143,7 @@ Refinement delta: this lane stays intentionally narrow because the remaining wor
 **Status:** done
 
 **Acceptance:**
+
 - [x] Missing DB paths create projections lazily.
 - [x] Stale DB paths still return `next_action: reingest_project`.
 - [x] No handler silently re-ingests stale projections on read.
@@ -150,6 +153,7 @@ Refinement delta: this lane stays intentionally narrow because the remaining wor
 **Status:** done
 
 **Acceptance:**
+
 - [x] Promote-path tests no longer depend on same-ms filesystem timing.
 - [x] Repeated runs do not depend on validation freshness races.
 
@@ -158,6 +162,7 @@ Refinement delta: this lane stays intentionally narrow because the remaining wor
 **Status:** done
 
 **Acceptance:**
+
 - [x] Platform mutation tests live outside the main read/contract file.
 - [x] File-level worker parallelism is available for this surface.
 
@@ -166,6 +171,7 @@ Refinement delta: this lane stays intentionally narrow because the remaining wor
 **Status:** done
 
 **Acceptance:**
+
 - [x] Read-path contract coverage is isolated from mutation coverage.
 - [x] Missing-vs-stale behavior is explicit and easy to verify.
 
@@ -174,6 +180,7 @@ Refinement delta: this lane stays intentionally narrow because the remaining wor
 **Status:** done
 
 **Acceptance:**
+
 - [x] Verify-path coverage no longer pays unrelated platform/read setup cost.
 - [x] Idempotency scenarios remain covered.
 
@@ -182,6 +189,7 @@ Refinement delta: this lane stays intentionally narrow because the remaining wor
 **Status:** done
 
 **Acceptance:**
+
 - [x] Per-file/batch timing evidence is recorded in the blueprint.
 - [x] No single measured file remains a 60s+ serial bottleneck.
 
@@ -190,6 +198,7 @@ Refinement delta: this lane stays intentionally narrow because the remaining wor
 **Status:** done
 
 **Acceptance:**
+
 - [x] No speculative `test.concurrent` was added to shared-state tests.
 - [x] Redundant timeout assertions were kept in the timeout-specific file.
 
@@ -198,6 +207,7 @@ Refinement delta: this lane stays intentionally narrow because the remaining wor
 **Status:** done
 
 **Acceptance:**
+
 - [x] Nearby split blueprint-server suites use the shared harness where touched.
 - [x] Adjacent registration/workflow tests no longer assert old eager-reingest or missing-DB-failure contracts.
 - [x] Adjacent MCP/blueprint timing assertions no longer depend on local wall-clock thresholds inside contract tests.
@@ -208,6 +218,7 @@ Refinement delta: this lane stays intentionally narrow because the remaining wor
 **Status:** done
 
 **Acceptance:**
+
 - [x] The targeted blueprint-server batch passes under a 45s wrapper cap.
 - [x] No tool-level timeout occurs in the old failure path.
 
@@ -216,6 +227,7 @@ Refinement delta: this lane stays intentionally narrow because the remaining wor
 **Status:** done
 
 **Acceptance:**
+
 - [x] Typecheck passes.
 - [x] Targeted QA passes in two bounded batches.
 - [x] No projection contract regressions are introduced.
@@ -225,6 +237,7 @@ Refinement delta: this lane stays intentionally narrow because the remaining wor
 **Status:** done
 
 **Acceptance:**
+
 - [x] Final measured suite timing is recorded.
 - [x] The blueprint documents the accepted steady-state target.
 - [x] Future regressions can be compared against a known baseline.
@@ -259,6 +272,7 @@ transport timeout. Preserve backward-compatible payload shape; add warnings and
 - [x] Slow roots/discovery paths return within a fixed local budget
 - [x] Tool output degrades to partial results + warnings, not transport timeout
 - [x] Existing successful read paths keep their current structured output contract
+
 #### [projects-core] Task 6.2: Bound git-backed project discovery subprocesses
 
 **Status:** done
@@ -286,6 +300,7 @@ hardening target is roots/git, not scan breadth inflation.
 - [x] Git probes cannot block discovery indefinitely
 - [x] Timeout/slow-git paths are covered by deterministic tests
 - [x] Successful worktree discovery behavior remains intact under normal timing
+
 #### [docs/qa] Task 6.3: Codify discovery hard decisions and prove the bounded contract
 
 **Status:** done
@@ -314,6 +329,7 @@ bounded structured output.
 - [x] Repo instructions explicitly forbid timeout inflation for discovery hangs
 - [x] Repo instructions require bounded degradation for hook/discovery runtimes
 - [x] Targeted MCP tests document the new bounded contract with evidence
+
 ## Historical verification note
 
 This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
@@ -330,21 +346,21 @@ This blueprint contains done tasks recorded before the current per-task `**Verif
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/agent-kit-mcp-test-architecture-hardening/_overview.md |
+| ID  | Claim                                                          | Evidence                                                                          |
+| --- | -------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/agent-kit-mcp-test-architecture-hardening/\_overview.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

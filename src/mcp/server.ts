@@ -7,7 +7,7 @@
  * — no edits required here.
  */
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js'
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
   CallToolRequestSchema,
   ListPromptsRequestSchema,
@@ -15,9 +15,9 @@ import {
   ListResourceTemplatesRequestSchema,
   ListToolsRequestSchema,
   RootsListChangedNotificationSchema,
-} from '@modelcontextprotocol/sdk/types.js'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+} from "@modelcontextprotocol/sdk/types.js";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   discoverTools,
@@ -26,53 +26,53 @@ import {
   type ToolHandler,
   type ToolRegistrar,
   registerToolDescriptors,
-} from './auto-discover.js'
-import { registerBlueprintServer } from './blueprint-server.js'
-import { COMPILED_TOOL_REGISTRY } from './tools/_registry.js'
-import { readOwnedPackageVersion } from '#runtime/package-version.js'
+} from "./auto-discover.js";
+import { registerBlueprintServer } from "./blueprint-server.js";
+import { COMPILED_TOOL_REGISTRY } from "./tools/_registry.js";
+import { readOwnedPackageVersion } from "#runtime/package-version.js";
 
-const SERVER_NAME = 'webpresso'
+const SERVER_NAME = "webpresso";
 
-const SERVER_VERSION = readOwnedPackageVersion(import.meta.url)
+const SERVER_VERSION = readOwnedPackageVersion(import.meta.url);
 
 interface RegisteredTool {
-  name: string
-  description: string
-  inputSchema: Record<string, unknown>
-  outputSchema?: Record<string, unknown>
-  handler: ToolHandler
-  annotations?: ToolAnnotations
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+  outputSchema?: Record<string, unknown>;
+  handler: ToolHandler;
+  annotations?: ToolAnnotations;
 }
 
 function modulePathFromUrl(moduleUrl: string): string | null {
   try {
-    return fileURLToPath(moduleUrl)
+    return fileURLToPath(moduleUrl);
   } catch {
-    return null
+    return null;
   }
 }
 
 export function isBunSingleFileModuleUrl(moduleUrl: string): boolean {
-  const modulePath = modulePathFromUrl(moduleUrl)
-  return modulePath === '/$bunfs/root' || modulePath?.startsWith('/$bunfs/root/') === true
+  const modulePath = modulePathFromUrl(moduleUrl);
+  return modulePath === "/$bunfs/root" || modulePath?.startsWith("/$bunfs/root/") === true;
 }
 
 function defaultToolsDir(): string {
   // import.meta.url resolves to either src/mcp/server.ts (dev/test via vitest)
   // or dist/esm/mcp/server.js (built). The tools directory is colocated.
-  const modulePath = modulePathFromUrl(import.meta.url)
-  const here = dirname(modulePath ?? fileURLToPath(import.meta.url))
-  return join(here, 'tools')
+  const modulePath = modulePathFromUrl(import.meta.url);
+  const here = dirname(modulePath ?? fileURLToPath(import.meta.url));
+  return join(here, "tools");
 }
 
-export type ToolLoadMode = 'filesystem' | 'registry'
+export type ToolLoadMode = "filesystem" | "registry";
 
 export function resolveDefaultToolLoadMode(moduleUrl = import.meta.url): ToolLoadMode {
-  return process.env.WP_MCP_TOOL_MODE === 'registry' ||
-    process.env.WP_COMPILED_RUNTIME === '1' ||
+  return process.env.WP_MCP_TOOL_MODE === "registry" ||
+    process.env.WP_COMPILED_RUNTIME === "1" ||
     isBunSingleFileModuleUrl(moduleUrl)
-    ? 'registry'
-    : 'filesystem'
+    ? "registry"
+    : "filesystem";
 }
 
 export interface CreateServerOptions {
@@ -81,18 +81,18 @@ export interface CreateServerOptions {
    * this module — i.e. `src/mcp/tools/` in dev and `dist/esm/mcp/tools/` after
    * `vp run build`.
    */
-  toolsDir?: string
+  toolsDir?: string;
   /**
    * Tool loading strategy. Use `registry` for compiled runtime execution where
    * runtime directory scans are unsafe, and `filesystem` for dev/test disk
    * discovery.
    */
-  toolLoadMode?: ToolLoadMode
+  toolLoadMode?: ToolLoadMode;
   /**
    * Repo working directory passed through to the blueprint structured-store
    * registrar (Task 2.1). Defaults to `process.cwd()`. Tests inject a tmpdir.
    */
-  cwd?: string
+  cwd?: string;
 }
 
 export async function createServer(options: CreateServerOptions = {}): Promise<Server> {
@@ -107,20 +107,20 @@ export async function createServer(options: CreateServerOptions = {}): Promise<S
         resources: { listChanged: false },
       },
     },
-  )
+  );
 
-  const tools = new Map<string, RegisteredTool>()
+  const tools = new Map<string, RegisteredTool>();
   const registrar: ToolRegistrar = {
     registerTool(name, description, inputSchema, outputSchema, handler, annotations) {
-      tools.set(name, { name, description, inputSchema, outputSchema, handler, annotations })
+      tools.set(name, { name, description, inputSchema, outputSchema, handler, annotations });
     },
-  }
+  };
 
-  const toolLoadMode = options.toolLoadMode ?? resolveDefaultToolLoadMode()
-  if (toolLoadMode === 'registry') {
-    registerToolDescriptors(registrar, COMPILED_TOOL_REGISTRY)
+  const toolLoadMode = options.toolLoadMode ?? resolveDefaultToolLoadMode();
+  if (toolLoadMode === "registry") {
+    registerToolDescriptors(registrar, COMPILED_TOOL_REGISTRY);
   } else {
-    await discoverTools(registrar, options.toolsDir ?? defaultToolsDir())
+    await discoverTools(registrar, options.toolsDir ?? defaultToolsDir());
   }
 
   // Task 2.1: register the blueprint structured-store tools AFTER auto-discover
@@ -128,7 +128,7 @@ export async function createServer(options: CreateServerOptions = {}): Promise<S
   // silent shadowing. Roots are looked up lazily via `server.listRoots()`; the
   // capability-missing throw is caught inside `registerBlueprintServer` so
   // tool listing still works in clients that don't advertise roots.
-  const existingToolNames = new Set(tools.keys())
+  const existingToolNames = new Set(tools.keys());
   await registerBlueprintServer(registrar, {
     cwd: options.cwd ?? process.cwd(),
     existingToolNames,
@@ -139,14 +139,14 @@ export async function createServer(options: CreateServerOptions = {}): Promise<S
       // clients simply never emit this notification, which is harmless.
       try {
         server.setNotificationHandler(RootsListChangedNotificationSchema, async () => {
-          handler()
-        })
+          handler();
+        });
       } catch {
         // Some test transports don't accept additional notification handlers;
         // failing to install is non-fatal — list-changed is an optimization.
       }
     },
-  })
+  });
 
   // Empty prompts/resources/resource-templates handlers, registered exactly
   // the same way other MCP servers do. Several MCP clients —
@@ -156,9 +156,9 @@ export async function createServer(options: CreateServerOptions = {}): Promise<S
   // and causes subsequent listTools() calls to silently fail. The result:
   // `claude mcp list` reports "Connected" but no tools appear in the
   // session's deferred-tool registry. Fixed upstream by registering these.
-  server.setRequestHandler(ListPromptsRequestSchema, () => ({ prompts: [] }))
-  server.setRequestHandler(ListResourcesRequestSchema, () => ({ resources: [] }))
-  server.setRequestHandler(ListResourceTemplatesRequestSchema, () => ({ resourceTemplates: [] }))
+  server.setRequestHandler(ListPromptsRequestSchema, () => ({ prompts: [] }));
+  server.setRequestHandler(ListResourcesRequestSchema, () => ({ resources: [] }));
+  server.setRequestHandler(ListResourceTemplatesRequestSchema, () => ({ resourceTemplates: [] }));
 
   server.setRequestHandler(ListToolsRequestSchema, () => {
     return {
@@ -169,37 +169,37 @@ export async function createServer(options: CreateServerOptions = {}): Promise<S
         ...(t.outputSchema ? { outputSchema: t.outputSchema } : {}),
         ...(t.annotations ? { annotations: t.annotations } : {}),
       })),
-    }
-  })
+    };
+  });
 
   // The MCP SDK passes a `RequestHandlerExtra` as the second arg containing
   // `signal` (an AbortSignal that fires when the client cancels the call).
   // We forward only `signal` to keep the tool surface narrow — tools must
   // not depend on transport internals.
   server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
-    const { name, arguments: args } = request.params
-    const tool = tools.get(name)
+    const { name, arguments: args } = request.params;
+    const tool = tools.get(name);
     if (!tool) {
       const errorBlock: ContentBlock = {
-        type: 'text',
+        type: "text",
         text: `Unknown tool: ${name}`,
-      }
-      return { content: [errorBlock], isError: true }
+      };
+      return { content: [errorBlock], isError: true };
     }
-    const handlerExtra = extra?.signal ? { signal: extra.signal } : undefined
+    const handlerExtra = extra?.signal ? { signal: extra.signal } : undefined;
     try {
-      const result = await tool.handler(args ?? {}, handlerExtra)
+      const result = await tool.handler(args ?? {}, handlerExtra);
       return {
         content: result.content as ContentBlock[],
         ...(result.structuredContent ? { structuredContent: result.structuredContent } : {}),
         isError: result.isError,
-      }
+      };
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      const errorBlock: ContentBlock = { type: 'text', text: message }
-      return { content: [errorBlock], isError: true }
+      const message = error instanceof Error ? error.message : String(error);
+      const errorBlock: ContentBlock = { type: "text", text: message };
+      return { content: [errorBlock], isError: true };
     }
-  })
+  });
 
-  return server
+  return server;
 }

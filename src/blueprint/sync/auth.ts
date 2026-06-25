@@ -9,16 +9,16 @@
  *   WP_BLUEPRINT_PLATFORM_URL       — override API base URL (default: https://api.webpresso.io)
  */
 
-import { createHash } from 'node:crypto'
-import { execSync } from 'node:child_process'
+import { createHash } from "node:crypto";
+import { execSync } from "node:child_process";
 
 export interface SyncCredentials {
-  readonly token: string
-  readonly platformUrl: string
-  readonly repoId: string
+  readonly token: string;
+  readonly platformUrl: string;
+  readonly repoId: string;
 }
 
-const DEFAULT_PLATFORM_URL = 'https://api.webpresso.io'
+const DEFAULT_PLATFORM_URL = "https://api.webpresso.io";
 
 /**
  * Derive a stable, opaque repo identifier from the git remote origin URL.
@@ -27,19 +27,19 @@ const DEFAULT_PLATFORM_URL = 'https://api.webpresso.io'
  * where there is no remote). The returned value is a lowercase hex string.
  */
 function deriveRepoId(): string {
-  let input: string
+  let input: string;
 
   try {
-    const remote = execSync('git remote get-url origin', {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim()
-    input = remote.length > 0 ? remote : process.cwd()
+    const remote = execSync("git remote get-url origin", {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    input = remote.length > 0 ? remote : process.cwd();
   } catch {
-    input = process.cwd()
+    input = process.cwd();
   }
 
-  return createHash('sha256').update(input).digest('hex')
+  return createHash("sha256").update(input).digest("hex");
 }
 
 /**
@@ -53,20 +53,20 @@ function deriveRepoId(): string {
  * platform operations.
  */
 export function loadSyncCredentials(): SyncCredentials | null {
-  if (process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] === '1') {
-    return null
+  if (process.env["WP_BLUEPRINT_PLATFORM_DISABLED"] === "1") {
+    return null;
   }
 
-  const token = process.env['WP_BLUEPRINT_PLATFORM_TOKEN'] ?? ''
+  const token = process.env["WP_BLUEPRINT_PLATFORM_TOKEN"] ?? "";
   if (token.length === 0) {
-    return null
+    return null;
   }
 
-  const platformUrl = process.env['WP_BLUEPRINT_PLATFORM_URL'] ?? DEFAULT_PLATFORM_URL
+  const platformUrl = process.env["WP_BLUEPRINT_PLATFORM_URL"] ?? DEFAULT_PLATFORM_URL;
 
   return {
     token,
     platformUrl,
     repoId: deriveRepoId(),
-  }
+  };
 }

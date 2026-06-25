@@ -10,6 +10,6 @@
  * bun:sqlite's export shape (`import { Database } from 'bun:sqlite'`).
  */
 
-import Database from 'better-sqlite3'
+import Database from "better-sqlite3";
 
-export { Database }
+export { Database };

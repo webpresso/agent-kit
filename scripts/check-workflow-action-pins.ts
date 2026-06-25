@@ -1,188 +1,188 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { join, relative, resolve } from 'node:path'
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join, relative, resolve } from "node:path";
 
-const FULL_SHA_PATTERN = /^[a-f0-9]{40}$/i
-const DIGEST_PATTERN = /@sha256:[a-f0-9]{64}$/i
+const FULL_SHA_PATTERN = /^[a-f0-9]{40}$/i;
+const DIGEST_PATTERN = /@sha256:[a-f0-9]{64}$/i;
 const PACKAGE_MANAGER_BINS = new Set([
-  'pnpm',
-  'pnpx',
-  'npm',
-  'npx',
-  'yarn',
-  'yarnpkg',
-  'bun',
-  'bunx',
-])
-const EXEC_SUBCOMMANDS = new Set(['exec', 'dlx', 'x'])
+  "pnpm",
+  "pnpx",
+  "npm",
+  "npx",
+  "yarn",
+  "yarnpkg",
+  "bun",
+  "bunx",
+]);
+const EXEC_SUBCOMMANDS = new Set(["exec", "dlx", "x"]);
 const OPTION_VALUE_FLAGS = new Set([
-  '--cache',
-  '--config',
-  '--cwd',
-  '--dir',
-  '--filter',
-  '--package',
-  '--workspace',
-  '-C',
-  '-F',
-  '-p',
-  '-w',
-])
+  "--cache",
+  "--config",
+  "--cwd",
+  "--dir",
+  "--filter",
+  "--package",
+  "--workspace",
+  "-C",
+  "-F",
+  "-p",
+  "-w",
+]);
 
 interface Violation {
-  readonly file: string
-  readonly line: number
-  readonly ref: string
-  readonly reason: string
+  readonly file: string;
+  readonly line: number;
+  readonly ref: string;
+  readonly reason: string;
 }
 
 function stripInlineComment(value: string): string {
-  return value.replace(/\s+#.*$/u, '').trim()
+  return value.replace(/\s+#.*$/u, "").trim();
 }
 
 function shellTokens(value: string): string[] {
-  return value.match(/"[^"]*"|'[^']*'|[^\s]+/gu) ?? []
+  return value.match(/"[^"]*"|'[^']*'|[^\s]+/gu) ?? [];
 }
 
 function normalizeToken(token: string): string {
-  return token.replace(/^[;&|({`$]+|[;&|)}`]+$/gu, '').replace(/^['"]|['"]$/gu, '')
+  return token.replace(/^[;&|({`$]+|[;&|)}`]+$/gu, "").replace(/^['"]|['"]$/gu, "");
 }
 
 function normalizePackageManager(token: string): string {
-  const normalized = normalizeToken(token)
-  if (normalized === 'corepack') return normalized
-  return normalized.replace(/@[^@\s]+$/u, '')
+  const normalized = normalizeToken(token);
+  if (normalized === "corepack") return normalized;
+  return normalized.replace(/@[^@\s]+$/u, "");
 }
 
 function isOption(token: string): boolean {
-  return token.startsWith('-') && token !== '-'
+  return token.startsWith("-") && token !== "-";
 }
 
 function nextNonOptionToken(tokens: readonly string[], start: number): number {
-  let index = start
+  let index = start;
   while (index < tokens.length) {
-    const token = normalizeToken(tokens[index] ?? '')
+    const token = normalizeToken(tokens[index] ?? "");
     if (!token) {
-      index += 1
-      continue
+      index += 1;
+      continue;
     }
-    if (token === '--') {
-      index += 1
-      continue
+    if (token === "--") {
+      index += 1;
+      continue;
     }
     if (isOption(token)) {
-      const optionName = token.split('=', 1)[0] ?? token
-      index += 1
-      if (!token.includes('=') && OPTION_VALUE_FLAGS.has(optionName) && index < tokens.length) {
-        index += 1
+      const optionName = token.split("=", 1)[0] ?? token;
+      index += 1;
+      if (!token.includes("=") && OPTION_VALUE_FLAGS.has(optionName) && index < tokens.length) {
+        index += 1;
       }
-      continue
+      continue;
     }
-    return index
+    return index;
   }
-  return -1
+  return -1;
 }
 
 function containsWrappedVpInvocation(value: string): boolean {
-  const tokens = shellTokens(value)
+  const tokens = shellTokens(value);
   for (let index = 0; index < tokens.length; index += 1) {
-    const manager = normalizePackageManager(tokens[index] ?? '')
-    if (!PACKAGE_MANAGER_BINS.has(manager)) continue
+    const manager = normalizePackageManager(tokens[index] ?? "");
+    if (!PACKAGE_MANAGER_BINS.has(manager)) continue;
 
-    if (manager === 'npx' || manager === 'pnpx' || manager === 'bunx') {
-      const commandIndex = nextNonOptionToken(tokens, index + 1)
-      if (normalizeToken(tokens[commandIndex] ?? '') === 'vp') return true
-      continue
+    if (manager === "npx" || manager === "pnpx" || manager === "bunx") {
+      const commandIndex = nextNonOptionToken(tokens, index + 1);
+      if (normalizeToken(tokens[commandIndex] ?? "") === "vp") return true;
+      continue;
     }
 
-    const subcommandIndex = nextNonOptionToken(tokens, index + 1)
-    const subcommand = normalizeToken(tokens[subcommandIndex] ?? '')
+    const subcommandIndex = nextNonOptionToken(tokens, index + 1);
+    const subcommand = normalizeToken(tokens[subcommandIndex] ?? "");
     const allowedSubcommands =
-      manager === 'bun'
-        ? new Set(['x'])
-        : manager === 'npm'
-          ? new Set(['exec', 'x'])
-          : EXEC_SUBCOMMANDS
-    if (!allowedSubcommands.has(subcommand)) continue
+      manager === "bun"
+        ? new Set(["x"])
+        : manager === "npm"
+          ? new Set(["exec", "x"])
+          : EXEC_SUBCOMMANDS;
+    if (!allowedSubcommands.has(subcommand)) continue;
 
-    const commandIndex = nextNonOptionToken(tokens, subcommandIndex + 1)
-    if (normalizeToken(tokens[commandIndex] ?? '') === 'vp') return true
+    const commandIndex = nextNonOptionToken(tokens, subcommandIndex + 1);
+    if (normalizeToken(tokens[commandIndex] ?? "") === "vp") return true;
   }
-  return false
+  return false;
 }
 
 function normalizeUsesValue(raw: string): string {
-  const value = stripInlineComment(raw)
-  return value.replace(/^['"]|['"]$/gu, '')
+  const value = stripInlineComment(raw);
+  return value.replace(/^['"]|['"]$/gu, "");
 }
 
 function validateUsesRef(ref: string): string | null {
-  if (ref.startsWith('./')) return null
-  if (ref.startsWith('docker://')) {
-    return DIGEST_PATTERN.test(ref) ? null : 'Docker actions must be pinned by sha256 digest.'
+  if (ref.startsWith("./")) return null;
+  if (ref.startsWith("docker://")) {
+    return DIGEST_PATTERN.test(ref) ? null : "Docker actions must be pinned by sha256 digest.";
   }
 
-  const atIndex = ref.lastIndexOf('@')
-  if (atIndex === -1) return 'GitHub actions must include an immutable full commit SHA.'
+  const atIndex = ref.lastIndexOf("@");
+  if (atIndex === -1) return "GitHub actions must include an immutable full commit SHA.";
 
-  const version = ref.slice(atIndex + 1)
+  const version = ref.slice(atIndex + 1);
   if (!FULL_SHA_PATTERN.test(version)) {
-    return 'GitHub actions must be pinned to a 40-character commit SHA.'
+    return "GitHub actions must be pinned to a 40-character commit SHA.";
   }
-  return null
+  return null;
 }
 
 function scanWorkflow(file: string, root: string): Violation[] {
-  const text = readFileSync(file, 'utf8')
-  const violations: Violation[] = []
-  const lines = text.split('\n')
+  const text = readFileSync(file, "utf8");
+  const violations: Violation[] = [];
+  const lines = text.split("\n");
   for (const [index, line] of lines.entries()) {
-    const match = /^\s*(?:-\s*)?uses:\s*(.+?)\s*$/u.exec(line)
+    const match = /^\s*(?:-\s*)?uses:\s*(.+?)\s*$/u.exec(line);
     if (match?.[1]) {
-      const ref = normalizeUsesValue(match[1])
-      const reason = validateUsesRef(ref)
+      const ref = normalizeUsesValue(match[1]);
+      const reason = validateUsesRef(ref);
       if (reason) {
         violations.push({
           file: relative(root, file),
           line: index + 1,
           ref,
           reason,
-        })
+        });
       }
     }
 
-    const commandLine = stripInlineComment(line)
+    const commandLine = stripInlineComment(line);
     if (containsWrappedVpInvocation(commandLine)) {
       violations.push({
         file: relative(root, file),
         line: index + 1,
         ref: commandLine.trim(),
         reason:
-          'Do not invoke vp through a package-manager wrapper. Use the global `vp` binary directly; set it up in CI with SHA-pinned voidzero-dev/setup-vp first.',
-      })
+          "Do not invoke vp through a package-manager wrapper. Use the global `vp` binary directly; set it up in CI with SHA-pinned voidzero-dev/setup-vp first.",
+      });
     }
   }
-  return violations
+  return violations;
 }
 
 function workflowFiles(root: string): string[] {
-  const workflowsDir = join(root, '.github', 'workflows')
-  if (!existsSync(workflowsDir)) return []
+  const workflowsDir = join(root, ".github", "workflows");
+  if (!existsSync(workflowsDir)) return [];
   return readdirSync(workflowsDir, { withFileTypes: true })
     .filter((entry) => entry.isFile() && /\.ya?ml$/iu.test(entry.name))
     .map((entry) => join(workflowsDir, entry.name))
-    .sort()
+    .sort();
 }
 
-const root = resolve(process.argv[2] ?? process.cwd())
-const violations = workflowFiles(root).flatMap((file) => scanWorkflow(file, root))
+const root = resolve(process.argv[2] ?? process.cwd());
+const violations = workflowFiles(root).flatMap((file) => scanWorkflow(file, root));
 
 if (violations.length > 0) {
   for (const violation of violations) {
     process.stderr.write(
       `${violation.file}:${violation.line}: ${violation.reason} Found ${violation.ref}\n`,
-    )
+    );
   }
-  process.exit(1)
+  process.exit(1);
 }
 
-process.stdout.write('OK: GitHub workflow actions are pinned to immutable refs\n')
+process.stdout.write("OK: GitHub workflow actions are pinned to immutable refs\n");

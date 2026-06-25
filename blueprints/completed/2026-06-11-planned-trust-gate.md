@@ -4,9 +4,9 @@ title: Make planned a hard trust state
 owner: ozby
 status: completed
 complexity: L
-created: '2026-06-11'
-last_updated: '2026-06-22'
-progress: '100% (19/19 tasks done, 0 blocked, updated 2026-06-22)'
+created: "2026-06-11"
+last_updated: "2026-06-22"
+progress: "100% (19/19 tasks done, 0 blocked, updated 2026-06-22)"
 tags:
   - blueprints
   - governance
@@ -72,32 +72,32 @@ known, and team critique blockers have been incorporated.
 
 ## Fact-Check Summary
 
-| ID | Severity | Claim checked | Repo evidence | Refinement applied |
-| -- | -------- | ------------- | ------------- | ------------------ |
-| F1 | HIGH | `blueprint-trust` does not exist today. | `src/cli/commands/audit.ts`, `src/mcp/tools/_shared/audit-kinds.ts`, and `src/mcp/tools/audit.ts` list current kinds but no `blueprint-trust`. | Tasks create validator/audit first, backfill executable blueprints, then activate the audit. |
-| F2 | HIGH | Current task dependency syntax. | Live parser/linter use `**Depends:**`; `docs/blueprint-format.md` still contains stale `**Depends on:**` wording. | Tasks use current `**Depends:**` form and Task 1.2 corrects the stale docs wording. |
-| F3 | HIGH | CLI lifecycle paths. | `src/cli/commands/blueprint/router.ts` makes `wp blueprint move` recovery-only unless `--force-recovery`; normal promotion is `promoteBlueprint` in `src/cli/commands/blueprint/mutations.ts`. | Gate both normal promotion and recovery move. |
-| F4 | HIGH | MCP lifecycle paths. | `src/mcp/blueprint-server.ts` registers both `wp_blueprint_promote` and `wp_blueprint_transition`. | Gate both MCP paths through the shared promotion service. |
-| F5 | HIGH | Audit activation can break the repo before backfill. | `src/cli/commands/audit.ts` registry feeds `guardrails`/`quality`; current README shows existing executable blueprints. | Defer first-class audit registration until after canonical executable blueprints are backfilled. |
-| F6 | MEDIUM | Existing evidence helpers can be reused only by style. | `src/blueprint/evidence.ts` is task completion evidence with `test`, `integration`, `audit`, and `manual` kinds. | Add separate Trust Dossier evidence validators. |
-| F7 | MEDIUM | Scaffold/template surfaces mention blueprint shape. | `docs/templates/blueprint.md`, `catalog/docs/templates/blueprint.md`, `docs/templates/blueprint.yaml`, `catalog/docs/templates/blueprint.yaml`, and `src/cli/commands/init/scaffold-blueprints.ts` exist. | Exact files are named in scaffold task. |
-| F8 | LOW | Verification routing. | MCP `wp_audit`/blueprint tools are available for supported operations; future `blueprint-trust` and some skill/sync checks are CLI-only until wired. | Verification text uses CLI-canonical commands and instructs agents to prefer matching MCP `wp_*` tools when available. |
+| ID  | Severity | Claim checked                                          | Repo evidence                                                                                                                                                                                             | Refinement applied                                                                                                     |
+| --- | -------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| F1  | HIGH     | `blueprint-trust` does not exist today.                | `src/cli/commands/audit.ts`, `src/mcp/tools/_shared/audit-kinds.ts`, and `src/mcp/tools/audit.ts` list current kinds but no `blueprint-trust`.                                                            | Tasks create validator/audit first, backfill executable blueprints, then activate the audit.                           |
+| F2  | HIGH     | Current task dependency syntax.                        | Live parser/linter use `**Depends:**`; `docs/blueprint-format.md` still contains stale `**Depends on:**` wording.                                                                                         | Tasks use current `**Depends:**` form and Task 1.2 corrects the stale docs wording.                                    |
+| F3  | HIGH     | CLI lifecycle paths.                                   | `src/cli/commands/blueprint/router.ts` makes `wp blueprint move` recovery-only unless `--force-recovery`; normal promotion is `promoteBlueprint` in `src/cli/commands/blueprint/mutations.ts`.            | Gate both normal promotion and recovery move.                                                                          |
+| F4  | HIGH     | MCP lifecycle paths.                                   | `src/mcp/blueprint-server.ts` registers both `wp_blueprint_promote` and `wp_blueprint_transition`.                                                                                                        | Gate both MCP paths through the shared promotion service.                                                              |
+| F5  | HIGH     | Audit activation can break the repo before backfill.   | `src/cli/commands/audit.ts` registry feeds `guardrails`/`quality`; current README shows existing executable blueprints.                                                                                   | Defer first-class audit registration until after canonical executable blueprints are backfilled.                       |
+| F6  | MEDIUM   | Existing evidence helpers can be reused only by style. | `src/blueprint/evidence.ts` is task completion evidence with `test`, `integration`, `audit`, and `manual` kinds.                                                                                          | Add separate Trust Dossier evidence validators.                                                                        |
+| F7  | MEDIUM   | Scaffold/template surfaces mention blueprint shape.    | `docs/templates/blueprint.md`, `catalog/docs/templates/blueprint.md`, `docs/templates/blueprint.yaml`, `catalog/docs/templates/blueprint.yaml`, and `src/cli/commands/init/scaffold-blueprints.ts` exist. | Exact files are named in scaffold task.                                                                                |
+| F8  | LOW      | Verification routing.                                  | MCP `wp_audit`/blueprint tools are available for supported operations; future `blueprint-trust` and some skill/sync checks are CLI-only until wired.                                                      | Verification text uses CLI-canonical commands and instructs agents to prefer matching MCP `wp_*` tools when available. |
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-| -------- | ------ | --------- |
-| State semantics | Redefine `planned` as a hard Definition of Ready. | Lifecycle state should communicate operational trust. |
-| Proof location | Required Trust Dossier section inside executable blueprint documents. | Keeps proof DRY and reviewable; no sidecars or signing for v1. |
-| Audit shape | One hard repo audit kind: `blueprint-trust`. | Cohesive validation without overloading lifecycle checks. |
-| Activation order | Implement validator and backfill first; register the hard audit after baseline is clean. | Prevents a half-landed branch from failing all guardrails before existing executable blueprints have dossiers. |
-| Evidence scope | Material claims and material decisions only. | Avoids tracking every prose sentence. |
-| Evidence implementation | Build dossier evidence under `src/blueprint/trust/`; do not change task evidence kinds. | Existing evidence is task-completion anti-forgery. |
-| Promotion surface | Gate CLI `promote`, recovery `move --force-recovery`, MCP `wp_blueprint_promote`, and MCP `wp_blueprint_transition` through one service. | Repo inspection shows separate bypassable paths today. |
-| Promotion gate commands | Allowlist repo `wp` facade commands, parse to argv, reject shell syntax, and execute from repo root. | Keeps proof execution deterministic and avoids shell injection or arbitrary command execution. |
-| Metadata format | `verified-at` = `new Date().toISOString()`; `verified-head` = full `git rev-parse HEAD` SHA; fail closed if HEAD is unavailable. | Matches ISO evidence style and avoids ambiguous short SHAs. |
-| Waivers | No waiver, exception, bypass, or manual attestation for `draft → planned`. | A hard trust state cannot have a soft alternate path. |
-| Backfill scope | Backfill only canonical executable blueprint files (`*.md` and `_overview.md` that actually exist) under `planned/`, `in-progress/`, and `completed/`. | Avoids support-note churn and zero-match globs. |
+| Decision                | Choice                                                                                                                                                 | Rationale                                                                                                      |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| State semantics         | Redefine `planned` as a hard Definition of Ready.                                                                                                      | Lifecycle state should communicate operational trust.                                                          |
+| Proof location          | Required Trust Dossier section inside executable blueprint documents.                                                                                  | Keeps proof DRY and reviewable; no sidecars or signing for v1.                                                 |
+| Audit shape             | One hard repo audit kind: `blueprint-trust`.                                                                                                           | Cohesive validation without overloading lifecycle checks.                                                      |
+| Activation order        | Implement validator and backfill first; register the hard audit after baseline is clean.                                                               | Prevents a half-landed branch from failing all guardrails before existing executable blueprints have dossiers. |
+| Evidence scope          | Material claims and material decisions only.                                                                                                           | Avoids tracking every prose sentence.                                                                          |
+| Evidence implementation | Build dossier evidence under `src/blueprint/trust/`; do not change task evidence kinds.                                                                | Existing evidence is task-completion anti-forgery.                                                             |
+| Promotion surface       | Gate CLI `promote`, recovery `move --force-recovery`, MCP `wp_blueprint_promote`, and MCP `wp_blueprint_transition` through one service.               | Repo inspection shows separate bypassable paths today.                                                         |
+| Promotion gate commands | Allowlist repo `wp` facade commands, parse to argv, reject shell syntax, and execute from repo root.                                                   | Keeps proof execution deterministic and avoids shell injection or arbitrary command execution.                 |
+| Metadata format         | `verified-at` = `new Date().toISOString()`; `verified-head` = full `git rev-parse HEAD` SHA; fail closed if HEAD is unavailable.                       | Matches ISO evidence style and avoids ambiguous short SHAs.                                                    |
+| Waivers                 | No waiver, exception, bypass, or manual attestation for `draft → planned`.                                                                             | A hard trust state cannot have a soft alternate path.                                                          |
+| Backfill scope          | Backfill only canonical executable blueprint files (`*.md` and `_overview.md` that actually exist) under `planned/`, `in-progress/`, and `completed/`. | Avoids support-note churn and zero-match globs.                                                                |
 
 ## Proposed Trust Dossier contract
 
@@ -117,20 +117,20 @@ ships:
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | <architecturally significant claim> | repo:<path>; web:<url> (<YYYY-MM-DD>); derived:C2,C3 |
+| ID  | Claim                               | Evidence                                             |
+| --- | ----------------------------------- | ---------------------------------------------------- |
+| C1  | <architecturally significant claim> | repo:<path>; web:<url> (<YYYY-MM-DD>); derived:C2,C3 |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | <significant decision> | <choice> | <alternatives> | <why> |
+| ID  | Decision               | Chosen option | Rejected alternatives | Rationale |
+| --- | ---------------------- | ------------- | --------------------- | --------- |
+| D1  | <significant decision> | <choice>      | <alternatives>        | <why>     |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
+| Gate   | Command   | Expected outcome          | Last result                  |
+| ------ | --------- | ------------------------- | ---------------------------- |
 | <name> | <command> | <expected pass condition> | pass at <ISO-8601 timestamp> |
 
 ### Residual Unknowns
@@ -156,28 +156,28 @@ Promotion Gates are proof commands, not a general shell escape hatch:
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
-| ---- | ----- | ------------ | -------------- | ---------------- |
-| **Wave 0** | 1.1, 1.2, 1.3, 2.1, 3.1 | None | 5 agents | XS-S |
-| **Wave 1** | 3.2, 3.3 | Task 3.1 | 2 agents | S |
-| **Wave 2** | 3.4 | Tasks 3.2, 3.3 | 1 agent | S |
-| **Wave 3** | 3.5, 4.1 | Task 3.4 | 2 agents | S-M |
-| **Wave 4** | 4.2, 4.4 | Task 4.1 | 2 agents | S-M |
-| **Wave 5** | 4.3, 4.5 | Tasks 4.2 and/or 4.4 | 2 agents | S-M |
-| **Wave 6** | 5.1, 5.2 | Tasks 3.5, 4.2, 4.3, 4.4, 4.5 | 2 agents | M |
-| **Wave 7** | 5.3 | Tasks 5.1, 5.2 | 1 agent | M |
-| **Wave 8** | 5.4 | Task 5.3 | 1 agent | S |
-| **Wave 9** | 5.5 | Task 5.4 | 1 agent | S |
-| **Critical path** | 3.1 → 3.2 → 3.4 → 4.1 → 4.2 → 4.3 → 5.1 → 5.3 → 5.4 → 5.5 | — | 10 waves | L |
+| Wave              | Tasks                                                     | Dependencies                  | Parallelizable | Effort (T-shirt) |
+| ----------------- | --------------------------------------------------------- | ----------------------------- | -------------- | ---------------- |
+| **Wave 0**        | 1.1, 1.2, 1.3, 2.1, 3.1                                   | None                          | 5 agents       | XS-S             |
+| **Wave 1**        | 3.2, 3.3                                                  | Task 3.1                      | 2 agents       | S                |
+| **Wave 2**        | 3.4                                                       | Tasks 3.2, 3.3                | 1 agent        | S                |
+| **Wave 3**        | 3.5, 4.1                                                  | Task 3.4                      | 2 agents       | S-M              |
+| **Wave 4**        | 4.2, 4.4                                                  | Task 4.1                      | 2 agents       | S-M              |
+| **Wave 5**        | 4.3, 4.5                                                  | Tasks 4.2 and/or 4.4          | 2 agents       | S-M              |
+| **Wave 6**        | 5.1, 5.2                                                  | Tasks 3.5, 4.2, 4.3, 4.4, 4.5 | 2 agents       | M                |
+| **Wave 7**        | 5.3                                                       | Tasks 5.1, 5.2                | 1 agent        | M                |
+| **Wave 8**        | 5.4                                                       | Task 5.3                      | 1 agent        | S                |
+| **Wave 9**        | 5.5                                                       | Task 5.4                      | 1 agent        | S                |
+| **Critical path** | 3.1 → 3.2 → 3.4 → 4.1 → 4.2 → 4.3 → 5.1 → 5.3 → 5.4 → 5.5 | —                             | 10 waves       | L                |
 
 ### Parallel Metrics Snapshot
 
-| Metric | Formula / Meaning | Target | Actual |
-| ------ | ----------------- | ------ | ------ |
-| RW0 | Ready tasks in Wave 0 | ≥ planned agents / 2 | 5 ready tasks for 4 planned agents |
-| CPR | total_tasks / critical_path_length | ≥ 2.5 | 19 / 10 = 1.9 |
-| DD | dependency_edges / total_tasks | ≤ 2.0 | 29 / 19 = 1.53 |
-| CP | same-file overlaps per wave | 0 | 0 after serializing CLI recovery behind normal CLI promotion |
+| Metric | Formula / Meaning                  | Target               | Actual                                                       |
+| ------ | ---------------------------------- | -------------------- | ------------------------------------------------------------ |
+| RW0    | Ready tasks in Wave 0              | ≥ planned agents / 2 | 5 ready tasks for 4 planned agents                           |
+| CPR    | total_tasks / critical_path_length | ≥ 2.5                | 19 / 10 = 1.9                                                |
+| DD     | dependency_edges / total_tasks     | ≤ 2.0                | 29 / 19 = 1.53                                               |
+| CP     | same-file overlaps per wave        | 0                    | 0 after serializing CLI recovery behind normal CLI promotion |
 
 **Parallelization score:** C. RW0, DD, and CP are healthy, but CPR misses target
 because trust parser → validator → promotion → backfill → activation is
@@ -558,46 +558,46 @@ Verification commands below are CLI-canonical. Agents should use MCP
 back to the equivalent direct `wp ...` CLI command. Never route these through
 package-manager wrappers.
 
-| Gate | Command | Success Criteria |
-| ---- | ------- | ---------------- |
-| Blueprint lifecycle | `wp audit blueprint-lifecycle` | Zero lifecycle violations |
-| Blueprint README drift | `wp audit blueprint-readme-drift` | Generated blueprint index is current |
-| Blueprint trust | `wp audit blueprint-trust` | Available after Task 5.4; all executable blueprints have valid Trust Dossiers |
-| Catalog drift | `wp audit catalog-drift` | Generated skill/catalog surfaces are synced |
-| Package surface | `wp audit package-surface` | Public package contents include intended docs/catalog/code only |
-| Type safety | `wp typecheck` | Zero TypeScript errors |
-| Lint | `wp lint` | Zero lint violations |
-| Tests | `wp test` | Affected and regression tests pass |
-| Sync | `wp sync --check` | Generated agent surfaces match catalog sources |
+| Gate                   | Command                           | Success Criteria                                                              |
+| ---------------------- | --------------------------------- | ----------------------------------------------------------------------------- |
+| Blueprint lifecycle    | `wp audit blueprint-lifecycle`    | Zero lifecycle violations                                                     |
+| Blueprint README drift | `wp audit blueprint-readme-drift` | Generated blueprint index is current                                          |
+| Blueprint trust        | `wp audit blueprint-trust`        | Available after Task 5.4; all executable blueprints have valid Trust Dossiers |
+| Catalog drift          | `wp audit catalog-drift`          | Generated skill/catalog surfaces are synced                                   |
+| Package surface        | `wp audit package-surface`        | Public package contents include intended docs/catalog/code only               |
+| Type safety            | `wp typecheck`                    | Zero TypeScript errors                                                        |
+| Lint                   | `wp lint`                         | Zero lint violations                                                          |
+| Tests                  | `wp test`                         | Affected and regression tests pass                                            |
+| Sync                   | `wp sync --check`                 | Generated agent surfaces match catalog sources                                |
 
 ## Closed Refinement Decisions
 
-| Former open question | Closed decision | Evidence |
-| -------------------- | --------------- | -------- |
-| Which evidence helpers should repo/web/derived validators reuse? | Create separate Trust Dossier evidence validators under `src/blueprint/trust/evidence.ts`; reuse Zod/canonicalization style, not task evidence kinds. | `src/blueprint/evidence.ts` is task evidence only. |
-| What timestamp and commit format should promotion write? | `verified-at` uses `new Date().toISOString()`; `verified-head` uses the full SHA from `git rev-parse HEAD`; fail closed when HEAD cannot be read. | `src/blueprint/evidence.ts` requires ISO-8601 parseable timestamps. |
-| Which audits are part of promotion today? | Compose current lifecycle/README/frontmatter checks where relevant, declared Promotion Gates, and new `blueprint-trust`; do not invent a roadmap/frontmatter promotion service. | `src/cli/commands/audit.ts` registry lists current repo-level audit kinds. |
-| Minimal fixture set for CLI/MCP parity? | Use valid dossier, missing dossier, malformed dossier, failing Promotion Gate, stale MCP revision, and recovery move fixtures across CLI promotion, MCP promote, and MCP transition. | CLI and MCP lifecycle tests exist at `src/cli/commands/blueprint/mutations.test.ts`, `src/mcp/blueprint-server.transition.test.ts`, and `src/mcp/blueprint-workflow.integration.test.ts`. |
-| Whether this blueprint should stay planned after critique? | Yes, after applying critique fixes: the plan is executable under current lifecycle rules and explicitly scopes future hard trust semantics. | Current `wp_blueprint_validate`, `blueprint-lifecycle`, and README drift audits pass after promotion; team blockers are addressed in this revision. |
+| Former open question                                             | Closed decision                                                                                                                                                                      | Evidence                                                                                                                                                                                  |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Which evidence helpers should repo/web/derived validators reuse? | Create separate Trust Dossier evidence validators under `src/blueprint/trust/evidence.ts`; reuse Zod/canonicalization style, not task evidence kinds.                                | `src/blueprint/evidence.ts` is task evidence only.                                                                                                                                        |
+| What timestamp and commit format should promotion write?         | `verified-at` uses `new Date().toISOString()`; `verified-head` uses the full SHA from `git rev-parse HEAD`; fail closed when HEAD cannot be read.                                    | `src/blueprint/evidence.ts` requires ISO-8601 parseable timestamps.                                                                                                                       |
+| Which audits are part of promotion today?                        | Compose current lifecycle/README/frontmatter checks where relevant, declared Promotion Gates, and new `blueprint-trust`; do not invent a roadmap/frontmatter promotion service.      | `src/cli/commands/audit.ts` registry lists current repo-level audit kinds.                                                                                                                |
+| Minimal fixture set for CLI/MCP parity?                          | Use valid dossier, missing dossier, malformed dossier, failing Promotion Gate, stale MCP revision, and recovery move fixtures across CLI promotion, MCP promote, and MCP transition. | CLI and MCP lifecycle tests exist at `src/cli/commands/blueprint/mutations.test.ts`, `src/mcp/blueprint-server.transition.test.ts`, and `src/mcp/blueprint-workflow.integration.test.ts`. |
+| Whether this blueprint should stay planned after critique?       | Yes, after applying critique fixes: the plan is executable under current lifecycle rules and explicitly scopes future hard trust semantics.                                          | Current `wp_blueprint_validate`, `blueprint-lifecycle`, and README drift audits pass after promotion; team blockers are addressed in this revision.                                       |
 
 ## Cross-Plan References
 
-| Blueprint | Relationship | Required alignment |
-| --------- | ------------ | ------------------ |
-| None | Local standalone governance blueprint | No upstream blueprint must land first. |
+| Blueprint | Relationship                          | Required alignment                     |
+| --------- | ------------------------------------- | -------------------------------------- |
+| None      | Local standalone governance blueprint | No upstream blueprint must land first. |
 
 ## Edge Cases and Error Handling
 
-| ID | Edge Case | Risk | Solution | Task |
-| -- | --------- | ---- | -------- | ---- |
-| E1 | `blueprint-trust` is referenced before it exists. | Current audits fail with unknown kind. | Only require the command after Task 5.4; this meta-plan stays under current lifecycle rules until then. | Task 5.4 |
-| E2 | CLI normal promotion, CLI recovery move, MCP promote, and MCP transition diverge. | A bypass can create untrusted planned blueprints. | Shared promotion service plus parity tests on all four paths. | Tasks 4.1-4.5 |
-| E3 | Trust Dossier evidence accidentally changes task completion evidence semantics. | Existing task verification anti-forgery could regress. | Keep dossier evidence in `src/blueprint/trust/` and avoid modifying `src/blueprint/evidence.ts`. | Tasks 3.1-3.4 |
-| E4 | Web evidence validation performs network fetches during repo audit. | Audits become slow/flaky and violate local determinism. | Validate URL/date syntax only; fact-checking remains a plan-refine producer responsibility. | Task 3.2 |
-| E5 | Ambiguity detector flags harmless historical prose. | Backfill becomes noisy. | Scope banned language to execution-bearing sections and exempt normal task status values. | Task 3.3 |
-| E6 | Backfilling all executable blueprints causes broad churn. | Hard to review and may conflict with unrelated work. | Split planned, completed-flat, and completed-overview backfill tasks; activate audit only after backfill. | Tasks 5.1-5.4 |
-| E7 | Example Trust Dossier fence is parsed as a real dossier. | Templates or docs can falsely pass. | Parser ignores headings inside fenced code blocks. | Task 3.1 |
-| E8 | Promotion gate command strings become shell execution. | Security risk and nondeterministic gates. | Allowlist `wp` argv grammar and reject shell metacharacters/env/redirects/`--fix`. | Task 4.1 |
+| ID  | Edge Case                                                                         | Risk                                                    | Solution                                                                                                  | Task          |
+| --- | --------------------------------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ------------- |
+| E1  | `blueprint-trust` is referenced before it exists.                                 | Current audits fail with unknown kind.                  | Only require the command after Task 5.4; this meta-plan stays under current lifecycle rules until then.   | Task 5.4      |
+| E2  | CLI normal promotion, CLI recovery move, MCP promote, and MCP transition diverge. | A bypass can create untrusted planned blueprints.       | Shared promotion service plus parity tests on all four paths.                                             | Tasks 4.1-4.5 |
+| E3  | Trust Dossier evidence accidentally changes task completion evidence semantics.   | Existing task verification anti-forgery could regress.  | Keep dossier evidence in `src/blueprint/trust/` and avoid modifying `src/blueprint/evidence.ts`.          | Tasks 3.1-3.4 |
+| E4  | Web evidence validation performs network fetches during repo audit.               | Audits become slow/flaky and violate local determinism. | Validate URL/date syntax only; fact-checking remains a plan-refine producer responsibility.               | Task 3.2      |
+| E5  | Ambiguity detector flags harmless historical prose.                               | Backfill becomes noisy.                                 | Scope banned language to execution-bearing sections and exempt normal task status values.                 | Task 3.3      |
+| E6  | Backfilling all executable blueprints causes broad churn.                         | Hard to review and may conflict with unrelated work.    | Split planned, completed-flat, and completed-overview backfill tasks; activate audit only after backfill. | Tasks 5.1-5.4 |
+| E7  | Example Trust Dossier fence is parsed as a real dossier.                          | Templates or docs can falsely pass.                     | Parser ignores headings inside fenced code blocks.                                                        | Task 3.1      |
+| E8  | Promotion gate command strings become shell execution.                            | Security risk and nondeterministic gates.               | Allowlist `wp` argv grammar and reject shell metacharacters/env/redirects/`--fix`.                        | Task 4.1      |
 
 ## Non-goals
 
@@ -612,47 +612,47 @@ package-manager wrappers.
 
 ## Risks
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-| Backfilling executable blueprints reveals real gaps. | HIGH | Treat failures as real blockers and split backfill into reviewable lifecycle batches. |
-| Hard audit is activated before backfill. | HIGH | Keep registry/MCP activation in Task 5.4 after backfill tasks. |
-| Promotion Gate execution is slow or unsafe. | HIGH | Keep gates explicit, allowlisted, argv-only, bounded, and non-shell. |
-| Ambiguity detection false-positives. | MEDIUM | Limit scanning to execution-bearing sections and add allowed-prose fixtures. |
-| Shared promotion service becomes too broad. | MEDIUM | Keep it focused on `draft → planned`; leave start/finalize behavior in existing lifecycle code. |
-| Public package leak through catalog/docs/template changes. | HIGH | Require `wp audit package-surface`, `wp audit catalog-drift`, and `wp sync --check`. |
+| Risk                                                       | Impact | Mitigation                                                                                      |
+| ---------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------- |
+| Backfilling executable blueprints reveals real gaps.       | HIGH   | Treat failures as real blockers and split backfill into reviewable lifecycle batches.           |
+| Hard audit is activated before backfill.                   | HIGH   | Keep registry/MCP activation in Task 5.4 after backfill tasks.                                  |
+| Promotion Gate execution is slow or unsafe.                | HIGH   | Keep gates explicit, allowlisted, argv-only, bounded, and non-shell.                            |
+| Ambiguity detection false-positives.                       | MEDIUM | Limit scanning to execution-bearing sections and add allowed-prose fixtures.                    |
+| Shared promotion service becomes too broad.                | MEDIUM | Keep it focused on `draft → planned`; leave start/finalize behavior in existing lifecycle code. |
+| Public package leak through catalog/docs/template changes. | HIGH   | Require `wp audit package-surface`, `wp audit catalog-drift`, and `wp sync --check`.            |
 
 ## Technology Choices
 
-| Component | Technology | Version | Why |
-| --------- | ---------- | ------- | --- |
-| Trust parsing/validation | TypeScript + Zod-style validation | Existing repo stack | Matches current TypeScript/Zod conventions. |
-| Repo audit output | Existing RepoAuditResult shape | Current code | Integrates with CLI audit and MCP `wp_audit`. |
-| Evidence URI syntax | `repo:`, `web:`, `derived:` strings in Markdown tables | v1 internal contract | Human-reviewable and keeps Markdown canonical. |
-| Promotion gate runner | Parsed argv for allowlisted `wp` commands | v1 internal contract | Avoids shell execution while reusing repo command facades. |
-| Promotion metadata | ISO timestamp + full git SHA | v1 internal contract | Deterministic without signing infrastructure. |
-| Verification command surface | MCP `wp_*` tools when available, direct `wp` CLI fallback | Current repo rule | Matches repo routing while keeping blueprint commands operator-readable. |
+| Component                    | Technology                                                | Version              | Why                                                                      |
+| ---------------------------- | --------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------ |
+| Trust parsing/validation     | TypeScript + Zod-style validation                         | Existing repo stack  | Matches current TypeScript/Zod conventions.                              |
+| Repo audit output            | Existing RepoAuditResult shape                            | Current code         | Integrates with CLI audit and MCP `wp_audit`.                            |
+| Evidence URI syntax          | `repo:`, `web:`, `derived:` strings in Markdown tables    | v1 internal contract | Human-reviewable and keeps Markdown canonical.                           |
+| Promotion gate runner        | Parsed argv for allowlisted `wp` commands                 | v1 internal contract | Avoids shell execution while reusing repo command facades.               |
+| Promotion metadata           | ISO timestamp + full git SHA                              | v1 internal contract | Deterministic without signing infrastructure.                            |
+| Verification command surface | MCP `wp_*` tools when available, direct `wp` CLI fallback | Current repo rule    | Matches repo routing while keeping blueprint commands operator-readable. |
 
 ## Refinement Summary
 
-| Metric | Value |
-| ------ | ----- |
-| Findings total | 27 |
-| Critical | 0 |
-| High | 12 |
-| Medium | 11 |
-| Low | 4 |
-| Fixes applied | 27/27 |
-| Open questions closed | 4/4 |
-| Cross-plans updated | 0 |
-| Edge cases documented | 8 |
-| Risks documented | 6 |
-| Technology choices documented | 6 |
-| Parallelization score | C (intentional safety serialization) |
-| Critical path | 10 waves |
-| Max parallel agents | 4 |
-| Total tasks | 19 |
-| Blueprint compliant | 19/19 task blocks use current `**Status:**` / `**Depends:**` / `**Files:**` / `**Change:**` / `**Verify:**` / `**Acceptance:**` shape |
-| Team critique verdict | Initial reject/partial confidence findings incorporated; no known hard blocker remains under current lifecycle rules |
+| Metric                        | Value                                                                                                                                 |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Findings total                | 27                                                                                                                                    |
+| Critical                      | 0                                                                                                                                     |
+| High                          | 12                                                                                                                                    |
+| Medium                        | 11                                                                                                                                    |
+| Low                           | 4                                                                                                                                     |
+| Fixes applied                 | 27/27                                                                                                                                 |
+| Open questions closed         | 4/4                                                                                                                                   |
+| Cross-plans updated           | 0                                                                                                                                     |
+| Edge cases documented         | 8                                                                                                                                     |
+| Risks documented              | 6                                                                                                                                     |
+| Technology choices documented | 6                                                                                                                                     |
+| Parallelization score         | C (intentional safety serialization)                                                                                                  |
+| Critical path                 | 10 waves                                                                                                                              |
+| Max parallel agents           | 4                                                                                                                                     |
+| Total tasks                   | 19                                                                                                                                    |
+| Blueprint compliant           | 19/19 task blocks use current `**Status:**` / `**Depends:**` / `**Files:**` / `**Change:**` / `**Verify:**` / `**Acceptance:**` shape |
+| Team critique verdict         | Initial reject/partial confidence findings incorporated; no known hard blocker remains under current lifecycle rules                  |
 
 ## Completion Evidence
 
@@ -675,21 +675,21 @@ package-manager wrappers.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-11-planned-trust-gate.md |
+| ID  | Claim                                                          | Evidence                                                   |
+| --- | -------------------------------------------------------------- | ---------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-11-planned-trust-gate.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

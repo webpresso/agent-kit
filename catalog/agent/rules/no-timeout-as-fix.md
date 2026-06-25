@@ -6,8 +6,8 @@ status: active
 scope: repo
 applies_to: [agents, humans]
 related: []
-created: '2026-05-06'
-last_reviewed: '2026-05-06'
+created: "2026-05-06"
+last_reviewed: "2026-05-06"
 ---
 
 # Raising timeouts is never the fix

@@ -1,12 +1,12 @@
-import type { ValidationError } from '#config/docs-lint/index'
+import type { ValidationError } from "#config/docs-lint/index";
 
-import { existsSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 
 /**
  * Maximum depth for import chain (prevents infinite loops)
  */
-const MAX_IMPORT_DEPTH = 5
+const MAX_IMPORT_DEPTH = 5;
 
 /**
  * Check if an import path looks like a valid file import
@@ -15,17 +15,17 @@ const MAX_IMPORT_DEPTH = 5
 function isValidImportPath(importPath: string): boolean {
   // Valid imports look like: @./file.md, @../README.md, @.agent/rules/agent-guide.md
   const looksLikeFilePath =
-    importPath.includes('.') || importPath.startsWith('./') || importPath.startsWith('../')
+    importPath.includes(".") || importPath.startsWith("./") || importPath.startsWith("../");
 
   // Skip if it looks like an npm package (@org/package)
   // But allow paths starting with a dot (like .agent/...)
   const looksLikeNpmPackage =
-    importPath.includes('/') &&
-    !importPath.startsWith('./') &&
-    !importPath.startsWith('../') &&
-    !importPath.startsWith('.')
+    importPath.includes("/") &&
+    !importPath.startsWith("./") &&
+    !importPath.startsWith("../") &&
+    !importPath.startsWith(".");
 
-  return looksLikeFilePath && !looksLikeNpmPackage
+  return looksLikeFilePath && !looksLikeNpmPackage;
 }
 
 /**
@@ -33,11 +33,11 @@ function isValidImportPath(importPath: string): boolean {
  */
 function tryExtractImport(trimmedLine: string): string | null {
   // Match @path but exclude decorators with () or []
-  const match = /^@([^\s()[\]]+)$/.exec(trimmedLine)
-  if (!match?.[1]) return null
+  const match = /^@([^\s()[\]]+)$/.exec(trimmedLine);
+  if (!match?.[1]) return null;
 
-  const importPath = match[1]
-  return isValidImportPath(importPath) ? importPath : null
+  const importPath = match[1];
+  return isValidImportPath(importPath) ? importPath : null;
 }
 
 /**
@@ -48,20 +48,20 @@ function processLineForImport(
   lineNumber: number,
   inCodeBlock: boolean,
 ): { import: { path: string; line: number } | null; toggleCodeBlock: boolean } {
-  if (line.trim().startsWith('```')) {
-    return { import: null, toggleCodeBlock: true }
+  if (line.trim().startsWith("```")) {
+    return { import: null, toggleCodeBlock: true };
   }
 
   if (inCodeBlock) {
-    return { import: null, toggleCodeBlock: false }
+    return { import: null, toggleCodeBlock: false };
   }
 
-  const importPath = tryExtractImport(line.trim())
+  const importPath = tryExtractImport(line.trim());
   if (importPath) {
-    return { import: { path: importPath, line: lineNumber }, toggleCodeBlock: false }
+    return { import: { path: importPath, line: lineNumber }, toggleCodeBlock: false };
   }
 
-  return { import: null, toggleCodeBlock: false }
+  return { import: null, toggleCodeBlock: false };
 }
 
 /**
@@ -74,25 +74,25 @@ function processLineForImport(
  * - Lines that look like npm packages (@org/package)
  */
 export function extractImports(content: string): Array<{ path: string; line: number }> {
-  const imports: Array<{ path: string; line: number }> = []
-  const lines = content.split('\n')
-  let inCodeBlock = false
+  const imports: Array<{ path: string; line: number }> = [];
+  const lines = content.split("\n");
+  let inCodeBlock = false;
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    if (!line) continue
+    const line = lines[i];
+    if (!line) continue;
 
-    const result = processLineForImport(line, i + 1, inCodeBlock)
+    const result = processLineForImport(line, i + 1, inCodeBlock);
     if (result.toggleCodeBlock) {
-      inCodeBlock = !inCodeBlock
-      continue
+      inCodeBlock = !inCodeBlock;
+      continue;
     }
     if (result.import) {
-      imports.push(result.import)
+      imports.push(result.import);
     }
   }
 
-  return imports
+  return imports;
 }
 
 /**
@@ -104,12 +104,12 @@ export function resolveImportPath(
   projectRoot: string,
 ): string {
   // If path starts with ./ or ../, resolve relative to importing file
-  if (importPath.startsWith('./') || importPath.startsWith('../')) {
-    return resolve(dirname(fromFile), importPath)
+  if (importPath.startsWith("./") || importPath.startsWith("../")) {
+    return resolve(dirname(fromFile), importPath);
   }
 
   // Otherwise resolve relative to project root
-  return resolve(projectRoot, importPath)
+  return resolve(projectRoot, importPath);
 }
 
 /**
@@ -121,19 +121,19 @@ function detectCircularDeps(
   visited: Set<string>,
   chain: string[],
 ): { circular: boolean; chain: string[] } {
-  const normalizedPath = resolve(filePath)
+  const normalizedPath = resolve(filePath);
 
   if (visited.has(normalizedPath)) {
-    return { circular: true, chain: [...chain, normalizedPath] }
+    return { circular: true, chain: [...chain, normalizedPath] };
   }
 
   if (chain.length >= MAX_IMPORT_DEPTH) {
-    return { circular: false, chain }
+    return { circular: false, chain };
   }
 
   // This would require reading the file content - simplified for now
   // Full implementation would recursively check imports
-  return { circular: false, chain }
+  return { circular: false, chain };
 }
 
 /**
@@ -151,61 +151,61 @@ export function validateImports(
   content: string,
   projectRoot: string,
 ): ValidationError[] {
-  const errors: ValidationError[] = []
-  const imports = extractImports(content)
+  const errors: ValidationError[] = [];
+  const imports = extractImports(content);
 
   if (!imports.length) {
-    return errors
+    return errors;
   }
 
-  const visited = new Set<string>()
-  visited.add(resolve(filePath))
+  const visited = new Set<string>();
+  visited.add(resolve(filePath));
 
   for (const imp of imports) {
-    const resolvedPath = resolveImportPath(imp.path, filePath, projectRoot)
+    const resolvedPath = resolveImportPath(imp.path, filePath, projectRoot);
 
     // Check if file exists
     if (!existsSync(resolvedPath)) {
       errors.push({
         file: filePath,
         line: imp.line,
-        severity: 'error',
-        source: 'structure',
+        severity: "error",
+        source: "structure",
         message: `Import not found: @${imp.path} (resolved to ${resolvedPath})`,
-        ruleId: 'import-not-found',
-      })
-      continue
+        ruleId: "import-not-found",
+      });
+      continue;
     }
 
     // Check for circular dependencies
     const circularCheck = detectCircularDeps(resolvedPath, projectRoot, visited, [
       resolve(filePath),
-    ])
+    ]);
 
     if (circularCheck.circular) {
       errors.push({
         file: filePath,
         line: imp.line,
-        severity: 'error',
-        source: 'structure',
-        message: `Circular import detected: ${circularCheck.chain.join(' → ')}`,
-        ruleId: 'circular-import',
-      })
+        severity: "error",
+        source: "structure",
+        message: `Circular import detected: ${circularCheck.chain.join(" → ")}`,
+        ruleId: "circular-import",
+      });
     }
 
-    visited.add(resolvedPath)
+    visited.add(resolvedPath);
   }
 
   // Check import depth
   if (imports.length > 10) {
     errors.push({
       file: filePath,
-      severity: 'warning',
-      source: 'structure',
+      severity: "warning",
+      source: "structure",
       message: `High number of imports (${imports.length}). Consider consolidating.`,
-      ruleId: 'import-count',
-    })
+      ruleId: "import-count",
+    });
   }
 
-  return errors
+  return errors;
 }

@@ -7,8 +7,8 @@
  */
 
 export interface AllowlistEntry {
-  readonly source_org: string
-  readonly permitted_org: string
+  readonly source_org: string;
+  readonly permitted_org: string;
 }
 
 /**
@@ -26,8 +26,8 @@ export function resolvesCrossRepo(
   targetOrg: string,
   allowlist: readonly AllowlistEntry[],
 ): boolean {
-  if (sourceOrg === targetOrg) return true
-  return bothSidesAllowlistEntries(sourceOrg, targetOrg, allowlist)
+  if (sourceOrg === targetOrg) return true;
+  return bothSidesAllowlistEntries(sourceOrg, targetOrg, allowlist);
 }
 
 /**
@@ -41,9 +41,9 @@ export function bothSidesAllowlistEntries(
 ): boolean {
   const sourcePernmitsTarget = allowlist.some(
     (e) => e.source_org === sourceOrg && e.permitted_org === targetOrg,
-  )
+  );
   const targetPermitsSource = allowlist.some(
     (e) => e.source_org === targetOrg && e.permitted_org === sourceOrg,
-  )
-  return sourcePernmitsTarget && targetPermitsSource
+  );
+  return sourcePernmitsTarget && targetPermitsSource;
 }

@@ -1,27 +1,27 @@
-import type { ValidationError } from '#config/docs-lint/index'
+import type { ValidationError } from "#config/docs-lint/index";
 
 /**
  * Extract section headings from markdown content.
  */
 function extractHeadings(content: string): { level: number; text: string; line: number }[] {
-  const headings: { level: number; text: string; line: number }[] = []
-  const lines = content.split('\n')
+  const headings: { level: number; text: string; line: number }[] = [];
+  const lines = content.split("\n");
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    if (!line) continue
+    const line = lines[i];
+    if (!line) continue;
 
-    const match = line.match(/^(#{1,6})\s+(.+)$/)
+    const match = line.match(/^(#{1,6})\s+(.+)$/);
     if (match?.[1] && match[2]) {
       headings.push({
         level: match[1].length,
         text: match[2].trim(),
         line: i + 1,
-      })
+      });
     }
   }
 
-  return headings
+  return headings;
 }
 
 /**
@@ -32,9 +32,9 @@ export function validateStructure(
   requiredSections: readonly string[],
   filePath: string,
 ): ValidationError[] {
-  const errors: ValidationError[] = []
-  const headings = extractHeadings(content)
-  const headingTexts = new Set(headings.map((h) => h.text.toLowerCase()))
+  const errors: ValidationError[] = [];
+  const headings = extractHeadings(content);
+  const headingTexts = new Set(headings.map((h) => h.text.toLowerCase()));
 
   for (const section of requiredSections) {
     // Check for exact match or partial match (case-insensitive)
@@ -43,36 +43,36 @@ export function validateStructure(
         h === section.toLowerCase() ||
         h.includes(section.toLowerCase()) ||
         section.toLowerCase().includes(h),
-    )
+    );
 
     if (!found) {
       errors.push({
         file: filePath,
-        severity: 'warning',
-        source: 'structure',
+        severity: "warning",
+        source: "structure",
         message: `Missing recommended section: "${section}"`,
-        ruleId: 'required-section',
-      })
+        ruleId: "required-section",
+      });
     }
   }
 
-  return errors
+  return errors;
 }
 
 /**
  * Validate heading hierarchy (no skipped levels).
  */
 export function validateHeadingHierarchy(content: string, filePath: string): ValidationError[] {
-  const errors: ValidationError[] = []
-  const headings = extractHeadings(content)
+  const errors: ValidationError[] = [];
+  const headings = extractHeadings(content);
 
-  let previousLevel = 0
+  let previousLevel = 0;
 
   for (const heading of headings) {
     // Allow jumping from 0 to any level (first heading)
     if (previousLevel === 0) {
-      previousLevel = heading.level
-      continue
+      previousLevel = heading.level;
+      continue;
     }
 
     // Allow going up (smaller number) any amount
@@ -81,15 +81,15 @@ export function validateHeadingHierarchy(content: string, filePath: string): Val
       errors.push({
         file: filePath,
         line: heading.line,
-        severity: 'warning',
-        source: 'structure',
+        severity: "warning",
+        source: "structure",
         message: `Skipped heading level: H${previousLevel} to H${heading.level}`,
-        ruleId: 'heading-hierarchy',
-      })
+        ruleId: "heading-hierarchy",
+      });
     }
 
-    previousLevel = heading.level
+    previousLevel = heading.level;
   }
 
-  return errors
+  return errors;
 }

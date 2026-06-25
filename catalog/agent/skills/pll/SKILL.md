@@ -6,8 +6,8 @@ status: active
 scope: repo
 applies_to: [agents]
 related: []
-created: '2026-05-07'
-last_reviewed: '2026-05-07'
+created: "2026-05-07"
+last_reviewed: "2026-05-07"
 name: pll
 description: Blueprint-aware parallel execution adapter over ultrawork/subagents. If OMX isn't installed, the skill uses the `local-worktree` backend (default for repos without OMX).
 ---
@@ -47,7 +47,6 @@ Use this skill when the user invokes `/pll` or asks for Blueprint-aware parallel
    - Treat `/pll` as the interactive/manual front door for the same control-plane contract that `wp blueprint exec` uses.
    - Reuse the same backend names, progress bridge semantics, and truthfulness rules.
 
-
 ## Roadmap-Aware Lane Picking
 
 When no explicit task list is supplied, ground lane selection in `wp blueprint list` before inventing work:
@@ -59,11 +58,11 @@ When no explicit task list is supplied, ground lane selection in `wp blueprint l
 
 ## Concurrency Limits
 
-| Scope | Guidance |
-| --- | --- |
-| Default batches | Use the smallest parallelism that still keeps safe independent lanes busy |
-| Test-heavy tasks | Keep concurrency conservative |
-| Build/deploy tasks | Keep concurrency conservative |
+| Scope              | Guidance                                                                  |
+| ------------------ | ------------------------------------------------------------------------- |
+| Default batches    | Use the smallest parallelism that still keeps safe independent lanes busy |
+| Test-heavy tasks   | Keep concurrency conservative                                             |
+| Build/deploy tasks | Keep concurrency conservative                                             |
 
 ## Deadlock and Failure Handling
 

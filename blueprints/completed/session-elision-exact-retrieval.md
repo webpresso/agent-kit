@@ -4,9 +4,9 @@ title: "Session elision exact retrieval"
 status: completed
 complexity: M
 owner: "agent-kit"
-created: '2026-06-20'
-last_updated: '2026-06-20'
-progress: '100% (completed)'
+created: "2026-06-20"
+last_updated: "2026-06-20"
+progress: "100% (completed)"
 ---
 
 ## Product wedge anchor
@@ -33,6 +33,7 @@ new storage backend.
 **Status:** done
 **Wave:** 0
 **Files:**
+
 - `src/session-memory/store.ts`
 - `src/mcp/tools/session-retrieve.ts`
 - `src/mcp/tools/_session-elision.ts`
@@ -47,6 +48,7 @@ new storage backend.
 - `README.md`
 
 **Acceptance:**
+
 - [x] `wp_session_retrieve` retrieves exact indexed chunks by id with bounded
       `maxBytes` output and no public database path input.
 - [x] Truncated file, command, batch, check-tool, and CLI quality outputs emit
@@ -82,21 +84,21 @@ Fresh verification on 2026-06-20:
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/session-elision-exact-retrieval.md |
+| ID  | Claim                                                          | Evidence                                                     |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------ |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/session-elision-exact-retrieval.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

@@ -9,8 +9,8 @@
  * - Category urgency (0-5 points)
  */
 
-import type { BlueprintRecord } from '#query/types'
-import type { TechDebtRecord } from '#tech-debt/index'
+import type { BlueprintRecord } from "#query/types";
+import type { TechDebtRecord } from "#tech-debt/index";
 
 /**
  * Compute priority score for a tech debt item
@@ -23,33 +23,33 @@ export function computePriorityScore(
   item: TechDebtRecord,
   linkedBlueprints: BlueprintRecord[],
 ): number {
-  let score = 0
+  let score = 0;
 
   // Severity (10-40 points)
-  score += computeSeverityPoints(item.severity)
+  score += computeSeverityPoints(item.severity);
 
   // Staleness (0-30 points) - how long since last review
   if (item.lastReviewed) {
-    score += computeStalenessPoints(item.lastReviewed)
+    score += computeStalenessPoints(item.lastReviewed);
   }
 
   // Overdue review (0-20 points)
   if (item.nextReview && isOverdue(item.nextReview)) {
-    score += 20
+    score += 20;
   }
 
   // Active blueprints (0-10 points)
   if (hasActiveBlueprintLink(linkedBlueprints)) {
-    score += 10
+    score += 10;
   }
 
   // Category urgency (0-5 points)
   if (item.category) {
-    score += computeCategoryPoints(item.category)
+    score += computeCategoryPoints(item.category);
   }
 
   // Cap at 100
-  return Math.min(score, 100)
+  return Math.min(score, 100);
 }
 
 /**
@@ -62,8 +62,8 @@ function computeSeverityPoints(severity: string): number {
     high: 30,
     medium: 20,
     low: 10,
-  }
-  return severityPoints[severity] ?? 10
+  };
+  return severityPoints[severity] ?? 10;
 }
 
 /**
@@ -71,22 +71,22 @@ function computeSeverityPoints(severity: string): number {
  * +1 point per day, capped at 30 points
  */
 function computeStalenessPoints(lastReviewed: Date): number {
-  const daysSince = Math.floor((Date.now() - lastReviewed.getTime()) / (1000 * 60 * 60 * 24))
-  return Math.min(daysSince, 30)
+  const daysSince = Math.floor((Date.now() - lastReviewed.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.min(daysSince, 30);
 }
 
 /**
  * Check if an item is overdue for review
  */
 function isOverdue(nextReview: string): boolean {
-  return new Date(nextReview) < new Date()
+  return new Date(nextReview) < new Date();
 }
 
 /**
  * Check if any linked blueprints are actively in progress
  */
 function hasActiveBlueprintLink(linkedBlueprints: BlueprintRecord[]): boolean {
-  return linkedBlueprints.some((bp) => bp.status === 'in-progress')
+  return linkedBlueprints.some((bp) => bp.status === "in-progress");
 }
 
 /**
@@ -97,6 +97,6 @@ function computeCategoryPoints(category: string): number {
   const categoryPoints: Record<string, number> = {
     security: 5,
     testing: 3,
-  }
-  return categoryPoints[category] ?? 0
+  };
+  return categoryPoints[category] ?? 0;
 }

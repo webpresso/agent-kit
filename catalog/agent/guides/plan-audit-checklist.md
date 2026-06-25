@@ -121,7 +121,7 @@ last_updated: 2026-04-22
 - **Example**:
 
 ```yaml
-progress: 'Phase 1: ✅ 100%, Phase 2: ⏳ 30%, Phase 3-5: 0%'
+progress: "Phase 1: ✅ 100%, Phase 2: ⏳ 30%, Phase 3-5: 0%"
 ```
 
 ### 4. Commit Fixes (3 min)

@@ -4,9 +4,9 @@ title: Workflow and browser skills as Webpresso defaults
 status: completed
 complexity: L
 owner: agent
-created: '2026-06-23'
-last_updated: '2026-06-23'
-completed_at: '2026-06-23'
+created: "2026-06-23"
+last_updated: "2026-06-23"
+completed_at: "2026-06-23"
 tags:
   - setup
   - skills
@@ -57,22 +57,22 @@ external workflow checkout identity from setup, hooks, and update paths.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-23-workflow-browser-skills-defaults.md |
+| ID  | Claim                                                          | Evidence                                                                 |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-23-workflow-browser-skills-defaults.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard completed-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                     | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | ---------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard completed-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-23T00:00:00.000Z |
-| trust | wp audit blueprint-trust | pass | pass at 2026-06-23T21:41:02.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-23T00:00:00.000Z |
+| trust     | wp audit blueprint-trust     | pass             | pass at 2026-06-23T21:41:02.000Z |
 
 ### Residual Unknowns
 

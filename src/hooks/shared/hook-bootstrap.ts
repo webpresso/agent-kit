@@ -1,4 +1,4 @@
-import { closeSync, openSync } from 'node:fs'
+import { closeSync, openSync } from "node:fs";
 
 /**
  * Suppress stderr at the file-descriptor level.
@@ -9,10 +9,10 @@ import { closeSync, openSync } from 'node:fs'
  * Cross-platform: no-ops on Windows (fd redirect not portable there).
  */
 export function suppressStderr(): void {
-  if (process.platform === 'win32') return
+  if (process.platform === "win32") return;
   try {
-    closeSync(2)
-    openSync('/dev/null', 'w')
+    closeSync(2);
+    openSync("/dev/null", "w");
   } catch {
     // If stderr is already closed or /dev/null unavailable, ignore silently
   }
@@ -22,9 +22,9 @@ export function suppressStderr(): void {
  * Read all stdin bytes and return as UTF-8 string.
  */
 export async function readStdinJson(): Promise<string> {
-  const chunks: Buffer[] = []
-  for await (const chunk of process.stdin) chunks.push(chunk as Buffer)
-  return Buffer.concat(chunks).toString('utf-8')
+  const chunks: Buffer[] = [];
+  for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+  return Buffer.concat(chunks).toString("utf-8");
 }
 
 /**
@@ -44,23 +44,23 @@ export async function runHook<T>(
   handler: (input: unknown) => T | null,
   formatter: (result: T) => string,
 ): Promise<void> {
-  suppressStderr()
-  const raw = await readStdinJson()
+  suppressStderr();
+  const raw = await readStdinJson();
 
   if (!raw.trim()) {
-    process.stdout.write('{}')
-    process.exit(0)
+    process.stdout.write("{}");
+    process.exit(0);
   }
 
-  let parsed: unknown
+  let parsed: unknown;
   try {
-    parsed = JSON.parse(raw)
+    parsed = JSON.parse(raw);
   } catch {
-    process.stdout.write('{}')
-    process.exit(0)
+    process.stdout.write("{}");
+    process.exit(0);
   }
 
-  const result = handler(parsed)
-  process.stdout.write(result !== null ? formatter(result) : '{}')
-  process.exit(0)
+  const result = handler(parsed);
+  process.stdout.write(result !== null ? formatter(result) : "{}");
+  process.exit(0);
 }

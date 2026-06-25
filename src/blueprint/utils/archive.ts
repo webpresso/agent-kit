@@ -4,25 +4,25 @@
  * Validates that all tasks in a plan are complete and updates status in place.
  */
 
-import type { Blueprint, Task } from '#core/parser'
+import type { Blueprint, Task } from "#core/parser";
 
-import { access, readFile, writeFile } from 'node:fs/promises'
-import path from 'node:path'
+import { access, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 
-import { parseBlueprint } from '#core/parser'
+import { parseBlueprint } from "#core/parser";
 
-import { resolveBlueprintRoot } from './blueprint-root.js'
+import { resolveBlueprintRoot } from "./blueprint-root.js";
 
 export interface IncompleteTask {
-  id: string
-  title: string
-  status: string
+  id: string;
+  title: string;
+  status: string;
 }
 
 export interface ValidationResult {
-  valid: boolean
-  incompleteTasks?: IncompleteTask[]
-  message?: string
+  valid: boolean;
+  incompleteTasks?: IncompleteTask[];
+  message?: string;
 }
 /**
  * Validates that all tasks in a plan are complete.
@@ -44,17 +44,17 @@ export interface ValidationResult {
  * ```
  */
 export function validateAllTasksDone(plan: Blueprint): ValidationResult {
-  const incompleteTasks = findIncompleteTasks(plan.tasks)
+  const incompleteTasks = findIncompleteTasks(plan.tasks);
 
   if (!incompleteTasks.length) {
-    return { valid: true }
+    return { valid: true };
   }
 
   return {
     valid: false,
     incompleteTasks,
     message: formatErrorMessage(incompleteTasks),
-  }
+  };
 }
 
 /**
@@ -70,7 +70,7 @@ function findIncompleteTasks(tasks: Task[]): IncompleteTask[] {
       id: task.id,
       title: task.title,
       status: task.status,
-    }))
+    }));
 }
 
 /**
@@ -80,22 +80,22 @@ function findIncompleteTasks(tasks: Task[]): IncompleteTask[] {
  * @returns True if task is complete
  */
 function isTaskComplete(task: Task): boolean {
-  if (task.status === 'dropped') {
-    return true
+  if (task.status === "dropped") {
+    return true;
   }
 
   // Task must have status 'done'
-  if (task.status !== 'done') {
-    return false
+  if (task.status !== "done") {
+    return false;
   }
 
   // All acceptance criteria checkboxes must be checked
-  const { total, checked } = task.acceptanceCriteria
+  const { total, checked } = task.acceptanceCriteria;
   if (total > 0 && checked !== total) {
-    return false
+    return false;
   }
 
-  return true
+  return true;
 }
 
 /**
@@ -105,19 +105,19 @@ function isTaskComplete(task: Task): boolean {
  * @returns Formatted error message
  */
 function formatErrorMessage(incompleteTasks: IncompleteTask[]): string {
-  const count = incompleteTasks.length
-  const taskList = incompleteTasks.map((task) => `Task ${task.id} (${task.status})`).join(', ')
+  const count = incompleteTasks.length;
+  const taskList = incompleteTasks.map((task) => `Task ${task.id} (${task.status})`).join(", ");
 
-  return `${count} task${count === 1 ? '' : 's'} incomplete: ${taskList}`
+  return `${count} task${count === 1 ? "" : "s"} incomplete: ${taskList}`;
 }
 
 /**
  * Result of an archive operation.
  */
 export interface ArchiveResult {
-  success: boolean
-  newPath?: string
-  error?: string
+  success: boolean;
+  newPath?: string;
+  error?: string;
 }
 
 /**
@@ -145,40 +145,40 @@ export interface ArchiveResult {
 export async function archiveBlueprint(slug: string, projectPath: string): Promise<ArchiveResult> {
   // Check if already completed (before checking existence)
   if (isAlreadyCompleted(slug)) {
-    return { success: false, error: 'Plan is already completed' }
+    return { success: false, error: "Plan is already completed" };
   }
 
-  const paths = buildPlanPaths(projectPath, slug)
+  const paths = buildPlanPaths(projectPath, slug);
 
   // Check if plan exists
-  const planExists = await checkPlanExists(paths.sourcePath)
+  const planExists = await checkPlanExists(paths.sourcePath);
   if (!planExists) {
-    return { success: false, error: `Plan not found: ${slug}` }
+    return { success: false, error: `Plan not found: ${slug}` };
   }
 
   // Read plan and validate tasks
-  const validationError = await validatePlanTasks(paths.sourcePath, slug)
+  const validationError = await validatePlanTasks(paths.sourcePath, slug);
   if (validationError) {
-    return { success: false, error: validationError }
+    return { success: false, error: validationError };
   }
 
   // Update frontmatter status
-  const updateError = await updateBlueprintStatus(paths.sourcePath)
+  const updateError = await updateBlueprintStatus(paths.sourcePath);
   if (updateError) {
-    return { success: false, error: updateError }
+    return { success: false, error: updateError };
   }
 
-  return { success: true, newPath: paths.targetDir }
+  return { success: true, newPath: paths.targetDir };
 }
 
 /**
  * Path information for archival operations.
  */
 interface PlanPaths {
-  sourcePath: string
-  sourceDir: string
-  targetDir: string
-  planName: string
+  sourcePath: string;
+  sourceDir: string;
+  targetDir: string;
+  planName: string;
 }
 
 /**
@@ -189,12 +189,12 @@ interface PlanPaths {
  * @returns Path information
  */
 function buildPlanPaths(projectPath: string, slug: string): PlanPaths {
-  const plansDir = resolveBlueprintRoot(projectPath)
-  const sourcePath = path.join(plansDir, slug, '_overview.md')
-  const sourceDir = path.dirname(sourcePath)
-  const targetDir = sourceDir
+  const plansDir = resolveBlueprintRoot(projectPath);
+  const sourcePath = path.join(plansDir, slug, "_overview.md");
+  const sourceDir = path.dirname(sourcePath);
+  const targetDir = sourceDir;
 
-  return { sourcePath, sourceDir, targetDir, planName: slug }
+  return { sourcePath, sourceDir, targetDir, planName: slug };
 }
 
 /**
@@ -210,7 +210,7 @@ function buildPlanPaths(projectPath: string, slug: string): PlanPaths {
  * @returns True if already completed
  */
 function isAlreadyCompleted(slug: string): boolean {
-  return slug.startsWith('completed/')
+  return slug.startsWith("completed/");
 }
 
 /**
@@ -221,10 +221,10 @@ function isAlreadyCompleted(slug: string): boolean {
  */
 async function checkPlanExists(sourcePath: string): Promise<boolean> {
   try {
-    await access(sourcePath)
-    return true
+    await access(sourcePath);
+    return true;
   } catch {
-    return false
+    return false;
   }
 }
 
@@ -236,15 +236,15 @@ async function checkPlanExists(sourcePath: string): Promise<boolean> {
  * @returns Error message if validation fails, undefined otherwise
  */
 async function validatePlanTasks(sourcePath: string, slug: string): Promise<string | undefined> {
-  const content = await readFile(sourcePath, 'utf-8')
-  const plan = parseBlueprint(content, slug)
+  const content = await readFile(sourcePath, "utf-8");
+  const plan = parseBlueprint(content, slug);
 
-  const result = validateAllTasksDone(plan)
+  const result = validateAllTasksDone(plan);
   if (!result.valid) {
-    return result.message
+    return result.message;
   }
 
-  return undefined
+  return undefined;
 }
 
 /**
@@ -255,11 +255,11 @@ async function validatePlanTasks(sourcePath: string, slug: string): Promise<stri
  */
 async function updateBlueprintStatus(sourcePath: string): Promise<string | undefined> {
   try {
-    const content = await readFile(sourcePath, 'utf-8')
-    const updated = content.replace(/^status:\s*\S+/m, 'status: completed')
-    await writeFile(sourcePath, updated, 'utf-8')
-    return undefined
+    const content = await readFile(sourcePath, "utf-8");
+    const updated = content.replace(/^status:\s*\S+/m, "status: completed");
+    await writeFile(sourcePath, updated, "utf-8");
+    return undefined;
   } catch (error) {
-    return `Failed to update status: ${error instanceof Error ? error.message : String(error)}`
+    return `Failed to update status: ${error instanceof Error ? error.message : String(error)}`;
   }
 }

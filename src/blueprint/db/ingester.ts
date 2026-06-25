@@ -1,30 +1,30 @@
-import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
-import { Database } from '#db/sqlite.js'
+import { Database } from "#db/sqlite.js";
 
-import { parseBlueprintForDb } from './parser/blueprint-db-parser.js'
-import { parseTechDebtForDb } from './parser/tech-debt-db-parser.js'
-import { resolvesCrossRepo } from '#cross-repo/resolver.js'
-import { scanBlueprintDirectory } from '#service/scanner.js'
-import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
-import { parseBlueprintDocumentRelativePath } from '#utils/document-paths.js'
-import { resolveTechDebtRoot } from '#utils/tech-debt-root.js'
-import { glob } from 'glob'
-import type { RunnerEvent } from '#runners/types'
+import { parseBlueprintForDb } from "./parser/blueprint-db-parser.js";
+import { parseTechDebtForDb } from "./parser/tech-debt-db-parser.js";
+import { resolvesCrossRepo } from "#cross-repo/resolver.js";
+import { scanBlueprintDirectory } from "#service/scanner.js";
+import { resolveBlueprintRoot } from "#utils/blueprint-root.js";
+import { parseBlueprintDocumentRelativePath } from "#utils/document-paths.js";
+import { resolveTechDebtRoot } from "#utils/tech-debt-root.js";
+import { glob } from "glob";
+import type { RunnerEvent } from "#runners/types";
 
 export interface IngestOptions {
-  readonly db: Database
-  readonly cwd: string
-  readonly dryRun?: boolean
+  readonly db: Database;
+  readonly cwd: string;
+  readonly dryRun?: boolean;
 }
 
 export interface IngestResult {
-  readonly blueprintsIngested: number
-  readonly techDebtIngested: number
-  readonly durationMs: number
-  readonly errors: string[]
+  readonly blueprintsIngested: number;
+  readonly techDebtIngested: number;
+  readonly durationMs: number;
+  readonly errors: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -32,35 +32,35 @@ export interface IngestResult {
 // ---------------------------------------------------------------------------
 
 function deriveSlugFromBlueprintPath(filePath: string, blueprintRoot: string): string {
-  const relativePath = path.relative(blueprintRoot, filePath)
-  const parsed = parseBlueprintDocumentRelativePath(relativePath)
+  const relativePath = path.relative(blueprintRoot, filePath);
+  const parsed = parseBlueprintDocumentRelativePath(relativePath);
   if (!parsed) {
-    throw new Error(`Not a canonical blueprint document: ${filePath}`)
+    throw new Error(`Not a canonical blueprint document: ${filePath}`);
   }
-  return parsed.slug
+  return parsed.slug;
 }
 
 function deriveSlugFromTechDebtPath(filePath: string): string {
   // tech-debt/<status>/h-NNN-slug.md  →  slug is the basename without extension
-  return path.basename(filePath, '.md')
+  return path.basename(filePath, ".md");
 }
 
 function existingBlueprintHash(db: Database, slug: string): string | null {
   const row = db
     .prepare<[string], { content_hash: string }>(
-      'SELECT content_hash FROM blueprints WHERE slug = ?',
+      "SELECT content_hash FROM blueprints WHERE slug = ?",
     )
-    .get(slug)
-  return row?.content_hash ?? null
+    .get(slug);
+  return row?.content_hash ?? null;
 }
 
 function existingTechDebtHash(db: Database, slug: string): string | null {
   const row = db
     .prepare<[string], { content_hash: string }>(
-      'SELECT content_hash FROM tech_debt_items WHERE slug = ?',
+      "SELECT content_hash FROM tech_debt_items WHERE slug = ?",
     )
-    .get(slug)
-  return row?.content_hash ?? null
+    .get(slug);
+  return row?.content_hash ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -74,10 +74,10 @@ function existingTechDebtHash(db: Database, slug: string): string | null {
 function isAllowedCrossOrg(db: Database, sourceOrg: string, targetOrg: string): boolean {
   const rows = db
     .prepare<[], { source_org: string; permitted_org: string }>(
-      'SELECT source_org, permitted_org FROM correlate_allowlist',
+      "SELECT source_org, permitted_org FROM correlate_allowlist",
     )
-    .all()
-  return resolvesCrossRepo(sourceOrg, targetOrg, rows)
+    .all();
+  return resolvesCrossRepo(sourceOrg, targetOrg, rows);
 }
 
 // ---------------------------------------------------------------------------
@@ -85,20 +85,20 @@ function isAllowedCrossOrg(db: Database, sourceOrg: string, targetOrg: string): 
 // ---------------------------------------------------------------------------
 
 function upsertBlueprint(db: Database, filePath: string, blueprintRoot: string): void {
-  const content = readFileSync(filePath, 'utf8')
-  const slug = deriveSlugFromBlueprintPath(filePath, blueprintRoot)
-  const parsed = parseBlueprintForDb(content, filePath, slug)
+  const content = readFileSync(filePath, "utf8");
+  const slug = deriveSlugFromBlueprintPath(filePath, blueprintRoot);
+  const parsed = parseBlueprintForDb(content, filePath, slug);
 
   // progress_pct: honest done-only roll-up over parsed tasks (single source of
   // truth = the task checkboxes/status, never a hand-entered frontmatter field).
   // `null` when there are no tasks (prose-completed plans, parent-roadmaps) so
   // the "completed but < 100%" audit check skips them rather than flagging 0%.
-  const totalTaskCount = parsed.tasks.length
-  const doneTaskCount = parsed.tasks.filter((task) => task.status === 'done').length
+  const totalTaskCount = parsed.tasks.length;
+  const doneTaskCount = parsed.tasks.filter((task) => task.status === "done").length;
   const progressPct =
-    totalTaskCount === 0 ? null : Math.round((doneTaskCount / totalTaskCount) * 100)
+    totalTaskCount === 0 ? null : Math.round((doneTaskCount / totalTaskCount) * 100);
 
-  const now = Date.now()
+  const now = Date.now();
 
   const upsertBp = db.prepare<
     [
@@ -141,20 +141,20 @@ function upsertBlueprint(db: Database, filePath: string, blueprintRoot: string):
        ingested_at  = excluded.ingested_at,
        organization = excluded.organization,
        visibility   = excluded.visibility`,
-  )
+  );
 
   const deleteRelated = (table: string, col: string): void => {
-    db.prepare(`DELETE FROM ${table} WHERE ${col} = ?`).run(slug)
-  }
+    db.prepare(`DELETE FROM ${table} WHERE ${col} = ?`).run(slug);
+  };
 
-  const insertTag = db.prepare<[string]>('INSERT OR IGNORE INTO tags (slug) VALUES (?)')
+  const insertTag = db.prepare<[string]>("INSERT OR IGNORE INTO tags (slug) VALUES (?)");
   const insertBlueprintTag = db.prepare<[string, string]>(
-    'INSERT OR IGNORE INTO blueprint_tags (blueprint_slug, tag_slug) VALUES (?, ?)',
-  )
+    "INSERT OR IGNORE INTO blueprint_tags (blueprint_slug, tag_slug) VALUES (?, ?)",
+  );
   const insertDep = db.prepare<[string, string, number]>(
     `INSERT OR IGNORE INTO blueprint_dependencies
        (blueprint_slug, depends_on_slug, is_resolved) VALUES (?, ?, ?)`,
-  )
+  );
   const insertCrossRepoDep = db.prepare<
     [string, string, string | null, string | null, string | null, number, number]
   >(
@@ -162,7 +162,7 @@ function upsertBlueprint(db: Database, filePath: string, blueprintRoot: string):
        (blueprint_slug, target_repo, target_slug, target_slug_hash, resolved_status,
         is_cross_org, is_redacted)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-  )
+  );
   const insertTask = db.prepare<
     [
       string,
@@ -180,21 +180,21 @@ function upsertBlueprint(db: Database, filePath: string, blueprintRoot: string):
        (blueprint_slug, task_id, wave, title, status, description,
         steps_tdd, acceptance_json, byte_size)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  )
+  );
   const insertTaskDep = db.prepare<[number, number]>(
-    'INSERT OR IGNORE INTO task_dependencies (task_id, depends_on_task_id) VALUES (?, ?)',
-  )
+    "INSERT OR IGNORE INTO task_dependencies (task_id, depends_on_task_id) VALUES (?, ?)",
+  );
   const insertTaskFile = db.prepare<[number, string, string]>(
-    'INSERT INTO task_files (task_id, file_path, op) VALUES (?, ?, ?)',
-  )
+    "INSERT INTO task_files (task_id, file_path, op) VALUES (?, ?, ?)",
+  );
   const insertRisk = db.prepare<[string, string, string, string, string]>(
     `INSERT INTO risks (blueprint_slug, risk_id, severity, description, mitigation)
      VALUES (?, ?, ?, ?, ?)`,
-  )
+  );
   const insertEdge = db.prepare<[string, string, string, string, string]>(
     `INSERT INTO edge_cases (blueprint_slug, edge_id, severity, description, mitigation)
      VALUES (?, ?, ?, ?, ?)`,
-  )
+  );
 
   db.transaction(() => {
     upsertBp.run(
@@ -214,37 +214,37 @@ function upsertBlueprint(db: Database, filePath: string, blueprintRoot: string):
       now,
       parsed.organization,
       parsed.visibility,
-    )
+    );
 
     // Clear and reinsert all related data
-    deleteRelated('blueprint_tags', 'blueprint_slug')
-    deleteRelated('blueprint_dependencies', 'blueprint_slug')
-    deleteRelated('cross_repo_dependencies', 'blueprint_slug')
-    deleteRelated('tasks', 'blueprint_slug')
-    deleteRelated('risks', 'blueprint_slug')
-    deleteRelated('edge_cases', 'blueprint_slug')
+    deleteRelated("blueprint_tags", "blueprint_slug");
+    deleteRelated("blueprint_dependencies", "blueprint_slug");
+    deleteRelated("cross_repo_dependencies", "blueprint_slug");
+    deleteRelated("tasks", "blueprint_slug");
+    deleteRelated("risks", "blueprint_slug");
+    deleteRelated("edge_cases", "blueprint_slug");
 
     for (const tag of parsed.tags) {
-      insertTag.run(tag)
-      insertBlueprintTag.run(slug, tag)
+      insertTag.run(tag);
+      insertBlueprintTag.run(slug, tag);
     }
 
     for (const depSlug of parsed.dependsOn) {
-      insertDep.run(slug, depSlug, 0)
+      insertDep.run(slug, depSlug, 0);
     }
 
     for (const crossDep of parsed.crossRepoDependsOn) {
-      const targetOrg = crossDep.repo.split('/')[0] ?? 'unknown'
-      const isCrossOrg = targetOrg !== parsed.organization ? 1 : 0
+      const targetOrg = crossDep.repo.split("/")[0] ?? "unknown";
+      const isCrossOrg = targetOrg !== parsed.organization ? 1 : 0;
       const shouldRedact =
-        isCrossOrg === 1 && !isAllowedCrossOrg(db, parsed.organization, targetOrg)
+        isCrossOrg === 1 && !isAllowedCrossOrg(db, parsed.organization, targetOrg);
 
-      let targetSlug: string | null = crossDep.slug
-      let targetSlugHash: string | null = null
+      let targetSlug: string | null = crossDep.slug;
+      let targetSlugHash: string | null = null;
 
       if (shouldRedact && crossDep.slug !== null) {
-        targetSlugHash = createHash('sha256').update(crossDep.slug).digest('hex')
-        targetSlug = null
+        targetSlugHash = createHash("sha256").update(crossDep.slug).digest("hex");
+        targetSlug = null;
       }
 
       insertCrossRepoDep.run(
@@ -255,11 +255,11 @@ function upsertBlueprint(db: Database, filePath: string, blueprintRoot: string):
         crossDep.requireStatus,
         isCrossOrg,
         shouldRedact ? 1 : 0,
-      )
+      );
     }
 
     // Build a task_id → DB row id map for dependency resolution
-    const taskDbIdMap = new Map<string, number>()
+    const taskDbIdMap = new Map<string, number>();
 
     for (const task of parsed.tasks) {
       const info = insertTask.run(
@@ -272,40 +272,40 @@ function upsertBlueprint(db: Database, filePath: string, blueprintRoot: string):
         null, // steps_tdd
         task.acceptanceCriteria.length > 0 ? JSON.stringify(task.acceptanceCriteria) : null,
         null, // byte_size
-      )
-      const rowId = Number(info.lastInsertRowid)
-      taskDbIdMap.set(task.taskId, rowId)
+      );
+      const rowId = Number(info.lastInsertRowid);
+      taskDbIdMap.set(task.taskId, rowId);
 
       for (const f of task.files) {
-        insertTaskFile.run(rowId, f.filePath, f.op)
+        insertTaskFile.run(rowId, f.filePath, f.op);
       }
     }
 
     // Insert task dependencies now that all tasks are stored
     for (const task of parsed.tasks) {
-      const taskRowId = taskDbIdMap.get(task.taskId)
-      if (taskRowId === undefined) continue
+      const taskRowId = taskDbIdMap.get(task.taskId);
+      if (taskRowId === undefined) continue;
       for (const depId of task.dependsOnTaskIds) {
-        const depRowId = taskDbIdMap.get(depId)
-        if (depRowId === undefined) continue
-        insertTaskDep.run(taskRowId, depRowId)
+        const depRowId = taskDbIdMap.get(depId);
+        if (depRowId === undefined) continue;
+        insertTaskDep.run(taskRowId, depRowId);
       }
     }
 
     for (const risk of parsed.risks) {
-      insertRisk.run(slug, risk.riskId, risk.severity, risk.description, risk.mitigation)
+      insertRisk.run(slug, risk.riskId, risk.severity, risk.description, risk.mitigation);
     }
 
     for (const edge of parsed.edgeCases) {
-      insertEdge.run(slug, edge.edgeId, edge.severity, edge.description, edge.mitigation)
+      insertEdge.run(slug, edge.edgeId, edge.severity, edge.description, edge.mitigation);
     }
-  })()
+  })();
 }
 
 function upsertTechDebt(db: Database, filePath: string, _cwd: string): void {
-  const content = readFileSync(filePath, 'utf8')
-  const slug = deriveSlugFromTechDebtPath(filePath)
-  const parsed = parseTechDebtForDb(content, filePath, slug)
+  const content = readFileSync(filePath, "utf8");
+  const slug = deriveSlugFromTechDebtPath(filePath);
+  const parsed = parseTechDebtForDb(content, filePath, slug);
 
   const upsertItem = db.prepare<
     [
@@ -344,14 +344,14 @@ function upsertTechDebt(db: Database, filePath: string, _cwd: string): void {
        content_hash   = excluded.content_hash,
        organization   = excluded.organization,
        visibility     = excluded.visibility`,
-  )
+  );
 
   const deleteLinked = db.prepare<[string]>(
-    'DELETE FROM tech_debt_linked_blueprints WHERE techdebt_slug = ?',
-  )
+    "DELETE FROM tech_debt_linked_blueprints WHERE techdebt_slug = ?",
+  );
   const insertLinked = db.prepare<[string, string]>(
-    'INSERT OR IGNORE INTO tech_debt_linked_blueprints (techdebt_slug, blueprint_slug) VALUES (?, ?)',
-  )
+    "INSERT OR IGNORE INTO tech_debt_linked_blueprints (techdebt_slug, blueprint_slug) VALUES (?, ?)",
+  );
 
   db.transaction(() => {
     upsertItem.run(
@@ -369,13 +369,13 @@ function upsertTechDebt(db: Database, filePath: string, _cwd: string): void {
       parsed.contentHash,
       parsed.organization,
       parsed.visibility,
-    )
+    );
 
-    deleteLinked.run(slug)
+    deleteLinked.run(slug);
     for (const bp of parsed.linkedBlueprints) {
-      insertLinked.run(slug, bp)
+      insertLinked.run(slug, bp);
     }
-  })()
+  })();
 }
 
 // ---------------------------------------------------------------------------
@@ -383,65 +383,65 @@ function upsertTechDebt(db: Database, filePath: string, _cwd: string): void {
 // ---------------------------------------------------------------------------
 
 export async function ingestBlueprints(opts: IngestOptions): Promise<IngestResult> {
-  const { db, cwd, dryRun = false } = opts
-  const start = Date.now()
-  const errors: string[] = []
-  let ingested = 0
+  const { db, cwd, dryRun = false } = opts;
+  const start = Date.now();
+  const errors: string[] = [];
+  let ingested = 0;
 
-  const blueprintRoot = resolveBlueprintRoot(cwd)
+  const blueprintRoot = resolveBlueprintRoot(cwd);
   const files = scanBlueprintDirectory({
     baseDir: blueprintRoot,
     includeSpecialFolders: true,
-  }).map((entry) => entry.path)
-  const filesBySlug = new Map<string, string[]>()
+  }).map((entry) => entry.path);
+  const filesBySlug = new Map<string, string[]>();
 
   for (const filePath of files) {
     try {
-      const slug = deriveSlugFromBlueprintPath(filePath, blueprintRoot)
-      const existing = filesBySlug.get(slug)
+      const slug = deriveSlugFromBlueprintPath(filePath, blueprintRoot);
+      const existing = filesBySlug.get(slug);
       if (existing) {
-        existing.push(filePath)
+        existing.push(filePath);
       } else {
-        filesBySlug.set(slug, [filePath])
+        filesBySlug.set(slug, [filePath]);
       }
     } catch (err) {
-      const msg = `[ingester] Blueprint failed: ${filePath}: ${String(err)}`
-      process.stderr.write(msg + '\n')
-      errors.push(msg)
+      const msg = `[ingester] Blueprint failed: ${filePath}: ${String(err)}`;
+      process.stderr.write(msg + "\n");
+      errors.push(msg);
     }
   }
 
-  const duplicateSlugs = new Set<string>()
+  const duplicateSlugs = new Set<string>();
   for (const [slug, slugFiles] of filesBySlug) {
     if (slugFiles.length <= 1) {
-      continue
+      continue;
     }
 
-    duplicateSlugs.add(slug)
-    const msg = `[ingester] Blueprint failed: duplicate slug "${slug}" appears in multiple blueprint documents: ${slugFiles.join(', ')}`
-    process.stderr.write(msg + '\n')
-    errors.push(msg)
+    duplicateSlugs.add(slug);
+    const msg = `[ingester] Blueprint failed: duplicate slug "${slug}" appears in multiple blueprint documents: ${slugFiles.join(", ")}`;
+    process.stderr.write(msg + "\n");
+    errors.push(msg);
   }
 
   for (const filePath of files) {
     try {
-      const content = readFileSync(filePath, 'utf8')
-      const slug = deriveSlugFromBlueprintPath(filePath, blueprintRoot)
+      const content = readFileSync(filePath, "utf8");
+      const slug = deriveSlugFromBlueprintPath(filePath, blueprintRoot);
       if (duplicateSlugs.has(slug)) {
-        continue
+        continue;
       }
-      const newHash = createHash('sha256').update(content).digest('hex')
+      const newHash = createHash("sha256").update(content).digest("hex");
 
       if (!dryRun) {
-        const existing = existingBlueprintHash(db, slug)
-        if (existing === newHash) continue
-        upsertBlueprint(db, filePath, blueprintRoot)
+        const existing = existingBlueprintHash(db, slug);
+        if (existing === newHash) continue;
+        upsertBlueprint(db, filePath, blueprintRoot);
       }
-      ingested++
+      ingested++;
     } catch (err) {
-      const msg = `[ingester] Blueprint failed: ${filePath}: ${String(err)}`
-      process.stderr.write(msg + '\n')
-      errors.push(msg)
+      const msg = `[ingester] Blueprint failed: ${filePath}: ${String(err)}`;
+      process.stderr.write(msg + "\n");
+      errors.push(msg);
     }
   }
 
@@ -450,35 +450,35 @@ export async function ingestBlueprints(opts: IngestOptions): Promise<IngestResul
     techDebtIngested: 0,
     durationMs: Date.now() - start,
     errors,
-  }
+  };
 }
 
 export async function ingestTechDebt(opts: IngestOptions): Promise<IngestResult> {
-  const { db, cwd, dryRun = false } = opts
-  const start = Date.now()
-  const errors: string[] = []
-  let ingested = 0
+  const { db, cwd, dryRun = false } = opts;
+  const start = Date.now();
+  const errors: string[] = [];
+  let ingested = 0;
 
-  const techDebtRoot = resolveTechDebtRoot(cwd)
-  const pattern = path.join(techDebtRoot, '**', 'h-*.md').replace(/\\/g, '/')
-  const files = await glob(pattern, { absolute: true, nodir: true })
+  const techDebtRoot = resolveTechDebtRoot(cwd);
+  const pattern = path.join(techDebtRoot, "**", "h-*.md").replace(/\\/g, "/");
+  const files = await glob(pattern, { absolute: true, nodir: true });
 
   for (const filePath of files) {
     try {
-      const content = readFileSync(filePath, 'utf8')
-      const slug = deriveSlugFromTechDebtPath(filePath)
-      const newHash = createHash('sha256').update(content).digest('hex')
+      const content = readFileSync(filePath, "utf8");
+      const slug = deriveSlugFromTechDebtPath(filePath);
+      const newHash = createHash("sha256").update(content).digest("hex");
 
       if (!dryRun) {
-        const existing = existingTechDebtHash(db, slug)
-        if (existing === newHash) continue
-        upsertTechDebt(db, filePath, cwd)
+        const existing = existingTechDebtHash(db, slug);
+        if (existing === newHash) continue;
+        upsertTechDebt(db, filePath, cwd);
       }
-      ingested++
+      ingested++;
     } catch (err) {
-      const msg = `[ingester] TechDebt failed: ${filePath}: ${String(err)}`
-      process.stderr.write(msg + '\n')
-      errors.push(msg)
+      const msg = `[ingester] TechDebt failed: ${filePath}: ${String(err)}`;
+      process.stderr.write(msg + "\n");
+      errors.push(msg);
     }
   }
 
@@ -487,18 +487,18 @@ export async function ingestTechDebt(opts: IngestOptions): Promise<IngestResult>
     techDebtIngested: ingested,
     durationMs: Date.now() - start,
     errors,
-  }
+  };
 }
 
 export async function ingestAll(opts: IngestOptions): Promise<IngestResult> {
-  const start = Date.now()
-  const [bp, td] = await Promise.all([ingestBlueprints(opts), ingestTechDebt(opts)])
+  const start = Date.now();
+  const [bp, td] = await Promise.all([ingestBlueprints(opts), ingestTechDebt(opts)]);
   return {
     blueprintsIngested: bp.blueprintsIngested,
     techDebtIngested: td.techDebtIngested,
     durationMs: Date.now() - start,
     errors: [...bp.errors, ...td.errors],
-  }
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -506,51 +506,51 @@ export async function ingestAll(opts: IngestOptions): Promise<IngestResult> {
 // ---------------------------------------------------------------------------
 
 export interface IngestRunnerEventInput {
-  readonly db: Database
-  readonly executionHandle: string
-  readonly sequence: number
-  readonly event: RunnerEvent
-  readonly runnerVersion: string
+  readonly db: Database;
+  readonly executionHandle: string;
+  readonly sequence: number;
+  readonly event: RunnerEvent;
+  readonly runnerVersion: string;
 }
 
 export function ingestRunnerEvent(input: IngestRunnerEventInput): void {
-  const { db, executionHandle, sequence, event, runnerVersion } = input
+  const { db, executionHandle, sequence, event, runnerVersion } = input;
 
-  if (runnerVersion === '') {
-    throw new Error('runnerVersion must not be empty')
+  if (runnerVersion === "") {
+    throw new Error("runnerVersion must not be empty");
   }
 
-  let message: string | null = null
-  let exitCode: number | null = null
-  let filePath: string | null = null
+  let message: string | null = null;
+  let exitCode: number | null = null;
+  let filePath: string | null = null;
 
   switch (event.type) {
-    case 'progress':
-      message = event.message
-      break
-    case 'stdout':
-    case 'stderr':
-      message = event.line
-      break
-    case 'completed':
-      exitCode = event.exitCode
-      break
-    case 'failed':
-      exitCode = 0
-      message = event.error
-      break
-    case 'artifact':
-      filePath = event.path
-      break
-    case 'started':
-    case 'cancelled':
+    case "progress":
+      message = event.message;
+      break;
+    case "stdout":
+    case "stderr":
+      message = event.line;
+      break;
+    case "completed":
+      exitCode = event.exitCode;
+      break;
+    case "failed":
+      exitCode = 0;
+      message = event.error;
+      break;
+    case "artifact":
+      filePath = event.path;
+      break;
+    case "started":
+    case "cancelled":
       // no extra columns
-      break
+      break;
   }
 
   db.prepare<[string, number, string, string, string | null, number | null, string | null]>(
     `INSERT INTO runner_events
        (execution_handle, sequence, kind, ts, message, exit_code, file_path)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-  ).run(executionHandle, sequence, event.type, event.ts, message, exitCode, filePath)
+  ).run(executionHandle, sequence, event.type, event.ts, message, exitCode, filePath);
 }

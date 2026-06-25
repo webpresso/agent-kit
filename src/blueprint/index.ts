@@ -6,8 +6,8 @@
  */
 
 // Core parsing and types
-export type { AcceptanceCriteria, Blueprint, Phase, Task, TaskStatusValue } from './core/parser.js'
-export { parseBlueprint, serializeBlueprint } from './core/parser.js'
+export type { AcceptanceCriteria, Blueprint, Phase, Task, TaskStatusValue } from "./core/parser.js";
+export { parseBlueprint, serializeBlueprint } from "./core/parser.js";
 
 // Schema validation
 export {
@@ -20,23 +20,23 @@ export {
   planFrontmatterSchema,
   planStatusSchema,
   taskStatusSchema,
-} from './core/schema.js'
+} from "./core/schema.js";
 
 // Core types
-export type { CriteriaResult, ValidationResult } from './core/types.js'
+export type { CriteriaResult, ValidationResult } from "./core/types.js";
 // Validation (pure functions)
-export { checkAcceptanceCriteria } from './core/validation/criteria.js'
-export { checkChangelog, validatePlanLinks } from './core/validation/links.js'
-export { validateEmbeddedPhases } from './core/validation/phases.js'
-export { validatePlanState } from './core/validation/state.js'
-export { validatePlanTemplate } from './core/validation/template.js'
+export { checkAcceptanceCriteria } from "./core/validation/criteria.js";
+export { checkChangelog, validatePlanLinks } from "./core/validation/links.js";
+export { validateEmbeddedPhases } from "./core/validation/phases.js";
+export { validatePlanState } from "./core/validation/state.js";
+export { validatePlanTemplate } from "./core/validation/template.js";
 export {
   type BlueprintDiff,
   type DiffChange,
   type DiffFieldChange,
   formatDiffForDisplay,
   generateBlueprintDiff,
-} from './history/diff.js'
+} from "./history/diff.js";
 // Markdown helpers (pure functions)
 export {
   checkAllCheckboxes,
@@ -45,13 +45,13 @@ export {
   extractTaskSection,
   updateBlockedReason,
   updateTaskStatus,
-} from './markdown/helpers.js'
+} from "./markdown/helpers.js";
 export {
   applyBlueprintLifecycle,
   type BlueprintLifecycleIntent,
   type BlueprintLifecycleResult,
   type LifecycleTaskStatus,
-} from './lifecycle/engine.js'
+} from "./lifecycle/engine.js";
 // Query types
 export type {
   BlueprintQueryFilters,
@@ -63,9 +63,9 @@ export type {
   Complexity,
   SortDirection,
   TaskStatus,
-} from './query/types.js'
-export { isBlueprintStatus, isComplexity, isTaskStatus } from './query/types.js'
-export { BlueprintNotFoundError } from './utils/errors.js'
+} from "./query/types.js";
+export { isBlueprintStatus, isComplexity, isTaskStatus } from "./query/types.js";
+export { BlueprintNotFoundError } from "./utils/errors.js";
 // Evidence Contract (F10) — pin per-kind evidence rules at zod parse time.
 export {
   canonicalizeEvidence,
@@ -75,7 +75,7 @@ export {
   type EvidenceList,
   evidenceListSchema,
   evidenceSchema,
-} from './evidence.js'
+} from "./evidence.js";
 // Verification block markdown helper (consumed by wp_blueprint_task_verify).
 export {
   applyVerification,
@@ -90,7 +90,7 @@ export {
   type VerificationSuccess,
   writeVerification,
   type WriteVerificationOptions,
-} from './verification.js'
+} from "./verification.js";
 export {
   parseTrustDossier,
   type TrustDossier,
@@ -99,9 +99,9 @@ export {
   type TrustMaterialDecision,
   type TrustPromotionGate,
   type TrustReadinessVerdict,
-} from './trust/dossier.js'
+} from "./trust/dossier.js";
 // Utilities (pure functions)
-export { calculateFreshness, type FreshnessScore } from './utils/freshness.js'
+export { calculateFreshness, type FreshnessScore } from "./utils/freshness.js";
 export {
   type BlueprintDerivedHandoff,
   type BlueprintDerivedHandoffCodexGoal,
@@ -129,19 +129,19 @@ export {
   type RuntimeStateSnapshot,
   runtimeStateStatusSchema,
   type RuntimeStateStatus,
-} from './execution/types.js'
+} from "./execution/types.js";
 export {
   clearBlueprintExecutionArtifacts,
   readBlueprintExecutionArtifacts,
   type BlueprintExecutionArtifacts,
   writeBlueprintExecutionArtifacts,
-} from './execution/artifacts.js'
+} from "./execution/artifacts.js";
 export {
   clearBlueprintExecutionMetadata,
   readBlueprintExecutionMetadata,
   type BlueprintExecutionMetadata,
   writeBlueprintExecutionMetadata,
-} from './execution/metadata.js'
+} from "./execution/metadata.js";
 export {
   buildBlueprintProgressBridgeState,
   blueprintProgressBridgeStateSchema,
@@ -156,19 +156,19 @@ export {
   projectBlueprintLifecycleFromRuntime,
   resolveBlueprintProgressBridgePath,
   sanitizeBlueprintExecutionId,
-} from './execution/progress-bridge.js'
+} from "./execution/progress-bridge.js";
 export {
   applyRuntimeProgressSnapshot,
   runtimeSnapshotPathForExecution,
   type RuntimeProgressBridgeResult,
-} from './execution/progress-bridge.js'
+} from "./execution/progress-bridge.js";
 export {
   buildRoadmapModel,
   type RoadmapLike,
   type RoadmapModel,
   type RoadmapNode,
   type RoadmapRollup,
-} from './roadmap.js'
+} from "./roadmap.js";
 // Context chunk assembler (consumed by wp_blueprint_context, Task 1.3).
 export {
   assembleBlueprintContext,
@@ -180,7 +180,7 @@ export {
   CONTEXT_CHUNK_MAX_BYTES,
   TASK_DEP_CONE_LIMIT,
   VERIFICATION_RECENT_LIMIT,
-} from './context.js'
+} from "./context.js";
 // HEAD-pinned freshness for projection DB (Task 1.3 + F11).
 export {
   type BlueprintProjectLike,
@@ -190,7 +190,7 @@ export {
   readProjectionMetadata,
   recordProjectionMetadata,
   type RecordProjectionMetadataInput,
-} from './freshness.js'
+} from "./freshness.js";
 // NextAction discriminated union (F18).
 export {
   isNextAction,
@@ -198,7 +198,7 @@ export {
   type NextAction,
   type NextActionKind,
   NEXT_ACTION_KINDS,
-} from './next-action.js'
+} from "./next-action.js";
 // Project/worktree resolver (Task 1.2).
 export {
   type BlueprintProjectRef,
@@ -213,7 +213,7 @@ export {
   type ResolveBlueprintProjectsOptions,
   type RootsProvider,
   type RootsResponse,
-} from './projects.js'
+} from "./projects.js";
 // Read-only aggregate helpers across selected projects (Task 3.1).
 export {
   type AggregateBlueprintRowsOptions,
@@ -227,4 +227,4 @@ export {
   type ReadTargetScope,
   readTargetSchema,
   type TaggedRow,
-} from './aggregate.js'
+} from "./aggregate.js";

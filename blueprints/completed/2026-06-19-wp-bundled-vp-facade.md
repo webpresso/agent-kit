@@ -4,9 +4,9 @@ title: "Bundle Vite+ behind the wp package/task facade"
 owner: ozby
 status: completed
 complexity: M
-created: '2026-06-19'
-last_updated: '2026-06-19'
-progress: '100% (completed; verification evidence recorded; PR opened)'
+created: "2026-06-19"
+last_updated: "2026-06-19"
+progress: "100% (completed; verification evidence recorded; PR opened)"
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -28,31 +28,31 @@ The current CLI already exposes `install`, `add`, `remove`, `update`, `exec`, an
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-| -------- | ------ | --------- |
-| Customer surface | `wp` only | Users should not need to install or know Vite+ separately. |
-| Vite+ boundary | Facade dependency, not monolithic embedding | Reuses upstream package-manager/task semantics and avoids reimplementing Vite+. |
-| Version gating | Smoke-test exact Vite+ artifact | Local `vite-plus@0.1.22` has a narrower package-manager command surface than current docs. |
-| Speed | Lazy cached resolver + pass-through where safe | Keep `wp` startup fast and avoid full bootstrap for delegated commands where possible. |
-| Release safety | Tarball/readiness checks required | This touches dependencies, docs, and public CLI behavior. |
+| Decision         | Choice                                         | Rationale                                                                                  |
+| ---------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Customer surface | `wp` only                                      | Users should not need to install or know Vite+ separately.                                 |
+| Vite+ boundary   | Facade dependency, not monolithic embedding    | Reuses upstream package-manager/task semantics and avoids reimplementing Vite+.            |
+| Version gating   | Smoke-test exact Vite+ artifact                | Local `vite-plus@0.1.22` has a narrower package-manager command surface than current docs. |
+| Speed            | Lazy cached resolver + pass-through where safe | Keep `wp` startup fast and avoid full bootstrap for delegated commands where possible.     |
+| Release safety   | Tarball/readiness checks required              | This touches dependencies, docs, and public CLI behavior.                                  |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort |
-| ---- | ----- | ------------ | -------------- | ------ |
-| **Wave 0** | 1.1, 1.2 | None | 2 agents | S |
-| **Wave 1** | 2.1, 2.2 | 1.1, 1.2 | 2 agents | S-M |
-| **Wave 2** | 3.1 | 2.1, 2.2 | 1 agent | S |
-| **Critical path** | 1.1 → 2.1 → 3.1 | — | 3 waves | M |
+| Wave              | Tasks           | Dependencies | Parallelizable | Effort |
+| ----------------- | --------------- | ------------ | -------------- | ------ |
+| **Wave 0**        | 1.1, 1.2        | None         | 2 agents       | S      |
+| **Wave 1**        | 2.1, 2.2        | 1.1, 1.2     | 2 agents       | S-M    |
+| **Wave 2**        | 3.1             | 2.1, 2.2     | 1 agent        | S      |
+| **Critical path** | 1.1 → 2.1 → 3.1 | —            | 3 waves        | M      |
 
 ### Parallel Metrics Snapshot
 
-| Metric | Formula / Meaning | Target | Actual |
-| ------ | ----------------- | ------ | ------ |
-| RW0 | Ready tasks in Wave 0 | ≥ 1 | 2 |
-| CPR | total_tasks / critical_path_length | ≥ 2.5 | 1.67 |
-| DD | dependency_edges / total_tasks | ≤ 2.0 | 0.8 |
-| CP | same-file overlaps per wave | 0 | 0 |
+| Metric | Formula / Meaning                  | Target | Actual |
+| ------ | ---------------------------------- | ------ | ------ |
+| RW0    | Ready tasks in Wave 0              | ≥ 1    | 2      |
+| CPR    | total_tasks / critical_path_length | ≥ 2.5  | 1.67   |
+| DD     | dependency_edges / total_tasks     | ≤ 2.0  | 0.8    |
+| CP     | same-file overlaps per wave        | 0      | 0      |
 
 Refinement delta: this is a small CLI change, so CPR is below the large-plan target by design; execution remains safe as a single-owner implementation.
 
@@ -185,7 +185,6 @@ Run targeted tests and package-surface gates that prove the bundled facade works
 - [x] Typecheck and lint pass or blockers are documented with evidence.
 - [x] Package-surface/public-readiness checks pass or blockers are documented with evidence.
 
-
 ## Verification Evidence
 
 - `vp exec vitest run src/test/command-builder.test.ts src/tool-runtime/resolve-runner.test.ts src/tool-runtime/index.test.ts src/cli/commands/package-manager.test.ts src/cli/cli.test.ts` — passed.
@@ -215,21 +214,21 @@ Run targeted tests and package-surface gates that prove the bundled facade works
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-wp-bundled-vp-facade.md |
+| ID  | Claim                                                          | Evidence                                                     |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------ |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-wp-bundled-vp-facade.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

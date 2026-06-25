@@ -4,10 +4,10 @@ title: "Route Monorepo QA Through agent-kit"
 owner: agent-kit
 status: completed
 complexity: M
-created: '2026-05-06'
-last_updated: '2026-05-06'
-completed_at: '2026-05-06'
-progress: '100% (4 of 4 tasks completed — Monorepo compact-QA adapter implemented and verified)'
+created: "2026-05-06"
+last_updated: "2026-05-06"
+completed_at: "2026-05-06"
+progress: "100% (4 of 4 tasks completed — Monorepo compact-QA adapter implemented and verified)"
 depends_on:
   - compact-qa-output-filters
 tags:
@@ -19,12 +19,12 @@ tags:
 ---
 
 # Route Monorepo QA Through agent-kit
+
 ## Product wedge anchor
 
 - **Stage outcome:** the completed Route Monorepo QA Through agent-kit work remains truthfully represented in the blueprint lifecycle and continues to describe the shipped outcome of this lane.
 - **Consuming surface:** the repo-local agent-kit surfaces and docs touched by this completed lane.
 - **New user-visible capability:** none new in this cleanup pass; the capability shipped already, and this blueprint now stays structurally valid as a completed record.
-
 
 **Goal:** Close the compact-QA caveat for the **Monorepo** by deciding and
 implementing the safest bridge from `webpresso/monorepo` `just qa` to compact
@@ -77,7 +77,7 @@ task runner:
 - `justfile` recipe: `qa *args` builds a target string and invokes
   `bun ./apps/cli-wp/src/internal/workspace-tasks.ts qa`.
 - Full-repo `just qa` runs root checks first through `vp run -w --log grouped
-  qa:root`, then package typecheck and package test stages.
+qa:root`, then package typecheck and package test stages.
 - Scoped package mode:
   - `just qa cli2` becomes `workspace-tasks qa --package cli2`.
   - `just qa --package cli2 config` forwards package filters directly.
@@ -94,13 +94,13 @@ task runner:
 
 Stage mapping:
 
-| Monorepo stage | Current command surface | agent-kit MCP analogue | Fit |
-| --- | --- | --- | --- |
-| Root checks | `vp run -w --log grouped qa:root` | none | Monorepo-only |
-| Typecheck | `buildTypecheckCommand(...)` over VP package filters | `wp_typecheck(packages)` | Partial; package names/filters differ |
-| Test | `buildVpTestCommand(...)` over VP package/file resolution | `wp_test(packages/files)` | Partial; just backend currently maps to `just test`, not Monorepo QA stage logs |
-| Lint | mostly package/root `qa` scripts, not a distinct `just qa` stage | `wp_lint(files)` | Partial; Monorepo root checks/package scripts own policy |
-| QA aggregate | `workspace-tasks qa` + root/typecheck/test stage logs | `wp_qa` MCP composition | Not a drop-in CLI replacement |
+| Monorepo stage | Current command surface                                          | agent-kit MCP analogue    | Fit                                                                             |
+| -------------- | ---------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------- |
+| Root checks    | `vp run -w --log grouped qa:root`                                | none                      | Monorepo-only                                                                   |
+| Typecheck      | `buildTypecheckCommand(...)` over VP package filters             | `wp_typecheck(packages)`  | Partial; package names/filters differ                                           |
+| Test           | `buildVpTestCommand(...)` over VP package/file resolution        | `wp_test(packages/files)` | Partial; just backend currently maps to `just test`, not Monorepo QA stage logs |
+| Lint           | mostly package/root `qa` scripts, not a distinct `just qa` stage | `wp_lint(files)`          | Partial; Monorepo root checks/package scripts own policy                        |
+| QA aggregate   | `workspace-tasks qa` + root/typecheck/test stage logs            | `wp_qa` MCP composition   | Not a drop-in CLI replacement                                                   |
 
 Unsupported or risky for direct `wp_qa` routing:
 
@@ -164,14 +164,14 @@ Ownership boundary:
 
 ## Verification Gates
 
-| Gate | Expected behavior |
-| --- | --- |
-| **G1. Boundary decision** | Blueprint records whether Monorepo uses `wp qa` routing or a Monorepo-side adapter, with reasons. |
-| **G2. Flag preservation** | Existing Monorepo package/file filters still work after routing. |
-| **G3. Compact payload** | Seeded lint/type/test failures produce an LLM-facing compact payload ≤ 2 KB total, unless the chosen adapter documents a different budget. |
-| **G4. Failure preservation** | All seeded failures remain present with file/line signal. |
-| **G5. No rtk clone** | No agent-kit-side rtk filter reimplementation is added. |
-| **G6. Cross-repo docs** | Boundary contract or blueprint notes document which repo owns future changes. |
+| Gate                         | Expected behavior                                                                                                                          |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **G1. Boundary decision**    | Blueprint records whether Monorepo uses `wp qa` routing or a Monorepo-side adapter, with reasons.                                          |
+| **G2. Flag preservation**    | Existing Monorepo package/file filters still work after routing.                                                                           |
+| **G3. Compact payload**      | Seeded lint/type/test failures produce an LLM-facing compact payload ≤ 2 KB total, unless the chosen adapter documents a different budget. |
+| **G4. Failure preservation** | All seeded failures remain present with file/line signal.                                                                                  |
+| **G5. No rtk clone**         | No agent-kit-side rtk filter reimplementation is added.                                                                                    |
+| **G6. Cross-repo docs**      | Boundary contract or blueprint notes document which repo owns future changes.                                                              |
 
 ## Tasks (Blueprint format)
 
@@ -294,12 +294,12 @@ Verify the user-facing Monorepo result.
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort |
-| --- | --- | --- | --- | --- |
-| Wave 0 | 1.1 | None | no | S |
-| Wave 1 | 1.2 | Task 1.1 | no | S |
-| Wave 2 | 2.1 | Task 1.2 | no | M |
-| Wave 3 | 3.1 | Task 2.1 | no | S |
+| Wave   | Tasks | Dependencies | Parallelizable | Effort |
+| ------ | ----- | ------------ | -------------- | ------ |
+| Wave 0 | 1.1   | None         | no             | S      |
+| Wave 1 | 1.2   | Task 1.1     | no             | S      |
+| Wave 2 | 2.1   | Task 1.2     | no             | M      |
+| Wave 3 | 3.1   | Task 2.1     | no             | S      |
 
 Critical path: 1.1 → 1.2 → 2.1 → 3.1.
 
@@ -334,21 +334,21 @@ Monorepo `just qa` can now produce a compact, machine-actionable payload without
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/monorepo-route-qa-through-ak/_overview.md |
+| ID  | Claim                                                          | Evidence                                                             |
+| --- | -------------------------------------------------------------- | -------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/monorepo-route-qa-through-ak/\_overview.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

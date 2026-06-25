@@ -6,10 +6,10 @@
  * (getProjectRoot) so this package has no @webpresso/* runtime dependencies.
  */
 
-import path from 'node:path'
-import { existsSync } from 'node:fs'
+import path from "node:path";
+import { existsSync } from "node:fs";
 
-import { readOwnedPackageVersion } from '#runtime/package-version.js'
+import { readOwnedPackageVersion } from "#runtime/package-version.js";
 
 // ---------------------------------------------------------------------------
 // Project root resolution
@@ -20,28 +20,28 @@ import { readOwnedPackageVersion } from '#runtime/package-version.js'
  * itself resolves correctly when it has no `.webpressorc.json`. Generic
  * consumers hit `package.json` first and never see this fallback.
  */
-const CANONICAL_CONFIG_PATH = 'webpresso/config.yaml'
+const CANONICAL_CONFIG_PATH = "webpresso/config.yaml";
 
 /**
  * Markers used to detect a project root, in priority order; first hit wins.
  */
 export const PROJECT_ROOT_MARKERS = [
-  '.webpressorc.json',
-  'pnpm-workspace.yaml',
-  'package.json',
+  ".webpressorc.json",
+  "pnpm-workspace.yaml",
+  "package.json",
   CANONICAL_CONFIG_PATH,
-] as const
+] as const;
 
 interface GetProjectRootOptions {
   /** Directory to start searching from (default: process.cwd()) */
-  startDir?: string
+  startDir?: string;
 }
 
 function findMarker(rootDir: string): string | null {
   for (const marker of PROJECT_ROOT_MARKERS) {
-    if (existsSync(path.join(rootDir, marker))) return marker
+    if (existsSync(path.join(rootDir, marker))) return marker;
   }
-  return null
+  return null;
 }
 
 /**
@@ -49,26 +49,26 @@ function findMarker(rootDir: string): string | null {
  * `PROJECT_ROOT_MARKERS` (priority order). Throws if nothing is found.
  */
 export function findProjectRoot(startDir: string): string {
-  let current = path.resolve(startDir)
+  let current = path.resolve(startDir);
 
   for (;;) {
     if (findMarker(current)) {
-      return current
+      return current;
     }
 
-    const parent = path.dirname(current)
+    const parent = path.dirname(current);
     if (parent === current) {
       throw new Error(
-        `Could not find project root (looked for ${PROJECT_ROOT_MARKERS.join(', ')}). Started from: ${startDir}`,
-      )
+        `Could not find project root (looked for ${PROJECT_ROOT_MARKERS.join(", ")}). Started from: ${startDir}`,
+      );
     }
 
-    current = parent
+    current = parent;
   }
 }
 
 export function getProjectRoot(options?: GetProjectRootOptions): string {
-  return findProjectRoot(options?.startDir ?? process.cwd())
+  return findProjectRoot(options?.startDir ?? process.cwd());
 }
 
 // ---------------------------------------------------------------------------
@@ -83,9 +83,9 @@ export function getProjectRoot(options?: GetProjectRootOptions): string {
  * command. Strip it when it appears immediately after the script path.
  */
 export function normalizeArgv(argv: string[]): string[] {
-  return argv.length >= 3 && argv[2] === '--'
+  return argv.length >= 3 && argv[2] === "--"
     ? [argv[0] as string, argv[1] as string, ...argv.slice(3)]
-    : [...argv]
+    : [...argv];
 }
 
 // ---------------------------------------------------------------------------
@@ -93,36 +93,36 @@ export function normalizeArgv(argv: string[]): string[] {
 // ---------------------------------------------------------------------------
 
 function levenshtein(a: string, b: string): number {
-  if (a === b) return 0
-  if (!a.length) return b.length
-  if (!b.length) return a.length
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
 
-  const rows = a.length + 1
-  const cols = b.length + 1
-  const dp: number[][] = Array.from({ length: rows }, () => Array(cols).fill(0))
+  const rows = a.length + 1;
+  const cols = b.length + 1;
+  const dp: number[][] = Array.from({ length: rows }, () => Array(cols).fill(0));
 
-  for (let i = 0; i < rows; i++) dp[i]![0] = i
-  for (let j = 0; j < cols; j++) dp[0]![j] = j
+  for (let i = 0; i < rows; i++) dp[i]![0] = i;
+  for (let j = 0; j < cols; j++) dp[0]![j] = j;
 
   for (let i = 1; i < rows; i++) {
     for (let j = 1; j < cols; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1
-      dp[i]![j] = Math.min(dp[i - 1]![j]! + 1, dp[i]![j - 1]! + 1, dp[i - 1]![j - 1]! + cost)
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i]![j] = Math.min(dp[i - 1]![j]! + 1, dp[i]![j - 1]! + 1, dp[i - 1]![j - 1]! + cost);
     }
   }
 
-  return dp[a.length]![b.length]!
+  return dp[a.length]![b.length]!;
 }
 
 function findClosestCommand(input: string, commands: readonly string[]): string[] {
   const scored = commands
     .map((cmd) => ({ cmd, distance: levenshtein(input, cmd) }))
     .filter(({ distance, cmd }) => distance <= Math.max(2, Math.floor(cmd.length / 3)))
-    .toSorted((left, right) => left.distance - right.distance)
+    .toSorted((left, right) => left.distance - right.distance);
 
-  if (!scored.length) return []
-  const best = scored[0]!.distance
-  return scored.filter((entry) => entry.distance === best).map((entry) => entry.cmd)
+  if (!scored.length) return [];
+  const best = scored[0]!.distance;
+  return scored.filter((entry) => entry.distance === best).map((entry) => entry.cmd);
 }
 
 /**
@@ -131,22 +131,22 @@ function findClosestCommand(input: string, commands: readonly string[]): string[
 export function formatUnknownCommandError(
   input: string | undefined,
   commands: readonly string[],
-  binName = 'wp',
+  binName = "wp",
 ): string {
-  const actual = input ?? ''
-  const suggestions = findClosestCommand(actual, commands)
+  const actual = input ?? "";
+  const suggestions = findClosestCommand(actual, commands);
 
-  let msg = `Unknown command: ${actual}`
+  let msg = `Unknown command: ${actual}`;
 
   if (suggestions.length === 1) {
-    msg += `\n\nDid you mean: ${binName} ${suggestions[0]}?`
+    msg += `\n\nDid you mean: ${binName} ${suggestions[0]}?`;
   } else if (suggestions.length > 1) {
-    msg += `\n\nDid you mean one of:\n${suggestions.map((s) => `  ${binName} ${s}`).join('\n')}?`
+    msg += `\n\nDid you mean one of:\n${suggestions.map((s) => `  ${binName} ${s}`).join("\n")}?`;
   }
 
-  msg += `\n\nRun ${binName} --help to see available commands.`
+  msg += `\n\nRun ${binName} --help to see available commands.`;
 
-  return msg
+  return msg;
 }
 
 // ---------------------------------------------------------------------------
@@ -163,5 +163,5 @@ export function formatUnknownCommandError(
  * having to know how many `..` segments to append.
  */
 export function readPackageVersion(metaUrl: string): string {
-  return readOwnedPackageVersion(metaUrl)
+  return readOwnedPackageVersion(metaUrl);
 }

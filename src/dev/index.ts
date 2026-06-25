@@ -7,4 +7,4 @@ export {
   loadDevManifest,
   resolveDevServices,
   resolveManifestPath,
-} from './load-manifest.js'
+} from "./load-manifest.js";

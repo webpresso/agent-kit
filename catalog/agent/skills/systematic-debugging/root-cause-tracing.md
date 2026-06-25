@@ -43,7 +43,7 @@ Error: git init failed in <absolute-local-path>/project/packages/core
 **What code directly causes this?**
 
 ```typescript
-await execFileAsync('git', ['init'], { cwd: projectDir })
+await execFileAsync("git", ["init"], { cwd: projectDir });
 ```
 
 ### 3. Ask: What Called This?
@@ -68,8 +68,8 @@ WorktreeManager.createSessionWorktree(projectDir, sessionId)
 **Where did empty string come from?**
 
 ```typescript
-const context = setupCoreTest() // Returns { tempDir: '' }
-Project.create('name', context.tempDir) // Accessed before beforeEach!
+const context = setupCoreTest(); // Returns { tempDir: '' }
+Project.create("name", context.tempDir); // Accessed before beforeEach!
 ```
 
 ## Adding Stack Traces
@@ -79,15 +79,15 @@ When you can't trace manually, add instrumentation:
 ```typescript
 // Before the problematic operation
 async function gitInit(directory: string) {
-  const stack = new Error().stack
-  console.error('DEBUG git init:', {
+  const stack = new Error().stack;
+  console.error("DEBUG git init:", {
     directory,
     cwd: process.cwd(),
     nodeEnv: process.env.NODE_ENV,
     stack,
-  })
+  });
 
-  await execFileAsync('git', ['init'], { cwd: directory })
+  await execFileAsync("git", ["init"], { cwd: directory });
 }
 ```
 

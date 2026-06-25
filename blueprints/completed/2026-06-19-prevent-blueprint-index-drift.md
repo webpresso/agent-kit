@@ -3,19 +3,19 @@ type: blueprint
 title: Prevent stale blueprint index commits and pushes
 owner: ozby
 status: completed
-completed_at: '2026-06-21'
+completed_at: "2026-06-21"
 complexity: S
-created: '2026-06-19'
-last_updated: '2026-06-19'
-progress: '100% (completed; 1/1 tasks done, 0 blocked)'
+created: "2026-06-19"
+last_updated: "2026-06-19"
+progress: "100% (completed; 1/1 tasks done, 0 blocked)"
 depends_on: []
 cross_repo_depends_on: []
 tags:
   - hooks
   - blueprints
   - ci
-worktree_owner_id: ''
-worktree_owner_branch: ''
+worktree_owner_id: ""
+worktree_owner_branch: ""
 ---
 
 # Prevent stale blueprint index commits and pushes
@@ -26,33 +26,33 @@ Prevent branches from committing or pushing blueprint changes while `blueprints/
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort |
-| ---- | ----- | ------------ | -------------- | ------ |
-| **Wave 0** | 1.1 | None | 1 agent | XS |
-| **Critical path** | 1.1 | — | 1 wave | XS |
+| Wave              | Tasks | Dependencies | Parallelizable | Effort |
+| ----------------- | ----- | ------------ | -------------- | ------ |
+| **Wave 0**        | 1.1   | None         | 1 agent        | XS     |
+| **Critical path** | 1.1   | —            | 1 wave         | XS     |
 
 ### Parallel Metrics Snapshot
 
-| Metric | Formula / Meaning | Target | Actual |
-| ------ | ----------------- | ------ | ------ |
-| RW0 | Ready tasks in Wave 0 | ≥ 1 | 1 |
-| CPR | total_tasks / critical_path_length | ≥ 1 | 1.0 |
-| DD | dependency_edges / total_tasks | ≤ 2.0 | 0 |
-| CP | same-file overlaps per wave | 0 | 0 |
+| Metric | Formula / Meaning                  | Target | Actual |
+| ------ | ---------------------------------- | ------ | ------ |
+| RW0    | Ready tasks in Wave 0              | ≥ 1    | 1      |
+| CPR    | total_tasks / critical_path_length | ≥ 1    | 1.0    |
+| DD     | dependency_edges / total_tasks     | ≤ 2.0  | 0      |
+| CP     | same-file overlaps per wave        | 0      | 0      |
 
 ## Findings
 
-| ID | Severity | Claim | Verified Reality | Fix Applied |
-| -- | -------- | ----- | ---------------- | ----------- |
-| F1 | HIGH | Pre-commit/push prevents stale blueprint indexes. | `pre-commit` checked drift only when staged paths matched `blueprints/`; `pre-push` did not run `blueprint-readme-drift`. | Fx1 — run drift audit unconditionally in pre-commit and pre-push. |
-| F2 | MEDIUM | Scaffolded base-kit hook matches repo behavior. | Base-kit template still used the conditional staged-path heuristic. | Fx2 — make scaffolded pre-commit unconditional too. |
+| ID  | Severity | Claim                                             | Verified Reality                                                                                                          | Fix Applied                                                       |
+| --- | -------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| F1  | HIGH     | Pre-commit/push prevents stale blueprint indexes. | `pre-commit` checked drift only when staged paths matched `blueprints/`; `pre-push` did not run `blueprint-readme-drift`. | Fx1 — run drift audit unconditionally in pre-commit and pre-push. |
+| F2  | MEDIUM   | Scaffolded base-kit hook matches repo behavior.   | Base-kit template still used the conditional staged-path heuristic.                                                       | Fx2 — make scaffolded pre-commit unconditional too.               |
 
 ## Risks
 
-| Risk | Severity | Mitigation | Fix |
-| ---- | -------- | ---------- | --- |
-| Hook adds latency to every commit | LOW | `blueprint-readme-drift` is a narrow file/index audit and already runs in CI. | Fx1 |
-| Consumers inherit stale conditional behavior | MEDIUM | Update base-kit template and scaffold test. | Fx2 |
+| Risk                                         | Severity | Mitigation                                                                    | Fix |
+| -------------------------------------------- | -------- | ----------------------------------------------------------------------------- | --- |
+| Hook adds latency to every commit            | LOW      | `blueprint-readme-drift` is a narrow file/index audit and already runs in CI. | Fx1 |
+| Consumers inherit stale conditional behavior | MEDIUM   | Update base-kit template and scaffold test.                                   | Fx2 |
 
 ## Tasks
 
@@ -106,21 +106,21 @@ Run `wp audit blueprint-readme-drift` only when affected blueprint files are pre
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-prevent-blueprint-index-drift.md |
+| ID  | Claim                                                          | Evidence                                                              |
+| --- | -------------------------------------------------------------- | --------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-prevent-blueprint-index-drift.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

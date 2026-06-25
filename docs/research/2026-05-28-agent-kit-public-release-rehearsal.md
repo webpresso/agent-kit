@@ -1,6 +1,6 @@
 ---
 type: research
-last_updated: '2026-05-28'
+last_updated: "2026-05-28"
 ---
 
 # Agent Kit public release rehearsal

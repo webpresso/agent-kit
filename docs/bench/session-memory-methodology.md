@@ -112,12 +112,12 @@ and `not-instrumented` for hook-specific latency axes that were not separately
 measured. `wall_sec` is the cell wall-clock duration and must not be reused as
 hook latency evidence:
 
-| axis | pass condition |
-| --- | --- |
-| `post_tool_capture_latency_ms` | separately instrumented observed average is at or below `750`, otherwise `not-instrumented` |
-| `precompact_snapshot_latency_ms` | separately instrumented observed average is at or below `1000`, otherwise `not-instrumented` |
-| `startup_resume_injection_latency_ms` | separately instrumented observed average is at or below `750`, otherwise `not-instrumented` |
-| `search_quality_recall_at_5` | observed recall@5 is at or above `0.8` |
+| axis                                  | pass condition                                                                               |
+| ------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `post_tool_capture_latency_ms`        | separately instrumented observed average is at or below `750`, otherwise `not-instrumented`  |
+| `precompact_snapshot_latency_ms`      | separately instrumented observed average is at or below `1000`, otherwise `not-instrumented` |
+| `startup_resume_injection_latency_ms` | separately instrumented observed average is at or below `750`, otherwise `not-instrumented`  |
+| `search_quality_recall_at_5`          | observed recall@5 is at or above `0.8`                                                       |
 
 A replacement parity claim should cite focused hook/audit proof plus the live
 `report.md`, pinned manifest hash, workspace mode, scenario id, variant set,
@@ -139,16 +139,16 @@ That is a methodological safeguard, not just an operator convenience.
 `report.json` is the single source of truth (SSOT) for every benchmark run.
 Its schema includes:
 
-| Field | Role |
-| --- | --- |
-| `runId` | Per-run unique identifier: git commit SHA + dirty flag + ISO timestamp. Changes on every run, even for identical code. |
-| `manifestDigest` | Content-addressed digest of the pinned manifest. Used for deduplication: two runs with identical manifests and identical measured results share the same digest. |
-| `gitCommit` | Git commit SHA at time of the run. |
-| `gitDirty` | Boolean — `true` when the working tree had uncommitted changes at run time. A dirty run is directional evidence only, not public proof. |
-| `command` | Exact CLI command used to produce the run, including flags and workspace mode. |
-| `environment` | OS, Node.js version, Bun version, and relevant tool versions captured at run time. |
-| `redactionStatus` | Must be `'clean'` before the card can be used as public evidence. |
-| `metrics` | Array of metric rows, each with `class`, `name`, `threshold`, `observed`, and `status`. |
+| Field             | Role                                                                                                                                                             |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `runId`           | Per-run unique identifier: git commit SHA + dirty flag + ISO timestamp. Changes on every run, even for identical code.                                           |
+| `manifestDigest`  | Content-addressed digest of the pinned manifest. Used for deduplication: two runs with identical manifests and identical measured results share the same digest. |
+| `gitCommit`       | Git commit SHA at time of the run.                                                                                                                               |
+| `gitDirty`        | Boolean — `true` when the working tree had uncommitted changes at run time. A dirty run is directional evidence only, not public proof.                          |
+| `command`         | Exact CLI command used to produce the run, including flags and workspace mode.                                                                                   |
+| `environment`     | OS, Node.js version, Bun version, and relevant tool versions captured at run time.                                                                               |
+| `redactionStatus` | Must be `'clean'` before the card can be used as public evidence.                                                                                                |
+| `metrics`         | Array of metric rows, each with `class`, `name`, `threshold`, `observed`, and `status`.                                                                          |
 
 `report.md` is generated from `report.json`. Do not edit `report.md` directly;
 it will be overwritten on the next run.

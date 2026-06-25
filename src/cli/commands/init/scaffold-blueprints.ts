@@ -3,12 +3,12 @@
  * with `.gitkeep` files and a short README pointing to the relevant templates
  * and skills.
  */
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
-import { resolveBlueprintRoot } from '#utils/blueprint-root'
+import { resolveBlueprintRoot } from "#utils/blueprint-root";
 
-import { type MergeOptions, type MergeResult, writeFileMerged } from './merge.js'
+import { type MergeOptions, type MergeResult, writeFileMerged } from "./merge.js";
 
 /**
  * For scaffolding (first-time setup), `resolveBlueprintRoot` falls back to
@@ -18,23 +18,23 @@ import { type MergeOptions, type MergeResult, writeFileMerged } from './merge.js
  * disk.
  */
 function resolveScaffoldBlueprintsDir(repoRoot: string): string {
-  const resolved = resolveBlueprintRoot(repoRoot)
-  const webpressoBlueprints = join(repoRoot, 'webpresso', 'blueprints')
-  const isWebpressoRepo = existsSync(join(repoRoot, 'webpresso', 'config.yaml'))
+  const resolved = resolveBlueprintRoot(repoRoot);
+  const webpressoBlueprints = join(repoRoot, "webpresso", "blueprints");
+  const isWebpressoRepo = existsSync(join(repoRoot, "webpresso", "config.yaml"));
   if (!isWebpressoRepo && resolved === webpressoBlueprints) {
-    return join(repoRoot, 'blueprints')
+    return join(repoRoot, "blueprints");
   }
-  return resolved
+  return resolved;
 }
 
 export const BLUEPRINT_STATES = [
-  'draft',
-  'planned',
-  'in-progress',
-  'completed',
-  'parked',
-  'archived',
-] as const
+  "draft",
+  "planned",
+  "in-progress",
+  "completed",
+  "parked",
+  "archived",
+] as const;
 
 const BLUEPRINTS_README = `# Blueprints
 
@@ -66,32 +66,32 @@ Each subdirectory represents a lifecycle state:
 - Any state → \`archived\`: when the work is dropped or replaced.
 
 Move files with \`git mv\` so history follows the spec through its lifecycle.
-`
+`;
 
 export interface ScaffoldBlueprintsInput {
-  repoRoot: string
-  options: MergeOptions
+  repoRoot: string;
+  options: MergeOptions;
 }
 
 export function scaffoldBlueprints(input: ScaffoldBlueprintsInput): MergeResult[] {
-  const { repoRoot, options } = input
-  const blueprintsDir = resolveScaffoldBlueprintsDir(repoRoot)
-  const results: MergeResult[] = []
+  const { repoRoot, options } = input;
+  const blueprintsDir = resolveScaffoldBlueprintsDir(repoRoot);
+  const results: MergeResult[] = [];
 
   for (const state of BLUEPRINT_STATES) {
-    const stateDir = join(blueprintsDir, state)
-    const gitkeep = join(stateDir, '.gitkeep')
+    const stateDir = join(blueprintsDir, state);
+    const gitkeep = join(stateDir, ".gitkeep");
     if (!options.dryRun) {
-      if (!existsSync(stateDir)) mkdirSync(stateDir, { recursive: true })
-      if (!existsSync(gitkeep)) writeFileSync(gitkeep, '')
+      if (!existsSync(stateDir)) mkdirSync(stateDir, { recursive: true });
+      if (!existsSync(gitkeep)) writeFileSync(gitkeep, "");
     }
     results.push({
       targetPath: gitkeep,
-      action: existsSync(gitkeep) ? 'identical' : options.dryRun ? 'skipped-dry' : 'created',
-    })
+      action: existsSync(gitkeep) ? "identical" : options.dryRun ? "skipped-dry" : "created",
+    });
   }
 
-  results.push(writeFileMerged(join(blueprintsDir, 'README.md'), BLUEPRINTS_README, options))
+  results.push(writeFileMerged(join(blueprintsDir, "README.md"), BLUEPRINTS_README, options));
 
-  return results
+  return results;
 }

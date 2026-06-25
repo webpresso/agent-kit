@@ -108,7 +108,7 @@ and the plugin will not function from there.
   "source": {
     "source": "github",
     "repo": "webpresso/agent-kit",
-    "ref": "release/v0.2.0"  // <-- a release branch, not "main"
-  }
+    "ref": "release/v0.2.0", // <-- a release branch, not "main"
+  },
 }
 ```

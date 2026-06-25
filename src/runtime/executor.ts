@@ -1,40 +1,40 @@
-import { spawn, spawnSync, type SpawnOptions, type SpawnSyncOptions } from 'node:child_process'
-import path from 'node:path'
+import { spawn, spawnSync, type SpawnOptions, type SpawnSyncOptions } from "node:child_process";
+import path from "node:path";
 
-import { fetchSecretsForConfig } from './secret-managers.js'
-import { isDirectRuntimeProfile, isRuntimeProfile, type RuntimeProfile } from './profiles.js'
-import { readSecretsConfig, type SecretsConfig } from './secrets-config.js'
+import { fetchSecretsForConfig } from "./secret-managers.js";
+import { isDirectRuntimeProfile, isRuntimeProfile, type RuntimeProfile } from "./profiles.js";
+import { readSecretsConfig, type SecretsConfig } from "./secrets-config.js";
 
-export type RuntimeSelector = RuntimeProfile | string
+export type RuntimeSelector = RuntimeProfile | string;
 
 export interface RuntimeEnvCache {
-  readonly values: Map<string, Record<string, string>>
+  readonly values: Map<string, Record<string, string>>;
 }
 
 export interface ResolveRuntimeEnvironmentOptions {
-  readonly cwd?: string
-  readonly profile?: RuntimeSelector
-  readonly environment?: string
-  readonly env?: NodeJS.ProcessEnv
-  readonly cache?: RuntimeEnvCache
+  readonly cwd?: string;
+  readonly profile?: RuntimeSelector;
+  readonly environment?: string;
+  readonly env?: NodeJS.ProcessEnv;
+  readonly cache?: RuntimeEnvCache;
 }
 
 export interface RuntimeSpawnOptions {
-  readonly cwd?: string
-  readonly profile?: RuntimeSelector
-  readonly environment?: string
-  readonly env?: NodeJS.ProcessEnv
-  readonly cache?: RuntimeEnvCache
+  readonly cwd?: string;
+  readonly profile?: RuntimeSelector;
+  readonly environment?: string;
+  readonly env?: NodeJS.ProcessEnv;
+  readonly cache?: RuntimeEnvCache;
 }
 
 export interface RuntimeCommandOptions extends RuntimeSpawnOptions {
-  readonly command: string
-  readonly args?: readonly string[]
-  readonly stdio?: SpawnSyncOptions['stdio']
+  readonly command: string;
+  readonly args?: readonly string[];
+  readonly stdio?: SpawnSyncOptions["stdio"];
 }
 
 export function createRuntimeEnvCache(): RuntimeEnvCache {
-  return { values: new Map() }
+  return { values: new Map() };
 }
 
 export function buildRuntimeProcessEnv(
@@ -42,35 +42,35 @@ export function buildRuntimeProcessEnv(
   baseEnv: NodeJS.ProcessEnv = process.env,
   injectedEnv: Record<string, string> = {},
 ): NodeJS.ProcessEnv {
-  const localBin = path.join(cwd, 'node_modules', '.bin')
-  const currentPath = baseEnv.PATH?.trim()
+  const localBin = path.join(cwd, "node_modules", ".bin");
+  const currentPath = baseEnv.PATH?.trim();
   const nextPath = currentPath
     ? currentPath.split(path.delimiter).includes(localBin)
       ? currentPath
       : `${localBin}${path.delimiter}${currentPath}`
-    : localBin
+    : localBin;
 
   return {
     ...baseEnv,
     ...injectedEnv,
     PATH: nextPath,
-  }
+  };
 }
 
 function normalizeProfileSelector(profile: RuntimeSelector | undefined): string | undefined {
-  const trimmed = profile?.trim()
-  return trimmed && trimmed.length > 0 ? trimmed : undefined
+  const trimmed = profile?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : undefined;
 }
 
 function isCanonicalSecretProfile(
   profile: string | undefined,
-): profile is Exclude<RuntimeProfile, 'none'> {
-  return profile !== undefined && isRuntimeProfile(profile) && profile !== 'none'
+): profile is Exclude<RuntimeProfile, "none"> {
+  return profile !== undefined && isRuntimeProfile(profile) && profile !== "none";
 }
 
 function normalizeEnvironmentSelector(environment: string | undefined): string | undefined {
-  const trimmed = environment?.trim()
-  return trimmed && trimmed.length > 0 ? trimmed : undefined
+  const trimmed = environment?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : undefined;
 }
 
 function resolveConfiguredEnvironmentSelector(
@@ -78,93 +78,93 @@ function resolveConfiguredEnvironmentSelector(
   profile: string | undefined,
   environment: string | undefined,
 ): string | undefined {
-  const explicitEnvironment = normalizeEnvironmentSelector(environment)
+  const explicitEnvironment = normalizeEnvironmentSelector(environment);
   if (explicitEnvironment)
-    return config.profiles?.[explicitEnvironment]?.environment ?? explicitEnvironment
-  if (!profile) return undefined
-  if (isCanonicalSecretProfile(profile)) return undefined
-  return undefined
+    return config.profiles?.[explicitEnvironment]?.environment ?? explicitEnvironment;
+  if (!profile) return undefined;
+  if (isCanonicalSecretProfile(profile)) return undefined;
+  return undefined;
 }
 
 export function resolveRuntimeEnvironment(
   options: ResolveRuntimeEnvironmentOptions = {},
 ): Record<string, string> {
-  const cwd = options.cwd ?? process.cwd()
-  const profile = normalizeProfileSelector(options.profile)
+  const cwd = options.cwd ?? process.cwd();
+  const profile = normalizeProfileSelector(options.profile);
 
   if (isDirectRuntimeProfile(profile)) {
-    return {}
+    return {};
   }
 
-  const config = readSecretsConfig(cwd)
+  const config = readSecretsConfig(cwd);
   if (!config) {
-    if (!profile) return {}
+    if (!profile) return {};
     throw new Error(
-      'No secret profile configured.\nCommit a valid .webpresso/secrets.config.json and run: wp secrets doctor --profile preview --json',
-    )
+      "No secret profile configured.\nCommit a valid .webpresso/secrets.config.json and run: wp secrets doctor --profile preview --json",
+    );
   }
 
-  const cache = options.cache ?? createRuntimeEnvCache()
+  const cache = options.cache ?? createRuntimeEnvCache();
   const environmentSelector = resolveConfiguredEnvironmentSelector(
     config,
     profile,
     options.environment,
-  )
-  const cacheKey = `${cwd}::${config.manager}::${config.projectId}::${environmentSelector ?? '<default>'}`
-  const cached = cache.values.get(cacheKey)
-  if (cached) return { ...cached }
+  );
+  const cacheKey = `${cwd}::${config.manager}::${config.projectId}::${environmentSelector ?? "<default>"}`;
+  const cached = cache.values.get(cacheKey);
+  if (cached) return { ...cached };
 
-  const resolved = fetchSecretsForConfig(config, { cwd, environment: environmentSelector })
-  cache.values.set(cacheKey, resolved)
-  return { ...resolved }
+  const resolved = fetchSecretsForConfig(config, { cwd, environment: environmentSelector });
+  cache.values.set(cacheKey, resolved);
+  return { ...resolved };
 }
 
 export function buildRuntimeSpawnOptions(options: RuntimeSpawnOptions = {}): {
-  cwd: string
-  env: NodeJS.ProcessEnv
-  cache: RuntimeEnvCache
+  cwd: string;
+  env: NodeJS.ProcessEnv;
+  cache: RuntimeEnvCache;
 } {
-  const cwd = options.cwd ?? process.cwd()
-  const cache = options.cache ?? createRuntimeEnvCache()
+  const cwd = options.cwd ?? process.cwd();
+  const cache = options.cache ?? createRuntimeEnvCache();
   const resolvedEnv = resolveRuntimeEnvironment({
     cwd,
     profile: options.profile,
     environment: options.environment,
     env: options.env,
     cache,
-  })
+  });
 
   return {
     cwd,
     env: buildRuntimeProcessEnv(cwd, options.env ?? process.env, resolvedEnv),
     cache,
-  }
+  };
 }
 
 export function spawnRuntimeCommandSync(
   options: RuntimeCommandOptions,
 ): ReturnType<typeof spawnSync> {
-  const prepared = buildRuntimeSpawnOptions(options)
+  const prepared = buildRuntimeSpawnOptions(options);
   return spawnSync(options.command, [...(options.args ?? [])], {
     cwd: prepared.cwd,
     env: prepared.env,
-    stdio: options.stdio ?? 'inherit',
+    stdio: options.stdio ?? "inherit",
     shell: false,
-  })
+  });
 }
 
 export function spawnRuntimeCommand(
   command: string,
   args: readonly string[] = [],
-  options: RuntimeSpawnOptions & Pick<SpawnOptions, 'stdio' | 'signal'> = {},
+  options: RuntimeSpawnOptions & Pick<SpawnOptions, "stdio" | "signal"> = {},
 ) {
-  const prepared = buildRuntimeSpawnOptions(options)
+  const prepared = buildRuntimeSpawnOptions(options);
   return spawn(command, [...args], {
     cwd: prepared.cwd,
     env: prepared.env,
-    stdio: options.stdio ?? 'inherit',
+    stdio: options.stdio ?? "inherit",
     signal: options.signal,
-    detached: process.platform !== 'win32',
+    detached: process.platform !== "win32",
     shell: false,
-  })
+  });
 }

@@ -18,16 +18,16 @@
 export function createAuthenticatedRequest(
   path: string,
   options: RequestInit = {},
-  baseUrl = 'https://api.test',
+  baseUrl = "https://api.test",
 ): Request {
-  const { headers: optionHeaders, ...restOptions } = options
+  const { headers: optionHeaders, ...restOptions } = options;
   return new Request(`${baseUrl}${path}`, {
     ...restOptions,
     headers: {
-      Cookie: 'session=mock-session-token',
+      Cookie: "session=mock-session-token",
       ...optionHeaders,
     },
-  })
+  });
 }
 
 /**
@@ -46,14 +46,14 @@ export function createAuthenticatedRequest(
 export function createUnauthenticatedRequest(
   path: string,
   options: RequestInit = {},
-  baseUrl = 'https://api.test',
+  baseUrl = "https://api.test",
 ): Request {
   return new Request(`${baseUrl}${path}`, {
     headers: {
       ...options.headers,
     },
     ...options,
-  })
+  });
 }
 
 /**
@@ -74,7 +74,7 @@ export function createCorsRequest(
   path: string,
   origin: string,
   options: RequestInit = {},
-  baseUrl = 'https://api.test',
+  baseUrl = "https://api.test",
 ): Request {
   return new Request(`${baseUrl}${path}`, {
     headers: {
@@ -82,5 +82,5 @@ export function createCorsRequest(
       ...options.headers,
     },
     ...options,
-  })
+  });
 }

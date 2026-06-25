@@ -7,9 +7,9 @@ preferWorkspacePackages: true
 cleanupUnusedCatalogs: true
 
 catalog:
-  '@vitejs/plugin-react': ^6.0.2
-  '@arethetypeswrong/cli': ^0.18.3
-  '@types/node': ^25.9.1
+  "@vitejs/plugin-react": ^6.0.2
+  "@arethetypeswrong/cli": ^0.18.3
+  "@types/node": ^25.9.1
   better-sqlite3: ^12.10.0
   publint: ^0.3.21
   tshy: ^4.1.2
@@ -22,7 +22,7 @@ confirmModulesPurge: false
 verifyDepsBeforeRun: warn
 
 minimumReleaseAgeExclude:
-  - '@webpresso/runtime-format'
+  - "@webpresso/runtime-format"
 
 allowBuilds:
   better-sqlite3: true

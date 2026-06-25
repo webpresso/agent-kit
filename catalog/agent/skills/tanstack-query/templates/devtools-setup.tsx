@@ -1,4 +1,4 @@
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 /**
  * Keep devtools simple and colocated with the shared QueryClientProvider.
@@ -9,5 +9,5 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
  * - did optimistic updates reconcile back to the canonical query key?
  */
 export function QueryDevtools() {
-  return import.meta.env.DEV ? <ReactQueryDevtools initialIsOpen={false} /> : null
+  return import.meta.env.DEV ? <ReactQueryDevtools initialIsOpen={false} /> : null;
 }

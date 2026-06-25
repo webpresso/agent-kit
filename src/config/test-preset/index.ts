@@ -3,4 +3,4 @@ export {
   defineTestPreset,
   type DefineConfigCompatible,
   type TestPresetOptions,
-} from './vitest.js'
+} from "./vitest.js";

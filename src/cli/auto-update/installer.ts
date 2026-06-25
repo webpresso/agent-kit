@@ -23,36 +23,36 @@
  *     from a successful CLI run.
  */
 
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync } from 'node:fs'
-import { spawn } from 'node:child_process'
-import { dirname } from 'node:path'
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { dirname } from "node:path";
 
-import { getSurfacePath } from '#paths/state-root.js'
-import { writeJsonFile } from '#shared-utils/write-json-file.js'
-import { logUpdateError } from './log.js'
+import { getSurfacePath } from "#paths/state-root.js";
+import { writeJsonFile } from "#shared-utils/write-json-file.js";
+import { logUpdateError } from "./log.js";
 
 /**
  * Concurrency-lockout window: a tombstone younger than this is considered
  * active; further `scheduleDeferredInstall` calls become no-ops.
  */
-export const LOCKOUT_MS = 60_000
+export const LOCKOUT_MS = 60_000;
 
 export interface InstallPlan {
-  command: string[]
+  command: string[];
 }
 
 export interface Tombstone {
   autoInstallInProgress: {
-    pid: number
-    ts: number
-  }
+    pid: number;
+    ts: number;
+  };
 }
 
 export interface ScheduleResult {
   /** Did we actually fork the install child? */
-  spawned: boolean
+  spawned: boolean;
   /** When falsy, the human-facing reason for skipping. */
-  reason?: string
+  reason?: string;
 }
 
 /**
@@ -63,47 +63,47 @@ export interface ScheduleResult {
 export function scheduleDeferredInstall(plan: InstallPlan): ScheduleResult {
   try {
     if (plan.command.length === 0) {
-      return { spawned: false, reason: 'empty install command' }
+      return { spawned: false, reason: "empty install command" };
     }
 
-    const configPath = resolveConfigPath()
+    const configPath = resolveConfigPath();
     if (configPath === null) {
-      return { spawned: false, reason: 'state root unavailable' }
+      return { spawned: false, reason: "state root unavailable" };
     }
 
-    const existing = readTombstone(configPath)
+    const existing = readTombstone(configPath);
     if (existing !== null && isTombstoneActive(existing, Date.now())) {
       return {
         spawned: false,
         reason: `recent install in progress (pid=${existing.autoInstallInProgress.pid})`,
-      }
+      };
     }
 
-    const logPath = resolveLogPath()
+    const logPath = resolveLogPath();
     if (logPath === null) {
-      return { spawned: false, reason: 'log path unavailable' }
+      return { spawned: false, reason: "log path unavailable" };
     }
 
-    const tombstone = buildTombstone(process.pid, Date.now())
-    writeTombstone(configPath, tombstone)
+    const tombstone = buildTombstone(process.pid, Date.now());
+    writeTombstone(configPath, tombstone);
 
-    const logFd = openLogForAppend(logPath)
-    const command = plan.command[0] as string // length checked above
-    const args = plan.command.slice(1)
+    const logFd = openLogForAppend(logPath);
+    const command = plan.command[0] as string; // length checked above
+    const args = plan.command.slice(1);
 
     const child = spawn(command, args, {
       detached: true,
-      stdio: ['ignore', logFd, logFd],
+      stdio: ["ignore", logFd, logFd],
       windowsHide: true,
-    })
-    child.unref()
+    });
+    child.unref();
     // Now safe to close our FD — the child has its own duplicates via stdio.
-    closeSync(logFd)
+    closeSync(logFd);
 
-    return { spawned: true }
+    return { spawned: true };
   } catch (err) {
-    logUpdateError(err)
-    return { spawned: false, reason: 'spawn error' }
+    logUpdateError(err);
+    return { spawned: false, reason: "spawn error" };
   }
 }
 
@@ -113,14 +113,14 @@ export function scheduleDeferredInstall(plan: InstallPlan): ScheduleResult {
  */
 export function clearInstallTombstone(): void {
   try {
-    const configPath = resolveConfigPath()
-    if (configPath === null) return
-    if (!existsSync(configPath)) return
-    const current = readTombstone(configPath)
-    if (current === null) return
-    const next: Record<string, unknown> = { ...readRaw(configPath) }
-    delete next.autoInstallInProgress
-    writeJsonFile(configPath, next, { atomic: true, indent: 0, trailingNewline: false })
+    const configPath = resolveConfigPath();
+    if (configPath === null) return;
+    if (!existsSync(configPath)) return;
+    const current = readTombstone(configPath);
+    if (current === null) return;
+    const next: Record<string, unknown> = { ...readRaw(configPath) };
+    delete next.autoInstallInProgress;
+    writeJsonFile(configPath, next, { atomic: true, indent: 0, trailingNewline: false });
   } catch {
     // Best-effort — no caller waits on this.
   }
@@ -131,7 +131,7 @@ export function clearInstallTombstone(): void {
  * Exported for testability.
  */
 export function isTombstoneFresh(tombstone: Tombstone, now: number): boolean {
-  return now - tombstone.autoInstallInProgress.ts < LOCKOUT_MS
+  return now - tombstone.autoInstallInProgress.ts < LOCKOUT_MS;
 }
 
 /**
@@ -152,18 +152,18 @@ export function isTombstoneFresh(tombstone: Tombstone, now: number): boolean {
  * Exported for testability.
  */
 export function isProcessAlive(pid: number): boolean {
-  if (!Number.isInteger(pid) || pid <= 0) return false
+  if (!Number.isInteger(pid) || pid <= 0) return false;
   try {
-    process.kill(pid, 0)
-    return true
+    process.kill(pid, 0);
+    return true;
   } catch (error: unknown) {
-    if (error instanceof Error && 'code' in error) {
-      const code = (error as { code?: unknown }).code
-      if (code === 'ESRCH') return false
-      if (code === 'EPERM') return true
+    if (error instanceof Error && "code" in error) {
+      const code = (error as { code?: unknown }).code;
+      if (code === "ESRCH") return false;
+      if (code === "EPERM") return true;
     }
     // Unknown errno — fail safe to "alive" so the age guard remains in charge.
-    return true
+    return true;
   }
 }
 
@@ -193,65 +193,65 @@ export function isTombstoneActive(
   now: number,
   isAlive: (pid: number) => boolean = isProcessAlive,
 ): boolean {
-  if (!isAlive(tombstone.autoInstallInProgress.pid)) return false
-  return isTombstoneFresh(tombstone, now)
+  if (!isAlive(tombstone.autoInstallInProgress.pid)) return false;
+  return isTombstoneFresh(tombstone, now);
 }
 
 /**
  * Build the canonical tombstone shape. Exported for testability.
  */
 export function buildTombstone(pid: number, ts: number): Tombstone {
-  return { autoInstallInProgress: { pid, ts } }
+  return { autoInstallInProgress: { pid, ts } };
 }
 
 function resolveConfigPath(): string | null {
   try {
-    return getSurfacePath('update-notifier-cache.json', 'user')
+    return getSurfacePath("update-notifier-cache.json", "user");
   } catch {
-    return null
+    return null;
   }
 }
 
 function resolveLogPath(): string | null {
   try {
-    return getSurfacePath('auto-update.log', 'user')
+    return getSurfacePath("auto-update.log", "user");
   } catch {
-    return null
+    return null;
   }
 }
 
 function readRaw(configPath: string): Record<string, unknown> {
-  if (!existsSync(configPath)) return {}
+  if (!existsSync(configPath)) return {};
   try {
-    const text = readFileSync(configPath, 'utf-8')
-    if (text.trim().length === 0) return {}
-    const parsed: unknown = JSON.parse(text)
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
-    return parsed as Record<string, unknown>
+    const text = readFileSync(configPath, "utf-8");
+    if (text.trim().length === 0) return {};
+    const parsed: unknown = JSON.parse(text);
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return parsed as Record<string, unknown>;
   } catch {
-    return {}
+    return {};
   }
 }
 
 function readTombstone(configPath: string): Tombstone | null {
-  const raw = readRaw(configPath)
-  const value = raw.autoInstallInProgress
-  if (value === undefined || value === null || typeof value !== 'object') return null
-  const candidate = value as { pid?: unknown; ts?: unknown }
-  if (typeof candidate.pid !== 'number' || typeof candidate.ts !== 'number') return null
-  return { autoInstallInProgress: { pid: candidate.pid, ts: candidate.ts } }
+  const raw = readRaw(configPath);
+  const value = raw.autoInstallInProgress;
+  if (value === undefined || value === null || typeof value !== "object") return null;
+  const candidate = value as { pid?: unknown; ts?: unknown };
+  if (typeof candidate.pid !== "number" || typeof candidate.ts !== "number") return null;
+  return { autoInstallInProgress: { pid: candidate.pid, ts: candidate.ts } };
 }
 
 function writeTombstone(configPath: string, tombstone: Tombstone): void {
-  const dir = dirname(configPath)
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
-  const merged = { ...readRaw(configPath), ...tombstone }
-  writeJsonFile(configPath, merged, { atomic: true, indent: 0, trailingNewline: false })
+  const dir = dirname(configPath);
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  const merged = { ...readRaw(configPath), ...tombstone };
+  writeJsonFile(configPath, merged, { atomic: true, indent: 0, trailingNewline: false });
 }
 
 function openLogForAppend(logPath: string): number {
-  const dir = dirname(logPath)
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+  const dir = dirname(logPath);
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   // 'a' — create if missing, append, no truncation. Child inherits the offset.
-  return openSync(logPath, 'a')
+  return openSync(logPath, "a");
 }

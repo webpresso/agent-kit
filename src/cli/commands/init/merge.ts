@@ -6,22 +6,22 @@
  * overwrite mode: replace unconditionally. In dry-run: log the would-be change
  * only.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync, readdirSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync, readdirSync } from "node:fs";
+import { dirname, join } from "node:path";
 
-export type MergeAction = 'created' | 'identical' | 'drifted' | 'overwritten' | 'skipped-dry'
-export type MergeOwnership = 'consumer-owned' | 'generated-whole-file'
+export type MergeAction = "created" | "identical" | "drifted" | "overwritten" | "skipped-dry";
+export type MergeOwnership = "consumer-owned" | "generated-whole-file";
 
 export interface MergeOptions {
-  overwrite?: boolean
-  dryRun?: boolean
-  ownership?: MergeOwnership
+  overwrite?: boolean;
+  dryRun?: boolean;
+  ownership?: MergeOwnership;
 }
 
 export interface MergeResult {
-  targetPath: string
-  action: MergeAction
-  note?: string
+  targetPath: string;
+  action: MergeAction;
+  note?: string;
 }
 
 export function writeFileMerged(
@@ -29,30 +29,30 @@ export function writeFileMerged(
   incoming: string,
   opts: MergeOptions = {},
 ): MergeResult {
-  const exists = existsSync(targetPath)
-  const existingContent = exists ? readFileSync(targetPath, 'utf8') : null
+  const exists = existsSync(targetPath);
+  const existingContent = exists ? readFileSync(targetPath, "utf8") : null;
 
   if (!exists) {
-    if (opts.dryRun) return { targetPath, action: 'skipped-dry' }
-    mkdirSync(dirname(targetPath), { recursive: true })
-    writeFileSync(targetPath, incoming)
-    return { targetPath, action: 'created' }
+    if (opts.dryRun) return { targetPath, action: "skipped-dry" };
+    mkdirSync(dirname(targetPath), { recursive: true });
+    writeFileSync(targetPath, incoming);
+    return { targetPath, action: "created" };
   }
 
   if (existingContent === incoming) {
-    return { targetPath, action: 'identical' }
+    return { targetPath, action: "identical" };
   }
 
-  const shouldOverwrite = opts.overwrite === true || opts.ownership === 'generated-whole-file'
+  const shouldOverwrite = opts.overwrite === true || opts.ownership === "generated-whole-file";
 
   if (shouldOverwrite) {
-    if (opts.dryRun) return { targetPath, action: 'skipped-dry' }
-    writeFileSync(targetPath, incoming)
-    return { targetPath, action: 'overwritten' }
+    if (opts.dryRun) return { targetPath, action: "skipped-dry" };
+    writeFileSync(targetPath, incoming);
+    return { targetPath, action: "overwritten" };
   }
 
-  if (opts.dryRun) return { targetPath, action: 'skipped-dry' }
-  return { targetPath, action: 'drifted' }
+  if (opts.dryRun) return { targetPath, action: "skipped-dry" };
+  return { targetPath, action: "drifted" };
 }
 
 /**
@@ -63,8 +63,8 @@ export function copyFileMerged(
   targetPath: string,
   opts: MergeOptions = {},
 ): MergeResult {
-  const incoming = readFileSync(sourcePath, 'utf8')
-  return writeFileMerged(targetPath, incoming, opts)
+  const incoming = readFileSync(sourcePath, "utf8");
+  return writeFileMerged(targetPath, incoming, opts);
 }
 
 /**
@@ -76,27 +76,27 @@ export function copyDirectoryMerged(
   targetDir: string,
   opts: MergeOptions = {},
 ): MergeResult[] {
-  const results: MergeResult[] = []
-  if (!existsSync(sourceDir)) return results
-  const stack: Array<{ src: string; dst: string }> = [{ src: sourceDir, dst: targetDir }]
+  const results: MergeResult[] = [];
+  if (!existsSync(sourceDir)) return results;
+  const stack: Array<{ src: string; dst: string }> = [{ src: sourceDir, dst: targetDir }];
   while (stack.length > 0) {
-    const entry = stack.pop()
-    if (!entry) break
-    const { src, dst } = entry
-    if (!opts.dryRun) mkdirSync(dst, { recursive: true })
-    const items = readdirSync(src)
+    const entry = stack.pop();
+    if (!entry) break;
+    const { src, dst } = entry;
+    if (!opts.dryRun) mkdirSync(dst, { recursive: true });
+    const items = readdirSync(src);
     for (const item of items) {
-      const srcFull = join(src, item)
-      const dstFull = join(dst, item)
-      const st = statSync(srcFull)
+      const srcFull = join(src, item);
+      const dstFull = join(dst, item);
+      const st = statSync(srcFull);
       if (st.isDirectory()) {
-        stack.push({ src: srcFull, dst: dstFull })
+        stack.push({ src: srcFull, dst: dstFull });
       } else if (st.isFile()) {
-        results.push(copyFileMerged(srcFull, dstFull, opts))
+        results.push(copyFileMerged(srcFull, dstFull, opts));
       }
     }
   }
-  return results
+  return results;
 }
 
 /**
@@ -112,24 +112,24 @@ export function patchJsonFile(
   patcher: (existing: Record<string, unknown>) => Record<string, unknown>,
   opts: MergeOptions = {},
 ): MergeResult {
-  const exists = existsSync(targetPath)
+  const exists = existsSync(targetPath);
   const existing: Record<string, unknown> = exists
-    ? (JSON.parse(readFileSync(targetPath, 'utf8')) as Record<string, unknown>)
-    : {}
-  const patched = patcher(existing)
-  const incoming = `${JSON.stringify(patched, null, 2)}\n`
-  const existingContent = exists ? readFileSync(targetPath, 'utf8') : null
+    ? (JSON.parse(readFileSync(targetPath, "utf8")) as Record<string, unknown>)
+    : {};
+  const patched = patcher(existing);
+  const incoming = `${JSON.stringify(patched, null, 2)}\n`;
+  const existingContent = exists ? readFileSync(targetPath, "utf8") : null;
   if (existingContent === incoming) {
-    return { targetPath, action: 'identical' }
+    return { targetPath, action: "identical" };
   }
 
   if (opts.dryRun) {
-    return { targetPath, action: 'skipped-dry' }
+    return { targetPath, action: "skipped-dry" };
   }
 
-  mkdirSync(dirname(targetPath), { recursive: true })
-  writeFileSync(targetPath, incoming)
-  return { targetPath, action: exists ? 'overwritten' : 'created' }
+  mkdirSync(dirname(targetPath), { recursive: true });
+  writeFileSync(targetPath, incoming);
+  return { targetPath, action: exists ? "overwritten" : "created" };
 }
 
 export function summarizeResults(results: readonly MergeResult[]): Record<MergeAction, number> {
@@ -138,8 +138,8 @@ export function summarizeResults(results: readonly MergeResult[]): Record<MergeA
     identical: 0,
     drifted: 0,
     overwritten: 0,
-    'skipped-dry': 0,
-  }
-  for (const r of results) summary[r.action]++
-  return summary
+    "skipped-dry": 0,
+  };
+  for (const r of results) summary[r.action]++;
+  return summary;
 }

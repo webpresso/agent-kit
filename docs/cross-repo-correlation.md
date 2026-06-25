@@ -2,12 +2,12 @@
 type: guide
 title: Cross-Repo Correlation
 description: How webpresso tracks and audits cross-repository blueprint dependencies.
-last_updated: '2026-06-07'
+last_updated: "2026-06-07"
 ---
 
 # Cross-Repo Correlation
 
-Webpresso blueprints can declare dependencies on blueprints in *other* repos via the `cross_repo_depends_on` frontmatter key. This doc explains how those references are stored, validated, and audited.
+Webpresso blueprints can declare dependencies on blueprints in _other_ repos via the `cross_repo_depends_on` frontmatter key. This doc explains how those references are stored, validated, and audited.
 
 ## Parent-roadmaps and cross-repo references
 
@@ -41,8 +41,8 @@ cross_repo_depends_on:
 ```markdown
 ## Cross-Plan References
 
-| Blueprint | Relationship |
-| --- | --- |
+| Blueprint                                                                                                                                                                                                                        | Relationship                               |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
 | [webpresso/agent-kit: 2026-06-02-agent-kit-wp-deploy-orchestrator-toolchain-isolation](https://github.com/webpresso/agent-kit/blob/main/blueprints/completed/2026-06-02-agent-kit-wp-deploy-orchestrator-toolchain-isolation.md) | Upstream managed deploy/toolchain contract |
 ```
 
@@ -71,7 +71,7 @@ Each repo commits a `.agent/correlate.allow.yaml` declaring which orgs it permit
 ```yaml
 # .agent/correlate.allow.yaml
 permits:
-  - trusted-partner   # permit correlations with blueprints in trusted-partner org
+  - trusted-partner # permit correlations with blueprints in trusted-partner org
 ```
 
 Both sides must have the other org in their `permits` list. One-sided entries are denied.
@@ -117,6 +117,7 @@ Cross-org, both-sides     →  RESOLVES
 ```
 
 Allowlist check:
+
 ```
 source permits target  AND  target permits source  →  RESOLVES
 ```
@@ -155,12 +156,14 @@ cross_repo_depends_on:
 To allow this, both repos must add each other:
 
 `webpresso/webpresso/.agent/correlate.allow.yaml`:
+
 ```yaml
 permits:
   - acme-corp
 ```
 
 `acme-corp/product/.agent/correlate.allow.yaml`:
+
 ```yaml
 permits:
   - webpresso
@@ -215,11 +218,11 @@ shipped today**.
 
 ## File reference
 
-| File | Purpose |
-|------|---------|
-| `src/blueprint/cross-repo/resolver.ts` | `resolvesCrossRepo()` — core permission check |
-| `src/blueprint/cross-repo/allowlist.ts` | `loadAllowlist()` — reads `.agent/correlate.allow.yaml` |
-| `src/blueprint/cross-repo/audit.ts` | `auditCrossRepoCorrelation()` + `fixCrossRepoLeak()` |
-| `src/audit/cross-repo-correlation.ts` | Wraps audit into `RepoAuditResult` for the registry |
-| `src/blueprint/db/workspace-config.ts` | `ingestWorkspaceRepos()` — upserts workspace repo metadata |
-| `catalog/agent/correlate.allow.yaml` | Template deployed by `wp setup` |
+| File                                    | Purpose                                                    |
+| --------------------------------------- | ---------------------------------------------------------- |
+| `src/blueprint/cross-repo/resolver.ts`  | `resolvesCrossRepo()` — core permission check              |
+| `src/blueprint/cross-repo/allowlist.ts` | `loadAllowlist()` — reads `.agent/correlate.allow.yaml`    |
+| `src/blueprint/cross-repo/audit.ts`     | `auditCrossRepoCorrelation()` + `fixCrossRepoLeak()`       |
+| `src/audit/cross-repo-correlation.ts`   | Wraps audit into `RepoAuditResult` for the registry        |
+| `src/blueprint/db/workspace-config.ts`  | `ingestWorkspaceRepos()` — upserts workspace repo metadata |
+| `catalog/agent/correlate.allow.yaml`    | Template deployed by `wp setup`                            |

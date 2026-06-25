@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from "zod";
 
 /**
  * Canonical execution backend schema for Blueprint-backed execution.
@@ -8,10 +8,10 @@ import { z } from 'zod'
  *   - src/blueprint/core/schema.ts
  */
 export const executionBackendSchema = z.enum([
-  'omx-team',
-  'omx-pll-interactive',
-  'claude-subagent',
-  'codex-exec',
-  'local-worktree',
-])
-export type BlueprintExecutionBackend = z.infer<typeof executionBackendSchema>
+  "omx-team",
+  "omx-pll-interactive",
+  "claude-subagent",
+  "codex-exec",
+  "local-worktree",
+]);
+export type BlueprintExecutionBackend = z.infer<typeof executionBackendSchema>;

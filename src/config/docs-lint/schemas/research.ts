@@ -1,17 +1,17 @@
-import { z } from 'zod'
+import { z } from "zod";
 
-import { baseFrontmatter, dateString } from './common.js'
+import { baseFrontmatter, dateString } from "./common.js";
 
 /**
  * Frontmatter schema for research documents.
  * Located in docs/research/
  */
 export const researchFrontmatter = baseFrontmatter.extend({
-  type: z.literal('research').optional(),
+  type: z.literal("research").optional(),
 
   /** Research status */
   status: z
-    .enum(['active', 'archived', 'superseded', 'in-progress', 'current', 'draft'])
+    .enum(["active", "archived", "superseded", "in-progress", "current", "draft"])
     .optional(),
 
   /** Date the research was conducted */
@@ -22,6 +22,6 @@ export const researchFrontmatter = baseFrontmatter.extend({
 
   /** Key findings summary */
   findings: z.array(z.string()).optional(),
-})
+});
 
-export type ResearchFrontmatter = z.infer<typeof researchFrontmatter>
+export type ResearchFrontmatter = z.infer<typeof researchFrontmatter>;

@@ -6,11 +6,11 @@
  */
 
 export interface ValidationError {
-  file: string
-  line?: number
-  column?: number
-  severity: 'error' | 'warning'
-  source: 'schema' | 'markdownlint' | 'vale' | 'structure' | 'context-limits' | 'blueprint-format'
-  message: string
-  ruleId?: string
+  file: string;
+  line?: number;
+  column?: number;
+  severity: "error" | "warning";
+  source: "schema" | "markdownlint" | "vale" | "structure" | "context-limits" | "blueprint-format";
+  message: string;
+  ruleId?: string;
 }

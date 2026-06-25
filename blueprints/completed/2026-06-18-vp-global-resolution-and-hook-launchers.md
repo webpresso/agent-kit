@@ -4,9 +4,9 @@ title: Global vp resolution and packaged hook launcher repair
 status: completed
 complexity: M
 owner: agent-kit
-created: '2026-06-18'
-last_updated: '2026-06-19'
-progress: '100%'
+created: "2026-06-18"
+last_updated: "2026-06-19"
+progress: "100%"
 tags:
   - setup
   - update
@@ -48,6 +48,7 @@ and release asset integrity checks remain follow-up scope.
 **Depends:** None
 
 **Files:**
+
 - Add: `src/cli/global-vp.ts`
 - Modify: `src/cli/auto-update/detect-pm.ts`
 - Modify: `src/cli/commands/init/scaffolders/agent-kit-global/index.ts`
@@ -60,6 +61,7 @@ and release asset integrity checks remain follow-up scope.
 **Verify:** Targeted resolver/setup/update tests, build, typecheck, lint.
 
 **Acceptance:**
+
 - [x] Runtime-local and project-local `vp` candidates are skipped.
 - [x] Setup, auto-update, OMX/Codex refresh, and `wp update` use the resolved launch plan.
 
@@ -71,6 +73,7 @@ and release asset integrity checks remain follow-up scope.
 **Depends:** Task 1.1
 
 **Files:**
+
 - Add: `bin/wp-sessionstart-routing.js`
 - Add: `bin/wp-pretool-guard.js`
 - Add: `bin/wp-post-tool.js`
@@ -85,6 +88,7 @@ and release asset integrity checks remain follow-up scope.
 **Verify:** Hook scaffolder smoke tests and package manifest dry-run test.
 
 **Acceptance:**
+
 - [x] Hook launchers are path-stable and do not rely on shell PATH.
 - [x] Internal wrappers are packed but not exposed as public `package.json#bin` entries.
 
@@ -96,6 +100,7 @@ and release asset integrity checks remain follow-up scope.
 **Depends:** Task 1.1, Task 1.2
 
 **Files:**
+
 - Modify: `src/build/package-manifest.test.ts`
 - Modify: targeted setup/update/hook tests
 
@@ -104,6 +109,7 @@ and release asset integrity checks remain follow-up scope.
 **Verify:** Targeted Vitest suite and final PR gates.
 
 **Acceptance:**
+
 - [x] Current `wp gain` output remains covered without source changes.
 - [x] Final verification gates pass.
 
@@ -130,21 +136,21 @@ and release asset integrity checks remain follow-up scope.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-18-vp-global-resolution-and-hook-launchers.md |
+| ID  | Claim                                                          | Evidence                                                                        |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-18-vp-global-resolution-and-hook-launchers.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

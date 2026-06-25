@@ -2,7 +2,7 @@
 type: guide
 title: AI Reliability Contract
 description: Canonical rules for schema-backed, auditable AI tool and workflow surfaces.
-last_updated: '2026-05-27'
+last_updated: "2026-05-27"
 ---
 
 # AI Reliability Contract

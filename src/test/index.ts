@@ -9,14 +9,14 @@ export {
   type SingleCommandConfig,
   type TestCommandOptions,
   type VpRunLogMode,
-} from './command-builder.js'
+} from "./command-builder.js";
 export {
   looksLikeTestFilePath,
   resolveTestTarget,
   type ResolvedTestTarget,
   type TestTargetInput,
   type TestTargetType,
-} from './target-resolver.js'
+} from "./target-resolver.js";
 export {
   TEST_SUITE_VALUES,
   normalizeTestSuiteName,
@@ -24,4 +24,4 @@ export {
   resolveTestSuiteRuns,
   type ResolvedTestSuiteRun,
   type TestSuiteName,
-} from './suite.js'
+} from "./suite.js";

@@ -49,45 +49,45 @@ After migration:
 
 ## Before/after import and config mapping
 
-| Old consumer reference | New consumer reference |
-| --- | --- |
-| `@webpresso/agent-tsconfig/base.json` | `webpresso/tsconfig/base.json` |
-| `@webpresso/agent-tsconfig/cloudflare.json` | `webpresso/tsconfig/cloudflare.json` |
-| `@webpresso/agent-tsconfig/library.json` | `webpresso/tsconfig/library.json` |
+| Old consumer reference                         | New consumer reference                  |
+| ---------------------------------------------- | --------------------------------------- |
+| `@webpresso/agent-tsconfig/base.json`          | `webpresso/tsconfig/base.json`          |
+| `@webpresso/agent-tsconfig/cloudflare.json`    | `webpresso/tsconfig/cloudflare.json`    |
+| `@webpresso/agent-tsconfig/library.json`       | `webpresso/tsconfig/library.json`       |
 | `@webpresso/agent-tsconfig/react-library.json` | `webpresso/tsconfig/react-library.json` |
-| `@webpresso/agent-tsconfig/react-router.json` | `webpresso/tsconfig/react-router.json` |
-| `@webpresso/agent-tsconfig/webpresso.json` | `webpresso/tsconfig/webpresso.json` |
-| `@webpresso/agent-vitest/node` | `webpresso/vitest/node` |
-| `@webpresso/agent-vitest/react` | `webpresso/vitest/react` |
-| `@webpresso/agent-vitest/react-router` | `webpresso/vitest/react-router` |
-| `@webpresso/agent-vitest/workers` | `webpresso/vitest/workers` |
-| `@webpresso/agent-vitest/react-setup` | `webpresso/vitest/react-setup` |
-| `@webpresso/agent-vitest/flakiness-reporter` | `webpresso/vitest/flakiness-reporter` |
-| `@webpresso/agent-stryker` | `webpresso/stryker` |
-| `@webpresso/agent-stryker/webpresso` | `webpresso/stryker/webpresso` |
-| `@webpresso/agent-workers-test` | `webpresso/workers-test` |
+| `@webpresso/agent-tsconfig/react-router.json`  | `webpresso/tsconfig/react-router.json`  |
+| `@webpresso/agent-tsconfig/webpresso.json`     | `webpresso/tsconfig/webpresso.json`     |
+| `@webpresso/agent-vitest/node`                 | `webpresso/vitest/node`                 |
+| `@webpresso/agent-vitest/react`                | `webpresso/vitest/react`                |
+| `@webpresso/agent-vitest/react-router`         | `webpresso/vitest/react-router`         |
+| `@webpresso/agent-vitest/workers`              | `webpresso/vitest/workers`              |
+| `@webpresso/agent-vitest/react-setup`          | `webpresso/vitest/react-setup`          |
+| `@webpresso/agent-vitest/flakiness-reporter`   | `webpresso/vitest/flakiness-reporter`   |
+| `@webpresso/agent-stryker`                     | `webpresso/stryker`                     |
+| `@webpresso/agent-stryker/webpresso`           | `webpresso/stryker/webpresso`           |
+| `@webpresso/agent-workers-test`                | `webpresso/workers-test`                |
 
 Config/source verification: `rg -n "@webpresso/agent-" package.json pnpm-workspace.yaml apps packages infra scripts tsconfig.json -g "!node_modules" -g "!pnpm-lock.yaml"` returned no matches after migration.
 
 ## Baseline gates recorded before migration
 
-| Gate | Command | Baseline status | Evidence |
-| --- | --- | --- | --- |
-| Install/script parser | `pnpm run check-types` before YAML fix | FAIL | pnpm rejected `pnpm-workspace.yaml`: bad indentation at line 34. |
-| Typecheck | `pnpm run check-types` after YAML fix | PASS | exit 0, `vp run check-types`. |
-| Lint | `pnpm run lint` after YAML fix | PASS | exit 0, `vp run lint`. |
-| Tests | `pnpm run test` after YAML fix | PASS | exit 0, `vp run test`. |
+| Gate                  | Command                                | Baseline status | Evidence                                                         |
+| --------------------- | -------------------------------------- | --------------- | ---------------------------------------------------------------- |
+| Install/script parser | `pnpm run check-types` before YAML fix | FAIL            | pnpm rejected `pnpm-workspace.yaml`: bad indentation at line 34. |
+| Typecheck             | `pnpm run check-types` after YAML fix  | PASS            | exit 0, `vp run check-types`.                                    |
+| Lint                  | `pnpm run lint` after YAML fix         | PASS            | exit 0, `vp run lint`.                                           |
+| Tests                 | `pnpm run test` after YAML fix         | PASS            | exit 0, `vp run test`.                                           |
 
 ## Migration gates recorded after migration
 
-| Gate | Command | Migrated status | Evidence |
-| --- | --- | --- | --- |
-| Install | `pnpm install --frozen-lockfile` | PASS | exit 0 after lockfile regeneration. |
-| Typecheck | `pnpm run check-types` | PASS | exit 0. |
-| Lint | `pnpm run lint` | PASS | exit 0. |
-| Tests | `pnpm run test` | PASS | exit 0. |
-| Targeted wrapper test | `pnpm exec vitest run scripts/run-webpresso-cli.test.ts` | PASS | 4 tests passed. |
-| Repo lint smoke | `pnpm run lint:repo` | PASS | oxlint found 0 warnings and 0 errors. |
+| Gate                  | Command                                                  | Migrated status | Evidence                              |
+| --------------------- | -------------------------------------------------------- | --------------- | ------------------------------------- |
+| Install               | `pnpm install --frozen-lockfile`                         | PASS            | exit 0 after lockfile regeneration.   |
+| Typecheck             | `pnpm run check-types`                                   | PASS            | exit 0.                               |
+| Lint                  | `pnpm run lint`                                          | PASS            | exit 0.                               |
+| Tests                 | `pnpm run test`                                          | PASS            | exit 0.                               |
+| Targeted wrapper test | `pnpm exec vitest run scripts/run-webpresso-cli.test.ts` | PASS            | 4 tests passed.                       |
+| Repo lint smoke       | `pnpm run lint:repo`                                     | PASS            | oxlint found 0 warnings and 0 errors. |
 
 ## PR acceptance checklist
 

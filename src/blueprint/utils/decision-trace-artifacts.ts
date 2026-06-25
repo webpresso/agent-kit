@@ -4,41 +4,41 @@
  *
  * Inlined so this package has no external runtime dependencies.
  */
-import { existsSync, mkdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
 
-import { writeJsonFileAtomic } from '#shared-utils/write-json-file.js'
+import { writeJsonFileAtomic } from "#shared-utils/write-json-file.js";
 
 export interface DecisionTraceArtifact {
-  timestamp: string
-  source_kind: string
-  source_id: string
-  trace_type: string
-  subject_kind: string
-  subject_id: string
-  context: Record<string, unknown>
-  decision: string
-  outcome: string
-  evidence: Record<string, unknown>
-  status: string
+  timestamp: string;
+  source_kind: string;
+  source_id: string;
+  trace_type: string;
+  subject_kind: string;
+  subject_id: string;
+  context: Record<string, unknown>;
+  decision: string;
+  outcome: string;
+  evidence: Record<string, unknown>;
+  status: string;
 }
 
 function sanitizeTimestamp(isoTimestamp: string): string {
-  return isoTimestamp.replaceAll(':', '-')
+  return isoTimestamp.replaceAll(":", "-");
 }
 
 export function emitTraceArtifact(projectRoot: string, artifact: DecisionTraceArtifact): string {
-  const traceDir = join(projectRoot, '.webpresso', 'decision-traces')
+  const traceDir = join(projectRoot, ".webpresso", "decision-traces");
   if (!existsSync(traceDir)) {
-    mkdirSync(traceDir, { recursive: true })
+    mkdirSync(traceDir, { recursive: true });
   }
 
-  const filename = `${sanitizeTimestamp(artifact.timestamp)}-${artifact.source_kind}.json`
-  const filePath = join(traceDir, filename)
+  const filename = `${sanitizeTimestamp(artifact.timestamp)}-${artifact.source_kind}.json`;
+  const filePath = join(traceDir, filename);
 
-  writeJsonFileAtomic(filePath, artifact)
+  writeJsonFileAtomic(filePath, artifact);
 
-  return filePath
+  return filePath;
 }
 
 export function generateBlueprintLifecycleTrace(
@@ -48,15 +48,15 @@ export function generateBlueprintLifecycleTrace(
 ): DecisionTraceArtifact {
   return {
     timestamp: new Date().toISOString(),
-    source_kind: 'blueprint_lifecycle',
+    source_kind: "blueprint_lifecycle",
     source_id: `blueprint-${blueprintSlug}-${Date.now()}`,
     trace_type: action,
-    subject_kind: 'blueprint',
+    subject_kind: "blueprint",
     subject_id: blueprintSlug,
     context: details,
     decision: action,
-    outcome: 'success',
+    outcome: "success",
     evidence: {},
-    status: 'success',
-  }
+    status: "success",
+  };
 }

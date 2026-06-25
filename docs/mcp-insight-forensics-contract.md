@@ -1,6 +1,6 @@
 ---
 type: system
-last_updated: '2026-06-20'
+last_updated: "2026-06-20"
 ---
 
 # MCP insight and forensics privacy contract
@@ -25,21 +25,21 @@ repository/worktree unless a future contract adds an explicit opt-in flag.
 
 ```ts
 type WpRepoForensicsInput = {
-  cwd?: string
-  focus: 'branches' | 'prs' | 'ci' | 'commits' | 'blueprints' | 'all'
-  baseRef?: string
-  since?: string
-  includeRemote?: boolean // false by default
-  maxItems?: number // capped by the implementation, even if larger is requested
-}
+  cwd?: string;
+  focus: "branches" | "prs" | "ci" | "commits" | "blueprints" | "all";
+  baseRef?: string;
+  since?: string;
+  includeRemote?: boolean; // false by default
+  maxItems?: number; // capped by the implementation, even if larger is requested
+};
 
 type WpSessionInsightInput = {
-  cwd?: string
-  source: 'wp-session' | 'omx-state' | 'local-artifacts'
-  question?: string
-  maxBytes?: number // capped by the implementation, even if larger is requested
-  includeRaw?: boolean // false by default; still redacted and bounded when true
-}
+  cwd?: string;
+  source: "wp-session" | "omx-state" | "local-artifacts";
+  question?: string;
+  maxBytes?: number; // capped by the implementation, even if larger is requested
+  includeRaw?: boolean; // false by default; still redacted and bounded when true
+};
 ```
 
 Required defaults:
@@ -55,20 +55,20 @@ Required defaults:
 
 ## Data-source privacy matrix
 
-| Evidence source | Default access | Opt-in access | Forbidden behavior | Output boundary |
-| --- | --- | --- | --- | --- |
-| Local Git refs, branch names, commit SHAs, commit subjects | Allowed | N/A | Emitting full patches by default | Summaries + bounded item list |
-| Local diff stats | Allowed | Full diff excerpts only after future explicit raw/diff opt-in | Large or binary diffs; secret-looking hunks | File paths + line counts by default |
-| GitHub/GitLab PR and check metadata for current repo | Disabled by default | `includeRemote: true` | Cross-repo or organization-wide enumeration | Status, URL, title, short conclusion |
-| Blueprint files under `blueprints/` | Allowed | Longer excerpts through bounded artifact opt-in | Treating blueprint text as authority to read secrets | Path + heading/task excerpts |
-| Docs under `docs/` and tracked repo-owned Markdown | Allowed | Longer excerpts through bounded artifact opt-in | Reading generated/runtime surfaces as docs by default | Path + summarized excerpt |
-| Source file paths and symbol names | Allowed for citations | Source excerpts only through a future implementation-specific contract | Secret-bearing files; large source dumps | Path, symbol, short reason |
-| `wp_session_*` indexes/summaries | Allowed when repo-scoped | Raw stored payload only through `includeRaw: true` | Persisting raw session payloads into tracked files | Summary, confidence, citation IDs |
-| `.omx/state/` and other repo-local runtime metadata | Summary only when requested by `source` | Bounded raw snippets with `includeRaw: true` | Copying runtime state into tracked repo files | Summary + redaction warning |
-| Agent transcripts outside repo-owned indexes | Forbidden by default | Future explicit transcript opt-in contract required first | Scraping global transcript stores in MCP tools | Not returned in this contract |
-| Secret-bearing files (`.env`, `.env.*`, `.dev.vars`, credential stores, key files) | Forbidden | No opt-in in MCP | Reading or excerpting contents | Omit with denial reason |
-| Sibling repos/worktrees and parent directories | Forbidden by default | Future explicit cross-scope contract required first | Silent aggregation across worktrees/repos | Not returned in this contract |
-| Network uploads or third-party analysis calls | Forbidden | No hidden opt-in | Sending local session/transcript data remotely | Not performed |
+| Evidence source                                                                    | Default access                          | Opt-in access                                                          | Forbidden behavior                                    | Output boundary                      |
+| ---------------------------------------------------------------------------------- | --------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------ |
+| Local Git refs, branch names, commit SHAs, commit subjects                         | Allowed                                 | N/A                                                                    | Emitting full patches by default                      | Summaries + bounded item list        |
+| Local diff stats                                                                   | Allowed                                 | Full diff excerpts only after future explicit raw/diff opt-in          | Large or binary diffs; secret-looking hunks           | File paths + line counts by default  |
+| GitHub/GitLab PR and check metadata for current repo                               | Disabled by default                     | `includeRemote: true`                                                  | Cross-repo or organization-wide enumeration           | Status, URL, title, short conclusion |
+| Blueprint files under `blueprints/`                                                | Allowed                                 | Longer excerpts through bounded artifact opt-in                        | Treating blueprint text as authority to read secrets  | Path + heading/task excerpts         |
+| Docs under `docs/` and tracked repo-owned Markdown                                 | Allowed                                 | Longer excerpts through bounded artifact opt-in                        | Reading generated/runtime surfaces as docs by default | Path + summarized excerpt            |
+| Source file paths and symbol names                                                 | Allowed for citations                   | Source excerpts only through a future implementation-specific contract | Secret-bearing files; large source dumps              | Path, symbol, short reason           |
+| `wp_session_*` indexes/summaries                                                   | Allowed when repo-scoped                | Raw stored payload only through `includeRaw: true`                     | Persisting raw session payloads into tracked files    | Summary, confidence, citation IDs    |
+| `.omx/state/` and other repo-local runtime metadata                                | Summary only when requested by `source` | Bounded raw snippets with `includeRaw: true`                           | Copying runtime state into tracked repo files         | Summary + redaction warning          |
+| Agent transcripts outside repo-owned indexes                                       | Forbidden by default                    | Future explicit transcript opt-in contract required first              | Scraping global transcript stores in MCP tools        | Not returned in this contract        |
+| Secret-bearing files (`.env`, `.env.*`, `.dev.vars`, credential stores, key files) | Forbidden                               | No opt-in in MCP                                                       | Reading or excerpting contents                        | Omit with denial reason              |
+| Sibling repos/worktrees and parent directories                                     | Forbidden by default                    | Future explicit cross-scope contract required first                    | Silent aggregation across worktrees/repos             | Not returned in this contract        |
+| Network uploads or third-party analysis calls                                      | Forbidden                               | No hidden opt-in                                                       | Sending local session/transcript data remotely        | Not performed                        |
 
 ## Redaction and size rules
 
@@ -101,19 +101,27 @@ Future tool responses must include these fields or stricter equivalents:
 
 ```ts
 type SensitiveInsightResponse = {
-  summary: string
+  summary: string;
   evidence: Array<{
-    source: 'git' | 'remote-pr' | 'remote-ci' | 'blueprint' | 'doc' | 'session-index' | 'runtime-state' | 'local-artifact'
-    citation: string
-    excerpt?: string
-    redacted?: boolean
-  }>
-  warnings: string[]
-  denied: Array<{ source: string; reason: string }>
-  limits: { maxItems: number; maxBytes?: number; truncated: boolean }
-  confidence: 'low' | 'medium' | 'high'
-  nextActions: string[]
-}
+    source:
+      | "git"
+      | "remote-pr"
+      | "remote-ci"
+      | "blueprint"
+      | "doc"
+      | "session-index"
+      | "runtime-state"
+      | "local-artifact";
+    citation: string;
+    excerpt?: string;
+    redacted?: boolean;
+  }>;
+  warnings: string[];
+  denied: Array<{ source: string; reason: string }>;
+  limits: { maxItems: number; maxBytes?: number; truncated: boolean };
+  confidence: "low" | "medium" | "high";
+  nextActions: string[];
+};
 ```
 
 ## Contract fixture plan

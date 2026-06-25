@@ -5,6 +5,7 @@ description: |
   plan challenge, or read-only consultation when the user asks for Codex.
 license: MIT
 ---
+
 # Codex outside voice
 
 Use this skill from Claude or another non-Codex host when the user wants Codex to independently review a diff, challenge a plan, or answer a repo question. Keep Codex read-only by default and treat its answer as external advice until independently verified.

@@ -4,33 +4,33 @@ import {
   useMutation,
   useMutationState,
   useQueryClient,
-} from '@tanstack/react-query'
+} from "@tanstack/react-query";
 
-import { sdk } from '#lib/graphql-client'
+import { sdk } from "#lib/graphql-client";
 
 type UpdateOrganizationInput = {
-  organizationId: string
-  displayName: string
-}
+  organizationId: string;
+  displayName: string;
+};
 
-const updateOrganizationMutationKey = ['organizations', 'update'] as const
+const updateOrganizationMutationKey = ["organizations", "update"] as const;
 
 export const updateOrganizationOptions = () =>
   mutationOptions({
     mutationKey: updateOrganizationMutationKey,
     mutationFn: ({ organizationId, displayName }: UpdateOrganizationInput) =>
       sdk.UpdateOrganization({ organizationId, set: { displayName } }),
-  })
+  });
 
 export function useUpdateOrganization() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     ...updateOrganizationOptions(),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['organizations'] })
+      await queryClient.invalidateQueries({ queryKey: ["organizations"] });
     },
-  })
+  });
 }
 
 /**
@@ -38,15 +38,15 @@ export function useUpdateOrganization() {
  */
 export function OrganizationSaveIndicator() {
   const pendingLabels = useMutationState<string>({
-    filters: { mutationKey: updateOrganizationMutationKey, status: 'pending' },
-    select: (mutation) => mutation.state.variables?.displayName ?? 'Saving…',
-  })
+    filters: { mutationKey: updateOrganizationMutationKey, status: "pending" },
+    select: (mutation) => mutation.state.variables?.displayName ?? "Saving…",
+  });
 
-  const pendingCount = useIsMutating({ mutationKey: updateOrganizationMutationKey })
+  const pendingCount = useIsMutating({ mutationKey: updateOrganizationMutationKey });
 
   if (pendingCount === 0) {
-    return null
+    return null;
   }
 
-  return <div>{pendingLabels.join(', ')}</div>
+  return <div>{pendingLabels.join(", ")}</div>;
 }

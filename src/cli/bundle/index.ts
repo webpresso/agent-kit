@@ -1,34 +1,34 @@
-import { agentCommands } from '#cli/bundle/commands/agent.js'
-import { blueprintCommands } from '#cli/bundle/commands/blueprint.js'
-import type { CliBundle } from '@webpresso/cli-contract'
+import { agentCommands } from "#cli/bundle/commands/agent.js";
+import { blueprintCommands } from "#cli/bundle/commands/blueprint.js";
+import type { CliBundle } from "@webpresso/cli-contract";
 
 import {
   AGENT_COMMAND_INVENTORY,
   type AgentCommandInventoryEntry,
-} from '#cli/bundle/agent-command-inventory.js'
+} from "#cli/bundle/agent-command-inventory.js";
 
 export interface AgentBundleCommandDefinition {
-  readonly id: AgentCommandInventoryEntry['id']
-  readonly namespace: AgentCommandInventoryEntry['namespace']
-  readonly visibility: AgentCommandInventoryEntry['visibility']
-  readonly replacementCommand: AgentCommandInventoryEntry['replacementCommand']
-  readonly legacyAliases: AgentCommandInventoryEntry['legacyAliases']
+  readonly id: AgentCommandInventoryEntry["id"];
+  readonly namespace: AgentCommandInventoryEntry["namespace"];
+  readonly visibility: AgentCommandInventoryEntry["visibility"];
+  readonly replacementCommand: AgentCommandInventoryEntry["replacementCommand"];
+  readonly legacyAliases: AgentCommandInventoryEntry["legacyAliases"];
 }
 
 export interface AgentBundleDefinition {
-  readonly bundleId: 'agent-kit'
-  readonly commandRoot: 'agent'
-  readonly sourcePackage: '@webpresso/agent-kit'
-  readonly intendedHostPackage: '@webpresso/cli-host'
-  readonly commands: readonly AgentBundleCommandDefinition[]
+  readonly bundleId: "agent-kit";
+  readonly commandRoot: "agent";
+  readonly sourcePackage: "@webpresso/agent-kit";
+  readonly intendedHostPackage: "@webpresso/cli-host";
+  readonly commands: readonly AgentBundleCommandDefinition[];
 }
 
 const sharedConfig = {
   apiVersion: 1,
-  distributionProfiles: ['public', 'agent'],
-  hostRange: '^0.2.0',
-  version: '0.2.0',
-} as const
+  distributionProfiles: ["public", "agent"],
+  hostRange: "^0.2.0",
+  version: "0.2.0",
+} as const;
 
 export const agentBundle: CliBundle = {
   commands: agentCommands,
@@ -36,18 +36,18 @@ export const agentBundle: CliBundle = {
     apiVersion: sharedConfig.apiVersion,
     distributionProfiles: sharedConfig.distributionProfiles,
     hostRange: sharedConfig.hostRange,
-    namespaceRoots: ['agent'],
+    namespaceRoots: ["agent"],
   },
   metadata: {
-    description: 'Agent tooling bundle mounted under the public agent root',
-    displayName: 'Agent bundle',
+    description: "Agent tooling bundle mounted under the public agent root",
+    displayName: "Agent bundle",
     profiles: sharedConfig.distributionProfiles,
-    roots: ['agent'],
-    visibility: 'public',
+    roots: ["agent"],
+    visibility: "public",
   },
-  name: 'agent',
+  name: "agent",
   version: sharedConfig.version,
-}
+};
 
 export const blueprintBundle: CliBundle = {
   commands: blueprintCommands,
@@ -55,26 +55,26 @@ export const blueprintBundle: CliBundle = {
     apiVersion: sharedConfig.apiVersion,
     distributionProfiles: sharedConfig.distributionProfiles,
     hostRange: sharedConfig.hostRange,
-    namespaceRoots: ['blueprint'],
+    namespaceRoots: ["blueprint"],
   },
   metadata: {
-    description: 'Blueprint lifecycle bundle mounted under the blueprint root',
-    displayName: 'Blueprint bundle',
+    description: "Blueprint lifecycle bundle mounted under the blueprint root",
+    displayName: "Blueprint bundle",
     profiles: sharedConfig.distributionProfiles,
-    roots: ['blueprint'],
-    visibility: 'public',
+    roots: ["blueprint"],
+    visibility: "public",
   },
-  name: 'blueprint',
+  name: "blueprint",
   version: sharedConfig.version,
-}
+};
 
-export const agentBundles = [blueprintBundle, agentBundle] as const
+export const agentBundles = [blueprintBundle, agentBundle] as const;
 
 export const AGENT_BUNDLE: AgentBundleDefinition = {
-  bundleId: 'agent-kit',
-  commandRoot: 'agent',
-  sourcePackage: '@webpresso/agent-kit',
-  intendedHostPackage: '@webpresso/cli-host',
+  bundleId: "agent-kit",
+  commandRoot: "agent",
+  sourcePackage: "@webpresso/agent-kit",
+  intendedHostPackage: "@webpresso/cli-host",
   commands: AGENT_COMMAND_INVENTORY.map((entry) => ({
     id: entry.id,
     namespace: entry.namespace,
@@ -82,6 +82,6 @@ export const AGENT_BUNDLE: AgentBundleDefinition = {
     replacementCommand: entry.replacementCommand,
     legacyAliases: entry.legacyAliases,
   })),
-}
+};
 
-export default agentBundle
+export default agentBundle;

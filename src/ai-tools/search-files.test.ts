@@ -1,21 +1,21 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from "vitest";
 
-import { searchFilesTool } from './search-files.js'
+import { searchFilesTool } from "./search-files.js";
 
-import type { ToolContext } from './types.js'
+import type { ToolContext } from "./types.js";
 
-describe('searchFilesTool', () => {
+describe("searchFilesTool", () => {
   const context: ToolContext = {
-    projectId: 'project',
-    orgId: 'org',
-    userId: 'user',
-  }
+    projectId: "project",
+    orgId: "org",
+    userId: "user",
+  };
 
-  it('rejects over-length regex patterns before storage search', async () => {
-    const result = await searchFilesTool.execute({ pattern: 'a'.repeat(4097) }, context)
+  it("rejects over-length regex patterns before storage search", async () => {
+    const result = await searchFilesTool.execute({ pattern: "a".repeat(4097) }, context);
 
-    expect(result.success).toBe(false)
-    expect(result.output).toContain('Search pattern is too long')
-    expect(result.error).toContain('4096')
-  })
-})
+    expect(result.success).toBe(false);
+    expect(result.output).toContain("Search pattern is too long");
+    expect(result.error).toContain("4096");
+  });
+});

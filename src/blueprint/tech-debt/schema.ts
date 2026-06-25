@@ -11,7 +11,7 @@
  * Follows the Agentic Context Standard for technical debt tracking.
  */
 
-import { z } from 'zod'
+import { z } from "zod";
 
 /**
  * Valid tech debt status values
@@ -19,43 +19,43 @@ import { z } from 'zod'
  * 'accepted' = acknowledged debt that won't be fixed immediately
  */
 export const techDebtStatusSchema = z.enum([
-  'accepted',
-  'needs-remediation',
-  'monitoring',
-  'resolved',
-])
+  "accepted",
+  "needs-remediation",
+  "monitoring",
+  "resolved",
+]);
 
 /**
  * Valid severity levels
  * Used to compute base priority score
  */
-export const severitySchema = z.enum(['critical', 'high', 'medium', 'low'])
+export const severitySchema = z.enum(["critical", "high", "medium", "low"]);
 
 /**
  * Valid debt categories
  * Categories align with common technical debt types
  */
 export const categorySchema = z.enum([
-  'complexity',
-  'testing',
-  'mutation',
-  'duplication',
-  'dependency',
-  'security',
-  'documentation',
-])
+  "complexity",
+  "testing",
+  "mutation",
+  "duplication",
+  "dependency",
+  "security",
+  "documentation",
+]);
 
 /**
  * Valid review cadence intervals
  * Determines how often debt should be reviewed
  */
-export const reviewCadenceSchema = z.enum(['weekly', 'biweekly', 'monthly', 'quarterly'])
+export const reviewCadenceSchema = z.enum(["weekly", "biweekly", "monthly", "quarterly"]);
 
 /**
  * Branded slug type for type-safe TechDebt identification
  * Ensures slugs are non-empty strings with compile-time type safety
  */
-export const techDebtSlugSchema = z.string().min(1).brand<'TechDebtSlug'>()
+export const techDebtSlugSchema = z.string().min(1).brand<"TechDebtSlug">();
 
 /**
  * Compute next review date based on last review and cadence
@@ -67,7 +67,7 @@ function computeNextReview(
   lastReviewed: string | Date,
   cadence: z.infer<typeof reviewCadenceSchema>,
 ): string {
-  const lastDate = new Date(lastReviewed)
+  const lastDate = new Date(lastReviewed);
 
   // Map cadence to days
   const daysMap = {
@@ -75,15 +75,15 @@ function computeNextReview(
     biweekly: 14,
     monthly: 30,
     quarterly: 90,
-  }
+  };
 
-  const days = daysMap[cadence]
+  const days = daysMap[cadence];
   // Use UTC arithmetic to avoid timezone/DST off-by-one when the input is an ISO date string
   const nextDate = new Date(
     Date.UTC(lastDate.getUTCFullYear(), lastDate.getUTCMonth(), lastDate.getUTCDate() + days),
-  )
+  );
 
-  return nextDate.toISOString().slice(0, 10)
+  return nextDate.toISOString().slice(0, 10);
 }
 
 /**
@@ -96,8 +96,8 @@ function computeBasePriority(severity: z.infer<typeof severitySchema>): number {
     high: 30,
     medium: 20,
     low: 10,
-  }
-  return scoreMap[severity]
+  };
+  return scoreMap[severity];
 }
 
 /**
@@ -122,7 +122,7 @@ function computeBasePriority(severity: z.infer<typeof severitySchema>): number {
  */
 export const techDebtFrontmatterSchema = z
   .object({
-    type: z.literal('tech-debt'),
+    type: z.literal("tech-debt"),
     status: techDebtStatusSchema,
     severity: severitySchema,
     category: categorySchema,
@@ -152,23 +152,23 @@ export const techDebtFrontmatterSchema = z
   .refine(
     (data) => {
       // Critical severity must have weekly cadence for timely attention
-      if (data.severity === 'critical' && data.review_cadence !== 'weekly') {
-        return false
+      if (data.severity === "critical" && data.review_cadence !== "weekly") {
+        return false;
       }
-      return true
+      return true;
     },
     {
-      message: 'Critical severity technical debt must have weekly review cadence',
-      path: ['review_cadence'],
+      message: "Critical severity technical debt must have weekly review cadence",
+      path: ["review_cadence"],
     },
-  )
+  );
 
 /**
  * Infer TypeScript types from schemas
  */
-export type TechDebtFrontmatter = z.infer<typeof techDebtFrontmatterSchema>
-export type TechDebtStatus = z.infer<typeof techDebtStatusSchema>
-export type TechDebtSeverity = z.infer<typeof severitySchema>
-export type TechDebtCategory = z.infer<typeof categorySchema>
-export type ReviewCadence = z.infer<typeof reviewCadenceSchema>
-export type TechDebtSlug = z.infer<typeof techDebtSlugSchema>
+export type TechDebtFrontmatter = z.infer<typeof techDebtFrontmatterSchema>;
+export type TechDebtStatus = z.infer<typeof techDebtStatusSchema>;
+export type TechDebtSeverity = z.infer<typeof severitySchema>;
+export type TechDebtCategory = z.infer<typeof categorySchema>;
+export type ReviewCadence = z.infer<typeof reviewCadenceSchema>;
+export type TechDebtSlug = z.infer<typeof techDebtSlugSchema>;

@@ -1,6 +1,6 @@
 ---
 type: system
-last_updated: '2026-06-11'
+last_updated: "2026-06-11"
 ---
 
 # Architecture: the three-layer model
@@ -112,7 +112,6 @@ issued, the mutation fails before markdown changes and returns a canonical
 workspace config repos, or discovered git worktrees. Mutation tools never
 accept `scope` — they require an explicit `project_id`.
 
-
 ## Public package boundary
 
 Agent Kit is maintained as a standalone public package. Keep the shipped
@@ -164,7 +163,7 @@ Two alternatives fail for specific reasons:
    moment another supported host needs a different file format. The
    TOML transform isn't a symlink; it's a build step. Once one IDE
    needs a transform, you need a canonical source (`.agent/`) to
-   transform *from*.
+   transform _from_.
 
 ## Lifecycle in practice
 

@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-06-13'
+last_updated: "2026-06-13"
 ---
 
 # Symlinker
@@ -148,24 +148,44 @@ Defined in `src/symlinker/consumers.ts`:
 ```typescript
 export const DEFAULT_CONSUMERS: ConsumerConfig[] = [
   // Primary command surfaces are distributed through native channels.
-]
+];
 
 export const DEFAULT_SKILLS_CONSUMERS: SkillsConsumerConfig[] = [
   // Claude skills are delivered by the Claude Code plugin by default.
-]
+];
 
 export const DEFAULT_UNIFIED_CONSUMERS: readonly UnifiedConsumerConfig[] = [
-  { id: 'agent-rules', dir: '.agent/rules', acceptsKind: 'rule', strategy: 'symlink' },
-  { id: 'agent-skills', dir: '.agent/skills', acceptsKind: 'skill', strategy: 'symlink' },
-  { id: 'cursor-rules', dir: '.cursor/rules', acceptsKind: 'rule', strategy: 'copy' },
-  { id: 'claude-rules', dir: '.claude/rules', acceptsKind: 'rule', strategy: 'symlink' },
-  { id: 'opencode-skills', dir: '.opencode/skills', acceptsKind: 'skill', strategy: 'symlink', host: 'opencode' },
-]
+  { id: "agent-rules", dir: ".agent/rules", acceptsKind: "rule", strategy: "symlink" },
+  { id: "agent-skills", dir: ".agent/skills", acceptsKind: "skill", strategy: "symlink" },
+  { id: "cursor-rules", dir: ".cursor/rules", acceptsKind: "rule", strategy: "copy" },
+  { id: "claude-rules", dir: ".claude/rules", acceptsKind: "rule", strategy: "symlink" },
+  {
+    id: "opencode-skills",
+    dir: ".opencode/skills",
+    acceptsKind: "skill",
+    strategy: "symlink",
+    host: "opencode",
+  },
+];
 
 export const PLUGIN_FALLBACK_SKILL_CONSUMERS: readonly UnifiedConsumerConfig[] = [
-  { id: 'claude-skills', dir: '.claude/skills', acceptsKind: 'skill', strategy: 'symlink', host: 'claude', pluginHost: true },
-  { id: 'portable-skills', dir: '.agents/skills', acceptsKind: 'skill', strategy: 'symlink', host: 'codex', pluginHost: true },
-]
+  {
+    id: "claude-skills",
+    dir: ".claude/skills",
+    acceptsKind: "skill",
+    strategy: "symlink",
+    host: "claude",
+    pluginHost: true,
+  },
+  {
+    id: "portable-skills",
+    dir: ".agents/skills",
+    acceptsKind: "skill",
+    strategy: "symlink",
+    host: "codex",
+    pluginHost: true,
+  },
+];
 ```
 
 To add a new consumer (e.g., a future CLI tool), either:
@@ -224,17 +244,17 @@ import {
   DEFAULT_CONSUMERS,
   DEFAULT_SKILLS_CONSUMERS,
   DEFAULT_PER_SKILL_CONSUMERS,
-} from 'webpresso/symlinker'
+} from "webpresso/symlinker";
 
-const fixes = syncAll(repoRoot)
-if (fixes > 0) console.log(`Fixed ${fixes} symlinks`)
+const fixes = syncAll(repoRoot);
+if (fixes > 0) console.log(`Fixed ${fixes} symlinks`);
 
 // Per-skill fanout returns a structured result (replaces the legacy bare-number
 // `syncPerSkillConsumer`/`syncPerSkillConsumers` API; renamed to fix the
 // dangling-symlink class — see CHANGELOG entry "Eliminate the dangling-symlink
 // class in .agents/skills/").
-const result: SyncSkillFanoutResult = syncSkillFanouts(repoRoot)
-console.log(`syncSkillFanouts: wrote ${result.wrote} entries`)
+const result: SyncSkillFanoutResult = syncSkillFanouts(repoRoot);
+console.log(`syncSkillFanouts: wrote ${result.wrote} entries`);
 ```
 
 ## Limitations

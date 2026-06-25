@@ -9,35 +9,35 @@
  * @module webpresso/launch/launch-profile
  */
 
-import type { DatabaseUrlSelector, ProvisionedDatabaseHandle } from './contracts.js'
+import type { DatabaseUrlSelector, ProvisionedDatabaseHandle } from "./contracts.js";
 
 export interface AssembleEffectiveVarsInput {
   /** Starting var bundle. Not mutated; copied internally. */
-  vars: Record<string, string>
+  vars: Record<string, string>;
   /** Optional database handle whose URLs are exported to the launch env. */
-  databaseHandle?: ProvisionedDatabaseHandle
+  databaseHandle?: ProvisionedDatabaseHandle;
   /**
    * Optional selector that maps a handle to runtime/metadata URLs.
    * Defaults to `{ runtimeDatabaseUrl: handle.primaryConnectionUri }`.
    */
-  databaseUrlSelector?: DatabaseUrlSelector
+  databaseUrlSelector?: DatabaseUrlSelector;
   /**
    * Optional pre-assembly hook invoked with the var-copy before any
    * secrets or DB URLs are injected. Use to install defaults like a
    * repo-root env var. Must only mutate the target in place.
    */
-  preAssemble?: (vars: Record<string, string>) => void
+  preAssemble?: (vars: Record<string, string>) => void;
   /**
    * Optional secret injector invoked with the var-copy after the
    * pre-assembly hook but before DB URLs are written. Must only mutate
    * the target in place; throws propagate unmodified.
    */
-  secretInjector?: (vars: Record<string, string>) => void
+  secretInjector?: (vars: Record<string, string>) => void;
 }
 
 const defaultDatabaseUrlSelector: DatabaseUrlSelector = (handle) => ({
   runtimeDatabaseUrl: handle.primaryConnectionUri,
-})
+});
 
 /**
  * Assemble the effective launch environment-variable bundle.
@@ -51,19 +51,19 @@ const defaultDatabaseUrlSelector: DatabaseUrlSelector = (handle) => ({
  *      returned)
  */
 export function assembleEffectiveVars(input: AssembleEffectiveVarsInput): Record<string, string> {
-  const effectiveVars: Record<string, string> = { ...input.vars }
+  const effectiveVars: Record<string, string> = { ...input.vars };
 
-  input.preAssemble?.(effectiveVars)
-  input.secretInjector?.(effectiveVars)
+  input.preAssemble?.(effectiveVars);
+  input.secretInjector?.(effectiveVars);
 
   if (input.databaseHandle) {
-    const selector = input.databaseUrlSelector ?? defaultDatabaseUrlSelector
-    const selected = selector(input.databaseHandle)
-    effectiveVars.DATABASE_URL = selected.runtimeDatabaseUrl
+    const selector = input.databaseUrlSelector ?? defaultDatabaseUrlSelector;
+    const selected = selector(input.databaseHandle);
+    effectiveVars.DATABASE_URL = selected.runtimeDatabaseUrl;
     if (selected.metadataDatabaseUrl) {
-      effectiveVars.HASURA_GRAPHQL_METADATA_DATABASE_URL = selected.metadataDatabaseUrl
+      effectiveVars.HASURA_GRAPHQL_METADATA_DATABASE_URL = selected.metadataDatabaseUrl;
     }
   }
 
-  return effectiveVars
+  return effectiveVars;
 }

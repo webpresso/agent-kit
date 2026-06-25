@@ -1,1 +1,1 @@
-export * from '#cli/global-vp.js'
+export * from "#cli/global-vp.js";

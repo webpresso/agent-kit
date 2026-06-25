@@ -10,22 +10,22 @@
  * Alpha gate: only runs meaningful checks when WP_USE_SQL_AUDITS=1.
  */
 
-import type { RepoAuditResult } from './repo-guardrails.js'
-import { auditCrossRepoCorrelation } from '#cross-repo/audit.js'
+import type { RepoAuditResult } from "./repo-guardrails.js";
+import { auditCrossRepoCorrelation } from "#cross-repo/audit.js";
 
 export async function auditCrossRepoCorrelationAsRepoResult(cwd: string): Promise<RepoAuditResult> {
-  if (!process.env['WP_USE_SQL_AUDITS']) {
+  if (!process.env["WP_USE_SQL_AUDITS"]) {
     return {
       ok: true,
-      title: 'Cross-repo correlation (SQL) — disabled (set WP_USE_SQL_AUDITS=1)',
+      title: "Cross-repo correlation (SQL) — disabled (set WP_USE_SQL_AUDITS=1)",
       checked: 0,
       violations: [],
-    }
+    };
   }
 
-  const result = await auditCrossRepoCorrelation(cwd)
+  const result = await auditCrossRepoCorrelation(cwd);
 
-  const violations: Array<{ file?: string; message: string }> = []
+  const violations: Array<{ file?: string; message: string }> = [];
 
   for (const leak of result.leaks) {
     violations.push({
@@ -33,13 +33,13 @@ export async function auditCrossRepoCorrelationAsRepoResult(cwd: string): Promis
       message:
         `LEAK: public blueprint '${leak.blueprintSlug}' has unredacted reference to` +
         ` private slug '${leak.targetSlug}' in repo '${leak.targetRepo}'.` +
-        ' Redact the target slug in the projection DB and source markdown;' +
-        ' see docs/cross-repo-correlation.md for remediation steps.',
-    })
+        " Redact the target slug in the projection DB and source markdown;" +
+        " see docs/cross-repo-correlation.md for remediation steps.",
+    });
   }
 
   for (const missing of result.missingAllowlists) {
-    const sides = missing.missingSides.join(' and ')
+    const sides = missing.missingSides.join(" and ");
     violations.push({
       file: missing.blueprintSlug,
       message:
@@ -47,15 +47,15 @@ export async function auditCrossRepoCorrelationAsRepoResult(cwd: string): Promis
         ` in blueprint '${missing.blueprintSlug}' (target: ${missing.targetRepo}).` +
         ` Missing allowlist on ${sides} side(s).` +
         ` Add mutual entries to .agent/correlate.allow.yaml in both repos.`,
-    })
+    });
   }
 
-  const checked = result.leaks.length + result.missingAllowlists.length
+  const checked = result.leaks.length + result.missingAllowlists.length;
 
   return {
     ok: result.pass,
-    title: 'Cross-repo correlation',
+    title: "Cross-repo correlation",
     checked: Math.max(checked, 1),
     violations,
-  }
+  };
 }

@@ -1,15 +1,15 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync } from "node:fs";
 
-export type VersionPinTool = 'rtk'
+export type VersionPinTool = "rtk";
 
-export type VersionPinResult = { ok: true } | { ok: false; warning: string }
+export type VersionPinResult = { ok: true } | { ok: false; warning: string };
 
 interface CompatibleVersionsPin {
-  range: string
+  range: string;
 }
 
 interface CompatibleVersions {
-  pins: Record<string, CompatibleVersionsPin>
+  pins: Record<string, CompatibleVersionsPin>;
 }
 
 /**
@@ -18,10 +18,10 @@ interface CompatibleVersions {
  * Returns null if the version string is not parseable.
  */
 function parseVersion(version: string): readonly [number, number, number] | null {
-  const cleaned = version.trim().replace(/^v/, '')
-  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(cleaned)
-  if (!match) return null
-  return [Number(match[1]), Number(match[2]), Number(match[3])]
+  const cleaned = version.trim().replace(/^v/, "");
+  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(cleaned);
+  if (!match) return null;
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
 }
 
 /**
@@ -37,35 +37,35 @@ function parseVersion(version: string): readonly [number, number, number] | null
  * This matches npm's caret semantics without importing a semver library.
  */
 function satisfiesRange(installed: string, range: string): boolean {
-  const trimmedRange = range.trim()
+  const trimmedRange = range.trim();
 
-  if (trimmedRange.startsWith('^')) {
-    const pinned = parseVersion(trimmedRange.slice(1))
-    const actual = parseVersion(installed)
-    if (!pinned || !actual) return false
+  if (trimmedRange.startsWith("^")) {
+    const pinned = parseVersion(trimmedRange.slice(1));
+    const actual = parseVersion(installed);
+    if (!pinned || !actual) return false;
 
-    const [pinnedMajor, pinnedMinor, pinnedPatch] = pinned
-    const [actualMajor, actualMinor, actualPatch] = actual
+    const [pinnedMajor, pinnedMinor, pinnedPatch] = pinned;
+    const [actualMajor, actualMinor, actualPatch] = actual;
 
     if (pinnedMajor === 0) {
       // ^0.Y.Z: minor must match, patch must be >=
-      if (actualMajor !== 0) return false
-      if (actualMinor !== pinnedMinor) return false
-      return actualPatch >= pinnedPatch
+      if (actualMajor !== 0) return false;
+      if (actualMinor !== pinnedMinor) return false;
+      return actualPatch >= pinnedPatch;
     }
 
     // ^X.Y.Z (X > 0): major must match, (minor, patch) must be >=
-    if (actualMajor !== pinnedMajor) return false
-    if (actualMinor > pinnedMinor) return true
-    if (actualMinor < pinnedMinor) return false
-    return actualPatch >= pinnedPatch
+    if (actualMajor !== pinnedMajor) return false;
+    if (actualMinor > pinnedMinor) return true;
+    if (actualMinor < pinnedMinor) return false;
+    return actualPatch >= pinnedPatch;
   }
 
   // Exact match fallback for bare "X.Y.Z" ranges
-  const pinned = parseVersion(trimmedRange)
-  const actual = parseVersion(installed)
-  if (!pinned || !actual) return false
-  return pinned[0] === actual[0] && pinned[1] === actual[1] && pinned[2] === actual[2]
+  const pinned = parseVersion(trimmedRange);
+  const actual = parseVersion(installed);
+  if (!pinned || !actual) return false;
+  return pinned[0] === actual[0] && pinned[1] === actual[1] && pinned[2] === actual[2];
 }
 
 /**
@@ -83,29 +83,29 @@ export function checkVersionPin(
   installedVersion: string,
   pinFilePath: string,
 ): VersionPinResult {
-  const filePath = pinFilePath
+  const filePath = pinFilePath;
 
-  let pins: CompatibleVersions
+  let pins: CompatibleVersions;
   try {
-    const raw = readFileSync(filePath, 'utf8')
-    pins = JSON.parse(raw) as CompatibleVersions
+    const raw = readFileSync(filePath, "utf8");
+    pins = JSON.parse(raw) as CompatibleVersions;
   } catch {
     // If the pin file is missing or malformed, treat as ok (non-blocking).
-    return { ok: true }
+    return { ok: true };
   }
 
-  const pin = pins.pins[tool]
-  if (!pin) return { ok: true }
+  const pin = pins.pins[tool];
+  if (!pin) return { ok: true };
 
-  const range = pin.range
-  if (!range) return { ok: true }
+  const range = pin.range;
+  if (!range) return { ok: true };
 
   if (satisfiesRange(installedVersion, range)) {
-    return { ok: true }
+    return { ok: true };
   }
 
   return {
     ok: false,
     warning: `[webpresso] rtk version ${installedVersion} does not satisfy the required range ${range} (from compatible-versions.json). Some features may not work as expected. Update rtk to a compatible version.`,
-  }
+  };
 }

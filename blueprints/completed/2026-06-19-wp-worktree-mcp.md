@@ -25,6 +25,7 @@ This lane is separated because worktree creation/removal mutates the filesystem 
 ## Scope
 
 ### In scope
+
 - Add `wp_worktree` MCP tool for safe worktree lifecycle operations.
 - Reuse existing `wp worktree` CLI/router-dispatch logic where possible.
 - Require `execute: true` for mutating operations.
@@ -32,6 +33,7 @@ This lane is separated because worktree creation/removal mutates the filesystem 
 - Return structured results and cleanup guidance.
 
 ### Out of scope
+
 - PR creation/merge automation.
 - Arbitrary git command execution.
 - Removing locked worktrees without explicit force support in a later plan.
@@ -41,30 +43,37 @@ This lane is separated because worktree creation/removal mutates the filesystem 
 
 ```ts
 type WpWorktreeInput = {
-  cwd?: string
-  action: 'list' | 'root' | 'new' | 'remove' | 'prune' | 'refresh'
-  name?: string
-  branch?: string
-  baseRef?: string
-  path?: string
-  execute?: boolean
-  force?: boolean
-}
+  cwd?: string;
+  action: "list" | "root" | "new" | "remove" | "prune" | "refresh";
+  name?: string;
+  branch?: string;
+  baseRef?: string;
+  path?: string;
+  execute?: boolean;
+  force?: boolean;
+};
 
 type WpWorktreeOutput = {
-  passed: boolean
-  summary: string
-  action: string
-  executed: boolean
-  worktrees?: Array<{ path: string; branch?: string; head?: string; locked?: boolean; prunable?: boolean }>
-  created?: { path: string; branch: string; baseRef: string }
-  removed?: { path: string; branch?: string }
-  warnings: string[]
-  nextAction?: string
-}
+  passed: boolean;
+  summary: string;
+  action: string;
+  executed: boolean;
+  worktrees?: Array<{
+    path: string;
+    branch?: string;
+    head?: string;
+    locked?: boolean;
+    prunable?: boolean;
+  }>;
+  created?: { path: string; branch: string; baseRef: string };
+  removed?: { path: string; branch?: string };
+  warnings: string[];
+  nextAction?: string;
+};
 ```
 
 Mutation rules:
+
 - `list` and `root` are read-only and ignore `execute`.
 - `new`, `remove`, `prune`, and `refresh` require `execute: true`.
 - `new` defaults to `origin/main` only when no baseRef is supplied and the repo default branch cannot be discovered.
@@ -73,11 +82,11 @@ Mutation rules:
 
 ## Side-effect Classification
 
-| Action | Side effects | Safety rule |
-| ------ | ------------ | ----------- |
-| `list`, `root` | Read-only | Safe by default |
-| `new` | Creates branch/worktree | Requires `execute: true`; refuse collisions |
-| `remove` | Removes worktree | Requires `execute: true`; refuse dirty/locked |
+| Action             | Side effects              | Safety rule                                             |
+| ------------------ | ------------------------- | ------------------------------------------------------- |
+| `list`, `root`     | Read-only                 | Safe by default                                         |
+| `new`              | Creates branch/worktree   | Requires `execute: true`; refuse collisions             |
+| `remove`           | Removes worktree          | Requires `execute: true`; refuse dirty/locked           |
 | `prune`, `refresh` | Mutates worktree metadata | Requires `execute: true`; bounded to repo-managed paths |
 
 ## Tasks
@@ -122,7 +131,6 @@ Mutation rules:
 - [x] Existing CLI worktree behavior is preserved.
 - [x] MCP output is bounded, structured, and actionable.
 
-
 ## Implementation Evidence
 
 Completed on 2026-06-20 in branch `feat/wp-worktree-mcp-20260619`.
@@ -162,21 +170,21 @@ Verification evidence:
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-wp-worktree-mcp.md |
+| ID  | Claim                                                          | Evidence                                                |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-wp-worktree-mcp.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

@@ -22,7 +22,7 @@ Defines the harness as "the code that determines what information to store,
 retrieve, and present to the model" and observes that hand-designed harnesses
 are the bottleneck. Meta-Harness is an **outer-loop system that searches over
 harness code**: an agentic proposer (a coding agent) has filesystem access to
-the source code, scores, and execution traces of *all prior candidates*, reads
+the source code, scores, and execution traces of _all prior candidates_, reads
 real failure patterns, forms hypotheses, rewrites the harness, and re-tests.
 Existing text optimizers fail here because they "compress feedback too
 aggressively" — the proposer needs raw traces, not summaries.
@@ -37,8 +37,8 @@ Terminal-Bench 2.0 with Claude Opus 4.6.
 
 ## Contrast with Self-Harness
 
-Meta-Harness is an *external optimizer* (a strong coding agent rewrites the
-harness of a target system); Self-Harness has the *same model* improve its own
+Meta-Harness is an _external optimizer_ (a strong coding agent rewrites the
+harness of a target system); Self-Harness has the _same model_ improve its own
 harness under a bounded edit surface. Meta-Harness searches more aggressively;
 Self-Harness is the safer, more auditable shape.
 
@@ -47,6 +47,6 @@ Self-Harness is the safer, more auditable shape.
 - Optimization needs **uncompressed evidence**: agent-kit's hook logs and QA
   outputs must be preserved in mineable form, not only as summary-first
   payloads.
-- Harness changes are *code* changes — version them, diff them, gate them in
+- Harness changes are _code_ changes — version them, diff them, gate them in
   CI like any other code (agent-kit already has the git/PR machinery for
   this; the gap is the behavioral score).

@@ -16,37 +16,37 @@
  */
 
 export const NEXT_ACTION_KINDS = [
-  'rebuild_db',
-  'reingest_project',
-  'disambiguate_slug',
-  'verify_task',
-  'create_blueprint',
-  'configure_workspace',
-  'unsupported_roots',
-] as const satisfies readonly string[]
+  "rebuild_db",
+  "reingest_project",
+  "disambiguate_slug",
+  "verify_task",
+  "create_blueprint",
+  "configure_workspace",
+  "unsupported_roots",
+] as const satisfies readonly string[];
 
-Object.freeze(NEXT_ACTION_KINDS)
+Object.freeze(NEXT_ACTION_KINDS);
 
-export type NextActionKind = (typeof NEXT_ACTION_KINDS)[number]
+export type NextActionKind = (typeof NEXT_ACTION_KINDS)[number];
 
 export type NextAction = {
-  readonly kind: NextActionKind
-  readonly hint: string
-}
+  readonly kind: NextActionKind;
+  readonly hint: string;
+};
 
 /** Build a `NextAction` with a required non-empty hint. */
 export function makeNextAction(kind: NextActionKind, hint: string): NextAction {
   if (hint.trim().length === 0) {
-    throw new Error('NextAction hint must be a non-empty string')
+    throw new Error("NextAction hint must be a non-empty string");
   }
-  return { kind, hint }
+  return { kind, hint };
 }
 
 /** Type-guard for tagged-union narrowing at boundary IO (MCP, JSON, tests). */
 export function isNextAction(value: unknown): value is NextAction {
-  if (value === null || typeof value !== 'object') return false
-  const obj = value as { kind?: unknown; hint?: unknown }
-  if (typeof obj.kind !== 'string') return false
-  if (typeof obj.hint !== 'string') return false
-  return (NEXT_ACTION_KINDS as readonly string[]).includes(obj.kind)
+  if (value === null || typeof value !== "object") return false;
+  const obj = value as { kind?: unknown; hint?: unknown };
+  if (typeof obj.kind !== "string") return false;
+  if (typeof obj.hint !== "string") return false;
+  return (NEXT_ACTION_KINDS as readonly string[]).includes(obj.kind);
 }

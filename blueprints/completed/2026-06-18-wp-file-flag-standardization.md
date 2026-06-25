@@ -4,9 +4,9 @@ title: "wp file-flag standardization"
 owner: codex
 status: completed
 complexity: S
-created: '2026-06-18'
-last_updated: '2026-06-18'
-progress: '100% (CLI surfaces, scaffolds, and active docs standardized and verified)'
+created: "2026-06-18"
+last_updated: "2026-06-18"
+progress: "100% (CLI surfaces, scaffolds, and active docs standardized and verified)"
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -39,6 +39,7 @@ Standardized `wp lint`, `wp format`, `wp test`, and `wp e2e` on explicit
 contract and updating regression coverage around command help.
 
 **Acceptance:**
+
 - [x] `lint`, `format`, `test`, and `e2e` help surfaces no longer advertise
       variadic positional path arguments.
 - [x] `lint` and `format` expose repeated `--file <path>` options.
@@ -55,6 +56,7 @@ so live examples and verification commands use explicit repeated `--file`
 flags.
 
 **Acceptance:**
+
 - [x] Fresh scaffold output uses `wp lint --file ...` instead of positional
       path arguments.
 - [x] Active blueprint/docs guidance no longer contains actionable positional
@@ -70,6 +72,7 @@ Re-ran focused tests, lint, typecheck, and blueprint lifecycle validation after
 the contract/doc updates landed.
 
 **Acceptance:**
+
 - [x] Targeted command/help/scaffold tests pass.
 - [x] Focused lint and repo typecheck pass.
 - [x] `wp audit blueprint-lifecycle` passes.
@@ -93,21 +96,21 @@ the contract/doc updates landed.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-18-wp-file-flag-standardization.md |
+| ID  | Claim                                                          | Evidence                                                             |
+| --- | -------------------------------------------------------------- | -------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-18-wp-file-flag-standardization.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

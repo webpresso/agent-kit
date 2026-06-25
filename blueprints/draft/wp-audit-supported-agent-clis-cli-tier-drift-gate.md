@@ -2,9 +2,9 @@
 type: blueprint
 status: draft
 complexity: S
-created: '2026-06-23'
-last_updated: '2026-06-23'
-progress: '0% (drafted)'
+created: "2026-06-23"
+last_updated: "2026-06-23"
+progress: "0% (drafted)"
 depends_on: []
 cross_repo_depends_on: []
 tags: [audit, agent-clis, governance]
@@ -29,7 +29,7 @@ drift with no cross-check:
 3. `src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.ts:32` → `CapabilityMatrixHost = 'claude' | 'codex' | 'cursor' | 'opencode'`.
 
 This blueprint makes the gate real: a bidirectional set-equality audit, code-as-SSOT,
-parsing the rule doc only for the format-stable column-1 `` (`id`) `` token.
+parsing the rule doc only for the format-stable column-1 ``(`id`)`` token.
 
 ## Architecture Overview
 
@@ -49,22 +49,22 @@ parsing the rule doc only for the format-stable column-1 `` (`id`) `` token.
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-| -------- | ------ | --------- |
-| Source of truth | Code (typed unions), not the prose doc | Doc is hand-edited and format-variable; code is compiler-guarded |
-| Expected set | `AgentHostName ∪ CapabilityMatrixHost` = {claude,codex,cursor,opencode} | `cursor` is a copy-target/hook-vendor, in the matrix but not a skill-projection host; `AgentHostName` alone would false-flag it |
-| Doc parse scope | Column-1 `` (`id`) `` token only, per table data row | Decoys (`/codex`, `-f json`, `opencode stats`) live in other columns; narrow parse avoids false positives |
-| Direction | Bidirectional set-equality, two distinct violation messages | Catches host added to code-but-not-doc AND doc-but-not-code |
-| No new data file | Reuse existing typed unions | A third YAML/JSON SSOT adds a new generator-drift surface (YAGNI) |
-| Tier-level check | Deferred to a possible v2 | v1 identifier-set-equality catches the real drift at a fraction of parse fragility |
+| Decision         | Choice                                                                  | Rationale                                                                                                                       |
+| ---------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Source of truth  | Code (typed unions), not the prose doc                                  | Doc is hand-edited and format-variable; code is compiler-guarded                                                                |
+| Expected set     | `AgentHostName ∪ CapabilityMatrixHost` = {claude,codex,cursor,opencode} | `cursor` is a copy-target/hook-vendor, in the matrix but not a skill-projection host; `AgentHostName` alone would false-flag it |
+| Doc parse scope  | Column-1 ``(`id`)`` token only, per table data row                      | Decoys (`/codex`, `-f json`, `opencode stats`) live in other columns; narrow parse avoids false positives                       |
+| Direction        | Bidirectional set-equality, two distinct violation messages             | Catches host added to code-but-not-doc AND doc-but-not-code                                                                     |
+| No new data file | Reuse existing typed unions                                             | A third YAML/JSON SSOT adds a new generator-drift surface (YAGNI)                                                               |
+| Tier-level check | Deferred to a possible v2                                               | v1 identifier-set-equality catches the real drift at a fraction of parse fragility                                              |
 
 ## Quick Reference (Execution Waves)
 
-| Wave              | Tasks      | Dependencies | Parallelizable |
-| ----------------- | ---------- | ------------ | -------------- |
-| **Wave 0**        | 1.1, 1.2   | None         | 1 agent        |
-| **Wave 1**        | 1.3        | 1.1          | 1 agent        |
-| **Critical path** | 1.1 → 1.3  | --           | 2 waves        |
+| Wave              | Tasks     | Dependencies | Parallelizable |
+| ----------------- | --------- | ------------ | -------------- |
+| **Wave 0**        | 1.1, 1.2  | None         | 1 agent        |
+| **Wave 1**        | 1.3       | 1.1          | 1 agent        |
+| **Critical path** | 1.1 → 1.3 | --           | 2 waves        |
 
 ### Phase 1: Implement the audit [Complexity: S]
 
@@ -80,7 +80,7 @@ and `CapabilityMatrixHost` (`#cli/commands/init/scaffolders/agent-hooks/capabili
 via conditional-type asserts so a future addition to either union breaks typecheck
 until `EXPECTED_CLI_IDS` is updated; (b) parses `catalog/agent/rules/supported-agent-clis.md`,
 locating each table with header `| CLI | Provider model | … |`, and for each data row
-extracts the single token matching `` /\(`([a-z][a-z0-9-]*)`\)/ `` from column 1 only;
+extracts the single token matching ``/\(`([a-z][a-z0-9-]*)`\)/`` from column 1 only;
 (c) asserts bidirectional set-equality, emitting `code-has-not-in-doc: <id>` and
 `doc-has-not-in-doc: <id>` as separate violations. Non-self-host repos (no rule file)
 return `ok:true, checked:0` (not applicable); self-host with a missing rule file is a
@@ -149,22 +149,22 @@ Prove the gate fails on real drift in both directions, then revert.
 
 ## Verification Gates
 
-| Gate        | Command                                                   | Success Criteria |
-| ----------- | -------------------------------------------------------- | ---------------- |
-| Type safety | `wp typecheck`                                           | Zero errors (type-assert guards compile) |
-| Lint        | `wp lint --file src/audit/supported-agent-clis.ts ...`   | Zero violations  |
-| Tests       | `wp test --file src/audit/supported-agent-clis.test.ts`  | All pass         |
-| Audit self  | `wp audit supported-agent-clis`                          | Passes on this repo |
-| Full QA     | `wp qa` (bookend)                                        | All pass         |
+| Gate        | Command                                                 | Success Criteria                         |
+| ----------- | ------------------------------------------------------- | ---------------------------------------- |
+| Type safety | `wp typecheck`                                          | Zero errors (type-assert guards compile) |
+| Lint        | `wp lint --file src/audit/supported-agent-clis.ts ...`  | Zero violations                          |
+| Tests       | `wp test --file src/audit/supported-agent-clis.test.ts` | All pass                                 |
+| Audit self  | `wp audit supported-agent-clis`                         | Passes on this repo                      |
+| Full QA     | `wp qa` (bookend)                                       | All pass                                 |
 
 ## Edge Cases and Error Handling
 
-| Edge Case | Risk | Solution | Task |
-| --------- | ---- | -------- | ---- |
-| Backtick decoys in non-CLI columns (`/codex`, `-f json`, `opencode stats`) | False `doc-has-not-in-code` | Parse column 1 only, `` (`id`) `` token shape | 1.1 |
-| `cursor` in matrix but not `AgentHostName` | False `doc-has-not-in-code: cursor` | Expected set = union of both unions | 1.1 |
-| New host added to a union type later | Silent drift | Conditional-type asserts break typecheck until `EXPECTED_CLI_IDS` updated | 1.1 |
-| Rule file absent in a consumer repo | False failure | Self-host check; non-self-host returns `ok:true, checked:0` | 1.1 |
+| Edge Case                                                                  | Risk                                | Solution                                                                  | Task |
+| -------------------------------------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------- | ---- |
+| Backtick decoys in non-CLI columns (`/codex`, `-f json`, `opencode stats`) | False `doc-has-not-in-code`         | Parse column 1 only, ``(`id`)`` token shape                               | 1.1  |
+| `cursor` in matrix but not `AgentHostName`                                 | False `doc-has-not-in-code: cursor` | Expected set = union of both unions                                       | 1.1  |
+| New host added to a union type later                                       | Silent drift                        | Conditional-type asserts break typecheck until `EXPECTED_CLI_IDS` updated | 1.1  |
+| Rule file absent in a consumer repo                                        | False failure                       | Self-host check; non-self-host returns `ok:true, checked:0`               | 1.1  |
 
 ## Non-goals
 
@@ -174,17 +174,17 @@ Prove the gate fails on real drift in both directions, then revert.
 
 ## Risks
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-| Doc table format changes (column-1 token shape) | Parser under-counts | v1 assumes `` (`id`) `` in column 1; v2 may fail on unparseable rows |
-| `MCP_AUDIT_KINDS` hand-maintained, drift-prone | Partial wiring | Task 1.2 enumerates all three sites + an MCP smoke check |
+| Risk                                            | Impact              | Mitigation                                                         |
+| ----------------------------------------------- | ------------------- | ------------------------------------------------------------------ |
+| Doc table format changes (column-1 token shape) | Parser under-counts | v1 assumes ``(`id`)`` in column 1; v2 may fail on unparseable rows |
+| `MCP_AUDIT_KINDS` hand-maintained, drift-prone  | Partial wiring      | Task 1.2 enumerates all three sites + an MCP smoke check           |
 
 ## Technology Choices
 
-| Component | Technology | Version | Why |
-| --------- | ---------- | ------- | --- |
-| Audit shape | `RepoAuditResult` (`#audit/repo-guardrails`) | n/a | Repo's standard audit contract |
-| SSOT lock | TS conditional-type asserts | n/a | Binds runtime const to union types at compile time |
+| Component   | Technology                                   | Version | Why                                                |
+| ----------- | -------------------------------------------- | ------- | -------------------------------------------------- |
+| Audit shape | `RepoAuditResult` (`#audit/repo-guardrails`) | n/a     | Repo's standard audit contract                     |
+| SSOT lock   | TS conditional-type asserts                  | n/a     | Binds runtime const to union types at compile time |
 
 ## Cross-Plan References
 

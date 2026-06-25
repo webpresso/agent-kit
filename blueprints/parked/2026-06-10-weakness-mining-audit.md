@@ -27,7 +27,6 @@ tags:
 Implemented in PR #139 on branch `work/ultragoal-9-blueprints-20260614221933`.
 Task status and acceptance checkboxes below were reconciled from the landed code paths and focused verification evidence in this PR. The file is parked because CI enforces the legal first transition from `planned`; finalization can move parked/resumed work through the lifecycle after merge.
 
-
 ## Product wedge anchor
 
 - **Stage outcome:** the "observability & tracing" ❌ row in
@@ -59,20 +58,20 @@ full multi-hook schema already exists.
 
 ## Fact-Check Summary
 
-| Claim | Reality | Fix applied to this plan |
-| --- | --- | --- |
-| Hook logs already live at `~/.webpresso/cache/agent-kit/hooks/<repo>.*.log` | Current durable hook log path is state-root/worktree keyed via `getSurfacePath(...)`; only pretool writes one today | Task 1.1 now targets the real pretool log and inventories the gap explicitly |
-| Current hooks already emit the full Self-Harness signature | The pretool log captures status/tool/target/failures only; post-tool/stop do not add equivalent records | Task 1.2 scopes minimal evidence-enrichment as separate work if the reader proves it necessary |
-| `--draft-tech-debt` can simply reuse an existing generic autofile path | The autofile path exists, but the supported-audit allowlist does not include `weakness-mining` yet | Task 3.1 extends or extracts the existing autofile helper instead of inventing a second tech-debt writer |
+| Claim                                                                       | Reality                                                                                                             | Fix applied to this plan                                                                                 |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Hook logs already live at `~/.webpresso/cache/agent-kit/hooks/<repo>.*.log` | Current durable hook log path is state-root/worktree keyed via `getSurfacePath(...)`; only pretool writes one today | Task 1.1 now targets the real pretool log and inventories the gap explicitly                             |
+| Current hooks already emit the full Self-Harness signature                  | The pretool log captures status/tool/target/failures only; post-tool/stop do not add equivalent records             | Task 1.2 scopes minimal evidence-enrichment as separate work if the reader proves it necessary           |
+| `--draft-tech-debt` can simply reuse an existing generic autofile path      | The autofile path exists, but the supported-audit allowlist does not include `weakness-mining` yet                  | Task 3.1 extends or extracts the existing autofile helper instead of inventing a second tech-debt writer |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable |
-| --- | --- | --- | --- |
-| **Wave 0** | 1.1 | None | 1 agent |
-| **Wave 1** | 1.2 | Task 1.1 | 1 agent |
-| **Wave 2** | 2.1 | Task 1.2 | 1 agent |
-| **Wave 3** | 3.1 | Task 2.1 | 1 agent |
+| Wave       | Tasks | Dependencies | Parallelizable |
+| ---------- | ----- | ------------ | -------------- |
+| **Wave 0** | 1.1   | None         | 1 agent        |
+| **Wave 1** | 1.2   | Task 1.1     | 1 agent        |
+| **Wave 2** | 2.1   | Task 1.2     | 1 agent        |
+| **Wave 3** | 3.1   | Task 2.1     | 1 agent        |
 
 ## Phases
 
@@ -167,7 +166,6 @@ full multi-hook schema already exists.
 - No assumption that all hooks already emit rich evidence.
 - No cross-repo aggregation yet.
 
-
 ## 2026-06-14 alignment note
 
 The refined `2026-06-10-harness-surface-manifest` plan preserves the current
@@ -179,9 +177,9 @@ MCP consumers.
 
 ## Cross-Plan References
 
-| Reference | Relationship |
-| --- | --- |
-| `2026-06-10-self-improving-harness-roadmap` | Parent roadmap (Wave 1) |
-| `2026-06-10-harness-surface-manifest` | Provides the `lifecycle: locked|governed|experimental` surface vocabulary and must expose `harness-surfaces` through both CLI and `wp_audit` before MCP-based weakness mining treats surface tags as complete (aligned 2026-06-14) |
-| `docs/research/papers/2026-self-harness.md` | Clustering-signature source |
+| Reference                                   | Relationship                                         |
+| ------------------------------------------- | ---------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `2026-06-10-self-improving-harness-roadmap` | Parent roadmap (Wave 1)                              |
+| `2026-06-10-harness-surface-manifest`       | Provides the `lifecycle: locked                      | governed | experimental`surface vocabulary and must expose`harness-surfaces`through both CLI and`wp_audit` before MCP-based weakness mining treats surface tags as complete (aligned 2026-06-14) |
+| `docs/research/papers/2026-self-harness.md` | Clustering-signature source                          |
 | `docs/research/papers/2026-meta-harness.md` | Preserve raw evidence instead of over-compressing it |

@@ -4,9 +4,9 @@ title: Agent Kit wp secret orchestration platform
 owner: ozby
 status: completed
 complexity: XL
-created: '2026-06-19'
-last_updated: '2026-06-19'
-progress: '100% (17/17 planning tasks completed; implementation split to child PRs, updated 2026-06-21)'
+created: "2026-06-19"
+last_updated: "2026-06-19"
+progress: "100% (17/17 planning tasks completed; implementation split to child PRs, updated 2026-06-21)"
 depends_on:
   - >-
     ./2026-06-19-cross-repo-agent-kit-dedupe-e2e-secrets-act-setup.md
@@ -94,47 +94,47 @@ setup clones after cutover.
 
 ## Key Decisions
 
-| ID | Decision | Rationale |
-|---|---|---|
-| D1 | Public CLI is intent-first; internals are provider/profile/sink/capability. | Developers care about preview/e2e/deploy outcomes, not sink plumbing. |
-| D2 | Consumer boundary is global `wp` plus `@webpresso/agent-config`; no consumer `@webpresso/agent-kit` dependency. | Agent Kit is the toolchain, not app source. |
-| D3 | Built-in provider plugins are Doppler and Infisical; future plugins are explicit allowlist only. | Covers current need without speculative auto-discovery. |
-| D4 | Ozby uses a separate Doppler workplace and per-app projects: `ingest-lens`, `edge-matte`, `ozby-dev`, `aksaprocess-tr`. | Keeps Webpresso and Ozby secret ownership separate. |
-| D5 | Local Doppler switching is orchestrated through workspace/project validation and scoped CLI login guidance. | Doppler supports multiple CLI logins scoped by directory. |
-| D6 | CI auth is capability-based: OIDC where available; explicit Doppler service-token bootstrap when OIDC is plan-gated. | Doppler service account identities are Team/Enterprise; current Ozby account does not expose them. |
-| D7 | GitHub bootstrap secrets are lane-named repo secrets, e.g. `CI_SECRET_PROVIDER_TOKEN_PREVIEW` and `CI_SECRET_PROVIDER_TOKEN_PRODUCTION`, not GitHub Environment secrets as the core abstraction. | Reusable workflows and local `act` stay simpler and more predictable. |
-| D8 | `wp preview` never mutates external secret state implicitly. | Bootstrap is explicit via dry-run/apply transaction. |
-| D9 | DB branch cloning is optional and capability-detected. Neon is current; Xata is later. | Both support copy-on-write schema+data branch cloning; non-DB apps skip. |
-| D10 | Pulumi is a first-class env-injection sink only in v1; Pulumi ESC stays docs-only optional acceleration. | Infrastructure commands use the same profile contract without Agent Kit owning ESC environments. |
-| D11 | All secret-bearing third-party actions and reusable workflows must be full-SHA pinned. | Reduces supply-chain risk in jobs with secrets. |
-| D12 | Every failure gets stable `WP_*` code, docs URL, redacted evidence, and `--json`. | Agents can repair setup without parsing prose. |
-| D13 | Secret profiles and deploy lanes are separate axes. Profiles are `preview`/`production`; lane IDs stay `dev`, `preview_main`, `preview_pr_<n>`, and `prd`. | Avoids renaming deploy-contract lanes while still routing secrets by provider environment. |
+| ID  | Decision                                                                                                                                                                                         | Rationale                                                                                          |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| D1  | Public CLI is intent-first; internals are provider/profile/sink/capability.                                                                                                                      | Developers care about preview/e2e/deploy outcomes, not sink plumbing.                              |
+| D2  | Consumer boundary is global `wp` plus `@webpresso/agent-config`; no consumer `@webpresso/agent-kit` dependency.                                                                                  | Agent Kit is the toolchain, not app source.                                                        |
+| D3  | Built-in provider plugins are Doppler and Infisical; future plugins are explicit allowlist only.                                                                                                 | Covers current need without speculative auto-discovery.                                            |
+| D4  | Ozby uses a separate Doppler workplace and per-app projects: `ingest-lens`, `edge-matte`, `ozby-dev`, `aksaprocess-tr`.                                                                          | Keeps Webpresso and Ozby secret ownership separate.                                                |
+| D5  | Local Doppler switching is orchestrated through workspace/project validation and scoped CLI login guidance.                                                                                      | Doppler supports multiple CLI logins scoped by directory.                                          |
+| D6  | CI auth is capability-based: OIDC where available; explicit Doppler service-token bootstrap when OIDC is plan-gated.                                                                             | Doppler service account identities are Team/Enterprise; current Ozby account does not expose them. |
+| D7  | GitHub bootstrap secrets are lane-named repo secrets, e.g. `CI_SECRET_PROVIDER_TOKEN_PREVIEW` and `CI_SECRET_PROVIDER_TOKEN_PRODUCTION`, not GitHub Environment secrets as the core abstraction. | Reusable workflows and local `act` stay simpler and more predictable.                              |
+| D8  | `wp preview` never mutates external secret state implicitly.                                                                                                                                     | Bootstrap is explicit via dry-run/apply transaction.                                               |
+| D9  | DB branch cloning is optional and capability-detected. Neon is current; Xata is later.                                                                                                           | Both support copy-on-write schema+data branch cloning; non-DB apps skip.                           |
+| D10 | Pulumi is a first-class env-injection sink only in v1; Pulumi ESC stays docs-only optional acceleration.                                                                                         | Infrastructure commands use the same profile contract without Agent Kit owning ESC environments.   |
+| D11 | All secret-bearing third-party actions and reusable workflows must be full-SHA pinned.                                                                                                           | Reduces supply-chain risk in jobs with secrets.                                                    |
+| D12 | Every failure gets stable `WP_*` code, docs URL, redacted evidence, and `--json`.                                                                                                                | Agents can repair setup without parsing prose.                                                     |
+| D13 | Secret profiles and deploy lanes are separate axes. Profiles are `preview`/`production`; lane IDs stay `dev`, `preview_main`, `preview_pr_<n>`, and `prd`.                                       | Avoids renaming deploy-contract lanes while still routing secrets by provider environment.         |
 
 ## Fact-Checked Findings
 
-| ID | Severity | Claim / assumption | Reality | Fix |
-|---|---|---|---|---|
-| F1 | CRITICAL | The DB benchmark could use a non-target platform. | Neon documents copy-on-write branches with data; Xata documents instant copy-on-write branches with exact schema+data. | Use Neon now, Xata later; remove the previous wrong DB benchmark. |
-| F2 | HIGH | One Doppler login is enough for Webpresso and Ozby. | Doppler documents multiple workspace logins scoped by directory. | Add `workplaceId` validation and scoped-login remediation. |
-| F3 | HIGH | Doppler OIDC can be required everywhere. | Doppler service account identities require Team/Enterprise. | Use provider capability detection; explicit service-token bootstrap when OIDC unavailable. |
-| F4 | HIGH | Infisical should use long-lived CI tokens like Doppler fallback. | Infisical GitHub Actions docs use OIDC machine identities and short-lived tokens. | Infisical CI path is OIDC-first. |
-| F5 | HIGH | GitHub Environments with same secret names are a clean abstraction. | GitHub reusable workflow docs warn environment secrets are not passed through `workflow_call` like caller secrets. | Use lane-named repo secrets and provider profiles. |
-| F6 | HIGH | Tag pins are sufficient in secret-bearing workflows. | GitHub secure-use docs recommend full-length SHA pinning for immutability. | Add SHA-pin audit. |
-| F7 | MEDIUM | Pulumi needs a separate secret system. | Pulumi ESC has Doppler and Infisical login/secrets providers and Pulumi GitHub OIDC support, but the locked eng boundary excludes ESC orchestration in v1. | Add Pulumi env-injection sink; keep ESC as docs-only optional acceleration. |
-| F8 | MEDIUM | GitHub bootstrap must stay manual. | GitHub CLI and Pulumi GitHub provider can create repository Actions secrets. | `wp secrets bootstrap github` plans/applies/rotates/revokes explicitly. |
-| F9 | HIGH | Existing consumer scripts can remain temporarily. | User requires no backwards compatibility and full cleanup. | Blocking audits plus local migration command delete legacy paths; audit excludes only the monorepo's intentional `workspace:*`/`agent-kit-local` dogfood link. |
-| F10 | MEDIUM | Worktrees can be assumed current. | Current snapshots show some target repos not at `origin/main` and some with local changes. | Execution precondition: sync/rebase or capture conflicts before edits. |
+| ID  | Severity | Claim / assumption                                                  | Reality                                                                                                                                                    | Fix                                                                                                                                                            |
+| --- | -------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1  | CRITICAL | The DB benchmark could use a non-target platform.                   | Neon documents copy-on-write branches with data; Xata documents instant copy-on-write branches with exact schema+data.                                     | Use Neon now, Xata later; remove the previous wrong DB benchmark.                                                                                              |
+| F2  | HIGH     | One Doppler login is enough for Webpresso and Ozby.                 | Doppler documents multiple workspace logins scoped by directory.                                                                                           | Add `workplaceId` validation and scoped-login remediation.                                                                                                     |
+| F3  | HIGH     | Doppler OIDC can be required everywhere.                            | Doppler service account identities require Team/Enterprise.                                                                                                | Use provider capability detection; explicit service-token bootstrap when OIDC unavailable.                                                                     |
+| F4  | HIGH     | Infisical should use long-lived CI tokens like Doppler fallback.    | Infisical GitHub Actions docs use OIDC machine identities and short-lived tokens.                                                                          | Infisical CI path is OIDC-first.                                                                                                                               |
+| F5  | HIGH     | GitHub Environments with same secret names are a clean abstraction. | GitHub reusable workflow docs warn environment secrets are not passed through `workflow_call` like caller secrets.                                         | Use lane-named repo secrets and provider profiles.                                                                                                             |
+| F6  | HIGH     | Tag pins are sufficient in secret-bearing workflows.                | GitHub secure-use docs recommend full-length SHA pinning for immutability.                                                                                 | Add SHA-pin audit.                                                                                                                                             |
+| F7  | MEDIUM   | Pulumi needs a separate secret system.                              | Pulumi ESC has Doppler and Infisical login/secrets providers and Pulumi GitHub OIDC support, but the locked eng boundary excludes ESC orchestration in v1. | Add Pulumi env-injection sink; keep ESC as docs-only optional acceleration.                                                                                    |
+| F8  | MEDIUM   | GitHub bootstrap must stay manual.                                  | GitHub CLI and Pulumi GitHub provider can create repository Actions secrets.                                                                               | `wp secrets bootstrap github` plans/applies/rotates/revokes explicitly.                                                                                        |
+| F9  | HIGH     | Existing consumer scripts can remain temporarily.                   | User requires no backwards compatibility and full cleanup.                                                                                                 | Blocking audits plus local migration command delete legacy paths; audit excludes only the monorepo's intentional `workspace:*`/`agent-kit-local` dogfood link. |
+| F10 | MEDIUM   | Worktrees can be assumed current.                                   | Current snapshots show some target repos not at `origin/main` and some with local changes.                                                                 | Execution precondition: sync/rebase or capture conflicts before edits.                                                                                         |
 
 ## Evidence Base
 
-| Evidence | Plan impact |
-|---|---|
-| `webpresso/agent-kit/README.md` says to pin `@webpresso/agent-kit` in consumer repos. | Rewrite Quick Start and dependency warning to global `wp` + `@webpresso/agent-config`. |
-| `webpresso/agent-kit/src/cli/auto-update/version-skew.ts` warns about repo-pinned Agent Kit. | Update warning and tests. |
-| `webpresso/agent-kit/src/audit/secret-provider-quarantine.ts`, `secrets-config.ts`, `ci/act-runner.ts`, `deploy/*`, `e2e/*`. | Extend existing surfaces; do not fork orchestration. |
-| `webpresso/github-actions/.github/workflows/cloudflare-preview.yml`, `cloudflare-production.yml`. | Centralize setup/cache/OIDC/secret bootstrap in shared workflows. |
-| `ozby/ingest-lens`, `ozby/edge-matte`, `ozby/ozby-dev`, `webpresso/monorepo` package scripts/configs. | Consumer migration and hard-cut audit targets. |
-| Updated DX review artifact D20. | Blueprint uses Neon now / Xata later and removes the previous wrong DB benchmark. |
+| Evidence                                                                                                                     | Plan impact                                                                            |
+| ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `webpresso/agent-kit/README.md` says to pin `@webpresso/agent-kit` in consumer repos.                                        | Rewrite Quick Start and dependency warning to global `wp` + `@webpresso/agent-config`. |
+| `webpresso/agent-kit/src/cli/auto-update/version-skew.ts` warns about repo-pinned Agent Kit.                                 | Update warning and tests.                                                              |
+| `webpresso/agent-kit/src/audit/secret-provider-quarantine.ts`, `secrets-config.ts`, `ci/act-runner.ts`, `deploy/*`, `e2e/*`. | Extend existing surfaces; do not fork orchestration.                                   |
+| `webpresso/github-actions/.github/workflows/cloudflare-preview.yml`, `cloudflare-production.yml`.                            | Centralize setup/cache/OIDC/secret bootstrap in shared workflows.                      |
+| `ozby/ingest-lens`, `ozby/edge-matte`, `ozby/ozby-dev`, `webpresso/monorepo` package scripts/configs.                        | Consumer migration and hard-cut audit targets.                                         |
+| Updated DX review artifact D20.                                                                                              | Blueprint uses Neon now / Xata later and removes the previous wrong DB benchmark.      |
 
 ## Architecture Overview
 
@@ -165,12 +165,12 @@ Canonical v1 shape is pinned to the locked engineering review:
       "type": "doppler",
       "workspace": "ozby",
       "workspaceId": "7abb07fb8507f57c2011",
-      "project": "ingest-lens"
-    }
+      "project": "ingest-lens",
+    },
   },
   "profiles": {
     "preview": { "provider": "default", "environment": "stg" },
-    "production": { "provider": "default", "environment": "prd" }
+    "production": { "provider": "default", "environment": "prd" },
   },
   "sinks": {
     "dev-server": { "defaultProfile": "preview", "allowedOps": ["run"] },
@@ -179,9 +179,12 @@ Canonical v1 shape is pinned to the locked engineering review:
     "deploy-wrangler": { "defaultProfile": "production", "allowedOps": ["preview", "deploy"] },
     "pulumi": { "defaultProfile": "preview", "allowedOps": ["preview", "up"] },
     "act": { "defaultProfile": "preview", "allowedOps": ["replay", "run"] },
-    "github-actions-bootstrap": { "defaultProfile": "production", "allowedOps": ["verify", "apply", "rotate", "revoke"] },
-    "db-branch": { "defaultProfile": "preview", "allowedOps": ["create", "connect", "cleanup"] }
-  }
+    "github-actions-bootstrap": {
+      "defaultProfile": "production",
+      "allowedOps": ["verify", "apply", "rotate", "revoke"],
+    },
+    "db-branch": { "defaultProfile": "preview", "allowedOps": ["create", "connect", "cleanup"] },
+  },
 }
 ```
 
@@ -190,29 +193,29 @@ branches in callers:
 
 ```ts
 type SecretProviderPlugin = {
-  id: 'doppler' | 'infisical' | string
+  id: "doppler" | "infisical" | string;
   authModes: {
-    local: 'cli-login' | 'keychain'
-    ci: Array<'oidc' | 'service-token'>
-  }
+    local: "cli-login" | "keychain";
+    ci: Array<"oidc" | "service-token">;
+  };
   capabilities: {
-    profiles: string[]
-    sinks: string[]
-    bootstrap: Array<'github-actions-bootstrap' | 'manual'>
-  }
-  redactionPolicy(input: RedactionInput): RedactionPolicy
-  diagnose(input: ProviderDoctorInput): Promise<ProviderDoctorReport>
-  fetchProfile(input: ProviderProfileFetchInput): Promise<ResolvedSecretMaterial>
-  planBootstrap?(input: ProviderBootstrapInput): Promise<ProviderBootstrapPlan>
-}
+    profiles: string[];
+    sinks: string[];
+    bootstrap: Array<"github-actions-bootstrap" | "manual">;
+  };
+  redactionPolicy(input: RedactionInput): RedactionPolicy;
+  diagnose(input: ProviderDoctorInput): Promise<ProviderDoctorReport>;
+  fetchProfile(input: ProviderProfileFetchInput): Promise<ResolvedSecretMaterial>;
+  planBootstrap?(input: ProviderBootstrapInput): Promise<ProviderBootstrapPlan>;
+};
 
 type SecretOrchestrator = {
   resolveSecretSink(input: {
-    sink: string
-    profile: string
-    op: string
-  }): Promise<ResolvedSecretSinkPlan>
-}
+    sink: string;
+    profile: string;
+    op: string;
+  }): Promise<ResolvedSecretSinkPlan>;
+};
 ```
 
 Provider plugins expose only capability descriptors, profile resolution, doctor
@@ -222,23 +225,23 @@ Sinks are provider-neutral and never print raw secret values.
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
-|---|---|---|---:|---|
-| **Wave 0** | 1.1, 1.2, 1.3, 1.4, 1.5 | None | 5 agents | S-M |
-| **Wave 1** | 2.1, 2.2, 2.3, 2.4 | Wave 0 contracts | 4 agents | M |
-| **Wave 2** | 3.1, 3.2, 3.3 | Wave 1 | 3 agents | M-L |
-| **Wave 3** | 4.1, 4.2, 4.3, 4.4 | Wave 2 | 4 agents | M |
-| **Wave 4** | 5.1 | Wave 3 | 1 agent | S |
-| **Critical path** | 1.1 → 2.1 → 3.1 → 4.1 → 5.1 | — | 5 waves | XL |
+| Wave              | Tasks                       | Dependencies     | Parallelizable | Effort (T-shirt) |
+| ----------------- | --------------------------- | ---------------- | -------------: | ---------------- |
+| **Wave 0**        | 1.1, 1.2, 1.3, 1.4, 1.5     | None             |       5 agents | S-M              |
+| **Wave 1**        | 2.1, 2.2, 2.3, 2.4          | Wave 0 contracts |       4 agents | M                |
+| **Wave 2**        | 3.1, 3.2, 3.3               | Wave 1           |       3 agents | M-L              |
+| **Wave 3**        | 4.1, 4.2, 4.3, 4.4          | Wave 2           |       4 agents | M                |
+| **Wave 4**        | 5.1                         | Wave 3           |        1 agent | S                |
+| **Critical path** | 1.1 → 2.1 → 3.1 → 4.1 → 5.1 | —                |        5 waves | XL               |
 
 ### Parallel Metrics Snapshot
 
-| Metric | Formula / Meaning | Target | Actual |
-|---|---|---:|---:|
-| RW0 | Ready tasks in Wave 0 | ≥ planned agents / 2 | 5 |
-| CPR | total_tasks / critical_path_length | ≥ 2.5 | 3.4 |
-| DD | dependency_edges / total_tasks | ≤ 2.0 | 1.5 |
-| CP | same-file overlaps per wave | 0 | 0 |
+| Metric | Formula / Meaning                  |               Target | Actual |
+| ------ | ---------------------------------- | -------------------: | -----: |
+| RW0    | Ready tasks in Wave 0              | ≥ planned agents / 2 |      5 |
+| CPR    | total_tasks / critical_path_length |                ≥ 2.5 |    3.4 |
+| DD     | dependency_edges / total_tasks     |                ≤ 2.0 |    1.5 |
+| CP     | same-file overlaps per wave        |                    0 |      0 |
 
 ## Tasks
 
@@ -872,42 +875,42 @@ This completed blueprint records the planning and handoff artifact. Implementati
 
 ## Verification Gates
 
-| Gate | Command / evidence | Success criteria |
-|---|---|---|
-| Blueprint lifecycle | `wp audit blueprint-lifecycle` | Blueprint frontmatter/status/path valid. |
-| Agent Kit contracts | `cd webpresso/agent-kit && ./bin/wp test --file <changed-tests>` | Changed behavior covered. |
-| Agent Kit quality | `cd webpresso/agent-kit && ./bin/wp typecheck && ./bin/wp lint && vp run lint:pkg && vp run public:readiness` | Type, lint, package surface pass. |
-| GitHub Actions | workflow fixture tests plus `wp audit github-actions-secrets` | OIDC, explicit secrets, and full-SHA pins valid. |
-| Consumers | `wp audit secret-provider-quarantine`, `wp audit no-dev-vars`, `wp secrets doctor --json` | No duplicate scripts/deps and actionable reports. |
-| Preview/e2e | `wp preview --dry-run --json`, `wp ci act --secret-profile <profile> --dry-run`, affected e2e | URL or structured fixes; no hidden bootstrap mutation. |
-| Pulumi | `wp audit pulumi-secret-boundary` and env-injection sink tests | Pulumi gets runtime env only; no stack config, passphrase, secrets-provider, or ESC mutation in v1. |
-| DB branch | Neon fake/live smoke; Xata contract tests later | DB apps branch/cleanup; non-DB apps skip. |
+| Gate                | Command / evidence                                                                                            | Success criteria                                                                                    |
+| ------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Blueprint lifecycle | `wp audit blueprint-lifecycle`                                                                                | Blueprint frontmatter/status/path valid.                                                            |
+| Agent Kit contracts | `cd webpresso/agent-kit && ./bin/wp test --file <changed-tests>`                                              | Changed behavior covered.                                                                           |
+| Agent Kit quality   | `cd webpresso/agent-kit && ./bin/wp typecheck && ./bin/wp lint && vp run lint:pkg && vp run public:readiness` | Type, lint, package surface pass.                                                                   |
+| GitHub Actions      | workflow fixture tests plus `wp audit github-actions-secrets`                                                 | OIDC, explicit secrets, and full-SHA pins valid.                                                    |
+| Consumers           | `wp audit secret-provider-quarantine`, `wp audit no-dev-vars`, `wp secrets doctor --json`                     | No duplicate scripts/deps and actionable reports.                                                   |
+| Preview/e2e         | `wp preview --dry-run --json`, `wp ci act --secret-profile <profile> --dry-run`, affected e2e                 | URL or structured fixes; no hidden bootstrap mutation.                                              |
+| Pulumi              | `wp audit pulumi-secret-boundary` and env-injection sink tests                                                | Pulumi gets runtime env only; no stack config, passphrase, secrets-provider, or ESC mutation in v1. |
+| DB branch           | Neon fake/live smoke; Xata contract tests later                                                               | DB apps branch/cleanup; non-DB apps skip.                                                           |
 
 ## Edge Cases and Error Handling
 
-| Edge case | Handling | Finding |
-|---|---|---|
-| Developer is logged into the wrong Doppler workplace | Doctor prints `WP_DOPPLER_WORKPLACE_MISMATCH` and `doppler login --scope <path>`. | F2 |
-| Doppler OIDC unavailable on current account | Doctor offers explicit service-token bootstrap and rotate/revoke path. | F3 |
-| Infisical identity ID missing | Doctor fails with public identity ID guidance. | F4 |
-| Reusable workflow cannot receive environment secret | Audit/docs require lane-named repo secret. | F5 |
-| `act` cannot emulate OIDC/reusable workflow | `wp ci act` uses generated replay and labels it non-security-equivalent. | F5 |
-| Provider stderr contains secret | Shared redactor masks before logging and caps output. | F3/F4 |
-| App has no DB capability | DB branch sink skips with evidence. | F1 |
-| Pulumi ESC unavailable | Pulumi sink falls back to explicit env-only plan if configured. | F7 |
-| Consumer re-adds Agent Kit dependency | Audit fails and points to global `wp` + `@webpresso/agent-config`. | F9 |
+| Edge case                                            | Handling                                                                          | Finding |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------- | ------- |
+| Developer is logged into the wrong Doppler workplace | Doctor prints `WP_DOPPLER_WORKPLACE_MISMATCH` and `doppler login --scope <path>`. | F2      |
+| Doppler OIDC unavailable on current account          | Doctor offers explicit service-token bootstrap and rotate/revoke path.            | F3      |
+| Infisical identity ID missing                        | Doctor fails with public identity ID guidance.                                    | F4      |
+| Reusable workflow cannot receive environment secret  | Audit/docs require lane-named repo secret.                                        | F5      |
+| `act` cannot emulate OIDC/reusable workflow          | `wp ci act` uses generated replay and labels it non-security-equivalent.          | F5      |
+| Provider stderr contains secret                      | Shared redactor masks before logging and caps output.                             | F3/F4   |
+| App has no DB capability                             | DB branch sink skips with evidence.                                               | F1      |
+| Pulumi ESC unavailable                               | Pulumi sink falls back to explicit env-only plan if configured.                   | F7      |
+| Consumer re-adds Agent Kit dependency                | Audit fails and points to global `wp` + `@webpresso/agent-config`.                | F9      |
 
 ## Risks
 
-| Risk | Severity | Mitigation |
-|---|---|---|
-| Doppler service tokens become normalized | HIGH | Keep token path explicit, lane-scoped, rotate/revoke capable, and document OIDC upgrade path. |
-| Provider abstraction grows speculative | MEDIUM | Built-in registry only; future providers require allowlist and concrete tests. |
-| Bootstrap mutates external state unexpectedly | HIGH | Dry-run default, explicit `--apply`, transaction evidence, and no bootstrap inside `wp preview`. |
-| Secret leaks in logs/evidence | HIGH | Shared redactor, output caps, canary fixtures, and no broad env export. |
-| Consumer migration breaks deploy/e2e | HIGH | Preserve app-specific suites and run targeted/fake-provider gates before live smoke. |
-| Worktree drift loses work | HIGH | Sync/rebase precondition before implementation. |
-| Public package leaks private content | HIGH | Package-surface tests, `lint:pkg`, and `public:readiness`. |
+| Risk                                          | Severity | Mitigation                                                                                       |
+| --------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------ |
+| Doppler service tokens become normalized      | HIGH     | Keep token path explicit, lane-scoped, rotate/revoke capable, and document OIDC upgrade path.    |
+| Provider abstraction grows speculative        | MEDIUM   | Built-in registry only; future providers require allowlist and concrete tests.                   |
+| Bootstrap mutates external state unexpectedly | HIGH     | Dry-run default, explicit `--apply`, transaction evidence, and no bootstrap inside `wp preview`. |
+| Secret leaks in logs/evidence                 | HIGH     | Shared redactor, output caps, canary fixtures, and no broad env export.                          |
+| Consumer migration breaks deploy/e2e          | HIGH     | Preserve app-specific suites and run targeted/fake-provider gates before live smoke.             |
+| Worktree drift loses work                     | HIGH     | Sync/rebase precondition before implementation.                                                  |
+| Public package leaks private content          | HIGH     | Package-surface tests, `lint:pkg`, and `public:readiness`.                                       |
 
 ## Non-Goals
 
@@ -920,14 +923,14 @@ This completed blueprint records the planning and handoff artifact. Implementati
 
 ## Technology Choices
 
-| Surface | Choice | Why |
-|---|---|---|
-| Local provider auth | Doppler scoped CLI login; Infisical local login | Supports Webpresso/Ozby split and local DX. |
-| CI auth | Provider capability: OIDC preferred, Doppler service-token fallback when plan-gated | Matches real account constraints. |
-| GitHub secret layout | Lane-named repo secrets | Works with reusable workflows and local `act`. |
-| Pulumi | Env-injection sink in v1; ESC provider docs optional only | Keeps infrastructure inside shared sink model without Agent Kit owning ESC environments. |
-| DB branch | Neon now, Xata later | Required capability is immediate schema+data clone. |
-| Workflows | Shared `webpresso/github-actions`, SHA/tag-pinned by consumers | Centralized setup with supply-chain control. |
+| Surface              | Choice                                                                              | Why                                                                                      |
+| -------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Local provider auth  | Doppler scoped CLI login; Infisical local login                                     | Supports Webpresso/Ozby split and local DX.                                              |
+| CI auth              | Provider capability: OIDC preferred, Doppler service-token fallback when plan-gated | Matches real account constraints.                                                        |
+| GitHub secret layout | Lane-named repo secrets                                                             | Works with reusable workflows and local `act`.                                           |
+| Pulumi               | Env-injection sink in v1; ESC provider docs optional only                           | Keeps infrastructure inside shared sink model without Agent Kit owning ESC environments. |
+| DB branch            | Neon now, Xata later                                                                | Required capability is immediate schema+data clone.                                      |
+| Workflows            | Shared `webpresso/github-actions`, SHA/tag-pinned by consumers                      | Centralized setup with supply-chain control.                                             |
 
 ## Cross-Plan References
 
@@ -954,22 +957,22 @@ This completed blueprint records the planning and handoff artifact. Implementati
 
 ## Refinement Summary
 
-| Metric | Value |
-|---|---:|
-| Findings total | 10 |
-| Critical | 1 |
-| High | 6 |
-| Medium | 3 |
-| Low | 0 |
-| Fixes applied | 10/10 |
-| Cross-plans updated | 1 |
-| Edge cases documented | 9 |
-| Risks documented | 7 |
-| **Parallelization score** | A |
-| **Critical path** | 5 waves |
-| **Max parallel agents** | 5 |
-| **Total tasks** | 17 |
-| **Blueprint compliant** | 17/17 |
+| Metric                    |   Value |
+| ------------------------- | ------: |
+| Findings total            |      10 |
+| Critical                  |       1 |
+| High                      |       6 |
+| Medium                    |       3 |
+| Low                       |       0 |
+| Fixes applied             |   10/10 |
+| Cross-plans updated       |       1 |
+| Edge cases documented     |       9 |
+| Risks documented          |       7 |
+| **Parallelization score** |       A |
+| **Critical path**         | 5 waves |
+| **Max parallel agents**   |       5 |
+| **Total tasks**           |      17 |
+| **Blueprint compliant**   |   17/17 |
 
 ### Plan-refine notes
 
@@ -1002,21 +1005,21 @@ This completed blueprint records the planning and handoff artifact. Implementati
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/agent-kit-wp-secret-orchestration-platform.md |
+| ID  | Claim                                                          | Evidence                                                                |
+| --- | -------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/agent-kit-wp-secret-orchestration-platform.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

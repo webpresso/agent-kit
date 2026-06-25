@@ -2,47 +2,47 @@
  * Shared test utilities for blueprint mocking
  */
 
-import type { Blueprint, Task } from '#core/parser'
+import type { Blueprint, Task } from "#core/parser";
 
 export interface MockBlueprintOptions {
-  slug?: string
-  name?: string
-  type?: Blueprint['type']
-  status?: string
-  complexity?: string
-  lastUpdated?: string
-  tasks?: Task[]
-  phases?: Blueprint['phases']
-  raw?: string
+  slug?: string;
+  name?: string;
+  type?: Blueprint["type"];
+  status?: string;
+  complexity?: string;
+  lastUpdated?: string;
+  tasks?: Task[];
+  phases?: Blueprint["phases"];
+  raw?: string;
 }
 
 export interface MockTaskOptions {
-  id?: string
-  title?: string
-  status?: Task['status']
-  depends?: string[]
-  acceptanceCriteria?: Task['acceptanceCriteria']
+  id?: string;
+  title?: string;
+  status?: Task["status"];
+  depends?: string[];
+  acceptanceCriteria?: Task["acceptanceCriteria"];
 }
 
 /**
  * Create a mock Plan with sensible defaults
  */
 export function createMockBlueprint(options: MockBlueprintOptions = {}): Blueprint {
-  const defaultTask = createMockTask()
-  const tasks = options.tasks ?? [defaultTask]
-  const blueprintName = options.name ?? options.slug ?? 'test-plan'
+  const defaultTask = createMockTask();
+  const tasks = options.tasks ?? [defaultTask];
+  const blueprintName = options.name ?? options.slug ?? "test-plan";
 
   return {
     name: blueprintName,
-    type: options.type ?? 'blueprint',
-    title: options.name ?? options.slug ?? 'Test Plan',
-    status: options.status ?? 'in-progress',
-    complexity: options.complexity ?? 'S',
-    lastUpdated: options.lastUpdated ?? '2026-01-01',
+    type: options.type ?? "blueprint",
+    title: options.name ?? options.slug ?? "Test Plan",
+    status: options.status ?? "in-progress",
+    complexity: options.complexity ?? "S",
+    lastUpdated: options.lastUpdated ?? "2026-01-01",
     tasks,
     phases: options.phases ?? [],
     raw: options.raw ?? createDefaultRawMarkdown(blueprintName, tasks),
-  }
+  };
 }
 
 /**
@@ -50,16 +50,16 @@ export function createMockBlueprint(options: MockBlueprintOptions = {}): Bluepri
  */
 export function createMockTask(options: MockTaskOptions = {}): Task {
   return {
-    id: options.id ?? '1.1',
-    title: options.title ?? 'Test Task',
-    status: options.status ?? 'todo',
+    id: options.id ?? "1.1",
+    title: options.title ?? "Test Task",
+    status: options.status ?? "todo",
     depends: options.depends,
-    stepType: 'implement',
+    stepType: "implement",
     acceptanceCriteria: options.acceptanceCriteria ?? {
       total: 2,
       checked: 0,
     },
-  }
+  };
 }
 
 /**
@@ -70,10 +70,10 @@ function createDefaultRawMarkdown(name: string, tasks: Task[]): string {
     .map(
       (task) =>
         `#### Task ${task.id}: ${task.title}\n\n` +
-        `- [${task.acceptanceCriteria.checked > 0 ? 'x' : ' '}] First criterion\n` +
-        `- [${task.acceptanceCriteria.checked > 1 ? 'x' : ' '}] Second criterion\n`,
+        `- [${task.acceptanceCriteria.checked > 0 ? "x" : " "}] First criterion\n` +
+        `- [${task.acceptanceCriteria.checked > 1 ? "x" : " "}] Second criterion\n`,
     )
-    .join('\n')
+    .join("\n");
 
   return `---
  type: blueprint
@@ -88,5 +88,5 @@ function createDefaultRawMarkdown(name: string, tasks: Task[]): string {
  ## Phase 1: Foundation [Complexity: S]
  
  ${taskSections}
- `
+ `;
 }

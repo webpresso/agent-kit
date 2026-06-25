@@ -1,35 +1,35 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import os from 'node:os'
-import path from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { runBlueprintAudit } from '#lifecycle/audit'
-import { upsertWorktreeRegistryEntry } from '#worktrees/registry.js'
+import { runBlueprintAudit } from "#lifecycle/audit";
+import { upsertWorktreeRegistryEntry } from "#worktrees/registry.js";
 
-const tempDirs: string[] = []
+const tempDirs: string[] = [];
 
 afterEach(() => {
-  delete process.env['WP_AGENT_KIT_TEST_WORKTREE_ROOT']
+  delete process.env["WP_AGENT_KIT_TEST_WORKTREE_ROOT"];
   for (const dir of tempDirs.splice(0)) {
-    rmSync(dir, { recursive: true, force: true })
+    rmSync(dir, { recursive: true, force: true });
   }
-})
+});
 
 function writeOverview(root: string, relativePathSegments: string[], body: string): void {
-  const dir = path.join(root, 'webpresso', 'blueprints', ...relativePathSegments.slice(0, -1))
-  const file = path.join(root, 'webpresso', 'blueprints', ...relativePathSegments)
-  mkdirSync(dir, { recursive: true })
-  writeFileSync(file, body, 'utf-8')
+  const dir = path.join(root, "webpresso", "blueprints", ...relativePathSegments.slice(0, -1));
+  const file = path.join(root, "webpresso", "blueprints", ...relativePathSegments);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(file, body, "utf-8");
 }
 
-describe('runBlueprintAudit — engine semantics', () => {
-  it('errors when the same blueprint slug exists in multiple lifecycle folders', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-duplicate-slug-'))
-    tempDirs.push(projectRoot)
+describe("runBlueprintAudit — engine semantics", () => {
+  it("errors when the same blueprint slug exists in multiple lifecycle folders", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-duplicate-slug-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['planned', 'duplicate-slug', '_overview.md'],
+      ["planned", "duplicate-slug", "_overview.md"],
       `---
 type: blueprint
 status: planned
@@ -47,11 +47,11 @@ last_updated: 2026-04-02
 
 - [ ] a
 `,
-    )
+    );
 
     writeOverview(
       projectRoot,
-      ['completed', 'duplicate-slug', '_overview.md'],
+      ["completed", "duplicate-slug", "_overview.md"],
       `---
 type: blueprint
 status: completed
@@ -69,29 +69,29 @@ last_updated: 2026-04-02
 
 - [x] a
 `,
-    )
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(false)
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(false);
     expect(
       result.issues.some(
         (issue) =>
           issue.message.includes(
             'Blueprint slug "duplicate-slug" appears in multiple lifecycle locations',
           ) &&
-          issue.message.includes('planned/duplicate-slug') &&
-          issue.message.includes('completed/duplicate-slug'),
+          issue.message.includes("planned/duplicate-slug") &&
+          issue.message.includes("completed/duplicate-slug"),
       ),
-    ).toBe(true)
-  })
+    ).toBe(true);
+  });
 
-  it('requires in-progress executable blueprints to have owner worktree bindings', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-missing-owner-'))
-    tempDirs.push(projectRoot)
+  it("requires in-progress executable blueprints to have owner worktree bindings", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-missing-owner-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['in-progress', 'missing-owner', '_overview.md'],
+      ["in-progress", "missing-owner", "_overview.md"],
       `---
 type: blueprint
 status: in-progress
@@ -109,42 +109,42 @@ last_updated: 2026-04-02
 
 - [ ] a
 `,
-    )
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(false)
-    expect(result.issues.some((issue) => issue.message.includes('missing worktree_owner_id'))).toBe(
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(false);
+    expect(result.issues.some((issue) => issue.message.includes("missing worktree_owner_id"))).toBe(
       true,
-    )
+    );
     expect(
-      result.issues.some((issue) => issue.message.includes('missing worktree_owner_branch')),
-    ).toBe(true)
-  })
+      result.issues.some((issue) => issue.message.includes("missing worktree_owner_branch")),
+    ).toBe(true);
+  });
 
-  it('allows blocked tasks while blueprint status stays in-progress', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-blocked-'))
-    tempDirs.push(projectRoot)
+  it("allows blocked tasks while blueprint status stays in-progress", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-blocked-"));
+    tempDirs.push(projectRoot);
 
-    const registryRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-registry-'))
-    const ownerPath = path.join(registryRoot, 'owner')
-    mkdirSync(ownerPath, { recursive: true })
-    process.env['WP_AGENT_KIT_TEST_WORKTREE_ROOT'] = registryRoot
+    const registryRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-registry-"));
+    const ownerPath = path.join(registryRoot, "owner");
+    mkdirSync(ownerPath, { recursive: true });
+    process.env["WP_AGENT_KIT_TEST_WORKTREE_ROOT"] = registryRoot;
     upsertWorktreeRegistryEntry(
       {
-        id: 'owner-ok',
-        repoNamespace: 'repo',
+        id: "owner-ok",
+        repoNamespace: "repo",
         repoRoot: projectRoot,
-        kind: 'owner',
+        kind: "owner",
         path: ownerPath,
-        branch: 'bp/blocked-tasks-ok',
-        blueprintSlug: 'blocked-tasks-ok',
+        branch: "bp/blocked-tasks-ok",
+        blueprintSlug: "blocked-tasks-ok",
       },
       { root: registryRoot },
-    )
+    );
 
     writeOverview(
       projectRoot,
-      ['in-progress', 'blocked-tasks-ok', '_overview.md'],
+      ["in-progress", "blocked-tasks-ok", "_overview.md"],
       `---
 type: blueprint
 status: in-progress
@@ -172,19 +172,19 @@ worktree_owner_branch: bp/blocked-tasks-ok
 
 - [x] b
 `,
-    )
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(true)
-  })
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(true);
+  });
 
-  it('errors when a completed blueprint contains a blocked task', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-done-blocked-'))
-    tempDirs.push(projectRoot)
+  it("errors when a completed blueprint contains a blocked task", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-done-blocked-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['completed', 'bad-done', '_overview.md'],
+      ["completed", "bad-done", "_overview.md"],
       `---
 type: blueprint
 status: completed
@@ -203,27 +203,27 @@ last_updated: 2026-04-02
 
 - [ ] a
 `,
-    )
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(false)
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(false);
     expect(
       result.issues.some(
         (i) =>
-          i.message.includes('completed') &&
-          i.message.includes('1.1') &&
+          i.message.includes("completed") &&
+          i.message.includes("1.1") &&
           i.message.includes('"blocked"'),
       ),
-    ).toBe(true)
-  })
+    ).toBe(true);
+  });
 
-  it('errors when a completed blueprint has a non-done task', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-todo-'))
-    tempDirs.push(projectRoot)
+  it("errors when a completed blueprint has a non-done task", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-todo-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['completed', 'bad-todo', '_overview.md'],
+      ["completed", "bad-todo", "_overview.md"],
       `---
 type: blueprint
 status: completed
@@ -241,27 +241,27 @@ last_updated: 2026-04-02
 
 - [ ] a
 `,
-    )
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(false)
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(false);
     expect(
       result.issues.some(
         (i) =>
-          i.message.includes('completed') &&
-          i.message.includes('1.1') &&
-          i.message.includes('todo'),
+          i.message.includes("completed") &&
+          i.message.includes("1.1") &&
+          i.message.includes("todo"),
       ),
-    ).toBe(true)
-  })
+    ).toBe(true);
+  });
 
-  it('errors when a completed zero-task blueprint has no historical waiver rationale', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-zero-task-completed-'))
-    tempDirs.push(projectRoot)
+  it("errors when a completed zero-task blueprint has no historical waiver rationale", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-zero-task-completed-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['completed', 'zero-task-without-waiver', '_overview.md'],
+      ["completed", "zero-task-without-waiver", "_overview.md"],
       `---
 type: blueprint
 status: completed
@@ -276,10 +276,10 @@ last_updated: 2026-04-02
 
 0/0 tasks complete.
 `,
-    )
+    );
     writeOverview(
       projectRoot,
-      ['completed', 'zero-task-with-waiver', '_overview.md'],
+      ["completed", "zero-task-with-waiver", "_overview.md"],
       `---
 type: blueprint
 status: completed
@@ -296,39 +296,39 @@ historical_zero_task_rationale: Migrated completed record predates task-level bl
 
 0/0 tasks complete.
 `,
-    )
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
     const zeroTaskIssues = result.issues.filter((issue) =>
-      issue.message.includes('completed zero-task blueprint'),
-    )
+      issue.message.includes("completed zero-task blueprint"),
+    );
 
-    expect(result.ok).toBe(false)
+    expect(result.ok).toBe(false);
     expect(zeroTaskIssues).toEqual([
       expect.objectContaining({
-        file: expect.stringContaining('completed/zero-task-without-waiver/_overview.md'),
-        level: 'error',
+        file: expect.stringContaining("completed/zero-task-without-waiver/_overview.md"),
+        level: "error",
         message: expect.stringContaining(
-          'requires explicit historical zero-task waiver and rationale',
+          "requires explicit historical zero-task waiver and rationale",
         ),
       }),
-    ])
+    ]);
     expect(zeroTaskIssues).not.toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          file: expect.stringContaining('completed/zero-task-with-waiver/_overview.md'),
+          file: expect.stringContaining("completed/zero-task-with-waiver/_overview.md"),
         }),
       ]),
-    )
-  })
+    );
+  });
 
-  it('errors when execution metadata claims completion before blueprint truth is completed', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-exec-completed-'))
-    tempDirs.push(projectRoot)
+  it("errors when execution metadata claims completion before blueprint truth is completed", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-exec-completed-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['in-progress', 'exec-complete-mismatch', '_overview.md'],
+      ["in-progress", "exec-complete-mismatch", "_overview.md"],
       `---
 type: blueprint
 status: in-progress
@@ -350,31 +350,31 @@ execution_updated_at: 2026-04-10T11:00:00Z
 
 - [ ] a
 `,
-    )
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(false)
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(false);
     expect(
       result.issues.some((issue) =>
         issue.message.includes(
-          'Blueprint execution is completed but blueprint status is not completed',
+          "Blueprint execution is completed but blueprint status is not completed",
         ),
       ),
-    ).toBe(true)
+    ).toBe(true);
     expect(
       result.issues.some((issue) =>
-        issue.message.includes('Blueprint execution is completed but tasks remain unfinished'),
+        issue.message.includes("Blueprint execution is completed but tasks remain unfinished"),
       ),
-    ).toBe(true)
-  })
+    ).toBe(true);
+  });
 
-  it('errors when failed execution still leaves the blueprint looking completed', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-exec-failed-'))
-    tempDirs.push(projectRoot)
+  it("errors when failed execution still leaves the blueprint looking completed", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-exec-failed-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['completed', 'exec-failed-mismatch', '_overview.md'],
+      ["completed", "exec-failed-mismatch", "_overview.md"],
       `---
 type: blueprint
 status: completed
@@ -396,29 +396,29 @@ execution_updated_at: 2026-04-10T11:00:00Z
 
 - [x] a
 `,
-    )
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(false)
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(false);
     expect(
       result.issues.some((issue) =>
-        issue.message.includes('Blueprint execution is failed but blueprint is marked completed'),
+        issue.message.includes("Blueprint execution is failed but blueprint is marked completed"),
       ),
-    ).toBe(true)
+    ).toBe(true);
     expect(
       result.issues.some((issue) =>
-        issue.message.includes('failed or blocked runtime work must not appear completed'),
+        issue.message.includes("failed or blocked runtime work must not appear completed"),
       ),
-    ).toBe(true)
-  })
+    ).toBe(true);
+  });
 
-  it('errors when completed execution is missing verification and artifact evidence', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-exec-evidence-'))
-    tempDirs.push(projectRoot)
+  it("errors when completed execution is missing verification and artifact evidence", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-exec-evidence-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['completed', 'exec-evidence-mismatch', '_overview.md'],
+      ["completed", "exec-evidence-mismatch", "_overview.md"],
       `---
 type: blueprint
 status: completed
@@ -440,25 +440,25 @@ execution_updated_at: 2026-04-10T11:00:00Z
 
 - [x] a
 `,
-    )
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(false)
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(false);
     expect(
-      result.issues.some((issue) => issue.message.includes('named verification output is missing')),
-    ).toBe(true)
+      result.issues.some((issue) => issue.message.includes("named verification output is missing")),
+    ).toBe(true);
     expect(
-      result.issues.some((issue) => issue.message.includes('artifact or log identity is missing')),
-    ).toBe(true)
-  })
+      result.issues.some((issue) => issue.message.includes("artifact or log identity is missing")),
+    ).toBe(true);
+  });
 
-  it('does not block staged files that only overlap planned blueprint filesTouched', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-planned-overlap-'))
-    tempDirs.push(projectRoot)
+  it("does not block staged files that only overlap planned blueprint filesTouched", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-planned-overlap-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['planned', 'future-cli-work', '_overview.md'],
+      ["planned", "future-cli-work", "_overview.md"],
       `---
 type: blueprint
 status: planned
@@ -479,30 +479,30 @@ last_updated: 2026-05-04
 
 - [ ] a
 `,
-    )
+    );
 
     const result = await runBlueprintAudit({
       projectRoot,
-      stagedFiles: ['packages/cli/cli-utils/src/wrangler-launch-descriptor.ts'],
+      stagedFiles: ["packages/cli/cli-utils/src/wrangler-launch-descriptor.ts"],
       strict: true,
-    })
+    });
 
-    expect(result.ok).toBe(true)
+    expect(result.ok).toBe(true);
     expect(result.issues).toContainEqual(
       expect.objectContaining({
-        level: 'warning',
-        message: expect.stringContaining('planned blueprint filesTouched'),
+        level: "warning",
+        message: expect.stringContaining("planned blueprint filesTouched"),
       }),
-    )
-  })
+    );
+  });
 
-  it('still blocks staged files that overlap in-progress blueprint filesTouched', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-in-progress-overlap-'))
-    tempDirs.push(projectRoot)
+  it("still blocks staged files that overlap in-progress blueprint filesTouched", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-in-progress-overlap-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['in-progress', 'active-cli-work', '_overview.md'],
+      ["in-progress", "active-cli-work", "_overview.md"],
       `---
 type: blueprint
 status: in-progress
@@ -523,32 +523,32 @@ last_updated: 2026-05-04
 
 - [ ] a
 `,
-    )
+    );
 
     const result = await runBlueprintAudit({
       projectRoot,
-      stagedFiles: ['packages/cli/cli-utils/src/wrangler-launch-descriptor.ts'],
+      stagedFiles: ["packages/cli/cli-utils/src/wrangler-launch-descriptor.ts"],
       strict: true,
-    })
+    });
 
-    expect(result.ok).toBe(false)
+    expect(result.ok).toBe(false);
     expect(result.issues).toContainEqual(
       expect.objectContaining({
-        level: 'error',
-        message: expect.stringContaining('in-progress blueprint filesTouched'),
+        level: "error",
+        message: expect.stringContaining("in-progress blueprint filesTouched"),
       }),
-    )
-  })
-})
+    );
+  });
+});
 
-describe('runBlueprintAudit — task state validation', () => {
-  it('errors when task has blocked reason but status is not blocked', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-blocked-reason-mismatch-'))
-    tempDirs.push(projectRoot)
+describe("runBlueprintAudit — task state validation", () => {
+  it("errors when task has blocked reason but status is not blocked", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-blocked-reason-mismatch-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['in-progress', 'blocked-reason-wrong', '_overview.md'],
+      ["in-progress", "blocked-reason-wrong", "_overview.md"],
       `---
 type: blueprint
 status: in-progress
@@ -567,27 +567,27 @@ last_updated: 2026-04-02
 
 - [ ] a
 `,
-    )
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(false)
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(false);
     expect(
       result.issues.some(
         (i) =>
-          i.message.includes('1.1') &&
-          i.message.includes('blocked reason') &&
-          i.message.includes('todo'),
+          i.message.includes("1.1") &&
+          i.message.includes("blocked reason") &&
+          i.message.includes("todo"),
       ),
-    ).toBe(true)
-  })
+    ).toBe(true);
+  });
 
-  it('errors when task is blocked but has no blocked reason', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-missing-blocked-reason-'))
-    tempDirs.push(projectRoot)
+  it("errors when task is blocked but has no blocked reason", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-missing-blocked-reason-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['in-progress', 'missing-blocked-reason', '_overview.md'],
+      ["in-progress", "missing-blocked-reason", "_overview.md"],
       `---
 type: blueprint
 status: in-progress
@@ -605,24 +605,24 @@ last_updated: 2026-04-02
 
 - [ ] a
 `,
-    )
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(false)
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(false);
     expect(
       result.issues.some(
-        (i) => i.message.includes('1.1') && i.message.includes('missing **Blocked:** reason'),
+        (i) => i.message.includes("1.1") && i.message.includes("missing **Blocked:** reason"),
       ),
-    ).toBe(true)
-  })
+    ).toBe(true);
+  });
 
-  it('errors when task has no explicit Status line (only checkboxes)', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-no-status-line-'))
-    tempDirs.push(projectRoot)
+  it("errors when task has no explicit Status line (only checkboxes)", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-no-status-line-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['in-progress', 'no-status', '_overview.md'],
+      ["in-progress", "no-status", "_overview.md"],
       `---
 type: blueprint
 status: in-progress
@@ -638,25 +638,25 @@ last_updated: 2026-04-02
 
 - [ ] a
 `,
-    )
+    );
 
     // This will throw at parseBlueprint level since in-progress requires explicit status
     // We need to test that audit surface catches it at the audit layer; since parseBlueprint
     // will throw, we test that audit result is not-ok
     const result = await runBlueprintAudit({ projectRoot, all: true, strict: true }).catch(() => ({
       ok: false,
-      issues: [{ level: 'error' as const, message: 'parse error' }],
-    }))
-    expect(result.ok).toBe(false)
-  })
+      issues: [{ level: "error" as const, message: "parse error" }],
+    }));
+    expect(result.ok).toBe(false);
+  });
 
-  it('errors when task has invalid status value', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-invalid-status-'))
-    tempDirs.push(projectRoot)
+  it("errors when task has invalid status value", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-invalid-status-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['in-progress', 'invalid-task-status', '_overview.md'],
+      ["in-progress", "invalid-task-status", "_overview.md"],
       `---
 type: blueprint
 status: in-progress
@@ -674,23 +674,23 @@ last_updated: 2026-04-02
 
 - [ ] a
 `,
-    )
+    );
 
     // parseBlueprint throws on invalid task status value
     const result = await runBlueprintAudit({ projectRoot, all: true, strict: true }).catch(() => ({
       ok: false,
-      issues: [{ level: 'error' as const, message: 'invalid status' }],
-    }))
-    expect(result.ok).toBe(false)
-  })
+      issues: [{ level: "error" as const, message: "invalid status" }],
+    }));
+    expect(result.ok).toBe(false);
+  });
 
-  it('accepts compact inline status metadata when validating explicit task status', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-inline-status-'))
-    tempDirs.push(projectRoot)
+  it("accepts compact inline status metadata when validating explicit task status", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-inline-status-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['planned', 'inline-status', '_overview.md'],
+      ["planned", "inline-status", "_overview.md"],
       `---
 type: blueprint
 status: planned
@@ -704,21 +704,21 @@ last_updated: 2026-04-02
 #### [cli] Task 1.1: Compact metadata
 **Status:** todo **Depends:** None
 `,
-    )
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
     expect(result.issues).not.toContainEqual(
-      expect.objectContaining({ message: expect.stringContaining('invalid status') }),
-    )
-  })
+      expect.objectContaining({ message: expect.stringContaining("invalid status") }),
+    );
+  });
 
-  it('errors when done task has incomplete acceptance criteria (checked < total)', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-done-incomplete-acceptance-'))
-    tempDirs.push(projectRoot)
+  it("errors when done task has incomplete acceptance criteria (checked < total)", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-done-incomplete-acceptance-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['completed', 'done-incomplete-acceptance', '_overview.md'],
+      ["completed", "done-incomplete-acceptance", "_overview.md"],
       `---
 type: blueprint
 status: completed
@@ -737,26 +737,26 @@ last_updated: 2026-04-02
 - [x] First
 - [ ] Second
 `,
-    )
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(false)
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(false);
     expect(
       result.issues.some(
-        (i) => i.message.includes('1.1') && i.message.includes('done') && i.message.includes('1/2'),
+        (i) => i.message.includes("1.1") && i.message.includes("done") && i.message.includes("1/2"),
       ),
-    ).toBe(true)
-  })
-})
+    ).toBe(true);
+  });
+});
 
-describe('runBlueprintAudit — blueprint placement validation', () => {
-  it('errors on folder/status mismatch', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-placement-'))
-    tempDirs.push(projectRoot)
+describe("runBlueprintAudit — blueprint placement validation", () => {
+  it("errors on folder/status mismatch", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-placement-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['planned', 'misplaced', '_overview.md'],
+      ["planned", "misplaced", "_overview.md"],
       `---
 type: blueprint
 status: in-progress
@@ -774,27 +774,27 @@ last_updated: 2026-04-02
 
 - [ ] a
 `,
-    )
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(false)
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(false);
     expect(
       result.issues.some(
         (i) =>
-          i.message.includes('folder=planned') && i.message.includes('frontmatter=in-progress'),
+          i.message.includes("folder=planned") && i.message.includes("frontmatter=in-progress"),
       ),
-    ).toBe(true)
-  })
-})
+    ).toBe(true);
+  });
+});
 
-describe('runBlueprintAudit — execution metadata truth', () => {
-  it('errors when execution is running but blueprint status is draft', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-exec-running-draft-'))
-    tempDirs.push(projectRoot)
+describe("runBlueprintAudit — execution metadata truth", () => {
+  it("errors when execution is running but blueprint status is draft", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-exec-running-draft-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['draft', 'running-but-draft', '_overview.md'],
+      ["draft", "running-but-draft", "_overview.md"],
       `---
 type: blueprint
 status: draft
@@ -816,27 +816,27 @@ execution_updated_at: 2026-04-10T11:00:00Z
 
 - [ ] a
 `,
-    )
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(false)
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(false);
     expect(
       result.issues.some(
         (i) =>
-          i.message.includes('running') &&
-          i.message.includes('draft') &&
-          i.message.includes('in-progress'),
+          i.message.includes("running") &&
+          i.message.includes("draft") &&
+          i.message.includes("in-progress"),
       ),
-    ).toBe(true)
-  })
+    ).toBe(true);
+  });
 
-  it('errors when execution is running but blueprint status is planned', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-exec-running-planned-'))
-    tempDirs.push(projectRoot)
+  it("errors when execution is running but blueprint status is planned", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-exec-running-planned-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['planned', 'running-but-planned', '_overview.md'],
+      ["planned", "running-but-planned", "_overview.md"],
       `---
 type: blueprint
 status: planned
@@ -858,27 +858,27 @@ execution_updated_at: 2026-04-10T11:00:00Z
 
 - [ ] a
 `,
-    )
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(false)
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(false);
     expect(
       result.issues.some(
         (i) =>
-          i.message.includes('running') &&
-          i.message.includes('planned') &&
-          i.message.includes('in-progress'),
+          i.message.includes("running") &&
+          i.message.includes("planned") &&
+          i.message.includes("in-progress"),
       ),
-    ).toBe(true)
-  })
+    ).toBe(true);
+  });
 
-  it('errors when execution is running but blueprint status is parked', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-exec-running-parked-'))
-    tempDirs.push(projectRoot)
+  it("errors when execution is running but blueprint status is parked", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-exec-running-parked-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['parked', 'running-but-parked', '_overview.md'],
+      ["parked", "running-but-parked", "_overview.md"],
       `---
 type: blueprint
 status: parked
@@ -900,27 +900,27 @@ execution_updated_at: 2026-04-10T11:00:00Z
 
 - [ ] a
 `,
-    )
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(false)
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(false);
     expect(
       result.issues.some(
         (i) =>
-          i.message.includes('running') &&
-          i.message.includes('parked') &&
-          i.message.includes('in-progress'),
+          i.message.includes("running") &&
+          i.message.includes("parked") &&
+          i.message.includes("in-progress"),
       ),
-    ).toBe(true)
-  })
+    ).toBe(true);
+  });
 
-  it('errors when execution is stopped but blueprint is completed', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-exec-stopped-completed-'))
-    tempDirs.push(projectRoot)
+  it("errors when execution is stopped but blueprint is completed", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-exec-stopped-completed-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['completed', 'stopped-but-completed', '_overview.md'],
+      ["completed", "stopped-but-completed", "_overview.md"],
       `---
 type: blueprint
 status: completed
@@ -942,24 +942,24 @@ execution_updated_at: 2026-04-10T11:00:00Z
 
 - [x] a
 `,
-    )
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(false)
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(false);
     expect(
       result.issues.some(
-        (i) => i.message.includes('execution is stopped') && i.message.includes('marked completed'),
+        (i) => i.message.includes("execution is stopped") && i.message.includes("marked completed"),
       ),
-    ).toBe(true)
-  })
+    ).toBe(true);
+  });
 
-  it('errors when execution is blocked but all tasks are done', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-exec-blocked-all-done-'))
-    tempDirs.push(projectRoot)
+  it("errors when execution is blocked but all tasks are done", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-exec-blocked-all-done-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['in-progress', 'blocked-all-done', '_overview.md'],
+      ["in-progress", "blocked-all-done", "_overview.md"],
       `---
 type: blueprint
 status: in-progress
@@ -981,27 +981,27 @@ execution_updated_at: 2026-04-10T11:00:00Z
 
 - [x] a
 `,
-    )
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(false)
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(false);
     expect(
       result.issues.some(
         (i) =>
-          i.message.includes('blocked') &&
-          i.message.includes('every task is marked done') &&
-          i.message.includes('failed or blocked runtime work'),
+          i.message.includes("blocked") &&
+          i.message.includes("every task is marked done") &&
+          i.message.includes("failed or blocked runtime work"),
       ),
-    ).toBe(true)
-  })
+    ).toBe(true);
+  });
 
-  it('errors when partial execution metadata is present (missing some fields)', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-partial-exec-'))
-    tempDirs.push(projectRoot)
+  it("errors when partial execution metadata is present (missing some fields)", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-partial-exec-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['in-progress', 'partial-exec', '_overview.md'],
+      ["in-progress", "partial-exec", "_overview.md"],
       `---
 type: blueprint
 status: in-progress
@@ -1020,28 +1020,28 @@ execution_backend: omx-team
 
 - [ ] a
 `,
-    )
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(false)
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(false);
     expect(
       result.issues.some(
         (i) =>
-          i.message.includes('partially populated') &&
-          i.message.includes('backend, id, status, and updated_at'),
+          i.message.includes("partially populated") &&
+          i.message.includes("backend, id, status, and updated_at"),
       ),
-    ).toBe(true)
-  })
-})
+    ).toBe(true);
+  });
+});
 
-describe('runBlueprintAudit — isSharedHotFile regex boundary', () => {
-  it('demotes pnpm-workspace.yaml to warning (exact match)', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-workspace-'))
-    tempDirs.push(projectRoot)
+describe("runBlueprintAudit — isSharedHotFile regex boundary", () => {
+  it("demotes pnpm-workspace.yaml to warning (exact match)", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-workspace-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['in-progress', 'active-blueprint', '_overview.md'],
+      ["in-progress", "active-blueprint", "_overview.md"],
       `---
 type: blueprint
 status: in-progress
@@ -1062,25 +1062,25 @@ last_updated: 2026-04-02
 
 - [ ] a
 `,
-    )
+    );
 
     const result = await runBlueprintAudit({
       projectRoot,
       strict: true,
-      stagedFiles: ['pnpm-workspace.yaml'],
-    })
-    expect(result.ok).toBe(true)
-    const issue = result.issues.find((i) => i.file === 'pnpm-workspace.yaml')
-    expect(issue?.level).toBe('warning')
-  })
+      stagedFiles: ["pnpm-workspace.yaml"],
+    });
+    expect(result.ok).toBe(true);
+    const issue = result.issues.find((i) => i.file === "pnpm-workspace.yaml");
+    expect(issue?.level).toBe("warning");
+  });
 
-  it('demotes pnpm-lock.yaml to warning (exact match)', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-lockfile-'))
-    tempDirs.push(projectRoot)
+  it("demotes pnpm-lock.yaml to warning (exact match)", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-lockfile-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['in-progress', 'active-blueprint', '_overview.md'],
+      ["in-progress", "active-blueprint", "_overview.md"],
       `---
 type: blueprint
 status: in-progress
@@ -1101,25 +1101,25 @@ last_updated: 2026-04-02
 
 - [ ] a
 `,
-    )
+    );
 
     const result = await runBlueprintAudit({
       projectRoot,
       strict: true,
-      stagedFiles: ['pnpm-lock.yaml'],
-    })
-    expect(result.ok).toBe(true)
-    const issue = result.issues.find((i) => i.file === 'pnpm-lock.yaml')
-    expect(issue?.level).toBe('warning')
-  })
+      stagedFiles: ["pnpm-lock.yaml"],
+    });
+    expect(result.ok).toBe(true);
+    const issue = result.issues.find((i) => i.file === "pnpm-lock.yaml");
+    expect(issue?.level).toBe("warning");
+  });
 
-  it('treats nested package.json (apps/web/package.json) as shared hot file', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-nested-pkg-'))
-    tempDirs.push(projectRoot)
+  it("treats nested package.json (apps/web/package.json) as shared hot file", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-nested-pkg-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['in-progress', 'active-blueprint', '_overview.md'],
+      ["in-progress", "active-blueprint", "_overview.md"],
       `---
 type: blueprint
 status: in-progress
@@ -1140,25 +1140,25 @@ last_updated: 2026-04-02
 
 - [ ] a
 `,
-    )
+    );
 
     const result = await runBlueprintAudit({
       projectRoot,
       strict: true,
-      stagedFiles: ['apps/web/package.json'],
-    })
-    expect(result.ok).toBe(true)
-    const issue = result.issues.find((i) => i.file === 'apps/web/package.json')
-    expect(issue?.level).toBe('warning')
-  })
+      stagedFiles: ["apps/web/package.json"],
+    });
+    expect(result.ok).toBe(true);
+    const issue = result.issues.find((i) => i.file === "apps/web/package.json");
+    expect(issue?.level).toBe("warning");
+  });
 
-  it('does NOT treat package.json.bak as shared hot file (near-miss)', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-near-miss-pkg-'))
-    tempDirs.push(projectRoot)
+  it("does NOT treat package.json.bak as shared hot file (near-miss)", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-near-miss-pkg-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['in-progress', 'active-blueprint', '_overview.md'],
+      ["in-progress", "active-blueprint", "_overview.md"],
       `---
 type: blueprint
 status: in-progress
@@ -1179,28 +1179,28 @@ last_updated: 2026-04-02
 
 - [ ] a
 `,
-    )
+    );
 
     const result = await runBlueprintAudit({
       projectRoot,
       strict: true,
-      stagedFiles: ['package.json.bak'],
-    })
+      stagedFiles: ["package.json.bak"],
+    });
     // package.json.bak does NOT match /(?:^|\/)package\.json$/ — should be error not warning
-    expect(result.ok).toBe(false)
-    const issue = result.issues.find((i) => i.file === 'package.json.bak')
-    expect(issue?.level).toBe('error')
-  })
-})
+    expect(result.ok).toBe(false);
+    const issue = result.issues.find((i) => i.file === "package.json.bak");
+    expect(issue?.level).toBe("error");
+  });
+});
 
-describe('runBlueprintAudit — PLL doc truth checks', () => {
-  it('errors when PLL docs claim a nonexistent wp blueprint run surface', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-pll-run-'))
-    tempDirs.push(projectRoot)
+describe("runBlueprintAudit — PLL doc truth checks", () => {
+  it("errors when PLL docs claim a nonexistent wp blueprint run surface", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-pll-run-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['draft', 'simple-plan', '_overview.md'],
+      ["draft", "simple-plan", "_overview.md"],
       `---
 type: blueprint
 status: draft
@@ -1218,46 +1218,46 @@ last_updated: 2026-04-10
 
 - [ ] a
 `,
-    )
+    );
 
-    mkdirSync(path.join(projectRoot, '.agent', 'commands'), { recursive: true })
-    mkdirSync(path.join(projectRoot, '.agent', 'skills', 'pll'), { recursive: true })
-    mkdirSync(path.join(projectRoot, '.agent', 'guides'), { recursive: true })
+    mkdirSync(path.join(projectRoot, ".agent", "commands"), { recursive: true });
+    mkdirSync(path.join(projectRoot, ".agent", "skills", "pll"), { recursive: true });
+    mkdirSync(path.join(projectRoot, ".agent", "guides"), { recursive: true });
     writeFileSync(
-      path.join(projectRoot, '.agent', 'commands', 'pll.md'),
-      '# /pll\n\njust wp blueprint run <slug>\n',
-      'utf-8',
-    )
+      path.join(projectRoot, ".agent", "commands", "pll.md"),
+      "# /pll\n\njust wp blueprint run <slug>\n",
+      "utf-8",
+    );
     writeFileSync(
-      path.join(projectRoot, '.agent', 'skills', 'pll', 'SKILL.md'),
-      '# skill\n',
-      'utf-8',
-    )
+      path.join(projectRoot, ".agent", "skills", "pll", "SKILL.md"),
+      "# skill\n",
+      "utf-8",
+    );
     writeFileSync(
-      path.join(projectRoot, '.agent', 'guides', 'parallel-execution.md'),
-      '# guide\n\nblueprint-orchestrator\n',
-      'utf-8',
-    )
+      path.join(projectRoot, ".agent", "guides", "parallel-execution.md"),
+      "# guide\n\nblueprint-orchestrator\n",
+      "utf-8",
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(false)
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(false);
     expect(
       result.issues.some((issue) =>
-        issue.message.includes('nonexistent `wp blueprint run` execution surface'),
+        issue.message.includes("nonexistent `wp blueprint run` execution surface"),
       ),
-    ).toBe(true)
+    ).toBe(true);
     expect(
-      result.issues.some((issue) => issue.message.includes('removed local blueprint orchestrator')),
-    ).toBe(true)
-  })
+      result.issues.some((issue) => issue.message.includes("removed local blueprint orchestrator")),
+    ).toBe(true);
+  });
 
   it('errors when PLL docs use "just wp blueprint move <slug> in-progress"', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-pll-move-'))
-    tempDirs.push(projectRoot)
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-pll-move-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['draft', 'simple-plan', '_overview.md'],
+      ["draft", "simple-plan", "_overview.md"],
       `---
 type: blueprint
 status: draft
@@ -1275,43 +1275,43 @@ last_updated: 2026-04-10
 
 - [ ] a
 `,
-    )
+    );
 
-    mkdirSync(path.join(projectRoot, '.agent', 'commands'), { recursive: true })
-    mkdirSync(path.join(projectRoot, '.agent', 'skills', 'pll'), { recursive: true })
-    mkdirSync(path.join(projectRoot, '.agent', 'guides'), { recursive: true })
+    mkdirSync(path.join(projectRoot, ".agent", "commands"), { recursive: true });
+    mkdirSync(path.join(projectRoot, ".agent", "skills", "pll"), { recursive: true });
+    mkdirSync(path.join(projectRoot, ".agent", "guides"), { recursive: true });
     writeFileSync(
-      path.join(projectRoot, '.agent', 'commands', 'pll.md'),
-      '# /pll\n\njust wp blueprint move <slug> in-progress\n',
-      'utf-8',
-    )
+      path.join(projectRoot, ".agent", "commands", "pll.md"),
+      "# /pll\n\njust wp blueprint move <slug> in-progress\n",
+      "utf-8",
+    );
     writeFileSync(
-      path.join(projectRoot, '.agent', 'skills', 'pll', 'SKILL.md'),
-      '# skill\n',
-      'utf-8',
-    )
+      path.join(projectRoot, ".agent", "skills", "pll", "SKILL.md"),
+      "# skill\n",
+      "utf-8",
+    );
     writeFileSync(
-      path.join(projectRoot, '.agent', 'guides', 'parallel-execution.md'),
-      '# guide\n',
-      'utf-8',
-    )
+      path.join(projectRoot, ".agent", "guides", "parallel-execution.md"),
+      "# guide\n",
+      "utf-8",
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(false)
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(false);
     expect(
       result.issues.some((issue) =>
-        issue.message.includes('direct blueprint move commands for normal execution'),
+        issue.message.includes("direct blueprint move commands for normal execution"),
       ),
-    ).toBe(true)
-  })
+    ).toBe(true);
+  });
 
   it('errors when PLL docs still use "blueprint plans" or "combined-dag"', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-pll-plans-'))
-    tempDirs.push(projectRoot)
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-pll-plans-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['draft', 'simple-plan', '_overview.md'],
+      ["draft", "simple-plan", "_overview.md"],
       `---
 type: blueprint
 status: draft
@@ -1329,43 +1329,43 @@ last_updated: 2026-04-10
 
 - [ ] a
 `,
-    )
+    );
 
-    mkdirSync(path.join(projectRoot, '.agent', 'commands'), { recursive: true })
-    mkdirSync(path.join(projectRoot, '.agent', 'skills', 'pll'), { recursive: true })
-    mkdirSync(path.join(projectRoot, '.agent', 'guides'), { recursive: true })
+    mkdirSync(path.join(projectRoot, ".agent", "commands"), { recursive: true });
+    mkdirSync(path.join(projectRoot, ".agent", "skills", "pll"), { recursive: true });
+    mkdirSync(path.join(projectRoot, ".agent", "guides"), { recursive: true });
     writeFileSync(
-      path.join(projectRoot, '.agent', 'commands', 'pll.md'),
-      '# /pll\n\nRun blueprint plans to see everything.\n',
-      'utf-8',
-    )
+      path.join(projectRoot, ".agent", "commands", "pll.md"),
+      "# /pll\n\nRun blueprint plans to see everything.\n",
+      "utf-8",
+    );
     writeFileSync(
-      path.join(projectRoot, '.agent', 'skills', 'pll', 'SKILL.md'),
-      '# skill\n',
-      'utf-8',
-    )
+      path.join(projectRoot, ".agent", "skills", "pll", "SKILL.md"),
+      "# skill\n",
+      "utf-8",
+    );
     writeFileSync(
-      path.join(projectRoot, '.agent', 'guides', 'parallel-execution.md'),
-      '# guide\n',
-      'utf-8',
-    )
+      path.join(projectRoot, ".agent", "guides", "parallel-execution.md"),
+      "# guide\n",
+      "utf-8",
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(false)
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(false);
     expect(
       result.issues.some((issue) =>
-        issue.message.includes('unshipped cross-blueprint execution commands'),
+        issue.message.includes("unshipped cross-blueprint execution commands"),
       ),
-    ).toBe(true)
-  })
+    ).toBe(true);
+  });
 
   it('errors when PLL docs use TaskUpdate with status="completed" pseudocode', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-pll-task-completed-'))
-    tempDirs.push(projectRoot)
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-pll-task-completed-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['draft', 'simple-plan', '_overview.md'],
+      ["draft", "simple-plan", "_overview.md"],
       `---
 type: blueprint
 status: draft
@@ -1383,39 +1383,39 @@ last_updated: 2026-04-10
 
 - [ ] a
 `,
-    )
+    );
 
-    mkdirSync(path.join(projectRoot, '.agent', 'commands'), { recursive: true })
-    mkdirSync(path.join(projectRoot, '.agent', 'skills', 'pll'), { recursive: true })
-    mkdirSync(path.join(projectRoot, '.agent', 'guides'), { recursive: true })
-    writeFileSync(path.join(projectRoot, '.agent', 'commands', 'pll.md'), '# /pll\n', 'utf-8')
+    mkdirSync(path.join(projectRoot, ".agent", "commands"), { recursive: true });
+    mkdirSync(path.join(projectRoot, ".agent", "skills", "pll"), { recursive: true });
+    mkdirSync(path.join(projectRoot, ".agent", "guides"), { recursive: true });
+    writeFileSync(path.join(projectRoot, ".agent", "commands", "pll.md"), "# /pll\n", "utf-8");
     writeFileSync(
-      path.join(projectRoot, '.agent', 'skills', 'pll', 'SKILL.md'),
-      '# skill\n',
-      'utf-8',
-    )
+      path.join(projectRoot, ".agent", "skills", "pll", "SKILL.md"),
+      "# skill\n",
+      "utf-8",
+    );
     writeFileSync(
-      path.join(projectRoot, '.agent', 'guides', 'parallel-execution.md'),
+      path.join(projectRoot, ".agent", "guides", "parallel-execution.md"),
       '# guide\n\nTaskUpdate(taskId=task.id, status="completed")\n',
-      'utf-8',
-    )
+      "utf-8",
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(false)
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(false);
     expect(
       result.issues.some((issue) =>
-        issue.message.includes('failed tasks as completed in pseudocode'),
+        issue.message.includes("failed tasks as completed in pseudocode"),
       ),
-    ).toBe(true)
-  })
+    ).toBe(true);
+  });
 
-  it('passes when PLL docs stay within the shipped lifecycle surface', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-pll-clean-'))
-    tempDirs.push(projectRoot)
+  it("passes when PLL docs stay within the shipped lifecycle surface", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-pll-clean-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['draft', 'clean-plan', '_overview.md'],
+      ["draft", "clean-plan", "_overview.md"],
       `---
 type: blueprint
 status: draft
@@ -1433,38 +1433,38 @@ last_updated: 2026-04-10
 
 - [ ] a
 `,
-    )
+    );
 
-    mkdirSync(path.join(projectRoot, '.agent', 'commands'), { recursive: true })
-    mkdirSync(path.join(projectRoot, '.agent', 'skills', 'pll'), { recursive: true })
-    mkdirSync(path.join(projectRoot, '.agent', 'guides'), { recursive: true })
+    mkdirSync(path.join(projectRoot, ".agent", "commands"), { recursive: true });
+    mkdirSync(path.join(projectRoot, ".agent", "skills", "pll"), { recursive: true });
+    mkdirSync(path.join(projectRoot, ".agent", "guides"), { recursive: true });
     writeFileSync(
-      path.join(projectRoot, '.agent', 'commands', 'pll.md'),
-      '# /pll\n\nUse just wp blueprint start <slug> and just wp blueprint finalize <slug>.\n',
-      'utf-8',
-    )
+      path.join(projectRoot, ".agent", "commands", "pll.md"),
+      "# /pll\n\nUse just wp blueprint start <slug> and just wp blueprint finalize <slug>.\n",
+      "utf-8",
+    );
     writeFileSync(
-      path.join(projectRoot, '.agent', 'skills', 'pll', 'SKILL.md'),
-      '# skill\n\nUse wp blueprint task complete <slug> <taskId>.\n',
-      'utf-8',
-    )
+      path.join(projectRoot, ".agent", "skills", "pll", "SKILL.md"),
+      "# skill\n\nUse wp blueprint task complete <slug> <taskId>.\n",
+      "utf-8",
+    );
     writeFileSync(
-      path.join(projectRoot, '.agent', 'guides', 'parallel-execution.md'),
-      '# guide\n\nUse /pll with blueprint lifecycle commands.\n',
-      'utf-8',
-    )
+      path.join(projectRoot, ".agent", "guides", "parallel-execution.md"),
+      "# guide\n\nUse /pll with blueprint lifecycle commands.\n",
+      "utf-8",
+    );
 
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
-    expect(result.ok).toBe(true)
-  })
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(true);
+  });
 
-  it('demotes stage-coherence on shared hot files (package.json, lockfile, workspace) to non-blocking warnings', async () => {
-    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-shared-files-'))
-    tempDirs.push(projectRoot)
+  it("demotes stage-coherence on shared hot files (package.json, lockfile, workspace) to non-blocking warnings", async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-shared-files-"));
+    tempDirs.push(projectRoot);
 
     writeOverview(
       projectRoot,
-      ['in-progress', 'cross-cutting-blueprint', '_overview.md'],
+      ["in-progress", "cross-cutting-blueprint", "_overview.md"],
       `---
 type: blueprint
 status: in-progress
@@ -1484,38 +1484,38 @@ last_updated: 2026-05-03
 
 - [ ] a
 `,
-    )
+    );
 
     const sharedOnly = await runBlueprintAudit({
       projectRoot,
       strict: true,
       stagedFiles: [
-        'package.json',
-        'pnpm-workspace.yaml',
-        'pnpm-lock.yaml',
-        'apps/web/package.json',
+        "package.json",
+        "pnpm-workspace.yaml",
+        "pnpm-lock.yaml",
+        "apps/web/package.json",
       ],
-    })
-    expect(sharedOnly.ok).toBe(true)
-    expect(sharedOnly.issues.every((issue) => issue.level === 'warning')).toBe(true)
+    });
+    expect(sharedOnly.ok).toBe(true);
+    expect(sharedOnly.issues.every((issue) => issue.level === "warning")).toBe(true);
     expect(sharedOnly.issues.map((issue) => issue.file).sort()).toEqual([
-      'apps/web/package.json',
-      'package.json',
-      'pnpm-lock.yaml',
-      'pnpm-workspace.yaml',
-    ])
+      "apps/web/package.json",
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+    ]);
 
     const sharedAndScoped = await runBlueprintAudit({
       projectRoot,
       strict: true,
-      stagedFiles: ['package.json', 'src/feature.ts'],
-    })
-    expect(sharedAndScoped.ok).toBe(false)
-    expect(sharedAndScoped.issues.find((issue) => issue.file === 'src/feature.ts')?.level).toBe(
-      'error',
-    )
-    expect(sharedAndScoped.issues.find((issue) => issue.file === 'package.json')?.level).toBe(
-      'warning',
-    )
-  })
-})
+      stagedFiles: ["package.json", "src/feature.ts"],
+    });
+    expect(sharedAndScoped.ok).toBe(false);
+    expect(sharedAndScoped.issues.find((issue) => issue.file === "src/feature.ts")?.level).toBe(
+      "error",
+    );
+    expect(sharedAndScoped.issues.find((issue) => issue.file === "package.json")?.level).toBe(
+      "warning",
+    );
+  });
+});

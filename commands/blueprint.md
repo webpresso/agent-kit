@@ -1,6 +1,7 @@
 ---
 description: Manage blueprints via focused MCP tools
 ---
+
 Use the focused blueprint MCP tools.
 
 - `wp_blueprint_projects` — discover visible projects and worktrees

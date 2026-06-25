@@ -89,7 +89,6 @@ concise warning and leaves the hooks reviewable in Codex with `/hooks`.
   lifecycle coverage while the capability matrix marks covered events as
   partial, unmapped, or unsupported
 
-
 ## Typed continuity and release proof
 
 The managed continuity lane uses `SessionStart` for restore/injection and typed
@@ -100,12 +99,12 @@ semantics.
 
 Current release-facing host boundary:
 
-| Host | Continuity depth | Release note |
-| --- | --- | --- |
-| Claude | full for replacement-critical managed lifecycle events | Active hooks live in `.claude/settings.json`; `.claude-plugin/` is packaged metadata. |
-| Codex | full for emitted managed lifecycle events; richer native-only events remain partial/degraded in this matrix | Active hooks live in `.codex/hooks.json`; `.codex-plugin/` is packaged metadata. |
-| Cursor | degraded | No managed PreCompact projection; capability rows remain partial or unsupported where pinned by tests. |
-| OpenCode | degraded | Plugin bridge covers selected lifecycle callbacks and does not emit the full managed hook set. |
+| Host     | Continuity depth                                                                                            | Release note                                                                                           |
+| -------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Claude   | full for replacement-critical managed lifecycle events                                                      | Active hooks live in `.claude/settings.json`; `.claude-plugin/` is packaged metadata.                  |
+| Codex    | full for emitted managed lifecycle events; richer native-only events remain partial/degraded in this matrix | Active hooks live in `.codex/hooks.json`; `.codex-plugin/` is packaged metadata.                       |
+| Cursor   | degraded                                                                                                    | No managed PreCompact projection; capability rows remain partial or unsupported where pinned by tests. |
+| OpenCode | degraded                                                                                                    | Plugin bridge covers selected lifecycle callbacks and does not emit the full managed hook set.         |
 
 Run these release gates before hook-bin, continuity-doc, or package-surface
 claims move forward:

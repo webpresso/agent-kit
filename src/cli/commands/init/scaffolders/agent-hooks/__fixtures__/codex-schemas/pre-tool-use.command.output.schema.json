@@ -3,10 +3,7 @@
   "additionalProperties": false,
   "definitions": {
     "PreToolUseDecisionWire": {
-      "enum": [
-        "approve",
-        "block"
-      ],
+      "enum": ["approve", "block"],
       "type": "string"
     },
     "PreToolUseHookSpecificOutputWire": {
@@ -36,17 +33,11 @@
           "default": null
         }
       },
-      "required": [
-        "hookEventName"
-      ],
+      "required": ["hookEventName"],
       "type": "object"
     },
     "PreToolUsePermissionDecisionWire": {
-      "enum": [
-        "allow",
-        "deny",
-        "ask"
-      ],
+      "enum": ["allow", "deny", "ask"],
       "type": "string"
     }
   },

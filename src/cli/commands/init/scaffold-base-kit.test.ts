@@ -97,10 +97,12 @@ describe("scaffoldBaseKit", () => {
     expect(releaseWorkflow).not.toContain("release-preflight:");
 
     const preCommit = readFileSync(join(repoRoot, ".husky", "pre-commit"), "utf8");
-    expect(preCommit).toContain("git diff --cached --name-only --diff-filter=ACMR");
+    expect(preCommit).toContain("git diff -z --cached --name-only --diff-filter=ACMR");
     expect(preCommit).toContain("wp format --affected || exit 1");
-    expect(preCommit).toContain('git add -- "$file"');
+    expect(preCommit).toContain("git add --pathspec-from-file=- --pathspec-file-nul");
     expect(preCommit).toContain("|| exit 1");
+    expect(preCommit).not.toContain("while IFS= read -r file");
+    expect(preCommit).not.toContain('git add -- "$file"');
     expect(preCommit).not.toContain("grep -Eq");
     // Full guardrails are CI-owned; local hooks run only the wp-owned affected-safe subset.
     expect(preCommit).toContain("wp audit guardrails --affected");

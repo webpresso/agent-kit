@@ -1,12 +1,12 @@
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
 
 const LEGACY_BIN_PATTERNS = [
   /(?:^|[\s"'`([{])(?<cmd>wp|cli2|ak)(?=$|[\s"'`,)\]}])/u,
   /(?:^|[\s"'`([{])(?<cmd>ak-pretool-guard|ak-post-tool|ak-stop-qa|ak-guard-switch|ak-sessionstart-routing)(?=$|[\s"'`,)\]}])/u,
-] as const
+] as const;
 
-const DEFAULT_SCAN_TARGETS = ['apps', 'packages', '.github'] as const
+const DEFAULT_SCAN_TARGETS = ["apps", "packages", ".github"] as const;
 
 const ALLOWLIST_PATH_PATTERNS = [
   /^docs\/changelog\//u,
@@ -35,147 +35,147 @@ const ALLOWLIST_PATH_PATTERNS = [
   /^packages\/docs-site\/\.generated\/content\/docs\/guides\/operations-guide\.md$/u,
   /^packages\/docs-site\/\.generated\/content\/docs\/system\/customer-surface-ledger\.md$/u,
   /^packages\/docs-site\/\.generated\/content\/docs\/system\/public-surface-deprecation\.md$/u,
-] as const
+] as const;
 
 const SKIP_DIRECTORY_NAMES = new Set([
-  '.git',
-  '.generated',
-  '.next',
-  '.omx',
-  '.pnpm-store',
-  '.stryker-tmp',
-  '.turbo',
-  '.wrangler',
-  'build',
-  'coverage',
-  'dist',
-  'logs',
-  'node_modules',
-  'playwright-report-smoke',
-  'public',
-  'reports',
-  'test-results',
-  'tmp',
-  '__fixtures__',
-  '__snapshots__',
-])
+  ".git",
+  ".generated",
+  ".next",
+  ".omx",
+  ".pnpm-store",
+  ".stryker-tmp",
+  ".turbo",
+  ".wrangler",
+  "build",
+  "coverage",
+  "dist",
+  "logs",
+  "node_modules",
+  "playwright-report-smoke",
+  "public",
+  "reports",
+  "test-results",
+  "tmp",
+  "__fixtures__",
+  "__snapshots__",
+]);
 
 export interface LegacyCliBinFinding {
-  readonly line: number
-  readonly match: string
-  readonly path: string
+  readonly line: number;
+  readonly match: string;
+  readonly path: string;
 }
 
 function isAllowlistedPath(path: string): boolean {
-  return ALLOWLIST_PATH_PATTERNS.some((pattern) => pattern.test(path))
+  return ALLOWLIST_PATH_PATTERNS.some((pattern) => pattern.test(path));
 }
 
 function shouldSkipPath(path: string): boolean {
-  if (path.split('/').some((segment) => SKIP_DIRECTORY_NAMES.has(segment))) {
-    return true
+  if (path.split("/").some((segment) => SKIP_DIRECTORY_NAMES.has(segment))) {
+    return true;
   }
 
   return (
-    path.endsWith('.md') ||
-    path.endsWith('.mdx') ||
-    path.endsWith('.snap') ||
-    path.endsWith('.png') ||
-    path.endsWith('.jpg') ||
-    path.endsWith('.svg')
-  )
+    path.endsWith(".md") ||
+    path.endsWith(".mdx") ||
+    path.endsWith(".snap") ||
+    path.endsWith(".png") ||
+    path.endsWith(".jpg") ||
+    path.endsWith(".svg")
+  );
 }
 
 function* walkFiles(path: string): Generator<string> {
-  const stats = statSync(path)
+  const stats = statSync(path);
   if (stats.isFile()) {
-    yield path
-    return
+    yield path;
+    return;
   }
 
   if (!stats.isDirectory()) {
-    return
+    return;
   }
 
   for (const entry of readdirSync(path, { withFileTypes: true })) {
-    const childPath = join(path, entry.name)
+    const childPath = join(path, entry.name);
     if (entry.isDirectory()) {
       if (SKIP_DIRECTORY_NAMES.has(entry.name)) {
-        continue
+        continue;
       }
-      yield* walkFiles(childPath)
-      continue
+      yield* walkFiles(childPath);
+      continue;
     }
 
     if (entry.isFile()) {
-      yield childPath
+      yield childPath;
     }
   }
 }
 
 function collectLegacyCliBinFindings(repoRoot: string): LegacyCliBinFinding[] {
-  const findings: LegacyCliBinFinding[] = []
+  const findings: LegacyCliBinFinding[] = [];
 
   for (const target of DEFAULT_SCAN_TARGETS) {
-    const absoluteTarget = join(repoRoot, target)
+    const absoluteTarget = join(repoRoot, target);
     if (!existsSync(absoluteTarget)) {
-      continue
+      continue;
     }
 
     for (const absolutePath of walkFiles(absoluteTarget)) {
-      const relativePath = relative(repoRoot, absolutePath).replaceAll('\\', '/')
+      const relativePath = relative(repoRoot, absolutePath).replaceAll("\\", "/");
 
       if (shouldSkipPath(relativePath) || isAllowlistedPath(relativePath)) {
-        continue
+        continue;
       }
 
-      let content: string
+      let content: string;
       try {
-        content = readFileSync(absolutePath, 'utf8')
+        content = readFileSync(absolutePath, "utf8");
       } catch {
-        continue
+        continue;
       }
 
       for (const [index, line] of content.split(/\r?\n/u).entries()) {
-        if (line.includes('--wp-')) {
-          continue
+        if (line.includes("--wp-")) {
+          continue;
         }
         for (const pattern of LEGACY_BIN_PATTERNS) {
-          const match = line.match(pattern)
-          const found = match?.groups?.cmd ?? match?.[1]
+          const match = line.match(pattern);
+          const found = match?.groups?.cmd ?? match?.[1];
           if (!found) {
-            continue
+            continue;
           }
 
           findings.push({
             line: index + 1,
             match: found,
             path: relativePath,
-          })
-          break
+          });
+          break;
         }
       }
     }
   }
 
-  return findings
+  return findings;
 }
 
 export function runNoLegacyCliBinAudit(repoRoot = process.cwd()): void {
-  const findings = collectLegacyCliBinFindings(repoRoot)
+  const findings = collectLegacyCliBinFindings(repoRoot);
 
   if (findings.length === 0) {
-    console.log('No active legacy CLI bin invocations found.')
-    return
+    console.log("No active legacy CLI bin invocations found.");
+    return;
   }
 
   const renderedFindings = findings
     .map((finding) => `- ${finding.path}:${finding.line} (${finding.match})`)
-    .join('\n')
+    .join("\n");
 
   throw new Error(
     [
-      'Found active legacy CLI bin invocations outside the explicit migration-history allowlist.',
+      "Found active legacy CLI bin invocations outside the explicit migration-history allowlist.",
       renderedFindings,
-    ].join('\n'),
-  )
+    ].join("\n"),
+  );
 }

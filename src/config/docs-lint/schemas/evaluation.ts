@@ -1,13 +1,13 @@
-import { z } from 'zod'
+import { z } from "zod";
 
-import { baseFrontmatter, dateString } from './common.js'
+import { baseFrontmatter, dateString } from "./common.js";
 
 /**
  * Frontmatter schema for evaluations.
  * Located in docs/evaluations/
  */
 export const evaluationFrontmatter = baseFrontmatter.extend({
-  type: z.literal('evaluation').optional(),
+  type: z.literal("evaluation").optional(),
 
   /** Date the evaluation was performed */
   evaluation_date: dateString,
@@ -26,6 +26,6 @@ export const evaluationFrontmatter = baseFrontmatter.extend({
 
   /** Overall rating if applicable */
   rating: z.number().min(1).max(10).optional(),
-})
+});
 
-export type EvaluationFrontmatter = z.infer<typeof evaluationFrontmatter>
+export type EvaluationFrontmatter = z.infer<typeof evaluationFrontmatter>;

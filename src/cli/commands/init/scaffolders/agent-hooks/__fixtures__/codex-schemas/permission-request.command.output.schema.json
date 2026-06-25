@@ -3,10 +3,7 @@
   "additionalProperties": false,
   "definitions": {
     "PermissionRequestBehaviorWire": {
-      "enum": [
-        "allow",
-        "deny"
-      ],
+      "enum": ["allow", "deny"],
       "type": "string"
     },
     "PermissionRequestDecisionWire": {
@@ -33,9 +30,7 @@
           "description": "Reserved for a future permission-rewrite capability.\n\nPermissionRequest hooks currently fail closed if this field is present."
         }
       },
-      "required": [
-        "behavior"
-      ],
+      "required": ["behavior"],
       "type": "object"
     },
     "PermissionRequestHookSpecificOutputWire": {
@@ -54,9 +49,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "hookEventName"
-      ],
+      "required": ["hookEventName"],
       "type": "object"
     }
   },

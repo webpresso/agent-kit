@@ -8,7 +8,7 @@
  * Populated in Phase 1.
  */
 
-export type __WebpressoEntrypointReserved = never
+export type __WebpressoEntrypointReserved = never;
 
 export {
   analyzeBundleBudget,
@@ -16,7 +16,7 @@ export {
   formatBundleBudgetReport,
   formatBytes,
   installChunkLoadRecovery,
-} from './vite/index.js'
+} from "./vite/index.js";
 export type {
   AnalyzeBundleBudgetOptions,
   BundleBudgetAsset,
@@ -28,4 +28,4 @@ export type {
   ChunkLoadRecoveryStorage,
   ChunkLoadRecoveryTarget,
   InstallChunkLoadRecoveryOptions,
-} from './vite/index.js'
+} from "./vite/index.js";

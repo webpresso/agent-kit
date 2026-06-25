@@ -1,1 +1,1 @@
-export const seededLintErrorSource = 'export const agentKitLintSeed =\n'
+export const seededLintErrorSource = "export const agentKitLintSeed =\n";

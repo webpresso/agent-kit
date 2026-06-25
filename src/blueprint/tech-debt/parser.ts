@@ -11,13 +11,13 @@
  * - Validates frontmatter using techDebtFrontmatterSchema
  */
 
-import type { z } from 'zod'
+import type { z } from "zod";
 
-import matter from 'gray-matter'
+import matter from "gray-matter";
 
-import { extractCodeBlocks } from '#markdown/helpers'
+import { extractCodeBlocks } from "#markdown/helpers";
 
-import { techDebtFrontmatterSchema } from './schema.js'
+import { techDebtFrontmatterSchema } from "./schema.js";
 
 /**
  * Parse markdown with frontmatter and validate against a Zod schema.
@@ -27,9 +27,9 @@ function parseWithSchema<T extends z.ZodTypeAny>(
   markdown: string,
   schema: T,
 ): { data: z.infer<T>; content: string } {
-  const { data: rawData, content } = matter(markdown)
-  const data = schema.parse(rawData)
-  return { data, content }
+  const { data: rawData, content } = matter(markdown);
+  const data = schema.parse(rawData);
+  return { data, content };
 }
 
 /**
@@ -37,39 +37,39 @@ function parseWithSchema<T extends z.ZodTypeAny>(
  * Returns total count and checked count
  */
 export function extractCheckboxStatus(section: string): {
-  total: number
-  checked: number
+  total: number;
+  checked: number;
 } {
-  const checkboxRegex = /^- \[([ x])\]/gm
-  const matches = Array.from(section.matchAll(checkboxRegex))
+  const checkboxRegex = /^- \[([ x])\]/gm;
+  const matches = Array.from(section.matchAll(checkboxRegex));
 
-  const total = matches.length
-  const checked = matches.filter((m) => m[1] === 'x').length
+  const total = matches.length;
+  const checked = matches.filter((m) => m[1] === "x").length;
 
-  return { total, checked }
+  return { total, checked };
 }
 
 export interface RemediationStep {
-  id: string // e.g., "1", "2"
-  title: string
-  checked: boolean
+  id: string; // e.g., "1", "2"
+  title: string;
+  checked: boolean;
 }
 
 export interface TechDebtItem {
-  slug: string
-  hazardId: string | null // e.g., "H-001" or null
-  title: string
-  status: string
-  severity: string
-  category?: string
-  reviewCadence?: string
-  lastReviewed?: string
-  nextReview: string // Computed by Zod transform
-  basePriority: number // Computed by Zod transform
-  linkedBlueprints?: string[]
-  diagrams: string[]
-  remediationSteps: RemediationStep[]
-  raw: string // Full markdown
+  slug: string;
+  hazardId: string | null; // e.g., "H-001" or null
+  title: string;
+  status: string;
+  severity: string;
+  category?: string;
+  reviewCadence?: string;
+  lastReviewed?: string;
+  nextReview: string; // Computed by Zod transform
+  basePriority: number; // Computed by Zod transform
+  linkedBlueprints?: string[];
+  diagrams: string[];
+  remediationSteps: RemediationStep[];
+  raw: string; // Full markdown
 }
 
 /**
@@ -78,9 +78,9 @@ export interface TechDebtItem {
  * Returns: "H-001" or null if not found
  */
 function extractHazardId(content: string): string | null {
-  const hazardMatch = content.match(/^#\s+H-(\d+):/m)
-  if (!hazardMatch?.[1]) return null
-  return `H-${hazardMatch[1]}`
+  const hazardMatch = content.match(/^#\s+H-(\d+):/m);
+  if (!hazardMatch?.[1]) return null;
+  return `H-${hazardMatch[1]}`;
 }
 
 /**
@@ -89,8 +89,8 @@ function extractHazardId(content: string): string | null {
  * Or: # Title → "Title"
  */
 function extractTitle(content: string): string {
-  const h1Match = content.match(/^#\s+(?:H-\d+:\s*)?(.+)$/m)
-  return (h1Match?.[1] ?? 'Untitled').trim()
+  const h1Match = content.match(/^#\s+(?:H-\d+:\s*)?(.+)$/m);
+  return (h1Match?.[1] ?? "Untitled").trim();
 }
 
 /**
@@ -99,28 +99,28 @@ function extractTitle(content: string): string {
  * Checkbox status is extracted from content under each step
  */
 function extractRemediationSteps(content: string): RemediationStep[] {
-  const stepRegex = /^####\s+Step\s+(\d+):\s*(.+)$/gm
-  const matches = Array.from(content.matchAll(stepRegex))
+  const stepRegex = /^####\s+Step\s+(\d+):\s*(.+)$/gm;
+  const matches = Array.from(content.matchAll(stepRegex));
 
   if (!matches.length) {
-    return []
+    return [];
   }
 
   return matches.map((match, index) => {
-    const id = match[1] ?? ''
-    const stepStart = match.index ?? 0
-    const nextStepIndex = matches[index + 1]?.index ?? content.length
+    const id = match[1] ?? "";
+    const stepStart = match.index ?? 0;
+    const nextStepIndex = matches[index + 1]?.index ?? content.length;
 
     // Extract section between this step and next step (or end of content)
-    const stepSection = content.slice(stepStart, nextStepIndex)
-    const { checked: checkedCount } = extractCheckboxStatus(stepSection)
+    const stepSection = content.slice(stepStart, nextStepIndex);
+    const { checked: checkedCount } = extractCheckboxStatus(stepSection);
 
     return {
       id,
-      title: (match[2] ?? '').trim(),
+      title: (match[2] ?? "").trim(),
       checked: checkedCount > 0, // Step is checked if any of its checkboxes are checked
-    }
-  })
+    };
+  });
 }
 
 /**
@@ -134,18 +134,18 @@ function extractRemediationSteps(content: string): RemediationStep[] {
 export function parseTechDebt(markdown: string, slug: string): TechDebtItem {
   // Parse and validate frontmatter using Zod schema
   // This throws ZodError if frontmatter is invalid
-  const { data, content } = parseWithSchema(markdown, techDebtFrontmatterSchema)
+  const { data, content } = parseWithSchema(markdown, techDebtFrontmatterSchema);
 
-  const hazardId = extractHazardId(content)
-  const title = extractTitle(content)
-  const diagrams = extractCodeBlocks(content, 'mermaid')
-  const remediationSteps = extractRemediationSteps(content)
+  const hazardId = extractHazardId(content);
+  const title = extractTitle(content);
+  const diagrams = extractCodeBlocks(content, "mermaid");
+  const remediationSteps = extractRemediationSteps(content);
 
   // Convert date fields to string format for consistency
   const lastReviewed =
     data.last_reviewed instanceof Date
-      ? (data.last_reviewed.toISOString().split('T')[0] ?? '')
-      : String(data.last_reviewed ?? '')
+      ? (data.last_reviewed.toISOString().split("T")[0] ?? "")
+      : String(data.last_reviewed ?? "");
 
   return {
     slug,
@@ -162,7 +162,7 @@ export function parseTechDebt(markdown: string, slug: string): TechDebtItem {
     diagrams,
     remediationSteps,
     raw: markdown,
-  }
+  };
 }
 
 /**
@@ -170,14 +170,14 @@ export function parseTechDebt(markdown: string, slug: string): TechDebtItem {
  * Updates frontmatter fields while preserving content
  */
 export function serializeTechDebt(item: TechDebtItem): string {
-  const { data, content } = matter(item.raw)
+  const { data, content } = matter(item.raw);
 
   // Update mutable frontmatter fields
-  if (item.status) data.status = item.status
-  if (item.lastReviewed) data.last_reviewed = item.lastReviewed
+  if (item.status) data.status = item.status;
+  if (item.lastReviewed) data.last_reviewed = item.lastReviewed;
 
   // Remove computed fields (they are regenerated on parse)
-  const { nextReview: _nextReview, basePriority: _basePriority, ...cleanedData } = data
+  const { nextReview: _nextReview, basePriority: _basePriority, ...cleanedData } = data;
 
-  return matter.stringify(content, cleanedData)
+  return matter.stringify(content, cleanedData);
 }

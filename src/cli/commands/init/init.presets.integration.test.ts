@@ -8,70 +8,70 @@
  * against a tmpdir per test, so we also assert the agent surface is laid
  * down correctly when presets are active.
  */
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { EventEmitter } from 'node:events'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { PassThrough } from 'node:stream'
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { EventEmitter } from "node:events";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { PassThrough } from "node:stream";
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const spawnSyncMock = vi.fn()
-const spawnMock = vi.fn()
+const spawnSyncMock = vi.fn();
+const spawnMock = vi.fn();
 
 function managedVpTail(call: readonly unknown[]): readonly unknown[] | null {
-  if (call[0] === 'vp') return Array.isArray(call[1]) ? call[1] : []
-  if (call[0] !== process.execPath || !Array.isArray(call[1])) return null
-  const [bin, ...tail] = call[1]
-  return typeof bin === 'string' && /vite-plus.*bin.*vp/u.test(bin) ? tail : null
+  if (call[0] === "vp") return Array.isArray(call[1]) ? call[1] : [];
+  if (call[0] !== process.execPath || !Array.isArray(call[1])) return null;
+  const [bin, ...tail] = call[1];
+  return typeof bin === "string" && /vite-plus.*bin.*vp/u.test(bin) ? tail : null;
 }
 
 class FakeAsyncChild extends EventEmitter {
-  readonly stdout = new PassThrough()
-  readonly stderr = new PassThrough()
-  readonly pid = 1234
-  readonly kill = vi.fn(() => true)
+  readonly stdout = new PassThrough();
+  readonly stderr = new PassThrough();
+  readonly pid = 1234;
+  readonly kill = vi.fn(() => true);
 
   constructor() {
-    super()
+    super();
     queueMicrotask(() => {
-      this.stdout.end()
-      this.stderr.end()
-      this.emit('close', 0, null)
-    })
+      this.stdout.end();
+      this.stderr.end();
+      this.emit("close", 0, null);
+    });
   }
 }
 
-vi.mock('node:child_process', async () => {
-  const actual = await vi.importActual<typeof import('node:child_process')>('node:child_process')
+vi.mock("node:child_process", async () => {
+  const actual = await vi.importActual<typeof import("node:child_process")>("node:child_process");
   return {
     ...actual,
     spawn: (...args: unknown[]) => spawnMock(...args),
     spawnSync: (...args: unknown[]) => spawnSyncMock(...args),
-  }
-})
+  };
+});
 
-import { EXIT_SETUP_FAIL, EXIT_SUCCESS, EXIT_WRITE_FAIL, runInit } from './index.js'
+import { EXIT_SETUP_FAIL, EXIT_SUCCESS, EXIT_WRITE_FAIL, runInit } from "./index.js";
 
-const silentStdout = { write: () => true }
+const silentStdout = { write: () => true };
 
 function runInitSilently(flags: Parameters<typeof runInit>[0]): Promise<number> {
-  return runInit(flags, { stdout: silentStdout })
+  return runInit(flags, { stdout: silentStdout });
 }
 
 function makeRepo(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'wp-init-presets-'))
-  mkdirSync(join(dir, '.git'), { recursive: true })
+  const dir = mkdtempSync(join(tmpdir(), "wp-init-presets-"));
+  mkdirSync(join(dir, ".git"), { recursive: true });
   writeFileSync(
-    join(dir, 'package.json'),
+    join(dir, "package.json"),
     JSON.stringify({
-      name: '@acme/x',
+      name: "@acme/x",
       private: true,
-      devDependencies: { '@webpresso/agent-config': '^0.1.5' },
+      devDependencies: { "@webpresso/agent-config": "^0.1.5" },
     }),
-  )
-  writeFileSync(join(dir, 'pnpm-workspace.yaml'), 'packages:\n  - apps/*\n')
-  return dir
+  );
+  writeFileSync(join(dir, "pnpm-workspace.yaml"), "packages:\n  - apps/*\n");
+  return dir;
 }
 
 // Note: spawnSync returns string-typed stdout/stderr when called with
@@ -79,36 +79,36 @@ function makeRepo(): string {
 // mock compatible with both string-mode and inherit-mode call sites.
 const okSpawnResult = {
   status: 0,
-  stdout: '',
-  stderr: '',
+  stdout: "",
+  stderr: "",
   pid: 1,
   output: [],
   signal: null,
-}
+};
 
-describe('runInit() — external presets (integration)', { timeout: 20_000 }, () => {
-  let repo: string
-  let originalCodexHome: string | undefined
-  let originalHome: string | undefined
-  let originalCi: string | undefined
-  let originalPath: string | undefined
-  let consoleLogSpy: ReturnType<typeof vi.spyOn> | undefined
-  let consoleWarnSpy: ReturnType<typeof vi.spyOn> | undefined
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn> | undefined
+describe("runInit() — external presets (integration)", { timeout: 20_000 }, () => {
+  let repo: string;
+  let originalCodexHome: string | undefined;
+  let originalHome: string | undefined;
+  let originalCi: string | undefined;
+  let originalPath: string | undefined;
+  let consoleLogSpy: ReturnType<typeof vi.spyOn> | undefined;
+  let consoleWarnSpy: ReturnType<typeof vi.spyOn> | undefined;
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn> | undefined;
 
   beforeEach(() => {
-    repo = makeRepo()
-    originalCodexHome = process.env.CODEX_HOME
-    originalHome = process.env.HOME
-    originalCi = process.env.CI
-    originalPath = process.env.PATH
-    process.env.CODEX_HOME = join(repo, '.codex-home')
-    process.env.HOME = join(repo, '.home')
-    const fakeBinDir = join(repo, 'bin')
-    const fakeOmx = join(fakeBinDir, 'omx')
-    mkdirSync(fakeBinDir, { recursive: true })
-    writeFileSync(fakeOmx, '#!/usr/bin/env sh\necho 1.2.3\n', 'utf8')
-    chmodSync(fakeOmx, 0o755)
+    repo = makeRepo();
+    originalCodexHome = process.env.CODEX_HOME;
+    originalHome = process.env.HOME;
+    originalCi = process.env.CI;
+    originalPath = process.env.PATH;
+    process.env.CODEX_HOME = join(repo, ".codex-home");
+    process.env.HOME = join(repo, ".home");
+    const fakeBinDir = join(repo, "bin");
+    const fakeOmx = join(fakeBinDir, "omx");
+    mkdirSync(fakeBinDir, { recursive: true });
+    writeFileSync(fakeOmx, "#!/usr/bin/env sh\necho 1.2.3\n", "utf8");
+    chmodSync(fakeOmx, 0o755);
     // Command detection now uses a real PATH scan (#runtime/command-exists), not the
     // mocked `which` spawnSync, so stage a real `claude` on PATH for the flows that
     // gate on it (Claude-plugin install, OMC). `codex` is intentionally NOT staged:
@@ -116,10 +116,10 @@ describe('runInit() — external presets (integration)', { timeout: 20_000 }, ()
     // model codex-plugin's install handshake (it would hang). The real codex
     // app-server boundary is deadline-guarded, so this is a test-mock gap, not a
     // product hang.
-    const fakeClaude = join(fakeBinDir, 'claude')
-    writeFileSync(fakeClaude, '#!/usr/bin/env sh\nexit 0\n', 'utf8')
-    chmodSync(fakeClaude, 0o755)
-    process.env.PATH = `${fakeBinDir}:${originalPath ?? ''}`
+    const fakeClaude = join(fakeBinDir, "claude");
+    writeFileSync(fakeClaude, "#!/usr/bin/env sh\nexit 0\n", "utf8");
+    chmodSync(fakeClaude, 0o755);
+    process.env.PATH = `${fakeBinDir}:${originalPath ?? ""}`;
     // runInit() short-circuits the omx/rtk scaffolders when CI=true/1
     // (production guard against postinstall failures on hosted CI runners
     // that don't carry these dev-workstation tools). The integration tests
@@ -128,44 +128,44 @@ describe('runInit() — external presets (integration)', { timeout: 20_000 }, ()
     // never invoked and every assertion against `spawnSyncMock.mock.calls`
     // sees an empty array. PATH-manipulation coverage of the CI-skip branch
     // lives in init.e2e.test.ts, where it belongs.
-    delete process.env.CI
-    spawnSyncMock.mockReset()
-    spawnSyncMock.mockImplementation(() => okSpawnResult)
-    spawnMock.mockReset()
-    spawnMock.mockImplementation(() => new FakeAsyncChild())
-    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-  })
+    delete process.env.CI;
+    spawnSyncMock.mockReset();
+    spawnSyncMock.mockImplementation(() => okSpawnResult);
+    spawnMock.mockReset();
+    spawnMock.mockImplementation(() => new FakeAsyncChild());
+    consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
 
   afterEach(() => {
     if (originalCodexHome === undefined) {
-      delete process.env.CODEX_HOME
+      delete process.env.CODEX_HOME;
     } else {
-      process.env.CODEX_HOME = originalCodexHome
+      process.env.CODEX_HOME = originalCodexHome;
     }
     if (originalHome === undefined) {
-      delete process.env.HOME
+      delete process.env.HOME;
     } else {
-      process.env.HOME = originalHome
+      process.env.HOME = originalHome;
     }
     if (originalCi === undefined) {
-      delete process.env.CI
+      delete process.env.CI;
     } else {
-      process.env.CI = originalCi
+      process.env.CI = originalCi;
     }
     if (originalPath === undefined) {
-      delete process.env.PATH
+      delete process.env.PATH;
     } else {
-      process.env.PATH = originalPath
+      process.env.PATH = originalPath;
     }
-    consoleLogSpy?.mockRestore()
-    consoleWarnSpy?.mockRestore()
-    consoleErrorSpy?.mockRestore()
-    rmSync(repo, { recursive: true, force: true })
-  })
+    consoleLogSpy?.mockRestore();
+    consoleWarnSpy?.mockRestore();
+    consoleErrorSpy?.mockRestore();
+    rmSync(repo, { recursive: true, force: true });
+  });
 
-  describe('--with omx', () => {
+  describe("--with omx", () => {
     // runInit() runs the rtk/claude-plugin orchestration for every preset
     // (gated only by WP_SKIP_*). These omx tests assert only omx + vp calls, but
     // that orchestration's awaited (mocked) spawns add enough event-loop latency
@@ -173,396 +173,399 @@ describe('runInit() — external presets (integration)', { timeout: 20_000 }, ()
     // probabilistic flake across this block. Skip it (as the sibling --with omc
     // block does); the omx+rtk interaction has dedicated coverage in the
     // combined block below.
-    let originalSkipRtk: string | undefined
-    let originalSkipClaudePlugin: string | undefined
+    let originalSkipRtk: string | undefined;
+    let originalSkipClaudePlugin: string | undefined;
 
     beforeEach(() => {
-      originalSkipRtk = process.env.WP_SKIP_RTK
-      originalSkipClaudePlugin = process.env.WP_SKIP_CLAUDE_PLUGIN
-      process.env.WP_SKIP_RTK = '1'
-      process.env.WP_SKIP_CLAUDE_PLUGIN = '1'
-    })
+      originalSkipRtk = process.env.WP_SKIP_RTK;
+      originalSkipClaudePlugin = process.env.WP_SKIP_CLAUDE_PLUGIN;
+      process.env.WP_SKIP_RTK = "1";
+      process.env.WP_SKIP_CLAUDE_PLUGIN = "1";
+    });
 
     afterEach(() => {
       if (originalSkipRtk === undefined) {
-        delete process.env.WP_SKIP_RTK
+        delete process.env.WP_SKIP_RTK;
       } else {
-        process.env.WP_SKIP_RTK = originalSkipRtk
+        process.env.WP_SKIP_RTK = originalSkipRtk;
       }
       if (originalSkipClaudePlugin === undefined) {
-        delete process.env.WP_SKIP_CLAUDE_PLUGIN
+        delete process.env.WP_SKIP_CLAUDE_PLUGIN;
       } else {
-        process.env.WP_SKIP_CLAUDE_PLUGIN = originalSkipClaudePlugin
+        process.env.WP_SKIP_CLAUDE_PLUGIN = originalSkipClaudePlugin;
       }
-    })
+    });
 
-    it('returns SUCCESS and invokes omx --version then user-scoped omx setup', async () => {
-      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx' })
-      expect(code).toBe(EXIT_SUCCESS)
-      const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
-      expect(omxCalls).toHaveLength(2)
-      expect(omxCalls[0]?.[1]).toEqual(['--version'])
-      expect(omxCalls[1]?.[1]).toEqual(['setup', '--yes', '--scope', 'user'])
+    it("returns SUCCESS and invokes omx --version then user-scoped omx setup", async () => {
+      const code = await runInitSilently({ cwd: repo, yes: true, with: "omx" });
+      expect(code).toBe(EXIT_SUCCESS);
+      const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === "omx");
+      expect(omxCalls).toHaveLength(2);
+      expect(omxCalls[0]?.[1]).toEqual(["--version"]);
+      expect(omxCalls[1]?.[1]).toEqual(["setup", "--yes", "--scope", "user"]);
       expect(omxCalls[1]?.[2]).toMatchObject({
         cwd: repo,
-        stdio: ['ignore', 'inherit', 'inherit'],
-      })
-      const codexConfig = readFileSync(join(repo, '.codex-home/config.toml'), 'utf8')
-      expect(codexConfig).toContain('[mcp_servers.playwright]')
-      expect(codexConfig).toContain('[mcp_servers.context7]')
+        stdio: ["ignore", "inherit", "inherit"],
+      });
+      const codexConfig = readFileSync(join(repo, ".codex-home/config.toml"), "utf8");
+      expect(codexConfig).toContain("[mcp_servers.playwright]");
+      expect(codexConfig).toContain("[mcp_servers.context7]");
       expect(codexConfig).toContain(
         'http_headers = { "Accept" = "application/json, text/event-stream" }',
-      )
+      );
       expect(codexConfig).toContain(
         'env_http_headers = { "CONTEXT7_API_KEY" = "CONTEXT7_API_KEY" }',
-      )
+      );
 
-      const claudeMcpConfig = JSON.parse(readFileSync(join(repo, '.mcp.json'), 'utf8')) as {
-        mcpServers: Record<string, unknown>
-      }
+      const claudeMcpConfig = JSON.parse(readFileSync(join(repo, ".mcp.json"), "utf8")) as {
+        mcpServers: Record<string, unknown>;
+      };
       expect(claudeMcpConfig.mcpServers.context7).toStrictEqual({
-        type: 'http',
-        url: 'https://mcp.context7.com/mcp',
-        headers: { CONTEXT7_API_KEY: '${CONTEXT7_API_KEY}' },
-      })
-    })
+        type: "http",
+        url: "https://mcp.context7.com/mcp",
+        headers: { CONTEXT7_API_KEY: "${CONTEXT7_API_KEY}" },
+      });
+    });
 
-    it('does not run rtk/claude orchestration on the omx-only path (hermetic skip)', async () => {
-      await runInitSilently({ cwd: repo, yes: true, with: 'omx' })
-      const rtkCalls = spawnSyncMock.mock.calls.filter((call) => call[0] === 'rtk')
+    it("does not run rtk/claude orchestration on the omx-only path (hermetic skip)", async () => {
+      await runInitSilently({ cwd: repo, yes: true, with: "omx" });
+      const rtkCalls = spawnSyncMock.mock.calls.filter((call) => call[0] === "rtk");
       const claudePluginCalls = spawnSyncMock.mock.calls.filter(
-        (call) => call[0] === 'claude' && Array.isArray(call[1]),
-      )
-      expect(rtkCalls).toStrictEqual([])
-      expect(claudePluginCalls).toStrictEqual([])
-    })
+        (call) => call[0] === "claude" && Array.isArray(call[1]),
+      );
+      expect(rtkCalls).toStrictEqual([]);
+      expect(claudePluginCalls).toStrictEqual([]);
+    });
 
-    it('passes project scope to omx setup when --project is requested', async () => {
-      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx', project: true })
-      expect(code).toBe(EXIT_SUCCESS)
-      const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
-      expect(omxCalls[1]?.[1]).toEqual(['setup', '--yes', '--scope', 'project'])
-    })
+    it("passes project scope to omx setup when --project is requested", async () => {
+      const code = await runInitSilently({ cwd: repo, yes: true, with: "omx", project: true });
+      expect(code).toBe(EXIT_SUCCESS);
+      const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === "omx");
+      expect(omxCalls[1]?.[1]).toEqual(["setup", "--yes", "--scope", "project"]);
+    });
 
-    it('repairs .gitignore so regenerated Codex and OMX surfaces stay ignored', async () => {
-      writeFileSync(join(repo, '.gitignore'), ['node_modules/', '!.codex/agents/**', ''].join('\n'))
+    it("repairs .gitignore so regenerated Codex and OMX surfaces stay ignored", async () => {
+      writeFileSync(
+        join(repo, ".gitignore"),
+        ["node_modules/", "!.codex/agents/**", ""].join("\n"),
+      );
 
-      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx' })
+      const code = await runInitSilently({ cwd: repo, yes: true, with: "omx" });
 
-      expect(code).toBe(EXIT_SUCCESS)
-      const gitignore = readFileSync(join(repo, '.gitignore'), 'utf8')
-      expect(gitignore).toContain('# >>> managed by webpresso (generated)')
-      expect(gitignore).toContain('.codex/')
-      expect(gitignore).toContain('.omx/')
-      expect(gitignore).toContain('_worktrees/')
-      expect(gitignore).toContain('.stryker-tmp/')
-      expect(gitignore).toContain('reports/mutation/')
-      expect(gitignore).toContain('reports/stryker-incremental.json')
-      expect(gitignore).toContain('stryker-setup-*.js')
-      expect(gitignore.trimEnd()).toMatch(/# <<< managed by webpresso \(generated\)$/)
+      expect(code).toBe(EXIT_SUCCESS);
+      const gitignore = readFileSync(join(repo, ".gitignore"), "utf8");
+      expect(gitignore).toContain("# >>> managed by webpresso (generated)");
+      expect(gitignore).toContain(".codex/");
+      expect(gitignore).toContain(".omx/");
+      expect(gitignore).toContain("_worktrees/");
+      expect(gitignore).toContain(".stryker-tmp/");
+      expect(gitignore).toContain("reports/mutation/");
+      expect(gitignore).toContain("reports/stryker-incremental.json");
+      expect(gitignore).toContain("stryker-setup-*.js");
+      expect(gitignore.trimEnd()).toMatch(/# <<< managed by webpresso \(generated\)$/);
 
       const gitRmCalls = spawnSyncMock.mock.calls.filter(
-        (call) => call[0] === 'git' && Array.isArray(call[1]) && call[1][0] === 'rm',
-      )
-      expect(gitRmCalls).toHaveLength(1)
+        (call) => call[0] === "git" && Array.isArray(call[1]) && call[1][0] === "rm",
+      );
+      expect(gitRmCalls).toHaveLength(1);
       expect(gitRmCalls[0]?.[1]).toEqual(
         expect.arrayContaining([
-          'rm',
-          '--cached',
-          '-r',
-          '--ignore-unmatch',
-          '--',
-          '.codex/',
-          '.omx/',
-          '_worktrees/',
-          '.claude/settings.local.json',
-          '.claude/rules/',
-          '.claude/skills/',
-          '.stryker-tmp/',
-          'reports/mutation/',
-          'reports/stryker-incremental.json',
-          'stryker-setup-*.js',
+          "rm",
+          "--cached",
+          "-r",
+          "--ignore-unmatch",
+          "--",
+          ".codex/",
+          ".omx/",
+          "_worktrees/",
+          ".claude/settings.local.json",
+          ".claude/rules/",
+          ".claude/skills/",
+          ".stryker-tmp/",
+          "reports/mutation/",
+          "reports/stryker-incremental.json",
+          "stryker-setup-*.js",
         ]),
-      )
-      expect(gitRmCalls[0]?.[2]).toMatchObject({ cwd: repo, encoding: 'utf8' })
-    })
+      );
+      expect(gitRmCalls[0]?.[2]).toMatchObject({ cwd: repo, encoding: "utf8" });
+    });
 
-    it('returns EXIT_SETUP_FAIL when probe errors with ENOENT (omx not on PATH)', async () => {
+    it("returns EXIT_SETUP_FAIL when probe errors with ENOENT (omx not on PATH)", async () => {
       spawnSyncMock.mockImplementation((cmd: string) => {
-        if (cmd === 'omx') {
+        if (cmd === "omx") {
           return {
             ...okSpawnResult,
             status: null,
-            error: Object.assign(new Error('ENOENT'), { code: 'ENOENT' }),
-          }
+            error: Object.assign(new Error("ENOENT"), { code: "ENOENT" }),
+          };
         }
-        return okSpawnResult
-      })
-      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx' })
-      expect(code).toBe(EXIT_SETUP_FAIL)
-    })
+        return okSpawnResult;
+      });
+      const code = await runInitSilently({ cwd: repo, yes: true, with: "omx" });
+      expect(code).toBe(EXIT_SETUP_FAIL);
+    });
 
-    it('returns EXIT_SETUP_FAIL when probe exits non-zero (omx is broken)', async () => {
+    it("returns EXIT_SETUP_FAIL when probe exits non-zero (omx is broken)", async () => {
       spawnSyncMock.mockImplementation((cmd: string, args: string[]) => {
-        if (cmd === 'omx' && args[0] === '--version') {
-          return { ...okSpawnResult, status: 127 }
+        if (cmd === "omx" && args[0] === "--version") {
+          return { ...okSpawnResult, status: 127 };
         }
-        return okSpawnResult
-      })
-      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx' })
-      expect(code).toBe(EXIT_SETUP_FAIL)
-    })
+        return okSpawnResult;
+      });
+      const code = await runInitSilently({ cwd: repo, yes: true, with: "omx" });
+      expect(code).toBe(EXIT_SETUP_FAIL);
+    });
 
-    it('returns EXIT_WRITE_FAIL when omx setup itself fails', async () => {
+    it("returns EXIT_WRITE_FAIL when omx setup itself fails", async () => {
       spawnSyncMock.mockImplementation((cmd: string, args: string[]) => {
-        if (cmd === 'omx' && args[0] === '--version') return { ...okSpawnResult, status: 0 }
-        if (cmd === 'omx' && args[0] === 'setup') return { ...okSpawnResult, status: 5 }
-        return okSpawnResult
-      })
-      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx' })
-      expect(code).toBe(EXIT_WRITE_FAIL)
-    })
+        if (cmd === "omx" && args[0] === "--version") return { ...okSpawnResult, status: 0 };
+        if (cmd === "omx" && args[0] === "setup") return { ...okSpawnResult, status: 5 };
+        return okSpawnResult;
+      });
+      const code = await runInitSilently({ cwd: repo, yes: true, with: "omx" });
+      expect(code).toBe(EXIT_WRITE_FAIL);
+    });
 
-    it('--dry-run does not invoke omx at all', async () => {
-      await runInitSilently({ cwd: repo, yes: true, with: 'omx', 'dry-run': true })
-      const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
-      expect(omxCalls).toHaveLength(0)
-    })
-  })
+    it("--dry-run does not invoke omx at all", async () => {
+      await runInitSilently({ cwd: repo, yes: true, with: "omx", "dry-run": true });
+      const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === "omx");
+      expect(omxCalls).toHaveLength(0);
+    });
+  });
 
-  describe('--with omc', () => {
-    let originalSkipRtk: string | undefined
-    let originalSkipClaudePlugin: string | undefined
+  describe("--with omc", () => {
+    let originalSkipRtk: string | undefined;
+    let originalSkipClaudePlugin: string | undefined;
 
     beforeEach(() => {
-      originalSkipRtk = process.env.WP_SKIP_RTK
-      originalSkipClaudePlugin = process.env.WP_SKIP_CLAUDE_PLUGIN
-      process.env.WP_SKIP_RTK = '1'
-      process.env.WP_SKIP_CLAUDE_PLUGIN = '1'
-    })
+      originalSkipRtk = process.env.WP_SKIP_RTK;
+      originalSkipClaudePlugin = process.env.WP_SKIP_CLAUDE_PLUGIN;
+      process.env.WP_SKIP_RTK = "1";
+      process.env.WP_SKIP_CLAUDE_PLUGIN = "1";
+    });
 
     afterEach(() => {
       if (originalSkipRtk === undefined) {
-        delete process.env.WP_SKIP_RTK
+        delete process.env.WP_SKIP_RTK;
       } else {
-        process.env.WP_SKIP_RTK = originalSkipRtk
+        process.env.WP_SKIP_RTK = originalSkipRtk;
       }
       if (originalSkipClaudePlugin === undefined) {
-        delete process.env.WP_SKIP_CLAUDE_PLUGIN
+        delete process.env.WP_SKIP_CLAUDE_PLUGIN;
       } else {
-        process.env.WP_SKIP_CLAUDE_PLUGIN = originalSkipClaudePlugin
+        process.env.WP_SKIP_CLAUDE_PLUGIN = originalSkipClaudePlugin;
       }
-    })
+    });
 
-    it('installs OMC through user-scoped Claude Code plugin commands by default', async () => {
-      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omc' })
+    it("installs OMC through user-scoped Claude Code plugin commands by default", async () => {
+      const code = await runInitSilently({ cwd: repo, yes: true, with: "omc" });
 
-      expect(code).toBe(EXIT_SUCCESS)
-      const claudeCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'claude')
+      expect(code).toBe(EXIT_SUCCESS);
+      const claudeCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === "claude");
       expect(claudeCalls).toContainEqual([
-        'claude',
+        "claude",
         [
-          'plugin',
-          'marketplace',
-          'add',
-          '--scope',
-          'user',
-          'https://github.com/Yeachan-Heo/oh-my-claudecode',
+          "plugin",
+          "marketplace",
+          "add",
+          "--scope",
+          "user",
+          "https://github.com/Yeachan-Heo/oh-my-claudecode",
         ],
         expect.any(Object),
-      ])
+      ]);
       expect(claudeCalls).toContainEqual([
-        'claude',
-        ['plugin', 'install', '--scope', 'user', 'oh-my-claudecode@omc'],
+        "claude",
+        ["plugin", "install", "--scope", "user", "oh-my-claudecode@omc"],
         expect.any(Object),
-      ])
-    })
+      ]);
+    });
 
-    it('uses project scope for OMC when --project is requested', async () => {
-      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omc', project: true })
+    it("uses project scope for OMC when --project is requested", async () => {
+      const code = await runInitSilently({ cwd: repo, yes: true, with: "omc", project: true });
 
-      expect(code).toBe(EXIT_SUCCESS)
-      const claudeCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'claude')
+      expect(code).toBe(EXIT_SUCCESS);
+      const claudeCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === "claude");
       expect(claudeCalls).toContainEqual([
-        'claude',
+        "claude",
         [
-          'plugin',
-          'marketplace',
-          'add',
-          '--scope',
-          'project',
-          'https://github.com/Yeachan-Heo/oh-my-claudecode',
+          "plugin",
+          "marketplace",
+          "add",
+          "--scope",
+          "project",
+          "https://github.com/Yeachan-Heo/oh-my-claudecode",
         ],
         expect.any(Object),
-      ])
-    })
+      ]);
+    });
 
-    it('--dry-run does not invoke Claude Code for OMC', async () => {
-      await runInitSilently({ cwd: repo, yes: true, with: 'omc', 'dry-run': true })
+    it("--dry-run does not invoke Claude Code for OMC", async () => {
+      await runInitSilently({ cwd: repo, yes: true, with: "omc", "dry-run": true });
 
       const omcClaudeCalls = spawnSyncMock.mock.calls.filter(
         (c) =>
-          c[0] === 'claude' &&
+          c[0] === "claude" &&
           Array.isArray(c[1]) &&
-          (c[1] as string[]).includes('oh-my-claudecode@omc'),
-      )
-      expect(omcClaudeCalls).toHaveLength(0)
-    })
-  })
+          (c[1] as string[]).includes("oh-my-claudecode@omc"),
+      );
+      expect(omcClaudeCalls).toHaveLength(0);
+    });
+  });
 
-  describe('--with rtk', () => {
-    it('returns SUCCESS and invokes rtk --version then rtk init -g --auto-patch', async () => {
-      const code = await runInitSilently({ cwd: repo, yes: true, with: 'rtk' })
-      expect(code).toBe(EXIT_SUCCESS)
-      const rtkCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'rtk')
-      expect(rtkCalls).toHaveLength(2)
-      expect(rtkCalls[0]?.[1]).toEqual(['--version'])
-      expect(rtkCalls[1]?.[1]).toEqual(['init', '-g', '--auto-patch'])
+  describe("--with rtk", () => {
+    it("returns SUCCESS and invokes rtk --version then rtk init -g --auto-patch", async () => {
+      const code = await runInitSilently({ cwd: repo, yes: true, with: "rtk" });
+      expect(code).toBe(EXIT_SUCCESS);
+      const rtkCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === "rtk");
+      expect(rtkCalls).toHaveLength(2);
+      expect(rtkCalls[0]?.[1]).toEqual(["--version"]);
+      expect(rtkCalls[1]?.[1]).toEqual(["init", "-g", "--auto-patch"]);
       expect(rtkCalls[1]?.[2]).toEqual(
         expect.objectContaining({
           cwd: repo,
-          stdio: 'inherit',
+          stdio: "inherit",
           env: expect.objectContaining({
-            RTK_TELEMETRY_DISABLED: '1',
+            RTK_TELEMETRY_DISABLED: "1",
           }),
         }),
-      )
-    })
+      );
+    });
 
-    it('--dry-run does not invoke rtk at all', async () => {
-      await runInitSilently({ cwd: repo, yes: true, with: 'rtk', 'dry-run': true })
-      const rtkCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'rtk')
-      expect(rtkCalls).toHaveLength(0)
-    })
-  })
+    it("--dry-run does not invoke rtk at all", async () => {
+      await runInitSilently({ cwd: repo, yes: true, with: "rtk", "dry-run": true });
+      const rtkCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === "rtk");
+      expect(rtkCalls).toHaveLength(0);
+    });
+  });
 
-  describe('--with omx,rtk (combined)', () => {
-    it('invokes both presets in deterministic order', async () => {
-      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx,rtk' })
-      expect(code).toBe(EXIT_SUCCESS)
+  describe("--with omx,rtk (combined)", () => {
+    it("invokes both presets in deterministic order", async () => {
+      const code = await runInitSilently({ cwd: repo, yes: true, with: "omx,rtk" });
+      expect(code).toBe(EXIT_SUCCESS);
       const calledTools = spawnSyncMock.mock.calls
         .map((call) => call[0])
-        .filter((name) => name === 'omx' || name === 'rtk')
-      expect(calledTools).toEqual(['omx', 'omx', 'rtk', 'rtk'])
-    })
-  })
+        .filter((name) => name === "omx" || name === "rtk");
+      expect(calledTools).toEqual(["omx", "omx", "rtk", "rtk"]);
+    });
+  });
 
-  describe('--with omx,omc (combined)', () => {
-    it('uses user scope for both OMX and OMC by default', async () => {
-      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx,omc' })
+  describe("--with omx,omc (combined)", () => {
+    it("uses user scope for both OMX and OMC by default", async () => {
+      const code = await runInitSilently({ cwd: repo, yes: true, with: "omx,omc" });
 
-      expect(code).toBe(EXIT_SUCCESS)
-      const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
-      const claudeCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'claude')
-      expect(omxCalls[1]?.[1]).toEqual(['setup', '--yes', '--scope', 'user'])
+      expect(code).toBe(EXIT_SUCCESS);
+      const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === "omx");
+      const claudeCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === "claude");
+      expect(omxCalls[1]?.[1]).toEqual(["setup", "--yes", "--scope", "user"]);
       expect(claudeCalls).toContainEqual([
-        'claude',
-        ['plugin', 'install', '--scope', 'user', 'oh-my-claudecode@omc'],
+        "claude",
+        ["plugin", "install", "--scope", "user", "oh-my-claudecode@omc"],
         expect.any(Object),
-      ])
-    })
+      ]);
+    });
 
-    it('passes project scope to both OMX and OMC when --project is requested', async () => {
-      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx,omc', project: true })
+    it("passes project scope to both OMX and OMC when --project is requested", async () => {
+      const code = await runInitSilently({ cwd: repo, yes: true, with: "omx,omc", project: true });
 
-      expect(code).toBe(EXIT_SUCCESS)
-      const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
-      const claudeCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'claude')
-      expect(omxCalls[1]?.[1]).toEqual(['setup', '--yes', '--scope', 'project'])
+      expect(code).toBe(EXIT_SUCCESS);
+      const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === "omx");
+      const claudeCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === "claude");
+      expect(omxCalls[1]?.[1]).toEqual(["setup", "--yes", "--scope", "project"]);
       expect(claudeCalls).toContainEqual([
-        'claude',
-        ['plugin', 'install', '--scope', 'project', 'oh-my-claudecode@omc'],
+        "claude",
+        ["plugin", "install", "--scope", "project", "oh-my-claudecode@omc"],
         expect.any(Object),
-      ])
-    })
-  })
+      ]);
+    });
+  });
 
-  describe('runtime check (always-on)', () => {
-    it('keeps external integrations opt-in while still probing bun/vp/actionlint without --with flags', async () => {
-      await runInitSilently({ cwd: repo, yes: true })
-      const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
-      const bunCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'bun')
+  describe("runtime check (always-on)", () => {
+    it("keeps external integrations opt-in while still probing bun/vp/actionlint without --with flags", async () => {
+      await runInitSilently({ cwd: repo, yes: true });
+      const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === "omx");
+      const bunCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === "bun");
       const vpCalls = spawnSyncMock.mock.calls
         .map((call) => managedVpTail(call))
-        .filter((tail): tail is readonly unknown[] => tail !== null)
-      const actionlintCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'actionlint')
-      expect(omxCalls).toHaveLength(0)
-      expect(bunCalls).toHaveLength(1)
+        .filter((tail): tail is readonly unknown[] => tail !== null);
+      const actionlintCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === "actionlint");
+      expect(omxCalls).toHaveLength(0);
+      expect(bunCalls).toHaveLength(1);
       // vp is used by setup preflight and runtime checks here. Managed tool
       // updates are intentionally environment-gated, so assert the stable
       // version probes instead of a brittle total.
-      expect(actionlintCalls).toHaveLength(1)
-      expect(bunCalls[0]?.[1]).toEqual(['--version'])
+      expect(actionlintCalls).toHaveLength(1);
+      expect(bunCalls[0]?.[1]).toEqual(["--version"]);
       expect(
         vpCalls.some(
-          (tail) => JSON.stringify(tail) === JSON.stringify(['update', '-g', 'oh-my-codex']),
+          (tail) => JSON.stringify(tail) === JSON.stringify(["update", "-g", "oh-my-codex"]),
         ),
-      ).toBe(false)
+      ).toBe(false);
       expect(
-        vpCalls.filter((tail) => JSON.stringify(tail) === JSON.stringify(['--version'])).length,
-      ).toBeGreaterThanOrEqual(2)
-      expect(actionlintCalls[0]?.[1]).toEqual(['--version'])
-    })
+        vpCalls.filter((tail) => JSON.stringify(tail) === JSON.stringify(["--version"])).length,
+      ).toBeGreaterThanOrEqual(2);
+      expect(actionlintCalls[0]?.[1]).toEqual(["--version"]);
+    });
 
-    it('--dry-run skips runtime probes after preflight', async () => {
-      await runInitSilently({ cwd: repo, yes: true, 'dry-run': true })
-      const bunCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'bun')
+    it("--dry-run skips runtime probes after preflight", async () => {
+      await runInitSilently({ cwd: repo, yes: true, "dry-run": true });
+      const bunCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === "bun");
       const vpCalls = spawnSyncMock.mock.calls
         .map((call) => managedVpTail(call))
-        .filter((tail): tail is readonly unknown[] => tail !== null)
-      const actionlintCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'actionlint')
-      expect(bunCalls).toHaveLength(0)
-      expect(vpCalls).toHaveLength(1)
-      expect(actionlintCalls).toHaveLength(0)
-      expect(vpCalls[0]).toEqual(['--version'])
-    })
+        .filter((tail): tail is readonly unknown[] => tail !== null);
+      const actionlintCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === "actionlint");
+      expect(bunCalls).toHaveLength(0);
+      expect(vpCalls).toHaveLength(1);
+      expect(actionlintCalls).toHaveLength(0);
+      expect(vpCalls[0]).toEqual(["--version"]);
+    });
 
-    it('accepts CLI-normalized dryRun and skips external setup work', async () => {
-      await runInitSilently({ cwd: repo, yes: true, dryRun: true })
+    it("accepts CLI-normalized dryRun and skips external setup work", async () => {
+      await runInitSilently({ cwd: repo, yes: true, dryRun: true });
       const externalSetupCalls = [...spawnSyncMock.mock.calls, ...spawnMock.mock.calls].filter(
-        (c) => ['omx', 'claude', 'git', 'rtk', 'bun', 'codex', 'actionlint'].includes(String(c[0])),
-      )
+        (c) => ["omx", "claude", "git", "rtk", "bun", "codex", "actionlint"].includes(String(c[0])),
+      );
       const vpCalls = spawnSyncMock.mock.calls
         .map((call) => managedVpTail(call))
-        .filter((tail): tail is readonly unknown[] => tail !== null)
+        .filter((tail): tail is readonly unknown[] => tail !== null);
 
-      expect(externalSetupCalls).toHaveLength(0)
-      expect(vpCalls).toHaveLength(1)
-      expect(vpCalls[0]).toEqual(['--version'])
-    })
-  })
+      expect(externalSetupCalls).toHaveLength(0);
+      expect(vpCalls).toHaveLength(1);
+      expect(vpCalls[0]).toEqual(["--version"]);
+    });
+  });
 
-  describe('preset parsing edge cases', () => {
-    it('unknown values that are neither preset nor Tier-3 skill fail Tier-3 validation', async () => {
+  describe("preset parsing edge cases", () => {
+    it("unknown values that are neither preset nor Tier-3 skill fail Tier-3 validation", async () => {
       // parsePresets() filters to known PRESETS; everything else is forwarded
       // to Tier-3 skill resolution. If it's not a real Tier-3 skill either,
       // resolveTier3Selection rejects it and runInit returns EXIT_SETUP_FAIL.
       // This is intentional defense-in-depth — caught by the existing
       // 'rejects unknown Tier-3 names' test in init.integration.test.ts.
-      const code = await runInitSilently({ cwd: repo, yes: true, with: 'made-up-preset' })
-      expect(code).toBe(EXIT_SETUP_FAIL)
+      const code = await runInitSilently({ cwd: repo, yes: true, with: "made-up-preset" });
+      expect(code).toBe(EXIT_SETUP_FAIL);
       const externalCalls = [...spawnSyncMock.mock.calls, ...spawnMock.mock.calls].filter(
-        (c) => c[0] === 'omx' || c[0] === 'git',
-      )
+        (c) => c[0] === "omx" || c[0] === "git",
+      );
       // No external calls because we exit before the preset block runs.
-      expect(externalCalls).toHaveLength(0)
-    })
+      expect(externalCalls).toHaveLength(0);
+    });
 
-    it('whitespace around comma-separated presets is tolerated', async () => {
-      const code = await runInitSilently({ cwd: repo, yes: true, with: ' omx , rtk ' })
-      expect(code).toBe(EXIT_SUCCESS)
-      const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
-      expect(omxCalls).toHaveLength(2)
-    })
+    it("whitespace around comma-separated presets is tolerated", async () => {
+      const code = await runInitSilently({ cwd: repo, yes: true, with: " omx , rtk " });
+      expect(code).toBe(EXIT_SUCCESS);
+      const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === "omx");
+      expect(omxCalls).toHaveLength(2);
+    });
 
-    it('preset + invalid Tier-3 skill still fails Tier-3 validation', async () => {
+    it("preset + invalid Tier-3 skill still fails Tier-3 validation", async () => {
       // Even though `omx` is a valid preset, the unknown `fake-thing`
       // routes to Tier-3 resolution and aborts the run before any preset
       // executes. Documented here so this contract is intentional.
-      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx,fake-thing' })
-      expect(code).toBe(EXIT_SETUP_FAIL)
-      const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
-      expect(omxCalls).toHaveLength(0)
-    })
-  })
-})
+      const code = await runInitSilently({ cwd: repo, yes: true, with: "omx,fake-thing" });
+      expect(code).toBe(EXIT_SETUP_FAIL);
+      const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === "omx");
+      expect(omxCalls).toHaveLength(0);
+    });
+  });
+});

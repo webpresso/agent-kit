@@ -4,10 +4,10 @@ status: accepted
 severity: medium
 category: documentation
 review_cadence: monthly
-last_reviewed: '2026-05-11'
-created: '2026-05-11'
-linked_blueprints: ['agent-kit-v1-evidence-ledger']
-affected_modules: ['package.json', '.claude-plugin']
+last_reviewed: "2026-05-11"
+created: "2026-05-11"
+linked_blueprints: ["agent-kit-v1-evidence-ledger"]
+affected_modules: ["package.json", ".claude-plugin"]
 ---
 
 # public distribution flip (npm + Anthropic marketplace + landing)
@@ -79,7 +79,7 @@ Resolve this item when **all of the following** are true:
    ("verified execution record for AI coding work") + install
    one-liner.
 6. Update README install path: `pnpm add -D @webpresso/agent-kit
-   && pnpm exec wp setup`.
+&& pnpm exec wp setup`.
 7. Announce on webpresso channels + relevant developer communities.
 8. Move this file to `tech-debt/resolved/` with the release-cycle
    commit link.

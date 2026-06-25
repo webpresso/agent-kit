@@ -55,17 +55,17 @@ unavailable.
 
 Important fields:
 
-| Field | Meaning |
-| --- | --- |
-| `summary` | Summary-first maintainer verdict |
-| `mode` | `planned-only` or `executed` |
-| `triggeredSurfaces` | Harness-surface IDs selected from changed files |
-| `comparisonMode` | `selection-only` for planned CI, `self-baseline` for local executed smoke, or `baseline-candidate` when explicit measurement files are supplied |
-| `manifestBacked` | Whether all selected suites came from consumer manifests |
-| `repeatCountJustification` | Repeat count plus observed variance evidence |
-| `coverageFailures` | Triggered surfaces with no suite coverage, or missing selected-suite baseline/candidate measurements |
-| `deltas` | Baseline-vs-candidate pass-rate and duration deltas for selected suites |
-| `suites` | Per-suite planned or executed results |
+| Field                      | Meaning                                                                                                                                         |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `summary`                  | Summary-first maintainer verdict                                                                                                                |
+| `mode`                     | `planned-only` or `executed`                                                                                                                    |
+| `triggeredSurfaces`        | Harness-surface IDs selected from changed files                                                                                                 |
+| `comparisonMode`           | `selection-only` for planned CI, `self-baseline` for local executed smoke, or `baseline-candidate` when explicit measurement files are supplied |
+| `manifestBacked`           | Whether all selected suites came from consumer manifests                                                                                        |
+| `repeatCountJustification` | Repeat count plus observed variance evidence                                                                                                    |
+| `coverageFailures`         | Triggered surfaces with no suite coverage, or missing selected-suite baseline/candidate measurements                                            |
+| `deltas`                   | Baseline-vs-candidate pass-rate and duration deltas for selected suites                                                                         |
+| `suites`                   | Per-suite planned or executed results                                                                                                           |
 
 ## Regression interpretation
 

@@ -6,8 +6,8 @@ status: active
 scope: repo
 applies_to: [agents, humans]
 related: []
-created: '2026-05-06'
-last_reviewed: '2026-05-06'
+created: "2026-05-06"
+last_reviewed: "2026-05-06"
 ---
 
 # Pre-Implementation Rules
@@ -58,7 +58,7 @@ wp blueprint promote {slug}
 **When to create** (same threshold as this rule — "non-trivial"):
 
 - **Claude Code (plan mode):** create the blueprint immediately after the plan
-  is approved and *before* calling `ExitPlanMode` or making the first
+  is approved and _before_ calling `ExitPlanMode` or making the first
   `Edit`/`Write` call. The blueprint is the handoff record; the plan is
   ephemeral.
 - **All other CLIs (Codex, Cursor, OpenCode, etc.):** create before the first

@@ -10,8 +10,8 @@ This document has deprecated commands in non-bash code blocks, which should NOT 
 
 ```typescript
 // Example of command execution in TypeScript
-const result = await runCommand('just lint-file src/index.ts')
-const test = 'pnpm vitest'
+const result = await runCommand("just lint-file src/index.ts");
+const test = "pnpm vitest";
 ```
 
 ## JSON Example

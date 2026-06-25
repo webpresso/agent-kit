@@ -2,9 +2,9 @@
 type: blueprint
 status: draft
 complexity: S
-created: '2026-06-24'
-last_updated: '2026-06-24'
-progress: '100% (fix + regression tests landed)'
+created: "2026-06-24"
+last_updated: "2026-06-24"
+progress: "100% (fix + regression tests landed)"
 depends_on: []
 cross_repo_depends_on: []
 tags: [hooks, pretool-guard, bootstrap, reliability]
@@ -42,11 +42,11 @@ git hard-fail is pure downside for them.
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-| -------- | ------ | --------- |
-| Where to fix | `bootstrapAk` short-circuits for `hook`/`mcp` before `getRepoKey()` | Mirrors the existing informational-verb short-circuit; single choke point, no per-validator changes |
-| Which lanes are exempt | `hook` + `mcp` (dedicated `GIT_REPO_OPTIONAL_SUBCOMMANDS`) | Both are runtime lanes (`bin/runtime-lanes.js`) that legitimately run from any cwd; same set already skips the update flow |
-| Not raising a timeout/retry | n/a | Per `no-timeout-as-fix` — the crash is the alarm; fix degrades to fail-open instead of masking |
+| Decision                    | Choice                                                              | Rationale                                                                                                                  |
+| --------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Where to fix                | `bootstrapAk` short-circuits for `hook`/`mcp` before `getRepoKey()` | Mirrors the existing informational-verb short-circuit; single choke point, no per-validator changes                        |
+| Which lanes are exempt      | `hook` + `mcp` (dedicated `GIT_REPO_OPTIONAL_SUBCOMMANDS`)          | Both are runtime lanes (`bin/runtime-lanes.js`) that legitimately run from any cwd; same set already skips the update flow |
+| Not raising a timeout/retry | n/a                                                                 | Per `no-timeout-as-fix` — the crash is the alarm; fix degrades to fail-open instead of masking                             |
 
 ### Phase 1: Graceful degrade [Complexity: S]
 
@@ -59,10 +59,12 @@ to `src/cli/bootstrap.ts`; return early in `bootstrapAk` before `getRepoKey()`
 when the invoked subcommand is exempt.
 
 **Files:**
+
 - Modify: `src/cli/bootstrap.ts`
 - Modify: `src/cli/bootstrap.test.ts`
 
 **Acceptance:**
+
 - [x] `wp hook pretool-guard` in a non-git cwd → `{}` exit 0 (was
       `Not inside a git repository` exit 1). Verified via rebuilt host runtime.
 - [x] `bootstrapAk(['node','wp','hook','pretool-guard'])` does not call
@@ -73,11 +75,11 @@ when the invoked subcommand is exempt.
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| Type safety | `wp typecheck` | Zero errors | pass |
-| Tests | `wp test --file src/cli/bootstrap.test.ts` | All pass | pass |
-| E2E repro | `wp hook pretool-guard` in non-git cwd (compiled runtime) | `{}` exit 0 | pass |
+| Gate        | Command                                                   | Success Criteria | Last result |
+| ----------- | --------------------------------------------------------- | ---------------- | ----------- |
+| Type safety | `wp typecheck`                                            | Zero errors      | pass        |
+| Tests       | `wp test --file src/cli/bootstrap.test.ts`                | All pass         | pass        |
+| E2E repro   | `wp hook pretool-guard` in non-git cwd (compiled runtime) | `{}` exit 0      | pass        |
 
 ## Non-goals
 
@@ -87,6 +89,6 @@ when the invoked subcommand is exempt.
 
 ## Risks
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
+| Risk                            | Impact                           | Mitigation                                                                                      |
+| ------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------- |
 | mcp now skips the git hard-fail | mcp server starts outside a repo | Intended; mcp resolves repo state lazily with bounded discovery. Existing mcp test stays green. |

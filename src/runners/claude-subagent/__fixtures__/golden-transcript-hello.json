@@ -7,7 +7,10 @@
   "subagentOutput": "Created src/hello.ts with hello() function returning 'hello, webpresso'. Created src/hello.test.ts. All tests pass.",
   "expectedEvents": [
     { "type": "started" },
-    { "type": "stdout", "line": "Created src/hello.ts with hello() function returning 'hello, webpresso'. Created src/hello.test.ts. All tests pass." },
+    {
+      "type": "stdout",
+      "line": "Created src/hello.ts with hello() function returning 'hello, webpresso'. Created src/hello.test.ts. All tests pass."
+    },
     { "type": "completed", "exitCode": 0 }
   ]
 }

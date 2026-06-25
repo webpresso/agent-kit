@@ -1,102 +1,102 @@
 #!/usr/bin/env bun
 
-import { readdirSync, readFileSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
 
-const ROOT = process.cwd()
+const ROOT = process.cwd();
 const IGNORED_DIRS = new Set([
-  '.git',
-  'node_modules',
-  '.agent',
-  '.claude',
-  '.codex',
-  '.omx',
-  '.omc',
-  'blueprints',
-  'dist',
-  'coverage',
-  '_worktrees',
-])
+  ".git",
+  "node_modules",
+  ".agent",
+  ".claude",
+  ".codex",
+  ".omx",
+  ".omc",
+  "blueprints",
+  "dist",
+  "coverage",
+  "_worktrees",
+]);
 
-const TEXT_FILE_PATTERN = /\.(md|ts|tsx|js|json|ya?ml|toml|txt)$/i
+const TEXT_FILE_PATTERN = /\.(md|ts|tsx|js|json|ya?ml|toml|txt)$/i;
 
 const BANNED_PATTERNS: Array<{ pattern: RegExp; message: string }> = [
   {
     pattern: /\bdoppler run\b/,
     message:
-      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of direct provider run wrappers',
+      "use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of direct provider run wrappers",
   },
   {
     pattern: /\bwith-secrets\s+--doppler\b/,
     message:
-      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of provider flags',
+      "use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of provider flags",
   },
   {
     pattern: /\bwith-secrets\s+--infisical\b/,
     message:
-      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of provider flags',
+      "use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of provider flags",
   },
   {
     pattern: /\bwith-secrets\s+--(?!doppler\b|infisical\b)/,
     message:
-      'use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of the legacy with-secrets wrapper',
+      "use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` instead of the legacy with-secrets wrapper",
   },
   {
     pattern: /\bdoppler secrets download\b/,
-    message: 'load secrets through runtime/env, not direct provider downloads',
+    message: "load secrets through runtime/env, not direct provider downloads",
   },
   {
     pattern: /runtime\/process\/secret-runner/,
-    message: 'use `@webpresso/framework/runtime/env` instead of secret-runner',
+    message: "use `@webpresso/framework/runtime/env` instead of secret-runner",
   },
-]
+];
 
-const violations: string[] = []
-const SELF_RELATIVE_PATH = 'scripts/audit-secret-provider-quarantine.ts'
+const violations: string[] = [];
+const SELF_RELATIVE_PATH = "scripts/audit-secret-provider-quarantine.ts";
 const ALLOWED_RELATIVE_PATHS = new Set([
-  'src/hooks/pretool-guard/dev-routing.ts',
-  'src/hooks/pretool-guard/dev-routing.test.ts',
-  'src/hooks/pretool-guard/validators/forbidden-commands.ts',
-  'src/hooks/pretool-guard/validators/forbidden-commands.test.ts',
-])
+  "src/hooks/pretool-guard/dev-routing.ts",
+  "src/hooks/pretool-guard/dev-routing.test.ts",
+  "src/hooks/pretool-guard/validators/forbidden-commands.ts",
+  "src/hooks/pretool-guard/validators/forbidden-commands.test.ts",
+]);
 
-walk(ROOT)
+walk(ROOT);
 
 if (violations.length > 0) {
-  console.error('Secret-provider quarantine violations detected:\n')
+  console.error("Secret-provider quarantine violations detected:\n");
   for (const violation of violations) {
-    console.error(`- ${violation}`)
+    console.error(`- ${violation}`);
   }
-  process.exit(1)
+  process.exit(1);
 }
 
-console.log('Secret-provider quarantine: clean.')
+console.log("Secret-provider quarantine: clean.");
 
 function walk(directory: string) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     if (IGNORED_DIRS.has(entry.name)) {
-      continue
+      continue;
     }
 
-    const fullPath = join(directory, entry.name)
+    const fullPath = join(directory, entry.name);
     if (entry.isDirectory()) {
-      walk(fullPath)
-      continue
+      walk(fullPath);
+      continue;
     }
 
     if (!entry.isFile() || !TEXT_FILE_PATTERN.test(entry.name)) {
-      continue
+      continue;
     }
 
-    const content = readFileSync(fullPath, 'utf8')
-    const relPath = relative(ROOT, fullPath)
+    const content = readFileSync(fullPath, "utf8");
+    const relPath = relative(ROOT, fullPath);
     if (relPath === SELF_RELATIVE_PATH || ALLOWED_RELATIVE_PATHS.has(relPath)) {
-      continue
+      continue;
     }
 
     for (const { pattern, message } of BANNED_PATTERNS) {
       if (pattern.test(content)) {
-        violations.push(`${relPath}: ${message}`)
+        violations.push(`${relPath}: ${message}`);
       }
     }
   }

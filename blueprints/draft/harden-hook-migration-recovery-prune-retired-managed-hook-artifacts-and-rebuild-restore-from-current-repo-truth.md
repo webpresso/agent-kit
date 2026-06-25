@@ -2,9 +2,9 @@
 type: blueprint
 status: draft
 complexity: S
-created: '2026-06-24'
-last_updated: '2026-06-24'
-progress: '100% (implemented; documents PR #248)'
+created: "2026-06-24"
+last_updated: "2026-06-24"
+progress: "100% (implemented; documents PR #248)"
 depends_on: []
 cross_repo_depends_on: []
 tags: [hooks, setup, migration, agent-config]
@@ -13,7 +13,7 @@ tags: [hooks, setup, migration, agent-config]
 # Harden hook migration recovery: prune retired managed-hook artifacts and rebuild restore from current repo truth
 
 **Goal:** When `wp setup` (and `wp hooks restore`) run against a repo that was
-scaffolded by an older agent-kit, any retired *managed-hook* artifacts left
+scaffolded by an older agent-kit, any retired _managed-hook_ artifacts left
 behind must be cleaned up rather than carried forward, and a restore must
 reflect the **current** repo's hook contract instead of replaying a possibly
 stale stored manifest.
@@ -46,18 +46,18 @@ wp hooks upgrade ──> missing/legacy manifest no longer hard-fails; warns and
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-| -------- | ------ | --------- |
-| Restore source of truth | Rebuild from current repo, ignore stored manifest | A stale manifest can carry retired `.codex/managed-hooks/*` wrapper commands; replaying them re-introduces the exact rot this fixes. |
+| Decision                       | Choice                                                                                                | Rationale                                                                                                                                         |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Restore source of truth        | Rebuild from current repo, ignore stored manifest                                                     | A stale manifest can carry retired `.codex/managed-hooks/*` wrapper commands; replaying them re-introduces the exact rot this fixes.              |
 | Config cleanup vs file cleanup | `normalize*AgentKitCommands` strips retired commands from config; `prune*` deletes orphan `.sh` files | Config drives invocation, so command-stripping is the load-bearing fix; file deletion is cosmetic orphan cleanup, gated to webpresso-owned paths. |
-| Legacy detection | Match only canonical `wp-*` names under owned dirs + an explicit retired-path allowlist | Avoids touching user/third-party hooks outside the webpresso-owned directories. |
+| Legacy detection               | Match only canonical `wp-*` names under owned dirs + an explicit retired-path allowlist               | Avoids touching user/third-party hooks outside the webpresso-owned directories.                                                                   |
 
 ## Quick Reference (Execution Waves)
 
-| Wave              | Tasks    | Dependencies | Parallelizable |
-| ----------------- | -------- | ------------ | -------------- |
-| **Wave 0**        | 1.1, 1.2 | None         | 1 agent        |
-| **Critical path** | 1.1 → 1.2 → 1.3 | --    | 1 wave         |
+| Wave              | Tasks           | Dependencies | Parallelizable |
+| ----------------- | --------------- | ------------ | -------------- |
+| **Wave 0**        | 1.1, 1.2        | None         | 1 agent        |
+| **Critical path** | 1.1 → 1.2 → 1.3 | --           | 1 wave         |
 
 ### Phase 1: Hook migration hardening [Complexity: S]
 
@@ -166,11 +166,11 @@ that scaffolds from current repo truth, reporting `beforeSummary:
 ## Verification Gates
 
 | Gate        | Command                                                                 | Success Criteria |
-| ----------- | ---------------------------------------------------------------------- | ---------------- |
-| Type safety | `wp typecheck`                                                         | Zero errors      |
+| ----------- | ----------------------------------------------------------------------- | ---------------- |
+| Type safety | `wp typecheck`                                                          | Zero errors      |
 | Lint        | `wp lint --file src/cli/commands/init/scaffolders/agent-hooks/index.ts` | Zero violations  |
 | Tests       | scoped vitest over agent-hooks, hooks-upgrade, init.integration         | All pass (89)    |
-| Tests       | scoped vitest over agent-hooks/manifest.test.ts                          | All pass (11)    |
+| Tests       | scoped vitest over agent-hooks/manifest.test.ts                         | All pass (11)    |
 
 ## Cross-Plan References
 
@@ -181,11 +181,11 @@ that scaffolds from current repo truth, reporting `beforeSummary:
 
 ## Edge Cases and Error Handling
 
-| Edge Case | Risk | Solution | Task |
-| --------- | ---- | -------- | ---- |
-| Concurrent delete of `.claude/hooks` during prune | Uncaught `ENOENT`/`ENOTDIR` crashes setup | `removeDirectoryIfEmpty` catches both and returns; re-throws others | 1.2 |
-| User hook named like a webpresso wrapper outside owned dirs | Accidental strip/delete | Detection scoped to owned dirs + canonical `wp-*` names; basename-collision test | 1.1 |
-| Restore with a stale stored manifest | Re-materializing retired wrappers | Restore ignores `_manifest`, rebuilds from current repo | 1.2 |
+| Edge Case                                                   | Risk                                      | Solution                                                                         | Task |
+| ----------------------------------------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------- | ---- |
+| Concurrent delete of `.claude/hooks` during prune           | Uncaught `ENOENT`/`ENOTDIR` crashes setup | `removeDirectoryIfEmpty` catches both and returns; re-throws others              | 1.2  |
+| User hook named like a webpresso wrapper outside owned dirs | Accidental strip/delete                   | Detection scoped to owned dirs + canonical `wp-*` names; basename-collision test | 1.1  |
+| Restore with a stale stored manifest                        | Re-materializing retired wrappers         | Restore ignores `_manifest`, rebuilds from current repo                          | 1.2  |
 
 ## Non-goals
 
@@ -194,17 +194,17 @@ that scaffolds from current repo truth, reporting `beforeSummary:
 
 ## Risks
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-| `rmSync(force)` hides a permission error on prune | Orphan `.sh` survives | Low: config-normalize already removes the invoking command, so the orphan is inert; prune is cosmetic |
-| Leftover retired wrapper command in an old config | Stale `wp hook` wrapper line | `normalize*AgentKitCommands` strips it from config on next setup/restore |
+| Risk                                              | Impact                       | Mitigation                                                                                            |
+| ------------------------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `rmSync(force)` hides a permission error on prune | Orphan `.sh` survives        | Low: config-normalize already removes the invoking command, so the orphan is inert; prune is cosmetic |
+| Leftover retired wrapper command in an old config | Stale `wp hook` wrapper line | `normalize*AgentKitCommands` strips it from config on next setup/restore                              |
 
 ## Technology Choices
 
-| Component | Technology | Version | Why |
-| --------- | ---------- | ------- | --- |
-| FS ops    | `node:fs` `readdirSync`/`rmSync` | Node >=24 | Stdlib; no dependency for orphan cleanup |
-| Path basenames | `node:path` `basename` | Node >=24 | Total function; avoids non-null assertions |
+| Component      | Technology                       | Version   | Why                                        |
+| -------------- | -------------------------------- | --------- | ------------------------------------------ |
+| FS ops         | `node:fs` `readdirSync`/`rmSync` | Node >=24 | Stdlib; no dependency for orphan cleanup   |
+| Path basenames | `node:path` `basename`           | Node >=24 | Total function; avoids non-null assertions |
 
 ## Trust Dossier
 
@@ -221,24 +221,24 @@ this dossier before promotion to `completed`.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | Retired managed-hook commands are stripped from config on setup/restore | `index.test.ts` migrate + restore tests pass |
-| C2 | Non-owned hooks are preserved | `index.test.ts` basename-collision + keep-me/custom-guard tests pass |
-| C3 | Restore rebuilds current contract from a stale manifest | `index.test.ts:1098` stale-wrapper restore test passes |
+| ID  | Claim                                                                   | Evidence                                                             |
+| --- | ----------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| C1  | Retired managed-hook commands are stripped from config on setup/restore | `index.test.ts` migrate + restore tests pass                         |
+| C2  | Non-owned hooks are preserved                                           | `index.test.ts` basename-collision + keep-me/custom-guard tests pass |
+| C3  | Restore rebuilds current contract from a stale manifest                 | `index.test.ts:1098` stale-wrapper restore test passes               |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Restore source of truth | Rebuild from repo | Apply stored manifest | Stale manifest replays retired wrappers |
+| ID  | Decision                | Chosen option     | Rejected alternatives | Rationale                               |
+| --- | ----------------------- | ----------------- | --------------------- | --------------------------------------- |
+| D1  | Restore source of truth | Rebuild from repo | Apply stored manifest | Stale manifest replays retired wrappers |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| Tests | scoped vitest (agent-hooks, hooks-upgrade, init.integration) | all pass | 89 passed |
-| Typecheck | `wp typecheck` | zero errors | passed |
+| Gate      | Command                                                      | Expected outcome | Last result |
+| --------- | ------------------------------------------------------------ | ---------------- | ----------- |
+| Tests     | scoped vitest (agent-hooks, hooks-upgrade, init.integration) | all pass         | 89 passed   |
+| Typecheck | `wp typecheck`                                               | zero errors      | passed      |
 
 ### Residual Unknowns
 

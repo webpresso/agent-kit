@@ -256,13 +256,13 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
     Do not fall through to raw tool bins under node_modules when a wp wrapper exists.
     .omx is runtime/state only; it is not a direct hook surface.
   </fallback>
-</wp_routing>`
+</wp_routing>`;
 
 export type RoutingInstructionSource = {
-  readonly name: 'wp_routing'
-  readonly content: string
-}
+  readonly name: "wp_routing";
+  readonly content: string;
+};
 
 export function createRoutingInstructionSource(): RoutingInstructionSource {
-  return { name: 'wp_routing', content: WP_ROUTING_BLOCK }
+  return { name: "wp_routing", content: WP_ROUTING_BLOCK };
 }

@@ -14,9 +14,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "hookEventName"
-      ],
+      "required": ["hookEventName"],
       "type": "object"
     }
   },

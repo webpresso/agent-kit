@@ -15,55 +15,55 @@
  * the result, so callers never coerce a kill into success.
  */
 
-import { spawn } from 'node:child_process'
-import { join } from 'node:path'
+import { spawn } from "node:child_process";
+import { join } from "node:path";
 
 import {
   exitCodeFromSignal,
   forceKillProcessTree,
   killProcessTree,
   PROCESS_TREE_FORCE_KILL_GRACE_MS,
-} from '#shared-utils/process-supervisor.js'
+} from "#shared-utils/process-supervisor.js";
 
 export interface RunResult {
-  readonly stdout: string
-  readonly stderr: string
-  readonly exitCode: number
-  readonly signal: NodeJS.Signals | null
-  readonly timedOut: boolean
-  readonly aborted: boolean
+  readonly stdout: string;
+  readonly stderr: string;
+  readonly exitCode: number;
+  readonly signal: NodeJS.Signals | null;
+  readonly timedOut: boolean;
+  readonly aborted: boolean;
 }
 
 export interface RunFailure {
-  readonly error: NodeJS.ErrnoException
+  readonly error: NodeJS.ErrnoException;
 }
 
-export type RunOutcome = RunResult | RunFailure
+export type RunOutcome = RunResult | RunFailure;
 
 export interface RunOptions {
-  readonly timeoutMs: number
-  readonly signal?: AbortSignal
-  readonly cwd?: string
+  readonly timeoutMs: number;
+  readonly signal?: AbortSignal;
+  readonly cwd?: string;
 }
 
 export function isRunFailure(outcome: RunOutcome): outcome is RunFailure {
-  return (outcome as RunFailure).error !== undefined
+  return (outcome as RunFailure).error !== undefined;
 }
 
 export function isMissingBinary(failure: RunFailure): boolean {
-  return failure.error.code === 'ENOENT'
+  return failure.error.code === "ENOENT";
 }
 
 // Mirrors package script execution: project-local binaries (oxfmt, oxlint,
 // tsc) are devDependencies resolved via node_modules/.bin, not global installs.
-const PATH_SEP = process.platform === 'win32' ? ';' : ':'
+const PATH_SEP = process.platform === "win32" ? ";" : ":";
 
 function buildEnv(cwd: string): NodeJS.ProcessEnv {
-  const localBin = join(cwd, 'node_modules', '.bin')
+  const localBin = join(cwd, "node_modules", ".bin");
   return {
     ...process.env,
     PATH: [localBin, process.env.PATH].filter(Boolean).join(PATH_SEP),
-  }
+  };
 }
 
 export function runCommand(
@@ -74,67 +74,67 @@ export function runCommand(
   return new Promise((resolve) => {
     const child = spawn(cmd, [...args], {
       ...(options.cwd ? { cwd: options.cwd, env: buildEnv(options.cwd) } : {}),
-      detached: process.platform !== 'win32',
-    })
-    let stdout = ''
-    let stderr = ''
-    let timedOut = false
-    let aborted = false
-    let terminationRequested = false
-    let escalationTimer: ReturnType<typeof setTimeout> | undefined
+      detached: process.platform !== "win32",
+    });
+    let stdout = "";
+    let stderr = "";
+    let timedOut = false;
+    let aborted = false;
+    let terminationRequested = false;
+    let escalationTimer: ReturnType<typeof setTimeout> | undefined;
 
     const requestTermination = (): void => {
-      if (terminationRequested) return
-      terminationRequested = true
-      killProcessTree(child, 'SIGTERM')
-      if (process.platform === 'win32') return
+      if (terminationRequested) return;
+      terminationRequested = true;
+      killProcessTree(child, "SIGTERM");
+      if (process.platform === "win32") return;
       escalationTimer = setTimeout(() => {
-        forceKillProcessTree(child)
-      }, PROCESS_TREE_FORCE_KILL_GRACE_MS)
-    }
+        forceKillProcessTree(child);
+      }, PROCESS_TREE_FORCE_KILL_GRACE_MS);
+    };
 
     const internalTimer = setTimeout(() => {
-      timedOut = true
-      requestTermination()
-    }, options.timeoutMs)
+      timedOut = true;
+      requestTermination();
+    }, options.timeoutMs);
 
     const onAbort = (): void => {
-      aborted = true
-      requestTermination()
-    }
+      aborted = true;
+      requestTermination();
+    };
     if (options.signal) {
       if (options.signal.aborted) {
         // Defer to a microtask so the child's `close` handler (registered
         // below) is in place by the time `kill` fires close. Otherwise an
         // already-aborted signal kills the child before close is wired up
         // and the promise never resolves.
-        queueMicrotask(onAbort)
+        queueMicrotask(onAbort);
       } else {
-        options.signal.addEventListener('abort', onAbort, { once: true })
+        options.signal.addEventListener("abort", onAbort, { once: true });
       }
     }
 
     const cleanup = (): void => {
-      clearTimeout(internalTimer)
-      if (escalationTimer) clearTimeout(escalationTimer)
-      options.signal?.removeEventListener('abort', onAbort)
-    }
+      clearTimeout(internalTimer);
+      if (escalationTimer) clearTimeout(escalationTimer);
+      options.signal?.removeEventListener("abort", onAbort);
+    };
 
-    child.stdout.on('data', (chunk: Buffer) => {
-      stdout += chunk.toString('utf8')
-    })
-    child.stderr.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString('utf8')
-    })
-    child.on('error', (err: NodeJS.ErrnoException) => {
-      cleanup()
-      resolve({ error: err })
-    })
-    child.on('close', (code: number | null, signal: NodeJS.Signals | null) => {
-      if (terminationRequested && signal !== 'SIGKILL') forceKillProcessTree(child)
-      cleanup()
-      const exitCode = code ?? exitCodeFromSignal(signal)
-      resolve({ stdout, stderr, exitCode, signal, timedOut, aborted })
-    })
-  })
+    child.stdout.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString("utf8");
+    });
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString("utf8");
+    });
+    child.on("error", (err: NodeJS.ErrnoException) => {
+      cleanup();
+      resolve({ error: err });
+    });
+    child.on("close", (code: number | null, signal: NodeJS.Signals | null) => {
+      if (terminationRequested && signal !== "SIGKILL") forceKillProcessTree(child);
+      cleanup();
+      const exitCode = code ?? exitCodeFromSignal(signal);
+      resolve({ stdout, stderr, exitCode, signal, timedOut, aborted });
+    });
+  });
 }

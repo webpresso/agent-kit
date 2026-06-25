@@ -4,9 +4,9 @@ title: CLI contract and framework package alignment
 owner: agent-kit
 status: parked
 complexity: M
-created: '2026-06-15'
-last_updated: '2026-06-21'
-progress: '0% (0/0 tasks done, 0 blocked, updated 2026-06-21)'
+created: "2026-06-15"
+last_updated: "2026-06-21"
+progress: "0% (0/0 tasks done, 0 blocked, updated 2026-06-21)"
 parked_reason: >-
   Dependency-gated: contract adoption is done, but framework rename is not an active
   published dependency; keep parked until external rename is scheduled.
@@ -43,10 +43,12 @@ The bundle surface has already moved off the local contract copy and onto the pu
 ## Scope
 
 ### Phase 1 — contract alignment
+
 - Keep bundle code and tests pinned to the published `@webpresso/cli-contract` package.
 - Prevent local contract copies from reappearing.
 
 ### Phase 2 — framework rename alignment
+
 - Once the framework package rename plan is executed, update relevant policy/test/package-surface references from `@webpresso/framework` to the final framework package name.
 - Keep this narrowly scoped to real references; do not broaden the agent-kit public surface.
 

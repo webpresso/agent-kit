@@ -3,8 +3,8 @@ type: note
 title: Hardcut webpresso external ops handoff
 status: active
 owner: agent
-created: '2026-05-25'
-last_updated: '2026-05-25'
+created: "2026-05-25"
+last_updated: "2026-05-25"
 tags:
   - hardcut
   - ops

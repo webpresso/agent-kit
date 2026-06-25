@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-05-11'
+last_updated: "2026-05-11"
 ---
 
 # Wedge Experience Demo

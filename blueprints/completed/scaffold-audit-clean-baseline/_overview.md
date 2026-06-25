@@ -6,9 +6,9 @@ historical_verification_gap_waiver: true
 historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 status: completed
 complexity: M
-created: '2026-04-25'
-last_updated: '2026-05-06'
-progress: '100% (completed 2026-05-06; audit-clean baseline narrowed, shipped, and verified against current setup/doctor surfaces)'
+created: "2026-04-25"
+last_updated: "2026-05-06"
+progress: "100% (completed 2026-05-06; audit-clean baseline narrowed, shipped, and verified against current setup/doctor surfaces)"
 depends_on: []
 tags:
   - agent-kit
@@ -19,12 +19,12 @@ tags:
 ---
 
 # Scaffold an Audit-Clean Baseline
+
 ## Product wedge anchor
 
 - **Stage outcome:** the completed Scaffold an Audit-Clean Baseline work remains truthfully represented in the blueprint lifecycle and continues to describe the shipped outcome of this lane.
 - **Consuming surface:** the repo-local agent-kit surfaces and docs touched by this completed lane.
 - **New user-visible capability:** none new in this cleanup pass; the capability shipped already, and this blueprint now stays structurally valid as a completed record.
-
 
 **Goal:** Make `wp setup` leave a consumer repo at an audit-clean baseline without manual cleanup, and tighten the remaining gaps between setup, audits, and post-install diagnostics.
 
@@ -291,11 +291,11 @@ The old `claude install-plugin @webpresso/agent-kit` wording is stale. This task
 
 ## Quick Reference (updated waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort |
-| --- | --- | --- | --- | --- |
-| Wave 0 | 1.2, 2.1, 2.2 | None | yes | S-M |
-| Wave 1 | 2.3, 3.1, 5.1 | Wave 0 subset | yes | S-M |
-| Wave 2 | 6.1 | Tasks 2.1, 2.3, 3.1 | limited | M |
+| Wave   | Tasks         | Dependencies        | Parallelizable | Effort |
+| ------ | ------------- | ------------------- | -------------- | ------ |
+| Wave 0 | 1.2, 2.1, 2.2 | None                | yes            | S-M    |
+| Wave 1 | 2.3, 3.1, 5.1 | Wave 0 subset       | yes            | S-M    |
+| Wave 2 | 6.1           | Tasks 2.1, 2.3, 3.1 | limited        | M      |
 
 Critical path now: **2.1 -> 2.3 -> 6.1**, with doctor/guidance work parallel after the baseline remediation path is defined.
 
@@ -315,6 +315,7 @@ Critical path now: **2.1 -> 2.3 -> 6.1**, with doctor/guidance work parallel aft
 - Completed sibling for plugin/install-flow evolution: `blueprints/completed/agent-kit-claude-plugin-marketplace/_overview.md`
 - Completed sibling for hook/plugin doctor surface: `blueprints/completed/ak-hooks-doctor-post-install-verification-skill-for-plugin-hook-health/_overview.md`
 - Related planned work: `blueprints/planned/promote-parent-roadmaps/_overview.md`
+
 ## Historical verification note
 
 This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
@@ -331,21 +332,21 @@ This blueprint contains done tasks recorded before the current per-task `**Verif
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/scaffold-audit-clean-baseline/_overview.md |
+| ID  | Claim                                                          | Evidence                                                              |
+| --- | -------------------------------------------------------------- | --------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/scaffold-audit-clean-baseline/\_overview.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

@@ -1,4 +1,4 @@
-import { vi } from 'vitest'
+import { vi } from "vitest";
 
 // ============================================================================
 // Mock Classes
@@ -16,12 +16,12 @@ import { vi } from 'vitest'
  * ```
  */
 export class MockDurableObject {
-  state: unknown
-  env: unknown
+  state: unknown;
+  env: unknown;
 
   constructor(state: unknown, env: unknown) {
-    this.state = state
-    this.env = env
+    this.state = state;
+    this.env = env;
   }
 }
 
@@ -37,14 +37,14 @@ export class MockDurableObject {
  * ```
  */
 export class MockContainer {
-  defaultPort = 8080
-  sleepAfter = '1m'
-  envVars: Record<string, string> = {}
-  enableInternet = false
-  fetch: ReturnType<typeof vi.fn> = vi.fn<(...args: unknown[]) => unknown>()
-  destroy: ReturnType<typeof vi.fn> = vi.fn<(...args: unknown[]) => unknown>()
-  startAndWaitForPorts: ReturnType<typeof vi.fn> = vi.fn<(...args: unknown[]) => unknown>()
-  getState = vi.fn<() => Promise<{ status: string }>>().mockResolvedValue({ status: 'running' })
+  defaultPort = 8080;
+  sleepAfter = "1m";
+  envVars: Record<string, string> = {};
+  enableInternet = false;
+  fetch: ReturnType<typeof vi.fn> = vi.fn<(...args: unknown[]) => unknown>();
+  destroy: ReturnType<typeof vi.fn> = vi.fn<(...args: unknown[]) => unknown>();
+  startAndWaitForPorts: ReturnType<typeof vi.fn> = vi.fn<(...args: unknown[]) => unknown>();
+  getState = vi.fn<() => Promise<{ status: string }>>().mockResolvedValue({ status: "running" });
 }
 
 // ============================================================================
@@ -65,19 +65,19 @@ export class MockContainer {
  * ```
  */
 export function createCloudflareRuntimeMocks(): {
-  'cloudflare:workers': {
-    DurableObject: typeof MockDurableObject
-  }
-  '@cloudflare/containers': {
-    Container: typeof MockContainer
-  }
+  "cloudflare:workers": {
+    DurableObject: typeof MockDurableObject;
+  };
+  "@cloudflare/containers": {
+    Container: typeof MockContainer;
+  };
 } {
   return {
-    'cloudflare:workers': {
+    "cloudflare:workers": {
       DurableObject: MockDurableObject,
     },
-    '@cloudflare/containers': {
+    "@cloudflare/containers": {
       Container: MockContainer,
     },
-  }
+  };
 }

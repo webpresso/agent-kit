@@ -4,8 +4,8 @@ status: accepted
 severity: low
 category: documentation
 review_cadence: monthly
-last_reviewed: '2026-04-26'
-created: '2026-04-26'
+last_reviewed: "2026-04-26"
+created: "2026-04-26"
 linked_blueprints: []
 affected_modules: []
 ---
@@ -24,6 +24,7 @@ The asymmetry is **not optional today**: as of 2026-04-26, [Codex CLI's config d
 ## Why this is debt, not a feature
 
 The two paths drift independently:
+
 - Claude Code plugin manifest changes (e.g., new hook event) require updating `.claude-plugin/plugin.json`.
 - Codex hooks contract changes require updating the `scaffolder/agent-hooks/index.ts` patch logic.
 - Skills are duplicated to `.agents/skills/` (Codex) and consumed via plugin (Claude Code).
@@ -41,6 +42,7 @@ If/when Codex CLI ships a plugin marketplace, the scaffolder path becomes legacy
 ## Trigger
 
 Resolve this item when **any one** of:
+
 - Codex CLI ships a documented `codex plugin install` (or equivalent) command that reads from a marketplace.json or similar manifest.
 - Codex CLI hooks evolve in a way that breaks the `scaffolder/agent-hooks/` patch logic (e.g., hooks.json schema change).
 - Six months pass with no movement (review whether to keep monitoring or downgrade to "monitoring" status).

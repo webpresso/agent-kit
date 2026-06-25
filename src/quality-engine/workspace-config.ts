@@ -26,20 +26,20 @@ export const PACKAGE_PATTERNS = [
   /^(apps\/containers\/[^/]+)/,
   /^(infra)(?:\/|$)/, // Match 'infra' only when followed by / or end of string
   /^(apps\/[^/]+)/, // Catch-all for other top-level apps (app-core, desktop, etc.)
-] as const
+] as const;
 
 /**
  * Extract the package path from a file path.
  */
 export function extractPackagePath(filePath: string): string | null {
   // Remove leading ./ if present
-  const normalized = filePath.replace(/^\.\//, '')
+  const normalized = filePath.replace(/^\.\//, "");
 
   for (const pattern of PACKAGE_PATTERNS) {
-    const match = normalized.match(pattern)
-    if (match?.[1]) return match[1]
+    const match = normalized.match(pattern);
+    if (match?.[1]) return match[1];
   }
-  return null
+  return null;
 }
 
 // =============================================================================
@@ -51,7 +51,7 @@ export function extractPackagePath(filePath: string): string | null {
  * Uses PACKAGE_PATTERNS to auto-detect — all packages with # support work automatically.
  */
 export function detectProjectRoot(filePath: string): string | undefined {
-  return extractPackagePath(filePath) ?? undefined
+  return extractPackagePath(filePath) ?? undefined;
 }
 
 // =============================================================================
@@ -66,17 +66,17 @@ export function detectProjectRoot(filePath: string): string | undefined {
  */
 export interface PathCheck {
   /** Regex pattern to match staged file paths */
-  pattern: RegExp
+  pattern: RegExp;
   /** Emoji for display */
-  emoji: string
+  emoji: string;
   /** Human-readable name */
-  name: string
+  name: string;
   /** Command to execute (use 'just' commands) */
-  command: string
+  command: string;
   /** Optional setup command (run in background before tests) */
-  setupCommand?: string
+  setupCommand?: string;
   /** Optional health check URL for setup verification */
-  healthUrl?: string
+  healthUrl?: string;
 }
 
 /**
@@ -88,30 +88,30 @@ export interface PathCheck {
 export const PATH_CHECKS: PathCheck[] = [
   {
     pattern: /^apps\/workers\/chef\//,
-    emoji: '🍳',
-    name: 'Chef',
-    command: 'just test --package chef',
+    emoji: "🍳",
+    name: "Chef",
+    command: "just test --package chef",
   },
 
   {
     pattern: /^apps\/web\/platform-web\/app\/(components|routes)\/.*\.tsx$/,
-    emoji: '♿',
-    name: 'Platform Web A11y',
-    command: 'just test --package platform-web -- -t Accessibility',
+    emoji: "♿",
+    name: "Platform Web A11y",
+    command: "just test --package platform-web -- -t Accessibility",
   },
   {
     pattern: /^apps\/web\/admin-web\/app\/(components|routes)\/.*\.tsx$/,
-    emoji: '♿',
-    name: 'Admin Web A11y',
-    command: 'just test --package admin-web -- -t Accessibility',
+    emoji: "♿",
+    name: "Admin Web A11y",
+    command: "just test --package admin-web -- -t Accessibility",
   },
   {
     pattern: /^apps\/web\/website\/app\/(components|routes)\/.*\.tsx$/,
-    emoji: '♿',
-    name: 'Website A11y',
-    command: 'just test --package website -- -t Accessibility',
+    emoji: "♿",
+    name: "Website A11y",
+    command: "just test --package website -- -t Accessibility",
   },
-]
+];
 
 /**
  * Validate a path check configuration.
@@ -119,18 +119,18 @@ export const PATH_CHECKS: PathCheck[] = [
  */
 export function validatePathCheck(check: PathCheck): string | undefined {
   if (!check.pattern) {
-    return 'Missing pattern'
+    return "Missing pattern";
   }
   if (!check.name) {
-    return 'Missing name'
+    return "Missing name";
   }
   if (!check.command) {
-    return 'Missing command'
+    return "Missing command";
   }
-  if (check.healthUrl && !check.healthUrl.startsWith('http')) {
-    return `Invalid health URL: ${check.healthUrl}`
+  if (check.healthUrl && !check.healthUrl.startsWith("http")) {
+    return `Invalid health URL: ${check.healthUrl}`;
   }
-  return undefined
+  return undefined;
 }
 
 /**
@@ -139,9 +139,9 @@ export function validatePathCheck(check: PathCheck): string | undefined {
  */
 export function validateAllPathChecks(): void {
   for (const check of PATH_CHECKS) {
-    const error = validatePathCheck(check)
+    const error = validatePathCheck(check);
     if (error) {
-      throw new Error(`Invalid PATH_CHECK '${check.name}': ${error}`)
+      throw new Error(`Invalid PATH_CHECK '${check.name}': ${error}`);
     }
   }
 }
@@ -150,18 +150,18 @@ export function validateAllPathChecks(): void {
  * Find matched path checks for a list of files.
  */
 export function getMatchedPathChecks(files: string[]): PathCheck[] {
-  const matched: PathCheck[] = []
-  const seen = new Set<string>()
+  const matched: PathCheck[] = [];
+  const seen = new Set<string>();
 
   for (const check of PATH_CHECKS) {
     for (const file of files) {
       if (check.pattern.test(file) && !seen.has(check.name)) {
-        matched.push(check)
-        seen.add(check.name)
-        break
+        matched.push(check);
+        seen.add(check.name);
+        break;
       }
     }
   }
 
-  return matched
+  return matched;
 }

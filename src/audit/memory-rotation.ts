@@ -9,74 +9,74 @@
  * With `--strict`, fails if any rotation lacks `last_rotation_acked`
  * within 30 days.
  */
-import { existsSync, readFileSync } from 'node:fs'
-import path from 'node:path'
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 
-import { getSurfacePath, NotInGitRepoError } from '#paths/state-root.js'
+import { getSurfacePath, NotInGitRepoError } from "#paths/state-root.js";
 
-import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
+import type { RepoAuditResult, RepoAuditViolation } from "./repo-guardrails.js";
 
 export interface RotationLogEntry {
-  timestamp: string // ISO
-  sectionSlug: string
-  sourcePath: string
-  archivedTo: string
-  reason: string // e.g. "threshold_days: 90, last_touched: 2026-02-14"
+  timestamp: string; // ISO
+  sectionSlug: string;
+  sourcePath: string;
+  archivedTo: string;
+  reason: string; // e.g. "threshold_days: 90, last_touched: 2026-02-14"
 }
 
 export interface RotationEvent extends RotationLogEntry {
-  acked: boolean
-  daysAgo: number
+  acked: boolean;
+  daysAgo: number;
 }
 
 export interface MemoryRotationResult {
-  violations: RepoAuditViolation[]
-  recentEvents: RotationEvent[]
-  checked: number
-  pass: boolean
+  violations: RepoAuditViolation[];
+  recentEvents: RotationEvent[];
+  checked: number;
+  pass: boolean;
 }
 
 export interface MemoryRotationOptions {
-  windowDays?: number // default 30
-  strict?: boolean // fail if any unacked rotation in window
+  windowDays?: number; // default 30
+  strict?: boolean; // fail if any unacked rotation in window
 }
 
-const DEFAULT_WINDOW_DAYS = 30
+const DEFAULT_WINDOW_DAYS = 30;
 
 function parseRotationLog(logPath: string): RotationLogEntry[] {
-  if (!existsSync(logPath)) return []
-  let raw: string
+  if (!existsSync(logPath)) return [];
+  let raw: string;
   try {
-    raw = readFileSync(logPath, 'utf8')
+    raw = readFileSync(logPath, "utf8");
   } catch {
-    return []
+    return [];
   }
 
-  const entries: RotationLogEntry[] = []
-  for (const line of raw.split('\n')) {
-    const trimmed = line.trim()
-    if (!trimmed) continue
+  const entries: RotationLogEntry[] = [];
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
     try {
-      const parsed = JSON.parse(trimmed) as unknown
-      if (!isRotationEntry(parsed)) continue
-      entries.push(parsed)
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (!isRotationEntry(parsed)) continue;
+      entries.push(parsed);
     } catch {
       // skip malformed lines
     }
   }
-  return entries
+  return entries;
 }
 
 function isRotationEntry(value: unknown): value is RotationLogEntry {
-  if (typeof value !== 'object' || value === null) return false
-  const obj = value as Record<string, unknown>
+  if (typeof value !== "object" || value === null) return false;
+  const obj = value as Record<string, unknown>;
   return (
-    typeof obj['timestamp'] === 'string' &&
-    typeof obj['sectionSlug'] === 'string' &&
-    typeof obj['sourcePath'] === 'string' &&
-    typeof obj['archivedTo'] === 'string' &&
-    typeof obj['reason'] === 'string'
-  )
+    typeof obj["timestamp"] === "string" &&
+    typeof obj["sectionSlug"] === "string" &&
+    typeof obj["sourcePath"] === "string" &&
+    typeof obj["archivedTo"] === "string" &&
+    typeof obj["reason"] === "string"
+  );
 }
 
 /**
@@ -91,15 +91,15 @@ function isRotationEntry(value: unknown): value is RotationLogEntry {
 function isRotationAcked(entry: RotationLogEntry, cwd: string): boolean {
   const absPath = path.isAbsolute(entry.sourcePath)
     ? entry.sourcePath
-    : path.join(cwd, entry.sourcePath)
+    : path.join(cwd, entry.sourcePath);
 
-  if (!existsSync(absPath)) return false
+  if (!existsSync(absPath)) return false;
 
   try {
-    const content = readFileSync(absPath, 'utf8')
-    return content.includes('last_rotation_acked:')
+    const content = readFileSync(absPath, "utf8");
+    return content.includes("last_rotation_acked:");
   } catch {
-    return false
+    return false;
   }
 }
 
@@ -110,37 +110,37 @@ export function auditMemoryRotation(
   cwd: string,
   options: MemoryRotationOptions = {},
 ): MemoryRotationResult {
-  const windowDays = options.windowDays ?? DEFAULT_WINDOW_DAYS
-  const strict = options.strict ?? false
+  const windowDays = options.windowDays ?? DEFAULT_WINDOW_DAYS;
+  const strict = options.strict ?? false;
   const logPath = (() => {
     try {
-      return getSurfacePath('audit/rotation-log.jsonl', 'repo', cwd)
+      return getSurfacePath("audit/rotation-log.jsonl", "repo", cwd);
     } catch (err) {
-      if (err instanceof NotInGitRepoError) return path.join(cwd, '.agent', '.rotation-log.jsonl')
-      throw err
+      if (err instanceof NotInGitRepoError) return path.join(cwd, ".agent", ".rotation-log.jsonl");
+      throw err;
     }
-  })()
+  })();
 
-  const allEntries = parseRotationLog(logPath)
-  const now = Date.now()
-  const windowMs = windowDays * 24 * 60 * 60 * 1000
+  const allEntries = parseRotationLog(logPath);
+  const now = Date.now();
+  const windowMs = windowDays * 24 * 60 * 60 * 1000;
 
-  const recentEvents: RotationEvent[] = []
+  const recentEvents: RotationEvent[] = [];
 
   for (const entry of allEntries) {
-    const entryTime = new Date(entry.timestamp).getTime()
-    if (Number.isNaN(entryTime)) continue
+    const entryTime = new Date(entry.timestamp).getTime();
+    if (Number.isNaN(entryTime)) continue;
 
-    const ageMs = now - entryTime
-    if (ageMs > windowMs) continue
+    const ageMs = now - entryTime;
+    if (ageMs > windowMs) continue;
 
-    const daysAgo = Math.floor(ageMs / (24 * 60 * 60 * 1000))
-    const acked = isRotationAcked(entry, cwd)
+    const daysAgo = Math.floor(ageMs / (24 * 60 * 60 * 1000));
+    const acked = isRotationAcked(entry, cwd);
 
-    recentEvents.push({ ...entry, acked, daysAgo })
+    recentEvents.push({ ...entry, acked, daysAgo });
   }
 
-  const violations: RepoAuditViolation[] = []
+  const violations: RepoAuditViolation[] = [];
 
   if (strict) {
     for (const event of recentEvents) {
@@ -148,7 +148,7 @@ export function auditMemoryRotation(
         violations.push({
           file: event.sourcePath,
           message: `Unacknowledged rotation: section '${event.sectionSlug}' rotated ${event.daysAgo}d ago (${event.timestamp}). Set last_rotation_acked in ${event.sourcePath}.`,
-        })
+        });
       }
     }
   }
@@ -158,7 +158,7 @@ export function auditMemoryRotation(
     recentEvents,
     checked: recentEvents.length,
     pass: violations.length === 0,
-  }
+  };
 }
 
 /**
@@ -168,11 +168,11 @@ export function auditMemoryRotationAsRepoResult(
   cwd: string,
   options: MemoryRotationOptions = {},
 ): RepoAuditResult {
-  const result = auditMemoryRotation(cwd, options)
+  const result = auditMemoryRotation(cwd, options);
   return {
     ok: result.pass,
-    title: 'Memory rotation audit',
+    title: "Memory rotation audit",
     checked: result.checked,
     violations: result.violations,
-  }
+  };
 }

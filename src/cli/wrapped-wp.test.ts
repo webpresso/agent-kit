@@ -1,128 +1,128 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from "vitest";
 
 import {
   detectWrappedWpCommand,
   detectWrappedWpRuntimeInvocation,
   formatWrappedWpInvocationError,
   wrappedWpGuidanceForArgs,
-} from './wrapped-wp.js'
+} from "./wrapped-wp.js";
 
-describe('detectWrappedWpCommand', () => {
-  it('detects run-script wrappers around wp', () => {
-    expect(detectWrappedWpCommand('pnpm run wp test --file src/foo.test.ts')).toStrictEqual({
-      manager: 'pnpm',
-      wpArgs: ['test', '--file', 'src/foo.test.ts'],
-    })
-    expect(detectWrappedWpCommand('bun run wp lint')).toStrictEqual({
-      manager: 'bun',
-      wpArgs: ['lint'],
-    })
-    expect(detectWrappedWpCommand('corepack pnpm run wp audit package-surface')).toStrictEqual({
-      manager: 'pnpm',
-      wpArgs: ['audit', 'package-surface'],
-    })
-    expect(detectWrappedWpCommand('with-secrets -- vp run wp -- test')).toStrictEqual({
-      manager: 'vp',
-      wpArgs: ['test'],
-    })
-  })
+describe("detectWrappedWpCommand", () => {
+  it("detects run-script wrappers around wp", () => {
+    expect(detectWrappedWpCommand("pnpm run wp test --file src/foo.test.ts")).toStrictEqual({
+      manager: "pnpm",
+      wpArgs: ["test", "--file", "src/foo.test.ts"],
+    });
+    expect(detectWrappedWpCommand("bun run wp lint")).toStrictEqual({
+      manager: "bun",
+      wpArgs: ["lint"],
+    });
+    expect(detectWrappedWpCommand("corepack pnpm run wp audit package-surface")).toStrictEqual({
+      manager: "pnpm",
+      wpArgs: ["audit", "package-surface"],
+    });
+    expect(detectWrappedWpCommand("with-secrets -- vp run wp -- test")).toStrictEqual({
+      manager: "vp",
+      wpArgs: ["test"],
+    });
+  });
 
-  it('detects shorthand script wrappers around wp', () => {
-    expect(detectWrappedWpCommand('yarn wp setup')).toStrictEqual({
-      manager: 'yarn',
-      wpArgs: ['setup'],
-    })
-    expect(detectWrappedWpCommand('pnpm wp typecheck')).toStrictEqual({
-      manager: 'pnpm',
-      wpArgs: ['typecheck'],
-    })
-  })
+  it("detects shorthand script wrappers around wp", () => {
+    expect(detectWrappedWpCommand("yarn wp setup")).toStrictEqual({
+      manager: "yarn",
+      wpArgs: ["setup"],
+    });
+    expect(detectWrappedWpCommand("pnpm wp typecheck")).toStrictEqual({
+      manager: "pnpm",
+      wpArgs: ["typecheck"],
+    });
+  });
 
-  it('does not flag direct wp or npm exec one-shot installs', () => {
-    expect(detectWrappedWpCommand('wp test')).toBeNull()
+  it("does not flag direct wp or npm exec one-shot installs", () => {
+    expect(detectWrappedWpCommand("wp test")).toBeNull();
     expect(
-      detectWrappedWpCommand('npm exec --yes --package @webpresso/agent-kit@latest -- wp setup'),
-    ).toBeNull()
-  })
+      detectWrappedWpCommand("npm exec --yes --package @webpresso/agent-kit@latest -- wp setup"),
+    ).toBeNull();
+  });
 
-  it('tolerates option-noise before wrapped commands', () => {
-    expect(detectWrappedWpCommand('npm exec --yes --package foo -- wp test')).toBeNull()
-    expect(detectWrappedWpCommand('yarn exec --immutable-cache wp test')).toBeNull()
-    expect(detectWrappedWpCommand('bunx --bun wp test')).toBeNull()
-  })
-})
+  it("tolerates option-noise before wrapped commands", () => {
+    expect(detectWrappedWpCommand("npm exec --yes --package foo -- wp test")).toBeNull();
+    expect(detectWrappedWpCommand("yarn exec --immutable-cache wp test")).toBeNull();
+    expect(detectWrappedWpCommand("bunx --bun wp test")).toBeNull();
+  });
+});
 
-describe('wrappedWpGuidanceForArgs', () => {
-  it('maps dev-workflow verbs to the matching MCP tool', () => {
-    expect(wrappedWpGuidanceForArgs(['test']).tool).toBe('wp_test')
-    expect(wrappedWpGuidanceForArgs(['audit', 'docs-frontmatter']).tool).toBe('wp_audit')
-    expect(wrappedWpGuidanceForArgs(['setup']).tool).toBe('wp')
-  })
-})
+describe("wrappedWpGuidanceForArgs", () => {
+  it("maps dev-workflow verbs to the matching MCP tool", () => {
+    expect(wrappedWpGuidanceForArgs(["test"]).tool).toBe("wp_test");
+    expect(wrappedWpGuidanceForArgs(["audit", "docs-frontmatter"]).tool).toBe("wp_audit");
+    expect(wrappedWpGuidanceForArgs(["setup"]).tool).toBe("wp");
+  });
+});
 
-describe('detectWrappedWpRuntimeInvocation', () => {
-  it('detects npm lifecycle wrapper invocation for the wp script', () => {
+describe("detectWrappedWpRuntimeInvocation", () => {
+  it("detects npm lifecycle wrapper invocation for the wp script", () => {
     const wrapped = detectWrappedWpRuntimeInvocation({
-      argv: ['node', '/repo/bin/wp', 'test'],
+      argv: ["node", "/repo/bin/wp", "test"],
       env: {
-        npm_lifecycle_event: 'wp',
-        npm_execpath: '/opt/homebrew/lib/node_modules/pnpm/bin/pnpm.cjs',
+        npm_lifecycle_event: "wp",
+        npm_execpath: "/opt/homebrew/lib/node_modules/pnpm/bin/pnpm.cjs",
       },
-      platform: 'linux',
-    })
+      platform: "linux",
+    });
 
     expect(wrapped).toStrictEqual({
-      manager: 'pnpm',
-      wpArgs: ['test'],
-    })
-  })
+      manager: "pnpm",
+      wpArgs: ["test"],
+    });
+  });
 
-  it('detects wrapper invocation from the ancestor process chain', () => {
+  it("detects wrapper invocation from the ancestor process chain", () => {
     const wrapped = detectWrappedWpRuntimeInvocation({
-      argv: ['node', '/repo/bin/wp', 'setup'],
+      argv: ["node", "/repo/bin/wp", "setup"],
       env: {},
-      platform: 'linux',
+      platform: "linux",
       ppid: 20,
       readProcessInfo: (pid) => {
-        if (pid === 20) return { ppid: 10, command: '/bin/sh -c node ./node_modules/.bin/wp' }
-        if (pid === 10) return { ppid: 1, command: 'vp run wp -- setup' }
-        return null
+        if (pid === 20) return { ppid: 10, command: "/bin/sh -c node ./node_modules/.bin/wp" };
+        if (pid === 10) return { ppid: 1, command: "vp run wp -- setup" };
+        return null;
       },
-    })
+    });
 
     expect(wrapped).toStrictEqual({
-      manager: 'vp',
-      wpArgs: ['setup'],
-    })
-  })
+      manager: "vp",
+      wpArgs: ["setup"],
+    });
+  });
 
-  it('respects maxAncestorDepth and does not loop on cyclic ancestry', () => {
+  it("respects maxAncestorDepth and does not loop on cyclic ancestry", () => {
     const wrapped = detectWrappedWpRuntimeInvocation({
-      argv: ['node', '/repo/bin/wp', 'setup'],
+      argv: ["node", "/repo/bin/wp", "setup"],
       env: {},
-      platform: 'linux',
+      platform: "linux",
       ppid: 40,
       maxAncestorDepth: 2,
       readProcessInfo: (pid) => {
-        if (pid === 40) return { ppid: 30, command: '/bin/sh -c node ./node_modules/.bin/wp' }
-        if (pid === 30) return { ppid: 40, command: 'node helper.js' }
-        return null
+        if (pid === 40) return { ppid: 30, command: "/bin/sh -c node ./node_modules/.bin/wp" };
+        if (pid === 30) return { ppid: 40, command: "node helper.js" };
+        return null;
       },
-    })
+    });
 
-    expect(wrapped).toBeNull()
-  })
+    expect(wrapped).toBeNull();
+  });
 
-  it('formats the corrective runtime error deterministically', () => {
-    const message = formatWrappedWpInvocationError({ manager: 'bun', wpArgs: ['test'] }, [
-      'node',
-      '/repo/bin/wp',
-      'test',
-    ])
+  it("formats the corrective runtime error deterministically", () => {
+    const message = formatWrappedWpInvocationError({ manager: "bun", wpArgs: ["test"] }, [
+      "node",
+      "/repo/bin/wp",
+      "test",
+    ]);
 
-    expect(message).toContain('webpresso package-manager wrapper invocation is forbidden')
-    expect(message).toContain('Use wp_test MCP tool when available')
-    expect(message).toContain('run direct `wp test`')
-    expect(message).toContain('bun run wp')
-  })
-})
+    expect(message).toContain("webpresso package-manager wrapper invocation is forbidden");
+    expect(message).toContain("Use wp_test MCP tool when available");
+    expect(message).toContain("run direct `wp test`");
+    expect(message).toContain("bun run wp");
+  });
+});

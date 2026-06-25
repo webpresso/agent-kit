@@ -1,9 +1,9 @@
-import { existsSync } from 'node:fs'
+import { existsSync } from "node:fs";
 
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { openDb } from '#db/connection.js'
-import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
+import { openDb } from "#db/connection.js";
+import { resolveBlueprintProjectionDbPath } from "#db/paths.js";
 
 import {
   callTool,
@@ -15,131 +15,132 @@ import {
   type ToolMap,
   VALID_BLUEPRINT,
   writeStaleProjectionMetadata,
-} from './blueprint-server.test-harness.js'
+} from "./blueprint-server.test-harness.js";
 
-let tmpDir: string
-let tools: ToolMap
-const tempDirs: string[] = []
+let tmpDir: string;
+let tools: ToolMap;
+const tempDirs: string[] = [];
 
 beforeAll(async () => {
-  ;({ tmpDir, tools } = await makeEmptyProjectionBlueprintHarness('wp-bs-list-base-'))
-})
+  ({ tmpDir, tools } = await makeEmptyProjectionBlueprintHarness("wp-bs-list-base-"));
+});
 
 afterAll(() => {
-  cleanupTempDir(tmpDir)
-  while (tempDirs.length > 0) cleanupTempDir(tempDirs.pop())
-})
+  cleanupTempDir(tmpDir);
+  while (tempDirs.length > 0) cleanupTempDir(tempDirs.pop());
+});
 
 async function makeSingleBlueprintHarness(prefix: string, slug: string) {
   const harness = await makeProjectionBackedBlueprintHarness(prefix, [
-    { stateDir: 'draft', slug, content: VALID_BLUEPRINT },
-  ])
-  tempDirs.push(harness.tmpDir)
-  return harness
+    { stateDir: "draft", slug, content: VALID_BLUEPRINT },
+  ]);
+  tempDirs.push(harness.tmpDir);
+  return harness;
 }
 
-describe('wp_blueprint_list — read/projection contract', () => {
-  it('returns empty list when DB has no blueprints', async () => {
-    const result = await callTool(tools, 'wp_blueprint_list', {})
+describe("wp_blueprint_list — read/projection contract", () => {
+  it("returns empty list when DB has no blueprints", async () => {
+    const result = await callTool(tools, "wp_blueprint_list", {});
     const data = parseResult<{
-      summary: string
-      blueprints: unknown[]
-      freshness_ok: boolean
-      failures: string[]
-    }>(result)
-    expect(result.isError).toStrictEqual(false)
-    expect(Array.isArray(data.blueprints)).toBe(true)
-    expect(data.failures).toStrictEqual([])
-  })
+      summary: string;
+      blueprints: unknown[];
+      freshness_ok: boolean;
+      failures: string[];
+    }>(result);
+    expect(result.isError).toStrictEqual(false);
+    expect(Array.isArray(data.blueprints)).toBe(true);
+    expect(data.failures).toStrictEqual([]);
+  });
 
-  it('lazily creates the DB when it is missing', async () => {
-    const { tmpDir: localTmpDir, tools: localTools } = await makeLazyBlueprintHarness('wp-bs-list-')
-    tempDirs.push(localTmpDir)
-    const dbFile = resolveBlueprintProjectionDbPath(localTmpDir)
+  it("lazily creates the DB when it is missing", async () => {
+    const { tmpDir: localTmpDir, tools: localTools } =
+      await makeLazyBlueprintHarness("wp-bs-list-");
+    tempDirs.push(localTmpDir);
+    const dbFile = resolveBlueprintProjectionDbPath(localTmpDir);
 
-    expect(existsSync(dbFile)).toBe(false)
+    expect(existsSync(dbFile)).toBe(false);
 
-    const result = await callTool(localTools, 'wp_blueprint_list', {})
+    const result = await callTool(localTools, "wp_blueprint_list", {});
     const data = parseResult<{
-      blueprints: unknown[]
-      freshness_ok: boolean
-      next_action?: { kind: string }
-    }>(result)
-    expect(result.isError).toStrictEqual(false)
-    expect(data.blueprints).toStrictEqual([])
-    expect(data.freshness_ok).toBe(true)
-    expect(data.next_action).toBeUndefined()
-    expect(existsSync(dbFile)).toBe(true)
-  })
+      blueprints: unknown[];
+      freshness_ok: boolean;
+      next_action?: { kind: string };
+    }>(result);
+    expect(result.isError).toStrictEqual(false);
+    expect(data.blueprints).toStrictEqual([]);
+    expect(data.freshness_ok).toBe(true);
+    expect(data.next_action).toBeUndefined();
+    expect(existsSync(dbFile)).toBe(true);
+  });
 
-  it('filters by status when provided', async () => {
+  it("filters by status when provided", async () => {
     const { tools: localTools } = await makeSingleBlueprintHarness(
-      'wp-bs-list-filter-',
-      'list-test',
-    )
+      "wp-bs-list-filter-",
+      "list-test",
+    );
 
-    const result = await callTool(localTools, 'wp_blueprint_list', { status: 'draft' })
+    const result = await callTool(localTools, "wp_blueprint_list", { status: "draft" });
     const data = parseResult<{
-      blueprints: Array<{ slug: string; status: string }>
-      failures: string[]
-    }>(result)
-    expect(result.isError).toStrictEqual(false)
-    expect(data.failures).toStrictEqual([])
-    expect(data.blueprints.some((blueprint) => blueprint.slug === 'list-test')).toBe(true)
+      blueprints: Array<{ slug: string; status: string }>;
+      failures: string[];
+    }>(result);
+    expect(result.isError).toStrictEqual(false);
+    expect(data.failures).toStrictEqual([]);
+    expect(data.blueprints.some((blueprint) => blueprint.slug === "list-test")).toBe(true);
     for (const blueprint of data.blueprints) {
-      expect(blueprint.status).toBe('draft')
+      expect(blueprint.status).toBe("draft");
     }
-  })
+  });
 
-  it('skips malformed projection rows and reports row-level failures', async () => {
+  it("skips malformed projection rows and reports row-level failures", async () => {
     const { tmpDir: localTmpDir, tools: localTools } = await makeSingleBlueprintHarness(
-      'wp-bs-list-malformed-',
-      'malformed-row',
-    )
-    const conn = openDb(resolveBlueprintProjectionDbPath(localTmpDir))
+      "wp-bs-list-malformed-",
+      "malformed-row",
+    );
+    const conn = openDb(resolveBlueprintProjectionDbPath(localTmpDir));
     try {
       conn.db
         .prepare(`UPDATE blueprints SET ingested_at = 'not-an-integer' WHERE slug = ?`)
-        .run('malformed-row')
+        .run("malformed-row");
     } finally {
-      conn.close()
+      conn.close();
     }
 
-    const result = await callTool(localTools, 'wp_blueprint_list', {})
+    const result = await callTool(localTools, "wp_blueprint_list", {});
     const data = parseResult<{
-      blueprints: Array<{ slug: string }>
-      failures: string[]
-      freshness_ok: boolean
-    }>(result)
+      blueprints: Array<{ slug: string }>;
+      failures: string[];
+      freshness_ok: boolean;
+    }>(result);
 
-    expect(result.isError).toStrictEqual(false)
-    expect(data.blueprints.some((blueprint) => blueprint.slug === 'malformed-row')).toBe(false)
-    expect(data.failures.join('\n')).toContain('blueprints projection row 1 skipped')
-    expect(data.freshness_ok).toBe(false)
-  })
+    expect(result.isError).toStrictEqual(false);
+    expect(data.blueprints.some((blueprint) => blueprint.slug === "malformed-row")).toBe(false);
+    expect(data.failures.join("\n")).toContain("blueprints projection row 1 skipped");
+    expect(data.freshness_ok).toBe(false);
+  });
 
-  it('returns next_action reingest_project when HEAD changed after ingest on single-project path', async () => {
+  it("returns next_action reingest_project when HEAD changed after ingest on single-project path", async () => {
     const { tmpDir: localTmpDir, tools: localTools } = await makeSingleBlueprintHarness(
-      'wp-bs-stale-list-',
-      'stale-bp',
-    )
-    writeStaleProjectionMetadata(localTmpDir)
+      "wp-bs-stale-list-",
+      "stale-bp",
+    );
+    writeStaleProjectionMetadata(localTmpDir);
 
-    const result = await callTool(localTools, 'wp_blueprint_list', {})
+    const result = await callTool(localTools, "wp_blueprint_list", {});
     const data = parseResult<{
-      freshness_ok: boolean
-      next_action: { kind: string }
-      blueprints: unknown[]
-    }>(result)
+      freshness_ok: boolean;
+      next_action: { kind: string };
+      blueprints: unknown[];
+    }>(result);
 
-    expect(result.isError).toStrictEqual(false)
-    expect(data.freshness_ok).toBe(false)
-    expect(data.next_action.kind).toBe('reingest_project')
-    expect(data.blueprints).toEqual([])
-  })
+    expect(result.isError).toStrictEqual(false);
+    expect(data.freshness_ok).toBe(false);
+    expect(data.next_action.kind).toBe("reingest_project");
+    expect(data.blueprints).toEqual([]);
+  });
 
-  it('rejects input with unknown field gracefully (extra fields pass through zod)', async () => {
-    const result = await callTool(tools, 'wp_blueprint_list', { limit: 10 })
-    expect(result.isError).toStrictEqual(false)
-  })
-})
+  it("rejects input with unknown field gracefully (extra fields pass through zod)", async () => {
+    const result = await callTool(tools, "wp_blueprint_list", { limit: 10 });
+    expect(result.isError).toStrictEqual(false);
+  });
+});

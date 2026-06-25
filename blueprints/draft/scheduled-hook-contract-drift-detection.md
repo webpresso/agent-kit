@@ -2,9 +2,9 @@
 type: blueprint
 status: draft
 complexity: M
-created: '2026-06-24'
-last_updated: '2026-06-24'
-progress: '100% (codex event drift + claude type pin + workflow landed)'
+created: "2026-06-24"
+last_updated: "2026-06-24"
+progress: "100% (codex event drift + claude type pin + workflow landed)"
 depends_on: []
 cross_repo_depends_on: []
 tags: [hooks, contract, drift, ci, codex, claude]
@@ -45,13 +45,13 @@ to turn required CI red. Runs on a schedule, never as a required PR check.
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-| -------- | ------ | --------- |
-| Codex drift signal | Diff the `HookEventName` enum from `generate-json-schema` against a checked-in golden | It is the only machine-generatable, authoritative hook surface; the command I/O schema is doc-sourced and pinned separately by `codex-contract.test.ts` |
-| Claude drift signal | Type-only `tsc` assertion vs `@anthropic-ai/claude-agent-sdk` published types | The SDK ships `.d.ts`; assignability of our deny envelope + decision value is a precise compile-time pin |
-| Required vs scheduled | Scheduled workflow only (cron + dispatch); never a required PR check | An upstream vendor version bump must not be able to red the required gate (`no-timeout-as-fix` spirit: the drift is a signal, not a build break) |
-| SDK as devDep? | NO — installed ephemerally in the job | Avoids a heavy optional-binary dep + lockfile churn in every install; the assertion file lives under `scripts/` (outside `tsconfig include: src/**`) so required `wp typecheck` never needs it |
-| Drift script failure mode | `skipped` (exit 0) when `codex` is unavailable; `drift` (exit 1) only on real change | The scheduled job stays green unless the contract actually moved |
+| Decision                  | Choice                                                                                | Rationale                                                                                                                                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Codex drift signal        | Diff the `HookEventName` enum from `generate-json-schema` against a checked-in golden | It is the only machine-generatable, authoritative hook surface; the command I/O schema is doc-sourced and pinned separately by `codex-contract.test.ts`                                        |
+| Claude drift signal       | Type-only `tsc` assertion vs `@anthropic-ai/claude-agent-sdk` published types         | The SDK ships `.d.ts`; assignability of our deny envelope + decision value is a precise compile-time pin                                                                                       |
+| Required vs scheduled     | Scheduled workflow only (cron + dispatch); never a required PR check                  | An upstream vendor version bump must not be able to red the required gate (`no-timeout-as-fix` spirit: the drift is a signal, not a build break)                                               |
+| SDK as devDep?            | NO — installed ephemerally in the job                                                 | Avoids a heavy optional-binary dep + lockfile churn in every install; the assertion file lives under `scripts/` (outside `tsconfig include: src/**`) so required `wp typecheck` never needs it |
+| Drift script failure mode | `skipped` (exit 0) when `codex` is unavailable; `drift` (exit 1) only on real change  | The scheduled job stays green unless the contract actually moved                                                                                                                               |
 
 ### Phase 1: Codex hook-event drift [Complexity: S]
 
@@ -60,11 +60,13 @@ to turn required CI red. Runs on a schedule, never as a required PR check.
 **Status:** done
 
 **Files:**
+
 - Create: `scripts/contract/codex-hook-event-drift.ts` (pure `extractCodexHookEventNames`/`diffEventNames` + `runCodexHookEventDrift` runner)
 - Create: `scripts/contract/codex-hook-event-drift.test.ts`
 - Create: `scripts/contract/codex-hook-event-names.golden.json` (10 events, codex 0.142.0)
 
 **Acceptance:**
+
 - [x] Pure extract throws on missing/empty/non-string enum; diff is order-independent.
 - [x] Golden matches codex 0.142.0; runner reports `IN SYNC (10 events)` locally.
 - [x] Runner bounds the `codex` subprocess (60s deadline) and degrades to
@@ -78,10 +80,12 @@ to turn required CI red. Runs on a schedule, never as a required PR check.
 **Status:** done
 
 **Files:**
+
 - Create: `scripts/contract/claude-hook-contract.assert.ts` (compile-only `import type`)
 - Create: `scripts/contract/tsconfig.claude-contract.json` (standalone)
 
 **Acceptance:**
+
 - [x] Asserts our deny envelope is assignable to `SyncHookJSONOutput`, `'deny'`
       is a member of `HookPermissionDecision`, and `PreToolUseHookInput` snake_case
       fields exist.
@@ -97,9 +101,11 @@ to turn required CI red. Runs on a schedule, never as a required PR check.
 **Status:** done
 
 **Files:**
+
 - Create: `.github/workflows/hook-contract-drift.yml`
 
 **Acceptance:**
+
 - [x] `schedule` (weekly cron) + `workflow_dispatch`; does NOT run on
       `pull_request`, so it is never a required check.
 - [x] Job 1 installs codex best-effort and runs the event-drift script.
@@ -107,13 +113,13 @@ to turn required CI red. Runs on a schedule, never as a required PR check.
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| Type safety | `wp typecheck` | Zero errors (scripts excluded by design) | pass |
-| Tests | `wp test --file scripts/contract/codex-hook-event-drift.test.ts` | All pass | pass |
-| Live codex drift | `bun scripts/contract/codex-hook-event-drift.ts` | `IN SYNC (10 events)` | pass |
-| Claude SDK compile | `tsc -p scripts/contract/tsconfig.claude-contract.json` (SDK installed) | exit 0 | pass |
-| Lint | `wp lint --file <changed>` | Zero violations | pass |
+| Gate               | Command                                                                 | Success Criteria                         | Last result |
+| ------------------ | ----------------------------------------------------------------------- | ---------------------------------------- | ----------- |
+| Type safety        | `wp typecheck`                                                          | Zero errors (scripts excluded by design) | pass        |
+| Tests              | `wp test --file scripts/contract/codex-hook-event-drift.test.ts`        | All pass                                 | pass        |
+| Live codex drift   | `bun scripts/contract/codex-hook-event-drift.ts`                        | `IN SYNC (10 events)`                    | pass        |
+| Claude SDK compile | `tsc -p scripts/contract/tsconfig.claude-contract.json` (SDK installed) | exit 0                                   | pass        |
+| Lint               | `wp lint --file <changed>`                                              | Zero violations                          | pass        |
 
 ## Non-goals
 
@@ -126,8 +132,8 @@ to turn required CI red. Runs on a schedule, never as a required PR check.
 
 ## Risks
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-| `codex` CLI not installable in CI | event-drift job can't check | Script degrades to `skipped` (exit 0); install step is `continue-on-error` |
-| SDK install pulls native optional binaries | slower job | Ephemeral `--no-save`, type-only use; never touches required CI |
-| Golden goes stale after an intentional Codex change | false drift alert | Drift output names added/removed events and points at the golden to update |
+| Risk                                                | Impact                      | Mitigation                                                                 |
+| --------------------------------------------------- | --------------------------- | -------------------------------------------------------------------------- |
+| `codex` CLI not installable in CI                   | event-drift job can't check | Script degrades to `skipped` (exit 0); install step is `continue-on-error` |
+| SDK install pulls native optional binaries          | slower job                  | Ephemeral `--no-save`, type-only use; never touches required CI            |
+| Golden goes stale after an intentional Codex change | false drift alert           | Drift output names added/removed events and points at the golden to update |

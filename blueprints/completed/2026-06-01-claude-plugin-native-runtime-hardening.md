@@ -3,13 +3,13 @@ type: blueprint
 title: Claude plugin native runtime hardening
 owner: ozby
 status: completed
-completed_at: '2026-06-07'
+completed_at: "2026-06-07"
 historical_verification_gap_waiver: true
 historical_verification_gap_rationale: The completed state is truthful and fully evidenced, but the direct planned→completed move was already pushed to main. Preserve lifecycle truth without rewriting published history; grandfather this one transition gap explicitly.
 complexity: M
-created: '2026-06-01'
-last_updated: '2026-06-07'
-progress: '100% (package-surface/public-readiness coverage, hooks-doctor diagnostics, published 0.29.3 runtime matrix, public-readiness proof, and native hooks-doctor smoke now all agree on the effective staged native launcher)'
+created: "2026-06-01"
+last_updated: "2026-06-07"
+progress: "100% (package-surface/public-readiness coverage, hooks-doctor diagnostics, published 0.29.3 runtime matrix, public-readiness proof, and native hooks-doctor smoke now all agree on the effective staged native launcher)"
 depends_on: []
 tags:
   - claude-plugin
@@ -36,7 +36,7 @@ tags:
 - **Stage outcome:** plugin hook/MCP launch is deterministic on machines without
   `bun` or `mise` — today `bin/wp.js` → `bin/_run.js` can spawn `bun` for the
   source fallback or require a `mise`-pinned Node, so a contributor lacking
-  either gets a non-obvious launch failure of *hooks*, not just `mcp`.
+  either gets a non-obvious launch failure of _hooks_, not just `mcp`.
 - **Consuming surface:** `.claude-plugin/plugin.json` hook + MCP commands and
   `wp hooks doctor`.
 - **New user-visible capability:** a contributor can run the webpresso plugin
@@ -92,27 +92,27 @@ remains here is the external installed-plugin smoke after that publish succeeds.
 
 ## Fact Check Findings
 
-| ID | Severity | Claim | Verified reality | Blueprint fix |
-| --- | --- | --- | --- | --- |
-| F1 | ~~CRITICAL~~ → MEDIUM | Bare `node` launching is the cause of the MCP `-32000`. | **Disproven.** `node dist/esm/cli/cli.js mcp` works in 0.22.0 and no-ops only in published 0.21.5 → the cause is a compiled-`mcp` build regression, not the launcher. The real residual issue is that `bin/_run.js` can re-dispatch to `bun`/`mise`, adding avoidable hook-launch failure modes. | Drop the "fixes `-32000`" claim (the fix is publishing a working build — canonical blueprint). For Claude surfaces, the decided launcher is the pure-native `${CLAUDE_PLUGIN_ROOT}/bin/wp` (no `node`, no `_run.js` re-dispatch) — owned by canonical Task 1.4. |
-| F2 | CRITICAL | Native runtime artifacts are already available to installed Claude plugins. | Source has `bin/runtime-manifest.json`, but the installed plugin has neither `bin/runtime-manifest.json` nor `bin/runtime`. | Stage/package runtime manifest and binaries, and fail readiness when installed/packed artifacts would be missing. |
-| F3 | HIGH | A plugin-local `node_modules/.bin/wp-agent-kit-runtime` symlink is a valid plugin launcher. | **Disproven.** Claude strips external symlinks when it caches a directory-source plugin and runs no install step, so a `.bin` symlink to a sibling optional-dep does not survive caching. | Reject the `.bin` symlink (and global launchers). The launcher must be a **real staged file** at `${CLAUDE_PLUGIN_ROOT}/bin/wp`, copied in by `wp setup` before Claude caches the directory. Owned by the canonical blueprint (Task 1.3/1.4). |
-| F4 | HIGH | A universal plugin manifest can select `bin/runtime/<target>/wp` by itself. | Claude plugin MCP config is static `command`/`args`; no documented target conditional exists in `plugin.json`. | `vp install -g` resolves the one platform package via optional-dependency `os`/`cpu` filtering; `wp setup` then stages that native binary to a real `${CLAUDE_PLUGIN_ROOT}/bin/wp` file (no `.bin` entry, no symlink). Owned by the canonical blueprint. |
-| F5 | MEDIUM | Timeout increases would fix the MCP connection failure. | Repo policy says timeouts are diagnostics, not fixes. The actual `-32000` cause is the 0.21.5 compiled-`mcp` regression (see the global-distribution blueprint), not a timeout or slow launcher. | Keep timeouts unchanged; add `wp hooks doctor` diagnostics for launch mode and any missing-artifact reason. |
-| F7 | ~~HIGH~~ → resolved | The plugin needs per-platform native runtime packages to launch deterministically. | The earlier YAGNI objection is **withdrawn.** The decided model is one global native binary shared by PATH `wp`, plugin MCP, and hooks (`vp install -g` + pure-native manifest); per-platform packages are the delivery mechanism for that single binary, not speculative scope. | Build + publish the `RUNTIME_TARGETS` matrix as optional-deps. Owned by the canonical blueprint (Task 1.1/1.2); not gated, not deferred. |
-| F6 | MEDIUM | Existing package-surface checks fully cover this issue. | `wp_audit(kind="package-surface")` passes, but current checks did not catch the installed plugin missing native runtime artifacts. | Extend public-readiness/tarball checks to inspect runtime files and plugin manifest launcher policy. |
+| ID  | Severity              | Claim                                                                                       | Verified reality                                                                                                                                                                                                                                                                                 | Blueprint fix                                                                                                                                                                                                                                                   |
+| --- | --------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1  | ~~CRITICAL~~ → MEDIUM | Bare `node` launching is the cause of the MCP `-32000`.                                     | **Disproven.** `node dist/esm/cli/cli.js mcp` works in 0.22.0 and no-ops only in published 0.21.5 → the cause is a compiled-`mcp` build regression, not the launcher. The real residual issue is that `bin/_run.js` can re-dispatch to `bun`/`mise`, adding avoidable hook-launch failure modes. | Drop the "fixes `-32000`" claim (the fix is publishing a working build — canonical blueprint). For Claude surfaces, the decided launcher is the pure-native `${CLAUDE_PLUGIN_ROOT}/bin/wp` (no `node`, no `_run.js` re-dispatch) — owned by canonical Task 1.4. |
+| F2  | CRITICAL              | Native runtime artifacts are already available to installed Claude plugins.                 | Source has `bin/runtime-manifest.json`, but the installed plugin has neither `bin/runtime-manifest.json` nor `bin/runtime`.                                                                                                                                                                      | Stage/package runtime manifest and binaries, and fail readiness when installed/packed artifacts would be missing.                                                                                                                                               |
+| F3  | HIGH                  | A plugin-local `node_modules/.bin/wp-agent-kit-runtime` symlink is a valid plugin launcher. | **Disproven.** Claude strips external symlinks when it caches a directory-source plugin and runs no install step, so a `.bin` symlink to a sibling optional-dep does not survive caching.                                                                                                        | Reject the `.bin` symlink (and global launchers). The launcher must be a **real staged file** at `${CLAUDE_PLUGIN_ROOT}/bin/wp`, copied in by `wp setup` before Claude caches the directory. Owned by the canonical blueprint (Task 1.3/1.4).                   |
+| F4  | HIGH                  | A universal plugin manifest can select `bin/runtime/<target>/wp` by itself.                 | Claude plugin MCP config is static `command`/`args`; no documented target conditional exists in `plugin.json`.                                                                                                                                                                                   | `vp install -g` resolves the one platform package via optional-dependency `os`/`cpu` filtering; `wp setup` then stages that native binary to a real `${CLAUDE_PLUGIN_ROOT}/bin/wp` file (no `.bin` entry, no symlink). Owned by the canonical blueprint.        |
+| F5  | MEDIUM                | Timeout increases would fix the MCP connection failure.                                     | Repo policy says timeouts are diagnostics, not fixes. The actual `-32000` cause is the 0.21.5 compiled-`mcp` regression (see the global-distribution blueprint), not a timeout or slow launcher.                                                                                                 | Keep timeouts unchanged; add `wp hooks doctor` diagnostics for launch mode and any missing-artifact reason.                                                                                                                                                     |
+| F7  | ~~HIGH~~ → resolved   | The plugin needs per-platform native runtime packages to launch deterministically.          | The earlier YAGNI objection is **withdrawn.** The decided model is one global native binary shared by PATH `wp`, plugin MCP, and hooks (`vp install -g` + pure-native manifest); per-platform packages are the delivery mechanism for that single binary, not speculative scope.                 | Build + publish the `RUNTIME_TARGETS` matrix as optional-deps. Owned by the canonical blueprint (Task 1.1/1.2); not gated, not deferred.                                                                                                                        |
+| F6  | MEDIUM                | Existing package-surface checks fully cover this issue.                                     | `wp_audit(kind="package-surface")` passes, but current checks did not catch the installed plugin missing native runtime artifacts.                                                                                                                                                               | Extend public-readiness/tarball checks to inspect runtime files and plugin manifest launcher policy.                                                                                                                                                            |
 
 Technology sources: Claude plugin hooks and MCP support plugin-root commands via `${CLAUDE_PLUGIN_ROOT}` and static command/args configuration; npm package docs define `files`, `bin`, `optionalDependencies`, `os`, and `cpu` as the package-surface controls used by this design.
 
 ## Key Decisions
 
-| Decision | Rationale |
-| --- | --- |
-| **Pure-native, no node.** MCP + every hook launch a real staged `${CLAUDE_PLUGIN_ROOT}/bin/wp` (args `["mcp"]` / `["hook","<name>"]`). | The native binary IS the one global binary; no `node`, no `bun`, no `*.js` entrypoint, no `_run.js` re-dispatch for Claude surfaces. Distribution mechanics owned by the canonical blueprint. |
-| **Single launcher only — no shim.** The native `bin/wp` *is* the launch path for Claude surfaces; `bin/wp.js`→`_run.js` survives only as the source-dev launcher for uncompiled clones. | Repo policy: delete legacy, don't shim. A parallel production launcher is exactly the garbage this refinement removes. |
-| **No separate `wp-agent-kit-runtime` bin.** The manifest names `bin/wp` directly; the staged file is the platform's native `wp`. | Dropped as redundant — a second bin name only adds surface with no consumer. |
-| Native per-platform runtime packages are the delivery mechanism, **not deferred / not gated** (F7 resolved). | They are how the single global binary reaches each platform; owned by the canonical blueprint (Task 1.1/1.2). |
-| Do not raise hook/MCP timeouts. | Timeouts are diagnostics under repo policy. |
+| Decision                                                                                                                                                                                | Rationale                                                                                                                                                                                     |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Pure-native, no node.** MCP + every hook launch a real staged `${CLAUDE_PLUGIN_ROOT}/bin/wp` (args `["mcp"]` / `["hook","<name>"]`).                                                  | The native binary IS the one global binary; no `node`, no `bun`, no `*.js` entrypoint, no `_run.js` re-dispatch for Claude surfaces. Distribution mechanics owned by the canonical blueprint. |
+| **Single launcher only — no shim.** The native `bin/wp` _is_ the launch path for Claude surfaces; `bin/wp.js`→`_run.js` survives only as the source-dev launcher for uncompiled clones. | Repo policy: delete legacy, don't shim. A parallel production launcher is exactly the garbage this refinement removes.                                                                        |
+| **No separate `wp-agent-kit-runtime` bin.** The manifest names `bin/wp` directly; the staged file is the platform's native `wp`.                                                        | Dropped as redundant — a second bin name only adds surface with no consumer.                                                                                                                  |
+| Native per-platform runtime packages are the delivery mechanism, **not deferred / not gated** (F7 resolved).                                                                            | They are how the single global binary reaches each platform; owned by the canonical blueprint (Task 1.1/1.2).                                                                                 |
+| Do not raise hook/MCP timeouts.                                                                                                                                                         | Timeouts are diagnostics under repo policy.                                                                                                                                                   |
 
 ## Ownership boundary (supersedes the former Scope gate)
 
@@ -125,12 +125,12 @@ Execution ownership now splits cleanly:
   host `bin/wp` (its Task 1.3), the pure-native `plugin.json` flip + manifest
   tests (its Task 1.4), and publish/cutover (its Task 1.5).
 - **Unique residual owned by THIS blueprint:** Task 1.2 (extend public-readiness
-  + package-surface checks to fail when a plugin would ship without its native
-  runtime artifacts) and Task 3.2 (`wp hooks doctor` launch-mode + missing-artifact
-  diagnostics). Task 4.1 smoke verifies the residual. **Superseded** here (retained
-  only as cross-references to the canonical tasks): Task 1.1 (manifest policy/flip
-  → canonical 1.4), Phase 2 / Tasks 2.1–2.2 (optional-deps + staging → canonical
-  1.2/1.3), and Task 3.1 (move MCP/hooks to native bin → canonical 1.4).
+  - package-surface checks to fail when a plugin would ship without its native
+    runtime artifacts) and Task 3.2 (`wp hooks doctor` launch-mode + missing-artifact
+    diagnostics). Task 4.1 smoke verifies the residual. **Superseded** here (retained
+    only as cross-references to the canonical tasks): Task 1.1 (manifest policy/flip
+    → canonical 1.4), Phase 2 / Tasks 2.1–2.2 (optional-deps + staging → canonical
+    1.2/1.3), and Task 3.1 (move MCP/hooks to native bin → canonical 1.4).
 
 ## Cross-references
 
@@ -149,20 +149,20 @@ Execution ownership now splits cleanly:
 > **superseded** by the global-distribution blueprint and remain here only as
 > traceability notes.
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
-| --- | --- | --- | --- | --- |
-| Wave 0 | 1.2, 3.2 | None | 2 agents | S |
-| Wave 1 | 4.1 | Wave 0 | 1 agent | S |
-| Critical path | 1.2 → 4.1 | — | 2 waves | M |
+| Wave          | Tasks     | Dependencies | Parallelizable | Effort (T-shirt) |
+| ------------- | --------- | ------------ | -------------- | ---------------- |
+| Wave 0        | 1.2, 3.2  | None         | 2 agents       | S                |
+| Wave 1        | 4.1       | Wave 0       | 1 agent        | S                |
+| Critical path | 1.2 → 4.1 | —            | 2 waves        | M                |
 
 ### Parallel Metrics Snapshot
 
-| Metric | Formula / Meaning | Target | Actual |
-| --- | --- | --- | --- |
-| RW0 | Ready tasks in Wave 0 | ≥ 2 | 2 |
-| CPR | total_executable_tasks / critical_path_length | ≥ 2.5 | 1.5 |
-| DD | executable_dependency_edges / total_executable_tasks | ≤ 2.0 | 0.67 |
-| CP | same-file overlaps per wave | 0 | 0 |
+| Metric | Formula / Meaning                                    | Target | Actual |
+| ------ | ---------------------------------------------------- | ------ | ------ |
+| RW0    | Ready tasks in Wave 0                                | ≥ 2    | 2      |
+| CPR    | total_executable_tasks / critical_path_length        | ≥ 2.5  | 1.5    |
+| DD     | executable_dependency_edges / total_executable_tasks | ≤ 2.0  | 0.67   |
+| CP     | same-file overlaps per wave                          | 0      | 0      |
 
 Refinement delta: the historical table overstated the executable scope after ownership reconciliation.
 The residual plan now exposes only the three live tasks, removes false dependencies on dropped work,
@@ -418,21 +418,21 @@ effective native launcher correctly after the canonical cutover is in place.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-01-claude-plugin-native-runtime-hardening.md |
+| ID  | Claim                                                          | Evidence                                                                       |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-01-claude-plugin-native-runtime-hardening.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

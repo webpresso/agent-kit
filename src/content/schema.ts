@@ -11,60 +11,60 @@
  * forbidden otherwise.
  */
 
-import { z } from 'zod'
+import { z } from "zod";
 
 /**
  * Document type — narrows the discriminated union below.
  */
-export const contentTypeSchema = z.enum(['rule', 'skill'])
+export const contentTypeSchema = z.enum(["rule", "skill"]);
 
 /**
  * Lifecycle status. New content is `active`; once retired it is `deprecated`
  * and MUST carry a `deprecation_date`.
  */
-export const contentStatusSchema = z.enum(['active', 'deprecated'])
+export const contentStatusSchema = z.enum(["active", "deprecated"]);
 
 /**
  * Audience markers — at least one entry is required.
  */
-export const appliesToSchema = z.enum(['agents', 'humans'])
+export const appliesToSchema = z.enum(["agents", "humans"]);
 
 /**
  * Slug shape — kebab-case, lowercase letters / digits / hyphens, must start
  * with a letter or digit.
  */
-const slugPattern = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/
+const slugPattern = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 
 const slugSchema = z
   .string()
   .min(1)
-  .regex(slugPattern, 'slug must be kebab-case (lowercase letters, digits, hyphens)')
+  .regex(slugPattern, "slug must be kebab-case (lowercase letters, digits, hyphens)");
 
 /**
  * ISO calendar date (YYYY-MM-DD).
  */
-const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/
+const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
 
-const isoDateSchema = z.string().regex(isoDatePattern, 'date must be ISO YYYY-MM-DD')
+const isoDateSchema = z.string().regex(isoDatePattern, "date must be ISO YYYY-MM-DD");
 
 /**
  * Scope shape — `repo`, `package:<name>`, or `path:<glob>`.
  */
-const scopePattern = /^(?:repo|package:[^\s]+|path:[^\s]+)$/
+const scopePattern = /^(?:repo|package:[^\s]+|path:[^\s]+)$/;
 
 const scopeSchema = z
   .string()
-  .regex(scopePattern, 'scope must be repo | package:<name> | path:<glob>')
+  .regex(scopePattern, "scope must be repo | package:<name> | path:<glob>");
 
 /**
  * Common fields shared by every content variant.
  */
 const baseShape = {
   slug: slugSchema,
-  title: z.string().min(1, 'title is required'),
-  status: contentStatusSchema.default('active'),
-  scope: scopeSchema.default('repo'),
-  applies_to: z.array(appliesToSchema).min(1, 'applies_to must be non-empty'),
+  title: z.string().min(1, "title is required"),
+  status: contentStatusSchema.default("active"),
+  scope: scopeSchema.default("repo"),
+  applies_to: z.array(appliesToSchema).min(1, "applies_to must be non-empty"),
   related: z
     .array(slugSchema)
     .optional()
@@ -72,7 +72,7 @@ const baseShape = {
   created: isoDateSchema,
   last_reviewed: isoDateSchema,
   deprecation_date: isoDateSchema.optional(),
-} as const
+} as const;
 
 /**
  * Pre-validation normalization that promotes the legacy `paths: [...]` field
@@ -80,40 +80,40 @@ const baseShape = {
  * not explicitly set — explicit scope always wins.
  */
 function normalizeLegacyPaths(input: unknown): unknown {
-  if (typeof input !== 'object' || input === null) return input
+  if (typeof input !== "object" || input === null) return input;
 
-  const record = input as Record<string, unknown>
-  const hasScope = typeof record['scope'] === 'string' && record['scope'].length > 0
-  const paths = record['paths']
+  const record = input as Record<string, unknown>;
+  const hasScope = typeof record["scope"] === "string" && record["scope"].length > 0;
+  const paths = record["paths"];
 
-  if (hasScope || !Array.isArray(paths) || paths.length === 0) return record
+  if (hasScope || !Array.isArray(paths) || paths.length === 0) return record;
 
-  const joined = paths.filter((p): p is string => typeof p === 'string').join(',')
-  if (joined.length === 0) return record
+  const joined = paths.filter((p): p is string => typeof p === "string").join(",");
+  if (joined.length === 0) return record;
 
-  const { paths: _drop, ...rest } = record
-  return { ...rest, scope: `path:${joined}` }
+  const { paths: _drop, ...rest } = record;
+  return { ...rest, scope: `path:${joined}` };
 }
 
 /**
  * Cross-field check for `deprecation_date` ↔ `status`.
  */
 function refineDeprecationInterlock<
-  T extends { status: 'active' | 'deprecated'; deprecation_date?: string },
+  T extends { status: "active" | "deprecated"; deprecation_date?: string },
 >(data: T, ctx: z.RefinementCtx): void {
-  if (data.status === 'deprecated' && !data.deprecation_date) {
+  if (data.status === "deprecated" && !data.deprecation_date) {
     ctx.addIssue({
-      code: 'custom',
-      path: ['deprecation_date'],
+      code: "custom",
+      path: ["deprecation_date"],
       message: 'deprecation_date is required when status is "deprecated"',
-    })
+    });
   }
-  if (data.status === 'active' && data.deprecation_date) {
+  if (data.status === "active" && data.deprecation_date) {
     ctx.addIssue({
-      code: 'custom',
-      path: ['deprecation_date'],
+      code: "custom",
+      path: ["deprecation_date"],
       message: 'deprecation_date is forbidden when status is "active"',
-    })
+    });
   }
 }
 
@@ -121,15 +121,15 @@ function refineDeprecationInterlock<
  * Rule frontmatter — `type: 'rule'` plus the shared shape.
  */
 export const ruleFrontmatterSchema = z
-  .preprocess(normalizeLegacyPaths, z.object({ type: z.literal('rule'), ...baseShape }))
-  .superRefine((data, ctx) => refineDeprecationInterlock(data, ctx))
+  .preprocess(normalizeLegacyPaths, z.object({ type: z.literal("rule"), ...baseShape }))
+  .superRefine((data, ctx) => refineDeprecationInterlock(data, ctx));
 
 /**
  * Skill frontmatter — `type: 'skill'` plus the shared shape.
  */
 export const skillFrontmatterSchema = z
-  .preprocess(normalizeLegacyPaths, z.object({ type: z.literal('skill'), ...baseShape }))
-  .superRefine((data, ctx) => refineDeprecationInterlock(data, ctx))
+  .preprocess(normalizeLegacyPaths, z.object({ type: z.literal("skill"), ...baseShape }))
+  .superRefine((data, ctx) => refineDeprecationInterlock(data, ctx));
 
 /**
  * Discriminated union on `type` — pre-processes legacy `paths` first so the
@@ -138,16 +138,16 @@ export const skillFrontmatterSchema = z
 export const contentFrontmatterSchema = z
   .preprocess(
     normalizeLegacyPaths,
-    z.discriminatedUnion('type', [
-      z.object({ type: z.literal('rule'), ...baseShape }),
-      z.object({ type: z.literal('skill'), ...baseShape }),
+    z.discriminatedUnion("type", [
+      z.object({ type: z.literal("rule"), ...baseShape }),
+      z.object({ type: z.literal("skill"), ...baseShape }),
     ]),
   )
-  .superRefine((data, ctx) => refineDeprecationInterlock(data, ctx))
+  .superRefine((data, ctx) => refineDeprecationInterlock(data, ctx));
 
 /**
  * Inferred TypeScript types — both per-variant and the union.
  */
-export type RuleFrontmatter = z.infer<typeof ruleFrontmatterSchema>
-export type SkillFrontmatter = z.infer<typeof skillFrontmatterSchema>
-export type ContentFrontmatter = z.infer<typeof contentFrontmatterSchema>
+export type RuleFrontmatter = z.infer<typeof ruleFrontmatterSchema>;
+export type SkillFrontmatter = z.infer<typeof skillFrontmatterSchema>;
+export type ContentFrontmatter = z.infer<typeof contentFrontmatterSchema>;

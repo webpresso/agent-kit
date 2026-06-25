@@ -16,11 +16,11 @@ Use one logger instance configured at application startup and import it everywhe
 
 ```typescript
 // lib/logger.ts - Single logger configuration
-import pino from 'pino'
+import pino from "pino";
 
 // Configure once at startup
 export const logger = pino({
-  level: process.env.LOG_LEVEL || 'info',
+  level: process.env.LOG_LEVEL || "info",
   formatters: {
     level: (label) => ({ level: label }),
   },
@@ -32,13 +32,13 @@ export const logger = pino({
     region: process.env.AWS_REGION,
     environment: process.env.NODE_ENV,
   },
-})
+});
 
 // Usage everywhere else - just import
 // services/checkout.ts
-import { logger } from '#lib/logger'
+import { logger } from "#lib/logger";
 
-logger.info({ event: 'checkout_completed', orderId })
+logger.info({ event: "checkout_completed", orderId });
 ```
 
 **Benefits:**
@@ -52,8 +52,8 @@ logger.info({ event: 'checkout_completed', orderId })
 
 ```typescript
 // DON'T create new loggers in each file
-const logger = new Logger() // Each file creates its own
-console.log('some event') // Bypasses the logger entirely
+const logger = new Logger(); // Each file creates its own
+console.log("some event"); // Bypasses the logger entirely
 ```
 
 ### Use Middleware for Consistent Wide Events
@@ -62,7 +62,7 @@ Implement wide event collection as middleware that wraps all request handlers. T
 
 ```typescript
 // middleware/wideEvent.ts
-import { logger } from '#lib/logger'
+import { logger } from "#lib/logger";
 
 // Capture environment once at startup
 const envContext = {
@@ -72,66 +72,66 @@ const envContext = {
   region: process.env.AWS_REGION,
   environment: process.env.NODE_ENV,
   instance_id: process.env.HOSTNAME,
-}
+};
 
 export function wideEventMiddleware() {
   return async (c: Context, next: Next) => {
-    const startTime = Date.now()
+    const startTime = Date.now();
 
     // Initialize event with standard fields + environment
     const wideEvent: Record<string, unknown> = {
-      request_id: c.get('requestId') || crypto.randomUUID(),
+      request_id: c.get("requestId") || crypto.randomUUID(),
       timestamp: new Date().toISOString(),
       method: c.req.method,
       path: c.req.path,
-      user_agent: c.req.header('user-agent'),
+      user_agent: c.req.header("user-agent"),
       ...envContext, // Environment automatically included
-    }
+    };
 
     // Make event accessible to handlers for enrichment
-    c.set('wideEvent', wideEvent)
+    c.set("wideEvent", wideEvent);
 
     try {
-      await next()
-      wideEvent.status_code = c.res.status
-      wideEvent.outcome = c.res.status < 400 ? 'success' : 'error'
+      await next();
+      wideEvent.status_code = c.res.status;
+      wideEvent.outcome = c.res.status < 400 ? "success" : "error";
     } catch (error) {
-      wideEvent.status_code = 500
-      wideEvent.outcome = 'error'
+      wideEvent.status_code = 500;
+      wideEvent.outcome = "error";
       wideEvent.error = {
         type: error.name,
         message: error.message,
-      }
-      throw error
+      };
+      throw error;
     } finally {
-      wideEvent.duration_ms = Date.now() - startTime
-      logger.info(wideEvent) // Uses the single logger
+      wideEvent.duration_ms = Date.now() - startTime;
+      logger.info(wideEvent); // Uses the single logger
     }
-  }
+  };
 }
 
 // Apply middleware globally
-app.use('*', wideEventMiddleware())
+app.use("*", wideEventMiddleware());
 ```
 
 **Handlers just enrich with business context:**
 
 ```typescript
-app.post('/checkout', async (c) => {
-  const wideEvent = c.get('wideEvent')
-  const user = c.get('user')
+app.post("/checkout", async (c) => {
+  const wideEvent = c.get("wideEvent");
+  const user = c.get("user");
 
   // Add business context - environment already included by middleware
-  wideEvent.user = { id: user.id, subscription: user.subscription }
+  wideEvent.user = { id: user.id, subscription: user.subscription };
 
-  const cart = await getCart(user.id)
-  wideEvent.cart = { id: cart.id, total: cart.total }
+  const cart = await getCart(user.id);
+  wideEvent.cart = { id: cart.id, total: cart.total };
 
-  const order = await createOrder(cart)
-  wideEvent.order = { id: order.id }
+  const order = await createOrder(cart);
+  wideEvent.order = { id: order.id };
 
-  return c.json(order, 201)
-})
+  return c.json(order, 201);
+});
 // Middleware handles: timing, status, environment, emission
 // Handler handles: business context only
 ```
@@ -142,18 +142,18 @@ Use JSON as your logging format. JSON is universally supported, enables nested o
 
 ```typescript
 const wideEvent = {
-  timestamp: '2024-09-08T06:14:05.680Z',
-  service: 'articles',
-  requestId: 'req_abc123',
-  message: 'Article created',
-  user: { id: 'user_123', subscription: 'premium' },
-  article: { id: 'article_456', title: 'My Post' },
+  timestamp: "2024-09-08T06:14:05.680Z",
+  service: "articles",
+  requestId: "req_abc123",
+  message: "Article created",
+  user: { id: "user_123", subscription: "premium" },
+  article: { id: "article_456", title: "My Post" },
   duration_ms: 268,
   status_code: 201,
-}
+};
 
 // Emit as single-line JSON
-logger.info(wideEvent)
+logger.info(wideEvent);
 ```
 
 ### Maintain Consistent Schema
@@ -187,8 +187,8 @@ Every log must be structured with queryable fields. `console.log('User logged in
 
 ```typescript
 // Add the data to your wide event instead
-wideEvent.order = { id: orderId, status: 'created' }
-wideEvent.payment = { error: { message: error.message } }
+wideEvent.order = { id: orderId, status: "created" };
+wideEvent.payment = { error: { message: error.message } };
 // Now it's queryable: WHERE order.status = 'created'
 ```
 
