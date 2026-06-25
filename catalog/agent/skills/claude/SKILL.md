@@ -6,6 +6,7 @@ description: |
   second opinion from Claude.
 license: MIT
 ---
+
 # Claude outside voice
 
 Use this skill when the user wants Claude to independently review a diff, challenge a plan, or answer a repo question from a non-Claude host. Keep the call bounded, read-only unless the user explicitly asks otherwise, and report Claude's conclusions as external advice rather than as verified fact.
@@ -72,7 +73,7 @@ TARGET_FILE=${TARGET_FILE:?set TARGET_FILE to one changed file}
   printf '\nTarget file: %s\n' "$TARGET_FILE"
   printf 'Bounded target diff (max 12000 bytes):\n'
   git diff --unified=3 "$BASE_BRANCH"...HEAD -- "$TARGET_FILE" | \
-    python3 -c 'import sys; sys.stdout.write(sys.stdin.read(12000))'
+    head -c 12000
   printf '\n\nQuestion: Identify the highest-signal correctness, security, data-loss, or maintainability risk in %s. Quote only the smallest relevant excerpt. If context is insufficient, answer INSUFFICIENT_CONTEXT.\n' "$TARGET_FILE"
 } >"$PROMPT_FILE"
 ```
@@ -85,32 +86,36 @@ Run the review through a timeout wrapper. Use `claude --print`; do not recommend
 CLAUDE_REVIEW_TIMEOUT_SECONDS=${CLAUDE_REVIEW_TIMEOUT_SECONDS:-180}
 CLAUDE_REVIEW_TIMEOUT_SENTINEL=CLAUDE_REVIEW_TIMEOUT
 
-python3 - "$PROMPT_FILE" "$CLAUDE_REVIEW_TIMEOUT_SECONDS" "$CLAUDE_REVIEW_TIMEOUT_SENTINEL" <<'PY'
-from pathlib import Path
-import subprocess
-import sys
+node - "$PROMPT_FILE" "$CLAUDE_REVIEW_TIMEOUT_SECONDS" "$CLAUDE_REVIEW_TIMEOUT_SENTINEL" <<'JS'
+const { readFileSync } = require('node:fs')
+const { spawnSync } = require('node:child_process')
 
-prompt_path, timeout_seconds, sentinel = sys.argv[1], int(sys.argv[2]), sys.argv[3]
-prompt = Path(prompt_path).read_text()
+const [promptPath, timeoutSecondsRaw, sentinel] = process.argv.slice(2)
+const timeoutSeconds = Number(timeoutSecondsRaw)
+if (!Number.isFinite(timeoutSeconds) || timeoutSeconds <= 0) {
+  console.error('CLAUDE_REVIEW_TIMEOUT_SECONDS must be a positive number')
+  process.exit(1)
+}
 
-try:
-    result = subprocess.run(
-        ["claude", "--print", prompt],
-        text=True,
-        capture_output=True,
-        timeout=timeout_seconds,
-        check=False,
-    )
-except subprocess.TimeoutExpired:
-    print(sentinel, file=sys.stderr)
-    sys.exit(124)
+const prompt = readFileSync(promptPath, 'utf8')
+const result = spawnSync('claude', ['--print', prompt], {
+  encoding: 'utf8',
+  timeout: timeoutSeconds * 1000,
+  maxBuffer: 4 * 1024 * 1024,
+})
 
-if result.stdout:
-    sys.stdout.write(result.stdout)
-if result.stderr:
-    sys.stderr.write(result.stderr)
-sys.exit(result.returncode)
-PY
+if (result.error?.code === 'ETIMEDOUT') {
+  console.error(sentinel)
+  process.exit(124)
+}
+if (result.error) {
+  console.error(result.error.message)
+  process.exit(1)
+}
+if (result.stdout) process.stdout.write(result.stdout)
+if (result.stderr) process.stderr.write(result.stderr)
+process.exit(typeof result.status === 'number' ? result.status : 1)
+JS
 ```
 
 #### Split-and-retry-once fallback
@@ -118,7 +123,7 @@ PY
 1. First attempt: one file, one review question.
 2. If that bounded call returns `CLAUDE_REVIEW_TIMEOUT`, retry once with an even smaller prompt: one hunk or one narrower question from the same file.
 3. If the retry also returns `CLAUDE_REVIEW_TIMEOUT`, report Claude as unavailable for this review and stop.
-4. Do not retry indefinitely and do not fall back to an unbounded `claude -p` / whole-PR prompt.
+4. Do not retry indefinitely and do not fall back to an unbounded whole-PR prompt.
 
 Summarize findings with severity, evidence, and whether you independently verified them.
 

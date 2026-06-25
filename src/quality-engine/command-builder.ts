@@ -7,10 +7,10 @@
  * @module
  */
 
-import type { ResolvedTarget } from './target-resolver.js'
+import type { ResolvedTarget } from "./target-resolver.js";
 
-import { getManagedRunner } from '#tool-runtime'
-import { extractPackagePath } from './workspace-config.js'
+import { getManagedRunner } from "#tool-runtime";
+import { extractPackagePath } from "./workspace-config.js";
 
 // =============================================================================
 // Command Configuration Types
@@ -22,28 +22,28 @@ import { extractPackagePath } from './workspace-config.js'
  */
 export interface CommandConfig {
   /** Command to execute (e.g., 'pnpm', 'oxlint', 'vitest') */
-  command: string
+  command: string;
   /** Command arguments */
-  args: string[]
+  args: string[];
   /** Environment variables */
-  env?: Record<string, string>
+  env?: Record<string, string>;
 }
 
-export type VpRunLogMode = 'interleaved' | 'labeled' | 'grouped'
+export type VpRunLogMode = "interleaved" | "labeled" | "grouped";
 
 interface VpRunOptions {
-  noCache?: boolean
-  cache?: boolean
-  concurrencyLimit?: number
-  log?: VpRunLogMode
-  parallel?: boolean
+  noCache?: boolean;
+  cache?: boolean;
+  concurrencyLimit?: number;
+  log?: VpRunLogMode;
+  parallel?: boolean;
 }
 
 /**
  * Convert a CommandConfig to a shell-executable string.
  */
 export function commandConfigToString(config: CommandConfig): string {
-  return [config.command, ...config.args].join(' ')
+  return [config.command, ...config.args].join(" ");
 }
 
 // =============================================================================
@@ -51,8 +51,8 @@ export function commandConfigToString(config: CommandConfig): string {
 // =============================================================================
 
 export interface LintOptions {
-  fix?: boolean
-  fixUnsafe?: boolean
+  fix?: boolean;
+  fixUnsafe?: boolean;
 }
 
 /**
@@ -62,46 +62,47 @@ export function buildLintCommand(
   resolved: ResolvedTarget,
   options: LintOptions = {},
 ): CommandConfig {
-  const args: string[] = []
+  const args: string[] = [];
 
   // Add paths if any
   if (resolved.value.length > 0) {
-    args.push(...resolved.value)
+    args.push(...resolved.value);
   } else {
-    args.push('.') // Default to current directory
+    args.push("."); // Default to current directory
   }
 
   // Add fix flags
   if (options.fix) {
-    args.push('--fix')
+    args.push("--fix");
   }
   if (options.fixUnsafe) {
-    args.push('--fix-dangerously')
+    args.push("--fix-dangerously");
   }
 
   return {
-    command: 'oxlint',
+    command: "oxlint",
     args,
-  }
+  };
 }
 
 /**
- * Build oxfmt command configuration.
+ * Build formatter command configuration through the repo-managed Vite+ facade.
  */
 export function buildFormatCommand(resolved: ResolvedTarget): CommandConfig {
-  const args: string[] = []
+  const args: string[] = [];
 
   // Add paths if any
   if (resolved.value.length > 0) {
-    args.push(...resolved.value)
+    args.push(...resolved.value);
   } else {
-    args.push('.') // Default to current directory
+    args.push("."); // Default to current directory
   }
 
+  const resolution = getManagedRunner("vp", { outputPolicy: "structured" });
   return {
-    command: 'oxfmt',
-    args,
-  }
+    command: resolution.command,
+    args: [...resolution.args, "fmt", ...args],
+  };
 }
 
 // =============================================================================
@@ -109,51 +110,51 @@ export function buildFormatCommand(resolved: ResolvedTarget): CommandConfig {
 // =============================================================================
 
 export interface TypecheckOptions {
-  noCache?: boolean
-  continue?: boolean
-  cache?: boolean
-  concurrencyLimit?: number
-  log?: VpRunLogMode
-  parallel?: boolean
+  noCache?: boolean;
+  continue?: boolean;
+  cache?: boolean;
+  concurrencyLimit?: number;
+  log?: VpRunLogMode;
+  parallel?: boolean;
 }
 
 function appendVpRunOptions(args: string[], options: VpRunOptions): void {
   if (options.noCache) {
-    args.push('--no-cache')
+    args.push("--no-cache");
   } else if (options.cache) {
-    args.push('--cache')
+    args.push("--cache");
   }
 
   if (options.parallel) {
-    args.push('--parallel')
+    args.push("--parallel");
   }
 
   if (options.concurrencyLimit) {
-    args.push('--concurrency-limit', String(options.concurrencyLimit))
+    args.push("--concurrency-limit", String(options.concurrencyLimit));
   }
 
   if (options.log) {
-    args.push('--log', options.log)
+    args.push("--log", options.log);
   }
 }
 
 function buildVpCommand(args: string[], options: VpRunOptions): CommandConfig {
-  const resolution = getManagedRunner('vp')
+  const resolution = getManagedRunner("vp");
   return {
     command: resolution.command,
     args: [...resolution.args, ...args],
     env: buildVpRunEnv(options),
-  }
+  };
 }
 
 function buildVpRunEnv(options: VpRunOptions): Record<string, string> | undefined {
   if (!options.concurrencyLimit) {
-    return
+    return;
   }
 
   return {
     VP_RUN_CONCURRENCY_LIMIT: String(options.concurrencyLimit),
-  }
+  };
 }
 
 /**
@@ -164,17 +165,17 @@ export function buildTypecheckCommand(
   repoRoot: string,
   options: TypecheckOptions = {},
 ): CommandConfig {
-  void repoRoot
-  const args = ['run']
+  void repoRoot;
+  const args = ["run"];
 
-  if (resolved.type === 'package' && resolved.value.length > 0) {
-    args.push(...resolved.value)
+  if (resolved.type === "package" && resolved.value.length > 0) {
+    args.push(...resolved.value);
   }
 
-  appendVpRunOptions(args, options)
-  args.push('typecheck')
+  appendVpRunOptions(args, options);
+  args.push("typecheck");
 
-  return buildVpCommand(args, options)
+  return buildVpCommand(args, options);
 }
 
 /**
@@ -185,25 +186,25 @@ export function filePathsToPackageFilters(
   repoRoot: string,
   resolveTargetStrict: (target: string, deps: { repoRoot: string }) => ResolvedTarget,
 ): string[] {
-  const seen = new Set<string>()
-  const allFilters: string[] = []
+  const seen = new Set<string>();
+  const allFilters: string[] = [];
 
   for (const filePath of filePaths) {
-    const packagePath = extractPackagePath(filePath)
-    if (!packagePath) continue
+    const packagePath = extractPackagePath(filePath);
+    if (!packagePath) continue;
 
-    const packageResolved = resolveTargetStrict(packagePath, { repoRoot })
-    if (packageResolved.type === 'package') {
+    const packageResolved = resolveTargetStrict(packagePath, { repoRoot });
+    if (packageResolved.type === "package") {
       for (const filter of packageResolved.value) {
         if (!seen.has(filter)) {
-          seen.add(filter)
-          allFilters.push(filter)
+          seen.add(filter);
+          allFilters.push(filter);
         }
       }
     }
   }
 
-  return allFilters
+  return allFilters;
 }
 
 // =============================================================================
@@ -211,31 +212,31 @@ export function filePathsToPackageFilters(
 // =============================================================================
 
 export interface TestOptions {
-  watch?: boolean
-  coverage?: boolean
-  testNamePattern?: string
-  noCache?: boolean
-  continue?: boolean
-  mutation?: boolean
-  workers?: boolean
-  json?: boolean
-  all?: boolean
-  affected?: boolean
-  passthrough?: string[]
-  cache?: boolean
-  concurrencyLimit?: number
-  log?: VpRunLogMode
-  parallel?: boolean
+  watch?: boolean;
+  coverage?: boolean;
+  testNamePattern?: string;
+  noCache?: boolean;
+  continue?: boolean;
+  mutation?: boolean;
+  workers?: boolean;
+  json?: boolean;
+  all?: boolean;
+  affected?: boolean;
+  passthrough?: string[];
+  cache?: boolean;
+  concurrencyLimit?: number;
+  log?: VpRunLogMode;
+  parallel?: boolean;
 }
 
 /**
  * Get the Vite+ run task name based on test options.
  */
 export function getVpTestTask(options: TestOptions): string {
-  if (options.mutation) return 'test:mutation'
-  if (options.workers) return 'test:workers'
-  if (options.watch) return 'test:watch'
-  return 'test'
+  if (options.mutation) return "test:mutation";
+  if (options.workers) return "test:workers";
+  if (options.watch) return "test:watch";
+  return "test";
 }
 
 /**
@@ -246,28 +247,28 @@ export function buildVpTestCommand(
   options: TestOptions = {},
   useJsonReporter?: boolean,
 ): CommandConfig {
-  const task = getVpTestTask(options)
-  const args = ['run', ...filters]
-  appendVpRunOptions(args, options)
-  args.push(task)
+  const task = getVpTestTask(options);
+  const args = ["run", ...filters];
+  appendVpRunOptions(args, options);
+  args.push(task);
 
-  const extraArgs: string[] = []
-  if (options.coverage) extraArgs.push('--coverage')
-  if (options.testNamePattern) extraArgs.push(`-t '${options.testNamePattern}'`)
-  if (options.passthrough) extraArgs.push(...options.passthrough)
+  const extraArgs: string[] = [];
+  if (options.coverage) extraArgs.push("--coverage");
+  if (options.testNamePattern) extraArgs.push(`-t '${options.testNamePattern}'`);
+  if (options.passthrough) extraArgs.push(...options.passthrough);
 
   if (useJsonReporter) {
-    extraArgs.push('--reporter=default')
-    extraArgs.push('--reporter=json')
-    extraArgs.push('--outputFile=.vite-plus/test-results.json')
+    extraArgs.push("--reporter=default");
+    extraArgs.push("--reporter=json");
+    extraArgs.push("--outputFile=.vite-plus/test-results.json");
   }
 
   if (extraArgs.length > 0) {
-    args.push('--')
-    args.push(...extraArgs)
+    args.push("--");
+    args.push(...extraArgs);
   }
 
-  return buildVpCommand(args, options)
+  return buildVpCommand(args, options);
 }
 
 /**
@@ -278,87 +279,87 @@ export function buildVitestCommand(
   options: TestOptions,
   projectRoot?: string,
 ): CommandConfig {
-  const mode = options.watch ? '--watch' : 'run'
-  const args = [mode]
-  const configFiles: string[] = []
-  const testFiles: string[] = []
+  const mode = options.watch ? "--watch" : "run";
+  const args = [mode];
+  const configFiles: string[] = [];
+  const testFiles: string[] = [];
 
   for (const file of files) {
     if (/^vitest(\.[\w-]+)?\.config\.(ts|mts|cts|js|mjs|cjs)$/.test(file)) {
-      configFiles.push(file)
-      continue
+      configFiles.push(file);
+      continue;
     }
 
-    testFiles.push(file)
+    testFiles.push(file);
   }
 
   // Don't pass --root for file targets — the CWD is already the repo root,
   // and --root can cause filter path mismatches in multi-project setups.
   if (projectRoot && testFiles.length === 0) {
-    args.push('--root', projectRoot)
+    args.push("--root", projectRoot);
   }
 
   if (configFiles.length > 1) {
-    throw new Error(`Expected at most one vitest config file, received: ${configFiles.join(', ')}`)
+    throw new Error(`Expected at most one vitest config file, received: ${configFiles.join(", ")}`);
   }
 
-  const [configFile] = configFiles
+  const [configFile] = configFiles;
   if (configFile) {
-    args.push('--config', configFile)
+    args.push("--config", configFile);
   }
 
   if (options.coverage) {
-    args.push('--coverage')
+    args.push("--coverage");
   }
 
   if (options.testNamePattern) {
-    args.push('-t', options.testNamePattern)
+    args.push("-t", options.testNamePattern);
   }
 
   if (options.passthrough?.length) {
-    args.push(...options.passthrough)
+    args.push(...options.passthrough);
   }
 
   // Add file paths directly — buildVitestCommand returns CommandConfig
   // which is spawned directly (not through a shell), so shell escaping
   // would inject literal quote characters into the filename.
-  args.push(...testFiles)
+  args.push(...testFiles);
 
   return {
-    command: 'vitest',
+    command: "vitest",
     args,
-  }
+  };
 }
 
 // =============================================================================
 // QA Command Builder
 // =============================================================================
 
-export type CheckType = 'lint' | 'typecheck' | 'test'
+export type CheckType = "lint" | "typecheck" | "test";
 export interface QaOptions {
-  quick?: boolean
-  continue?: boolean
-  noCache?: boolean
-  cache?: boolean // CAC sets cache: false for --no-cache
-  concurrencyLimit?: number
-  log?: VpRunLogMode
+  quick?: boolean;
+  continue?: boolean;
+  noCache?: boolean;
+  cache?: boolean; // CAC sets cache: false for --no-cache
+  concurrencyLimit?: number;
+  log?: VpRunLogMode;
 }
 
 /**
  * Core package checks (always run).
  */
-export const CORE_CHECKS: readonly CheckType[] = ['lint', 'typecheck', 'test']
+export const CORE_CHECKS: readonly CheckType[] = ["lint", "typecheck", "test"];
 
 /**
  * Quick checks (subset for --quick mode).
  */
-export const QUICK_CHECKS: readonly CheckType[] = ['lint', 'typecheck']
+export const QUICK_CHECKS: readonly CheckType[] = ["lint", "typecheck"];
 
 /**
  * Get the list of check types based on options.
  */
 export function getCheckTypes(options: QaOptions): readonly CheckType[] {
-  return options.quick ? QUICK_CHECKS : CORE_CHECKS
+  return options.quick ? QUICK_CHECKS : CORE_CHECKS;
 }
 
 /**
@@ -369,13 +370,13 @@ export function buildCombinedVpCommand(
   filters: string[],
   options: QaOptions,
 ): CommandConfig {
-  const packageCheckTypes = checkTypes.filter((t) => t !== 'lint')
-  const task = packageCheckTypes.includes('test') ? 'qa' : 'typecheck'
-  const args = ['run', ...filters]
-  appendVpRunOptions(args, options)
-  args.push(task)
+  const packageCheckTypes = checkTypes.filter((t) => t !== "lint");
+  const task = packageCheckTypes.includes("test") ? "qa" : "typecheck";
+  const args = ["run", ...filters];
+  appendVpRunOptions(args, options);
+  args.push(task);
 
-  return buildVpCommand(args, options)
+  return buildVpCommand(args, options);
 }
 
 // =============================================================================
@@ -386,18 +387,18 @@ export function buildCombinedVpCommand(
  * Options as received from CAC (string | string[] for variadic flags).
  */
 export interface CacRawOptions {
-  package?: string | string[]
-  file?: string | string[]
-  noCache?: boolean
-  cache?: boolean // CAC sets cache: false for --no-cache
+  package?: string | string[];
+  file?: string | string[];
+  noCache?: boolean;
+  cache?: boolean; // CAC sets cache: false for --no-cache
 }
 
 /**
  * Normalized options with arrays and boolean flags resolved.
  */
 export interface NormalizedCommandInputs {
-  targets: string[]
-  options: { package?: string[]; file?: string[]; noCache?: boolean }
+  targets: string[];
+  options: { package?: string[]; file?: string[]; noCache?: boolean };
 }
 
 /**
@@ -415,38 +416,38 @@ export function normalizeCacInputs(
 ): NormalizedCommandInputs {
   let positionalTargets = Array.isArray(targets)
     ? targets
-    : typeof targets === 'string'
+    : typeof targets === "string"
       ? [targets]
-      : []
+      : [];
 
   // Normalize --no-cache
-  const noCache = rawOptions.noCache || rawOptions.cache === false
+  const noCache = rawOptions.noCache || rawOptions.cache === false;
 
   // CAC may pass as string or array - normalize to array
   const packageArr = rawOptions.package
     ? Array.isArray(rawOptions.package)
       ? rawOptions.package
       : [rawOptions.package]
-    : undefined
+    : undefined;
 
   const fileArr = rawOptions.file
     ? Array.isArray(rawOptions.file)
       ? rawOptions.file
       : [rawOptions.file]
-    : undefined
+    : undefined;
 
-  let finalPackage = packageArr
-  let finalFile = fileArr
+  let finalPackage = packageArr;
+  let finalFile = fileArr;
 
   // Merge positional targets into --file or --package when both present
   if (finalFile && positionalTargets.length > 0) {
-    finalFile = [...finalFile, ...positionalTargets]
-    positionalTargets = []
+    finalFile = [...finalFile, ...positionalTargets];
+    positionalTargets = [];
   }
 
   if (finalPackage && positionalTargets.length > 0) {
-    finalPackage = [...finalPackage, ...positionalTargets]
-    positionalTargets = []
+    finalPackage = [...finalPackage, ...positionalTargets];
+    positionalTargets = [];
   }
 
   return {
@@ -456,5 +457,5 @@ export function normalizeCacInputs(
       file: finalFile,
       noCache: noCache || undefined,
     },
-  }
+  };
 }
