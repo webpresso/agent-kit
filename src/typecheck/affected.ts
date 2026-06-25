@@ -23,9 +23,6 @@ interface AffectedClosurePlan {
   readonly closureFiles: readonly ts.SourceFile[];
 }
 
-const NO_CHANGED_FILES_IN_PROGRAM =
-  "Affected typecheck found no changed files inside the active TypeScript program.";
-
 export async function runAffectedTypecheck(
   options: AffectedTypecheckOptions,
 ): Promise<AffectedTypecheckResult> {
@@ -38,20 +35,6 @@ export async function runAffectedTypecheck(
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     sink.write(`${message}\n`);
-    if (message === NO_CHANGED_FILES_IN_PROGRAM) {
-      const entry = await sink.finalize({
-        exitCode: 0,
-        summary: "typecheck passed",
-        options: {
-          affected: true,
-          files: [...options.files],
-          checkedFiles: [],
-          resolvedScopes: ["affected-closure"],
-        },
-      });
-      return { exitCode: 0, entry, checkedFiles: [] };
-    }
-
     const entry = await sink.finalize({
       exitCode: 1,
       summary: "typecheck failed: affected closure unavailable",
@@ -118,7 +101,9 @@ export function planAffectedTypecheckClosure(
     .map((file) => byCanonicalPath.get(canonicalPath(file)))
     .filter((file): file is ts.SourceFile => file !== undefined);
   if (changedFiles.length === 0) {
-    throw new Error(NO_CHANGED_FILES_IN_PROGRAM);
+    throw new Error(
+      "Affected typecheck found no changed files inside the active TypeScript program.",
+    );
   }
 
   const reverseDependencies = buildReverseDependencyGraph(program, sourceFiles, byCanonicalPath);
@@ -210,7 +195,7 @@ function collectReverseClosure(
   return closure;
 }
 
-function collectAffectedDiagnostics(
+export function collectAffectedDiagnostics(
   program: ts.Program,
   files: readonly ts.SourceFile[],
 ): readonly ts.Diagnostic[] {

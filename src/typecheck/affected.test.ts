@@ -5,7 +5,11 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { planAffectedTypecheckClosure, runAffectedTypecheck } from "./affected.js";
+import {
+  collectAffectedDiagnostics,
+  planAffectedTypecheckClosure,
+  runAffectedTypecheck,
+} from "./affected.js";
 
 const tempDirs: string[] = [];
 
@@ -81,7 +85,7 @@ describe("affected typecheck closure", () => {
     ).toEqual(["src/a.ts", "src/aliased.ts"]);
   });
 
-  it("reports diagnostics in unchanged importers included by the closure", async () => {
+  it("returns a failing public result when unchanged importers have diagnostics", async () => {
     const root = makeProject();
     write(root, "src/a.ts", "export interface Shape { value: string }\n");
     write(
@@ -93,17 +97,44 @@ describe("affected typecheck closure", () => {
     const result = await runAffectedTypecheck({ repoRoot: root, files: ["src/a.ts"] });
 
     expect(result.exitCode).toBe(1);
+    expect(result.entry.exitCode).toBe(1);
+    expect(result.entry.summary).toBe("typecheck failed (exit 1)");
     expect(result.checkedFiles).toEqual(["src/a.ts", "src/b.ts"]);
   });
 
-  it("treats affected files outside the active TypeScript program as a successful no-op", async () => {
+  it("reports diagnostics in unchanged importers included by the closure", () => {
     const root = makeProject();
-    write(root, "src/a.ts", "export const value = 1;\n");
-    write(root, "README.md", "# docs only\n");
+    write(root, "src/a.ts", "export interface Shape { value: string }\n");
+    write(
+      root,
+      "src/b.ts",
+      "import type { Shape } from './a';\nexport const b: Shape = { value: 1 };\n",
+    );
 
-    const result = await runAffectedTypecheck({ repoRoot: root, files: ["README.md"] });
+    const plan = planAffectedTypecheckClosure({ repoRoot: root, files: ["src/a.ts"] });
+    const checkedFiles = plan.closureFiles.map((file) =>
+      path.relative(root, file.fileName).replaceAll("\\", "/"),
+    );
+    const diagnostics = collectAffectedDiagnostics(plan.program, plan.closureFiles);
+    const fileDiagnostics = diagnostics.filter(
+      (
+        diagnostic,
+      ): diagnostic is typeof diagnostic & { file: NonNullable<typeof diagnostic.file> } =>
+        diagnostic.file !== undefined,
+    );
+    const fileDiagnosticSummaries = fileDiagnostics.map((diagnostic) => ({
+      code: diagnostic.code,
+      file: path.relative(root, diagnostic.file.fileName).replaceAll("\\", "/"),
+      message: String(diagnostic.messageText),
+    }));
 
-    expect(result.exitCode).toBe(0);
-    expect(result.checkedFiles).toEqual([]);
+    expect(checkedFiles).toEqual(["src/a.ts", "src/b.ts"]);
+    expect(fileDiagnosticSummaries).toEqual([
+      {
+        code: 2322,
+        file: "src/b.ts",
+        message: "Type 'number' is not assignable to type 'string'.",
+      },
+    ]);
   });
 });
