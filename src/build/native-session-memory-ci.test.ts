@@ -52,7 +52,7 @@ describe("native session-memory CI warmup", () => {
 
     expect(workflow).toContain("Warm native session-memory addon");
     expect(workflow.indexOf("Warm native session-memory addon")).toBeLessThan(
-      workflow.indexOf("- run: pnpm run test"),
+      workflow.indexOf("run: pnpm run test"),
     );
     expect(workflow).toContain("loadNativeSessionMemoryEngine");
     expectNativeCiGate(workflow);
@@ -67,7 +67,7 @@ describe("native session-memory CI warmup", () => {
 
     expect(workflow).toContain("Warm native session-memory addon");
     expect(workflow.indexOf("Warm native session-memory addon")).toBeLessThan(
-      workflow.indexOf("- run: pnpm run test"),
+      workflow.indexOf("run: pnpm run test"),
     );
     expect(workflow).toContain("loadNativeSessionMemoryEngine");
     expectNativeCiGate(workflow);
