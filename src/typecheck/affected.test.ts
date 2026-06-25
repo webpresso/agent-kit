@@ -95,4 +95,15 @@ describe("affected typecheck closure", () => {
     expect(result.exitCode).toBe(1);
     expect(result.checkedFiles).toEqual(["src/a.ts", "src/b.ts"]);
   });
+
+  it("treats affected files outside the active TypeScript program as a successful no-op", async () => {
+    const root = makeProject();
+    write(root, "src/a.ts", "export const value = 1;\n");
+    write(root, "README.md", "# docs only\n");
+
+    const result = await runAffectedTypecheck({ repoRoot: root, files: ["README.md"] });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.checkedFiles).toEqual([]);
+  });
 });

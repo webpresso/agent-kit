@@ -244,7 +244,9 @@ Run targeted and broad verification, including repeated full suite attempts afte
 - Draft PR opened before implementation: https://github.com/webpresso/agent-kit/pull/276.
 - Targeted claim/native CI contract tests pass: `pnpm exec vitest run scripts/bench/lib/claim-surfaces.test.ts src/build/native-session-memory-ci.test.ts --project unit` -> 2 files, 13 tests passed.
 - `vp run typecheck` -> pass.
+- `./bin/wp typecheck --affected --branch` -> pass after fixing the affected-typecheck no-op path for test/config-only branches.
 - `vp run lint` -> pass.
+- `pnpm exec vitest run src/typecheck/affected.test.ts --project unit` -> pass (4 tests).
 - `bun scripts/check-workflow-action-pins.ts .` -> pass.
 - Changed-file format check -> pass. Full `wp format --check` remains blocked by pre-existing non-task formatting drift in six files.
 - `vp run test` with bounded subprocess workers exposed reproducible shared-state/time bottlenecks instead of passing under 4 minutes: package/release subprocess files and `src/hooks/pretool-guard/runner.subprocess.test.ts`. A tiny `serial-subprocess` project isolates package/release files; hook runner still fails alone because spawned hook binary exceeds its internal 8s timeout under this environment.
