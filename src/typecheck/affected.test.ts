@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { planAffectedTypecheckClosure, runAffectedTypecheck } from "./affected.js";
+import { collectAffectedDiagnostics, planAffectedTypecheckClosure } from "./affected.js";
 
 const tempDirs: string[] = [];
 
@@ -81,7 +81,7 @@ describe("affected typecheck closure", () => {
     ).toEqual(["src/a.ts", "src/aliased.ts"]);
   });
 
-  it("reports diagnostics in unchanged importers included by the closure", async () => {
+  it("reports diagnostics in unchanged importers included by the closure", () => {
     const root = makeProject();
     write(root, "src/a.ts", "export interface Shape { value: string }\n");
     write(
@@ -90,9 +90,22 @@ describe("affected typecheck closure", () => {
       "import type { Shape } from './a';\nexport const b: Shape = { value: 1 };\n",
     );
 
-    const result = await runAffectedTypecheck({ repoRoot: root, files: ["src/a.ts"] });
+    const plan = planAffectedTypecheckClosure({ repoRoot: root, files: ["src/a.ts"] });
+    const checkedFiles = plan.closureFiles.map((file) =>
+      path.relative(root, file.fileName).replaceAll("\\", "/"),
+    );
+    const diagnostics = collectAffectedDiagnostics(plan.program, plan.closureFiles);
 
-    expect(result.exitCode).toBe(1);
-    expect(result.checkedFiles).toEqual(["src/a.ts", "src/b.ts"]);
+    expect(checkedFiles).toEqual(["src/a.ts", "src/b.ts"]);
+    expect(
+      diagnostics.some(
+        (diagnostic) =>
+          diagnostic.file &&
+          path.relative(root, diagnostic.file.fileName).replaceAll("\\", "/") === "src/b.ts" &&
+          String(diagnostic.messageText).includes(
+            "Type 'number' is not assignable to type 'string'",
+          ),
+      ),
+    ).toBe(true);
   });
 });
