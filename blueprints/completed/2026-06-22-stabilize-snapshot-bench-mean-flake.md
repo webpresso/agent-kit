@@ -118,10 +118,10 @@ No further implementation task remains in this blueprint.
 
 ### Material Claims
 
-| ID  | Claim                                                                                           | Evidence                                                                  |
-| --- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| C1  | This executable blueprint has a canonical repository document.                                  | repo:blueprints/planned/2026-06-22-stabilize-snapshot-bench-mean-flake.md |
-| C2  | The plan keeps the `snapshot_50_events` threshold unchanged and stabilizes measurement instead. | repo:blueprints/planned/2026-06-22-stabilize-snapshot-bench-mean-flake.md |
+| ID  | Claim                                                                                           | Evidence                                                                    |
+| --- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document.                                  | repo:blueprints/completed/2026-06-22-stabilize-snapshot-bench-mean-flake.md |
+| C2  | The plan keeps the `snapshot_50_events` threshold unchanged and stabilizes measurement instead. | repo:blueprints/completed/2026-06-22-stabilize-snapshot-bench-mean-flake.md |
 
 ### Material Decisions
 

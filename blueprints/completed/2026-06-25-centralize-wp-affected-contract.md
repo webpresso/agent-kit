@@ -101,7 +101,7 @@ unrelated files outside the closure.
 
 | ID  | Claim                                                           | Evidence                                                                        |
 | --- | --------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| C1  | This executable blueprint has a canonical repository document.  | repo:blueprints/planned/2026-06-25-centralize-wp-affected-contract.md           |
+| C1  | This executable blueprint has a canonical repository document.  | repo:blueprints/completed/2026-06-25-centralize-wp-affected-contract.md         |
 | C2  | The implementation introduced a shared affected resolver.       | repo:src/git/affected.ts; repo:src/git/affected.test.ts                         |
 | C3  | Generated hooks delegate affected scoping to wp-owned commands. | repo:catalog/base-kit/.husky/pre-commit.tmpl; repo:.husky/pre-commit            |
 | C4  | Affected-safe guardrails are distinct from full guardrails.     | repo:src/cli/commands/audit.ts; repo:src/cli/commands/audit.test.ts; derived:C2 |

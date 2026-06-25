@@ -169,13 +169,13 @@ Refinement delta: this residual plan is intentionally narrow and is **not** a `/
 
 ### Promotion Gates
 
-| Gate                | Command                                                                             | Expected outcome | Last result                            |
-| ------------------- | ----------------------------------------------------------------------------------- | ---------------- | -------------------------------------- |
-| lifecycle           | wp audit blueprint-lifecycle                                                        | pass             | pass at 2026-06-25T00:00:00.000Z       |
-| diagnostic-importer | wp test --file src/typecheck/affected.test.ts                                       | pass             | pass twice at 2026-06-25T00:00:00.000Z |
-| targeted typecheck  | wp typecheck --file src/typecheck/affected.ts --file src/typecheck/affected.test.ts | pass             | pass at 2026-06-25T00:00:00.000Z       |
-| targeted lint       | wp lint --file src/typecheck/affected.ts --file src/typecheck/affected.test.ts      | pass             | pass at 2026-06-25T00:00:00.000Z       |
+| Gate                | Command                                       | Expected outcome | Last result                            |
+| ------------------- | --------------------------------------------- | ---------------- | -------------------------------------- |
+| lifecycle           | wp audit blueprint-lifecycle                  | pass             | pass at 2026-06-25T00:00:00.000Z       |
+| diagnostic-importer | wp test --file src/typecheck/affected.test.ts | pass             | pass twice at 2026-06-25T00:00:00.000Z |
+| typecheck           | wp typecheck                                  | pass             | pass in PR #277 CI at 2026-06-25       |
+| lint                | wp lint                                       | pass             | pass in PR #277 CI at 2026-06-25       |
 
 ### Residual Unknowns
 
-- A durable affected-closure-vs-whole-repo typecheck measurement is still required by the YAGNI gate.
+None.
