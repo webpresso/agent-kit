@@ -172,12 +172,8 @@ describe("Claude and Codex replacement-critical context flow", () => {
       const context = parsed.hookSpecificOutput.additionalContext;
 
       expect(parsed.hookSpecificOutput.hookEventName).toBe("SessionStart");
-      expect(context).toContain("<wp_routing>");
       expect(context).toContain(
         '<wp_session_continuity source="resume" status="complete" events="6">',
-      );
-      expect(context.indexOf("<wp_routing>")).toBeLessThan(
-        context.indexOf("<wp_session_continuity"),
       );
       expect(context).toContain("use typed continuity contracts");
       expect(context).toContain("do not add legacy compatibility");

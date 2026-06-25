@@ -104,7 +104,7 @@ function dryRunDetails(input: CiActInput, cwd: string) {
 const tool: ToolDescriptor = {
   name: "wp_ci_act",
   description:
-    "Run local GitHub Actions workflows through `act` via the public secret contract (`wp secrets doctor --profile <profile> --json`, then `wp secrets run --sink act --profile <profile> -- act ...`).",
+    "Run local GitHub Actions workflows through `act` via the public secret contract (`wp secrets doctor --profile <profile> --json`, then `wp secrets run --sink act --profile <profile> -- act ...`). Use for running act / local GitHub Actions; prefer over act or vp exec act; run `wp ci act` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   annotations: {

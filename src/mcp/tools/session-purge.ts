@@ -48,7 +48,8 @@ function hasScope(input: PurgeInput): boolean {
 
 const tool: ToolDescriptor = {
   name: "wp_session_purge",
-  description: "Dry-run or explicitly confirm scoped local session-memory purge operations.",
+  description:
+    "Dry-run or explicitly confirm scoped local session-memory purge operations. Use for an explicit session-memory reset (dry-run first; confirm deletion); prefer over raw rm of the store; run `wp session purge` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   annotations: {

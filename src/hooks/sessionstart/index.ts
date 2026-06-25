@@ -1,26 +1,28 @@
 #!/usr/bin/env bun
 /**
- * SessionStart hook: injects WP_ROUTING_BLOCK and optionally `.agent/routing.md`
- * into Claude Code sessions.
+ * SessionStart hook: injects session-memory continuity, an optional update
+ * banner, and `.agent/routing.md` (if present) into Claude Code sessions.
  *
  * Wired in `plugin.json` as `SessionStart` with matcher `startup|resume|compact`.
- * The `compact` source is included so the routing block is re-injected after
- * context compaction (F3 from fact-check: block is silently dropped without it).
- * Cannot block (decision-control unsupported for SessionStart) — this is
- * observability + context injection only. Latency budget: <750ms release resume-injection budget.
+ * The `compact` source is included so continuity is re-injected after context
+ * compaction. Cannot block (decision-control unsupported for SessionStart) —
+ * this is observability + context injection only. Latency budget: <750ms
+ * release resume-injection budget.
+ *
+ * Tool routing (which `wp_*` MCP tool to use) is NOT injected here; it lives in
+ * the MCP tool descriptions and the always-on AGENTS.md/CLAUDE.md conventions.
  *
  * Output contract (per Claude Code hooks docs):
  *   {"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"<contents>"}}
  *
- * Always emits — never returns null. WP_ROUTING_BLOCK is always prepended.
- * If `.agent/routing.md` exists and is non-empty, it is appended after the block.
+ * Always emits valid JSON; `additionalContext` is empty when there is no
+ * `.agent/routing.md`, continuity, or update banner to surface.
  */
 import { readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { performance } from "node:perf_hooks";
 import { join } from "node:path";
 
-import { WP_ROUTING_BLOCK } from "#hooks/shared/routing-block";
 import { renderSessionStartInstructionContext } from "#hooks/shared/instruction-surfaces";
 import { getSurfacePath, NotInGitRepoError } from "#paths/state-root.js";
 import { Database } from "#db/sqlite.js";
@@ -29,7 +31,6 @@ import { readUpdateBanner } from "./update-banner.js";
 import { isDirectEntrypoint } from "#hooks/shared/direct-entrypoint";
 import { repoHashFromRoot } from "#session-memory/repo-hash.js";
 
-export { WP_ROUTING_BLOCK };
 export const MAX_BYTES = 200 * 1024;
 export const TRUNCATION_NOTICE = "\n\n[truncated: file exceeded 200KB limit]";
 export const RESUME_MAX_EVENT_BYTES = 2 * 1024;
@@ -324,8 +325,10 @@ function buildResumeContext(
 /**
  * Pure function: given a parsed input payload, a working directory, and
  * environment variables, produce the JSON string that the hook should write
- * to stdout. Always emits — never returns null. WP_ROUTING_BLOCK is always
- * prepended; `.agent/routing.md` content is appended when present and non-empty.
+ * to stdout. Always emits valid JSON — never returns null. The
+ * `additionalContext` is assembled from `.agent/routing.md` (when present and
+ * non-empty), session-memory continuity, and the update banner; it is empty
+ * when none of those are available.
  */
 export function buildOutput(
   input: StartInput,
@@ -359,7 +362,7 @@ export function buildOutput(
         `wp-sessionstart-routing: failed to read ${target}: ${(err as Error).message}\n`,
       );
     }
-    // ENOENT / ENOTDIR: no routing.md, that's fine — emit routing block alone.
+    // ENOENT / ENOTDIR: no routing.md, that's fine — continuity/banner only.
   }
 
   const resumeContext = buildResumeContext(input, projectDir, env, deps);

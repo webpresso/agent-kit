@@ -48,7 +48,7 @@ function commandsFor(input: Input): Array<{ id: string; command: string; args: s
 const tool: ToolDescriptor = {
   name: "wp_release_readiness",
   description:
-    "Aggregate read-only release readiness checks without publishing, tagging, versioning, merging, or mutating release state.",
+    "Aggregate read-only release readiness checks without publishing, tagging, versioning, merging, or mutating release state. Use for release readiness / package surface / changeset status (read-only); run `wp release readiness` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   annotations: {

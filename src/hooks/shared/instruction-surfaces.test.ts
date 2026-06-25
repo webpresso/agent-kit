@@ -4,88 +4,65 @@ import {
   INSTRUCTION_SURFACE_HOSTS,
   renderInstructionSurface,
   renderSessionStartInstructionContext,
-  routingToolNamesFromSource,
 } from "#hooks/shared/instruction-surfaces";
-import { WP_ROUTING_BLOCK, createRoutingInstructionSource } from "#hooks/shared/routing-block";
+import { WP_TOOL_NAMES } from "#mcp/tools/_names";
 
 describe("instruction surface renderer", () => {
-  it("renders every supported host from the shared routing source metadata", () => {
-    const source = createRoutingInstructionSource();
-    const tools = routingToolNamesFromSource(source.content).join(", ");
+  it("renders every supported host with the registry-derived tool names", () => {
+    const tools = WP_TOOL_NAMES.join(", ");
 
     for (const host of INSTRUCTION_SURFACE_HOSTS) {
       const surface = renderInstructionSurface({ host });
 
-      expect(surface.content).toContain(`source="${source.name}"`);
+      expect(surface.content).toContain('source="wp_routing"');
       expect(surface.content).toContain(`<native_tool_names>${tools}</native_tool_names>`);
-      expect(surface.content).not.toContain(WP_ROUTING_BLOCK);
     }
   });
 
-  it("derives native tool names from the routing block without a second tool list", () => {
-    expect(routingToolNamesFromSource(WP_ROUTING_BLOCK)).toStrictEqual([
-      "wp_session_restore",
-      "wp_session_search",
-      "wp_session_retrieve",
-      "wp_session_execute_file",
-      "wp_session_execute",
-      "wp_session_batch_execute",
-      "wp_session_fetch_and_index",
-      "wp_session_index",
-      "wp_session_capture",
-      "wp_session_snapshot",
-      "wp_session_stats",
-      "wp_session_doctor",
-      "wp_session_purge",
-      "wp_test",
-      "wp_e2e",
-      "wp_lint",
-      "wp_typecheck",
-      "wp_qa",
-      "wp_audit",
-      "wp_audits",
-      "wp_ci_act",
-      "wp_worker_tail",
-      "wp_pr_status",
-      "wp_bench",
-      "wp_gain",
-      "wp_release_readiness",
-    ]);
+  it("advertises the session tools in the envelope native_tool_names", () => {
+    const surface = renderInstructionSurface({ host: "codex" });
+
+    // Proof markers for the "routing injection" reference-parity row.
+    expect(surface.content).toContain("native_tool_names");
+    expect(surface.content).toContain("wp_session_batch_execute");
+    expect(surface.content).toContain("wp_session_execute_file");
   });
 
-  it("preserves the Claude SessionStart caller contract", () => {
-    expect(renderSessionStartInstructionContext({})).toBe(WP_ROUTING_BLOCK);
+  it("emits empty Claude SessionStart context when there is nothing to surface", () => {
+    expect(renderSessionStartInstructionContext({})).toBe("");
+  });
+
+  it("joins Claude SessionStart project routing and extra sections without an injected block", () => {
     expect(
       renderSessionStartInstructionContext({
         projectRoutingMarkdown: "project routing",
         extraSections: ["extra context"],
       }),
-    ).toBe(`${WP_ROUTING_BLOCK}\n\nproject routing\n\nextra context`);
+    ).toBe("project routing\n\nextra context");
   });
 
-  it("renders deterministic Claude instruction metadata when requested", () => {
+  it("renders deterministic Claude instruction metadata for the envelope surface", () => {
     const surface = renderInstructionSurface({
       host: "claude",
       projectRoutingMarkdown: "project routing",
-      includeRoutingContent: true,
     });
 
-    const tools = routingToolNamesFromSource(WP_ROUTING_BLOCK).join(", ");
+    const tools = WP_TOOL_NAMES.join(", ");
 
-    expect(surface).toEqual({
+    expect(surface).toStrictEqual({
       host: "claude",
       artifactName: "SessionStart.additionalContext",
       content: `<wp_instruction_surface host="claude" artifact="SessionStart.additionalContext" source="wp_routing">
   <host_contract>
     <native_tool_names>${tools}</native_tool_names>
-    <stdout_noop>SessionStart always writes a JSON additionalContext envelope; an empty project routing file still emits the shared routing source.</stdout_noop>
+    <stdout_noop>SessionStart writes a JSON additionalContext envelope; with no project routing or continuity events it emits empty context. Tool routing comes from the wp_* MCP tool descriptions, not an injected block.</stdout_noop>
     <lifecycle_notes>
     <note>SessionStart is context injection only and cannot block tool calls.</note>
     <note>PreToolUse remains the lifecycle for deny decisions.</note>
     </lifecycle_notes>
     <public_support>Public support: first-class Claude hook context surface.</public_support>
   </host_contract>
-</wp_instruction_surface>\n\n${WP_ROUTING_BLOCK}\n\nproject routing`,
+</wp_instruction_surface>\n\nproject routing`,
     });
   });
 

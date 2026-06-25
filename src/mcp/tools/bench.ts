@@ -43,7 +43,7 @@ function buildArgs(input: z.infer<typeof inputSchema>): string[] {
 const tool: ToolDescriptor = {
   name: "wp_bench",
   description:
-    "Run bounded Webpresso benchmark flows. Defaults session-memory benchmarks to --dry-run unless live mode is explicit.",
+    "Run bounded Webpresso benchmark flows. Defaults session-memory benchmarks to --dry-run unless live mode is explicit. Use for session-memory benchmark evidence (defaults to dry-run); run `wp bench` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   annotations: {

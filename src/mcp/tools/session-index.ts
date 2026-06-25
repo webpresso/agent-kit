@@ -150,7 +150,8 @@ function boundedPayload(
 
 const tool: ToolDescriptor = {
   name: "wp_session_index",
-  description: "Index caller-provided bounded text chunks into the local session-memory index.",
+  description:
+    "Index caller-provided bounded text chunks into the local session-memory index. Use for indexing caller-provided or externally summarized chunks; run `wp session index` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   annotations: {

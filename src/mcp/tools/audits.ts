@@ -90,7 +90,7 @@ function toBatchEntry(payload: AuditPayload) {
 const tool: ToolDescriptor = {
   name: "wp_audits",
   description:
-    "Run multiple packaged repo audits in one deterministic batch. Provide `kinds` or preset `guardrails`/`all`; returns aggregate pass/fail plus per-audit results.",
+    "Run multiple packaged repo audits in one deterministic batch. Provide `kinds` or preset `guardrails`/`all`; returns aggregate pass/fail plus per-audit results. Use for multiple/chained audits or full audit evidence in one call; prefer over repeated single wp_audit calls; run `wp audits` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   annotations: {

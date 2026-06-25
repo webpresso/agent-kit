@@ -484,7 +484,7 @@ describe("routeCommand", () => {
   it("routes raw large-context commands to concrete wp_session tools", async () => {
     const routeCommand = await getRoute();
     for (const [command, tool] of [
-      ["cat src/hooks/shared/routing-block.ts", "wp_session_execute_file"],
+      ["cat src/hooks/shared/instruction-surfaces.ts", "wp_session_execute_file"],
       ['grep -R "wp_session" src', "wp_session_batch_execute"],
       ['find src -name "*.ts"', "wp_session_batch_execute"],
       ["git log --oneline -50", "wp_session_batch_execute"],

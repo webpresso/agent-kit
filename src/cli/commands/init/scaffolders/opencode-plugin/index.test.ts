@@ -106,7 +106,7 @@ describe("OPENCODE_PLUGIN_CONTENT", () => {
     );
     expect(OPENCODE_PLUGIN_CONTENT).toContain('<wp_instruction_surface host="opencode"');
     expect(OPENCODE_PLUGIN_CONTENT).toContain(
-      "wp_test, wp_e2e, wp_lint, wp_typecheck, wp_qa, wp_audit, wp_audits, wp_ci_act, wp_worker_tail, wp_pr_status, wp_bench, wp_gain, wp_release_readiness",
+      "wp_audit, wp_audits, wp_bench, wp_ci_act, wp_e2e, wp_format, wp_gain, wp_lint, wp_pr_status, wp_qa, wp_release_readiness, wp_session_batch_execute, wp_session_capture, wp_session_doctor, wp_session_execute, wp_session_execute_file, wp_session_fetch_and_index, wp_session_index, wp_session_purge, wp_session_retrieve, wp_session_restore, wp_session_search, wp_session_snapshot, wp_session_stats, wp_test, wp_typecheck, wp_worker_tail, wp_worktree",
     );
     expect(OPENCODE_PLUGIN_CONTENT).not.toContain("generic plugin");
   });

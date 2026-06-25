@@ -57,12 +57,32 @@ wp blueprint promote {slug}
 
 **When to create** (same threshold as this rule — "non-trivial"):
 
-- **Claude Code (plan mode):** create the blueprint immediately after the plan
-  is approved and _before_ calling `ExitPlanMode` or making the first
-  `Edit`/`Write` call. The blueprint is the handoff record; the plan is
-  ephemeral.
-- **All other CLIs (Codex, Cursor, OpenCode, etc.):** create before the first
-  `Edit`/`Write` tool call for the task.
+- **Claude Code (plan mode):** the moment the plan is approved and _before_
+  calling `ExitPlanMode` or making the first `Edit`/`Write` call, run the full
+  gate below (worktree → blueprint → draft PR). The blueprint is the handoff
+  record; the plan is ephemeral.
+- **All other CLIs (Codex, Cursor, OpenCode, etc.):** run the full gate before
+  the first `Edit`/`Write` tool call for the task.
+
+### The gate is: worktree → blueprint → draft PR
+
+A non-trivial change is isolated from the first keystroke. Do all three before
+the first implementation edit, in this order:
+
+1. **Create a git worktree on a new branch and switch into it.** Never
+   implement on `main` or on an unrelated in-flight branch. Branch fresh from
+   the default branch so the PR diff is clean.
+2. **Create the blueprint on that branch.** The MCP `wp_blueprint_*` tools
+   write blueprint files to the _primary_ checkout, not a linked worktree —
+   after authoring, make sure the blueprint file actually lands on the worktree
+   branch (e.g. copy it in) before committing, or the PR-coverage gate fails.
+3. **Open a draft PR early** (`gh pr create --draft`) with the blueprint in the
+   first commit, then push implementation commits to it. The PR exists for the
+   whole task, not just at the end.
+
+Never push directly to `main`; every change lands via a PR with green CI. Skip
+the worktree/PR steps only for the same trivial cases this rule already skips
+(typos, renames, one-line or doc-only fixes).
 
 **When to skip:**
 

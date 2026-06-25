@@ -39,7 +39,8 @@ function boundedWarning(scope: string, error: unknown): string {
 
 const tool: ToolDescriptor = {
   name: "wp_session_doctor",
-  description: "Report bounded local diagnostics for session-memory continuity and index stores.",
+  description:
+    "Report bounded local diagnostics for session-memory continuity and index stores. Use for diagnosing session-memory stores, locks, corruption, repair hints; run `wp session doctor` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   annotations: {

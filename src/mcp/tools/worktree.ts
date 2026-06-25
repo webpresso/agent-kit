@@ -363,7 +363,7 @@ function handleRemove(input: WpWorktreeInput, repoRoot: string): WpWorktreePaylo
 const tool: ToolDescriptor = {
   name: "wp_worktree",
   description:
-    "Safely list, create, remove, refresh, and prune agent-kit managed git worktrees. Mutating actions require execute:true and protect dirty/locked worktrees.",
+    "Safely list, create, remove, refresh, and prune agent-kit managed git worktrees. Mutating actions require execute:true and protect dirty/locked worktrees. Use for listing/creating/removing managed git worktrees; prefer over raw git worktree; run `wp worktree` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   annotations: {

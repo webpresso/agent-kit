@@ -60,7 +60,7 @@ function truncateUtf8(value: string, maxBytes: number): string {
 const tool: ToolDescriptor = {
   name: WP_SESSION_RETRIEVE_TOOL_NAME,
   description:
-    "Retrieve exact session-memory elided content by id. Use this when an elision handle is present; use search for content lookup and restore for broader continuity.",
+    "Retrieve exact session-memory elided content by id. Use this when an elision handle is present; use search for content lookup and restore for broader continuity. Use for retrieving exact elided/truncated content by handle id; run `wp session retrieve` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   annotations: {

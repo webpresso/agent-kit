@@ -78,7 +78,7 @@ function summarizeOutcome(input: AkTestInput, result: testRunner.TestResult): st
 const tool: ToolDescriptor = {
   name: "wp_test",
   description:
-    "Run tests via the `vp` package-manager facade. Use `wp_e2e` for suite-aware E2E execution.",
+    "Run tests via the `vp` package-manager facade. Use `wp_e2e` for suite-aware E2E execution. Use for running tests / verifying the suite; prefer over raw vitest or bun run test; run `wp test` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   // Tests SHOULD be deterministic + side-effect-free, but we can't prove it

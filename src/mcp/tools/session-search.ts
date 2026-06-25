@@ -10,7 +10,7 @@ import {
 const tool: ToolDescriptor = {
   name: "wp_session_search",
   description:
-    "Search indexed chunks and continuity events with unified provenance and bounded previews.",
+    "Search indexed chunks and continuity events with unified provenance and bounded previews. Use for searching prior indexed evidence / recalling decisions; prefer over grep over transcripts; run `wp session search` directly only if this tool is unavailable.",
   inputSchema: sessionRecallInputSchema,
   outputSchema: sessionRecallOutputSchema,
   annotations: {
