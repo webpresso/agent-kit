@@ -195,7 +195,7 @@ function collectReverseClosure(
   return closure;
 }
 
-function collectAffectedDiagnostics(
+export function collectAffectedDiagnostics(
   program: ts.Program,
   files: readonly ts.SourceFile[],
 ): readonly ts.Diagnostic[] {
