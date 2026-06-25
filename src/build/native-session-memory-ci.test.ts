@@ -6,13 +6,17 @@ import { describe, expect, it } from "vitest";
 const repositoryRoot = process.cwd();
 
 function expectNativeCiGate(workflow: string): void {
-  expect(workflow).toContain("Install Rust toolchain for native session-memory checks");
+  expect(workflow).toContain("native-session-memory:");
+  expect(workflow).toContain("name: Native session-memory");
   expect(workflow).toMatch(
-    /name: Install Rust toolchain for native session-memory checks\n\s+run: \|\n\s+rustup toolchain install 1\.88\.0 --profile minimal --component rustfmt,clippy\n\s+cargo install cargo-deny --version 0\.19\.9 --locked/u,
+    /name: Install Rust toolchain for native session-memory checks\n\s+run: rustup toolchain install 1\.88\.0 --profile minimal --component rustfmt,clippy/u,
   );
+  expect(workflow).toContain("Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32");
+  expect(workflow).toContain("taiki-e/install-action@682e7d9e49c5e653d371fc6adbda67653461378a");
+  expect(workflow).toContain("tool: cargo-deny@0.19.9");
   expect(workflow).toContain("pnpm run native:session-memory:fmt");
   expect(workflow).toContain("pnpm run native:session-memory:clippy");
-  expect(workflow).toContain("cargo install cargo-deny --version 0.19.9 --locked");
+  expect(workflow).not.toContain("cargo install cargo-deny --version 0.19.9 --locked");
   expect(workflow).toContain("pnpm run native:session-memory:deny");
   expect(workflow).toContain("pnpm run native:session-memory:test");
   expect(workflow).toContain("pnpm run native:session-memory:bench:run");
@@ -52,6 +56,7 @@ describe("native session-memory CI warmup", () => {
     );
     expect(workflow).toContain("loadNativeSessionMemoryEngine");
     expectNativeCiGate(workflow);
+    expect(workflow).toMatch(/wp-check:[\s\S]*native-session-memory/u);
   });
 
   it("warms the native addon before the agent-kit self parallel test suite", () => {

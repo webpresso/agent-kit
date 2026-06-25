@@ -498,7 +498,7 @@
     "audits:check": "./bin/wp audit guardrails && vp run workflow-actions:check && vp run hooks:doctor:ci",
     "hooks:doctor": "./bin/wp hooks doctor",
     "hooks:doctor:ci": "./bin/wp hooks doctor --skip-mcp",
-    "qa": "vp run build && vp run typecheck && vp run lint && vp run format && vp run test && vp run lint:pkg && vp run audits:check",
+    "qa": "vp run build && bun scripts/run-parallel-checks.ts",
     "changeset": "changeset",
     "changeset:status": "GIT_WORK_TREE=$PWD changeset status",
     "verify:paths": "./bin/wp audit absolute-path-policy --root .",

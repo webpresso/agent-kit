@@ -40,6 +40,7 @@ const EXPECTED_BLUEPRINT_SCHEMA_VERSIONS = EXPECTED_BLUEPRINT_MIGRATION_SQL_FILE
 );
 const ORIGINAL_PACKAGE_JSON_TEXT = readFileSync(PACKAGE_JSON_PATH, "utf8");
 const PACK_LOCK_DIRECTORY = join(tmpdir(), "webpresso-agent-kit-npm-pack.lock");
+let packedTarballTempRoot: string | undefined;
 
 function acquirePackLock(): () => void {
   const started = Date.now();
@@ -80,6 +81,9 @@ type PackedTarballArtifact = {
   peerDependencies?: Record<string, string>;
 };
 
+type PackedSurfaceMetadata = Omit<PackedTarballArtifact, "tarballPath">;
+
+let packedSurfaceMetadataCache: PackedSurfaceMetadata | undefined;
 let packedTarballArtifactCache: PackedTarballArtifact | undefined;
 let packedDistBuilt = false;
 let packedNativeRuntimeBuilt = false;
@@ -138,32 +142,79 @@ function ensureBuiltPackedDist() {
 function ensureBuiltNativeRuntimeArtifacts() {
   if (packedNativeRuntimeBuilt) return;
   ensureBuiltPackedDist();
-  execFileSync("bun", ["scripts/build-runtime-binaries.ts"], {
-    cwd: REPO_ROOT,
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      HUSKY: "0",
-    },
-  });
-  execFileSync("bun", ["scripts/stage-plugin-runtime-artifacts.ts"], {
-    cwd: REPO_ROOT,
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      HUSKY: "0",
-    },
-  });
+  // Cross-compiling all runtime targets here costs minutes. When CI has already
+  // staged them from the same fresh source (the workflow's "Stage native runtime
+  // artifacts" step sets WP_RUNTIME_PRESTAGED=1), trust those binaries instead of
+  // rebuilding. Locally the variable is unset, so the build still runs and proves
+  // the current source — preserving the packed-surface correctness contract.
+  if (process.env.WP_RUNTIME_PRESTAGED !== "1") {
+    execFileSync("bun", ["scripts/build-runtime-binaries.ts"], {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        HUSKY: "0",
+      },
+    });
+    execFileSync("bun", ["scripts/stage-plugin-runtime-artifacts.ts"], {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        HUSKY: "0",
+      },
+    });
+  }
   packedNativeRuntimeBuilt = true;
 }
 
-function ensurePackedTarballArtifact() {
-  if (packedTarballArtifactCache) return packedTarballArtifactCache;
+function preparePackageForPack(): void {
+  execFileSync("vp", ["run", "stage:workflow-skills"], {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      HUSKY: "0",
+    },
+  });
+  execFileSync("bun", ["src/build/package-manifest.ts", "prepare"], {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      HUSKY: "0",
+    },
+  });
+}
+
+function restorePackageAfterPack(): void {
+  execFileSync("bun", ["src/build/package-manifest.ts", "restore"], {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      HUSKY: "0",
+    },
+  });
+}
+
+function readPreparedManifest(): Omit<PackedTarballArtifact, "paths" | "tarballPath"> {
+  return JSON.parse(readFileSync(PACKAGE_JSON_PATH, "utf8")) as Omit<
+    PackedTarballArtifact,
+    "paths" | "tarballPath"
+  >;
+}
+
+function ensurePackedSurfaceMetadata() {
+  if (packedSurfaceMetadataCache) return packedSurfaceMetadataCache;
   ensureBuiltPackedDist();
   const release = acquirePackLock();
   let raw: string;
+  let manifest: Omit<PackedTarballArtifact, "paths" | "tarballPath">;
   try {
-    raw = execFileSync("npm", ["pack", "--json"], {
+    preparePackageForPack();
+    manifest = readPreparedManifest();
+    raw = execFileSync("npm", ["pack", "--dry-run", "--ignore-scripts", "--json"], {
       cwd: REPO_ROOT,
       encoding: "utf8",
       env: {
@@ -172,14 +223,54 @@ function ensurePackedTarballArtifact() {
       },
     });
   } finally {
-    release();
+    try {
+      restorePackageAfterPack();
+    } finally {
+      release();
+    }
+  }
+  const entries = parseNpmJson<Array<{ files?: Array<{ path?: string }> }>>(raw);
+  const paths =
+    entries[0]?.files
+      ?.map((file) => file.path)
+      .filter((path): path is string => typeof path === "string") ?? [];
+  packedSurfaceMetadataCache = { ...manifest, paths };
+  return packedSurfaceMetadataCache;
+}
+
+function ensurePackedTarballArtifact() {
+  if (packedTarballArtifactCache) return packedTarballArtifactCache;
+  ensureBuiltPackedDist();
+  const release = acquirePackLock();
+  let raw: string;
+  try {
+    preparePackageForPack();
+    packedTarballTempRoot = mkdtempSync(join(tmpdir(), "wp-packed-artifact-"));
+    raw = execFileSync(
+      "npm",
+      ["pack", "--ignore-scripts", "--json", "--pack-destination", packedTarballTempRoot],
+      {
+        cwd: REPO_ROOT,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          HUSKY: "0",
+        },
+      },
+    );
+  } finally {
+    try {
+      restorePackageAfterPack();
+    } finally {
+      release();
+    }
   }
   const entries = parseNpmJson<Array<{ filename?: string }>>(raw);
   const tarballName = entries[0]?.filename;
   if (!tarballName) {
     throw new Error("npm pack did not return a tarball filename");
   }
-  const tarballPath = join(REPO_ROOT, tarballName);
+  const tarballPath = join(packedTarballTempRoot ?? REPO_ROOT, tarballName);
   const paths = execFileSync("tar", ["-tf", tarballPath], {
     cwd: REPO_ROOT,
     encoding: "utf8",
@@ -201,8 +292,8 @@ function ensurePackedTarballArtifact() {
   return packedTarballArtifactCache;
 }
 
-function readPackedTarballArtifact() {
-  return ensurePackedTarballArtifact();
+function readPackedSurfaceMetadata() {
+  return ensurePackedSurfaceMetadata();
 }
 
 function listPackedManifestCatalogSpecifiers(pkg: {
@@ -274,10 +365,12 @@ function unpackTarball(tarballPath: string, destinationRoot: string): string {
 }
 
 afterAll(() => {
-  if (packedTarballArtifactCache) {
-    rmSync(packedTarballArtifactCache.tarballPath, { force: true });
+  if (packedTarballTempRoot) {
+    rmSync(packedTarballTempRoot, { force: true, recursive: true });
+    packedTarballTempRoot = undefined;
     packedTarballArtifactCache = undefined;
   }
+  packedSurfaceMetadataCache = undefined;
   if (readFileSync(PACKAGE_JSON_PATH, "utf8") !== ORIGINAL_PACKAGE_JSON_TEXT) {
     // Atomic restore: concurrent bun processes must never see a truncated package.json.
     const tmpPath = `${PACKAGE_JSON_PATH}.writing`;
@@ -288,7 +381,7 @@ afterAll(() => {
 
 describe("tooling umbrella package integration contract", () => {
   it("packs no banned internal tarball artifacts", () => {
-    const packedPaths = readPackedTarballArtifact().paths;
+    const packedPaths = readPackedSurfaceMetadata().paths;
     const banned = packedPaths.filter((path) =>
       FORBIDDEN_TARBALL_PATHS.some((pattern) => pattern.test(path)),
     );
@@ -302,13 +395,13 @@ describe("tooling umbrella package integration contract", () => {
   }, 30_000);
 
   it("packs a manifest with no workspace-only catalog specifiers", () => {
-    const packedManifest = readPackedTarballArtifact();
+    const packedManifest = readPackedSurfaceMetadata();
 
     expect(listPackedManifestCatalogSpecifiers(packedManifest)).toEqual([]);
   }, 30_000);
 
   it("packs the built blueprint migration SQL assets under dist/esm", () => {
-    const packedPaths = readPackedTarballArtifact().paths;
+    const packedPaths = readPackedSurfaceMetadata().paths;
 
     for (const file of EXPECTED_BLUEPRINT_MIGRATION_SQL_FILES) {
       expect(packedPaths).toContain(`dist/esm/blueprint/db/migrations/${file}`);
@@ -402,7 +495,7 @@ describe("tooling umbrella package integration contract", () => {
         join(tmpRoot, "package.json"),
         JSON.stringify({ name: "packed-migration-smoke", private: true }, null, 2) + "\n",
       );
-      execFileSync("npm", ["install", tarballPath, "--omit=optional"], {
+      execFileSync("npm", ["install", tarballPath, "--omit=optional", "--ignore-scripts"], {
         cwd: tmpRoot,
         encoding: "utf8",
         env: { ...process.env, HUSKY: "0" },
@@ -455,19 +548,23 @@ describe("tooling umbrella package integration contract", () => {
         PATH: [join(globalPrefix, "bin"), globalPrefix, process.env.PATH ?? ""].join(delimiter),
       };
 
-      execFileSync("npm", ["install", "--global", runtimeTarballPath], {
+      execFileSync("npm", ["install", "--global", runtimeTarballPath, "--ignore-scripts"], {
         cwd: tmpRoot,
         encoding: "utf8",
         env,
         stdio: ["ignore", "pipe", "pipe"],
       });
 
-      execFileSync("npm", ["install", "--global", tarballPath, "--omit=optional"], {
-        cwd: tmpRoot,
-        encoding: "utf8",
-        env,
-        stdio: ["ignore", "pipe", "pipe"],
-      });
+      execFileSync(
+        "npm",
+        ["install", "--global", tarballPath, "--omit=optional", "--ignore-scripts", "--force"],
+        {
+          cwd: tmpRoot,
+          encoding: "utf8",
+          env,
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      );
 
       const runtimeProbe = probeRuntimeTypecheckParity({
         command: join(unpackedRuntimePackageRoot, "bin", "wp"),

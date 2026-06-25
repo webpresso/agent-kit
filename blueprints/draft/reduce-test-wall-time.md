@@ -2,9 +2,9 @@
 type: blueprint
 status: draft
 complexity: M
-created: '2026-06-25'
-last_updated: '2026-06-25'
-progress: "5% (drafted; gate PR opened before implementation)"
+created: "2026-06-25"
+last_updated: "2026-06-25"
+progress: "70% (core changes implemented; full-suite package/hook bottlenecks remain)"
 depends_on: []
 cross_repo_depends_on: []
 tags: [performance, tests, ci]
@@ -45,27 +45,27 @@ CI
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-| -------- | ------ | --------- |
+| Decision               | Choice                                                                | Rationale                                                                               |
+| ---------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | Packed-surface default | Make packed-surface enumeration opt-in for tests/callers that need it | Unit tests should not pay `npm pack --dry-run` cost unless asserting packaged behavior. |
-| Vitest parallelism | Use `forks` plus bounded workers (`CI=2`, local=3) | Keeps subprocess tests isolated while avoiding full serialization. |
-| Timeouts | Keep current test timeouts unchanged | Slowness should be fixed at source, not hidden with larger timeouts. |
-| Dependencies | Add no new dependencies | Small runner/config changes are enough and match repo policy. |
+| Vitest parallelism     | Use `forks` plus bounded workers (`CI=2`, local=3)                    | Keeps subprocess tests isolated while avoiding full serialization.                      |
+| Timeouts               | Keep current test timeouts unchanged                                  | Slowness should be fixed at source, not hidden with larger timeouts.                    |
+| Dependencies           | Add no new dependencies                                               | Small runner/config changes are enough and match repo policy.                           |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable |
-| ---- | ----- | ------------ | -------------- |
-| **Wave 0** | 1.1 | Gate complete | 1 agent |
-| **Wave 1** | 2.1, 2.2 | 1.1 verified | Mostly parallel |
-| **Wave 2** | 3.1, 3.2 | 2.1/2.2 verified | Sequential verification |
-| **Critical path** | 1.1 -> 2.1 -> 3.2 | -- | 3 waves |
+| Wave              | Tasks             | Dependencies     | Parallelizable          |
+| ----------------- | ----------------- | ---------------- | ----------------------- |
+| **Wave 0**        | 1.1               | Gate complete    | 1 agent                 |
+| **Wave 1**        | 2.1, 2.2          | 1.1 verified     | Mostly parallel         |
+| **Wave 2**        | 3.1, 3.2          | 2.1/2.2 verified | Sequential verification |
+| **Critical path** | 1.1 -> 2.1 -> 3.2 | --               | 3 waves                 |
 
 ### Phase 1: Remove unit-suite pack subprocess cost [Complexity: M]
 
 #### [backend] Task 1.1: Make packed claim-surface scanning explicit
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -86,15 +86,15 @@ Update `enumerateClaimSurfaces()` and its tests so default unit behavior scans s
 
 **Acceptance:**
 
-- [ ] Default unit tests avoid `npm pack --dry-run`.
-- [ ] Explicit packed-surface behavior remains covered.
-- [ ] Targeted claim-surface test passes quickly.
+- [x] Default unit tests avoid `npm pack --dry-run`.
+- [x] Explicit packed-surface behavior remains covered.
+- [x] Targeted claim-surface test passes quickly.
 
 ### Phase 2: Bounded test parallelism and local QA runner [Complexity: M]
 
 #### [qa] Task 2.1: Tune Vitest worker pool for subprocess tests
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1
 
@@ -113,13 +113,13 @@ Configure Vitest to use fork isolation with bounded file workers: CI max workers
 
 **Acceptance:**
 
-- [ ] Subprocess tests are no longer globally serialized.
-- [ ] CI workers capped at 2 and local workers capped at 3.
-- [ ] Full suite passes repeatedly without timeout increases.
+- [x] Subprocess tests are no longer globally serialized.
+- [x] CI workers capped at 2 and local workers capped at 3.
+- [ ] Full suite passes repeatedly without timeout increases. Blocked by `package.contract.integration.test.ts` and `src/hooks/pretool-guard/runner.subprocess.test.ts` evidence below.
 
 #### [qa] Task 2.2: Parallelize local QA after build
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1
 
@@ -138,15 +138,15 @@ Replace sequential independent post-build QA checks with a small dependency-free
 
 **Acceptance:**
 
-- [ ] Local `qa` preserves all checks.
-- [ ] Child output remains visible.
-- [ ] Any failing child check fails `qa`.
+- [x] Local `qa` preserves all checks.
+- [x] Child output remains visible.
+- [x] Any failing child check fails `qa` (observed format-child failure produced aggregate non-zero result).
 
 ### Phase 3: CI critical path improvements [Complexity: M]
 
 #### [infra] Task 3.1: Reduce superseded and native CI wall-time
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1
 
@@ -164,13 +164,13 @@ Improve GitHub Actions without weakening gates: add workflow concurrency with ca
 
 **Acceptance:**
 
-- [ ] Superseded PR runs cancel safely.
-- [ ] Native Rust checks use cached/prebuilt setup where applicable.
-- [ ] Full PR suite still runs.
+- [x] Superseded PR runs cancel safely via workflow `concurrency.cancel-in-progress`.
+- [x] Native Rust checks use cached/prebuilt setup where applicable.
+- [x] Full PR suite still runs; native checks are split into a required `native-session-memory` job included in `wp-check`.
 
 #### [qa] Task 3.2: Full verification and timing evidence
 
-**Status:** todo
+**Status:** blocked
 
 **Depends:** Tasks 2.1, 2.2, 3.1
 
@@ -182,39 +182,39 @@ Run targeted and broad verification, including repeated full suite attempts afte
 
 **Acceptance:**
 
-- [ ] `vp run test -- scripts/bench/lib/claim-surfaces.test.ts` passes.
-- [ ] `vp run test` passes under 4 minutes after warmup, or residual blockers are documented with evidence.
-- [ ] Full suite is run at least 3 times after parallelism changes when time allows.
-- [ ] `vp run typecheck`, `wp format --check`, and `vp run lint` pass or blockers are documented.
+- [x] Scoped direct Vitest target passes: `pnpm exec vitest run scripts/bench/lib/claim-surfaces.test.ts src/build/native-session-memory-ci.test.ts --project unit` (13 tests, 6.99s Vitest duration). `vp run test -- <file>` selected broader project tests in this repo and was stopped.
+- [x] Residual blockers documented: `vp run test` exceeded 4 minutes and was stopped after shared-state/timeouts; `package.contract.integration.test.ts` alone exceeded 8 minutes after partial optimization; `runner.subprocess.test.ts` fails alone from internal 8s child timeouts.
+- [ ] Full suite repeated stability is blocked until package/hook subprocess bottlenecks are fixed.
+- [x] `vp run typecheck` and `vp run lint` pass. Changed-file `wp format --check` passes; full `wp format --check` is blocked by six pre-existing non-task files.
 
 ---
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| Targeted tests | `vp run test -- scripts/bench/lib/claim-surfaces.test.ts` | Passes quickly without unit timeout | pending |
-| Full tests | `vp run test` | Passes under 4 minutes after warmup | pending |
-| Stability | `vp run test` repeated 3 times | All pass; no reproducible shared-state races | pending |
-| Type safety | `vp run typecheck` | Zero errors | pending |
-| Format | `wp format --check` | Zero formatting violations | pending |
-| Lint | `vp run lint` | Zero lint violations | pending |
-| CI | Draft PR Actions | Full required suite passes; timing compared before/after | pending |
+| Gate           | Command                                                   | Success Criteria                                         | Last result |
+| -------------- | --------------------------------------------------------- | -------------------------------------------------------- | ----------- |
+| Targeted tests | `vp run test -- scripts/bench/lib/claim-surfaces.test.ts` | Passes quickly without unit timeout                      | pending     |
+| Full tests     | `vp run test`                                             | Passes under 4 minutes after warmup                      | pending     |
+| Stability      | `vp run test` repeated 3 times                            | All pass; no reproducible shared-state races             | pending     |
+| Type safety    | `vp run typecheck`                                        | Zero errors                                              | pending     |
+| Format         | `wp format --check`                                       | Zero formatting violations                               | pending     |
+| Lint           | `vp run lint`                                             | Zero lint violations                                     | pending     |
+| CI             | Draft PR Actions                                          | Full required suite passes; timing compared before/after | pending     |
 
 ## Cross-Plan References
 
-| Type | Blueprint | Relationship |
-| ---- | --------- | ------------ |
+| Type    | Blueprint                                                                                          | Relationship                                                                                                          |
+| ------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Related | `blueprints/draft/subprocess-test-pool-isolation-via-subprocess-test-ts-suffix-vitest-projects.md` | Prior/related approach for subprocess test pool isolation; reuse only if reproducible races require serial isolation. |
 
 ## Edge Cases and Error Handling
 
-| Edge Case | Risk | Solution | Task |
-| --------- | ---- | -------- | ---- |
-| Production release checks need packed file list | Removing default pack scan could weaken release evidence | Keep packed scan behind explicit option and update production callers/tests | 1.1 |
-| Subprocess tests share global files or HOME state | Parallelism could introduce flakes | Move only reproducible offenders to serial isolation | 2.1 |
-| CI split accidentally drops a required gate | Faster but weaker PR protection | Keep all existing commands represented in CI and verify workflow diff | 3.1 |
-| Local QA output interleaves | Debugging failures gets harder | Prefix streamed child output by check name | 2.2 |
+| Edge Case                                         | Risk                                                     | Solution                                                                    | Task |
+| ------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------- | ---- |
+| Production release checks need packed file list   | Removing default pack scan could weaken release evidence | Keep packed scan behind explicit option and update production callers/tests | 1.1  |
+| Subprocess tests share global files or HOME state | Parallelism could introduce flakes                       | Move only reproducible offenders to serial isolation                        | 2.1  |
+| CI split accidentally drops a required gate       | Faster but weaker PR protection                          | Keep all existing commands represented in CI and verify workflow diff       | 3.1  |
+| Local QA output interleaves                       | Debugging failures gets harder                           | Prefix streamed child output by check name                                  | 2.2  |
 
 ## Non-goals
 
@@ -225,19 +225,30 @@ Run targeted and broad verification, including repeated full suite attempts afte
 
 ## Risks
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-| Full suite still exceeds 4 minutes because of other slow tests | Target unmet | Capture top offenders and isolate/fix next bottleneck without weakening gates. |
-| CI credentials unavailable from this environment | Draft PR/CI evidence incomplete | Attempt repo-standard `gh` flow and document auth blocker if present. |
+| Risk                                                           | Impact                          | Mitigation                                                                     |
+| -------------------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------ |
+| Full suite still exceeds 4 minutes because of other slow tests | Target unmet                    | Capture top offenders and isolate/fix next bottleneck without weakening gates. |
+| CI credentials unavailable from this environment               | Draft PR/CI evidence incomplete | Attempt repo-standard `gh` flow and document auth blocker if present.          |
 
 ## Technology Choices
 
-| Component | Technology | Version | Why |
-| --------- | ---------- | ------- | --- |
-| Test runner | Vitest | repo-pinned | Existing test infrastructure supports forks/maxWorkers. |
-| CI | GitHub Actions | current workflow | Existing PR gate surface. |
-| Native setup | Rust cache + prebuilt cargo-deny installer | workflow action versions in repo | Reduces native guardrail setup time. |
-| Local QA runner | Node.js built-ins | repo runtime | Streams output and aggregates failures without new dependencies. |
+| Component       | Technology                                 | Version                          | Why                                                              |
+| --------------- | ------------------------------------------ | -------------------------------- | ---------------------------------------------------------------- |
+| Test runner     | Vitest                                     | repo-pinned                      | Existing test infrastructure supports forks/maxWorkers.          |
+| CI              | GitHub Actions                             | current workflow                 | Existing PR gate surface.                                        |
+| Native setup    | Rust cache + prebuilt cargo-deny installer | workflow action versions in repo | Reduces native guardrail setup time.                             |
+| Local QA runner | Node.js built-ins                          | repo runtime                     | Streams output and aggregates failures without new dependencies. |
+
+## Verification Notes (2026-06-25)
+
+- Draft PR opened before implementation: https://github.com/webpresso/agent-kit/pull/276.
+- Targeted claim/native CI contract tests pass: `pnpm exec vitest run scripts/bench/lib/claim-surfaces.test.ts src/build/native-session-memory-ci.test.ts --project unit` -> 2 files, 13 tests passed.
+- `vp run typecheck` -> pass.
+- `vp run lint` -> pass.
+- `bun scripts/check-workflow-action-pins.ts .` -> pass.
+- Changed-file format check -> pass. Full `wp format --check` remains blocked by pre-existing non-task formatting drift in six files.
+- `vp run test` with bounded subprocess workers exposed reproducible shared-state/time bottlenecks instead of passing under 4 minutes: package/release subprocess files and `src/hooks/pretool-guard/runner.subprocess.test.ts`. A tiny `serial-subprocess` project isolates package/release files; hook runner still fails alone because spawned hook binary exceeds its internal 8s timeout under this environment.
+- `package.contract.integration.test.ts` was partially optimized to use dry-run metadata for path/manifest assertions and temp real tarballs for consumer installs, but the file still exceeded useful feedback time during verification and remains the dominant unresolved packed-install bottleneck.
 
 ## Trust Dossier
 
@@ -251,26 +262,26 @@ Run targeted and broad verification, including repeated full suite attempts afte
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | Default claim-surface unit enumeration should avoid `npm pack --dry-run`. | Previous diagnosis plus code/test verification in Task 1.1. |
-| C2 | Bounded fork workers can reduce wall-time while retaining isolation. | Vitest parallelism/pool references in the user-provided plan; config verification in Task 2.1. |
-| C3 | CI can be faster without weakening gates through concurrency and native setup improvements. | GitHub Actions/Rust action references in the user-provided plan; workflow diff in Task 3.1. |
+| ID  | Claim                                                                                       | Evidence                                                                                       |
+| --- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| C1  | Default claim-surface unit enumeration should avoid `npm pack --dry-run`.                   | Previous diagnosis plus code/test verification in Task 1.1.                                    |
+| C2  | Bounded fork workers can reduce wall-time while retaining isolation.                        | Vitest parallelism/pool references in the user-provided plan; config verification in Task 2.1. |
+| C3  | CI can be faster without weakening gates through concurrency and native setup improvements. | GitHub Actions/Rust action references in the user-provided plan; workflow diff in Task 3.1.    |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Unit pack behavior | Opt-in packed enumeration | Mock every subprocess; increase timeout | Removes source of slowness while preserving production behavior. |
-| D2 | Test parallelism | Bounded fork workers | Global serialization; unbounded concurrency | Balances speed and shared-resource safety. |
-| D3 | QA parallelization | Dependency-free Node runner | Add package; keep sequential | Matches no-dependency constraint and reduces local wall-time. |
+| ID  | Decision           | Chosen option               | Rejected alternatives                       | Rationale                                                        |
+| --- | ------------------ | --------------------------- | ------------------------------------------- | ---------------------------------------------------------------- |
+| D1  | Unit pack behavior | Opt-in packed enumeration   | Mock every subprocess; increase timeout     | Removes source of slowness while preserving production behavior. |
+| D2  | Test parallelism   | Bounded fork workers        | Global serialization; unbounded concurrency | Balances speed and shared-resource safety.                       |
+| D3  | QA parallelization | Dependency-free Node runner | Add package; keep sequential                | Matches no-dependency constraint and reduces local wall-time.    |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| Blueprint parser | `wp blueprint audit --slug reduce-test-wall-time` | Valid blueprint | pending |
-| Implementation readiness | Review tasks above | Self-contained tasks and acceptance criteria | complete |
+| Gate                     | Command                                           | Expected outcome                             | Last result |
+| ------------------------ | ------------------------------------------------- | -------------------------------------------- | ----------- |
+| Blueprint parser         | `wp blueprint audit --slug reduce-test-wall-time` | Valid blueprint                              | pending     |
+| Implementation readiness | Review tasks above                                | Self-contained tasks and acceptance criteria | complete    |
 
 ### Residual Unknowns
 
