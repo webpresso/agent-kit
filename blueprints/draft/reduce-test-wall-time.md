@@ -183,7 +183,7 @@ Run targeted and broad verification, including repeated full suite attempts afte
 **Acceptance:**
 
 - [x] Scoped direct Vitest target passes: `pnpm exec vitest run scripts/bench/lib/claim-surfaces.test.ts src/build/native-session-memory-ci.test.ts --project unit` (13 tests, 6.99s Vitest duration). `vp run test -- <file>` selected broader project tests in this repo and was stopped.
-- [x] Residual blockers documented: `vp run test` exceeded 4 minutes and was stopped after shared-state/timeouts; `package.contract.integration.test.ts` alone exceeded 8 minutes after partial optimization; `runner.subprocess.test.ts` fails alone from internal 8s child timeouts.
+- [x] Residual blockers documented: `vp run test` exceeded 4 minutes and was stopped after shared-state/timeouts; `package.contract.integration.test.ts` remains an unresolved packed-install bottleneck and was reverted out of this implementation; `runner.subprocess.test.ts` fails alone from internal 8s child timeouts.
 - [ ] Full suite repeated stability is blocked until package/hook subprocess bottlenecks are fixed.
 - [x] `vp run typecheck` and `vp run lint` pass. Changed-file `wp format --check` passes; full `wp format --check` is blocked by six pre-existing non-task files.
 
@@ -250,7 +250,7 @@ Run targeted and broad verification, including repeated full suite attempts afte
 - `bun scripts/check-workflow-action-pins.ts .` -> pass.
 - Changed-file format check -> pass. Full `wp format --check` remains blocked by pre-existing non-task formatting drift in six files.
 - `vp run test` with bounded subprocess workers exposed reproducible shared-state/time bottlenecks instead of passing under 4 minutes: package/release subprocess files and `src/hooks/pretool-guard/runner.subprocess.test.ts`. A tiny `serial-subprocess` project isolates package/release files; hook runner still fails alone because spawned hook binary exceeds its internal 8s timeout under this environment.
-- `package.contract.integration.test.ts` was partially optimized to use dry-run metadata for path/manifest assertions and temp real tarballs for consumer installs, but the file still exceeded useful feedback time during verification and remains the dominant unresolved packed-install bottleneck.
+- `package.contract.integration.test.ts` optimization was attempted but reverted because verification remained unstable/too slow; it remains the dominant unresolved packed-install bottleneck for a follow-up.
 
 ## Trust Dossier
 

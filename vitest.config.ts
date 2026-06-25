@@ -53,7 +53,6 @@ export const SUBPROCESS_SUFFIX_GLOBS = [
 // forks) or self-spawn many child processes (oversubscription). Routing is an
 // explicit list, per the "isolate the exact offender" note above — not a suffix.
 export const SERIAL_SUBPROCESS_GLOBS = [
-  "package.contract.integration.test.ts",
   "scripts/release.integration.test.ts",
   "scripts/release.subprocess.test.ts",
   // Build the compiled runtime into the shared dist/runtime tree — concurrent
