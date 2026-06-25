@@ -39,6 +39,9 @@ mkdirSync(TEST_STATE_ROOT, { recursive: true });
  * - `WP_STATE_ROOT` — points repo/user state at a hermetic per-worker temp dir
  *   so projection DB tests never mutate or contend on the developer's real
  *   Webpresso state directory.
+ * - `GIT_DIR` / `GIT_WORK_TREE` / `GIT_INDEX_FILE` — hooks may export these
+ *   while launching tests; nested temp-repo `git init` calls must not inherit
+ *   the parent worktree control plane.
  *
  * The fix is isolation, not changing the runtime precedence: reset these before
  * every test so the suite is deterministic regardless of the launching
@@ -55,6 +58,9 @@ export const LEAKY_ENV_KEYS = [
   "WP_COMPILED_RUNTIME",
   "GITHUB_PAT",
   "QUALITY_ENGINE_COMPACT",
+  "GIT_DIR",
+  "GIT_WORK_TREE",
+  "GIT_INDEX_FILE",
 ] as const;
 
 /** Delete every agent-session-leaked env var so each test starts hermetic. */

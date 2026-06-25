@@ -250,7 +250,7 @@ Run targeted and broad verification, including repeated full suite attempts afte
 - `bun scripts/check-workflow-action-pins.ts .` -> pass.
 - Changed-file format check -> pass. Full `wp format --check` remains blocked by pre-existing non-task formatting drift in six files.
 - `vp run test` with bounded subprocess workers exposed reproducible shared-state/time bottlenecks instead of passing under 4 minutes: package/release subprocess files and `src/hooks/pretool-guard/runner.subprocess.test.ts`. A tiny `serial-subprocess` project isolates package/release files; hook runner still fails alone because spawned hook binary exceeds its internal 8s timeout under this environment.
-- `pnpm exec vitest run package.contract.integration.test.ts --project serial-subprocess` -> pass (6 tests, 305.37s). The package contract uses packed tarball reuse and skips redundant dist rebuilds when Vitest globalSetup already built artifacts, but native packed installs remain the dominant wall-time bottleneck for a follow-up.
+- `pnpm exec vitest run package.contract.integration.test.ts --project serial-subprocess` -> pass (6 tests, 305.37s). With hook-style `GIT_DIR`/`GIT_WORK_TREE` inherited, the same contract passes (6 tests, 301.03s) after hermetic test setup strips Git control variables. The package contract uses packed tarball reuse and skips redundant dist rebuilds when Vitest globalSetup already built artifacts, but native packed installs remain the dominant wall-time bottleneck for a follow-up.
 
 ## Trust Dossier
 
