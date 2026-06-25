@@ -2,9 +2,9 @@
 type: blueprint
 status: draft
 complexity: XS
-created: '2026-06-24'
-last_updated: '2026-06-24'
-progress: '0% (drafted)'
+created: "2026-06-24"
+last_updated: "2026-06-24"
+progress: "0% (drafted)"
 depends_on: []
 cross_repo_depends_on: []
 tags: []
@@ -49,12 +49,12 @@ publishSimpleWorkspacePackage(pkg)
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-| -------- | ------ | --------- |
-| Resolve catalog before publish | Reuse `preparePackedManifest`/`restorePackedManifest` | Same path already used for the root package; resolves `catalog:` → concrete versions |
+| Decision                       | Choice                                                                                                        | Rationale                                                                                                                                |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Resolve catalog before publish | Reuse `preparePackedManifest`/`restorePackedManifest`                                                         | Same path already used for the root package; resolves `catalog:` → concrete versions                                                     |
 | New options on packed manifest | `PackedManifestOptions { assertBlueprintMigrationAssets, includeRuntimeOptionalDependencies, workspaceRoot }` | Non-root packages have no blueprint-migration SQL assets and must not inherit root runtime optionalDeps; catalog lives at workspace root |
-| `--ignore-scripts` on publish | Added | Non-root packed manifests should publish without running lifecycle scripts |
-| try/finally restore | Wrap publish | Guarantee `package.json` is restored even when publish exits non-zero |
+| `--ignore-scripts` on publish  | Added                                                                                                         | Non-root packed manifests should publish without running lifecycle scripts                                                               |
+| try/finally restore            | Wrap publish                                                                                                  | Guarantee `package.json` is restored even when publish exits non-zero                                                                    |
 
 ## Quick Reference (Execution Waves)
 
@@ -125,13 +125,13 @@ false, workspaceRoot: packageRoot })` before publishing, publish with
 
 ## Verification Gates
 
-| Gate        | Command                            | Success Criteria |
-| ----------- | ---------------------------------- | ---------------- |
-| Type safety | repo typecheck recipe              | Zero errors      |
-| Lint        | repo lint recipe (scoped)          | Zero violations  |
-| Tests       | repo test recipe (scoped)          | All pass         |
-| Full QA     | repo full-QA recipe                | All pass         |
-| Perf        | bundle / runtime measurement       | No regression vs baseline (or N/A — delete row) |
+| Gate        | Command                      | Success Criteria                                |
+| ----------- | ---------------------------- | ----------------------------------------------- |
+| Type safety | repo typecheck recipe        | Zero errors                                     |
+| Lint        | repo lint recipe (scoped)    | Zero violations                                 |
+| Tests       | repo test recipe (scoped)    | All pass                                        |
+| Full QA     | repo full-QA recipe          | All pass                                        |
+| Perf        | bundle / runtime measurement | No regression vs baseline (or N/A — delete row) |
 
 ## Cross-Plan References
 
@@ -176,13 +176,13 @@ Draft note: complete this dossier before promotion to planned.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
+| ID  | Claim | Evidence |
+| --- | ----- | -------- |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
+| ID  | Decision | Chosen option | Rejected alternatives | Rationale |
+| --- | -------- | ------------- | --------------------- | --------- |
 
 ### Promotion Gates
 

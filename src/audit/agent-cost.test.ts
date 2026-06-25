@@ -1,113 +1,113 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { auditAgentCost } from './agent-cost.js'
+import { auditAgentCost } from "./agent-cost.js";
 
-let TMP: string
+let TMP: string;
 
 beforeEach(() => {
-  TMP = mkdtempSync(join(tmpdir(), 'agent-cost-test-'))
-})
+  TMP = mkdtempSync(join(tmpdir(), "agent-cost-test-"));
+});
 
 function setup(files: Record<string, string>) {
-  rmSync(TMP, { recursive: true, force: true })
-  mkdirSync(TMP, { recursive: true })
+  rmSync(TMP, { recursive: true, force: true });
+  mkdirSync(TMP, { recursive: true });
   for (const [rel, content] of Object.entries(files)) {
-    const full = join(TMP, rel)
-    mkdirSync(join(full, '..'), { recursive: true })
-    writeFileSync(full, content)
+    const full = join(TMP, rel);
+    mkdirSync(join(full, ".."), { recursive: true });
+    writeFileSync(full, content);
   }
 }
 
-afterEach(() => rmSync(TMP, { recursive: true, force: true }))
+afterEach(() => rmSync(TMP, { recursive: true, force: true }));
 
-describe('auditAgentCost', () => {
-  it('passes when .claudeignore exists and effortLevel is set', async () => {
+describe("auditAgentCost", () => {
+  it("passes when .claudeignore exists and effortLevel is set", async () => {
     setup({
-      '.claudeignore': 'node_modules/\n',
-      '.claude/settings.json': JSON.stringify({ effortLevel: 'medium' }),
-    })
-    const result = await auditAgentCost(TMP)
+      ".claudeignore": "node_modules/\n",
+      ".claude/settings.json": JSON.stringify({ effortLevel: "medium" }),
+    });
+    const result = await auditAgentCost(TMP);
     // LSP checks may still fire (no .rs/.go in tmp), but the two main checks pass
     const mainViolations = result.violations.filter(
-      (v) => v.file === '.claudeignore' || v.file === '.claude/settings.json',
-    )
-    expect(mainViolations).toHaveLength(0)
-  })
+      (v) => v.file === ".claudeignore" || v.file === ".claude/settings.json",
+    );
+    expect(mainViolations).toHaveLength(0);
+  });
 
-  it('reports violation when .claudeignore is missing', async () => {
+  it("reports violation when .claudeignore is missing", async () => {
     setup({
-      '.claude/settings.json': JSON.stringify({ effortLevel: 'medium' }),
-    })
-    const result = await auditAgentCost(TMP)
+      ".claude/settings.json": JSON.stringify({ effortLevel: "medium" }),
+    });
+    const result = await auditAgentCost(TMP);
     // advisory — ok is always true; violations carry the warnings
-    expect(result.ok).toBe(true)
-    expect(result.violations.some((v) => v.file === '.claudeignore')).toBe(true)
-  })
+    expect(result.ok).toBe(true);
+    expect(result.violations.some((v) => v.file === ".claudeignore")).toBe(true);
+  });
 
-  it('does not publish numeric token-savings advice without first-party benchmark evidence', async () => {
+  it("does not publish numeric token-savings advice without first-party benchmark evidence", async () => {
     setup({
-      '.claude/settings.json': JSON.stringify({ effortLevel: 'medium' }),
-    })
-    const result = await auditAgentCost(TMP)
-    const claudeIgnore = result.violations.find((v) => v.file === '.claudeignore')
+      ".claude/settings.json": JSON.stringify({ effortLevel: "medium" }),
+    });
+    const result = await auditAgentCost(TMP);
+    const claudeIgnore = result.violations.find((v) => v.file === ".claudeignore");
 
-    expect(claudeIgnore?.message).toContain('Measure local impact with wp gain')
-    expect(claudeIgnore?.message).not.toMatch(/\d+\s*[–-]\s*\d+\s*%/u)
-    expect(claudeIgnore?.message).not.toContain('fewer input tokens per session')
-  })
+    expect(claudeIgnore?.message).toContain("Measure local impact with wp gain");
+    expect(claudeIgnore?.message).not.toMatch(/\d+\s*[–-]\s*\d+\s*%/u);
+    expect(claudeIgnore?.message).not.toContain("fewer input tokens per session");
+  });
 
-  it('reports violation when effortLevel is missing from project settings', async () => {
+  it("reports violation when effortLevel is missing from project settings", async () => {
     setup({
-      '.claudeignore': 'node_modules/\n',
-      '.claude/settings.json': JSON.stringify({ hooks: {} }),
-    })
-    const result = await auditAgentCost(TMP)
-    expect(result.ok).toBe(true)
+      ".claudeignore": "node_modules/\n",
+      ".claude/settings.json": JSON.stringify({ hooks: {} }),
+    });
+    const result = await auditAgentCost(TMP);
+    expect(result.ok).toBe(true);
     expect(
       result.violations.some(
-        (v) => v.file === '.claude/settings.json' && v.message.includes('effortLevel'),
+        (v) => v.file === ".claude/settings.json" && v.message.includes("effortLevel"),
       ),
-    ).toBe(true)
-  })
+    ).toBe(true);
+  });
 
-  it('reports violation when .claude/settings.json does not exist', async () => {
-    setup({ '.claudeignore': 'node_modules/\n' })
-    const result = await auditAgentCost(TMP)
-    expect(result.ok).toBe(true)
+  it("reports violation when .claude/settings.json does not exist", async () => {
+    setup({ ".claudeignore": "node_modules/\n" });
+    const result = await auditAgentCost(TMP);
+    expect(result.ok).toBe(true);
     expect(
       result.violations.some(
-        (v) => v.file === '.claude/settings.json' && v.message.includes('not found'),
+        (v) => v.file === ".claude/settings.json" && v.message.includes("not found"),
       ),
-    ).toBe(true)
-  })
+    ).toBe(true);
+  });
 
-  it('reports violation when .ignore is missing', async () => {
+  it("reports violation when .ignore is missing", async () => {
     setup({
-      '.claudeignore': 'node_modules/\n',
-      '.claude/settings.json': JSON.stringify({ effortLevel: 'medium' }),
-    })
-    const result = await auditAgentCost(TMP)
-    expect(result.ok).toBe(true)
-    expect(result.violations.some((v) => v.file === '.ignore')).toBe(true)
-  })
+      ".claudeignore": "node_modules/\n",
+      ".claude/settings.json": JSON.stringify({ effortLevel: "medium" }),
+    });
+    const result = await auditAgentCost(TMP);
+    expect(result.ok).toBe(true);
+    expect(result.violations.some((v) => v.file === ".ignore")).toBe(true);
+  });
 
-  it('no .ignore violation when file exists', async () => {
+  it("no .ignore violation when file exists", async () => {
     setup({
-      '.claudeignore': 'node_modules/\n',
-      '.claude/settings.json': JSON.stringify({ effortLevel: 'medium' }),
-      '.ignore': 'webpresso/blueprints/completed/\n',
-    })
-    const result = await auditAgentCost(TMP)
-    expect(result.violations.some((v) => v.file === '.ignore')).toBe(false)
-  })
+      ".claudeignore": "node_modules/\n",
+      ".claude/settings.json": JSON.stringify({ effortLevel: "medium" }),
+      ".ignore": "webpresso/blueprints/completed/\n",
+    });
+    const result = await auditAgentCost(TMP);
+    expect(result.violations.some((v) => v.file === ".ignore")).toBe(false);
+  });
 
-  it('reports title and checked count', async () => {
-    setup({ '.claudeignore': 'node_modules/\n' })
-    const result = await auditAgentCost(TMP)
-    expect(result.title).toBe('agent cost config')
-    expect(result.checked).toBeGreaterThanOrEqual(4) // .claudeignore + effortLevel + 2 LSP checks + .ignore
-  })
-})
+  it("reports title and checked count", async () => {
+    setup({ ".claudeignore": "node_modules/\n" });
+    const result = await auditAgentCost(TMP);
+    expect(result.title).toBe("agent cost config");
+    expect(result.checked).toBeGreaterThanOrEqual(4); // .claudeignore + effortLevel + 2 LSP checks + .ignore
+  });
+});

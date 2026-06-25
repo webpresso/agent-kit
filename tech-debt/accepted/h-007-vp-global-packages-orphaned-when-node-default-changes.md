@@ -4,8 +4,8 @@ status: accepted
 severity: medium
 category: dependency
 review_cadence: monthly
-last_reviewed: '2026-06-19'
-created: '2026-06-19'
+last_reviewed: "2026-06-19"
+created: "2026-06-19"
 linked_blueprints: []
 affected_modules: []
 ---
@@ -33,7 +33,7 @@ twice for one user on 2026-06-19.
 
 `vp update -g` and `vp update -g --reinstall-node-mismatch` do **not** repair this. The
 failure leaves metadata claiming "installed @ current Node" while the on-disk store is gone;
-update commands trust the metadata and report *"All global packages are up to date"* while
+update commands trust the metadata and report _"All global packages are up to date"_ while
 `wp` stays broken. Only `vp install -g @webpresso/agent-kit --node <ver>` rebuilds the store.
 
 ## Mitigation

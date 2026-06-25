@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-05-31'
+last_updated: "2026-05-31"
 ---
 
 # `wp` extension runtime contract
@@ -95,47 +95,47 @@ The extension module must default-export a `WpExtensionV1` object from the
 public `@webpresso/agent-kit/wp-extension` contract:
 
 ```ts
-import type { CAC } from 'cac'
-import { existsSync } from 'node:fs'
-import { join } from 'node:path'
+import type { CAC } from "cac";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 
-import type { WpExtensionV1 } from '@webpresso/agent-kit/wp-extension'
+import type { WpExtensionV1 } from "@webpresso/agent-kit/wp-extension";
 
 const extension: WpExtensionV1 = {
-  apiVersion: '1',
-  name: '@example/framework-tools',
-  version: '1.0.0',
-  hostRange: '^0.22.0',
+  apiVersion: "1",
+  name: "@example/framework-tools",
+  version: "1.0.0",
+  hostRange: "^0.22.0",
   detect: ({ cwd, env }) =>
-    env.EXAMPLE_FRAMEWORK === '1' || existsSync(join(cwd, 'example.config.ts')),
+    env.EXAMPLE_FRAMEWORK === "1" || existsSync(join(cwd, "example.config.ts")),
   commands: [
     {
-      name: 'example',
-      description: 'Run example framework tasks',
+      name: "example",
+      description: "Run example framework tasks",
       register(cli: CAC) {
-        cli.command('example', 'Run example framework tasks').action(() => {
-          console.log('example command')
-        })
+        cli.command("example", "Run example framework tasks").action(() => {
+          console.log("example command");
+        });
       },
     },
   ],
-  aliases: [{ name: 'dev', commandName: 'example' }],
-}
+  aliases: [{ name: "dev", commandName: "example" }],
+};
 
-export default extension
+export default extension;
 ```
 
 Required fields:
 
-| Field | Shape | Purpose |
-| --- | --- | --- |
-| `apiVersion` | `'1'` | Pins the extension contract version. |
-| `name` | non-empty string | Human-readable extension identity, usually the package name. |
-| `version` | non-empty string | Extension package/runtime version. |
-| `hostRange` | non-empty string | Compatible base `wp` host versions. |
-| `detect` | `(context) => boolean \| Promise<boolean>` | Returns `true` only in repos where commands and aliases should be active. |
-| `commands` | `WpExtensionCommandV1[]` | Canonical commands the extension registers. |
-| `aliases` | `WpExtensionAliasV1[]` (optional) | Short names that resolve to accepted extension commands. |
+| Field        | Shape                                      | Purpose                                                                   |
+| ------------ | ------------------------------------------ | ------------------------------------------------------------------------- |
+| `apiVersion` | `'1'`                                      | Pins the extension contract version.                                      |
+| `name`       | non-empty string                           | Human-readable extension identity, usually the package name.              |
+| `version`    | non-empty string                           | Extension package/runtime version.                                        |
+| `hostRange`  | non-empty string                           | Compatible base `wp` host versions.                                       |
+| `detect`     | `(context) => boolean \| Promise<boolean>` | Returns `true` only in repos where commands and aliases should be active. |
+| `commands`   | `WpExtensionCommandV1[]`                   | Canonical commands the extension registers.                               |
+| `aliases`    | `WpExtensionAliasV1[]` (optional)          | Short names that resolve to accepted extension commands.                  |
 
 `detect({ cwd, env })` must be fast, side-effect free, and repo-aware. Return
 `false` for non-matching repos instead of registering commands that will fail
@@ -146,11 +146,11 @@ later.
 `hostRange` is checked before `detect()` and before any command registration.
 The current range evaluator recognizes exact versions and caret ranges:
 
-| Range | Accepted examples | Rejected examples |
-| --- | --- | --- |
-| `0.22.0` | `0.22.0` | `0.22.1`, `0.23.0` |
-| `^0.22.0` | `0.22.0`, `0.22.5` | `0.21.9`, `0.23.0` |
-| `^1.2.3` | `1.2.3`, `1.2.4`, `1.3.0` | `1.2.2`, `2.0.0` |
+| Range     | Accepted examples         | Rejected examples  |
+| --------- | ------------------------- | ------------------ |
+| `0.22.0`  | `0.22.0`                  | `0.22.1`, `0.23.0` |
+| `^0.22.0` | `0.22.0`, `0.22.5`        | `0.21.9`, `0.23.0` |
+| `^1.2.3`  | `1.2.3`, `1.2.4`, `1.3.0` | `1.2.2`, `2.0.0`   |
 
 Do not rely on full npm semver syntax such as `>=`, `~`, `||`, or prerelease
 range semantics unless the base contract explicitly adds support for them.
@@ -198,23 +198,23 @@ optional sugar.
 Extension diagnostics are warnings, not silent failures. In the CLI, warnings are
 printed to stderr before command dispatch.
 
-| Condition | Runtime behavior |
-| --- | --- |
-| Root package omits `webpresso.wpExtensions` or sets it to `false` | Extension loading stays disabled; base `wp` continues without warning. |
-| Root package sets `webpresso.wpExtensions` to `true` | Every direct dependency, dev dependency, and optional dependency may advertise an extension. |
-| Root package sets `webpresso.wpExtensions` to an array | Only named direct dependencies may advertise extensions. |
-| `webpresso.wpExtensions` is neither `true` nor an array | Warn and skip extension loading. |
-| `webpresso.wpExtensions` names a non-string or empty package entry | Warn and skip that entry. |
-| `webpresso.wpExtensions` names a package that is not a direct dependency | Warn and skip that package. |
-| Enabled direct dependency does not declare `webpresso.wpExtension` | Ignore that dependency without warning. |
-| Enabled dependency declares `webpresso.wpExtension`, but the module cannot resolve | Warn and skip that extension. |
-| Extension module import throws | Warn and skip that extension. |
-| Module does not default-export `WpExtensionV1` | Warn and skip that extension. |
-| `hostRange` does not match the current base `wp` version | Warn and skip that extension. |
-| `detect()` returns `false` | Skip commands and aliases without warning; the repo simply does not match. |
-| `detect()` throws | Warn and skip that extension. |
-| Command collides with base or an accepted extension command | Warn and skip the colliding command. |
-| Alias targets an unregistered command or collides with an existing command/alias | Warn and skip the alias. |
+| Condition                                                                          | Runtime behavior                                                                             |
+| ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Root package omits `webpresso.wpExtensions` or sets it to `false`                  | Extension loading stays disabled; base `wp` continues without warning.                       |
+| Root package sets `webpresso.wpExtensions` to `true`                               | Every direct dependency, dev dependency, and optional dependency may advertise an extension. |
+| Root package sets `webpresso.wpExtensions` to an array                             | Only named direct dependencies may advertise extensions.                                     |
+| `webpresso.wpExtensions` is neither `true` nor an array                            | Warn and skip extension loading.                                                             |
+| `webpresso.wpExtensions` names a non-string or empty package entry                 | Warn and skip that entry.                                                                    |
+| `webpresso.wpExtensions` names a package that is not a direct dependency           | Warn and skip that package.                                                                  |
+| Enabled direct dependency does not declare `webpresso.wpExtension`                 | Ignore that dependency without warning.                                                      |
+| Enabled dependency declares `webpresso.wpExtension`, but the module cannot resolve | Warn and skip that extension.                                                                |
+| Extension module import throws                                                     | Warn and skip that extension.                                                                |
+| Module does not default-export `WpExtensionV1`                                     | Warn and skip that extension.                                                                |
+| `hostRange` does not match the current base `wp` version                           | Warn and skip that extension.                                                                |
+| `detect()` returns `false`                                                         | Skip commands and aliases without warning; the repo simply does not match.                   |
+| `detect()` throws                                                                  | Warn and skip that extension.                                                                |
+| Command collides with base or an accepted extension command                        | Warn and skip the colliding command.                                                         |
+| Alias targets an unregistered command or collides with an existing command/alias   | Warn and skip the alias.                                                                     |
 
 Warnings should name the package and the rejected extension, command, or alias so
 downstream maintainers can fix the package without debugging base `wp` internals.

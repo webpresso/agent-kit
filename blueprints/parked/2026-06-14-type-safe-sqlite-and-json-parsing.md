@@ -4,8 +4,8 @@ title: Type-safe SQLite and JSON parsing
 owner: ozby
 status: parked
 complexity: L
-created: '2026-06-14'
-last_updated: '2026-06-15'
+created: "2026-06-14"
+last_updated: "2026-06-15"
 progress: "Implemented in PR #139; parked for legal lifecycle transition from planned pending finalization"
 depends_on: []
 cross_repo_depends_on: []
@@ -14,8 +14,8 @@ tags:
   - zod
   - sqlite
   - json
-worktree_owner_id: ''
-worktree_owner_branch: ''
+worktree_owner_id: ""
+worktree_owner_branch: ""
 ---
 
 # Type-safe SQLite and JSON parsing
@@ -24,7 +24,6 @@ worktree_owner_branch: ''
 
 Implemented in PR #139 on branch `work/ultragoal-9-blueprints-20260614221933`.
 Task status and acceptance checkboxes below were reconciled from the landed code paths and focused verification evidence in this PR. The file is parked because CI enforces the legal first transition from `planned`; finalization can move parked/resumed work through the lifecycle after merge.
-
 
 **Goal:** Replace unsafe `as unknown as` casts and unvalidated `JSON.parse` calls with Zod schemas so corrupt data fails loudly at runtime.
 
@@ -44,42 +43,41 @@ Zod is already a repo-standard validation dependency across `src/` (for example 
 
 ## Fact-Check Findings
 
-| ID | Severity | Claim | Verified Reality |
-| -- | -------- | ----- | ---------------- |
-| F1 | HIGH | SQLite `.all()` results are cast with `as unknown as`. | Confirmed 4 occurrences at `src/mcp/blueprint-server.ts:946,1588,1619,1750`. Additional unchecked `as` casts at 1644 (`as TaskRow[]`), 1696 (`as Array<BpRow & {project_id}>`), 1911 (`as TaskRow[]`), and 1982 (`as TaskRow[]`). |
-| F2 | HIGH | `JSON.parse` results are cast directly to specific types. | Confirmed at: `src/mcp/blueprint-server.ts:352,364,632`; `src/cli/auto-update/run.ts:41`; `src/audit/cloudflare-deploy-contract.ts:19`; `src/cli/commands/compile.ts:32,72,147,337`; `src/ai-memory/store/sqlite-store.ts:295,297,311`. **Correction:** `blueprint-server.ts:432` is already guarded — drop it from scope. |
-| F3 | HIGH | `lint-after-edit.ts` uses non-null assertion + cast. | Confirmed at `src/hooks/post-tool/lint-after-edit.ts:188`: `input.tool_input!.file_path as string`. |
-| F4 | LOW | `any` type usage is effectively zero. | Confirmed: only comment/string occurrences; no `any` type annotations. |
-| F5 | MEDIUM | `TaskRow` is a single type. | `TaskRow` is defined twice with different shapes: line 925 (**7 fields** incl. `id`, `blueprint_slug`) and line 1785 (5 fields, subset). These must be merged. Note `src/blueprint/db/` already exists (with `enums.ts`) — reuse its status/lane enums rather than redefining them. |
-| F6 | MEDIUM | `compile.ts` has 1 JSON.parse site. | Actually has 4 sites (lines 32, 72, 147, 337). Lines 32/72/337 read `package.json` with type guards — lower priority. Line 147 (`CompileManifest`) has NO shape validation. |
-| F7 | MEDIUM | `sqlite-store.ts` has 2 JSON.parse sites. | Actually has 3 sites at lines **295 (`state_json`), 297 (`metadata_json`, already passes a `(_key, value) => value` reviver), and 311 (`embedding_json` → `as number[]`)**. There is NO site at line 318. All three cast to imported types with zero shape validation. |
-| F8 | LOW | `auto-update/run.ts` `readCache` is unsound. | It uses manual `typeof` guards (lines 42-45) before the `as UpdateCache` cast, making it safer than most sites. Keep the guard; Zod here is optional consistency, not a fix. |
-| F9 | MEDIUM | `compile.test.ts` exists. | **Corrected 2026-06-14:** `src/cli/commands/compile.test.ts` exists and now contains resource-leak regression coverage. Task 3.2 must extend the existing test file, not create it, and must preserve the no-`openSync` lock regression from `2026-06-14-fix-stream-resource-leaks`. |
-| F10 | LOW | `code-safety.ts` exists for oxlint rules. | Confirmed: `src/config/oxlint/code-safety.ts` exists. |
-| F11 | CRITICAL | A global `as unknown as` lint ban is safe to land. | **FALSE.** `rg "as unknown as" src/` finds **102 sites across 31 files** (e.g. `src/blueprint/db/sqlite.ts:69`, `src/audit/architecture-drift.ts:122,166`, plus dozens of legitimate test-mock casts like `src/audit/run-stryker.test.ts:27`). A global ban would emit ~96+ violations the instant it lands, failing `wp lint` repo-wide and self-contradicting Task 5.1's acceptance. Task 5.1 is rescoped to the `JSON.parse(...) as <NonRecordType>` surface only. |
+| ID  | Severity | Claim                                                     | Verified Reality                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| --- | -------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1  | HIGH     | SQLite `.all()` results are cast with `as unknown as`.    | Confirmed 4 occurrences at `src/mcp/blueprint-server.ts:946,1588,1619,1750`. Additional unchecked `as` casts at 1644 (`as TaskRow[]`), 1696 (`as Array<BpRow & {project_id}>`), 1911 (`as TaskRow[]`), and 1982 (`as TaskRow[]`).                                                                                                                                                                                                                                     |
+| F2  | HIGH     | `JSON.parse` results are cast directly to specific types. | Confirmed at: `src/mcp/blueprint-server.ts:352,364,632`; `src/cli/auto-update/run.ts:41`; `src/audit/cloudflare-deploy-contract.ts:19`; `src/cli/commands/compile.ts:32,72,147,337`; `src/ai-memory/store/sqlite-store.ts:295,297,311`. **Correction:** `blueprint-server.ts:432` is already guarded — drop it from scope.                                                                                                                                            |
+| F3  | HIGH     | `lint-after-edit.ts` uses non-null assertion + cast.      | Confirmed at `src/hooks/post-tool/lint-after-edit.ts:188`: `input.tool_input!.file_path as string`.                                                                                                                                                                                                                                                                                                                                                                   |
+| F4  | LOW      | `any` type usage is effectively zero.                     | Confirmed: only comment/string occurrences; no `any` type annotations.                                                                                                                                                                                                                                                                                                                                                                                                |
+| F5  | MEDIUM   | `TaskRow` is a single type.                               | `TaskRow` is defined twice with different shapes: line 925 (**7 fields** incl. `id`, `blueprint_slug`) and line 1785 (5 fields, subset). These must be merged. Note `src/blueprint/db/` already exists (with `enums.ts`) — reuse its status/lane enums rather than redefining them.                                                                                                                                                                                   |
+| F6  | MEDIUM   | `compile.ts` has 1 JSON.parse site.                       | Actually has 4 sites (lines 32, 72, 147, 337). Lines 32/72/337 read `package.json` with type guards — lower priority. Line 147 (`CompileManifest`) has NO shape validation.                                                                                                                                                                                                                                                                                           |
+| F7  | MEDIUM   | `sqlite-store.ts` has 2 JSON.parse sites.                 | Actually has 3 sites at lines **295 (`state_json`), 297 (`metadata_json`, already passes a `(_key, value) => value` reviver), and 311 (`embedding_json` → `as number[]`)**. There is NO site at line 318. All three cast to imported types with zero shape validation.                                                                                                                                                                                                |
+| F8  | LOW      | `auto-update/run.ts` `readCache` is unsound.              | It uses manual `typeof` guards (lines 42-45) before the `as UpdateCache` cast, making it safer than most sites. Keep the guard; Zod here is optional consistency, not a fix.                                                                                                                                                                                                                                                                                          |
+| F9  | MEDIUM   | `compile.test.ts` exists.                                 | **Corrected 2026-06-14:** `src/cli/commands/compile.test.ts` exists and now contains resource-leak regression coverage. Task 3.2 must extend the existing test file, not create it, and must preserve the no-`openSync` lock regression from `2026-06-14-fix-stream-resource-leaks`.                                                                                                                                                                                  |
+| F10 | LOW      | `code-safety.ts` exists for oxlint rules.                 | Confirmed: `src/config/oxlint/code-safety.ts` exists.                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| F11 | CRITICAL | A global `as unknown as` lint ban is safe to land.        | **FALSE.** `rg "as unknown as" src/` finds **102 sites across 31 files** (e.g. `src/blueprint/db/sqlite.ts:69`, `src/audit/architecture-drift.ts:122,166`, plus dozens of legitimate test-mock casts like `src/audit/run-stryker.test.ts:27`). A global ban would emit ~96+ violations the instant it lands, failing `wp lint` repo-wide and self-contradicting Task 5.1's acceptance. Task 5.1 is rescoped to the `JSON.parse(...) as <NonRecordType>` surface only. |
 
 ## Edge Cases
 
-| ID | Case | Severity | Mitigation |
-| -- | ---- | -------- | ---------- |
-| E1 | Schema drift: DB column added but Zod schema not updated | MEDIUM | Row schemas use loose objects (`z.looseObject` / `.loose()`) so extra columns silently pass; missing columns fail loudly. |
-| E2 | `TaskRow` has two incompatible shapes in same file | HIGH | Merge into one exported type; use `.pick()` for subsets. |
-| E3 | `BpRow` index signature `[key: string]: unknown` masks missing fields | MEDIUM | Schema validates known keys strictly; index sig fields become extras. |
-| E4 | `compile.ts` lines 32/72/337 read third-party `package.json` | LOW | Keep `Record<string, unknown>` + type guards; full Zod schemas for npm package.json are excessive. |
-| E5 | `sqlite-store.ts` types (`CheckpointState`, `CheckpointMetadata`) live in `#ai-memory/checkpoint/types.js` | MEDIUM | Add Zod schemas in the types module so both the store and consumers benefit. Sites are lines **295 (`state_json`), 297 (`metadata_json`, has a reviver fn), 311 (`embedding_json`)** — line 297's reviver must be preserved or its behavior replicated. |
-| E6 | Large `.all()` results cause perf regression if Zod validates every row | LOW | Use loose object schemas + `z.array()` — Zod validates shape not deep content. Benchmark target: < 5 ms added over raw `.all()` for a 1000-row payload (Task 1.2). If exceeded, validate first row + trust rest. |
+| ID  | Case                                                                                                       | Severity | Mitigation                                                                                                                                                                                                                                              |
+| --- | ---------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| E1  | Schema drift: DB column added but Zod schema not updated                                                   | MEDIUM   | Row schemas use loose objects (`z.looseObject` / `.loose()`) so extra columns silently pass; missing columns fail loudly.                                                                                                                               |
+| E2  | `TaskRow` has two incompatible shapes in same file                                                         | HIGH     | Merge into one exported type; use `.pick()` for subsets.                                                                                                                                                                                                |
+| E3  | `BpRow` index signature `[key: string]: unknown` masks missing fields                                      | MEDIUM   | Schema validates known keys strictly; index sig fields become extras.                                                                                                                                                                                   |
+| E4  | `compile.ts` lines 32/72/337 read third-party `package.json`                                               | LOW      | Keep `Record<string, unknown>` + type guards; full Zod schemas for npm package.json are excessive.                                                                                                                                                      |
+| E5  | `sqlite-store.ts` types (`CheckpointState`, `CheckpointMetadata`) live in `#ai-memory/checkpoint/types.js` | MEDIUM   | Add Zod schemas in the types module so both the store and consumers benefit. Sites are lines **295 (`state_json`), 297 (`metadata_json`, has a reviver fn), 311 (`embedding_json`)** — line 297's reviver must be preserved or its behavior replicated. |
+| E6  | Large `.all()` results cause perf regression if Zod validates every row                                    | LOW      | Use loose object schemas + `z.array()` — Zod validates shape not deep content. Benchmark target: < 5 ms added over raw `.all()` for a 1000-row payload (Task 1.2). If exceeded, validate first row + trust rest.                                        |
 
 ## Risks
 
-| Risk | Severity | Mitigation |
-| ---- | -------- | ---------- |
-| Zod schemas drift from DB schema | HIGH | Add parity test comparing schema keys to DB column names (Task 1.2 acceptance). |
-| Runtime validation in hot path | MEDIUM | Zod is already used in `src/`, but these target JSON/SQLite sites are new validation points; scope to genuinely unsafe sites, keep existing `typeof` guards (F8), and measure per-row cost (E6). |
-| Performance hit on large `.all()` results | LOW | Validate shape only (loose objects); benchmark with 1000-row payload against the < 5 ms target. |
-| `TaskRow` merge breaks existing usage | MEDIUM | Audit all 6 call sites before merging; use `.pick()` for the second variant. |
-| Extending `compile.test.ts` weakens existing regression coverage | MEDIUM | Add valid/malformed manifest fixtures while preserving the existing no-`openSync` lock regression owned by `2026-06-14-fix-stream-resource-leaks`. |
-| Task 5.1 lint ban scoped too broadly | HIGH | Ban only `JSON.parse(...) as <NonRecordType>` — NOT a global `as unknown as` ban (102 pre-existing sites would fail `wp lint`, F11). |
-
+| Risk                                                             | Severity | Mitigation                                                                                                                                                                                       |
+| ---------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Zod schemas drift from DB schema                                 | HIGH     | Add parity test comparing schema keys to DB column names (Task 1.2 acceptance).                                                                                                                  |
+| Runtime validation in hot path                                   | MEDIUM   | Zod is already used in `src/`, but these target JSON/SQLite sites are new validation points; scope to genuinely unsafe sites, keep existing `typeof` guards (F8), and measure per-row cost (E6). |
+| Performance hit on large `.all()` results                        | LOW      | Validate shape only (loose objects); benchmark with 1000-row payload against the < 5 ms target.                                                                                                  |
+| `TaskRow` merge breaks existing usage                            | MEDIUM   | Audit all 6 call sites before merging; use `.pick()` for the second variant.                                                                                                                     |
+| Extending `compile.test.ts` weakens existing regression coverage | MEDIUM   | Add valid/malformed manifest fixtures while preserving the existing no-`openSync` lock regression owned by `2026-06-14-fix-stream-resource-leaks`.                                               |
+| Task 5.1 lint ban scoped too broadly                             | HIGH     | Ban only `JSON.parse(...) as <NonRecordType>` — NOT a global `as unknown as` ban (102 pre-existing sites would fail `wp lint`, F11).                                                             |
 
 ## Cross-Plan Alignment Notes
 
@@ -99,21 +97,21 @@ Zod is already a repo-standard validation dependency across `src/` (for example 
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
-| ---- | ----- | ------------ | -------------- | ---------------- |
-| **Wave 0** | 1.1, 2.1, 3.1, 3.2, 4.1 | None | 5 agents | XS-S |
-| **Wave 1** | 1.2 | Task 1.1 | 1 agent | M |
-| **Wave 2** | 5.1 | None (logically after Wave 1) | 1 agent | M |
-| **Critical path** | 1.1 → 1.2 → 5.1 | — | 3 waves | L |
+| Wave              | Tasks                   | Dependencies                  | Parallelizable | Effort (T-shirt) |
+| ----------------- | ----------------------- | ----------------------------- | -------------- | ---------------- |
+| **Wave 0**        | 1.1, 2.1, 3.1, 3.2, 4.1 | None                          | 5 agents       | XS-S             |
+| **Wave 1**        | 1.2                     | Task 1.1                      | 1 agent        | M                |
+| **Wave 2**        | 5.1                     | None (logically after Wave 1) | 1 agent        | M                |
+| **Critical path** | 1.1 → 1.2 → 5.1         | —                             | 3 waves        | L                |
 
 ### Parallel Metrics Snapshot
 
-| Metric | Formula / Meaning | Target | Actual | Status |
-| ------ | ----------------- | ------ | ------ | ------ |
-| RW0 | Ready tasks in Wave 0 | ≥ 3 | 5 | OK |
-| CPR | total_tasks / critical_path_length | ≥ 2.5 | 2.33 | Near target — genuine dep chain (types → server → audit) |
-| DD | dependency_edges / total_tasks | ≤ 2.0 | 0.43 | OK |
-| CP | same-file overlaps per wave | 0 | 0 | OK |
+| Metric | Formula / Meaning                  | Target | Actual | Status                                                   |
+| ------ | ---------------------------------- | ------ | ------ | -------------------------------------------------------- |
+| RW0    | Ready tasks in Wave 0              | ≥ 3    | 5      | OK                                                       |
+| CPR    | total_tasks / critical_path_length | ≥ 2.5  | 2.33   | Near target — genuine dep chain (types → server → audit) |
+| DD     | dependency_edges / total_tasks     | ≤ 2.0  | 0.43   | OK                                                       |
+| CP     | same-file overlaps per wave        | 0      | 0      | OK                                                       |
 
 **Parallelization score: B** — CPR is slightly below target due to the genuine `types.ts → blueprint-server.ts → code-safety.ts` dependency chain. No artificial deps; all Wave 0 tasks are fully independent.
 
@@ -173,9 +171,9 @@ Replace `input.tool_input!.file_path as string` at `src/hooks/post-tool/lint-aft
 2. Run: `./bin/wp test --file src/hooks/post-tool/lint-after-edit.test.ts` — verify FAIL
 3. Implement guard in `processPostToolUse`:
    ```ts
-   const toolInput = input.tool_input
-   if (!toolInput || typeof toolInput.file_path !== 'string') return false
-   const filePath = toolInput.file_path
+   const toolInput = input.tool_input;
+   if (!toolInput || typeof toolInput.file_path !== "string") return false;
+   const filePath = toolInput.file_path;
    ```
 4. Run: `./bin/wp test --file src/hooks/post-tool/lint-after-edit.test.ts` — verify PASS
 5. Run: `./bin/wp lint` and `./bin/wp typecheck`
@@ -248,7 +246,7 @@ Add a Zod schema for `CompileManifest` and validate the JSON.parse at line 147. 
      timestamp: z.string(),
      sourceHash: z.string(),
      outputHashes: z.record(z.string(), z.string()),
-   })
+   });
    ```
 4. Replace `as CompileManifest` at line 147 with `CompileManifestSchema.parse(...)`
 5. Run: `./bin/wp test --file src/cli/commands/compile.test.ts` — verify PASS
@@ -380,14 +378,14 @@ Add an oxlint/audit rule in `src/config/oxlint/code-safety.ts` that flags the **
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-| ---- | ------- | ---------------- |
-| Type safety | `./bin/wp typecheck` | Zero errors |
-| Tests | `./bin/wp test` | All pass (unit + integration) |
-| Lint | `./bin/wp lint` | Zero violations |
-| Format | `./bin/wp format --check` | Zero diffs |
-| Audit: AI contracts | `./bin/wp audit ai-contracts` | Pass |
-| Audit: Blueprint lifecycle | `./bin/wp audit blueprint-lifecycle` | Pass |
+| Gate                       | Command                              | Success Criteria              |
+| -------------------------- | ------------------------------------ | ----------------------------- |
+| Type safety                | `./bin/wp typecheck`                 | Zero errors                   |
+| Tests                      | `./bin/wp test`                      | All pass (unit + integration) |
+| Lint                       | `./bin/wp lint`                      | Zero violations               |
+| Format                     | `./bin/wp format --check`            | Zero diffs                    |
+| Audit: AI contracts        | `./bin/wp audit ai-contracts`        | Pass                          |
+| Audit: Blueprint lifecycle | `./bin/wp audit blueprint-lifecycle` | Pass                          |
 
 ## Non-goals
 
@@ -400,22 +398,22 @@ Add an oxlint/audit rule in `src/config/oxlint/code-safety.ts` that flags the **
 
 ## Refinement Summary
 
-| Metric | Value |
-| ------ | ----- |
-| Findings total | 11 |
-| Critical | 1 (F11) |
-| High | 3 (F1, F2, F3) |
-| Medium | 5 (F5, F6, F7, F9, E2) |
-| Low | 4 (F4, F8, F10, E4) |
-| Fixes applied | 11/11 — all findings wired into tasks |
-| Cross-plans updated | 0 (no downstream blueprints reference these files) |
-| Edge cases documented | 6 |
-| Risks documented | 6 |
-| **Parallelization score** | B (5 tasks in Wave 0, CPR 2.33) |
-| **Critical path** | 3 waves (1.1 → 1.2 → 5.1) |
-| **Max parallel agents** | 5 |
-| **Total tasks** | 7 |
-| **Blueprint compliant** | 7/7 |
+| Metric                    | Value                                              |
+| ------------------------- | -------------------------------------------------- |
+| Findings total            | 11                                                 |
+| Critical                  | 1 (F11)                                            |
+| High                      | 3 (F1, F2, F3)                                     |
+| Medium                    | 5 (F5, F6, F7, F9, E2)                             |
+| Low                       | 4 (F4, F8, F10, E4)                                |
+| Fixes applied             | 11/11 — all findings wired into tasks              |
+| Cross-plans updated       | 0 (no downstream blueprints reference these files) |
+| Edge cases documented     | 6                                                  |
+| Risks documented          | 6                                                  |
+| **Parallelization score** | B (5 tasks in Wave 0, CPR 2.33)                    |
+| **Critical path**         | 3 waves (1.1 → 1.2 → 5.1)                          |
+| **Max parallel agents**   | 5                                                  |
+| **Total tasks**           | 7                                                  |
+| **Blueprint compliant**   | 7/7                                                |
 
 ### Key refinement changes
 

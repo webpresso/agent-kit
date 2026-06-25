@@ -1,433 +1,435 @@
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { type ScanOptions, scanBlueprintDirectory } from './scanner.js'
+import { type ScanOptions, scanBlueprintDirectory } from "./scanner.js";
 
-describe('scanBlueprintDirectory - core', () => {
-  const testDir = `/tmp/test-blueprints-${Date.now()}`
+describe("scanBlueprintDirectory - core", () => {
+  const testDir = `/tmp/test-blueprints-${Date.now()}`;
 
   beforeEach(() => {
     // Create a mock blueprint structure for testing
-    mkdirSync(`${testDir}/webpresso/blueprints/my-feature`, { recursive: true })
-    mkdirSync(`${testDir}/webpresso/blueprints/completed/tooling`, { recursive: true })
-    mkdirSync(`${testDir}/webpresso/blueprints/_future/idea`, { recursive: true })
+    mkdirSync(`${testDir}/webpresso/blueprints/my-feature`, { recursive: true });
+    mkdirSync(`${testDir}/webpresso/blueprints/completed/tooling`, { recursive: true });
+    mkdirSync(`${testDir}/webpresso/blueprints/_future/idea`, { recursive: true });
 
-    writeFileSync(`${testDir}/webpresso/blueprints/my-feature/_overview.md`, '# Plan')
+    writeFileSync(`${testDir}/webpresso/blueprints/my-feature/_overview.md`, "# Plan");
     writeFileSync(
       `${testDir}/webpresso/blueprints/completed/tooling/_overview.md`,
-      '# Tooling Plan',
-    )
-    writeFileSync(`${testDir}/webpresso/blueprints/_future/idea/_overview.md`, '# Future Idea')
-  })
+      "# Tooling Plan",
+    );
+    writeFileSync(`${testDir}/webpresso/blueprints/_future/idea/_overview.md`, "# Future Idea");
+  });
 
   afterEach(() => {
-    rmSync(testDir, { recursive: true, force: true })
-  })
-  describe('basic scanning', () => {
-    it('should find _overview.md files in the plans directory', () => {
+    rmSync(testDir, { recursive: true, force: true });
+  });
+  describe("basic scanning", () => {
+    it("should find _overview.md files in the plans directory", () => {
       // Arrange
       const options: ScanOptions = {
         baseDir: `${testDir}/webpresso/blueprints`,
         includeSpecialFolders: false,
-      }
+      };
 
       // Act
-      const result = scanBlueprintDirectory(options)
+      const result = scanBlueprintDirectory(options);
 
       // Assert
-      expect(result.length).toBeGreaterThan(0)
-      expect(result.every((plan) => plan.path.endsWith('_overview.md'))).toBe(true)
-    })
+      expect(result.length).toBeGreaterThan(0);
+      expect(result.every((plan) => plan.path.endsWith("_overview.md"))).toBe(true);
+    });
 
-    it('should return full path to _overview.md', () => {
+    it("should return full path to _overview.md", () => {
       // Arrange
       const options: ScanOptions = {
         baseDir: `${testDir}/webpresso/blueprints`,
         includeSpecialFolders: false,
-      }
+      };
 
       // Act
-      const result = scanBlueprintDirectory(options)
+      const result = scanBlueprintDirectory(options);
 
       // Assert
-      expect(result.length).toBeGreaterThan(0)
+      expect(result.length).toBeGreaterThan(0);
       // Each path should be a full path containing the base dir
       for (const plan of result) {
-        expect(plan.path).toContain(`${testDir}/webpresso/blueprints`)
-        expect(plan.path).toMatch(/_overview\.md$/)
+        expect(plan.path).toContain(`${testDir}/webpresso/blueprints`);
+        expect(plan.path).toMatch(/_overview\.md$/);
       }
-    })
+    });
 
-    it('should discover flat blueprint markdown files under lifecycle folders', () => {
-      mkdirSync(`${testDir}/webpresso/blueprints/in-progress`, { recursive: true })
-      writeFileSync(`${testDir}/webpresso/blueprints/in-progress/flat-plan.md`, '# Flat Plan')
+    it("should discover flat blueprint markdown files under lifecycle folders", () => {
+      mkdirSync(`${testDir}/webpresso/blueprints/in-progress`, { recursive: true });
+      writeFileSync(`${testDir}/webpresso/blueprints/in-progress/flat-plan.md`, "# Flat Plan");
 
       const result = scanBlueprintDirectory({
         baseDir: `${testDir}/webpresso/blueprints`,
         includeSpecialFolders: false,
-      })
+      });
 
-      const flatPlan = result.find((plan) => plan.path.endsWith('/in-progress/flat-plan.md'))
-      expect(flatPlan).toBeDefined()
-      expect(flatPlan?.slug).toBe('in-progress/flat-plan')
-      expect(flatPlan?.group).toBe('in-progress')
-    })
+      const flatPlan = result.find((plan) => plan.path.endsWith("/in-progress/flat-plan.md"));
+      expect(flatPlan).toBeDefined();
+      expect(flatPlan?.slug).toBe("in-progress/flat-plan");
+      expect(flatPlan?.group).toBe("in-progress");
+    });
 
-    it('discovers both flat and folder blueprint shapes in one scan', () => {
-      mkdirSync(`${testDir}/webpresso/blueprints/planned`, { recursive: true })
-      mkdirSync(`${testDir}/webpresso/blueprints/planned/folder-plan`, { recursive: true })
-      writeFileSync(`${testDir}/webpresso/blueprints/planned/flat-plan.md`, '# Flat Plan')
+    it("discovers both flat and folder blueprint shapes in one scan", () => {
+      mkdirSync(`${testDir}/webpresso/blueprints/planned`, { recursive: true });
+      mkdirSync(`${testDir}/webpresso/blueprints/planned/folder-plan`, { recursive: true });
+      writeFileSync(`${testDir}/webpresso/blueprints/planned/flat-plan.md`, "# Flat Plan");
       writeFileSync(
         `${testDir}/webpresso/blueprints/planned/folder-plan/_overview.md`,
-        '# Folder Plan',
-      )
+        "# Folder Plan",
+      );
       writeFileSync(
         `${testDir}/webpresso/blueprints/planned/folder-plan/notes.md`,
-        '# Supporting Doc',
-      )
+        "# Supporting Doc",
+      );
 
       const result = scanBlueprintDirectory({
         baseDir: `${testDir}/webpresso/blueprints`,
         includeSpecialFolders: false,
-      })
+      });
 
       expect(result.map((plan) => plan.slug)).toEqual(
-        expect.arrayContaining(['planned/flat-plan', 'planned/folder-plan']),
-      )
-      expect(result.some((plan) => plan.path.endsWith('/folder-plan/notes.md'))).toBe(false)
-    })
+        expect.arrayContaining(["planned/flat-plan", "planned/folder-plan"]),
+      );
+      expect(result.some((plan) => plan.path.endsWith("/folder-plan/notes.md"))).toBe(false);
+    });
 
-    it('preserves legacy nested webpresso blueprint slugs', () => {
+    it("preserves legacy nested webpresso blueprint slugs", () => {
       mkdirSync(`${testDir}/webpresso/blueprints/agile-workflows/git-task-store`, {
         recursive: true,
-      })
+      });
       writeFileSync(
         `${testDir}/webpresso/blueprints/agile-workflows/git-task-store/_overview.md`,
-        '# Legacy Nested Plan',
-      )
+        "# Legacy Nested Plan",
+      );
 
       const result = scanBlueprintDirectory({
         baseDir: `${testDir}/webpresso/blueprints`,
         includeSpecialFolders: false,
-      })
+      });
 
-      const nested = result.find((plan) => plan.slug === 'agile-workflows/git-task-store')
-      expect(nested).toBeDefined()
-      expect(nested?.group).toBe('agile-workflows')
-    })
+      const nested = result.find((plan) => plan.slug === "agile-workflows/git-task-store");
+      expect(nested).toBeDefined();
+      expect(nested?.group).toBe("agile-workflows");
+    });
 
-    it('fails when flat and folder shapes reuse the same slug', () => {
-      mkdirSync(`${testDir}/webpresso/blueprints/planned/duplicate-plan`, { recursive: true })
-      writeFileSync(`${testDir}/webpresso/blueprints/planned/duplicate-plan.md`, '# Flat Plan')
+    it("fails when flat and folder shapes reuse the same slug", () => {
+      mkdirSync(`${testDir}/webpresso/blueprints/planned/duplicate-plan`, { recursive: true });
+      writeFileSync(`${testDir}/webpresso/blueprints/planned/duplicate-plan.md`, "# Flat Plan");
       writeFileSync(
         `${testDir}/webpresso/blueprints/planned/duplicate-plan/_overview.md`,
-        '# Folder Plan',
-      )
+        "# Folder Plan",
+      );
 
       expect(() =>
         scanBlueprintDirectory({
           baseDir: `${testDir}/webpresso/blueprints`,
           includeSpecialFolders: false,
         }),
-      ).toThrow(/Duplicate blueprint slug "planned\/duplicate-plan"/)
-    })
-  })
+      ).toThrow(/Duplicate blueprint slug "planned\/duplicate-plan"/);
+    });
+  });
 
-  describe('slug extraction', () => {
-    it('should extract slug from group/initiative path', () => {
+  describe("slug extraction", () => {
+    it("should extract slug from group/initiative path", () => {
       // Arrange
       const options: ScanOptions = {
         baseDir: `${testDir}/webpresso/blueprints`,
         includeSpecialFolders: false,
-      }
+      };
 
       // Act
-      const result = scanBlueprintDirectory(options)
+      const result = scanBlueprintDirectory(options);
 
       // Assert - find any group/initiative plan
-      expect(result.length).toBeGreaterThan(0)
+      expect(result.length).toBeGreaterThan(0);
       // Verify at least some plans have slugs (not all may have due to directory structure)
-      const plansWithSlug = result.filter((p) => p.slug !== '')
-      expect(plansWithSlug.length).toBeGreaterThan(0)
-    })
+      const plansWithSlug = result.filter((p) => p.slug !== "");
+      expect(plansWithSlug.length).toBeGreaterThan(0);
+    });
 
-    it('should extract slug from nested plan path', () => {
+    it("should extract slug from nested plan path", () => {
       // Arrange
       const options: ScanOptions = {
         baseDir: `${testDir}/webpresso/blueprints`,
         includeSpecialFolders: false,
-      }
+      };
 
       // Act
-      const result = scanBlueprintDirectory(options)
+      const result = scanBlueprintDirectory(options);
 
       // Assert - find a nested plan within a group (e.g., completed/tooling)
-      const nestedPlan = result.find((p) => p.path.includes('completed/tooling'))
+      const nestedPlan = result.find((p) => p.path.includes("completed/tooling"));
       if (nestedPlan) {
-        expect(nestedPlan.slug).toBe('completed/tooling')
+        expect(nestedPlan.slug).toBe("completed/tooling");
       } else {
         // If no nested plans exist, just verify the scan works
-        expect(result.length).toBeGreaterThan(0)
+        expect(result.length).toBeGreaterThan(0);
       }
-    })
-  })
+    });
+  });
 
-  describe('group extraction', () => {
-    it('should extract group from group/initiative structure', () => {
+  describe("group extraction", () => {
+    it("should extract group from group/initiative structure", () => {
       // Arrange
       const options: ScanOptions = {
         baseDir: `${testDir}/webpresso/blueprints`,
         includeSpecialFolders: false,
-      }
+      };
 
       // Act
-      const result = scanBlueprintDirectory(options)
+      const result = scanBlueprintDirectory(options);
 
       // Assert - lifecycle status folders are preserved as groups.
-      const groupedPlan = result.find((p) => p.path.includes('completed/tooling'))
+      const groupedPlan = result.find((p) => p.path.includes("completed/tooling"));
       if (groupedPlan) {
-        expect(groupedPlan.group).toBe('completed')
+        expect(groupedPlan.group).toBe("completed");
       } else {
         // If no grouped plans exist, verify at least some plans exist
-        expect(result.length).toBeGreaterThan(0)
+        expect(result.length).toBeGreaterThan(0);
       }
-    })
+    });
 
-    it('should return group for nested plans', () => {
+    it("should return group for nested plans", () => {
       // Arrange
       const options: ScanOptions = {
         baseDir: `${testDir}/webpresso/blueprints`,
         includeSpecialFolders: false,
-      }
+      };
 
       // Act
-      const result = scanBlueprintDirectory(options)
+      const result = scanBlueprintDirectory(options);
 
       // Assert - verify any nested plan has a group
-      const nestedPlans = result.filter((p) => p.slug.includes('/'))
+      const nestedPlans = result.filter((p) => p.slug.includes("/"));
       if (nestedPlans.length > 0) {
-        expect(nestedPlans.every((p) => typeof p.group === 'string' || p.group === null)).toBe(true)
+        expect(nestedPlans.every((p) => typeof p.group === "string" || p.group === null)).toBe(
+          true,
+        );
       } else {
         // No nested plans - just verify scan works
-        expect(result.length).toBeGreaterThanOrEqual(0)
+        expect(result.length).toBeGreaterThanOrEqual(0);
       }
-    })
+    });
 
-    it('should extract group for nested initiatives', () => {
+    it("should extract group for nested initiatives", () => {
       // Arrange
       const options: ScanOptions = {
         baseDir: `${testDir}/webpresso/blueprints`,
         includeSpecialFolders: false,
-      }
+      };
 
       // Act
-      const result = scanBlueprintDirectory(options)
+      const result = scanBlueprintDirectory(options);
 
       // Assert - verify group extraction works for any available nested plan
-      const nestedPlan = result.find((p) => p.slug.includes('/'))
+      const nestedPlan = result.find((p) => p.slug.includes("/"));
       if (nestedPlan) {
-        expect(typeof nestedPlan.group).toBe('string')
-        expect(nestedPlan.group).not.toBeNull()
+        expect(typeof nestedPlan.group).toBe("string");
+        expect(nestedPlan.group).not.toBeNull();
       } else {
         // No nested plans available - test passes
-        expect(result.length).toBeGreaterThanOrEqual(0)
+        expect(result.length).toBeGreaterThanOrEqual(0);
       }
-    })
-  })
+    });
+  });
 
-  describe('special folders handling', () => {
-    it('should exclude special folders by default', () => {
+  describe("special folders handling", () => {
+    it("should exclude special folders by default", () => {
       // Arrange
       const options: ScanOptions = {
         baseDir: `${testDir}/webpresso/blueprints`,
         includeSpecialFolders: false,
-      }
+      };
 
       // Act
-      const result = scanBlueprintDirectory(options)
+      const result = scanBlueprintDirectory(options);
 
       // Assert
-      expect(result.every((p) => !p.isSpecialFolder)).toBe(true)
-      expect(result.every((p) => !p.path.includes('/_completed/'))).toBe(true)
-      expect(result.every((p) => !p.path.includes('/_future/'))).toBe(true)
-      expect(result.every((p) => !p.path.includes('/_deprioritized/'))).toBe(true)
-    })
+      expect(result.every((p) => !p.isSpecialFolder)).toBe(true);
+      expect(result.every((p) => !p.path.includes("/_completed/"))).toBe(true);
+      expect(result.every((p) => !p.path.includes("/_future/"))).toBe(true);
+      expect(result.every((p) => !p.path.includes("/_deprioritized/"))).toBe(true);
+    });
 
-    it('should include special folders when option is true and they exist', () => {
+    it("should include special folders when option is true and they exist", () => {
       // Arrange
       const options: ScanOptions = {
         baseDir: `${testDir}/webpresso/blueprints`,
         includeSpecialFolders: true,
-      }
+      };
 
       // Act
-      const result = scanBlueprintDirectory(options)
+      const result = scanBlueprintDirectory(options);
 
       // Assert - special folders may or may not exist, this tests the includeSpecialFolders flag works
       // If no special folders exist, all results should have isSpecialFolder=false
       // If special folders exist, some should have isSpecialFolder=true
-      expect(result.length).toBeGreaterThan(0)
-    })
+      expect(result.length).toBeGreaterThan(0);
+    });
 
-    it('should correctly identify _completed folder type when it exists', () => {
+    it("should correctly identify _completed folder type when it exists", () => {
       // Arrange
       const options: ScanOptions = {
         baseDir: `${testDir}/webpresso/blueprints`,
         includeSpecialFolders: true,
-      }
+      };
 
       // Act
-      const result = scanBlueprintDirectory(options)
-      const completedPlan = result.find((p) => p.path.includes('/_completed/'))
+      const result = scanBlueprintDirectory(options);
+      const completedPlan = result.find((p) => p.path.includes("/_completed/"));
 
       // Skip if no _completed folder exists
       if (!completedPlan) {
-        return // Test passes - folder doesn't exist, nothing to verify
+        return; // Test passes - folder doesn't exist, nothing to verify
       }
 
       // Assert
-      expect(completedPlan.isSpecialFolder).toBe(true)
-      expect(completedPlan.specialFolderType).toBe('_completed')
-    })
+      expect(completedPlan.isSpecialFolder).toBe(true);
+      expect(completedPlan.specialFolderType).toBe("_completed");
+    });
 
-    it('should correctly identify _future folder type when it exists', () => {
+    it("should correctly identify _future folder type when it exists", () => {
       // Arrange
       const options: ScanOptions = {
         baseDir: `${testDir}/webpresso/blueprints`,
         includeSpecialFolders: true,
-      }
+      };
 
       // Act
-      const result = scanBlueprintDirectory(options)
-      const futurePlan = result.find((p) => p.path.includes('/_future/'))
+      const result = scanBlueprintDirectory(options);
+      const futurePlan = result.find((p) => p.path.includes("/_future/"));
 
       // Skip if no _future folder exists
       if (!futurePlan) {
-        return // Test passes - folder doesn't exist, nothing to verify
+        return; // Test passes - folder doesn't exist, nothing to verify
       }
 
       // Assert
-      expect(futurePlan.isSpecialFolder).toBe(true)
-      expect(futurePlan.specialFolderType).toBe('_future')
-    })
+      expect(futurePlan.isSpecialFolder).toBe(true);
+      expect(futurePlan.specialFolderType).toBe("_future");
+    });
 
-    it('should correctly identify _deprioritized folder type when it exists', () => {
+    it("should correctly identify _deprioritized folder type when it exists", () => {
       // Arrange
       const options: ScanOptions = {
         baseDir: `${testDir}/webpresso/blueprints`,
         includeSpecialFolders: true,
-      }
+      };
 
       // Act
-      const result = scanBlueprintDirectory(options)
-      const deprioritizedPlan = result.find((p) => p.path.includes('/_deprioritized/'))
+      const result = scanBlueprintDirectory(options);
+      const deprioritizedPlan = result.find((p) => p.path.includes("/_deprioritized/"));
 
       // Skip if no _deprioritized folder exists
       if (!deprioritizedPlan) {
-        return // Test passes - folder doesn't exist, nothing to verify
+        return; // Test passes - folder doesn't exist, nothing to verify
       }
 
       // Assert
-      expect(deprioritizedPlan.isSpecialFolder).toBe(true)
-      expect(deprioritizedPlan.specialFolderType).toBe('_deprioritized')
-    })
-  })
+      expect(deprioritizedPlan.isSpecialFolder).toBe(true);
+      expect(deprioritizedPlan.specialFolderType).toBe("_deprioritized");
+    });
+  });
 
-  describe('filtering behavior', () => {
-    it('should skip hidden directories', () => {
+  describe("filtering behavior", () => {
+    it("should skip hidden directories", () => {
       // Arrange
       const options: ScanOptions = {
         baseDir: `${testDir}/webpresso/blueprints`,
         includeSpecialFolders: true,
-      }
+      };
 
       // Act
-      const result = scanBlueprintDirectory(options)
+      const result = scanBlueprintDirectory(options);
 
       // Assert
-      expect(result.every((p) => !p.slug.includes('/.'))).toBe(true)
-    })
+      expect(result.every((p) => !p.slug.includes("/."))).toBe(true);
+    });
 
-    it('should skip node_modules directories', () => {
+    it("should skip node_modules directories", () => {
       // Arrange
       const options: ScanOptions = {
         baseDir: `${testDir}/webpresso/blueprints`,
         includeSpecialFolders: true,
-      }
+      };
 
       // Act
-      const result = scanBlueprintDirectory(options)
+      const result = scanBlueprintDirectory(options);
 
       // Assert
-      expect(result.every((p) => !p.path.includes('node_modules'))).toBe(true)
-    })
-  })
+      expect(result.every((p) => !p.path.includes("node_modules"))).toBe(true);
+    });
+  });
 
-  describe('default options', () => {
-    it('should use default baseDir when not specified', () => {
+  describe("default options", () => {
+    it("should use default baseDir when not specified", () => {
       // This test validates the default behavior - when no options are passed,
       // the scanner uses testDir + '/webpresso/blueprints' relative to monorepo root
       // Since we're in the actual repo during tests, this will scan the real repo path
-      const result = scanBlueprintDirectory()
+      const result = scanBlueprintDirectory();
 
       // The result may be empty if no blueprints exist yet, which is valid
       // Just verify the function doesn't throw and returns an array
-      expect(Array.isArray(result)).toBe(true)
-    })
+      expect(Array.isArray(result)).toBe(true);
+    });
 
-    it('should exclude special folders by default', () => {
+    it("should exclude special folders by default", () => {
       // Arrange
       const options: ScanOptions = {
         baseDir: `${testDir}/webpresso/blueprints`,
         includeSpecialFolders: false,
-      }
+      };
 
       // Act
-      const result = scanBlueprintDirectory(options)
+      const result = scanBlueprintDirectory(options);
 
       // Assert
-      expect(result.every((p) => !p.isSpecialFolder)).toBe(true)
-    })
-  })
+      expect(result.every((p) => !p.isSpecialFolder)).toBe(true);
+    });
+  });
 
-  describe('absolute baseDir resolution', () => {
-    it('should accept an absolute path as baseDir and use it directly', () => {
+  describe("absolute baseDir resolution", () => {
+    it("should accept an absolute path as baseDir and use it directly", () => {
       // The baseDir is already absolute (testDir starts with /tmp)
-      const absoluteBase = `${testDir}/webpresso/blueprints`
+      const absoluteBase = `${testDir}/webpresso/blueprints`;
       const options: ScanOptions = {
         baseDir: absoluteBase,
         includeSpecialFolders: false,
-      }
+      };
 
-      const result = scanBlueprintDirectory(options)
+      const result = scanBlueprintDirectory(options);
 
       // Legacy Webpresso roots still discover non-status nested plans.
-      expect(result.length).toBe(2)
-      expect(result.every((p) => p.path.startsWith(absoluteBase))).toBe(true)
-    })
+      expect(result.length).toBe(2);
+      expect(result.every((p) => p.path.startsWith(absoluteBase))).toBe(true);
+    });
 
-    it('should return empty array when absolute baseDir does not exist', () => {
+    it("should return empty array when absolute baseDir does not exist", () => {
       const options: ScanOptions = {
         baseDir: `/tmp/nonexistent-dir-${Date.now()}-xyz`,
         includeSpecialFolders: false,
-      }
+      };
 
-      const result = scanBlueprintDirectory(options)
+      const result = scanBlueprintDirectory(options);
 
-      expect(result).toEqual([])
-      expect(result.length).toBe(0)
-    })
+      expect(result).toEqual([]);
+      expect(result.length).toBe(0);
+    });
 
-    it('should return empty array when relative baseDir resolves to non-existent path', () => {
+    it("should return empty array when relative baseDir resolves to non-existent path", () => {
       const options: ScanOptions = {
-        baseDir: 'totally/nonexistent/path/that/does/not/exist',
+        baseDir: "totally/nonexistent/path/that/does/not/exist",
         includeSpecialFolders: false,
-      }
+      };
 
-      const result = scanBlueprintDirectory(options)
+      const result = scanBlueprintDirectory(options);
 
-      expect(result).toEqual([])
-      expect(result.length).toBe(0)
-    })
-  })
-})
+      expect(result).toEqual([]);
+      expect(result.length).toBe(0);
+    });
+  });
+});

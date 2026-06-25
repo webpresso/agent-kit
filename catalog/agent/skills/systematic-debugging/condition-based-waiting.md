@@ -37,14 +37,14 @@ digraph when_to_use {
 
 ```typescript
 // ❌ BEFORE: Guessing at timing
-await new Promise((r) => setTimeout(r, 50))
-const result = getResult()
-expect(result).toBeDefined()
+await new Promise((r) => setTimeout(r, 50));
+const result = getResult();
+expect(result).toBeDefined();
 
 // ✅ AFTER: Waiting for condition
-await waitFor(() => getResult() !== undefined)
-const result = getResult()
-expect(result).toBeDefined()
+await waitFor(() => getResult() !== undefined);
+const result = getResult();
+expect(result).toBeDefined();
 ```
 
 ## Quick Patterns
@@ -67,17 +67,17 @@ async function waitFor<T>(
   description: string,
   timeoutMs = 5000,
 ): Promise<T> {
-  const startTime = Date.now()
+  const startTime = Date.now();
 
   while (true) {
-    const result = condition()
-    if (result) return result
+    const result = condition();
+    if (result) return result;
 
     if (Date.now() - startTime > timeoutMs) {
-      throw new Error(`Timeout waiting for ${description} after ${timeoutMs}ms`)
+      throw new Error(`Timeout waiting for ${description} after ${timeoutMs}ms`);
     }
 
-    await new Promise((r) => setTimeout(r, 10)) // Poll every 10ms
+    await new Promise((r) => setTimeout(r, 10)); // Poll every 10ms
   }
 }
 ```
@@ -99,8 +99,8 @@ See `condition-based-waiting-example.ts` in this directory for complete implemen
 
 ```typescript
 // Tool ticks every 100ms - need 2 ticks to verify partial output
-await waitForEvent(manager, 'TOOL_STARTED') // First: wait for condition
-await new Promise((r) => setTimeout(r, 200)) // Then: wait for timed behavior
+await waitForEvent(manager, "TOOL_STARTED"); // First: wait for condition
+await new Promise((r) => setTimeout(r, 200)); // Then: wait for timed behavior
 // 200ms = 2 ticks at 100ms intervals - documented and justified
 ```
 

@@ -6,9 +6,9 @@ complexity: XL
 owner: ozby
 historical_verification_gap_waiver: true
 historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
-created: '2026-05-13'
-last_updated: '2026-05-14'
-progress: '12/12 tasks done'
+created: "2026-05-13"
+last_updated: "2026-05-14"
+progress: "12/12 tasks done"
 depends_on:
   - blueprint-structured-store
 tags:
@@ -40,26 +40,26 @@ reviews:
 
 The repo already has substantial SQLite blueprint infrastructure. This blueprint must **reuse and wire it**, not rebuild it. The critical refinement is that multi-worktree support changes the storage-scope decision: a SQLite projection derived from worktree markdown cannot be safely repo-global unless the schema is made project/worktree-aware.
 
-| ID | Severity | Evidence | Implementation implication |
-| -- | -------- | -------- | -------------------------- |
-| F1 | HIGH | `src/blueprint/db/cold-start.ts` uses `getSurfacePath('blueprints/blueprints.db', 'repo', cwd)`, while older call sites hardcode `.agent/.blueprints.db`. `src/paths/state-root.ts` has separate `repo` and `worktree` scopes. | Centralize path resolution before MCP widening. Use a worktree-scoped projection DB for markdown-derived rows, because two worktrees of the same repo can have different checked-out blueprint files. Keep any cross-project registry separate from the projection DB. |
-| F2 | HIGH | SQLite schema/migrations/ingester/query templates already exist in `src/blueprint/db/*`; CLI mutations still edit markdown then re-ingest. | Preserve markdown as canonical durable artifact. Do not add a second schema/parser. Add helpers around the existing projection. |
-| F3 | HIGH | `src/mcp/blueprint-server.ts` registers structured DB-backed tools, but `src/mcp/server.ts` only auto-discovers `src/mcp/tools/*`, where legacy `wp_blueprint` remains. | Wire structured tools into the default `wp mcp` server and retire the stale file/action facade only after replacements cover normal workflows. |
-| F4 | HIGH | `src/blueprint/db/workspace-config.ts` only reads static `~/.agent/workspace.yaml` entries shaped as `{ repos: [{ path }] }`. `src/cli/commands/worktree/router-dispatch.ts` already exports `parseWorktreePorcelain(raw: string): WorktreeEntry[]` and `resolveWorktreePath`. | Build an explicit project/worktree discovery module that imports the already-exported worktree parser; do not re-export or duplicate it. Do not make MCP infer all roots by ad hoc recursive filesystem scans. |
-| F5 | HIGH | Installed `@modelcontextprotocol/sdk` is `1.29.0`; local SDK exposes `Server.listRoots()` and `RootsListChangedNotificationSchema`. `listRoots()` throws via `assertClientCapability()` if the client did not advertise roots capability. There is no convenience `onRootsListChanged` hook — handlers must be registered via `server.setNotificationHandler(RootsListChangedNotificationSchema, handler)`. | Add an optional MCP roots provider/cache with graceful fallback. If roots are unsupported or fail, default to current project + workspace config instead of failing tool listing. Register list-changed via `setNotificationHandler`, not a non-existent `onRootsListChanged` property. |
-| F6 | HIGH | Existing `wp_blueprint_task_advance` can transition tasks to `done`; CLI mutation path can also set done without evidence. | Add verification-backed completion and refuse `done` through generic MCP advance. Persist evidence into markdown and re-ingest. |
-| F7 | MEDIUM | `src/mcp/tools/_shared/project-root.ts` resolves one project root from `CLAUDE_PROJECT_DIR`, cwd, or upward markers. | Keep single-project default for safety. Multi-project listing is explicit via `scope: roots|workspace|all` or `project_id` selectors. |
-| F8 | MEDIUM | `workspace_repos` table stores repo metadata only; it does not make blueprint query rows globally unique across projects/worktrees. | Aggregate by opening each selected project's projection DB and return `project_id` with every row. Do not merge multiple projects into one projection DB in this blueprint. |
-| F9 | CRITICAL | `src/blueprint/db/cold-start.ts` uses `getSurfacePath('blueprints/.lock', 'repo', cwd)` for the advisory ingest lock with a 5s `proceeds anyway` escape, while Task 1.1 moves the projection DB to `'worktree'` scope. Mismatched lock+DB scopes leave concurrent writers unprotected; the 5s escape silently allows races during long ingests. The ingester (`src/blueprint/db/ingester.ts`) uses DELETE-then-INSERT inside a single `db.transaction()`, so partial reads during a competing ingest are possible. | Task 1.1 must explicitly resolve **both** projection DB scope **and** lock scope, choosing one of: (a) lock stays `'repo'` to serialize cross-worktree ingest of shared markdown; (b) lock moves to `'worktree'` and a separate `'repo'`-scoped markdown-mutation lock is added. Remove the silent 5s "proceeds anyway" escape on write paths. Add a concurrent-ingest test. |
-| F10 | CRITICAL | Task 1.4 (verification helper) and Task 3.2 (`wp_blueprint_task_verify`) require "passed evidence" but the blueprint defines no evidence schema, validity rules, or anti-forgery posture. The product wedge ("agents stop marking tasks done without verification") collapses if evidence is `z.any().array().min(1)`. | Pin an explicit Evidence Contract (see new section below) before Task 1.4 begins, with required fields, validity rules per kind, and a canonical markdown serialization. |
-| F11 | HIGH | `blueprints/{draft,planned,in-progress,completed}/` is git-tracked; a `git checkout other-branch` flips on-disk markdown without touching `blueprints/blueprints.db`. E1 only covers stale-after-mutation. | Add freshness invalidation on branch HEAD change: record `git rev-parse HEAD` in projection metadata at ingest time, refuse cached reads if current HEAD differs, return `next_action: 'reingest_project'`. |
-| F12 | HIGH | The completed `blueprint-structured-store` upstream creates `.agent/.blueprints.db` in existing repos. Task 1.1's path change leaves those DBs as orphans after upgrade; the new path rebuilds silently with zero user signal and `wp audit blueprint-lifecycle` may double-count. | Task 1.1 must include a deprecation step: detect `.agent/.blueprints.db` in git repos, log a one-line deprecation warning pointing at the new path, optionally move (or symlink) the legacy file, and add a fixture test covering the upgrade path. |
-| F13 | HIGH | `src/mcp/auto-discover.ts` only scans `src/mcp/tools/*.ts` for default-exported `ToolDescriptor`. `src/mcp/blueprint-server.ts` registers via `registrar.registerTool` and is **currently never called by `src/mcp/server.ts`** — the 8 structured tools (`wp_blueprint_query`, `_new`, `_validate`, `_task_next`, `_task_advance`, `_promote`, `_finalize`, `_depgraph`) exist but are not advertised. Task 2.1 must pick a single integration shape. | Task 2.1 picks shape: add `registerBlueprintServer(server, { cwd, getMcpRoots })` invocation inside `createServer` after auto-discover completes, with a hard-fail dedupe check on tool-name collisions. Do not split between auto-discover and explicit registration silently. |
-| F14 | MEDIUM | `project_id = stable hash of real worktree path + optional repo common dir` is under-specified: macOS APFS case-insensitive `realpath` vs Linux case-sensitive can produce different IDs for the same logical project; recreating a worktree at the same path after `git worktree remove`+`add` reuses the ID for a semantically different worktree. | Pin a `project_id_v1` spec: `sha256(realpath(worktree) + '\0' + (repo_common_dir ?? '') + '\0' + os.platform())` with documented stability semantics. Add tests for case-folding behavior and worktree recreation. |
-| F15 | MEDIUM | Task 3.3 enforces "mutating calls reject aggregate scope" as a runtime check; if mutation and read tools share a zod input base, a future refactor silently widens the surface. | Use two distinct zod input bases: `MutationTarget = { project_id: string }` (no `scope` field) vs `ReadTarget = { project_id?: string, scope?: 'current'\|'roots'\|'workspace'\|'all' }`. Acceptance: mutation input schemas do not contain a `scope` field at type level. |
-| F16 | MEDIUM | Task 4.2 requires multi-worktree fixture repos plus MCP server plus duplicate-slug coverage at "M" effort. Real `git init` + `git worktree add` fixtures cost ~200-500ms each and the test will likely violate `catalog/agent/rules/no-timeout-as-fix.md` if it slips. | Either split into 4.2a (single-worktree happy path + fixture builder helper) and 4.2b (multi-project aggregate), or rely on Task 1.2's injected git/filesystem dependencies to run the smoke against an in-memory fixture. Pin a per-fixture-repo time budget and document it. |
-| F17 | LOW | E5 says recursive scan is "depth/count capped, ignore-listed, timeout-bounded" but no cap values are pinned. | Pin values in `_overview.md`: `depth ≤ 3`, `count ≤ 200 projects`, `timeout 2s`, ignore-list `{node_modules, .git, dist, build, .next, target, .cache, .turbo, .pnpm-store}`. |
-| F18 | LOW | Six tools all need to return `next_action` strings; no shared typing means drift between handlers and tests. | Add `src/blueprint/next-action.ts` with a `NextAction` discriminated union (`'rebuild_db' \| 'reingest_project' \| 'disambiguate_slug' \| 'verify_task' \| 'create_blueprint' \| 'configure_workspace' \| 'unsupported_roots'`) emitted as `{ kind, hint }`. Reference in Task 2.2 acceptance. |
+| ID  | Severity | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Implementation implication                                                                                                                                                                                                                                                                                                                                                   |
+| --- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ----------------------------- |
+| F1  | HIGH     | `src/blueprint/db/cold-start.ts` uses `getSurfacePath('blueprints/blueprints.db', 'repo', cwd)`, while older call sites hardcode `.agent/.blueprints.db`. `src/paths/state-root.ts` has separate `repo` and `worktree` scopes.                                                                                                                                                                                                                                                                                     | Centralize path resolution before MCP widening. Use a worktree-scoped projection DB for markdown-derived rows, because two worktrees of the same repo can have different checked-out blueprint files. Keep any cross-project registry separate from the projection DB.                                                                                                       |
+| F2  | HIGH     | SQLite schema/migrations/ingester/query templates already exist in `src/blueprint/db/*`; CLI mutations still edit markdown then re-ingest.                                                                                                                                                                                                                                                                                                                                                                         | Preserve markdown as canonical durable artifact. Do not add a second schema/parser. Add helpers around the existing projection.                                                                                                                                                                                                                                              |
+| F3  | HIGH     | `src/mcp/blueprint-server.ts` registers structured DB-backed tools, but `src/mcp/server.ts` only auto-discovers `src/mcp/tools/*`, where legacy `wp_blueprint` remains.                                                                                                                                                                                                                                                                                                                                            | Wire structured tools into the default `wp mcp` server and retire the stale file/action facade only after replacements cover normal workflows.                                                                                                                                                                                                                               |
+| F4  | HIGH     | `src/blueprint/db/workspace-config.ts` only reads static `~/.agent/workspace.yaml` entries shaped as `{ repos: [{ path }] }`. `src/cli/commands/worktree/router-dispatch.ts` already exports `parseWorktreePorcelain(raw: string): WorktreeEntry[]` and `resolveWorktreePath`.                                                                                                                                                                                                                                     | Build an explicit project/worktree discovery module that imports the already-exported worktree parser; do not re-export or duplicate it. Do not make MCP infer all roots by ad hoc recursive filesystem scans.                                                                                                                                                               |
+| F5  | HIGH     | Installed `@modelcontextprotocol/sdk` is `1.29.0`; local SDK exposes `Server.listRoots()` and `RootsListChangedNotificationSchema`. `listRoots()` throws via `assertClientCapability()` if the client did not advertise roots capability. There is no convenience `onRootsListChanged` hook — handlers must be registered via `server.setNotificationHandler(RootsListChangedNotificationSchema, handler)`.                                                                                                        | Add an optional MCP roots provider/cache with graceful fallback. If roots are unsupported or fail, default to current project + workspace config instead of failing tool listing. Register list-changed via `setNotificationHandler`, not a non-existent `onRootsListChanged` property.                                                                                      |
+| F6  | HIGH     | Existing `wp_blueprint_task_advance` can transition tasks to `done`; CLI mutation path can also set done without evidence.                                                                                                                                                                                                                                                                                                                                                                                         | Add verification-backed completion and refuse `done` through generic MCP advance. Persist evidence into markdown and re-ingest.                                                                                                                                                                                                                                              |
+| F7  | MEDIUM   | `src/mcp/tools/_shared/project-root.ts` resolves one project root from `CLAUDE_PROJECT_DIR`, cwd, or upward markers.                                                                                                                                                                                                                                                                                                                                                                                               | Keep single-project default for safety. Multi-project listing is explicit via `scope: roots                                                                                                                                                                                                                                                                                  | workspace | all`or`project_id` selectors. |
+| F8  | MEDIUM   | `workspace_repos` table stores repo metadata only; it does not make blueprint query rows globally unique across projects/worktrees.                                                                                                                                                                                                                                                                                                                                                                                | Aggregate by opening each selected project's projection DB and return `project_id` with every row. Do not merge multiple projects into one projection DB in this blueprint.                                                                                                                                                                                                  |
+| F9  | CRITICAL | `src/blueprint/db/cold-start.ts` uses `getSurfacePath('blueprints/.lock', 'repo', cwd)` for the advisory ingest lock with a 5s `proceeds anyway` escape, while Task 1.1 moves the projection DB to `'worktree'` scope. Mismatched lock+DB scopes leave concurrent writers unprotected; the 5s escape silently allows races during long ingests. The ingester (`src/blueprint/db/ingester.ts`) uses DELETE-then-INSERT inside a single `db.transaction()`, so partial reads during a competing ingest are possible. | Task 1.1 must explicitly resolve **both** projection DB scope **and** lock scope, choosing one of: (a) lock stays `'repo'` to serialize cross-worktree ingest of shared markdown; (b) lock moves to `'worktree'` and a separate `'repo'`-scoped markdown-mutation lock is added. Remove the silent 5s "proceeds anyway" escape on write paths. Add a concurrent-ingest test. |
+| F10 | CRITICAL | Task 1.4 (verification helper) and Task 3.2 (`wp_blueprint_task_verify`) require "passed evidence" but the blueprint defines no evidence schema, validity rules, or anti-forgery posture. The product wedge ("agents stop marking tasks done without verification") collapses if evidence is `z.any().array().min(1)`.                                                                                                                                                                                             | Pin an explicit Evidence Contract (see new section below) before Task 1.4 begins, with required fields, validity rules per kind, and a canonical markdown serialization.                                                                                                                                                                                                     |
+| F11 | HIGH     | `blueprints/{draft,planned,in-progress,completed}/` is git-tracked; a `git checkout other-branch` flips on-disk markdown without touching `blueprints/blueprints.db`. E1 only covers stale-after-mutation.                                                                                                                                                                                                                                                                                                         | Add freshness invalidation on branch HEAD change: record `git rev-parse HEAD` in projection metadata at ingest time, refuse cached reads if current HEAD differs, return `next_action: 'reingest_project'`.                                                                                                                                                                  |
+| F12 | HIGH     | The completed `blueprint-structured-store` upstream creates `.agent/.blueprints.db` in existing repos. Task 1.1's path change leaves those DBs as orphans after upgrade; the new path rebuilds silently with zero user signal and `wp audit blueprint-lifecycle` may double-count.                                                                                                                                                                                                                                 | Task 1.1 must include a deprecation step: detect `.agent/.blueprints.db` in git repos, log a one-line deprecation warning pointing at the new path, optionally move (or symlink) the legacy file, and add a fixture test covering the upgrade path.                                                                                                                          |
+| F13 | HIGH     | `src/mcp/auto-discover.ts` only scans `src/mcp/tools/*.ts` for default-exported `ToolDescriptor`. `src/mcp/blueprint-server.ts` registers via `registrar.registerTool` and is **currently never called by `src/mcp/server.ts`** — the 8 structured tools (`wp_blueprint_query`, `_new`, `_validate`, `_task_next`, `_task_advance`, `_promote`, `_finalize`, `_depgraph`) exist but are not advertised. Task 2.1 must pick a single integration shape.                                                             | Task 2.1 picks shape: add `registerBlueprintServer(server, { cwd, getMcpRoots })` invocation inside `createServer` after auto-discover completes, with a hard-fail dedupe check on tool-name collisions. Do not split between auto-discover and explicit registration silently.                                                                                              |
+| F14 | MEDIUM   | `project_id = stable hash of real worktree path + optional repo common dir` is under-specified: macOS APFS case-insensitive `realpath` vs Linux case-sensitive can produce different IDs for the same logical project; recreating a worktree at the same path after `git worktree remove`+`add` reuses the ID for a semantically different worktree.                                                                                                                                                               | Pin a `project_id_v1` spec: `sha256(realpath(worktree) + '\0' + (repo_common_dir ?? '') + '\0' + os.platform())` with documented stability semantics. Add tests for case-folding behavior and worktree recreation.                                                                                                                                                           |
+| F15 | MEDIUM   | Task 3.3 enforces "mutating calls reject aggregate scope" as a runtime check; if mutation and read tools share a zod input base, a future refactor silently widens the surface.                                                                                                                                                                                                                                                                                                                                    | Use two distinct zod input bases: `MutationTarget = { project_id: string }` (no `scope` field) vs `ReadTarget = { project_id?: string, scope?: 'current'\|'roots'\|'workspace'\|'all' }`. Acceptance: mutation input schemas do not contain a `scope` field at type level.                                                                                                   |
+| F16 | MEDIUM   | Task 4.2 requires multi-worktree fixture repos plus MCP server plus duplicate-slug coverage at "M" effort. Real `git init` + `git worktree add` fixtures cost ~200-500ms each and the test will likely violate `catalog/agent/rules/no-timeout-as-fix.md` if it slips.                                                                                                                                                                                                                                             | Either split into 4.2a (single-worktree happy path + fixture builder helper) and 4.2b (multi-project aggregate), or rely on Task 1.2's injected git/filesystem dependencies to run the smoke against an in-memory fixture. Pin a per-fixture-repo time budget and document it.                                                                                               |
+| F17 | LOW      | E5 says recursive scan is "depth/count capped, ignore-listed, timeout-bounded" but no cap values are pinned.                                                                                                                                                                                                                                                                                                                                                                                                       | Pin values in `_overview.md`: `depth ≤ 3`, `count ≤ 200 projects`, `timeout 2s`, ignore-list `{node_modules, .git, dist, build, .next, target, .cache, .turbo, .pnpm-store}`.                                                                                                                                                                                                |
+| F18 | LOW      | Six tools all need to return `next_action` strings; no shared typing means drift between handlers and tests.                                                                                                                                                                                                                                                                                                                                                                                                       | Add `src/blueprint/next-action.ts` with a `NextAction` discriminated union (`'rebuild_db' \| 'reingest_project' \| 'disambiguate_slug' \| 'verify_task' \| 'create_blueprint' \| 'configure_workspace' \| 'unsupported_roots'`) emitted as `{ kind, hint }`. Reference in Task 2.2 acceptance.                                                                               |
 
 ## DRY / SOLID / KISS constraints
 
@@ -75,18 +75,18 @@ The repo already has substantial SQLite blueprint infrastructure. This blueprint
 
 ```ts
 type BlueprintProjectRef = {
-  project_id: string        // project_id_v1 — see spec below
-  label: string             // basename or configured name
-  repo_path: string         // git toplevel or discovered project root
-  worktree_path: string     // concrete filesystem root used for markdown + projection DB
-  repo_key?: string         // state-root repo key when in git
-  worktree_key?: string     // state-root worktree key when in git
-  source: 'current' | 'mcp_roots' | 'workspace_config' | 'git_worktree' | 'recursive_scan'
-  branch?: string
-  has_blueprints: boolean
-  db_path: string
-  stale?: boolean
-}
+  project_id: string; // project_id_v1 — see spec below
+  label: string; // basename or configured name
+  repo_path: string; // git toplevel or discovered project root
+  worktree_path: string; // concrete filesystem root used for markdown + projection DB
+  repo_key?: string; // state-root repo key when in git
+  worktree_key?: string; // state-root worktree key when in git
+  source: "current" | "mcp_roots" | "workspace_config" | "git_worktree" | "recursive_scan";
+  branch?: string;
+  has_blueprints: boolean;
+  db_path: string;
+  stale?: boolean;
+};
 ```
 
 **Discovery sources, in priority order:**
@@ -116,17 +116,17 @@ project_id = sha256(realpath(worktree_path) + '\0' + (repo_common_dir ?? '') + '
 `wp_blueprint_task_verify` accepts evidence items conforming to:
 
 ```ts
-type EvidenceKind = 'test' | 'integration' | 'audit' | 'manual'
+type EvidenceKind = "test" | "integration" | "audit" | "manual";
 
 type Evidence = {
-  kind: EvidenceKind
-  result: 'pass' | 'fail'
-  command?: string            // shell or ak verb that produced the result
-  exit_code?: number          // required when kind ∈ {'test','integration','audit'}
-  log_excerpt?: string        // required when kind === 'manual' (non-empty, ≤ 4 KiB)
-  ts: string                  // ISO 8601 UTC
-  agent?: string              // optional caller identity (advisory)
-}
+  kind: EvidenceKind;
+  result: "pass" | "fail";
+  command?: string; // shell or ak verb that produced the result
+  exit_code?: number; // required when kind ∈ {'test','integration','audit'}
+  log_excerpt?: string; // required when kind === 'manual' (non-empty, ≤ 4 KiB)
+  ts: string; // ISO 8601 UTC
+  agent?: string; // optional caller identity (advisory)
+};
 ```
 
 **Validity rules enforced by the verification helper:**
@@ -153,91 +153,91 @@ All structured blueprint MCP responses must remain JSON text plus `structuredCon
 
 ```ts
 type BlueprintToolEnvelope<T> = {
-  summary: string
-  failures: string[]
-  next_action?: string
-  bytes: number
-  tokensSaved: number
-  project?: BlueprintProjectRef
-} & T
+  summary: string;
+  failures: string[];
+  next_action?: string;
+  bytes: number;
+  tokensSaved: number;
+  project?: BlueprintProjectRef;
+} & T;
 ```
 
 New and refined tool surface:
 
-| Tool | Purpose | Notes |
-| ---- | ------- | ----- |
-| `wp_blueprint_projects` | List visible projects/worktrees and their blueprint/DB freshness. | Inputs: `scope: current|roots|workspace|all`, optional `include_worktrees`, `recursive`, `limit`. Defaults to current only. |
-| `wp_blueprint_list` | List filtered blueprint summaries. | Inputs include `project_id` or read-only aggregate `scope`. Returns `project_id`, progress, freshness metadata, and duplicate-slug warnings. |
-| `wp_blueprint_get` | Return one blueprint summary. | Requires `project_id` when slug is ambiguous. Includes lifecycle state, task rollup, risks, dependencies, source path/hash. |
-| `wp_blueprint_context` | Return bounded chunks for agent work. | Inputs: `project_id`, `slug`, optional `task_id`, `scope`. Chunks include `chunk_id`, `kind`, `heading`, `text`, `source_path`, `content_hash`, `ingested_at`. |
-| `wp_blueprint_create` | Create a draft blueprint markdown file and re-ingest. | Requires one target project. Replaces legacy MCP `action: new`; unlike `wp_blueprint_new`, it writes the draft. |
-| `wp_blueprint_task_verify` | Mark a task done only with verification evidence. | Requires one target project and at least one passed evidence item; writes verification block, status, and re-ingests. |
-| Existing structured tools | Query, validate, task_next, task_advance, promote, finalize, depgraph. | Keep names compatible unless a test proves rename is unavoidable. Add project selectors before making them default MCP surface. |
+| Tool                       | Purpose                                                                | Notes                                                                                                                                                          |
+| -------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | --------- | ----------------------------------------------------------------------------------- |
+| `wp_blueprint_projects`    | List visible projects/worktrees and their blueprint/DB freshness.      | Inputs: `scope: current                                                                                                                                        | roots | workspace | all`, optional `include_worktrees`, `recursive`, `limit`. Defaults to current only. |
+| `wp_blueprint_list`        | List filtered blueprint summaries.                                     | Inputs include `project_id` or read-only aggregate `scope`. Returns `project_id`, progress, freshness metadata, and duplicate-slug warnings.                   |
+| `wp_blueprint_get`         | Return one blueprint summary.                                          | Requires `project_id` when slug is ambiguous. Includes lifecycle state, task rollup, risks, dependencies, source path/hash.                                    |
+| `wp_blueprint_context`     | Return bounded chunks for agent work.                                  | Inputs: `project_id`, `slug`, optional `task_id`, `scope`. Chunks include `chunk_id`, `kind`, `heading`, `text`, `source_path`, `content_hash`, `ingested_at`. |
+| `wp_blueprint_create`      | Create a draft blueprint markdown file and re-ingest.                  | Requires one target project. Replaces legacy MCP `action: new`; unlike `wp_blueprint_new`, it writes the draft.                                                |
+| `wp_blueprint_task_verify` | Mark a task done only with verification evidence.                      | Requires one target project and at least one passed evidence item; writes verification block, status, and re-ingests.                                          |
+| Existing structured tools  | Query, validate, task_next, task_advance, promote, finalize, depgraph. | Keep names compatible unless a test proves rename is unavoidable. Add project selectors before making them default MCP surface.                                |
 
 ## Quick Reference (Execution Waves)
 
 The original wave table coalesced tasks that share `src/mcp/blueprint-server.ts` writes; the table below reflects the actual file-conflict graph (R5/CP=0 in every wave).
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort |
-| ---- | ----- | ------------ | -------------- | ------ |
-| **Wave 0** | 1.1, 1.2, 1.3, 1.4 | None | 4 agents | S-M |
-| **Wave 1** | 2.1, 3.1 | Wave 0 (1.1, 1.2) | 2 agents | M |
-| **Wave 2** | 2.2 | Wave 1 (2.1) + 1.3 | 1 agent | M |
-| **Wave 3** | 3.2 | Wave 2 + 1.4 | 1 agent | S-M |
-| **Wave 4** | 3.3 | Wave 3 + 3.1 | 1 agent | S |
-| **Wave 5** | 4.1 | Wave 4 | 1 agent | S |
-| **Wave 6** | 4.2a | Wave 3 + 4.1 | 1 agent | M |
-| **Wave 7** | 4.2b | Wave 4 + 4.2a | 1 agent | S |
-| **Wave 8** | 4.3 | Wave 7 | 1 agent | S |
-| **Critical implementation path** | 1.1 → 2.1 → 2.2 → 3.2 → 3.3 → 4.1 → 4.2a → 4.2b → 4.3 | -- | 9 waves | L |
+| Wave                             | Tasks                                                 | Dependencies       | Parallelizable | Effort |
+| -------------------------------- | ----------------------------------------------------- | ------------------ | -------------- | ------ |
+| **Wave 0**                       | 1.1, 1.2, 1.3, 1.4                                    | None               | 4 agents       | S-M    |
+| **Wave 1**                       | 2.1, 3.1                                              | Wave 0 (1.1, 1.2)  | 2 agents       | M      |
+| **Wave 2**                       | 2.2                                                   | Wave 1 (2.1) + 1.3 | 1 agent        | M      |
+| **Wave 3**                       | 3.2                                                   | Wave 2 + 1.4       | 1 agent        | S-M    |
+| **Wave 4**                       | 3.3                                                   | Wave 3 + 3.1       | 1 agent        | S      |
+| **Wave 5**                       | 4.1                                                   | Wave 4             | 1 agent        | S      |
+| **Wave 6**                       | 4.2a                                                  | Wave 3 + 4.1       | 1 agent        | M      |
+| **Wave 7**                       | 4.2b                                                  | Wave 4 + 4.2a      | 1 agent        | S      |
+| **Wave 8**                       | 4.3                                                   | Wave 7             | 1 agent        | S      |
+| **Critical implementation path** | 1.1 → 2.1 → 2.2 → 3.2 → 3.3 → 4.1 → 4.2a → 4.2b → 4.3 | --                 | 9 waves        | L      |
 
 ### Parallel Metrics Snapshot
 
-| Metric | Formula / Meaning | Target | Actual |
-| ------ | ----------------- | ------ | ------ |
-| RW0 | Ready tasks in Wave 0 | ≥ planned agents / 2 | 4 |
-| CPR | implementation_tasks / critical_path_length | ≥ 2.0 after KISS consolidation | 12/9 = 1.33 |
-| DD | dependency_edges / total_tasks | ≤ 2.0 | ~17/12 = 1.42 |
-| CP | same-file overlaps per wave | 0 | 0 in every wave (MCP integration serialized through `blueprint-server.ts`) |
-| Safety default | Mutating tools default to one project | Required | Enforced by zod input separation (F15) + task acceptance |
+| Metric         | Formula / Meaning                           | Target                         | Actual                                                                     |
+| -------------- | ------------------------------------------- | ------------------------------ | -------------------------------------------------------------------------- |
+| RW0            | Ready tasks in Wave 0                       | ≥ planned agents / 2           | 4                                                                          |
+| CPR            | implementation_tasks / critical_path_length | ≥ 2.0 after KISS consolidation | 12/9 = 1.33                                                                |
+| DD             | dependency_edges / total_tasks              | ≤ 2.0                          | ~17/12 = 1.42                                                              |
+| CP             | same-file overlaps per wave                 | 0                              | 0 in every wave (MCP integration serialized through `blueprint-server.ts`) |
+| Safety default | Mutating tools default to one project       | Required                       | Enforced by zod input separation (F15) + task acceptance                   |
 
 **Parallelization score: C.** The corrected dependency graph exposes a long critical path because Tasks 2.1, 2.2, 3.2, 3.3, and 4.1 all touch `src/mcp/blueprint-server.ts` or its consumers. This is the honest CP=0 cost; the prior B score in earlier reviews implicitly assumed parallel writes to the same file, which would violate the file-conflict rule. CPR is below the 2.0 target — accept the trade-off because the MCP integration genuinely cannot be parallelized without splitting `blueprint-server.ts` into per-tool modules, which is out of scope and a known KISS regression.
 
 ## Edge Cases
 
-| ID | Severity | Edge case | Mitigation |
-| -- | -------- | --------- | ---------- |
-| E1 | HIGH | MCP reads a stale DB because markdown changed after last ingest. | Context/list/get responses include content hash and `ingested_at`; stale detection returns `next_action` to rebuild or re-ingest. |
-| E2 | CRITICAL | Repo-scoped projection DB mixes divergent worktree markdown from the same git common dir. | Use worktree-scoped projection DB by default; aggregate across worktrees at query time with explicit `project_id`. |
-| E3 | HIGH | Two DB path conventions split state between `.agent/.blueprints.db` and state-root. | Centralize path resolution and migrate call sites before registering structured tools in `wp mcp`. |
-| E4 | HIGH | MCP roots are unsupported, change mid-session, or throw due missing client capability. | Wrap `server.listRoots()` behind optional provider/cache; listen for roots list-changed when possible; gracefully fall back to current/workspace roots. |
-| E5 | HIGH | Recursive discovery indexes `node_modules`, build directories, hidden vendor repos, or an enormous home tree. | Recursive scan is explicit, depth/count capped, ignore-listed, timeout-bounded, and summarized with truncation failures. |
-| E6 | HIGH | Duplicate blueprint slug appears across projects or worktrees. | Return choices and require `project_id` for mutating or ambiguous read operations. |
-| E7 | HIGH | Agent marks task `done` without verification. | MCP refuses `done` through generic task advance; only `wp_blueprint_task_verify` can complete. |
-| E8 | MEDIUM | Context chunks become too large and recreate markdown context bloat. | Enforce scope-specific chunk limits and return `tokensSaved`/`bytes`. |
-| E9 | MEDIUM | Concurrent MCP calls ingest or mutate the same worktree projection. | Two-lock policy from Task 1.1 (worktree-scoped projection DB lock + repo-scoped markdown lock); no silent 5s "proceeds anyway" escape on write paths; read-only aggregate calls remain tolerant of per-project failures. (F9/R7) |
-| E10 | MEDIUM | Private repo paths leak in broad multi-project results. | Default to current project only; aggregate scopes are explicit and can redact absolute paths in summary text while preserving structured `project_id`. |
-| E11 | HIGH | `git checkout other-branch` flips on-disk markdown without invalidating the projection DB. | Record `git rev-parse HEAD` in projection metadata at ingest; refuse cached reads if current HEAD differs, returning `next_action: 'reingest_project'`. (F11) |
-| E12 | HIGH | Legacy `.agent/.blueprints.db` left behind by completed `blueprint-structured-store` after path migration. | Detect legacy DB on first call; log one-line deprecation; offer move/symlink path; `wp audit blueprint-lifecycle` must not double-count. (F12) |
-| E13 | HIGH | Mutation tool input schema accidentally gains a `scope` field via shared zod base, silently widening blast radius. | Separate zod input bases `MutationTarget` (no `scope`) and `ReadTarget` (optional `scope`). Test asserts mutation schemas lack `scope` at type level. (F15) |
-| E14 | MEDIUM | Evidence forgery via trivial payloads. | Evidence Contract enforces per-kind required fields; trivial `{ ok: true }` payloads are rejected at zod parse time. (F10) |
-| E15 | MEDIUM | Tool registration drift: structured tools exist but aren't advertised, or are advertised twice. | Single integration point `registerBlueprintServer(server, ...)` invoked after auto-discover; hard-fail on duplicate tool names. (F13) |
-| E16 | LOW | `next_action` strings drift between handlers and agent routing logic. | Discriminated union `NextAction` in `src/blueprint/next-action.ts`; handlers return `{ kind, hint }`. (F18) |
+| ID  | Severity | Edge case                                                                                                          | Mitigation                                                                                                                                                                                                                       |
+| --- | -------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| E1  | HIGH     | MCP reads a stale DB because markdown changed after last ingest.                                                   | Context/list/get responses include content hash and `ingested_at`; stale detection returns `next_action` to rebuild or re-ingest.                                                                                                |
+| E2  | CRITICAL | Repo-scoped projection DB mixes divergent worktree markdown from the same git common dir.                          | Use worktree-scoped projection DB by default; aggregate across worktrees at query time with explicit `project_id`.                                                                                                               |
+| E3  | HIGH     | Two DB path conventions split state between `.agent/.blueprints.db` and state-root.                                | Centralize path resolution and migrate call sites before registering structured tools in `wp mcp`.                                                                                                                               |
+| E4  | HIGH     | MCP roots are unsupported, change mid-session, or throw due missing client capability.                             | Wrap `server.listRoots()` behind optional provider/cache; listen for roots list-changed when possible; gracefully fall back to current/workspace roots.                                                                          |
+| E5  | HIGH     | Recursive discovery indexes `node_modules`, build directories, hidden vendor repos, or an enormous home tree.      | Recursive scan is explicit, depth/count capped, ignore-listed, timeout-bounded, and summarized with truncation failures.                                                                                                         |
+| E6  | HIGH     | Duplicate blueprint slug appears across projects or worktrees.                                                     | Return choices and require `project_id` for mutating or ambiguous read operations.                                                                                                                                               |
+| E7  | HIGH     | Agent marks task `done` without verification.                                                                      | MCP refuses `done` through generic task advance; only `wp_blueprint_task_verify` can complete.                                                                                                                                   |
+| E8  | MEDIUM   | Context chunks become too large and recreate markdown context bloat.                                               | Enforce scope-specific chunk limits and return `tokensSaved`/`bytes`.                                                                                                                                                            |
+| E9  | MEDIUM   | Concurrent MCP calls ingest or mutate the same worktree projection.                                                | Two-lock policy from Task 1.1 (worktree-scoped projection DB lock + repo-scoped markdown lock); no silent 5s "proceeds anyway" escape on write paths; read-only aggregate calls remain tolerant of per-project failures. (F9/R7) |
+| E10 | MEDIUM   | Private repo paths leak in broad multi-project results.                                                            | Default to current project only; aggregate scopes are explicit and can redact absolute paths in summary text while preserving structured `project_id`.                                                                           |
+| E11 | HIGH     | `git checkout other-branch` flips on-disk markdown without invalidating the projection DB.                         | Record `git rev-parse HEAD` in projection metadata at ingest; refuse cached reads if current HEAD differs, returning `next_action: 'reingest_project'`. (F11)                                                                    |
+| E12 | HIGH     | Legacy `.agent/.blueprints.db` left behind by completed `blueprint-structured-store` after path migration.         | Detect legacy DB on first call; log one-line deprecation; offer move/symlink path; `wp audit blueprint-lifecycle` must not double-count. (F12)                                                                                   |
+| E13 | HIGH     | Mutation tool input schema accidentally gains a `scope` field via shared zod base, silently widening blast radius. | Separate zod input bases `MutationTarget` (no `scope`) and `ReadTarget` (optional `scope`). Test asserts mutation schemas lack `scope` at type level. (F15)                                                                      |
+| E14 | MEDIUM   | Evidence forgery via trivial payloads.                                                                             | Evidence Contract enforces per-kind required fields; trivial `{ ok: true }` payloads are rejected at zod parse time. (F10)                                                                                                       |
+| E15 | MEDIUM   | Tool registration drift: structured tools exist but aren't advertised, or are advertised twice.                    | Single integration point `registerBlueprintServer(server, ...)` invoked after auto-discover; hard-fail on duplicate tool names. (F13)                                                                                            |
+| E16 | LOW      | `next_action` strings drift between handlers and agent routing logic.                                              | Discriminated union `NextAction` in `src/blueprint/next-action.ts`; handlers return `{ kind, hint }`. (F18)                                                                                                                      |
 
 ## Risks
 
-| ID | Severity | Risk | Mitigation |
-| -- | -------- | ---- | ---------- |
-| R1 | HIGH | Accidentally making SQLite canonical creates git review and recovery regressions. | Keep markdown-write + re-ingest invariant; tests assert mutations update `_overview.md`. |
-| R2 | HIGH | Main MCP server registration causes startup failures in repos without blueprints. | Registration must be side-effect-light; missing DB/blueprints produce tool-call guidance, not tool-list failure. |
-| R3 | HIGH | Multi-project mutation targets the wrong worktree. | Mutating tools require unambiguous `project_id` or `cwd`; duplicate slug responses never auto-pick. |
-| R4 | HIGH | Recursive discovery becomes a privacy/performance footgun. | No default recursion; explicit scope, caps, ignore rules, timeout, and result truncation. |
-| R5 | MEDIUM | Multiple implementation lanes conflict in `src/mcp/blueprint-server.ts`. | Keep helpers outside MCP, but avoid micro-handler proliferation; serialize the small MCP integration tasks. |
-| R6 | MEDIUM | Docs promise tools before server advertises them. | Server integration test asserts `tools/list` includes new tools and excludes legacy facade before docs are considered done. |
-| R7 | CRITICAL | Concurrent ingest/markdown writes corrupt projection rows because lock scope and DB scope diverged. | Explicit lock-scope decision in Task 1.1 with rationale; concurrent-ingest integration test; remove 5s "proceeds anyway" escape on write paths. (F9) |
-| R8 | CRITICAL | Evidence semantics are theatre — agents satisfy verification with empty objects. | Evidence Contract is enforced at zod parse time; tests cover each kind's required fields and the `result === 'fail'` rejection path. (F10) |
-| R9 | HIGH | Stale projection survives branch switch and serves wrong rows. | HEAD-pinned freshness check, returns `next_action: 'reingest_project'` on mismatch. (E11/F11) |
-| R10 | HIGH | Legacy DB orphan post-upgrade hides ingest regressions. | Deprecation detection + audit double-count guard. (E12/F12) |
+| ID  | Severity | Risk                                                                                                | Mitigation                                                                                                                                           |
+| --- | -------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1  | HIGH     | Accidentally making SQLite canonical creates git review and recovery regressions.                   | Keep markdown-write + re-ingest invariant; tests assert mutations update `_overview.md`.                                                             |
+| R2  | HIGH     | Main MCP server registration causes startup failures in repos without blueprints.                   | Registration must be side-effect-light; missing DB/blueprints produce tool-call guidance, not tool-list failure.                                     |
+| R3  | HIGH     | Multi-project mutation targets the wrong worktree.                                                  | Mutating tools require unambiguous `project_id` or `cwd`; duplicate slug responses never auto-pick.                                                  |
+| R4  | HIGH     | Recursive discovery becomes a privacy/performance footgun.                                          | No default recursion; explicit scope, caps, ignore rules, timeout, and result truncation.                                                            |
+| R5  | MEDIUM   | Multiple implementation lanes conflict in `src/mcp/blueprint-server.ts`.                            | Keep helpers outside MCP, but avoid micro-handler proliferation; serialize the small MCP integration tasks.                                          |
+| R6  | MEDIUM   | Docs promise tools before server advertises them.                                                   | Server integration test asserts `tools/list` includes new tools and excludes legacy facade before docs are considered done.                          |
+| R7  | CRITICAL | Concurrent ingest/markdown writes corrupt projection rows because lock scope and DB scope diverged. | Explicit lock-scope decision in Task 1.1 with rationale; concurrent-ingest integration test; remove 5s "proceeds anyway" escape on write paths. (F9) |
+| R8  | CRITICAL | Evidence semantics are theatre — agents satisfy verification with empty objects.                    | Evidence Contract is enforced at zod parse time; tests cover each kind's required fields and the `result === 'fail'` rejection path. (F10)           |
+| R9  | HIGH     | Stale projection survives branch switch and serves wrong rows.                                      | HEAD-pinned freshness check, returns `next_action: 'reingest_project'` on mismatch. (E11/F11)                                                        |
+| R10 | HIGH     | Legacy DB orphan post-upgrade hides ingest regressions.                                             | Deprecation detection + audit double-count guard. (E12/F12)                                                                                          |
 
 ## Tasks
 
@@ -456,11 +456,11 @@ Extend `src/mcp/blueprint-server.ts` with the high-level workflow tools. Keep ha
 **Zod input separation (F15/E13).**
 
 ```ts
-const MutationTarget = z.object({ project_id: z.string() })          // no scope field
+const MutationTarget = z.object({ project_id: z.string() }); // no scope field
 const ReadTarget = z.object({
   project_id: z.string().optional(),
-  scope: z.enum(['current', 'roots', 'workspace', 'all']).optional(),
-})
+  scope: z.enum(["current", "roots", "workspace", "all"]).optional(),
+});
 ```
 
 - `wp_blueprint_list`, `wp_blueprint_get`, `wp_blueprint_context`, `wp_blueprint_projects` extend `ReadTarget`.
@@ -725,23 +725,24 @@ Run final quality gates and verify the new blueprint itself remains lifecycle-co
 
 Round 2 (2026-05-13) added findings F9–F18 from a fresh adversarial pass plus codebase verification against the actually-installed MCP SDK and live `src/blueprint/db/` / `src/mcp/` modules.
 
-| Metric | Value |
-| ------ | ----- |
-| Findings incorporated (cumulative) | 18 |
-| Critical | F9 (lock scope), F10 (evidence schema), 2 edge cases (E2, E14 enforcement), 2 risks (R7, R8) |
-| High | F1–F6, F11–F13 (9 findings), 9 edge cases, 4 risks |
-| Medium | F7, F8, F14–F16 (5 findings), 4 edge cases |
-| Low | F17 (recursion caps), F18 (next_action union) |
-| Fixes planned | 12/12 (Task 4.2 split into 4.2a/4.2b) |
-| Cross-plans updated | 0 (upstream `blueprint-structured-store` already completed) |
-| Edge cases documented | 16 (E1–E16) |
-| Risks documented | 10 (R1–R10) |
-| Parallelization score | C (corrected file-conflict graph — see Parallel Metrics Snapshot for trade-off rationale) |
-| Critical implementation path | 9 waves |
-| Max parallel agents | 4 (Wave 0 only; integration waves are serialized through `blueprint-server.ts`) |
-| Total tasks | 12 |
-| New artefacts pinned | Evidence Contract; `project_id_v1` spec; recursive scan caps; `NextAction` discriminated union; two-lock policy; legacy DB migration |
-| Blueprint compliant | Pending targeted audit |
+| Metric                             | Value                                                                                                                                |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Findings incorporated (cumulative) | 18                                                                                                                                   |
+| Critical                           | F9 (lock scope), F10 (evidence schema), 2 edge cases (E2, E14 enforcement), 2 risks (R7, R8)                                         |
+| High                               | F1–F6, F11–F13 (9 findings), 9 edge cases, 4 risks                                                                                   |
+| Medium                             | F7, F8, F14–F16 (5 findings), 4 edge cases                                                                                           |
+| Low                                | F17 (recursion caps), F18 (next_action union)                                                                                        |
+| Fixes planned                      | 12/12 (Task 4.2 split into 4.2a/4.2b)                                                                                                |
+| Cross-plans updated                | 0 (upstream `blueprint-structured-store` already completed)                                                                          |
+| Edge cases documented              | 16 (E1–E16)                                                                                                                          |
+| Risks documented                   | 10 (R1–R10)                                                                                                                          |
+| Parallelization score              | C (corrected file-conflict graph — see Parallel Metrics Snapshot for trade-off rationale)                                            |
+| Critical implementation path       | 9 waves                                                                                                                              |
+| Max parallel agents                | 4 (Wave 0 only; integration waves are serialized through `blueprint-server.ts`)                                                      |
+| Total tasks                        | 12                                                                                                                                   |
+| New artefacts pinned               | Evidence Contract; `project_id_v1` spec; recursive scan caps; `NextAction` discriminated union; two-lock policy; legacy DB migration |
+| Blueprint compliant                | Pending targeted audit                                                                                                               |
+
 ## Historical verification note
 
 This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
@@ -758,21 +759,21 @@ This blueprint contains done tasks recorded before the current per-task `**Verif
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/structured-blueprint-mcp-sqlite-first-agent-ops/_overview.md |
+| ID  | Claim                                                          | Evidence                                                                                |
+| --- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/structured-blueprint-mcp-sqlite-first-agent-ops/\_overview.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

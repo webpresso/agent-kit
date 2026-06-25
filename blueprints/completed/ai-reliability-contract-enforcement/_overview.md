@@ -6,10 +6,10 @@ owner: agent-kit
 historical_verification_gap_waiver: true
 historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 complexity: M
-created: '2026-05-27'
-last_updated: '2026-05-28'
-completed_at: '2026-05-28'
-progress: '100% (4/4 tasks done, 0 blocked) - local AI reliability contract enforcement completed and verified on 2026-05-28'
+created: "2026-05-27"
+last_updated: "2026-05-28"
+completed_at: "2026-05-28"
+progress: "100% (4/4 tasks done, 0 blocked) - local AI reliability contract enforcement completed and verified on 2026-05-28"
 depends_on: []
 tags:
   - ai
@@ -43,19 +43,19 @@ Verified on 2026-05-27:
 
 ## Key decisions
 
-| Decision | Choice | Rationale |
-| --- | --- | --- |
-| Contract scope | Webpresso enforcement only | Keeps this blueprint inside the local repo boundary. |
-| Enforcement style | Source audit, MCP test anchor, docs | Minimal moving parts; high signal for regressions. |
+| Decision          | Choice                              | Rationale                                               |
+| ----------------- | ----------------------------------- | ------------------------------------------------------- |
+| Contract scope    | Webpresso enforcement only          | Keeps this blueprint inside the local repo boundary.    |
+| Enforcement style | Source audit, MCP test anchor, docs | Minimal moving parts; high signal for regressions.      |
 | Consumer adoption | Documentary follow-up in IngestLens | Cross-repo adoption should not block local enforcement. |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
-| --- | --- | --- | --- | --- |
-| **Wave 0** | 1.1, 1.2 | None | 2 agents | XS-S |
-| **Wave 1** | 1.3, 1.4 | 1.1, 1.2 | 2 agents | S |
-| **Critical path** | 1.1 → 1.3 | — | 2 waves | M |
+| Wave              | Tasks     | Dependencies | Parallelizable | Effort (T-shirt) |
+| ----------------- | --------- | ------------ | -------------- | ---------------- |
+| **Wave 0**        | 1.1, 1.2  | None         | 2 agents       | XS-S             |
+| **Wave 1**        | 1.3, 1.4  | 1.1, 1.2     | 2 agents       | S                |
+| **Critical path** | 1.1 → 1.3 | —            | 2 waves        | M                |
 
 #### Task 1.1: [audit] Add `wp audit ai-contracts`
 
@@ -180,28 +180,29 @@ lane.
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-| --- | --- | --- |
-| Audit unit tests | `wp_test({"files":["src/audit/ai-contracts.test.ts"]})` | All pass |
-| MCP audit tool tests | `wp_test({"files":["src/mcp/tools/audit.test.ts"]})` | All pass |
-| Typecheck | `wp_typecheck({})` | Pass |
-| Lifecycle audit | `WP_SKIP_UPDATE_CHECK=1 wp audit blueprint-lifecycle` | Pass |
-| Roadmap links audit | `WP_SKIP_UPDATE_CHECK=1 wp audit roadmap-links --strict` | Pass |
+| Gate                 | Command                                                  | Success Criteria |
+| -------------------- | -------------------------------------------------------- | ---------------- |
+| Audit unit tests     | `wp_test({"files":["src/audit/ai-contracts.test.ts"]})`  | All pass         |
+| MCP audit tool tests | `wp_test({"files":["src/mcp/tools/audit.test.ts"]})`     | All pass         |
+| Typecheck            | `wp_typecheck({})`                                       | Pass             |
+| Lifecycle audit      | `WP_SKIP_UPDATE_CHECK=1 wp audit blueprint-lifecycle`    | Pass             |
+| Roadmap links audit  | `WP_SKIP_UPDATE_CHECK=1 wp audit roadmap-links --strict` | Pass             |
 
 ## Cross-Plan References
 
-| Blueprint | Relationship | Required alignment |
-| --- | --- | --- |
-| `parked/ai-reliability-contract-roadmap` | Local parent roadmap | Must list this child in Wave 0. |
+| Blueprint                                                                                                             | Relationship                   | Required alignment                                                                          |
+| --------------------------------------------------------------------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------- |
+| `parked/ai-reliability-contract-roadmap`                                                                              | Local parent roadmap           | Must list this child in Wave 0.                                                             |
 | [`ozby/ingest-lens: adopt-ai-reliability-contract`](https://github.com/ozby/ingest-lens/tree/main/blueprints/planned) | Documentary downstream adopter | Will implement provenance/confidence/replay adoption once this audit/doc surface is stable. |
 
 ## Risks and edge cases
 
-| Risk | Severity | Mitigation |
-| --- | --- | --- |
-| Audit becomes too implementation-specific and blocks harmless refactors. | MEDIUM | Keep checks focused on contract markers, not exact formatting. |
-| Docs drift from the real enforcement surface. | HIGH | Gate on both the doc and the code/test contract markers. |
-| Cross-repo adoption stalls and leaves the contract theoretical. | MEDIUM | Keep the documentary downstream blueprint explicit in the roadmap. |
+| Risk                                                                     | Severity | Mitigation                                                         |
+| ------------------------------------------------------------------------ | -------- | ------------------------------------------------------------------ |
+| Audit becomes too implementation-specific and blocks harmless refactors. | MEDIUM   | Keep checks focused on contract markers, not exact formatting.     |
+| Docs drift from the real enforcement surface.                            | HIGH     | Gate on both the doc and the code/test contract markers.           |
+| Cross-repo adoption stalls and leaves the contract theoretical.          | MEDIUM   | Keep the documentary downstream blueprint explicit in the roadmap. |
+
 ## Historical verification note
 
 This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
@@ -218,21 +219,21 @@ This blueprint contains done tasks recorded before the current per-task `**Verif
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/ai-reliability-contract-enforcement/_overview.md |
+| ID  | Claim                                                          | Evidence                                                                    |
+| --- | -------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/ai-reliability-contract-enforcement/\_overview.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

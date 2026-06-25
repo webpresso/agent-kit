@@ -1,253 +1,253 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { afterEach, describe, expect, test } from 'vitest'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, test } from "vitest";
 
-import { auditSecretProviderQuarantine } from './secret-provider-quarantine.js'
+import { auditSecretProviderQuarantine } from "./secret-provider-quarantine.js";
 
-const tempDirs: string[] = []
+const tempDirs: string[] = [];
 const infisicalExportFixture =
-  'steps:\\n  - run: ' +
-  'infisical' +
-  ' export --projectId="$INFISICAL_PROJECT_ID" --env="$INFISICAL_ENV_SLUG" --format=json\\n'
+  "steps:\\n  - run: " +
+  "infisical" +
+  ' export --projectId="$INFISICAL_PROJECT_ID" --env="$INFISICAL_ENV_SLUG" --format=json\\n';
 const infisicalExportDocSnippet =
-  '`' +
-  'infisical' +
-  ' export --projectId="$INFISICAL_PROJECT_ID" --env="$INFISICAL_ENV_SLUG" --format=json`'
+  "`" +
+  "infisical" +
+  ' export --projectId="$INFISICAL_PROJECT_ID" --env="$INFISICAL_ENV_SLUG" --format=json`';
 const infisicalExportParityExpectation =
-  "expect(workflow).toContain('" + 'infisical' + ` export --projectId="\${INFISICAL_PROJECT_ID}"')`
+  "expect(workflow).toContain('" + "infisical" + ` export --projectId="\${INFISICAL_PROJECT_ID}"')`;
 
 function tempRepo(): string {
-  const root = mkdtempSync(join(tmpdir(), 'wp-quarantine-'))
-  tempDirs.push(root)
-  mkdirSync(join(root, '.webpresso'), { recursive: true })
+  const root = mkdtempSync(join(tmpdir(), "wp-quarantine-"));
+  tempDirs.push(root);
+  mkdirSync(join(root, ".webpresso"), { recursive: true });
   writeFileSync(
-    join(root, '.webpresso', 'secrets.config.json'),
-    JSON.stringify({ manager: 'doppler', projectId: 'my-project' }),
-  )
-  return root
+    join(root, ".webpresso", "secrets.config.json"),
+    JSON.stringify({ manager: "doppler", projectId: "my-project" }),
+  );
+  return root;
 }
 
-describe('auditSecretProviderQuarantine', () => {
+describe("auditSecretProviderQuarantine", () => {
   afterEach(() => {
     for (const dir of tempDirs.splice(0)) {
-      rmSync(dir, { recursive: true, force: true })
+      rmSync(dir, { recursive: true, force: true });
     }
-  })
+  });
 
-  test('skips when secrets.config.json is absent (gate)', () => {
-    const root = mkdtempSync(join(tmpdir(), 'wp-quarantine-gate-'))
-    tempDirs.push(root)
+  test("skips when secrets.config.json is absent (gate)", () => {
+    const root = mkdtempSync(join(tmpdir(), "wp-quarantine-gate-"));
+    tempDirs.push(root);
 
-    const result = auditSecretProviderQuarantine(root)
+    const result = auditSecretProviderQuarantine(root);
 
-    expect(result.ok).toBe(true)
-    expect(result.checked).toBe(0)
-    expect(result.violations).toStrictEqual([])
-  })
+    expect(result.ok).toBe(true);
+    expect(result.checked).toBe(0);
+    expect(result.violations).toStrictEqual([]);
+  });
 
-  test('flags direct doppler invocation in source file', () => {
-    const root = tempRepo()
-    mkdirSync(join(root, 'src'), { recursive: true })
-    writeFileSync(join(root, 'src', 'deploy.ts'), "exec('doppler" + " run -- node server.js')")
+  test("flags direct doppler invocation in source file", () => {
+    const root = tempRepo();
+    mkdirSync(join(root, "src"), { recursive: true });
+    writeFileSync(join(root, "src", "deploy.ts"), "exec('doppler" + " run -- node server.js')");
 
-    const result = auditSecretProviderQuarantine(root)
+    const result = auditSecretProviderQuarantine(root);
 
-    expect(result.ok).toBe(false)
+    expect(result.ok).toBe(false);
     expect(result.violations).toEqual([
       expect.objectContaining({
-        message: expect.stringContaining('direct doppler invocation'),
+        message: expect.stringContaining("direct doppler invocation"),
       }),
-    ])
-  })
+    ]);
+  });
 
-  test('flags direct provider export invocation in source file', () => {
-    const root = tempRepo()
-    mkdirSync(join(root, 'src'), { recursive: true })
+  test("flags direct provider export invocation in source file", () => {
+    const root = tempRepo();
+    mkdirSync(join(root, "src"), { recursive: true });
     writeFileSync(
-      join(root, 'src', 'deploy.ts'),
+      join(root, "src", "deploy.ts"),
       "exec('infisical" + " export --projectId=demo --env=stg')",
-    )
+    );
 
-    const result = auditSecretProviderQuarantine(root)
+    const result = auditSecretProviderQuarantine(root);
 
-    expect(result.ok).toBe(false)
+    expect(result.ok).toBe(false);
     expect(result.violations).toEqual([
       expect.objectContaining({
-        message: expect.stringContaining('direct infisical'),
+        message: expect.stringContaining("direct infisical"),
       }),
-    ])
-  })
+    ]);
+  });
 
-  test('flags with-secrets provider flag in source file', () => {
-    const root = tempRepo()
-    mkdirSync(join(root, 'src'), { recursive: true })
+  test("flags with-secrets provider flag in source file", () => {
+    const root = tempRepo();
+    mkdirSync(join(root, "src"), { recursive: true });
     writeFileSync(
-      join(root, 'src', 'run.ts'),
+      join(root, "src", "run.ts"),
       "exec('with-secrets" + " --doppler -- node server.js')",
-    )
+    );
 
-    const result = auditSecretProviderQuarantine(root)
+    const result = auditSecretProviderQuarantine(root);
 
-    expect(result.ok).toBe(false)
+    expect(result.ok).toBe(false);
     expect(result.violations).toEqual([
       expect.objectContaining({
-        message: expect.stringContaining('provider flags'),
+        message: expect.stringContaining("provider flags"),
       }),
-    ])
-  })
+    ]);
+  });
 
-  test('flags generic with-secrets wrapper usage in source file', () => {
-    const root = tempRepo()
-    mkdirSync(join(root, 'src'), { recursive: true })
-    writeFileSync(join(root, 'src', 'app.ts'), "exec('with-secrets" + " -- node server.js')")
+  test("flags generic with-secrets wrapper usage in source file", () => {
+    const root = tempRepo();
+    mkdirSync(join(root, "src"), { recursive: true });
+    writeFileSync(join(root, "src", "app.ts"), "exec('with-secrets" + " -- node server.js')");
 
-    const result = auditSecretProviderQuarantine(root)
+    const result = auditSecretProviderQuarantine(root);
 
-    expect(result.ok).toBe(false)
+    expect(result.ok).toBe(false);
     expect(result.violations).toContainEqual(
       expect.objectContaining({
-        message: expect.stringContaining('legacy with-secrets wrapper'),
+        message: expect.stringContaining("legacy with-secrets wrapper"),
       }),
-    )
-  })
+    );
+  });
 
-  test('flags with-secrets invocation without a double-dash separator', () => {
-    const root = tempRepo()
-    mkdirSync(join(root, 'src'), { recursive: true })
+  test("flags with-secrets invocation without a double-dash separator", () => {
+    const root = tempRepo();
+    mkdirSync(join(root, "src"), { recursive: true });
     writeFileSync(
-      join(root, 'src', 'app.ts'),
+      join(root, "src", "app.ts"),
       "exec('with-secrets" + " act -W .github/workflows/ci.yml')",
-    )
+    );
 
-    const result = auditSecretProviderQuarantine(root)
+    const result = auditSecretProviderQuarantine(root);
 
-    expect(result.ok).toBe(false)
+    expect(result.ok).toBe(false);
     expect(result.violations).toContainEqual(
       expect.objectContaining({
-        message: expect.stringContaining('legacy with-secrets wrapper'),
+        message: expect.stringContaining("legacy with-secrets wrapper"),
       }),
-    )
-  })
+    );
+  });
 
-  test('flags direct provider run invocation without a wrapper', () => {
-    const root = tempRepo()
-    mkdirSync(join(root, 'src'), { recursive: true })
+  test("flags direct provider run invocation without a wrapper", () => {
+    const root = tempRepo();
+    mkdirSync(join(root, "src"), { recursive: true });
     writeFileSync(
-      join(root, 'src', 'app.ts'),
+      join(root, "src", "app.ts"),
       "exec('infisical" + " run --env=stg -- node server.js')",
-    )
+    );
 
-    const result = auditSecretProviderQuarantine(root)
+    const result = auditSecretProviderQuarantine(root);
 
-    expect(result.ok).toBe(false)
+    expect(result.ok).toBe(false);
     expect(result.violations).toEqual([
       expect.objectContaining({
-        message: expect.stringContaining('direct infisical'),
+        message: expect.stringContaining("direct infisical"),
       }),
-    ])
-  })
+    ]);
+  });
 
-  test('passes for clean source', () => {
-    const root = tempRepo()
-    mkdirSync(join(root, 'src'), { recursive: true })
+  test("passes for clean source", () => {
+    const root = tempRepo();
+    mkdirSync(join(root, "src"), { recursive: true });
     writeFileSync(
-      join(root, 'src', 'app.ts'),
+      join(root, "src", "app.ts"),
       "exec('wp secrets run --sink dev-server --profile preview -- node server.js')",
-    )
+    );
 
-    const result = auditSecretProviderQuarantine(root)
+    const result = auditSecretProviderQuarantine(root);
 
-    expect(result.ok).toBe(true)
-    expect(result.violations).toStrictEqual([])
-  })
+    expect(result.ok).toBe(true);
+    expect(result.violations).toStrictEqual([]);
+  });
 
-  test('ignores generated agent surfaces, worktrees, and reports', () => {
-    const root = tempRepo()
-    mkdirSync(join(root, '_worktrees', 'stale', '.github', 'workflows'), { recursive: true })
-    mkdirSync(join(root, 'reports', 'mutation'), { recursive: true })
-    mkdirSync(join(root, '.opencode', 'skills'), { recursive: true })
-    mkdirSync(join(root, 'src'), { recursive: true })
+  test("ignores generated agent surfaces, worktrees, and reports", () => {
+    const root = tempRepo();
+    mkdirSync(join(root, "_worktrees", "stale", ".github", "workflows"), { recursive: true });
+    mkdirSync(join(root, "reports", "mutation"), { recursive: true });
+    mkdirSync(join(root, ".opencode", "skills"), { recursive: true });
+    mkdirSync(join(root, "src"), { recursive: true });
     writeFileSync(
-      join(root, '_worktrees', 'stale', '.github', 'workflows', 'ci.yml'),
-      'with-secrets -- act',
-    )
+      join(root, "_worktrees", "stale", ".github", "workflows", "ci.yml"),
+      "with-secrets -- act",
+    );
     writeFileSync(
-      join(root, 'reports', 'mutation', 'mutation-report.json'),
+      join(root, "reports", "mutation", "mutation-report.json"),
       '{"command":"with-secrets -- bun test"}',
-    )
-    writeFileSync(join(root, '.opencode', 'skills', 'generated.md'), 'with-secrets -- bun test')
-    writeFileSync(join(root, 'src', 'index.ts'), 'export const ok = true')
+    );
+    writeFileSync(join(root, ".opencode", "skills", "generated.md"), "with-secrets -- bun test");
+    writeFileSync(join(root, "src", "index.ts"), "export const ok = true");
 
-    const result = auditSecretProviderQuarantine(root)
+    const result = auditSecretProviderQuarantine(root);
 
-    expect(result.ok).toBe(true)
-  })
+    expect(result.ok).toBe(true);
+  });
 
-  test('allows shipped reusable workflows to use provider bootstrapping internally', () => {
-    const root = tempRepo()
-    mkdirSync(join(root, '.github', 'workflows'), { recursive: true })
+  test("allows shipped reusable workflows to use provider bootstrapping internally", () => {
+    const root = tempRepo();
+    mkdirSync(join(root, ".github", "workflows"), { recursive: true });
     writeFileSync(
-      join(root, '.github', 'workflows', 'cloudflare-preview.yml'),
+      join(root, ".github", "workflows", "cloudflare-preview.yml"),
       infisicalExportFixture,
-    )
+    );
 
-    const result = auditSecretProviderQuarantine(root)
+    const result = auditSecretProviderQuarantine(root);
 
-    expect(result.ok).toBe(true)
-    expect(result.violations).toStrictEqual([])
-  })
+    expect(result.ok).toBe(true);
+    expect(result.violations).toStrictEqual([]);
+  });
 
-  test('allows shipped docs and parity tests to mention approved provider bootstrap commands', () => {
-    const root = tempRepo()
-    mkdirSync(join(root, 'docs'), { recursive: true })
-    mkdirSync(join(root, 'src', 'build'), { recursive: true })
+  test("allows shipped docs and parity tests to mention approved provider bootstrap commands", () => {
+    const root = tempRepo();
+    mkdirSync(join(root, "docs"), { recursive: true });
+    mkdirSync(join(root, "src", "build"), { recursive: true });
     writeFileSync(
-      join(root, 'docs', 'reusable-cloudflare-deploy-workflows.md'),
+      join(root, "docs", "reusable-cloudflare-deploy-workflows.md"),
       infisicalExportDocSnippet,
-    )
+    );
     writeFileSync(
-      join(root, 'src', 'build', 'reusable-cloudflare-workflows.test.ts'),
+      join(root, "src", "build", "reusable-cloudflare-workflows.test.ts"),
       infisicalExportParityExpectation,
-    )
+    );
 
-    const result = auditSecretProviderQuarantine(root)
+    const result = auditSecretProviderQuarantine(root);
 
-    expect(result.ok).toBe(true)
-    expect(result.violations).toStrictEqual([])
-  })
+    expect(result.ok).toBe(true);
+    expect(result.violations).toStrictEqual([]);
+  });
 
-  test('flags legacy act-with-webpresso helper references', () => {
-    const root = tempRepo()
-    mkdirSync(join(root, 'scripts'), { recursive: true })
-    writeFileSync(join(root, 'scripts', 'run-ci.ts'), "await execa('act-with-webpresso', ['-W'])")
+  test("flags legacy act-with-webpresso helper references", () => {
+    const root = tempRepo();
+    mkdirSync(join(root, "scripts"), { recursive: true });
+    writeFileSync(join(root, "scripts", "run-ci.ts"), "await execa('act-with-webpresso', ['-W'])");
 
-    const result = auditSecretProviderQuarantine(root)
+    const result = auditSecretProviderQuarantine(root);
 
-    expect(result.ok).toBe(false)
+    expect(result.ok).toBe(false);
     expect(result.violations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          message: expect.stringContaining('act-with-webpresso'),
+          message: expect.stringContaining("act-with-webpresso"),
         }),
       ]),
-    )
-  })
+    );
+  });
 
-  test('flags legacy act-secret-profile helper references', () => {
-    const root = tempRepo()
-    mkdirSync(join(root, 'scripts'), { recursive: true })
-    writeFileSync(join(root, 'scripts', 'profile.ts'), "console.log('act-secret-profile')")
+  test("flags legacy act-secret-profile helper references", () => {
+    const root = tempRepo();
+    mkdirSync(join(root, "scripts"), { recursive: true });
+    writeFileSync(join(root, "scripts", "profile.ts"), "console.log('act-secret-profile')");
 
-    const result = auditSecretProviderQuarantine(root)
+    const result = auditSecretProviderQuarantine(root);
 
-    expect(result.ok).toBe(false)
+    expect(result.ok).toBe(false);
     expect(result.violations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          message: expect.stringContaining('act-secret-profile'),
+          message: expect.stringContaining("act-secret-profile"),
         }),
       ]),
-    )
-  })
-})
+    );
+  });
+});

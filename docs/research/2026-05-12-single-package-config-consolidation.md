@@ -32,6 +32,7 @@ The proposed consolidation would replace ~8 separate `@webpresso/agent-*` devDep
 ```
 
 Then use:
+
 - `"extends": "webpresso/tsconfig/base"` in tsconfig.json
 - `import baseConfig from 'webpresso/vitest'` in vitest.config.ts
 - `import config from 'webpresso/oxlint'` in oxlint.config.ts
@@ -42,11 +43,12 @@ Then use:
 
 ### tsconfig `extends` resolution — the critical detail
 
-The TypeScript docs state: *"The value of `extends` is a string which contains a path to another configuration file to inherit from. The path may use **Node.js style resolution**."*
+The TypeScript docs state: _"The value of `extends` is a string which contains a path to another configuration file to inherit from. The path may use **Node.js style resolution**."_
 
 "Node.js style resolution" here refers to the **legacy `node10`/`node` algorithm** — NOT `node16`/`nodenext`/`bundler`. The tsconfig `extends` field is processed by a different code path than module resolution. It does not consult `package.json` `exports`.
 
 **What this means in practice:**
+
 - `"extends": "@webpresso/agent-tsconfig/base"` resolves by looking for `node_modules/@webpresso/agent-tsconfig/base.json` (or `base/tsconfig.json`, `base.json`, etc.) as a **literal file path**.
 - `"extends": "webpresso/tsconfig/base"` resolves by looking for `node_modules/webpresso/tsconfig/base.json` as a literal file path.
 - The `exports` field is **not consulted** for this resolution.
@@ -71,6 +73,7 @@ This is confirmed by how `@epic-web/config` works: `"extends": "@epic-web/config
 Vitest config files (`vitest.config.ts`) are processed as regular ESM modules by Vite/Vite's bundler. Standard `import baseConfig from 'webpresso/vitest'` works exactly like any other ESM import — it consults `package.json` `exports` and resolves through the exports map.
 
 The `mergeConfig` pattern from `vite` / `vitest` is the established way to compose configs:
+
 ```ts
 import baseConfig from 'webpresso/vitest'
 import { mergeConfig } from 'vitest/config'
@@ -84,14 +87,15 @@ This already works in the codebase (`@webpresso/agent-vitest/node` is imported v
 ### oxlint shared config from npm package
 
 oxlint supports two config formats:
+
 1. `.oxlintrc.json` — JSON only, `extends` takes **relative file paths** only. Package imports are **not supported**.
 2. `oxlint.config.ts` — TypeScript, `extends` takes imported config objects. Package imports work normally.
 
 ```ts
 // oxlint.config.ts — this works
-import config from 'webpresso/oxlint'
-import { defineConfig } from 'oxlint'
-export default defineConfig({ extends: [config] })
+import config from "webpresso/oxlint";
+import { defineConfig } from "oxlint";
+export default defineConfig({ extends: [config] });
 ```
 
 **Critical constraint:** `oxlint.config.ts` requires Node ≥22.18 or ≥24 for native TypeScript execution. The `oxlint` npm package (not standalone binary) must be used (not `oxlint-wasm`). Since agent-kit's `engines: { node: ">=24" }`, this constraint is already met for this project. Consumers of `webpresso` also need Node ≥24 (which is the engines requirement anyway).
@@ -117,6 +121,7 @@ pnpm catalogs are a workspace-level version alias. `catalog:` in `devDependencie
 ### Prior art confirms the pattern
 
 **`@epic-web/config`** (Kent C. Dodds, [@epicweb-dev/config](https://github.com/epicweb-dev/config)): single package exporting TypeScript config, Oxlint config, and Oxfmt preset. Their `package.json` exports:
+
 ```json
 {
   "./typescript": "./typescript.json",
@@ -124,6 +129,7 @@ pnpm catalogs are a workspace-level version alias. `catalog:` in `devDependencie
   "./oxfmt": { "types": "./oxfmt-preset.d.ts", "import": "./oxfmt-preset.js" }
 }
 ```
+
 Usage: `"extends": ["@epic-web/config/typescript"]` — works because `typescript.json` is a real file at that path. This is the exact same pattern proposed here.
 
 **`@tsconfig/bases`** (tsconfig org): multiple base configs in a single package, accessed via `"extends": "@tsconfig/bases/node-lts"` where `node-lts` resolves to a literal JSON file in the package.
@@ -198,6 +204,7 @@ The main cost is migration surface for existing consumers of `@webpresso/agent-t
 **Confidence:** high. The behavior of each tool was verified against official documentation. The epic-web config is a live, maintained reference implementation of the exact pattern proposed.
 
 **Conditions under which this recommendation changes:**
+
 - If a future TypeScript version changes `extends` to consult `exports` maps (tracked as a long-standing community request), the file-path requirement relaxes. As of TypeScript 5.5, this has not happened.
 - If consumer repos are on Node <22.18, the oxlint TypeScript config path is blocked and the JSON-only extends path (which cannot reference packages) must be used instead.
 

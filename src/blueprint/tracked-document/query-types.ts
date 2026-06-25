@@ -11,17 +11,17 @@
  */
 export interface FreshnessScore {
   /** Numeric score from 0.0 (critical) to 1.0 (fresh) */
-  score: number
+  score: number;
   /** Number of days since the last update */
-  daysSinceUpdate: number
+  daysSinceUpdate: number;
   /** Categorical freshness status */
-  status: 'fresh' | 'aging' | 'stale' | 'critical'
+  status: "fresh" | "aging" | "stale" | "critical";
 }
 
 /**
  * Sort direction for query results.
  */
-export type SortDirection = 'asc' | 'desc'
+export type SortDirection = "asc" | "desc";
 
 /**
  * Base sort options structure.
@@ -29,9 +29,9 @@ export type SortDirection = 'asc' | 'desc'
  */
 export interface BaseSortOptions<TField extends string> {
   /** Field to sort by */
-  field: TField
+  field: TField;
   /** Sort direction (ascending or descending) */
-  direction: SortDirection
+  direction: SortDirection;
 }
 
 /**
@@ -40,7 +40,7 @@ export interface BaseSortOptions<TField extends string> {
  */
 export interface BaseQueryFilters {
   /** Filter for stale documents only */
-  stale?: boolean
+  stale?: boolean;
   /** Custom staleness threshold in days (overrides default) */
-  staleDays?: number
+  staleDays?: number;
 }

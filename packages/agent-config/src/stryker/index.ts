@@ -13,51 +13,51 @@
  * }
  */
 export const baseConfig = {
-  packageManager: 'pnpm',
-  testRunner: 'vitest',
-  plugins: ['@stryker-mutator/vitest-runner'],
+  packageManager: "pnpm",
+  testRunner: "vitest",
+  plugins: ["@stryker-mutator/vitest-runner"],
   ignorePatterns: [
-    '**/.git/**',
-    '**/node_modules/**',
-    '**/.stryker-tmp/**',
-    '**/.agent/**',
-    '**/.agents/**',
-    '**/.claude/**',
-    '**/.codex/**',
-    '**/.cursor/**',
-    '**/.opencode/**',
-    '**/.omx/**',
-    '**/dist/**',
-    '**/coverage/**',
-    '**/*.d.ts',
+    "**/.git/**",
+    "**/node_modules/**",
+    "**/.stryker-tmp/**",
+    "**/.agent/**",
+    "**/.agents/**",
+    "**/.claude/**",
+    "**/.codex/**",
+    "**/.cursor/**",
+    "**/.opencode/**",
+    "**/.omx/**",
+    "**/dist/**",
+    "**/coverage/**",
+    "**/*.d.ts",
   ],
 
   // Default mutate patterns - exclude all test files.
   // Individual packages can override or extend these patterns.
   mutate: [
-    'src/**/*.ts',
-    'src/**/*.tsx',
-    'apps/**/*.ts',
-    'apps/**/*.tsx',
-    'packages/**/*.ts',
-    'packages/**/*.tsx',
-    'infra/**/*.ts',
-    'infra/**/*.tsx',
-    'scripts/**/*.ts',
-    'scripts/**/*.tsx',
-    '!**/*.test.ts',
-    '!**/*.test.tsx',
-    '!**/*.spec.ts',
-    '!**/*.spec.tsx',
-    '!**/*.integration.test.ts',
-    '!**/*.integration.test.tsx',
-    '!**/*.workers.test.ts',
-    '!**/*.e2e.ts',
-    '!**/*.d.ts',
-    '!**/__fixtures__/**',
-    '!**/fixtures/**',
-    '!**/generated/**',
-    '!src/quality-sample.ts',
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "apps/**/*.ts",
+    "apps/**/*.tsx",
+    "packages/**/*.ts",
+    "packages/**/*.tsx",
+    "infra/**/*.ts",
+    "infra/**/*.tsx",
+    "scripts/**/*.ts",
+    "scripts/**/*.tsx",
+    "!**/*.test.ts",
+    "!**/*.test.tsx",
+    "!**/*.spec.ts",
+    "!**/*.spec.tsx",
+    "!**/*.integration.test.ts",
+    "!**/*.integration.test.tsx",
+    "!**/*.workers.test.ts",
+    "!**/*.e2e.ts",
+    "!**/*.d.ts",
+    "!**/__fixtures__/**",
+    "!**/fixtures/**",
+    "!**/generated/**",
+    "!src/quality-sample.ts",
   ],
 
   // Performance settings.
@@ -83,23 +83,23 @@ export const baseConfig = {
   // Exclude cosmetic mutations that don't affect behavior.
   // This focuses mutation testing on actual business logic.
   mutator: {
-    excludedMutations: ['StringLiteral', 'ArrayDeclaration'],
+    excludedMutations: ["StringLiteral", "ArrayDeclaration"],
   },
 
   // Reporting.
-  reporters: ['html', 'clear-text', 'progress-append-only', 'json'],
+  reporters: ["html", "clear-text", "progress-append-only", "json"],
   htmlReporter: {
-    fileName: 'reports/mutation/mutation-report.html',
+    fileName: "reports/mutation/mutation-report.html",
   },
   jsonReporter: {
-    fileName: 'reports/mutation/mutation-report.json',
+    fileName: "reports/mutation/mutation-report.json",
   },
 
   // Incremental mutation testing - caches results to avoid re-running unchanged code.
   // Results stored in reports/stryker-incremental.json.
   incremental: true,
-  incrementalFile: 'reports/stryker-incremental.json',
-}
+  incrementalFile: "reports/stryker-incremental.json",
+};
 
 /**
  * Extends baseConfig with TypeScript checker defaults.
@@ -114,9 +114,9 @@ export const baseConfig = {
  */
 export const typescriptBaseConfig = {
   ...baseConfig,
-  checkers: ['typescript'],
-  tsconfigFile: 'tsconfig.json',
-}
+  checkers: ["typescript"],
+  tsconfigFile: "tsconfig.json",
+};
 
 /**
  * Extends typescriptBaseConfig for Cloudflare Workers packages whose vitest config
@@ -131,7 +131,7 @@ export const typescriptBaseConfig = {
  */
 export const typescriptWorkersBaseConfig = {
   ...typescriptBaseConfig,
-  vitest: { configFile: 'vitest.stryker.config.ts' },
-}
+  vitest: { configFile: "vitest.stryker.config.ts" },
+};
 
-export default baseConfig
+export default baseConfig;

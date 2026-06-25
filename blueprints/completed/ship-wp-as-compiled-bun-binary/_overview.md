@@ -4,9 +4,9 @@ title: Ship `wp` as compiled Bun runtime artifacts while keeping the library sur
 owner: ozby
 status: completed
 complexity: L
-created: '2026-05-29'
-last_updated: '2026-05-29'
-progress: '100% (runtime cutover implemented and verified on 2026-05-29)'
+created: "2026-05-29"
+last_updated: "2026-05-29"
+progress: "100% (runtime cutover implemented and verified on 2026-05-29)"
 depends_on: []
 cross_repo_depends_on: []
 tags: [runtime, distribution, mcp, plugin, bun, packaging]
@@ -66,19 +66,19 @@ approved.
 
 ## Fact-Checked Findings
 
-| ID | Severity | Claim in draft | Reality verified on 2026-05-29 | Fix |
-| -- | -------- | -------------- | ------------------------------- | --- |
-| F1 | **CRITICAL** | npm `optionalDependencies` + postinstall are sufficient for both npm installs and Claude plugin installs. | The Claude plugin marketplace path is a **git clone of a release ref**, not an npm install. npm lifecycle hooks and optional deps do not run in that clone. | Split distribution into two explicit lanes: **plugin release artifact lane** (committed binaries at release refs) and **npm tarball lane** (platform runtime packages). |
-| F2 | **HIGH** | The library surface currently breaks under Node because root `package.json#imports` still points at `src/*.ts`. | `src/config/export-resolution.test.ts` and `package.contract.test.ts` already pass; `dist/esm/package.json` rewrites `#` imports for built library files, so the library contract is **already working**. | Remove the root-imports rewrite task. Keep the library/export surface unchanged and add regression coverage only. |
-| F3 | **HIGH** | The MCP connection-close issue is only theoretical. | A real SDK-backed probe against `node ./bin/wp.js mcp` returned **`MCP error -32000: Connection closed`** on 2026-05-29. | Keep the stdio lifetime fix, but verify it with a real SDK client handshake instead of raw-stdin heuristics. |
-| F4 | **HIGH** | Runtime filesystem discovery of `src/mcp/tools/*.ts` / `dist/esm/mcp/tools/*.js` is compatible with a compiled Bun binary. | `src/mcp/server.ts` + `src/mcp/auto-discover.ts` rely on `readdir()` + dynamic `import()` from a tools directory. Bun docs only guarantee bundled code/assets when they are imported/embedded. | Add a **compiled-mode static tool registry** (or equivalent explicit inclusion path) and guard it against drift. |
-| F5 | **HIGH** | Plugin metadata is already aligned while touching runtime surfaces. | `package.json` and `.claude-plugin/marketplace.json` were at `0.21.5`, but `.claude-plugin/plugin.json` was still `0.21.3` when inspected on 2026-05-29. | Add plugin-manifest version-sync coverage as part of the binary cutover. |
-| F6 | **HIGH** | The no-`.ts` guarantee can cover “everywhere, including dev” within this blueprint. | The repo still intentionally runs many build/release entrypoints as `bun src/...`. Compiling `wp` does not remove those. | Narrow scope to **published/plugin-installed runtime entrypoints**. Track any repo-wide compiled-script hard-cut separately if needed. |
-| F7 | **MEDIUM** | New one-off verification scripts are the best way to prove package/plugin safety. | The repo already has `package.contract.test.ts`, `scripts/public-consumer-smoke.ts`, `scripts/public-readiness.ts`, and `wp audit package-surface`. | Extend the existing gates instead of inventing parallel verification surfaces. |
-| F8 | **MEDIUM** | Adding platform runtime packages is a local package.json tweak. | The repo currently behaves like a single published package. Platform packages would widen the workspace/release topology. | If per-platform packages are chosen, explicitly update workspace/release/package-surface contracts and keep the new public API minimal. |
-| F9 | **LOW** | Bun only supports the exact five targets listed in the draft. | Current Bun docs list a larger target matrix, including musl and Windows ARM64 variants. | Choose and document an explicit **first supported matrix** instead of implying Bun is limited to five targets. |
-| F10 | **MEDIUM** | `wp hook <name>` had to wait on MCP/runtime work. | The hook router is a pure CLI delegation lane and can be implemented before binary work. | Move hook routing to Wave 0 so runtime-bin rewiring can start immediately afterward. |
-| F11 | **MEDIUM** | Plugin artifact staging and publish-flow wiring are one atomic task. | Release-like plugin smoke only needs staged binaries; workflow wiring can happen later. | Split staging from release-flow wiring to unblock earlier plugin verification. |
+| ID  | Severity     | Claim in draft                                                                                                             | Reality verified on 2026-05-29                                                                                                                                                                            | Fix                                                                                                                                                                     |
+| --- | ------------ | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1  | **CRITICAL** | npm `optionalDependencies` + postinstall are sufficient for both npm installs and Claude plugin installs.                  | The Claude plugin marketplace path is a **git clone of a release ref**, not an npm install. npm lifecycle hooks and optional deps do not run in that clone.                                               | Split distribution into two explicit lanes: **plugin release artifact lane** (committed binaries at release refs) and **npm tarball lane** (platform runtime packages). |
+| F2  | **HIGH**     | The library surface currently breaks under Node because root `package.json#imports` still points at `src/*.ts`.            | `src/config/export-resolution.test.ts` and `package.contract.test.ts` already pass; `dist/esm/package.json` rewrites `#` imports for built library files, so the library contract is **already working**. | Remove the root-imports rewrite task. Keep the library/export surface unchanged and add regression coverage only.                                                       |
+| F3  | **HIGH**     | The MCP connection-close issue is only theoretical.                                                                        | A real SDK-backed probe against `node ./bin/wp.js mcp` returned **`MCP error -32000: Connection closed`** on 2026-05-29.                                                                                  | Keep the stdio lifetime fix, but verify it with a real SDK client handshake instead of raw-stdin heuristics.                                                            |
+| F4  | **HIGH**     | Runtime filesystem discovery of `src/mcp/tools/*.ts` / `dist/esm/mcp/tools/*.js` is compatible with a compiled Bun binary. | `src/mcp/server.ts` + `src/mcp/auto-discover.ts` rely on `readdir()` + dynamic `import()` from a tools directory. Bun docs only guarantee bundled code/assets when they are imported/embedded.            | Add a **compiled-mode static tool registry** (or equivalent explicit inclusion path) and guard it against drift.                                                        |
+| F5  | **HIGH**     | Plugin metadata is already aligned while touching runtime surfaces.                                                        | `package.json` and `.claude-plugin/marketplace.json` were at `0.21.5`, but `.claude-plugin/plugin.json` was still `0.21.3` when inspected on 2026-05-29.                                                  | Add plugin-manifest version-sync coverage as part of the binary cutover.                                                                                                |
+| F6  | **HIGH**     | The no-`.ts` guarantee can cover “everywhere, including dev” within this blueprint.                                        | The repo still intentionally runs many build/release entrypoints as `bun src/...`. Compiling `wp` does not remove those.                                                                                  | Narrow scope to **published/plugin-installed runtime entrypoints**. Track any repo-wide compiled-script hard-cut separately if needed.                                  |
+| F7  | **MEDIUM**   | New one-off verification scripts are the best way to prove package/plugin safety.                                          | The repo already has `package.contract.test.ts`, `scripts/public-consumer-smoke.ts`, `scripts/public-readiness.ts`, and `wp audit package-surface`.                                                       | Extend the existing gates instead of inventing parallel verification surfaces.                                                                                          |
+| F8  | **MEDIUM**   | Adding platform runtime packages is a local package.json tweak.                                                            | The repo currently behaves like a single published package. Platform packages would widen the workspace/release topology.                                                                                 | If per-platform packages are chosen, explicitly update workspace/release/package-surface contracts and keep the new public API minimal.                                 |
+| F9  | **LOW**      | Bun only supports the exact five targets listed in the draft.                                                              | Current Bun docs list a larger target matrix, including musl and Windows ARM64 variants.                                                                                                                  | Choose and document an explicit **first supported matrix** instead of implying Bun is limited to five targets.                                                          |
+| F10 | **MEDIUM**   | `wp hook <name>` had to wait on MCP/runtime work.                                                                          | The hook router is a pure CLI delegation lane and can be implemented before binary work.                                                                                                                  | Move hook routing to Wave 0 so runtime-bin rewiring can start immediately afterward.                                                                                    |
+| F11 | **MEDIUM**   | Plugin artifact staging and publish-flow wiring are one atomic task.                                                       | Release-like plugin smoke only needs staged binaries; workflow wiring can happen later.                                                                                                                   | Split staging from release-flow wiring to unblock earlier plugin verification.                                                                                          |
 
 ## Evidence Base
 
@@ -138,36 +138,36 @@ Invariant:
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-| -------- | ------ | --------- |
-| Runtime artifact | Compiled Bun binaries for `wp` runtime behavior | Removes dependency on published `src/*.ts` for the shipped runtime path |
-| Host selection | Keep a tiny checked-in **Node JS selector** (`bin/wp.js` family) | One cross-platform selector can serve both git-cloned plugin refs and npm installs; avoids Bun-on-consumer and avoids per-platform manifest sprawl |
-| Scope of compiled cutover | `wp` + plugin hook runtime surfaces only | Keeps the blueprint aligned with the user-visible failure and avoids a repo-wide build-script rewrite |
-| Plugin lane | Release refs carry committed platform binaries | Plugin marketplace clone path cannot rely on npm lifecycle/install hooks |
-| npm lane | Platform runtime packages via `optionalDependencies` | Keeps the main tarball small while allowing host selection at runtime |
-| Library lane | Keep current `dist/esm` + `exports` contract | Existing tests already prove it; rewriting root imports would be churn without value |
-| MCP tool registration | Explicit compiled-mode registry | Runtime directory scanning is too fragile for compiled artifacts |
-| Task splitting | Separate router, staging, and release wiring | Widens the DAG without introducing same-file conflicts |
-| Supported targets (v1) | `darwin-arm64`, `darwin-x64`, `linux-x64`, `linux-arm64`, `windows-x64` | Covers the current common matrix; musl/Windows ARM64 stay explicit non-goals until demanded |
+| Decision                  | Choice                                                                  | Rationale                                                                                                                                          |
+| ------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Runtime artifact          | Compiled Bun binaries for `wp` runtime behavior                         | Removes dependency on published `src/*.ts` for the shipped runtime path                                                                            |
+| Host selection            | Keep a tiny checked-in **Node JS selector** (`bin/wp.js` family)        | One cross-platform selector can serve both git-cloned plugin refs and npm installs; avoids Bun-on-consumer and avoids per-platform manifest sprawl |
+| Scope of compiled cutover | `wp` + plugin hook runtime surfaces only                                | Keeps the blueprint aligned with the user-visible failure and avoids a repo-wide build-script rewrite                                              |
+| Plugin lane               | Release refs carry committed platform binaries                          | Plugin marketplace clone path cannot rely on npm lifecycle/install hooks                                                                           |
+| npm lane                  | Platform runtime packages via `optionalDependencies`                    | Keeps the main tarball small while allowing host selection at runtime                                                                              |
+| Library lane              | Keep current `dist/esm` + `exports` contract                            | Existing tests already prove it; rewriting root imports would be churn without value                                                               |
+| MCP tool registration     | Explicit compiled-mode registry                                         | Runtime directory scanning is too fragile for compiled artifacts                                                                                   |
+| Task splitting            | Separate router, staging, and release wiring                            | Widens the DAG without introducing same-file conflicts                                                                                             |
+| Supported targets (v1)    | `darwin-arm64`, `darwin-x64`, `linux-x64`, `linux-arm64`, `windows-x64` | Covers the current common matrix; musl/Windows ARM64 stay explicit non-goals until demanded                                                        |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
-| ---- | ----- | ------------ | -------------- | ---------------- |
-| **Wave 0** | 1.1, 1.2, 1.3, 1.4, 1.5, 1.6 | None | 6 agents | XS-M |
-| **Wave 1** | 2.1, 2.2, 2.3, 2.4 | Wave 0 (targeted) | 4 agents | S-M |
-| **Wave 2** | 2.5, 3.1, 3.2 | Wave 1 (targeted) | 3 agents | S-M |
-| **Wave 3** | 4.1 | Wave 2 | 1 agent | S |
-| **Critical path** | 1.3 → 2.2 → 2.5 → 4.1 | — | 4 waves | L |
+| Wave              | Tasks                        | Dependencies      | Parallelizable | Effort (T-shirt) |
+| ----------------- | ---------------------------- | ----------------- | -------------- | ---------------- |
+| **Wave 0**        | 1.1, 1.2, 1.3, 1.4, 1.5, 1.6 | None              | 6 agents       | XS-M             |
+| **Wave 1**        | 2.1, 2.2, 2.3, 2.4           | Wave 0 (targeted) | 4 agents       | S-M              |
+| **Wave 2**        | 2.5, 3.1, 3.2                | Wave 1 (targeted) | 3 agents       | S-M              |
+| **Wave 3**        | 4.1                          | Wave 2            | 1 agent        | S                |
+| **Critical path** | 1.3 → 2.2 → 2.5 → 4.1        | —                 | 4 waves        | L                |
 
 ### Parallel Metrics Snapshot
 
-| Metric | Formula / Meaning | Target | Actual |
-| ------ | ----------------- | ------ | ------ |
-| RW0 | Ready tasks in Wave 0 | ≥ planned agents / 2 | **6** |
-| CPR | total_tasks / critical_path_length | ≥ 2.5 | **14 / 4 = 3.5** |
-| DD | dependency_edges / total_tasks | ≤ 2.0 | **16 / 14 = 1.14** |
-| CP | same-file overlaps per wave | 0 | **0** (planned) |
+| Metric | Formula / Meaning                  | Target               | Actual             |
+| ------ | ---------------------------------- | -------------------- | ------------------ |
+| RW0    | Ready tasks in Wave 0              | ≥ planned agents / 2 | **6**              |
+| CPR    | total_tasks / critical_path_length | ≥ 2.5                | **14 / 4 = 3.5**   |
+| DD     | dependency_edges / total_tasks     | ≤ 2.0                | **16 / 14 = 1.14** |
+| CP     | same-file overlaps per wave        | 0                    | **0** (planned)    |
 
 **Parallelization score: A** — Wave 0 is fully saturated, plugin and npm lanes
 both start in Wave 1, and the only unavoidable serial bottleneck is the final
@@ -197,7 +197,7 @@ must be a server that stays alive until client disconnect or explicit shutdown.
 **Steps (TDD):**
 
 1. Write a failing SDK-backed integration test that launches `node ./bin/wp.js
-   mcp`, performs `initialize`, then `tools/list`, and asserts the connection
+mcp`, performs `initialize`, then `tools/list`, and asserts the connection
    stays open long enough to list tools.
 2. Run: `wp_test({"files":["src/mcp/cli.integration.test.ts"]})` — verify FAIL.
 3. Implement the stdio lifetime fix so the server remains alive until the
@@ -666,37 +666,37 @@ new umbrella scripts.
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-| ---- | ------- | ---------------- |
-| Build | `vp run build` | Build passes with no selector/runtime regressions |
-| Focused tests | `wp_test({...})` per task | Targeted files pass |
-| Type safety | `wp_typecheck({"cwd":"."})` | Zero type errors |
-| Repo lint | `vp run lint` | Zero lint violations |
-| Package contract | `wp_test({"files":["src/config/export-resolution.test.ts","package.contract.test.ts"]})` | Library + packed-consumer contract pass |
-| Package surface | `wp_audit({"kind":"package-surface"})` | Pass |
-| Public readiness | `vp run public:readiness` | Pass for the updated release/runtime contract |
-| Hooks doctor | `vp run hooks:doctor` | Plugin hook/runtime health passes |
+| Gate             | Command                                                                                  | Success Criteria                                  |
+| ---------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Build            | `vp run build`                                                                           | Build passes with no selector/runtime regressions |
+| Focused tests    | `wp_test({...})` per task                                                                | Targeted files pass                               |
+| Type safety      | `wp_typecheck({"cwd":"."})`                                                              | Zero type errors                                  |
+| Repo lint        | `vp run lint`                                                                            | Zero lint violations                              |
+| Package contract | `wp_test({"files":["src/config/export-resolution.test.ts","package.contract.test.ts"]})` | Library + packed-consumer contract pass           |
+| Package surface  | `wp_audit({"kind":"package-surface"})`                                                   | Pass                                              |
+| Public readiness | `vp run public:readiness`                                                                | Pass for the updated release/runtime contract     |
+| Hooks doctor     | `vp run hooks:doctor`                                                                    | Plugin hook/runtime health passes                 |
 
 ## Cross-Plan References
 
-| Type | Blueprint | Relationship |
-| ---- | --------- | ------------ |
-| Upstream | `completed/agent-kit-claude-plugin-marketplace` | Defines the plugin marketplace release-ref clone contract that makes committed plugin artifacts mandatory |
-| Upstream | `completed/agent-kit-public-npm-cutover-implementation` | Owns public npm/package-surface/public-readiness expectations that this blueprint must extend, not replace |
-| Upstream | `completed/make-wp-own-generic-tool-runtime-for-consumers` | Establishes runtime-owned command/package-surface boundaries this blueprint must preserve |
-| Downstream | None | — |
+| Type       | Blueprint                                                  | Relationship                                                                                               |
+| ---------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Upstream   | `completed/agent-kit-claude-plugin-marketplace`            | Defines the plugin marketplace release-ref clone contract that makes committed plugin artifacts mandatory  |
+| Upstream   | `completed/agent-kit-public-npm-cutover-implementation`    | Owns public npm/package-surface/public-readiness expectations that this blueprint must extend, not replace |
+| Upstream   | `completed/make-wp-own-generic-tool-runtime-for-consumers` | Establishes runtime-owned command/package-surface boundaries this blueprint must preserve                  |
+| Downstream | None                                                       | —                                                                                                          |
 
 ## Edge Cases and Error Handling
 
-| Edge Case | Risk | Solution | Task |
-| --------- | ---- | -------- | ---- |
-| Plugin release ref lacks compiled binaries | Marketplace install still fails even if npm lane works | Stage binaries into release refs and smoke them directly | 2.2, 3.1 |
-| Compiled MCP registry misses a newly added tool | Binary lane silently diverges from dev lane | Registry completeness guard | 2.4 |
-| `npm install --omit=optional` or unsupported platform | Main package installs without a runtime binary | Selector throws an actionable “missing host runtime package” error | 2.1, 3.2 |
-| Library contract is regressed while fixing runtime | Public config subpaths break for consumers | Keep export-resolution + package-contract coverage as a protected invariant | 1.6, 3.2 |
-| Plugin manifest version drifts again | Marketplace metadata becomes inconsistent | Version-sync test | 1.5 |
-| Team conflates compiled-runtime goal with repo-wide compiled-build-script goal | Scope balloons and stalls | Keep repo-local `bun src/...` build scripts explicitly out of scope | F6, Non-goals |
-| Hook-router changes and runtime-bin rewiring drift apart | Hook bins resolve but target the wrong CLI contract | Implement router in Wave 0, then rewire bins in a single owning task | 1.4, 2.1 |
+| Edge Case                                                                      | Risk                                                   | Solution                                                                    | Task          |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------ | --------------------------------------------------------------------------- | ------------- |
+| Plugin release ref lacks compiled binaries                                     | Marketplace install still fails even if npm lane works | Stage binaries into release refs and smoke them directly                    | 2.2, 3.1      |
+| Compiled MCP registry misses a newly added tool                                | Binary lane silently diverges from dev lane            | Registry completeness guard                                                 | 2.4           |
+| `npm install --omit=optional` or unsupported platform                          | Main package installs without a runtime binary         | Selector throws an actionable “missing host runtime package” error          | 2.1, 3.2      |
+| Library contract is regressed while fixing runtime                             | Public config subpaths break for consumers             | Keep export-resolution + package-contract coverage as a protected invariant | 1.6, 3.2      |
+| Plugin manifest version drifts again                                           | Marketplace metadata becomes inconsistent              | Version-sync test                                                           | 1.5           |
+| Team conflates compiled-runtime goal with repo-wide compiled-build-script goal | Scope balloons and stalls                              | Keep repo-local `bun src/...` build scripts explicitly out of scope         | F6, Non-goals |
+| Hook-router changes and runtime-bin rewiring drift apart                       | Hook bins resolve but target the wrong CLI contract    | Implement router in Wave 0, then rewire bins in a single owning task        | 1.4, 2.1      |
 
 ## Non-goals
 
@@ -710,41 +710,41 @@ new umbrella scripts.
 
 ## Risks
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-| Compiled-mode MCP registration is more invasive than expected | High | De-risk first with Task 1.2 and drift-guard it in Task 2.4 |
-| Plugin lane and npm lane diverge in layout | High | Use one selector contract and prove both lanes against it |
-| Platform package sprawl complicates release automation | Medium | Keep the supported matrix explicit and integrate it into existing release/public-readiness gates |
-| Binary size or artifact count bloats the wrong surface | Medium | Keep plugin and npm packaging lanes separate; enforce package-surface checks |
-| Maintainers accidentally widen scope into all Bun-executed scripts | Medium | Keep the runtime-only scope explicit in docs/tests and non-goals |
+| Risk                                                               | Impact | Mitigation                                                                                       |
+| ------------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------ |
+| Compiled-mode MCP registration is more invasive than expected      | High   | De-risk first with Task 1.2 and drift-guard it in Task 2.4                                       |
+| Plugin lane and npm lane diverge in layout                         | High   | Use one selector contract and prove both lanes against it                                        |
+| Platform package sprawl complicates release automation             | Medium | Keep the supported matrix explicit and integrate it into existing release/public-readiness gates |
+| Binary size or artifact count bloats the wrong surface             | Medium | Keep plugin and npm packaging lanes separate; enforce package-surface checks                     |
+| Maintainers accidentally widen scope into all Bun-executed scripts | Medium | Keep the runtime-only scope explicit in docs/tests and non-goals                                 |
 
 ## Technology Choices
 
-| Component | Technology | Version / Contract | Why |
-| --------- | ---------- | ------------------ | --- |
-| Runtime binary | `bun build --compile` | current Bun target matrix | Produces self-contained runtime artifacts |
-| Host selector | Node JS launcher | existing shipped `bin/*.js` pattern, narrowed to runtime bins | Cross-platform selection for both plugin clones and npm installs |
-| Plugin distribution | git-cloned release refs | existing Claude plugin marketplace contract | Matches current plugin install reality |
-| npm runtime distribution | `optionalDependencies` + platform packages | npm package.json contract | Keeps main tarball small |
-| Library surface | `dist/esm` + `exports` + `dist/esm/package.json#imports` | existing passing contract | Already works; do not destabilize |
-| Verification | existing repo gates (`wp_test`, `wp_audit`, `public-readiness`, `hooks:doctor`) | current repo contract | Reuse proven public-package safety surfaces |
+| Component                | Technology                                                                      | Version / Contract                                            | Why                                                              |
+| ------------------------ | ------------------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Runtime binary           | `bun build --compile`                                                           | current Bun target matrix                                     | Produces self-contained runtime artifacts                        |
+| Host selector            | Node JS launcher                                                                | existing shipped `bin/*.js` pattern, narrowed to runtime bins | Cross-platform selection for both plugin clones and npm installs |
+| Plugin distribution      | git-cloned release refs                                                         | existing Claude plugin marketplace contract                   | Matches current plugin install reality                           |
+| npm runtime distribution | `optionalDependencies` + platform packages                                      | npm package.json contract                                     | Keeps main tarball small                                         |
+| Library surface          | `dist/esm` + `exports` + `dist/esm/package.json#imports`                        | existing passing contract                                     | Already works; do not destabilize                                |
+| Verification             | existing repo gates (`wp_test`, `wp_audit`, `public-readiness`, `hooks:doctor`) | current repo contract                                         | Reuse proven public-package safety surfaces                      |
 
 ## Refinement Summary
 
-| Metric | Value |
-| ------ | ----- |
-| Findings total | 11 |
-| Critical | 1 |
-| High | 5 |
-| Medium | 4 |
-| Low | 1 |
-| Fixes applied to plan | 11/11 |
-| Cross-plans updated in references | 3 |
-| Total tasks | 14 |
-| Critical path | 4 waves |
-| Max planned parallel agents | 6 |
-| Parallelization score | A |
-| Blueprint compliant tasks | 14/14 |
+| Metric                            | Value   |
+| --------------------------------- | ------- |
+| Findings total                    | 11      |
+| Critical                          | 1       |
+| High                              | 5       |
+| Medium                            | 4       |
+| Low                               | 1       |
+| Fixes applied to plan             | 11/11   |
+| Cross-plans updated in references | 3       |
+| Total tasks                       | 14      |
+| Critical path                     | 4 waves |
+| Max planned parallel agents       | 6       |
+| Parallelization score             | A       |
+| Blueprint compliant tasks         | 14/14   |
 
 ## Completion Evidence
 
@@ -787,21 +787,21 @@ Verified on 2026-05-29:
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/ship-wp-as-compiled-bun-binary/_overview.md |
+| ID  | Claim                                                          | Evidence                                                               |
+| --- | -------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/ship-wp-as-compiled-bun-binary/\_overview.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

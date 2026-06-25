@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process'
+import { spawnSync } from "node:child_process";
 import {
   chmodSync,
   existsSync,
@@ -7,178 +7,178 @@ import {
   readFileSync,
   rmSync,
   writeFileSync,
-} from 'node:fs'
-import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from "vitest";
 
 import {
   createPackedManifest,
   preparePackedManifest,
   restorePackedManifest,
-} from './package-manifest.js'
+} from "./package-manifest.js";
 
-const repoRoot = findRepoRoot(import.meta.dirname)
+const repoRoot = findRepoRoot(import.meta.dirname);
 
 function findRepoRoot(startDir: string): string {
-  let current = startDir
+  let current = startDir;
   while (true) {
-    if (existsSync(join(current, 'pnpm-workspace.yaml'))) return current
-    const parent = dirname(current)
+    if (existsSync(join(current, "pnpm-workspace.yaml"))) return current;
+    const parent = dirname(current);
     if (parent === current) {
-      throw new Error(`Could not locate pnpm-workspace.yaml from ${startDir}`)
+      throw new Error(`Could not locate pnpm-workspace.yaml from ${startDir}`);
     }
-    current = parent
+    current = parent;
   }
 }
 
-type JsonObject = Record<string, unknown>
+type JsonObject = Record<string, unknown>;
 
 function readJsonObject(filePath: string): JsonObject {
-  return JSON.parse(readFileSync(filePath, 'utf8')) as JsonObject
+  return JSON.parse(readFileSync(filePath, "utf8")) as JsonObject;
 }
 
 function loadDryRunPackagePaths(): string[] {
   const expectedSessionMemoryToolDescriptors = sessionMemoryToolNames.flatMap((toolName) => {
-    const fileBase = toolName.replace(/^wp_/u, '').replaceAll('_', '-')
-    return [`dist/esm/mcp/tools/${fileBase}.js`, `dist/esm/mcp/tools/${fileBase}.d.ts`]
-  })
+    const fileBase = toolName.replace(/^wp_/u, "").replaceAll("_", "-");
+    return [`dist/esm/mcp/tools/${fileBase}.js`, `dist/esm/mcp/tools/${fileBase}.d.ts`];
+  });
   return [
-    'README.md',
-    'package.json',
-    'LICENSE',
+    "README.md",
+    "package.json",
+    "LICENSE",
     ...codexPluginArtifactPaths,
     ...sessionMemoryPublicDocPaths,
     ...expectedSessionMemoryToolDescriptors,
-  ].toSorted()
+  ].toSorted();
 }
 
-let dryRunPackagePaths: string[] | undefined
+let dryRunPackagePaths: string[] | undefined;
 
 function getDryRunPackagePaths(): string[] {
-  dryRunPackagePaths ??= loadDryRunPackagePaths()
-  return dryRunPackagePaths
+  dryRunPackagePaths ??= loadDryRunPackagePaths();
+  return dryRunPackagePaths;
 }
 
 const codexPluginArtifactPaths = [
-  'hooks/hooks.json',
-  'codex.mcp.json',
-  '.codex-plugin/plugin.json',
-] as const
+  "hooks/hooks.json",
+  "codex.mcp.json",
+  ".codex-plugin/plugin.json",
+] as const;
 
 const sessionMemoryPublicDocPaths = [
-  'docs/guides/session-memory.md',
-  'docs/bench/session-memory-methodology.md',
-] as const
+  "docs/guides/session-memory.md",
+  "docs/bench/session-memory-methodology.md",
+] as const;
 
 const sessionMemoryToolNames = [
-  'wp_session_batch_execute',
-  'wp_session_capture',
-  'wp_session_doctor',
-  'wp_session_execute',
-  'wp_session_execute_file',
-  'wp_session_fetch_and_index',
-  'wp_session_index',
-  'wp_session_purge',
-  'wp_session_retrieve',
-  'wp_session_restore',
-  'wp_session_search',
-  'wp_session_snapshot',
-  'wp_session_stats',
-] as const
+  "wp_session_batch_execute",
+  "wp_session_capture",
+  "wp_session_doctor",
+  "wp_session_execute",
+  "wp_session_execute_file",
+  "wp_session_fetch_and_index",
+  "wp_session_index",
+  "wp_session_purge",
+  "wp_session_retrieve",
+  "wp_session_restore",
+  "wp_session_search",
+  "wp_session_snapshot",
+  "wp_session_stats",
+] as const;
 
 const forbiddenPluginArtifactText = [
-  '/Users/',
-  '/home/',
-  '.omx/',
-  '.agent/',
-  '.agents/',
-  '.codex/',
-  '.claude/skills/',
-  '.env',
-  '.dev.vars',
-  'NPM_TOKEN',
-  'NODE_AUTH_TOKEN',
-  'replacement parity proof',
-  'replacement-parity',
-] as const
+  "/Users/",
+  "/home/",
+  ".omx/",
+  ".agent/",
+  ".agents/",
+  ".codex/",
+  ".claude/skills/",
+  ".env",
+  ".dev.vars",
+  "NPM_TOKEN",
+  "NODE_AUTH_TOKEN",
+  "replacement parity proof",
+  "replacement-parity",
+] as const;
 
-describe('createPackedManifest', () => {
-  it('prepares non-root public packages without agent-kit runtime optional dependencies', () => {
+describe("createPackedManifest", () => {
+  it("prepares non-root public packages without agent-kit runtime optional dependencies", () => {
     const manifest = createPackedManifest(
       {
-        name: '@webpresso/agent-config',
-        version: '0.1.6',
+        name: "@webpresso/agent-config",
+        version: "0.1.6",
         dependencies: {
-          '@vitejs/plugin-react': 'catalog:',
-          vite: 'catalog:',
+          "@vitejs/plugin-react": "catalog:",
+          vite: "catalog:",
         },
       },
       {
         catalog: {
-          '@vitejs/plugin-react': '^6.0.2',
-          vite: '^8.0.14',
+          "@vitejs/plugin-react": "^6.0.2",
+          vite: "^8.0.14",
         },
       },
       { includeRuntimeOptionalDependencies: false },
-    )
+    );
 
     expect(manifest.dependencies).toEqual({
-      '@vitejs/plugin-react': '^6.0.2',
-      vite: '^8.0.14',
-    })
-    expect(manifest.optionalDependencies).toBeUndefined()
-    expect(JSON.stringify(manifest)).not.toContain('catalog:')
-    expect(JSON.stringify(manifest)).not.toContain('@webpresso/agent-kit-runtime')
-  })
-  it('keeps transient prepack backup artifacts gitignored', () => {
-    const gitignore = readFileSync(join(repoRoot, '.gitignore'), 'utf8')
+      "@vitejs/plugin-react": "^6.0.2",
+      vite: "^8.0.14",
+    });
+    expect(manifest.optionalDependencies).toBeUndefined();
+    expect(JSON.stringify(manifest)).not.toContain("catalog:");
+    expect(JSON.stringify(manifest)).not.toContain("@webpresso/agent-kit-runtime");
+  });
+  it("keeps transient prepack backup artifacts gitignored", () => {
+    const gitignore = readFileSync(join(repoRoot, ".gitignore"), "utf8");
 
-    expect(gitignore).toContain('.package.json.prepack.backup')
-    expect(gitignore).toContain('.dist-prepack-backup/')
-    expect(gitignore).toContain('.sourcemap-comments-prepack-backup/')
-  })
+    expect(gitignore).toContain(".package.json.prepack.backup");
+    expect(gitignore).toContain(".dist-prepack-backup/");
+    expect(gitignore).toContain(".sourcemap-comments-prepack-backup/");
+  });
 
-  it('replaces workspace catalog specifiers across dependency sections', () => {
+  it("replaces workspace catalog specifiers across dependency sections", () => {
     const manifest = createPackedManifest(
       {
-        dependencies: { vite: 'catalog:' },
-        optionalDependencies: { zod: 'catalog:' },
-        peerDependencies: { react: 'catalog:react18' },
+        dependencies: { vite: "catalog:" },
+        optionalDependencies: { zod: "catalog:" },
+        peerDependencies: { react: "catalog:react18" },
       },
       {
         catalog: {
-          vite: '^8.0.11',
-          zod: '^4.4.3',
+          vite: "^8.0.11",
+          zod: "^4.4.3",
         },
         catalogs: {
           react18: {
-            react: '^18.3.1',
+            react: "^18.3.1",
           },
         },
       },
-    )
+    );
 
-    expect(manifest.dependencies?.vite).toBe('^8.0.11')
-    expect(manifest.optionalDependencies?.zod).toBe('^4.4.3')
-    expect(manifest.peerDependencies?.react).toBe('^18.3.1')
+    expect(manifest.dependencies?.vite).toBe("^8.0.11");
+    expect(manifest.optionalDependencies?.zod).toBe("^4.4.3");
+    expect(manifest.peerDependencies?.react).toBe("^18.3.1");
     // devDependencies are stripped from the packed manifest (see dedicated test below)
-  })
+  });
 
-  it('fails loudly when a catalog entry is missing', () => {
+  it("fails loudly when a catalog entry is missing", () => {
     expect(() =>
       createPackedManifest(
         {
-          dependencies: { vite: 'catalog:' },
+          dependencies: { vite: "catalog:" },
         },
         { catalog: {} },
       ),
-    ).toThrow('Missing pnpm catalog entry for vite')
-  })
+    ).toThrow("Missing pnpm catalog entry for vite");
+  });
 
-  it('rejects non-publishable local dependency protocols before packing', () => {
-    const linkUrlSpecifier = `${'link:'}//../local`
+  it("rejects non-publishable local dependency protocols before packing", () => {
+    const linkUrlSpecifier = `${"link:"}//../local`;
 
     expect(() =>
       createPackedManifest(
@@ -189,621 +189,621 @@ describe('createPackedManifest', () => {
       ),
     ).toThrow(
       `Cannot pack dependencies.local with non-publishable link: specifier ${JSON.stringify(linkUrlSpecifier)}`,
-    )
+    );
 
     expect(() =>
       createPackedManifest(
         {
-          optionalDependencies: { local: 'workspace:*' },
+          optionalDependencies: { local: "workspace:*" },
         },
         { catalog: {} },
       ),
     ).toThrow(
       'Cannot pack optionalDependencies.local with non-publishable workspace: specifier "workspace:*"',
-    )
+    );
 
     expect(() =>
       createPackedManifest(
         {
-          devDependencies: { local: 'file:../local' },
+          devDependencies: { local: "file:../local" },
         },
         { catalog: {} },
       ),
     ).toThrow(
       'Cannot pack devDependencies.local with non-publishable file: specifier "file:../local"',
-    )
-  })
+    );
+  });
 
-  it('strips devDependencies from the packed manifest so npm does not reject workspace: specifiers', () => {
+  it("strips devDependencies from the packed manifest so npm does not reject workspace: specifiers", () => {
     // workspace: specifiers in devDependencies are legitimate in monorepo self-hosting
     // but npm rejects them even with --omit=dev, so devDependencies are stripped entirely.
     const result = createPackedManifest(
       {
-        name: 'pkg',
-        dependencies: { react: '^18.0.0' },
-        devDependencies: { '@webpresso/agent-config': 'workspace:*', vitest: 'catalog:' },
+        name: "pkg",
+        dependencies: { react: "^18.0.0" },
+        devDependencies: { "@webpresso/agent-config": "workspace:*", vitest: "catalog:" },
       },
-      { catalog: { vitest: '^4.1.5' } },
-    )
-    expect(result).not.toHaveProperty('devDependencies')
-    expect(result).toHaveProperty('dependencies', { react: '^18.0.0' })
-  })
+      { catalog: { vitest: "^4.1.5" } },
+    );
+    expect(result).not.toHaveProperty("devDependencies");
+    expect(result).toHaveProperty("dependencies", { react: "^18.0.0" });
+  });
 
-  it('rewrites publishable workspace package specifiers to local workspace versions before packing', () => {
+  it("rewrites publishable workspace package specifiers to local workspace versions before packing", () => {
     const manifest = createPackedManifest(
       {
-        devDependencies: { '@webpresso/agent-config': 'workspace:*' },
-        peerDependencies: { '@webpresso/agent-config': 'workspace:^' },
+        devDependencies: { "@webpresso/agent-config": "workspace:*" },
+        peerDependencies: { "@webpresso/agent-config": "workspace:^" },
       },
       {
         catalog: {},
         workspacePackages: {
-          '@webpresso/agent-config': '0.0.1',
+          "@webpresso/agent-config": "0.0.1",
         },
       },
-    )
+    );
 
-    expect(manifest.devDependencies?.['@webpresso/agent-config']).toBe(undefined)
-    expect(manifest.peerDependencies?.['@webpresso/agent-config']).toBe('^0.0.1')
-  })
+    expect(manifest.devDependencies?.["@webpresso/agent-config"]).toBe(undefined);
+    expect(manifest.peerDependencies?.["@webpresso/agent-config"]).toBe("^0.0.1");
+  });
 
-  it('omits devDependencies from the packed manifest install surface', () => {
+  it("omits devDependencies from the packed manifest install surface", () => {
     const manifest = createPackedManifest(
       {
-        devDependencies: { vitest: 'catalog:' },
+        devDependencies: { vitest: "catalog:" },
       },
       {
-        catalog: { vitest: '^4.1.5' },
+        catalog: { vitest: "^4.1.5" },
       },
-    )
+    );
 
-    expect(manifest.devDependencies).toBe(undefined)
-  })
+    expect(manifest.devDependencies).toBe(undefined);
+  });
 
-  it('rejects non-publishable local dependency protocols resolved from catalogs', () => {
-    const linkUrlSpecifier = `${'link:'}//../local`
+  it("rejects non-publishable local dependency protocols resolved from catalogs", () => {
+    const linkUrlSpecifier = `${"link:"}//../local`;
 
     expect(() =>
       createPackedManifest(
         {
-          dependencies: { local: 'catalog:' },
+          dependencies: { local: "catalog:" },
         },
         { catalog: { local: linkUrlSpecifier } },
       ),
     ).toThrow(
       `Cannot pack dependencies.local with non-publishable link: specifier ${JSON.stringify(linkUrlSpecifier)}`,
-    )
-  })
+    );
+  });
 
-  it('normalizes packed bin paths so npm publish --dry-run retains them', () => {
+  it("normalizes packed bin paths so npm publish --dry-run retains them", () => {
     const manifest = createPackedManifest(
       {
-        name: 'package-manifest-bin-fixture',
-        version: '1.0.0',
-        license: 'MIT',
+        name: "package-manifest-bin-fixture",
+        version: "1.0.0",
+        license: "MIT",
         bin: {
-          wp: './bin/wp',
-          'docs-lint': 'bin/docs-lint.js',
+          wp: "./bin/wp",
+          "docs-lint": "bin/docs-lint.js",
         },
       },
       { catalog: {} },
     ) as {
-      bin?: Record<string, string>
-    }
+      bin?: Record<string, string>;
+    };
 
     expect(manifest.bin).toEqual({
-      wp: 'bin/wp',
-      'docs-lint': 'bin/docs-lint.js',
-    })
+      wp: "bin/wp",
+      "docs-lint": "bin/docs-lint.js",
+    });
 
-    const fixtureDir = mkdtempSync(join(tmpdir(), 'wp-package-manifest-bin-'))
+    const fixtureDir = mkdtempSync(join(tmpdir(), "wp-package-manifest-bin-"));
 
     try {
-      mkdirSync(join(fixtureDir, 'bin'))
+      mkdirSync(join(fixtureDir, "bin"));
       writeFileSync(
-        join(fixtureDir, 'package.json'),
+        join(fixtureDir, "package.json"),
         `${JSON.stringify(manifest, null, 2)}\n`,
-        'utf8',
-      )
+        "utf8",
+      );
       writeFileSync(
-        join(fixtureDir, 'bin', 'wp'),
+        join(fixtureDir, "bin", "wp"),
         '#!/usr/bin/env node\nconsole.log("wp")\n',
-        'utf8',
-      )
+        "utf8",
+      );
       writeFileSync(
-        join(fixtureDir, 'bin', 'docs-lint.js'),
+        join(fixtureDir, "bin", "docs-lint.js"),
         '#!/usr/bin/env node\nconsole.log("docs-lint")\n',
-        'utf8',
-      )
-      chmodSync(join(fixtureDir, 'bin', 'wp'), 0o755)
-      chmodSync(join(fixtureDir, 'bin', 'docs-lint.js'), 0o755)
+        "utf8",
+      );
+      chmodSync(join(fixtureDir, "bin", "wp"), 0o755);
+      chmodSync(join(fixtureDir, "bin", "docs-lint.js"), 0o755);
 
-      const result = spawnSync('npm', ['publish', '--dry-run', '--access', 'public'], {
+      const result = spawnSync("npm", ["publish", "--dry-run", "--access", "public"], {
         cwd: fixtureDir,
-        encoding: 'utf8',
-      })
+        encoding: "utf8",
+      });
 
-      const output = `${result.stdout}\n${result.stderr}`
+      const output = `${result.stdout}\n${result.stderr}`;
 
-      expect(result.status).toBe(0)
-      expect(output).toContain('+ package-manifest-bin-fixture@1.0.0')
-      expect(output).not.toContain('auto-corrected some errors')
-      expect(output).not.toContain('bin[wp]')
-      expect(output).not.toContain('bin[docs-lint]')
+      expect(result.status).toBe(0);
+      expect(output).toContain("+ package-manifest-bin-fixture@1.0.0");
+      expect(output).not.toContain("auto-corrected some errors");
+      expect(output).not.toContain("bin[wp]");
+      expect(output).not.toContain("bin[docs-lint]");
     } finally {
-      rmSync(fixtureDir, { force: true, recursive: true })
+      rmSync(fixtureDir, { force: true, recursive: true });
     }
-  })
+  });
 
-  it('does not publish the precompact snapshot hook as a public package bin', () => {
+  it("does not publish the precompact snapshot hook as a public package bin", () => {
     const manifest = createPackedManifest(
       {
-        name: '@webpresso/agent-kit',
-        version: '1.0.0',
+        name: "@webpresso/agent-kit",
+        version: "1.0.0",
         bin: {
-          wp: 'bin/wp',
+          wp: "bin/wp",
         },
       },
       { catalog: {} },
     ) as {
-      bin?: Record<string, string>
-    }
+      bin?: Record<string, string>;
+    };
 
     expect(manifest.bin).toEqual({
-      wp: 'bin/wp',
-    })
-    expect(manifest.bin?.['wp-precompact-snapshot']).toBe(undefined)
-  })
+      wp: "bin/wp",
+    });
+    expect(manifest.bin?.["wp-precompact-snapshot"]).toBe(undefined);
+  });
 
-  it('does not expose removed internal hook bins as public CLIs or package files', () => {
-    const packedPaths = getDryRunPackagePaths()
-    const packageJson = readJsonObject(join(repoRoot, 'package.json')) as {
-      bin?: Record<string, string>
-    }
-    const contract = JSON.parse(readFileSync(join(repoRoot, 'package-surface.json'), 'utf8')) as {
+  it("does not expose removed internal hook bins as public CLIs or package files", () => {
+    const packedPaths = getDryRunPackagePaths();
+    const packageJson = readJsonObject(join(repoRoot, "package.json")) as {
+      bin?: Record<string, string>;
+    };
+    const contract = JSON.parse(readFileSync(join(repoRoot, "package-surface.json"), "utf8")) as {
       cliBins?: {
-        internalHooks?: string[]
-        public?: string[]
-      }
-    }
+        internalHooks?: string[];
+        public?: string[];
+      };
+    };
     const removedHookBins = [
-      'wp-sessionstart-routing',
-      'wp-pretool-guard',
-      'wp-post-tool',
-      'wp-guard-switch',
-      'wp-stop-qa',
-      'wp-precompact-snapshot',
-    ]
+      "wp-sessionstart-routing",
+      "wp-pretool-guard",
+      "wp-post-tool",
+      "wp-guard-switch",
+      "wp-stop-qa",
+      "wp-precompact-snapshot",
+    ];
 
-    expect(contract.cliBins?.internalHooks ?? []).toStrictEqual([])
+    expect(contract.cliBins?.internalHooks ?? []).toStrictEqual([]);
     expect(Object.keys(packageJson.bin ?? {}).sort()).toEqual(
       [...(contract.cliBins?.public ?? [])].sort(),
-    )
-    expect(packedPaths).not.toContain('bin/_managed-hook.js')
+    );
+    expect(packedPaths).not.toContain("bin/_managed-hook.js");
     for (const hookBin of removedHookBins) {
-      expect(packageJson.bin).not.toHaveProperty(hookBin)
-      expect(existsSync(join(repoRoot, 'bin', `${hookBin}.js`))).toBe(false)
-      expect(packedPaths).not.toContain(`bin/${hookBin}.js`)
+      expect(packageJson.bin).not.toHaveProperty(hookBin);
+      expect(existsSync(join(repoRoot, "bin", `${hookBin}.js`))).toBe(false);
+      expect(packedPaths).not.toContain(`bin/${hookBin}.js`);
     }
-  })
+  });
 
-  it('ships first-class Codex plugin artifacts as intentional package files', () => {
-    const packageJson = readJsonObject(join(repoRoot, 'package.json')) as {
-      files?: unknown
-      version?: unknown
-    }
+  it("ships first-class Codex plugin artifacts as intentional package files", () => {
+    const packageJson = readJsonObject(join(repoRoot, "package.json")) as {
+      files?: unknown;
+      version?: unknown;
+    };
     expect(packageJson.files).toEqual(
-      expect.arrayContaining(['.claude-plugin', '.codex-plugin', 'codex.mcp.json', 'hooks']),
-    )
+      expect.arrayContaining([".claude-plugin", ".codex-plugin", "codex.mcp.json", "hooks"]),
+    );
 
     for (const artifactPath of codexPluginArtifactPaths) {
-      expect(existsSync(join(repoRoot, artifactPath))).toBe(true)
+      expect(existsSync(join(repoRoot, artifactPath))).toBe(true);
     }
 
-    const manifest = readJsonObject(join(repoRoot, '.codex-plugin', 'plugin.json'))
+    const manifest = readJsonObject(join(repoRoot, ".codex-plugin", "plugin.json"));
     expect(manifest).toMatchObject({
-      name: 'agent-kit',
+      name: "agent-kit",
       version: packageJson.version,
-      description: 'Webpresso agent-kit: blueprints, skills, hooks, and MCP server',
-      skills: './skills/',
-      mcpServers: './codex.mcp.json',
-      hooks: './hooks/hooks.json',
-    })
+      description: "Webpresso agent-kit: blueprints, skills, hooks, and MCP server",
+      skills: "./skills/",
+      mcpServers: "./codex.mcp.json",
+      hooks: "./hooks/hooks.json",
+    });
 
-    expect(readJsonObject(join(repoRoot, 'codex.mcp.json'))).toStrictEqual({
+    expect(readJsonObject(join(repoRoot, "codex.mcp.json"))).toStrictEqual({
       webpresso: {
-        command: '${PLUGIN_ROOT}/bin/wp',
-        args: ['mcp'],
+        command: "${PLUGIN_ROOT}/bin/wp",
+        args: ["mcp"],
       },
-    })
+    });
 
-    expect(readJsonObject(join(repoRoot, 'hooks', 'hooks.json'))).toStrictEqual({
+    expect(readJsonObject(join(repoRoot, "hooks", "hooks.json"))).toStrictEqual({
       hooks: {},
-    })
-  })
+    });
+  });
 
-  it('pins Codex plugin artifacts in the dry-run package file list', () => {
-    const packedPaths = getDryRunPackagePaths()
-    expect(packedPaths).toEqual(expect.arrayContaining([...codexPluginArtifactPaths]))
-  }, 30_000)
+  it("pins Codex plugin artifacts in the dry-run package file list", () => {
+    const packedPaths = getDryRunPackagePaths();
+    expect(packedPaths).toEqual(expect.arrayContaining([...codexPluginArtifactPaths]));
+  }, 30_000);
 
-  it('keeps the package-surface denied-content policy regex-based and public-safe', () => {
-    const rawContract = readFileSync(join(repoRoot, 'package-surface.json'), 'utf8')
-    const contract = readJsonObject(join(repoRoot, 'package-surface.json')) as {
-      staleLinks?: unknown
-      tarball?: { forbiddenContentPatterns?: string[] }
-    }
+  it("keeps the package-surface denied-content policy regex-based and public-safe", () => {
+    const rawContract = readFileSync(join(repoRoot, "package-surface.json"), "utf8");
+    const contract = readJsonObject(join(repoRoot, "package-surface.json")) as {
+      staleLinks?: unknown;
+      tarball?: { forbiddenContentPatterns?: string[] };
+    };
 
-    expect(contract.staleLinks).toBe(undefined)
+    expect(contract.staleLinks).toBe(undefined);
     expect(contract.tarball?.forbiddenContentPatterns).toEqual(
-      expect.arrayContaining(['/ozby\\/ingest-lens/', '/webpresso\\/monorepo/']),
-    )
-    expect(rawContract).not.toContain('ozby/ingest-lens')
-    expect(rawContract).not.toContain('webpresso/monorepo')
-  })
+      expect.arrayContaining(["/ozby\\/ingest-lens/", "/webpresso\\/monorepo/"]),
+    );
+    expect(rawContract).not.toContain("ozby/ingest-lens");
+    expect(rawContract).not.toContain("webpresso/monorepo");
+  });
 
-  it('keeps Codex plugin artifacts free of denied public package content', () => {
-    const contract = readJsonObject(join(repoRoot, 'package-surface.json')) as {
-      tarball?: { forbiddenContentPatterns?: string[] }
-    }
+  it("keeps Codex plugin artifacts free of denied public package content", () => {
+    const contract = readJsonObject(join(repoRoot, "package-surface.json")) as {
+      tarball?: { forbiddenContentPatterns?: string[] };
+    };
     const denied = [
       ...forbiddenPluginArtifactText,
       ...(contract.tarball?.forbiddenContentPatterns ?? []),
-    ]
+    ];
     const artifactText = codexPluginArtifactPaths
-      .map((artifactPath) => readFileSync(join(repoRoot, artifactPath), 'utf8'))
-      .join('\n')
+      .map((artifactPath) => readFileSync(join(repoRoot, artifactPath), "utf8"))
+      .join("\n");
 
     for (const value of denied) {
-      expect(artifactText).not.toContain(value)
+      expect(artifactText).not.toContain(value);
     }
-  })
+  });
 
-  it('documents session-continuity release gates for hook-bin and doc changes', () => {
+  it("documents session-continuity release gates for hook-bin and doc changes", () => {
     const docs = [
-      'README.md',
-      'docs/guides/session-memory.md',
-      'docs/hook-matrix.md',
-      'docs/hooks-doctor.md',
+      "README.md",
+      "docs/guides/session-memory.md",
+      "docs/hook-matrix.md",
+      "docs/hooks-doctor.md",
     ]
-      .map((path) => readFileSync(join(repoRoot, path), 'utf8'))
-      .join('\n')
+      .map((path) => readFileSync(join(repoRoot, path), "utf8"))
+      .join("\n");
 
     for (const command of [
-      './bin/wp hooks doctor --skip-mcp',
-      './bin/wp audit blueprint-lifecycle',
-      './bin/wp audit reference-parity-matrix --json',
-      './bin/wp audit package-surface',
-      'npm pack --dry-run --json',
-      'vp run lint:pkg',
-      'vp run verify:secrets',
-      './bin/wp audit secrets-policy',
-      './bin/wp audit no-dev-vars',
-      './bin/wp audit secret-provider-quarantine',
-      './bin/wp audit secrets-config',
-      'vp run verify:paths',
+      "./bin/wp hooks doctor --skip-mcp",
+      "./bin/wp audit blueprint-lifecycle",
+      "./bin/wp audit reference-parity-matrix --json",
+      "./bin/wp audit package-surface",
+      "npm pack --dry-run --json",
+      "vp run lint:pkg",
+      "vp run verify:secrets",
+      "./bin/wp audit secrets-policy",
+      "./bin/wp audit no-dev-vars",
+      "./bin/wp audit secret-provider-quarantine",
+      "./bin/wp audit secrets-config",
+      "vp run verify:paths",
     ]) {
-      expect(docs).toContain(command)
+      expect(docs).toContain(command);
     }
 
-    expect(docs).toContain('typed continuity events')
-    expect(docs).toContain('Cursor/OpenCode degraded')
-    expect(docs).not.toMatch(/drop[- ]?in replacement|100% parity|identical\s+lifecycle\s+depth/iu)
-  })
+    expect(docs).toContain("typed continuity events");
+    expect(docs).toContain("Cursor/OpenCode degraded");
+    expect(docs).not.toMatch(/drop[- ]?in replacement|100% parity|identical\s+lifecycle\s+depth/iu);
+  });
 
-  it('pins the shipped README session-memory tool contract to registered public tools', () => {
-    const readme = readFileSync(join(repoRoot, 'README.md'), 'utf8')
-    const documentedTools = [...new Set(readme.match(/\bwp_session_[a-z_]+\b/gu) ?? [])].sort()
+  it("pins the shipped README session-memory tool contract to registered public tools", () => {
+    const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
+    const documentedTools = [...new Set(readme.match(/\bwp_session_[a-z_]+\b/gu) ?? [])].sort();
 
-    expect(documentedTools).toEqual([...sessionMemoryToolNames].sort())
-    expect(readme).toContain('docs/guides/session-memory.md')
-    expect(readme).toContain('local storage')
-    expect(readme).toContain('bounded outputs')
-    expect(readme).toContain('reset safety')
-    expect(readme).toContain('non-goals')
-    expect(readme).not.toMatch(/full.*replacement|drop[- ]?in.*replacement|100%.*parity/iu)
-  })
+    expect(documentedTools).toEqual([...sessionMemoryToolNames].sort());
+    expect(readme).toContain("docs/guides/session-memory.md");
+    expect(readme).toContain("local storage");
+    expect(readme).toContain("bounded outputs");
+    expect(readme).toContain("reset safety");
+    expect(readme).toContain("non-goals");
+    expect(readme).not.toMatch(/full.*replacement|drop[- ]?in.*replacement|100%.*parity/iu);
+  });
 
-  it('declares session-memory public docs as shipped package files', () => {
-    const packageJson = readJsonObject(join(repoRoot, 'package.json')) as { files?: unknown }
+  it("declares session-memory public docs as shipped package files", () => {
+    const packageJson = readJsonObject(join(repoRoot, "package.json")) as { files?: unknown };
 
-    expect(packageJson.files).toEqual(expect.arrayContaining([...sessionMemoryPublicDocPaths]))
-  })
+    expect(packageJson.files).toEqual(expect.arrayContaining([...sessionMemoryPublicDocPaths]));
+  });
 
-  it('keeps the session-memory public contract intentional in the dry-run package file list', () => {
-    const packedPaths = getDryRunPackagePaths()
+  it("keeps the session-memory public contract intentional in the dry-run package file list", () => {
+    const packedPaths = getDryRunPackagePaths();
 
-    expect(packedPaths).toContain('README.md')
-    expect(packedPaths).toEqual(expect.arrayContaining([...sessionMemoryPublicDocPaths]))
+    expect(packedPaths).toContain("README.md");
+    expect(packedPaths).toEqual(expect.arrayContaining([...sessionMemoryPublicDocPaths]));
     expect(packedPaths).not.toEqual(
-      expect.arrayContaining(['.env', '.dev.vars', '.agent', '.agents', '.omx', '.codex']),
-    )
-  })
+      expect.arrayContaining([".env", ".dev.vars", ".agent", ".agents", ".omx", ".codex"]),
+    );
+  });
 
-  it('ships the registered session-memory MCP tool descriptors in the dry-run package file list', () => {
-    const packedPaths = getDryRunPackagePaths()
+  it("ships the registered session-memory MCP tool descriptors in the dry-run package file list", () => {
+    const packedPaths = getDryRunPackagePaths();
     const expectedToolPaths = sessionMemoryToolNames.flatMap((toolName) => {
-      const fileBase = toolName.replace(/^wp_/u, '').replaceAll('_', '-')
-      return [`dist/esm/mcp/tools/${fileBase}.js`, `dist/esm/mcp/tools/${fileBase}.d.ts`]
-    })
+      const fileBase = toolName.replace(/^wp_/u, "").replaceAll("_", "-");
+      return [`dist/esm/mcp/tools/${fileBase}.js`, `dist/esm/mcp/tools/${fileBase}.d.ts`];
+    });
 
-    expect(packedPaths).toEqual(expect.arrayContaining(expectedToolPaths))
-  })
+    expect(packedPaths).toEqual(expect.arrayContaining(expectedToolPaths));
+  });
 
-  it('preserves the existing reference plugin package surface', () => {
-    const packageJson = readJsonObject(join(repoRoot, 'package.json')) as { files?: unknown }
-    expect(packageJson.files).toEqual(expect.arrayContaining(['.claude-plugin']))
+  it("preserves the existing reference plugin package surface", () => {
+    const packageJson = readJsonObject(join(repoRoot, "package.json")) as { files?: unknown };
+    expect(packageJson.files).toEqual(expect.arrayContaining([".claude-plugin"]));
 
-    const manifest = readJsonObject(join(repoRoot, '.claude-plugin', 'plugin.json'))
+    const manifest = readJsonObject(join(repoRoot, ".claude-plugin", "plugin.json"));
     expect(manifest).toMatchObject({
-      name: 'agent-kit',
-      skills: './skills',
-      commands: './commands',
+      name: "agent-kit",
+      skills: "./skills",
+      commands: "./commands",
       mcpServers: {
         webpresso: {
-          command: '${CLAUDE_PLUGIN_ROOT}/bin/wp',
-          args: ['mcp'],
+          command: "${CLAUDE_PLUGIN_ROOT}/bin/wp",
+          args: ["mcp"],
         },
       },
-    })
-    expect(Object.hasOwn(manifest, 'hooks')).toBe(false)
-  })
+    });
+    expect(Object.hasOwn(manifest, "hooks")).toBe(false);
+  });
 
-  it('preserves an Elastic-2.0 license in the packed manifest', () => {
+  it("preserves an Elastic-2.0 license in the packed manifest", () => {
     const manifest = createPackedManifest(
       {
-        name: '@webpresso/agent-kit',
-        version: '1.0.0',
-        license: 'Elastic-2.0',
+        name: "@webpresso/agent-kit",
+        version: "1.0.0",
+        license: "Elastic-2.0",
       },
       { catalog: {} },
     ) as {
-      license?: string
-    }
+      license?: string;
+    };
 
-    expect(manifest.license).toBe('Elastic-2.0')
-  })
+    expect(manifest.license).toBe("Elastic-2.0");
+  });
 
-  it('adds platform runtime packages to the packed optional dependency surface', () => {
+  it("adds platform runtime packages to the packed optional dependency surface", () => {
     const manifest = createPackedManifest(
       {
-        name: '@webpresso/agent-kit',
-        version: '1.2.3',
-        optionalDependencies: { existing: '^1.0.0' },
+        name: "@webpresso/agent-kit",
+        version: "1.2.3",
+        optionalDependencies: { existing: "^1.0.0" },
       },
       { catalog: {} },
-    )
+    );
 
     expect(manifest.optionalDependencies).toMatchObject({
-      existing: '^1.0.0',
-      '@webpresso/agent-kit-runtime-darwin-arm64': '1.2.3',
-      '@webpresso/agent-kit-runtime-darwin-x64': '1.2.3',
-      '@webpresso/agent-kit-runtime-linux-x64': '1.2.3',
-      '@webpresso/agent-kit-runtime-linux-arm64': '1.2.3',
-      '@webpresso/agent-kit-runtime-windows-x64': '1.2.3',
-      '@webpresso/agent-kit-session-memory-darwin-x64': '1.2.3',
-      '@webpresso/agent-kit-session-memory-darwin-arm64': '1.2.3',
-      '@webpresso/agent-kit-session-memory-linux-x64': '1.2.3',
-      '@webpresso/agent-kit-session-memory-linux-arm64': '1.2.3',
-      '@webpresso/agent-kit-session-memory-win32-x64': '1.2.3',
-      '@webpresso/agent-kit-session-memory-win32-arm64': '1.2.3',
-    })
-  })
+      existing: "^1.0.0",
+      "@webpresso/agent-kit-runtime-darwin-arm64": "1.2.3",
+      "@webpresso/agent-kit-runtime-darwin-x64": "1.2.3",
+      "@webpresso/agent-kit-runtime-linux-x64": "1.2.3",
+      "@webpresso/agent-kit-runtime-linux-arm64": "1.2.3",
+      "@webpresso/agent-kit-runtime-windows-x64": "1.2.3",
+      "@webpresso/agent-kit-session-memory-darwin-x64": "1.2.3",
+      "@webpresso/agent-kit-session-memory-darwin-arm64": "1.2.3",
+      "@webpresso/agent-kit-session-memory-linux-x64": "1.2.3",
+      "@webpresso/agent-kit-session-memory-linux-arm64": "1.2.3",
+      "@webpresso/agent-kit-session-memory-win32-x64": "1.2.3",
+      "@webpresso/agent-kit-session-memory-win32-arm64": "1.2.3",
+    });
+  });
 
-  it('prunes orphaned dist subtrees during prepare and restores them afterwards', () => {
-    const fixtureDir = mkdtempSync(join(tmpdir(), 'wp-package-manifest-prune-'))
+  it("prunes orphaned dist subtrees during prepare and restores them afterwards", () => {
+    const fixtureDir = mkdtempSync(join(tmpdir(), "wp-package-manifest-prune-"));
 
     try {
-      mkdirSync(join(fixtureDir, 'src', 'keep'), { recursive: true })
-      mkdirSync(join(fixtureDir, 'dist', 'esm', 'keep'), { recursive: true })
-      mkdirSync(join(fixtureDir, 'dist', 'esm', 'ai-prompts'), { recursive: true })
-      writeFileSync(join(fixtureDir, 'pnpm-workspace.yaml'), 'catalog: {}\n', 'utf8')
+      mkdirSync(join(fixtureDir, "src", "keep"), { recursive: true });
+      mkdirSync(join(fixtureDir, "dist", "esm", "keep"), { recursive: true });
+      mkdirSync(join(fixtureDir, "dist", "esm", "ai-prompts"), { recursive: true });
+      writeFileSync(join(fixtureDir, "pnpm-workspace.yaml"), "catalog: {}\n", "utf8");
       writeFileSync(
-        join(fixtureDir, 'package.json'),
-        `${JSON.stringify({ name: '@webpresso/agent-kit', version: '0.21.0' }, null, 2)}\n`,
-        'utf8',
-      )
-      writeFileSync(join(fixtureDir, 'dist', 'esm', 'keep', 'index.js'), 'export {};\n', 'utf8')
+        join(fixtureDir, "package.json"),
+        `${JSON.stringify({ name: "@webpresso/agent-kit", version: "0.21.0" }, null, 2)}\n`,
+        "utf8",
+      );
+      writeFileSync(join(fixtureDir, "dist", "esm", "keep", "index.js"), "export {};\n", "utf8");
       writeFileSync(
-        join(fixtureDir, 'dist', 'esm', 'ai-prompts', 'index.js'),
-        'export {};\n',
-        'utf8',
-      )
+        join(fixtureDir, "dist", "esm", "ai-prompts", "index.js"),
+        "export {};\n",
+        "utf8",
+      );
 
-      preparePackedManifest(fixtureDir)
-      expect(existsSync(join(fixtureDir, 'dist', 'esm', 'keep'))).toBe(true)
-      expect(existsSync(join(fixtureDir, 'dist', 'esm', 'ai-prompts'))).toBe(false)
+      preparePackedManifest(fixtureDir);
+      expect(existsSync(join(fixtureDir, "dist", "esm", "keep"))).toBe(true);
+      expect(existsSync(join(fixtureDir, "dist", "esm", "ai-prompts"))).toBe(false);
 
-      restorePackedManifest(fixtureDir)
-      expect(existsSync(join(fixtureDir, 'dist', 'esm', 'keep'))).toBe(true)
-      expect(existsSync(join(fixtureDir, 'dist', 'esm', 'ai-prompts'))).toBe(true)
+      restorePackedManifest(fixtureDir);
+      expect(existsSync(join(fixtureDir, "dist", "esm", "keep"))).toBe(true);
+      expect(existsSync(join(fixtureDir, "dist", "esm", "ai-prompts"))).toBe(true);
     } finally {
-      rmSync(fixtureDir, { force: true, recursive: true })
+      rmSync(fixtureDir, { force: true, recursive: true });
     }
-  })
+  });
 
-  it('fails prepack loudly when built blueprint migration SQL assets are missing from dist', () => {
-    const fixtureDir = mkdtempSync(join(tmpdir(), 'wp-package-manifest-migration-assets-missing-'))
-    const migrationSourceDir = join(fixtureDir, 'src', 'blueprint', 'db', 'migrations')
-    const migrationDistDir = join(fixtureDir, 'dist', 'esm', 'blueprint', 'db', 'migrations')
+  it("fails prepack loudly when built blueprint migration SQL assets are missing from dist", () => {
+    const fixtureDir = mkdtempSync(join(tmpdir(), "wp-package-manifest-migration-assets-missing-"));
+    const migrationSourceDir = join(fixtureDir, "src", "blueprint", "db", "migrations");
+    const migrationDistDir = join(fixtureDir, "dist", "esm", "blueprint", "db", "migrations");
 
     try {
-      mkdirSync(migrationSourceDir, { recursive: true })
-      writeFileSync(join(fixtureDir, 'pnpm-workspace.yaml'), 'catalog: {}\n', 'utf8')
+      mkdirSync(migrationSourceDir, { recursive: true });
+      writeFileSync(join(fixtureDir, "pnpm-workspace.yaml"), "catalog: {}\n", "utf8");
       writeFileSync(
-        join(fixtureDir, 'package.json'),
-        `${JSON.stringify({ name: '@webpresso/agent-kit', version: '0.29.1' }, null, 2)}\n`,
-        'utf8',
-      )
-      writeFileSync(join(migrationSourceDir, '0001_seed.sql'), 'CREATE TABLE blueprints();\n')
-      writeFileSync(join(migrationSourceDir, '0002_request_id_ledger.sql'), 'CREATE TABLE x();\n')
+        join(fixtureDir, "package.json"),
+        `${JSON.stringify({ name: "@webpresso/agent-kit", version: "0.29.1" }, null, 2)}\n`,
+        "utf8",
+      );
+      writeFileSync(join(migrationSourceDir, "0001_seed.sql"), "CREATE TABLE blueprints();\n");
+      writeFileSync(join(migrationSourceDir, "0002_request_id_ledger.sql"), "CREATE TABLE x();\n");
 
       expect(() => preparePackedManifest(fixtureDir)).toThrow(
         /Missing or stale built blueprint migration SQL assets/u,
-      )
-      expect(readFileSync(join(fixtureDir, 'package.json'), 'utf8')).toBe(
-        `${JSON.stringify({ name: '@webpresso/agent-kit', version: '0.29.1' }, null, 2)}\n`,
-      )
-      expect(existsSync(join(fixtureDir, '.package.json.prepack.backup'))).toBe(false)
-      expect(existsSync(migrationDistDir)).toBe(false)
+      );
+      expect(readFileSync(join(fixtureDir, "package.json"), "utf8")).toBe(
+        `${JSON.stringify({ name: "@webpresso/agent-kit", version: "0.29.1" }, null, 2)}\n`,
+      );
+      expect(existsSync(join(fixtureDir, ".package.json.prepack.backup"))).toBe(false);
+      expect(existsSync(migrationDistDir)).toBe(false);
     } finally {
-      rmSync(fixtureDir, { force: true, recursive: true })
+      rmSync(fixtureDir, { force: true, recursive: true });
     }
-  })
+  });
 
-  it('accepts prebuilt blueprint migration SQL assets without mutating them during packing', () => {
-    const fixtureDir = mkdtempSync(join(tmpdir(), 'wp-package-manifest-migration-assets-ready-'))
-    const migrationSourceDir = join(fixtureDir, 'src', 'blueprint', 'db', 'migrations')
-    const migrationDistDir = join(fixtureDir, 'dist', 'esm', 'blueprint', 'db', 'migrations')
+  it("accepts prebuilt blueprint migration SQL assets without mutating them during packing", () => {
+    const fixtureDir = mkdtempSync(join(tmpdir(), "wp-package-manifest-migration-assets-ready-"));
+    const migrationSourceDir = join(fixtureDir, "src", "blueprint", "db", "migrations");
+    const migrationDistDir = join(fixtureDir, "dist", "esm", "blueprint", "db", "migrations");
 
     try {
-      mkdirSync(migrationSourceDir, { recursive: true })
-      mkdirSync(migrationDistDir, { recursive: true })
-      writeFileSync(join(fixtureDir, 'pnpm-workspace.yaml'), 'catalog: {}\n', 'utf8')
+      mkdirSync(migrationSourceDir, { recursive: true });
+      mkdirSync(migrationDistDir, { recursive: true });
+      writeFileSync(join(fixtureDir, "pnpm-workspace.yaml"), "catalog: {}\n", "utf8");
       writeFileSync(
-        join(fixtureDir, 'package.json'),
-        `${JSON.stringify({ name: '@webpresso/agent-kit', version: '0.29.1' }, null, 2)}\n`,
-        'utf8',
-      )
-      writeFileSync(join(migrationSourceDir, '0001_seed.sql'), 'CREATE TABLE blueprints();\n')
-      writeFileSync(join(migrationSourceDir, '0002_request_id_ledger.sql'), 'CREATE TABLE x();\n')
-      writeFileSync(join(migrationDistDir, '0001_seed.sql'), 'CREATE TABLE blueprints();\n')
-      writeFileSync(join(migrationDistDir, '0002_request_id_ledger.sql'), 'CREATE TABLE x();\n')
-      writeFileSync(join(migrationDistDir, 'run.js'), 'export {};\n')
+        join(fixtureDir, "package.json"),
+        `${JSON.stringify({ name: "@webpresso/agent-kit", version: "0.29.1" }, null, 2)}\n`,
+        "utf8",
+      );
+      writeFileSync(join(migrationSourceDir, "0001_seed.sql"), "CREATE TABLE blueprints();\n");
+      writeFileSync(join(migrationSourceDir, "0002_request_id_ledger.sql"), "CREATE TABLE x();\n");
+      writeFileSync(join(migrationDistDir, "0001_seed.sql"), "CREATE TABLE blueprints();\n");
+      writeFileSync(join(migrationDistDir, "0002_request_id_ledger.sql"), "CREATE TABLE x();\n");
+      writeFileSync(join(migrationDistDir, "run.js"), "export {};\n");
 
-      preparePackedManifest(fixtureDir)
-      expect(readFileSync(join(migrationDistDir, '0001_seed.sql'), 'utf8')).toContain(
-        'CREATE TABLE blueprints',
-      )
-      expect(existsSync(join(migrationDistDir, '0002_request_id_ledger.sql'))).toBe(true)
-      expect(existsSync(join(migrationDistDir, 'run.js'))).toBe(true)
+      preparePackedManifest(fixtureDir);
+      expect(readFileSync(join(migrationDistDir, "0001_seed.sql"), "utf8")).toContain(
+        "CREATE TABLE blueprints",
+      );
+      expect(existsSync(join(migrationDistDir, "0002_request_id_ledger.sql"))).toBe(true);
+      expect(existsSync(join(migrationDistDir, "run.js"))).toBe(true);
 
-      restorePackedManifest(fixtureDir)
-      expect(existsSync(join(migrationDistDir, '0001_seed.sql'))).toBe(true)
-      expect(existsSync(join(migrationDistDir, '0002_request_id_ledger.sql'))).toBe(true)
-      expect(existsSync(join(migrationDistDir, 'run.js'))).toBe(true)
+      restorePackedManifest(fixtureDir);
+      expect(existsSync(join(migrationDistDir, "0001_seed.sql"))).toBe(true);
+      expect(existsSync(join(migrationDistDir, "0002_request_id_ledger.sql"))).toBe(true);
+      expect(existsSync(join(migrationDistDir, "run.js"))).toBe(true);
     } finally {
-      rmSync(fixtureDir, { force: true, recursive: true })
+      rmSync(fixtureDir, { force: true, recursive: true });
     }
-  })
+  });
 
-  it('strips built sourceMappingURL comments for packing and restores them afterwards', () => {
-    const fixtureDir = mkdtempSync(join(tmpdir(), 'wp-package-manifest-sourcemap-comments-'))
-    const setupFilePath = join(fixtureDir, 'dist', 'esm', 'config', 'vitest', 'node-setup.js')
+  it("strips built sourceMappingURL comments for packing and restores them afterwards", () => {
+    const fixtureDir = mkdtempSync(join(tmpdir(), "wp-package-manifest-sourcemap-comments-"));
+    const setupFilePath = join(fixtureDir, "dist", "esm", "config", "vitest", "node-setup.js");
     const declarationFilePath = join(
       fixtureDir,
-      'dist',
-      'esm',
-      'config',
-      'vitest',
-      'node-setup.d.ts',
-    )
+      "dist",
+      "esm",
+      "config",
+      "vitest",
+      "node-setup.d.ts",
+    );
     const setupWithMap =
-      'export const __nodeSetupModule = true;\n//# sourceMappingURL=node-setup.js.map\n'
+      "export const __nodeSetupModule = true;\n//# sourceMappingURL=node-setup.js.map\n";
     const declarationWithMap =
-      'export declare const __nodeSetupModule = true;\n//# sourceMappingURL=node-setup.d.ts.map\n'
+      "export declare const __nodeSetupModule = true;\n//# sourceMappingURL=node-setup.d.ts.map\n";
 
     try {
-      mkdirSync(join(fixtureDir, 'dist', 'esm', 'config', 'vitest'), { recursive: true })
-      writeFileSync(join(fixtureDir, 'pnpm-workspace.yaml'), 'catalog: {}\n', 'utf8')
+      mkdirSync(join(fixtureDir, "dist", "esm", "config", "vitest"), { recursive: true });
+      writeFileSync(join(fixtureDir, "pnpm-workspace.yaml"), "catalog: {}\n", "utf8");
       writeFileSync(
-        join(fixtureDir, 'package.json'),
-        `${JSON.stringify({ name: '@webpresso/agent-kit', version: '0.29.2' }, null, 2)}\n`,
-        'utf8',
-      )
-      writeFileSync(setupFilePath, setupWithMap, 'utf8')
-      writeFileSync(declarationFilePath, declarationWithMap, 'utf8')
+        join(fixtureDir, "package.json"),
+        `${JSON.stringify({ name: "@webpresso/agent-kit", version: "0.29.2" }, null, 2)}\n`,
+        "utf8",
+      );
+      writeFileSync(setupFilePath, setupWithMap, "utf8");
+      writeFileSync(declarationFilePath, declarationWithMap, "utf8");
 
-      preparePackedManifest(fixtureDir)
-      expect(readFileSync(setupFilePath, 'utf8')).toBe('export const __nodeSetupModule = true;\n')
-      expect(readFileSync(declarationFilePath, 'utf8')).toBe(
-        'export declare const __nodeSetupModule = true;\n',
-      )
+      preparePackedManifest(fixtureDir);
+      expect(readFileSync(setupFilePath, "utf8")).toBe("export const __nodeSetupModule = true;\n");
+      expect(readFileSync(declarationFilePath, "utf8")).toBe(
+        "export declare const __nodeSetupModule = true;\n",
+      );
 
-      restorePackedManifest(fixtureDir)
-      expect(readFileSync(setupFilePath, 'utf8')).toBe(setupWithMap)
-      expect(readFileSync(declarationFilePath, 'utf8')).toBe(declarationWithMap)
+      restorePackedManifest(fixtureDir);
+      expect(readFileSync(setupFilePath, "utf8")).toBe(setupWithMap);
+      expect(readFileSync(declarationFilePath, "utf8")).toBe(declarationWithMap);
     } finally {
-      rmSync(fixtureDir, { force: true, recursive: true })
+      rmSync(fixtureDir, { force: true, recursive: true });
     }
-  })
+  });
 
-  it('rewrites the real package.json optionalDependencies during prepare and restores afterwards', () => {
-    const fixtureDir = mkdtempSync(join(tmpdir(), 'wp-package-manifest-runtime-'))
+  it("rewrites the real package.json optionalDependencies during prepare and restores afterwards", () => {
+    const fixtureDir = mkdtempSync(join(tmpdir(), "wp-package-manifest-runtime-"));
 
     try {
-      writeFileSync(join(fixtureDir, 'pnpm-workspace.yaml'), 'catalog: {}\n', 'utf8')
+      writeFileSync(join(fixtureDir, "pnpm-workspace.yaml"), "catalog: {}\n", "utf8");
       writeFileSync(
-        join(fixtureDir, 'package.json'),
+        join(fixtureDir, "package.json"),
         `${JSON.stringify(
           {
-            name: '@webpresso/agent-kit',
-            version: '1.2.3',
-            optionalDependencies: { existing: '^1.0.0' },
+            name: "@webpresso/agent-kit",
+            version: "1.2.3",
+            optionalDependencies: { existing: "^1.0.0" },
           },
           null,
           2,
         )}\n`,
-        'utf8',
-      )
+        "utf8",
+      );
 
-      preparePackedManifest(fixtureDir)
-      const prepared = JSON.parse(readFileSync(join(fixtureDir, 'package.json'), 'utf8')) as {
-        optionalDependencies?: Record<string, string>
-      }
+      preparePackedManifest(fixtureDir);
+      const prepared = JSON.parse(readFileSync(join(fixtureDir, "package.json"), "utf8")) as {
+        optionalDependencies?: Record<string, string>;
+      };
       expect(prepared.optionalDependencies).toMatchObject({
-        existing: '^1.0.0',
-        '@webpresso/agent-kit-runtime-darwin-arm64': '1.2.3',
-        '@webpresso/agent-kit-runtime-darwin-x64': '1.2.3',
-        '@webpresso/agent-kit-runtime-linux-x64': '1.2.3',
-        '@webpresso/agent-kit-runtime-linux-arm64': '1.2.3',
-        '@webpresso/agent-kit-runtime-windows-x64': '1.2.3',
-        '@webpresso/agent-kit-session-memory-darwin-x64': '1.2.3',
-        '@webpresso/agent-kit-session-memory-darwin-arm64': '1.2.3',
-        '@webpresso/agent-kit-session-memory-linux-x64': '1.2.3',
-        '@webpresso/agent-kit-session-memory-linux-arm64': '1.2.3',
-        '@webpresso/agent-kit-session-memory-win32-x64': '1.2.3',
-        '@webpresso/agent-kit-session-memory-win32-arm64': '1.2.3',
-      })
+        existing: "^1.0.0",
+        "@webpresso/agent-kit-runtime-darwin-arm64": "1.2.3",
+        "@webpresso/agent-kit-runtime-darwin-x64": "1.2.3",
+        "@webpresso/agent-kit-runtime-linux-x64": "1.2.3",
+        "@webpresso/agent-kit-runtime-linux-arm64": "1.2.3",
+        "@webpresso/agent-kit-runtime-windows-x64": "1.2.3",
+        "@webpresso/agent-kit-session-memory-darwin-x64": "1.2.3",
+        "@webpresso/agent-kit-session-memory-darwin-arm64": "1.2.3",
+        "@webpresso/agent-kit-session-memory-linux-x64": "1.2.3",
+        "@webpresso/agent-kit-session-memory-linux-arm64": "1.2.3",
+        "@webpresso/agent-kit-session-memory-win32-x64": "1.2.3",
+        "@webpresso/agent-kit-session-memory-win32-arm64": "1.2.3",
+      });
 
-      restorePackedManifest(fixtureDir)
-      const restored = JSON.parse(readFileSync(join(fixtureDir, 'package.json'), 'utf8')) as {
-        optionalDependencies?: Record<string, string>
-      }
-      expect(restored.optionalDependencies).toEqual({ existing: '^1.0.0' })
+      restorePackedManifest(fixtureDir);
+      const restored = JSON.parse(readFileSync(join(fixtureDir, "package.json"), "utf8")) as {
+        optionalDependencies?: Record<string, string>;
+      };
+      expect(restored.optionalDependencies).toEqual({ existing: "^1.0.0" });
     } finally {
-      rmSync(fixtureDir, { force: true, recursive: true })
+      rmSync(fixtureDir, { force: true, recursive: true });
     }
-  })
+  });
 
-  it('fails prepack before rewriting package.json when catalog resolution produces a local protocol', () => {
-    const fixtureDir = mkdtempSync(join(tmpdir(), 'wp-package-manifest-local-protocol-'))
-    const linkUrlSpecifier = `${'link:'}//../local`
+  it("fails prepack before rewriting package.json when catalog resolution produces a local protocol", () => {
+    const fixtureDir = mkdtempSync(join(tmpdir(), "wp-package-manifest-local-protocol-"));
+    const linkUrlSpecifier = `${"link:"}//../local`;
     const originalPackageJson = `${JSON.stringify(
       {
-        name: '@webpresso/agent-kit',
-        version: '1.2.3',
-        dependencies: { local: 'catalog:' },
+        name: "@webpresso/agent-kit",
+        version: "1.2.3",
+        dependencies: { local: "catalog:" },
       },
       null,
       2,
-    )}\n`
+    )}\n`;
 
     try {
       writeFileSync(
-        join(fixtureDir, 'pnpm-workspace.yaml'),
+        join(fixtureDir, "pnpm-workspace.yaml"),
         `catalog:\n  local: ${linkUrlSpecifier}\n`,
-        'utf8',
-      )
-      writeFileSync(join(fixtureDir, 'package.json'), originalPackageJson, 'utf8')
+        "utf8",
+      );
+      writeFileSync(join(fixtureDir, "package.json"), originalPackageJson, "utf8");
 
       expect(() => preparePackedManifest(fixtureDir)).toThrow(
         `Cannot pack dependencies.local with non-publishable link: specifier ${JSON.stringify(linkUrlSpecifier)}`,
-      )
-      expect(readFileSync(join(fixtureDir, 'package.json'), 'utf8')).toBe(originalPackageJson)
-      expect(existsSync(join(fixtureDir, '.package.json.prepack.backup'))).toBe(false)
+      );
+      expect(readFileSync(join(fixtureDir, "package.json"), "utf8")).toBe(originalPackageJson);
+      expect(existsSync(join(fixtureDir, ".package.json.prepack.backup"))).toBe(false);
     } finally {
-      rmSync(fixtureDir, { force: true, recursive: true })
+      rmSync(fixtureDir, { force: true, recursive: true });
     }
-  })
-})
+  });
+});

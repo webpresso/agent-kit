@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-06-12'
+last_updated: "2026-06-12"
 ---
 
 # Security audits
@@ -30,6 +30,7 @@ Scans both the working tree and git-tracked history for forbidden secret
 carriers.
 
 **Catches:**
+
 - `.env`, `.env.*`, `.dev.vars`, `.dev.vars.*`
 - Common credential file names (`credentials.json`, `*.pem`, `*.key`,
   `service-account*.json`, etc.)
@@ -67,6 +68,7 @@ provider-specific flags. Consumer code must go through the
 at runtime rather than hard-coding it.
 
 **Catches:**
+
 - Direct invocation of the secret manager CLI (e.g. the provider's own
   `run` subcommand)
 - Provider-specific flags passed to the legacy secret wrapper (e.g. `--doppler`,
@@ -162,9 +164,7 @@ Each returns a structured result:
   "ok": false,
   "title": "secrets-policy",
   "checked": 12,
-  "violations": [
-    { "file": ".env", "message": ".env: forbidden secret carrier" }
-  ]
+  "violations": [{ "file": ".env", "message": ".env: forbidden secret carrier" }]
 }
 ```
 

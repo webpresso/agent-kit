@@ -2,13 +2,13 @@
 type: blueprint
 title: Blueprint platform sync — make platform-synced SQLite the canonical store
 status: completed
-completed_at: '2026-05-12'
+completed_at: "2026-05-12"
 complexity: L
 owner: ozby
 historical_verification_gap_waiver: true
 historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 created: 2026-05-12
-last_updated: '2026-05-12'
+last_updated: "2026-05-12"
 tags:
   - blueprints
   - sqlite
@@ -27,7 +27,7 @@ depends_on:
   a blueprint's state and see a consistent view — no manual file-sync,
   no `git pull`, no stale local SQLite.
 - **Consuming surface:** All 8 blueprint MCP tools (`wp_blueprint_task
-  _next`, `wp_blueprint_task_advance`, `wp_blueprint_promote`,
+_next`, `wp_blueprint_task_advance`, `wp_blueprint_promote`,
   `wp_blueprint_finalize`, …), `wp blueprint start/task/finalize` CLI,
   and the `/pll` skill.
 - **New user-visible capability:** Two agents on different machines
@@ -125,15 +125,15 @@ configurable TTL). Polling and SSE are deferred to v2.x.
 
 ## Design decisions (resolved 2026-05-12, platform team design session)
 
-| # | Question | Decision |
-|---|---|---|
-| Q1 | **Offline mutation strategy** | **A — Buffer locally, push when reconnected.** Mutations write to local SQLite outbox first. Sync queue flushes when network is available. Conflict: last-write-wins on reconnect (idempotent eventId). |
-| Q2 | **Auth model** | **C — OAuth device flow.** `wp setup --login` opens browser → OAuth consent → token stored in OS keychain. Same UX as `gh auth login`. No manual token management. |
-| Q3 | **Replica freshness SLA** | **B — 30 second TTL.** Reads within 30s use local replica (near-zero latency). After 30s, one background refresh fires before responding. Tunable via `WP_REPLICA_TTL` env var. |
-| Q4 | **Markdown generation** | **C — No markdown. Agents read SQLite/MCP only.** The `blueprints/` directory becomes a legacy/migration artifact. Platform users have no markdown files on disk; all blueprint access goes through SQLite replica + MCP tools. Human-readable view is a future platform UI concern. |
-| Q5 | **Template catalog** | **C — GitHub-hosted, fetched by URL.** `wp blueprint new --template <slug>` resolves to a public GitHub repo (e.g. `webpresso/blueprint-templates`). No platform API dependency for templates. Community can submit PRs. |
-| Q6 | **Monorepo boundary** | **A — Types + client in agent-kit (OSS); implementation in webpresso monorepo (private).** agent-kit ships: `PlatformApiClient` interface, TypeScript event types, sync engine logic. webpresso monorepo ships: the actual API endpoints, auth handler, platform database. |
-| Q7 | **Migration** | **A — `wp setup --sync` idempotent import on first auth.** On first OAuth login, agent-kit scans `blueprints/` and pushes all existing blueprints to the platform in the background. Idempotent — safe to re-run. After migration, markdown is archived (moved to `.blueprints-archive/`). |
+| #   | Question                      | Decision                                                                                                                                                                                                                                                                                   |
+| --- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Q1  | **Offline mutation strategy** | **A — Buffer locally, push when reconnected.** Mutations write to local SQLite outbox first. Sync queue flushes when network is available. Conflict: last-write-wins on reconnect (idempotent eventId).                                                                                    |
+| Q2  | **Auth model**                | **C — OAuth device flow.** `wp setup --login` opens browser → OAuth consent → token stored in OS keychain. Same UX as `gh auth login`. No manual token management.                                                                                                                         |
+| Q3  | **Replica freshness SLA**     | **B — 30 second TTL.** Reads within 30s use local replica (near-zero latency). After 30s, one background refresh fires before responding. Tunable via `WP_REPLICA_TTL` env var.                                                                                                            |
+| Q4  | **Markdown generation**       | **C — No markdown. Agents read SQLite/MCP only.** The `blueprints/` directory becomes a legacy/migration artifact. Platform users have no markdown files on disk; all blueprint access goes through SQLite replica + MCP tools. Human-readable view is a future platform UI concern.       |
+| Q5  | **Template catalog**          | **C — GitHub-hosted, fetched by URL.** `wp blueprint new --template <slug>` resolves to a public GitHub repo (e.g. `webpresso/blueprint-templates`). No platform API dependency for templates. Community can submit PRs.                                                                   |
+| Q6  | **Monorepo boundary**         | **A — Types + client in agent-kit (OSS); implementation in webpresso monorepo (private).** agent-kit ships: `PlatformApiClient` interface, TypeScript event types, sync engine logic. webpresso monorepo ships: the actual API endpoints, auth handler, platform database.                 |
+| Q7  | **Migration**                 | **A — `wp setup --sync` idempotent import on first auth.** On first OAuth login, agent-kit scans `blueprints/` and pushes all existing blueprints to the platform in the background. Idempotent — safe to re-run. After migration, markdown is archived (moved to `.blueprints-archive/`). |
 
 ### Q4 architectural implication
 
@@ -146,36 +146,36 @@ Q4:C is a breaking change from the current `blueprint-structured-store` design. 
 
 ## Technology Choices
 
-| Choice | Used For | Justification |
-|---|---|---|
-| `fetch` (Node 24+ built-in) | HTTP to platform API | No new dep; matches existing pattern |
-| `vi.stubGlobal('fetch', vi.fn())` | HTTP mocking in tests | Matches existing test pattern in `src/telemetry/setup-tthw.test.ts:45-73`; avoids MSW dependency |
-| `better-sqlite3` | Local replica | Already shipped by `blueprint-structured-store` |
-| `ingestAll()` (`src/blueprint/db/ingester.ts:421`) | Rebuild local replica from platform snapshot | Existing function, already imported in `src/mcp/blueprint-server.ts:18` |
-| **NOT MSW** | — | Codebase uses `vi.stubGlobal('fetch', vi.fn())`; MSW adds a dependency without benefit |
+| Choice                                             | Used For                                     | Justification                                                                                    |
+| -------------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `fetch` (Node 24+ built-in)                        | HTTP to platform API                         | No new dep; matches existing pattern                                                             |
+| `vi.stubGlobal('fetch', vi.fn())`                  | HTTP mocking in tests                        | Matches existing test pattern in `src/telemetry/setup-tthw.test.ts:45-73`; avoids MSW dependency |
+| `better-sqlite3`                                   | Local replica                                | Already shipped by `blueprint-structured-store`                                                  |
+| `ingestAll()` (`src/blueprint/db/ingester.ts:421`) | Rebuild local replica from platform snapshot | Existing function, already imported in `src/mcp/blueprint-server.ts:18`                          |
+| **NOT MSW**                                        | —                                            | Codebase uses `vi.stubGlobal('fetch', vi.fn())`; MSW adds a dependency without benefit           |
 
 ## Risks
 
-| ID | Risk | Severity | Mitigation |
-|---|---|---|---|
-| R1 | Platform API not yet built; blueprint assumes endpoints exist | HIGH | Q6 design session confirms what needs to be built in platform-api vs. what's in agent-kit |
-| R2 | Markdown auto-commit conflicts with user's staged changes | HIGH | `WP_BLUEPRINT_NO_AUTO_COMMIT=1` escape hatch; auto-commit is separate atomic commit |
-| R3 | `wp audit blueprint-lifecycle` reads markdown — silently wrong after migration | HIGH | Task 3.3 migrates the audit to read from SQLite replica |
-| R4 | Pull-on-demand adds latency to every MCP mutation that must refresh | MEDIUM | TTL-based staleness (Q3); reads within TTL don't network-refresh |
-| R5 | Thundering herd: many agents start simultaneously, all pull replica | MEDIUM | Replica staleness check is a local timestamp compare; only one pull fires per TTL window per process |
-| R6 | runner_events (v1.0 blueprint Task 1.3) creates local-only table; must also sync | MEDIUM | Include in Task 0.1 platform API contract design; `runner_events` syncs via `pushRunnerEvent` or bundled in blueprint event payload |
-| R7 | Blueprint history for 18+ existing blueprints not in platform | LOW | Task 3.1 migration script; idempotent, safe to re-run |
+| ID  | Risk                                                                             | Severity | Mitigation                                                                                                                          |
+| --- | -------------------------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| R1  | Platform API not yet built; blueprint assumes endpoints exist                    | HIGH     | Q6 design session confirms what needs to be built in platform-api vs. what's in agent-kit                                           |
+| R2  | Markdown auto-commit conflicts with user's staged changes                        | HIGH     | `WP_BLUEPRINT_NO_AUTO_COMMIT=1` escape hatch; auto-commit is separate atomic commit                                                 |
+| R3  | `wp audit blueprint-lifecycle` reads markdown — silently wrong after migration   | HIGH     | Task 3.3 migrates the audit to read from SQLite replica                                                                             |
+| R4  | Pull-on-demand adds latency to every MCP mutation that must refresh              | MEDIUM   | TTL-based staleness (Q3); reads within TTL don't network-refresh                                                                    |
+| R5  | Thundering herd: many agents start simultaneously, all pull replica              | MEDIUM   | Replica staleness check is a local timestamp compare; only one pull fires per TTL window per process                                |
+| R6  | runner_events (v1.0 blueprint Task 1.3) creates local-only table; must also sync | MEDIUM   | Include in Task 0.1 platform API contract design; `runner_events` syncs via `pushRunnerEvent` or bundled in blueprint event payload |
+| R7  | Blueprint history for 18+ existing blueprints not in platform                    | LOW      | Task 3.1 migration script; idempotent, safe to re-run                                                                               |
 
 ## Edge Cases
 
-| ID | Case | Task | Test |
-|---|---|---|---|
-| E1 | Platform API unreachable during mutation | Task 1.1 | Test: platform fetch fails → offline behavior per Q1 |
-| E2 | Auth token expires mid-pll run (long blueprint) | Task 1.1 | Test: 401 response → token-refresh attempt → clear error if refresh fails |
-| E3 | Two agents mutate same task simultaneously | Task 2.1 | Test: platform returns 409 conflict → retry logic or clear error |
-| E4 | User has staged changes when markdown auto-commit fires | Task 2.1 | Test: verify auto-commit is atomic and leaves staged changes untouched |
-| E5 | Local replica stale by > TTL when `wp_blueprint_task_next` reads | Task 1.2 | Test: stale replica → pull-on-demand refresh before returning result |
-| E6 | `WP_BLUEPRINT_NO_AUTO_COMMIT=1` set — markdown written but not committed | Task 2.1 | Test: env var set → file written → git status shows untracked/modified |
+| ID  | Case                                                                     | Task     | Test                                                                      |
+| --- | ------------------------------------------------------------------------ | -------- | ------------------------------------------------------------------------- |
+| E1  | Platform API unreachable during mutation                                 | Task 1.1 | Test: platform fetch fails → offline behavior per Q1                      |
+| E2  | Auth token expires mid-pll run (long blueprint)                          | Task 1.1 | Test: 401 response → token-refresh attempt → clear error if refresh fails |
+| E3  | Two agents mutate same task simultaneously                               | Task 2.1 | Test: platform returns 409 conflict → retry logic or clear error          |
+| E4  | User has staged changes when markdown auto-commit fires                  | Task 2.1 | Test: verify auto-commit is atomic and leaves staged changes untouched    |
+| E5  | Local replica stale by > TTL when `wp_blueprint_task_next` reads         | Task 1.2 | Test: stale replica → pull-on-demand refresh before returning result      |
+| E6  | `WP_BLUEPRINT_NO_AUTO_COMMIT=1` set — markdown written but not committed | Task 2.1 | Test: env var set → file written → git status shows untracked/modified    |
 
 ## What already exists (leverage)
 
@@ -206,9 +206,11 @@ is written until all 7 questions are answered. Output is
 `notes/design-decisions.md` alongside this blueprint.
 
 **Files:**
+
 - Create: `blueprints/draft/blueprint-platform-sync/notes/design-decisions.md`
 
 **Steps:**
+
 1. Schedule design session with platform team.
 2. Document decisions for each of Q1-Q7 with explicit rationale.
 3. Sketch the platform API contract: at minimum `POST /blueprints/:repo/:slug/events` and `GET /blueprints/:repo/:slug/snapshot` request/response shapes.
@@ -216,6 +218,7 @@ is written until all 7 questions are answered. Output is
 5. Include `runner_events` sync in the design (R6 — feeds into Task 0.2).
 
 **Acceptance:**
+
 - [x] All 7 questions answered with explicit decision + rationale.
 - [x] Platform API contract sketched (endpoint shapes, auth header format, error codes).
 - [x] Monorepo boundary confirmed.
@@ -238,11 +241,13 @@ interface; agent-kit ships the interface + a production URL injected via
 env var.
 
 **Files:**
+
 - Create: `src/blueprint/sync/types.ts` (interface + event/snapshot types)
 - Create: `src/blueprint/sync/types.test.ts` (type-level assertions)
 - Create: `blueprints/draft/blueprint-platform-sync/notes/api-contract.md`
 
 **Steps (TDD):**
+
 1. Write type-level tests asserting `BlueprintPlatformClient` satisfies the
    interface contract (using `type _A = Expect<Equal<...>>`).
 2. `pnpm test src/blueprint/sync/types.test.ts` — FAIL (module not found).
@@ -251,6 +256,7 @@ env var.
 5. `pnpm lint && pnpm typecheck`.
 
 **Acceptance:**
+
 - [x] `BlueprintPlatformClient` interface defines at minimum: `pushEvent`, `getSnapshot`, `listTemplates`.
 - [x] **Idempotency (per CEO review 2A):** every event payload includes `eventId: string` (UUID generated by client). Platform contract: duplicate `eventId` for the same repo returns 200 without re-applying the event.
 - [x] Event payload type covers all 8 mutation operations.
@@ -274,12 +280,14 @@ and error classification (4xx vs 5xx vs network error).
 Tests mock using `vi.stubGlobal('fetch', vi.fn())` — NOT MSW.
 
 **Files:**
+
 - Create: `src/blueprint/sync/client.ts`
 - Create: `src/blueprint/sync/client.test.ts`
 - Create: `src/blueprint/sync/auth.ts` (credential loading from env var per Q2 decision)
 - Create: `src/blueprint/sync/auth.test.ts`
 
 **Steps (TDD):**
+
 1. `client.test.ts`: `pushEvent` succeeds → returns platform snapshot; platform returns 5xx → retries up to 3 times; `fetch` throws ECONNREFUSED → offline path per Q1 decision; 401 → auth-refresh attempt.
 2. `pnpm test src/blueprint/sync/client.test.ts` — FAIL.
 3. Implement using `vi.stubGlobal('fetch', vi.fn())` DI seam (inject fetch as a parameter for testability).
@@ -287,6 +295,7 @@ Tests mock using `vi.stubGlobal('fetch', vi.fn())` — NOT MSW.
 5. `pnpm lint && pnpm typecheck`.
 
 **Acceptance:**
+
 - [x] `pushEvent` writes to platform and returns snapshot.
 - [x] `pushEvent` generates a UUID `eventId` per call (per CEO review 2A); idempotent on retry.
 - [x] Offline behavior matches Q1 decision (buffer or reject with clear error).
@@ -318,15 +327,18 @@ freshness and pull from platform if stale. Staleness threshold configurable
 via `WP_BLUEPRINT_REPLICA_TTL_S` (default: 30).
 
 **Files:**
+
 - Create: `src/blueprint/sync/replica.ts`
 - Create: `src/blueprint/sync/replica.test.ts`
 
 **Steps (TDD):**
+
 1. Test: replica fresh (age < TTL) → no pull; replica stale (age ≥ TTL) → pull triggered; TTL=0 → always pull.
 2. FAIL → implement → PASS.
 3. `pnpm lint && pnpm typecheck`.
 
 **Acceptance:**
+
 - [x] Staleness check is a local timestamp compare (no network call if fresh).
 - [x] **Single-flight pattern (per CEO review Section 7):** concurrent replica-refresh calls within the same process coalesce to a single pull via a mutex/promise-sharing pattern. No thundering herd when 6 pll agents all expire TTL simultaneously.
 - [x] Pull adds < 200ms to MCP query tools when replica is fresh (unit test with mocked fetch).
@@ -350,10 +362,12 @@ This task ESTABLISHES the pattern all other mutation tools (Tasks 2.2-2.7)
 will follow. Do it first; the others copy the pattern.
 
 **Files:**
+
 - Modify: `src/mcp/blueprint-server.ts` (the `handleTaskAdvance` function, currently ~lines 259-292)
 - Modify: `src/mcp/blueprint-server.test.ts` (or matching test file)
 
 **Steps (TDD):**
+
 1. Test: task advance → `BlueprintSyncClient.pushEvent` called with correct payload → local markdown updated → auto-commit made.
 2. Test: `WP_BLUEPRINT_NO_AUTO_COMMIT=1` → markdown written, not committed.
 3. Test: platform unreachable → offline behavior per Q1 decision.
@@ -362,6 +376,7 @@ will follow. Do it first; the others copy the pattern.
 6. `pnpm lint && pnpm typecheck`.
 
 **Acceptance:**
+
 - [x] Platform API is the primary write path (markdown edit is derived output).
 - [x] Auto-commit is atomic; never mixes with user's staged changes.
 - [x] `WP_BLUEPRINT_NO_AUTO_COMMIT=1` suppresses commit; file still written.
@@ -384,12 +399,14 @@ Swap `wp_blueprint_promote`'s mutation path. Promote moves a blueprint
 between lifecycle directories (e.g., `planned/` → `in-progress/`).
 
 **Files:**
+
 - Modify: `src/mcp/blueprint-server.ts` (promote handler)
 - Modify: matching test
 
 **Steps (TDD):** Same pattern as Task 2.1 — mock platform write, verify markdown updated and directory moved, verify auto-commit.
 
 **Acceptance:**
+
 - [x] Platform is primary write path.
 - [x] Directory move reflected in platform snapshot + local replica.
 - [x] Auto-commit includes the directory rename.
@@ -402,10 +419,12 @@ between lifecycle directories (e.g., `planned/` → `in-progress/`).
 **Depends:** Task 2.1
 
 **Files:**
+
 - Modify: `src/mcp/blueprint-server.ts` (finalize handler)
 - Modify: matching test
 
 **Acceptance:**
+
 - [x] Platform is primary write path.
 - [x] Blueprint marked `completed` in platform + local replica.
 - [x] Markdown moved to `blueprints/completed/` as derived output + auto-committed.
@@ -422,10 +441,12 @@ creation registers the blueprint with the platform immediately (no
 markdown-first creation).
 
 **Files:**
+
 - Modify: `src/mcp/blueprint-server.ts` (new blueprint handler)
 - Modify: matching test
 
 **Acceptance:**
+
 - [x] New blueprint registered in platform before markdown is written.
 - [x] Markdown scaffold committed as derived output.
 
@@ -442,10 +463,12 @@ replica if stale (using Task 1.2's replica layer). This task wires the
 replica refresh into the read path.
 
 **Files:**
+
 - Modify: `src/mcp/blueprint-server.ts` (task_next handler)
 - Modify: matching test
 
 **Acceptance:**
+
 - [x] Stale replica triggers pull-on-demand before returning result.
 - [x] No write to platform.
 - [x] TTL respected: fresh replica → no network round-trip.
@@ -462,10 +485,12 @@ Currently moves the directory and updates markdown frontmatter. After
 this task, it writes to the platform first.
 
 **Files:**
+
 - Modify: `src/cli/commands/blueprint/index.ts` (start handler, per CLI surface)
 - Modify: matching test
 
 **Acceptance:**
+
 - [x] Platform API is primary write path.
 - [x] Directory move derived from platform response.
 - [x] Auto-commit.
@@ -478,10 +503,12 @@ this task, it writes to the platform first.
 **Depends:** Task 2.1
 
 **Files:**
+
 - Modify: `src/cli/commands/blueprint/index.ts` (task complete handler)
 - Modify: matching test
 
 **Acceptance:**
+
 - [x] Platform API is primary write path.
 - [x] Markdown updated as derived output.
 - [x] Auto-commit.
@@ -500,15 +527,18 @@ tech-debt items, pushes them to the platform API as historical records.
 Idempotent: safe to re-run.
 
 **Files:**
+
 - Create: `scripts/migrate-blueprints-to-platform.ts`
 - Create: `scripts/migrate-blueprints-to-platform.test.ts`
 
 **Steps (TDD):**
+
 1. Test: fixture blueprints → pushed to mocked platform → platform state reflects all blueprints.
 2. Test: re-run → no duplicate events (idempotent).
 3. FAIL → implement → PASS.
 
 **Acceptance:**
+
 - [x] All 18+ blueprints imported.
 - [x] Script idempotent.
 - [x] `wp audit blueprint-lifecycle` passes after migration.
@@ -525,15 +555,18 @@ task, it reads from the local SQLite replica (which reflects platform
 state) instead. Markdown is no longer the audit source of truth.
 
 **Files:**
+
 - Modify: `src/cli/commands/audit-core.ts` (or wherever blueprint-lifecycle audit reads from)
 - Modify: matching test
 
 **Steps (TDD):**
+
 1. Test: audit reads from SQLite replica, not markdown; result matches platform state even when markdown is stale.
 2. FAIL → swap read source → PASS.
 3. `pnpm lint && pnpm typecheck`.
 
 **Acceptance:**
+
 - [x] Audit reads from SQLite replica.
 - [x] Audit produces the same result as before for a fully-migrated repo.
 - [x] `wp audit blueprint-lifecycle` passes in CI.
@@ -550,10 +583,12 @@ Templates are stored in the platform, not as files in consumer repos.
 Falls back to a minimal skeleton when offline.
 
 **Files:**
+
 - Modify: `src/cli/commands/blueprint/new.ts` (template-resolver — swap to `BlueprintSyncClient.listTemplates()`)
 - Modify: matching test
 
 **Acceptance:**
+
 - [x] `wp blueprint new --template feature-cloudflare-worker` fetches template from platform.
 - [x] Offline fallback: minimal skeleton + clear notice that platform templates are unavailable.
 
@@ -561,25 +596,25 @@ Falls back to a minimal skeleton when offline.
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort |
-|---|---|---|---|---|
-| **Wave 0** | 0.1 | None | 1 (design) | M |
-| **Wave 1** | 0.2 | Wave 0 | 1 (design) | S |
-| **Wave 2** | 1.1, 1.2 | Wave 1 | 2 agents | M each |
-| **Wave 3** | 2.1 | Wave 2 | 1 (pattern-setter) | S |
-| **Wave 4** | 2.2, 2.3, 2.4, 2.5, 2.6, 2.7 | Wave 3 | 6 agents | XS each |
-| **Wave 5** | 3.1, 3.2, 3.3 | Wave 4 | 3 agents | S each |
-| **Critical path** | 0.1 → 0.2 → 1.1 → 2.1 → 3.1 | — | 6 waves | L |
+| Wave              | Tasks                        | Dependencies | Parallelizable     | Effort  |
+| ----------------- | ---------------------------- | ------------ | ------------------ | ------- |
+| **Wave 0**        | 0.1                          | None         | 1 (design)         | M       |
+| **Wave 1**        | 0.2                          | Wave 0       | 1 (design)         | S       |
+| **Wave 2**        | 1.1, 1.2                     | Wave 1       | 2 agents           | M each  |
+| **Wave 3**        | 2.1                          | Wave 2       | 1 (pattern-setter) | S       |
+| **Wave 4**        | 2.2, 2.3, 2.4, 2.5, 2.6, 2.7 | Wave 3       | 6 agents           | XS each |
+| **Wave 5**        | 3.1, 3.2, 3.3                | Wave 4       | 3 agents           | S each  |
+| **Critical path** | 0.1 → 0.2 → 1.1 → 2.1 → 3.1  | —            | 6 waves            | L       |
 
 ## Parallel Metrics Snapshot
 
-| Metric | Formula | Target | Actual |
-|---|---|---|---|
-| RW0 | Ready tasks in Wave 0 | ≥ 3 (for 6 agents / 2) | **1** ✗ (design phase inherently sequential) |
-| RW4 | Ready tasks in Wave 4 | ≥ 6 | **6** ✓ |
-| CPR | 13 tasks / 6 waves | ≥ 2.5 | **2.17** ✗ |
-| DD | ~14 edges / 13 tasks | ≤ 2.0 | **~1.1** ✓ |
-| CP | same-file overlaps per wave | 0 | **0** ✓ |
+| Metric | Formula                     | Target                 | Actual                                       |
+| ------ | --------------------------- | ---------------------- | -------------------------------------------- |
+| RW0    | Ready tasks in Wave 0       | ≥ 3 (for 6 agents / 2) | **1** ✗ (design phase inherently sequential) |
+| RW4    | Ready tasks in Wave 4       | ≥ 6                    | **6** ✓                                      |
+| CPR    | 13 tasks / 6 waves          | ≥ 2.5                  | **2.17** ✗                                   |
+| DD     | ~14 edges / 13 tasks        | ≤ 2.0                  | **~1.1** ✓                                   |
+| CP     | same-file overlaps per wave | 0                      | **0** ✓                                      |
 
 **Parallelization score: C** — CPR is 2.17 (below 2.5 target). This is
 structural, not correctable: the design phase (Waves 0-1) must be
@@ -594,33 +629,34 @@ are well-parallelized.
 
 ## Refinement Summary
 
-| Metric | Value |
-|---|---|
-| Findings total | 6 |
-| Critical | 0 |
-| High | 3 (MSW→vi.stubGlobal; markdown commit ownership; audit migration) |
-| Medium | 1 (thundering herd on pull-on-demand) |
-| Low | 2 (existing function names confirmed; net-new paths confirmed) |
-| Fixes applied | 6/6 |
-| Cross-plans updated | 1 (runner_events sync noted) |
-| Edge cases documented | 6 |
-| Risks documented | 7 |
-| **Parallelization score** | **C** (inherent to design-first structure) |
-| **Critical path** | 6 waves |
-| **Max parallel agents** | 6 (Wave 4) |
-| **Total tasks** | 13 |
-| **Blueprint compliant** | 13/13 |
+| Metric                    | Value                                                             |
+| ------------------------- | ----------------------------------------------------------------- |
+| Findings total            | 6                                                                 |
+| Critical                  | 0                                                                 |
+| High                      | 3 (MSW→vi.stubGlobal; markdown commit ownership; audit migration) |
+| Medium                    | 1 (thundering herd on pull-on-demand)                             |
+| Low                       | 2 (existing function names confirmed; net-new paths confirmed)    |
+| Fixes applied             | 6/6                                                               |
+| Cross-plans updated       | 1 (runner_events sync noted)                                      |
+| Edge cases documented     | 6                                                                 |
+| Risks documented          | 7                                                                 |
+| **Parallelization score** | **C** (inherent to design-first structure)                        |
+| **Critical path**         | 6 waves                                                           |
+| **Max parallel agents**   | 6 (Wave 4)                                                        |
+| **Total tasks**           | 13                                                                |
+| **Blueprint compliant**   | 13/13                                                             |
 
 ## GSTACK REVIEW REPORT
 
-| Review | Trigger | Why | Runs | Status | Findings |
-|--------|---------|-----|------|--------|----------|
-| Plan Refine | `/plan-refine` | Blueprint format + fact-check | 1 | CLEAR | 6 findings, all applied; parallelization score C (inherent to design-gated structure) |
-| CEO Review | `/plan-ceo-review` | Scope & strategy | 1 | CLEAR | HOLD SCOPE; 3 AUQs: 1A (rollback escape hatch), 2A (idempotent pushEvent via UUID), 8A (observability logging + lastSyncedAt); all accepted. 4 inline fixes: per-repo auth scoping, 429 rate-limit backoff, single-flight replica, security scope in Task 0.1. |
-| Eng Review | `/plan-eng-review` | Architecture & tests | 1 | CLEAR | 0 arch issues, 0 code quality, 2 test findings: 3A (getSnapshot+auth tests added to Task 1.1 acceptance), IRON RULE regression (WP_BLUEPRINT_PLATFORM_DISABLED=1 regression added to Task 2.1 acceptance). 0 critical gaps. |
+| Review      | Trigger            | Why                           | Runs | Status | Findings                                                                                                                                                                                                                                                       |
+| ----------- | ------------------ | ----------------------------- | ---- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Plan Refine | `/plan-refine`     | Blueprint format + fact-check | 1    | CLEAR  | 6 findings, all applied; parallelization score C (inherent to design-gated structure)                                                                                                                                                                          |
+| CEO Review  | `/plan-ceo-review` | Scope & strategy              | 1    | CLEAR  | HOLD SCOPE; 3 AUQs: 1A (rollback escape hatch), 2A (idempotent pushEvent via UUID), 8A (observability logging + lastSyncedAt); all accepted. 4 inline fixes: per-repo auth scoping, 429 rate-limit backoff, single-flight replica, security scope in Task 0.1. |
+| Eng Review  | `/plan-eng-review` | Architecture & tests          | 1    | CLEAR  | 0 arch issues, 0 code quality, 2 test findings: 3A (getSnapshot+auth tests added to Task 1.1 acceptance), IRON RULE regression (WP_BLUEPRINT_PLATFORM_DISABLED=1 regression added to Task 2.1 acceptance). 0 critical gaps.                                    |
 
 - **UNRESOLVED:** 0 — all findings resolved.
 - **VERDICT: CEO + ENG CLEARED — ready to move to planned/ and begin Task 0.1 design session.**
+
 ## Historical verification note
 
 This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
@@ -637,21 +673,21 @@ This blueprint contains done tasks recorded before the current per-task `**Verif
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/blueprint-platform-sync/_overview.md |
+| ID  | Claim                                                          | Evidence                                                        |
+| --- | -------------------------------------------------------------- | --------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/blueprint-platform-sync/\_overview.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

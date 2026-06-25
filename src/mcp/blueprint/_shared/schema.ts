@@ -1,19 +1,19 @@
 export const nextActionOutputSchema = {
-  type: 'object',
+  type: "object",
   properties: {
-    kind: { type: 'string' },
-    hint: { type: 'string' },
+    kind: { type: "string" },
+    hint: { type: "string" },
   },
-  required: ['kind', 'hint'],
-} as const
+  required: ["kind", "hint"],
+} as const;
 
 export const summaryEnvelopeOutputSchema = {
-  type: 'object',
+  type: "object",
   properties: {
-    summary: { type: 'string' },
-    failures: { type: 'array', items: { type: 'string' } },
-    bytes: { type: 'number' },
-    tokensSaved: { type: 'number' },
+    summary: { type: "string" },
+    failures: { type: "array", items: { type: "string" } },
+    bytes: { type: "number" },
+    tokensSaved: { type: "number" },
   },
-  required: ['summary', 'failures', 'bytes', 'tokensSaved'],
-} as const
+  required: ["summary", "failures", "bytes", "tokensSaved"],
+} as const;

@@ -22,7 +22,7 @@ sakana.ai/dgm.
 
 A self-improving system that iteratively modifies its own code and
 **empirically validates** changes on coding benchmarks — replacing the
-original Gödel Machine's requirement of *provable* self-improvement with
+original Gödel Machine's requirement of _provable_ self-improvement with
 Darwinian evidence. Key design: a growing **archive of agents** (not a single
 lineage), interleaving self-modification with downstream task evaluation, so
 the search stays open-ended and can branch from any prior variant.

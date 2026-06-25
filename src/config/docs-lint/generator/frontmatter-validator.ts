@@ -1,15 +1,15 @@
-import type { FrontmatterField, SsotData, TemplateSchema, ValidationError } from './types.js'
+import type { FrontmatterField, SsotData, TemplateSchema, ValidationError } from "./types.js";
 
 /**
  * Creates a missing field error
  */
 function createMissingFieldError(fieldName: string, fieldDef: FrontmatterField): ValidationError {
   return {
-    code: 'MISSING_REQUIRED_FRONTMATTER',
+    code: "MISSING_REQUIRED_FRONTMATTER",
     message: `Missing required frontmatter field '${fieldName}'`,
     field: fieldName,
-    expected: fieldDef.description ?? 'a value',
-  }
+    expected: fieldDef.description ?? "a value",
+  };
 }
 
 /**
@@ -22,14 +22,14 @@ function validateEnumValue(
 ): ValidationError | null {
   if (!enumValues.includes(value)) {
     return {
-      code: 'INVALID_FRONTMATTER_VALUE',
-      message: `Invalid value for '${fieldName}': '${value}'. Must be one of: ${enumValues.join(', ')}`,
+      code: "INVALID_FRONTMATTER_VALUE",
+      message: `Invalid value for '${fieldName}': '${value}'. Must be one of: ${enumValues.join(", ")}`,
       field: fieldName,
-      expected: enumValues.join(', '),
+      expected: enumValues.join(", "),
       actual: value,
-    }
+    };
   }
-  return null
+  return null;
 }
 
 /**
@@ -42,14 +42,14 @@ function validateFixedValue(
 ): ValidationError | null {
   if (value !== expectedValue) {
     return {
-      code: 'INVALID_FRONTMATTER_VALUE',
+      code: "INVALID_FRONTMATTER_VALUE",
       message: `Invalid value for '${fieldName}': '${value}'. Must be '${expectedValue}'`,
       field: fieldName,
       expected: expectedValue,
       actual: value,
-    }
+    };
   }
-  return null
+  return null;
 }
 
 /**
@@ -61,37 +61,37 @@ function validateField(
   value: string | string[] | undefined,
 ): ValidationError | null {
   if (value === undefined || value === null) {
-    return createMissingFieldError(fieldName, fieldDef)
+    return createMissingFieldError(fieldName, fieldDef);
   }
 
-  if (fieldDef.enum && typeof value === 'string') {
-    return validateEnumValue(fieldName, value, fieldDef.enum)
+  if (fieldDef.enum && typeof value === "string") {
+    return validateEnumValue(fieldName, value, fieldDef.enum);
   }
 
-  if (fieldDef.value && typeof value === 'string') {
-    return validateFixedValue(fieldName, value, fieldDef.value)
+  if (fieldDef.value && typeof value === "string") {
+    return validateFixedValue(fieldName, value, fieldDef.value);
   }
 
-  return null
+  return null;
 }
 
 /**
  * Validates frontmatter against template schema
  */
 export function validateFrontmatter(
-  frontmatter: SsotData['frontmatter'],
+  frontmatter: SsotData["frontmatter"],
   schema: TemplateSchema,
 ): ValidationError[] {
-  const errors: ValidationError[] = []
-  const requiredFields = schema.frontmatter?.required ?? {}
+  const errors: ValidationError[] = [];
+  const requiredFields = schema.frontmatter?.required ?? {};
 
   for (const [fieldName, fieldDef] of Object.entries(requiredFields)) {
-    const value = frontmatter[fieldName]
-    const error = validateField(fieldName, fieldDef, value)
+    const value = frontmatter[fieldName];
+    const error = validateField(fieldName, fieldDef, value);
     if (error) {
-      errors.push(error)
+      errors.push(error);
     }
   }
 
-  return errors
+  return errors;
 }

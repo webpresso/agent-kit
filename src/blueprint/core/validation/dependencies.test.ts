@@ -2,9 +2,9 @@
  * Tests for validateTaskDependencies
  */
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from "vitest";
 
-import { validateTaskDependencies } from './dependencies.js'
+import { validateTaskDependencies } from "./dependencies.js";
 
 const FRONTMATTER = `---
 type: blueprint
@@ -12,16 +12,16 @@ status: draft
 complexity: S
 ---
 
-`
+`;
 
-describe('validateTaskDependencies', () => {
-  describe('valid blueprints', () => {
-    it('should pass for blueprint with no tasks', () => {
-      const result = validateTaskDependencies(FRONTMATTER + '# Blueprint\n\nNo tasks here.')
-      expect(result.valid).toBe(true)
-    })
+describe("validateTaskDependencies", () => {
+  describe("valid blueprints", () => {
+    it("should pass for blueprint with no tasks", () => {
+      const result = validateTaskDependencies(FRONTMATTER + "# Blueprint\n\nNo tasks here.");
+      expect(result.valid).toBe(true);
+    });
 
-    it('should pass for tasks with None dependencies', () => {
+    it("should pass for tasks with None dependencies", () => {
       const md =
         FRONTMATTER +
         `# Blueprint
@@ -33,12 +33,12 @@ describe('validateTaskDependencies', () => {
 #### Task 1.2: Second task
 
 **Depends:** None
-`
-      const result = validateTaskDependencies(md)
-      expect(result.valid).toBe(true)
-    })
+`;
+      const result = validateTaskDependencies(md);
+      expect(result.valid).toBe(true);
+    });
 
-    it('should pass for valid linear dependency chain', () => {
+    it("should pass for valid linear dependency chain", () => {
       const md =
         FRONTMATTER +
         `# Blueprint
@@ -54,12 +54,12 @@ describe('validateTaskDependencies', () => {
 #### Task 1.3: Third task
 
 **Depends:** Task 1.2
-`
-      const result = validateTaskDependencies(md)
-      expect(result.valid).toBe(true)
-    })
+`;
+      const result = validateTaskDependencies(md);
+      expect(result.valid).toBe(true);
+    });
 
-    it('should pass for diamond dependency graph', () => {
+    it("should pass for diamond dependency graph", () => {
       const md =
         FRONTMATTER +
         `# Blueprint
@@ -79,14 +79,14 @@ describe('validateTaskDependencies', () => {
 #### Task 1.4: Merge task
 
 **Depends:** Task 1.2, Task 1.3
-`
-      const result = validateTaskDependencies(md)
-      expect(result.valid).toBe(true)
-    })
-  })
+`;
+      const result = validateTaskDependencies(md);
+      expect(result.valid).toBe(true);
+    });
+  });
 
-  describe('circular dependency detection', () => {
-    it('should detect direct A → B → A cycle', () => {
+  describe("circular dependency detection", () => {
+    it("should detect direct A → B → A cycle", () => {
       const md =
         FRONTMATTER +
         `# Blueprint
@@ -98,14 +98,14 @@ describe('validateTaskDependencies', () => {
 #### Task 1.2: Task B
 
 **Depends:** Task 1.1
-`
-      const result = validateTaskDependencies(md)
-      expect(result.valid).toBe(false)
-      expect(result.error).toContain('Circular')
-      expect(result.details?.cycles?.length).toBeGreaterThan(0)
-    })
+`;
+      const result = validateTaskDependencies(md);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("Circular");
+      expect(result.details?.cycles?.length).toBeGreaterThan(0);
+    });
 
-    it('should detect longer cycle A → B → C → A', () => {
+    it("should detect longer cycle A → B → C → A", () => {
       const md =
         FRONTMATTER +
         `# Blueprint
@@ -121,13 +121,13 @@ describe('validateTaskDependencies', () => {
 #### Task 1.3: Task C
 
 **Depends:** Task 1.2
-`
-      const result = validateTaskDependencies(md)
-      expect(result.valid).toBe(false)
-      expect(result.details?.cycles?.length).toBeGreaterThan(0)
-    })
+`;
+      const result = validateTaskDependencies(md);
+      expect(result.valid).toBe(false);
+      expect(result.details?.cycles?.length).toBeGreaterThan(0);
+    });
 
-    it('should detect self-reference', () => {
+    it("should detect self-reference", () => {
       const md =
         FRONTMATTER +
         `# Blueprint
@@ -135,14 +135,14 @@ describe('validateTaskDependencies', () => {
 #### Task 1.1: Task A
 
 **Depends:** Task 1.1
-`
-      const result = validateTaskDependencies(md)
-      expect(result.valid).toBe(false)
-    })
-  })
+`;
+      const result = validateTaskDependencies(md);
+      expect(result.valid).toBe(false);
+    });
+  });
 
-  describe('dangling reference detection', () => {
-    it('should detect reference to non-existent task', () => {
+  describe("dangling reference detection", () => {
+    it("should detect reference to non-existent task", () => {
       const md =
         FRONTMATTER +
         `# Blueprint
@@ -150,14 +150,14 @@ describe('validateTaskDependencies', () => {
 #### Task 1.1: Task A
 
 **Depends:** Task 5.1
-`
-      const result = validateTaskDependencies(md)
-      expect(result.valid).toBe(false)
-      expect(result.error).toContain('Dangling')
-      expect(result.details?.danglingRefs?.length).toBeGreaterThan(0)
-    })
+`;
+      const result = validateTaskDependencies(md);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("Dangling");
+      expect(result.details?.danglingRefs?.length).toBeGreaterThan(0);
+    });
 
-    it('should not flag None as a dangling reference', () => {
+    it("should not flag None as a dangling reference", () => {
       const md =
         FRONTMATTER +
         `# Blueprint
@@ -165,12 +165,12 @@ describe('validateTaskDependencies', () => {
 #### Task 1.1: Task A
 
 **Depends:** None
-`
-      const result = validateTaskDependencies(md)
-      expect(result.valid).toBe(true)
-    })
+`;
+      const result = validateTaskDependencies(md);
+      expect(result.valid).toBe(true);
+    });
 
-    it('should show which task has the dangling ref', () => {
+    it("should show which task has the dangling ref", () => {
       const md =
         FRONTMATTER +
         `# Blueprint
@@ -178,14 +178,14 @@ describe('validateTaskDependencies', () => {
 #### Task 1.1: Task A
 
 **Depends:** Task 9.9
-`
-      const result = validateTaskDependencies(md)
-      expect(result.valid).toBe(false)
-      expect(result.details?.danglingRefs?.[0]).toContain('Task 1.1')
-      expect(result.details?.danglingRefs?.[0]).toContain('Task 9.9')
-    })
+`;
+      const result = validateTaskDependencies(md);
+      expect(result.valid).toBe(false);
+      expect(result.details?.danglingRefs?.[0]).toContain("Task 1.1");
+      expect(result.details?.danglingRefs?.[0]).toContain("Task 9.9");
+    });
 
-    it('should detect multiple dangling references', () => {
+    it("should detect multiple dangling references", () => {
       const md =
         FRONTMATTER +
         `# Blueprint
@@ -193,15 +193,15 @@ describe('validateTaskDependencies', () => {
 #### Task 1.1: Task A
 
 **Depends:** Task 9.9, Task 9.10
-`
-      const result = validateTaskDependencies(md)
-      expect(result.valid).toBe(false)
-      expect(result.details?.danglingRefs?.length).toBeGreaterThanOrEqual(2)
-    })
-  })
+`;
+      const result = validateTaskDependencies(md);
+      expect(result.valid).toBe(false);
+      expect(result.details?.danglingRefs?.length).toBeGreaterThanOrEqual(2);
+    });
+  });
 
-  describe('combined violations', () => {
-    it('reports both cycle and dangling ref in same error', () => {
+  describe("combined violations", () => {
+    it("reports both cycle and dangling ref in same error", () => {
       const md =
         FRONTMATTER +
         `# Blueprint
@@ -213,14 +213,14 @@ describe('validateTaskDependencies', () => {
 #### Task 1.2: Task B
 
 **Depends:** Task 1.1
-`
-      const result = validateTaskDependencies(md)
-      expect(result.valid).toBe(false)
-      expect(result.error).toContain('Circular')
-      expect(result.error).toContain('Dangling')
-    })
+`;
+      const result = validateTaskDependencies(md);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("Circular");
+      expect(result.error).toContain("Dangling");
+    });
 
-    it('returns details with both cycles and dangling refs', () => {
+    it("returns details with both cycles and dangling refs", () => {
       const md =
         FRONTMATTER +
         `# Blueprint
@@ -232,14 +232,14 @@ describe('validateTaskDependencies', () => {
 #### Task 1.2: Task B
 
 **Depends:** Task 1.1
-`
-      const result = validateTaskDependencies(md)
-      expect(result.valid).toBe(false)
-      expect(result.details?.cycles).toBeDefined()
-      expect(result.details?.danglingRefs).toBeDefined()
-    })
+`;
+      const result = validateTaskDependencies(md);
+      expect(result.valid).toBe(false);
+      expect(result.details?.cycles).toBeDefined();
+      expect(result.details?.danglingRefs).toBeDefined();
+    });
 
-    it('passes for tasks with empty Depends block', () => {
+    it("passes for tasks with empty Depends block", () => {
       const md =
         FRONTMATTER +
         `# Blueprint
@@ -251,9 +251,9 @@ describe('validateTaskDependencies', () => {
 #### Task 1.2: Task B
 
 **Depends:** None
-`
-      const result = validateTaskDependencies(md)
-      expect(result.valid).toBe(true)
-    })
-  })
-})
+`;
+      const result = validateTaskDependencies(md);
+      expect(result.valid).toBe(true);
+    });
+  });
+});

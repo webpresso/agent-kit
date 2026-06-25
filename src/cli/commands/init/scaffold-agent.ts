@@ -17,145 +17,145 @@
  *   projected into host-visible surfaces unless explicitly opted in.
  * - Tier-3 — only on opt-in via --with / --all / interactive prompt.
  */
-import { existsSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 import {
   copyDirectoryMerged,
   copyFileMerged,
   type MergeOptions,
   type MergeResult,
-} from './merge.js'
+} from "./merge.js";
 
 export const SHARED_FAVORITE_SKILLS = [
-  'fix',
-  'verify',
-  'testing-philosophy',
-  'plan-refine',
-  'pll',
-  'best-practice-research',
-  'claude',
-  'review',
-  'autoplan',
-  'investigate',
-  'health',
-  'plan-eng-review',
-  'plan-ceo-review',
-  'plan-design-review',
-  'plan-devex-review',
-  'browse',
-  'qa-only',
-  'qa',
-  'devex-review',
-  'design-review',
-] as const
-export const TIER1_SKILLS = SHARED_FAVORITE_SKILLS
+  "fix",
+  "verify",
+  "testing-philosophy",
+  "plan-refine",
+  "pll",
+  "best-practice-research",
+  "claude",
+  "review",
+  "autoplan",
+  "investigate",
+  "health",
+  "plan-eng-review",
+  "plan-ceo-review",
+  "plan-design-review",
+  "plan-devex-review",
+  "browse",
+  "qa-only",
+  "qa",
+  "devex-review",
+  "design-review",
+] as const;
+export const TIER1_SKILLS = SHARED_FAVORITE_SKILLS;
 
 export const OPTIONAL_SHARED_SKILLS = [
-  'systematic-debugging',
-  'test-driven-development',
-  'deep-research',
-] as const
-export const TIER2_SKILLS = OPTIONAL_SHARED_SKILLS
+  "systematic-debugging",
+  "test-driven-development",
+  "deep-research",
+] as const;
+export const TIER2_SKILLS = OPTIONAL_SHARED_SKILLS;
 
 /** Rendered separately into agent-skills/, but projected only on explicit opt-in. */
-export const RENDERED_SKILLS = ['monorepo-navigation'] as const
+export const RENDERED_SKILLS = ["monorepo-navigation"] as const;
 
-const NON_PROJECTED_SKILL_SLUGS = new Set<string>(['base-kit'])
+const NON_PROJECTED_SKILL_SLUGS = new Set<string>(["base-kit"]);
 
 export function isProjectedManagedSkillSlug(skillSlug: string): boolean {
-  return !NON_PROJECTED_SKILL_SLUGS.has(skillSlug)
+  return !NON_PROJECTED_SKILL_SLUGS.has(skillSlug);
 }
 
 export function resolveManagedSkillSourceRoots(packageRoot: string): readonly string[] {
-  return [join(packageRoot, 'catalog', 'agent', 'skills'), join(packageRoot, 'agent-skills')]
+  return [join(packageRoot, "catalog", "agent", "skills"), join(packageRoot, "agent-skills")];
 }
 
 export function findManagedSkillSource(packageRoot: string, skillSlug: string): string | null {
   for (const root of resolveManagedSkillSourceRoots(packageRoot)) {
-    const skillPath = join(root, skillSlug, 'SKILL.md')
-    if (existsSync(skillPath)) return skillPath
+    const skillPath = join(root, skillSlug, "SKILL.md");
+    if (existsSync(skillPath)) return skillPath;
   }
-  return null
+  return null;
 }
 
 export function findMissingManagedSkillSources(
   packageRootOrCatalogDir: string,
   skillSlugs: readonly string[],
 ): string[] {
-  const packageRoot = packageRootOrCatalogDir.endsWith('/catalog')
+  const packageRoot = packageRootOrCatalogDir.endsWith("/catalog")
     ? dirname(packageRootOrCatalogDir)
-    : packageRootOrCatalogDir
+    : packageRootOrCatalogDir;
   return [...new Set(skillSlugs)].filter(
     (skillSlug) => !findManagedSkillSource(packageRoot, skillSlug),
-  )
+  );
 }
 
 export function assertManagedSkillSourcesPresent(
   packageRootOrCatalogDir: string,
   skillSlugs: readonly string[],
 ): void {
-  const missing = findMissingManagedSkillSources(packageRootOrCatalogDir, skillSlugs)
-  if (missing.length === 0) return
+  const missing = findMissingManagedSkillSources(packageRootOrCatalogDir, skillSlugs);
+  if (missing.length === 0) return;
 
   throw new Error(
-    `wp init: missing canonical skill source(s): ${missing.join(', ')}. ` +
-      'Expected each selected/shared skill under catalog/agent/skills/<slug>/SKILL.md ' +
-      'or agent-skills/<slug>/SKILL.md in the agent-kit package root.',
-  )
+    `wp init: missing canonical skill source(s): ${missing.join(", ")}. ` +
+      "Expected each selected/shared skill under catalog/agent/skills/<slug>/SKILL.md " +
+      "or agent-skills/<slug>/SKILL.md in the agent-kit package root.",
+  );
 }
 
 export interface ScaffoldAgentInput {
-  catalogDir: string
-  repoRoot: string
-  options: MergeOptions
+  catalogDir: string;
+  repoRoot: string;
+  options: MergeOptions;
 }
 
 export interface ScaffoldAgentReport {
-  results: MergeResult[]
+  results: MergeResult[];
 }
 
-const ALWAYS_COPY_SUBDIRS = ['commands', 'workflows', 'guides'] as const
+const ALWAYS_COPY_SUBDIRS = ["commands", "workflows", "guides"] as const;
 
-const GENERATED_WHOLE_FILE: MergeOptions = { ownership: 'generated-whole-file' }
+const GENERATED_WHOLE_FILE: MergeOptions = { ownership: "generated-whole-file" };
 
 /** Top-level catalog files emitted once on fresh setup (never overwritten). */
-const FRESH_COPY_FILES = ['correlate.allow.yaml'] as const
+const FRESH_COPY_FILES = ["correlate.allow.yaml"] as const;
 
 export function scaffoldAgent(input: ScaffoldAgentInput): ScaffoldAgentReport {
-  const { catalogDir, repoRoot, options } = input
-  const catalogAgent = join(catalogDir, 'agent')
-  const targetAgent = join(repoRoot, '.agent')
-  const results: MergeResult[] = []
+  const { catalogDir, repoRoot, options } = input;
+  const catalogAgent = join(catalogDir, "agent");
+  const targetAgent = join(repoRoot, ".agent");
+  const results: MergeResult[] = [];
 
   for (const subdir of ALWAYS_COPY_SUBDIRS) {
-    const src = join(catalogAgent, subdir)
-    const dst = join(targetAgent, subdir)
+    const src = join(catalogAgent, subdir);
+    const dst = join(targetAgent, subdir);
     if (existsSync(src)) {
-      results.push(...copyDirectoryMerged(src, dst, { ...options, ...GENERATED_WHOLE_FILE }))
+      results.push(...copyDirectoryMerged(src, dst, { ...options, ...GENERATED_WHOLE_FILE }));
     }
   }
 
   // Top-level catalog README is a generated surface owned by webpresso.
-  const topReadme = join(catalogAgent, 'README.md')
+  const topReadme = join(catalogAgent, "README.md");
   if (existsSync(topReadme)) {
     results.push(
-      copyFileMerged(topReadme, join(targetAgent, 'README.md'), {
+      copyFileMerged(topReadme, join(targetAgent, "README.md"), {
         ...options,
         ...GENERATED_WHOLE_FILE,
       }),
-    )
+    );
   }
 
   // Fresh-only top-level files — emitted once to the consumer's .agent/.
   // These are committed to the consumer repo (not gitignored) so cloud agents
   // and CI can read them. Only written on first setup (absent = fresh).
   for (const file of FRESH_COPY_FILES) {
-    const src = join(catalogAgent, file)
+    const src = join(catalogAgent, file);
     if (existsSync(src)) {
-      results.push(copyFileMerged(src, join(targetAgent, file), options))
+      results.push(copyFileMerged(src, join(targetAgent, file), options));
     }
   }
 
-  return { results }
+  return { results };
 }

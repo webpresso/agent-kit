@@ -4,15 +4,15 @@ title: Cross-platform command detection consolidation
 status: completed
 complexity: M
 owner: agent-kit
-created: '2026-06-14'
-last_updated: '2026-06-14'
-progress: '100% (3/3 tasks done, 0 blocked, updated 2026-06-14)'
+created: "2026-06-14"
+last_updated: "2026-06-14"
+progress: "100% (3/3 tasks done, 0 blocked, updated 2026-06-14)"
 tags:
   - historical
   - setup
   - windows
   - command-detection
-completed_at: '2026-06-14'
+completed_at: "2026-06-14"
 ---
 
 # Cross-platform command detection consolidation
@@ -44,9 +44,11 @@ Historical task completed in PR #136. A shared runtime commandExists helper repl
 **Verification:** PR #136 merged as 9b8c8086 on main; src/runtime/command-exists.ts and src/runtime/command-exists.test.ts are present in that merge; PR #136 reported 10/10 GitHub checks passing before merge.
 
 **Acceptance:**
+
 - [x] src/runtime/command-exists.ts existed in the merged PR.
 - [x] Five command-detection call sites used the shared helper after the PR.
 - [x] src/runtime/command-exists.test.ts covered POSIX and win32/PATHEXT behavior.
+
 #### Task 1.2: Make init integration detection tests use real PATH boundary
 
 **Status:** done
@@ -64,9 +66,11 @@ Historical task completed in PR #136. Init integration tests stopped depending o
 **Verification:** Branch commit 815f725e was included in PR #136 before squash; init preset integration evidence showed the isolated test passed with staged fake bins and PR #136 reported 10/10 GitHub checks passing before merge.
 
 **Acceptance:**
+
 - [x] Init preset integration tests staged a real fake claude bin for detection.
 - [x] The codex detection red herring was resolved as cumulative scaffolder filesystem work, not a command detection hang.
 - [x] PR #136 CI completed green after the test fix.
+
 #### Task 1.3: Deduplicate PATH/PATHEXT enumeration
 
 **Status:** done
@@ -84,6 +88,7 @@ Historical task completed in commit 844739d1 before PR #136 was squashed. resolv
 **Verification:** Branch commit 844739d1 was included in PR #136 before squash; targeted package-root, doctor, and command-exists tests passed locally before merge; source audit guardrails passed before merge; PR #136 reported 10/10 GitHub checks passing at head 844739d1 before squash.
 
 **Acceptance:**
+
 - [x] resolveBinOnPath shared pathCandidates for cross-platform PATH/PATHEXT order.
 - [x] The doctor/package-root resolver retained the exists predicate instead of commandExists's runnable predicate.
 - [x] Targeted package-root, doctor, and command-exists tests passed before merge.
@@ -100,21 +105,21 @@ Historical task completed in commit 844739d1 before PR #136 was squashed. resolv
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/cross-platform-command-detection-consolidation.md |
+| ID  | Claim                                                          | Evidence                                                                    |
+| --- | -------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/cross-platform-command-detection-consolidation.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

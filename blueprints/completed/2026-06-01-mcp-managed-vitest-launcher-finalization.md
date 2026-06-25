@@ -3,11 +3,11 @@ type: blueprint
 title: MCP managed Vitest launcher finalization
 owner: ozby
 status: completed
-completed_at: '2026-06-05'
+completed_at: "2026-06-05"
 complexity: M
-created: '2026-06-01'
-last_updated: '2026-06-07'
-progress: 'COMPLETED (2026-06-05): focused verification captured; runner/tool regression tests, lint, typecheck, and blueprint-lifecycle proof all passed with no additional public-behavior delta.'
+created: "2026-06-01"
+last_updated: "2026-06-07"
+progress: "COMPLETED (2026-06-05): focused verification captured; runner/tool regression tests, lint, typecheck, and blueprint-lifecycle proof all passed with no additional public-behavior delta."
 depends_on: []
 tags:
   - mcp
@@ -38,20 +38,20 @@ planning hygiene steps.
 
 ## Fact Check Findings
 
-| ID | Severity | Claim | Verified reality | Blueprint fix |
-| --- | --- | --- | --- | --- |
-| F1 | HIGH | `src/mcp/runners/test.ts` still has four hardcoded Vitest launch sites. | Fresh inspection on 2026-06-01 found zero `node_modules/.bin/vitest` and zero `vitest.mjs` references in `src/mcp/runners/test.ts`. | Treat root cause as already addressed in the working tree; focus on review, tests, and failure-scope acceptance. |
-| F2 | HIGH | Test files are the aligned regression surface. | `src/mcp/runners/test.test.ts` and `src/mcp/tools/test.test.ts` contain new Vitest entrypoint expectations and failure-scope coverage. | Use these files as the primary targeted test set. |
-| F3 | MEDIUM | The launcher seam should remain command+args capable. | Current runner source uses command/args-oriented execution counts and no `.bin` lookup strings. | Verify MCP runner plumbing accepts structured command+args runs rather than vp+args-only assumptions. |
-| F4 | MEDIUM | Blueprint state was already updated. | Git status showed no blueprint changes before this blueprint creation; only MCP test/runner files were modified. | Add this durable blueprint before any further code work. |
+| ID  | Severity | Claim                                                                   | Verified reality                                                                                                                       | Blueprint fix                                                                                                    |
+| --- | -------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| F1  | HIGH     | `src/mcp/runners/test.ts` still has four hardcoded Vitest launch sites. | Fresh inspection on 2026-06-01 found zero `node_modules/.bin/vitest` and zero `vitest.mjs` references in `src/mcp/runners/test.ts`.    | Treat root cause as already addressed in the working tree; focus on review, tests, and failure-scope acceptance. |
+| F2  | HIGH     | Test files are the aligned regression surface.                          | `src/mcp/runners/test.test.ts` and `src/mcp/tools/test.test.ts` contain new Vitest entrypoint expectations and failure-scope coverage. | Use these files as the primary targeted test set.                                                                |
+| F3  | MEDIUM   | The launcher seam should remain command+args capable.                   | Current runner source uses command/args-oriented execution counts and no `.bin` lookup strings.                                        | Verify MCP runner plumbing accepts structured command+args runs rather than vp+args-only assumptions.            |
+| F4  | MEDIUM   | Blueprint state was already updated.                                    | Git status showed no blueprint changes before this blueprint creation; only MCP test/runner files were modified.                       | Add this durable blueprint before any further code work.                                                         |
 
 ## Key Decisions
 
-| Decision | Rationale |
-| --- | --- |
+| Decision                                                               | Rationale                                                                                                              |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | Prefer verification-only unless focused tests expose a regression gap. | The core runner/test changes are already present; this blueprint is now a proof lane, not a broad implementation lane. |
-| Keep the intended behavior as managed structured Vitest resolution. | It matches the verified downstream root cause and avoids package-manager `.bin` assumptions. |
-| Preserve failure-scope semantics. | Callers need deterministic `failureScope` values for setup, test, timeout, and runner failures. |
+| Keep the intended behavior as managed structured Vitest resolution.    | It matches the verified downstream root cause and avoids package-manager `.bin` assumptions.                           |
+| Preserve failure-scope semantics.                                      | Callers need deterministic `failureScope` values for setup, test, timeout, and runner failures.                        |
 
 ## Cross-references
 
@@ -62,21 +62,21 @@ planning hygiene steps.
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
-| --- | --- | --- | --- | --- |
-| Wave 0 | 1.1, 1.2 | None | 2 agents | S |
-| Wave 1 | 2.1 | Wave 0 | 1 agent | S |
-| Wave 2 | 3.1 | Wave 1 | 1 agent | XS |
-| Critical path | 1.1 → 2.1 → 3.1 | — | 3 waves | M |
+| Wave          | Tasks           | Dependencies | Parallelizable | Effort (T-shirt) |
+| ------------- | --------------- | ------------ | -------------- | ---------------- |
+| Wave 0        | 1.1, 1.2        | None         | 2 agents       | S                |
+| Wave 1        | 2.1             | Wave 0       | 1 agent        | S                |
+| Wave 2        | 3.1             | Wave 1       | 1 agent        | XS               |
+| Critical path | 1.1 → 2.1 → 3.1 | —            | 3 waves        | M                |
 
 ### Parallel Metrics Snapshot
 
-| Metric | Formula / Meaning | Target | Actual |
-| --- | --- | --- | --- |
-| RW0 | Ready tasks in Wave 0 | ≥ 2 | 2 |
-| CPR | total_tasks / critical_path_length | ≥ 2.5 | 1.33 |
-| DD | dependency_edges / total_tasks | ≤ 2.0 | 0.75 |
-| CP | same-file overlaps per wave | 0 | 0 |
+| Metric | Formula / Meaning                  | Target | Actual |
+| ------ | ---------------------------------- | ------ | ------ |
+| RW0    | Ready tasks in Wave 0              | ≥ 2    | 2      |
+| CPR    | total_tasks / critical_path_length | ≥ 2.5  | 1.33   |
+| DD     | dependency_edges / total_tasks     | ≤ 2.0  | 0.75   |
+| CP     | same-file overlaps per wave        | 0      | 0      |
 
 Refinement delta: this is a narrow finalization blueprint over an already-started change, so parallelism is intentionally limited.
 
@@ -206,21 +206,21 @@ Close the durable planning loop after verification. Do not add a changeset unles
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-01-mcp-managed-vitest-launcher-finalization.md |
+| ID  | Claim                                                          | Evidence                                                                         |
+| --- | -------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-01-mcp-managed-vitest-launcher-finalization.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

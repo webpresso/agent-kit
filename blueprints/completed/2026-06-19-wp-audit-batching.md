@@ -25,6 +25,7 @@ Claude review found that the original combined MCP productivity plan was too bro
 ## Scope
 
 ### In scope
+
 - Add a batch audit MCP contract for multiple audit kinds and guardrail presets.
 - Extract or centralize shared audit dispatch so CLI, `wp_audit`, and batch MCP behavior do not diverge.
 - Define deterministic output ordering, partial-failure semantics, and preset membership.
@@ -32,6 +33,7 @@ Claude review found that the original combined MCP productivity plan was too bro
 - Add tests for dispatch, aggregate results, routing, and MCP advertisement.
 
 ### Out of scope
+
 - Implement unrelated MCP tools.
 - Make audits run in parallel before audit safety is proven.
 - Add mutating audit options such as `--fix` to the batch MCP surface.
@@ -45,16 +47,17 @@ Batch input:
 
 ```ts
 type AuditBatchInput = {
-  cwd?: string
-  directory?: string
-  kinds?: MCPAuditKind[]
-  preset?: 'all' | 'guardrails'
-  baseRef?: string
-  strict?: boolean
-}
+  cwd?: string;
+  directory?: string;
+  kinds?: MCPAuditKind[];
+  preset?: "all" | "guardrails";
+  baseRef?: string;
+  strict?: boolean;
+};
 ```
 
 Validation rules:
+
 - Exactly one of `kinds` or `preset` is required.
 - `kinds` must be non-empty and de-duplicated while preserving first occurrence.
 - `preset: 'guardrails'` resolves to the same repo-audit set used by CLI `wp audit guardrails` for the target repo.
@@ -65,23 +68,24 @@ Batch output:
 
 ```ts
 type AuditBatchOutput = {
-  passed: boolean
-  summary: string
-  total: number
-  passedCount: number
-  failedCount: number
-  failedKinds: string[]
+  passed: boolean;
+  summary: string;
+  total: number;
+  passedCount: number;
+  failedCount: number;
+  failedKinds: string[];
   results: Array<{
-    kind: string
-    passed: boolean
-    summary: string
-    details: unknown
-    isError?: boolean
-  }>
-}
+    kind: string;
+    passed: boolean;
+    summary: string;
+    details: unknown;
+    isError?: boolean;
+  }>;
+};
 ```
 
 Partial-failure contract:
+
 - The batch call always attempts every requested audit unless input validation fails before dispatch.
 - `passed` is `true` only when every requested audit passes.
 - An audit crash becomes one failed `results[]` entry with `isError: true`.
@@ -89,11 +93,11 @@ Partial-failure contract:
 
 ## Side-effect Classification
 
-| Surface | Side effects | Safety rule |
-| ------- | ------------ | ----------- |
-| Single audit MCP | Read-only unless existing audit kind already has side effects | Preserve existing behavior |
-| Batch audit MCP | Read-only | Reject mutating options and continue through failures |
-| Routing/pretool guidance | Read-only | Only changes agent guidance and command redirects |
+| Surface                  | Side effects                                                  | Safety rule                                           |
+| ------------------------ | ------------------------------------------------------------- | ----------------------------------------------------- |
+| Single audit MCP         | Read-only unless existing audit kind already has side effects | Preserve existing behavior                            |
+| Batch audit MCP          | Read-only                                                     | Reject mutating options and continue through failures |
+| Routing/pretool guidance | Read-only                                                     | Only changes agent guidance and command redirects     |
 
 ## Tasks
 
@@ -136,7 +140,6 @@ Partial-failure contract:
 - [x] Partial failures and crashes are represented in structured results.
 - [x] Routing guidance reduces repeated single-audit MCP calls.
 
-
 ## Implementation Evidence
 
 - Added `wp_audits` MCP tool with explicit `kinds` or `preset` input, deterministic de-duplication, ordered results, partial-failure aggregation, and per-audit crash entries.
@@ -156,21 +159,21 @@ Partial-failure contract:
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-wp-audit-batching.md |
+| ID  | Claim                                                          | Evidence                                                  |
+| --- | -------------------------------------------------------------- | --------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-wp-audit-batching.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

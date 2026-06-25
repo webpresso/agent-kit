@@ -3,10 +3,7 @@
   "additionalProperties": false,
   "definitions": {
     "NullableString": {
-      "type": [
-        "string",
-        "null"
-      ]
+      "type": ["string", "null"]
     }
   },
   "properties": {
@@ -21,25 +18,14 @@
       "type": "string"
     },
     "permission_mode": {
-      "enum": [
-        "default",
-        "acceptEdits",
-        "plan",
-        "dontAsk",
-        "bypassPermissions"
-      ],
+      "enum": ["default", "acceptEdits", "plan", "dontAsk", "bypassPermissions"],
       "type": "string"
     },
     "session_id": {
       "type": "string"
     },
     "source": {
-      "enum": [
-        "startup",
-        "resume",
-        "clear",
-        "compact"
-      ],
+      "enum": ["startup", "resume", "clear", "compact"],
       "type": "string"
     },
     "transcript_path": {

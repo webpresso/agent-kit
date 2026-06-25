@@ -1,5 +1,5 @@
 // app/lib/query-client.ts
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient } from "@tanstack/react-query";
 
 /**
  * Canonical QueryClient defaults for the hard-cut contract.
@@ -21,14 +21,14 @@ export function createQueryClient() {
         retry: 0,
       },
     },
-  })
+  });
 }
 
 /**
  * Each app should expose a shared singleton so the root route and RR7
  * `clientLoader` functions talk to the same cache.
  */
-export const queryClient = createQueryClient()
+export const queryClient = createQueryClient();
 
 /**
  * Example route-critical prefetch shape.

@@ -6,12 +6,12 @@ status: active
 scope: repo
 applies_to: [agents]
 related: []
-created: '2026-05-07'
-last_reviewed: '2026-05-07'
+created: "2026-05-07"
+last_reviewed: "2026-05-07"
 name: frontend-design
 description: Create distinctive, production-grade frontend interfaces with high design quality. Use this skill when the user asks to build web components, pages, artifacts, posters, or applications (examples include websites, landing pages, dashboards, React components, HTML/CSS layouts, or when styling/beautifying any web UI). Generates creative, polished code and UI design that avoids generic AI aesthetics.
 license: Apache-2.0
-upstream: 
+upstream:
   source: https://github.com/anthropics/skills/tree/main/skills/frontend-design
   last_synced: "2026-05-28"
 ---
@@ -66,15 +66,15 @@ Many projects use code-generators (GraphQL codegen, OpenAPI generators, or schem
 
 ```typescript
 // Example: generated GraphQL hooks (TanStack Query-based)
-import { useGetProjectsListQuery } from '~/generated/graphql/hooks/default'
-import { useGetOrganizationsListQuery } from '~/generated/graphql/hooks/organization'
+import { useGetProjectsListQuery } from "~/generated/graphql/hooks/default";
+import { useGetOrganizationsListQuery } from "~/generated/graphql/hooks/organization";
 
 // Types generated from schema/entity definitions
-import type { Organization, Project } from '~/generated/types'
+import type { Organization, Project } from "~/generated/types";
 
 // Reusable fragments and query-key utilities
-import type { ProjectsListFragment } from '~/generated/graphql'
-import { listQueryKeyBase } from '~/generated/query-keys'
+import type { ProjectsListFragment } from "~/generated/graphql";
+import { listQueryKeyBase } from "~/generated/query-keys";
 ```
 
 **Fragment Composition Pattern**: Entities can define reusable fragments that generators compose into typed hooks. Prefer entity-specific hooks (e.g., `useGetProjectsListQuery`) over hand-rolled queries.
@@ -82,13 +82,13 @@ import { listQueryKeyBase } from '~/generated/query-keys'
 **GraphQL Client**: Always pass the client instance to generated hooks:
 
 ```typescript
-import { client } from '~/lib/graphql-client'
+import { client } from "~/lib/graphql-client";
 
 const { data, isLoading, error } = useGetProjectsListQuery(
   client,
   { where: { org_id: { _eq: orgId } } },
   { enabled: !!orgId },
-)
+);
 ```
 
 ### Monorepo Component Imports
@@ -97,17 +97,17 @@ Typical shared-package import patterns:
 
 ```typescript
 // Shared UI primitives
-import { Button, Card, Modal } from '@myorg/ui'
+import { Button, Card, Modal } from "@myorg/ui";
 
 // Route error boundaries
-import { RouteErrorBoundary } from '@myorg/ui'
+import { RouteErrorBoundary } from "@myorg/ui";
 
 // Database schemas (for backend/integration tests)
-import * as schema from '~/generated/drizzle/schemas'
+import * as schema from "~/generated/drizzle/schemas";
 
 // Test utilities (integration testing only)
-import { createIntegrationContext } from '@myorg/test-utils'
-import { projectsFactory } from '~/generated/factories'
+import { createIntegrationContext } from "@myorg/test-utils";
+import { projectsFactory } from "~/generated/factories";
 ```
 
 **Cross-Package Reference**: See the `monorepo-navigation` skill for your project's package structure and import patterns.
@@ -121,20 +121,20 @@ For React Router v7 projects, follow these data loading patterns:
 For route-level data that must be available on render, use loaders (NOT TanStack Query):
 
 ```typescript
-import type { Route } from '../+types/home'
+import type { Route } from "../+types/home";
 
 export function loader({ request }: Route.LoaderArgs) {
-  const url = new URL(request.url)
-  const cookieSource = request.headers.get('cookie')
+  const url = new URL(request.url);
+  const cookieSource = request.headers.get("cookie");
 
   return {
     hasPlatformSession: hasPlatformSessionCookie(cookieSource),
     features: getEnvironmentFeatures(),
-  }
+  };
 }
 
 export default function Home() {
-  const { hasPlatformSession, features } = useLoaderData<typeof loader>()
+  const { hasPlatformSession, features } = useLoaderData<typeof loader>();
   // Loader data is immediately available, no loading states needed
 }
 ```
@@ -146,31 +146,31 @@ export default function Home() {
 For mutations and dynamic client-side data, use generated mutation hooks:
 
 ```typescript
-import { useCreateProjectMutation } from '~/generated/graphql/hooks/default'
-import { client } from '~/lib/graphql-client'
+import { useCreateProjectMutation } from "~/generated/graphql/hooks/default";
+import { client } from "~/lib/graphql-client";
 
 function CreateProjectForm() {
-  const mutation = useCreateProjectMutation(client)
+  const mutation = useCreateProjectMutation(client);
 
   const handleSubmit = async (formData: ProjectInput) => {
-    await mutation.mutateAsync({ input: formData })
-  }
+    await mutation.mutateAsync({ input: formData });
+  };
 }
 ```
 
 ### Navigation Patterns
 
 ```typescript
-import { useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams } from "react-router";
 
 function ProjectDetail() {
-  const navigate = useNavigate()
-  const { projectSlug, orgSlug } = useParams<{ projectSlug: string; orgSlug: string }>()
+  const navigate = useNavigate();
+  const { projectSlug, orgSlug } = useParams<{ projectSlug: string; orgSlug: string }>();
 
   // Navigate programmatically
   const goToSettings = () => {
-    navigate(`/organizations/${orgSlug}/projects/${projectSlug}/settings`)
-  }
+    navigate(`/organizations/${orgSlug}/projects/${projectSlug}/settings`);
+  };
 }
 ```
 

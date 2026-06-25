@@ -1,14 +1,14 @@
-import { validateBlueprint } from './blueprint.js'
-import { validateCommandFile } from './command-file.js'
-import { validateComplexity } from './complexity.js'
-import { validateDangerousCommands } from './dangerous-commands.js'
-import { validateDocsGovernance } from './docs-governance.js'
-import { validateFileConventions } from './file-conventions.js'
-import { validateForbiddenCommands } from './forbidden-commands.js'
-import { validatePackageImports } from './package-imports.js'
-import { validatePlanFrontmatter } from './plan-frontmatter.js'
-import { validateTestQuality } from './test-quality.js'
-import { validateUxQuality } from './ux-quality.js'
+import { validateBlueprint } from "./blueprint.js";
+import { validateCommandFile } from "./command-file.js";
+import { validateComplexity } from "./complexity.js";
+import { validateDangerousCommands } from "./dangerous-commands.js";
+import { validateDocsGovernance } from "./docs-governance.js";
+import { validateFileConventions } from "./file-conventions.js";
+import { validateForbiddenCommands } from "./forbidden-commands.js";
+import { validatePackageImports } from "./package-imports.js";
+import { validatePlanFrontmatter } from "./plan-frontmatter.js";
+import { validateTestQuality } from "./test-quality.js";
+import { validateUxQuality } from "./ux-quality.js";
 
 export const VALIDATORS = [
   validateForbiddenCommands,
@@ -22,7 +22,7 @@ export const VALIDATORS = [
   validateCommandFile,
   validateTestQuality,
   validateUxQuality,
-]
+];
 
 export {
   validateBlueprint,
@@ -36,4 +36,4 @@ export {
   validatePlanFrontmatter,
   validateTestQuality,
   validateUxQuality,
-}
+};

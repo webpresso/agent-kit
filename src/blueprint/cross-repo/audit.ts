@@ -14,35 +14,35 @@
  * intervention via `fixCrossRepoLeak()` below or equivalent DB tooling.
  */
 
-import { createHash } from 'node:crypto'
-import { existsSync } from 'node:fs'
+import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 
-import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
-import { Database } from '#db/sqlite.js'
+import { resolveBlueprintProjectionDbPath } from "#db/paths.js";
+import { Database } from "#db/sqlite.js";
 
-import type { AllowlistEntry } from './resolver.js'
-import { bothSidesAllowlistEntries } from './resolver.js'
+import type { AllowlistEntry } from "./resolver.js";
+import { bothSidesAllowlistEntries } from "./resolver.js";
 
 export interface CrossRepoLeak {
-  readonly blueprintSlug: string
-  readonly targetRepo: string
-  readonly targetSlug: string
-  readonly sourceVisibility: string
-  readonly targetVisibility: string | null
+  readonly blueprintSlug: string;
+  readonly targetRepo: string;
+  readonly targetSlug: string;
+  readonly sourceVisibility: string;
+  readonly targetVisibility: string | null;
 }
 
 export interface MissingAllowlist {
-  readonly blueprintSlug: string
-  readonly sourceOrg: string
-  readonly targetOrg: string
-  readonly targetRepo: string
-  readonly missingSides: ReadonlyArray<'source' | 'target'>
+  readonly blueprintSlug: string;
+  readonly sourceOrg: string;
+  readonly targetOrg: string;
+  readonly targetRepo: string;
+  readonly missingSides: ReadonlyArray<"source" | "target">;
 }
 
 export interface CrossRepoAuditResult {
-  readonly pass: boolean
-  readonly leaks: ReadonlyArray<CrossRepoLeak>
-  readonly missingAllowlists: ReadonlyArray<MissingAllowlist>
+  readonly pass: boolean;
+  readonly leaks: ReadonlyArray<CrossRepoLeak>;
+  readonly missingAllowlists: ReadonlyArray<MissingAllowlist>;
 }
 
 // ---------------------------------------------------------------------------
@@ -50,26 +50,26 @@ export interface CrossRepoAuditResult {
 // ---------------------------------------------------------------------------
 
 interface CrossRepRow {
-  blueprint_slug: string
-  target_repo: string
-  target_slug: string | null
-  target_slug_hash: string | null
-  is_redacted: number
-  is_cross_org: number
-  source_org: string
-  source_visibility: string
+  blueprint_slug: string;
+  target_repo: string;
+  target_slug: string | null;
+  target_slug_hash: string | null;
+  is_redacted: number;
+  is_cross_org: number;
+  source_org: string;
+  source_visibility: string;
 }
 
 interface WorkspaceRepoRow {
-  repo_path: string
-  organization: string
-  repo_name: string
-  visibility: string
+  repo_path: string;
+  organization: string;
+  repo_name: string;
+  visibility: string;
 }
 
 interface AllowlistRow {
-  source_org: string
-  permitted_org: string
+  source_org: string;
+  permitted_org: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -80,18 +80,18 @@ export async function auditCrossRepoCorrelation(
   cwd: string,
   _dryRun?: boolean,
 ): Promise<CrossRepoAuditResult> {
-  const dbFile = resolveBlueprintProjectionDbPath(cwd)
+  const dbFile = resolveBlueprintProjectionDbPath(cwd);
   if (!existsSync(dbFile)) {
     // No DB — nothing to audit
-    return { pass: true, leaks: [], missingAllowlists: [] }
+    return { pass: true, leaks: [], missingAllowlists: [] };
   }
 
-  const db = new Database(dbFile, { readonly: true })
+  const db = new Database(dbFile, { readonly: true });
 
   try {
-    return runAudit(db)
+    return runAudit(db);
   } finally {
-    db.close()
+    db.close();
   }
 }
 
@@ -112,49 +112,49 @@ function runAudit(db: Database): CrossRepoAuditResult {
          FROM cross_repo_dependencies crd
          JOIN blueprints b ON b.slug = crd.blueprint_slug`,
     )
-    .all()
+    .all();
 
   // -------------------------------------------------------------------------
   // 2. Load workspace_repos for target visibility lookup
   // -------------------------------------------------------------------------
   const workspaceRepos = db
     .prepare<[], WorkspaceRepoRow>(
-      'SELECT repo_path, organization, repo_name, visibility FROM workspace_repos',
+      "SELECT repo_path, organization, repo_name, visibility FROM workspace_repos",
     )
-    .all()
+    .all();
 
-  const repoVisibility = new Map<string, string>()
+  const repoVisibility = new Map<string, string>();
   for (const wr of workspaceRepos) {
     // Key by "org/repo-name" to match target_repo in cross_repo_dependencies
-    repoVisibility.set(`${wr.organization}/${wr.repo_name}`, wr.visibility)
+    repoVisibility.set(`${wr.organization}/${wr.repo_name}`, wr.visibility);
   }
 
   // -------------------------------------------------------------------------
   // 3. Load correlate_allowlist
   // -------------------------------------------------------------------------
   const allowlistRows = db
-    .prepare<[], AllowlistRow>('SELECT source_org, permitted_org FROM correlate_allowlist')
-    .all()
+    .prepare<[], AllowlistRow>("SELECT source_org, permitted_org FROM correlate_allowlist")
+    .all();
   const allowlist: AllowlistEntry[] = allowlistRows.map((r) => ({
     source_org: r.source_org,
     permitted_org: r.permitted_org,
-  }))
+  }));
 
   // -------------------------------------------------------------------------
   // 4. Detect leaks and missing allowlists
   // -------------------------------------------------------------------------
-  const leaks: CrossRepoLeak[] = []
-  const missingAllowlists: MissingAllowlist[] = []
+  const leaks: CrossRepoLeak[] = [];
+  const missingAllowlists: MissingAllowlist[] = [];
 
   for (const row of rows) {
-    const targetVisibility = repoVisibility.get(row.target_repo) ?? null
+    const targetVisibility = repoVisibility.get(row.target_repo) ?? null;
 
     // Leak: is_redacted=0 but target is private and source is public
     if (
       row.is_redacted === 0 &&
       row.target_slug !== null &&
-      targetVisibility === 'private' &&
-      row.source_visibility === 'public'
+      targetVisibility === "private" &&
+      row.source_visibility === "public"
     ) {
       leaks.push({
         blueprintSlug: row.blueprint_slug,
@@ -162,24 +162,24 @@ function runAudit(db: Database): CrossRepoAuditResult {
         targetSlug: row.target_slug,
         sourceVisibility: row.source_visibility,
         targetVisibility,
-      })
+      });
     }
 
     // Missing allowlist: cross-org dep without mutual allowlist
     if (row.is_cross_org === 1) {
-      const sourceOrg = row.source_org
-      const targetOrg = row.target_repo.split('/')[0] ?? 'unknown'
+      const sourceOrg = row.source_org;
+      const targetOrg = row.target_repo.split("/")[0] ?? "unknown";
 
       if (!bothSidesAllowlistEntries(sourceOrg, targetOrg, allowlist)) {
         const sourcePerm = allowlist.some(
           (e) => e.source_org === sourceOrg && e.permitted_org === targetOrg,
-        )
+        );
         const targetPerm = allowlist.some(
           (e) => e.source_org === targetOrg && e.permitted_org === sourceOrg,
-        )
-        const missingSides: Array<'source' | 'target'> = []
-        if (!sourcePerm) missingSides.push('source')
-        if (!targetPerm) missingSides.push('target')
+        );
+        const missingSides: Array<"source" | "target"> = [];
+        if (!sourcePerm) missingSides.push("source");
+        if (!targetPerm) missingSides.push("target");
 
         missingAllowlists.push({
           blueprintSlug: row.blueprint_slug,
@@ -187,7 +187,7 @@ function runAudit(db: Database): CrossRepoAuditResult {
           targetOrg,
           targetRepo: row.target_repo,
           missingSides,
-        })
+        });
       }
     }
   }
@@ -196,7 +196,7 @@ function runAudit(db: Database): CrossRepoAuditResult {
     pass: leaks.length === 0 && missingAllowlists.length === 0,
     leaks,
     missingAllowlists,
-  }
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -204,8 +204,8 @@ function runAudit(db: Database): CrossRepoAuditResult {
 // ---------------------------------------------------------------------------
 
 export interface FixResult {
-  readonly fixed: boolean
-  readonly reason: string
+  readonly fixed: boolean;
+  readonly reason: string;
 }
 
 /**
@@ -217,38 +217,38 @@ export interface FixResult {
  * It must be invoked explicitly by an internal caller or equivalent DB tooling.
  */
 export async function fixCrossRepoLeak(cwd: string, blueprintSlug: string): Promise<FixResult> {
-  const dbFile = resolveBlueprintProjectionDbPath(cwd)
+  const dbFile = resolveBlueprintProjectionDbPath(cwd);
   if (!existsSync(dbFile)) {
-    return { fixed: false, reason: 'DB file not found' }
+    return { fixed: false, reason: "DB file not found" };
   }
 
-  const db = new Database(dbFile)
+  const db = new Database(dbFile);
 
   try {
     const rows = db
       .prepare<[string], { target_slug: string | null; target_repo: string }>(
-        'SELECT target_slug, target_repo FROM cross_repo_dependencies WHERE blueprint_slug = ? AND is_redacted = 0',
+        "SELECT target_slug, target_repo FROM cross_repo_dependencies WHERE blueprint_slug = ? AND is_redacted = 0",
       )
-      .all(blueprintSlug)
+      .all(blueprintSlug);
 
     if (rows.length === 0) {
-      return { fixed: false, reason: 'No unredacted cross-repo dependency found for this slug' }
+      return { fixed: false, reason: "No unredacted cross-repo dependency found for this slug" };
     }
 
     db.transaction(() => {
       for (const row of rows) {
-        if (row.target_slug === null) continue
-        const hash = createHash('sha256').update(row.target_slug).digest('hex')
+        if (row.target_slug === null) continue;
+        const hash = createHash("sha256").update(row.target_slug).digest("hex");
         db.prepare(
           `UPDATE cross_repo_dependencies
              SET target_slug = NULL, target_slug_hash = ?, is_redacted = 1
            WHERE blueprint_slug = ? AND target_repo = ?`,
-        ).run(hash, blueprintSlug, row.target_repo)
+        ).run(hash, blueprintSlug, row.target_repo);
       }
-    })()
+    })();
 
-    return { fixed: true, reason: `Redacted ${rows.length} cross-repo dependency row(s)` }
+    return { fixed: true, reason: `Redacted ${rows.length} cross-repo dependency row(s)` };
   } finally {
-    db.close()
+    db.close();
   }
 }

@@ -1,50 +1,50 @@
-import type { Blueprint, BlueprintAuditResult, BlueprintSummary } from '#local'
-import { buildRoadmapModel, planStatusSchema } from '#local'
+import type { Blueprint, BlueprintAuditResult, BlueprintSummary } from "#local";
+import { buildRoadmapModel, planStatusSchema } from "#local";
 import type {
   CreateBlueprintResult,
   ExecuteBlueprintResult,
   ShowBlueprintResult,
-} from './router.js'
+} from "./router.js";
 
 const BLUEPRINT_HELP = [
-  'Blueprint management',
-  '',
-  'Commands:',
-  '  list [status]',
-  '  new <goal> --complexity <XS|S|M|L|XL> [--type <blueprint|parent-roadmap>]',
-  '  show <slug>',
-  '  exec <slug>',
-  '  exec status <slug>',
-  '  exec resume <slug>',
-  '  exec stop <slug>',
-  '  exec logs <slug>',
-  '  start <slug>',
-  '  park <slug>',
-  '  task start <slug> <taskId>',
-  '  task block <slug> <taskId> --reason <text>',
-  '  task unblock <slug> <taskId>',
-  '  task complete <slug> <taskId>',
-  '  finalize <slug>',
-  '  audit [--staged|--all] [--strict]',
-  '  move <slug> <status> --force-recovery',
-].join('\n')
+  "Blueprint management",
+  "",
+  "Commands:",
+  "  list [status]",
+  "  new <goal> --complexity <XS|S|M|L|XL> [--type <blueprint|parent-roadmap>]",
+  "  show <slug>",
+  "  exec <slug>",
+  "  exec status <slug>",
+  "  exec resume <slug>",
+  "  exec stop <slug>",
+  "  exec logs <slug>",
+  "  start <slug>",
+  "  park <slug>",
+  "  task start <slug> <taskId>",
+  "  task block <slug> <taskId> --reason <text>",
+  "  task unblock <slug> <taskId>",
+  "  task complete <slug> <taskId>",
+  "  finalize <slug>",
+  "  audit [--staged|--all] [--strict]",
+  "  move <slug> <status> --force-recovery",
+].join("\n");
 
-export function formatTaskLine(task: Blueprint['tasks'][number]): string {
-  const checkbox = task.status === 'done' || task.status === 'dropped' ? 'x' : ' '
-  return `- [${checkbox}] ${task.id} ${task.title}`
+export function formatTaskLine(task: Blueprint["tasks"][number]): string {
+  const checkbox = task.status === "done" || task.status === "dropped" ? "x" : " ";
+  return `- [${checkbox}] ${task.id} ${task.title}`;
 }
 
 export function getBlueprintHelpText(): string {
-  return BLUEPRINT_HELP
+  return BLUEPRINT_HELP;
 }
 
 export interface BlueprintInventorySummary {
-  total: number
-  byStatus: Record<string, number>
-  byType: Record<BlueprintSummary['type'], number>
+  total: number;
+  byStatus: Record<string, number>;
+  byType: Record<BlueprintSummary["type"], number>;
   anomalies: {
-    completedZeroTask: number
-  }
+    completedZeroTask: number;
+  };
 }
 
 export function summarizeBlueprintInventory(
@@ -52,19 +52,19 @@ export function summarizeBlueprintInventory(
 ): BlueprintInventorySummary {
   const byStatus: Record<string, number> = Object.fromEntries(
     planStatusSchema.options.toSorted().map((status) => [status, 0]),
-  )
-  const byType: Record<BlueprintSummary['type'], number> = {
+  );
+  const byType: Record<BlueprintSummary["type"], number> = {
     blueprint: 0,
-    'parent-roadmap': 0,
-  }
-  let completedZeroTask = 0
+    "parent-roadmap": 0,
+  };
+  let completedZeroTask = 0;
 
   for (const summary of summaries) {
-    byStatus[summary.status] = (byStatus[summary.status] ?? 0) + 1
-    byType[summary.type] += 1
+    byStatus[summary.status] = (byStatus[summary.status] ?? 0) + 1;
+    byType[summary.type] += 1;
 
-    if (summary.status === 'completed' && summary.taskCount === 0) {
-      completedZeroTask += 1
+    if (summary.status === "completed" && summary.taskCount === 0) {
+      completedZeroTask += 1;
     }
   }
 
@@ -75,99 +75,99 @@ export function summarizeBlueprintInventory(
     anomalies: {
       completedZeroTask,
     },
-  }
+  };
 }
 
 export function formatBlueprintInventorySummary(summary: BlueprintInventorySummary): string {
   const byStatus = Object.entries(summary.byStatus)
     .toSorted(([left], [right]) => left.localeCompare(right))
     .map(([status, count]) => `${status}=${count}`)
-    .join(' ')
+    .join(" ");
   const byType = Object.entries(summary.byType)
     .toSorted(([left], [right]) => left.localeCompare(right))
     .map(([type, count]) => `${type}=${count}`)
-    .join(' ')
+    .join(" ");
 
   return [
     `SUMMARY total=${summary.total}`,
     `BY_STATUS ${byStatus}`,
     `BY_TYPE ${byType}`,
     `ANOMALIES completed-zero-task=${summary.anomalies.completedZeroTask}`,
-  ].join('\n')
+  ].join("\n");
 }
 
 export function formatBlueprintSummaries(summaries: BlueprintSummary[]): string {
   if (!summaries.length) {
-    return 'No blueprints found.'
+    return "No blueprints found.";
   }
 
-  const inventorySummary = formatBlueprintInventorySummary(summarizeBlueprintInventory(summaries))
-  const hasRoadmaps = summaries.some((summary) => summary.type === 'parent-roadmap')
+  const inventorySummary = formatBlueprintInventorySummary(summarizeBlueprintInventory(summaries));
+  const hasRoadmaps = summaries.some((summary) => summary.type === "parent-roadmap");
   if (!hasRoadmaps) {
     const lines = summaries.map((summary) => {
-      const label = summary.type === 'parent-roadmap' ? 'ROADMAP' : 'BLUEPRINT'
-      const malformedSuffix = summary.malformed ? ' malformed=yes' : ''
-      return `${label} ${summary.name} status=${summary.status} complexity=${summary.complexity} progress=${summary.progress}% tasks=${summary.taskCount}${malformedSuffix}`
-    })
+      const label = summary.type === "parent-roadmap" ? "ROADMAP" : "BLUEPRINT";
+      const malformedSuffix = summary.malformed ? " malformed=yes" : "";
+      return `${label} ${summary.name} status=${summary.status} complexity=${summary.complexity} progress=${summary.progress}% tasks=${summary.taskCount}${malformedSuffix}`;
+    });
 
-    return [...lines, inventorySummary].join('\n')
+    return [...lines, inventorySummary].join("\n");
   }
 
-  const model = buildRoadmapModel(summaries)
+  const model = buildRoadmapModel(summaries);
   const attachedChildren = new Set(
     model.roadmaps.flatMap((roadmap) => roadmap.children.map((child) => child.name)),
-  )
+  );
   const standaloneBlueprints = summaries
     .filter(
       (summary) =>
-        summary.type !== 'parent-roadmap' &&
+        summary.type !== "parent-roadmap" &&
         !summary.parentRoadmap &&
         !attachedChildren.has(summary.name),
     )
-    .toSorted((left, right) => left.name.localeCompare(right.name))
+    .toSorted((left, right) => left.name.localeCompare(right.name));
 
-  const lines: string[] = []
+  const lines: string[] = [];
 
   for (const roadmap of model.roadmaps) {
     const malformedSuffix =
-      'malformed' in roadmap.roadmap && roadmap.roadmap.malformed ? ' malformed=yes' : ''
+      "malformed" in roadmap.roadmap && roadmap.roadmap.malformed ? " malformed=yes" : "";
     lines.push(
       `ROADMAP ${roadmap.roadmap.name} status=${roadmap.roadmap.status} complexity=${(roadmap.roadmap as BlueprintSummary).complexity} children=${roadmap.rollup.children} done=${roadmap.rollup.done} in-progress=${roadmap.rollup.inProgress} planned=${roadmap.rollup.planned} draft=${roadmap.rollup.draft}${malformedSuffix}`,
-    )
+    );
     for (const child of roadmap.children) {
-      const summary = child as BlueprintSummary
-      const childMalformed = summary.malformed ? ' malformed=yes' : ''
+      const summary = child as BlueprintSummary;
+      const childMalformed = summary.malformed ? " malformed=yes" : "";
       lines.push(
         `  CHILD ${summary.name} status=${summary.status} complexity=${summary.complexity} progress=${summary.progress}% tasks=${summary.taskCount} parent=${roadmap.roadmap.name}${childMalformed}`,
-      )
+      );
     }
   }
 
   for (const summary of standaloneBlueprints) {
-    const malformedSuffix = summary.malformed ? ' malformed=yes' : ''
+    const malformedSuffix = summary.malformed ? " malformed=yes" : "";
     lines.push(
       `BLUEPRINT ${summary.name} status=${summary.status} complexity=${summary.complexity} progress=${summary.progress}% tasks=${summary.taskCount}${malformedSuffix}`,
-    )
+    );
   }
 
   if (model.orphanChildren.length > 0) {
-    lines.push('ORPHANS')
+    lines.push("ORPHANS");
     for (const orphan of model.orphanChildren) {
-      const summary = orphan as BlueprintSummary
-      const malformedSuffix = summary.malformed ? ' malformed=yes' : ''
+      const summary = orphan as BlueprintSummary;
+      const malformedSuffix = summary.malformed ? " malformed=yes" : "";
       lines.push(
         `  BLUEPRINT ${summary.name} status=${summary.status} complexity=${summary.complexity} progress=${summary.progress}% tasks=${summary.taskCount} parent=${summary.parentRoadmap}${malformedSuffix}`,
-      )
+      );
     }
   }
 
-  return [...lines, inventorySummary].join('\n')
+  return [...lines, inventorySummary].join("\n");
 }
 
 export function formatBlueprintDetails(result: ShowBlueprintResult): string {
   const doneTasks = result.blueprint.tasks.filter(
-    (task) => task.status === 'done' || task.status === 'dropped',
-  ).length
+    (task) => task.status === "done" || task.status === "dropped",
+  ).length;
   const header = [
     `title: ${result.blueprint.title}`,
     `slug: ${result.slug}`,
@@ -175,14 +175,14 @@ export function formatBlueprintDetails(result: ShowBlueprintResult): string {
     `complexity: ${result.blueprint.complexity}`,
     `path: ${result.location.path}`,
     `tasks: ${doneTasks}/${result.blueprint.tasks.length} done`,
-  ]
+  ];
 
   const tasks =
     result.blueprint.tasks.length > 0
       ? result.blueprint.tasks.map(formatTaskLine)
-      : ['- No tasks declared']
+      : ["- No tasks declared"];
 
-  return [...header, '', 'task list:', ...tasks].join('\n')
+  return [...header, "", "task list:", ...tasks].join("\n");
 }
 
 export function formatBlueprintCreation(result: CreateBlueprintResult): string {
@@ -191,7 +191,7 @@ export function formatBlueprintCreation(result: CreateBlueprintResult): string {
     `title: ${result.title}`,
     `complexity: ${result.complexity}`,
     `path: ${result.path}`,
-  ].join('\n')
+  ].join("\n");
 }
 
 export function formatBlueprintExecution(result: ExecuteBlueprintResult): string {
@@ -202,55 +202,55 @@ export function formatBlueprintExecution(result: ExecuteBlueprintResult): string
     `executionId: ${result.executionId}`,
     `slug: ${result.slug}`,
     `status: ${result.status}`,
-  ]
+  ];
 
   if (result.runtimeSnapshotPath) {
-    lines.push(`runtimeSnapshot: ${result.runtimeSnapshotPath}`)
+    lines.push(`runtimeSnapshot: ${result.runtimeSnapshotPath}`);
   }
   if (result.bridgePath) {
-    lines.push(`bridgePath: ${result.bridgePath}`)
+    lines.push(`bridgePath: ${result.bridgePath}`);
   }
   if (result.teamStateRoot) {
-    lines.push(`teamStateRoot: ${result.teamStateRoot}`)
+    lines.push(`teamStateRoot: ${result.teamStateRoot}`);
   }
   if (result.logPath) {
-    lines.push(`logPath: ${result.logPath}`)
+    lines.push(`logPath: ${result.logPath}`);
   }
   if (result.artifactPaths?.length) {
-    lines.push(`artifacts: ${result.artifactPaths.join(', ')}`)
+    lines.push(`artifacts: ${result.artifactPaths.join(", ")}`);
   }
 
-  return lines.join('\n')
+  return lines.join("\n");
 }
 
 export function formatBlueprintAudit(result: BlueprintAuditResult): string {
   if (!result.issues.length) {
-    return 'Blueprint audit passed.'
+    return "Blueprint audit passed.";
   }
 
   return result.issues
-    .map((issue) => `[${issue.level}] ${issue.file ? `${issue.file}: ` : ''}${issue.message}`)
-    .join('\n')
+    .map((issue) => `[${issue.level}] ${issue.file ? `${issue.file}: ` : ""}${issue.message}`)
+    .join("\n");
 }
 
 export function printBlueprintOutput(value: object | string, asJson?: boolean): void {
   if (asJson) {
-    console.log(JSON.stringify(value, null, 2))
-    return
+    console.log(JSON.stringify(value, null, 2));
+    return;
   }
 
-  console.log(typeof value === 'string' ? value : JSON.stringify(value, null, 2))
+  console.log(typeof value === "string" ? value : JSON.stringify(value, null, 2));
 }
 
 export class BlueprintCliError extends Error {
   constructor(message: string) {
-    super(message)
-    this.name = 'BlueprintCliError'
+    super(message);
+    this.name = "BlueprintCliError";
   }
 }
 
 export function handleBlueprintError(error: unknown): never {
-  const message = error instanceof Error ? error.message : String(error)
-  console.error(message)
-  throw new BlueprintCliError(message)
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(message);
+  throw new BlueprintCliError(message);
 }

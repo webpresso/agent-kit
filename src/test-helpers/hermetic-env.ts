@@ -1,11 +1,11 @@
-import { mkdirSync, mkdtempSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import path from 'node:path'
+import { mkdirSync, mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
-import { beforeEach } from 'vitest'
+import { beforeEach } from "vitest";
 
-const TEST_STATE_ROOT = mkdtempSync(path.join(tmpdir(), `wp-state-${process.pid}-`))
-mkdirSync(TEST_STATE_ROOT, { recursive: true })
+const TEST_STATE_ROOT = mkdtempSync(path.join(tmpdir(), `wp-state-${process.pid}-`));
+mkdirSync(TEST_STATE_ROOT, { recursive: true });
 
 /**
  * Hermetic environment baseline for the whole test suite.
@@ -46,25 +46,25 @@ mkdirSync(TEST_STATE_ROOT, { recursive: true })
  * own body (which runs after this hook), so behavior coverage is unaffected.
  */
 export const LEAKY_ENV_KEYS = [
-  'CLAUDE_PROJECT_DIR',
-  'WP_SKIP_UPDATE_CHECK',
-  'WP_BLUEPRINT_ROOTS_TIMEOUT_MS',
-  'WP_BLUEPRINT_PROJECT_DISCOVERY_TIMEOUT_MS',
-  'WP_BLUEPRINT_PLATFORM_DISABLED',
-  'WP_MCP_TOOL_MODE',
-  'WP_COMPILED_RUNTIME',
-  'GITHUB_PAT',
-  'QUALITY_ENGINE_COMPACT',
-] as const
+  "CLAUDE_PROJECT_DIR",
+  "WP_SKIP_UPDATE_CHECK",
+  "WP_BLUEPRINT_ROOTS_TIMEOUT_MS",
+  "WP_BLUEPRINT_PROJECT_DISCOVERY_TIMEOUT_MS",
+  "WP_BLUEPRINT_PLATFORM_DISABLED",
+  "WP_MCP_TOOL_MODE",
+  "WP_COMPILED_RUNTIME",
+  "GITHUB_PAT",
+  "QUALITY_ENGINE_COMPACT",
+] as const;
 
 /** Delete every agent-session-leaked env var so each test starts hermetic. */
 export function resetLeakyEnv(): void {
   for (const key of LEAKY_ENV_KEYS) {
-    delete process.env[key]
+    delete process.env[key];
   }
-  process.env.WP_STATE_ROOT = TEST_STATE_ROOT
+  process.env.WP_STATE_ROOT = TEST_STATE_ROOT;
 }
 
-resetLeakyEnv()
+resetLeakyEnv();
 
-beforeEach(resetLeakyEnv)
+beforeEach(resetLeakyEnv);

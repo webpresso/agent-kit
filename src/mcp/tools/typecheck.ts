@@ -6,37 +6,37 @@
  * `files` never means isolated-file `tsc`; it is a scope selector only.
  */
 
-import { z } from 'zod'
+import { z } from "zod";
 
-import type { ToolDescriptor } from '#mcp/auto-discover'
+import type { ToolDescriptor } from "#mcp/auto-discover";
 
-import { formatMcpToolOutput } from './_shared/full-output.js'
-import { resolveProjectRoot } from './_shared/project-root.js'
-import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
-import { boundRunnerFailureEvidence, isRunnerFailure } from './_shared/runner-failure.js'
-import { runTypecheck } from '#typecheck/index.js'
+import { formatMcpToolOutput } from "./_shared/full-output.js";
+import { resolveProjectRoot } from "./_shared/project-root.js";
+import { createSummaryOutputSchema, createSummaryResult } from "./_shared/result.js";
+import { boundRunnerFailureEvidence, isRunnerFailure } from "./_shared/runner-failure.js";
+import { runTypecheck } from "#typecheck/index.js";
 
 const inputSchema = z.object({
   cwd: z.string().optional(),
   packages: z
     .array(z.string())
     .optional()
-    .describe('Exact package.json names. No fuzzy or path matching.'),
+    .describe("Exact package.json names. No fuzzy or path matching."),
   files: z
     .array(z.string())
     .optional()
-    .describe('Source files whose owning scope should be typechecked; never isolated-file tsc.'),
+    .describe("Source files whose owning scope should be typechecked; never isolated-file tsc."),
   full: z.boolean().optional().default(false),
-})
+});
 
-export type AkTypecheckInput = z.infer<typeof inputSchema>
+export type AkTypecheckInput = z.infer<typeof inputSchema>;
 
 const tscErrorSchema = z.object({
   file: z.string(),
   line: z.number(),
   code: z.string(),
   message: z.string(),
-})
+});
 
 const outputSchema = createSummaryOutputSchema({
   counts: z.object({
@@ -45,70 +45,70 @@ const outputSchema = createSummaryOutputSchema({
   details: z.object({
     errors: z.array(tscErrorSchema),
   }),
-})
+});
 
 export interface TscError {
-  readonly file: string
-  readonly line: number
-  readonly code: string
-  readonly message: string
+  readonly file: string;
+  readonly line: number;
+  readonly code: string;
+  readonly message: string;
 }
 
 // Hard cap: a hung tsc invocation must surface as a timeout, never as a stall.
-const TYPECHECK_COMMAND_TIMEOUT_MS = 10 * 60 * 1_000
+const TYPECHECK_COMMAND_TIMEOUT_MS = 10 * 60 * 1_000;
 
 function summarizeTypecheckResult(options: {
-  passed: boolean
-  errorCount: number
-  timedOut: boolean
-  aborted: boolean
-  failedWithoutDiagnostics: boolean
+  passed: boolean;
+  errorCount: number;
+  timedOut: boolean;
+  aborted: boolean;
+  failedWithoutDiagnostics: boolean;
 }): string {
-  if (options.timedOut) return 'typecheck timed out'
-  if (options.aborted) return 'typecheck aborted'
-  if (options.failedWithoutDiagnostics) return 'typecheck failed to run (no diagnostics parsed)'
-  if (options.passed) return 'typecheck passed'
-  return `typecheck failed with ${options.errorCount} error${options.errorCount === 1 ? '' : 's'}`
+  if (options.timedOut) return "typecheck timed out";
+  if (options.aborted) return "typecheck aborted";
+  if (options.failedWithoutDiagnostics) return "typecheck failed to run (no diagnostics parsed)";
+  if (options.passed) return "typecheck passed";
+  return `typecheck failed with ${options.errorCount} error${options.errorCount === 1 ? "" : "s"}`;
 }
 
 const tool: ToolDescriptor = {
-  name: 'wp_typecheck',
+  name: "wp_typecheck",
   description:
-    'Run `tsc --noEmit` per resolved package (or at cwd) and return structured diagnostics parsed from tsc stdout.',
+    "Run `tsc --noEmit` per resolved package (or at cwd) and return structured diagnostics parsed from tsc stdout.",
   inputSchema,
   outputSchema,
   annotations: {
-    title: 'Typecheck',
+    title: "Typecheck",
     readOnlyHint: true,
     destructiveHint: false,
     idempotentHint: true,
     openWorldHint: false,
   },
   handler: async (raw, extra) => {
-    const input = inputSchema.parse(raw ?? {})
-    const cwd = resolveProjectRoot(input.cwd ? { cwd: input.cwd } : {})
+    const input = inputSchema.parse(raw ?? {});
+    const cwd = resolveProjectRoot(input.cwd ? { cwd: input.cwd } : {});
     const result = await runTypecheck({
       cwd,
       packages: input.packages,
       files: input.files,
       timeoutMs: TYPECHECK_COMMAND_TIMEOUT_MS,
       signal: extra?.signal,
-    })
+    });
 
-    const combinedOutput = result.output
+    const combinedOutput = result.output;
     const failedWithoutDiagnostics = isRunnerFailure({
       passed: result.passed,
       timedOut: result.timedOut === true,
       aborted: result.aborted === true,
       parsedCount: result.errors.length,
       output: combinedOutput,
-    })
+    });
 
     const compact = input.full
-      ? formatMcpToolOutput(combinedOutput, { toolName: 'wp_typecheck', full: true, cwd })
+      ? formatMcpToolOutput(combinedOutput, { toolName: "wp_typecheck", full: true, cwd })
       : failedWithoutDiagnostics
-        ? boundRunnerFailureEvidence(combinedOutput, 'wp_typecheck', cwd)
-        : formatMcpToolOutput(combinedOutput, { toolName: 'wp_typecheck', cwd })
+        ? boundRunnerFailureEvidence(combinedOutput, "wp_typecheck", cwd)
+        : formatMcpToolOutput(combinedOutput, { toolName: "wp_typecheck", cwd });
 
     const payload = {
       passed: result.passed,
@@ -124,10 +124,10 @@ const tool: ToolDescriptor = {
       ...compact,
       timedOut: result.timedOut || undefined,
       aborted: result.aborted || undefined,
-    }
+    };
 
-    return createSummaryResult(payload)
+    return createSummaryResult(payload);
   },
-}
+};
 
-export default tool
+export default tool;

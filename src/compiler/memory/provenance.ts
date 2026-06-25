@@ -1,14 +1,14 @@
 export interface ProvenanceEntry {
-  readonly sectionSlug: string
-  readonly sourcePath: string
-  readonly op: string
-  readonly layerIndex: number
+  readonly sectionSlug: string;
+  readonly sourcePath: string;
+  readonly op: string;
+  readonly layerIndex: number;
 }
 
 export interface ProvenanceMap {
-  readonly generatedAt: string
-  readonly sourceFiles: readonly string[]
-  readonly sections: readonly ProvenanceEntry[]
+  readonly generatedAt: string;
+  readonly sourceFiles: readonly string[];
+  readonly sections: readonly ProvenanceEntry[];
 }
 
 export function buildProvenance(
@@ -19,5 +19,5 @@ export function buildProvenance(
     generatedAt: new Date().toISOString(),
     sourceFiles,
     sections: entries,
-  }
+  };
 }

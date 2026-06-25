@@ -4,9 +4,9 @@ title: "Release provenance GitHub-hosted runner fix"
 owner: agent-kit
 status: completed
 complexity: S
-created: '2026-06-16'
-last_updated: '2026-06-16'
-progress: '100% (1 of 1 tasks completed)'
+created: "2026-06-16"
+last_updated: "2026-06-16"
+progress: "100% (1 of 1 tasks completed)"
 tags:
   - release
   - github-actions
@@ -37,9 +37,9 @@ self-hosted runners are not accepted for provenance verification.
 
 - [x] Release workflow uses `ubuntu-latest` for the provenance-backed publish job.
 - [x] Workflow comments document why the release job intentionally differs from
-  the repo's Ubicloud CI runner policy.
+      the repo's Ubicloud CI runner policy.
 - [x] Regression test fails if the release workflow returns to the Ubicloud
-  runner while still using the provenance-backed publish path.
+      runner while still using the provenance-backed publish path.
 - [x] Scoped workflow/test/typecheck/lint/secret checks pass.
 
 ## Verification
@@ -63,21 +63,21 @@ self-hosted runners are not accepted for provenance verification.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-16-release-provenance-github-hosted-runner.md |
+| ID  | Claim                                                          | Evidence                                                                        |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-16-release-provenance-github-hosted-runner.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

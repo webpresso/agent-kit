@@ -50,13 +50,13 @@ export {
   validatePlanLinks,
   validatePlanState,
   validatePlanTemplate,
-} from './index.js'
+} from "./index.js";
 
 export {
   validateBlueprintTrust,
   type BlueprintTrustViolation,
   type ValidateBlueprintTrustInput,
-} from './trust/validator.js'
+} from "./trust/validator.js";
 
 // Services (require filesystem/git)
 export {
@@ -65,41 +65,41 @@ export {
   type BlueprintDraft,
   type CreateBlueprintInput,
   type CreatedBlueprint,
-} from './service/BlueprintCreationService.js'
+} from "./service/BlueprintCreationService.js";
 export {
   type BlueprintQueryOptions,
   BlueprintService,
   type BlueprintSummary,
-} from './service/BlueprintService.js'
+} from "./service/BlueprintService.js";
 export {
   type ScannedBlueprint,
   type ScanOptions,
   scanBlueprintDirectory,
-} from './service/scanner.js'
+} from "./service/scanner.js";
 export {
   runBlueprintAudit,
   type BlueprintAuditIssue,
   type BlueprintAuditResult,
   type RunBlueprintAuditOptions,
-} from './lifecycle/audit.js'
+} from "./lifecycle/audit.js";
 export {
   applyBlueprintLifecycle,
   type BlueprintLifecycleIntent,
   type BlueprintLifecycleResult,
   type LifecycleTaskStatus,
-} from './lifecycle/engine.js'
+} from "./lifecycle/engine.js";
 export {
   applyBlueprintLifecycleToFile,
   relativeBlueprintSlug,
   resolveBlueprintFile,
   type BlueprintLifecycleWriteResult,
   type ResolvedBlueprintFile,
-} from './lifecycle/local.js'
+} from "./lifecycle/local.js";
 export {
   type TechDebtQueryOptions,
   TechDebtService,
   type TechDebtSummary,
-} from './service/TechDebtService.js'
+} from "./service/TechDebtService.js";
 
 // Archive (requires git)
 export {
@@ -108,7 +108,7 @@ export {
   type IncompleteTask,
   type ValidationResult as ArchiveValidationResult,
   validateAllTasksDone,
-} from './utils/archive.js'
+} from "./utils/archive.js";
 
 // Conflict Resolution
 export {
@@ -117,7 +117,7 @@ export {
   ConflictResolver,
   createConflictResolver,
   type ResolvedConflict,
-} from './utils/conflict.js'
+} from "./utils/conflict.js";
 
 // Error Types
-export { BlueprintNotFoundError } from './utils/errors.js'
+export { BlueprintNotFoundError } from "./utils/errors.js";

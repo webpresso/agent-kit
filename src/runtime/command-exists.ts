@@ -1,5 +1,5 @@
-import { accessSync, constants, statSync } from 'node:fs'
-import { join, posix, win32 } from 'node:path'
+import { accessSync, constants, statSync } from "node:fs";
+import { join, posix, win32 } from "node:path";
 
 /**
  * Cross-platform `command exists and is runnable` check.
@@ -19,17 +19,17 @@ import { join, posix, win32 } from 'node:path'
  * separate `exists` predicate for locating npm shims — a different question.)
  */
 export interface CommandLookupOptions {
-  readonly platform?: NodeJS.Platform
-  readonly pathEnv?: string
-  readonly pathExtEnv?: string
+  readonly platform?: NodeJS.Platform;
+  readonly pathEnv?: string;
+  readonly pathExtEnv?: string;
 }
 
 function pathModuleForPlatform(platform: NodeJS.Platform): typeof posix | typeof win32 {
-  return platform === 'win32' ? win32 : posix
+  return platform === "win32" ? win32 : posix;
 }
 
 function pathDelimiterForPlatform(platform: NodeJS.Platform): string {
-  return platform === 'win32' ? ';' : ':'
+  return platform === "win32" ? ";" : ":";
 }
 
 function commandNameVariants(
@@ -38,16 +38,16 @@ function commandNameVariants(
   pathExtEnv: string | undefined,
 ): string[] {
   // Only win32 appends extensions, and only when the command has none already.
-  if (platform !== 'win32' || /\.[^./\\]+$/u.test(command)) return [command]
+  if (platform !== "win32" || /\.[^./\\]+$/u.test(command)) return [command];
   const extensions =
-    typeof pathExtEnv === 'string' && pathExtEnv.length > 0
+    typeof pathExtEnv === "string" && pathExtEnv.length > 0
       ? pathExtEnv
-          .split(';')
+          .split(";")
           .map((entry) => entry.trim())
           .filter((entry) => entry.length > 0)
           .map((entry) => entry.toLowerCase())
-      : ['.exe', '.cmd', '.bat']
-  return [command, ...extensions.map((extension) => `${command}${extension}`)]
+      : [".exe", ".cmd", ".bat"];
+  return [command, ...extensions.map((extension) => `${command}${extension}`)];
 }
 
 /**
@@ -57,41 +57,41 @@ function commandNameVariants(
  * simulation still resolves real fixtures on a posix test filesystem.
  */
 export function pathCandidates(command: string, options: CommandLookupOptions = {}): string[] {
-  if (command.length === 0) return []
-  const platform = options.platform ?? process.platform
-  const pathEnv = options.pathEnv ?? process.env.PATH
-  if (typeof pathEnv !== 'string' || pathEnv.length === 0) return []
-  const pathExtEnv = options.pathExtEnv ?? process.env.PATHEXT
-  const pathModule = pathModuleForPlatform(platform)
-  const variants = commandNameVariants(command, platform, pathExtEnv)
+  if (command.length === 0) return [];
+  const platform = options.platform ?? process.platform;
+  const pathEnv = options.pathEnv ?? process.env.PATH;
+  if (typeof pathEnv !== "string" || pathEnv.length === 0) return [];
+  const pathExtEnv = options.pathExtEnv ?? process.env.PATHEXT;
+  const pathModule = pathModuleForPlatform(platform);
+  const variants = commandNameVariants(command, platform, pathExtEnv);
 
-  const candidates: string[] = []
+  const candidates: string[] = [];
   for (const entry of pathEnv.split(pathDelimiterForPlatform(platform))) {
-    if (entry.length === 0) continue
+    if (entry.length === 0) continue;
     for (const variant of variants) {
       for (const candidate of new Set([pathModule.join(entry, variant), join(entry, variant)])) {
-        candidates.push(candidate)
+        candidates.push(candidate);
       }
     }
   }
-  return candidates
+  return candidates;
 }
 
 function isRunnableFile(path: string, platform: NodeJS.Platform): boolean {
-  let stat: ReturnType<typeof statSync>
+  let stat: ReturnType<typeof statSync>;
   try {
-    stat = statSync(path)
+    stat = statSync(path);
   } catch {
-    return false
+    return false;
   }
-  if (!stat.isFile()) return false
+  if (!stat.isFile()) return false;
   // Windows has no executable bit; presence of the right-extension file is enough.
-  if (platform === 'win32') return true
+  if (platform === "win32") return true;
   try {
-    accessSync(path, constants.X_OK)
-    return true
+    accessSync(path, constants.X_OK);
+    return true;
   } catch {
-    return false
+    return false;
   }
 }
 
@@ -100,9 +100,9 @@ function isRunnableFile(path: string, platform: NodeJS.Platform): boolean {
  * `PATH`. Never spawns a subprocess. See the module doc for the predicate contract.
  */
 export function commandExists(command: string, options: CommandLookupOptions = {}): boolean {
-  const platform = options.platform ?? process.platform
+  const platform = options.platform ?? process.platform;
   for (const candidate of pathCandidates(command, options)) {
-    if (isRunnableFile(candidate, platform)) return true
+    if (isRunnableFile(candidate, platform)) return true;
   }
-  return false
+  return false;
 }

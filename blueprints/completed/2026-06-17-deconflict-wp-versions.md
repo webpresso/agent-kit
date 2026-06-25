@@ -3,11 +3,11 @@ type: blueprint
 title: "De-conflict global vs repo-pinned wp versions"
 owner: ozby
 status: completed
-completed_at: '2026-06-21'
+completed_at: "2026-06-21"
 complexity: S
-created: '2026-06-17'
-last_updated: '2026-06-17'
-progress: '100% (completed; tasks verified during plan-refine reconciliation)'
+created: "2026-06-17"
+last_updated: "2026-06-17"
+progress: "100% (completed; tasks verified during plan-refine reconciliation)"
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -73,6 +73,7 @@ false positives when aligned or when no pin is found.
 - [x] warning fires on a deliberately mismatched global-vs-pin pair
 - [x] no false positive when aligned or pin absent
 - [x] no timeout/retry changes.
+
 #### [docs] Task 1.2: Document precedence + the warning
 
 **Status:** done
@@ -97,9 +98,9 @@ handled by [[2026-06-17-extract-agent-config-package]] Task 3.1 (avoid double-ed
 
 ## Risk
 
-| Risk | Mitigation |
-| ---- | ---------- |
-| False-positive warnings annoy users | only warn on a real version delta; suppress when pin is unresolved |
+| Risk                                             | Mitigation                                                                                          |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| False-positive warnings annoy users              | only warn on a real version delta; suppress when pin is unresolved                                  |
 | Overlap with extract blueprint on `package.json` | this blueprint does NOT touch `package.json`; `preferGlobal` removal lives in the extract blueprint |
 
 ## Trust Dossier
@@ -114,21 +115,21 @@ handled by [[2026-06-17-extract-agent-config-package]] Task 3.1 (avoid double-ed
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-17-deconflict-wp-versions.md |
+| ID  | Claim                                                          | Evidence                                                       |
+| --- | -------------------------------------------------------------- | -------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-17-deconflict-wp-versions.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

@@ -3,19 +3,19 @@ type: blueprint
 title: Audit dynamic RegExp construction
 owner: ozby
 status: completed
-completed_at: '2026-06-21'
+completed_at: "2026-06-21"
 complexity: S
-created: '2026-06-14'
-last_updated: '2026-06-14'
-progress: '100% (completed; tasks verified during plan-refine reconciliation)'
+created: "2026-06-14"
+last_updated: "2026-06-14"
+progress: "100% (completed; tasks verified during plan-refine reconciliation)"
 depends_on: []
 cross_repo_depends_on: []
 tags:
   - security
   - regex
   - input-validation
-worktree_owner_id: ''
-worktree_owner_branch: ''
+worktree_owner_id: ""
+worktree_owner_branch: ""
 ---
 
 # Audit dynamic RegExp construction
@@ -30,29 +30,30 @@ worktree_owner_branch: ''
 
 ## Quick Reference
 
-| Key | Value |
-| --- | ----- |
-| Total `new RegExp` sites (non-test) | **50** |
-| Genuinely user-facing dynamic sites | **0 executed** (search-files regex is syntax-validated then discarded; package-surface/validate-command inputs are *intentional* user regex/glob) |
-| Static/trivial sites | **~43** (constants, `String.raw`, source-reuse, or internal-only) |
-| Duplicate `escapeRegExp` helpers | **5 duplicates** of **1 canonical** (`escapeRegex`) — 3 escape-body variants |
-| Canonical `escapeRegex` export | `src/blueprint/utils/string.ts:7` |
-| Complexity | S (scope cut after fact-check downgraded the HIGH find) |
+| Key                                 | Value                                                                                                                                             |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Total `new RegExp` sites (non-test) | **50**                                                                                                                                            |
+| Genuinely user-facing dynamic sites | **0 executed** (search-files regex is syntax-validated then discarded; package-surface/validate-command inputs are _intentional_ user regex/glob) |
+| Static/trivial sites                | **~43** (constants, `String.raw`, source-reuse, or internal-only)                                                                                 |
+| Duplicate `escapeRegExp` helpers    | **5 duplicates** of **1 canonical** (`escapeRegex`) — 3 escape-body variants                                                                      |
+| Canonical `escapeRegex` export      | `src/blueprint/utils/string.ts:7`                                                                                                                 |
+| Complexity                          | S (scope cut after fact-check downgraded the HIGH find)                                                                                           |
 
 ## Parallel Metrics Snapshot
 
-| Metric | Count | Tool |
-| ------ | ----- | ---- |
-| `new RegExp` in `src/` (excl. tests) | 50 | `grep -rn 'new RegExp' src --include='*.ts' \| grep -v '\.test\.ts' \| wc -l` |
-| Files with `new RegExp` (excl. tests) | 27 | `grep -rln 'new RegExp' src --include='*.ts' \| grep -v '\.test\.ts' \| wc -l` |
-| Duplicate `escapeRegExp` definitions | 5 (1 canonical + 5 dupes; 3 escape-body variants) | `grep -rn 'function escapeRegE\?xp' src --include='*.ts' \| grep -v '\.test\.ts'` |
-| Divergent escape body (missing `*`) | 1 | `architecture-drift.ts:174` — `/[|\\{}()[\]^$+?.]/gu` |
-| Files modified by this blueprint (est.) | 6 | modify: 6 (no new files) |
+| Metric                                  | Count                                             | Tool                                                                              |
+| --------------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------- |
+| `new RegExp` in `src/` (excl. tests)    | 50                                                | `grep -rn 'new RegExp' src --include='*.ts' \| grep -v '\.test\.ts' \| wc -l`     |
+| Files with `new RegExp` (excl. tests)   | 27                                                | `grep -rln 'new RegExp' src --include='*.ts' \| grep -v '\.test\.ts' \| wc -l`    |
+| Duplicate `escapeRegExp` definitions    | 5 (1 canonical + 5 dupes; 3 escape-body variants) | `grep -rn 'function escapeRegE\?xp' src --include='*.ts' \| grep -v '\.test\.ts'` |
+| Divergent escape body (missing `*`)     | 1                                                 | `architecture-drift.ts:174` — `/[                                                 | \\{}()[\]^$+?.]/gu` |
+| Files modified by this blueprint (est.) | 6                                                 | modify: 6 (no new files)                                                          |
 
 ## Refinement Summary
 
 ### Corrections from original draft (this refinement)
-- **F4 / Task 1.1 downgraded HIGH → LOW (false alarm).** `src/ai-tools/search-files.ts:186-188` builds `const regex = new RegExp(pattern, ...); void regex` *only to validate the pattern's syntax*, then immediately discards it. Actual matching is delegated to `context.storage.searchFiles(pattern, ...)` (line 81) outside this repo. The constructed `RegExp` is never executed against any string → there is **no ReDoS surface**. The tool's documented contract is regex search (`inputSchema` line 138, "supports regex"); escaping `pattern` would turn `import.*from` into a literal search and break the feature. Task 1.1 was deleted; the only safe residual change is an optional length cap on the *syntax-validation* call.
+
+- **F4 / Task 1.1 downgraded HIGH → LOW (false alarm).** `src/ai-tools/search-files.ts:186-188` builds `const regex = new RegExp(pattern, ...); void regex` _only to validate the pattern's syntax_, then immediately discards it. Actual matching is delegated to `context.storage.searchFiles(pattern, ...)` (line 81) outside this repo. The constructed `RegExp` is never executed against any string → there is **no ReDoS surface**. The tool's documented contract is regex search (`inputSchema` line 138, "supports regex"); escaping `pattern` would turn `import.*from` into a literal search and break the feature. Task 1.1 was deleted; the only safe residual change is an optional length cap on the _syntax-validation_ call.
 - **Removed `escapeRegex` prescriptions that break intentional regex/glob.** `package-surface.ts:1032-1036` (`parseSlashRegex`) deliberately interprets `/source/flags` user config **as a regex** (`return new RegExp(source, flags)`). `validate-command.ts:109` deliberately compiles a user/config glob. Calling `escapeRegex` on those inputs escapes the user's metacharacters into literals and silently breaks matching for zero security gain. Both prescriptions were dropped; at most these get a length bound, not escaping.
 - **Deleted the speculative `src/utils/safe-regexp.ts` builders.** With Task 1.1 gone and the migration prescriptions removed, no real consumer survives for `safeRegExpFromGlob` / `safeBuildRegex`. There is also **no `#utils/*` alias** — `#utils/*` already maps to `./src/blueprint/utils/*.ts` (verified in `package.json`), so a new `src/utils/` tree would be misplaced. If a shared glob helper is ever needed it should be colocated at `src/blueprint/utils/string.ts`.
 - **Fixed the false "all 6 copies identical — verified" risk row.** The copies are **not** byte-identical. There are **3 escape-body variants**:
@@ -62,26 +63,28 @@ worktree_owner_branch: ''
 - **Corrected counts.** Files with `new RegExp` (excl. tests): **27** (draft said 23). "6 copies" reworded to **1 canonical + 5 duplicates**.
 
 ### Corrections from original draft (prior pass, retained)
+
 - **Count**: Original claimed 17 sites; `grep` shows **50**.
 - **secret-provider-quarantine.ts:25**: Not a risk — uses `String.raw` constants via `parts.join('')` to avoid self-triggering its own audit. The mechanism is dynamic but all content is literal strings. Tagged LOW.
 - **validate-command.ts:109**: Pattern comes from `IGNORE_PATTERNS` (hardcoded constants) / config glob, not free-form user input. Not escaped (intentional glob). LOW.
 - **`escapeRegex` already exists**: `src/blueprint/utils/string.ts:7` exports a canonical `escapeRegex`. Five other files have private copies. Task 1.1 (was 1.2) is **consolidation** not creation.
 
 ### Re-scoped tasks
+
 1. Consolidation (Task 1.1) is now the headline task — it has the only product-wedge (the `architecture-drift` `*` bug).
 2. The HIGH "harden search-files" task was deleted; a residual length-cap-only task (1.2) remains, with no escaping.
 3. The speculative `safe-regexp.ts` builder task and the broad migration task were dropped (no surviving consumer).
 
 ## Fact-Check Findings
 
-| ID | Severity | Claim | Verified Reality |
-| -- | -------- | ----- | ---------------- |
-| F1 | LOW | 17 `new RegExp(...)` sites use non-literal arguments. | **50** sites total across **27** files. Most are safe (constants, `String.raw`, source reuse, internal-only). |
-| F2 | LOW | `src/audit/secret-provider-quarantine.ts:25` uses `parts.join('')`. | Confirmed — but all parts are `String.raw` literals. Safe anti-self-trigger pattern. |
-| F3 | LOW | `src/config/docs-lint/cli/commands/validate-command.ts:109` does glob-to-regex. | Confirmed — `pattern` is an intentional config glob. Do **not** escape it; escaping would break glob matching. At most add a length bound. |
-| F4 | ~~HIGH~~ **LOW** | `src/ai-tools/search-files.ts:187` passes raw user regex. | **False alarm.** Line 186-188 builds `const regex = new RegExp(pattern, ...); void regex` purely to validate syntax, then discards it; matching is delegated to `context.storage.searchFiles` (line 81). No execution → no ReDoS. Documented contract is regex search; escaping would break the feature. Residual: optional length cap on the validation only. |
-| F5 | LOW | `src/mcp/blueprint-server.ts:1099` interpolates `task_id`, escapes only dots. | Confirmed. `task_id` is a controlled blueprint identifier; the only metacharacter that realistically appears is `.`, which is already escaped. Not in scope for this S blueprint (no behavior change needed); noted for future hardening if `task_id` grammar widens. |
-| F6 | LOW | `src/audit/package-surface.ts:1033` (`parseSlashRegex`) parses slash-delimited regex. | Confirmed — and it is **intentional**: the user wrote `/source/flags` config to be used *as a regex*. Do **not** escape `source`; that would break every config-supplied pattern. Existing `try/catch` handles invalid input; at most add a length bound. |
+| ID  | Severity         | Claim                                                                                 | Verified Reality                                                                                                                                                                                                                                                                                                                                               |
+| --- | ---------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1  | LOW              | 17 `new RegExp(...)` sites use non-literal arguments.                                 | **50** sites total across **27** files. Most are safe (constants, `String.raw`, source reuse, internal-only).                                                                                                                                                                                                                                                  |
+| F2  | LOW              | `src/audit/secret-provider-quarantine.ts:25` uses `parts.join('')`.                   | Confirmed — but all parts are `String.raw` literals. Safe anti-self-trigger pattern.                                                                                                                                                                                                                                                                           |
+| F3  | LOW              | `src/config/docs-lint/cli/commands/validate-command.ts:109` does glob-to-regex.       | Confirmed — `pattern` is an intentional config glob. Do **not** escape it; escaping would break glob matching. At most add a length bound.                                                                                                                                                                                                                     |
+| F4  | ~~HIGH~~ **LOW** | `src/ai-tools/search-files.ts:187` passes raw user regex.                             | **False alarm.** Line 186-188 builds `const regex = new RegExp(pattern, ...); void regex` purely to validate syntax, then discards it; matching is delegated to `context.storage.searchFiles` (line 81). No execution → no ReDoS. Documented contract is regex search; escaping would break the feature. Residual: optional length cap on the validation only. |
+| F5  | LOW              | `src/mcp/blueprint-server.ts:1099` interpolates `task_id`, escapes only dots.         | Confirmed. `task_id` is a controlled blueprint identifier; the only metacharacter that realistically appears is `.`, which is already escaped. Not in scope for this S blueprint (no behavior change needed); noted for future hardening if `task_id` grammar widens.                                                                                          |
+| F6  | LOW              | `src/audit/package-surface.ts:1033` (`parseSlashRegex`) parses slash-delimited regex. | Confirmed — and it is **intentional**: the user wrote `/source/flags` config to be used _as a regex_. Do **not** escape `source`; that would break every config-supplied pattern. Existing `try/catch` handles invalid input; at most add a length bound.                                                                                                      |
 
 ## Tasks
 
@@ -99,6 +102,7 @@ worktree_owner_branch: ''
 Replace the 5 private `escapeRegExp` copies with imports of the canonical `escapeRegex` from `src/blueprint/utils/string.ts`. This is **not** a pure relocation: `architecture-drift.ts:174` uses a divergent char class missing `*`, so consolidating it onto the canonical helper is a behavior fix (it will now escape `*`). The two `/gu`-flagged copies (`internal-subpath-imports.ts`, `package-scripts.ts`) collapse to the `/g` canonical — verify `/gu`→`/g` neutrality (the Unicode flag changes nothing for this ASCII-only metacharacter class, but confirm via the existing tests).
 
 **Files:**
+
 - Modify: `src/blueprint/utils/string.ts` (export an `escapeRegExp` alias of `escapeRegex` if call sites prefer that name; keep one implementation)
 - Modify: `src/config/internal-subpath-imports.ts` (remove private copy at line 20, import canonical)
 - Modify: `src/cli/package-scripts.ts` (remove private copy at line 72, import canonical)
@@ -107,6 +111,7 @@ Replace the 5 private `escapeRegExp` copies with imports of the canonical `escap
 - Modify: `src/hooks/pretool-guard/validators/forbidden-commands.ts` (remove private copy at line 151, import canonical)
 
 **Steps (TDD):**
+
 1. Confirm `src/blueprint/utils/string.ts` exports `escapeRegex` (and optionally an `escapeRegExp` alias) using `/[.*+?^${}()|[\]\\]/g`.
 2. Replace all 5 private copies with imports from `src/blueprint/utils/string.ts` (use `#*` subpath imports, not `../` ladders).
 3. For `architecture-drift.ts`: confirm via test that switching from the `*`-less char class to the canonical one is the intended fix (an identifier containing `*` must now be escaped). Add/adjust a test asserting `escapeRegex('a*b')` produces `a\*b`.
@@ -114,12 +119,14 @@ Replace the 5 private `escapeRegExp` copies with imports of the canonical `escap
 5. Run `vp run test` for each touched module + `vp run lint` + `vp run typecheck`.
 
 **Acceptance:**
+
 - [x] Only one `escapeRegex` implementation in `src/` (alias `escapeRegExp` may point at it).
 - [x] All 5 former call sites import from `src/blueprint/utils/string.ts` via `#*` subpath.
 - [x] `architecture-drift.ts` now escapes `*` (test asserts `a*b` → `a\*b`).
 - [x] `vp run test` passes (no regressions); `wp audit architecture-drift` and `wp audit package-surface` still pass.
 
 ---
+
 #### [security] Task 1.2: Length-bound the `search-files.ts` syntax-validation [Complexity: XS]
 
 **Status:** done
@@ -134,9 +141,11 @@ Replace the 5 private `escapeRegExp` copies with imports of the canonical `escap
 The regex built at `search-files.ts:186-188` is `void`'d (never executed) and matching is delegated to `context.storage.searchFiles`, so there is **no ReDoS surface here** and the pattern must **not** be escaped (escaping would break the documented regex-search contract). The only defensible residual change is a cheap length bound so a pathologically long pattern is rejected with a clear error before compilation, consistent with input-validation hygiene.
 
 **Files:**
+
 - Modify: `src/ai-tools/search-files.ts`
 
 **Steps (TDD):**
+
 1. Read `src/ai-tools/search-files.ts:180-195` to confirm the validate-then-discard shape and the `Invalid regex pattern` error path.
 2. Before the `new RegExp(pattern, ...)` validation, add a length guard (e.g. reject `pattern.length > 4096`) returning the existing failure-shaped result (`success: false`, descriptive `error`).
 3. Do **not** call `escapeRegex` on `pattern` — the tool contract is regex search.
@@ -144,11 +153,13 @@ The regex built at `search-files.ts:186-188` is `void`'d (never executed) and ma
 5. `vp run lint` + `vp run typecheck`.
 
 **Acceptance:**
+
 - [x] Over-length patterns are rejected with the existing failure shape; valid regex search still works unchanged.
 - [x] `pattern` is NOT escaped (regex-search contract preserved).
 - [x] `vp run test --file src/ai-tools/search-files.test.ts` passes.
 
 ---
+
 #### [regex] Task 1.3: Document remaining dynamic sites as intentional / out-of-scope [Complexity: XS]
 
 **Status:** done
@@ -160,20 +171,23 @@ The regex built at `search-files.ts:186-188` is `void`'d (never executed) and ma
 
 **Depends:** None
 
-Several remaining dynamic `new RegExp` sites take *intentional* user/config regex or glob and must not be escaped. Add brief code comments (or a short note in the relevant module doc) recording that these are deliberate, so a future audit pass does not re-flag them.
+Several remaining dynamic `new RegExp` sites take _intentional_ user/config regex or glob and must not be escaped. Add brief code comments (or a short note in the relevant module doc) recording that these are deliberate, so a future audit pass does not re-flag them.
 
 **Files:**
+
 - Modify: `src/audit/package-surface.ts` (`parseSlashRegex` at ~1033 — note: user config `/source/flags` is intentional regex; do not escape)
 - Modify: `src/config/docs-lint/cli/commands/validate-command.ts` (line 109 — note: intentional config glob; do not escape)
 - Modify: `src/config/oxlint/graphql-conventions.ts` (note: `singular` is internal-only, safe)
 
 **Steps (TDD):**
+
 1. For each file, read the surrounding context to confirm the input is intentional regex/glob, not free-form untrusted text.
 2. Add a one-line comment at each site marking it intentional (and, for `parseSlashRegex`, that the existing `try/catch` is the validation seam; optionally add a length bound only).
 3. Do **not** change matching semantics anywhere in this task.
 4. `vp run lint` + `vp run typecheck`.
 
 **Acceptance:**
+
 - [x] Each intentional site carries a comment explaining why it is not escaped.
 - [x] No matching-semantics change; `vp run test` passes.
 - [x] GraphQL oxlint rules still fire correctly.
@@ -182,14 +196,14 @@ Several remaining dynamic `new RegExp` sites take *intentional* user/config rege
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-| ---- | ------- | ---------------- |
-| Type safety | `vp run typecheck` | Zero errors. |
-| Unit tests | `vp run test` | All pass (no regressions). |
-| Lint | `vp run lint` on modified files | Zero violations. |
-| Audit self-check | `wp audit architecture-drift` | Must pass; `*`-bearing identifiers now escaped correctly. |
-| Audit self-check | `wp audit package-surface` | Must still pass (matching semantics unchanged). |
-| Audit self-check | `wp audit secrets-policy` | Must still pass (quarantine preserved). |
+| Gate             | Command                         | Success Criteria                                          |
+| ---------------- | ------------------------------- | --------------------------------------------------------- |
+| Type safety      | `vp run typecheck`              | Zero errors.                                              |
+| Unit tests       | `vp run test`                   | All pass (no regressions).                                |
+| Lint             | `vp run lint` on modified files | Zero violations.                                          |
+| Audit self-check | `wp audit architecture-drift`   | Must pass; `*`-bearing identifiers now escaped correctly. |
+| Audit self-check | `wp audit package-surface`      | Must still pass (matching semantics unchanged).           |
+| Audit self-check | `wp audit secrets-policy`       | Must still pass (quarantine preserved).                   |
 
 ## Non-goals
 
@@ -201,11 +215,11 @@ Several remaining dynamic `new RegExp` sites take *intentional* user/config rege
 
 ## Risks
 
-| Risk | Mitigation |
-| ---- | ---------- |
-| Consolidating `architecture-drift.ts` changes its escape behavior | This is the **intended** fix (it was missing `*`). Add a test asserting `a*b` → `a\*b`, and re-run `wp audit architecture-drift` to confirm no false negatives/positives. |
-| `/gu`→`/g` flag change alters behavior | The metacharacter class is ASCII-only; the Unicode flag is neutral here. Verify against existing tests for `internal-subpath-imports.ts` and `package-scripts.ts`. |
-| Length cap on `search-files` rejects a legitimate long pattern | 4096 chars is far beyond any realistic search pattern; the failure path reuses the existing descriptive-error shape. |
+| Risk                                                              | Mitigation                                                                                                                                                                                   |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Consolidating `architecture-drift.ts` changes its escape behavior | This is the **intended** fix (it was missing `*`). Add a test asserting `a*b` → `a\*b`, and re-run `wp audit architecture-drift` to confirm no false negatives/positives.                    |
+| `/gu`→`/g` flag change alters behavior                            | The metacharacter class is ASCII-only; the Unicode flag is neutral here. Verify against existing tests for `internal-subpath-imports.ts` and `package-scripts.ts`.                           |
+| Length cap on `search-files` rejects a legitimate long pattern    | 4096 chars is far beyond any realistic search pattern; the failure path reuses the existing descriptive-error shape.                                                                         |
 | A consolidated call site relied on a subtly different escape body | Verified there are exactly 3 variants (`/g`, `/gu`, and the `*`-less `architecture-drift` body); only `architecture-drift` differs semantically, and that difference is the bug being fixed. |
 
 ## Trust Dossier
@@ -220,21 +234,21 @@ Several remaining dynamic `new RegExp` sites take *intentional* user/config rege
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-14-audit-dynamic-regexp-construction.md |
+| ID  | Claim                                                          | Evidence                                                                  |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-14-audit-dynamic-regexp-construction.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

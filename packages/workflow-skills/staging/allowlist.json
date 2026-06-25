@@ -132,10 +132,5 @@
     "make-pdf/dist/",
     ".node"
   ],
-  "deniedContentPatterns": [
-    "puppeteer",
-    "huggingface",
-    "ngrok",
-    "html-to-docx"
-  ]
+  "deniedContentPatterns": ["puppeteer", "huggingface", "ngrok", "html-to-docx"]
 }

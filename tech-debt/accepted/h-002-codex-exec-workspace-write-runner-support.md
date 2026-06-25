@@ -4,10 +4,10 @@ status: accepted
 severity: medium
 category: dependency
 review_cadence: monthly
-last_reviewed: '2026-05-11'
-created: '2026-05-11'
-linked_blueprints: ['agent-kit-v1-evidence-ledger']
-affected_modules: ['src/runners/codex-exec']
+last_reviewed: "2026-05-11"
+created: "2026-05-11"
+linked_blueprints: ["agent-kit-v1-evidence-ledger"]
+affected_modules: ["src/runners/codex-exec"]
 ---
 
 # codex-exec workspace-write Runner support

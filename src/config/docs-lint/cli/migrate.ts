@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import type { MigrateOptions } from './commands/migrate-command.js'
+import type { MigrateOptions } from "./commands/migrate-command.js";
 
 function printHelp(): void {
   console.log(`docs-migrate
@@ -16,35 +16,35 @@ Options:
   --force        Force update even if frontmatter exists
   -v, --verbose  Verbose output
   -h, --help     Show this help
-`)
+`);
 }
 
 function parseArgs(argv: string[]): MigrateOptions & { help: boolean } {
-  const files: string[] = []
-  const options: MigrateOptions & { help: boolean } = { help: false, backup: true }
+  const files: string[] = [];
+  const options: MigrateOptions & { help: boolean } = { help: false, backup: true };
 
   for (const arg of argv) {
-    if (arg === '--help' || arg === '-h') options.help = true
-    else if (arg === '--dry-run') options.dryRun = true
-    else if (arg === '--backup') options.backup = true
-    else if (arg === '--no-backup') options.backup = false
-    else if (arg === '--force') options.force = true
-    else if (arg === '--verbose' || arg === '-v') options.verbose = true
-    else files.push(arg)
+    if (arg === "--help" || arg === "-h") options.help = true;
+    else if (arg === "--dry-run") options.dryRun = true;
+    else if (arg === "--backup") options.backup = true;
+    else if (arg === "--no-backup") options.backup = false;
+    else if (arg === "--force") options.force = true;
+    else if (arg === "--verbose" || arg === "-v") options.verbose = true;
+    else files.push(arg);
   }
 
-  if (files.length > 0) options.files = files
-  return options
+  if (files.length > 0) options.files = files;
+  return options;
 }
 
-const options = parseArgs(process.argv.slice(2))
+const options = parseArgs(process.argv.slice(2));
 if (options.help) {
-  printHelp()
-  process.exit(0)
+  printHelp();
+  process.exit(0);
 }
 
-const { help: _help, ...migrateOptions } = options
-const modulePath = './commands/migrate-command.ts'
-const { createMigrateCommand } = await import(modulePath)
-const exitCode = await createMigrateCommand().run(migrateOptions)
-process.exit(exitCode)
+const { help: _help, ...migrateOptions } = options;
+const modulePath = "./commands/migrate-command.ts";
+const { createMigrateCommand } = await import(modulePath);
+const exitCode = await createMigrateCommand().run(migrateOptions);
+process.exit(exitCode);

@@ -2,22 +2,16 @@
   "name": "@webpresso/agent-config",
   "version": "0.2.0",
   "private": false,
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/webpresso/agent-kit.git"
-  },
+  "description": "Shared vitest, tsconfig, stryker, and workers-test config for webpresso consumers. Binary-free — pure test/config tooling.",
   "homepage": "https://github.com/webpresso/agent-kit#readme",
   "bugs": {
     "url": "https://github.com/webpresso/agent-kit/issues"
   },
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org/",
-    "access": "public"
-  },
-  "description": "Shared vitest, tsconfig, stryker, and workers-test config for webpresso consumers. Binary-free — pure test/config tooling.",
   "license": "Elastic-2.0",
-  "type": "module",
-  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webpresso/agent-kit.git"
+  },
   "files": [
     "dist/esm",
     "!dist/**/*.map",
@@ -25,6 +19,8 @@
     "LICENSE",
     "README.md"
   ],
+  "type": "module",
+  "sideEffects": false,
   "exports": {
     "./tsconfig/base.json": {
       "import": {
@@ -117,6 +113,10 @@
       }
     }
   },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "build": "tshy",
     "prepublishOnly": "vp run build",
@@ -128,6 +128,14 @@
     "vite": "catalog:",
     "vite-plus": "catalog:",
     "vitest": "catalog:"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "catalog:",
+    "@types/node": "catalog:",
+    "better-sqlite3": "catalog:",
+    "publint": "catalog:",
+    "tshy": "catalog:",
+    "typescript": "catalog:"
   },
   "peerDependencies": {
     "@cloudflare/vitest-pool-workers": "*",
@@ -161,14 +169,6 @@
       "optional": true
     }
   },
-  "devDependencies": {
-    "@arethetypeswrong/cli": "catalog:",
-    "@types/node": "catalog:",
-    "better-sqlite3": "catalog:",
-    "publint": "catalog:",
-    "tshy": "catalog:",
-    "typescript": "catalog:"
-  },
   "tshy": {
     "dialects": [
       "esm"
@@ -178,20 +178,20 @@
       "src/**/__fixtures__/**"
     ],
     "exports": {
+      "./stryker": "./src/stryker/index.ts",
       "./tsconfig/base.json": "./src/tsconfig/base.json",
       "./tsconfig/cloudflare.json": "./src/tsconfig/cloudflare.json",
       "./tsconfig/library.json": "./src/tsconfig/library.json",
       "./tsconfig/react-library.json": "./src/tsconfig/react-library.json",
       "./tsconfig/react-router.json": "./src/tsconfig/react-router.json",
+      "./vitest/flakiness-reporter": "./src/vitest/flakiness-reporter.ts",
       "./vitest/node": "./src/vitest/node.ts",
       "./vitest/react": "./src/vitest/react.ts",
       "./vitest/react-router": "./src/vitest/react-router.ts",
-      "./vitest/workers": "./src/vitest/workers.ts",
       "./vitest/react-setup": "./src/vitest/react-setup.ts",
       "./vitest/react-setup.ts": "./src/vitest/react-setup.ts",
-      "./vitest/flakiness-reporter": "./src/vitest/flakiness-reporter.ts",
       "./vitest/source-conditions": "./src/vitest/source-conditions.ts",
-      "./stryker": "./src/stryker/index.ts",
+      "./vitest/workers": "./src/vitest/workers.ts",
       "./workers-test": "./src/workers-test/index.ts"
     },
     "selfLink": false

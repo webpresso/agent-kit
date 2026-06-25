@@ -1,7 +1,5 @@
 {
-  "allowedPublicPackages": [
-    "@webpresso/agent-config"
-  ],
+  "allowedPublicPackages": ["@webpresso/agent-config"],
   "referenceConsumerBaselines": {
     "@webpresso/db-branching": "0.2.4",
     "@webpresso/db-branching-neon": "0.2.4"
@@ -14,10 +12,7 @@
       "/^dist\\/.*runners\\/evals\\//",
       "/^dist\\/esm\\/ai-prompts\\//"
     ],
-    "forbiddenContentPatterns": [
-      "/ozby\\/ingest-lens/",
-      "/webpresso\\/monorepo/"
-    ]
+    "forbiddenContentPatterns": ["/ozby\\/ingest-lens/", "/webpresso\\/monorepo/"]
   },
   "cliBins": {
     "public": [

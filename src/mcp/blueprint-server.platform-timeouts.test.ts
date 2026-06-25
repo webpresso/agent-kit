@@ -1,25 +1,25 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import path from 'node:path'
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ToolHandler, ToolHandlerResult, ToolRegistrar } from './auto-discover.js'
-import { _setSyncAdapterFactory, registerBlueprintTools } from './blueprint-server.js'
-import type { SyncAdapter } from './blueprint-server.js'
-import { FINALIZE_BLUEPRINT } from './blueprint-server.platform-first.test-harness.js'
-import { markBlueprintValidated, trustDossierFixture } from './blueprint-server.test-harness.js'
+import type { ToolHandler, ToolHandlerResult, ToolRegistrar } from "./auto-discover.js";
+import { _setSyncAdapterFactory, registerBlueprintTools } from "./blueprint-server.js";
+import type { SyncAdapter } from "./blueprint-server.js";
+import { FINALIZE_BLUEPRINT } from "./blueprint-server.platform-first.test-harness.js";
+import { markBlueprintValidated, trustDossierFixture } from "./blueprint-server.test-harness.js";
 
-type RegisteredTool = { name: string; handler: ToolHandler }
+type RegisteredTool = { name: string; handler: ToolHandler };
 
 function makeRegistrar(): { registrar: ToolRegistrar; tools: Map<string, RegisteredTool> } {
-  const tools = new Map<string, RegisteredTool>()
+  const tools = new Map<string, RegisteredTool>();
   const registrar: ToolRegistrar = {
     registerTool(name, _desc, _schema, _outSchema, handler) {
-      tools.set(name, { name, handler })
+      tools.set(name, { name, handler });
     },
-  }
-  return { registrar, tools }
+  };
+  return { registrar, tools };
 }
 
 async function callTool(
@@ -27,20 +27,20 @@ async function callTool(
   name: string,
   input: unknown,
 ): Promise<ToolHandlerResult> {
-  const tool = tools.get(name)
-  if (!tool) throw new Error(`Tool "${name}" not registered`)
-  return tool.handler(input)
+  const tool = tools.get(name);
+  if (!tool) throw new Error(`Tool "${name}" not registered`);
+  return tool.handler(input);
 }
 
 function parseResult(result: ToolHandlerResult): unknown {
-  const text = result.content[0]
-  if (!text || text.type !== 'text' || typeof text.text !== 'string') {
-    throw new Error('Expected text content block')
+  const text = result.content[0];
+  if (!text || text.type !== "text" || typeof text.text !== "string") {
+    throw new Error("Expected text content block");
   }
-  return JSON.parse(text.text)
+  return JSON.parse(text.text);
 }
 
-const PROMOTE_SLUG = 'promote-timeout-blueprint'
+const PROMOTE_SLUG = "promote-timeout-blueprint";
 const PROMOTE_BLUEPRINT = `---
 type: blueprint
 title: Promote Timeout Blueprint
@@ -69,154 +69,154 @@ Blueprint fixture for promote timeout coverage.
 **Acceptance:**
 - [ ] Promote succeeds
 ${trustDossierFixture()}
-`
+`;
 
-const FINALIZE_SLUG = 'finalize-timeout-blueprint'
+const FINALIZE_SLUG = "finalize-timeout-blueprint";
 async function makeTools(
   prefix: string,
   blueprint: { stateDir: string; slug: string; content: string } | null,
 ): Promise<{ tmpDir: string; tools: Map<string, RegisteredTool> }> {
-  const tmpDir = mkdtempSync(path.join(tmpdir(), prefix))
-  mkdirSync(path.join(tmpDir, '.agent'), { recursive: true })
-  mkdirSync(path.join(tmpDir, 'bin'), { recursive: true })
-  writeFileSync(path.join(tmpDir, 'package.json'), JSON.stringify({ name: 'test' }), 'utf8')
-  writeFileSync(path.join(tmpDir, 'bin', 'wp'), '#!/bin/sh\nexit 0\n', { mode: 0o755 })
+  const tmpDir = mkdtempSync(path.join(tmpdir(), prefix));
+  mkdirSync(path.join(tmpDir, ".agent"), { recursive: true });
+  mkdirSync(path.join(tmpDir, "bin"), { recursive: true });
+  writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({ name: "test" }), "utf8");
+  writeFileSync(path.join(tmpDir, "bin", "wp"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
   if (blueprint) {
     const overviewPath = path.join(
       tmpDir,
-      'blueprints',
+      "blueprints",
       blueprint.stateDir,
       blueprint.slug,
-      '_overview.md',
-    )
-    mkdirSync(path.dirname(overviewPath), { recursive: true })
-    writeFileSync(overviewPath, blueprint.content, 'utf8')
+      "_overview.md",
+    );
+    mkdirSync(path.dirname(overviewPath), { recursive: true });
+    writeFileSync(overviewPath, blueprint.content, "utf8");
   }
-  const { registrar, tools } = makeRegistrar()
-  await registerBlueprintTools(registrar, tmpDir)
-  return { tmpDir, tools }
+  const { registrar, tools } = makeRegistrar();
+  await registerBlueprintTools(registrar, tmpDir);
+  return { tmpDir, tools };
 }
 
-describe('wp_blueprint platform timeout guards', () => {
-  const tmpDirs: string[] = []
-  let promoteTools: Map<string, RegisteredTool>
-  let newTools: Map<string, RegisteredTool>
-  let finalizeTools: Map<string, RegisteredTool>
+describe("wp_blueprint platform timeout guards", () => {
+  const tmpDirs: string[] = [];
+  let promoteTools: Map<string, RegisteredTool>;
+  let newTools: Map<string, RegisteredTool>;
+  let finalizeTools: Map<string, RegisteredTool>;
 
   beforeAll(async () => {
-    const promoteHarness = await makeTools('wp-bs-promote-timeout-', {
-      stateDir: 'draft',
+    const promoteHarness = await makeTools("wp-bs-promote-timeout-", {
+      stateDir: "draft",
       slug: PROMOTE_SLUG,
       content: PROMOTE_BLUEPRINT,
-    })
-    tmpDirs.push(promoteHarness.tmpDir)
-    promoteTools = promoteHarness.tools
+    });
+    tmpDirs.push(promoteHarness.tmpDir);
+    promoteTools = promoteHarness.tools;
     const overviewPath = path.join(
       promoteHarness.tmpDir,
-      'blueprints',
-      'draft',
+      "blueprints",
+      "draft",
       PROMOTE_SLUG,
-      '_overview.md',
-    )
-    await callTool(promoteTools, 'wp_blueprint_validate', { path: overviewPath })
-    markBlueprintValidated(promoteHarness.tmpDir, PROMOTE_SLUG)
+      "_overview.md",
+    );
+    await callTool(promoteTools, "wp_blueprint_validate", { path: overviewPath });
+    markBlueprintValidated(promoteHarness.tmpDir, PROMOTE_SLUG);
 
-    const newHarness = await makeTools('wp-bs-new-timeout-', null)
-    tmpDirs.push(newHarness.tmpDir)
-    newTools = newHarness.tools
+    const newHarness = await makeTools("wp-bs-new-timeout-", null);
+    tmpDirs.push(newHarness.tmpDir);
+    newTools = newHarness.tools;
 
-    const finalizeHarness = await makeTools('wp-bs-finalize-timeout-', {
-      stateDir: 'in-progress',
+    const finalizeHarness = await makeTools("wp-bs-finalize-timeout-", {
+      stateDir: "in-progress",
       slug: FINALIZE_SLUG,
       content: FINALIZE_BLUEPRINT,
-    })
-    tmpDirs.push(finalizeHarness.tmpDir)
-    finalizeTools = finalizeHarness.tools
-  })
+    });
+    tmpDirs.push(finalizeHarness.tmpDir);
+    finalizeTools = finalizeHarness.tools;
+  });
 
   beforeEach(() => {
-    vi.stubEnv('WP_BLUEPRINT_PLATFORM_MUTATION_TIMEOUT_MS', '1')
-    vi.stubEnv('WP_BLUEPRINT_TRUST_GATE_TEST_HEAD', 'a'.repeat(40))
-  })
+    vi.stubEnv("WP_BLUEPRINT_PLATFORM_MUTATION_TIMEOUT_MS", "1");
+    vi.stubEnv("WP_BLUEPRINT_TRUST_GATE_TEST_HEAD", "a".repeat(40));
+  });
 
   afterEach(() => {
-    _setSyncAdapterFactory(null)
-    vi.unstubAllEnvs()
-  })
+    _setSyncAdapterFactory(null);
+    vi.unstubAllEnvs();
+  });
 
   afterAll(() => {
-    while (tmpDirs.length > 0) rmSync(tmpDirs.pop()!, { recursive: true, force: true })
-  })
+    while (tmpDirs.length > 0) rmSync(tmpDirs.pop()!, { recursive: true, force: true });
+  });
 
-  it('fails fast when ensureFresh times out during promote', async () => {
-    const pushEvent = vi.fn<SyncAdapter['pushEvent']>().mockResolvedValue(undefined)
+  it("fails fast when ensureFresh times out during promote", async () => {
+    const pushEvent = vi.fn<SyncAdapter["pushEvent"]>().mockResolvedValue(undefined);
     const ensureFresh = vi
-      .fn<SyncAdapter['ensureFresh']>()
-      .mockImplementation(() => new Promise<void>(() => {}))
-    _setSyncAdapterFactory(() => ({ pushEvent, ensureFresh }))
+      .fn<SyncAdapter["ensureFresh"]>()
+      .mockImplementation(() => new Promise<void>(() => {}));
+    _setSyncAdapterFactory(() => ({ pushEvent, ensureFresh }));
 
-    const result = await callTool(promoteTools, 'wp_blueprint_promote', {
+    const result = await callTool(promoteTools, "wp_blueprint_promote", {
       slug: PROMOTE_SLUG,
-      to_state: 'planned',
-    })
-    const data = parseResult(result) as { failures: string[] }
+      to_state: "planned",
+    });
+    const data = parseResult(result) as { failures: string[] };
 
-    expect(result.isError).toStrictEqual(true)
+    expect(result.isError).toStrictEqual(true);
     expect(data.failures).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          'wp_blueprint_promote platform sync failed: wp_blueprint_promote ensureFresh timed out',
+          "wp_blueprint_promote platform sync failed: wp_blueprint_promote ensureFresh timed out",
         ),
       ]),
-    )
-    expect(pushEvent).not.toHaveBeenCalled()
-    expect(ensureFresh).toHaveBeenCalledOnce()
-  })
+    );
+    expect(pushEvent).not.toHaveBeenCalled();
+    expect(ensureFresh).toHaveBeenCalledOnce();
+  });
 
-  it('fails fast when pushEvent times out during new', async () => {
+  it("fails fast when pushEvent times out during new", async () => {
     const pushEvent = vi
-      .fn<SyncAdapter['pushEvent']>()
-      .mockImplementation(() => new Promise<void>(() => {}))
-    const ensureFresh = vi.fn<SyncAdapter['ensureFresh']>().mockResolvedValue(undefined)
-    _setSyncAdapterFactory(() => ({ pushEvent, ensureFresh }))
+      .fn<SyncAdapter["pushEvent"]>()
+      .mockImplementation(() => new Promise<void>(() => {}));
+    const ensureFresh = vi.fn<SyncAdapter["ensureFresh"]>().mockResolvedValue(undefined);
+    _setSyncAdapterFactory(() => ({ pushEvent, ensureFresh }));
 
-    const result = await callTool(newTools, 'wp_blueprint_new', {
-      title: 'Timed Out New Feature',
-      goal_prompt: 'Trigger a fast pushEvent timeout.',
-    })
-    const data = parseResult(result) as { failures: string[] }
+    const result = await callTool(newTools, "wp_blueprint_new", {
+      title: "Timed Out New Feature",
+      goal_prompt: "Trigger a fast pushEvent timeout.",
+    });
+    const data = parseResult(result) as { failures: string[] };
 
-    expect(result.isError).toStrictEqual(true)
+    expect(result.isError).toStrictEqual(true);
     expect(data.failures).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          'wp_blueprint_new platform sync failed: wp_blueprint_new pushEvent timed out',
+          "wp_blueprint_new platform sync failed: wp_blueprint_new pushEvent timed out",
         ),
       ]),
-    )
-    expect(pushEvent).toHaveBeenCalledOnce()
-    expect(ensureFresh).not.toHaveBeenCalled()
-  })
+    );
+    expect(pushEvent).toHaveBeenCalledOnce();
+    expect(ensureFresh).not.toHaveBeenCalled();
+  });
 
-  it('fails fast when ensureFresh times out during finalize', async () => {
-    const pushEvent = vi.fn<SyncAdapter['pushEvent']>().mockResolvedValue(undefined)
+  it("fails fast when ensureFresh times out during finalize", async () => {
+    const pushEvent = vi.fn<SyncAdapter["pushEvent"]>().mockResolvedValue(undefined);
     const ensureFresh = vi
-      .fn<SyncAdapter['ensureFresh']>()
-      .mockImplementation(() => new Promise<void>(() => {}))
-    _setSyncAdapterFactory(() => ({ pushEvent, ensureFresh }))
+      .fn<SyncAdapter["ensureFresh"]>()
+      .mockImplementation(() => new Promise<void>(() => {}));
+    _setSyncAdapterFactory(() => ({ pushEvent, ensureFresh }));
 
-    const result = await callTool(finalizeTools, 'wp_blueprint_finalize', { slug: FINALIZE_SLUG })
-    const data = parseResult(result) as { failures: string[] }
+    const result = await callTool(finalizeTools, "wp_blueprint_finalize", { slug: FINALIZE_SLUG });
+    const data = parseResult(result) as { failures: string[] };
 
-    expect(result.isError).toStrictEqual(true)
+    expect(result.isError).toStrictEqual(true);
     expect(data.failures).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          'wp_blueprint_finalize platform sync failed: wp_blueprint_finalize ensureFresh timed out',
+          "wp_blueprint_finalize platform sync failed: wp_blueprint_finalize ensureFresh timed out",
         ),
       ]),
-    )
-    expect(pushEvent).toHaveBeenCalledOnce()
-    expect(ensureFresh).toHaveBeenCalledOnce()
-  })
-})
+    );
+    expect(pushEvent).toHaveBeenCalledOnce();
+    expect(ensureFresh).toHaveBeenCalledOnce();
+  });
+});

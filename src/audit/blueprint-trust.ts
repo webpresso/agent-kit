@@ -1,25 +1,25 @@
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import path from 'node:path'
-import matter from 'gray-matter'
-import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
-import { validateBlueprintTrust, type BlueprintTrustStatus } from '#trust/validator.js'
-import { parseBlueprintDocumentRelativePath } from '#utils/document-paths.js'
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import path from "node:path";
+import matter from "gray-matter";
+import type { RepoAuditResult, RepoAuditViolation } from "./repo-guardrails.js";
+import { validateBlueprintTrust, type BlueprintTrustStatus } from "#trust/validator.js";
+import { parseBlueprintDocumentRelativePath } from "#utils/document-paths.js";
 
-const EXECUTABLE_DIRS = ['planned', 'in-progress', 'completed'] as const
+const EXECUTABLE_DIRS = ["planned", "in-progress", "completed"] as const;
 
 export function auditBlueprintTrust(rootDirectory: string = process.cwd()): RepoAuditResult {
-  const violations: RepoAuditViolation[] = []
-  let checked = 0
+  const violations: RepoAuditViolation[] = [];
+  let checked = 0;
   for (const file of findExecutableBlueprints(rootDirectory)) {
-    checked += 1
-    const markdown = readFileSync(path.join(rootDirectory, file), 'utf8')
-    const status = readStatus(markdown)
-    const normalizedStatus = isBlueprintTrustStatus(status) ? status : 'planned'
+    checked += 1;
+    const markdown = readFileSync(path.join(rootDirectory, file), "utf8");
+    const status = readStatus(markdown);
+    const normalizedStatus = isBlueprintTrustStatus(status) ? status : "planned";
     if (!isBlueprintTrustStatus(status)) {
       violations.push({
         file,
         message: `Frontmatter: unknown status treated as planned: ${status}`,
-      })
+      });
     }
     const result = validateBlueprintTrust({
       repoRoot: rootDirectory,
@@ -28,45 +28,45 @@ export function auditBlueprintTrust(rootDirectory: string = process.cwd()): Repo
       markdown,
       promotionCandidate: true,
       scanTaskAmbiguity: true,
-    })
+    });
     for (const violation of result.violations) {
-      violations.push({ file, message: `${violation.section}: ${violation.message}` })
+      violations.push({ file, message: `${violation.section}: ${violation.message}` });
     }
   }
-  return { ok: violations.length === 0, title: 'Blueprint trust', checked, violations }
+  return { ok: violations.length === 0, title: "Blueprint trust", checked, violations };
 }
 
 export function findExecutableBlueprints(rootDirectory: string): string[] {
-  const root = path.join(rootDirectory, 'blueprints')
-  const files: string[] = []
-  for (const dir of EXECUTABLE_DIRS) walk(path.join(root, dir), files, rootDirectory)
-  return files.sort()
+  const root = path.join(rootDirectory, "blueprints");
+  const files: string[] = [];
+  for (const dir of EXECUTABLE_DIRS) walk(path.join(root, dir), files, rootDirectory);
+  return files.sort();
 }
 
 function walk(dir: string, files: string[], root: string): void {
-  if (!existsSync(dir)) return
-  const blueprintRoot = path.join(root, 'blueprints')
+  if (!existsSync(dir)) return;
+  const blueprintRoot = path.join(root, "blueprints");
   for (const entry of readdirSync(dir)) {
-    const full = path.join(dir, entry)
-    const stat = statSync(full)
+    const full = path.join(dir, entry);
+    const stat = statSync(full);
     if (stat.isDirectory()) {
-      walk(full, files, root)
-      continue
+      walk(full, files, root);
+      continue;
     }
-    if (!entry.endsWith('.md')) continue
-    const relativeToBlueprintRoot = path.relative(blueprintRoot, full)
+    if (!entry.endsWith(".md")) continue;
+    const relativeToBlueprintRoot = path.relative(blueprintRoot, full);
     if (parseBlueprintDocumentRelativePath(relativeToBlueprintRoot))
-      files.push(path.relative(root, full))
+      files.push(path.relative(root, full));
   }
 }
 
 function readStatus(markdown: string): string {
-  const parsed = matter(markdown)
-  return typeof parsed.data['status'] === 'string' ? parsed.data['status'] : 'planned'
+  const parsed = matter(markdown);
+  return typeof parsed.data["status"] === "string" ? parsed.data["status"] : "planned";
 }
 
 function isBlueprintTrustStatus(status: string): status is BlueprintTrustStatus {
   return (
-    status === 'draft' || status === 'planned' || status === 'in-progress' || status === 'completed'
-  )
+    status === "draft" || status === "planned" || status === "in-progress" || status === "completed"
+  );
 }

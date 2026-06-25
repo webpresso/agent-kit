@@ -1,26 +1,26 @@
-import type { PretoolLogReadResult } from './read-pretool-log.js'
+import type { PretoolLogReadResult } from "./read-pretool-log.js";
 
 export interface EvidenceGapRecord {
-  kind: 'no-pretool-evidence' | 'unreadable-or-unparsed-evidence'
-  message: string
-  candidateFiles: string[]
-  warnings: string[]
+  kind: "no-pretool-evidence" | "unreadable-or-unparsed-evidence";
+  message: string;
+  candidateFiles: string[];
+  warnings: string[];
 }
 
 export function detectEvidenceGap(readResult: PretoolLogReadResult): EvidenceGapRecord | null {
-  if (readResult.records.length > 0) return null
+  if (readResult.records.length > 0) return null;
   if (readResult.warnings.length > 0) {
     return {
-      kind: 'unreadable-or-unparsed-evidence',
-      message: 'Pretool evidence files were found but no parseable records were available.',
+      kind: "unreadable-or-unparsed-evidence",
+      message: "Pretool evidence files were found but no parseable records were available.",
       candidateFiles: readResult.candidateFiles,
       warnings: readResult.warnings,
-    }
+    };
   }
   return {
-    kind: 'no-pretool-evidence',
-    message: 'No pretool hook evidence was found; weakness mining is a no-op for this checkout.',
+    kind: "no-pretool-evidence",
+    message: "No pretool hook evidence was found; weakness mining is a no-op for this checkout.",
     candidateFiles: readResult.candidateFiles,
     warnings: [],
-  }
+  };
 }

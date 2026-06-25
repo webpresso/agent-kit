@@ -19,57 +19,57 @@
  *   - any hook path ending in `pretooluse.mjs`
  */
 
-import { existsSync, readFileSync } from 'node:fs'
-import os from 'node:os'
-import path from 'node:path'
+import { existsSync, readFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
-import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
+import type { RepoAuditResult, RepoAuditViolation } from "./repo-guardrails.js";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type InternalHookEntry = { type?: string; command?: string; timeout?: number }
-type HookGroup = { matcher?: string; hooks?: readonly InternalHookEntry[] }
-type HooksMap = Readonly<Record<string, readonly HookGroup[]>>
+type InternalHookEntry = { type?: string; command?: string; timeout?: number };
+type HookGroup = { matcher?: string; hooks?: readonly InternalHookEntry[] };
+type HooksMap = Readonly<Record<string, readonly HookGroup[]>>;
 
 /** A normalised hook entry carrying runtime, event, command, and optional matcher. */
 export type HookEntry = {
-  readonly runtime: string
-  readonly event: string
-  readonly command: string
-  readonly matcher?: string
-}
+  readonly runtime: string;
+  readonly event: string;
+  readonly command: string;
+  readonly matcher?: string;
+};
 
 /** A drift violation: the same owner+command appears >1 time for the same runtime+event. */
 export type DriftViolation = {
-  readonly key: string
-  readonly count: number
-  readonly entries: readonly HookEntry[]
-}
+  readonly key: string;
+  readonly count: number;
+  readonly entries: readonly HookEntry[];
+};
 
 export interface HookSurfaceViolation {
-  readonly event: string
-  readonly matcher: string
-  readonly rewriters: readonly string[]
-  readonly reason: string
+  readonly event: string;
+  readonly matcher: string;
+  readonly rewriters: readonly string[];
+  readonly reason: string;
 }
 
 export interface HookSurfaceDetails {
-  readonly ok: boolean
-  readonly violations: readonly HookSurfaceViolation[]
+  readonly ok: boolean;
+  readonly violations: readonly HookSurfaceViolation[];
 }
 
 export interface HookSurfaceResult {
-  readonly passed: boolean
-  readonly kind: 'hook-surface'
-  readonly details: HookSurfaceDetails
+  readonly passed: boolean;
+  readonly kind: "hook-surface";
+  readonly details: HookSurfaceDetails;
 }
 
 interface ParsedSettings {
-  readonly source: string
-  readonly hooks: HooksMap
-  readonly parseError?: string
+  readonly source: string;
+  readonly hooks: HooksMap;
+  readonly parseError?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -82,10 +82,10 @@ interface ParsedSettings {
  * 'rtk', or 'unknown'.
  */
 export function extractOwner(command: string): string {
-  if (/\bwp[-_][a-z]/.test(command)) return 'webpresso'
-  if (/omx|oh-my-codex/.test(command)) return 'omx'
-  if (/\brtk\b/.test(command)) return 'rtk'
-  return 'unknown'
+  if (/\bwp[-_][a-z]/.test(command)) return "webpresso";
+  if (/omx|oh-my-codex/.test(command)) return "omx";
+  if (/\brtk\b/.test(command)) return "rtk";
+  return "unknown";
 }
 
 // ---------------------------------------------------------------------------
@@ -100,28 +100,28 @@ export function extractOwner(command: string): string {
  * Pure function — no filesystem I/O.
  */
 export function detectDrift(entries: readonly HookEntry[]): DriftViolation[] {
-  const byKey = new Map<string, HookEntry[]>()
+  const byKey = new Map<string, HookEntry[]>();
 
   for (const entry of entries) {
-    const owner = extractOwner(entry.command)
-    const key = `${entry.runtime}:${entry.event}:${owner}:${entry.command.trim()}`
-    const existing = byKey.get(key)
+    const owner = extractOwner(entry.command);
+    const key = `${entry.runtime}:${entry.event}:${owner}:${entry.command.trim()}`;
+    const existing = byKey.get(key);
     if (existing) {
-      existing.push(entry)
+      existing.push(entry);
     } else {
-      byKey.set(key, [entry])
+      byKey.set(key, [entry]);
     }
   }
 
-  const violations: DriftViolation[] = []
+  const violations: DriftViolation[] = [];
 
   for (const [key, group] of byKey) {
     if (group.length > 1) {
-      violations.push({ key, count: group.length, entries: group })
+      violations.push({ key, count: group.length, entries: group });
     }
   }
 
-  return violations
+  return violations;
 }
 
 // ---------------------------------------------------------------------------
@@ -137,14 +137,14 @@ export function detectDrift(entries: readonly HookEntry[]): DriftViolation[] {
  */
 function isRewriter(command: string): boolean {
   // RTK rewrites Bash input — canonical rewriter
-  if (command.includes('rtk hook claude')) return true
+  if (command.includes("rtk hook claude")) return true;
 
   // PreToolUse script hooks can rewrite input. We cannot read the hook's
   // internals here, so we flag any pretooluse.mjs binding conservatively.
-  if (command.endsWith('pretooluse.mjs')) return true
-  if (command.includes('/pretooluse.mjs')) return true
+  if (command.endsWith("pretooluse.mjs")) return true;
+  if (command.includes("/pretooluse.mjs")) return true;
 
-  return false
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -153,65 +153,65 @@ function isRewriter(command: string): boolean {
 
 function readSettingsFile(filePath: string): ParsedSettings {
   if (!existsSync(filePath)) {
-    return { source: filePath, hooks: {} }
+    return { source: filePath, hooks: {} };
   }
 
-  let raw: string
+  let raw: string;
   try {
-    raw = readFileSync(filePath, 'utf8')
+    raw = readFileSync(filePath, "utf8");
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : String(error)
+    const msg = error instanceof Error ? error.message : String(error);
     return {
       source: filePath,
       hooks: {},
       parseError: `Could not read ${filePath}: ${msg}`,
-    }
+    };
   }
 
-  let parsed: unknown
+  let parsed: unknown;
   try {
-    parsed = JSON.parse(raw)
+    parsed = JSON.parse(raw);
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : String(error)
+    const msg = error instanceof Error ? error.message : String(error);
     return {
       source: filePath,
       hooks: {},
       parseError: `Could not parse ${filePath}: ${msg}`,
-    }
+    };
   }
 
-  if (!parsed || typeof parsed !== 'object') {
-    return { source: filePath, hooks: {} }
+  if (!parsed || typeof parsed !== "object") {
+    return { source: filePath, hooks: {} };
   }
 
-  const record = parsed as Record<string, unknown>
+  const record = parsed as Record<string, unknown>;
 
   // Claude Code settings.json wraps hooks under { "hooks": { Event: [...] } }
-  const raw_hooks = record['hooks']
-  if (raw_hooks && typeof raw_hooks === 'object' && !Array.isArray(raw_hooks)) {
-    return { source: filePath, hooks: raw_hooks as HooksMap }
+  const raw_hooks = record["hooks"];
+  if (raw_hooks && typeof raw_hooks === "object" && !Array.isArray(raw_hooks)) {
+    return { source: filePath, hooks: raw_hooks as HooksMap };
   }
 
-  return { source: filePath, hooks: {} }
+  return { source: filePath, hooks: {} };
 }
 
 function resolveSettingsPaths(
   projectDir: string | undefined,
   userSettingsOverride: string | undefined,
 ): readonly string[] {
-  const paths: string[] = []
+  const paths: string[] = [];
 
   // User-level: ~/.claude/settings.json (or override for tests)
-  const userSettings = userSettingsOverride ?? path.join(os.homedir(), '.claude', 'settings.json')
-  paths.push(userSettings)
+  const userSettings = userSettingsOverride ?? path.join(os.homedir(), ".claude", "settings.json");
+  paths.push(userSettings);
 
   // Project-level: $CLAUDE_PROJECT_DIR/.claude/settings.json
-  const projectRoot = projectDir ?? process.env['CLAUDE_PROJECT_DIR']
+  const projectRoot = projectDir ?? process.env["CLAUDE_PROJECT_DIR"];
   if (projectRoot) {
-    paths.push(path.join(projectRoot, '.claude', 'settings.json'))
+    paths.push(path.join(projectRoot, ".claude", "settings.json"));
   }
 
-  return paths
+  return paths;
 }
 
 // ---------------------------------------------------------------------------
@@ -222,71 +222,71 @@ function resolveSettingsPaths(
  * Represents one rewriter registration: event + matcher + command + source.
  */
 interface RewriterEntry {
-  readonly event: string
-  readonly matcher: string
-  readonly command: string
-  readonly source: string
+  readonly event: string;
+  readonly matcher: string;
+  readonly command: string;
+  readonly source: string;
 }
 
 function collectRewriters(settings: readonly ParsedSettings[]): readonly RewriterEntry[] {
-  const entries: RewriterEntry[] = []
+  const entries: RewriterEntry[] = [];
 
   for (const { source, hooks } of settings) {
     for (const [event, groups] of Object.entries(hooks)) {
-      if (!Array.isArray(groups)) continue
+      if (!Array.isArray(groups)) continue;
 
       for (const group of groups) {
-        const matcher = group.matcher ?? '*'
-        const hookEntries = group.hooks ?? []
+        const matcher = group.matcher ?? "*";
+        const hookEntries = group.hooks ?? [];
 
         for (const hook of hookEntries) {
-          const command = hook.command
-          if (typeof command !== 'string' || command.trim() === '') continue
+          const command = hook.command;
+          if (typeof command !== "string" || command.trim() === "") continue;
           if (isRewriter(command)) {
-            entries.push({ event, matcher, command, source })
+            entries.push({ event, matcher, command, source });
           }
         }
       }
     }
   }
 
-  return entries
+  return entries;
 }
 
 function buildViolations(rewriters: readonly RewriterEntry[]): readonly HookSurfaceViolation[] {
   // Group by event+matcher
-  const byKey = new Map<string, RewriterEntry[]>()
+  const byKey = new Map<string, RewriterEntry[]>();
 
   for (const entry of rewriters) {
-    const key = `${entry.event}\0${entry.matcher}`
-    const existing = byKey.get(key)
+    const key = `${entry.event}\0${entry.matcher}`;
+    const existing = byKey.get(key);
     if (existing) {
-      existing.push(entry)
+      existing.push(entry);
     } else {
-      byKey.set(key, [entry])
+      byKey.set(key, [entry]);
     }
   }
 
-  const violations: HookSurfaceViolation[] = []
+  const violations: HookSurfaceViolation[] = [];
 
   for (const [key, entries] of byKey) {
-    if (entries.length <= 1) continue
+    if (entries.length <= 1) continue;
 
-    const [event, matcher] = key.split('\0') as [string, string]
-    const commands = entries.map((e) => e.command)
+    const [event, matcher] = key.split("\0") as [string, string];
+    const commands = entries.map((e) => e.command);
     violations.push({
       event,
       matcher,
       rewriters: commands,
       reason:
         `${entries.length} rewriters registered on ${event}/${matcher}: ` +
-        commands.map((c) => JSON.stringify(c)).join(', ') +
-        '. Since hooks run in parallel, the last updatedInput wins non-deterministically. ' +
-        'Keep at most one rewriter per event+matcher combination.',
-    })
+        commands.map((c) => JSON.stringify(c)).join(", ") +
+        ". Since hooks run in parallel, the last updatedInput wins non-deterministically. " +
+        "Keep at most one rewriter per event+matcher combination.",
+    });
   }
 
-  return violations
+  return violations;
 }
 
 // ---------------------------------------------------------------------------
@@ -295,13 +295,13 @@ function buildViolations(rewriters: readonly RewriterEntry[]): readonly HookSurf
 
 export interface HookSurfaceOptions {
   /** Repository root. Falls back to CLAUDE_PROJECT_DIR env var when omitted. */
-  readonly projectDir?: string
+  readonly projectDir?: string;
   /**
    * Override path to the user-level settings file.
    * Defaults to ~/.claude/settings.json.
    * Useful in tests to avoid reading real user settings.
    */
-  readonly userSettingsPath?: string
+  readonly userSettingsPath?: string;
 }
 
 /**
@@ -311,37 +311,37 @@ export function auditHookSurface(
   projectDirOrOpts?: string | HookSurfaceOptions,
 ): HookSurfaceResult {
   const opts: HookSurfaceOptions =
-    typeof projectDirOrOpts === 'string'
+    typeof projectDirOrOpts === "string"
       ? { projectDir: projectDirOrOpts }
-      : (projectDirOrOpts ?? {})
+      : (projectDirOrOpts ?? {});
 
-  const settingsPaths = resolveSettingsPaths(opts.projectDir, opts.userSettingsPath)
-  const settings = settingsPaths.map(readSettingsFile)
+  const settingsPaths = resolveSettingsPaths(opts.projectDir, opts.userSettingsPath);
+  const settings = settingsPaths.map(readSettingsFile);
 
-  const parseErrors = settings.flatMap((s) => (s.parseError ? [s.parseError] : []))
-  const rewriters = collectRewriters(settings)
-  const violations = buildViolations(rewriters)
+  const parseErrors = settings.flatMap((s) => (s.parseError ? [s.parseError] : []));
+  const rewriters = collectRewriters(settings);
+  const violations = buildViolations(rewriters);
 
-  const passed = violations.length === 0 && parseErrors.length === 0
+  const passed = violations.length === 0 && parseErrors.length === 0;
 
   // Promote parse errors to violations so they surface in the output
   const errorViolations: HookSurfaceViolation[] = parseErrors.map((msg) => ({
-    event: 'parse-error',
-    matcher: '',
+    event: "parse-error",
+    matcher: "",
     rewriters: [],
     reason: msg,
-  }))
+  }));
 
-  const allViolations = [...errorViolations, ...violations]
+  const allViolations = [...errorViolations, ...violations];
 
   return {
     passed,
-    kind: 'hook-surface',
+    kind: "hook-surface",
     details: {
       ok: passed,
       violations: allViolations,
     },
-  }
+  };
 }
 
 /**
@@ -350,16 +350,16 @@ export function auditHookSurface(
 export function auditHookSurfaceAsRepoResult(
   projectDirOrOpts?: string | HookSurfaceOptions,
 ): RepoAuditResult {
-  const result = auditHookSurface(projectDirOrOpts)
+  const result = auditHookSurface(projectDirOrOpts);
 
   const violations: RepoAuditViolation[] = result.details.violations.map((v) => ({
     message: v.reason,
-  }))
+  }));
 
   return {
     ok: result.passed,
-    title: 'Hook surface audit',
+    title: "Hook surface audit",
     checked: result.details.violations.length,
     violations,
-  }
+  };
 }

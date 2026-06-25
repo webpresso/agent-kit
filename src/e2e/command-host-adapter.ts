@@ -5,36 +5,36 @@ import type {
   E2eSuiteDefinition,
   PlannedE2eRunGroup,
   ResolvedE2eFile,
-} from './types.js'
+} from "./types.js";
 
 export interface CommandHostAdapterRunDefinition {
-  batchKey: string
-  logName: string
-  command: string
-  args: string[]
-  suiteId?: string
-  envProfile?: string
-  runtimeProfile?: string
-  env?: Record<string, string>
-  reportDir?: string
+  batchKey: string;
+  logName: string;
+  command: string;
+  args: string[];
+  suiteId?: string;
+  envProfile?: string;
+  runtimeProfile?: string;
+  env?: Record<string, string>;
+  reportDir?: string;
 }
 
 export interface CommandHostAdapterGroupDefinition {
-  batchKey: string
-  envProfile?: string
-  runtimeProfile?: string
-  env?: Record<string, string>
-  run: CommandHostAdapterRunDefinition
+  batchKey: string;
+  envProfile?: string;
+  runtimeProfile?: string;
+  env?: Record<string, string>;
+  run: CommandHostAdapterRunDefinition;
 }
 
 export interface CreateCommandE2eHostAdapterOptions {
-  listSuites: () => readonly E2eSuiteDefinition[]
-  resolveSuiteId: (name: string) => string | null
-  resolveSuiteGroup?: (name: string) => readonly string[] | null
-  normalizeFilePath: (filePath: string) => string
-  resolveSuiteForFile: (filePath: string) => ResolvedE2eFile | null
-  defaultSuiteId: string
-  buildCommandGroup: (request: E2eExecutionRequest) => CommandHostAdapterGroupDefinition
+  listSuites: () => readonly E2eSuiteDefinition[];
+  resolveSuiteId: (name: string) => string | null;
+  resolveSuiteGroup?: (name: string) => readonly string[] | null;
+  normalizeFilePath: (filePath: string) => string;
+  resolveSuiteForFile: (filePath: string) => ResolvedE2eFile | null;
+  defaultSuiteId: string;
+  buildCommandGroup: (request: E2eExecutionRequest) => CommandHostAdapterGroupDefinition;
 }
 
 export function createCommandE2eHostAdapter(
@@ -42,7 +42,7 @@ export function createCommandE2eHostAdapter(
 ): E2eHostAdapter {
   return {
     listSuites() {
-      return options.listSuites().map(cloneE2eSuiteDefinition)
+      return options.listSuites().map(cloneE2eSuiteDefinition);
     },
     resolveSuiteId: options.resolveSuiteId,
     resolveSuiteGroup: options.resolveSuiteGroup,
@@ -51,9 +51,9 @@ export function createCommandE2eHostAdapter(
     buildExecutionPlan(request) {
       return [
         toPlannedRunGroup(options.buildCommandGroup(request), request, options.defaultSuiteId),
-      ]
+      ];
     },
-  }
+  };
 }
 
 export function cloneE2eStepDefinition(step: E2eStepDefinition): E2eStepDefinition {
@@ -71,7 +71,7 @@ export function cloneE2eStepDefinition(step: E2eStepDefinition): E2eStepDefiniti
     runtimeProfile: step.runtimeProfile,
     reportDir: step.reportDir,
     env: cloneEnv(step.env),
-  }
+  };
 }
 
 export function cloneE2eSuiteDefinition(suite: E2eSuiteDefinition): E2eSuiteDefinition {
@@ -84,7 +84,7 @@ export function cloneE2eSuiteDefinition(suite: E2eSuiteDefinition): E2eSuiteDefi
     runtimeProfile: suite.runtimeProfile,
     steps: suite.steps.map(cloneE2eStepDefinition),
     env: cloneEnv(suite.env),
-  }
+  };
 }
 
 function toPlannedRunGroup(
@@ -108,20 +108,20 @@ function toPlannedRunGroup(
           group.runtimeProfile ??
           group.envProfile,
         env: cloneEnv(group.run.env),
-        runner: 'command',
+        runner: "command",
         logName: group.run.logName,
         reportDir: group.run.reportDir,
         command: group.run.command,
         args: [...group.run.args],
       },
     ],
-  }
+  };
 }
 
 function cloneEnv(env?: Record<string, string>): Record<string, string> | undefined {
   if (!env || Object.keys(env).length === 0) {
-    return undefined
+    return undefined;
   }
 
-  return { ...env }
+  return { ...env };
 }

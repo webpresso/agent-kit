@@ -4,9 +4,9 @@ title: "CI path gating for docs and blueprint-only PRs"
 owner: ozby
 status: draft
 complexity: M
-created: '2026-06-19'
-last_updated: '2026-06-19'
-progress: '0% (drafted as lightweight follow-up; no implementation started)'
+created: "2026-06-19"
+last_updated: "2026-06-19"
+progress: "0% (drafted as lightweight follow-up; no implementation started)"
 depends_on:
   - 2026-06-19-prevent-blueprint-index-drift
 cross_repo_depends_on: []
@@ -31,20 +31,20 @@ This blueprint drafts a separate, small CI classifier that can skip heavy code g
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-| -------- | ------ | --------- |
-| Required check names | Preserve existing required jobs/check names | Branch protection should not need churn or risk accidental bypass. |
-| Classifier shape | One early changed-files classifier job | Keep path logic centralized and testable instead of copying glob conditions across jobs. |
+| Decision                     | Choice                                                                   | Rationale                                                                                      |
+| ---------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| Required check names         | Preserve existing required jobs/check names                              | Branch protection should not need churn or risk accidental bypass.                             |
+| Classifier shape             | One early changed-files classifier job                                   | Keep path logic centralized and testable instead of copying glob conditions across jobs.       |
 | Docs/blueprint-only behavior | Run markdown/blueprint/audit gates; mark code gates as successful no-ops | PRs remain mergeable only when the relevant checks pass, but do not run irrelevant full tests. |
-| Default safety | Unknown or mixed changes run full CI | Conservative fallback prevents false skips. |
+| Default safety               | Unknown or mixed changes run full CI                                     | Conservative fallback prevents false skips.                                                    |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort |
-| ---- | ----- | ------------ | -------------- | ------ |
-| **Wave 0** | 1.1 | None | 1 agent | S |
-| **Wave 1** | 2.1, 2.2 | 1.1 | 2 agents | S-M |
-| **Critical path** | 1.1 → 2.1 | — | 2 waves | M |
+| Wave              | Tasks     | Dependencies | Parallelizable | Effort |
+| ----------------- | --------- | ------------ | -------------- | ------ |
+| **Wave 0**        | 1.1       | None         | 1 agent        | S      |
+| **Wave 1**        | 2.1, 2.2  | 1.1          | 2 agents       | S-M    |
+| **Critical path** | 1.1 → 2.1 | —            | 2 waves        | M      |
 
 ## Scope
 
@@ -145,22 +145,22 @@ Add fixtures or table-driven tests covering representative PR file sets so futur
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-| ---- | ------- | ---------------- |
-| Blueprint lifecycle | `vp run blueprints:check` | Passes |
-| Blueprint README drift | `./bin/wp audit blueprint-readme-drift` | Passes |
-| Classifier tests | repo wrapper for the new test file | Passes |
-| CI static check | repo workflow/static validation surface, if available | Passes |
-| GitHub smoke | draft PR with docs/blueprint-only diff | Heavy test job reports success without `pnpm run test`; blueprint/docs gates still run |
+| Gate                   | Command                                               | Success Criteria                                                                       |
+| ---------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Blueprint lifecycle    | `vp run blueprints:check`                             | Passes                                                                                 |
+| Blueprint README drift | `./bin/wp audit blueprint-readme-drift`               | Passes                                                                                 |
+| Classifier tests       | repo wrapper for the new test file                    | Passes                                                                                 |
+| CI static check        | repo workflow/static validation surface, if available | Passes                                                                                 |
+| GitHub smoke           | draft PR with docs/blueprint-only diff                | Heavy test job reports success without `pnpm run test`; blueprint/docs gates still run |
 
 ## Edge Cases and Error Handling
 
-| Edge Case | Risk | Solution | Task |
-| --------- | ---- | -------- | ---- |
-| Branch protection requires the old `Test` job | Skipping the job can block merge | Keep the job name and return a successful no-op for safe path classes. | 2.1 |
-| Workflow file changes classify as docs-only by accident | CI can be bypassed | Classify workflow/config/package/lockfile changes as `code`. | 1.1 |
-| New source directory appears and is not in glob list | False skip | Unknown paths default to `code`. | 1.1 |
-| Blueprint README is stale | Docs-only PR still fails late | Keep `blueprint-readme-drift` and blueprint gates active. | 2.1 |
+| Edge Case                                               | Risk                             | Solution                                                               | Task |
+| ------------------------------------------------------- | -------------------------------- | ---------------------------------------------------------------------- | ---- |
+| Branch protection requires the old `Test` job           | Skipping the job can block merge | Keep the job name and return a successful no-op for safe path classes. | 2.1  |
+| Workflow file changes classify as docs-only by accident | CI can be bypassed               | Classify workflow/config/package/lockfile changes as `code`.           | 1.1  |
+| New source directory appears and is not in glob list    | False skip                       | Unknown paths default to `code`.                                       | 1.1  |
+| Blueprint README is stale                               | Docs-only PR still fails late    | Keep `blueprint-readme-drift` and blueprint gates active.              | 2.1  |
 
 ## Non-goals
 

@@ -10,38 +10,38 @@
  *   tsx check-internal-links.ts file1.md file2.md  # Check specific files
  */
 
-import { existsSync, readFileSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
-import { glob } from 'glob'
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { glob } from "glob";
 
 interface BrokenLink {
-  file: string
-  line: number
-  link: string
-  target: string
+  file: string;
+  line: number;
+  link: string;
+  target: string;
 }
 
 // Match markdown links: [text](path.md) or [text](path.md#anchor)
-const LINK_PATTERN = /\[([^\]]*)\]\(([^)]+\.md(?:#[^)]*)?)\)/g
+const LINK_PATTERN = /\[([^\]]*)\]\(([^)]+\.md(?:#[^)]*)?)\)/g;
 
 /**
  * Check if a link should be skipped
  */
 function shouldSkipRawLink(rawLink: string): boolean {
-  if (rawLink.startsWith('http://') || rawLink.startsWith('https://')) return true
-  if (rawLink.startsWith('file://')) return true
-  if (/[{$]/.test(rawLink)) return true
-  return false
+  if (rawLink.startsWith("http://") || rawLink.startsWith("https://")) return true;
+  if (rawLink.startsWith("file://")) return true;
+  if (/[{$]/.test(rawLink)) return true;
+  return false;
 }
 
 /**
  * Resolve a link path to an absolute path
  */
 function resolveLinkTarget(linkPath: string, fileDir: string): string {
-  if (linkPath.startsWith('/')) {
-    return join(process.cwd(), linkPath)
+  if (linkPath.startsWith("/")) {
+    return join(process.cwd(), linkPath);
   }
-  return resolve(fileDir, linkPath)
+  return resolve(fileDir, linkPath);
 }
 
 /**
@@ -52,54 +52,54 @@ function processLinkMatch(
   fileDir: string,
   lineNumber: number,
 ): { link: string; target: string; line: number } | null {
-  const rawLink = match[2]
-  if (!rawLink) return null
-  if (shouldSkipRawLink(rawLink)) return null
+  const rawLink = match[2];
+  if (!rawLink) return null;
+  if (shouldSkipRawLink(rawLink)) return null;
 
-  const linkPath = rawLink.split('#')[0]
-  if (!linkPath) return null
+  const linkPath = rawLink.split("#")[0];
+  if (!linkPath) return null;
 
   return {
     link: rawLink,
     target: resolveLinkTarget(linkPath, fileDir),
     line: lineNumber,
-  }
+  };
 }
 
 function extractLinks(
   content: string,
   filePath: string,
 ): { link: string; target: string; line: number }[] {
-  const links: { link: string; target: string; line: number }[] = []
-  const lines = content.split('\n')
-  const fileDir = dirname(filePath)
+  const links: { link: string; target: string; line: number }[] = [];
+  const lines = content.split("\n");
+  const fileDir = dirname(filePath);
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    if (!line) continue
+    const line = lines[i];
+    if (!line) continue;
 
-    const regex = new RegExp(LINK_PATTERN.source, LINK_PATTERN.flags)
-    let match: RegExpExecArray | null
+    const regex = new RegExp(LINK_PATTERN.source, LINK_PATTERN.flags);
+    let match: RegExpExecArray | null;
 
-    match = regex.exec(line)
+    match = regex.exec(line);
     while (match !== null) {
-      const linkObj = processLinkMatch(match, fileDir, i + 1)
+      const linkObj = processLinkMatch(match, fileDir, i + 1);
       if (linkObj) {
-        links.push(linkObj)
+        links.push(linkObj);
       }
-      match = regex.exec(line)
+      match = regex.exec(line);
     }
   }
 
-  return links
+  return links;
 }
 
 function checkFile(filePath: string): BrokenLink[] {
-  const broken: BrokenLink[] = []
+  const broken: BrokenLink[] = [];
 
   try {
-    const content = readFileSync(filePath, 'utf-8')
-    const links = extractLinks(content, filePath)
+    const content = readFileSync(filePath, "utf-8");
+    const links = extractLinks(content, filePath);
 
     for (const { link, target, line } of links) {
       if (!existsSync(target)) {
@@ -108,14 +108,14 @@ function checkFile(filePath: string): BrokenLink[] {
           line,
           link,
           target,
-        })
+        });
       }
     }
   } catch {
     // Skip unreadable files
   }
 
-  return broken
+  return broken;
 }
 
 /**
@@ -123,30 +123,30 @@ function checkFile(filePath: string): BrokenLink[] {
  */
 function getFilesToCheck(args: string[]): Promise<string[]> {
   if (args.length > 0) {
-    return Promise.resolve(args.map((f) => resolve(process.cwd(), f)))
+    return Promise.resolve(args.map((f) => resolve(process.cwd(), f)));
   }
   return glob(
-    ['docs/**/*.md', 'CLAUDE.md', '.agent/rules/agent-guide.md', 'README.md', '.claude/**/*.md'],
+    ["docs/**/*.md", "CLAUDE.md", ".agent/rules/agent-guide.md", "README.md", ".claude/**/*.md"],
     {
       cwd: process.cwd(),
-      ignore: ['**/node_modules/**', '.claude/worktrees/**', '.tmp/**'],
+      ignore: ["**/node_modules/**", ".claude/worktrees/**", ".tmp/**"],
       absolute: true,
     },
-  )
+  );
 }
 
 /**
  * Group broken links by file
  */
 function groupBrokenLinksByFile(allBroken: BrokenLink[]): Map<string, BrokenLink[]> {
-  const byFile = new Map<string, BrokenLink[]>()
+  const byFile = new Map<string, BrokenLink[]>();
   for (const broken of allBroken) {
-    const relPath = broken.file.replace(`${process.cwd()}/`, '')
-    const existing = byFile.get(relPath) || []
-    existing.push(broken)
-    byFile.set(relPath, existing)
+    const relPath = broken.file.replace(`${process.cwd()}/`, "");
+    const existing = byFile.get(relPath) || [];
+    existing.push(broken);
+    byFile.set(relPath, existing);
   }
-  return byFile
+  return byFile;
 }
 
 /**
@@ -154,39 +154,39 @@ function groupBrokenLinksByFile(allBroken: BrokenLink[]): Map<string, BrokenLink
  */
 function printBrokenLinksReport(byFile: Map<string, BrokenLink[]>): void {
   for (const [file, links] of byFile) {
-    console.log(`  ${file}:`)
+    console.log(`  ${file}:`);
     for (const { line, link } of links) {
-      console.log(`    L${line}: ${link}`)
+      console.log(`    L${line}: ${link}`);
     }
-    console.log()
+    console.log();
   }
 }
 
 async function main(): Promise<void> {
-  const args = process.argv.slice(2)
-  const files = await getFilesToCheck(args)
+  const args = process.argv.slice(2);
+  const files = await getFilesToCheck(args);
 
-  let allBroken: BrokenLink[] = []
+  let allBroken: BrokenLink[] = [];
   for (const file of files) {
-    if (!existsSync(file)) continue
-    allBroken = allBroken.concat(checkFile(file))
+    if (!existsSync(file)) continue;
+    allBroken = allBroken.concat(checkFile(file));
   }
 
   if (!allBroken.length) {
     if (!args.length) {
-      console.log(`✓ No broken internal links (checked ${files.length} files)`)
+      console.log(`✓ No broken internal links (checked ${files.length} files)`);
     }
-    process.exit(0)
+    process.exit(0);
   }
 
-  console.log(`\n❌ Found ${allBroken.length} broken internal link(s):\n`)
-  printBrokenLinksReport(groupBrokenLinksByFile(allBroken))
-  process.exit(1)
+  console.log(`\n❌ Found ${allBroken.length} broken internal link(s):\n`);
+  printBrokenLinksReport(groupBrokenLinksByFile(allBroken));
+  process.exit(1);
 }
 
 if (import.meta.main) {
   main().catch((error) => {
-    console.error('Error checking internal links:', error)
-    process.exit(1)
-  })
+    console.error("Error checking internal links:", error);
+    process.exit(1);
+  });
 }

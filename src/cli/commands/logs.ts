@@ -1,41 +1,41 @@
-import type { CAC } from 'cac'
+import type { CAC } from "cac";
 
-import { readFileSync } from 'node:fs'
+import { readFileSync } from "node:fs";
 
-import { CLI_LOG_COMMANDS, isCliLogCommandName, readCliLogEntry } from './quality-log-store.js'
+import { CLI_LOG_COMMANDS, isCliLogCommandName, readCliLogEntry } from "./quality-log-store.js";
 
 export const LOGS_COMMAND_HELP = [
-  'Print persisted raw output for a recent summary-first quality command run.',
-  '',
-  'Examples:',
-  '  wp logs test',
-  '  wp logs qa 2',
-].join('\n')
+  "Print persisted raw output for a recent summary-first quality command run.",
+  "",
+  "Examples:",
+  "  wp logs test",
+  "  wp logs qa 2",
+].join("\n");
 
 export function registerLogsCommand(cli: CAC): void {
   cli
-    .command('logs <command> [n]', LOGS_COMMAND_HELP)
+    .command("logs <command> [n]", LOGS_COMMAND_HELP)
     .action((command: string, n: string | undefined) => {
       if (!isCliLogCommandName(command)) {
         console.error(
-          `Unknown logs command: ${command}. Expected one of: ${CLI_LOG_COMMANDS.join(', ')}`,
-        )
-        return 1
+          `Unknown logs command: ${command}. Expected one of: ${CLI_LOG_COMMANDS.join(", ")}`,
+        );
+        return 1;
       }
 
-      const ordinal = n === undefined ? 1 : Number(n)
+      const ordinal = n === undefined ? 1 : Number(n);
       if (!Number.isInteger(ordinal) || ordinal < 1 || ordinal > 10) {
-        console.error('Usage: wp logs <command> [n]\n`n` must be an integer in the range 1..10.')
-        return 1
+        console.error("Usage: wp logs <command> [n]\n`n` must be an integer in the range 1..10.");
+        return 1;
       }
 
-      const entry = readCliLogEntry(command, ordinal)
+      const entry = readCliLogEntry(command, ordinal);
       if (!entry) {
-        console.log(`No logs yet for ${command}.`)
-        return 0
+        console.log(`No logs yet for ${command}.`);
+        return 0;
       }
 
-      process.stdout.write(readFileSync(entry.logPath, 'utf8'))
-      return 0
-    })
+      process.stdout.write(readFileSync(entry.logPath, "utf8"));
+      return 0;
+    });
 }

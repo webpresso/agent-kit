@@ -23,13 +23,13 @@ by making the audit logic the single authoritative source in agent-kit.
 
 **Scripts centralized:**
 
-| Old per-repo script | New wp surface | Released in |
-|---|---|---|
-| `scripts/verify-secrets-policy.ts` | `wp audit secrets-policy` | 0.34.0 |
-| `scripts/check-no-dev-vars.ts` | `wp audit no-dev-vars` | 0.34.0 |
-| `scripts/audit-secret-provider-quarantine.ts` | `wp audit secret-provider-quarantine` | 0.34.0 |
-| `scripts/sync-webpresso-config.ts --check-only` | `wp audit secrets-config` | 0.34.0 |
-| `scripts/affected-mutation.ts` | `wp test --affected` | 0.34.0 |
+| Old per-repo script                             | New wp surface                        | Released in |
+| ----------------------------------------------- | ------------------------------------- | ----------- |
+| `scripts/verify-secrets-policy.ts`              | `wp audit secrets-policy`             | 0.34.0      |
+| `scripts/check-no-dev-vars.ts`                  | `wp audit no-dev-vars`                | 0.34.0      |
+| `scripts/audit-secret-provider-quarantine.ts`   | `wp audit secret-provider-quarantine` | 0.34.0      |
+| `scripts/sync-webpresso-config.ts --check-only` | `wp audit secrets-config`             | 0.34.0      |
+| `scripts/affected-mutation.ts`                  | `wp test --affected`                  | 0.34.0      |
 
 **Patch fix:** 0.34.1/0.34.2 fixed `shouldScanGitFileForSecretValues` to
 exclude `.test.*` / `.spec.*` files — `pk-lf-test` and `sk-lf-test`
@@ -43,6 +43,7 @@ pre-commit in ingest-lens.
 **Status:** completed
 **Wave:** 0
 **Files:**
+
 - `src/audit/lib/secrets-policy.ts` — shared types + `SECRET_VALUE_PATTERN`
 - `src/audit/commands/secrets-policy.ts`
 - `src/audit/commands/no-dev-vars.ts`
@@ -50,6 +51,7 @@ pre-commit in ingest-lens.
 - `src/audit/commands/secrets-config.ts`
 
 **Acceptance:**
+
 - [x] All four audit kinds registered in wp audit dispatch
 - [x] Gate on `.webpresso/secrets.config.json` presence (graceful degradation)
 - [x] Shared types extracted to `src/audit/lib/secrets-policy.ts`
@@ -60,12 +62,14 @@ pre-commit in ingest-lens.
 **Status:** completed
 **Wave:** 0
 **Files:**
+
 - `src/audit/secrets-policy.test.ts`
 - `src/audit/no-dev-vars.test.ts`
 - `src/audit/secret-provider-quarantine.test.ts`
 - `src/audit/secrets-config.test.ts`
 
 **Acceptance:**
+
 - [x] Colocated vitest tests per module using `mkdtempSync` temp repos
 - [x] Test-file exclusion regression test added in 0.34.1
 
@@ -75,6 +79,7 @@ pre-commit in ingest-lens.
 **Wave:** 0
 
 **Acceptance:**
+
 - [x] Workspace-aware detection (multi-pkg: apps/packages pattern; single-app: src/ fallback)
 - [x] `GITHUB_BASE_REF` respected for base branch in CI
 
@@ -85,6 +90,7 @@ pre-commit in ingest-lens.
 **Repos:** ingest-lens, edge-matte, ozby-dev
 
 **Acceptance:**
+
 - [x] `@webpresso/agent-kit` bumped to `^0.34.2` in all three repos
 - [x] Superseded scripts deleted from all three repos
 - [x] Pre-commit hooks use `wp audit` commands exclusively
@@ -97,6 +103,7 @@ pre-commit in ingest-lens.
 **Wave:** 1
 
 **Acceptance:**
+
 - [x] ozby-dev: `.github/workflows/ci.yml`, `security-scan.yml`, `architecture-drift.yml` added
 - [x] edge-matte: `.github/workflows/security-scan.yml` added (gitleaks + OSV + secretlint)
 - [x] Lore-commit validation in CI for all three repos
@@ -126,21 +133,21 @@ repos passing their pre-commit `wp audit` gates.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/centralize-consumer-governance-scripts-as-wp-audit-subcommands.md |
+| ID  | Claim                                                          | Evidence                                                                                    |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/centralize-consumer-governance-scripts-as-wp-audit-subcommands.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

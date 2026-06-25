@@ -10,7 +10,7 @@ export {
   type RemediationStep,
   serializeTechDebt,
   type TechDebtItem,
-} from './parser.js'
+} from "./parser.js";
 export {
   isCategory,
   isSeverity,
@@ -21,7 +21,7 @@ export {
   type TechDebtRecord,
   type TechDebtSortField,
   type TechDebtSortOptions,
-} from './query-types.js'
+} from "./query-types.js";
 export {
   categorySchema,
   type ReviewCadence,
@@ -35,4 +35,4 @@ export {
   techDebtFrontmatterSchema,
   techDebtSlugSchema,
   techDebtStatusSchema,
-} from './schema.js'
+} from "./schema.js";

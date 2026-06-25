@@ -2,87 +2,88 @@
  * `.webpressorc.json` read/write. Captures the consumer's opt-in choices so
  * re-runs of `wp init` are idempotent without re-prompting.
  */
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
-import { isAbsolute, join, normalize } from 'node:path'
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { isAbsolute, join, normalize } from "node:path";
 
-import type { AgentHost, VisibilityStatus } from './host-visibility.js'
-import { REQUIRED_CORE_CAPABILITIES } from './host-visibility.js'
+import type { AgentHost, VisibilityStatus } from "./host-visibility.js";
+import { REQUIRED_CORE_CAPABILITIES } from "./host-visibility.js";
 
-export const CONFIG_VERSION = '1'
-export const CONFIG_FILENAME = '.webpressorc.json'
-export const LEGACY_CONFIG_FILENAME = '.agent-kitrc.json'
-export const DEFAULT_DURABLE_PLANNING_ROOT = '.agent/planning/'
-export const EXTERNAL_INTEGRATIONS = ['omx', 'omc'] as const
-export type ExternalIntegrationName = (typeof EXTERNAL_INTEGRATIONS)[number]
-export type ExternalIntegrationScope = 'user' | 'project'
+export const CONFIG_VERSION = "1";
+export const CONFIG_FILENAME = ".webpressorc.json";
+export const LEGACY_CONFIG_FILENAME = ".agent-kitrc.json";
+export const DEFAULT_DURABLE_PLANNING_ROOT = ".agent/planning/";
+export const EXTERNAL_INTEGRATIONS = ["omx", "omc"] as const;
+export type ExternalIntegrationName = (typeof EXTERNAL_INTEGRATIONS)[number];
+export type ExternalIntegrationScope = "user" | "project";
 
 export interface ExternalIntegrationConfig {
-  enabled: true
-  scope?: ExternalIntegrationScope
+  enabled: true;
+  scope?: ExternalIntegrationScope;
 }
 
 function readOptionalString(value: unknown): string | undefined {
-  if (typeof value !== 'string') return undefined
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : undefined
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function normalizeManagedRelativePaths(values: unknown): string[] | undefined {
-  if (!Array.isArray(values)) return undefined
+  if (!Array.isArray(values)) return undefined;
   const normalized = values.flatMap((value) => {
-    if (typeof value !== 'string') return []
-    const trimmed = value.trim()
-    if (trimmed.length === 0 || isAbsolute(trimmed)) return []
-    const candidate = normalize(trimmed)
-    if (candidate === '..' || candidate.startsWith('../') || candidate.startsWith('..\\')) return []
-    return [candidate]
-  })
-  return normalized.length > 0 ? normalized : undefined
+    if (typeof value !== "string") return [];
+    const trimmed = value.trim();
+    if (trimmed.length === 0 || isAbsolute(trimmed)) return [];
+    const candidate = normalize(trimmed);
+    if (candidate === ".." || candidate.startsWith("../") || candidate.startsWith("..\\"))
+      return [];
+    return [candidate];
+  });
+  return normalized.length > 0 ? normalized : undefined;
 }
 
 export interface AgentkitConfig {
-  version: string
+  version: string;
   installed: {
-    tier3Skills: string[]
-  }
-  integrations?: Partial<Record<ExternalIntegrationName, ExternalIntegrationConfig>>
+    tier3Skills: string[];
+  };
+  integrations?: Partial<Record<ExternalIntegrationName, ExternalIntegrationConfig>>;
   audit?: {
     toolchainIsolation?: {
-      allowDependencies?: string[]
-    }
-  }
+      allowDependencies?: string[];
+    };
+  };
   hosts?: {
-    selected: AgentHost[]
-    requiredCapabilities: string[]
-    visibility?: Record<string, Record<string, VisibilityStatus>>
-  }
+    selected: AgentHost[];
+    requiredCapabilities: string[];
+    visibility?: Record<string, Record<string, VisibilityStatus>>;
+  };
   mcp?: {
-    serverName?: string
-    toolPrefix?: string
-  }
+    serverName?: string;
+    toolPrefix?: string;
+  };
   /** Pretool-guard routing policy. `mechanism` lives in agent-kit; this is the
    *  per-repo `data`. `scriptRoutes` maps a package-script name (e.g.
    *  `docs:check`) to a `wp_audit` kind; `packageManager: 'vp-only'` opts into
    *  routing all raw `pnpm`/`npm` invocations to the `vp` facade. */
   guard?: {
-    packageManager?: 'vp-only'
-    scriptRoutes?: Record<string, string>
-  }
+    packageManager?: "vp-only";
+    scriptRoutes?: Record<string, string>;
+  };
   rules: {
-    overrides: string[]
-  }
+    overrides: string[];
+  };
   scripts: {
-    'setup-agent'?: string
-  }
+    "setup-agent"?: string;
+  };
   setup?: {
-    preservePaths?: string[]
-  }
+    preservePaths?: string[];
+  };
   generatedCleanup?: {
-    removePaths?: string[]
-  }
-  durablePlanningRoot: string
-  blueprintsDir?: string
-  lastInit?: string
+    removePaths?: string[];
+  };
+  durablePlanningRoot: string;
+  blueprintsDir?: string;
+  lastInit?: string;
 }
 
 export function defaultConfig(): AgentkitConfig {
@@ -96,69 +97,69 @@ export function defaultConfig(): AgentkitConfig {
     rules: { overrides: [] },
     scripts: {},
     durablePlanningRoot: DEFAULT_DURABLE_PLANNING_ROOT,
-  }
+  };
 }
 
 function parseConfigFile(path: string): AgentkitConfig | null {
   try {
-    const raw = readFileSync(path, 'utf8')
-    const parsed = JSON.parse(raw) as Partial<AgentkitConfig>
-    const installed = parsed.installed as Partial<AgentkitConfig['installed']> | undefined
-    const audit = parsed.audit as Partial<NonNullable<AgentkitConfig['audit']>> | undefined
-    const mcp = parsed.mcp as Partial<NonNullable<AgentkitConfig['mcp']>> | undefined
-    const hosts = parsed.hosts as Partial<NonNullable<AgentkitConfig['hosts']>> | undefined
-    const rules = parsed.rules as Partial<AgentkitConfig['rules']> | undefined
-    const scripts = parsed.scripts as Partial<AgentkitConfig['scripts']> | undefined
-    const rawSetup = parsed.setup as Partial<NonNullable<AgentkitConfig['setup']>> | undefined
+    const raw = readFileSync(path, "utf8");
+    const parsed = JSON.parse(raw) as Partial<AgentkitConfig>;
+    const installed = parsed.installed as Partial<AgentkitConfig["installed"]> | undefined;
+    const audit = parsed.audit as Partial<NonNullable<AgentkitConfig["audit"]>> | undefined;
+    const mcp = parsed.mcp as Partial<NonNullable<AgentkitConfig["mcp"]>> | undefined;
+    const hosts = parsed.hosts as Partial<NonNullable<AgentkitConfig["hosts"]>> | undefined;
+    const rules = parsed.rules as Partial<AgentkitConfig["rules"]> | undefined;
+    const scripts = parsed.scripts as Partial<AgentkitConfig["scripts"]> | undefined;
+    const rawSetup = parsed.setup as Partial<NonNullable<AgentkitConfig["setup"]>> | undefined;
     const rawGeneratedCleanup = parsed.generatedCleanup as
-      | Partial<NonNullable<AgentkitConfig['generatedCleanup']>>
-      | undefined
+      | Partial<NonNullable<AgentkitConfig["generatedCleanup"]>>
+      | undefined;
     const rawIntegrations = parsed.integrations as
       | Partial<Record<ExternalIntegrationName, unknown>>
-      | undefined
-    const tier3 = Array.isArray(installed?.tier3Skills) ? installed.tier3Skills : []
-    const overrides = Array.isArray(rules?.overrides) ? rules.overrides : []
-    const durablePlanningRoot = readOptionalString(parsed.durablePlanningRoot)
-    const blueprintsDir = readOptionalString((parsed as { blueprintsDir?: unknown }).blueprintsDir)
-    const serverName = readOptionalString(mcp?.serverName)
-    const toolPrefix = readOptionalString(mcp?.toolPrefix)
+      | undefined;
+    const tier3 = Array.isArray(installed?.tier3Skills) ? installed.tier3Skills : [];
+    const overrides = Array.isArray(rules?.overrides) ? rules.overrides : [];
+    const durablePlanningRoot = readOptionalString(parsed.durablePlanningRoot);
+    const blueprintsDir = readOptionalString((parsed as { blueprintsDir?: unknown }).blueprintsDir);
+    const serverName = readOptionalString(mcp?.serverName);
+    const toolPrefix = readOptionalString(mcp?.toolPrefix);
     const normalizedMcp =
       serverName || toolPrefix
         ? { ...(serverName ? { serverName } : {}), ...(toolPrefix ? { toolPrefix } : {}) }
-        : undefined
-    const guard = parsed.guard as Partial<NonNullable<AgentkitConfig['guard']>> | undefined
-    const packageManager = guard?.packageManager === 'vp-only' ? ('vp-only' as const) : undefined
+        : undefined;
+    const guard = parsed.guard as Partial<NonNullable<AgentkitConfig["guard"]>> | undefined;
+    const packageManager = guard?.packageManager === "vp-only" ? ("vp-only" as const) : undefined;
     const rawScriptRoutes =
-      guard?.scriptRoutes && typeof guard.scriptRoutes === 'object'
+      guard?.scriptRoutes && typeof guard.scriptRoutes === "object"
         ? Object.fromEntries(
             Object.entries(guard.scriptRoutes).filter(
-              ([key, value]) => typeof key === 'string' && typeof value === 'string',
+              ([key, value]) => typeof key === "string" && typeof value === "string",
             ),
           )
-        : undefined
+        : undefined;
     const scriptRoutes =
-      rawScriptRoutes && Object.keys(rawScriptRoutes).length > 0 ? rawScriptRoutes : undefined
+      rawScriptRoutes && Object.keys(rawScriptRoutes).length > 0 ? rawScriptRoutes : undefined;
     const normalizedGuard =
       packageManager || scriptRoutes
         ? {
             ...(packageManager ? { packageManager } : {}),
             ...(scriptRoutes ? { scriptRoutes } : {}),
           }
-        : undefined
-    const preservePaths = normalizeManagedRelativePaths(rawSetup?.preservePaths)
+        : undefined;
+    const preservePaths = normalizeManagedRelativePaths(rawSetup?.preservePaths);
     const normalizedSetup =
-      preservePaths && preservePaths.length > 0 ? { preservePaths } : undefined
-    const removePaths = normalizeManagedRelativePaths(rawGeneratedCleanup?.removePaths)
+      preservePaths && preservePaths.length > 0 ? { preservePaths } : undefined;
+    const removePaths = normalizeManagedRelativePaths(rawGeneratedCleanup?.removePaths);
     const normalizedGeneratedCleanup =
-      removePaths && removePaths.length > 0 ? { removePaths } : undefined
+      removePaths && removePaths.length > 0 ? { removePaths } : undefined;
     const rawToolchainIsolation = audit?.toolchainIsolation as
-      | Partial<NonNullable<NonNullable<AgentkitConfig['audit']>['toolchainIsolation']>>
-      | undefined
+      | Partial<NonNullable<NonNullable<AgentkitConfig["audit"]>["toolchainIsolation"]>>
+      | undefined;
     const allowDependencies = Array.isArray(rawToolchainIsolation?.allowDependencies)
       ? rawToolchainIsolation.allowDependencies.filter(
-          (value): value is string => typeof value === 'string' && value.length > 0,
+          (value): value is string => typeof value === "string" && value.length > 0,
         )
-      : undefined
+      : undefined;
     const normalizedAudit =
       allowDependencies && allowDependencies.length > 0
         ? {
@@ -166,36 +167,36 @@ function parseConfigFile(path: string): AgentkitConfig | null {
               allowDependencies,
             },
           }
-        : undefined
+        : undefined;
     const selectedHosts = Array.isArray(hosts?.selected)
       ? hosts.selected.filter((s): s is AgentHost =>
-          ['codex', 'claude', 'opencode'].includes(String(s)),
+          ["codex", "claude", "opencode"].includes(String(s)),
         )
-      : []
+      : [];
     const requiredCapabilities = Array.isArray(hosts?.requiredCapabilities)
-      ? hosts.requiredCapabilities.filter((s): s is string => typeof s === 'string')
-      : [...REQUIRED_CORE_CAPABILITIES]
+      ? hosts.requiredCapabilities.filter((s): s is string => typeof s === "string")
+      : [...REQUIRED_CORE_CAPABILITIES];
     const visibility =
-      hosts?.visibility && typeof hosts.visibility === 'object'
+      hosts?.visibility && typeof hosts.visibility === "object"
         ? (hosts.visibility as Record<string, Record<string, VisibilityStatus>>)
-        : undefined
+        : undefined;
     const integrations = Object.fromEntries(
       EXTERNAL_INTEGRATIONS.flatMap((name) => {
-        const raw = rawIntegrations?.[name]
-        if (raw === null || typeof raw !== 'object') return []
-        const record = raw as { enabled?: unknown; scope?: unknown }
-        if (record.enabled !== true) return []
+        const raw = rawIntegrations?.[name];
+        if (raw === null || typeof raw !== "object") return [];
+        const record = raw as { enabled?: unknown; scope?: unknown };
+        if (record.enabled !== true) return [];
         const scope =
-          (name === 'omx' || name === 'omc') &&
-          (record.scope === 'user' || record.scope === 'project')
+          (name === "omx" || name === "omc") &&
+          (record.scope === "user" || record.scope === "project")
             ? record.scope
-            : undefined
-        return [[name, { enabled: true as const, ...(scope ? { scope } : {}) }]]
+            : undefined;
+        return [[name, { enabled: true as const, ...(scope ? { scope } : {}) }]];
       }),
-    ) as NonNullable<AgentkitConfig['integrations']>
+    ) as NonNullable<AgentkitConfig["integrations"]>;
     return {
-      version: typeof parsed.version === 'string' ? parsed.version : CONFIG_VERSION,
-      installed: { tier3Skills: tier3.filter((s): s is string => typeof s === 'string') },
+      version: typeof parsed.version === "string" ? parsed.version : CONFIG_VERSION,
+      installed: { tier3Skills: tier3.filter((s): s is string => typeof s === "string") },
       ...(Object.keys(integrations).length > 0 ? { integrations } : {}),
       hosts: {
         selected: selectedHosts,
@@ -205,55 +206,55 @@ function parseConfigFile(path: string): AgentkitConfig | null {
       ...(normalizedAudit ? { audit: normalizedAudit } : {}),
       ...(normalizedMcp ? { mcp: normalizedMcp } : {}),
       ...(normalizedGuard ? { guard: normalizedGuard } : {}),
-      rules: { overrides: overrides.filter((s): s is string => typeof s === 'string') },
+      rules: { overrides: overrides.filter((s): s is string => typeof s === "string") },
       scripts: {
-        'setup-agent': readOptionalString(scripts?.['setup-agent']),
+        "setup-agent": readOptionalString(scripts?.["setup-agent"]),
       },
       ...(normalizedSetup ? { setup: normalizedSetup } : {}),
       ...(normalizedGeneratedCleanup ? { generatedCleanup: normalizedGeneratedCleanup } : {}),
       durablePlanningRoot: durablePlanningRoot ?? DEFAULT_DURABLE_PLANNING_ROOT,
       ...(blueprintsDir ? { blueprintsDir } : {}),
       lastInit: readOptionalString(parsed.lastInit),
-    }
+    };
   } catch {
-    return null
+    return null;
   }
 }
 
 export function readConfig(repoRoot: string): AgentkitConfig | null {
-  const configPath = join(repoRoot, CONFIG_FILENAME)
-  if (existsSync(configPath)) return parseConfigFile(configPath)
+  const configPath = join(repoRoot, CONFIG_FILENAME);
+  if (existsSync(configPath)) return parseConfigFile(configPath);
 
-  const legacyConfigPath = join(repoRoot, LEGACY_CONFIG_FILENAME)
-  if (existsSync(legacyConfigPath)) return parseConfigFile(legacyConfigPath)
+  const legacyConfigPath = join(repoRoot, LEGACY_CONFIG_FILENAME);
+  if (existsSync(legacyConfigPath)) return parseConfigFile(legacyConfigPath);
 
-  return null
+  return null;
 }
 
 export function mergeConfig(
   existing: AgentkitConfig | null,
   incoming: AgentkitConfig,
 ): AgentkitConfig {
-  if (!existing) return incoming
+  if (!existing) return incoming;
   const tier3 = Array.from(
     new Set([...existing.installed.tier3Skills, ...incoming.installed.tier3Skills]),
-  ).toSorted()
+  ).toSorted();
   const overrides = Array.from(
     new Set([...existing.rules.overrides, ...incoming.rules.overrides]),
-  ).toSorted()
+  ).toSorted();
   const mergedMcp =
     existing.mcp || incoming.mcp
       ? {
           ...existing.mcp,
           ...incoming.mcp,
         }
-      : undefined
+      : undefined;
   const mergedAllowDependencies = Array.from(
     new Set([
       ...(existing.audit?.toolchainIsolation?.allowDependencies ?? []),
       ...(incoming.audit?.toolchainIsolation?.allowDependencies ?? []),
     ]),
-  ).toSorted()
+  ).toSorted();
   const mergedAudit =
     mergedAllowDependencies.length > 0
       ? {
@@ -261,11 +262,11 @@ export function mergeConfig(
             allowDependencies: mergedAllowDependencies,
           },
         }
-      : undefined
+      : undefined;
   const mergedScriptRoutes =
     existing.guard?.scriptRoutes || incoming.guard?.scriptRoutes
       ? { ...existing.guard?.scriptRoutes, ...incoming.guard?.scriptRoutes }
-      : undefined
+      : undefined;
   const mergedGuard =
     existing.guard || incoming.guard
       ? {
@@ -273,22 +274,22 @@ export function mergeConfig(
           ...incoming.guard,
           ...(mergedScriptRoutes ? { scriptRoutes: mergedScriptRoutes } : {}),
         }
-      : undefined
+      : undefined;
   const mergedGeneratedCleanupPaths = Array.from(
     new Set([
       ...(existing.generatedCleanup?.removePaths ?? []),
       ...(incoming.generatedCleanup?.removePaths ?? []),
     ]),
-  ).toSorted()
+  ).toSorted();
   const mergedGeneratedCleanup =
     mergedGeneratedCleanupPaths.length > 0
       ? { removePaths: mergedGeneratedCleanupPaths }
-      : undefined
+      : undefined;
   const mergedPreservePaths = Array.from(
     new Set([...(existing.setup?.preservePaths ?? []), ...(incoming.setup?.preservePaths ?? [])]),
-  ).toSorted()
+  ).toSorted();
   const mergedSetup =
-    mergedPreservePaths.length > 0 ? { preservePaths: mergedPreservePaths } : undefined
+    mergedPreservePaths.length > 0 ? { preservePaths: mergedPreservePaths } : undefined;
   return {
     version: incoming.version,
     installed: { tier3Skills: tier3 },
@@ -303,18 +304,18 @@ export function mergeConfig(
     ...(mergedGuard ? { guard: mergedGuard } : {}),
     rules: { overrides },
     scripts: {
-      'setup-agent': incoming.scripts['setup-agent'] ?? existing.scripts['setup-agent'],
+      "setup-agent": incoming.scripts["setup-agent"] ?? existing.scripts["setup-agent"],
     },
     ...(mergedSetup ? { setup: mergedSetup } : {}),
     ...(mergedGeneratedCleanup ? { generatedCleanup: mergedGeneratedCleanup } : {}),
     durablePlanningRoot: incoming.durablePlanningRoot || existing.durablePlanningRoot,
     blueprintsDir: incoming.blueprintsDir ?? existing.blueprintsDir,
     lastInit: incoming.lastInit ?? existing.lastInit,
-  }
+  };
 }
 
 export function writeConfig(repoRoot: string, config: AgentkitConfig): void {
-  const path = join(repoRoot, CONFIG_FILENAME)
-  const payload = `${JSON.stringify(config, null, 2)}\n`
-  writeFileSync(path, payload)
+  const path = join(repoRoot, CONFIG_FILENAME);
+  const payload = `${JSON.stringify(config, null, 2)}\n`;
+  writeFileSync(path, payload);
 }

@@ -1,12 +1,12 @@
-const BLUEPRINTS_ROOT = 'webpresso/blueprints'
-const TECH_DEBT_ROOT = 'webpresso/tech-debt'
+const BLUEPRINTS_ROOT = "webpresso/blueprints";
+const TECH_DEBT_ROOT = "webpresso/tech-debt";
 
 function normalizePlanningPath(filePath: string): string {
-  return filePath.replace(/\\/g, '/').replace(/^\//, '')
+  return filePath.replace(/\\/g, "/").replace(/^\//, "");
 }
 
 export function getNonCanonicalPlanningPathViolation(filePath: string): string | null {
-  const normalized = normalizePlanningPath(filePath)
+  const normalized = normalizePlanningPath(filePath);
 
   if (
     normalized === BLUEPRINTS_ROOT ||
@@ -14,26 +14,26 @@ export function getNonCanonicalPlanningPathViolation(filePath: string): string |
     normalized === TECH_DEBT_ROOT ||
     normalized.startsWith(`${TECH_DEBT_ROOT}/`)
   ) {
-    return null
+    return null;
   }
 
-  if (!normalized.endsWith('.md')) {
-    return null
+  if (!normalized.endsWith(".md")) {
+    return null;
   }
 
-  const parts = normalized.split('/')
+  const parts = normalized.split("/");
   if (parts.length < 2) {
-    return null
+    return null;
   }
 
-  const secondSegment = parts[1]
+  const secondSegment = parts[1];
   if (
-    secondSegment === 'blueprints' ||
-    secondSegment === 'tech-debt' ||
-    secondSegment === 'plan-history'
+    secondSegment === "blueprints" ||
+    secondSegment === "tech-debt" ||
+    secondSegment === "plan-history"
   ) {
-    return `Planning markdown must live under ${BLUEPRINTS_ROOT}/ or ${TECH_DEBT_ROOT}/. Got: ${normalized}`
+    return `Planning markdown must live under ${BLUEPRINTS_ROOT}/ or ${TECH_DEBT_ROOT}/. Got: ${normalized}`;
   }
 
-  return null
+  return null;
 }

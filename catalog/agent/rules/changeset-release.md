@@ -6,14 +6,14 @@ status: active
 scope: repo
 applies_to: [agents]
 related: []
-created: '2026-05-07'
-last_reviewed: '2026-05-28'
-paths: 
-  - '.changeset/**'
-  - '.github/workflows/*.yml'
-  - 'package.json'
-  - 'CHANGELOG.md'
-  - 'src/**'
+created: "2026-05-07"
+last_reviewed: "2026-05-28"
+paths:
+  - ".changeset/**"
+  - ".github/workflows/*.yml"
+  - "package.json"
+  - "CHANGELOG.md"
+  - "src/**"
 ---
 
 # Changesets Release Workflow
@@ -73,6 +73,7 @@ When a feature branch with a `.changeset/<slug>.md` file merges to `main`,
    changesets version-PR working tree.
 
 The workflow supports a manual dry-run trigger:
+
 ```bash
 gh workflow run release.yml -f dry-run=true
 ```
@@ -187,6 +188,7 @@ invokes `npm publish --provenance --access public`.
 ## Required repo files
 
 This repository must have:
+
 ```
 .npmrc               # public npm registry defaults only; no GitHub Packages remap
 .changeset/config.json   # baseBranch: "main"
@@ -199,6 +201,7 @@ unavailable in CI.
 ## Changeset config
 
 `.changeset/config.json` in each repo:
+
 - `baseBranch: "main"`.
 - `updateInternalDependencies: "patch"`.
 

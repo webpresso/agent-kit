@@ -39,25 +39,25 @@
  * local tag + branch already exist — clean them up before retrying.
  */
 
-import { spawnSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 export interface ReleaseCliRuntime {
-  readonly cwd?: string
-  readonly env?: NodeJS.ProcessEnv
-  readonly stdout?: Pick<NodeJS.WriteStream, 'write'>
-  readonly stderr?: Pick<NodeJS.WriteStream, 'write'>
+  readonly cwd?: string;
+  readonly env?: NodeJS.ProcessEnv;
+  readonly stdout?: Pick<NodeJS.WriteStream, "write">;
+  readonly stderr?: Pick<NodeJS.WriteStream, "write">;
 }
 
 function parseFlags(rawArgs: readonly string[]) {
-  const flags = new Set(rawArgs)
+  const flags = new Set(rawArgs);
   // Default: dry-run. Caller must pass --no-dry-run to actually push.
-  let dryRun = true
-  if (flags.has('--no-dry-run')) dryRun = false
-  if (flags.has('--dry-run')) dryRun = true
-  return { dryRun }
+  let dryRun = true;
+  if (flags.has("--no-dry-run")) dryRun = false;
+  if (flags.has("--dry-run")) dryRun = true;
+  return { dryRun };
 }
 
 /**
@@ -68,11 +68,11 @@ function run(cmd, args, repoRoot, env, opts = {}) {
   const result = spawnSync(cmd, args, {
     cwd: repoRoot,
     env,
-    stdio: 'inherit',
+    stdio: "inherit",
     ...opts,
-  })
+  });
   if (result.status !== 0) {
-    throw new Error(`${cmd} ${args.join(' ')} exited with status ${result.status ?? 'null'}`)
+    throw new Error(`${cmd} ${args.join(" ")} exited with status ${result.status ?? "null"}`);
   }
 }
 
@@ -84,117 +84,117 @@ function capture(cmd, args, repoRoot, env) {
   const result = spawnSync(cmd, args, {
     cwd: repoRoot,
     env,
-    encoding: 'utf8',
-  })
+    encoding: "utf8",
+  });
   if (result.status !== 0) {
-    throw new Error(`${cmd} ${args.join(' ')} failed: ${result.stderr ?? ''}`)
+    throw new Error(`${cmd} ${args.join(" ")} failed: ${result.stderr ?? ""}`);
   }
-  return (result.stdout ?? '').toString().trim()
+  return (result.stdout ?? "").toString().trim();
 }
 
 function assertCleanWorkingTree(repoRoot, env, fail) {
-  const unstaged = spawnSync('git', ['diff', '--quiet'], { cwd: repoRoot, env })
-  const staged = spawnSync('git', ['diff', '--cached', '--quiet'], { cwd: repoRoot, env })
+  const unstaged = spawnSync("git", ["diff", "--quiet"], { cwd: repoRoot, env });
+  const staged = spawnSync("git", ["diff", "--cached", "--quiet"], { cwd: repoRoot, env });
   if (unstaged.status !== 0 || staged.status !== 0) {
     fail(
-      'working tree is not clean. Commit, stash, or discard your changes before releasing.\n' +
-        '       (run `git status` to see what is dirty.)',
-    )
+      "working tree is not clean. Commit, stash, or discard your changes before releasing.\n" +
+        "       (run `git status` to see what is dirty.)",
+    );
   }
 }
 
 function readPackageVersion(repoRoot, fail) {
-  const pkgPath = resolve(repoRoot, 'package.json')
-  let raw
+  const pkgPath = resolve(repoRoot, "package.json");
+  let raw;
   try {
-    raw = readFileSync(pkgPath, 'utf8')
+    raw = readFileSync(pkgPath, "utf8");
   } catch (err) {
-    fail(`could not read package.json at ${pkgPath}: ${err.message}`)
+    fail(`could not read package.json at ${pkgPath}: ${err.message}`);
   }
-  const pkg = JSON.parse(raw)
-  if (typeof pkg.version !== 'string' || pkg.version.length === 0) {
-    fail('package.json#version is missing or not a string')
+  const pkg = JSON.parse(raw);
+  if (typeof pkg.version !== "string" || pkg.version.length === 0) {
+    fail("package.json#version is missing or not a string");
   }
-  return pkg.version
+  return pkg.version;
 }
 
 export function runReleaseCli(
   rawArgs: readonly string[] = process.argv.slice(2),
   runtime: ReleaseCliRuntime = {},
 ): number {
-  const repoRoot = runtime.cwd ?? process.cwd()
-  const env = runtime.env ?? process.env
-  const stdout = runtime.stdout ?? process.stdout
-  const stderr = runtime.stderr ?? process.stderr
+  const repoRoot = runtime.cwd ?? process.cwd();
+  const env = runtime.env ?? process.env;
+  const stdout = runtime.stdout ?? process.stdout;
+  const stderr = runtime.stderr ?? process.stderr;
   const log = (line) => {
-    stdout.write(`${line}\n`)
-  }
+    stdout.write(`${line}\n`);
+  };
   const fail = (line) => {
-    throw new Error(line)
-  }
-  const { dryRun } = parseFlags(rawArgs)
+    throw new Error(line);
+  };
+  const { dryRun } = parseFlags(rawArgs);
 
   try {
-    log(`[release] mode: ${dryRun ? 'dry-run (default)' : 'LIVE — will push to origin'}`)
+    log(`[release] mode: ${dryRun ? "dry-run (default)" : "LIVE — will push to origin"}`);
 
     // 1. Clean tree check.
-    log('[release] step 1/8: verifying clean working tree')
-    assertCleanWorkingTree(repoRoot, env, fail)
+    log("[release] step 1/8: verifying clean working tree");
+    assertCleanWorkingTree(repoRoot, env, fail);
 
     // Capture original branch so we can restore at the end.
     const [originalBranch, publishedCommit] = capture(
-      'git',
-      ['rev-parse', '--abbrev-ref', 'HEAD', 'HEAD'],
+      "git",
+      ["rev-parse", "--abbrev-ref", "HEAD", "HEAD"],
       repoRoot,
       env,
-    ).split('\n')
-    if (!originalBranch || !publishedCommit) fail('could not resolve current branch and HEAD')
-    log(`[release] original branch: ${originalBranch}`)
+    ).split("\n");
+    if (!originalBranch || !publishedCommit) fail("could not resolve current branch and HEAD");
+    log(`[release] original branch: ${originalBranch}`);
 
     // 2. Build.
-    log('[release] step 2/8: pnpm build')
+    log("[release] step 2/8: pnpm build");
     try {
-      run('pnpm', ['build'], repoRoot, env)
+      run("pnpm", ["build"], repoRoot, env);
     } catch (err) {
-      fail(`pnpm build failed: ${err.message}`)
+      fail(`pnpm build failed: ${err.message}`);
     }
 
     // 3. Read version + capture the mainline commit that should own the tag.
-    const version = readPackageVersion(repoRoot, fail)
-    const tag = `v${version}`
-    const releaseBranch = `release/${tag}`
-    log(`[release] step 3/8: version is ${version} → tag ${tag}, branch ${releaseBranch}`)
+    const version = readPackageVersion(repoRoot, fail);
+    const tag = `v${version}`;
+    const releaseBranch = `release/${tag}`;
+    log(`[release] step 3/8: version is ${version} → tag ${tag}, branch ${releaseBranch}`);
 
     // 4. Tag the published/mainline commit explicitly before branching.
-    log(`[release] step 4/8: tagging ${tag} on ${publishedCommit}`)
-    let onReleaseBranch = false
+    log(`[release] step 4/8: tagging ${tag} on ${publishedCommit}`);
+    let onReleaseBranch = false;
     try {
-      run('git', ['tag', '-a', tag, publishedCommit, '-m', tag], repoRoot, env)
+      run("git", ["tag", "-a", tag, publishedCommit, "-m", tag], repoRoot, env);
 
       // 5. Create the compatibility branch from the tagged mainline commit.
-      log(`[release] step 5/8: creating branch ${releaseBranch} from ${publishedCommit}`)
-      run('git', ['checkout', '-b', releaseBranch, publishedCommit], repoRoot, env)
-      onReleaseBranch = true
+      log(`[release] step 5/8: creating branch ${releaseBranch} from ${publishedCommit}`);
+      run("git", ["checkout", "-b", releaseBranch, publishedCommit], repoRoot, env);
+      onReleaseBranch = true;
 
       // 6. Force-add dist/.
-      log('[release] step 6/8: git add -f dist')
-      run('git', ['add', '-f', 'dist'], repoRoot, env)
+      log("[release] step 6/8: git add -f dist");
+      run("git", ["add", "-f", "dist"], repoRoot, env);
 
       // 7. Commit the compatibility dist artifacts on the branch.
-      log('[release] step 7/8: creating compatibility dist commit')
-      run('git', ['commit', '-m', `chore(release): ${tag} dist artifacts`], repoRoot, env)
+      log("[release] step 7/8: creating compatibility dist commit");
+      run("git", ["commit", "-m", `chore(release): ${tag} dist artifacts`], repoRoot, env);
 
       // 8. Push (or pretend to).
       if (dryRun) {
         log(
           `[release] step 8/8: [dry-run] would push tag ${tag} and branch ${releaseBranch} to origin`,
-        )
-        log('[release] [dry-run] no remote was contacted. Re-run with --no-dry-run to push.')
+        );
+        log("[release] [dry-run] no remote was contacted. Re-run with --no-dry-run to push.");
       } else {
-        log(`[release] step 8/8: pushing tag ${tag} to origin`)
-        run('git', ['push', 'origin', tag], repoRoot, env)
-        log(`[release] step 8/8: pushing branch ${releaseBranch} to origin`)
-        run('git', ['push', 'origin', releaseBranch], repoRoot, env)
+        log(`[release] step 8/8: pushing tag ${tag} to origin`);
+        run("git", ["push", "origin", tag], repoRoot, env);
+        log(`[release] step 8/8: pushing branch ${releaseBranch} to origin`);
+        run("git", ["push", "origin", releaseBranch], repoRoot, env);
       }
     } finally {
       // 9. Always restore the original branch so the user is not stranded
@@ -204,24 +204,24 @@ export function runReleaseCli(
           // `--force` (not used) would be needed if we'd dirtied the worktree,
           // but at this point dist/ is committed on the release branch and the
           // worktree is clean — a plain checkout works.
-          run('git', ['checkout', originalBranch], repoRoot, env)
-          log(`[release] restored original branch: ${originalBranch}`)
+          run("git", ["checkout", originalBranch], repoRoot, env);
+          log(`[release] restored original branch: ${originalBranch}`);
         } catch (err) {
           stderr.write(
             `[release] WARNING: failed to restore original branch ${originalBranch}: ${err.message}\n`,
-          )
+          );
         }
       }
     }
 
-    log('[release] done.')
-    return 0
+    log("[release] done.");
+    return 0;
   } catch (err) {
-    stderr.write(`[release] ERROR: ${err instanceof Error ? err.message : String(err)}\n`)
-    return 1
+    stderr.write(`[release] ERROR: ${err instanceof Error ? err.message : String(err)}\n`);
+    return 1;
   }
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  process.exit(runReleaseCli())
+  process.exit(runReleaseCli());
 }

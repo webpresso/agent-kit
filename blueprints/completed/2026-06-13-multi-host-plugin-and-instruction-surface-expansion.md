@@ -3,11 +3,11 @@ type: blueprint
 title: "Multi-host plugin and instruction surface expansion"
 owner: ozby
 status: completed
-completed_at: '2026-06-21'
+completed_at: "2026-06-21"
 complexity: XL
-created: '2026-06-13'
-last_updated: '2026-06-13'
-progress: '100% (completed; tasks verified during plan-refine reconciliation)'
+created: "2026-06-13"
+last_updated: "2026-06-13"
+progress: "100% (completed; tasks verified during plan-refine reconciliation)"
 depends_on:
   - 2026-06-13-session-continuity-and-resume-parity
   - 2026-06-13-sandboxed-knowledge-tool-surface-parity
@@ -49,56 +49,56 @@ one routing / lifecycle source of truth
 
 ## Refinement Findings
 
-| ID | Severity | Claim / Assumption | Reality verified in repo | Blueprint fix |
-| -- | -------- | ------------------ | ------------------------ | ------------- |
-| F1 | HIGH | Focused test commands used `--files`. | `./bin/wp test --help` exposes repeated `--file <path>`, not `--files`. | All task and gate commands use repeated `--file` flags. |
-| F2 | HIGH | Package-surface proof can rely only on `package.json#files`. | Public-package safety requires tarball/package-surface checks; repo has `package-surface.json`, `src/audit/package-surface.ts`, and `vp run lint:pkg`. | Added public package safety notes plus tarball/package-surface verification gates. |
-| F3 | HIGH | Docs updates could run in parallel across tasks. | README and hook docs are shared files; same-wave edits would conflict. | Moved public docs/hook matrix edits into one serialized docs task. |
-| F4 | MEDIUM | Cursor and plugin-style host work could both update `capability-matrix.ts`. | `src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.ts` is a shared source and has its own test. | Split matrix alignment into a dependent task after host-specific emitters. |
-| F5 | MEDIUM | Codex plugin artifacts can be added without a leak review. | `.claude-plugin/` ships today; adding a new plugin artifact directory changes public package contents. | Codex packaging task now includes denied-content and tarball file-list assertions. |
-| F6 | MEDIUM | Instruction rendering can be edited directly in multiple host tasks. | Current routing source is `src/hooks/shared/routing-block.ts`; adding a new generator needs one owner. | Added a dedicated instruction-surface task with one renderer and host fixtures. |
-| F7 | MEDIUM | OpenCode support scope is ambiguous. | Repo already has `src/cli/commands/init/scaffolders/opencode-plugin/index.ts`, `emitters/opencode.ts`, and tests. | Dedicated OpenCode boundary task pins support or explicit deferral before matrix/docs claims. |
-| F8 | LOW | Hook doctor/status can be validated by one broad task. | `src/hooks/doctor.ts` and `src/hooks/status/index.ts` have separate tests and concerns. | Split doctor and status tasks for parallel implementation and narrower tests. |
+| ID  | Severity | Claim / Assumption                                                          | Reality verified in repo                                                                                                                               | Blueprint fix                                                                                 |
+| --- | -------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| F1  | HIGH     | Focused test commands used `--files`.                                       | `./bin/wp test --help` exposes repeated `--file <path>`, not `--files`.                                                                                | All task and gate commands use repeated `--file` flags.                                       |
+| F2  | HIGH     | Package-surface proof can rely only on `package.json#files`.                | Public-package safety requires tarball/package-surface checks; repo has `package-surface.json`, `src/audit/package-surface.ts`, and `vp run lint:pkg`. | Added public package safety notes plus tarball/package-surface verification gates.            |
+| F3  | HIGH     | Docs updates could run in parallel across tasks.                            | README and hook docs are shared files; same-wave edits would conflict.                                                                                 | Moved public docs/hook matrix edits into one serialized docs task.                            |
+| F4  | MEDIUM   | Cursor and plugin-style host work could both update `capability-matrix.ts`. | `src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.ts` is a shared source and has its own test.                                          | Split matrix alignment into a dependent task after host-specific emitters.                    |
+| F5  | MEDIUM   | Codex plugin artifacts can be added without a leak review.                  | `.claude-plugin/` ships today; adding a new plugin artifact directory changes public package contents.                                                 | Codex packaging task now includes denied-content and tarball file-list assertions.            |
+| F6  | MEDIUM   | Instruction rendering can be edited directly in multiple host tasks.        | Current routing source is `src/hooks/shared/routing-block.ts`; adding a new generator needs one owner.                                                 | Added a dedicated instruction-surface task with one renderer and host fixtures.               |
+| F7  | MEDIUM   | OpenCode support scope is ambiguous.                                        | Repo already has `src/cli/commands/init/scaffolders/opencode-plugin/index.ts`, `emitters/opencode.ts`, and tests.                                      | Dedicated OpenCode boundary task pins support or explicit deferral before matrix/docs claims. |
+| F8  | LOW      | Hook doctor/status can be validated by one broad task.                      | `src/hooks/doctor.ts` and `src/hooks/status/index.ts` have separate tests and concerns.                                                                | Split doctor and status tasks for parallel implementation and narrower tests.                 |
 
 ## Key Decisions
 
-| Decision | Choice | Rationale | Finding |
-| -------- | ------ | --------- | ------- |
-| Claude hook ownership | keep hooks out of plugin manifest | Avoid double-fire and preserve current reliable setup contract | F2 |
-| Codex packaging | first-class plugin artifact + managed hook projection | Codex needs both packaging and repo-scoped hook config; package changes require tarball proof | F2, F5 |
-| Cursor support | generate valid no-op JSON + instruction artifact | Cursor rejects empty stdout and needs explicit host handling | F4 |
-| Host instructions | generate from one routing source | Avoid hand-maintained drift across `.md`, `.mdc`, and plugin docs | F6 |
-| Documentation ownership | serialize README and hook-matrix edits | Public support claims must not race implementation tasks or overclaim parity | F3 |
-| Plugin-first hosts | OpenCode is pinned by tests before public support claims; other plugin-first hosts stay deferred unless proven | Repo has OpenCode plugin scaffolding, not a unscoped plugin framework abstraction | F7 |
+| Decision                | Choice                                                                                                         | Rationale                                                                                     | Finding |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------- |
+| Claude hook ownership   | keep hooks out of plugin manifest                                                                              | Avoid double-fire and preserve current reliable setup contract                                | F2      |
+| Codex packaging         | first-class plugin artifact + managed hook projection                                                          | Codex needs both packaging and repo-scoped hook config; package changes require tarball proof | F2, F5  |
+| Cursor support          | generate valid no-op JSON + instruction artifact                                                               | Cursor rejects empty stdout and needs explicit host handling                                  | F4      |
+| Host instructions       | generate from one routing source                                                                               | Avoid hand-maintained drift across `.md`, `.mdc`, and plugin docs                             | F6      |
+| Documentation ownership | serialize README and hook-matrix edits                                                                         | Public support claims must not race implementation tasks or overclaim parity                  | F3      |
+| Plugin-first hosts      | OpenCode is pinned by tests before public support claims; other plugin-first hosts stay deferred unless proven | Repo has OpenCode plugin scaffolding, not a unscoped plugin framework abstraction             | F7      |
 
 ## Technology Choices and Public-Package Safety Notes
 
-| Surface | Choice | Safety / Support Notes | Verification |
-| ------- | ------ | ---------------------------- | ------------ |
-| Codex plugin directory | Add `.codex-plugin/` only if package tests prove all files are intentional | Update `package.json#files`; keep generated/runtime agent state out of the tarball; do not ship secrets, local paths, private repo names, sourcemaps, or generated workspace state | `./bin/wp test --file src/build/package-manifest.test.ts`, `./bin/wp audit package-surface`, `vp run lint:pkg` |
-| Claude plugin | Preserve `.claude-plugin/` package ownership and keep hooks setup-managed | Do not add Claude hook commands to the plugin manifest; README warning remains aligned with tests | `./bin/wp test --file src/cli/commands/init/scaffolders/claude-plugin/index.test.ts` if touched by implementers |
-| Cursor hooks | Keep `version: 1`; map only supported lifecycle events; emit host-valid no-op JSON where hooks produce no action | Unsupported lifecycle paths must be matrix/docs rows, not hidden behavior | `./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/emitters/cursor.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts` |
-| OpenCode plugin bridge | Use existing `.opencode/plugins/webpresso-hooks.js` scaffolder and emitter; do not invent a generic host framework | Public docs must distinguish first-class, partial, and deferred support | `./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/emitters/opencode.test.ts --file src/cli/commands/init/scaffolders/opencode-plugin/index.test.ts` |
-| Shared instruction renderer | New renderer under `src/hooks/shared/` with fixtures per host | Keep output deterministic; avoid speculative host adapters without a current caller | `./bin/wp test --file src/hooks/shared/instruction-surfaces.test.ts` |
+| Surface                     | Choice                                                                                                             | Safety / Support Notes                                                                                                                                                             | Verification                                                                                                                                                                |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Codex plugin directory      | Add `.codex-plugin/` only if package tests prove all files are intentional                                         | Update `package.json#files`; keep generated/runtime agent state out of the tarball; do not ship secrets, local paths, private repo names, sourcemaps, or generated workspace state | `./bin/wp test --file src/build/package-manifest.test.ts`, `./bin/wp audit package-surface`, `vp run lint:pkg`                                                              |
+| Claude plugin               | Preserve `.claude-plugin/` package ownership and keep hooks setup-managed                                          | Do not add Claude hook commands to the plugin manifest; README warning remains aligned with tests                                                                                  | `./bin/wp test --file src/cli/commands/init/scaffolders/claude-plugin/index.test.ts` if touched by implementers                                                             |
+| Cursor hooks                | Keep `version: 1`; map only supported lifecycle events; emit host-valid no-op JSON where hooks produce no action   | Unsupported lifecycle paths must be matrix/docs rows, not hidden behavior                                                                                                          | `./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/emitters/cursor.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts` |
+| OpenCode plugin bridge      | Use existing `.opencode/plugins/webpresso-hooks.js` scaffolder and emitter; do not invent a generic host framework | Public docs must distinguish first-class, partial, and deferred support                                                                                                            | `./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/emitters/opencode.test.ts --file src/cli/commands/init/scaffolders/opencode-plugin/index.test.ts`       |
+| Shared instruction renderer | New renderer under `src/hooks/shared/` with fixtures per host                                                      | Keep output deterministic; avoid speculative host adapters without a current caller                                                                                                | `./bin/wp test --file src/hooks/shared/instruction-surfaces.test.ts`                                                                                                        |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
-| ---- | ----- | ------------ | -------------- | ---------------- |
-| **Wave 0** | 2.1, 2.2, 3.1, 3.2 | None | 4 agents | S-M |
-| **Wave 1** | 1.1, 1.2 | Required reference-interface artifacts landed and stable | 2 agents | S-M |
-| **Wave 2** | 2.3, 4.1 | Wave 0 plus whichever of Tasks 1.1/1.2 they consume | 2 agents | S-M |
-| **Wave 3** | 4.2 | Wave 1 + Wave 2 package/docs facts | 1 agent | M |
-| **Critical path** | 1.2 → 2.3 → 4.2 | -- | 4 waves | XL |
+| Wave              | Tasks              | Dependencies                                             | Parallelizable | Effort (T-shirt) |
+| ----------------- | ------------------ | -------------------------------------------------------- | -------------- | ---------------- |
+| **Wave 0**        | 2.1, 2.2, 3.1, 3.2 | None                                                     | 4 agents       | S-M              |
+| **Wave 1**        | 1.1, 1.2           | Required reference-interface artifacts landed and stable | 2 agents       | S-M              |
+| **Wave 2**        | 2.3, 4.1           | Wave 0 plus whichever of Tasks 1.1/1.2 they consume      | 2 agents       | S-M              |
+| **Wave 3**        | 4.2                | Wave 1 + Wave 2 package/docs facts                       | 1 agent        | M                |
+| **Critical path** | 1.2 → 2.3 → 4.2    | --                                                       | 4 waves        | XL               |
 
 ### Parallel Metrics Snapshot
 
-| Metric | Formula / Meaning | Target | Actual |
-| ------ | ----------------- | ------ | ------ |
-| RW0 | Ready tasks in Wave 0 | ≥ planned agents / 2 | 4 |
-| CPR | total_tasks / critical_path_length | ≥ 2.5 | 9 / 4 = 2.25 |
-| DD | dependency_edges / total_tasks | ≤ 2.0 | 9 / 9 = 1.0 |
-| CP | same-file overlaps per wave | 0 | 0 |
+| Metric | Formula / Meaning                  | Target               | Actual       |
+| ------ | ---------------------------------- | -------------------- | ------------ |
+| RW0    | Ready tasks in Wave 0              | ≥ planned agents / 2 | 4            |
+| CPR    | total_tasks / critical_path_length | ≥ 2.5                | 9 / 4 = 2.25 |
+| DD     | dependency_edges / total_tasks     | ≤ 2.0                | 9 / 9 = 1.0  |
+| CP     | same-file overlaps per wave        | 0                    | 0            |
 
 **Parallelization score:** B. Refinement delta: split shared docs, capability-matrix, doctor, and status work out of broad mixed tasks so same-wave file conflicts are zero, but only four tasks are truly ready before reference-interface artifacts land.
 
@@ -146,6 +146,7 @@ plugin files. (F2, F5)
 - [x] `package.json#files` contains only intentional public package additions.
 - [x] Existing Claude plugin packaging remains unchanged.
 - [x] Release/publish readiness is blocked on package-surface safety, not left as a manual follow-up.
+
 #### [instructions] Task 1.2: Generate host-specific instruction artifacts from one routing source
 
 **Status:** done
@@ -187,6 +188,7 @@ minimal host renderers instead of shipping a speculative shared layer. (F6)
 - [x] Host-specific naming, lifecycle, and no-op-output differences are explicit and tested.
 - [x] The renderer lands with current callers/tests and no unused abstraction layer.
 - [x] If a shared renderer cannot stay simpler than per-host renderers, the task stops and narrows scope instead of forcing the abstraction.
+
 ### Phase 2: host-support emitters and matrix [Complexity: L]
 
 #### [cursor] Task 2.1: Harden Cursor projection around host quirks and degraded lifecycle support
@@ -227,6 +229,7 @@ shared matrix and public docs updates to dependent tasks to avoid file conflicts
 - [x] Cursor projection emits only host-valid config and response assumptions.
 - [x] Cursor no-op handling cannot produce empty stdout where the host expects structured output.
 - [x] Unsupported Cursor lifecycle events are omitted or downgraded intentionally, not accidentally emitted.
+
 #### [opencode] Task 2.2: Pin plugin-style host bridge support boundaries
 
 **Status:** done
@@ -265,6 +268,7 @@ README claims out of this task. (F7)
 - [x] Plugin-style host support boundaries are explicit in tests.
 - [x] Existing OpenCode scaffolder path remains generated and refreshable by setup.
 - [x] Unsupported lifecycle paths are not silently implied as supported.
+
 #### [matrix] Task 2.3: Align the capability matrix after host-specific emitter decisions
 
 **Status:** done
@@ -300,6 +304,7 @@ by doctor/status/docs. (F3, F4, F6, F7)
 - [x] Capability matrix rows match the emitted host behavior.
 - [x] Full, partial, unmapped, and unsupported claims are test-covered.
 - [x] Matrix wording is ready for doctor/status/docs without public overclaiming.
+
 ### Phase 3: operator flows [Complexity: L]
 
 #### [doctor] Task 3.1: Teach hook doctor about packaged host artifacts and ownership rules
@@ -337,6 +342,7 @@ and tests only; public documentation is serialized in Task 4.2. (F8)
 - [x] Doctor understands packaged host artifacts and managed hook ownership rules.
 - [x] Repair suggestions are concrete, bounded, and host-specific.
 - [x] Doctor reports host-specific lifecycle depth without flattening degraded hosts.
+
 #### [status] Task 3.2: Teach hook status about host artifacts and degraded modes
 
 **Status:** done
@@ -372,6 +378,7 @@ serialized in Task 4.2. (F8)
 - [x] Status reports packaged artifacts separately from active hook installation.
 - [x] Partial/deferred host states are visible and not treated as failures unless the host is configured as required.
 - [x] Status output stays summary-first and bounded.
+
 ### Phase 4: setup integration, docs, and final package proof [Complexity: M]
 
 #### [setup] Task 4.1: Wire setup visibility for Codex artifacts and plugin-style host surfaces
@@ -411,6 +418,7 @@ knowledge. Keep public README/hook docs out of this task. (F2, F5, F7)
 - [x] Setup/init output names the new host artifact surfaces and ownership boundaries.
 - [x] Generated files remain generated-whole-file where appropriate and consumer-owned files are preserved.
 - [x] Host support visibility agrees with doctor/status behavior.
+
 #### [docs-qa] Task 4.2: Lock public docs, hook matrix, and release/package proof
 
 **Status:** done
@@ -453,36 +461,36 @@ docs are shared public surfaces. (F2, F3, F5)
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-| ---- | ------- | ---------------- |
-| Type safety | `./bin/wp typecheck` | Zero errors |
-| Lint | `./bin/wp lint --file src/hooks --file src/cli/commands/init/scaffolders/agent-hooks --file src/cli/commands/init` | Zero violations |
-| Focused tests | `./bin/wp test --file src/build/package-manifest.test.ts --file src/hooks/shared/instruction-surfaces.test.ts --file src/hooks/doctor.test.ts --file src/hooks/status/index.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/emitters/cursor.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/emitters/opencode.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file src/cli/commands/init/index.test.ts` | All pass |
-| Package surface | `./bin/wp audit package-surface` | Pass; denied content and unintended public files absent |
-| Tarball/package lint | `vp run lint:pkg` | `publint`, `attw --pack .`, and available plugin validation pass |
-| Hook health | `./bin/wp hooks doctor --skip-mcp` | Reports consistent host surfaces without hanging on MCP checks |
-| Blueprint lifecycle | `./bin/wp audit blueprint-lifecycle` | Blueprint remains lifecycle-valid |
+| Gate                 | Command                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Success Criteria                                                 |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Type safety          | `./bin/wp typecheck`                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Zero errors                                                      |
+| Lint                 | `./bin/wp lint --file src/hooks --file src/cli/commands/init/scaffolders/agent-hooks --file src/cli/commands/init`                                                                                                                                                                                                                                                                                                                                                         | Zero violations                                                  |
+| Focused tests        | `./bin/wp test --file src/build/package-manifest.test.ts --file src/hooks/shared/instruction-surfaces.test.ts --file src/hooks/doctor.test.ts --file src/hooks/status/index.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/emitters/cursor.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/emitters/opencode.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file src/cli/commands/init/index.test.ts` | All pass                                                         |
+| Package surface      | `./bin/wp audit package-surface`                                                                                                                                                                                                                                                                                                                                                                                                                                           | Pass; denied content and unintended public files absent          |
+| Tarball/package lint | `vp run lint:pkg`                                                                                                                                                                                                                                                                                                                                                                                                                                                          | `publint`, `attw --pack .`, and available plugin validation pass |
+| Hook health          | `./bin/wp hooks doctor --skip-mcp`                                                                                                                                                                                                                                                                                                                                                                                                                                         | Reports consistent host surfaces without hanging on MCP checks   |
+| Blueprint lifecycle  | `./bin/wp audit blueprint-lifecycle`                                                                                                                                                                                                                                                                                                                                                                                                                                       | Blueprint remains lifecycle-valid                                |
 
 ## Cross-Plan References
 
-| Type | Blueprint | Relationship | Alignment note |
-| ---- | --------- | ------------ | -------------- |
-| Dependency | `2026-06-13-session-continuity-and-resume-parity` | Host packaging depends on stable lifecycle behavior | Task 1.2 depends on continuity Task 2.2 for resume/instruction semantics; host emitters must reflect degraded lifecycle depth rather than force parity. |
-| Dependency | `2026-06-13-sandboxed-knowledge-tool-surface-parity` | Host install surfaces must expose the completed tool set | Task 1.1 depends on knowledge Task 3.1 before public Codex artifacts claim complete tool availability. |
-| Downstream | `2026-06-13-reference-parity-regression-and-host-smoke-gate` | Host-smoke verification consumes these artifacts | That blueprint may need its smoke fixtures updated after this blueprint finalizes exact Codex/OpenCode artifact paths. |
+| Type       | Blueprint                                                    | Relationship                                             | Alignment note                                                                                                                                          |
+| ---------- | ------------------------------------------------------------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dependency | `2026-06-13-session-continuity-and-resume-parity`            | Host packaging depends on stable lifecycle behavior      | Task 1.2 depends on continuity Task 2.2 for resume/instruction semantics; host emitters must reflect degraded lifecycle depth rather than force parity. |
+| Dependency | `2026-06-13-sandboxed-knowledge-tool-surface-parity`         | Host install surfaces must expose the completed tool set | Task 1.1 depends on knowledge Task 3.1 before public Codex artifacts claim complete tool availability.                                                  |
+| Downstream | `2026-06-13-reference-parity-regression-and-host-smoke-gate` | Host-smoke verification consumes these artifacts         | That blueprint may need its smoke fixtures updated after this blueprint finalizes exact Codex/OpenCode artifact paths.                                  |
 
 ## Edge Cases and Error Handling
 
-| Edge Case | Risk | Solution | Task | Finding |
-| --------- | ---- | -------- | ---- | ------- |
-| Claude double-fire via plugin + settings hooks | Broken guard behavior | Keep hook ownership in setup-managed files only; plugin manifest remains non-hook-owning | 1.1, 4.2 | F2 |
-| Cursor empty stdout rejection | Hook failure on no-op | Emit valid structured no-op output for Cursor hooks and test the behavior | 2.1 | F4 |
-| Codex trust/install drift | Installed hooks not actually active | Extend setup, doctor, status, and docs with explicit trust/install paths and repair hints | 1.1, 3.1, 3.2, 4.1, 4.2 | F2, F5 |
-| Public package leaks through plugin artifacts | Secrets/local paths/private notes ship to npm | Add package-manifest assertions, package-surface audit updates, and tarball lint gate | 1.1, 4.2 | F2, F5 |
-| Same-wave doc edits collide | Parallel execution overwrites README or hook matrix updates | Serialize all public docs and hook-matrix edits in Task 4.2 | 4.2 | F3 |
-| Matrix claims diverge from emitters | Doctor/status/docs overclaim host support | Matrix task depends on host emitter decisions and owns matrix tests | 2.3 | F4, F7 |
-| Generic plugin-host abstraction expands scope | Unused framework increases maintenance and public API risk | Pin OpenCode explicitly; defer other plugin-first hosts unless a current test requires them | 2.2, 4.2 | F7 |
-| Reference interface freeze slips | Wave 0 assumptions collapse and critical path stretches | Only start Tasks 1.1 and 1.2 after reference-interface artifacts are landed and stable; keep Wave 0 claims limited to truly local tasks | 1.1, 1.2 | F2, F6, F7 |
+| Edge Case                                      | Risk                                                        | Solution                                                                                                                                | Task                    | Finding    |
+| ---------------------------------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ---------- |
+| Claude double-fire via plugin + settings hooks | Broken guard behavior                                       | Keep hook ownership in setup-managed files only; plugin manifest remains non-hook-owning                                                | 1.1, 4.2                | F2         |
+| Cursor empty stdout rejection                  | Hook failure on no-op                                       | Emit valid structured no-op output for Cursor hooks and test the behavior                                                               | 2.1                     | F4         |
+| Codex trust/install drift                      | Installed hooks not actually active                         | Extend setup, doctor, status, and docs with explicit trust/install paths and repair hints                                               | 1.1, 3.1, 3.2, 4.1, 4.2 | F2, F5     |
+| Public package leaks through plugin artifacts  | Secrets/local paths/private notes ship to npm               | Add package-manifest assertions, package-surface audit updates, and tarball lint gate                                                   | 1.1, 4.2                | F2, F5     |
+| Same-wave doc edits collide                    | Parallel execution overwrites README or hook matrix updates | Serialize all public docs and hook-matrix edits in Task 4.2                                                                             | 4.2                     | F3         |
+| Matrix claims diverge from emitters            | Doctor/status/docs overclaim host support                   | Matrix task depends on host emitter decisions and owns matrix tests                                                                     | 2.3                     | F4, F7     |
+| Generic plugin-host abstraction expands scope  | Unused framework increases maintenance and public API risk  | Pin OpenCode explicitly; defer other plugin-first hosts unless a current test requires them                                             | 2.2, 4.2                | F7         |
+| Reference interface freeze slips               | Wave 0 assumptions collapse and critical path stretches     | Only start Tasks 1.1 and 1.2 after reference-interface artifacts are landed and stable; keep Wave 0 claims limited to truly local tasks | 1.1, 1.2                | F2, F6, F7 |
 
 ## Non-goals
 
@@ -494,32 +502,32 @@ docs are shared public surfaces. (F2, F3, F5)
 
 ## Risks
 
-| Risk | Impact | Mitigation | Owner Task | Finding |
-| ---- | ------ | ---------- | ---------- | ------- |
-| Packaging drift across hosts | Broken installs or plugin assets missing from npm package | Package-manifest tests, package-surface audit, and tarball lint for each required host artifact | 1.1, 4.2 | F2, F5 |
-| Docs overclaim host parity | User confusion and false replacement claims | Public docs depend on matrix + doctor/status tests and explicitly distinguish full/partial/deferred support | 2.3, 4.2 | F3, F4 |
-| Shared instruction generator becomes too abstract | Hard-to-maintain routing layer | Keep one renderer with concrete host fixtures and no unused adapters | 1.2 | F6 |
-| Cursor/OpenCode reference support changes | Generated config becomes invalid | Keep host behavior isolated in emitter tests and matrix rows for fast updates | 2.1, 2.2, 2.3 | F4, F7 |
-| Setup, doctor, and status disagree | Operators cannot repair installs reliably | Separate tests for each surface plus docs task that cites tested behavior | 3.1, 3.2, 4.1, 4.2 | F8 |
+| Risk                                              | Impact                                                    | Mitigation                                                                                                  | Owner Task         | Finding |
+| ------------------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------ | ------- |
+| Packaging drift across hosts                      | Broken installs or plugin assets missing from npm package | Package-manifest tests, package-surface audit, and tarball lint for each required host artifact             | 1.1, 4.2           | F2, F5  |
+| Docs overclaim host parity                        | User confusion and false replacement claims               | Public docs depend on matrix + doctor/status tests and explicitly distinguish full/partial/deferred support | 2.3, 4.2           | F3, F4  |
+| Shared instruction generator becomes too abstract | Hard-to-maintain routing layer                            | Keep one renderer with concrete host fixtures and no unused adapters                                        | 1.2                | F6      |
+| Cursor/OpenCode reference support changes         | Generated config becomes invalid                          | Keep host behavior isolated in emitter tests and matrix rows for fast updates                               | 2.1, 2.2, 2.3      | F4, F7  |
+| Setup, doctor, and status disagree                | Operators cannot repair installs reliably                 | Separate tests for each surface plus docs task that cites tested behavior                                   | 3.1, 3.2, 4.1, 4.2 | F8      |
 
 ## Refinement Summary
 
-| Metric | Value |
-| ------ | ----- |
-| Findings total | 8 |
-| Critical | 0 |
-| High | 3 |
-| Medium | 4 |
-| Low | 1 |
-| Fixes applied | 8/8 |
-| Cross-plans updated | 0 (read-only alignment; downstream update may be needed after implementation paths are finalized) |
-| Edge cases documented | 7 |
-| Risks documented | 5 |
-| Parallelization score | B (4 truly ready tasks in Wave 0 before dependency handoff, CP=0) |
-| Critical path | 4 waves |
-| Max parallel agents | 4 immediate, 6 after dependency handoff |
-| Total tasks | 9 |
-| Blueprint compliant | 9/9 |
+| Metric                | Value                                                                                             |
+| --------------------- | ------------------------------------------------------------------------------------------------- |
+| Findings total        | 8                                                                                                 |
+| Critical              | 0                                                                                                 |
+| High                  | 3                                                                                                 |
+| Medium                | 4                                                                                                 |
+| Low                   | 1                                                                                                 |
+| Fixes applied         | 8/8                                                                                               |
+| Cross-plans updated   | 0 (read-only alignment; downstream update may be needed after implementation paths are finalized) |
+| Edge cases documented | 7                                                                                                 |
+| Risks documented      | 5                                                                                                 |
+| Parallelization score | B (4 truly ready tasks in Wave 0 before dependency handoff, CP=0)                                 |
+| Critical path         | 4 waves                                                                                           |
+| Max parallel agents   | 4 immediate, 6 after dependency handoff                                                           |
+| Total tasks           | 9                                                                                                 |
+| Blueprint compliant   | 9/9                                                                                               |
 
 ## Trust Dossier
 
@@ -533,21 +541,21 @@ docs are shared public surfaces. (F2, F3, F5)
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-13-multi-host-plugin-and-instruction-surface-expansion.md |
+| ID  | Claim                                                          | Evidence                                                                                    |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-13-multi-host-plugin-and-instruction-surface-expansion.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

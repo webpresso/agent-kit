@@ -1,33 +1,33 @@
-import { z } from 'zod'
+import { z } from "zod";
 
 // ---------------------------------------------------------------------------
 // QueryTemplate contract
 // ---------------------------------------------------------------------------
 
 export interface QueryTemplate {
-  readonly id: string
-  readonly description: string
-  readonly sql: string
-  readonly paramSchema: z.ZodTypeAny
-  readonly maxRows: number
+  readonly id: string;
+  readonly description: string;
+  readonly sql: string;
+  readonly paramSchema: z.ZodTypeAny;
+  readonly maxRows: number;
 }
 
 // ---------------------------------------------------------------------------
 // Param schemas
 // ---------------------------------------------------------------------------
 
-const limitParamSchema = z.object({ limit: z.number().int().positive().max(1000).optional() })
+const limitParamSchema = z.object({ limit: z.number().int().positive().max(1000).optional() });
 
 const techDebtDueSoonParamSchema = z.object({
   limit: z.number().int().positive().max(1000).optional(),
   days: z.number().int().positive().max(365).optional(),
-})
+});
 
 const crossRepoBlockedOnParamSchema = z.object({
   org_filter: z.string().min(1).optional(),
-})
+});
 
-const noParamSchema = z.object({})
+const noParamSchema = z.object({});
 
 // ---------------------------------------------------------------------------
 // Template definitions
@@ -39,9 +39,9 @@ export const QUERY_TEMPLATES: readonly QueryTemplate[] = [
   // "What should an agent work on next?"
   // -------------------------------------------------------------------------
   {
-    id: 'next-ready-task',
+    id: "next-ready-task",
     description:
-      'Returns todo tasks in in-progress blueprints whose dependencies are all done, ordered by blueprint complexity then task_id.',
+      "Returns todo tasks in in-progress blueprints whose dependencies are all done, ordered by blueprint complexity then task_id.",
     sql: `
 SELECT t.*, b.slug AS blueprint_slug, b.title AS blueprint_title
 FROM tasks t
@@ -73,8 +73,8 @@ LIMIT :limit
   // "Which in-progress blueprints have no ready tasks (all blocked)?"
   // -------------------------------------------------------------------------
   {
-    id: 'blocked-blueprints',
-    description: 'In-progress blueprints where every remaining task is blocked.',
+    id: "blocked-blueprints",
+    description: "In-progress blueprints where every remaining task is blocked.",
     sql: `
 SELECT b.slug, b.title, b.complexity, b.status,
   COUNT(t.id) AS total_tasks,
@@ -95,9 +95,9 @@ HAVING done_tasks < total_tasks AND blocked_tasks = (total_tasks - done_tasks)
   // "Tech-debt items with next_review within N days"
   // -------------------------------------------------------------------------
   {
-    id: 'tech-debt-due-soon',
+    id: "tech-debt-due-soon",
     description:
-      'Unresolved tech-debt items whose next_review falls within the given number of days (default 14).',
+      "Unresolved tech-debt items whose next_review falls within the given number of days (default 14).",
     sql: `
 SELECT * FROM tech_debt_items
 WHERE next_review IS NOT NULL
@@ -115,8 +115,8 @@ LIMIT :limit
   // "HIGH/CRITICAL risks in active blueprints"
   // -------------------------------------------------------------------------
   {
-    id: 'blueprint-risk-profile',
-    description: 'HIGH and CRITICAL risks attached to planned or in-progress blueprints.',
+    id: "blueprint-risk-profile",
+    description: "HIGH and CRITICAL risks attached to planned or in-progress blueprints.",
     sql: `
 SELECT r.*, b.slug AS blueprint_slug, b.title, b.status
 FROM risks r
@@ -134,9 +134,9 @@ ORDER BY CASE r.severity WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 END, b.slug
   // "What cross-repo deps are unresolved?"
   // -------------------------------------------------------------------------
   {
-    id: 'cross-repo-blocked-on',
+    id: "cross-repo-blocked-on",
     description:
-      'Cross-repo dependencies that are not yet completed, optionally filtered by target-repo prefix.',
+      "Cross-repo dependencies that are not yet completed, optionally filtered by target-repo prefix.",
     sql: `
 SELECT crd.*, b.slug AS local_blueprint, b.title, b.status
 FROM cross_repo_dependencies crd
@@ -154,8 +154,8 @@ ORDER BY b.slug
   // "What correlations cross org boundaries?"
   // -------------------------------------------------------------------------
   {
-    id: 'cross-org-correlations',
-    description: 'Cross-repo dependencies where is_cross_org = 1.',
+    id: "cross-org-correlations",
+    description: "Cross-repo dependencies where is_cross_org = 1.",
     sql: `
 SELECT crd.*, b.slug, b.organization
 FROM cross_repo_dependencies crd
@@ -171,8 +171,8 @@ WHERE crd.is_cross_org = 1
   // "Which blueprints were completed in the current calendar month?"
   // -------------------------------------------------------------------------
   {
-    id: 'completed-this-month',
-    description: 'Blueprints completed in the current calendar month, most recent first.',
+    id: "completed-this-month",
+    description: "Blueprints completed in the current calendar month, most recent first.",
     sql: `
 SELECT slug, title, complexity, owner, completed_at, organization
 FROM blueprints
@@ -191,9 +191,9 @@ LIMIT :limit
   // "Tech-debt items whose next_review is in the past and not resolved"
   // -------------------------------------------------------------------------
   {
-    id: 'overdue-tech-debt',
+    id: "overdue-tech-debt",
     description:
-      'Unresolved tech-debt items that are past their next_review date, highest severity first.',
+      "Unresolved tech-debt items that are past their next_review date, highest severity first.",
     sql: `
 SELECT *,
   CAST((julianday('now') - julianday(next_review)) AS INTEGER) AS days_overdue
@@ -220,8 +220,8 @@ LIMIT :limit
   // "Summary of all currently in-progress blueprints with progress"
   // -------------------------------------------------------------------------
   {
-    id: 'in-progress-blueprints',
-    description: 'All in-progress blueprints with task counts and percent complete.',
+    id: "in-progress-blueprints",
+    description: "All in-progress blueprints with task counts and percent complete.",
     sql: `
 SELECT
   b.slug, b.title, b.complexity, b.owner, b.last_updated,
@@ -247,12 +247,12 @@ ORDER BY CASE b.complexity
     paramSchema: noParamSchema,
     maxRows: 100,
   },
-] as const
+] as const;
 
 // ---------------------------------------------------------------------------
 // Convenience: look up by id
 // ---------------------------------------------------------------------------
 
 export function findTemplate(id: string): QueryTemplate | undefined {
-  return QUERY_TEMPLATES.find((t) => t.id === id)
+  return QUERY_TEMPLATES.find((t) => t.id === id);
 }

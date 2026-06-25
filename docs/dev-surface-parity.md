@@ -1,6 +1,6 @@
 ---
 type: research
-last_updated: '2026-04-25'
+last_updated: "2026-04-25"
 ---
 
 # `wp dev` parity report

@@ -3,9 +3,9 @@
 // ---------------------------------------------------------------------------
 
 export interface SubagentOptions {
-  readonly cwd: string
-  readonly env?: Readonly<Record<string, string>>
-  readonly signal?: AbortSignal
+  readonly cwd: string;
+  readonly env?: Readonly<Record<string, string>>;
+  readonly signal?: AbortSignal;
 }
 
 // ---------------------------------------------------------------------------
@@ -15,4 +15,4 @@ export interface SubagentOptions {
 // calls the Agent tool. Tests inject a mock SubagentFn via the constructor.
 // ---------------------------------------------------------------------------
 
-export type SubagentFn = (prompt: string, opts: SubagentOptions) => Promise<string>
+export type SubagentFn = (prompt: string, opts: SubagentOptions) => Promise<string>;

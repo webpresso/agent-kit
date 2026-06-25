@@ -1,91 +1,91 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { afterEach, describe, expect, test } from 'vitest'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, test } from "vitest";
 
-import { auditNoDevVars } from './no-dev-vars.js'
+import { auditNoDevVars } from "./no-dev-vars.js";
 
-const tempDirs: string[] = []
+const tempDirs: string[] = [];
 
 function tempRepo(): string {
-  const root = mkdtempSync(join(tmpdir(), 'wp-no-dev-vars-'))
-  tempDirs.push(root)
-  mkdirSync(join(root, '.webpresso'), { recursive: true })
+  const root = mkdtempSync(join(tmpdir(), "wp-no-dev-vars-"));
+  tempDirs.push(root);
+  mkdirSync(join(root, ".webpresso"), { recursive: true });
   writeFileSync(
-    join(root, '.webpresso', 'secrets.config.json'),
-    JSON.stringify({ manager: 'doppler', projectId: 'my-project' }),
-  )
-  return root
+    join(root, ".webpresso", "secrets.config.json"),
+    JSON.stringify({ manager: "doppler", projectId: "my-project" }),
+  );
+  return root;
 }
 
-describe('auditNoDevVars', () => {
+describe("auditNoDevVars", () => {
   afterEach(() => {
     for (const dir of tempDirs.splice(0)) {
-      rmSync(dir, { recursive: true, force: true })
+      rmSync(dir, { recursive: true, force: true });
     }
-  })
+  });
 
-  test('skips when secrets.config.json is absent (gate)', () => {
-    const root = mkdtempSync(join(tmpdir(), 'wp-no-dev-vars-gate-'))
-    tempDirs.push(root)
+  test("skips when secrets.config.json is absent (gate)", () => {
+    const root = mkdtempSync(join(tmpdir(), "wp-no-dev-vars-gate-"));
+    tempDirs.push(root);
 
-    const result = auditNoDevVars(root)
+    const result = auditNoDevVars(root);
 
-    expect(result.ok).toBe(true)
-    expect(result.checked).toBe(0)
-    expect(result.violations).toStrictEqual([])
-  })
+    expect(result.ok).toBe(true);
+    expect(result.checked).toBe(0);
+    expect(result.violations).toStrictEqual([]);
+  });
 
-  test('flags .dev.vars on disk', () => {
-    const root = tempRepo()
-    writeFileSync(join(root, '.dev.vars'), 'API_KEY=secret123')
+  test("flags .dev.vars on disk", () => {
+    const root = tempRepo();
+    writeFileSync(join(root, ".dev.vars"), "API_KEY=secret123");
 
-    const result = auditNoDevVars(root)
+    const result = auditNoDevVars(root);
 
-    expect(result.ok).toBe(false)
-    expect(result.violations).toEqual([expect.objectContaining({ file: '.dev.vars' })])
-  })
+    expect(result.ok).toBe(false);
+    expect(result.violations).toEqual([expect.objectContaining({ file: ".dev.vars" })]);
+  });
 
-  test('resolves repo root from nested cwd before scanning', () => {
-    const root = tempRepo()
-    const nested = join(root, 'apps', 'web')
-    mkdirSync(nested, { recursive: true })
-    writeFileSync(join(root, '.dev.vars'), 'API_KEY=secret123')
+  test("resolves repo root from nested cwd before scanning", () => {
+    const root = tempRepo();
+    const nested = join(root, "apps", "web");
+    mkdirSync(nested, { recursive: true });
+    writeFileSync(join(root, ".dev.vars"), "API_KEY=secret123");
 
-    const result = auditNoDevVars(nested)
+    const result = auditNoDevVars(nested);
 
-    expect(result.ok).toBe(false)
-    expect(result.checked).toBeGreaterThan(0)
-    expect(result.violations).toEqual([expect.objectContaining({ file: '.dev.vars' })])
-  })
+    expect(result.ok).toBe(false);
+    expect(result.checked).toBeGreaterThan(0);
+    expect(result.violations).toEqual([expect.objectContaining({ file: ".dev.vars" })]);
+  });
 
-  test('flags .env on disk', () => {
-    const root = tempRepo()
-    writeFileSync(join(root, '.env'), 'DATABASE_URL=postgres://secret')
+  test("flags .env on disk", () => {
+    const root = tempRepo();
+    writeFileSync(join(root, ".env"), "DATABASE_URL=postgres://secret");
 
-    const result = auditNoDevVars(root)
+    const result = auditNoDevVars(root);
 
-    expect(result.ok).toBe(false)
-    expect(result.violations).toEqual([expect.objectContaining({ file: '.env' })])
-  })
+    expect(result.ok).toBe(false);
+    expect(result.violations).toEqual([expect.objectContaining({ file: ".env" })]);
+  });
 
-  test('passes when no forbidden files are present', () => {
-    const root = tempRepo()
-    writeFileSync(join(root, 'src.ts'), 'export const x = 1')
+  test("passes when no forbidden files are present", () => {
+    const root = tempRepo();
+    writeFileSync(join(root, "src.ts"), "export const x = 1");
 
-    const result = auditNoDevVars(root)
+    const result = auditNoDevVars(root);
 
-    expect(result.ok).toBe(true)
-    expect(result.violations).toStrictEqual([])
-  })
+    expect(result.ok).toBe(true);
+    expect(result.violations).toStrictEqual([]);
+  });
 
-  test('does not flag .env.example', () => {
-    const root = tempRepo()
-    writeFileSync(join(root, '.env.example'), '# example env vars')
+  test("does not flag .env.example", () => {
+    const root = tempRepo();
+    writeFileSync(join(root, ".env.example"), "# example env vars");
 
-    const result = auditNoDevVars(root)
+    const result = auditNoDevVars(root);
 
-    expect(result.ok).toBe(true)
-    expect(result.violations).toStrictEqual([])
-  })
-})
+    expect(result.ok).toBe(true);
+    expect(result.violations).toStrictEqual([]);
+  });
+});

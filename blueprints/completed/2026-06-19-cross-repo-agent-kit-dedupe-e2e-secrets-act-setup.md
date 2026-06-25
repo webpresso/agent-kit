@@ -41,24 +41,24 @@ tags:
 
 ## Execution Waves
 
-| Wave | Scope | Outcome |
-| ---- | ----- | ------- |
-| 0 | Execution surface | Worktrees, blueprints, ultragoal, branch isolation |
-| 1 | Agent Kit | Shared `wp` secret profiles, `wp ci act`, process supervisor, blocking audits |
-| 2 | GitHub Actions | Shared setup/cache/OIDC/SHA-pin reusable surfaces |
-| 3 | Consumers | `monorepo`, `ingest-lens`, `edge-matte`, `ozby-dev` cut over and delete duplicates |
-| 4 | Verification | Cross-repo targeted tests plus `wp` lint/typecheck/test/audit gates |
+| Wave | Scope             | Outcome                                                                            |
+| ---- | ----------------- | ---------------------------------------------------------------------------------- |
+| 0    | Execution surface | Worktrees, blueprints, ultragoal, branch isolation                                 |
+| 1    | Agent Kit         | Shared `wp` secret profiles, `wp ci act`, process supervisor, blocking audits      |
+| 2    | GitHub Actions    | Shared setup/cache/OIDC/SHA-pin reusable surfaces                                  |
+| 3    | Consumers         | `monorepo`, `ingest-lens`, `edge-matte`, `ozby-dev` cut over and delete duplicates |
+| 4    | Verification      | Cross-repo targeted tests plus `wp` lint/typecheck/test/audit gates                |
 
 ## Repo Slices
 
-| Repo | Blueprint | Primary concern |
-| ---- | --------- | --------------- |
-| agent-kit | `webpresso/agent-kit/blueprints/in-progress/2026-06-19-agent-kit-wp-shared-e2e-secrets-act-supervisor.md` | shared `wp` implementation |
-| github-actions | `webpresso/github-actions/blueprints/in-progress/2026-06-19-github-actions-shared-setup-oidc-cache-pin-hardening.md` | reusable setup/OIDC/cache |
-| monorepo | `webpresso/monorepo/webpresso/blueprints/in-progress/2026-06-19-monorepo-agent-kit-dedupe-cutover.md` | private consumer cutover |
-| ingest-lens | `ozby/ingest-lens/blueprints/in-progress/2026-06-19-ingest-lens-agent-kit-dedupe-cutover.md` | reference-consumer cutover |
-| edge-matte | `ozby/edge-matte/blueprints/in-progress/2026-06-19-edge-matte-agent-kit-dedupe-cutover.md` | workflow/setup cutover |
-| ozby-dev | `ozby/ozby-dev/blueprints/in-progress/2026-06-19-ozby-dev-agent-kit-dedupe-cutover.md` | workflow/setup cutover |
+| Repo           | Blueprint                                                                                                            | Primary concern            |
+| -------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| agent-kit      | `webpresso/agent-kit/blueprints/in-progress/2026-06-19-agent-kit-wp-shared-e2e-secrets-act-supervisor.md`            | shared `wp` implementation |
+| github-actions | `webpresso/github-actions/blueprints/in-progress/2026-06-19-github-actions-shared-setup-oidc-cache-pin-hardening.md` | reusable setup/OIDC/cache  |
+| monorepo       | `webpresso/monorepo/webpresso/blueprints/in-progress/2026-06-19-monorepo-agent-kit-dedupe-cutover.md`                | private consumer cutover   |
+| ingest-lens    | `ozby/ingest-lens/blueprints/in-progress/2026-06-19-ingest-lens-agent-kit-dedupe-cutover.md`                         | reference-consumer cutover |
+| edge-matte     | `ozby/edge-matte/blueprints/in-progress/2026-06-19-edge-matte-agent-kit-dedupe-cutover.md`                           | workflow/setup cutover     |
+| ozby-dev       | `ozby/ozby-dev/blueprints/in-progress/2026-06-19-ozby-dev-agent-kit-dedupe-cutover.md`                               | workflow/setup cutover     |
 
 ## Tasks
 
@@ -103,11 +103,11 @@ This completed blueprint records the planning and handoff artifact. Implementati
 
 ## Verification Gates
 
-| Gate | Command / Evidence | Success Criteria |
-| ---- | ------------------ | ---------------- |
-| Ultragoal | `omx ultragoal status` | Aggregate plan active and repo slices mapped |
-| Worktree isolation | `git worktree list` | One dedicated dedupe worktree per repo |
-| Plan surfaces | file existence under `blueprints/in-progress/` | Every repo has a current blueprint |
+| Gate               | Command / Evidence                             | Success Criteria                             |
+| ------------------ | ---------------------------------------------- | -------------------------------------------- |
+| Ultragoal          | `omx ultragoal status`                         | Aggregate plan active and repo slices mapped |
+| Worktree isolation | `git worktree list`                            | One dedicated dedupe worktree per repo       |
+| Plan surfaces      | file existence under `blueprints/in-progress/` | Every repo has a current blueprint           |
 
 ## Trust Dossier
 
@@ -121,21 +121,21 @@ This completed blueprint records the planning and handoff artifact. Implementati
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-cross-repo-agent-kit-dedupe-e2e-secrets-act-setup.md |
+| ID  | Claim                                                          | Evidence                                                                                  |
+| --- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-cross-repo-agent-kit-dedupe-e2e-secrets-act-setup.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

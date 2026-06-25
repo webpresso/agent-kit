@@ -8,4 +8,4 @@
  * extend with their own fields and behavior.
  */
 
-export * from './schema.js'
+export * from "./schema.js";

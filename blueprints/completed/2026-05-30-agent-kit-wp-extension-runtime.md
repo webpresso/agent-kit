@@ -6,9 +6,9 @@ historical_verification_gap_waiver: true
 historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 status: completed
 complexity: L
-created: '2026-05-30'
-last_updated: '2026-05-31'
-progress: '100% (completed)'
+created: "2026-05-30"
+last_updated: "2026-05-31"
+progress: "100% (completed)"
 depends_on:
   - 2026-05-30-cross-project-wp-execution-map
 tags:
@@ -46,21 +46,21 @@ base wp host
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-| -------- | ------ | --------- |
-| Discovery field | `package.json -> webpresso.wpExtension` | Explicit opt-in is easier to validate than heuristic scanning |
-| Extension export | default `WpExtensionV1` | Keep loading simple and contract-focused |
-| Collision policy | base commands always win | Prevent extension surprise/shadowing |
-| Alias gating | repo-aware and conflict-aware | Framework aliases should not bleed into non-framework repos |
+| Decision         | Choice                                  | Rationale                                                     |
+| ---------------- | --------------------------------------- | ------------------------------------------------------------- |
+| Discovery field  | `package.json -> webpresso.wpExtension` | Explicit opt-in is easier to validate than heuristic scanning |
+| Extension export | default `WpExtensionV1`                 | Keep loading simple and contract-focused                      |
+| Collision policy | base commands always win                | Prevent extension surprise/shadowing                          |
+| Alias gating     | repo-aware and conflict-aware           | Framework aliases should not bleed into non-framework repos   |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
-| ---- | ----- | ------------ | -------------- | ---------------- |
-| **Wave 0** | 1.1, 1.2 | None | 2 agents | S |
-| **Wave 1** | 1.3, 1.4 | Wave 0 | 2 agents | S-M |
-| **Wave 2** | 2.1 | Wave 1 | 1 agent | S |
-| **Critical path** | 1.1 → 1.3 → 2.1 | -- | 3 waves | M |
+| Wave              | Tasks           | Dependencies | Parallelizable | Effort (T-shirt) |
+| ----------------- | --------------- | ------------ | -------------- | ---------------- |
+| **Wave 0**        | 1.1, 1.2        | None         | 2 agents       | S                |
+| **Wave 1**        | 1.3, 1.4        | Wave 0       | 2 agents       | S-M              |
+| **Wave 2**        | 2.1             | Wave 1       | 1 agent        | S                |
+| **Critical path** | 1.1 → 1.3 → 2.1 | --           | 3 waves        | M                |
 
 ### Phase 1: contract and loader [Complexity: M]
 
@@ -208,27 +208,27 @@ framework-specific implementation details.
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-| ---- | ------- | ---------------- |
-| Type safety | `wp typecheck` | Zero errors |
-| Lint | `wp lint` | Zero violations |
-| Tests | `wp test` | All targeted tests pass |
+| Gate            | Command                    | Success Criteria          |
+| --------------- | -------------------------- | ------------------------- |
+| Type safety     | `wp typecheck`             | Zero errors               |
+| Lint            | `wp lint`                  | Zero violations           |
+| Tests           | `wp test`                  | All targeted tests pass   |
 | Package surface | repo tarball/export checks | Public surface is correct |
 
 ## Cross-Plan References
 
-| Type | Blueprint | Relationship |
-| ---- | --------- | ------------ |
-| Upstream | `2026-05-30-cross-project-wp-execution-map` | umbrella execution order |
-| Downstream | `2026-05-30-framework-wp-extension` | first extension consumer/provider |
+| Type       | Blueprint                                         | Relationship                      |
+| ---------- | ------------------------------------------------- | --------------------------------- |
+| Upstream   | `2026-05-30-cross-project-wp-execution-map`       | umbrella execution order          |
+| Downstream | `2026-05-30-framework-wp-extension`               | first extension consumer/provider |
 | Downstream | `2026-05-30-monorepo-wp-first-framework-consumer` | first framework-consumer adoption |
 
 ## Edge Cases and Error Handling
 
-| Edge Case | Risk | Solution | Task |
-| --------- | ---- | -------- | ---- |
-| Extension present but incompatible with host version | broken CLI startup | explicit host-range validation and warnings | 1.2 |
-| Two extensions want the same alias | user confusion | collision warn-and-skip policy | 1.3 |
+| Edge Case                                            | Risk               | Solution                                    | Task |
+| ---------------------------------------------------- | ------------------ | ------------------------------------------- | ---- |
+| Extension present but incompatible with host version | broken CLI startup | explicit host-range validation and warnings | 1.2  |
+| Two extensions want the same alias                   | user confusion     | collision warn-and-skip policy              | 1.3  |
 
 ## Non-goals
 
@@ -237,18 +237,17 @@ framework-specific implementation details.
 
 ## Risks
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-| Extension contract is too loose and grows accidental complexity | High | keep the contract minimal and versioned |
-| Base runtime crashes when optional extension misbehaves | High | degrade with warnings and pin failure-path tests |
+| Risk                                                            | Impact | Mitigation                                       |
+| --------------------------------------------------------------- | ------ | ------------------------------------------------ |
+| Extension contract is too loose and grows accidental complexity | High   | keep the contract minimal and versioned          |
+| Base runtime crashes when optional extension misbehaves         | High   | degrade with warnings and pin failure-path tests |
 
 ## Technology Choices
 
-| Component | Technology | Version | Why |
-| --------- | ---------- | ------- | --- |
-| Extension host | `@webpresso/agent-kit` | workspace | Base `wp` runtime |
+| Component            | Technology                          | Version   | Why                                 |
+| -------------------- | ----------------------------------- | --------- | ----------------------------------- |
+| Extension host       | `@webpresso/agent-kit`              | workspace | Base `wp` runtime                   |
 | First extension path | `@webpresso/webpresso/wp-extension` | workspace | Locked downstream consumer/provider |
-
 
 ## Completion Evidence
 
@@ -276,21 +275,21 @@ framework-specific implementation details.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-05-30-agent-kit-wp-extension-runtime.md |
+| ID  | Claim                                                          | Evidence                                                               |
+| --- | -------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-05-30-agent-kit-wp-extension-runtime.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

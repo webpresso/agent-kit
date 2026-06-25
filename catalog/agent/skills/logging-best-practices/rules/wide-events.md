@@ -17,24 +17,24 @@ Build the event throughout the request lifecycle, then emit once at completion i
 **Incorrect:**
 
 ```typescript
-app.post('/articles', async (c) => {
-  console.log('Received POST /articles request')
+app.post("/articles", async (c) => {
+  console.log("Received POST /articles request");
 
-  const body = await c.req.json()
-  console.log('Request body parsed', { title: body.title })
+  const body = await c.req.json();
+  console.log("Request body parsed", { title: body.title });
 
-  const user = await getUser(c.get('userId'))
-  console.log('User fetched', { userId: user.id })
+  const user = await getUser(c.get("userId"));
+  console.log("User fetched", { userId: user.id });
 
-  const article = await database.saveArticle({ ...body, ownerId: user.id })
-  console.log('Article saved', { articleId: article.id })
+  const article = await database.saveArticle({ ...body, ownerId: user.id });
+  console.log("Article saved", { articleId: article.id });
 
-  await cache.set(article.id, article)
-  console.log('Cache updated')
+  await cache.set(article.id, article);
+  console.log("Cache updated");
 
-  console.log('Request completed successfully')
-  return c.json({ article }, 201)
-})
+  console.log("Request completed successfully");
+  return c.json({ article }, 201);
+});
 // 6 disconnected log lines with scattered context
 // Cannot query: "show me all article creates by free trial users"
 ```
@@ -42,48 +42,48 @@ app.post('/articles', async (c) => {
 **Correct:**
 
 ```typescript
-app.post('/articles', async (c) => {
-  const startTime = Date.now()
+app.post("/articles", async (c) => {
+  const startTime = Date.now();
   const wideEvent: Record<string, unknown> = {
-    method: 'POST',
-    path: '/articles',
-    service: 'articles',
-    requestId: c.get('requestId'),
-  }
+    method: "POST",
+    path: "/articles",
+    service: "articles",
+    requestId: c.get("requestId"),
+  };
 
   try {
-    const body = await c.req.json()
-    const user = await getUser(c.get('userId'))
+    const body = await c.req.json();
+    const user = await getUser(c.get("userId"));
     wideEvent.user = {
       id: user.id,
       subscription: user.subscription,
       trial: user.trial,
-    }
+    };
 
-    const article = await database.saveArticle({ ...body, ownerId: user.id })
+    const article = await database.saveArticle({ ...body, ownerId: user.id });
     wideEvent.article = {
       id: article.id,
       title: article.title,
       published: article.published,
-    }
+    };
 
-    await cache.set(article.id, article)
-    wideEvent.cache = { operation: 'write', key: article.id }
+    await cache.set(article.id, article);
+    wideEvent.cache = { operation: "write", key: article.id };
 
-    wideEvent.status_code = 201
-    wideEvent.outcome = 'success'
-    return c.json({ article }, 201)
+    wideEvent.status_code = 201;
+    wideEvent.outcome = "success";
+    return c.json({ article }, 201);
   } catch (error) {
-    wideEvent.status_code = 500
-    wideEvent.outcome = 'error'
-    wideEvent.error = { message: error.message, type: error.name }
-    throw error
+    wideEvent.status_code = 500;
+    wideEvent.outcome = "error";
+    wideEvent.error = { message: error.message, type: error.name };
+    throw error;
   } finally {
-    wideEvent.duration_ms = Date.now() - startTime
-    wideEvent.timestamp = new Date().toISOString()
-    logger.info(JSON.stringify(wideEvent))
+    wideEvent.duration_ms = Date.now() - startTime;
+    wideEvent.timestamp = new Date().toISOString();
+    logger.info(JSON.stringify(wideEvent));
   }
-})
+});
 // Single event with all context - queryable by any field
 ```
 
@@ -93,17 +93,17 @@ Every wide event must include a unique request ID that is propagated across all 
 
 ```typescript
 // Service A - generate and propagate
-const requestId = c.get('requestId') || crypto.randomUUID()
-wideEvent.requestId = requestId
+const requestId = c.get("requestId") || crypto.randomUUID();
+wideEvent.requestId = requestId;
 
-await fetch('http://downstream-service/endpoint', {
-  headers: { 'x-request-id': requestId },
+await fetch("http://downstream-service/endpoint", {
+  headers: { "x-request-id": requestId },
   body: JSON.stringify(data),
-})
+});
 
 // Service B - extract and use
-const requestId = c.req.header('x-request-id')
-wideEvent.requestId = requestId // Same ID links events together
+const requestId = c.req.header("x-request-id");
+wideEvent.requestId = requestId; // Same ID links events together
 ```
 
 ### Emit in Finally Block

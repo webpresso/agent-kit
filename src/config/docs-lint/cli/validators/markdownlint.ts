@@ -1,10 +1,10 @@
-import type { ValidationError } from '#config/docs-lint/index'
+import type { ValidationError } from "#config/docs-lint/index";
 
-import { fixCodeBlockLanguages } from '#config/docs-lint/cli/fixers/code-language'
+import { fixCodeBlockLanguages } from "#config/docs-lint/cli/fixers/code-language";
 
 export interface MarkdownlintResult {
-  errors: ValidationError[]
-  fixedContent?: string
+  errors: ValidationError[];
+  fixedContent?: string;
 }
 
 /**
@@ -16,16 +16,16 @@ export function validateMarkdownlint(
   content: string,
   fix = false,
 ): MarkdownlintResult {
-  const errors: ValidationError[] = []
-  let fixedContent: string | undefined
+  const errors: ValidationError[] = [];
+  let fixedContent: string | undefined;
 
   if (fix) {
-    const codeLanguageResult = fixCodeBlockLanguages(content, filePath, 0.7)
+    const codeLanguageResult = fixCodeBlockLanguages(content, filePath, 0.7);
 
     if (codeLanguageResult.changes > 0) {
-      fixedContent = codeLanguageResult.fixed
+      fixedContent = codeLanguageResult.fixed;
     }
   }
 
-  return { errors, fixedContent }
+  return { errors, fixedContent };
 }

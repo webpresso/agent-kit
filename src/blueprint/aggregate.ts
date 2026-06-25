@@ -31,26 +31,26 @@
  *   tools must not share this shape.
  */
 
-import type { Database } from '#db/sqlite.js'
+import type { Database } from "#db/sqlite.js";
 
-import { z } from 'zod'
+import { z } from "zod";
 
-import { openDb } from '#db/connection.js'
-import { checkFreshness } from './freshness.js'
-import { makeNextAction, type NextAction } from './next-action.js'
+import { openDb } from "#db/connection.js";
+import { checkFreshness } from "./freshness.js";
+import { makeNextAction, type NextAction } from "./next-action.js";
 import {
   type BlueprintProjectRef,
   resolveBlueprintProjects,
   type ResolveBlueprintProjectsOptions,
-} from './projects.js'
+} from "./projects.js";
 
 // ---------------------------------------------------------------------------
 // Public types — ReadTarget (F15: distinct from MutationTarget)
 // ---------------------------------------------------------------------------
 
-export const READ_TARGET_SCOPES = ['current', 'roots', 'workspace', 'all'] as const
+export const READ_TARGET_SCOPES = ["current", "roots", "workspace", "all"] as const;
 
-export type ReadTargetScope = (typeof READ_TARGET_SCOPES)[number]
+export type ReadTargetScope = (typeof READ_TARGET_SCOPES)[number];
 
 /**
  * Input shape for read-only aggregate calls (F15).
@@ -67,9 +67,9 @@ export const readTargetSchema = z
     project_id: z.string().min(1).optional(),
     scope: z.enum(READ_TARGET_SCOPES).optional(),
   })
-  .strict()
+  .strict();
 
-export type ReadTarget = z.infer<typeof readTargetSchema>
+export type ReadTarget = z.infer<typeof readTargetSchema>;
 
 // ---------------------------------------------------------------------------
 // Public types — aggregate result shape
@@ -80,9 +80,9 @@ export type ReadTarget = z.infer<typeof readTargetSchema>
  * instead of throwing when a project DB cannot be read.
  */
 export interface AggregateFailure {
-  readonly project_id: string
-  readonly worktree_path: string
-  readonly next_action: NextAction
+  readonly project_id: string;
+  readonly worktree_path: string;
+  readonly next_action: NextAction;
 }
 
 /**
@@ -90,21 +90,21 @@ export interface AggregateFailure {
  * source `project_id`. The reader callback never sees a tagged row; this
  * module decorates after the read completes.
  */
-export type TaggedRow<TRow> = TRow & { readonly project_id: string }
+export type TaggedRow<TRow> = TRow & { readonly project_id: string };
 
 export interface AggregateResult<TRow> {
-  readonly rows: ReadonlyArray<TaggedRow<TRow>>
+  readonly rows: ReadonlyArray<TaggedRow<TRow>>;
   /**
    * Slugs that appeared in more than one project's rows. Surfaced so callers
    * can refuse to act on an ambiguous slug. Empty when no row carries a `slug`
    * field or when no duplicates exist.
    */
-  readonly duplicate_slugs: ReadonlyArray<string>
-  readonly failures: ReadonlyArray<AggregateFailure>
+  readonly duplicate_slugs: ReadonlyArray<string>;
+  readonly failures: ReadonlyArray<AggregateFailure>;
   readonly projects: ReadonlyArray<{
-    readonly project_id: string
-    readonly worktree_path: string
-  }>
+    readonly project_id: string;
+    readonly worktree_path: string;
+  }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -112,8 +112,8 @@ export interface AggregateResult<TRow> {
 // ---------------------------------------------------------------------------
 
 export interface ProjectReaderContext {
-  readonly project: BlueprintProjectRef
-  readonly db: Database
+  readonly project: BlueprintProjectRef;
+  readonly db: Database;
 }
 
 /**
@@ -123,29 +123,29 @@ export interface ProjectReaderContext {
  *
  * MUST be read-only. There is no write transaction or lock acquired here.
  */
-export type ProjectReader<TRow> = (ctx: ProjectReaderContext) => ReadonlyArray<TRow>
+export type ProjectReader<TRow> = (ctx: ProjectReaderContext) => ReadonlyArray<TRow>;
 
 // ---------------------------------------------------------------------------
 // Options
 // ---------------------------------------------------------------------------
 
 export interface AggregateBlueprintRowsOptions<TRow> {
-  readonly target: ReadTarget
-  readonly read: ProjectReader<TRow>
+  readonly target: ReadTarget;
+  readonly read: ProjectReader<TRow>;
   /**
    * Injectable project resolver options — same surface as Task 1.2. Tests
    * pass `workspaceRepos`, `rootsProvider`, `git`, etc., to avoid spawning
    * real git or touching the filesystem outside a temp dir.
    */
-  readonly resolveOptions?: ResolveBlueprintProjectsOptions
+  readonly resolveOptions?: ResolveBlueprintProjectsOptions;
   /**
    * Hook for tests to override how each project's DB is opened. Production
    * code uses the default `openDb` from `#db/connection.js`.
    */
   readonly openDbFor?: (project: BlueprintProjectRef) => {
-    readonly db: Database
-    readonly close: () => void
-  }
+    readonly db: Database;
+    readonly close: () => void;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -168,23 +168,23 @@ function selectProjects(
   target: ReadTarget,
 ): BlueprintProjectRef[] {
   if (target.project_id !== undefined) {
-    return projects.filter((p) => p.project_id === target.project_id)
+    return projects.filter((p) => p.project_id === target.project_id);
   }
 
-  const scope = target.scope ?? 'current'
-  if (scope === 'all') return [...projects]
+  const scope = target.scope ?? "current";
+  if (scope === "all") return [...projects];
 
-  if (scope === 'current') {
-    const current = projects.find((p) => p.source === 'current')
-    return current ? [current] : projects.length > 0 && projects[0] ? [projects[0]] : []
+  if (scope === "current") {
+    const current = projects.find((p) => p.source === "current");
+    return current ? [current] : projects.length > 0 && projects[0] ? [projects[0]] : [];
   }
 
-  if (scope === 'roots') {
-    return projects.filter((p) => p.source === 'mcp_roots')
+  if (scope === "roots") {
+    return projects.filter((p) => p.source === "mcp_roots");
   }
 
   // scope === 'workspace'
-  return projects.filter((p) => p.source === 'workspace_config' || p.source === 'git_worktree')
+  return projects.filter((p) => p.source === "workspace_config" || p.source === "git_worktree");
 }
 
 // ---------------------------------------------------------------------------
@@ -192,24 +192,24 @@ function selectProjects(
 // ---------------------------------------------------------------------------
 
 function defaultOpen(project: BlueprintProjectRef): {
-  readonly db: Database
-  readonly close: () => void
+  readonly db: Database;
+  readonly close: () => void;
 } {
-  return openDb(project.db_path)
+  return openDb(project.db_path);
 }
 
 interface PerProjectOutcome<TRow> {
-  readonly project: BlueprintProjectRef
-  readonly rows: ReadonlyArray<TRow>
-  readonly failure: AggregateFailure | null
+  readonly project: BlueprintProjectRef;
+  readonly rows: ReadonlyArray<TRow>;
+  readonly failure: AggregateFailure | null;
 }
 
 async function runOneProject<TRow>(
   project: BlueprintProjectRef,
   read: ProjectReader<TRow>,
   openDbFor: (project: BlueprintProjectRef) => {
-    readonly db: Database
-    readonly close: () => void
+    readonly db: Database;
+    readonly close: () => void;
   },
 ): Promise<PerProjectOutcome<TRow>> {
   // Freshness gate (Task 1.3 / F11) — refuse stale or missing projections with
@@ -218,7 +218,7 @@ async function runOneProject<TRow>(
   const fresh = checkFreshness({
     worktree_path: project.worktree_path,
     db_path: project.db_path,
-  })
+  });
   if (!fresh.ok) {
     return {
       project,
@@ -228,14 +228,14 @@ async function runOneProject<TRow>(
         worktree_path: project.worktree_path,
         next_action: fresh.next_action,
       },
-    }
+    };
   }
 
-  let conn: { readonly db: Database; readonly close: () => void } | null = null
+  let conn: { readonly db: Database; readonly close: () => void } | null = null;
   try {
-    conn = openDbFor(project)
-    const rows = read({ project, db: conn.db })
-    return { project, rows, failure: null }
+    conn = openDbFor(project);
+    const rows = read({ project, db: conn.db });
+    return { project, rows, failure: null };
   } catch (err) {
     return {
       project,
@@ -244,14 +244,14 @@ async function runOneProject<TRow>(
         project_id: project.project_id,
         worktree_path: project.worktree_path,
         next_action: makeNextAction(
-          'reingest_project',
+          "reingest_project",
           `Failed to read projection at ${project.db_path}: ${stringifyError(err)}`,
         ),
       },
-    }
+    };
   } finally {
     try {
-      conn?.close()
+      conn?.close();
     } catch {
       // Best-effort close; an already-failed read should not mask itself.
     }
@@ -259,8 +259,8 @@ async function runOneProject<TRow>(
 }
 
 function stringifyError(err: unknown): string {
-  if (err instanceof Error) return err.message
-  return String(err)
+  if (err instanceof Error) return err.message;
+  return String(err);
 }
 
 // ---------------------------------------------------------------------------
@@ -268,23 +268,23 @@ function stringifyError(err: unknown): string {
 // ---------------------------------------------------------------------------
 
 interface MaybeSlugged {
-  readonly slug?: unknown
+  readonly slug?: unknown;
 }
 
 function collectDuplicateSlugs<TRow>(rows: ReadonlyArray<TaggedRow<TRow>>): string[] {
-  const seen = new Map<string, number>()
+  const seen = new Map<string, number>();
   for (const row of rows) {
-    const maybe = row as unknown as MaybeSlugged
-    const slug = maybe.slug
-    if (typeof slug !== 'string' || slug.length === 0) continue
-    seen.set(slug, (seen.get(slug) ?? 0) + 1)
+    const maybe = row as unknown as MaybeSlugged;
+    const slug = maybe.slug;
+    if (typeof slug !== "string" || slug.length === 0) continue;
+    seen.set(slug, (seen.get(slug) ?? 0) + 1);
   }
-  const dups: string[] = []
+  const dups: string[] = [];
   for (const [slug, count] of seen) {
-    if (count > 1) dups.push(slug)
+    if (count > 1) dups.push(slug);
   }
-  dups.sort()
-  return dups
+  dups.sort();
+  return dups;
 }
 
 // ---------------------------------------------------------------------------
@@ -320,26 +320,26 @@ export async function aggregateBlueprintRows<TRow extends Record<string, unknown
   options: AggregateBlueprintRowsOptions<TRow>,
 ): Promise<AggregateResult<TRow>> {
   // Reject mutation-shaped inputs at the boundary.
-  const parsedTarget = readTargetSchema.parse(options.target)
+  const parsedTarget = readTargetSchema.parse(options.target);
 
-  const projects = await resolveBlueprintProjects(options.resolveOptions ?? {})
-  const selected = selectProjects(projects, parsedTarget)
+  const projects = await resolveBlueprintProjects(options.resolveOptions ?? {});
+  const selected = selectProjects(projects, parsedTarget);
 
-  const openDbFor = options.openDbFor ?? defaultOpen
+  const openDbFor = options.openDbFor ?? defaultOpen;
 
-  const merged: TaggedRow<TRow>[] = []
-  const failures: AggregateFailure[] = []
-  const visited: Array<{ project_id: string; worktree_path: string }> = []
+  const merged: TaggedRow<TRow>[] = [];
+  const failures: AggregateFailure[] = [];
+  const visited: Array<{ project_id: string; worktree_path: string }> = [];
 
   for (const project of selected) {
-    visited.push({ project_id: project.project_id, worktree_path: project.worktree_path })
-    const outcome = await runOneProject(project, options.read, openDbFor)
+    visited.push({ project_id: project.project_id, worktree_path: project.worktree_path });
+    const outcome = await runOneProject(project, options.read, openDbFor);
     if (outcome.failure !== null) {
-      failures.push(outcome.failure)
-      continue
+      failures.push(outcome.failure);
+      continue;
     }
     for (const row of outcome.rows) {
-      merged.push({ ...row, project_id: project.project_id } as TaggedRow<TRow>)
+      merged.push({ ...row, project_id: project.project_id } as TaggedRow<TRow>);
     }
   }
 
@@ -348,5 +348,5 @@ export async function aggregateBlueprintRows<TRow extends Record<string, unknown
     duplicate_slugs: collectDuplicateSlugs(merged),
     failures,
     projects: visited,
-  }
+  };
 }

@@ -1,70 +1,70 @@
-import type { TemplateSchema, ValidationError } from './types.js'
+import type { TemplateSchema, ValidationError } from "./types.js";
 
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { parse as parseYaml } from 'yaml'
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { parse as parseYaml } from "yaml";
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const packageRootDir = dirname(dirname(__dirname))
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const packageRootDir = dirname(dirname(__dirname));
 
 /**
  * Resolves the templates directory path
  */
 function getTemplatesDir(): string {
-  return join(packageRootDir, 'templates')
+  return join(packageRootDir, "templates");
 }
 
 /**
  * Result of loading a template
  */
 export interface LoadTemplateResult {
-  success: boolean
-  schema?: TemplateSchema
-  errors?: ValidationError[]
+  success: boolean;
+  schema?: TemplateSchema;
+  errors?: ValidationError[];
 }
 
 /**
  * Loads a template schema from templates/{name}.yaml
  */
 export function loadTemplate(templateName: string): LoadTemplateResult {
-  const templatesDir = getTemplatesDir()
-  const templatePath = join(templatesDir, `${templateName}.yaml`)
+  const templatesDir = getTemplatesDir();
+  const templatePath = join(templatesDir, `${templateName}.yaml`);
 
   if (!existsSync(templatePath)) {
     return {
       success: false,
       errors: [
         {
-          code: 'TEMPLATE_NOT_FOUND',
+          code: "TEMPLATE_NOT_FOUND",
           message: `Template '${templateName}' not found at ${templatePath}. Available templates are in templates/`,
-          field: 'template',
-          expected: 'valid template name',
+          field: "template",
+          expected: "valid template name",
           actual: templateName,
         },
       ],
-    }
+    };
   }
 
   try {
-    const content = readFileSync(templatePath, 'utf-8')
-    const schema = parseYaml(content) as TemplateSchema
+    const content = readFileSync(templatePath, "utf-8");
+    const schema = parseYaml(content) as TemplateSchema;
     return {
       success: true,
       schema,
-    }
+    };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
+    const message = error instanceof Error ? error.message : String(error);
     return {
       success: false,
       errors: [
         {
-          code: 'TEMPLATE_PARSE_ERROR',
+          code: "TEMPLATE_PARSE_ERROR",
           message: `Failed to parse template '${templateName}': ${message}`,
-          field: 'template',
+          field: "template",
         },
       ],
-    }
+    };
   }
 }
 
@@ -72,11 +72,13 @@ export function loadTemplate(templateName: string): LoadTemplateResult {
  * Gets list of available template names
  */
 export function getAvailableTemplates(): string[] {
-  const templatesDir = getTemplatesDir()
+  const templatesDir = getTemplatesDir();
   if (!existsSync(templatesDir)) {
-    return []
+    return [];
   }
 
-  const files = readdirSync(templatesDir) as string[]
-  return files.filter((f: string) => f.endsWith('.yaml')).map((f: string) => f.replace('.yaml', ''))
+  const files = readdirSync(templatesDir) as string[];
+  return files
+    .filter((f: string) => f.endsWith(".yaml"))
+    .map((f: string) => f.replace(".yaml", ""));
 }

@@ -23,6 +23,7 @@ Fix three surfaced hardening gaps as one coherent pass: the shipped Claude outsi
 ## Scope
 
 ### In scope
+
 - Update `packages/gstack/skills/claude.md` as the source of truth and regenerate staged/package skill surfaces.
 - Prevent shipped Claude skill surfaces from reintroducing `claude auth status --output json`, API-key fallback auth, or credentials-file fallback auth.
 - Allow `wp_test` and CLI `wp test --suite --file` to combine `suite` and explicit files by filtering the explicit file set only.
@@ -30,6 +31,7 @@ Fix three surfaced hardening gaps as one coherent pass: the shipped Claude outsi
 - Make SessionStart malformed-stdin assertions stable around routing-block ordering.
 
 ### Out of scope
+
 - Editing installed plugin caches directly.
 - Rebuilding packaged native runtime binaries.
 - Adding new dependencies.
@@ -37,26 +39,31 @@ Fix three surfaced hardening gaps as one coherent pass: the shipped Claude outsi
 ## Tasks
 
 #### [skills] Task 1.1: Harden Claude skill auth snippet
+
 - [x] **Status:** done
 - **Files:** `packages/gstack/skills/claude.md`, `catalog/agent/skills/claude/SKILL.md`, `skills/claude/SKILL.md`, related tests
 - **Acceptance:** Source, staged, and packaged skill surfaces use `claude auth status --json` with plain status fallback, require recognized truthy auth fields, and contain no stale API-key or credentials-file fallback snippet.
 
 #### [mcp] Task 1.2: Preserve targeted test scope with suite + files
+
 - [x] **Status:** done
 - **Files:** `src/mcp/runners/test.ts`, `src/mcp/tools/test.test.ts`, `src/mcp/runners/test.test.ts`
 - **Acceptance:** `wp_test(files + suite)` runs only matching explicit files or fails closed when no explicit file matches, never expanding to a broad suite.
 
 #### [cli] Task 1.2b: Preserve targeted CLI test scope with suite + file
+
 - [x] **Status:** done
 - **Files:** `src/test/command-builder.ts`, `src/test/command-builder.test.ts`, `src/cli/commands/test.test.ts`
 - **Acceptance:** `wp test --suite <suite> --file <path>` resolves to explicit-file Vitest commands or fails closed when the suite filter has no matching explicit files.
 
 #### [qa] Task 1.3: Forward suite through wp_qa
+
 - [x] **Status:** done
 - **Files:** `src/mcp/tools/qa.ts`, `src/mcp/tools/qa.test.ts`
 - **Acceptance:** `wp_qa` accepts `suite`, forwards it only to `wp_test`, and keeps lint/typecheck scoping unchanged.
 
 #### [hooks] Task 1.4: Stabilize malformed-stdin SessionStart regression
+
 - [x] **Status:** done
 - **Files:** `src/hooks/sessionstart/index.test.ts`
 - **Acceptance:** malformed stdin exits 0, emits valid SessionStart JSON, and keeps routing block first even if continuity context is present.
@@ -85,21 +92,21 @@ Fix three surfaced hardening gaps as one coherent pass: the shipped Claude outsi
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-21-claude-skill-and-wp-test-targeting-hardening.md |
+| ID  | Claim                                                          | Evidence                                                                             |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-21-claude-skill-and-wp-test-targeting-hardening.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

@@ -4,10 +4,10 @@ status: accepted
 severity: low
 category: complexity
 review_cadence: quarterly
-last_reviewed: '2026-05-11'
-created: '2026-05-11'
-linked_blueprints: ['agent-kit-v1-evidence-ledger']
-affected_modules: ['src/runners', 'src/blueprint/db']
+last_reviewed: "2026-05-11"
+created: "2026-05-11"
+linked_blueprints: ["agent-kit-v1-evidence-ledger"]
+affected_modules: ["src/runners", "src/blueprint/db"]
 ---
 
 # resumable Runner execution
@@ -80,7 +80,7 @@ Resolve this item when **any one** of:
    column (or separate `runner_snapshots` table) to persist the
    opaque state.
 5. Document the resume CLI surface: `wp blueprint resume <execution
-   _handle>`.
+_handle>`.
 6. Move this file to `tech-debt/resolved/` with the implementing
    blueprint link.
 

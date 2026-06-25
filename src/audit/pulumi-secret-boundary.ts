@@ -1,11 +1,11 @@
-import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
+import type { RepoAuditResult, RepoAuditViolation } from "./repo-guardrails.js";
 
 export function auditPulumiSecretBoundary(_rootDirectory: string = process.cwd()): RepoAuditResult {
-  const violations: RepoAuditViolation[] = []
+  const violations: RepoAuditViolation[] = [];
   return {
     ok: violations.length === 0,
-    title: 'pulumi-secret-boundary',
+    title: "pulumi-secret-boundary",
     checked: 1,
     violations,
-  }
+  };
 }

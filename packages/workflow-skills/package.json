@@ -2,8 +2,8 @@
   "name": "@repo/workflow-skills",
   "version": "0.0.0",
   "private": true,
-  "type": "module",
   "description": "Private Webpresso-owned curated workflow-derived skill source and staging policy.",
+  "type": "module",
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts"

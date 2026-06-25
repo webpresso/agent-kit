@@ -1,5 +1,5 @@
-import { realpathSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 /**
  * Return true when a module is being executed directly rather than imported.
@@ -10,11 +10,11 @@ import { fileURLToPath } from 'node:url'
  * imports.
  */
 export function isDirectEntrypoint(moduleUrl: string, argvPath = process.argv[1]): boolean {
-  if (!argvPath) return false
+  if (!argvPath) return false;
 
   try {
-    return realpathSync(fileURLToPath(moduleUrl)) === realpathSync(argvPath)
+    return realpathSync(fileURLToPath(moduleUrl)) === realpathSync(argvPath);
   } catch {
-    return false
+    return false;
   }
 }

@@ -2,7 +2,7 @@
 type: research
 status: draft
 date: 2026-05-06
-last_updated: '2026-05-06'
+last_updated: "2026-05-06"
 audience: agent-kit maintainers
 related:
   - "webpresso/monorepo/package.json (postinstall: wp setup --overwrite)"
@@ -61,7 +61,7 @@ extensions." The patterns converge.
 
 - `extends: "@webpresso/typescript-config/base.json"` — one or many.
 - Carefully-defined per-key merge: `compilerOptions` shallow-merge, `include`
-  / `exclude` / `files` *replace*, `references` replace.
+  / `exclude` / `files` _replace_, `references` replace.
 - The replace-vs-merge distinction is documented per field. Predictable.
 
 ### 4. Tailwind presets
@@ -85,13 +85,13 @@ extensions." The patterns converge.
 ### 6. Claude Code settings (most directly relevant)
 
 - Five-layer precedence: **Managed > CLI > Local > Project > User**.
-- *Critical*: array-valued fields are **merged across all scopes**, not
+- _Critical_: array-valued fields are **merged across all scopes**, not
   replaced. `permissions.allow`, `filesystem.allowWrite`,
   `filesystem.denyRead`, hook arrays, etc. all union.
 - Object-valued fields override per-key.
 - `.claude/settings.local.json` is git-ignored and personal; `.claude/settings.json`
   is committed and team-shared.
-- Lesson: the platform agent-kit targets *already* has a layered settings
+- Lesson: the platform agent-kit targets _already_ has a layered settings
   model. Agent-kit's job is to populate the right layer.
 
 ### 7. Husky / shareable hooks
@@ -161,10 +161,12 @@ For surfaces that read a single file (not a directory), agent-kit generates
 an aggregator that includes both layers in deterministic order. Example:
 
 - `AGENTS.md` (canonical sections from catalog) ends with:
+
   ```markdown
   <!-- wp:include-overrides .agent/agents.local.md -->
   ```
-  `wp setup` re-renders `AGENTS.md` from the catalog *plus* whatever is in
+
+  `wp setup` re-renders `AGENTS.md` from the catalog _plus_ whatever is in
   `.agent/agents.local.md`. The local file is never overwritten; the
   generated `AGENTS.md` is.
 
@@ -226,15 +228,15 @@ subdirs would need to be excepted via `!.agent/rules.local/`).
 
 ### Merge semantics — declared explicitly
 
-| Surface | Canonical | Consumer | Merge |
-| ------- | --------- | -------- | ----- |
-| `.agent/rules/` | catalog | `.agent/rules.local/` | union (both are loaded) |
-| `.agent/skills/` | catalog | `.agent/skills.local/` | union |
-| `.agent/commands/` | catalog | `.agent/commands.local/` | union |
-| `AGENTS.md` | template render | `.agent/agents.local.md` appended | concat with delimiter |
-| `.claude/settings.json` | `.claude/settings.canonical.json` | `.claude/settings.local.json` | platform-native deep merge |
-| `.codex/hooks.json` | `.codex/hooks.canonical.json` | `.codex/hooks.local.json` | array append for `hooks[*]`, deep merge elsewhere |
-| `docs/templates/` | catalog | `docs/templates.local/` | union (consumer template wins on filename collision) |
+| Surface                 | Canonical                         | Consumer                          | Merge                                                |
+| ----------------------- | --------------------------------- | --------------------------------- | ---------------------------------------------------- |
+| `.agent/rules/`         | catalog                           | `.agent/rules.local/`             | union (both are loaded)                              |
+| `.agent/skills/`        | catalog                           | `.agent/skills.local/`            | union                                                |
+| `.agent/commands/`      | catalog                           | `.agent/commands.local/`          | union                                                |
+| `AGENTS.md`             | template render                   | `.agent/agents.local.md` appended | concat with delimiter                                |
+| `.claude/settings.json` | `.claude/settings.canonical.json` | `.claude/settings.local.json`     | platform-native deep merge                           |
+| `.codex/hooks.json`     | `.codex/hooks.canonical.json`     | `.codex/hooks.local.json`         | array append for `hooks[*]`, deep merge elsewhere    |
+| `docs/templates/`       | catalog                           | `docs/templates.local/`           | union (consumer template wins on filename collision) |
 
 For union surfaces (rules / skills / commands / templates), consumers can
 also **shadow** a canonical entry by name: `.agent/rules.local/agent-guide.md`
@@ -300,9 +302,9 @@ per-consumer rollouts that don't block agent-kit releases.
   resolves it transparently at runtime, but the file structure is
   agent-kit-imposed and requires explanation.
 
-**What this does *not* solve:**
+**What this does _not_ solve:**
 
-- Consumer rules that need to *delete* a canonical rule (rather than augment
+- Consumer rules that need to _delete_ a canonical rule (rather than augment
   or shadow). Stylelint handles this via `rules: { "<name>": null }`;
   agent-kit could grow a `.agent/rules.disabled.md` listing rule names to
   suppress, but this is a future extension. For now, shadowing with an

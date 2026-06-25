@@ -14,16 +14,16 @@ import {
   type TechDebtSeverity,
   type TechDebtStatus,
   techDebtStatusSchema,
-} from './schema.js'
+} from "./schema.js";
 
 /**
  * Freshness score for a tech debt document
  * Tracks how recently the debt was reviewed
  */
 export interface FreshnessScore {
-  score: number
-  daysSinceUpdate: number
-  status: 'fresh' | 'aging' | 'stale' | 'critical'
+  score: number;
+  daysSinceUpdate: number;
+  status: "fresh" | "aging" | "stale" | "critical";
 }
 
 /**
@@ -32,19 +32,19 @@ export interface FreshnessScore {
  */
 export interface TechDebtQuerySummary {
   /** Unique identifier derived from document filename */
-  slug: string
+  slug: string;
   /** Human-readable title extracted from document */
-  title: string
+  title: string;
   /** Current debt status (accepted, needs-remediation, monitoring, resolved) */
-  status: TechDebtStatus
+  status: TechDebtStatus;
   /** Severity level (critical, high, medium, low) */
-  severity: TechDebtSeverity
+  severity: TechDebtSeverity;
   /** Type of technical debt */
-  category?: TechDebtCategory
+  category?: TechDebtCategory;
   /** Computed priority score (higher = more urgent) */
-  priorityScore: number
+  priorityScore: number;
   /** ISO date string for next scheduled review */
-  nextReview?: string
+  nextReview?: string;
 }
 
 /**
@@ -53,15 +53,15 @@ export interface TechDebtQuerySummary {
  */
 export interface TechDebtRecord extends TechDebtQuerySummary {
   /** Parent group derived from path (e.g., "testing"), null if top-level */
-  group: string | null
+  group: string | null;
   /** Full file path to the tech debt markdown document */
-  path: string
+  path: string;
   /** Date when the debt was last reviewed */
-  lastReviewed?: Date
+  lastReviewed?: Date;
   /** Calculated freshness score based on review status and last review date */
-  freshness: FreshnessScore
+  freshness: FreshnessScore;
   /** Array of blueprint slugs that reference this tech debt */
-  linkedBlueprints: string[]
+  linkedBlueprints: string[];
 }
 
 /**
@@ -70,40 +70,40 @@ export interface TechDebtRecord extends TechDebtQuerySummary {
  */
 export interface TechDebtQueryFilters {
   /** Filter by debt status (single or multiple values) */
-  status?: TechDebtStatus | TechDebtStatus[]
+  status?: TechDebtStatus | TechDebtStatus[];
   /** Filter by severity level (single or multiple values) */
-  severity?: TechDebtSeverity | TechDebtSeverity[]
+  severity?: TechDebtSeverity | TechDebtSeverity[];
   /** Filter by category (single or multiple values) */
-  category?: TechDebtCategory | TechDebtCategory[]
+  category?: TechDebtCategory | TechDebtCategory[];
   /** Filter for overdue items (next_review < now) */
-  overdue?: boolean
+  overdue?: boolean;
   /** Filter for stale items only (not reviewed in N days) */
-  staleDays?: number
+  staleDays?: number;
 }
 
 /**
  * Available fields for sorting tech debt results.
  */
 export type TechDebtSortField =
-  | 'priorityScore'
-  | 'nextReview'
-  | 'lastReviewed'
-  | 'slug'
-  | 'severity'
+  | "priorityScore"
+  | "nextReview"
+  | "lastReviewed"
+  | "slug"
+  | "severity";
 
 /**
  * Sort direction for query results.
  */
-export type SortDirection = 'asc' | 'desc'
+export type SortDirection = "asc" | "desc";
 
 /**
  * Sorting options for tech debt queries.
  */
 export interface TechDebtSortOptions {
   /** Field to sort by */
-  field: TechDebtSortField
+  field: TechDebtSortField;
   /** Sort direction (ascending or descending) */
-  direction: SortDirection
+  direction: SortDirection;
 }
 
 /**
@@ -112,20 +112,20 @@ export interface TechDebtSortOptions {
  */
 export interface TechDebtQueryResult {
   /** List of matching tech debt records */
-  items: TechDebtRecord[]
+  items: TechDebtRecord[];
   /** Aggregate summary of the query results */
   summary: {
     /** Total number of matching items */
-    total: number
+    total: number;
     /** Count of items by status */
-    byStatus: Record<string, number>
+    byStatus: Record<string, number>;
     /** Count of items by severity */
-    bySeverity: Record<string, number>
+    bySeverity: Record<string, number>;
     /** Number of overdue items (past next_review date) */
-    overdueCount: number
+    overdueCount: number;
     /** Average priority score across all items */
-    avgPriority: number
-  }
+    avgPriority: number;
+  };
 }
 
 /**
@@ -135,7 +135,7 @@ export interface TechDebtQueryResult {
  * @returns True if the value is a valid TechDebtStatus
  */
 export function isTechDebtStatus(value: string): value is TechDebtStatus {
-  return techDebtStatusSchema.options.includes(value as TechDebtStatus)
+  return techDebtStatusSchema.options.includes(value as TechDebtStatus);
 }
 
 /**
@@ -145,7 +145,7 @@ export function isTechDebtStatus(value: string): value is TechDebtStatus {
  * @returns True if the value is a valid Severity
  */
 export function isSeverity(value: string): value is TechDebtSeverity {
-  return severitySchema.options.includes(value as TechDebtSeverity)
+  return severitySchema.options.includes(value as TechDebtSeverity);
 }
 
 /**
@@ -155,5 +155,5 @@ export function isSeverity(value: string): value is TechDebtSeverity {
  * @returns True if the value is a valid TechDebtCategory
  */
 export function isCategory(value: string): value is TechDebtCategory {
-  return categorySchema.options.includes(value as TechDebtCategory)
+  return categorySchema.options.includes(value as TechDebtCategory);
 }

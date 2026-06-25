@@ -3,11 +3,11 @@ type: blueprint
 title: "Context engine proof slices"
 owner: ozby
 status: completed
-completed_at: '2026-06-14'
+completed_at: "2026-06-14"
 complexity: M
-created: '2026-06-13'
-last_updated: '2026-06-14'
-progress: '100% (4/4 tasks done; implementation proof complete; Claude-login measured run produced failed recall evidence, not a pass claim)'
+created: "2026-06-13"
+last_updated: "2026-06-14"
+progress: "100% (4/4 tasks done; implementation proof complete; Claude-login measured run produced failed recall evidence, not a pass claim)"
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -54,14 +54,14 @@ existing bench scenarios + qrels
 
 ## Fact-Checked Evidence
 
-| ID | Evidence | Current repo reality | Plan impact |
-| -- | -------- | -------------------- | ----------- |
-| F1 | `src/cli/commands/bench/session-memory.ts:126-130` | The default benchmark threshold already defines `searchQualityRecallAt5: 0.8`. | Use `search_quality_recall_at_5 >= 0.8` as the explicit PoC pass threshold. |
-| F2 | `src/cli/commands/bench/session-memory.ts:584-591` | Measured cells currently write `recall_at_5: 0`. | Replace the placeholder with transcript scoring or explicit scoring failure metadata. |
-| F3 | `scripts/bench/lib/report-writer.ts:4-12` and `:48-53` | Report cells/rendering include `recall_at_5` but no recall explanation/error fields. | Add `recall_reason` / `recall_error` so zero recall is auditable. |
-| F4 | `scripts/bench/scenarios/_schema.ts:7-28` | Scenarios already require qrels with `expected_substring_in_response`; qrels minimum is 5. | Reuse existing scenario qrels; do not invent a new benchmark framework. |
-| F5 | `scripts/bench/lib/transcript-recorder.ts:8-14` and `:79-107` | Transcript recording wraps raw stream events under `event` with stable event metadata. | Scoring must support raw and recorder-wrapped Claude stream-json shapes. |
-| F6 | `src/cli/commands/bench/session-memory.ts:472-485` | Dry-run resolves workspace configuration but is intended as safe preflight, not measured model output. | Dry-run proves schema/no-API behavior only; measured quality requires non-dry-run report output. |
+| ID  | Evidence                                                      | Current repo reality                                                                                   | Plan impact                                                                                      |
+| --- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| F1  | `src/cli/commands/bench/session-memory.ts:126-130`            | The default benchmark threshold already defines `searchQualityRecallAt5: 0.8`.                         | Use `search_quality_recall_at_5 >= 0.8` as the explicit PoC pass threshold.                      |
+| F2  | `src/cli/commands/bench/session-memory.ts:584-591`            | Measured cells currently write `recall_at_5: 0`.                                                       | Replace the placeholder with transcript scoring or explicit scoring failure metadata.            |
+| F3  | `scripts/bench/lib/report-writer.ts:4-12` and `:48-53`        | Report cells/rendering include `recall_at_5` but no recall explanation/error fields.                   | Add `recall_reason` / `recall_error` so zero recall is auditable.                                |
+| F4  | `scripts/bench/scenarios/_schema.ts:7-28`                     | Scenarios already require qrels with `expected_substring_in_response`; qrels minimum is 5.             | Reuse existing scenario qrels; do not invent a new benchmark framework.                          |
+| F5  | `scripts/bench/lib/transcript-recorder.ts:8-14` and `:79-107` | Transcript recording wraps raw stream events under `event` with stable event metadata.                 | Scoring must support raw and recorder-wrapped Claude stream-json shapes.                         |
+| F6  | `src/cli/commands/bench/session-memory.ts:472-485`            | Dry-run resolves workspace configuration but is intended as safe preflight, not measured model output. | Dry-run proves schema/no-API behavior only; measured quality requires non-dry-run report output. |
 
 ## RALPLAN-DR Summary
 
@@ -81,24 +81,24 @@ existing bench scenarios + qrels
 
 ### Viable Options
 
-| Option | Summary | Pros | Cons | Verdict |
-| ------ | ------- | ---- | ---- | ------- |
-| **A: Do nothing / defer to continuity plan** | Leave benchmark recall as-is until the larger continuity plan lands. | No immediate code risk; avoids API spend. | Preserves overclaim risk and leaves `recall_at_5` unproven. | Rejected; does not answer the user’s proof request. |
-| **B: Single measured proof slice** | Keep dry-run as schema/no-API validation, then require at least one measured scenario/variant/trial report with recall scoring. | Small, fast, falsifiable; proves real transcript-to-report path; avoids premature matrix expansion. | Lower statistical confidence; does not prove all variants/scenarios. | **Chosen.** Right-sized for PoC. |
-| **C: Broad continuity/replacement implementation** | Implement reference-first resume, symbolic retrieval, graph memory, repo map, and host integration together. | Could eventually close more parity gaps. | Too large, risky, and unmeasured; violates the pinpoint PoC request. | Rejected; only revisit after PoC evidence. |
-| **D: Full benchmark matrix now** | Run all scenarios, all variants, and multiple trials before accepting context-engine proof. | Stronger statistical confidence; closer to release-grade evidence. | Too expensive/slow for PoC; hides scoring bugs behind matrix complexity. | Rejected for this blueprint; defer until scoring path is proven. |
+| Option                                             | Summary                                                                                                                         | Pros                                                                                                | Cons                                                                     | Verdict                                                          |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| **A: Do nothing / defer to continuity plan**       | Leave benchmark recall as-is until the larger continuity plan lands.                                                            | No immediate code risk; avoids API spend.                                                           | Preserves overclaim risk and leaves `recall_at_5` unproven.              | Rejected; does not answer the user’s proof request.              |
+| **B: Single measured proof slice**                 | Keep dry-run as schema/no-API validation, then require at least one measured scenario/variant/trial report with recall scoring. | Small, fast, falsifiable; proves real transcript-to-report path; avoids premature matrix expansion. | Lower statistical confidence; does not prove all variants/scenarios.     | **Chosen.** Right-sized for PoC.                                 |
+| **C: Broad continuity/replacement implementation** | Implement reference-first resume, symbolic retrieval, graph memory, repo map, and host integration together.                    | Could eventually close more parity gaps.                                                            | Too large, risky, and unmeasured; violates the pinpoint PoC request.     | Rejected; only revisit after PoC evidence.                       |
+| **D: Full benchmark matrix now**                   | Run all scenarios, all variants, and multiple trials before accepting context-engine proof.                                     | Stronger statistical confidence; closer to release-grade evidence.                                  | Too expensive/slow for PoC; hides scoring bugs behind matrix complexity. | Rejected for this blueprint; defer until scoring path is proven. |
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-| -------- | ------ | --------- |
-| PoC threshold | `search_quality_recall_at_5 >= 0.8` | Matches existing threshold intent and makes pass/fail explicit. |
-| Measured scope | Minimum one scenario/variant/trial measured `report.md` | Proves the real output path without requiring a full matrix. |
-| Default scenario | Prefer existing `debug-long-session` unless implementation proves another existing scenario is narrower | Avoid new fixtures unless needed; reuse current qrels. |
-| Dry-run semantics | Schema/no-API only | Dry-run must not fake measured quality. |
-| Placeholder removal | Replace hardcoded measured `recall_at_5: 0` | Measured reports must reflect transcript scoring or explicit scoring error. |
-| Transcript support | Support raw Claude `stream-json` and recorder-wrapped event JSON paths | Current transcripts may be raw or wrapped by `recordStream`. |
-| File scope | Benchmark/reporting files only | Prevent PoC work from becoming runtime/storage/hook redesign. |
+| Decision            | Choice                                                                                                  | Rationale                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| PoC threshold       | `search_quality_recall_at_5 >= 0.8`                                                                     | Matches existing threshold intent and makes pass/fail explicit.             |
+| Measured scope      | Minimum one scenario/variant/trial measured `report.md`                                                 | Proves the real output path without requiring a full matrix.                |
+| Default scenario    | Prefer existing `debug-long-session` unless implementation proves another existing scenario is narrower | Avoid new fixtures unless needed; reuse current qrels.                      |
+| Dry-run semantics   | Schema/no-API only                                                                                      | Dry-run must not fake measured quality.                                     |
+| Placeholder removal | Replace hardcoded measured `recall_at_5: 0`                                                             | Measured reports must reflect transcript scoring or explicit scoring error. |
+| Transcript support  | Support raw Claude `stream-json` and recorder-wrapped event JSON paths                                  | Current transcripts may be raw or wrapped by `recordStream`.                |
+| File scope          | Benchmark/reporting files only                                                                          | Prevent PoC work from becoming runtime/storage/hook redesign.               |
 
 ## `recall_at_5` Contract
 
@@ -164,13 +164,13 @@ Forbidden in this blueprint:
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort |
-| ---- | ----- | ------------ | -------------- | ------ |
-| Wave 0 | 1.1 | None | 1 agent | S |
-| Wave 1 | 1.2 | Task 1.1 | 1 agent | S-M |
-| Wave 2 | 1.3 | Task 1.2 | 1 agent | S |
-| Wave 3 | 1.4 | Task 1.3 | 1 verifier | S |
-| Critical path | 1.1 → 1.2 → 1.3 → 1.4 | -- | 4 waves | M |
+| Wave          | Tasks                 | Dependencies | Parallelizable | Effort |
+| ------------- | --------------------- | ------------ | -------------- | ------ |
+| Wave 0        | 1.1                   | None         | 1 agent        | S      |
+| Wave 1        | 1.2                   | Task 1.1     | 1 agent        | S-M    |
+| Wave 2        | 1.3                   | Task 1.2     | 1 agent        | S      |
+| Wave 3        | 1.4                   | Task 1.3     | 1 verifier     | S      |
+| Critical path | 1.1 → 1.2 → 1.3 → 1.4 | --           | 4 waves        | M      |
 
 ## Phase 1: measured recall proof [Complexity: M]
 
@@ -317,34 +317,34 @@ outcome must be one of: `PoC failed`, `PoC passed but needs broader matrix`, or
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-| ---- | ------- | ---------------- |
-| Focused tests | `./bin/wp test --file src/cli/commands/bench/session-memory.test.ts --file scripts/bench/lib/report-writer.test.ts --file scripts/bench/lib/transcript-scorer.test.ts` | All targeted tests pass. |
-| Dry-run proof | `./bin/wp bench session-memory --dry-run` | Exits 0; threshold axes are `schema-valid`; no API/model invocation. |
-| Lint | `./bin/wp lint --file src/cli/commands/bench/session-memory.ts --file src/cli/commands/bench/session-memory.test.ts --file scripts/bench/lib/report-writer.ts --file scripts/bench/lib/report-writer.test.ts --file scripts/bench/lib/transcript-scorer.ts --file scripts/bench/lib/transcript-scorer.test.ts` | Zero lint violations. |
-| Typecheck | `./bin/wp typecheck` | Zero type errors. |
-| Measured PoC | `./bin/wp bench session-memory --scenario debug-long-session --variant baseline --trials 1` | Requires credentials/operator approval; generated `report.md` has non-placeholder `recall_at_5`, `recall_reason` or `recall_error`, and threshold pass/fail. |
-| Scope audit | `git diff --name-only` | Only benchmark/reporting files and this blueprint/handoff changed. |
-| Blueprint lifecycle | `./bin/wp audit blueprint-lifecycle` | Blueprint format and lifecycle are valid. |
+| Gate                | Command                                                                                                                                                                                                                                                                                                        | Success Criteria                                                                                                                                             |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Focused tests       | `./bin/wp test --file src/cli/commands/bench/session-memory.test.ts --file scripts/bench/lib/report-writer.test.ts --file scripts/bench/lib/transcript-scorer.test.ts`                                                                                                                                         | All targeted tests pass.                                                                                                                                     |
+| Dry-run proof       | `./bin/wp bench session-memory --dry-run`                                                                                                                                                                                                                                                                      | Exits 0; threshold axes are `schema-valid`; no API/model invocation.                                                                                         |
+| Lint                | `./bin/wp lint --file src/cli/commands/bench/session-memory.ts --file src/cli/commands/bench/session-memory.test.ts --file scripts/bench/lib/report-writer.ts --file scripts/bench/lib/report-writer.test.ts --file scripts/bench/lib/transcript-scorer.ts --file scripts/bench/lib/transcript-scorer.test.ts` | Zero lint violations.                                                                                                                                        |
+| Typecheck           | `./bin/wp typecheck`                                                                                                                                                                                                                                                                                           | Zero type errors.                                                                                                                                            |
+| Measured PoC        | `./bin/wp bench session-memory --scenario debug-long-session --variant baseline --trials 1`                                                                                                                                                                                                                    | Requires credentials/operator approval; generated `report.md` has non-placeholder `recall_at_5`, `recall_reason` or `recall_error`, and threshold pass/fail. |
+| Scope audit         | `git diff --name-only`                                                                                                                                                                                                                                                                                         | Only benchmark/reporting files and this blueprint/handoff changed.                                                                                           |
+| Blueprint lifecycle | `./bin/wp audit blueprint-lifecycle`                                                                                                                                                                                                                                                                           | Blueprint format and lifecycle are valid.                                                                                                                    |
 
 ## Cross-Plan References
 
-| Type | Blueprint | Relationship |
-| ---- | --------- | ------------ |
-| Downstream | `blueprints/planned/2026-06-13-session-continuity-and-resume-parity.md` | May consume measured recall evidence after PoC pass; not satisfied by this blueprint. |
-| Downstream | `blueprints/planned/2026-06-13-sandboxed-knowledge-tool-surface-parity.md` | May use scoring evidence to prioritize retrieval/tool-surface work; not satisfied by this blueprint. |
+| Type       | Blueprint                                                                            | Relationship                                                                                                                  |
+| ---------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| Downstream | `blueprints/planned/2026-06-13-session-continuity-and-resume-parity.md`              | May consume measured recall evidence after PoC pass; not satisfied by this blueprint.                                         |
+| Downstream | `blueprints/planned/2026-06-13-sandboxed-knowledge-tool-surface-parity.md`           | May use scoring evidence to prioritize retrieval/tool-surface work; not satisfied by this blueprint.                          |
 | Downstream | `blueprints/completed/2026-06-13-reference-parity-regression-and-host-smoke-gate.md` | Prior gate exposed parity evidence needs; this blueprint supplies a narrow follow-up proof slice, not retroactive completion. |
 
 ## Risks and Mitigations
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-| Claude stream-json shape drifts | Scorer silently misses response text. | Fixture drift tests for raw and recorder-wrapped JSON paths; unsupported shapes emit `recall_error`. |
-| Dry-run is mistaken for proof | Replacement claims outrun measured evidence. | Dry-run status remains `schema-valid`; docs/README release claims are forbidden. |
-| PoC expands into matrix work | Small proof becomes slow and broad. | Acceptance requires minimum one measured cell only; full matrix is a follow-up. |
-| Scope creep into runtime/storage | Blueprint duplicates larger continuity plans. | Forbidden files/surfaces and scope audit gate. |
-| Placeholder recall survives | Reports remain misleading. | Tests must fail on hardcoded measured `recall_at_5: 0` without scorer output/error. |
-| API credentials unavailable | Measured proof cannot run in normal CI. | Keep dry-run CI-safe; record measured proof as operator-approved evidence when available. |
+| Risk                             | Impact                                        | Mitigation                                                                                           |
+| -------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Claude stream-json shape drifts  | Scorer silently misses response text.         | Fixture drift tests for raw and recorder-wrapped JSON paths; unsupported shapes emit `recall_error`. |
+| Dry-run is mistaken for proof    | Replacement claims outrun measured evidence.  | Dry-run status remains `schema-valid`; docs/README release claims are forbidden.                     |
+| PoC expands into matrix work     | Small proof becomes slow and broad.           | Acceptance requires minimum one measured cell only; full matrix is a follow-up.                      |
+| Scope creep into runtime/storage | Blueprint duplicates larger continuity plans. | Forbidden files/surfaces and scope audit gate.                                                       |
+| Placeholder recall survives      | Reports remain misleading.                    | Tests must fail on hardcoded measured `recall_at_5: 0` without scorer output/error.                  |
+| API credentials unavailable      | Measured proof cannot run in normal CI.       | Keep dry-run CI-safe; record measured proof as operator-approved evidence when available.            |
 
 ## Non-Goals
 
@@ -472,7 +472,6 @@ changes, package/bin work, daemon work, generated-surface updates, capture
 pipeline redesign, release-claim edits, or downstream blueprint completion under
 this blueprint.
 
-
 ## Completion Summary
 
 Implemented the pinpoint benchmark proof slice without expanding into runtime,
@@ -550,21 +549,21 @@ after the local Claude rate limit clears:
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-13-context-engine-proof-slices.md |
+| ID  | Claim                                                          | Evidence                                                            |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-13-context-engine-proof-slices.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

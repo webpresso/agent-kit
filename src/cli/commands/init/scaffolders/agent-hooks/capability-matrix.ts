@@ -18,34 +18,34 @@
  * - No UserPromptSubmit, Stop, SubagentStart/Stop, SessionEnd, PostCompact equivalent
  */
 
-export type SupportLevel = 'full' | 'partial' | 'unmapped' | 'unsupported'
+export type SupportLevel = "full" | "partial" | "unmapped" | "unsupported";
 
 export type VendorCapability = {
-  readonly event: string
-  readonly claude: SupportLevel
-  readonly codex: SupportLevel
-  readonly cursor: SupportLevel
-  readonly opencode: SupportLevel
-  readonly notes?: string
-}
+  readonly event: string;
+  readonly claude: SupportLevel;
+  readonly codex: SupportLevel;
+  readonly cursor: SupportLevel;
+  readonly opencode: SupportLevel;
+  readonly notes?: string;
+};
 
-export type CapabilityMatrixHost = 'claude' | 'codex' | 'cursor' | 'opencode'
+export type CapabilityMatrixHost = "claude" | "codex" | "cursor" | "opencode";
 
-export type ReplacementParitySupportLevel = 'full' | 'degraded' | 'unsupported'
+export type ReplacementParitySupportLevel = "full" | "degraded" | "unsupported";
 
 export type ReplacementParityCapabilityCrosswalk = {
-  readonly capability: string
-  readonly events: readonly string[]
-  readonly hosts: readonly CapabilityMatrixHost[]
-  readonly notes: string
-}
+  readonly capability: string;
+  readonly events: readonly string[];
+  readonly hosts: readonly CapabilityMatrixHost[];
+  readonly notes: string;
+};
 
 export type ReplacementParityRowLike = {
-  readonly capability: string
-  readonly hostScope: string
-  readonly supportLevel: ReplacementParitySupportLevel
-  readonly status?: string
-}
+  readonly capability: string;
+  readonly hostScope: string;
+  readonly supportLevel: ReplacementParitySupportLevel;
+  readonly status?: string;
+};
 
 /**
  * Canonical capability matrix for all hook events across supported agent CLIs.
@@ -55,151 +55,151 @@ export type ReplacementParityRowLike = {
  */
 export const CAPABILITY_MATRIX: readonly VendorCapability[] = [
   {
-    event: 'SessionStart',
-    claude: 'full',
-    codex: 'full',
-    cursor: 'full',
-    opencode: 'full',
+    event: "SessionStart",
+    claude: "full",
+    codex: "full",
+    cursor: "full",
+    opencode: "full",
     notes:
-      'Cursor requires project hooks.json with version: 1; OpenCode bridges via session.created',
+      "Cursor requires project hooks.json with version: 1; OpenCode bridges via session.created",
   },
   {
-    event: 'PreToolUse',
-    claude: 'full',
-    codex: 'full',
-    cursor: 'full',
-    opencode: 'full',
-    notes: 'OpenCode bridges via tool.execute.before; deny translates to throw new Error(...)',
+    event: "PreToolUse",
+    claude: "full",
+    codex: "full",
+    cursor: "full",
+    opencode: "full",
+    notes: "OpenCode bridges via tool.execute.before; deny translates to throw new Error(...)",
   },
   {
-    event: 'PostToolUse',
-    claude: 'full',
-    codex: 'full',
-    cursor: 'full',
-    opencode: 'full',
-    notes: 'Cursor emits postToolUse; OpenCode bridges via tool.execute.after',
+    event: "PostToolUse",
+    claude: "full",
+    codex: "full",
+    cursor: "full",
+    opencode: "full",
+    notes: "Cursor emits postToolUse; OpenCode bridges via tool.execute.after",
   },
   {
-    event: 'PostToolUseFailure',
-    claude: 'partial',
-    codex: 'unsupported',
-    cursor: 'unsupported',
-    opencode: 'unsupported',
+    event: "PostToolUseFailure",
+    claude: "partial",
+    codex: "unsupported",
+    cursor: "unsupported",
+    opencode: "unsupported",
     notes:
-      'Claude documents this event, but the current managed wp-* surface does not emit a dedicated failure hook',
+      "Claude documents this event, but the current managed wp-* surface does not emit a dedicated failure hook",
   },
   {
-    event: 'UserPromptSubmit',
-    claude: 'full',
-    codex: 'full',
-    cursor: 'partial',
-    opencode: 'unsupported',
+    event: "UserPromptSubmit",
+    claude: "full",
+    codex: "full",
+    cursor: "partial",
+    opencode: "unsupported",
     notes:
-      'Cursor maps to beforeSubmitPrompt (third-party compat toggle required); OpenCode has no before-submit-prompt equivalent',
+      "Cursor maps to beforeSubmitPrompt (third-party compat toggle required); OpenCode has no before-submit-prompt equivalent",
   },
   {
-    event: 'Stop',
-    claude: 'full',
-    codex: 'full',
-    cursor: 'full',
-    opencode: 'unsupported',
+    event: "Stop",
+    claude: "full",
+    codex: "full",
+    cursor: "full",
+    opencode: "unsupported",
     notes:
-      'Cursor emits stop; OpenCode has no turn-end/stop lifecycle event. Codex mandates JSON-only stdout for Stop (plain text is invalid)',
+      "Cursor emits stop; OpenCode has no turn-end/stop lifecycle event. Codex mandates JSON-only stdout for Stop (plain text is invalid)",
   },
   {
-    event: 'PermissionRequest',
-    claude: 'partial',
-    codex: 'partial',
-    cursor: 'unmapped',
-    opencode: 'partial',
+    event: "PermissionRequest",
+    claude: "partial",
+    codex: "partial",
+    cursor: "unmapped",
+    opencode: "partial",
     notes:
-      'Cursor: not mapped in third-party compat table. OpenCode exposes native permission callbacks, but the managed plugin bridge emits no permission hook',
+      "Cursor: not mapped in third-party compat table. OpenCode exposes native permission callbacks, but the managed plugin bridge emits no permission hook",
   },
   {
-    event: 'SubagentStart',
-    claude: 'partial',
-    codex: 'partial',
-    cursor: 'unsupported',
-    opencode: 'unsupported',
+    event: "SubagentStart",
+    claude: "partial",
+    codex: "partial",
+    cursor: "unsupported",
+    opencode: "unsupported",
     notes:
-      'Native-only event; current managed wp-* surface does not emit a dedicated subagent-start hook. Codex mandates JSON-only stdout for SubagentStop',
+      "Native-only event; current managed wp-* surface does not emit a dedicated subagent-start hook. Codex mandates JSON-only stdout for SubagentStop",
   },
   {
-    event: 'SubagentStop',
-    claude: 'partial',
-    codex: 'partial',
-    cursor: 'unsupported',
-    opencode: 'unsupported',
+    event: "SubagentStop",
+    claude: "partial",
+    codex: "partial",
+    cursor: "unsupported",
+    opencode: "unsupported",
     notes:
-      'Native-only event; current managed wp-* surface does not emit a dedicated subagent-stop hook. Codex mandates JSON-only stdout (plain text is invalid)',
+      "Native-only event; current managed wp-* surface does not emit a dedicated subagent-stop hook. Codex mandates JSON-only stdout (plain text is invalid)",
   },
   {
-    event: 'SessionEnd',
-    claude: 'partial',
-    codex: 'unsupported',
-    cursor: 'unsupported',
-    opencode: 'unsupported',
+    event: "SessionEnd",
+    claude: "partial",
+    codex: "unsupported",
+    cursor: "unsupported",
+    opencode: "unsupported",
     notes:
-      'Claude documents this cleanup event, but the current managed wp-* surface does not emit a dedicated session-end hook',
+      "Claude documents this cleanup event, but the current managed wp-* surface does not emit a dedicated session-end hook",
   },
   {
-    event: 'PreCompact',
-    claude: 'full',
-    codex: 'full',
-    cursor: 'unsupported',
-    opencode: 'partial',
+    event: "PreCompact",
+    claude: "full",
+    codex: "full",
+    cursor: "unsupported",
+    opencode: "partial",
     notes:
-      'Managed wp-precompact-snapshot is installed for Claude/Codex; Cursor has no PreCompact projection; its schema accepts host-native preCompact but the emitter intentionally omits it; OpenCode experimental.session.compacting refreshes SessionStart context and emits no wp-precompact-snapshot command',
+      "Managed wp-precompact-snapshot is installed for Claude/Codex; Cursor has no PreCompact projection; its schema accepts host-native preCompact but the emitter intentionally omits it; OpenCode experimental.session.compacting refreshes SessionStart context and emits no wp-precompact-snapshot command",
   },
   {
-    event: 'PostCompact',
-    claude: 'partial',
-    codex: 'partial',
-    cursor: 'unsupported',
-    opencode: 'unsupported',
+    event: "PostCompact",
+    claude: "partial",
+    codex: "partial",
+    cursor: "unsupported",
+    opencode: "unsupported",
     notes:
-      'Accepted in lifecycle tooling, but the current managed wp-* surface does not install a dedicated post-compact hook. OpenCode has no post-compaction event',
+      "Accepted in lifecycle tooling, but the current managed wp-* surface does not install a dedicated post-compact hook. OpenCode has no post-compaction event",
   },
-]
+];
 
 export const REPLACEMENT_PARITY_CAPABILITY_CROSSWALK: readonly ReplacementParityCapabilityCrosswalk[] =
   [
     {
-      capability: 'lifecycle capture',
-      events: ['PostToolUse', 'UserPromptSubmit', 'Stop', 'PreCompact'],
-      hosts: ['claude', 'codex', 'cursor', 'opencode'],
+      capability: "lifecycle capture",
+      events: ["PostToolUse", "UserPromptSubmit", "Stop", "PreCompact"],
+      hosts: ["claude", "codex", "cursor", "opencode"],
       notes:
-        'Host lifecycle capture is degraded until every covered host/event is full; store-only rows may remain scoped outside host parity.',
+        "Host lifecycle capture is degraded until every covered host/event is full; store-only rows may remain scoped outside host parity.",
     },
     {
-      capability: 'resume injection',
-      events: ['SessionStart'],
-      hosts: ['claude', 'codex', 'cursor', 'opencode'],
-      notes: 'Resume injection enters host context through SessionStart-compatible surfaces.',
+      capability: "resume injection",
+      events: ["SessionStart"],
+      hosts: ["claude", "codex", "cursor", "opencode"],
+      notes: "Resume injection enters host context through SessionStart-compatible surfaces.",
     },
     {
-      capability: 'host setup smoke',
+      capability: "host setup smoke",
       events: [
-        'SessionStart',
-        'PreToolUse',
-        'PostToolUse',
-        'UserPromptSubmit',
-        'Stop',
-        'PreCompact',
+        "SessionStart",
+        "PreToolUse",
+        "PostToolUse",
+        "UserPromptSubmit",
+        "Stop",
+        "PreCompact",
       ],
-      hosts: ['claude', 'codex', 'cursor', 'opencode'],
+      hosts: ["claude", "codex", "cursor", "opencode"],
       notes:
-        'Setup smoke covers emitted lifecycle hooks and must reflect degraded host/event gaps.',
+        "Setup smoke covers emitted lifecycle hooks and must reflect degraded host/event gaps.",
     },
-  ]
+  ];
 
 export interface ReplacementParityCrosswalkViolation {
-  readonly capability: string
-  readonly message: string
+  readonly capability: string;
+  readonly message: string;
 }
 
 function capabilityForEvent(event: string): VendorCapability | undefined {
-  return CAPABILITY_MATRIX.find((entry) => entry.event === event)
+  return CAPABILITY_MATRIX.find((entry) => entry.event === event);
 }
 
 function hostSupportFor(
@@ -207,65 +207,65 @@ function hostSupportFor(
   hosts: readonly CapabilityMatrixHost[],
 ): SupportLevel[] {
   return events.flatMap((event) => {
-    const capability = capabilityForEvent(event)
-    if (!capability) return ['unsupported' as const]
-    return hosts.map((host) => capability[host])
-  })
+    const capability = capabilityForEvent(event);
+    if (!capability) return ["unsupported" as const];
+    return hosts.map((host) => capability[host]);
+  });
 }
 
 export function replacementParitySupportCeiling(
   crosswalk: ReplacementParityCapabilityCrosswalk,
 ): ReplacementParitySupportLevel {
-  const supportLevels = hostSupportFor(crosswalk.events, crosswalk.hosts)
-  if (supportLevels.length === 0) return 'unsupported'
-  if (supportLevels.every((level) => level === 'full')) return 'full'
-  if (supportLevels.every((level) => level === 'unsupported' || level === 'unmapped')) {
-    return 'unsupported'
+  const supportLevels = hostSupportFor(crosswalk.events, crosswalk.hosts);
+  if (supportLevels.length === 0) return "unsupported";
+  if (supportLevels.every((level) => level === "full")) return "full";
+  if (supportLevels.every((level) => level === "unsupported" || level === "unmapped")) {
+    return "unsupported";
   }
-  return 'degraded'
+  return "degraded";
 }
 
 function hostsMentionedInScope(
   hostScope: string,
   hosts: readonly CapabilityMatrixHost[],
 ): CapabilityMatrixHost[] {
-  const normalized = hostScope.toLowerCase()
-  return hosts.filter((host) => normalized.includes(host))
+  const normalized = hostScope.toLowerCase();
+  return hosts.filter((host) => normalized.includes(host));
 }
 
 export function validateReplacementParityCapabilityCrosswalk(
   rows: readonly ReplacementParityRowLike[],
   crosswalks: readonly ReplacementParityCapabilityCrosswalk[] = REPLACEMENT_PARITY_CAPABILITY_CROSSWALK,
 ): ReplacementParityCrosswalkViolation[] {
-  const violations: ReplacementParityCrosswalkViolation[] = []
+  const violations: ReplacementParityCrosswalkViolation[] = [];
 
   for (const crosswalk of crosswalks) {
     for (const row of rows.filter(
       (candidate) => candidate.capability.toLowerCase() === crosswalk.capability.toLowerCase(),
     )) {
-      if (row.status !== undefined && row.status !== 'passed') continue
-      if (row.supportLevel !== 'full') continue
+      if (row.status !== undefined && row.status !== "passed") continue;
+      if (row.supportLevel !== "full") continue;
 
-      const scopedHosts = hostsMentionedInScope(row.hostScope, crosswalk.hosts)
+      const scopedHosts = hostsMentionedInScope(row.hostScope, crosswalk.hosts);
       if (scopedHosts.length === 0) {
         if (/\b(?:host|hosts|tiered|surface|surfaces)\b/u.test(row.hostScope.toLowerCase())) {
           violations.push({
             capability: row.capability,
             message: `Replacement parity row "${row.capability}" cannot claim full support without naming the covered canonical host(s).`,
-          })
+          });
         }
-        continue
+        continue;
       }
 
-      const ceiling = replacementParitySupportCeiling({ ...crosswalk, hosts: scopedHosts })
-      if (ceiling !== 'full') {
+      const ceiling = replacementParitySupportCeiling({ ...crosswalk, hosts: scopedHosts });
+      if (ceiling !== "full") {
         violations.push({
           capability: row.capability,
-          message: `Replacement parity row "${row.capability}" cannot claim full support because canonical host lifecycle support for ${scopedHosts.join(', ')} is ${ceiling}.`,
-        })
+          message: `Replacement parity row "${row.capability}" cannot claim full support because canonical host lifecycle support for ${scopedHosts.join(", ")} is ${ceiling}.`,
+        });
       }
     }
   }
 
-  return violations
+  return violations;
 }

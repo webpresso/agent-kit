@@ -18,17 +18,17 @@
  * not register MCP tools and has no transitive MCP dependency.
  */
 
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from "node:fs/promises";
 
-import { escapeRegex } from '#utils/string'
+import { escapeRegex } from "#utils/string";
 
-import { canonicalizeEvidenceList, type Evidence, evidenceListSchema } from './evidence.js'
-import { completeTask } from './markdown/helpers.js'
+import { canonicalizeEvidenceList, type Evidence, evidenceListSchema } from "./evidence.js";
+import { completeTask } from "./markdown/helpers.js";
 import {
   buildTaskHeaderRegexForId,
   buildTaskSectionBoundaryRegex,
   TASK_HEADING_PREFIX_PATTERN,
-} from './markdown/task-heading.js'
+} from "./markdown/task-heading.js";
 
 /**
  * Canonical header used to anchor the verification block under a task.
@@ -37,28 +37,28 @@ import {
  * and tamper-detection all rely on grep-able presence. Do not change
  * casing or punctuation without a migration plan.
  */
-export const VERIFICATION_BLOCK_HEADER = '**Verification:**'
+export const VERIFICATION_BLOCK_HEADER = "**Verification:**";
 
-const VERIFICATION_FENCE_LANG = 'webpresso-evidence-v1'
+const VERIFICATION_FENCE_LANG = "webpresso-evidence-v1";
 
 const VERIFICATION_BLOCK_PATTERN = new RegExp(
   `\\n*${escapeRegex(VERIFICATION_BLOCK_HEADER)}\\n+\`\`\`${VERIFICATION_FENCE_LANG}\\n[\\s\\S]*?\\n\`\`\`\\n*`,
-  'g',
-)
+  "g",
+);
 
 export interface VerificationSuccess {
-  readonly ok: true
-  readonly markdown: string
-  readonly status: 'done'
+  readonly ok: true;
+  readonly markdown: string;
+  readonly status: "done";
 }
 
 export interface VerificationFailure {
-  readonly ok: false
-  readonly next_action: 'verify_task'
-  readonly failures: readonly string[]
+  readonly ok: false;
+  readonly next_action: "verify_task";
+  readonly failures: readonly string[];
 }
 
-export type VerificationResult = VerificationSuccess | VerificationFailure
+export type VerificationResult = VerificationSuccess | VerificationFailure;
 
 /**
  * Apply an evidence list to a blueprint markdown buffer. Pure function — does
@@ -75,56 +75,56 @@ export function applyVerification(
   taskId: string,
   evidence: readonly Evidence[],
 ): VerificationResult {
-  const parsed = evidenceListSchema.safeParse(evidence)
+  const parsed = evidenceListSchema.safeParse(evidence);
   if (!parsed.success) {
-    return failure(parsed.error.issues.map((issue) => formatZodIssue(issue)))
+    return failure(parsed.error.issues.map((issue) => formatZodIssue(issue)));
   }
 
-  const items = parsed.data
+  const items = parsed.data;
 
-  const failingItems = items.filter((item) => item.result === 'fail')
+  const failingItems = items.filter((item) => item.result === "fail");
   if (failingItems.length > 0) {
     return failure(
       failingItems.map(
         (item, idx) =>
           `evidence[${idx}] (kind=${item.kind}) has result: 'fail' — cannot transition to done`,
       ),
-    )
+    );
   }
 
-  const passing = items.filter((item) => item.result === 'pass')
+  const passing = items.filter((item) => item.result === "pass");
   if (passing.length === 0) {
-    return failure(['evidence list contains zero passing items'])
+    return failure(["evidence list contains zero passing items"]);
   }
 
-  const taskHeader = buildTaskHeaderRegexForId(taskId)
+  const taskHeader = buildTaskHeaderRegexForId(taskId);
   if (!taskHeader.test(markdown)) {
-    return failure([`task ${taskId} not found in blueprint markdown`])
+    return failure([`task ${taskId} not found in blueprint markdown`]);
   }
 
-  const block = serializeVerificationBlock(items)
+  const block = serializeVerificationBlock(items);
 
   // Replace any existing verification block inside the target task region
   // BEFORE we mutate status so we cleanly replace rather than append.
-  const withoutExistingBlock = removeVerificationFromTask(markdown, taskId)
+  const withoutExistingBlock = removeVerificationFromTask(markdown, taskId);
 
   // Reuse the canonical task-completion mutation so verification and lifecycle
   // completion cannot drift on status / blocked-state / acceptance behavior.
-  const withStatus = completeTask(withoutExistingBlock, taskId)
+  const withStatus = completeTask(withoutExistingBlock, taskId);
 
   // Insert the canonical block immediately after the status line of the
   // target task.
-  const withBlock = insertVerificationAfterStatus(withStatus, taskId, block)
+  const withBlock = insertVerificationAfterStatus(withStatus, taskId, block);
 
-  return { ok: true, markdown: withBlock, status: 'done' }
+  return { ok: true, markdown: withBlock, status: "done" };
 }
 
 export interface WriteVerificationOptions {
-  readonly filePath: string
-  readonly taskId: string
-  readonly evidence: readonly Evidence[]
-  readonly cwd: string
-  readonly reingest: (args: { readonly cwd: string }) => Promise<void> | void
+  readonly filePath: string;
+  readonly taskId: string;
+  readonly evidence: readonly Evidence[];
+  readonly cwd: string;
+  readonly reingest: (args: { readonly cwd: string }) => Promise<void> | void;
 }
 
 /**
@@ -143,21 +143,21 @@ export interface WriteVerificationOptions {
 export async function writeVerification(
   options: WriteVerificationOptions,
 ): Promise<VerificationResult> {
-  const { filePath, taskId, evidence, cwd, reingest } = options
+  const { filePath, taskId, evidence, cwd, reingest } = options;
 
-  const markdown = await readFile(filePath, 'utf8')
-  const result = applyVerification(markdown, taskId, evidence)
+  const markdown = await readFile(filePath, "utf8");
+  const result = applyVerification(markdown, taskId, evidence);
   if (!result.ok) {
-    return result
+    return result;
   }
 
   if (result.markdown !== markdown) {
-    await writeFile(filePath, result.markdown, 'utf8')
+    await writeFile(filePath, result.markdown, "utf8");
   }
 
-  await reingest({ cwd })
+  await reingest({ cwd });
 
-  return result
+  return result;
 }
 
 /**
@@ -178,8 +178,8 @@ export async function writeVerification(
  * existing tools' fence-language detection.
  */
 export function serializeVerificationBlock(evidence: readonly Evidence[]): string {
-  const json = canonicalizeEvidenceList(evidence)
-  return `${VERIFICATION_BLOCK_HEADER}\n\n\`\`\`${VERIFICATION_FENCE_LANG}\n${json}\n\`\`\``
+  const json = canonicalizeEvidenceList(evidence);
+  return `${VERIFICATION_BLOCK_HEADER}\n\n\`\`\`${VERIFICATION_FENCE_LANG}\n${json}\n\`\`\``;
 }
 
 /**
@@ -192,24 +192,24 @@ export function serializeVerificationBlock(evidence: readonly Evidence[]): strin
 export function parseVerificationBlock(block: string): readonly Evidence[] | null {
   const pattern = new RegExp(
     `${escapeRegex(VERIFICATION_BLOCK_HEADER)}\\s*\\n+\`\`\`${VERIFICATION_FENCE_LANG}\\n([\\s\\S]*?)\\n\`\`\``,
-    'm',
-  )
-  const match = block.match(pattern)
-  if (!match) return null
+    "m",
+  );
+  const match = block.match(pattern);
+  if (!match) return null;
 
-  const jsonText = match[1]
-  if (jsonText === undefined) return null
+  const jsonText = match[1];
+  if (jsonText === undefined) return null;
 
-  let raw: unknown
+  let raw: unknown;
   try {
-    raw = JSON.parse(jsonText)
+    raw = JSON.parse(jsonText);
   } catch {
-    return null
+    return null;
   }
 
-  const parsed = evidenceListSchema.safeParse(raw)
-  if (!parsed.success) return null
-  return parsed.data
+  const parsed = evidenceListSchema.safeParse(raw);
+  if (!parsed.success) return null;
+  return parsed.data;
 }
 
 /**
@@ -219,9 +219,9 @@ export function parseVerificationBlock(block: string): readonly Evidence[] | nul
  * finalization checks.
  */
 export function readTaskVerification(markdown: string, taskId: string): readonly Evidence[] | null {
-  const section = readTaskSection(markdown, taskId)
-  if (section === null) return null
-  return parseVerificationBlock(section)
+  const section = readTaskSection(markdown, taskId);
+  if (section === null) return null;
+  return parseVerificationBlock(section);
 }
 
 /**
@@ -232,16 +232,16 @@ export function assertTaskHasCanonicalPassingEvidence(
   markdown: string,
   taskId: string,
 ): readonly Evidence[] {
-  const evidence = readTaskVerification(markdown, taskId)
+  const evidence = readTaskVerification(markdown, taskId);
   if (evidence === null) {
-    throw new Error(`Task ${taskId} is missing task-local canonical verification evidence`)
+    throw new Error(`Task ${taskId} is missing task-local canonical verification evidence`);
   }
 
-  if (!evidence.some((item) => item.result === 'pass')) {
-    throw new Error(`Task ${taskId} verification contains no passing evidence`)
+  if (!evidence.some((item) => item.result === "pass")) {
+    throw new Error(`Task ${taskId} verification contains no passing evidence`);
   }
 
-  return evidence
+  return evidence;
 }
 
 /**
@@ -252,7 +252,7 @@ export function assertAllTasksHaveCanonicalPassingEvidence(
   taskIds: readonly string[],
 ): void {
   for (const taskId of taskIds) {
-    assertTaskHasCanonicalPassingEvidence(markdown, taskId)
+    assertTaskHasCanonicalPassingEvidence(markdown, taskId);
   }
 }
 
@@ -261,54 +261,54 @@ export function assertAllTasksHaveCanonicalPassingEvidence(
 // ---------------------------------------------------------------------------
 
 function failure(failures: readonly string[]): VerificationFailure {
-  return { ok: false, next_action: 'verify_task', failures }
+  return { ok: false, next_action: "verify_task", failures };
 }
 
 function formatZodIssue(issue: {
-  readonly path: readonly PropertyKey[]
-  readonly message: string
+  readonly path: readonly PropertyKey[];
+  readonly message: string;
 }): string {
-  const path = issue.path.length > 0 ? issue.path.map(String).join('.') : '(root)'
-  return `${path}: ${issue.message}`
+  const path = issue.path.length > 0 ? issue.path.map(String).join(".") : "(root)";
+  return `${path}: ${issue.message}`;
 }
 
 function removeVerificationFromTask(markdown: string, taskId: string): string {
   return mapTaskSection(markdown, taskId, (section) => {
-    return section.replace(VERIFICATION_BLOCK_PATTERN, '\n\n').replace(/\n{3,}/g, '\n\n')
-  })
+    return section.replace(VERIFICATION_BLOCK_PATTERN, "\n\n").replace(/\n{3,}/g, "\n\n");
+  });
 }
 
 function readTaskSection(markdown: string, taskId: string): string | null {
-  const headerPattern = buildTaskHeaderRegexForId(taskId)
-  const headerMatch = markdown.match(headerPattern)
-  if (!headerMatch || headerMatch.index === undefined) return null
+  const headerPattern = buildTaskHeaderRegexForId(taskId);
+  const headerMatch = markdown.match(headerPattern);
+  if (!headerMatch || headerMatch.index === undefined) return null;
 
-  const startIndex = headerMatch.index
-  const restOfContent = markdown.slice(startIndex + headerMatch[0].length)
-  const nextSectionMatch = restOfContent.match(buildTaskSectionBoundaryRegex())
+  const startIndex = headerMatch.index;
+  const restOfContent = markdown.slice(startIndex + headerMatch[0].length);
+  const nextSectionMatch = restOfContent.match(buildTaskSectionBoundaryRegex());
   const endIndex =
     nextSectionMatch?.index !== undefined
       ? startIndex + headerMatch[0].length + nextSectionMatch.index
-      : markdown.length
+      : markdown.length;
 
-  return markdown.slice(startIndex, endIndex)
+  return markdown.slice(startIndex, endIndex);
 }
 
 function insertVerificationAfterStatus(markdown: string, taskId: string, block: string): string {
   return mapTaskSection(markdown, taskId, (section) => {
-    const statusMatch = section.match(/(\*\*Status:\*\*\s*.+\n+)/i)
+    const statusMatch = section.match(/(\*\*Status:\*\*\s*.+\n+)/i);
     if (!statusMatch || statusMatch.index === undefined) {
       // Fallback: append after the heading line.
       const headingMatch = section.match(
         new RegExp(`(####\\s+${TASK_HEADING_PREFIX_PATTERN}Task\\s+[^\\n]+\\n+)`),
-      )
+      );
       if (!headingMatch) {
-        return `${section}\n\n${block}\n`
+        return `${section}\n\n${block}\n`;
       }
-      return section.replace(headingMatch[0], `${headingMatch[0]}${block}\n\n`)
+      return section.replace(headingMatch[0], `${headingMatch[0]}${block}\n\n`);
     }
-    return section.replace(statusMatch[0], `${statusMatch[0]}${block}\n\n`)
-  })
+    return section.replace(statusMatch[0], `${statusMatch[0]}${block}\n\n`);
+  });
 }
 
 /**
@@ -321,22 +321,22 @@ function mapTaskSection(
   taskId: string,
   transform: (section: string) => string,
 ): string {
-  const headerPattern = buildTaskHeaderRegexForId(taskId)
-  const headerMatch = markdown.match(headerPattern)
-  if (!headerMatch || headerMatch.index === undefined) return markdown
+  const headerPattern = buildTaskHeaderRegexForId(taskId);
+  const headerMatch = markdown.match(headerPattern);
+  if (!headerMatch || headerMatch.index === undefined) return markdown;
 
-  const startIndex = headerMatch.index
-  const restOfContent = markdown.slice(startIndex + headerMatch[0].length)
-  const nextSectionMatch = restOfContent.match(buildTaskSectionBoundaryRegex())
+  const startIndex = headerMatch.index;
+  const restOfContent = markdown.slice(startIndex + headerMatch[0].length);
+  const nextSectionMatch = restOfContent.match(buildTaskSectionBoundaryRegex());
 
   const endIndex =
     nextSectionMatch?.index !== undefined
       ? startIndex + headerMatch[0].length + nextSectionMatch.index
-      : markdown.length
+      : markdown.length;
 
-  const before = markdown.slice(0, startIndex)
-  const section = markdown.slice(startIndex, endIndex)
-  const after = markdown.slice(endIndex)
+  const before = markdown.slice(0, startIndex);
+  const section = markdown.slice(startIndex, endIndex);
+  const after = markdown.slice(endIndex);
 
-  return `${before}${transform(section)}${after}`
+  return `${before}${transform(section)}${after}`;
 }

@@ -8,39 +8,39 @@
  */
 
 export type HookEntry = {
-  type: string
-  command: string
-  timeout?: number
-  statusMessage?: string
-}
-export type HookGroup = { matcher?: string; hooks: HookEntry[] }
-export type HooksMap = Record<string, HookGroup[]>
+  type: string;
+  command: string;
+  timeout?: number;
+  statusMessage?: string;
+};
+export type HookGroup = { matcher?: string; hooks: HookEntry[] };
+export type HooksMap = Record<string, HookGroup[]>;
 
 // Known hook event names across the documented Claude/Codex lifecycle. Used by
 // migration/validation paths to identify legacy flat-form keys and by CLI
 // helpers like `wp hooks dispatch` / `wp hooks demo` to accept a wider event
 // vocabulary than the narrower managed `wp-*` emission subset.
 export const HOOK_EVENT_NAMES = [
-  'SessionStart',
-  'PreToolUse',
-  'PostToolUse',
-  'PostToolUseFailure',
-  'UserPromptSubmit',
-  'Stop',
-  'PermissionRequest',
-  'SubagentStart',
-  'SubagentStop',
-  'SessionEnd',
-  'PreCompact',
-  'PostCompact',
-] as const
+  "SessionStart",
+  "PreToolUse",
+  "PostToolUse",
+  "PostToolUseFailure",
+  "UserPromptSubmit",
+  "Stop",
+  "PermissionRequest",
+  "SubagentStart",
+  "SubagentStop",
+  "SessionEnd",
+  "PreCompact",
+  "PostCompact",
+] as const;
 
-export type HookEventName = (typeof HOOK_EVENT_NAMES)[number]
+export type HookEventName = (typeof HOOK_EVENT_NAMES)[number];
 
 export type MatcherSet = {
-  preToolUse: string
-  postToolUse: string
-}
+  preToolUse: string;
+  postToolUse: string;
+};
 
 /**
  * A single canonical wp-* hook specification. Describes which event a hook
@@ -52,13 +52,13 @@ export type MatcherSet = {
  * JSON object so the managed hook cannot overclaim host-specific context output.
  */
 export type HookSpec = {
-  readonly event: (typeof HOOK_EVENT_NAMES)[number]
-  readonly bin: string
-  readonly hookName: string
-  readonly matcher?: 'preToolUse' | 'postToolUse'
-  readonly timeout: number
-  readonly jsonOnly?: boolean
-}
+  readonly event: (typeof HOOK_EVENT_NAMES)[number];
+  readonly bin: string;
+  readonly hookName: string;
+  readonly matcher?: "preToolUse" | "postToolUse";
+  readonly timeout: number;
+  readonly jsonOnly?: boolean;
+};
 
 /**
  * The canonical 6 wp-* hook specs. Adding a new wp-* hook is one append here;
@@ -69,35 +69,35 @@ export type HookSpec = {
  */
 export const WP_HOOK_SPECS: readonly HookSpec[] = [
   {
-    event: 'SessionStart',
-    bin: 'wp-sessionstart-routing',
-    hookName: 'sessionstart-routing',
+    event: "SessionStart",
+    bin: "wp-sessionstart-routing",
+    hookName: "sessionstart-routing",
     timeout: 5,
   },
   {
-    event: 'PreToolUse',
-    bin: 'wp-pretool-guard',
-    hookName: 'pretool-guard',
-    matcher: 'preToolUse',
+    event: "PreToolUse",
+    bin: "wp-pretool-guard",
+    hookName: "pretool-guard",
+    matcher: "preToolUse",
     timeout: 5,
   },
   {
-    event: 'PostToolUse',
-    bin: 'wp-post-tool',
-    hookName: 'post-tool',
-    matcher: 'postToolUse',
+    event: "PostToolUse",
+    bin: "wp-post-tool",
+    hookName: "post-tool",
+    matcher: "postToolUse",
     timeout: 15,
   },
-  { event: 'UserPromptSubmit', bin: 'wp-guard-switch', hookName: 'guard-switch', timeout: 5 },
-  { event: 'Stop', bin: 'wp-stop-qa', hookName: 'stop-qa', timeout: 10, jsonOnly: true },
+  { event: "UserPromptSubmit", bin: "wp-guard-switch", hookName: "guard-switch", timeout: 5 },
+  { event: "Stop", bin: "wp-stop-qa", hookName: "stop-qa", timeout: 10, jsonOnly: true },
   {
-    event: 'PreCompact',
-    bin: 'wp-precompact-snapshot',
-    hookName: 'precompact-snapshot',
+    event: "PreCompact",
+    bin: "wp-precompact-snapshot",
+    hookName: "precompact-snapshot",
     timeout: 5,
     jsonOnly: true,
   },
-]
+];
 
 /**
  * The subset of HOOK_EVENT_NAMES that webpresso currently emits as managed
@@ -107,7 +107,7 @@ export const WP_HOOK_SPECS: readonly HookSpec[] = [
  */
 export const MANAGED_HOOK_EVENT_NAMES = [
   ...new Set(WP_HOOK_SPECS.map((spec) => spec.event)),
-] as readonly (typeof HOOK_EVENT_NAMES)[number][]
+] as readonly (typeof HOOK_EVENT_NAMES)[number][];
 
 /**
  * The managed wp-* hook bin names, derived from WP_HOOK_SPECS. Single source of
@@ -116,4 +116,4 @@ export const MANAGED_HOOK_EVENT_NAMES = [
  * drift one consumer (e.g. a hook that emits a launcher but is missed by codex
  * ownership detection).
  */
-export const WP_HOOK_BIN_NAMES: readonly string[] = WP_HOOK_SPECS.map((spec) => spec.bin)
+export const WP_HOOK_BIN_NAMES: readonly string[] = WP_HOOK_SPECS.map((spec) => spec.bin);

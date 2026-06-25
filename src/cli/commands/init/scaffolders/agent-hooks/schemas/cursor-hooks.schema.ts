@@ -8,14 +8,14 @@
  * Reference: https://cursor.com/docs/hooks
  */
 
-import { z } from 'zod'
+import { z } from "zod";
 
 const cursorHookCommandSchema = z
   .object({
-    type: z.literal('command'),
+    type: z.literal("command"),
     command: z.string().trim().min(1),
   })
-  .strict()
+  .strict();
 
 const cursorHookGroupSchema = z
   .object({
@@ -23,7 +23,7 @@ const cursorHookGroupSchema = z
     failClosed: z.boolean().optional(),
     hooks: z.array(cursorHookCommandSchema).min(1),
   })
-  .strict()
+  .strict();
 
 /**
  * Zod schema for Cursor 3.x hooks.json.
@@ -41,6 +41,6 @@ export const cursorHooksSchema = z
     preCompact: z.array(cursorHookGroupSchema).min(1).optional(),
     stop: z.array(cursorHookGroupSchema).min(1).optional(),
   })
-  .strict()
+  .strict();
 
-export type CursorHooksConfig = z.infer<typeof cursorHooksSchema>
+export type CursorHooksConfig = z.infer<typeof cursorHooksSchema>;

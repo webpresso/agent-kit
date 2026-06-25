@@ -1,5 +1,5 @@
 ---
-description: 'Turn ideas into designs through collaborative dialogue. Use before any creative work.'
+description: "Turn ideas into designs through collaborative dialogue. Use before any creative work."
 argument-hint: [topic]
 allowed-tools: Read, Glob, Grep, Write, Edit
 ---

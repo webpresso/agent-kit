@@ -2,9 +2,9 @@
 type: blueprint
 status: draft
 complexity: M
-created: '2026-06-22'
-last_updated: '2026-06-22'
-progress: '0% (drafted)'
+created: "2026-06-22"
+last_updated: "2026-06-22"
+progress: "0% (drafted)"
 depends_on: []
 cross_repo_depends_on: []
 tags: [secrets, cli, dx, wp-secrets-run, with-secrets]
@@ -18,15 +18,15 @@ tags: [secrets, cli, dx, wp-secrets-run, with-secrets]
 
 - **Stage outcome:** Tier-1 agent-CLI support (Claude Code, Codex) per [`catalog/agent/rules/supported-agent-clis.md`](../../catalog/agent/rules/supported-agent-clis.md): secret injection must work for the supported CLIs in real developer use, not only inside a repo root.
 - **Consuming surface:** the `wp secrets run` CLI verb and the `with-secrets -- <cmd>` launcher that `wp init` writes into Codex/Claude guidance (`src/cli/commands/init/index.ts:567,572`).
-- **New user-visible capability:** a developer can launch `claude` / `codex` / Cursor from *any* directory and have Context7/Exa (and other) keys injected by the secret provider — replacing eager `doppler secrets get`/`launchctl setenv` in shell rc files, satisfying the `agent-guide.md` "never cache credentials to disk; lazy-resolve via the wrapper" rule globally rather than only repo-locally.
+- **New user-visible capability:** a developer can launch `claude` / `codex` / Cursor from _any_ directory and have Context7/Exa (and other) keys injected by the secret provider — replacing eager `doppler secrets get`/`launchctl setenv` in shell rc files, satisfying the `agent-guide.md` "never cache credentials to disk; lazy-resolve via the wrapper" rule globally rather than only repo-locally.
 
 ## Context / Problem (why this is blocked today)
 
-A real consumer (a developer's global shell) needs MCP/provider keys injected when launching agent CLIs from arbitrary directories and from GUI apps. `wp secrets run` is the sanctioned local injector, but three source-level facts make it usable only from a directory that *directly* contains a `schemaVersion:1` config:
+A real consumer (a developer's global shell) needs MCP/provider keys injected when launching agent CLIs from arbitrary directories and from GUI apps. `wp secrets run` is the sanctioned local injector, but three source-level facts make it usable only from a directory that _directly_ contains a `schemaVersion:1` config:
 
 1. **Command/plan layer is CWD-only.** `src/cli/commands/secrets.ts` → `readCommittedSecretsConfig(cwd)` reads `join(cwd, '.webpresso/secrets.config.json')` with no parent walk-up and no home/XDG fallback. Launching from `~/projectX/sub` cannot find a personal config at `~/.webpresso/...`.
-2. **Config dir and child cwd are coupled.** `src/runtime/executor.ts` `spawnRuntimeCommandSync`/`buildRuntimeSpawnOptions` use a single `options.cwd` as *both* the secret-config search root *and* the launched child's working directory. So you cannot "read config from a fixed dir but run `claude` in `$PWD`" — `cd`-ing to a config dir would force the child into the wrong directory.
-3. **Two readers with partial overlap + a lossy runtime adapter.** *(Corrected per Codex review — F2.)* The command/plan layer parses `schemaVersion:1` `{providers,profiles,sinks}` (`src/secrets/config/schema.ts:149`). The runtime fetch layer (`src/runtime/secrets-config.ts`) is **not** legacy-only: `parseSchemaVersion1Config` already accepts a `schemaVersion:1` file and maps `providers.default.{type,project}` → `{manager,projectId}` (`secrets-config.ts:151,170`), and it **already does git-root/ancestor discovery** (`secrets-config.ts:28,47`). So a v1 config that includes `providers.default` *can* satisfy both readers today. The genuine gaps are narrower:
+2. **Config dir and child cwd are coupled.** `src/runtime/executor.ts` `spawnRuntimeCommandSync`/`buildRuntimeSpawnOptions` use a single `options.cwd` as _both_ the secret-config search root _and_ the launched child's working directory. So you cannot "read config from a fixed dir but run `claude` in `$PWD`" — `cd`-ing to a config dir would force the child into the wrong directory.
+3. **Two readers with partial overlap + a lossy runtime adapter.** _(Corrected per Codex review — F2.)_ The command/plan layer parses `schemaVersion:1` `{providers,profiles,sinks}` (`src/secrets/config/schema.ts:149`). The runtime fetch layer (`src/runtime/secrets-config.ts`) is **not** legacy-only: `parseSchemaVersion1Config` already accepts a `schemaVersion:1` file and maps `providers.default.{type,project}` → `{manager,projectId}` (`secrets-config.ts:151,170`), and it **already does git-root/ancestor discovery** (`secrets-config.ts:28,47`). So a v1 config that includes `providers.default` _can_ satisfy both readers today. The genuine gaps are narrower:
    - (a) **Command layer is CWD-only** — `readCommittedSecretsConfig` reads `join(cwd,'.webpresso/secrets.config.json')` and errors if absent (`secrets.ts:279`); no walk-up/home fallback. This is the primary blocker (the runtime layer already discovers).
    - (b) **Runtime adapter is lossy** — it reads only `providers.default` (`secrets-config.ts:154`) and ignores other providers/profiles, so a multi-provider v1 config mis-maps at fetch time.
    - (c) **Legacy short-form fails the command schema** — `{manager,projectId}` configs (e.g. edge-matte) error `Unsupported schemaVersion "undefined"` at `schema.ts:149`.
@@ -52,31 +52,31 @@ AFTER (global launcher)
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-| -------- | ------ | --------- |
-| Discovery scope | Ordered fallback: explicit `--config-dir`/`WP_SECRETS_CONFIG_DIR` → cwd → git root → `$XDG_CONFIG_HOME/webpresso` → `$HOME/.webpresso`. **HOME/XDG fallback is gated (F3):** when cwd is inside a git repo that has NO committed config, the HOME config must NOT auto-inject; require explicit opt-in (`--config-dir`/env) OR a HOME config that declares `allowedRoots`/workspace matchers covering the cwd. | Reachable from any dir, but prevents a personal HOME config from silently injecting the wrong project's secrets inside an unconfigured repo (default sink `dev-server`/profile `preview`, `secrets.ts:156`). |
-| cwd decoupling | Separate `configDir` (search root) from `childCwd` (where the spawned command runs); default `childCwd` = `$PWD` | Lets a global launcher inject secrets while the child still runs in the user's project dir |
-| Schema unification | Make both the command layer and runtime layer read a single `schemaVersion:1` config via one shared loader (adapter for legacy `{manager,projectId}` during migration) | Removes the dual-reader trap; one file satisfies plan + fetch |
-| Surface | Expose via `wp secrets run` flags/env first; optionally ship the `with-secrets` bin (already referenced in `src/cli/wrapped-wp.ts`) as a thin wrapper over the same path | Keeps one implementation; `with-secrets` becomes sugar, not a second code path |
-| Degrade-not-hang | Discovery + provider fetch get explicit budgets and return clear errors, never block | Matches `agent-guide.md` "Discovery paths must degrade, not hang" |
+| Decision           | Choice                                                                                                                                                                                                                                                                                                                                                                                                         | Rationale                                                                                                                                                                                                    |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Discovery scope    | Ordered fallback: explicit `--config-dir`/`WP_SECRETS_CONFIG_DIR` → cwd → git root → `$XDG_CONFIG_HOME/webpresso` → `$HOME/.webpresso`. **HOME/XDG fallback is gated (F3):** when cwd is inside a git repo that has NO committed config, the HOME config must NOT auto-inject; require explicit opt-in (`--config-dir`/env) OR a HOME config that declares `allowedRoots`/workspace matchers covering the cwd. | Reachable from any dir, but prevents a personal HOME config from silently injecting the wrong project's secrets inside an unconfigured repo (default sink `dev-server`/profile `preview`, `secrets.ts:156`). |
+| cwd decoupling     | Separate `configDir` (search root) from `childCwd` (where the spawned command runs); default `childCwd` = `$PWD`                                                                                                                                                                                                                                                                                               | Lets a global launcher inject secrets while the child still runs in the user's project dir                                                                                                                   |
+| Schema unification | Make both the command layer and runtime layer read a single `schemaVersion:1` config via one shared loader (adapter for legacy `{manager,projectId}` during migration)                                                                                                                                                                                                                                         | Removes the dual-reader trap; one file satisfies plan + fetch                                                                                                                                                |
+| Surface            | Expose via `wp secrets run` flags/env first; optionally ship the `with-secrets` bin (already referenced in `src/cli/wrapped-wp.ts`) as a thin wrapper over the same path                                                                                                                                                                                                                                       | Keeps one implementation; `with-secrets` becomes sugar, not a second code path                                                                                                                               |
+| Degrade-not-hang   | Discovery + provider fetch get explicit budgets and return clear errors, never block                                                                                                                                                                                                                                                                                                                           | Matches `agent-guide.md` "Discovery paths must degrade, not hang"                                                                                                                                            |
 
 ## Quick Reference (Execution Waves)
 
-| Wave              | Tasks            | Dependencies     | Parallelizable | Effort (T-shirt) |
-| ----------------- | ---------------- | ---------------- | -------------- | ---------------- |
-| **Wave 0**        | 1.1, 1.2         | None             | 2 agents       | S                |
-| **Wave 1**        | 1.3, 1.4         | Wave 0           | 2 agents       | S                |
-| **Wave 2**        | 1.5, 1.6         | 1.3, 1.4 / 1.4   | 2 agents       | XS-S             |
-| **Critical path** | 1.1 → 1.3 → 1.5  | —                | 3 waves        | M                |
+| Wave              | Tasks           | Dependencies   | Parallelizable | Effort (T-shirt) |
+| ----------------- | --------------- | -------------- | -------------- | ---------------- |
+| **Wave 0**        | 1.1, 1.2        | None           | 2 agents       | S                |
+| **Wave 1**        | 1.3, 1.4        | Wave 0         | 2 agents       | S                |
+| **Wave 2**        | 1.5, 1.6        | 1.3, 1.4 / 1.4 | 2 agents       | XS-S             |
+| **Critical path** | 1.1 → 1.3 → 1.5 | —              | 3 waves        | M                |
 
 ### Parallel Metrics Snapshot
 
-| Metric | Formula / Meaning                  | Target               | Actual |
-| ------ | ---------------------------------- | -------------------- | ------ |
-| RW0    | Ready tasks in Wave 0              | ≥ planned agents / 2 | 2      |
-| CPR    | total_tasks / critical_path_length | ≥ 2.5                | 2.0 (6/3) |
+| Metric | Formula / Meaning                  | Target               | Actual     |
+| ------ | ---------------------------------- | -------------------- | ---------- |
+| RW0    | Ready tasks in Wave 0              | ≥ planned agents / 2 | 2          |
+| CPR    | total_tasks / critical_path_length | ≥ 2.5                | 2.0 (6/3)  |
 | DD     | dependency_edges / total_tasks     | ≤ 2.0                | 0.83 (5/6) |
-| CP     | same-file overlaps per wave        | 0                    | 0      |
+| CP     | same-file overlaps per wave        | 0                    | 0          |
 
 **Parallelization score: B** — CP = 0 and DD is low, but CPR 2.0 sits just under the 2.5 target and RW0 = 2 is modest. This is acceptable for a small, intentionally-scoped 6-task feature; the chain `1.1 → 1.3 → 1.5` is a genuine data dependency (locator → executor cwd-decoupling → `with-secrets` sugar) and is not artificially serialized. Not worth splitting further for a design-only blueprint.
 
@@ -127,7 +127,7 @@ Add a single resolver that returns the secret-config file path and its containin
 
 **Depends:** None
 
-*(Reshaped per Codex review — F4: NOT greenfield.)* The runtime reader already has `parseSchemaVersion1Config` (`src/runtime/secrets-config.ts:151`) and git-root/ancestor discovery (landed via the completed blueprint `2026-06-20-global-wp-schema-v1-secret-contract` on `fix/global-wp-secret-contract-20260620`). The remaining work is to make that adapter **non-lossy**: today it reads only `providers.default` (`secrets-config.ts:154`) and discards other providers/profiles, so the runtime fetch can't honor a profile that points at a non-`default` provider. Extend it to resolve the provider named by the active profile (shared with the command layer's `resolveSecretSink` provider lookup), keep the legacy `{manager,projectId}` shim (`secrets-config.ts:205`) for in-flight repos, and expose one shared loader entry both layers import. **Expect merge conflicts** in `src/runtime/secrets-config.ts` and `src/cli/commands/secrets.ts` if the contract branch is still in flight — rebase on it first.
+_(Reshaped per Codex review — F4: NOT greenfield.)_ The runtime reader already has `parseSchemaVersion1Config` (`src/runtime/secrets-config.ts:151`) and git-root/ancestor discovery (landed via the completed blueprint `2026-06-20-global-wp-schema-v1-secret-contract` on `fix/global-wp-secret-contract-20260620`). The remaining work is to make that adapter **non-lossy**: today it reads only `providers.default` (`secrets-config.ts:154`) and discards other providers/profiles, so the runtime fetch can't honor a profile that points at a non-`default` provider. Extend it to resolve the provider named by the active profile (shared with the command layer's `resolveSecretSink` provider lookup), keep the legacy `{manager,projectId}` shim (`secrets-config.ts:205`) for in-flight repos, and expose one shared loader entry both layers import. **Expect merge conflicts** in `src/runtime/secrets-config.ts` and `src/cli/commands/secrets.ts` if the contract branch is still in flight — rebase on it first.
 
 **Files:**
 
@@ -261,31 +261,31 @@ Document the discovery order, the home/XDG config location, the `--config-dir`/`
 
 ## Verification Gates
 
-| Gate        | Command                            | Success Criteria |
-| ----------- | ---------------------------------- | ---------------- |
-| Type safety | repo typecheck recipe              | Zero errors      |
-| Lint        | repo lint recipe (scoped)          | Zero violations  |
-| Tests       | repo test recipe (scoped)          | All pass         |
-| Full QA     | repo full-QA recipe                | All pass         |
+| Gate        | Command                                                                                 | Success Criteria                          |
+| ----------- | --------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Type safety | repo typecheck recipe                                                                   | Zero errors                               |
+| Lint        | repo lint recipe (scoped)                                                               | Zero violations                           |
+| Tests       | repo test recipe (scoped)                                                               | All pass                                  |
+| Full QA     | repo full-QA recipe                                                                     | All pass                                  |
 | Behavior    | `wp secrets run --config-dir <home> -- printenv CONTEXT7_API_KEY` from an unrelated dir | Prints the value; child cwd == launch dir |
 
 ## Cross-Plan References
 
-| Type       | Blueprint | Relationship |
-| ---------- | --------- | ------------ |
+| Type       | Blueprint                                                                                                     | Relationship                                                                                                                                                                                                                                                                         |
+| ---------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Upstream   | `2026-06-20-global-wp-schema-v1-secret-contract` (completed, branch `fix/global-wp-secret-contract-20260620`) | Landed runtime `schemaVersion:1` parsing + git-root/ancestor discovery. This blueprint **builds on it** (extends the lossy `providers.default` adapter; adds command-layer discovery + HOME/XDG). Rebase Task 1.2/1.4 on it; expect conflicts in `secrets-config.ts` + `secrets.ts`. |
-| Downstream | None      |              |
+| Downstream | None                                                                                                          |                                                                                                                                                                                                                                                                                      |
 
 ## Edge Cases and Error Handling
 
-| Edge Case | Risk | Solution | Task |
-| --------- | ---- | -------- | ---- |
-| No config found in any tier | Confusing failure | Structured error listing every searched path | 1.1 |
-| Repo **with** its own config | Wrong project's secrets | cwd/git-root tiers win over home | 1.1 |
-| Repo with **NO** committed config, personal HOME config present (F3) | HOME silently injects the wrong project (default sink `dev-server`/profile `preview`) | Gate HOME/XDG fallback: refuse inside an unconfigured git repo unless explicit `--config-dir`/env or HOME `allowedRoots`/matcher covers cwd | 1.1 |
-| Legacy `{manager,projectId}` config | Command layer errors on schemaVersion | Compatibility shim + deprecation note | 1.2 |
-| Slow git probe / network provider | Shell/launch hang | Bounded probe + budgeted fetch; degrade with warning | 1.1, 1.3 |
-| Whole-project `doppler secrets download` injects unrelated keys | Over-broad env | Documented; optional future allowlist (non-goal here) | 1.6 |
+| Edge Case                                                            | Risk                                                                                  | Solution                                                                                                                                    | Task     |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| No config found in any tier                                          | Confusing failure                                                                     | Structured error listing every searched path                                                                                                | 1.1      |
+| Repo **with** its own config                                         | Wrong project's secrets                                                               | cwd/git-root tiers win over home                                                                                                            | 1.1      |
+| Repo with **NO** committed config, personal HOME config present (F3) | HOME silently injects the wrong project (default sink `dev-server`/profile `preview`) | Gate HOME/XDG fallback: refuse inside an unconfigured git repo unless explicit `--config-dir`/env or HOME `allowedRoots`/matcher covers cwd | 1.1      |
+| Legacy `{manager,projectId}` config                                  | Command layer errors on schemaVersion                                                 | Compatibility shim + deprecation note                                                                                                       | 1.2      |
+| Slow git probe / network provider                                    | Shell/launch hang                                                                     | Bounded probe + budgeted fetch; degrade with warning                                                                                        | 1.1, 1.3 |
+| Whole-project `doppler secrets download` injects unrelated keys      | Over-broad env                                                                        | Documented; optional future allowlist (non-goal here)                                                                                       | 1.6      |
 
 ## Non-goals
 
@@ -297,40 +297,40 @@ Document the discovery order, the home/XDG config location, the `--config-dir`/`
 
 ## Risks
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-| HOME config injects wrong secrets in an unconfigured repo (F3, HIGH) | Wrong-project secrets leak into a child process | Gate HOME/XDG fallback inside a git repo (explicit opt-in or `allowedRoots` matcher); cwd/git-root always beat home; explicit `--config-dir` overrides |
-| Reshaping the runtime adapter conflicts with the in-flight contract branch (F4) | Merge pain / regressions | Rebase on `fix/global-wp-secret-contract-20260620`; treat Task 1.2 as extend-not-rewrite; parity tests for legacy + v1 |
-| Decoupling cwd breaks existing single-cwd callers | Regressions in deploy/test sinks | Default `childCwd==configDir==$PWD`; cover existing callers with tests |
-| Schema unification destabilizes the runtime reader mid-migration | Broken secret fetch | Adapter + shim + byte-level tests for both shapes |
-| Secrets transiting env | Leakage | Keep injection in child env only; never write to disk (per `agent-guide.md`) |
+| Risk                                                                            | Impact                                          | Mitigation                                                                                                                                             |
+| ------------------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| HOME config injects wrong secrets in an unconfigured repo (F3, HIGH)            | Wrong-project secrets leak into a child process | Gate HOME/XDG fallback inside a git repo (explicit opt-in or `allowedRoots` matcher); cwd/git-root always beat home; explicit `--config-dir` overrides |
+| Reshaping the runtime adapter conflicts with the in-flight contract branch (F4) | Merge pain / regressions                        | Rebase on `fix/global-wp-secret-contract-20260620`; treat Task 1.2 as extend-not-rewrite; parity tests for legacy + v1                                 |
+| Decoupling cwd breaks existing single-cwd callers                               | Regressions in deploy/test sinks                | Default `childCwd==configDir==$PWD`; cover existing callers with tests                                                                                 |
+| Schema unification destabilizes the runtime reader mid-migration                | Broken secret fetch                             | Adapter + shim + byte-level tests for both shapes                                                                                                      |
+| Secrets transiting env                                                          | Leakage                                         | Keep injection in child env only; never write to disk (per `agent-guide.md`)                                                                           |
 
 ## Technology Choices
 
-| Component | Technology | Version | Why |
-| --------- | ---------- | ------- | --- |
-| Config discovery | Node `fs` + bounded `git rev-parse` | n/a | Reuse existing runtime probes; no new deps |
-| Schema | existing `schemaVersion:1` parser (`src/secrets/config/schema.ts`) | 1 | Single source of truth |
-| Provider fetch | existing `doppler`/`infisical` managers (`src/runtime/secret-managers.ts`) | n/a | Unchanged; only the config-resolution path changes |
+| Component        | Technology                                                                 | Version | Why                                                |
+| ---------------- | -------------------------------------------------------------------------- | ------- | -------------------------------------------------- |
+| Config discovery | Node `fs` + bounded `git rev-parse`                                        | n/a     | Reuse existing runtime probes; no new deps         |
+| Schema           | existing `schemaVersion:1` parser (`src/secrets/config/schema.ts`)         | 1       | Single source of truth                             |
+| Provider fetch   | existing `doppler`/`infisical` managers (`src/runtime/secret-managers.ts`) | n/a     | Unchanged; only the config-resolution path changes |
 
 ## Refinement Summary
 
 Refined per `plan-refine`, then challenged via `/codex` outside-voice review (read-only, against live source). Phase 2 verification was done firsthand; the Codex pass caught one diagnosis error I'd made from an incomplete first read.
 
-| Metric                    | Value |
-| ------------------------- | ----- |
-| Findings total            | 5     |
-| Critical                  | 0     |
-| High                      | 2 (F2 diagnosis overstated; F3 HOME-fallback footgun) |
-| Medium                    | 2 (F4 overlap/duplication; F5 cwd blast-radius under-scoped) |
-| Low                       | 1 (F1 wrong critical-path length) |
-| Fixes applied             | 5/5   |
-| Cross-plans updated       | 1 (upstream: `2026-06-20-global-wp-schema-v1-secret-contract`) |
-| Parallelization score     | B (CPR 2.0, CP 0, RW0 2) |
-| Critical path             | 3 waves |
-| Max parallel agents       | 2     |
-| Total tasks               | 6     |
-| Blueprint compliant       | 6/6 (Depends + Files + Steps(TDD) + Acceptance) |
+| Metric                | Value                                                          |
+| --------------------- | -------------------------------------------------------------- |
+| Findings total        | 5                                                              |
+| Critical              | 0                                                              |
+| High                  | 2 (F2 diagnosis overstated; F3 HOME-fallback footgun)          |
+| Medium                | 2 (F4 overlap/duplication; F5 cwd blast-radius under-scoped)   |
+| Low                   | 1 (F1 wrong critical-path length)                              |
+| Fixes applied         | 5/5                                                            |
+| Cross-plans updated   | 1 (upstream: `2026-06-20-global-wp-schema-v1-secret-contract`) |
+| Parallelization score | B (CPR 2.0, CP 0, RW0 2)                                       |
+| Critical path         | 3 waves                                                        |
+| Max parallel agents   | 2                                                              |
+| Total tasks           | 6                                                              |
+| Blueprint compliant   | 6/6 (Depends + Files + Steps(TDD) + Acceptance)                |
 
 **Codex review findings (verdict: needs-work → addressed):**
 

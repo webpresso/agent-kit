@@ -4,14 +4,14 @@ title: PR blueprint coverage gate and instruction consistency
 status: completed
 complexity: L
 owner: agent-kit
-created: '2026-06-14'
-last_updated: '2026-06-14'
-progress: '100% (6/6 tasks done, 0 blocked, updated 2026-06-14)'
+created: "2026-06-14"
+last_updated: "2026-06-14"
+progress: "100% (6/6 tasks done, 0 blocked, updated 2026-06-14)"
 tags:
   - governance
   - blueprints
   - ci
-completed_at: '2026-06-14'
+completed_at: "2026-06-14"
 ---
 
 # PR blueprint coverage gate and instruction consistency
@@ -41,9 +41,11 @@ Add a reusable PR-scoped audit that checks changed files against a base ref, exe
 Create a completed historical blueprint for PR #136 with truthful evidence, and keep this governance blueprint in-progress while implementation proceeds. The historical record must not fabricate per-task verification; it should cite PR #136, the squash commit on main, the branch commits, the command-exists tests, and green audit/CI evidence from the shipped PR.
 
 **Acceptance:**
+
 - [x] This work has a lifecycle-tracked blueprint transitioned to in-progress before code edits.
 - [x] A completed historical blueprint exists for the cross-platform command detection consolidation shipped in PR #136.
 - [x] Both blueprint records validate through the blueprint lifecycle audit.
+
 #### Task 2.1: Implement reusable blueprint-pr-coverage audit
 
 **Status:** done
@@ -59,9 +61,11 @@ Create a completed historical blueprint for PR #136 with truthful evidence, and 
 Add src/audit/blueprint-pr-coverage.ts and tests. The audit resolves changed files from git diff --name-only <baseRef>...HEAD or an injected changedFiles list, passes docs-only Markdown changes, passes non-doc PRs with at least one changed blueprints/ path, passes with a warning/note when a commit in the range has a Blueprint-exempt: <reason> trailer, and degrades to pass-with-warning when no base ref or git history is available.
 
 **Acceptance:**
+
 - [x] Tests cover docs-only pass, src change without blueprint fail, src change with blueprint pass, Blueprint-exempt trailer pass, and missing base degradation.
 - [x] The audit returns the shared RepoAuditResult shape with actionable violation messages.
 - [x] No timeout/backoff policy is introduced; git discovery stays bounded and degradable.
+
 #### Task 2.2: Register audit across CLI and MCP surfaces without polluting guardrails
 
 **Status:** done
@@ -77,9 +81,11 @@ Add src/audit/blueprint-pr-coverage.ts and tests. The audit resolves changed fil
 Register the new audit kind so wp audit blueprint-pr-coverage works as a standalone reusable audit and MCP audit dispatch recognizes it. Keep it out of the HEAD-pure guardrails aggregate because it requires a PR base ref or changed-file context.
 
 **Acceptance:**
+
 - [x] CLI audit kind list includes blueprint-pr-coverage.
 - [x] MCP/shared audit kind registry includes blueprint-pr-coverage.
 - [x] wp audit guardrails remains unchanged in non-PR contexts and does not run the PR-scoped audit.
+
 #### Task 3.1: Wire pull-request CI blueprint gate
 
 **Status:** done
@@ -95,9 +101,11 @@ Register the new audit kind so wp audit blueprint-pr-coverage works as a standal
 Add a pull_request-only blueprint-gate job to .github/workflows/ci.yml using fetch-depth: 0 and running ./bin/wp audit blueprint-pr-coverage --base ${{ github.event.pull_request.base.sha }}. The current PR should satisfy the gate because it changes blueprints/.
 
 **Acceptance:**
+
 - [x] CI workflow contains a blueprint-gate job scoped to pull_request events.
 - [x] The job uses the PR base SHA as the audit base.
 - [x] Existing CI jobs are not disrupted.
+
 #### Task 4.1: Sweep bootstrapped instruction surfaces for consistent blueprint gate language
 
 **Status:** done
@@ -110,12 +118,14 @@ Add a pull_request-only blueprint-gate job to .github/workflows/ci.yml using fet
 **Wave:** 2
 **Lane:** docs
 
-Update catalog/agent/rules/pre-implementation.md and any related bootstrapped rules or scaffolder templates so consumers receive a consistent rule: non-Markdown PRs need a blueprint change, docs-only *.md PRs are exempt, and truly trivial non-doc PRs need a Blueprint-exempt: <reason> commit trailer.
+Update catalog/agent/rules/pre-implementation.md and any related bootstrapped rules or scaffolder templates so consumers receive a consistent rule: non-Markdown PRs need a blueprint change, docs-only \*.md PRs are exempt, and truly trivial non-doc PRs need a Blueprint-exempt: <reason> commit trailer.
 
 **Acceptance:**
+
 - [x] Canonical catalog rule text documents the PR-level gate and escape hatch.
 - [x] Related bootstrapped surfaces no longer contain contradictory blueprint gate wording.
 - [x] The generated/consumer-facing instruction path remains catalog-owned; no generated surfaces are hand-edited.
+
 #### Task 5.1: Release note and verification
 
 **Status:** done
@@ -132,6 +142,7 @@ Update catalog/agent/rules/pre-implementation.md and any related bootstrapped ru
 Add a patch changeset for the new audit and CI gate, then run targeted tests, typecheck, lint, source audit guardrails, and blueprint lifecycle validation. Record any verification gaps explicitly.
 
 **Acceptance:**
+
 - [x] Patch changeset added for @webpresso/agent-kit.
 - [x] Targeted audit tests pass.
 - [x] Typecheck, lint, source audit guardrails, and blueprint lifecycle audit pass or have an explicit blocker recorded.
@@ -148,21 +159,21 @@ Add a patch changeset for the new audit and CI gate, then run targeted tests, ty
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/pr-blueprint-coverage-gate-and-instruction-consistency.md |
+| ID  | Claim                                                          | Evidence                                                                            |
+| --- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/pr-blueprint-coverage-gate-and-instruction-consistency.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

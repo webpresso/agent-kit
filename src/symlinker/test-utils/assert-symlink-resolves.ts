@@ -1,4 +1,4 @@
-import { existsSync, realpathSync } from 'node:fs'
+import { existsSync, realpathSync } from "node:fs";
 
 /**
  * Test helper enforcing the bc88 invariant: every emitted symlink under
@@ -11,13 +11,13 @@ import { existsSync, realpathSync } from 'node:fs'
  * `expect(stat.isSymbolicLink()).toBe(true)` so dangling links fail tests.
  */
 export function assertSymlinkResolves(linkPath: string): void {
-  let target: string
+  let target: string;
   try {
-    target = realpathSync(linkPath)
+    target = realpathSync(linkPath);
   } catch (cause) {
-    throw new Error(`Dangling symlink: ${linkPath} (realpathSync failed)`, { cause })
+    throw new Error(`Dangling symlink: ${linkPath} (realpathSync failed)`, { cause });
   }
   if (!existsSync(target)) {
-    throw new Error(`Dangling symlink: ${linkPath} → ${target} (target does not exist)`)
+    throw new Error(`Dangling symlink: ${linkPath} → ${target} (target does not exist)`);
   }
 }

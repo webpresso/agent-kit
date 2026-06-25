@@ -8,8 +8,8 @@ applies_to: [agents]
 related:
   - package-conventions
   - pre-implementation
-created: '2026-05-26'
-last_reviewed: '2026-05-26'
+created: "2026-05-26"
+last_reviewed: "2026-05-26"
 ---
 
 # Engineering Principles

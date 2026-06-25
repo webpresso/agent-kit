@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { LEAKY_ENV_KEYS, resetLeakyEnv } from './hermetic-env.js'
+import { describe, expect, it } from "vitest";
+import { LEAKY_ENV_KEYS, resetLeakyEnv } from "./hermetic-env.js";
 
 /**
  * Regression guard for the hermetic-env setup file wired via
@@ -12,30 +12,30 @@ import { LEAKY_ENV_KEYS, resetLeakyEnv } from './hermetic-env.js'
  * CI (where `CLAUDE_PROJECT_DIR` is normally unset and a naive presence check
  * would false-pass).
  */
-describe('hermetic-env', () => {
-  it('locks the exact set of agent-session vars that must be reset', () => {
+describe("hermetic-env", () => {
+  it("locks the exact set of agent-session vars that must be reset", () => {
     expect([...LEAKY_ENV_KEYS]).toStrictEqual([
-      'CLAUDE_PROJECT_DIR',
-      'WP_SKIP_UPDATE_CHECK',
-      'WP_BLUEPRINT_ROOTS_TIMEOUT_MS',
-      'WP_BLUEPRINT_PROJECT_DISCOVERY_TIMEOUT_MS',
-      'WP_BLUEPRINT_PLATFORM_DISABLED',
-      'WP_MCP_TOOL_MODE',
-      'WP_COMPILED_RUNTIME',
-      'GITHUB_PAT',
-      'QUALITY_ENGINE_COMPACT',
-    ])
-  })
+      "CLAUDE_PROJECT_DIR",
+      "WP_SKIP_UPDATE_CHECK",
+      "WP_BLUEPRINT_ROOTS_TIMEOUT_MS",
+      "WP_BLUEPRINT_PROJECT_DISCOVERY_TIMEOUT_MS",
+      "WP_BLUEPRINT_PLATFORM_DISABLED",
+      "WP_MCP_TOOL_MODE",
+      "WP_COMPILED_RUNTIME",
+      "GITHUB_PAT",
+      "QUALITY_ENGINE_COMPACT",
+    ]);
+  });
 
-  it('deletes every leaky var from process.env', () => {
+  it("deletes every leaky var from process.env", () => {
     for (const key of LEAKY_ENV_KEYS) {
-      process.env[key] = 'leaked-from-agent-session'
+      process.env[key] = "leaked-from-agent-session";
     }
 
-    resetLeakyEnv()
+    resetLeakyEnv();
 
     for (const key of LEAKY_ENV_KEYS) {
-      expect(key in process.env).toBe(false)
+      expect(key in process.env).toBe(false);
     }
-  })
-})
+  });
+});

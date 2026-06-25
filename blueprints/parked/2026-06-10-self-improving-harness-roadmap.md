@@ -4,9 +4,9 @@ title: Self-improving harness — gated loop roadmap
 owner: ozby
 status: parked
 complexity: XL
-created: '2026-06-10'
-last_updated: '2026-06-21'
-progress: '0% (0/0 tasks done, 0 blocked, updated 2026-06-21)'
+created: "2026-06-10"
+last_updated: "2026-06-21"
+progress: "0% (0/0 tasks done, 0 blocked, updated 2026-06-21)"
 parked_reason: >-
   Child execution is implemented/parked and parent proposal stage is deferred pending
   legal/lifecycle finalization; not executable as ordinary planned work.
@@ -64,20 +64,20 @@ of this roadmap.
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Blueprints | Dependencies |
-| --- | --- | --- |
-| **Wave 1** | `parked/2026-06-10-harness-surface-manifest.md`, `parked/2026-06-10-weakness-mining-audit.md` | None |
-| **Wave 2** | `parked/2026-06-10-harness-regression-gate.md` | `parked/2026-06-10-harness-surface-manifest.md` |
-| **Wave 3** | `parked/2026-06-10-per-model-harness-overlays.md` | `parked/2026-06-10-weakness-mining-audit.md`, `parked/2026-06-10-harness-regression-gate.md` |
+| Wave       | Blueprints                                                                                    | Dependencies                                                                                 |
+| ---------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| **Wave 1** | `parked/2026-06-10-harness-surface-manifest.md`, `parked/2026-06-10-weakness-mining-audit.md` | None                                                                                         |
+| **Wave 2** | `parked/2026-06-10-harness-regression-gate.md`                                                | `parked/2026-06-10-harness-surface-manifest.md`                                              |
+| **Wave 3** | `parked/2026-06-10-per-model-harness-overlays.md`                                             | `parked/2026-06-10-weakness-mining-audit.md`, `parked/2026-06-10-harness-regression-gate.md` |
 
 ## Fact-Check Summary
 
-| Claim | Reality in this repo | Impact on children |
-| --- | --- | --- |
-| Hook logs already provide a broad multi-hook evidence substrate | Only `src/hooks/pretool-guard/logger.ts` writes a durable hook log today; post-tool and stop do not emit comparable records | Mining must start from pretool data and explicitly scope any minimal log-enrichment work |
-| A behavioral benchmark substrate already exists | `scripts/bench/` and the session-memory methodology already provide reproducibility, manifests, transcripts, and CLI-subprocess runner patterns | Regression gate extends the existing bench substrate instead of forking a new one |
-| Symlinker already has an overlay merge phase | `runUnifiedSync` currently loads catalog + consumer content only; `docs/symlinker.md` does not mention overlays | Overlay support is new sync behavior, not documentation of an existing order |
-| Parent task should promote children | These five blueprints are now promoted together into `planned/` after refinement hardening | Parent roadmap coordinates planned execution order and dependencies |
+| Claim                                                           | Reality in this repo                                                                                                                            | Impact on children                                                                       |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Hook logs already provide a broad multi-hook evidence substrate | Only `src/hooks/pretool-guard/logger.ts` writes a durable hook log today; post-tool and stop do not emit comparable records                     | Mining must start from pretool data and explicitly scope any minimal log-enrichment work |
+| A behavioral benchmark substrate already exists                 | `scripts/bench/` and the session-memory methodology already provide reproducibility, manifests, transcripts, and CLI-subprocess runner patterns | Regression gate extends the existing bench substrate instead of forking a new one        |
+| Symlinker already has an overlay merge phase                    | `runUnifiedSync` currently loads catalog + consumer content only; `docs/symlinker.md` does not mention overlays                                 | Overlay support is new sync behavior, not documentation of an existing order             |
+| Parent task should promote children                             | These five blueprints are now promoted together into `planned/` after refinement hardening                                                      | Parent roadmap coordinates planned execution order and dependencies                      |
 
 ## Phases
 
@@ -114,9 +114,9 @@ of this roadmap.
 
 ## Cross-Plan References
 
-| Reference | Relationship |
-| --- | --- |
-| `docs/research/2026-06-10-harness-engineering-landscape.md` | Motivating research synthesis |
-| `docs/research/2026-06-10-harness-competitor-analysis.md` | Capability-gap inventory this roadmap closes |
-| `catalog/agent/rules/supported-agent-clis.md` | Single source of truth for CLI tier references |
-| `catalog/agent/rules/no-timeout-as-fix.md` | Runtime-budget policy for any gated benchmark work |
+| Reference                                                   | Relationship                                       |
+| ----------------------------------------------------------- | -------------------------------------------------- |
+| `docs/research/2026-06-10-harness-engineering-landscape.md` | Motivating research synthesis                      |
+| `docs/research/2026-06-10-harness-competitor-analysis.md`   | Capability-gap inventory this roadmap closes       |
+| `catalog/agent/rules/supported-agent-clis.md`               | Single source of truth for CLI tier references     |
+| `catalog/agent/rules/no-timeout-as-fix.md`                  | Runtime-budget policy for any gated benchmark work |

@@ -1,152 +1,152 @@
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
-import { join, relative, resolve, sep } from 'node:path'
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { join, relative, resolve, sep } from "node:path";
 
-import matter from 'gray-matter'
-import { z } from 'zod'
+import matter from "gray-matter";
+import { z } from "zod";
 
-import { blueprintDerivedHandoffSchema } from '#execution/types'
+import { blueprintDerivedHandoffSchema } from "#execution/types";
 import {
   BLUEPRINT_OVERVIEW_FILENAME,
   isBlueprintSupportingMarkdownRelativePath,
   parseBlueprintDocumentRelativePath,
-} from '#utils/document-paths.js'
+} from "#utils/document-paths.js";
 
-import { validateLoreTrailers } from './commit-message-lore.js'
+import { validateLoreTrailers } from "./commit-message-lore.js";
 
 export interface RepoAuditViolation {
-  file?: string
-  message: string
+  file?: string;
+  message: string;
 }
 
 export interface RepoAuditResult {
-  ok: boolean
-  title: string
-  checked: number
-  violations: RepoAuditViolation[]
+  ok: boolean;
+  title: string;
+  checked: number;
+  violations: RepoAuditViolation[];
 }
 
 export interface CatalogDriftOptions {
-  workspaceFile?: string
+  workspaceFile?: string;
 }
 
 export interface DocsFrontmatterOptions {
-  docsRoot?: string
-  allowedTypes?: readonly string[]
-  folderTypes?: Readonly<Record<string, string>>
-  fix?: boolean
-  today?: string
+  docsRoot?: string;
+  allowedTypes?: readonly string[];
+  folderTypes?: Readonly<Record<string, string>>;
+  fix?: boolean;
+  today?: string;
 }
 
 export interface BlueprintLifecycleOptions {
-  blueprintsRoot?: string
-  statuses?: readonly string[]
-  includeOmxPlans?: boolean
+  blueprintsRoot?: string;
+  statuses?: readonly string[];
+  includeOmxPlans?: boolean;
 }
 
 export interface CommitMessageOptions {
-  allowedTypes?: readonly string[]
-  loreWarn?: boolean
-  requireLore?: boolean
-  subjectMaxLength?: number
+  allowedTypes?: readonly string[];
+  loreWarn?: boolean;
+  requireLore?: boolean;
+  subjectMaxLength?: number;
 }
 
 interface PackageDependencyUse {
-  packageFile: string
-  dependencyName: string
-  version: string
+  packageFile: string;
+  dependencyName: string;
+  version: string;
 }
 
 const DEFAULT_COMMIT_TYPES = [
-  'feat',
-  'fix',
-  'docs',
-  'style',
-  'refactor',
-  'perf',
-  'test',
-  'build',
-  'ci',
-  'chore',
-  'revert',
-] as const
+  "feat",
+  "fix",
+  "docs",
+  "style",
+  "refactor",
+  "perf",
+  "test",
+  "build",
+  "ci",
+  "chore",
+  "revert",
+] as const;
 
 const DEFAULT_DOC_TYPES = [
-  'guide',
-  'system',
-  'research',
-  'runbook',
-  'postmortem',
-  'adr',
-  'migration',
-  'template',
-  'docs-index',
-] as const
+  "guide",
+  "system",
+  "research",
+  "runbook",
+  "postmortem",
+  "adr",
+  "migration",
+  "template",
+  "docs-index",
+] as const;
 
 const DEFAULT_DOC_FOLDER_TYPES: Readonly<Record<string, string>> = {
-  adrs: 'adr',
-  decisions: 'adr',
-  migrations: 'migration',
-  research: 'research',
-  runbooks: 'runbook',
-  templates: 'template',
-}
+  adrs: "adr",
+  decisions: "adr",
+  migrations: "migration",
+  research: "research",
+  runbooks: "runbook",
+  templates: "template",
+};
 
 const DEFAULT_BLUEPRINT_STATUSES = [
-  'draft',
-  'planned',
-  'in-progress',
-  'parked',
-  'completed',
-  'archived',
-] as const
+  "draft",
+  "planned",
+  "in-progress",
+  "parked",
+  "completed",
+  "archived",
+] as const;
 
-const ACTIVE_BLUEPRINT_STATUSES = new Set(['draft', 'planned', 'in-progress', 'parked'])
+const ACTIVE_BLUEPRINT_STATUSES = new Set(["draft", "planned", "in-progress", "parked"]);
 const BLUEPRINT_REFERENCE_PATTERN =
-  /^(?:blueprints\/)?(?:draft|planned|in-progress|parked|completed|archived)\/[A-Za-z0-9._-]+(?:\/_overview\.md)?$/
-const GITHUB_BLOB_URL_PATTERN = /^https?:\/\/github\.com\/[^/\s]+\/[^/\s]+\/blob\/[^/\s]+\/.+$/i
-const ABSOLUTE_FILE_REFERENCE_PATTERN = /^(?:\/|[A-Za-z]:[\\/]|file:\/\/)/i
-const LEGACY_CROSS_REPO_LABEL_PATTERN = /^cross-repo:/i
-const GITHUB_REPO_PATTERN = /^[^/\s]+\/[^/\s]+$/
-const BLUEPRINT_SLUG_PATTERN = /^[A-Za-z0-9._-]+$/
-const BLUEPRINT_COMPLEXITIES = ['XS', 'S', 'M', 'L', 'XL'] as const
+  /^(?:blueprints\/)?(?:draft|planned|in-progress|parked|completed|archived)\/[A-Za-z0-9._-]+(?:\/_overview\.md)?$/;
+const GITHUB_BLOB_URL_PATTERN = /^https?:\/\/github\.com\/[^/\s]+\/[^/\s]+\/blob\/[^/\s]+\/.+$/i;
+const ABSOLUTE_FILE_REFERENCE_PATTERN = /^(?:\/|[A-Za-z]:[\\/]|file:\/\/)/i;
+const LEGACY_CROSS_REPO_LABEL_PATTERN = /^cross-repo:/i;
+const GITHUB_REPO_PATTERN = /^[^/\s]+\/[^/\s]+$/;
+const BLUEPRINT_SLUG_PATTERN = /^[A-Za-z0-9._-]+$/;
+const BLUEPRINT_COMPLEXITIES = ["XS", "S", "M", "L", "XL"] as const;
 const blueprintLifecycleRequiredFrontmatterSchema = z.object({
   title: z.string().trim().min(1),
   owner: z.string().trim().min(1),
   complexity: z.enum(BLUEPRINT_COMPLEXITIES),
   last_updated: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-})
+});
 
 export function auditCatalogDrift(
   rootDirectory: string = process.cwd(),
   options: CatalogDriftOptions = {},
 ): RepoAuditResult {
-  const root = resolve(rootDirectory)
-  const workspacePath = resolve(root, options.workspaceFile ?? 'pnpm-workspace.yaml')
-  const violations: RepoAuditViolation[] = []
+  const root = resolve(rootDirectory);
+  const workspacePath = resolve(root, options.workspaceFile ?? "pnpm-workspace.yaml");
+  const violations: RepoAuditViolation[] = [];
 
   if (!existsSync(workspacePath)) {
-    return result('Catalog drift — single package (no workspace file)', 0, [])
+    return result("Catalog drift — single package (no workspace file)", 0, []);
   }
 
-  const workspaceYaml = readFileSync(workspacePath, 'utf8')
-  const workspaceGlobs = parseWorkspacePackageGlobs(workspaceYaml)
-  const catalogNames = parseCatalogDependencyNames(workspaceYaml)
-  const packageFiles = discoverWorkspacePackageFiles(root, workspaceGlobs)
-  const dependencyUses = new Map<string, PackageDependencyUse[]>()
+  const workspaceYaml = readFileSync(workspacePath, "utf8");
+  const workspaceGlobs = parseWorkspacePackageGlobs(workspaceYaml);
+  const catalogNames = parseCatalogDependencyNames(workspaceYaml);
+  const packageFiles = discoverWorkspacePackageFiles(root, workspaceGlobs);
+  const dependencyUses = new Map<string, PackageDependencyUse[]>();
 
   for (const packageFile of packageFiles) {
-    const pkg = readJsonObject(packageFile)
+    const pkg = readJsonObject(packageFile);
     // peerDependencies are compatibility constraints, not installed package
     // versions, so ranges such as ">=19" are legitimate and should not be
     // forced through a pnpm catalog.
-    const sections = ['dependencies', 'devDependencies', 'optionalDependencies'] as const
+    const sections = ["dependencies", "devDependencies", "optionalDependencies"] as const;
 
     for (const section of sections) {
-      const dependencies = readStringRecord(pkg[section])
+      const dependencies = readStringRecord(pkg[section]);
       for (const [dependencyName, version] of Object.entries(dependencies)) {
-        const uses = dependencyUses.get(dependencyName) ?? []
-        uses.push({ packageFile, dependencyName, version })
-        dependencyUses.set(dependencyName, uses)
+        const uses = dependencyUses.get(dependencyName) ?? [];
+        uses.push({ packageFile, dependencyName, version });
+        dependencyUses.set(dependencyName, uses);
       }
     }
   }
@@ -154,80 +154,80 @@ export function auditCatalogDrift(
   for (const [dependencyName, uses] of [...dependencyUses.entries()].toSorted(([left], [right]) =>
     left.localeCompare(right),
   )) {
-    const uniquePackageFiles = new Set(uses.map((use) => use.packageFile))
-    if (uniquePackageFiles.size < 2) continue
+    const uniquePackageFiles = new Set(uses.map((use) => use.packageFile));
+    if (uniquePackageFiles.size < 2) continue;
 
     for (const use of uses) {
-      if (isSharedDependencyReference(use.version)) continue
+      if (isSharedDependencyReference(use.version)) continue;
 
       const catalogHint = catalogNames.has(dependencyName)
-        ? 'use catalog:'
-        : 'promote it to the pnpm catalog or use workspace:'
+        ? "use catalog:"
+        : "promote it to the pnpm catalog or use workspace:";
       violations.push({
         file: relativePath(root, use.packageFile),
         message: `${dependencyName} is used in ${uniquePackageFiles.size} workspaces but declares ${JSON.stringify(use.version)}; ${catalogHint}`,
-      })
+      });
     }
   }
 
-  return result('Catalog drift', packageFiles.length, violations)
+  return result("Catalog drift", packageFiles.length, violations);
 }
 
 export function validateCommitMessage(
   message: string,
   options: CommitMessageOptions = {},
 ): RepoAuditResult {
-  const violations: RepoAuditViolation[] = []
-  const lines = message.replace(/\r\n/g, '\n').split('\n')
-  const subject = lines[0]?.trimEnd() ?? ''
-  const allowedTypes = options.allowedTypes ?? DEFAULT_COMMIT_TYPES
-  const subjectMaxLength = options.subjectMaxLength ?? 100
+  const violations: RepoAuditViolation[] = [];
+  const lines = message.replace(/\r\n/g, "\n").split("\n");
+  const subject = lines[0]?.trimEnd() ?? "";
+  const allowedTypes = options.allowedTypes ?? DEFAULT_COMMIT_TYPES;
+  const subjectMaxLength = options.subjectMaxLength ?? 100;
 
   if (subject.length === 0) {
-    violations.push({ message: 'Commit subject is required' })
-    return result('Commit message', 1, violations)
+    violations.push({ message: "Commit subject is required" });
+    return result("Commit message", 1, violations);
   }
 
   if (/^(Merge|Revert|fixup!|squash!)/.test(subject)) {
-    return result('Commit message', 1, [])
+    return result("Commit message", 1, []);
   }
 
-  const conventionalMatch = /^(?<type>[a-z]+)(?:\([^)]+\))?!?: .+/.exec(subject)
+  const conventionalMatch = /^(?<type>[a-z]+)(?:\([^)]+\))?!?: .+/.exec(subject);
   if (!conventionalMatch?.groups?.type || !allowedTypes.includes(conventionalMatch.groups.type)) {
     violations.push({
-      message: `Commit subject must be conventional (${allowedTypes.join('|')})(scope): summary`,
-    })
+      message: `Commit subject must be conventional (${allowedTypes.join("|")})(scope): summary`,
+    });
   }
 
   if (subject.length > subjectMaxLength) {
     violations.push({
       message: `Commit subject must be ${subjectMaxLength} characters or fewer`,
-    })
+    });
   }
 
-  if (lines.length > 1 && lines[1] !== '') {
+  if (lines.length > 1 && lines[1] !== "") {
     violations.push({
-      message: 'Second line must be blank when a commit body is present',
-    })
+      message: "Second line must be blank when a commit body is present",
+    });
   }
 
   const shouldEnforceLore =
-    options.requireLore === true || options.loreWarn === true || subject.includes('[lore]')
+    options.requireLore === true || options.loreWarn === true || subject.includes("[lore]");
   if (shouldEnforceLore) {
     const loreResult = validateLoreTrailers(message, {
-      requireLore: options.requireLore === true || subject.includes('[lore]'),
+      requireLore: options.requireLore === true || subject.includes("[lore]"),
       loreWarn:
-        options.loreWarn === true && !(options.requireLore === true || subject.includes('[lore]')),
-    })
+        options.loreWarn === true && !(options.requireLore === true || subject.includes("[lore]")),
+    });
     for (const violation of loreResult.violations) {
-      violations.push({ message: violation })
+      violations.push({ message: violation });
     }
     for (const warning of loreResult.warnings) {
-      console.warn(`[lore-warn] ${warning}`)
+      console.warn(`[lore-warn] ${warning}`);
     }
   }
 
-  return result('Commit message', 1, violations)
+  return result("Commit message", 1, violations);
 }
 
 export function auditCommitMessageFile(
@@ -236,187 +236,187 @@ export function auditCommitMessageFile(
 ): RepoAuditResult {
   return withFilePrefix(
     resolve(messageFile),
-    validateCommitMessage(readFileSync(messageFile, 'utf8'), options),
-  )
+    validateCommitMessage(readFileSync(messageFile, "utf8"), options),
+  );
 }
 
 export function auditDocsFrontmatter(
   rootDirectory: string = process.cwd(),
   options: DocsFrontmatterOptions = {},
 ): RepoAuditResult {
-  const root = resolve(rootDirectory)
-  const docsRoot = resolve(root, options.docsRoot ?? 'docs')
-  const allowedTypes = new Set(options.allowedTypes ?? DEFAULT_DOC_TYPES)
-  const folderTypes = options.folderTypes ?? DEFAULT_DOC_FOLDER_TYPES
-  const violations: RepoAuditViolation[] = []
-  const today = options.today ?? new Date().toISOString().slice(0, 10)
+  const root = resolve(rootDirectory);
+  const docsRoot = resolve(root, options.docsRoot ?? "docs");
+  const allowedTypes = new Set(options.allowedTypes ?? DEFAULT_DOC_TYPES);
+  const folderTypes = options.folderTypes ?? DEFAULT_DOC_FOLDER_TYPES;
+  const violations: RepoAuditViolation[] = [];
+  const today = options.today ?? new Date().toISOString().slice(0, 10);
 
   if (!existsSync(docsRoot)) {
-    return result('Docs frontmatter', 0, [])
+    return result("Docs frontmatter", 0, []);
   }
 
-  const markdownFiles = walkMarkdownFiles(docsRoot)
+  const markdownFiles = walkMarkdownFiles(docsRoot);
   for (const file of markdownFiles) {
-    let markdown = readFileSync(file, 'utf8')
-    const folder = relativePath(docsRoot, file).split('/')[0] ?? ''
-    const inferredType = folderTypes[folder] ?? 'guide'
+    let markdown = readFileSync(file, "utf8");
+    const folder = relativePath(docsRoot, file).split("/")[0] ?? "";
+    const inferredType = folderTypes[folder] ?? "guide";
 
     if (options.fix) {
       const fixed = applyDocsFrontmatterFix(markdown, {
         inferredType,
         today,
-      })
+      });
       if (fixed !== markdown) {
-        writeFileSync(file, fixed, 'utf8')
-        markdown = fixed
+        writeFileSync(file, fixed, "utf8");
+        markdown = fixed;
       }
     }
 
-    const frontmatter = parseFrontmatter(markdown)
-    const relativeFile = relativePath(root, file)
-    const type = frontmatter.type
-    const lastUpdated = frontmatter.last_updated
+    const frontmatter = parseFrontmatter(markdown);
+    const relativeFile = relativePath(root, file);
+    const type = frontmatter.type;
+    const lastUpdated = frontmatter.last_updated;
 
     if (!type) {
       violations.push({
         file: relativeFile,
-        message: 'Missing required frontmatter field: type',
-      })
-    } else if (folder !== 'templates' && !allowedTypes.has(type)) {
+        message: "Missing required frontmatter field: type",
+      });
+    } else if (folder !== "templates" && !allowedTypes.has(type)) {
       violations.push({
         file: relativeFile,
         message: `Invalid type ${JSON.stringify(type)}`,
-      })
+      });
     }
 
     if (!lastUpdated) {
       violations.push({
         file: relativeFile,
-        message: 'Missing required frontmatter field: last_updated',
-      })
+        message: "Missing required frontmatter field: last_updated",
+      });
     }
 
-    const expectedType = folderTypes[folder]
-    if (folder !== 'templates' && expectedType && type && type !== expectedType) {
+    const expectedType = folderTypes[folder];
+    if (folder !== "templates" && expectedType && type && type !== expectedType) {
       violations.push({
         file: relativeFile,
         message: `Docs in ${folder}/ must use type: ${expectedType}`,
-      })
+      });
     }
   }
 
-  return result('Docs frontmatter', markdownFiles.length, violations)
+  return result("Docs frontmatter", markdownFiles.length, violations);
 }
 
 export function auditBlueprintLifecycle(
   rootDirectory: string = process.cwd(),
   options: BlueprintLifecycleOptions = {},
 ): RepoAuditResult {
-  const root = resolve(rootDirectory)
-  const blueprintsRoot = resolve(root, options.blueprintsRoot ?? 'blueprints')
-  const statuses = options.statuses ?? DEFAULT_BLUEPRINT_STATUSES
-  const violations: RepoAuditViolation[] = []
-  let checked = 0
+  const root = resolve(rootDirectory);
+  const blueprintsRoot = resolve(root, options.blueprintsRoot ?? "blueprints");
+  const statuses = options.statuses ?? DEFAULT_BLUEPRINT_STATUSES;
+  const violations: RepoAuditViolation[] = [];
+  let checked = 0;
 
   for (const status of statuses) {
-    const statusRoot = join(blueprintsRoot, status)
-    if (!existsSync(statusRoot)) continue
+    const statusRoot = join(blueprintsRoot, status);
+    if (!existsSync(statusRoot)) continue;
 
     for (const entry of readdirSync(statusRoot, { withFileTypes: true })) {
-      if (!entry.isDirectory() && !entry.isFile()) continue
+      if (!entry.isDirectory() && !entry.isFile()) continue;
 
       const canonicalPath = entry.isDirectory()
         ? join(statusRoot, entry.name, BLUEPRINT_OVERVIEW_FILENAME)
-        : join(statusRoot, entry.name)
-      const relativeBlueprintPath = relative(blueprintsRoot, canonicalPath)
-      const parsedPath = parseBlueprintDocumentRelativePath(relativeBlueprintPath)
+        : join(statusRoot, entry.name);
+      const relativeBlueprintPath = relative(blueprintsRoot, canonicalPath);
+      const parsedPath = parseBlueprintDocumentRelativePath(relativeBlueprintPath);
 
       if (entry.isDirectory()) {
-        checked += 1
+        checked += 1;
         if (!existsSync(canonicalPath)) {
           const hasNestedMarkdown = readdirSync(join(statusRoot, entry.name), {
             withFileTypes: true,
           }).some(
             (nested) =>
-              nested.isFile() && nested.name.endsWith('.md') && nested.name !== 'README.md',
-          )
+              nested.isFile() && nested.name.endsWith(".md") && nested.name !== "README.md",
+          );
 
           if (hasNestedMarkdown) {
             violations.push({
               file: relativePath(root, canonicalPath),
-              message: 'Blueprint folders with supporting markdown must include _overview.md',
-            })
+              message: "Blueprint folders with supporting markdown must include _overview.md",
+            });
           } else {
             violations.push({
               file: relativePath(root, canonicalPath),
-              message: 'Missing _overview.md',
-            })
+              message: "Missing _overview.md",
+            });
           }
-          continue
+          continue;
         }
       } else {
         if (!parsedPath || isBlueprintSupportingMarkdownRelativePath(relativeBlueprintPath)) {
-          continue
+          continue;
         }
-        checked += 1
+        checked += 1;
       }
 
       if (!parsedPath) {
-        continue
+        continue;
       }
 
-      const raw = readFileSync(canonicalPath, 'utf8')
-      const frontmatter = matter(raw).data as Record<string, unknown>
-      if (frontmatter.type !== 'blueprint' && frontmatter.type !== 'parent-roadmap') {
+      const raw = readFileSync(canonicalPath, "utf8");
+      const frontmatter = matter(raw).data as Record<string, unknown>;
+      if (frontmatter.type !== "blueprint" && frontmatter.type !== "parent-roadmap") {
         violations.push({
           file: relativePath(root, canonicalPath),
-          message: 'Blueprint markdown must use type: blueprint or parent-roadmap',
-        })
+          message: "Blueprint markdown must use type: blueprint or parent-roadmap",
+        });
       }
 
       if (frontmatter.status !== status) {
         violations.push({
           file: relativePath(root, canonicalPath),
           message: `Blueprint status must match folder (${status})`,
-        })
+        });
       }
 
-      if (status !== 'draft') {
+      if (status !== "draft") {
         const frontmatterValidation = blueprintLifecycleRequiredFrontmatterSchema.safeParse({
           title:
-            typeof frontmatter.title === 'string'
+            typeof frontmatter.title === "string"
               ? frontmatter.title
-              : String(frontmatter.title ?? ''),
+              : String(frontmatter.title ?? ""),
           owner:
-            typeof frontmatter.owner === 'string'
+            typeof frontmatter.owner === "string"
               ? frontmatter.owner
-              : String(frontmatter.owner ?? ''),
+              : String(frontmatter.owner ?? ""),
           complexity:
-            typeof frontmatter.complexity === 'string'
+            typeof frontmatter.complexity === "string"
               ? frontmatter.complexity
-              : String(frontmatter.complexity ?? ''),
+              : String(frontmatter.complexity ?? ""),
           last_updated:
             frontmatter.last_updated instanceof Date
-              ? (frontmatter.last_updated.toISOString().split('T')[0] ?? '')
-              : typeof frontmatter.last_updated === 'string'
+              ? (frontmatter.last_updated.toISOString().split("T")[0] ?? "")
+              : typeof frontmatter.last_updated === "string"
                 ? frontmatter.last_updated
-                : String(frontmatter.last_updated ?? ''),
-        })
+                : String(frontmatter.last_updated ?? ""),
+        });
 
         if (!frontmatterValidation.success) {
           for (const issue of frontmatterValidation.error.issues) {
-            const field = String(issue.path[0] ?? '')
+            const field = String(issue.path[0] ?? "");
             const message =
-              field === 'complexity'
-                ? `Blueprint complexity must be one of ${BLUEPRINT_COMPLEXITIES.join(', ')}`
-                : field === 'last_updated'
-                  ? 'Blueprint last_updated must be a YYYY-MM-DD date'
-                  : `Blueprint is missing required frontmatter field: ${field}`
+              field === "complexity"
+                ? `Blueprint complexity must be one of ${BLUEPRINT_COMPLEXITIES.join(", ")}`
+                : field === "last_updated"
+                  ? "Blueprint last_updated must be a YYYY-MM-DD date"
+                  : `Blueprint is missing required frontmatter field: ${field}`;
 
             violations.push({
               file: relativePath(root, canonicalPath),
               message,
-            })
+            });
           }
         }
       }
@@ -427,341 +427,341 @@ export function auditBlueprintLifecycle(
           frontmatter,
           status,
         }),
-      )
+      );
     }
   }
 
   if (options.includeOmxPlans === true) {
-    const legacy = auditOmxPlanHandoffs(root)
-    checked += legacy.checked
-    violations.push(...legacy.violations)
+    const legacy = auditOmxPlanHandoffs(root);
+    checked += legacy.checked;
+    violations.push(...legacy.violations);
   }
 
-  return result('Blueprint lifecycle', checked, violations)
+  return result("Blueprint lifecycle", checked, violations);
 }
 
 export function formatRepoAuditReport(auditResult: RepoAuditResult): string {
-  const status = auditResult.ok ? 'OK' : 'FAILED'
-  const lines = [`${auditResult.title}: ${status} (${auditResult.checked} checked)`]
+  const status = auditResult.ok ? "OK" : "FAILED";
+  const lines = [`${auditResult.title}: ${status} (${auditResult.checked} checked)`];
 
   for (const violation of auditResult.violations) {
-    const location = violation.file ? `${violation.file}: ` : ''
-    lines.push(`- ${location}${violation.message}`)
+    const location = violation.file ? `${violation.file}: ` : "";
+    lines.push(`- ${location}${violation.message}`);
   }
 
-  return lines.join('\n')
+  return lines.join("\n");
 }
 
 function result(title: string, checked: number, violations: RepoAuditViolation[]): RepoAuditResult {
-  return { ok: violations.length === 0, title, checked, violations }
+  return { ok: violations.length === 0, title, checked, violations };
 }
 
 function parseWorkspacePackageGlobs(workspaceYaml: string): string[] {
-  return extractTopLevelBlock(workspaceYaml, 'packages')
+  return extractTopLevelBlock(workspaceYaml, "packages")
     .map((line) => /^\s*-\s*(.+?)\s*$/.exec(line)?.[1])
     .filter((value): value is string => value !== undefined)
     .map((value) => stripQuotes(value.trim()))
-    .filter((value) => value.length > 0 && !value.startsWith('!'))
+    .filter((value) => value.length > 0 && !value.startsWith("!"));
 }
 
 function validateBlueprintLinkingFrontmatter(options: {
-  file: string
-  frontmatter: Record<string, unknown>
-  status: string
+  file: string;
+  frontmatter: Record<string, unknown>;
+  status: string;
 }): RepoAuditViolation[] {
-  if (!ACTIVE_BLUEPRINT_STATUSES.has(options.status)) return []
+  if (!ACTIVE_BLUEPRINT_STATUSES.has(options.status)) return [];
 
-  const violations: RepoAuditViolation[] = []
+  const violations: RepoAuditViolation[] = [];
   const parentRoadmap =
-    typeof options.frontmatter.parent_roadmap === 'string'
+    typeof options.frontmatter.parent_roadmap === "string"
       ? options.frontmatter.parent_roadmap.trim()
-      : ''
+      : "";
   if (parentRoadmap.length > 0 && !isLocalParentRoadmapReference(parentRoadmap)) {
     violations.push({
       file: options.file,
       message:
-        'parent_roadmap must reference a local roadmap slug/path in the same repo; use cross_repo_depends_on plus GitHub links for cross-repo relationships',
-    })
+        "parent_roadmap must reference a local roadmap slug/path in the same repo; use cross_repo_depends_on plus GitHub links for cross-repo relationships",
+    });
   }
 
   const dependsOn = Array.isArray(options.frontmatter.depends_on)
     ? options.frontmatter.depends_on
-    : []
+    : [];
   for (const dependency of dependsOn) {
-    if (typeof dependency !== 'string') {
+    if (typeof dependency !== "string") {
       violations.push({
         file: options.file,
-        message: 'depends_on entries must be strings',
-      })
-      continue
+        message: "depends_on entries must be strings",
+      });
+      continue;
     }
 
-    const trimmed = dependency.trim()
+    const trimmed = dependency.trim();
     if (looksLikeCrossRepoReference(trimmed)) {
       violations.push({
         file: options.file,
         message:
-          'depends_on must stay repo-local; move cross-repo blockers to cross_repo_depends_on and use GitHub links in markdown body references',
-      })
+          "depends_on must stay repo-local; move cross-repo blockers to cross_repo_depends_on and use GitHub links in markdown body references",
+      });
     }
   }
 
-  if (options.frontmatter.cross_repo_depends_on === undefined) return violations
+  if (options.frontmatter.cross_repo_depends_on === undefined) return violations;
   if (!Array.isArray(options.frontmatter.cross_repo_depends_on)) {
     violations.push({
       file: options.file,
-      message: 'cross_repo_depends_on must be an array of { repo, slug, require_status? } objects',
-    })
-    return violations
+      message: "cross_repo_depends_on must be an array of { repo, slug, require_status? } objects",
+    });
+    return violations;
   }
 
   for (const dependency of options.frontmatter.cross_repo_depends_on) {
-    if (!dependency || typeof dependency !== 'object' || Array.isArray(dependency)) {
+    if (!dependency || typeof dependency !== "object" || Array.isArray(dependency)) {
       violations.push({
         file: options.file,
         message:
-          'cross_repo_depends_on entries must be objects with repo, slug, and optional require_status',
-      })
-      continue
+          "cross_repo_depends_on entries must be objects with repo, slug, and optional require_status",
+      });
+      continue;
     }
 
-    const record = dependency as Record<string, unknown>
-    const repo = typeof record.repo === 'string' ? record.repo.trim() : ''
-    const slug = typeof record.slug === 'string' ? record.slug.trim() : ''
+    const record = dependency as Record<string, unknown>;
+    const repo = typeof record.repo === "string" ? record.repo.trim() : "";
+    const slug = typeof record.slug === "string" ? record.slug.trim() : "";
     const requireStatus =
-      typeof record.require_status === 'string' ? record.require_status.trim() : undefined
+      typeof record.require_status === "string" ? record.require_status.trim() : undefined;
 
     if (!GITHUB_REPO_PATTERN.test(repo) || looksLikeCrossRepoReference(repo)) {
       violations.push({
         file: options.file,
-        message: 'cross_repo_depends_on.repo must use owner/repo form',
-      })
+        message: "cross_repo_depends_on.repo must use owner/repo form",
+      });
     }
 
     if (!BLUEPRINT_SLUG_PATTERN.test(slug) || looksLikeCrossRepoReference(slug)) {
       violations.push({
         file: options.file,
         message:
-          'cross_repo_depends_on.slug must be a blueprint slug only (no paths, URLs, or _overview.md suffix)',
-      })
+          "cross_repo_depends_on.slug must be a blueprint slug only (no paths, URLs, or _overview.md suffix)",
+      });
     }
 
     if (requireStatus && !isBlueprintStatusValue(requireStatus)) {
       violations.push({
         file: options.file,
-        message: 'cross_repo_depends_on.require_status must be a valid blueprint lifecycle status',
-      })
+        message: "cross_repo_depends_on.require_status must be a valid blueprint lifecycle status",
+      });
     }
   }
 
-  return violations
+  return violations;
 }
 
 function isLocalParentRoadmapReference(reference: string): boolean {
-  const normalized = normalizeBlueprintReference(reference)
-  if (normalized.length === 0) return false
-  if (looksLikeCrossRepoReference(normalized)) return false
-  if (BLUEPRINT_REFERENCE_PATTERN.test(normalized)) return true
-  return BLUEPRINT_SLUG_PATTERN.test(lastSegment(normalized))
+  const normalized = normalizeBlueprintReference(reference);
+  if (normalized.length === 0) return false;
+  if (looksLikeCrossRepoReference(normalized)) return false;
+  if (BLUEPRINT_REFERENCE_PATTERN.test(normalized)) return true;
+  return BLUEPRINT_SLUG_PATTERN.test(lastSegment(normalized));
 }
 
 function looksLikeCrossRepoReference(reference: string): boolean {
-  const trimmed = reference.trim()
+  const trimmed = reference.trim();
   return (
     trimmed.length > 0 &&
     (LEGACY_CROSS_REPO_LABEL_PATTERN.test(trimmed) ||
       ABSOLUTE_FILE_REFERENCE_PATTERN.test(trimmed) ||
       /^https?:\/\//i.test(trimmed) ||
       GITHUB_BLOB_URL_PATTERN.test(trimmed))
-  )
+  );
 }
 
 function normalizeBlueprintReference(reference: string): string {
   return reference
     .trim()
-    .replace(/^['"]|['"]$/g, '')
-    .replace(/\\/g, '/')
-    .replace(/^\.?\//, '')
-    .replace(/\/_overview\.md$/, '')
+    .replace(/^['"]|['"]$/g, "")
+    .replace(/\\/g, "/")
+    .replace(/^\.?\//, "")
+    .replace(/\/_overview\.md$/, "");
 }
 
 function lastSegment(value: string): string {
-  return value.split('/').filter(Boolean).at(-1) ?? value
+  return value.split("/").filter(Boolean).at(-1) ?? value;
 }
 
 function isBlueprintStatusValue(value: string): boolean {
-  return DEFAULT_BLUEPRINT_STATUSES.includes(value as (typeof DEFAULT_BLUEPRINT_STATUSES)[number])
+  return DEFAULT_BLUEPRINT_STATUSES.includes(value as (typeof DEFAULT_BLUEPRINT_STATUSES)[number]);
 }
 
 function parseCatalogDependencyNames(workspaceYaml: string): Set<string> {
-  const names = new Set<string>()
+  const names = new Set<string>();
 
-  for (const line of extractTopLevelBlock(workspaceYaml, 'catalog')) {
-    const match = /^\s+([^:#][^:]*):\s*(.+?)\s*$/.exec(line)
-    if (match?.[1] && match[2] !== '') names.add(stripQuotes(match[1].trim()))
+  for (const line of extractTopLevelBlock(workspaceYaml, "catalog")) {
+    const match = /^\s+([^:#][^:]*):\s*(.+?)\s*$/.exec(line);
+    if (match?.[1] && match[2] !== "") names.add(stripQuotes(match[1].trim()));
   }
 
-  for (const line of extractTopLevelBlock(workspaceYaml, 'catalogs')) {
-    const indent = line.match(/^\s*/)?.[0].length ?? 0
-    const match = /^\s+([^:#][^:]*):\s*(.+?)\s*$/.exec(line)
-    if (indent >= 4 && match?.[1] && match[2] !== '') names.add(stripQuotes(match[1].trim()))
+  for (const line of extractTopLevelBlock(workspaceYaml, "catalogs")) {
+    const indent = line.match(/^\s*/)?.[0].length ?? 0;
+    const match = /^\s+([^:#][^:]*):\s*(.+?)\s*$/.exec(line);
+    if (indent >= 4 && match?.[1] && match[2] !== "") names.add(stripQuotes(match[1].trim()));
   }
 
-  return names
+  return names;
 }
 
 function extractTopLevelBlock(yaml: string, key: string): string[] {
-  const lines: string[] = []
-  let inBlock = false
+  const lines: string[] = [];
+  let inBlock = false;
 
   for (const line of yaml.split(/\r?\n/)) {
-    const trimmed = line.trim()
-    if (trimmed.length === 0 || trimmed.startsWith('#')) continue
+    const trimmed = line.trim();
+    if (trimmed.length === 0 || trimmed.startsWith("#")) continue;
 
-    const topLevelKey = /^([A-Za-z0-9_-]+):/.exec(trimmed)?.[1]
-    const indent = line.match(/^\s*/)?.[0].length ?? 0
+    const topLevelKey = /^([A-Za-z0-9_-]+):/.exec(trimmed)?.[1];
+    const indent = line.match(/^\s*/)?.[0].length ?? 0;
     if (indent === 0 && topLevelKey) {
-      inBlock = topLevelKey === key
-      continue
+      inBlock = topLevelKey === key;
+      continue;
     }
 
-    if (inBlock) lines.push(line)
+    if (inBlock) lines.push(line);
   }
 
-  return lines
+  return lines;
 }
 
 function discoverWorkspacePackageFiles(root: string, workspaceGlobs: readonly string[]): string[] {
-  const packageFiles = new Set<string>()
+  const packageFiles = new Set<string>();
 
   for (const workspaceGlob of workspaceGlobs) {
-    const normalizedGlob = workspaceGlob.replace(/\\/g, '/')
-    if (normalizedGlob.endsWith('/*')) {
-      const baseDirectory = resolve(root, normalizedGlob.slice(0, -2))
-      if (!existsSync(baseDirectory)) continue
+    const normalizedGlob = workspaceGlob.replace(/\\/g, "/");
+    if (normalizedGlob.endsWith("/*")) {
+      const baseDirectory = resolve(root, normalizedGlob.slice(0, -2));
+      if (!existsSync(baseDirectory)) continue;
 
       for (const entry of readdirSync(baseDirectory, { withFileTypes: true })) {
-        if (!entry.isDirectory()) continue
-        const packageFile = join(baseDirectory, entry.name, 'package.json')
-        if (existsSync(packageFile)) packageFiles.add(packageFile)
+        if (!entry.isDirectory()) continue;
+        const packageFile = join(baseDirectory, entry.name, "package.json");
+        if (existsSync(packageFile)) packageFiles.add(packageFile);
       }
-      continue
+      continue;
     }
 
-    const packageFile = resolve(root, normalizedGlob, 'package.json')
-    if (existsSync(packageFile)) packageFiles.add(packageFile)
+    const packageFile = resolve(root, normalizedGlob, "package.json");
+    if (existsSync(packageFile)) packageFiles.add(packageFile);
   }
 
-  return [...packageFiles].toSorted((left, right) => left.localeCompare(right))
+  return [...packageFiles].toSorted((left, right) => left.localeCompare(right));
 }
 
 function isSharedDependencyReference(version: string): boolean {
   return (
-    version.startsWith('catalog:') ||
-    version.startsWith('workspace:') ||
-    version.startsWith('file:') ||
-    version.startsWith('link:')
-  )
+    version.startsWith("catalog:") ||
+    version.startsWith("workspace:") ||
+    version.startsWith("file:") ||
+    version.startsWith("link:")
+  );
 }
 
 function readJsonObject(file: string): Record<string, unknown> {
-  const value = JSON.parse(readFileSync(file, 'utf8')) as unknown
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
-  return value as Record<string, unknown>
+  const value = JSON.parse(readFileSync(file, "utf8")) as unknown;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return value as Record<string, unknown>;
 }
 
 function readStringRecord(value: unknown): Record<string, string> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
 
   return Object.fromEntries(
     Object.entries(value).filter(
-      (entry): entry is [string, string] => typeof entry[1] === 'string',
+      (entry): entry is [string, string] => typeof entry[1] === "string",
     ),
-  )
+  );
 }
 
-const MARKDOWN_SKIP_DIRS = new Set(['node_modules', 'dist', '.git', '_sandbox'])
+const MARKDOWN_SKIP_DIRS = new Set(["node_modules", "dist", ".git", "_sandbox"]);
 
 function walkMarkdownFiles(root: string): string[] {
-  const files: string[] = []
+  const files: string[] = [];
 
   for (const entry of readdirSync(root, { withFileTypes: true })) {
-    const path = join(root, entry.name)
+    const path = join(root, entry.name);
     if (entry.isDirectory()) {
-      if (MARKDOWN_SKIP_DIRS.has(entry.name)) continue
-      files.push(...walkMarkdownFiles(path))
-      continue
+      if (MARKDOWN_SKIP_DIRS.has(entry.name)) continue;
+      files.push(...walkMarkdownFiles(path));
+      continue;
     }
 
-    if (entry.isFile() && entry.name.endsWith('.md')) files.push(path)
+    if (entry.isFile() && entry.name.endsWith(".md")) files.push(path);
   }
 
-  return files.toSorted((left, right) => left.localeCompare(right))
+  return files.toSorted((left, right) => left.localeCompare(right));
 }
 
 export function parseFrontmatter(markdown: string): Record<string, string> {
-  if (!markdown.startsWith('---')) return {}
+  if (!markdown.startsWith("---")) return {};
 
-  const end = markdown.indexOf('\n---', 3)
-  if (end === -1) return {}
+  const end = markdown.indexOf("\n---", 3);
+  if (end === -1) return {};
 
-  const frontmatter = markdown.slice(3, end)
-  const data: Record<string, string> = {}
+  const frontmatter = markdown.slice(3, end);
+  const data: Record<string, string> = {};
   for (const line of frontmatter.split(/\r?\n/)) {
-    const match = /^\s*([A-Za-z0-9_-]+):\s*(.*?)\s*$/.exec(line)
-    if (!match?.[1]) continue
-    data[match[1]] = stripQuotes(match[2] ?? '')
+    const match = /^\s*([A-Za-z0-9_-]+):\s*(.*?)\s*$/.exec(line);
+    if (!match?.[1]) continue;
+    data[match[1]] = stripQuotes(match[2] ?? "");
   }
 
-  return data
+  return data;
 }
 
 function applyDocsFrontmatterFix(
   markdown: string,
   options: { inferredType: string; today: string },
 ): string {
-  const frontmatter = parseFrontmatter(markdown)
-  const needsType = !frontmatter.type
-  const needsLastUpdated = !frontmatter.last_updated
-  if (!needsType && !needsLastUpdated) return markdown
+  const frontmatter = parseFrontmatter(markdown);
+  const needsType = !frontmatter.type;
+  const needsLastUpdated = !frontmatter.last_updated;
+  if (!needsType && !needsLastUpdated) return markdown;
 
-  const lines: string[] = []
+  const lines: string[] = [];
   if (needsType) {
-    lines.push('# TODO: classify type — auto-set by wp')
-    lines.push(`type: ${options.inferredType}`)
+    lines.push("# TODO: classify type — auto-set by wp");
+    lines.push(`type: ${options.inferredType}`);
   }
   if (needsLastUpdated) {
-    lines.push(`last_updated: '${options.today}'`)
+    lines.push(`last_updated: '${options.today}'`);
   }
 
-  if (!markdown.startsWith('---')) {
-    return `---\n${lines.join('\n')}\n---\n\n${markdown}`
+  if (!markdown.startsWith("---")) {
+    return `---\n${lines.join("\n")}\n---\n\n${markdown}`;
   }
 
-  const end = markdown.indexOf('\n---', 3)
-  if (end === -1) return markdown
-  return `${markdown.slice(0, end)}\n${lines.join('\n')}${markdown.slice(end)}`
+  const end = markdown.indexOf("\n---", 3);
+  if (end === -1) return markdown;
+  return `${markdown.slice(0, end)}\n${lines.join("\n")}${markdown.slice(end)}`;
 }
 
 function auditOmxPlanHandoffs(root: string): {
-  checked: number
-  violations: RepoAuditViolation[]
+  checked: number;
+  violations: RepoAuditViolation[];
 } {
-  const plansRoot = join(root, '.omx', 'plans')
-  const violations: RepoAuditViolation[] = []
-  let checked = 0
+  const plansRoot = join(root, ".omx", "plans");
+  const violations: RepoAuditViolation[] = [];
+  let checked = 0;
 
-  const planFiles = readDirectoryEntries(plansRoot).filter((file) => file.endsWith('.md'))
-  const hasLegacySurface = planFiles.length > 0
+  const planFiles = readDirectoryEntries(plansRoot).filter((file) => file.endsWith(".md"));
+  const hasLegacySurface = planFiles.length > 0;
 
-  if (!hasLegacySurface) return { checked, violations }
+  if (!hasLegacySurface) return { checked, violations };
 
   for (const file of planFiles) {
-    checked += 1
-    const content = readTextIfExists(join(plansRoot, file))
-    if (!content) continue
-    const relativeFile = relativePath(root, join(plansRoot, file))
-    const parsed = matter(content)
+    checked += 1;
+    const content = readTextIfExists(join(plansRoot, file));
+    if (!content) continue;
+    const relativeFile = relativePath(root, join(plansRoot, file));
+    const parsed = matter(content);
     if (
       /^#\s+(?:PRD|Test Spec):/im.test(content) ||
       /^#\s+(?:PRD|Test Spec):/im.test(parsed.content)
@@ -769,88 +769,88 @@ function auditOmxPlanHandoffs(root: string): {
       violations.push({
         file: relativeFile,
         message:
-          '.omx/plans must be a derived blueprint handoff, not an authoritative PRD/test-spec',
-      })
+          ".omx/plans must be a derived blueprint handoff, not an authoritative PRD/test-spec",
+      });
     }
 
-    const frontmatter = parsed.data as Record<string, unknown>
+    const frontmatter = parsed.data as Record<string, unknown>;
     for (const [field, marker] of [
-      ['derived', 'derived: true'],
-      ['non-authoritative', 'non-authoritative: true'],
-      ['blueprint_slug', 'blueprint_slug:'],
-      ['blueprint_path', 'blueprint_path:'],
-      ['content_hash', 'content_hash:'],
-      ['head_at_ingest', 'head_at_ingest:'],
+      ["derived", "derived: true"],
+      ["non-authoritative", "non-authoritative: true"],
+      ["blueprint_slug", "blueprint_slug:"],
+      ["blueprint_path", "blueprint_path:"],
+      ["content_hash", "content_hash:"],
+      ["head_at_ingest", "head_at_ingest:"],
     ] as const) {
       if (frontmatter[field] === undefined) {
         violations.push({
           file: relativeFile,
           message: `.omx/plans handoff is missing required derived-handoff marker: ${marker}`,
-        })
+        });
       }
     }
 
     if (frontmatter.derived !== undefined && frontmatter.derived !== true) {
       violations.push({
         file: relativeFile,
-        message: '.omx/plans handoff is missing required derived-handoff marker: derived: true',
-      })
+        message: ".omx/plans handoff is missing required derived-handoff marker: derived: true",
+      });
     }
 
     if (
-      frontmatter['non-authoritative'] !== undefined &&
-      frontmatter['non-authoritative'] !== true
+      frontmatter["non-authoritative"] !== undefined &&
+      frontmatter["non-authoritative"] !== true
     ) {
       violations.push({
         file: relativeFile,
         message:
-          '.omx/plans handoff is missing required derived-handoff marker: non-authoritative: true',
-      })
+          ".omx/plans handoff is missing required derived-handoff marker: non-authoritative: true",
+      });
     }
 
     if (
-      typeof frontmatter.blueprint_path === 'string' &&
+      typeof frontmatter.blueprint_path === "string" &&
       !/^(?:.*\/)?(?:blueprints|webpresso\/blueprints)\//.test(frontmatter.blueprint_path)
     ) {
       violations.push({
         file: relativeFile,
-        message: '.omx/plans handoff blueprint_path must point at blueprints/',
-      })
+        message: ".omx/plans handoff blueprint_path must point at blueprints/",
+      });
     }
 
-    const validated = blueprintDerivedHandoffSchema.safeParse(frontmatter)
+    const validated = blueprintDerivedHandoffSchema.safeParse(frontmatter);
     if (!validated.success) {
       for (const issue of validated.error.issues) {
-        const path = issue.path.join('.')
+        const path = issue.path.join(".");
         if (
-          issue.path[0] === 'codex_goal' ||
-          issue.path[0] === 'omx_context' ||
-          issue.path[0] === 'generated_at' ||
-          issue.path[0] === 'generated_by'
+          issue.path[0] === "codex_goal" ||
+          issue.path[0] === "omx_context" ||
+          issue.path[0] === "generated_at" ||
+          issue.path[0] === "generated_by"
         ) {
           violations.push({
             file: relativeFile,
             message: `.omx/plans handoff has invalid optional provenance field ${path}: ${issue.message}`,
-          })
+          });
         }
       }
     }
   }
 
-  return { checked, violations }
+  return { checked, violations };
 }
 
 function readDirectoryEntries(directory: string): string[] {
-  return existsSync(directory) ? readdirSync(directory) : []
+  return existsSync(directory) ? readdirSync(directory) : [];
 }
 
 function readTextIfExists(file: string): string | undefined {
-  return existsSync(file) ? readFileSync(file, 'utf8') : undefined
+  return existsSync(file) ? readFileSync(file, "utf8") : undefined;
 }
 
 export interface NoLinkProtocolOptions {
-  workspaceFile?: string
-  extraPackageGlobs?: readonly string[]
+  workspaceFile?: string;
+  extraPackageGlobs?: readonly string[];
 }
 
 /**
@@ -864,79 +864,79 @@ export function auditNoLinkProtocol(
   rootDirectory: string = process.cwd(),
   options: NoLinkProtocolOptions = {},
 ): RepoAuditResult {
-  const root = resolve(rootDirectory)
-  const workspacePath = resolve(root, options.workspaceFile ?? 'pnpm-workspace.yaml')
-  const violations: RepoAuditViolation[] = []
+  const root = resolve(rootDirectory);
+  const workspacePath = resolve(root, options.workspaceFile ?? "pnpm-workspace.yaml");
+  const violations: RepoAuditViolation[] = [];
 
-  const packageFiles = new Set<string>()
-  const rootPackageFile = resolve(root, 'package.json')
-  if (existsSync(rootPackageFile)) packageFiles.add(rootPackageFile)
+  const packageFiles = new Set<string>();
+  const rootPackageFile = resolve(root, "package.json");
+  if (existsSync(rootPackageFile)) packageFiles.add(rootPackageFile);
 
   if (existsSync(workspacePath)) {
-    const workspaceGlobs = parseWorkspacePackageGlobs(readFileSync(workspacePath, 'utf8'))
+    const workspaceGlobs = parseWorkspacePackageGlobs(readFileSync(workspacePath, "utf8"));
     for (const discovered of discoverWorkspacePackageFiles(root, workspaceGlobs)) {
-      packageFiles.add(discovered)
+      packageFiles.add(discovered);
     }
   }
 
   for (const extraGlob of options.extraPackageGlobs ?? []) {
     for (const discovered of discoverWorkspacePackageFiles(root, [extraGlob])) {
-      packageFiles.add(discovered)
+      packageFiles.add(discovered);
     }
   }
 
-  const sortedPackageFiles = [...packageFiles].toSorted((left, right) => left.localeCompare(right))
+  const sortedPackageFiles = [...packageFiles].toSorted((left, right) => left.localeCompare(right));
 
   for (const packageFile of sortedPackageFiles) {
-    const pkg = readJsonObject(packageFile)
-    const file = relativePath(root, packageFile)
+    const pkg = readJsonObject(packageFile);
+    const file = relativePath(root, packageFile);
 
-    const directSections = ['dependencies', 'devDependencies', 'optionalDependencies'] as const
+    const directSections = ["dependencies", "devDependencies", "optionalDependencies"] as const;
     for (const section of directSections) {
       for (const [name, value] of Object.entries(readStringRecord(pkg[section]))) {
-        if (value.startsWith('link:')) {
+        if (value.startsWith("link:")) {
           violations.push({
             file,
             message: `${section}.${name}: ${JSON.stringify(value)} — replace with "catalog:" (cross-repo) or "workspace:*" (intra-repo)`,
-          })
+          });
         }
       }
     }
 
-    const pnpm = pkg.pnpm
-    if (pnpm && typeof pnpm === 'object' && !Array.isArray(pnpm)) {
-      const overrides = readStringRecord((pnpm as Record<string, unknown>).overrides)
+    const pnpm = pkg.pnpm;
+    if (pnpm && typeof pnpm === "object" && !Array.isArray(pnpm)) {
+      const overrides = readStringRecord((pnpm as Record<string, unknown>).overrides);
       for (const [name, value] of Object.entries(overrides)) {
-        if (value.startsWith('link:')) {
+        if (value.startsWith("link:")) {
           violations.push({
             file,
             message: `pnpm.overrides.${name}: ${JSON.stringify(value)} — link: in overrides filesystem-couples the consumer; remove the override or pin to a published version`,
-          })
+          });
         }
       }
     }
   }
 
-  return result('no-link-protocol', sortedPackageFiles.length, violations)
+  return result("no-link-protocol", sortedPackageFiles.length, violations);
 }
 
 export interface NoRelativeParentImportsOptions {
-  srcDir?: string
-  extensions?: readonly string[]
+  srcDir?: string;
+  extensions?: readonly string[];
   /**
    * Skip the tsconfig*.json scan entirely. Off by default — tsconfig parent
    * paths (`extends`, `paths`, `references`, `include`, `outDir`, etc.) are
    * audited alongside source imports.
    */
-  skipTsconfig?: boolean
+  skipTsconfig?: boolean;
   /** Directory to start the tsconfig scan from. Defaults to the repo root. */
-  tsconfigRoot?: string
+  tsconfigRoot?: string;
   /**
    * Subdirectory paths relative to `srcDir` to skip entirely. Use for
    * published config packages that rely on within-package relative imports
    * by design (e.g. `config/docs-lint`).
    */
-  excludeDirs?: readonly string[]
+  excludeDirs?: readonly string[];
 }
 
 /**
@@ -949,94 +949,94 @@ export function auditNoRelativeParentImports(
   root: string,
   options: NoRelativeParentImportsOptions = {},
 ): RepoAuditResult {
-  const srcDir = resolve(root, options.srcDir ?? 'src')
-  const extensions = options.extensions ?? ['.ts', '.tsx', '.js', '.jsx']
-  const excludedDirs = new Set((options.excludeDirs ?? []).map((d) => resolve(srcDir, d)))
-  const violations: RepoAuditViolation[] = []
-  let checked = 0
+  const srcDir = resolve(root, options.srcDir ?? "src");
+  const extensions = options.extensions ?? [".ts", ".tsx", ".js", ".jsx"];
+  const excludedDirs = new Set((options.excludeDirs ?? []).map((d) => resolve(srcDir, d)));
+  const violations: RepoAuditViolation[] = [];
+  let checked = 0;
 
   function walk(dir: string): void {
-    if (!existsSync(dir)) return
+    if (!existsSync(dir)) return;
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const full = join(dir, entry.name)
+      const full = join(dir, entry.name);
       if (entry.isDirectory()) {
-        if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name === '_sandbox')
-          continue
-        if (excludedDirs.has(full)) continue
-        walk(full)
-        continue
+        if (entry.name === "node_modules" || entry.name === "dist" || entry.name === "_sandbox")
+          continue;
+        if (excludedDirs.has(full)) continue;
+        walk(full);
+        continue;
       }
-      if (!extensions.some((ext) => entry.name.endsWith(ext))) continue
-      if (entry.name.endsWith('.test.ts') || entry.name.endsWith('.test.tsx')) continue
-      if (entry.name.endsWith('.integration.test.ts')) continue
+      if (!extensions.some((ext) => entry.name.endsWith(ext))) continue;
+      if (entry.name.endsWith(".test.ts") || entry.name.endsWith(".test.tsx")) continue;
+      if (entry.name.endsWith(".integration.test.ts")) continue;
 
-      checked++
-      const content = readFileSync(full, 'utf-8')
-      const rel = relativePath(root, full)
-      const lines = content.split('\n')
+      checked++;
+      const content = readFileSync(full, "utf-8");
+      const rel = relativePath(root, full);
+      const lines = content.split("\n");
 
       for (let i = 0; i < lines.length; i++) {
-        const line = lines[i] ?? ''
+        const line = lines[i] ?? "";
         // Skip comment lines
-        if (/^\s*(\/\/|\/\*)/.test(line)) continue
+        if (/^\s*(\/\/|\/\*)/.test(line)) continue;
         if (/(?:from|export\s+\*\s+from)\s+['"]\.\.\//.test(line)) {
           violations.push({
             file: rel,
             message: `Line ${i + 1}: relative parent import detected — use a \`#\` alias instead: ${line.trim()}`,
-          })
+          });
         }
         // Detect 3+ level fixed-depth path traversal in runtime code.
         // These break when src/ vs dist/esm/ depth differs. Use resolvePackageAsset() instead.
-        const hasDeepStringTraversal = /['"`][^'"`\n]*(?:\.\.\/){3,}[^'"`\n]*['"`]/.test(line)
-        const hasDeepArgTraversal = (line.match(/['"]\.\.['"]/g)?.length ?? 0) >= 3
+        const hasDeepStringTraversal = /['"`][^'"`\n]*(?:\.\.\/){3,}[^'"`\n]*['"`]/.test(line);
+        const hasDeepArgTraversal = (line.match(/['"]\.\.['"]/g)?.length ?? 0) >= 3;
         if (hasDeepStringTraversal || hasDeepArgTraversal) {
           violations.push({
             file: rel,
             message: `Line ${i + 1}: fixed-depth path traversal (3+ levels) — use resolvePackageAsset() to locate package assets portably: ${line.trim()}`,
-          })
+          });
         }
       }
     }
   }
 
-  walk(srcDir)
+  walk(srcDir);
 
   if (options.skipTsconfig !== true) {
-    const tsconfigRoot = resolve(root, options.tsconfigRoot ?? '.')
-    const tsconfigChecked = walkTsconfigParentPaths(tsconfigRoot, root, violations)
-    checked += tsconfigChecked
+    const tsconfigRoot = resolve(root, options.tsconfigRoot ?? ".");
+    const tsconfigChecked = walkTsconfigParentPaths(tsconfigRoot, root, violations);
+    checked += tsconfigChecked;
   }
 
   return {
     ok: violations.length === 0,
-    title: 'no-relative-parent-imports',
+    title: "no-relative-parent-imports",
     checked,
     violations,
-  }
+  };
 }
 
 const TSCONFIG_SKIP_DIRS = new Set([
-  'node_modules',
-  'dist',
-  'build',
-  '.git',
-  '.cache',
-  '.next',
-  '.turbo',
-  '.omx',
+  "node_modules",
+  "dist",
+  "build",
+  ".git",
+  ".cache",
+  ".next",
+  ".turbo",
+  ".omx",
   // Mutation-testing sandbox (gitignored, generated per package).
-  '.stryker-tmp',
+  ".stryker-tmp",
   // Per-worktree clones (Claude Code Agent isolation) — not part of the
   // canonical source tree, audit them via their own root if needed.
-  '.claude',
+  ".claude",
   // Scaffolding templates: content under `template/` becomes a downstream
   // customer's source tree, not ours. Parent paths inside template
   // tsconfigs reference the scaffolded layout, not the repo layout.
-  'template',
+  "template",
   // Workspace-level scratch/archive space — stale trees produce false
   // positives; consumers without this directory see no behaviour change.
-  '_sandbox',
-])
+  "_sandbox",
+]);
 
 /**
  * Walk the repo for `tsconfig*.json` files and flag any value that uses a
@@ -1051,30 +1051,30 @@ function walkTsconfigParentPaths(
   reportRoot: string,
   violations: RepoAuditViolation[],
 ): number {
-  if (!existsSync(startDir)) return 0
-  let checked = 0
+  if (!existsSync(startDir)) return 0;
+  let checked = 0;
 
   function walk(dir: string): void {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const full = join(dir, entry.name)
+      const full = join(dir, entry.name);
       if (entry.isDirectory()) {
-        if (TSCONFIG_SKIP_DIRS.has(entry.name)) continue
-        walk(full)
-        continue
+        if (TSCONFIG_SKIP_DIRS.has(entry.name)) continue;
+        walk(full);
+        continue;
       }
-      if (!entry.isFile()) continue
-      if (!/^tsconfig(\.[^.]+)*\.json$/.test(entry.name)) continue
+      if (!entry.isFile()) continue;
+      if (!/^tsconfig(\.[^.]+)*\.json$/.test(entry.name)) continue;
 
-      checked += 1
-      const content = readFileSync(full, 'utf-8')
-      const rel = relativePath(reportRoot, full)
-      const lines = content.split('\n')
+      checked += 1;
+      const content = readFileSync(full, "utf-8");
+      const rel = relativePath(reportRoot, full);
+      const lines = content.split("\n");
 
       for (let i = 0; i < lines.length; i++) {
-        const line = lines[i] ?? ''
-        const trimmed = line.trim()
+        const line = lines[i] ?? "";
+        const trimmed = line.trim();
         // Skip blank lines, line comments, and block-comment-only lines.
-        if (trimmed === '' || trimmed.startsWith('//') || trimmed.startsWith('/*')) continue
+        if (trimmed === "" || trimmed.startsWith("//") || trimmed.startsWith("/*")) continue;
 
         // Any `"../` inside a JSON string value is a parent reference. We
         // match `"` followed by zero or more non-quote chars then `../`
@@ -1083,43 +1083,43 @@ function walkTsconfigParentPaths(
           violations.push({
             file: rel,
             message: `Line ${i + 1}: tsconfig parent-relative path detected — use a workspace path mapping or package alias instead: ${trimmed}`,
-          })
+          });
         }
       }
     }
   }
 
-  walk(startDir)
-  return checked
+  walk(startDir);
+  return checked;
 }
 
 export interface TestIsolationOptions {
   /** Directory to scan for test files. Defaults to `src`. */
-  srcDir?: string
+  srcDir?: string;
   /** Test-file suffixes to inspect. Defaults to `.test.ts` / `.test.tsx`. */
-  extensions?: readonly string[]
+  extensions?: readonly string[];
 }
 
 const TEST_ISOLATION_SKIP_DIRS = new Set([
-  'node_modules',
-  'dist',
-  'build',
-  '.git',
-  '.cache',
-  '.next',
-  '.turbo',
-  '.omx',
-  '.stryker-tmp',
-  '.claude',
+  "node_modules",
+  "dist",
+  "build",
+  ".git",
+  ".cache",
+  ".next",
+  ".turbo",
+  ".omx",
+  ".stryker-tmp",
+  ".claude",
   // Scaffolding templates become a downstream consumer's tree, not ours.
-  'template',
+  "template",
   // Workspace-level scratch/archive space.
-  '_sandbox',
-])
+  "_sandbox",
+]);
 
 // `(join|resolve)(process.cwd(), ... 'catalog' ...)` — a test reaching into the
 // live catalog template source off the runner's working directory.
-const CWD_CATALOG_PATH_PATTERN = /\b(?:join|resolve)\s*\(\s*process\.cwd\(\)[^)]*\bcatalog\b/
+const CWD_CATALOG_PATH_PATTERN = /\b(?:join|resolve)\s*\(\s*process\.cwd\(\)[^)]*\bcatalog\b/;
 
 /**
  * Fail if any `*.test.ts` reaches the repo's own `catalog/` template source
@@ -1135,50 +1135,50 @@ export function auditTestIsolation(
   root: string,
   options: TestIsolationOptions = {},
 ): RepoAuditResult {
-  const srcDir = resolve(root, options.srcDir ?? 'src')
-  const extensions = options.extensions ?? ['.test.ts', '.test.tsx']
-  const violations: RepoAuditViolation[] = []
-  let checked = 0
+  const srcDir = resolve(root, options.srcDir ?? "src");
+  const extensions = options.extensions ?? [".test.ts", ".test.tsx"];
+  const violations: RepoAuditViolation[] = [];
+  let checked = 0;
 
   function walk(dir: string): void {
-    if (!existsSync(dir)) return
+    if (!existsSync(dir)) return;
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const full = join(dir, entry.name)
+      const full = join(dir, entry.name);
       if (entry.isDirectory()) {
-        if (TEST_ISOLATION_SKIP_DIRS.has(entry.name)) continue
-        walk(full)
-        continue
+        if (TEST_ISOLATION_SKIP_DIRS.has(entry.name)) continue;
+        walk(full);
+        continue;
       }
-      if (!entry.isFile()) continue
-      if (!extensions.some((ext) => entry.name.endsWith(ext))) continue
+      if (!entry.isFile()) continue;
+      if (!extensions.some((ext) => entry.name.endsWith(ext))) continue;
 
-      checked++
-      const content = readFileSync(full, 'utf-8')
-      const rel = relativePath(root, full)
-      const lines = content.split('\n')
+      checked++;
+      const content = readFileSync(full, "utf-8");
+      const rel = relativePath(root, full);
+      const lines = content.split("\n");
 
       for (let i = 0; i < lines.length; i++) {
-        const line = lines[i] ?? ''
+        const line = lines[i] ?? "";
         // Skip comment lines so prose referencing the pattern doesn't trip it.
-        if (/^\s*(?:\/\/|\/\*|\*)/.test(line)) continue
+        if (/^\s*(?:\/\/|\/\*|\*)/.test(line)) continue;
         if (CWD_CATALOG_PATH_PATTERN.test(line)) {
           violations.push({
             file: rel,
             message: `Line ${i + 1}: test reads the catalog template source via process.cwd() — anchor catalog reads to the package with resolveCatalogDir() (import.meta-based) so the test does not depend on the runner's working directory: ${line.trim()}`,
-          })
+          });
         }
       }
     }
   }
 
-  walk(srcDir)
+  walk(srcDir);
 
   return {
     ok: violations.length === 0,
-    title: 'test-isolation',
+    title: "test-isolation",
     checked,
     violations,
-  }
+  };
 }
 
 function withFilePrefix(file: string, auditResult: RepoAuditResult): RepoAuditResult {
@@ -1188,21 +1188,21 @@ function withFilePrefix(file: string, auditResult: RepoAuditResult): RepoAuditRe
       ...violation,
       file: violation.file ?? file,
     })),
-  }
+  };
 }
 
 function stripQuotes(value: string): string {
-  return value.replace(/^['"]|['"]$/g, '')
+  return value.replace(/^['"]|['"]$/g, "");
 }
 
 function relativePath(root: string, path: string): string {
-  const relativePathValue = relative(root, path)
-  return relativePathValue.split(sep).join('/')
+  const relativePathValue = relative(root, path);
+  return relativePathValue.split(sep).join("/");
 }
 
 export interface NoRelativePackageScriptsOptions {
   /** Glob-style subdirectory patterns relative to root to skip. */
-  excludeDirs?: readonly string[]
+  excludeDirs?: readonly string[];
 }
 
 /**
@@ -1217,69 +1217,69 @@ export function auditNoRelativePackageScripts(
   root: string,
   options: NoRelativePackageScriptsOptions = {},
 ): RepoAuditResult {
-  const violations: RepoAuditViolation[] = []
-  const excludedDirs = new Set((options.excludeDirs ?? []).map((d) => resolve(root, d)))
-  let checked = 0
+  const violations: RepoAuditViolation[] = [];
+  const excludedDirs = new Set((options.excludeDirs ?? []).map((d) => resolve(root, d)));
+  let checked = 0;
 
   function walk(dir: string): void {
-    if (!existsSync(dir)) return
+    if (!existsSync(dir)) return;
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const full = join(dir, entry.name)
+      const full = join(dir, entry.name);
       if (entry.isDirectory()) {
         if (
-          entry.name === 'node_modules' ||
-          entry.name === 'dist' ||
-          entry.name === '.git' ||
-          entry.name === '_sandbox'
+          entry.name === "node_modules" ||
+          entry.name === "dist" ||
+          entry.name === ".git" ||
+          entry.name === "_sandbox"
         )
-          continue
-        if (excludedDirs.has(full)) continue
-        walk(full)
-        continue
+          continue;
+        if (excludedDirs.has(full)) continue;
+        walk(full);
+        continue;
       }
-      if (entry.name !== 'package.json') continue
+      if (entry.name !== "package.json") continue;
 
-      checked++
-      let pkg: Record<string, unknown>
+      checked++;
+      let pkg: Record<string, unknown>;
       try {
-        pkg = JSON.parse(readFileSync(full, 'utf-8')) as Record<string, unknown>
+        pkg = JSON.parse(readFileSync(full, "utf-8")) as Record<string, unknown>;
       } catch {
-        continue
+        continue;
       }
 
-      const scripts = pkg['scripts']
-      if (!scripts || typeof scripts !== 'object') continue
-      const rel = relativePath(root, full)
+      const scripts = pkg["scripts"];
+      if (!scripts || typeof scripts !== "object") continue;
+      const rel = relativePath(root, full);
 
       for (const [name, value] of Object.entries(scripts as Record<string, unknown>)) {
-        if (typeof value !== 'string') continue
+        if (typeof value !== "string") continue;
         // Detect ../ only in the executable/script position of each sub-command,
         // not in subsequent argument tokens. Split by command separators first.
-        const subCommands = value.split(/&&|\|\||;/)
+        const subCommands = value.split(/&&|\|\||;/);
         const hasRelativeScript = subCommands.some((sub) => {
-          const trimmed = sub.trim()
+          const trimmed = sub.trim();
           // interpreter followed immediately by a ../ script path
-          if (/^(?:node|bun|tsx|ts-node|npx|pnpm\s+exec)\s+\.\.\/\S+/.test(trimmed)) return true
+          if (/^(?:node|bun|tsx|ts-node|npx|pnpm\s+exec)\s+\.\.\/\S+/.test(trimmed)) return true;
           // bare ../ script execution
-          if (trimmed.startsWith('../')) return true
-          return false
-        })
+          if (trimmed.startsWith("../")) return true;
+          return false;
+        });
         if (hasRelativeScript) {
           violations.push({
             file: rel,
             message: `scripts.${name}: relative parent path detected — use a workspace bin or registered CLI command instead: ${value}`,
-          })
+          });
         }
       }
     }
   }
 
-  walk(root)
+  walk(root);
 
   return {
     ok: violations.length === 0,
-    title: 'no-relative-package-scripts',
+    title: "no-relative-package-scripts",
     checked,
     violations,
-  }
+  };
 }

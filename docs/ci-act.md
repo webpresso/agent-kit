@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-05-24'
+last_updated: "2026-05-24"
 ---
 
 # Secret-safe CI act contract

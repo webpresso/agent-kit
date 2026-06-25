@@ -6,8 +6,8 @@ status: active
 scope: repo
 applies_to: [agents]
 related: []
-created: '2026-05-07'
-last_reviewed: '2026-05-07'
+created: "2026-05-07"
+last_reviewed: "2026-05-07"
 name: tech-debt
 description: Manage the tech-debt lifecycle using `wp tech-debt` commands and `wp audit tech-debt`, including creation, review, and schema validation workflows.
 ---
@@ -54,12 +54,12 @@ accepted → needs-remediation → monitoring → resolved
 
 ## Severity + cadence rules
 
-| Severity | Minimum cadence |
-|----------|----------------|
-| critical | weekly (required) |
+| Severity | Minimum cadence           |
+| -------- | ------------------------- |
+| critical | weekly (required)         |
 | high     | biweekly or more frequent |
-| medium   | monthly |
-| low      | quarterly |
+| medium   | monthly                   |
+| low      | quarterly                 |
 
 ## Categories
 
@@ -70,10 +70,10 @@ accepted → needs-remediation → monitoring → resolved
 ```yaml
 ---
 type: tech-debt
-status: accepted          # accepted | needs-remediation | monitoring | resolved
-severity: medium          # critical | high | medium | low
-category: complexity      # see categories above
+status: accepted # accepted | needs-remediation | monitoring | resolved
+severity: medium # critical | high | medium | low
+category: complexity # see categories above
 review_cadence: quarterly # weekly | biweekly | monthly | quarterly
-last_reviewed: '2026-01-15'
+last_reviewed: "2026-01-15"
 ---
 ```

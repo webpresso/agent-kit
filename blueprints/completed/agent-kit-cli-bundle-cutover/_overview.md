@@ -7,7 +7,7 @@ historical_verification_gap_rationale: Historical completed/parked record predat
 status: completed
 complexity: M
 created: 2026-05-26T00:00:00.000Z
-last_updated: '2026-05-29'
+last_updated: "2026-05-29"
 refined: 2026-05-29T00:00:00.000Z
 depends_on:
   - completed/agent-kit-public-release-scrub
@@ -21,7 +21,7 @@ respects_decisions:
 aligned_blueprints:
   - >-
     https://github.com/webpresso/framework/blob/main/blueprints/planned/wp-setup-hook-surface-projector/_overview.md
-progress: '100% (8/8 tasks done, 0 blocked, updated 2026-05-29)'
+progress: "100% (8/8 tasks done, 0 blocked, updated 2026-05-29)"
 ---
 
 # Agent-Kit CLI Bundle Cutover
@@ -31,7 +31,6 @@ progress: '100% (8/8 tasks done, 0 blocked, updated 2026-05-29)'
 Agent setup stays a first-class Webpresso capability without making agent-kit a competing CLI brand. Developers get one command surface (`webpresso agent ...`) while maintainers keep agent-kit as the package/source owner for generated agent surfaces.
 
 **Lifecycle note (2026-05-29):** Completed as the repo-local bundle-prep lane. This blueprint now closes the local agent-kit work needed before the external public CLI host can mount the future `webpresso agent ...` surface. The remaining public-host/bin cutover is intentionally left to the separate monorepo/framework execution lane rather than being faked here.
-
 
 ## Goal
 
@@ -59,17 +58,17 @@ Future user-facing setup command: `webpresso agent setup`.
 
 ## Fact-Checked Findings
 
-| ID | Severity | Claim / assumption | Verified reality | Blueprint fix |
-| --- | --- | --- | --- | --- |
-| F1 | CRITICAL | Agent-kit can keep shipping the public command host indefinitely. | [`agent-kit/package.json`](../../../package.json) is `@webpresso/agent-kit@0.21.5` and currently exposes `wp` plus helper bins, but no public `webpresso` bin. npm `bin` entries still create user-visible command ownership, so `wp` remains a public CLI contract here. Source: https://docs.npmjs.com/cli/v10/configuring-npm/package-json/ | Remove durable public `wp` ownership from agent-kit after the agent bundle is registered; treat helper bins as internal implementation surface until generated hooks no longer need them. |
-| F2 | CRITICAL | `@webpresso/webpresso` can be treated as the tooling umbrella. | [`framework/package.json`](https://github.com/webpresso/framework/blob/main/package.json) is `@webpresso/webpresso@0.4.0`, exports framework/runtime/auth/schema/codegen APIs, and has no public `webpresso` bin. | Keep framework identity separate; agent-kit must not route tooling through `@webpresso/webpresso`. |
-| F3 | CRITICAL | The public CLI package boundary is optional. | [`monorepo/packages/cli/public-cli/package.json`](https://github.com/webpresso/monorepo/blob/main/packages/cli/public-cli/package.json) currently owns `bin.webpresso`, but the checked-out package name is `@repo/cli`, not `@webpresso/cli`. | Agent-kit should target the verified current public CLI package boundary and leave any package rename as explicit future work. |
-| F4 | HIGH | The host runtime may own the public binary. | [`monorepo/packages/cli/host/package.json`](https://github.com/webpresso/monorepo/blob/main/packages/cli/host/package.json) has no `bin`; the checked-out package name is `@repo/cli-host`. | Agent-kit tests must depend on contract behavior, not host binary ownership or an assumed future package rename. |
-| F5 | HIGH | Bundle authors can depend directly on parser internals. | [`monorepo/packages/cli/contract/package.json`](https://github.com/webpresso/monorepo/blob/main/packages/cli/contract/package.json) exports `./bundle`, `./command`, `./result-envelope`, `./event-envelope`, `./reserved-roots`, `./exit-codes`, `./ordering`, and `./compatibility`. Node package exports define explicit consumer entrypoints. Source: https://nodejs.org/api/packages.html | Target `@webpresso/cli-contract` types in the bundle surface. |
-| F6 | HIGH | Internal commands can share the public distribution. | [`monorepo/packages/cli/internal-cli/package.json`](https://github.com/webpresso/monorepo/blob/main/packages/cli/internal-cli/package.json) is `@webpresso-internal/cli` and owns `webpresso-internal`; the unified CLI blueprint keeps internal distribution separate. | Agent-kit must not expose internal-only helpers through public help or public profiles. |
-| F7 | HIGH | Current `wp setup` references can remain unclassified. | [`monorepo/package.json`](https://github.com/webpresso/monorepo/blob/main/package.json) still has `setup:agent = "wp setup"`, and the verified projector sibling blueprint still reflects `wp setup` as current projector behavior. | Any remaining `wp setup` mention must be tagged current-state or migration-only and include `webpresso agent setup` as the replacement. |
-| F8 | MEDIUM | Scoped package identities are cosmetic. | npm scopes are the package namespace mechanism for related organization packages, and GitHub Packages npm registry expects full scoped names such as `@namespace/package`. Sources: https://docs.npmjs.com/about-scopes/ and https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-npm-registry | Preserve `@webpresso/agent-kit` as the tooling package identity while moving command identity to the CLI host. |
-| F9 | MEDIUM | Command grouping can be delayed. | CLI guidance warns that command shapes become scripted contracts; subcommands should group related actions and errors should suggest next actions. Sources: https://learn.microsoft.com/en-us/dotnet/standard/commandline/design-guidance and https://clig.dev/ | Group agent tooling under `webpresso agent ...` now and make stale command diagnostics exact. |
+| ID  | Severity | Claim / assumption                                                | Verified reality                                                                                                                                                                                                                                                                                                                                                                               | Blueprint fix                                                                                                                                                                             |
+| --- | -------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1  | CRITICAL | Agent-kit can keep shipping the public command host indefinitely. | [`agent-kit/package.json`](../../../package.json) is `@webpresso/agent-kit@0.21.5` and currently exposes `wp` plus helper bins, but no public `webpresso` bin. npm `bin` entries still create user-visible command ownership, so `wp` remains a public CLI contract here. Source: https://docs.npmjs.com/cli/v10/configuring-npm/package-json/                                                 | Remove durable public `wp` ownership from agent-kit after the agent bundle is registered; treat helper bins as internal implementation surface until generated hooks no longer need them. |
+| F2  | CRITICAL | `@webpresso/webpresso` can be treated as the tooling umbrella.    | [`framework/package.json`](https://github.com/webpresso/framework/blob/main/package.json) is `@webpresso/webpresso@0.4.0`, exports framework/runtime/auth/schema/codegen APIs, and has no public `webpresso` bin.                                                                                                                                                                              | Keep framework identity separate; agent-kit must not route tooling through `@webpresso/webpresso`.                                                                                        |
+| F3  | CRITICAL | The public CLI package boundary is optional.                      | [`monorepo/packages/cli/public-cli/package.json`](https://github.com/webpresso/monorepo/blob/main/packages/cli/public-cli/package.json) currently owns `bin.webpresso`, but the checked-out package name is `@repo/cli`, not `@webpresso/cli`.                                                                                                                                                 | Agent-kit should target the verified current public CLI package boundary and leave any package rename as explicit future work.                                                            |
+| F4  | HIGH     | The host runtime may own the public binary.                       | [`monorepo/packages/cli/host/package.json`](https://github.com/webpresso/monorepo/blob/main/packages/cli/host/package.json) has no `bin`; the checked-out package name is `@repo/cli-host`.                                                                                                                                                                                                    | Agent-kit tests must depend on contract behavior, not host binary ownership or an assumed future package rename.                                                                          |
+| F5  | HIGH     | Bundle authors can depend directly on parser internals.           | [`monorepo/packages/cli/contract/package.json`](https://github.com/webpresso/monorepo/blob/main/packages/cli/contract/package.json) exports `./bundle`, `./command`, `./result-envelope`, `./event-envelope`, `./reserved-roots`, `./exit-codes`, `./ordering`, and `./compatibility`. Node package exports define explicit consumer entrypoints. Source: https://nodejs.org/api/packages.html | Target `@webpresso/cli-contract` types in the bundle surface.                                                                                                                             |
+| F6  | HIGH     | Internal commands can share the public distribution.              | [`monorepo/packages/cli/internal-cli/package.json`](https://github.com/webpresso/monorepo/blob/main/packages/cli/internal-cli/package.json) is `@webpresso-internal/cli` and owns `webpresso-internal`; the unified CLI blueprint keeps internal distribution separate.                                                                                                                        | Agent-kit must not expose internal-only helpers through public help or public profiles.                                                                                                   |
+| F7  | HIGH     | Current `wp setup` references can remain unclassified.            | [`monorepo/package.json`](https://github.com/webpresso/monorepo/blob/main/package.json) still has `setup:agent = "wp setup"`, and the verified projector sibling blueprint still reflects `wp setup` as current projector behavior.                                                                                                                                                            | Any remaining `wp setup` mention must be tagged current-state or migration-only and include `webpresso agent setup` as the replacement.                                                   |
+| F8  | MEDIUM   | Scoped package identities are cosmetic.                           | npm scopes are the package namespace mechanism for related organization packages, and GitHub Packages npm registry expects full scoped names such as `@namespace/package`. Sources: https://docs.npmjs.com/about-scopes/ and https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-npm-registry                                                         | Preserve `@webpresso/agent-kit` as the tooling package identity while moving command identity to the CLI host.                                                                            |
+| F9  | MEDIUM   | Command grouping can be delayed.                                  | CLI guidance warns that command shapes become scripted contracts; subcommands should group related actions and errors should suggest next actions. Sources: https://learn.microsoft.com/en-us/dotnet/standard/commandline/design-guidance and https://clig.dev/                                                                                                                                | Group agent tooling under `webpresso agent ...` now and make stale command diagnostics exact.                                                                                             |
 
 ## Codebase Verification
 
@@ -106,67 +105,67 @@ Future user-facing setup command: `webpresso agent setup`.
 
 ## Cross-Plan Alignment
 
-| Plan | Alignment requirement | This blueprint's responsibility |
-| --- | --- | --- |
-| `framework-cli-package-boundary` | `@webpresso/webpresso` stays framework/runtime identity and exports framework commands as a CLI bundle. | Do not put agent-tooling setup under `@webpresso/webpresso`; use `@webpresso/agent-kit` bundle exports instead. |
-| `wp-setup-hook-surface-framework` | Framework-owned committed hook templates currently converge on `wp-*` hook helper names and reject `ak-*` drift. | Treat `wp-*` hook helpers as current implementation details, not public CLI aliases; future docs must name `webpresso agent setup` for user setup. |
-| `wp-setup-hook-surface-projector` | Agent-kit owns setup/projection behavior and must converge stale local `.codex/hooks.json` from mixed `ak-*` + `wp-*` state. | Keep projector implementation in agent-kit, but expose the user entry through the agent bundle. Any test still invoking `wp setup` must be labeled current-state until the cutover lands. |
-| `unified-cli-public-cutover` | `@webpresso/cli` owns public `webpresso`, `@webpresso/cli-host` owns shared runtime only, `@webpresso/cli-contract` owns bundle contracts, and `@webpresso-internal/cli` owns internal distribution. | Export the agent bundle and remove agent-kit public bin ownership in the same release wave that the monorepo mounts the bundle. |
-| `planned/agent-kit-public-release-scrub` | Agent-kit must be scanner-clean and disclosure-reviewed before any public repository visibility change. | Keep CLI/package visibility decisions aligned with the public-release scrub, and do not treat CLI cutover as permission to publish the repo. |
+| Plan                                     | Alignment requirement                                                                                                                                                                                | This blueprint's responsibility                                                                                                                                                           |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `framework-cli-package-boundary`         | `@webpresso/webpresso` stays framework/runtime identity and exports framework commands as a CLI bundle.                                                                                              | Do not put agent-tooling setup under `@webpresso/webpresso`; use `@webpresso/agent-kit` bundle exports instead.                                                                           |
+| `wp-setup-hook-surface-framework`        | Framework-owned committed hook templates currently converge on `wp-*` hook helper names and reject `ak-*` drift.                                                                                     | Treat `wp-*` hook helpers as current implementation details, not public CLI aliases; future docs must name `webpresso agent setup` for user setup.                                        |
+| `wp-setup-hook-surface-projector`        | Agent-kit owns setup/projection behavior and must converge stale local `.codex/hooks.json` from mixed `ak-*` + `wp-*` state.                                                                         | Keep projector implementation in agent-kit, but expose the user entry through the agent bundle. Any test still invoking `wp setup` must be labeled current-state until the cutover lands. |
+| `unified-cli-public-cutover`             | `@webpresso/cli` owns public `webpresso`, `@webpresso/cli-host` owns shared runtime only, `@webpresso/cli-contract` owns bundle contracts, and `@webpresso-internal/cli` owns internal distribution. | Export the agent bundle and remove agent-kit public bin ownership in the same release wave that the monorepo mounts the bundle.                                                           |
+| `planned/agent-kit-public-release-scrub` | Agent-kit must be scanner-clean and disclosure-reviewed before any public repository visibility change.                                                                                              | Keep CLI/package visibility decisions aligned with the public-release scrub, and do not treat CLI cutover as permission to publish the repo.                                              |
 
 ## Technology Choices
 
-| Choice | Decision | Rationale |
-| --- | --- | --- |
-| Package identity | Keep `@webpresso/agent-kit` | Scoped package identity correctly names the tooling owner and avoids framework/tooling collision. |
-| User command namespace | `webpresso agent ...` | One public CLI brand with a clear agent-tooling group. |
-| Bundle contract | Target `@webpresso/cli-contract` | Keeps parser/help/profile details host-private and shared with framework/internal bundles. |
-| Public binary owner | `@webpresso/cli` only | Matches ADR 0042 and monorepo public cutover. |
-| Host runtime | `@webpresso/cli-host` only | Shared runtime must not become a second public binary package. |
-| Internal distribution | `@webpresso-internal/cli` | Prevents operator-only commands from leaking into public help/install paths. |
-| Legacy aliases | Hard-cut active `wp`, `ak`, `cli2`, and `wk` usage | Long-term aliases are rejected; migration/current-state references need exact replacements. |
+| Choice                 | Decision                                           | Rationale                                                                                         |
+| ---------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Package identity       | Keep `@webpresso/agent-kit`                        | Scoped package identity correctly names the tooling owner and avoids framework/tooling collision. |
+| User command namespace | `webpresso agent ...`                              | One public CLI brand with a clear agent-tooling group.                                            |
+| Bundle contract        | Target `@webpresso/cli-contract`                   | Keeps parser/help/profile details host-private and shared with framework/internal bundles.        |
+| Public binary owner    | `@webpresso/cli` only                              | Matches ADR 0042 and monorepo public cutover.                                                     |
+| Host runtime           | `@webpresso/cli-host` only                         | Shared runtime must not become a second public binary package.                                    |
+| Internal distribution  | `@webpresso-internal/cli`                          | Prevents operator-only commands from leaking into public help/install paths.                      |
+| Legacy aliases         | Hard-cut active `wp`, `ak`, `cli2`, and `wk` usage | Long-term aliases are rejected; migration/current-state references need exact replacements.       |
 
 ## Edge Cases and Error Handling
 
-| ID | Severity | Case | Handling |
-| --- | --- | --- | --- |
-| E1 | CRITICAL | Agent-kit still ships `webpresso` after `@webpresso/cli` ships public `webpresso`. | Package contract test fails if agent-kit owns public `webpresso`, `wp`, or `ak` bins. |
-| E2 | CRITICAL | A stale script invokes `wp setup` after the cutover. | Audit and diagnostics must classify it as current-state/migration-only and print `webpresso agent setup`. |
-| E3 | HIGH | Hook helper bins are removed before generated hooks stop needing them. | Keep required hook helpers as explicitly internal until projector and generated hook config are migrated. |
-| E4 | HIGH | Agent and framework bundles register the same command root. | Bundle tests assert agent commands live under `agent` and defer duplicate-root rejection to `@webpresso/cli-contract`. |
-| E5 | HIGH | Public help leaks internal docs-lint or hook helpers. | Bundle metadata marks helpers hidden/internal and host profile tests exclude them from public help. |
-| E6 | MEDIUM | Generated AGENTS.md says “managed by webpresso” when the block is agent-kit-owned. | Template tests require precise owner text: agent-kit for generated assets, Webpresso CLI for host commands. |
-| E7 | MEDIUM | Current sibling hook blueprints mention `wp setup` without future replacement context. | This blueprint records the boundary; if sibling files present `wp setup` as more than current-state or migration input, downstream refinement must update those files. |
-| E8 | MEDIUM | JSON output differs between agent bundle commands and framework bundle commands. | Agent bundle handlers must return the shared result envelope type or adapter. |
+| ID  | Severity | Case                                                                                   | Handling                                                                                                                                                               |
+| --- | -------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| E1  | CRITICAL | Agent-kit still ships `webpresso` after `@webpresso/cli` ships public `webpresso`.     | Package contract test fails if agent-kit owns public `webpresso`, `wp`, or `ak` bins.                                                                                  |
+| E2  | CRITICAL | A stale script invokes `wp setup` after the cutover.                                   | Audit and diagnostics must classify it as current-state/migration-only and print `webpresso agent setup`.                                                              |
+| E3  | HIGH     | Hook helper bins are removed before generated hooks stop needing them.                 | Keep required hook helpers as explicitly internal until projector and generated hook config are migrated.                                                              |
+| E4  | HIGH     | Agent and framework bundles register the same command root.                            | Bundle tests assert agent commands live under `agent` and defer duplicate-root rejection to `@webpresso/cli-contract`.                                                 |
+| E5  | HIGH     | Public help leaks internal docs-lint or hook helpers.                                  | Bundle metadata marks helpers hidden/internal and host profile tests exclude them from public help.                                                                    |
+| E6  | MEDIUM   | Generated AGENTS.md says “managed by webpresso” when the block is agent-kit-owned.     | Template tests require precise owner text: agent-kit for generated assets, Webpresso CLI for host commands.                                                            |
+| E7  | MEDIUM   | Current sibling hook blueprints mention `wp setup` without future replacement context. | This blueprint records the boundary; if sibling files present `wp setup` as more than current-state or migration input, downstream refinement must update those files. |
+| E8  | MEDIUM   | JSON output differs between agent bundle commands and framework bundle commands.       | Agent bundle handlers must return the shared result envelope type or adapter.                                                                                          |
 
 ## Risks
 
-| Risk | Severity | Mitigation |
-| --- | --- | --- |
-| R1: Premature bin removal breaks local setup | CRITICAL | Sequence removal after bundle registration and replacement diagnostics exist; run detached setup e2e through `webpresso agent setup`. |
-| R2: Sibling blueprints normalize `wp setup` beyond migration language | HIGH | Keep `wp setup` only as current-state/migration wording and report sibling contradictions instead of editing other repos from this task. |
-| R3: Agent bundle duplicates old router logic | HIGH | Bundle definitions should adapt existing command handlers and stay thin; tests assert command IDs, not parser internals. |
-| R4: Internal hook helpers leak as public commands | HIGH | Add public help/profile assertions and package boundary checks. |
-| R5: Docs drift back to mixed `wp`/`ak`/`webpresso` ownership | MEDIUM | Add active-doc grep gate with explicit migration-history allowlist. |
-| R6: Release order crosses repos incorrectly | MEDIUM | Coordinate with unified CLI public cutover: mount bundle first, then hard-cut agent-kit public bins. |
+| Risk                                                                  | Severity | Mitigation                                                                                                                               |
+| --------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| R1: Premature bin removal breaks local setup                          | CRITICAL | Sequence removal after bundle registration and replacement diagnostics exist; run detached setup e2e through `webpresso agent setup`.    |
+| R2: Sibling blueprints normalize `wp setup` beyond migration language | HIGH     | Keep `wp setup` only as current-state/migration wording and report sibling contradictions instead of editing other repos from this task. |
+| R3: Agent bundle duplicates old router logic                          | HIGH     | Bundle definitions should adapt existing command handlers and stay thin; tests assert command IDs, not parser internals.                 |
+| R4: Internal hook helpers leak as public commands                     | HIGH     | Add public help/profile assertions and package boundary checks.                                                                          |
+| R5: Docs drift back to mixed `wp`/`ak`/`webpresso` ownership          | MEDIUM   | Add active-doc grep gate with explicit migration-history allowlist.                                                                      |
+| R6: Release order crosses repos incorrectly                           | MEDIUM   | Coordinate with unified CLI public cutover: mount bundle first, then hard-cut agent-kit public bins.                                     |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
-| --- | --- | --- | --- | --- |
-| **Wave 0** | 1.1, 1.2, 1.3, 1.4, 1.5 | None | 5 agents | XS-S |
-| **Wave 1** | 2.1, 2.2 | 2.1 depends on 1.1/1.3/1.5; 2.2 depends on 1.2/1.4 | 2 agents | S |
-| **Wave 2** | 3.1 | 2.1, 2.2, 1.5 | 1 agent | S |
-| **Critical path** | 1.1 → 2.1 → 3.1 | — | 3 waves | M |
+| Wave              | Tasks                   | Dependencies                                       | Parallelizable | Effort (T-shirt) |
+| ----------------- | ----------------------- | -------------------------------------------------- | -------------- | ---------------- |
+| **Wave 0**        | 1.1, 1.2, 1.3, 1.4, 1.5 | None                                               | 5 agents       | XS-S             |
+| **Wave 1**        | 2.1, 2.2                | 2.1 depends on 1.1/1.3/1.5; 2.2 depends on 1.2/1.4 | 2 agents       | S                |
+| **Wave 2**        | 3.1                     | 2.1, 2.2, 1.5                                      | 1 agent        | S                |
+| **Critical path** | 1.1 → 2.1 → 3.1         | —                                                  | 3 waves        | M                |
 
 ### Parallel Metrics Snapshot
 
-| Metric | Formula / Meaning | Target | Actual |
-| --- | --- | --- | --- |
-| RW0 | Ready tasks in Wave 0 | ≥ planned agents / 2 | 5 |
-| CPR | total_tasks / critical_path_length | ≥ 2.5 | 2.67 |
-| DD | dependency_edges / total_tasks | ≤ 2.0 | 1.0 |
-| CP | same-file overlaps per wave | 0 | 0 |
+| Metric | Formula / Meaning                  | Target               | Actual |
+| ------ | ---------------------------------- | -------------------- | ------ |
+| RW0    | Ready tasks in Wave 0              | ≥ planned agents / 2 | 5      |
+| CPR    | total_tasks / critical_path_length | ≥ 2.5                | 2.67   |
+| DD     | dependency_edges / total_tasks     | ≤ 2.0                | 1.0    |
+| CP     | same-file overlaps per wave        | 0                    | 0      |
 
 Parallelization score: **A**. The package/bin boundary is the only real
 fan-in point, and all same-file work is either isolated in Wave 0 or serialized
@@ -214,6 +213,7 @@ and `webpresso agent blueprint ...`. Do not import a parser or host runtime here
 - [x] Inventory contains exact replacement commands for current legacy invocations.
 - [x] No parser or host runtime dependency appears in the inventory module.
 - [x] `pnpm test -- src/cli/bundle/agent-command-inventory.test.ts` passes.
+
 #### Task 1.2: Rewrite generated owner language [docs]
 
 **Status:** done
@@ -251,6 +251,7 @@ generated output file; only templates and tests are in scope.
 - [x] Any remaining legacy command text is migration/current-state language with an exact replacement.
 - [x] No generated-surface files are hand-edited.
 - [x] `pnpm test -- src/cli/commands/init/scaffold-agents-md.test.ts` passes.
+
 #### Task 1.3: Add active legacy command grep gate [audit]
 
 **Status:** done
@@ -289,6 +290,7 @@ presented as user commands.
 - [x] Migration-history/current-state mentions remain allowed only with replacement command text.
 - [x] Internal hook helper names are not allowed to appear as public user commands.
 - [x] Audit is wired into the existing audit command surface.
+
 #### Task 1.4: Centralize replacement-command diagnostics [migration]
 
 **Status:** done
@@ -325,6 +327,7 @@ must name the exact future command, with `wp setup` mapping to
 - [x] No diagnostic points users back to `wp`, `ak`, `cli2`, or `wk` as the future interface.
 - [x] `wp setup` replacement is exactly `webpresso agent setup`.
 - [x] `pnpm test -- src/cli/auto-update/detect-pm.test.ts` passes.
+
 #### Task 1.5: Prepare the host-mounted agent smoke fixture [fixture]
 
 **Status:** done
@@ -362,6 +365,7 @@ generated hook internals.
 - [x] Fixture models agent-kit as a bundle/provider dependency, not a public binary provider.
 - [x] Any hook helper references are marked internal/current-state.
 - [x] Fixture README names `webpresso agent setup` as the setup command.
+
 ### Wave 1 — repo-local bundle prep and cutover handoff
 
 #### Task 2.1: Export the agent bundle prep surface [bundle]
@@ -472,21 +476,21 @@ faked from this repo alone.
 
 ## Refinement Summary
 
-| Metric | Value |
-| --- | --- |
-| Findings total | 9 |
-| Critical | 3 |
-| High | 4 |
-| Medium | 2 |
-| Fixes applied to blueprint | 9/9 |
-| Cross-plans reviewed | 4 |
-| Edge cases documented | 8 |
-| Risks documented | 6 |
-| Parallelization score | A |
-| Critical path | 3 waves |
-| Max parallel agents | 5 |
-| Total tasks | 8 |
-| Blueprint compliant | 8/8 |
+| Metric                     | Value   |
+| -------------------------- | ------- |
+| Findings total             | 9       |
+| Critical                   | 3       |
+| High                       | 4       |
+| Medium                     | 2       |
+| Fixes applied to blueprint | 9/9     |
+| Cross-plans reviewed       | 4       |
+| Edge cases documented      | 8       |
+| Risks documented           | 6       |
+| Parallelization score      | A       |
+| Critical path              | 3 waves |
+| Max parallel agents        | 5       |
+| Total tasks                | 8       |
+| Blueprint compliant        | 8/8     |
 
 ## Trust Dossier
 
@@ -500,21 +504,21 @@ faked from this repo alone.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/agent-kit-cli-bundle-cutover/_overview.md |
+| ID  | Claim                                                          | Evidence                                                             |
+| --- | -------------------------------------------------------------- | -------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/agent-kit-cli-bundle-cutover/\_overview.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

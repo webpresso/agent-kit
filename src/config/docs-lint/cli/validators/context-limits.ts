@@ -1,4 +1,4 @@
-import type { ContextFileLimits, ValidationError } from '#config/docs-lint/index'
+import type { ContextFileLimits, ValidationError } from "#config/docs-lint/index";
 
 /**
  * Context file size limits based on best practices.
@@ -13,104 +13,104 @@ import type { ContextFileLimits, ValidationError } from '#config/docs-lint/index
  */
 export const CONTEXT_FILE_LIMITS: Record<string, ContextFileLimits> = {
   // Root CLAUDE.md - should be minimal, reference other files
-  'CLAUDE.md': {
+  "CLAUDE.md": {
     maxLines: 60,
     warnLines: 30,
     maxTokens: 2000,
     warnTokens: 1000,
-    description: 'Root context file (keep minimal, use @references)',
+    description: "Root context file (keep minimal, use @references)",
   },
 
   // agent-guide.md - main instructions file (formerly AGENTS.md)
   // Increased from 300 to 500: original limit was arbitrary, token count matters more
   // Current agent-guide.md uses ~3k tokens (well under 10k limit)
-  'agent-guide.md': {
+  "agent-guide.md": {
     maxLines: 500,
     warnLines: 400,
     maxTokens: 10000,
     warnTokens: 7000,
-    description: 'Agent instructions (consider modular extraction if large)',
+    description: "Agent instructions (consider modular extraction if large)",
   },
 
   // Skill files - focused, single-purpose
-  'SKILL.md': {
+  "SKILL.md": {
     maxLines: 150,
     warnLines: 100,
     maxTokens: 5000,
     warnTokens: 3000,
-    description: 'Skill definition (keep focused on single capability)',
+    description: "Skill definition (keep focused on single capability)",
   },
 
   // Agent definitions
-  'agent.md': {
+  "agent.md": {
     maxLines: 100,
     warnLines: 60,
     maxTokens: 3000,
     warnTokens: 2000,
-    description: 'Agent definition (subagent instructions)',
+    description: "Agent definition (subagent instructions)",
   },
 
   // Standard command files
-  'command.md': {
+  "command.md": {
     maxLines: 200,
     warnLines: 120,
     maxTokens: 6000,
     warnTokens: 4000,
-    description: 'Command definition (slash command)',
+    description: "Command definition (slash command)",
   },
 
   // Audit commands - comprehensive checklists with examples need more space
   // These are only loaded when invoked, not at session start
-  'audit-command.md': {
+  "audit-command.md": {
     maxLines: 900,
     warnLines: 700,
     maxTokens: 30000,
     warnTokens: 25000,
-    description: 'Audit command (comprehensive checklist)',
+    description: "Audit command (comprehensive checklist)",
   },
 
   // Complex operational commands (parallel-execute, create-package, debug-ci-failure)
-  'operational-command.md': {
+  "operational-command.md": {
     maxLines: 650,
     warnLines: 500,
     maxTokens: 20000,
     warnTokens: 15000,
-    description: 'Operational command (complex workflow)',
+    description: "Operational command (complex workflow)",
   },
-}
+};
 
 /**
  * Pattern-based limits for files matching globs.
  */
 export const CONTEXT_FILE_PATTERNS: Array<{
-  pattern: RegExp
-  limits: ContextFileLimits
+  pattern: RegExp;
+  limits: ContextFileLimits;
 }> = [
   {
     pattern: /^\.claude\/skills\/.*\/SKILL\.md$/,
-    limits: CONTEXT_FILE_LIMITS['SKILL.md'] as ContextFileLimits,
+    limits: CONTEXT_FILE_LIMITS["SKILL.md"] as ContextFileLimits,
   },
   {
     pattern: /^\.claude\/agents\/.*\.md$/,
-    limits: CONTEXT_FILE_LIMITS['agent.md'] as ContextFileLimits,
+    limits: CONTEXT_FILE_LIMITS["agent.md"] as ContextFileLimits,
   },
   // Audit commands - comprehensive checklists need more space
   {
     pattern: /^\.claude\/commands\/audit-.*\.md$/,
-    limits: CONTEXT_FILE_LIMITS['audit-command.md'] as ContextFileLimits,
+    limits: CONTEXT_FILE_LIMITS["audit-command.md"] as ContextFileLimits,
   },
   // Complex operational commands
   {
     pattern:
       /^\.claude\/commands\/(parallel-execute|create-package|debug-ci-failure|upgrade-dependency|migrate-plan|fix-all-qa)\.md$/,
-    limits: CONTEXT_FILE_LIMITS['operational-command.md'] as ContextFileLimits,
+    limits: CONTEXT_FILE_LIMITS["operational-command.md"] as ContextFileLimits,
   },
   // Standard commands (must come last as catch-all)
   {
     pattern: /^\.claude\/commands\/.*\.md$/,
-    limits: CONTEXT_FILE_LIMITS['command.md'] as ContextFileLimits,
+    limits: CONTEXT_FILE_LIMITS["command.md"] as ContextFileLimits,
   },
-]
+];
 
 /**
  * Estimate token count from content.
@@ -118,14 +118,14 @@ export const CONTEXT_FILE_PATTERNS: Array<{
  * This is conservative - actual tokenization varies by content.
  */
 export function estimateTokens(content: string): number {
-  return Math.ceil(content.length / 4)
+  return Math.ceil(content.length / 4);
 }
 
 /**
  * Count lines in content.
  */
 export function countLines(content: string): number {
-  return content.split('\n').length
+  return content.split("\n").length;
 }
 
 /**
@@ -134,22 +134,22 @@ export function countLines(content: string): number {
  */
 export function getLimitsForFile(filePath: string): ContextFileLimits | undefined {
   // Normalize path
-  const normalizedPath = filePath.replace(/\\/g, '/')
+  const normalizedPath = filePath.replace(/\\/g, "/");
 
   // Check exact filename matches first
-  const filename = normalizedPath.split('/').pop() || ''
+  const filename = normalizedPath.split("/").pop() || "";
   if (CONTEXT_FILE_LIMITS[filename]) {
-    return CONTEXT_FILE_LIMITS[filename]
+    return CONTEXT_FILE_LIMITS[filename];
   }
 
   // Check pattern matches
   for (const { pattern, limits } of CONTEXT_FILE_PATTERNS) {
     if (pattern.test(normalizedPath)) {
-      return limits
+      return limits;
     }
   }
 
-  return undefined
+  return undefined;
 }
 
 /**
@@ -157,54 +157,54 @@ export function getLimitsForFile(filePath: string): ContextFileLimits | undefine
  * Returns empty array if file is not a context file.
  */
 export function validateContextLimits(filePath: string, content: string): ValidationError[] {
-  const limits = getLimitsForFile(filePath)
+  const limits = getLimitsForFile(filePath);
   if (!limits) {
-    return []
+    return [];
   }
 
-  const errors: ValidationError[] = []
-  const lines = countLines(content)
-  const tokens = estimateTokens(content)
+  const errors: ValidationError[] = [];
+  const lines = countLines(content);
+  const tokens = estimateTokens(content);
 
   // Line count validation
   if (lines > limits.maxLines) {
     errors.push({
       file: filePath,
-      severity: 'error',
-      source: 'context-limits',
+      severity: "error",
+      source: "context-limits",
       message: `Context file exceeds ${limits.maxLines} line limit (${lines} lines). ${limits.description}`,
-      ruleId: 'context-max-lines',
-    })
+      ruleId: "context-max-lines",
+    });
   } else if (lines > limits.warnLines) {
     errors.push({
       file: filePath,
-      severity: 'warning',
-      source: 'context-limits',
+      severity: "warning",
+      source: "context-limits",
       message: `Context file approaching limit: ${lines}/${limits.maxLines} lines. ${limits.description}`,
-      ruleId: 'context-warn-lines',
-    })
+      ruleId: "context-warn-lines",
+    });
   }
 
   // Token count validation
   if (limits.maxTokens && tokens > limits.maxTokens) {
     errors.push({
       file: filePath,
-      severity: 'error',
-      source: 'context-limits',
+      severity: "error",
+      source: "context-limits",
       message: `Context file exceeds ~${limits.maxTokens} token limit (~${tokens} tokens). Consider splitting into modular files.`,
-      ruleId: 'context-max-tokens',
-    })
+      ruleId: "context-max-tokens",
+    });
   } else if (limits.warnTokens && tokens > limits.warnTokens) {
     errors.push({
       file: filePath,
-      severity: 'warning',
-      source: 'context-limits',
+      severity: "warning",
+      source: "context-limits",
       message: `Context file approaching token limit: ~${tokens}/${limits.maxTokens} tokens.`,
-      ruleId: 'context-warn-tokens',
-    })
+      ruleId: "context-warn-tokens",
+    });
   }
 
-  return errors
+  return errors;
 }
 
 /**
@@ -212,40 +212,40 @@ export function validateContextLimits(filePath: string, content: string): Valida
  * Useful for understanding total context budget consumption.
  */
 export function summarizeContextUsage(files: Array<{ path: string; content: string }>): {
-  totalLines: number
-  totalTokens: number
+  totalLines: number;
+  totalTokens: number;
   files: Array<{
-    path: string
-    lines: number
-    tokens: number
-    limits?: ContextFileLimits
-  }>
+    path: string;
+    lines: number;
+    tokens: number;
+    limits?: ContextFileLimits;
+  }>;
 } {
   const summary = {
     totalLines: 0,
     totalTokens: 0,
     files: [] as Array<{
-      path: string
-      lines: number
-      tokens: number
-      limits?: ContextFileLimits
+      path: string;
+      lines: number;
+      tokens: number;
+      limits?: ContextFileLimits;
     }>,
-  }
+  };
 
   for (const file of files) {
-    const lines = countLines(file.content)
-    const tokens = estimateTokens(file.content)
-    const limits = getLimitsForFile(file.path)
+    const lines = countLines(file.content);
+    const tokens = estimateTokens(file.content);
+    const limits = getLimitsForFile(file.path);
 
-    summary.totalLines += lines
-    summary.totalTokens += tokens
+    summary.totalLines += lines;
+    summary.totalTokens += tokens;
     summary.files.push({
       path: file.path,
       lines,
       tokens,
       limits,
-    })
+    });
   }
 
-  return summary
+  return summary;
 }

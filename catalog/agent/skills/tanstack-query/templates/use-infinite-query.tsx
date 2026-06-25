@@ -2,22 +2,22 @@ import {
   infiniteQueryOptions,
   usePrefetchInfiniteQuery,
   useSuspenseInfiniteQuery,
-} from '@tanstack/react-query'
+} from "@tanstack/react-query";
 
-import { sdk } from '#lib/graphql-client'
-import { queryClient } from '#lib/query-client'
+import { sdk } from "#lib/graphql-client";
+import { queryClient } from "#lib/query-client";
 
 type FeedPage = {
   activityFeed: {
-    nodes: Array<{ id: string; summary: string }>
+    nodes: Array<{ id: string; summary: string }>;
     pageInfo: {
-      endCursor: string | null
-      hasNextPage: boolean
-    }
-  }
-}
+      endCursor: string | null;
+      hasNextPage: boolean;
+    };
+  };
+};
 
-const activityFeedKey = (projectId: string) => ['projects', projectId, 'activity-feed'] as const
+const activityFeedKey = (projectId: string) => ["projects", projectId, "activity-feed"] as const;
 
 export const activityFeedOptions = (projectId: string) =>
   infiniteQueryOptions({
@@ -27,21 +27,21 @@ export const activityFeedOptions = (projectId: string) =>
       sdk.ProjectActivityFeed({ projectId, after: pageParam, first: 20 }) as Promise<FeedPage>,
     getNextPageParam: (lastPage) =>
       lastPage.activityFeed.pageInfo.hasNextPage ? lastPage.activityFeed.pageInfo.endCursor : null,
-  })
+  });
 
 export async function clientLoader({ params }: { params: { projectId: string } }) {
-  await queryClient.ensureQueryData(activityFeedOptions(params.projectId))
-  return null
+  await queryClient.ensureQueryData(activityFeedOptions(params.projectId));
+  return null;
 }
 
 export function ActivityFeedRoute({ projectId }: { projectId: string }) {
-  usePrefetchInfiniteQuery(activityFeedOptions(projectId))
+  usePrefetchInfiniteQuery(activityFeedOptions(projectId));
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useSuspenseInfiniteQuery(
     activityFeedOptions(projectId),
-  )
+  );
 
-  const rows = data.pages.flatMap((page) => page.activityFeed.nodes)
+  const rows = data.pages.flatMap((page) => page.activityFeed.nodes);
 
   return (
     <div>
@@ -53,9 +53,9 @@ export function ActivityFeedRoute({ projectId }: { projectId: string }) {
 
       {hasNextPage ? (
         <button type="button" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
-          {isFetchingNextPage ? 'Loading more…' : 'Load more'}
+          {isFetchingNextPage ? "Loading more…" : "Load more"}
         </button>
       ) : null}
     </div>
-  )
+  );
 }

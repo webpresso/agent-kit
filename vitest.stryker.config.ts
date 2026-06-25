@@ -1,5 +1,5 @@
-import { defineConfig } from 'vitest/config'
-import vitestConfig, { SUBPROCESS_SUFFIX_GLOBS, TEST_INCLUDE } from './vitest.config.js'
+import { defineConfig } from "vitest/config";
+import vitestConfig, { SUBPROCESS_SUFFIX_GLOBS, TEST_INCLUDE } from "./vitest.config.js";
 
 // Stryker drives vitest via its own forks-pool runner and cannot use the
 // two-project (`unit`/`subprocess`) topology from vitest.config.ts — so this is
@@ -11,15 +11,15 @@ import vitestConfig, { SUBPROCESS_SUFFIX_GLOBS, TEST_INCLUDE } from './vitest.co
 export default defineConfig({
   resolve: vitestConfig.resolve,
   test: {
-    environment: 'node',
+    environment: "node",
     globals: false,
-    setupFiles: ['./src/test-helpers/hermetic-env.ts'],
-    typecheck: { tsconfig: './tsconfig.test.json' },
-    globalSetup: ['./src/test-helpers/global-setup.ts'],
+    setupFiles: ["./src/test-helpers/hermetic-env.ts"],
+    typecheck: { tsconfig: "./tsconfig.test.json" },
+    globalSetup: ["./src/test-helpers/global-setup.ts"],
     // forks pool prevents IPC serialization crash (TypeError: Cannot convert
     // object to primitive value) in VitestTestRunner.errorToString with Stryker 9.x
-    pool: 'forks',
+    pool: "forks",
     include: TEST_INCLUDE,
-    exclude: ['**/node_modules/**', '**/dist/**', ...SUBPROCESS_SUFFIX_GLOBS],
+    exclude: ["**/node_modules/**", "**/dist/**", ...SUBPROCESS_SUFFIX_GLOBS],
   },
-})
+});

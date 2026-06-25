@@ -7,25 +7,25 @@
  * Reference: https://developers.openai.com/codex/hooks
  */
 
-import { z } from 'zod'
+import { z } from "zod";
 
 const codexHookCommandSchema = z.object({
-  type: z.literal('command'),
+  type: z.literal("command"),
   command: z.string(),
   timeout: z.number().optional(),
   statusMessage: z.string().optional(),
-})
+});
 
 const codexHookGroupSchema = z.object({
   matcher: z.string().optional(),
   hooks: z.array(codexHookCommandSchema),
-})
+});
 
 /**
  * Inner hooks map: event name → array of hook groups.
  * Codex uses the same event names as Claude Code for shared events.
  */
-const codexHooksMapSchema = z.record(z.string(), z.array(codexHookGroupSchema))
+const codexHooksMapSchema = z.record(z.string(), z.array(codexHookGroupSchema));
 
 /**
  * Full Codex hooks.json schema.
@@ -37,6 +37,6 @@ export const codexHooksSchema = z
   .object({
     hooks: codexHooksMapSchema,
   })
-  .strict()
+  .strict();
 
-export type CodexHooksConfig = z.infer<typeof codexHooksSchema>
+export type CodexHooksConfig = z.infer<typeof codexHooksSchema>;

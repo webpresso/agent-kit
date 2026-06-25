@@ -4,10 +4,10 @@ title: Fix Codex hook trust-sync write location and add schema contract drift te
 status: completed
 complexity: M
 owner: ozby
-created: '2026-06-20'
-last_updated: '2026-06-20'
-completed_at: '2026-06-20'
-progress: '100% (4/4 tasks done, 0 blocked, updated 2026-06-20)'
+created: "2026-06-20"
+last_updated: "2026-06-20"
+completed_at: "2026-06-20"
+progress: "100% (4/4 tasks done, 0 blocked, updated 2026-06-20)"
 ---
 
 # Fix Codex hook trust-sync write location and add schema contract drift test
@@ -34,7 +34,9 @@ codex-trust-sync.ts called api.configBatchWrite with no filePath, routing trust 
 **Wave:** 0
 
 **Acceptance:**
+
 - [x] Regression test in codex-trust-sync.test.ts asserts filePath: CONFIG_FILE in batchWrites
+
 #### Task 1.2: Fix trust-sync to pass filePath pointing at config.toml
 
 **Status:** done
@@ -47,8 +49,10 @@ codex-trust-sync.ts called api.configBatchWrite with no filePath, routing trust 
 **Wave:** 1
 
 **Acceptance:**
+
 - [x] defaultCodexConfigFilePath() returns ~/.codex/config.toml honouring $CODEX_HOME via ||
 - [x] configBatchWrite passes filePath: configFilePath
+
 #### Task 2.1: Make codexHooksSchema strict and add contract tests
 
 **Status:** done
@@ -61,8 +65,10 @@ codex-trust-sync.ts called api.configBatchWrite with no filePath, routing trust 
 **Wave:** 0
 
 **Acceptance:**
+
 - [x] Schema rejects { hooks: {}, state: {} }
 - [x] Schema accepts { hooks: { PreToolUse: [...] } }
+
 #### Task 3.1: Full QA pass + codex review follow-ups
 
 **Status:** done
@@ -75,6 +81,7 @@ codex-trust-sync.ts called api.configBatchWrite with no filePath, routing trust 
 **Wave:** 2
 
 **Acceptance:**
+
 - [x] All 3 test files green
 - [x] Scaffold batchWrite assertions updated with filePath: expect.any(String)
 - [x] Empty CODEX_HOME guard fixed: ?? to ||
@@ -91,21 +98,21 @@ codex-trust-sync.ts called api.configBatchWrite with no filePath, routing trust 
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/fix-codex-hook-trust-sync-write-location-and-add-schema-contract-drift-test.md |
+| ID  | Claim                                                          | Evidence                                                                                                 |
+| --- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/fix-codex-hook-trust-sync-write-location-and-add-schema-contract-drift-test.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

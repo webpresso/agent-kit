@@ -1,7 +1,7 @@
 export function createInstalledBlueprintMigrationSmokeScript(options: {
-  packageRoot: string
-  expectedSqlFiles: readonly string[]
-  expectedVersions: readonly number[]
+  packageRoot: string;
+  expectedSqlFiles: readonly string[];
+  expectedVersions: readonly number[];
 }): string {
   return `
 import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
@@ -38,5 +38,5 @@ try {
   conn.close();
   rmSync(scratchRoot, { recursive: true, force: true });
 }
-`.trim()
+`.trim();
 }

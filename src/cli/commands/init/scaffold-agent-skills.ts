@@ -3,11 +3,11 @@
  * contents are projected into the various AI surfaces (`.agent/skills/`,
  * `.cursor/skills/`, `.claude/skills/`, etc.) by the symlink/sync layer.
  */
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
-import { patchGitignore } from './gitignore-patcher.js'
-import { type MergeOptions, type MergeResult, writeFileMerged } from './merge.js'
+import { patchGitignore } from "./gitignore-patcher.js";
+import { type MergeOptions, type MergeResult, writeFileMerged } from "./merge.js";
 
 const AGENT_SKILLS_README = `# agent-skills/
 
@@ -27,51 +27,51 @@ of executable skill definitions that get projected into per-tool surfaces
 - Files in \`agent-skills/\` are committed.
 - Projected surfaces (\`.agent/skills/\`, \`.claude/skills/\`, …) are gitignored.
 - Run \`wp sync\` after editing to refresh derived surfaces.
-`
+`;
 
 export interface ScaffoldAgentSkillsOptions {
-  cwd: string
-  dryRun?: boolean
-  overwrite?: boolean
+  cwd: string;
+  dryRun?: boolean;
+  overwrite?: boolean;
 }
 
 export interface ScaffoldAgentSkillsResult {
-  results: readonly MergeResult[]
+  results: readonly MergeResult[];
 }
 
 const SKILL_IGNORE_PATTERNS = [
-  '.agent/skills/',
-  '.cursor/skills/',
-  '.claude/skills/',
-  '.agents/skills/',
-] as const
+  ".agent/skills/",
+  ".cursor/skills/",
+  ".claude/skills/",
+  ".agents/skills/",
+] as const;
 
 export function scaffoldAgentSkills(opts: ScaffoldAgentSkillsOptions): ScaffoldAgentSkillsResult {
-  const { cwd, dryRun, overwrite } = opts
-  const mergeOpts: MergeOptions = { dryRun, overwrite }
-  const dir = join(cwd, 'agent-skills')
-  const gitkeep = join(dir, '.gitkeep')
-  const results: MergeResult[] = []
+  const { cwd, dryRun, overwrite } = opts;
+  const mergeOpts: MergeOptions = { dryRun, overwrite };
+  const dir = join(cwd, "agent-skills");
+  const gitkeep = join(dir, ".gitkeep");
+  const results: MergeResult[] = [];
 
-  const gitkeepExisted = existsSync(gitkeep)
+  const gitkeepExisted = existsSync(gitkeep);
   if (!dryRun) {
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
-    if (!gitkeepExisted) writeFileSync(gitkeep, '')
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    if (!gitkeepExisted) writeFileSync(gitkeep, "");
   }
   results.push({
     targetPath: gitkeep,
-    action: gitkeepExisted ? 'identical' : dryRun ? 'skipped-dry' : 'created',
-  })
+    action: gitkeepExisted ? "identical" : dryRun ? "skipped-dry" : "created",
+  });
 
-  results.push(writeFileMerged(join(dir, 'README.md'), AGENT_SKILLS_README, mergeOpts))
+  results.push(writeFileMerged(join(dir, "README.md"), AGENT_SKILLS_README, mergeOpts));
 
   results.push(
     patchGitignore(
-      join(cwd, '.gitignore'),
-      { id: 'skill-sync', patterns: [...SKILL_IGNORE_PATTERNS] },
+      join(cwd, ".gitignore"),
+      { id: "skill-sync", patterns: [...SKILL_IGNORE_PATTERNS] },
       mergeOpts,
     ),
-  )
+  );
 
-  return { results }
+  return { results };
 }

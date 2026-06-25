@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-06-07'
+last_updated: "2026-06-07"
 ---
 
 # Hooks Rollback and Recovery

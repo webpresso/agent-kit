@@ -6,8 +6,8 @@ status: active
 scope: repo
 applies_to: [agents]
 related: []
-created: '2026-05-07'
-last_reviewed: '2026-05-07'
+created: "2026-05-07"
+last_reviewed: "2026-05-07"
 name: testing-philosophy
 description: Codifies the integration-first, anti-mocking testing philosophy with an 85% mutation-score target. Prevents low-quality "bullshit tests" that give false confidence. Use when writing ANY test, reviewing test quality, or when tests pass but production fails.
 ---
@@ -62,12 +62,12 @@ description: Codifies the integration-first, anti-mocking testing philosophy wit
 
    ```typescript
    // DANGER: Tests that function throws, not that users can recover
-   await expect(service.listItems()).rejects.toThrow('Invalid item')
+   await expect(service.listItems()).rejects.toThrow("Invalid item");
 
    // BETTER: Test graceful degradation
-   const items = await service.listItems()
-   const validItems = items.filter((i) => !i.malformed)
-   expect(validItems.length).toBeGreaterThan(0) // Can still see valid items
+   const items = await service.listItems();
+   const validItems = items.filter((i) => !i.malformed);
+   expect(validItems.length).toBeGreaterThan(0); // Can still see valid items
    ```
 
 2. **Testing 100% success and 100% failure, but not 50% success**
@@ -88,17 +88,17 @@ description: Codifies the integration-first, anti-mocking testing philosophy wit
    // Unit tests only: listItems() with all valid, listItems() with all invalid
 
    // ADD: E2E test for browsing
-   it('should show all valid items in list even if some are corrupted', async () => {
-     await createValidItem('item-1')
-     await createInvalidItem('corrupted')
-     await createValidItem('item-2')
+   it("should show all valid items in list even if some are corrupted", async () => {
+     await createValidItem("item-1");
+     await createInvalidItem("corrupted");
+     await createValidItem("item-2");
 
-     await actionFn('list', [], {})
+     await actionFn("list", [], {});
 
-     expect(output).toContain('item-1') // User sees valid items
-     expect(output).toContain('item-2')
-     expect(output).toContain('corrupted') // Indicated as error
-   })
+     expect(output).toContain("item-1"); // User sees valid items
+     expect(output).toContain("item-2");
+     expect(output).toContain("corrupted"); // Indicated as error
+   });
    ```
 
 ### Case Study: List Command Bug
@@ -109,28 +109,28 @@ description: Codifies the integration-first, anti-mocking testing philosophy wit
 
 ```typescript
 // <package>/src/service/BlueprintService.test.ts
-it('should throw readable error for Zod validation failures', async () => {
+it("should throw readable error for Zod validation failures", async () => {
   // ...invalid blueprint setup...
-  await expect(service.listBlueprints()).rejects.toThrow('Invalid frontmatter')
+  await expect(service.listBlueprints()).rejects.toThrow("Invalid frontmatter");
   // Test PASSES — function throws as expected
   // BUT: Users can't see ANY blueprints if ONE is invalid
-})
+});
 ```
 
 **How E2E Test Caught It**:
 
 ```typescript
 // <package>/src/commands/blueprint/router.integration.test.ts
-it('should handle listing with mixed valid and invalid blueprints', async () => {
-  await createBlueprint('valid-1')
-  await createBlueprint('valid-2')
-  await createInvalidBlueprint('corrupted')
+it("should handle listing with mixed valid and invalid blueprints", async () => {
+  await createBlueprint("valid-1");
+  await createBlueprint("valid-2");
+  await createInvalidBlueprint("corrupted");
 
-  await actionFn('list', [], { tui: false })
+  await actionFn("list", [], { tui: false });
 
-  expect(output).toContain('valid-1') // FAILS — entire list crashed
+  expect(output).toContain("valid-1"); // FAILS — entire list crashed
   // Discovered: "fail fast" design is poor UX for list operations
-})
+});
 ```
 
 **Fix**: Return malformed summary instead of throwing, enabling graceful degradation.
@@ -177,14 +177,14 @@ it('should handle listing with mixed valid and invalid blueprints', async () => 
 ```typescript
 // GOOD - pure function, no deps
 export function generateSlug(name: string): string {
-  return name.toLowerCase().trim().replace(/\s+/g, '-')
+  return name.toLowerCase().trim().replace(/\s+/g, "-");
 }
 
-describe('generateSlug', () => {
-  it('should convert to lowercase', () => {
-    expect(generateSlug('MyProject')).toBe('myproject')
-  })
-})
+describe("generateSlug", () => {
+  it("should convert to lowercase", () => {
+    expect(generateSlug("MyProject")).toBe("myproject");
+  });
+});
 ```
 
 **STOP and use Integration if:**
@@ -204,29 +204,29 @@ describe('generateSlug', () => {
 
 ```typescript
 // GOOD - real database with PGlite
-import { createIntegrationContext } from '~/test-utils'
+import { createIntegrationContext } from "~/test-utils";
 
-describe('Project Service', () => {
-  let ctx: IntegrationContext
+describe("Project Service", () => {
+  let ctx: IntegrationContext;
 
   beforeAll(async () => {
-    ctx = await createIntegrationContext()
-  })
+    ctx = await createIntegrationContext();
+  });
 
-  it('should create project', async () => {
+  it("should create project", async () => {
     const project = await createProject(ctx.db, {
       organizationId: ctx.orgId,
-      name: 'Test Project',
-    })
+      name: "Test Project",
+    });
 
     // Verify REAL database state
     const saved = await ctx.db.query.projects.findFirst({
       where: eq(schema.projects.id, project.id),
-    })
+    });
 
-    expect(saved.name).toBe('Test Project')
-  })
-})
+    expect(saved.name).toBe("Test Project");
+  });
+});
 ```
 
 **Key**: Use `createIntegrationContext()` or `seedTestScenario()` - never mock the DB.
@@ -248,31 +248,31 @@ When adding a new command or feature, you MUST have:
 
 ```typescript
 // GOOD - Full E2E coverage
-describe('E2E: blueprint new command', () => {
-  it('should create actual blueprint file with correct structure', async () => {
-    await actionFn('new', ['test-bp'], {})
+describe("E2E: blueprint new command", () => {
+  it("should create actual blueprint file with correct structure", async () => {
+    await actionFn("new", ["test-bp"], {});
 
     // Verify REAL file was created
-    const content = await readFile(blueprintPath, 'utf8')
-    expect(content).toContain('type: blueprint')
-  })
+    const content = await readFile(blueprintPath, "utf8");
+    expect(content).toContain("type: blueprint");
+  });
 
-  it('should reject invalid complexity with helpful error', async () => {
-    await actionFn('new', ['test'], { complexity: 'INVALID' })
+  it("should reject invalid complexity with helpful error", async () => {
+    await actionFn("new", ["test"], { complexity: "INVALID" });
     expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Must be one of: XS, S, M, L, XL'),
-    )
-  })
-})
+      expect.stringContaining("Must be one of: XS, S, M, L, XL"),
+    );
+  });
+});
 ```
 
 **WRONG - Routing only (insufficient)**
 
 ```typescript
-it('should route to new command', async () => {
-  await actionFn('new', ['test'], { 'dry-run': true })
-  expect(exitSpy).not.toHaveBeenCalled() // Proves nothing!
-})
+it("should route to new command", async () => {
+  await actionFn("new", ["test"], { "dry-run": true });
+  expect(exitSpy).not.toHaveBeenCalled(); // Proves nothing!
+});
 ```
 
 ### E2E Tests (10% - Journeys, 1-30s)
@@ -281,19 +281,19 @@ it('should route to new command', async () => {
 
 ```typescript
 // GOOD - real HTTP through browser
-test('complete signup flow', async ({ page }) => {
-  await page.goto('http://localhost:3001/signup')
-  await page.fill('[name="email"]', 'test@example.com')
-  await page.click('button[type="submit"]')
-  await expect(page.locator('text=Welcome')).toBeVisible()
-})
+test("complete signup flow", async ({ page }) => {
+  await page.goto("http://localhost:3001/signup");
+  await page.fill('[name="email"]', "test@example.com");
+  await page.click('button[type="submit"]');
+  await expect(page.locator("text=Welcome")).toBeVisible();
+});
 ```
 
 **NEVER**: Call internal handlers directly
 
 ```typescript
 // WRONG - bypasses HTTP stack
-const response = await auth.handler(request)
+const response = await auth.handler(request);
 ```
 
 ## Anti-Patterns (NEVER DO)
@@ -302,16 +302,16 @@ const response = await auth.handler(request)
 
 ```typescript
 // BULLSHIT - tests mock, not real code
-vi.mock('../database', () => ({
+vi.mock("../database", () => ({
   getDb: vi.fn(() => ({
     query: { projects: { findMany: vi.fn().mockResolvedValue([]) } },
   })),
-}))
+}));
 
-it('should list projects', async () => {
-  const result = await listProjects('org-1')
-  expect(result).toHaveLength(0) // Always passes, tests nothing
-})
+it("should list projects", async () => {
+  const result = await listProjects("org-1");
+  expect(result).toHaveLength(0); // Always passes, tests nothing
+});
 ```
 
 **Fix**: Use PGlite integration tests
@@ -320,34 +320,34 @@ it('should list projects', async () => {
 
 ```typescript
 // BULLSHIT - breaks on refactoring
-it('should call validateInput', async () => {
-  const spy = vi.spyOn(utils, 'validateInput')
-  await processRequest(mockInput)
-  expect(spy).toHaveBeenCalledWith(mockInput)
-})
+it("should call validateInput", async () => {
+  const spy = vi.spyOn(utils, "validateInput");
+  await processRequest(mockInput);
+  expect(spy).toHaveBeenCalledWith(mockInput);
+});
 ```
 
 **Fix**: Test behavior and outcomes
 
 ```typescript
 // GOOD - tests actual behavior
-it('should reject invalid input', async () => {
-  const result = await processRequest(ctx.db, { name: '' })
-  expect(result.success).toBe(false)
-  expect(result.error).toContain('name is required')
-})
+it("should reject invalid input", async () => {
+  const result = await processRequest(ctx.db, { name: "" });
+  expect(result.success).toBe(false);
+  expect(result.error).toContain("name is required");
+});
 ```
 
 ### Anti-Pattern 3: Weak Assertions
 
 ```typescript
 // WEAK - allows equivalent mutants
-expect(result).toBeTruthy()
-expect(array).toHaveLength(3)
+expect(result).toBeTruthy();
+expect(array).toHaveLength(3);
 
 // STRONG - kills mutants
-expect(result.error).toBe('Entity not found')
-expect(users.map((u) => u.email)).toEqual(['a@test.com', 'b@test.com'])
+expect(result.error).toBe("Entity not found");
+expect(users.map((u) => u.email)).toEqual(["a@test.com", "b@test.com"]);
 ```
 
 ## Mutation Testing (85% Target)
@@ -405,27 +405,27 @@ export function handleFetchError(error: unknown): HealthCheckResult { ... }
 
 ```typescript
 // Weak - mutant survives
-expect(result).toBeTruthy()
+expect(result).toBeTruthy();
 
 // Strong - mutant killed
-expect(result.error).toBe('Entity not found')
-expect(result.statusCode).toBe(404)
+expect(result.error).toBe("Entity not found");
+expect(result.statusCode).toBe(404);
 ```
 
 #### Pattern 3: Test Boundary Conditions
 
 ```typescript
-describe('formatCount', () => {
-  it('should use singular for 1', () => {
-    expect(formatCount(1, 'project')).toBe('1 project')
-  })
-  it('should use plural for 0', () => {
-    expect(formatCount(0, 'project')).toBe('0 projects')
-  })
-  it('should use plural for multiple', () => {
-    expect(formatCount(5, 'project')).toBe('5 projects')
-  })
-})
+describe("formatCount", () => {
+  it("should use singular for 1", () => {
+    expect(formatCount(1, "project")).toBe("1 project");
+  });
+  it("should use plural for 0", () => {
+    expect(formatCount(0, "project")).toBe("0 projects");
+  });
+  it("should use plural for multiple", () => {
+    expect(formatCount(5, "project")).toBe("5 projects");
+  });
+});
 ```
 
 ### Low-Value Survivors (Ignore These)

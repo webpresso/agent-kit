@@ -10,9 +10,9 @@ import type {
   MigratorDeps,
   ProcessEnv,
   ValidatorDeps,
-} from './interfaces.js'
+} from "./interfaces.js";
 
-import { vi } from 'vitest'
+import { vi } from "vitest";
 
 /**
  * Creates a fake FileSystem with mock implementations.
@@ -21,12 +21,12 @@ import { vi } from 'vitest'
  */
 export function createFakeFs(overrides?: Partial<FileSystem>): FileSystem {
   return {
-    readFile: vi.fn<FileSystem['readFile']>().mockResolvedValue(''),
-    writeFile: vi.fn<FileSystem['writeFile']>(async () => {}),
-    copyFile: vi.fn<FileSystem['copyFile']>(async () => {}),
-    existsSync: vi.fn<FileSystem['existsSync']>().mockReturnValue(false),
+    readFile: vi.fn<FileSystem["readFile"]>().mockResolvedValue(""),
+    writeFile: vi.fn<FileSystem["writeFile"]>(async () => {}),
+    copyFile: vi.fn<FileSystem["copyFile"]>(async () => {}),
+    existsSync: vi.fn<FileSystem["existsSync"]>().mockReturnValue(false),
     ...overrides,
-  }
+  };
 }
 
 /**
@@ -36,14 +36,14 @@ export function createFakeFs(overrides?: Partial<FileSystem>): FileSystem {
  */
 export function createFakeLogger(overrides?: Partial<Logger>): Logger {
   return {
-    info: vi.fn<Logger['info']>(),
-    success: vi.fn<Logger['success']>(),
-    error: vi.fn<Logger['error']>(),
-    warn: vi.fn<Logger['warn']>(),
-    debug: vi.fn<Logger['debug']>(),
-    log: vi.fn<Logger['log']>(),
+    info: vi.fn<Logger["info"]>(),
+    success: vi.fn<Logger["success"]>(),
+    error: vi.fn<Logger["error"]>(),
+    warn: vi.fn<Logger["warn"]>(),
+    debug: vi.fn<Logger["debug"]>(),
+    log: vi.fn<Logger["log"]>(),
     ...overrides,
-  }
+  };
 }
 
 /**
@@ -53,11 +53,11 @@ export function createFakeLogger(overrides?: Partial<Logger>): Logger {
  */
 export function createFakeProcess(overrides?: Partial<ProcessEnv>): ProcessEnv {
   return {
-    cwd: vi.fn<ProcessEnv['cwd']>().mockReturnValue('/fake/cwd'),
-    exit: vi.fn<ProcessEnv['exit']>(),
-    execSync: vi.fn<ProcessEnv['execSync']>().mockReturnValue(''),
+    cwd: vi.fn<ProcessEnv["cwd"]>().mockReturnValue("/fake/cwd"),
+    exit: vi.fn<ProcessEnv["exit"]>(),
+    execSync: vi.fn<ProcessEnv["execSync"]>().mockReturnValue(""),
     ...overrides,
-  }
+  };
 }
 
 /**
@@ -66,7 +66,7 @@ export function createFakeProcess(overrides?: Partial<ProcessEnv>): ProcessEnv {
  * @returns Mocked GlobFunction
  */
 export function createFakeGlob(files?: string[]): GlobFunction {
-  return vi.fn<GlobFunction>().mockResolvedValue(files ?? [])
+  return vi.fn<GlobFunction>().mockResolvedValue(files ?? []);
 }
 
 /**
@@ -76,17 +76,17 @@ export function createFakeGlob(files?: string[]): GlobFunction {
  * @returns Complete ValidatorDeps with mocked dependencies
  */
 export function createValidatorDeps(overrides?: {
-  fs?: Partial<FileSystem>
-  logger?: Partial<Logger>
-  process?: Partial<ProcessEnv>
-  glob?: string[]
+  fs?: Partial<FileSystem>;
+  logger?: Partial<Logger>;
+  process?: Partial<ProcessEnv>;
+  glob?: string[];
 }): ValidatorDeps {
   return {
     fs: createFakeFs(overrides?.fs),
     logger: createFakeLogger(overrides?.logger),
     process: createFakeProcess(overrides?.process),
     glob: createFakeGlob(overrides?.glob),
-  }
+  };
 }
 
 /**
@@ -96,15 +96,15 @@ export function createValidatorDeps(overrides?: {
  * @returns Complete MigratorDeps with mocked dependencies
  */
 export function createMigratorDeps(overrides?: {
-  fs?: Partial<FileSystem>
-  logger?: Partial<Logger>
-  process?: Partial<ProcessEnv>
-  glob?: string[]
+  fs?: Partial<FileSystem>;
+  logger?: Partial<Logger>;
+  process?: Partial<ProcessEnv>;
+  glob?: string[];
 }): MigratorDeps {
   return {
     fs: createFakeFs(overrides?.fs),
     logger: createFakeLogger(overrides?.logger),
     process: createFakeProcess(overrides?.process),
     glob: createFakeGlob(overrides?.glob),
-  }
+  };
 }

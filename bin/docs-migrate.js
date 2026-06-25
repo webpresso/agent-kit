@@ -1,5 +1,5 @@
 #!/usr/bin/env node
 
-import { runNamedBin } from './_run.js'
+import { runNamedBin } from "./_run.js";
 
-runNamedBin('docs-migrate')
+runNamedBin("docs-migrate");

@@ -21,23 +21,23 @@ import {
   readFileSync,
   statSync,
   writeFileSync,
-} from 'node:fs'
-import { dirname } from 'node:path'
+} from "node:fs";
+import { dirname } from "node:path";
 
-import { getSurfacePath } from '#paths/state-root.js'
+import { getSurfacePath } from "#paths/state-root.js";
 
-export type LogLevel = 'error' | 'warn' | 'info'
+export type LogLevel = "error" | "warn" | "info";
 
 export interface LogEntry {
-  ts: string
-  level: LogLevel
-  message: string
-  stack?: string
+  ts: string;
+  level: LogLevel;
+  message: string;
+  stack?: string;
 }
 
-export const MAX_LINES = 500
-export const ROTATE_KEEP = 250
-export const STACK_TRUNCATE = 500
+export const MAX_LINES = 500;
+export const ROTATE_KEEP = 250;
+export const STACK_TRUNCATE = 500;
 
 /**
  * Best-effort logger for auto-update flow errors. Sync (append happens before
@@ -45,11 +45,11 @@ export const STACK_TRUNCATE = 500
  */
 export function logUpdateError(err: unknown): void {
   try {
-    const entry = buildEntry(err)
-    const logFile = resolveLogFile()
-    if (logFile === null) return
-    appendEntry(logFile, entry)
-    rotateIfNeeded(logFile)
+    const entry = buildEntry(err);
+    const logFile = resolveLogFile();
+    if (logFile === null) return;
+    appendEntry(logFile, entry);
+    rotateIfNeeded(logFile);
   } catch {
     // Best-effort: never propagate logging failure to the parent.
   }
@@ -60,15 +60,15 @@ export function logUpdateError(err: unknown): void {
  * Exported for testing — pure (no I/O).
  */
 export function buildEntry(err: unknown, now: Date = new Date()): LogEntry {
-  const ts = now.toISOString()
+  const ts = now.toISOString();
   if (err instanceof Error) {
-    const stack = err.stack ? err.stack.slice(0, STACK_TRUNCATE) : undefined
-    return { ts, level: 'error', message: err.message, stack }
+    const stack = err.stack ? err.stack.slice(0, STACK_TRUNCATE) : undefined;
+    return { ts, level: "error", message: err.message, stack };
   }
-  if (typeof err === 'string') {
-    return { ts, level: 'error', message: err }
+  if (typeof err === "string") {
+    return { ts, level: "error", message: err };
   }
-  return { ts, level: 'error', message: safeStringify(err) }
+  return { ts, level: "error", message: safeStringify(err) };
 }
 
 /**
@@ -76,7 +76,7 @@ export function buildEntry(err: unknown, now: Date = new Date()): LogEntry {
  * Exported for testing — pure.
  */
 export function formatLine(entry: LogEntry): string {
-  return `${JSON.stringify(entry)}\n`
+  return `${JSON.stringify(entry)}\n`;
 }
 
 /**
@@ -84,41 +84,41 @@ export function formatLine(entry: LogEntry): string {
  * keep only the last ROTATE_KEEP. Exported for testing — pure.
  */
 export function rotateLines(lines: string[]): string[] {
-  if (lines.length <= MAX_LINES) return lines
-  return lines.slice(-ROTATE_KEEP)
+  if (lines.length <= MAX_LINES) return lines;
+  return lines.slice(-ROTATE_KEEP);
 }
 
 function resolveLogFile(): string | null {
   try {
-    return getSurfacePath('auto-update.log', 'user')
+    return getSurfacePath("auto-update.log", "user");
   } catch {
-    return null
+    return null;
   }
 }
 
 function appendEntry(logFile: string, entry: LogEntry): void {
-  const dir = dirname(logFile)
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
-  appendFileSync(logFile, formatLine(entry))
+  const dir = dirname(logFile);
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  appendFileSync(logFile, formatLine(entry));
 }
 
 function rotateIfNeeded(logFile: string): void {
-  if (!existsSync(logFile)) return
+  if (!existsSync(logFile)) return;
   // Cheap early-out — only read+rewrite when the file has grown beyond budget.
-  const size = statSync(logFile).size
+  const size = statSync(logFile).size;
   // Each JSON line averages ≥40 bytes; ignore rotation work below that threshold.
-  if (size < MAX_LINES * 40) return
-  const content = readFileSync(logFile, 'utf-8')
-  const lines = content.split('\n').filter((line) => line.length > 0)
-  if (lines.length <= MAX_LINES) return
-  const kept = rotateLines(lines)
-  writeFileSync(logFile, `${kept.join('\n')}\n`)
+  if (size < MAX_LINES * 40) return;
+  const content = readFileSync(logFile, "utf-8");
+  const lines = content.split("\n").filter((line) => line.length > 0);
+  if (lines.length <= MAX_LINES) return;
+  const kept = rotateLines(lines);
+  writeFileSync(logFile, `${kept.join("\n")}\n`);
 }
 
 function safeStringify(value: unknown): string {
   try {
-    return JSON.stringify(value)
+    return JSON.stringify(value);
   } catch {
-    return String(value)
+    return String(value);
   }
 }

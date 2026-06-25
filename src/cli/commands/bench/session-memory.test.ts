@@ -1,10 +1,10 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getBenchSessionMemoryHelpText } from '#cli/commands/bench/index.js'
+import { getBenchSessionMemoryHelpText } from "#cli/commands/bench/index.js";
 import {
   DEFAULT_SESSION_MEMORY_THRESHOLDS,
   assertBenchSessionMemorySupportedRuntime,
@@ -14,70 +14,70 @@ import {
   resolveBenchRuntimeRoot,
   resolveRepoRoot,
   runBenchSessionMemoryCommand,
-} from '#cli/commands/bench/session-memory.js'
+} from "#cli/commands/bench/session-memory.js";
 
 type TestManifest = {
-  bun: string
-  claude: string
-  node: string
-  model: string
-  plugins: { main: string; v1: string; v2: string }
-}
+  bun: string;
+  claude: string;
+  node: string;
+  model: string;
+  plugins: { main: string; v1: string; v2: string };
+};
 
 const TEST_MANIFEST: TestManifest = {
-  bun: '1.2.3',
-  claude: '1.0.0',
-  node: 'v24.0.0',
-  model: 'claude-sonnet-4-5',
+  bun: "1.2.3",
+  claude: "1.0.0",
+  node: "v24.0.0",
+  model: "claude-sonnet-4-5",
   plugins: {
-    main: 'sha-main',
-    v1: 'sha-v1',
-    v2: 'sha-v2',
+    main: "sha-main",
+    v1: "sha-v1",
+    v2: "sha-v2",
   },
-}
+};
 
 const TEST_SCENARIO = {
-  scenario_id: 'debug-long-session',
-  description: 'debug',
+  scenario_id: "debug-long-session",
+  description: "debug",
   worst_case_token_count: 210000,
   prompt_turns: [
     {
-      session_id: 's1',
+      session_id: "s1",
       turn_idx: 0,
-      role: 'user' as const,
-      text: 'inspect issue',
+      role: "user" as const,
+      text: "inspect issue",
       estimated_tokens: 1000,
     },
     {
-      session_id: 's1',
+      session_id: "s1",
       turn_idx: 1,
-      role: 'assistant' as const,
-      text: 'summary',
+      role: "assistant" as const,
+      text: "summary",
       estimated_tokens: 1000,
     },
     {
-      session_id: 's1',
+      session_id: "s1",
       turn_idx: 2,
-      role: 'user' as const,
-      text: 'answer recall',
+      role: "user" as const,
+      text: "answer recall",
       estimated_tokens: 1000,
     },
   ],
-  expected_tool_calls: ['search_files'],
+  expected_tool_calls: ["search_files"],
   qrels: [
-    { question: 'q1', expected_substring_in_response: 'a1' },
-    { question: 'q2', expected_substring_in_response: 'a2' },
-    { question: 'q3', expected_substring_in_response: 'a3' },
-    { question: 'q4', expected_substring_in_response: 'a4' },
-    { question: 'q5', expected_substring_in_response: 'a5' },
+    { question: "q1", expected_substring_in_response: "a1" },
+    { question: "q2", expected_substring_in_response: "a2" },
+    { question: "q3", expected_substring_in_response: "a3" },
+    { question: "q4", expected_substring_in_response: "a4" },
+    { question: "q5", expected_substring_in_response: "a5" },
   ],
-}
+};
 
 function makeDeps(
   options: {
-    onRunCell?: ReturnType<typeof vi.fn>
-    onVerifyManifest?: ReturnType<typeof vi.fn>
-    tempDir?: string
+    onRunCell?: ReturnType<typeof vi.fn>;
+    onVerifyManifest?: ReturnType<typeof vi.fn>;
+    tempDir?: string;
   } = {},
 ) {
   const runCell =
@@ -91,18 +91,18 @@ function makeDeps(
         cache_read_input_tokens: 0,
         duration_ms: 500,
       },
-      tools: ['search_files'],
-      transcript_path: '/tmp/transcript.jsonl',
-      home_dir: '/tmp/home',
-    }))
+      tools: ["search_files"],
+      transcript_path: "/tmp/transcript.jsonl",
+      home_dir: "/tmp/home",
+    }));
 
-  const verifyManifest = options.onVerifyManifest ?? vi.fn()
+  const verifyManifest = options.onVerifyManifest ?? vi.fn();
   const scoreTranscriptRecall = vi.fn(() => ({
     recall_at_5: 1,
     matched_qrels: 5,
     denominator: 5,
-    recall_reason: 'matched 5/5 qrels from /tmp/transcript.jsonl',
-  }))
+    recall_reason: "matched 5/5 qrels from /tmp/transcript.jsonl",
+  }));
 
   return {
     aggregateCosts: vi.fn(() => ({ mean: 0.123, std: 0, n: 1, total: 0.123 })),
@@ -111,10 +111,10 @@ function makeDeps(
     loadManifest: vi.fn(() => TEST_MANIFEST),
     loadPricing: vi.fn(() => ({ version: 1 })),
     resolveWorkspaceConfig: vi.fn(() => ({
-      mode: 'single-workspace' as const,
-      cacheDisclaimer: 'cache-disabled baseline',
-      keyEnvNames: ['ANTHROPIC_API_KEY'],
-      adminVerification: 'not-applicable' as const,
+      mode: "single-workspace" as const,
+      cacheDisclaimer: "cache-disabled baseline",
+      keyEnvNames: ["ANTHROPIC_API_KEY"],
+      adminVerification: "not-applicable" as const,
     })),
     resolveWorkspaceIdentitiesFromEnv: vi.fn(() => []),
     runCell,
@@ -124,261 +124,261 @@ function makeDeps(
     verifyManifest,
     writeReport: vi.fn((report, outPath: string) => {
       const text = [
-        '# Session-memory benchmark',
-        '',
-        '| scenario | variant | trials | status | cost_usd | recall@5 | recall | wall_sec |',
-        '| --- | --- | ---: | --- | ---: | ---: | --- | ---: |',
+        "# Session-memory benchmark",
+        "",
+        "| scenario | variant | trials | status | cost_usd | recall@5 | recall | wall_sec |",
+        "| --- | --- | ---: | --- | ---: | ---: | --- | ---: |",
         ...report.cells.map(
           (cell) =>
-            `| ${cell.scenario_id} | ${cell.variant} | ${cell.trials} | ${cell.status} | ${cell.cost_usd} | ${cell.recall_at_5} | ${cell.recall_error ?? cell.recall_reason ?? 'n/a'} | ${cell.wall_sec} |`,
+            `| ${cell.scenario_id} | ${cell.variant} | ${cell.trials} | ${cell.status} | ${cell.cost_usd} | ${cell.recall_at_5} | ${cell.recall_error ?? cell.recall_reason ?? "n/a"} | ${cell.wall_sec} |`,
         ),
-        '',
+        "",
         ...(report.threshold_report
           ? [
-              '## Threshold report',
-              '',
+              "## Threshold report",
+              "",
               `- mode: ${report.threshold_report.mode}`,
-              '',
-              '| axis | metric | threshold | observed | status |',
-              '| --- | --- | ---: | ---: | --- |',
+              "",
+              "| axis | metric | threshold | observed | status |",
+              "| --- | --- | ---: | ---: | --- |",
               ...report.threshold_report.axes.map(
                 (axis) =>
-                  `| ${axis.id} | ${axis.metric} | ${axis.threshold} | ${axis.observed ?? 'n/a'} | ${axis.status} |`,
+                  `| ${axis.id} | ${axis.metric} | ${axis.threshold} | ${axis.observed ?? "n/a"} | ${axis.status} |`,
               ),
-              '',
+              "",
             ]
           : []),
-      ].join('\n')
-      mkdirSync(dirname(outPath), { recursive: true })
-      writeFileSync(outPath, text, 'utf8')
+      ].join("\n");
+      mkdirSync(dirname(outPath), { recursive: true });
+      writeFileSync(outPath, text, "utf8");
     }),
     writeArtifactJson: vi.fn(),
-  }
+  };
 }
 
-describe('wp bench session-memory', () => {
-  let dir: string
+describe("wp bench session-memory", () => {
+  let dir: string;
 
   afterEach(() => {
     if (dir) {
-      rmSync(dir, { recursive: true, force: true })
+      rmSync(dir, { recursive: true, force: true });
     }
-    vi.restoreAllMocks()
-  })
+    vi.restoreAllMocks();
+  });
 
-  it('documents dry-run and single-cell examples', () => {
-    expect(getBenchSessionMemoryHelpText()).toContain('wp bench session-memory --dry-run')
+  it("documents dry-run and single-cell examples", () => {
+    expect(getBenchSessionMemoryHelpText()).toContain("wp bench session-memory --dry-run");
     expect(getBenchSessionMemoryHelpText()).toContain(
-      '--scenario debug-long-session --variant baseline --trials 1',
-    )
-  })
+      "--scenario debug-long-session --variant baseline --trials 1",
+    );
+  });
 
-  it('createManifestDigest is deterministic across two calls', () => {
-    expect(createManifestDigest(TEST_MANIFEST)).toStrictEqual(createManifestDigest(TEST_MANIFEST))
-  })
+  it("createManifestDigest is deterministic across two calls", () => {
+    expect(createManifestDigest(TEST_MANIFEST)).toStrictEqual(createManifestDigest(TEST_MANIFEST));
+  });
 
-  it('createRunId with injected clock produces unique ids for different clock values', () => {
-    const id1 = createRunId(TEST_MANIFEST, () => 1000)
-    const id2 = createRunId(TEST_MANIFEST, () => 2000)
-    expect(id1).not.toStrictEqual(id2)
-  })
+  it("createRunId with injected clock produces unique ids for different clock values", () => {
+    const id1 = createRunId(TEST_MANIFEST, () => 1000);
+    const id2 = createRunId(TEST_MANIFEST, () => 2000);
+    expect(id1).not.toStrictEqual(id2);
+  });
 
-  it('createRunId with same manifest and same clock produces same id', () => {
-    const id1 = createRunId(TEST_MANIFEST, () => 42)
-    const id2 = createRunId(TEST_MANIFEST, () => 42)
-    expect(id1).toStrictEqual(id2)
-  })
+  it("createRunId with same manifest and same clock produces same id", () => {
+    const id1 = createRunId(TEST_MANIFEST, () => 42);
+    const id2 = createRunId(TEST_MANIFEST, () => 42);
+    expect(id1).toStrictEqual(id2);
+  });
 
-  it('createRunId differs from createManifestDigest for the same manifest', () => {
-    const digest = createManifestDigest(TEST_MANIFEST)
-    const runId = createRunId(TEST_MANIFEST, () => 0)
-    expect(runId).not.toStrictEqual(digest)
-  })
+  it("createRunId differs from createManifestDigest for the same manifest", () => {
+    const digest = createManifestDigest(TEST_MANIFEST);
+    const runId = createRunId(TEST_MANIFEST, () => 0);
+    expect(runId).not.toStrictEqual(digest);
+  });
 
-  it('creates deterministic run ids from the manifest hash', () => {
-    expect(createRunId(TEST_MANIFEST, () => 1)).toStrictEqual(createRunId(TEST_MANIFEST, () => 1))
-  })
+  it("creates deterministic run ids from the manifest hash", () => {
+    expect(createRunId(TEST_MANIFEST, () => 1)).toStrictEqual(createRunId(TEST_MANIFEST, () => 1));
+  });
 
-  it('resolves the repo root from Bun single-file executable URLs using the fallback cwd', () => {
-    dir = mkdtempSync(join(tmpdir(), 'bench-runtime-root-'))
-    writeFileSync(join(dir, 'package.json'), '{"name":"runtime-root"}\n', 'utf8')
+  it("resolves the repo root from Bun single-file executable URLs using the fallback cwd", () => {
+    dir = mkdtempSync(join(tmpdir(), "bench-runtime-root-"));
+    writeFileSync(join(dir, "package.json"), '{"name":"runtime-root"}\n', "utf8");
 
-    expect(resolveRepoRoot('file:///$bunfs/root/wp', dir)).toBe(dir)
-    expect(resolveRepoRoot('file:///__bunfs__/root/wp', dir)).toBe(dir)
-  })
+    expect(resolveRepoRoot("file:///$bunfs/root/wp", dir)).toBe(dir);
+    expect(resolveRepoRoot("file:///__bunfs__/root/wp", dir)).toBe(dir);
+  });
 
-  it('requires bench source assets before loading runtime modules from a resolved root', () => {
-    dir = mkdtempSync(join(tmpdir(), 'bench-runtime-root-missing-assets-'))
-    writeFileSync(join(dir, 'package.json'), '{"name":"@webpresso/agent-kit"}\n', 'utf8')
+  it("requires bench source assets before loading runtime modules from a resolved root", () => {
+    dir = mkdtempSync(join(tmpdir(), "bench-runtime-root-missing-assets-"));
+    writeFileSync(join(dir, "package.json"), '{"name":"@webpresso/agent-kit"}\n', "utf8");
 
-    expect(() => assertBenchRuntimeAssets(dir)).toThrow(/requires bench source assets/)
-    expect(() => resolveBenchRuntimeRoot('file:///$bunfs/root/wp', dir)).toThrow(
+    expect(() => assertBenchRuntimeAssets(dir)).toThrow(/requires bench source assets/);
+    expect(() => resolveBenchRuntimeRoot("file:///$bunfs/root/wp", dir)).toThrow(
       /not available from the compiled single-file runtime/,
-    )
-  })
+    );
+  });
 
-  it('refuses to resolve bench assets from Bun single-file caller cwd even when spoofed', () => {
-    dir = mkdtempSync(join(tmpdir(), 'bench-runtime-root-spoofed-assets-'))
-    writeFileSync(join(dir, 'package.json'), '{"name":"@webpresso/agent-kit"}\n', 'utf8')
+  it("refuses to resolve bench assets from Bun single-file caller cwd even when spoofed", () => {
+    dir = mkdtempSync(join(tmpdir(), "bench-runtime-root-spoofed-assets-"));
+    writeFileSync(join(dir, "package.json"), '{"name":"@webpresso/agent-kit"}\n', "utf8");
     for (const file of [
-      'scripts/bench/lib/manifest.ts',
-      'scripts/bench/scenarios/_schema.ts',
-      'scripts/bench/lib/cost-aggregator.ts',
-      'scripts/bench/lib/variant-runner.ts',
-      'scripts/bench/lib/report-writer.ts',
+      "scripts/bench/lib/manifest.ts",
+      "scripts/bench/scenarios/_schema.ts",
+      "scripts/bench/lib/cost-aggregator.ts",
+      "scripts/bench/lib/variant-runner.ts",
+      "scripts/bench/lib/report-writer.ts",
     ]) {
-      const path = join(dir, file)
-      mkdirSync(dirname(path), { recursive: true })
-      writeFileSync(path, 'export {}\n', 'utf8')
+      const path = join(dir, file);
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(path, "export {}\n", "utf8");
     }
 
-    expect(() => resolveBenchRuntimeRoot('file:///$bunfs/root/wp', dir)).toThrow(
+    expect(() => resolveBenchRuntimeRoot("file:///$bunfs/root/wp", dir)).toThrow(
       /refuses to resolve benchmark assets from the caller cwd/,
-    )
-  })
+    );
+  });
 
-  it('refuses actual session-memory execution from the compiled runtime lane', async () => {
-    expect(() => assertBenchSessionMemorySupportedRuntime({ WP_COMPILED_RUNTIME: '1' })).toThrow(
+  it("refuses actual session-memory execution from the compiled runtime lane", async () => {
+    expect(() => assertBenchSessionMemorySupportedRuntime({ WP_COMPILED_RUNTIME: "1" })).toThrow(
       /not available from the compiled runtime/,
-    )
+    );
 
     await expect(
       runBenchSessionMemoryCommand({
         dryRun: true,
-        env: { WP_COMPILED_RUNTIME: '1' },
+        env: { WP_COMPILED_RUNTIME: "1" },
       }),
-    ).rejects.toThrow(/refuses to execute source-dependent benchmark assets/)
-  })
+    ).rejects.toThrow(/refuses to execute source-dependent benchmark assets/);
+  });
 
-  it('succeeds in dry-run mode without API calls', async () => {
-    const runCell = vi.fn()
-    const deps = makeDeps({ onRunCell: runCell })
+  it("succeeds in dry-run mode without API calls", async () => {
+    const runCell = vi.fn();
+    const deps = makeDeps({ onRunCell: runCell });
 
     const result = await runBenchSessionMemoryCommand(
       {
         dryRun: true,
-        scenario: 'debug-long-session',
-        variant: 'baseline',
-        env: { BENCH_WORKSPACE_MODE: 'single-workspace', ANTHROPIC_API_KEY: 'test-key' },
+        scenario: "debug-long-session",
+        variant: "baseline",
+        env: { BENCH_WORKSPACE_MODE: "single-workspace", ANTHROPIC_API_KEY: "test-key" },
       },
       deps,
-    )
+    );
 
-    expect(result.exitCode).toBe(0)
-    expect(result.dryRun).toBe(true)
-    expect(result.reportPath).toBeNull()
+    expect(result.exitCode).toBe(0);
+    expect(result.dryRun).toBe(true);
+    expect(result.reportPath).toBeNull();
     expect(result.thresholdReport.axes.map((axis) => axis.id)).toEqual([
-      'post_tool_capture_latency_ms',
-      'precompact_snapshot_latency_ms',
-      'startup_resume_injection_latency_ms',
-      'search_quality_recall_at_5',
-    ])
-    expect(result.thresholdReport.mode).toBe('dry-run')
-    expect(result.thresholdReport.axes.every((axis) => axis.status === 'schema-valid')).toBe(true)
-    expect(runCell).not.toHaveBeenCalled()
-    expect(deps.validateKnownAnthropicWorkspaces).not.toHaveBeenCalled()
+      "post_tool_capture_latency_ms",
+      "precompact_snapshot_latency_ms",
+      "startup_resume_injection_latency_ms",
+      "search_quality_recall_at_5",
+    ]);
+    expect(result.thresholdReport.mode).toBe("dry-run");
+    expect(result.thresholdReport.axes.every((axis) => axis.status === "schema-valid")).toBe(true);
+    expect(runCell).not.toHaveBeenCalled();
+    expect(deps.validateKnownAnthropicWorkspaces).not.toHaveBeenCalled();
     expect(deps.verifyManifest).toHaveBeenCalledWith(TEST_MANIFEST, TEST_MANIFEST, {
-      mode: 'dry-run-current-checkout',
-    })
-  })
+      mode: "dry-run-current-checkout",
+    });
+  });
 
-  it('validates threshold schema in dry-run mode without API credentials', async () => {
-    const runCell = vi.fn()
-    const deps = makeDeps({ onRunCell: runCell })
+  it("validates threshold schema in dry-run mode without API credentials", async () => {
+    const runCell = vi.fn();
+    const deps = makeDeps({ onRunCell: runCell });
 
     const result = await runBenchSessionMemoryCommand(
       {
         dryRun: true,
-        scenario: 'debug-long-session',
-        variant: 'baseline',
-        env: { BENCH_WORKSPACE_MODE: 'single-workspace' },
+        scenario: "debug-long-session",
+        variant: "baseline",
+        env: { BENCH_WORKSPACE_MODE: "single-workspace" },
       },
       deps,
-    )
+    );
 
-    expect(result.exitCode).toBe(0)
-    expect(result.thresholdReport.mode).toBe('dry-run')
-    expect(result.thresholdReport.axes.every((axis) => axis.status === 'schema-valid')).toBe(true)
-    expect(deps.resolveWorkspaceConfig).toHaveBeenCalledTimes(1)
-    expect(deps.validateWorkspaceKeyPresence).not.toHaveBeenCalled()
-    expect(runCell).not.toHaveBeenCalled()
-  })
+    expect(result.exitCode).toBe(0);
+    expect(result.thresholdReport.mode).toBe("dry-run");
+    expect(result.thresholdReport.axes.every((axis) => axis.status === "schema-valid")).toBe(true);
+    expect(deps.resolveWorkspaceConfig).toHaveBeenCalledTimes(1);
+    expect(deps.validateWorkspaceKeyPresence).not.toHaveBeenCalled();
+    expect(runCell).not.toHaveBeenCalled();
+  });
 
-  it('uses a dry-run-only workspace default when workspace mode is omitted', async () => {
-    const deps = makeDeps()
+  it("uses a dry-run-only workspace default when workspace mode is omitted", async () => {
+    const deps = makeDeps();
     deps.resolveWorkspaceConfig = vi.fn((env) => {
-      if (env?.BENCH_WORKSPACE_MODE !== 'single-workspace') {
-        throw new Error('workspace mode missing')
+      if (env?.BENCH_WORKSPACE_MODE !== "single-workspace") {
+        throw new Error("workspace mode missing");
       }
 
       return {
-        mode: 'single-workspace',
-        cacheDisclaimer: 'dry-run schema validation',
-        keyEnvNames: ['REFERENCE_API_KEY'],
-        adminVerification: 'not-applicable',
-      }
-    })
+        mode: "single-workspace",
+        cacheDisclaimer: "dry-run schema validation",
+        keyEnvNames: ["REFERENCE_API_KEY"],
+        adminVerification: "not-applicable",
+      };
+    });
 
     const result = await runBenchSessionMemoryCommand(
       {
         dryRun: true,
-        scenario: 'debug-long-session',
-        variant: 'baseline',
+        scenario: "debug-long-session",
+        variant: "baseline",
         env: {},
       },
       deps,
-    )
+    );
 
-    expect(result.exitCode).toBe(0)
-    expect(result.thresholdReport.mode).toBe('dry-run')
+    expect(result.exitCode).toBe(0);
+    expect(result.thresholdReport.mode).toBe("dry-run");
     expect(deps.resolveWorkspaceConfig).toHaveBeenCalledWith({
-      BENCH_WORKSPACE_MODE: 'single-workspace',
-    })
-    expect(deps.validateWorkspaceKeyPresence).not.toHaveBeenCalled()
-  })
+      BENCH_WORKSPACE_MODE: "single-workspace",
+    });
+    expect(deps.validateWorkspaceKeyPresence).not.toHaveBeenCalled();
+  });
 
-  it('still requires explicit workspace mode for live runs', async () => {
-    const deps = makeDeps()
+  it("still requires explicit workspace mode for live runs", async () => {
+    const deps = makeDeps();
     deps.resolveWorkspaceConfig = vi.fn(() => {
       throw new Error(
-        'Workspace mode unspecified. Set BENCH_WORKSPACE_MODE=isolated or BENCH_WORKSPACE_MODE=single-workspace.',
-      )
-    })
+        "Workspace mode unspecified. Set BENCH_WORKSPACE_MODE=isolated or BENCH_WORKSPACE_MODE=single-workspace.",
+      );
+    });
 
     await expect(
       runBenchSessionMemoryCommand(
         {
-          scenario: 'debug-long-session',
-          variant: 'baseline',
+          scenario: "debug-long-session",
+          variant: "baseline",
           env: {},
         },
         deps,
       ),
-    ).rejects.toThrow('Workspace mode unspecified')
-  })
+    ).rejects.toThrow("Workspace mode unspecified");
+  });
 
-  it('uses strict manifest verification for live benchmark runs', async () => {
-    dir = mkdtempSync(join(tmpdir(), 'bench-command-live-manifest-'))
-    const deps = makeDeps()
+  it("uses strict manifest verification for live benchmark runs", async () => {
+    dir = mkdtempSync(join(tmpdir(), "bench-command-live-manifest-"));
+    const deps = makeDeps();
 
     await runBenchSessionMemoryCommand(
       {
-        scenario: 'debug-long-session',
-        variant: 'baseline',
+        scenario: "debug-long-session",
+        variant: "baseline",
         trials: 1,
         outputRoot: dir,
-        env: { BENCH_WORKSPACE_MODE: 'single-workspace', ANTHROPIC_API_KEY: 'test-key' },
+        env: { BENCH_WORKSPACE_MODE: "single-workspace", ANTHROPIC_API_KEY: "test-key" },
       },
       deps,
-    )
+    );
 
     expect(deps.verifyManifest).toHaveBeenCalledWith(TEST_MANIFEST, TEST_MANIFEST, {
-      mode: 'strict',
-    })
-  })
+      mode: "strict",
+    });
+  });
 
-  it('passes explicit claude-login auth mode to live cells without requiring API keys', async () => {
-    dir = mkdtempSync(join(tmpdir(), 'bench-command-claude-login-'))
+  it("passes explicit claude-login auth mode to live cells without requiring API keys", async () => {
+    dir = mkdtempSync(join(tmpdir(), "bench-command-claude-login-"));
     const runCell = vi.fn(async () => ({
       ok: true as const,
       usage: {
@@ -388,95 +388,95 @@ describe('wp bench session-memory', () => {
         cache_read_input_tokens: 0,
         duration_ms: 500,
       },
-      tools: ['search_files'],
-      transcript_path: '/tmp/transcript.jsonl',
-      home_dir: '/tmp/home',
-    }))
-    const deps = makeDeps({ onRunCell: runCell })
+      tools: ["search_files"],
+      transcript_path: "/tmp/transcript.jsonl",
+      home_dir: "/tmp/home",
+    }));
+    const deps = makeDeps({ onRunCell: runCell });
     deps.resolveWorkspaceConfig = vi.fn(() => ({
-      mode: 'single-workspace',
+      mode: "single-workspace",
       cacheDisclaimer:
-        'cache-disabled baseline: single-workspace mode uses local Claude CLI login and cannot claim clean cross-variant cache isolation.',
+        "cache-disabled baseline: single-workspace mode uses local Claude CLI login and cannot claim clean cross-variant cache isolation.",
       keyEnvNames: [],
-      authMode: 'claude-login',
-      adminVerification: 'not-applicable',
-    }))
+      authMode: "claude-login",
+      adminVerification: "not-applicable",
+    }));
 
     await runBenchSessionMemoryCommand(
       {
-        scenario: 'debug-long-session',
-        variant: 'baseline',
+        scenario: "debug-long-session",
+        variant: "baseline",
         trials: 1,
         outputRoot: dir,
         env: {
-          BENCH_WORKSPACE_MODE: 'single-workspace',
-          BENCH_AUTH_MODE: 'claude-login',
-          BENCH_CLAUDE_HOME: '/tmp/logged-in-claude-home',
+          BENCH_WORKSPACE_MODE: "single-workspace",
+          BENCH_AUTH_MODE: "claude-login",
+          BENCH_CLAUDE_HOME: "/tmp/logged-in-claude-home",
         },
       },
       deps,
-    )
+    );
 
-    expect(deps.validateWorkspaceKeyPresence).toHaveBeenCalledTimes(1)
+    expect(deps.validateWorkspaceKeyPresence).toHaveBeenCalledTimes(1);
     expect(runCell).toHaveBeenCalledWith(
       expect.objectContaining({
-        authMode: 'claude-login',
-        claudeHome: '/tmp/logged-in-claude-home',
+        authMode: "claude-login",
+        claudeHome: "/tmp/logged-in-claude-home",
         apiKeys: expect.objectContaining({
           ANTHROPIC_API_KEY_BASELINE: undefined,
         }),
       }),
-    )
-  })
+    );
+  });
 
-  it('writes a report for a single scenario/variant run', async () => {
-    dir = mkdtempSync(join(tmpdir(), 'bench-command-'))
-    const deps = makeDeps()
+  it("writes a report for a single scenario/variant run", async () => {
+    dir = mkdtempSync(join(tmpdir(), "bench-command-"));
+    const deps = makeDeps();
 
     const result = await runBenchSessionMemoryCommand(
       {
-        scenario: 'debug-long-session',
-        variant: 'baseline',
+        scenario: "debug-long-session",
+        variant: "baseline",
         trials: 1,
         outputRoot: dir,
-        env: { BENCH_WORKSPACE_MODE: 'single-workspace', ANTHROPIC_API_KEY: 'test-key' },
+        env: { BENCH_WORKSPACE_MODE: "single-workspace", ANTHROPIC_API_KEY: "test-key" },
       },
       deps,
-    )
+    );
 
-    expect(result.exitCode).toBe(0)
-    expect(result.reportPath).not.toBeNull()
-    expect(existsSync(result.reportPath ?? '')).toBe(true)
+    expect(result.exitCode).toBe(0);
+    expect(result.reportPath).not.toBeNull();
+    expect(existsSync(result.reportPath ?? "")).toBe(true);
 
-    const report = readFileSync(result.reportPath ?? '', 'utf8')
-    expect(result.thresholdReport.mode).toBe('measured')
+    const report = readFileSync(result.reportPath ?? "", "utf8");
+    expect(result.thresholdReport.mode).toBe("measured");
     expect(result.thresholdReport.axes).toContainEqual({
-      id: 'post_tool_capture_latency_ms',
-      label: 'PostToolUse capture latency',
-      metric: 'latency_ms',
+      id: "post_tool_capture_latency_ms",
+      label: "PostToolUse capture latency",
+      metric: "latency_ms",
       threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.postToolCaptureLatencyMs,
       observed: null,
-      status: 'not-instrumented',
-    })
-    expect(report).toContain('cost_usd')
-    expect(report).toContain('recall@5')
-    expect(report).toContain('wall_sec')
-    expect(report).toContain('matched 5/5 qrels')
+      status: "not-instrumented",
+    });
+    expect(report).toContain("cost_usd");
+    expect(report).toContain("recall@5");
+    expect(report).toContain("wall_sec");
+    expect(report).toContain("matched 5/5 qrels");
     expect(result.thresholdReport.axes).toContainEqual({
-      id: 'search_quality_recall_at_5',
-      label: 'Search quality recall@5',
-      metric: 'recall_at_5',
+      id: "search_quality_recall_at_5",
+      label: "Search quality recall@5",
+      metric: "recall_at_5",
       threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.searchQualityRecallAt5,
       observed: 1,
-      status: 'passed',
-    })
-    expect(report).toContain('Threshold report')
-    expect(report).toContain('post_tool_capture_latency_ms')
-    expect(report).toContain('| debug-long-session | baseline | 1 | ok |')
-  })
+      status: "passed",
+    });
+    expect(report).toContain("Threshold report");
+    expect(report).toContain("post_tool_capture_latency_ms");
+    expect(report).toContain("| debug-long-session | baseline | 1 | ok |");
+  });
 
-  it('writes exact token, cache, cost, provider-duration, and local-wall aggregates for multi-trial cells', async () => {
-    dir = mkdtempSync(join(tmpdir(), 'bench-command-aggregates-'))
+  it("writes exact token, cache, cost, provider-duration, and local-wall aggregates for multi-trial cells", async () => {
+    dir = mkdtempSync(join(tmpdir(), "bench-command-aggregates-"));
     const runCell = vi
       .fn()
       .mockResolvedValueOnce({
@@ -489,9 +489,9 @@ describe('wp bench session-memory', () => {
           duration_ms: 500,
         },
         local_wall_ms: 600,
-        tools: ['wp_session_search'],
-        transcript_path: '/tmp/transcript-1.jsonl',
-        home_dir: '/tmp/home-1',
+        tools: ["wp_session_search"],
+        transcript_path: "/tmp/transcript-1.jsonl",
+        home_dir: "/tmp/home-1",
       })
       .mockResolvedValueOnce({
         ok: true as const,
@@ -503,31 +503,31 @@ describe('wp bench session-memory', () => {
           duration_ms: 700,
         },
         local_wall_ms: 800,
-        tools: ['wp_session_search'],
-        transcript_path: '/tmp/transcript-2.jsonl',
-        home_dir: '/tmp/home-2',
-      })
-    const deps = makeDeps({ onRunCell: runCell })
-    deps.aggregateCosts = vi.fn(() => ({ mean: 0.15, std: 0.05, n: 2, total: 0.3 }))
+        tools: ["wp_session_search"],
+        transcript_path: "/tmp/transcript-2.jsonl",
+        home_dir: "/tmp/home-2",
+      });
+    const deps = makeDeps({ onRunCell: runCell });
+    deps.aggregateCosts = vi.fn(() => ({ mean: 0.15, std: 0.05, n: 2, total: 0.3 }));
 
     const result = await runBenchSessionMemoryCommand(
       {
-        scenario: 'debug-long-session',
-        variant: 'baseline',
+        scenario: "debug-long-session",
+        variant: "baseline",
         trials: 2,
         outputRoot: dir,
-        env: { BENCH_WORKSPACE_MODE: 'single-workspace', ANTHROPIC_API_KEY: 'test-key' },
+        env: { BENCH_WORKSPACE_MODE: "single-workspace", ANTHROPIC_API_KEY: "test-key" },
       },
       deps,
-    )
+    );
 
-    expect(result.exitCode).toBe(0)
+    expect(result.exitCode).toBe(0);
     expect(deps.writeReport).toHaveBeenCalledWith(
       expect.objectContaining({
         cells: [
           expect.objectContaining({
-            scenario_id: 'debug-long-session',
-            variant: 'baseline',
+            scenario_id: "debug-long-session",
+            variant: "baseline",
             trials: 2,
             cost_usd: 0.3,
             cost_mean_usd: 0.15,
@@ -546,11 +546,11 @@ describe('wp bench session-memory', () => {
         ],
       }),
       expect.stringMatching(/report\.md$/u),
-    )
-  })
+    );
+  });
 
-  it('runs two trials per cell when --all-variants is enabled', async () => {
-    dir = mkdtempSync(join(tmpdir(), 'bench-command-all-'))
+  it("runs two trials per cell when --all-variants is enabled", async () => {
+    dir = mkdtempSync(join(tmpdir(), "bench-command-all-"));
     const runCell = vi.fn(async () => ({
       ok: true as const,
       usage: {
@@ -561,223 +561,223 @@ describe('wp bench session-memory', () => {
         duration_ms: 100,
       },
       tools: [],
-      transcript_path: '/tmp/transcript.jsonl',
-      home_dir: '/tmp/home',
-    }))
-    const deps = makeDeps({ onRunCell: runCell })
+      transcript_path: "/tmp/transcript.jsonl",
+      home_dir: "/tmp/home",
+    }));
+    const deps = makeDeps({ onRunCell: runCell });
 
     await runBenchSessionMemoryCommand(
       {
         allVariants: true,
-        scenario: 'debug-long-session',
+        scenario: "debug-long-session",
         outputRoot: dir,
         env: {
-          BENCH_WORKSPACE_MODE: 'single-workspace',
-          ANTHROPIC_API_KEY: 'test-key',
-          ANTHROPIC_API_KEY_V1: 'v1-key',
-          ANTHROPIC_API_KEY_V2: 'v2-key',
+          BENCH_WORKSPACE_MODE: "single-workspace",
+          ANTHROPIC_API_KEY: "test-key",
+          ANTHROPIC_API_KEY_V1: "v1-key",
+          ANTHROPIC_API_KEY_V2: "v2-key",
         },
       },
       deps,
-    )
+    );
 
-    expect(runCell).toHaveBeenCalledTimes(6)
-  })
+    expect(runCell).toHaveBeenCalledTimes(6);
+  });
 
-  it('aborts cleanly when manifest verification fails', async () => {
+  it("aborts cleanly when manifest verification fails", async () => {
     const deps = makeDeps({
       onVerifyManifest: vi.fn(() => {
-        throw new Error('Manifest mismatch')
+        throw new Error("Manifest mismatch");
       }),
-    })
+    });
 
     await expect(
       runBenchSessionMemoryCommand(
         {
           dryRun: true,
-          env: { BENCH_WORKSPACE_MODE: 'single-workspace', ANTHROPIC_API_KEY: 'test-key' },
+          env: { BENCH_WORKSPACE_MODE: "single-workspace", ANTHROPIC_API_KEY: "test-key" },
         },
         deps,
       ),
-    ).rejects.toThrow('Manifest mismatch')
-  })
+    ).rejects.toThrow("Manifest mismatch");
+  });
 
-  it('isolated mode requires explicit workspace ids even without an admin key', async () => {
-    const deps = makeDeps()
+  it("isolated mode requires explicit workspace ids even without an admin key", async () => {
+    const deps = makeDeps();
     deps.resolveWorkspaceConfig = vi.fn(() => ({
-      mode: 'isolated',
-      cacheDisclaimer: 'operator-asserted workspace isolation',
-      keyEnvNames: ['ANTHROPIC_API_KEY_BASELINE', 'ANTHROPIC_API_KEY_V1', 'ANTHROPIC_API_KEY_V2'],
-      adminVerification: 'operator-asserted',
-    }))
+      mode: "isolated",
+      cacheDisclaimer: "operator-asserted workspace isolation",
+      keyEnvNames: ["ANTHROPIC_API_KEY_BASELINE", "ANTHROPIC_API_KEY_V1", "ANTHROPIC_API_KEY_V2"],
+      adminVerification: "operator-asserted",
+    }));
     deps.resolveWorkspaceIdentitiesFromEnv = vi.fn(() => {
-      throw new Error('missing workspace ids')
-    })
+      throw new Error("missing workspace ids");
+    });
 
     await expect(
       runBenchSessionMemoryCommand(
         {
           dryRun: true,
           env: {
-            BENCH_WORKSPACE_MODE: 'isolated',
-            ANTHROPIC_API_KEY_BASELINE: 'a',
-            ANTHROPIC_API_KEY_V1: 'c',
-            ANTHROPIC_API_KEY_V2: 'd',
+            BENCH_WORKSPACE_MODE: "isolated",
+            ANTHROPIC_API_KEY_BASELINE: "a",
+            ANTHROPIC_API_KEY_V1: "c",
+            ANTHROPIC_API_KEY_V2: "d",
           },
         },
         deps,
       ),
-    ).rejects.toThrow('missing workspace ids')
-  })
+    ).rejects.toThrow("missing workspace ids");
+  });
 
-  it('isolated mode without an admin key skips Anthropic admin verification', async () => {
-    const deps = makeDeps()
+  it("isolated mode without an admin key skips Anthropic admin verification", async () => {
+    const deps = makeDeps();
     deps.resolveWorkspaceConfig = vi.fn(() => ({
-      mode: 'isolated',
-      cacheDisclaimer: 'operator-asserted workspace isolation',
-      keyEnvNames: ['ANTHROPIC_API_KEY_BASELINE', 'ANTHROPIC_API_KEY_V1', 'ANTHROPIC_API_KEY_V2'],
-      adminVerification: 'operator-asserted',
-    }))
+      mode: "isolated",
+      cacheDisclaimer: "operator-asserted workspace isolation",
+      keyEnvNames: ["ANTHROPIC_API_KEY_BASELINE", "ANTHROPIC_API_KEY_V1", "ANTHROPIC_API_KEY_V2"],
+      adminVerification: "operator-asserted",
+    }));
     deps.resolveWorkspaceIdentitiesFromEnv = vi.fn(() => [
-      { apiKeyEnv: 'ANTHROPIC_API_KEY_BASELINE', workspaceId: 'ws-a' },
-      { apiKeyEnv: 'ANTHROPIC_API_KEY_V1', workspaceId: 'ws-c' },
-      { apiKeyEnv: 'ANTHROPIC_API_KEY_V2', workspaceId: 'ws-d' },
-    ])
+      { apiKeyEnv: "ANTHROPIC_API_KEY_BASELINE", workspaceId: "ws-a" },
+      { apiKeyEnv: "ANTHROPIC_API_KEY_V1", workspaceId: "ws-c" },
+      { apiKeyEnv: "ANTHROPIC_API_KEY_V2", workspaceId: "ws-d" },
+    ]);
 
     await runBenchSessionMemoryCommand(
       {
         dryRun: true,
         env: {
-          BENCH_WORKSPACE_MODE: 'isolated',
-          ANTHROPIC_API_KEY_BASELINE: 'a',
-          ANTHROPIC_API_KEY_V1: 'c',
-          ANTHROPIC_API_KEY_V2: 'd',
-          ANTHROPIC_WORKSPACE_ID_BASELINE: 'ws-a',
-          ANTHROPIC_WORKSPACE_ID_V1: 'ws-c',
-          ANTHROPIC_WORKSPACE_ID_V2: 'ws-d',
+          BENCH_WORKSPACE_MODE: "isolated",
+          ANTHROPIC_API_KEY_BASELINE: "a",
+          ANTHROPIC_API_KEY_V1: "c",
+          ANTHROPIC_API_KEY_V2: "d",
+          ANTHROPIC_WORKSPACE_ID_BASELINE: "ws-a",
+          ANTHROPIC_WORKSPACE_ID_V1: "ws-c",
+          ANTHROPIC_WORKSPACE_ID_V2: "ws-d",
         },
       },
       deps,
-    )
+    );
 
-    expect(deps.validateKnownAnthropicWorkspaces).not.toHaveBeenCalled()
-  })
+    expect(deps.validateKnownAnthropicWorkspaces).not.toHaveBeenCalled();
+  });
 
-  it('isolated dry-run with an admin key skips Anthropic admin verification', async () => {
-    const deps = makeDeps()
+  it("isolated dry-run with an admin key skips Anthropic admin verification", async () => {
+    const deps = makeDeps();
     deps.resolveWorkspaceConfig = vi.fn(() => ({
-      mode: 'isolated',
+      mode: "isolated",
       cacheDisclaimer: null,
-      keyEnvNames: ['ANTHROPIC_API_KEY_BASELINE', 'ANTHROPIC_API_KEY_V1', 'ANTHROPIC_API_KEY_V2'],
-      adminVerification: 'required-for-proof',
-    }))
+      keyEnvNames: ["ANTHROPIC_API_KEY_BASELINE", "ANTHROPIC_API_KEY_V1", "ANTHROPIC_API_KEY_V2"],
+      adminVerification: "required-for-proof",
+    }));
     deps.resolveWorkspaceIdentitiesFromEnv = vi.fn(() => [
-      { apiKeyEnv: 'ANTHROPIC_API_KEY_BASELINE', workspaceId: 'ws-a' },
-      { apiKeyEnv: 'ANTHROPIC_API_KEY_V1', workspaceId: 'ws-c' },
-      { apiKeyEnv: 'ANTHROPIC_API_KEY_V2', workspaceId: 'ws-d' },
-    ])
+      { apiKeyEnv: "ANTHROPIC_API_KEY_BASELINE", workspaceId: "ws-a" },
+      { apiKeyEnv: "ANTHROPIC_API_KEY_V1", workspaceId: "ws-c" },
+      { apiKeyEnv: "ANTHROPIC_API_KEY_V2", workspaceId: "ws-d" },
+    ]);
 
     await runBenchSessionMemoryCommand(
       {
         dryRun: true,
         env: {
-          BENCH_WORKSPACE_MODE: 'isolated',
-          ANTHROPIC_ADMIN_KEY: 'admin-key',
-          ANTHROPIC_API_KEY_BASELINE: 'a',
-          ANTHROPIC_API_KEY_V1: 'c',
-          ANTHROPIC_API_KEY_V2: 'd',
-          ANTHROPIC_WORKSPACE_ID_BASELINE: 'ws-a',
-          ANTHROPIC_WORKSPACE_ID_V1: 'ws-c',
-          ANTHROPIC_WORKSPACE_ID_V2: 'ws-d',
+          BENCH_WORKSPACE_MODE: "isolated",
+          ANTHROPIC_ADMIN_KEY: "admin-key",
+          ANTHROPIC_API_KEY_BASELINE: "a",
+          ANTHROPIC_API_KEY_V1: "c",
+          ANTHROPIC_API_KEY_V2: "d",
+          ANTHROPIC_WORKSPACE_ID_BASELINE: "ws-a",
+          ANTHROPIC_WORKSPACE_ID_V1: "ws-c",
+          ANTHROPIC_WORKSPACE_ID_V2: "ws-d",
         },
       },
       deps,
-    )
+    );
 
-    expect(deps.validateKnownAnthropicWorkspaces).not.toHaveBeenCalled()
-  })
+    expect(deps.validateKnownAnthropicWorkspaces).not.toHaveBeenCalled();
+  });
 
-  it('isolated live runs with an admin key perform Anthropic admin verification', async () => {
-    dir = mkdtempSync(join(tmpdir(), 'bench-command-admin-live-'))
-    const deps = makeDeps()
+  it("isolated live runs with an admin key perform Anthropic admin verification", async () => {
+    dir = mkdtempSync(join(tmpdir(), "bench-command-admin-live-"));
+    const deps = makeDeps();
     deps.resolveWorkspaceConfig = vi.fn(() => ({
-      mode: 'isolated',
+      mode: "isolated",
       cacheDisclaimer: null,
-      keyEnvNames: ['ANTHROPIC_API_KEY_BASELINE', 'ANTHROPIC_API_KEY_V1', 'ANTHROPIC_API_KEY_V2'],
-      adminVerification: 'required-for-proof',
-    }))
+      keyEnvNames: ["ANTHROPIC_API_KEY_BASELINE", "ANTHROPIC_API_KEY_V1", "ANTHROPIC_API_KEY_V2"],
+      adminVerification: "required-for-proof",
+    }));
     deps.resolveWorkspaceIdentitiesFromEnv = vi.fn(() => [
-      { apiKeyEnv: 'ANTHROPIC_API_KEY_BASELINE', workspaceId: 'ws-a' },
-      { apiKeyEnv: 'ANTHROPIC_API_KEY_V1', workspaceId: 'ws-c' },
-      { apiKeyEnv: 'ANTHROPIC_API_KEY_V2', workspaceId: 'ws-d' },
-    ])
+      { apiKeyEnv: "ANTHROPIC_API_KEY_BASELINE", workspaceId: "ws-a" },
+      { apiKeyEnv: "ANTHROPIC_API_KEY_V1", workspaceId: "ws-c" },
+      { apiKeyEnv: "ANTHROPIC_API_KEY_V2", workspaceId: "ws-d" },
+    ]);
 
     await runBenchSessionMemoryCommand(
       {
-        scenario: 'debug-long-session',
-        variant: 'baseline',
+        scenario: "debug-long-session",
+        variant: "baseline",
         trials: 1,
         outputRoot: dir,
         env: {
-          BENCH_WORKSPACE_MODE: 'isolated',
-          ANTHROPIC_ADMIN_KEY: 'admin-key',
-          ANTHROPIC_API_KEY_BASELINE: 'a',
-          ANTHROPIC_API_KEY_V1: 'c',
-          ANTHROPIC_API_KEY_V2: 'd',
-          ANTHROPIC_WORKSPACE_ID_BASELINE: 'ws-a',
-          ANTHROPIC_WORKSPACE_ID_V1: 'ws-c',
-          ANTHROPIC_WORKSPACE_ID_V2: 'ws-d',
+          BENCH_WORKSPACE_MODE: "isolated",
+          ANTHROPIC_ADMIN_KEY: "admin-key",
+          ANTHROPIC_API_KEY_BASELINE: "a",
+          ANTHROPIC_API_KEY_V1: "c",
+          ANTHROPIC_API_KEY_V2: "d",
+          ANTHROPIC_WORKSPACE_ID_BASELINE: "ws-a",
+          ANTHROPIC_WORKSPACE_ID_V1: "ws-c",
+          ANTHROPIC_WORKSPACE_ID_V2: "ws-d",
         },
       },
       deps,
-    )
+    );
 
     expect(deps.validateKnownAnthropicWorkspaces).toHaveBeenCalledWith(
       [
-        { apiKeyEnv: 'ANTHROPIC_API_KEY_BASELINE', workspaceId: 'ws-a' },
-        { apiKeyEnv: 'ANTHROPIC_API_KEY_V1', workspaceId: 'ws-c' },
-        { apiKeyEnv: 'ANTHROPIC_API_KEY_V2', workspaceId: 'ws-d' },
+        { apiKeyEnv: "ANTHROPIC_API_KEY_BASELINE", workspaceId: "ws-a" },
+        { apiKeyEnv: "ANTHROPIC_API_KEY_V1", workspaceId: "ws-c" },
+        { apiKeyEnv: "ANTHROPIC_API_KEY_V2", workspaceId: "ws-d" },
       ],
-      'admin-key',
-    )
-  })
+      "admin-key",
+    );
+  });
 
-  it('uses unrounded recall values for threshold status', async () => {
-    dir = mkdtempSync(join(tmpdir(), 'bench-command-borderline-recall-'))
-    const deps = makeDeps()
+  it("uses unrounded recall values for threshold status", async () => {
+    dir = mkdtempSync(join(tmpdir(), "bench-command-borderline-recall-"));
+    const deps = makeDeps();
     deps.scoreTranscriptRecall = vi.fn(() => ({
       recall_at_5: 0.7999996,
       matched_qrels: 4,
       denominator: 5,
-      recall_reason: 'borderline unrounded recall',
-    }))
+      recall_reason: "borderline unrounded recall",
+    }));
 
     const result = await runBenchSessionMemoryCommand(
       {
-        scenario: 'debug-long-session',
-        variant: 'baseline',
+        scenario: "debug-long-session",
+        variant: "baseline",
         trials: 1,
         outputRoot: dir,
-        env: { BENCH_WORKSPACE_MODE: 'single-workspace', ANTHROPIC_API_KEY: 'test-key' },
+        env: { BENCH_WORKSPACE_MODE: "single-workspace", ANTHROPIC_API_KEY: "test-key" },
       },
       deps,
-    )
+    );
 
-    expect(result.exitCode).toBe(1)
+    expect(result.exitCode).toBe(1);
     expect(result.thresholdReport.axes).toContainEqual({
-      id: 'search_quality_recall_at_5',
-      label: 'Search quality recall@5',
-      metric: 'recall_at_5',
+      id: "search_quality_recall_at_5",
+      label: "Search quality recall@5",
+      metric: "recall_at_5",
       threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.searchQualityRecallAt5,
       observed: 0.8,
-      status: 'failed',
-    })
-  })
+      status: "failed",
+    });
+  });
 
-  it('fails recall threshold when any attempted cell fails even if another cell has high recall', async () => {
-    dir = mkdtempSync(join(tmpdir(), 'bench-command-mixed-failure-'))
+  it("fails recall threshold when any attempted cell fails even if another cell has high recall", async () => {
+    dir = mkdtempSync(join(tmpdir(), "bench-command-mixed-failure-"));
     const runCell = vi.fn(async (input: { variant: string }) => {
-      if (input.variant === 'baseline') {
+      if (input.variant === "baseline") {
         return {
           ok: true as const,
           usage: {
@@ -787,78 +787,78 @@ describe('wp bench session-memory', () => {
             cache_read_input_tokens: 0,
             duration_ms: 500,
           },
-          tools: ['search_files'],
-          transcript_path: '/tmp/transcript.jsonl',
-          home_dir: '/tmp/home',
-        }
+          tools: ["search_files"],
+          transcript_path: "/tmp/transcript.jsonl",
+          home_dir: "/tmp/home",
+        };
       }
 
       return {
         ok: false as const,
-        error: 'rate_limit' as const,
+        error: "rate_limit" as const,
         usage: null,
         tools: [],
         transcript_path: null,
-        home_dir: '/tmp/home',
-      }
-    })
-    const deps = makeDeps({ onRunCell: runCell })
+        home_dir: "/tmp/home",
+      };
+    });
+    const deps = makeDeps({ onRunCell: runCell });
 
     const result = await runBenchSessionMemoryCommand(
       {
         allVariants: true,
-        scenario: 'debug-long-session',
+        scenario: "debug-long-session",
         trials: 1,
         outputRoot: dir,
-        env: { BENCH_WORKSPACE_MODE: 'single-workspace', ANTHROPIC_API_KEY: 'test-key' },
+        env: { BENCH_WORKSPACE_MODE: "single-workspace", ANTHROPIC_API_KEY: "test-key" },
       },
       deps,
-    )
+    );
 
-    expect(result.exitCode).toBe(1)
+    expect(result.exitCode).toBe(1);
     expect(result.thresholdReport.axes).toContainEqual({
-      id: 'search_quality_recall_at_5',
-      label: 'Search quality recall@5',
-      metric: 'recall_at_5',
+      id: "search_quality_recall_at_5",
+      label: "Search quality recall@5",
+      metric: "recall_at_5",
       threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.searchQualityRecallAt5,
       observed: 0.333333,
-      status: 'failed',
-    })
-  })
+      status: "failed",
+    });
+  });
 
-  it('keeps scorer failures as ok cells with recall_error and failed recall threshold', async () => {
-    dir = mkdtempSync(join(tmpdir(), 'bench-command-scorer-failure-'))
-    const deps = makeDeps()
+  it("keeps scorer failures as ok cells with recall_error and failed recall threshold", async () => {
+    dir = mkdtempSync(join(tmpdir(), "bench-command-scorer-failure-"));
+    const deps = makeDeps();
     deps.scoreTranscriptRecall = vi.fn(() => ({
       recall_at_5: 0,
       matched_qrels: 0,
       denominator: 5,
-      recall_error: 'missing scored response text in transcript',
-    }))
+      recall_error: "missing scored response text in transcript",
+    }));
 
     const result = await runBenchSessionMemoryCommand(
       {
-        scenario: 'debug-long-session',
-        variant: 'baseline',
+        scenario: "debug-long-session",
+        variant: "baseline",
         trials: 1,
         outputRoot: dir,
-        env: { BENCH_WORKSPACE_MODE: 'single-workspace', ANTHROPIC_API_KEY: 'test-key' },
+        env: { BENCH_WORKSPACE_MODE: "single-workspace", ANTHROPIC_API_KEY: "test-key" },
       },
       deps,
-    )
+    );
 
-    const report = readFileSync(result.reportPath ?? '', 'utf8')
+    const report = readFileSync(result.reportPath ?? "", "utf8");
 
-    expect(report).toContain('| debug-long-session | baseline | 1 | ok |')
-    expect(report).toContain('missing scored response text in transcript')
-    expect(result.exitCode).toBe(1)
+    expect(report).toContain("| debug-long-session | baseline | 1 | ok |");
+    expect(report).toContain("missing scored response text in transcript");
+    expect(result.exitCode).toBe(1);
     expect(result.thresholdReport.axes).toContainEqual({
-      id: 'search_quality_recall_at_5',
-      label: 'Search quality recall@5',
-      metric: 'recall_at_5',
+      id: "search_quality_recall_at_5",
+      label: "Search quality recall@5",
+      metric: "recall_at_5",
       threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.searchQualityRecallAt5,
       observed: 0,
-      status: 'failed',
-    })
-  })
-})
+      status: "failed",
+    });
+  });
+});

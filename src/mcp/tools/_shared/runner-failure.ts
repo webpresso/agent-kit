@@ -18,24 +18,24 @@
  * loud.
  */
 
-import type { TransformResult } from '#output-transforms/index'
+import type { TransformResult } from "#output-transforms/index";
 
-import { clipRawOutput } from './result.js'
-import { createSessionElisionRecorder } from '#mcp/_session-elision.js'
+import { clipRawOutput } from "./result.js";
+import { createSessionElisionRecorder } from "#mcp/_session-elision.js";
 
-const RUNNER_FAILURE_EVIDENCE_BUDGET = 600
+const RUNNER_FAILURE_EVIDENCE_BUDGET = 600;
 
-export function stripTransform(result: TransformResult): Omit<TransformResult, 'transform'> {
-  const { transform: _transform, ...rest } = result
-  return rest
+export function stripTransform(result: TransformResult): Omit<TransformResult, "transform"> {
+  const { transform: _transform, ...rest } = result;
+  return rest;
 }
 
 export function isRunnerFailure(input: {
-  passed: boolean
-  timedOut: boolean
-  aborted: boolean
-  parsedCount: number
-  output: string
+  passed: boolean;
+  timedOut: boolean;
+  aborted: boolean;
+  parsedCount: number;
+  output: string;
 }): boolean {
   return (
     !input.passed &&
@@ -43,25 +43,25 @@ export function isRunnerFailure(input: {
     !input.aborted &&
     input.parsedCount === 0 &&
     input.output.trim().length > 0
-  )
+  );
 }
 
 export function boundRunnerFailureEvidence(
   output: string,
   toolName: string,
   cwd?: string,
-): Omit<TransformResult, 'transform'> {
+): Omit<TransformResult, "transform"> {
   const clipped = clipRawOutput(output, RUNNER_FAILURE_EVIDENCE_BUDGET, {
     toolName,
     elisionRecorder: createSessionElisionRecorder({ cwd, sourcePrefix: toolName }),
-  })
-  const rawBytes = Buffer.byteLength(output)
-  const bytes = Buffer.byteLength(clipped.rawOutput ?? '')
+  });
+  const rawBytes = Buffer.byteLength(output);
+  const bytes = Buffer.byteLength(clipped.rawOutput ?? "");
   return {
     ...clipped,
     failures: [],
     tier: 3,
     bytes,
     tokensSaved: Math.max(0, rawBytes - bytes),
-  }
+  };
 }

@@ -17,11 +17,11 @@ Five parallel research agents canvassed the multi-IDE agent ecosystem on 2026-05
 
 ## TL;DR
 
-| Blueprint | Original verdict | Final verdict (after deeper research + CEO review) | Why |
-|---|---|---|---|
-| `agent-asset-compiler-multi-runtime` | Build (custom 6-runtime compiler) | **Wrap `rulesync` + emit 4 plugin manifests + AGENTS.md merger + memory rotation** | `dyoshikawa/rulesync` (175k weekly npm dl, MIT, daily commits) covers ~95% of per-runtime emission. Agent Skills standard (Anthropic, Dec 2025) means same `SKILL.md` runs in 26+ runtimes natively. Plugin marketplaces shipped in 4 of 6 IDEs — distribute via plugin install, not file writes. Filesystem fallback only for Windsurf/OpenCode. **~70% scope reduction; ~10 tasks total.** |
-| `agent-knowledge-graph-mcp` | Build (Kuzu + remark + chokidar) | **Minimal 3-verb audit slice; full KG deferred behind concrete gates** | Deeper research: GitNexus is stable (37.6k stars, daily commits) but **PolyForm-NC license blocks reuse** + indexes source code not agent assets. Original q-* pollution already zero. Blueprint #1's compile-manifest already detects drift between canonical and generated. Tech-debt lifecycle dormant. **Ship 3-verb slice now** (`skill-sizes`, `broken-refs`, `tech-debt new --from-audit`) using `remark-validate-links` + regex. **Defer full Kuzu KG** until all three gates fire: #1 manifest catches <90% of monorepo drift over 30 days AND tech-debt accumulates ≥10 graph-traversal items AND a 2nd consumer commits to `wp_graph_*`. |
-| `blueprint-structured-store` | Build (better-sqlite3 + custom MCP) | **Custom MCP (~300 LOC) over SQLite; cold-start rebuild; Datasette browse; cross-repo correlation with permission/org-aware model** | Deeper research flipped two prior conclusions: (1) Anthropic's `mcp-server-sqlite` is **archived** + raw rows violate summary-first contract + mutations would bypass markdown-canonical — keep custom MCP; (2) Claude Code Routines **clone the repo fresh** + canonical markdown is accessible — skip `state export/import`, document rebuild-from-markdown cold-start. Add `wp blueprint browse` Datasette wrapper (D5). Add cross-repo correlation **with 7 hard permission requirements** (D8): org tagging, default-deny cross-org, explicit allowlist (both-sides), visibility-aware redaction, workspace scoping, CI audit gate, 3rd-party fit. `claude-task-master` is **not** a serious replacement — wrong shape. |
+| Blueprint                            | Original verdict                    | Final verdict (after deeper research + CEO review)                                                                                  | Why                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------------------------ | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `agent-asset-compiler-multi-runtime` | Build (custom 6-runtime compiler)   | **Wrap `rulesync` + emit 4 plugin manifests + AGENTS.md merger + memory rotation**                                                  | `dyoshikawa/rulesync` (175k weekly npm dl, MIT, daily commits) covers ~95% of per-runtime emission. Agent Skills standard (Anthropic, Dec 2025) means same `SKILL.md` runs in 26+ runtimes natively. Plugin marketplaces shipped in 4 of 6 IDEs — distribute via plugin install, not file writes. Filesystem fallback only for Windsurf/OpenCode. **~70% scope reduction; ~10 tasks total.**                                                                                                                                                                                                                                                                                                                                 |
+| `agent-knowledge-graph-mcp`          | Build (Kuzu + remark + chokidar)    | **Minimal 3-verb audit slice; full KG deferred behind concrete gates**                                                              | Deeper research: GitNexus is stable (37.6k stars, daily commits) but **PolyForm-NC license blocks reuse** + indexes source code not agent assets. Original q-_ pollution already zero. Blueprint #1's compile-manifest already detects drift between canonical and generated. Tech-debt lifecycle dormant. **Ship 3-verb slice now** (`skill-sizes`, `broken-refs`, `tech-debt new --from-audit`) using `remark-validate-links` + regex. **Defer full Kuzu KG** until all three gates fire: #1 manifest catches <90% of monorepo drift over 30 days AND tech-debt accumulates ≥10 graph-traversal items AND a 2nd consumer commits to `wp*graph*_`.                                                                          |
+| `blueprint-structured-store`         | Build (better-sqlite3 + custom MCP) | **Custom MCP (~300 LOC) over SQLite; cold-start rebuild; Datasette browse; cross-repo correlation with permission/org-aware model** | Deeper research flipped two prior conclusions: (1) Anthropic's `mcp-server-sqlite` is **archived** + raw rows violate summary-first contract + mutations would bypass markdown-canonical — keep custom MCP; (2) Claude Code Routines **clone the repo fresh** + canonical markdown is accessible — skip `state export/import`, document rebuild-from-markdown cold-start. Add `wp blueprint browse` Datasette wrapper (D5). Add cross-repo correlation **with 7 hard permission requirements** (D8): org tagging, default-deny cross-org, explicit allowlist (both-sides), visibility-aware redaction, workspace scoping, CI audit gate, 3rd-party fit. `claude-task-master` is **not** a serious replacement — wrong shape. |
 
 ## Five most consequential 60-day findings
 
@@ -80,6 +80,7 @@ Five parallel research agents canvassed the multi-IDE agent ecosystem on 2026-05
 **Revise. Reduce scope ~70%.**
 
 Keep:
+
 - Canonical `.agent/{skills,commands,agents,memory}/` layout (still ours to define).
 - **AGENTS.md section-keyed merger + `memory.merge.yaml` directives + provenance JSON** (genuinely novel; no upstream).
 - Lifecycle integration with blueprints + tech-debt.
@@ -87,11 +88,13 @@ Keep:
 - Migration story (`wp skills migrate-legacy` deletes legacy artifacts).
 
 Delete:
+
 - Custom per-runtime emitters (Claude, Codex, OpenCode, Cursor, Windsurf, Gemini adapter files). Replace with thin `rulesync` invocation.
 - Bespoke MDC, TOML, MD-passthrough writers — `rulesync` ships all of these.
 - The "no backwards compat" symlink → copy logic is mostly moot; rulesync owns the write semantics.
 
 New:
+
 - **Three plugin-manifest emitters** for Claude/Codex/Cursor (plus one Gemini extension manifest). Each emits a small JSON pointing at the shared `skills/` tree. The plugin marketplace path makes consumers install via `/plugin install` instead of `wp setup` running file writes.
 - **Filesystem fallback** path only for Windsurf (no plugin support) + OpenCode agents (markdown-only). Use `rulesync` here.
 - **`state export/import`** for cloud-Routines support (Finding #5).
@@ -103,16 +106,19 @@ Open: do we ship as `@webpresso/agent-kit` (one repo, multiple manifests) or `@w
 **Revise + shelve 60 days.**
 
 Keep (when un-shelved):
+
 - Kuzu + remark + chokidar core.
 - Schema for cross-asset edges (Skill → Rule → Blueprint → TechDebtItem).
 - Codex 8000-char budget enforcement.
 - Tech-debt auto-filing from KG findings.
 
 Delete:
+
 - DIY ref-resolver — use **`remark-validate-links`** instead.
 - DIY simhash from npm — **vendor ~80 lines** in-tree. Stale-and-unlicensed npm packages are a no-go.
 
 New:
+
 - **60-day watch on GitNexus.** Re-evaluate 2026-07-11: if GitNexus is alive + stable, fork/extend it for `.agent/` domain. If dormant, ship blueprint as-drafted but with simplified ref-resolver.
 
 ### Blueprint #3 — `blueprint-structured-store`
@@ -120,35 +126,39 @@ New:
 **Revise. Drop custom MCP. Add state-sync.**
 
 Keep:
+
 - Schema (blueprints, tasks, risks, edge_cases, tech_debt_items, junctions).
 - Markdown-canonical / SQL-derived contract.
 - AST-based blueprint parser (remark + gfm).
 - Replace regex-based `wp blueprint audit` with SQL-backed audits.
 
 Delete:
+
 - **Custom MCP tools** (`wp_blueprint_query`, `task_next`, `task_advance`, etc.). Use Anthropic's reference `mcp-server-sqlite` pointed at the projection file.
 - **`better-sqlite3` as the only client.** Still emit SQLite, but consumer wires the generic MCP server.
 
 New:
+
 - **`wp blueprint state export <path>` + `import <path>`** for Routines cloud-state-sync (Finding #5).
 - **`wp blueprint browse`** spawning `datasette` for a free read-only browser UI.
 - Pre-registered SQL templates ship as a `templates/*.sql` directory consumers can copy-paste into their queries.
 
 ## Risks of revision
 
-| Risk | Severity | Mitigation |
-|---|---|---|
-| Take `rulesync` as a hard dep → upstream breakage stalls our releases | HIGH | Pin to `^8.15`; CI smoke roundtrips known fixtures; small fork-cost if abandoned (MIT, single file) |
-| Plugin marketplace path requires consumer behavior change (`/plugin install` instead of `wp setup`) | MEDIUM | Document migration; keep `wp setup` as the wrapper that runs the right install command per IDE |
-| GitNexus shelf-time blocks blueprint #2's value-add (drift detection, tech-debt auto-filing) for 60 days | MEDIUM | Ship a minimal v0.12.0-alpha with `remark-validate-links` only (no graph); revisit graph after 60 days |
-| Replacing custom MCP with generic mcp-server-sqlite means agents need to know SQL templates instead of named tools | LOW | Document the templates in `docs/blueprint-db-cookbook.md`; agents discover via MCP resources |
-| Cloud Routines state-sync introduces a new failure mode (drift between cloud and local DB) | MEDIUM | Sync is one-shot, manual, explicit (export/import verbs). No background sync. |
+| Risk                                                                                                               | Severity | Mitigation                                                                                             |
+| ------------------------------------------------------------------------------------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------ |
+| Take `rulesync` as a hard dep → upstream breakage stalls our releases                                              | HIGH     | Pin to `^8.15`; CI smoke roundtrips known fixtures; small fork-cost if abandoned (MIT, single file)    |
+| Plugin marketplace path requires consumer behavior change (`/plugin install` instead of `wp setup`)                | MEDIUM   | Document migration; keep `wp setup` as the wrapper that runs the right install command per IDE         |
+| GitNexus shelf-time blocks blueprint #2's value-add (drift detection, tech-debt auto-filing) for 60 days           | MEDIUM   | Ship a minimal v0.12.0-alpha with `remark-validate-links` only (no graph); revisit graph after 60 days |
+| Replacing custom MCP with generic mcp-server-sqlite means agents need to know SQL templates instead of named tools | LOW      | Document the templates in `docs/blueprint-db-cookbook.md`; agents discover via MCP resources           |
+| Cloud Routines state-sync introduces a new failure mode (drift between cloud and local DB)                         | MEDIUM   | Sync is one-shot, manual, explicit (export/import verbs). No background sync.                          |
 
 ## Net effect on scope
 
 Original blueprint task counts: 25 + 15 + 14 = 54 tasks.
 
 Revised estimates:
+
 - #1 (rulesync wrap + plugin manifests + AGENTS.md merger + filesystem fallback): ~10 tasks (was 25; cut ~60%).
 - #2 (Kuzu + remark + remark-validate-links + chokidar + MCP server; shelved 60 days): ~9 tasks (was 15; cut ~40%).
 - #3 (SQLite emitter + AST parser + mcp-server-sqlite wiring + audits + state sync): ~10 tasks (was 14; cut ~30%).

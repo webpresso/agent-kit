@@ -3,10 +3,7 @@
   "additionalProperties": false,
   "definitions": {
     "NullableString": {
-      "type": [
-        "string",
-        "null"
-      ]
+      "type": ["string", "null"]
     }
   },
   "properties": {
@@ -27,13 +24,7 @@
       "type": "string"
     },
     "permission_mode": {
-      "enum": [
-        "default",
-        "acceptEdits",
-        "plan",
-        "dontAsk",
-        "bypassPermissions"
-      ],
+      "enum": ["default", "acceptEdits", "plan", "dontAsk", "bypassPermissions"],
       "type": "string"
     },
     "session_id": {

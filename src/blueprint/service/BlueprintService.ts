@@ -5,57 +5,60 @@
  * Scans resolved blueprint roots recursively for _overview.md files.
  */
 
-import type { BlueprintLifecycleIntent } from '#lifecycle/engine'
+import type { BlueprintLifecycleIntent } from "#lifecycle/engine";
 import type {
   BlueprintQueryFilters,
   BlueprintQueryResult,
   BlueprintRecord,
   BlueprintSortOptions,
-} from '#query/types'
-import type { TechDebtRecord } from '#tech-debt/index'
+} from "#query/types";
+import type { TechDebtRecord } from "#tech-debt/index";
 
-import matter from 'gray-matter'
-import * as fs from 'node:fs/promises'
-import * as path from 'node:path'
+import matter from "gray-matter";
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
 
-import { type Blueprint, parseBlueprint } from '#core/parser'
-import { applyBlueprintLifecycleToFile } from '#lifecycle/local'
-import { resolveBlueprintRoot } from '#utils/blueprint-root'
-import { emitTraceArtifact, generateBlueprintLifecycleTrace } from '#utils/decision-trace-artifacts'
-import { getBlueprintDocumentCandidates } from '#utils/document-paths.js'
-import { BlueprintNotFoundError } from '#utils/errors'
+import { type Blueprint, parseBlueprint } from "#core/parser";
+import { applyBlueprintLifecycleToFile } from "#lifecycle/local";
+import { resolveBlueprintRoot } from "#utils/blueprint-root";
+import {
+  emitTraceArtifact,
+  generateBlueprintLifecycleTrace,
+} from "#utils/decision-trace-artifacts";
+import { getBlueprintDocumentCandidates } from "#utils/document-paths.js";
+import { BlueprintNotFoundError } from "#utils/errors";
 
 import {
   computeBlueprintQuerySummary,
   matchesBlueprintFilters,
   sortBlueprintRecords,
   toBlueprintRecord,
-} from './blueprint-records.js'
+} from "./blueprint-records.js";
 import {
   linkBlueprintToTechDebt,
   unlinkBlueprintFromTechDebt,
-} from './blueprint-tech-debt-links.js'
-import { scanBlueprintDirectory } from './scanner.js'
-import { TechDebtService } from './TechDebtService.js'
-import { TrackedDocumentService } from './TrackedDocumentService.js'
+} from "./blueprint-tech-debt-links.js";
+import { scanBlueprintDirectory } from "./scanner.js";
+import { TechDebtService } from "./TechDebtService.js";
+import { TrackedDocumentService } from "./TrackedDocumentService.js";
 
 export interface BlueprintSummary {
-  name: string
-  title: string
-  status: string
-  complexity: string
-  taskCount: number
-  progress: number
-  type: 'blueprint' | 'parent-roadmap'
-  parentRoadmap?: string
-  malformed?: string
+  name: string;
+  title: string;
+  status: string;
+  complexity: string;
+  taskCount: number;
+  progress: number;
+  type: "blueprint" | "parent-roadmap";
+  parentRoadmap?: string;
+  malformed?: string;
 }
 
 export interface BlueprintQueryOptions {
-  filters?: BlueprintQueryFilters
-  sort?: BlueprintSortOptions
-  limit?: number
-  offset?: number
+  filters?: BlueprintQueryFilters;
+  sort?: BlueprintSortOptions;
+  limit?: number;
+  offset?: number;
 }
 
 export class BlueprintService extends TrackedDocumentService<
@@ -67,41 +70,43 @@ export class BlueprintService extends TrackedDocumentService<
 > {
   constructor(projectPath?: string) {
     // Resolve generic consumer layout first, with Webpresso's legacy layout as fallback.
-    const plansDir = resolveBlueprintRoot(projectPath)
-    super(plansDir, '_overview.md', projectPath)
+    const plansDir = resolveBlueprintRoot(projectPath);
+    super(plansDir, "_overview.md", projectPath);
   }
 
   async list(): Promise<BlueprintSummary[]> {
     const scannedPlans = scanBlueprintDirectory({
       baseDir: this.baseDir,
       includeSpecialFolders: true,
-    })
+    });
 
-    const plans: BlueprintSummary[] = []
+    const plans: BlueprintSummary[] = [];
     for (const scanned of scannedPlans) {
-      const summary = await this.tryParseBlueprintSummary(scanned)
+      const summary = await this.tryParseBlueprintSummary(scanned);
       if (summary) {
-        plans.push(summary)
+        plans.push(summary);
       }
     }
-    return plans
+    return plans;
   }
 
   private async tryParseBlueprintSummary(scanned: {
-    path: string
-    slug: string
+    path: string;
+    slug: string;
   }): Promise<BlueprintSummary | null> {
     try {
-      const content = await fs.readFile(scanned.path, 'utf-8')
-      return this.parseSummary(content, scanned.slug)
+      const content = await fs.readFile(scanned.path, "utf-8");
+      return this.parseSummary(content, scanned.slug);
     } catch (error) {
-      return this.handleParseSummaryError(error, scanned)
+      return this.handleParseSummaryError(error, scanned);
     }
   }
 
   protected parseSummary(content: string, slug: string): BlueprintSummary {
-    const plan = parseBlueprint(content, slug)
-    const doneCount = plan.tasks.filter((t) => t.status === 'done' || t.status === 'dropped').length
+    const plan = parseBlueprint(content, slug);
+    const doneCount = plan.tasks.filter(
+      (t) => t.status === "done" || t.status === "dropped",
+    ).length;
     return {
       name: plan.name,
       title: plan.title,
@@ -111,7 +116,7 @@ export class BlueprintService extends TrackedDocumentService<
       progress: plan.tasks.length > 0 ? Math.round((doneCount / plan.tasks.length) * 100) : 0,
       type: plan.type,
       ...(plan.parentRoadmap ? { parentRoadmap: plan.parentRoadmap } : {}),
-    }
+    };
   }
 
   protected buildMalformedSummary(
@@ -122,71 +127,71 @@ export class BlueprintService extends TrackedDocumentService<
     return {
       name: scanned.slug,
       title: scanned.slug,
-      status: (data.status as string) || 'unknown',
-      complexity: (data.complexity as string) || 'unknown',
+      status: (data.status as string) || "unknown",
+      complexity: (data.complexity as string) || "unknown",
       taskCount: 0,
       progress: 0,
-      type: data.type === 'parent-roadmap' ? 'parent-roadmap' : 'blueprint',
+      type: data.type === "parent-roadmap" ? "parent-roadmap" : "blueprint",
       malformed: errorMessage,
-    }
+    };
   }
 
   async get(slug: string): Promise<Blueprint> {
     // Try direct path first (supports both 'in-progress/foo' and 'foo')
-    const directCandidates = getBlueprintDocumentCandidates(this.baseDir, slug)
+    const directCandidates = getBlueprintDocumentCandidates(this.baseDir, slug);
     for (const candidate of directCandidates) {
       try {
-        await fs.access(candidate)
-        const content = await fs.readFile(candidate, 'utf-8')
-        return parseBlueprint(content, slug)
+        await fs.access(candidate);
+        const content = await fs.readFile(candidate, "utf-8");
+        return parseBlueprint(content, slug);
       } catch {
         // Keep trying the remaining canonical shapes before falling back to a scan.
       }
     }
 
-    const searchedPath = directCandidates[0] ?? path.join(this.baseDir, slug, '_overview.md')
+    const searchedPath = directCandidates[0] ?? path.join(this.baseDir, slug, "_overview.md");
     const scannedPlans = scanBlueprintDirectory({
       baseDir: this.baseDir,
       includeSpecialFolders: true,
-    })
+    });
 
-    const found = scannedPlans.find((p) => p.slug === slug || p.slug.endsWith(`/${slug}`))
+    const found = scannedPlans.find((p) => p.slug === slug || p.slug.endsWith(`/${slug}`));
     if (!found) {
       throw new BlueprintNotFoundError(
         slug,
         searchedPath,
         scannedPlans.map((p) => p.slug),
-      )
+      );
     }
 
-    const content = await fs.readFile(found.path, 'utf-8')
-    return parseBlueprint(content, found.slug)
+    const content = await fs.readFile(found.path, "utf-8");
+    return parseBlueprint(content, found.slug);
   }
 
   async query(options?: BlueprintQueryOptions): Promise<BlueprintQueryResult> {
-    const scannedPlans = scanBlueprintDirectory({ baseDir: this.baseDir })
-    const planRecords = await this.buildRecords(scannedPlans)
+    const scannedPlans = scanBlueprintDirectory({ baseDir: this.baseDir });
+    const planRecords = await this.buildRecords(scannedPlans);
 
-    const { records, totalFiltered } = this.processQueryPipeline(planRecords, options)
+    const { records, totalFiltered } = this.processQueryPipeline(planRecords, options);
 
     return {
       plans: records,
       summary: this.computeQuerySummary(planRecords, totalFiltered),
-    }
+    };
   }
 
   async getStalePlans(thresholdDays?: number): Promise<BlueprintRecord[]> {
     const result = await this.query({
       filters: { stale: true, staleDays: thresholdDays },
-    })
-    return result.plans
+    });
+    return result.plans;
   }
 
   async getByGroup(group: string): Promise<BlueprintRecord[]> {
     const result = await this.query({
       filters: { group },
-    })
-    return result.plans
+    });
+    return result.plans;
   }
 
   protected async toRecord(
@@ -194,31 +199,31 @@ export class BlueprintService extends TrackedDocumentService<
     slug: string,
     group: string | null,
   ): Promise<BlueprintRecord | null> {
-    return toBlueprintRecord(filePath, slug, group)
+    return toBlueprintRecord(filePath, slug, group);
   }
 
   protected matchesAllFilters(plan: BlueprintRecord, filters: BlueprintQueryFilters): boolean {
     return matchesBlueprintFilters(plan, filters, (value, filter) =>
       this.matchesFilter(value, filter),
-    )
+    );
   }
 
   protected applySorting(plans: BlueprintRecord[], sort: BlueprintSortOptions): BlueprintRecord[] {
-    return sortBlueprintRecords(plans, sort)
+    return sortBlueprintRecords(plans, sort);
   }
 
   // Compute query summary (different from list summary)
   private computeQuerySummary(
     allPlans: BlueprintRecord[],
     totalFiltered: number,
-  ): BlueprintQueryResult['summary'] {
+  ): BlueprintQueryResult["summary"] {
     return computeBlueprintQuerySummary(
       allPlans,
       totalFiltered,
       (records: BlueprintRecord[], selector: (record: BlueprintRecord) => string) =>
         this.countByField(records, selector),
       (plan) => this.isStale(plan),
-    )
+    );
   }
 
   /**
@@ -229,7 +234,7 @@ export class BlueprintService extends TrackedDocumentService<
    * @throws Error if blueprint doesn't exist
    */
   async linkToTechDebt(bpSlug: string, tdSlug: string): Promise<void> {
-    await linkBlueprintToTechDebt(this.baseDir, this.projectPath, bpSlug, tdSlug)
+    await linkBlueprintToTechDebt(this.baseDir, this.projectPath, bpSlug, tdSlug);
   }
 
   /**
@@ -239,7 +244,7 @@ export class BlueprintService extends TrackedDocumentService<
    * @param tdSlug - TechDebt slug
    */
   async unlinkFromTechDebt(bpSlug: string, tdSlug: string): Promise<void> {
-    await unlinkBlueprintFromTechDebt(this.baseDir, this.projectPath, bpSlug, tdSlug)
+    await unlinkBlueprintFromTechDebt(this.baseDir, this.projectPath, bpSlug, tdSlug);
   }
 
   /**
@@ -248,13 +253,13 @@ export class BlueprintService extends TrackedDocumentService<
    * @returns Array of TechDebtRecord objects
    */
   async getLinkedTechDebt(bpSlug: string): Promise<TechDebtRecord[]> {
-    const directCandidates = getBlueprintDocumentCandidates(this.baseDir, bpSlug)
-    let resolvedBlueprintPath: string | null = null
+    const directCandidates = getBlueprintDocumentCandidates(this.baseDir, bpSlug);
+    let resolvedBlueprintPath: string | null = null;
     for (const candidate of directCandidates) {
       try {
-        await fs.access(candidate)
-        resolvedBlueprintPath = candidate
-        break
+        await fs.access(candidate);
+        resolvedBlueprintPath = candidate;
+        break;
       } catch {
         // Keep trying the other canonical shape.
       }
@@ -262,44 +267,44 @@ export class BlueprintService extends TrackedDocumentService<
     const filePath =
       resolvedBlueprintPath ??
       directCandidates[0] ??
-      path.join(this.baseDir, bpSlug, '_overview.md')
-    const content = await fs.readFile(filePath, 'utf-8')
-    const parsed = matter(content)
-    const data = JSON.parse(JSON.stringify(parsed.data)) as Record<string, unknown>
-    const linkedTechDebtSlugs = (data.linked_tech_debt_slugs as string[]) ?? []
+      path.join(this.baseDir, bpSlug, "_overview.md");
+    const content = await fs.readFile(filePath, "utf-8");
+    const parsed = matter(content);
+    const data = JSON.parse(JSON.stringify(parsed.data)) as Record<string, unknown>;
+    const linkedTechDebtSlugs = (data.linked_tech_debt_slugs as string[]) ?? [];
 
     if (!linkedTechDebtSlugs.length) {
-      return []
+      return [];
     }
 
-    const techDebtService = new TechDebtService(this.projectPath)
-    const allTechDebt = await techDebtService.query()
-    return allTechDebt.items.filter((techDebt) => linkedTechDebtSlugs.includes(techDebt.slug))
+    const techDebtService = new TechDebtService(this.projectPath);
+    const allTechDebt = await techDebtService.query();
+    return allTechDebt.items.filter((techDebt) => linkedTechDebtSlugs.includes(techDebt.slug));
   }
 
   async moveBlueprint(slug: string, targetStatus: string): Promise<void> {
-    const projectRoot = this.projectPath ?? process.cwd()
+    const projectRoot = this.projectPath ?? process.cwd();
     const intent: BlueprintLifecycleIntent =
-      targetStatus === 'completed' ? { type: 'finalize' } : { type: 'start' }
-    const result = await applyBlueprintLifecycleToFile(projectRoot, slug, intent)
+      targetStatus === "completed" ? { type: "finalize" } : { type: "start" };
+    const result = await applyBlueprintLifecycleToFile(projectRoot, slug, intent);
 
-    const trace = generateBlueprintLifecycleTrace(slug, 'move', {
+    const trace = generateBlueprintLifecycleTrace(slug, "move", {
       from: slug,
       to: `${result.targetStatus}/${slug}`,
       moved: result.moved,
-    })
-    emitTraceArtifact(projectRoot, trace)
+    });
+    emitTraceArtifact(projectRoot, trace);
   }
 
   async updateBlueprintStatus(slug: string, intent: BlueprintLifecycleIntent): Promise<void> {
-    const projectRoot = this.projectPath ?? process.cwd()
-    const result = await applyBlueprintLifecycleToFile(projectRoot, slug, intent)
+    const projectRoot = this.projectPath ?? process.cwd();
+    const result = await applyBlueprintLifecycleToFile(projectRoot, slug, intent);
 
-    const trace = generateBlueprintLifecycleTrace(slug, 'status_change', {
+    const trace = generateBlueprintLifecycleTrace(slug, "status_change", {
       intent: intent.type,
       targetStatus: result.targetStatus,
       moved: result.moved,
-    })
-    emitTraceArtifact(projectRoot, trace)
+    });
+    emitTraceArtifact(projectRoot, trace);
   }
 }

@@ -4,12 +4,12 @@ title: "Fixed-suite scientific benchmark proof"
 owner: ozby
 status: completed
 historical_zero_task_waiver: true
-historical_zero_task_rationale: 'Historical completed record created before strict task-block requirements; preserved as an audited zero-task completion note.'
-completed_at: '2026-06-14'
+historical_zero_task_rationale: "Historical completed record created before strict task-block requirements; preserved as an audited zero-task completion note."
+completed_at: "2026-06-14"
 complexity: M
-created: '2026-06-14'
-last_updated: '2026-06-14'
-progress: '100% implementation complete; deterministic gates pass; targeted Contract-A mutation gate reached 100.00%'
+created: "2026-06-14"
+last_updated: "2026-06-14"
+progress: "100% implementation complete; deterministic gates pass; targeted Contract-A mutation gate reached 100.00%"
 depends_on:
   - 2026-06-13-context-engine-proof-slices
 cross_repo_depends_on: []
@@ -173,21 +173,21 @@ Stryker artifacts while leaving files on disk.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-14-fixed-suite-scientific-benchmark-proof.md |
+| ID  | Claim                                                          | Evidence                                                                       |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-14-fixed-suite-scientific-benchmark-proof.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

@@ -3,12 +3,12 @@
  */
 
 export interface CriteriaResult {
-  total: number
-  checked: number
-  allChecked: boolean
+  total: number;
+  checked: number;
+  allChecked: boolean;
 }
 
 export interface ValidationResult {
-  valid: boolean
-  error?: string
+  valid: boolean;
+  error?: string;
 }

@@ -1,38 +1,38 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from "vitest";
 
-import { runAuditDispatch } from '../cli/commands/audit-core.js'
-import { isMCPAuditKind } from '../mcp/tools/_shared/audit-kinds.js'
-import { auditHarnessSurfaces } from './harness-surfaces.js'
+import { runAuditDispatch } from "../cli/commands/audit-core.js";
+import { isMCPAuditKind } from "../mcp/tools/_shared/audit-kinds.js";
+import { auditHarnessSurfaces } from "./harness-surfaces.js";
 
-describe('wp audit harness-surfaces dispatch', () => {
-  it('exposes harness-surfaces through the shared MCP audit-kind list', () => {
-    expect(isMCPAuditKind('harness-surfaces')).toBe(true)
-  })
+describe("wp audit harness-surfaces dispatch", () => {
+  it("exposes harness-surfaces through the shared MCP audit-kind list", () => {
+    expect(isMCPAuditKind("harness-surfaces")).toBe(true);
+  });
 
-  it('routes through the repo audit registry contract', async () => {
+  it("routes through the repo audit registry contract", async () => {
     const outcome = await runAuditDispatch(
-      'harness-surfaces',
+      "harness-surfaces",
       [],
       {},
       {
         root: process.cwd(),
         runStryker: async () => 0,
         runRepoAudit: (name, root) => {
-          expect(name).toBe('harness-surfaces')
-          return auditHarnessSurfaces(root)
+          expect(name).toBe("harness-surfaces");
+          return auditHarnessSurfaces(root);
         },
         runBundleBudget: async () => 0,
-        runCommitMessageAudit: () => ({ ok: true, title: 'commit', checked: 1, violations: [] }),
+        runCommitMessageAudit: () => ({ ok: true, title: "commit", checked: 1, violations: [] }),
         buildBundleBudgetArgs: () => [],
-        knownRepoKinds: ['harness-surfaces'],
+        knownRepoKinds: ["harness-surfaces"],
       },
-    )
+    );
 
-    expect(outcome.kind).toBe('repo-result')
-    if (outcome.kind === 'repo-result') {
-      expect(outcome.name).toBe('harness-surfaces')
-      expect(outcome.result.ok).toBe(true)
-      expect(outcome.result.checked).toBe(8)
+    expect(outcome.kind).toBe("repo-result");
+    if (outcome.kind === "repo-result") {
+      expect(outcome.name).toBe("harness-surfaces");
+      expect(outcome.result.ok).toBe(true);
+      expect(outcome.result.checked).toBe(8);
     }
-  })
-})
+  });
+});

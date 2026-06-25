@@ -1,16 +1,16 @@
-import { QueryErrorResetBoundary, useQueryClient, type QueryKey } from '@tanstack/react-query'
-import { isRouteErrorResponse, useRouteError } from 'react-router'
+import { QueryErrorResetBoundary, useQueryClient, type QueryKey } from "@tanstack/react-query";
+import { isRouteErrorResponse, useRouteError } from "react-router";
 
 function getErrorMessage(error: unknown) {
   if (isRouteErrorResponse(error)) {
-    return `${error.status} ${error.statusText}`
+    return `${error.status} ${error.statusText}`;
   }
 
   if (error instanceof Error) {
-    return error.message
+    return error.message;
   }
 
-  return 'Something went wrong.'
+  return "Something went wrong.";
 }
 
 /**
@@ -18,8 +18,8 @@ function getErrorMessage(error: unknown) {
  * No react-error-boundary dependency required.
  */
 export function RouteQueryErrorBoundary({ queryKey }: { queryKey?: QueryKey }) {
-  const routeError = useRouteError()
-  const queryClient = useQueryClient()
+  const routeError = useRouteError();
+  const queryClient = useQueryClient();
 
   return (
     <QueryErrorResetBoundary>
@@ -31,8 +31,8 @@ export function RouteQueryErrorBoundary({ queryKey }: { queryKey?: QueryKey }) {
             type="button"
             className="mt-4 rounded-md border px-3 py-2"
             onClick={() => {
-              reset()
-              queryClient.resetQueries(queryKey ? { queryKey } : undefined)
+              reset();
+              queryClient.resetQueries(queryKey ? { queryKey } : undefined);
             }}
           >
             Try again
@@ -40,7 +40,7 @@ export function RouteQueryErrorBoundary({ queryKey }: { queryKey?: QueryKey }) {
         </section>
       )}
     </QueryErrorResetBoundary>
-  )
+  );
 }
 
 /**

@@ -3,10 +3,7 @@
   "additionalProperties": false,
   "definitions": {
     "NullableString": {
-      "type": [
-        "string",
-        "null"
-      ]
+      "type": ["string", "null"]
     }
   },
   "properties": {
@@ -33,10 +30,7 @@
       "$ref": "#/definitions/NullableString"
     },
     "trigger": {
-      "enum": [
-        "manual",
-        "auto"
-      ],
+      "enum": ["manual", "auto"],
       "type": "string"
     },
     "turn_id": {

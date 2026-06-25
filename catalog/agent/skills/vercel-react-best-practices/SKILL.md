@@ -6,15 +6,15 @@ status: active
 scope: repo
 applies_to: [agents]
 related: []
-created: '2026-05-07'
-last_reviewed: '2026-05-07'
+created: "2026-05-07"
+last_reviewed: "2026-05-07"
 name: vercel-react-best-practices
 description: React and Next.js performance optimization guidelines from Vercel Engineering. This skill should be used when writing, reviewing, or refactoring React/Next.js code to ensure optimal performance patterns. Triggers on tasks involving React components, Next.js pages, data fetching, bundle optimization, or performance improvements.
 license: MIT
-metadata: 
+metadata:
   author: vercel
-  version: '1.0.0'
-upstream: 
+  version: "1.0.0"
+upstream:
   source: https://github.com/vercel-labs/agent-skills/tree/main/skills/react-best-practices
   last_synced: "2026-05-28"
 ---

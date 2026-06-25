@@ -4,10 +4,10 @@ status: accepted
 severity: medium
 category: dependency
 review_cadence: monthly
-last_reviewed: '2026-05-11'
-created: '2026-05-11'
-linked_blueprints: ['agent-kit-v1-evidence-ledger']
-affected_modules: ['src/runners', 'src/cli/commands/init/scaffolders/opencode-plugin']
+last_reviewed: "2026-05-11"
+created: "2026-05-11"
+linked_blueprints: ["agent-kit-v1-evidence-ledger"]
+affected_modules: ["src/runners", "src/cli/commands/init/scaffolders/opencode-plugin"]
 ---
 
 # opencode Runner execution backend
@@ -22,7 +22,7 @@ Runner execution backend. Today the agent-kit-opencode integration is:
   cross-runtime dev-link breakage warnings. It does NOT execute
   blueprint tasks.
 - `src/symlinker/consumers.ts` excludes opencode from `DEFAULT_UNIFIED
-  _CONSUMERS` with a comment claiming "OpenCode: falls back to
+_CONSUMERS` with a comment claiming "OpenCode: falls back to
   `.claude/skills/` covered by the Claude Code plugin." That fall-back
   may or may not work in practice (see Watch points).
 
@@ -77,7 +77,7 @@ Resolve this item when **either** is true:
    API; tests mock at the opencode-plugin invocation boundary per the
    v1.0 testing convention.
 2. Add `'opencode'` to the `RunnerId` enum in `src/blueprint/types/
-   execution-backend.ts` and to the migration schema.
+execution-backend.ts` and to the migration schema.
 3. Add an `opencode` entry to `selectRunner()` env-detection logic.
 4. Add a Stryker exclusion if the integration test needs subprocess
    work, or keep mocked per the testing convention.
@@ -88,7 +88,7 @@ Resolve this item when **either** is true:
 
 - Blueprint task: Task 1.8 (opencode skill-sync target, NOT runner).
 - Audit note: `blueprints/planned/agent-kit-v1-evidence-ledger/notes/
-  opencode-audit.md` documents the current integration state.
+opencode-audit.md` documents the current integration state.
 - Outside-voice context: codex-plan-review 2026-05-11.
 - Linked tech-debt: `h-006-public-distribution-flip-npm-marketplace.md`
   — broad adoption depends on opencode users having a real backend.

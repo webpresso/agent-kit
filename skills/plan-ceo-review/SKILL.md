@@ -5,6 +5,7 @@ description: |
   customer value, sequencing, and whether the plan is the right bet.
 license: MIT
 ---
+
 # CEO plan review
 
 Review the plan as a founder accountable for product leverage and customer value.

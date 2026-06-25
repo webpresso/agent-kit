@@ -1,75 +1,75 @@
-import { existsSync, readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
-import { dirname, join, resolve } from 'node:path'
+import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname, join, resolve } from "node:path";
 
-const localRequire = createRequire(import.meta.url)
+const localRequire = createRequire(import.meta.url);
 
 function findNearestPackageRoot(startDirectory: string): string | undefined {
-  let directory = resolve(startDirectory)
+  let directory = resolve(startDirectory);
 
   while (true) {
-    if (existsSync(join(directory, 'package.json'))) {
-      return directory
+    if (existsSync(join(directory, "package.json"))) {
+      return directory;
     }
 
-    const parent = dirname(directory)
+    const parent = dirname(directory);
     if (parent === directory) {
-      return undefined
+      return undefined;
     }
 
-    directory = parent
+    directory = parent;
   }
 }
 
 function resolvePackageRootFromConfigArg(argv: string[]): string | undefined {
   for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index]
-    if (!arg) continue
+    const arg = argv[index];
+    if (!arg) continue;
 
     const configPath =
-      arg === '--config' || arg === '-c'
+      arg === "--config" || arg === "-c"
         ? argv[index + 1]
-        : arg.startsWith('--config=')
-          ? arg.slice('--config='.length)
-          : undefined
+        : arg.startsWith("--config=")
+          ? arg.slice("--config=".length)
+          : undefined;
 
-    if (!configPath) continue
+    if (!configPath) continue;
 
-    return findNearestPackageRoot(dirname(resolve(configPath)))
+    return findNearestPackageRoot(dirname(resolve(configPath)));
   }
 
-  return undefined
+  return undefined;
 }
 
 function resolveConsumerPackageRoot(): string | undefined {
-  const npmPackageJson = process.env.npm_package_json
+  const npmPackageJson = process.env.npm_package_json;
   if (npmPackageJson) {
-    const npmPackageRoot = findNearestPackageRoot(dirname(resolve(npmPackageJson)))
-    if (npmPackageRoot) return npmPackageRoot
+    const npmPackageRoot = findNearestPackageRoot(dirname(resolve(npmPackageJson)));
+    if (npmPackageRoot) return npmPackageRoot;
   }
 
-  const configPackageRoot = resolvePackageRootFromConfigArg(process.argv)
-  if (configPackageRoot) return configPackageRoot
+  const configPackageRoot = resolvePackageRootFromConfigArg(process.argv);
+  if (configPackageRoot) return configPackageRoot;
 
-  return findNearestPackageRoot(process.cwd())
+  return findNearestPackageRoot(process.cwd());
 }
 
-export const consumerPackageRoot = resolveConsumerPackageRoot()
+export const consumerPackageRoot = resolveConsumerPackageRoot();
 
 const consumerPackageJsonPath = consumerPackageRoot
-  ? join(consumerPackageRoot, 'package.json')
-  : undefined
+  ? join(consumerPackageRoot, "package.json")
+  : undefined;
 
 export const requireFromConsumer = consumerPackageJsonPath
   ? createRequire(consumerPackageJsonPath)
-  : localRequire
+  : localRequire;
 
 export function readConsumerPackageJson<T>(): T | undefined {
-  if (!consumerPackageJsonPath) return undefined
+  if (!consumerPackageJsonPath) return undefined;
 
   try {
-    return JSON.parse(readFileSync(consumerPackageJsonPath, 'utf8')) as T
+    return JSON.parse(readFileSync(consumerPackageJsonPath, "utf8")) as T;
   } catch {
-    return undefined
+    return undefined;
   }
 }

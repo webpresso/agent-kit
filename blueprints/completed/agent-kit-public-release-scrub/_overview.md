@@ -6,10 +6,10 @@ owner: agent-kit
 historical_verification_gap_waiver: true
 historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 complexity: M
-created: '2026-05-27'
-last_updated: '2026-05-27'
-completed_at: '2026-05-27'
-progress: '100% (6/6 tasks done, 0 blocked, reconciled after integrated worker execution on 2026-05-27)'
+created: "2026-05-27"
+last_updated: "2026-05-27"
+completed_at: "2026-05-27"
+progress: "100% (6/6 tasks done, 0 blocked, reconciled after integrated worker execution on 2026-05-27)"
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -71,22 +71,22 @@ Verified on 2026-05-27:
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-| --- | --- | --- |
-| Publication gate | Treat public visibility as blocked until this blueprint is complete | Prevents accidental public release with known scanner and disclosure findings. |
-| Package tarball boundary | Keep public npm tarball release separate from repository-publication readiness | The in-progress `webpresso` package consolidation has its own package-surface/staging gates and does not expose Git history. |
-| Secret fixtures | Use scanner-safe sentinel strings instead of realistic token prefixes | Tests should prove redaction behavior without tripping public secret scanners. |
-| History strategy | Prefer a clean public snapshot unless full-history scrub is explicitly verified | Avoids carrying deleted-file scanner hits into the first public release. |
-| Internal context | Keep only intentional, public-facing Webpresso references | Monorepo extraction details and local paths are not needed by public consumers. |
+| Decision                 | Choice                                                                          | Rationale                                                                                                                    |
+| ------------------------ | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Publication gate         | Treat public visibility as blocked until this blueprint is complete             | Prevents accidental public release with known scanner and disclosure findings.                                               |
+| Package tarball boundary | Keep public npm tarball release separate from repository-publication readiness  | The in-progress `webpresso` package consolidation has its own package-surface/staging gates and does not expose Git history. |
+| Secret fixtures          | Use scanner-safe sentinel strings instead of realistic token prefixes           | Tests should prove redaction behavior without tripping public secret scanners.                                               |
+| History strategy         | Prefer a clean public snapshot unless full-history scrub is explicitly verified | Avoids carrying deleted-file scanner hits into the first public release.                                                     |
+| Internal context         | Keep only intentional, public-facing Webpresso references                       | Monorepo extraction details and local paths are not needed by public consumers.                                              |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
-| --- | --- | --- | --- | --- |
-| **Wave 0** | 1.1, 1.2 | None | 2 agents | S |
-| **Wave 1** | 1.3, 1.4 | 1.1, 1.2 | 2 agents | S-M |
-| **Wave 2** | 1.5, 1.6 | 1.3, 1.4 | 1 agent | S |
-| **Critical path** | 1.1 → 1.3 → 1.5 → 1.6 | — | 3 waves | M |
+| Wave              | Tasks                 | Dependencies | Parallelizable | Effort (T-shirt) |
+| ----------------- | --------------------- | ------------ | -------------- | ---------------- |
+| **Wave 0**        | 1.1, 1.2              | None         | 2 agents       | S                |
+| **Wave 1**        | 1.3, 1.4              | 1.1, 1.2     | 2 agents       | S-M              |
+| **Wave 2**        | 1.5, 1.6              | 1.3, 1.4     | 1 agent        | S                |
+| **Critical path** | 1.1 → 1.3 → 1.5 → 1.6 | —            | 3 waves        | M                |
 
 #### Task 1.1: [security] Replace token-shaped fixtures with scanner-safe sentinels
 
@@ -274,55 +274,56 @@ do not depend on ad-hoc manual scanning.
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-| --- | --- | --- |
-| Focused tests | `wp_test({"files":["src/audit/package-surface.test.ts","src/mcp/tools/ci-act.test.ts"]})` | All pass |
-| Current tree scanner | `gitleaks dir <tracked-HEAD-archive> --redact` | Zero findings |
-| Public history scanner | `gitleaks detect --redact --source <public-history-source>` | Zero unresolved findings |
-| Package surface | `wp_audit({"kind":"package-surface"})` | Pass |
-| Catalog drift | `wp_audit({"kind":"catalog-drift"})` | Pass |
-| Hook surface | `wp_audit({"kind":"hook-surface"})` | Pass |
-| Blueprint lifecycle | `wp_audit({"kind":"blueprint-lifecycle"})` | Pass |
+| Gate                   | Command                                                                                   | Success Criteria         |
+| ---------------------- | ----------------------------------------------------------------------------------------- | ------------------------ |
+| Focused tests          | `wp_test({"files":["src/audit/package-surface.test.ts","src/mcp/tools/ci-act.test.ts"]})` | All pass                 |
+| Current tree scanner   | `gitleaks dir <tracked-HEAD-archive> --redact`                                            | Zero findings            |
+| Public history scanner | `gitleaks detect --redact --source <public-history-source>`                               | Zero unresolved findings |
+| Package surface        | `wp_audit({"kind":"package-surface"})`                                                    | Pass                     |
+| Catalog drift          | `wp_audit({"kind":"catalog-drift"})`                                                      | Pass                     |
+| Hook surface           | `wp_audit({"kind":"hook-surface"})`                                                       | Pass                     |
+| Blueprint lifecycle    | `wp_audit({"kind":"blueprint-lifecycle"})`                                                | Pass                     |
 
 ## Cross-Plan References
 
-| Blueprint | Relationship | Required alignment |
-| --- | --- | --- |
-| `planned/agent-kit-cli-bundle-cutover` | Local sibling dependency | Public command/package boundary decisions must align with this scrub before public release. |
-| `in-progress/consolidate-all-webpresso-agent-sub-packages-into-webpresso-itself-with-subpath-exports-consumers-go-from-6-8-pinned-devdeps-down-to-one-webpresso` | Local sibling release gate | The `webpresso` npm objective may proceed with tarball/package-surface evidence; repository-public visibility still waits for this scrub. |
-| `parked/mcp-first-secret-surface-hard-cut-roadmap` | Related secret-surface roadmap | Secret-surface naming remains separate from repository-publication scanning. |
-| `completed/secret-aware-worker-tail-mcp` | Related MCP/secret implementation lane | Test fixtures touched here must keep that lane's CI/tool behavior intact. |
+| Blueprint                                                                                                                                                        | Relationship                           | Required alignment                                                                                                                        |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `planned/agent-kit-cli-bundle-cutover`                                                                                                                           | Local sibling dependency               | Public command/package boundary decisions must align with this scrub before public release.                                               |
+| `in-progress/consolidate-all-webpresso-agent-sub-packages-into-webpresso-itself-with-subpath-exports-consumers-go-from-6-8-pinned-devdeps-down-to-one-webpresso` | Local sibling release gate             | The `webpresso` npm objective may proceed with tarball/package-surface evidence; repository-public visibility still waits for this scrub. |
+| `parked/mcp-first-secret-surface-hard-cut-roadmap`                                                                                                               | Related secret-surface roadmap         | Secret-surface naming remains separate from repository-publication scanning.                                                              |
+| `completed/secret-aware-worker-tail-mcp`                                                                                                                         | Related MCP/secret implementation lane | Test fixtures touched here must keep that lane's CI/tool behavior intact.                                                                 |
 
 ## Cross-Repo Parallel Map
 
-| Lane | Repo / blueprint | Can proceed in parallel? | Boundary |
-| --- | --- | --- | --- |
-| Repository public-readiness scrub | `webpresso/agent-kit: planned/agent-kit-public-release-scrub` | Yes, owns source/history disclosure cleanup. | Blocks only public source repository/history exposure. |
-| Public `webpresso` package consolidation | `webpresso/agent-kit: in-progress/consolidate-all-webpresso-agent-sub-packages-into-webpresso-itself-with-subpath-exports-consumers-go-from-6-8-pinned-devdeps-down-to-one-webpresso` | Yes, may finish tarball release gates independently. | Must not make source history public until this scrub completes. |
-| Agent command bundle cutover | `webpresso/agent-kit: planned/agent-kit-cli-bundle-cutover` | Partially; evidence/contract tasks can proceed, public-source claims wait. | Consumes this scrub for public repo safety and the CLI owner plans for command branding. |
-| Framework command/package boundary | `webpresso/framework: framework-cli-package-boundary` | Already completed on the framework side. | `@webpresso/webpresso` stays framework/runtime identity and does not absorb agent setup. |
-| Framework hook projector alignment | `webpresso/framework: wp-setup-hook-surface-projector` | Yes, implementation alignment can proceed. | User-facing setup converges toward `webpresso agent setup`; source-publication cleanup remains local to agent-kit. |
-| Unified public CLI cutover | `webpresso/monorepo: unified-cli-public-cutover` | Yes, if it treats agent-kit as a bundle/provider. | Public `webpresso` command brand belongs to the unified CLI host, not agent-kit. |
+| Lane                                     | Repo / blueprint                                                                                                                                                                      | Can proceed in parallel?                                                   | Boundary                                                                                                           |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Repository public-readiness scrub        | `webpresso/agent-kit: planned/agent-kit-public-release-scrub`                                                                                                                         | Yes, owns source/history disclosure cleanup.                               | Blocks only public source repository/history exposure.                                                             |
+| Public `webpresso` package consolidation | `webpresso/agent-kit: in-progress/consolidate-all-webpresso-agent-sub-packages-into-webpresso-itself-with-subpath-exports-consumers-go-from-6-8-pinned-devdeps-down-to-one-webpresso` | Yes, may finish tarball release gates independently.                       | Must not make source history public until this scrub completes.                                                    |
+| Agent command bundle cutover             | `webpresso/agent-kit: planned/agent-kit-cli-bundle-cutover`                                                                                                                           | Partially; evidence/contract tasks can proceed, public-source claims wait. | Consumes this scrub for public repo safety and the CLI owner plans for command branding.                           |
+| Framework command/package boundary       | `webpresso/framework: framework-cli-package-boundary`                                                                                                                                 | Already completed on the framework side.                                   | `@webpresso/webpresso` stays framework/runtime identity and does not absorb agent setup.                           |
+| Framework hook projector alignment       | `webpresso/framework: wp-setup-hook-surface-projector`                                                                                                                                | Yes, implementation alignment can proceed.                                 | User-facing setup converges toward `webpresso agent setup`; source-publication cleanup remains local to agent-kit. |
+| Unified public CLI cutover               | `webpresso/monorepo: unified-cli-public-cutover`                                                                                                                                      | Yes, if it treats agent-kit as a bundle/provider.                          | Public `webpresso` command brand belongs to the unified CLI host, not agent-kit.                                   |
 
 This map keeps the `webpresso` npm objective unblocked while preventing a
 package release from being confused with a public Git-history release.
 
 ## Risks and edge cases
 
-| Risk | Severity | Mitigation |
-| --- | --- | --- |
-| Scanner-safe fixtures weaken redaction tests. | HIGH | Use explicit sentinel strings and assertions that still prove omission/redaction semantics. |
-| History rewrite disrupts existing branches or tags. | HIGH | Prefer a clean public snapshot unless maintainers explicitly approve a coordinated rewrite. |
-| Sanitizing blueprints removes useful planning context. | MEDIUM | Replace sensitive details with neutral public equivalents instead of deleting whole decisions. |
-| Public package names change during CLI cutover. | MEDIUM | Keep the CLI cutover blueprint linked and re-run package-surface and hook-surface audits. |
+| Risk                                                   | Severity | Mitigation                                                                                     |
+| ------------------------------------------------------ | -------- | ---------------------------------------------------------------------------------------------- |
+| Scanner-safe fixtures weaken redaction tests.          | HIGH     | Use explicit sentinel strings and assertions that still prove omission/redaction semantics.    |
+| History rewrite disrupts existing branches or tags.    | HIGH     | Prefer a clean public snapshot unless maintainers explicitly approve a coordinated rewrite.    |
+| Sanitizing blueprints removes useful planning context. | MEDIUM   | Replace sensitive details with neutral public equivalents instead of deleting whole decisions. |
+| Public package names change during CLI cutover.        | MEDIUM   | Keep the CLI cutover blueprint linked and re-run package-surface and hook-surface audits.      |
 
 ## Alternatives Considered
 
-| Alternative | Why not |
-| --- | --- |
-| Make the repository public immediately and rely on scanner false-positive triage. | Public hosts may still flag the repo, and the known monorepo/local-path disclosure remains unresolved. |
-| Delete all blueprints before publishing. | Blueprints are the durable planning surface; targeted sanitization preserves useful public history. |
-| Treat GitHub Packages references as secret. | Registry and environment-variable placeholders are not secrets; the task is to document intentional visibility. |
+| Alternative                                                                       | Why not                                                                                                         |
+| --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Make the repository public immediately and rely on scanner false-positive triage. | Public hosts may still flag the repo, and the known monorepo/local-path disclosure remains unresolved.          |
+| Delete all blueprints before publishing.                                          | Blueprints are the durable planning surface; targeted sanitization preserves useful public history.             |
+| Treat GitHub Packages references as secret.                                       | Registry and environment-variable placeholders are not secrets; the task is to document intentional visibility. |
+
 ## Historical verification note
 
 This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
@@ -339,21 +340,21 @@ This blueprint contains done tasks recorded before the current per-task `**Verif
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/agent-kit-public-release-scrub/_overview.md |
+| ID  | Claim                                                          | Evidence                                                               |
+| --- | -------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/agent-kit-public-release-scrub/\_overview.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

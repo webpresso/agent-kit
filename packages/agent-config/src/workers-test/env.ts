@@ -1,6 +1,6 @@
-import type { DurableObjectNamespace, Hyperdrive } from './cloudflare-types.js'
+import type { DurableObjectNamespace, Hyperdrive } from "./cloudflare-types.js";
 
-import { vi } from 'vitest'
+import { vi } from "vitest";
 
 // ============================================================================
 // Type Definitions
@@ -34,9 +34,9 @@ import { vi } from 'vitest'
  * }
  */
 export interface BaseWorkerEnv {
-  ENVIRONMENT: string
-  DATABASE_URL?: string
-  HYPERDRIVE?: Hyperdrive
+  ENVIRONMENT: string;
+  DATABASE_URL?: string;
+  HYPERDRIVE?: Hyperdrive;
 }
 
 // ============================================================================
@@ -49,7 +49,7 @@ export interface BaseWorkerEnv {
 export function createMockDurableObjectNamespace(): DurableObjectNamespace {
   return {
     newUniqueId: vi.fn<(...args: unknown[]) => unknown>(() => ({
-      toString: () => 'test-do-id',
+      toString: () => "test-do-id",
       equals: () => false,
       name: undefined,
     })),
@@ -73,7 +73,7 @@ export function createMockDurableObjectNamespace(): DurableObjectNamespace {
         async () => new Response(JSON.stringify({ data: {} })),
       ),
     })),
-  } as unknown as DurableObjectNamespace
+  } as unknown as DurableObjectNamespace;
 }
 
 /**
@@ -84,15 +84,15 @@ export function createMockDurableObjectNamespace(): DurableObjectNamespace {
  */
 export function createMockHyperdrive(overrides?: Partial<Hyperdrive>): Hyperdrive {
   return {
-    connectionString: 'postgresql://localhost/test',
+    connectionString: "postgresql://localhost/test",
     connect: vi.fn<(...args: unknown[]) => unknown>(() => ({}) as unknown),
-    host: 'localhost',
+    host: "localhost",
     port: 5432,
-    user: 'test',
-    password: 'test',
-    database: 'test',
+    user: "test",
+    password: "test",
+    database: "test",
     ...overrides,
-  } as unknown as Hyperdrive
+  } as unknown as Hyperdrive;
 }
 
 /**
@@ -111,13 +111,13 @@ export function createMockEnv<T extends BaseWorkerEnv>(
   overrides: Partial<BaseWorkerEnv & T> = {},
 ): BaseWorkerEnv & T {
   const defaultEnv: BaseWorkerEnv = {
-    ENVIRONMENT: 'test',
-    DATABASE_URL: 'postgresql://localhost/test',
+    ENVIRONMENT: "test",
+    DATABASE_URL: "postgresql://localhost/test",
     HYPERDRIVE: createMockHyperdrive(),
-  }
+  };
 
   return {
     ...defaultEnv,
     ...overrides,
-  } as BaseWorkerEnv & T
+  } as BaseWorkerEnv & T;
 }

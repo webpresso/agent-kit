@@ -1,6 +1,6 @@
 ---
 type: system
-last_updated: '2026-05-13'
+last_updated: "2026-05-13"
 ---
 
 # Blueprint DB Cookbook
@@ -71,7 +71,7 @@ wp blueprint db query --list
 
 ## 2. Worked example: `next-ready-task`
 
-*"What should an agent work on next?"*
+_"What should an agent work on next?"_
 
 This template returns `todo` tasks in `in-progress` blueprints whose declared
 task-dependencies are all `done`. Tasks are ordered by blueprint complexity
@@ -98,7 +98,7 @@ of grepping markdown files.
 
 ## 3. Worked example: `tech-debt-due-soon`
 
-*"Which tech-debt items need review in the next two weeks?"*
+_"Which tech-debt items need review in the next two weeks?"_
 
 ```
 wp blueprint db query tech-debt-due-soon
@@ -142,6 +142,7 @@ Typical output columns: `slug`, `status`, `severity`, `category`,
 ```
 
 Rules:
+
 - SQL must be valid **SQLite** — use `CASE` not `IF`; no `RETURNING` without a
   schema-version check.
 - Every user-supplied value must be a named binding (`:param`). String
@@ -158,7 +159,7 @@ Rules:
 
 ## 5. Cross-repo correlation query example
 
-*"Which of our blueprints depend on work in other organisations?"*
+_"Which of our blueprints depend on work in other organisations?"_
 
 ```
 wp blueprint db query cross-org-correlations
@@ -181,17 +182,17 @@ wp blueprint db query cross-repo-blocked-on --param org_filter=acme-corp
 
 ## Available templates
 
-| ID | Description |
-|----|-------------|
-| `next-ready-task` | Todo tasks with all dependencies satisfied, ordered by blueprint complexity |
-| `blocked-blueprints` | In-progress blueprints where every remaining task is blocked |
-| `tech-debt-due-soon` | Unresolved tech-debt due within N days (default 14) |
-| `blueprint-risk-profile` | HIGH/CRITICAL risks in planned or in-progress blueprints |
-| `cross-repo-blocked-on` | Unresolved cross-repo dependencies, optionally filtered by org |
-| `cross-org-correlations` | Cross-repo deps that span organisation boundaries |
-| `completed-this-month` | Blueprints completed in the current calendar month |
-| `overdue-tech-debt` | Tech-debt items past their review date, by severity |
-| `in-progress-blueprints` | All in-progress blueprints with per-status task counts |
+| ID                       | Description                                                                 |
+| ------------------------ | --------------------------------------------------------------------------- |
+| `next-ready-task`        | Todo tasks with all dependencies satisfied, ordered by blueprint complexity |
+| `blocked-blueprints`     | In-progress blueprints where every remaining task is blocked                |
+| `tech-debt-due-soon`     | Unresolved tech-debt due within N days (default 14)                         |
+| `blueprint-risk-profile` | HIGH/CRITICAL risks in planned or in-progress blueprints                    |
+| `cross-repo-blocked-on`  | Unresolved cross-repo dependencies, optionally filtered by org              |
+| `cross-org-correlations` | Cross-repo deps that span organisation boundaries                           |
+| `completed-this-month`   | Blueprints completed in the current calendar month                          |
+| `overdue-tech-debt`      | Tech-debt items past their review date, by severity                         |
+| `in-progress-blueprints` | All in-progress blueprints with per-status task counts                      |
 
 Source of truth for all templates: `src/blueprint/db/templates.ts`.
 Template runner implementation: `src/blueprint/db/template-runner.ts`.

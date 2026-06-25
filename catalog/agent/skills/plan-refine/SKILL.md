@@ -6,8 +6,8 @@ status: active
 scope: repo
 applies_to: [agents]
 related: []
-created: '2026-05-07'
-last_reviewed: '2026-05-07'
+created: "2026-05-07"
+last_reviewed: "2026-05-07"
 name: plan-refine
 description: Methodology for refining, fact-checking, and hardening implementation blueprints. Enforces Blueprint format for maximum parallel execution via /pll, verifies technology claims, aligns cross-plan dependencies, and hardens architecture against edge cases.
 ---
@@ -476,7 +476,7 @@ If metrics miss target, refine task granularity or dependency design before exec
 
 #### Optimization Techniques
 
-1. **Break false dependencies.** If Task 2.1 "depends on" Task 1.2 but only needs the *interface* (not the implementation), extract the interface into a Tier 0 task.
+1. **Break false dependencies.** If Task 2.1 "depends on" Task 1.2 but only needs the _interface_ (not the implementation), extract the interface into a Tier 0 task.
 
 2. **Parallelize within phases.** If Phase 2 has 3 tasks that all depend on Phase 1 but not on each other, they should all be in the same wave.
 

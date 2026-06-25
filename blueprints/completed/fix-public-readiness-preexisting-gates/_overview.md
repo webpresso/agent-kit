@@ -4,9 +4,9 @@ title: "Fix pre-existing public-readiness gates"
 owner: agent-kit
 status: completed
 complexity: S
-created: '2026-06-23'
-last_updated: '2026-06-23'
-progress: '100% (completed 2026-06-23; public-readiness regressions fixed and re-verified)'
+created: "2026-06-23"
+last_updated: "2026-06-23"
+progress: "100% (completed 2026-06-23; public-readiness regressions fixed and re-verified)"
 depends_on: []
 tags:
   - agent-kit
@@ -14,7 +14,7 @@ tags:
   - docs
   - setup
   - smoke
-completed_at: '2026-06-23'
+completed_at: "2026-06-23"
 ---
 
 # Fix pre-existing public-readiness gates
@@ -66,23 +66,23 @@ Clear the pre-existing `public:readiness` failures that were unrelated to the ne
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | Public readiness is owned by the repo-local release gate and its supporting scripts. | repo:scripts/public-readiness.ts |
-| C2 | The packed consumer smoke now matches the current fresh-repo setup contract. | repo:scripts/public-consumer-smoke.ts |
+| ID  | Claim                                                                                | Evidence                              |
+| --- | ------------------------------------------------------------------------------------ | ------------------------------------- |
+| C1  | Public readiness is owned by the repo-local release gate and its supporting scripts. | repo:scripts/public-readiness.ts      |
+| C2  | The packed consumer smoke now matches the current fresh-repo setup contract.         | repo:scripts/public-consumer-smoke.ts |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | How to handle the context-management parity matrix in public readiness. | Move it to `docs/research/` as research-only material. | Keep it in public docs and weaken benchmark claim gating. | The gate should stay strict; the document was research, not product marketing. |
-| D2 | How to resolve the AGENTS prompt-budget overrun. | Trim template boilerplate. | Raise the 8 KB cap. | The cap is intentional and should remain enforced. |
+| ID  | Decision                                                                | Chosen option                                          | Rejected alternatives                                     | Rationale                                                                      |
+| --- | ----------------------------------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| D1  | How to handle the context-management parity matrix in public readiness. | Move it to `docs/research/` as research-only material. | Keep it in public docs and weaken benchmark claim gating. | The gate should stay strict; the document was research, not product marketing. |
+| D2  | How to resolve the AGENTS prompt-budget overrun.                        | Trim template boilerplate.                             | Raise the 8 KB cap.                                       | The cap is intentional and should remain enforced.                             |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-23T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-23T00:00:00.000Z |
 
 ### Residual Unknowns
 

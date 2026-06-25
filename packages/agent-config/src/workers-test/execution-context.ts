@@ -1,6 +1,6 @@
-import type { ExecutionContext } from './cloudflare-types.js'
+import type { ExecutionContext } from "./cloudflare-types.js";
 
-import { vi } from 'vitest'
+import { vi } from "vitest";
 
 // ============================================================================
 // Type Definitions
@@ -10,9 +10,9 @@ import { vi } from 'vitest'
  * ExecutionContext mock for worker tests
  */
 export type MockExecutionContext = ExecutionContext<unknown> & {
-  waitUntil: ReturnType<typeof vi.fn>
-  passThroughOnException: ReturnType<typeof vi.fn>
-}
+  waitUntil: ReturnType<typeof vi.fn>;
+  passThroughOnException: ReturnType<typeof vi.fn>;
+};
 
 // ============================================================================
 // Mock Factories
@@ -35,5 +35,5 @@ export function createMockExecutionContext(): MockExecutionContext {
     ) => void,
     passThroughOnException: vi.fn<(...args: unknown[]) => unknown>() as unknown as () => void,
     props: {},
-  } as MockExecutionContext
+  } as MockExecutionContext;
 }

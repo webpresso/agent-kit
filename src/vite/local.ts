@@ -2,46 +2,46 @@ import type {
   AnalyzeBundleBudgetOptions,
   BundleBudgetAsset,
   BundleBudgetLimits,
-} from './bundle-budget.js'
+} from "./bundle-budget.js";
 
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
-import path from 'node:path'
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import path from "node:path";
 
-import { analyzeBundleBudget, formatBundleBudgetReport } from './bundle-budget.js'
+import { analyzeBundleBudget, formatBundleBudgetReport } from "./bundle-budget.js";
 
 export interface AnalyzeViteDistBundleBudgetOptions extends BundleBudgetLimits {
-  distDir: string
-  htmlEntry?: string
-  ignore?: readonly (RegExp | string)[]
+  distDir: string;
+  htmlEntry?: string;
+  ignore?: readonly (RegExp | string)[];
 }
 
 export interface BundleBudgetCliOptions extends BundleBudgetLimits {
-  distDir: string
-  htmlEntry: string
-  ignore: readonly string[]
+  distDir: string;
+  htmlEntry: string;
+  ignore: readonly string[];
 }
 
 interface BundleBudgetTargetStatus {
-  readonly distDir: string
-  readonly htmlPath: string
-  readonly hasDistDir: boolean
-  readonly hasHtmlEntry: boolean
+  readonly distDir: string;
+  readonly htmlPath: string;
+  readonly hasDistDir: boolean;
+  readonly hasHtmlEntry: boolean;
 }
 
 export function analyzeViteDistBundleBudget(options: AnalyzeViteDistBundleBudgetOptions) {
-  const distDir = path.resolve(options.distDir)
-  const htmlEntry = options.htmlEntry ?? 'index.html'
-  const htmlPath = path.join(distDir, htmlEntry)
+  const distDir = path.resolve(options.distDir);
+  const htmlEntry = options.htmlEntry ?? "index.html";
+  const htmlPath = path.join(distDir, htmlEntry);
 
   if (!existsSync(distDir)) {
-    throw new Error(`Dist directory does not exist: ${distDir}`)
+    throw new Error(`Dist directory does not exist: ${distDir}`);
   }
   if (!existsSync(htmlPath)) {
-    throw new Error(`HTML entry does not exist: ${htmlPath}`)
+    throw new Error(`HTML entry does not exist: ${htmlPath}`);
   }
 
-  const assets = readDistAssets(distDir)
-  const html = readFileSync(htmlPath, 'utf-8')
+  const assets = readDistAssets(distDir);
+  const html = readFileSync(htmlPath, "utf-8");
   const analysisOptions: AnalyzeBundleBudgetOptions = {
     assets,
     html,
@@ -49,154 +49,154 @@ export function analyzeViteDistBundleBudget(options: AnalyzeViteDistBundleBudget
     maxHtmlEagerJsAssetBytes: options.maxHtmlEagerJsAssetBytes,
     maxHtmlEagerJsTotalBytes: options.maxHtmlEagerJsTotalBytes,
     maxJsAssetBytes: options.maxJsAssetBytes,
-  }
-  return analyzeBundleBudget(analysisOptions)
+  };
+  return analyzeBundleBudget(analysisOptions);
 }
 
 export function parseBundleBudgetCliArgs(argv: readonly string[]): BundleBudgetCliOptions {
   const parsed: BundleBudgetCliOptions = {
-    distDir: 'dist',
-    htmlEntry: 'index.html',
+    distDir: "dist",
+    htmlEntry: "index.html",
     ignore: [],
-  }
+  };
 
   for (let index = 0; index < argv.length; index++) {
-    const arg = argv[index]
-    if (arg === undefined) continue
-    const next = argv[index + 1]
+    const arg = argv[index];
+    if (arg === undefined) continue;
+    const next = argv[index + 1];
 
     switch (arg) {
-      case '--dist':
-      case '-d': {
-        parsed.distDir = requireValue(arg, next)
-        index++
-        break
+      case "--dist":
+      case "-d": {
+        parsed.distDir = requireValue(arg, next);
+        index++;
+        break;
       }
-      case '--html-entry': {
-        parsed.htmlEntry = requireValue(arg, next)
-        index++
-        break
+      case "--html-entry": {
+        parsed.htmlEntry = requireValue(arg, next);
+        index++;
+        break;
       }
-      case '--max-js-asset-bytes': {
-        parsed.maxJsAssetBytes = parseByteLimit(arg, next)
-        index++
-        break
+      case "--max-js-asset-bytes": {
+        parsed.maxJsAssetBytes = parseByteLimit(arg, next);
+        index++;
+        break;
       }
-      case '--max-html-eager-js-asset-bytes': {
-        parsed.maxHtmlEagerJsAssetBytes = parseByteLimit(arg, next)
-        index++
-        break
+      case "--max-html-eager-js-asset-bytes": {
+        parsed.maxHtmlEagerJsAssetBytes = parseByteLimit(arg, next);
+        index++;
+        break;
       }
-      case '--max-html-eager-js-total-bytes': {
-        parsed.maxHtmlEagerJsTotalBytes = parseByteLimit(arg, next)
-        index++
-        break
+      case "--max-html-eager-js-total-bytes": {
+        parsed.maxHtmlEagerJsTotalBytes = parseByteLimit(arg, next);
+        index++;
+        break;
       }
-      case '--ignore': {
-        parsed.ignore = [...parsed.ignore, requireValue(arg, next)]
-        index++
-        break
+      case "--ignore": {
+        parsed.ignore = [...parsed.ignore, requireValue(arg, next)];
+        index++;
+        break;
       }
-      case '--help':
-      case '-h': {
-        throw new Error(bundleBudgetCliHelp())
+      case "--help":
+      case "-h": {
+        throw new Error(bundleBudgetCliHelp());
       }
       default: {
-        if (arg.startsWith('-')) throw new Error(`Unknown bundle-budget option: ${arg}`)
-        parsed.distDir = arg
+        if (arg.startsWith("-")) throw new Error(`Unknown bundle-budget option: ${arg}`);
+        parsed.distDir = arg;
       }
     }
   }
 
-  return parsed
+  return parsed;
 }
 
 export async function runBundleBudgetCli(
   argv: readonly string[] = process.argv.slice(2),
 ): Promise<number> {
   try {
-    const options = parseBundleBudgetCliArgs(argv)
-    const target = inspectBundleBudgetTarget(options)
+    const options = parseBundleBudgetCliArgs(argv);
+    const target = inspectBundleBudgetTarget(options);
     if (!hasExplicitBundleBudgetDistTarget(argv) && !target.hasHtmlEntry) {
       console.log(
-        'bundle-budget skipped: no default dist/index.html found. Pass --dist <dir> to audit a built Vite app.',
-      )
-      return 0
+        "bundle-budget skipped: no default dist/index.html found. Pass --dist <dir> to audit a built Vite app.",
+      );
+      return 0;
     }
-    const result = analyzeViteDistBundleBudget(options)
-    console.log(formatBundleBudgetReport(result))
-    return result.ok ? 0 : 1
+    const result = analyzeViteDistBundleBudget(options);
+    console.log(formatBundleBudgetReport(result));
+    return result.ok ? 0 : 1;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    console.error(message)
-    return message === bundleBudgetCliHelp() ? 0 : 1
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(message);
+    return message === bundleBudgetCliHelp() ? 0 : 1;
   }
 }
 
 export function bundleBudgetCliHelp(): string {
   return [
-    'Usage: wp audit bundle-budget [dist] [options]',
-    '',
-    'Options:',
-    '  -d, --dist <dir>                                  Built Vite dist directory (default: dist)',
-    '  --html-entry <file>                               HTML entry relative to dist (default: index.html)',
-    '  --max-js-asset-bytes <bytes>                      Max size for any generated JS asset',
-    '  --max-html-eager-js-asset-bytes <bytes>           Max size for any JS asset referenced by HTML',
-    '  --max-html-eager-js-total-bytes <bytes>           Max total size for JS assets referenced by HTML',
-    '  --ignore <substring>                              Ignore matching asset path; repeatable',
-  ].join('\n')
+    "Usage: wp audit bundle-budget [dist] [options]",
+    "",
+    "Options:",
+    "  -d, --dist <dir>                                  Built Vite dist directory (default: dist)",
+    "  --html-entry <file>                               HTML entry relative to dist (default: index.html)",
+    "  --max-js-asset-bytes <bytes>                      Max size for any generated JS asset",
+    "  --max-html-eager-js-asset-bytes <bytes>           Max size for any JS asset referenced by HTML",
+    "  --max-html-eager-js-total-bytes <bytes>           Max total size for JS assets referenced by HTML",
+    "  --ignore <substring>                              Ignore matching asset path; repeatable",
+  ].join("\n");
 }
 
 function inspectBundleBudgetTarget(options: BundleBudgetCliOptions): BundleBudgetTargetStatus {
-  const distDir = path.resolve(options.distDir)
-  const htmlPath = path.join(distDir, options.htmlEntry)
+  const distDir = path.resolve(options.distDir);
+  const htmlPath = path.join(distDir, options.htmlEntry);
   return {
     distDir,
     htmlPath,
     hasDistDir: existsSync(distDir),
     hasHtmlEntry: existsSync(htmlPath),
-  }
+  };
 }
 
 function hasExplicitBundleBudgetDistTarget(argv: readonly string[]): boolean {
   for (let index = 0; index < argv.length; index++) {
-    const arg = argv[index]
-    if (arg === '--dist' || arg === '-d') return true
-    if (arg && !arg.startsWith('-')) return true
+    const arg = argv[index];
+    if (arg === "--dist" || arg === "-d") return true;
+    if (arg && !arg.startsWith("-")) return true;
   }
-  return false
+  return false;
 }
 
 function readDistAssets(distDir: string): BundleBudgetAsset[] {
-  const assets: BundleBudgetAsset[] = []
+  const assets: BundleBudgetAsset[] = [];
 
   function visit(directory: string): void {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      const absolutePath = path.join(directory, entry.name)
+      const absolutePath = path.join(directory, entry.name);
       if (entry.isDirectory()) {
-        visit(absolutePath)
-        continue
+        visit(absolutePath);
+        continue;
       }
-      if (!entry.isFile()) continue
-      const relativePath = path.relative(distDir, absolutePath).split(path.sep).join('/')
-      assets.push({ path: relativePath, bytes: statSync(absolutePath).size })
+      if (!entry.isFile()) continue;
+      const relativePath = path.relative(distDir, absolutePath).split(path.sep).join("/");
+      assets.push({ path: relativePath, bytes: statSync(absolutePath).size });
     }
   }
 
-  visit(distDir)
-  return assets
+  visit(distDir);
+  return assets;
 }
 
 function requireValue(option: string, value: string | undefined): string {
-  if (!value || value.startsWith('-')) throw new Error(`Missing value for ${option}`)
-  return value
+  if (!value || value.startsWith("-")) throw new Error(`Missing value for ${option}`);
+  return value;
 }
 
 function parseByteLimit(option: string, value: string | undefined): number {
-  const rawValue = requireValue(option, value)
-  const bytes = Number(rawValue)
+  const rawValue = requireValue(option, value);
+  const bytes = Number(rawValue);
   if (!Number.isInteger(bytes) || bytes < 0) {
-    throw new Error(`${option} must be a non-negative integer number of bytes, got ${rawValue}`)
+    throw new Error(`${option} must be a non-negative integer number of bytes, got ${rawValue}`);
   }
-  return bytes
+  return bytes;
 }

@@ -8,15 +8,15 @@ applies_to: [agents]
 related:
   - package-conventions
   - repo-restrictions
-created: '2026-05-26'
-last_reviewed: '2026-05-31'
+created: "2026-05-26"
+last_reviewed: "2026-05-31"
 paths:
-  - 'package.json'
-  - '.npmignore'
-  - '.npmrc'
-  - 'README.md'
-  - 'docs/**'
-  - 'catalog/**'
+  - "package.json"
+  - ".npmignore"
+  - ".npmrc"
+  - "README.md"
+  - "docs/**"
+  - "catalog/**"
 ---
 
 # Public Package Safety

@@ -35,63 +35,63 @@
  * Override. Set `WP_MCP_SENTINEL_KEY` to pin the writer's filename
  * suffix (useful for tests that need a deterministic file path).
  */
-import { readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { readFileSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-const SENTINEL_PREFIX = 'wp-mcp-ready-'
+const SENTINEL_PREFIX = "wp-mcp-ready-";
 
 function writerKey(): string {
-  const override = process.env.WP_MCP_SENTINEL_KEY
-  if (override && override.trim().length > 0) return override.trim()
-  return String(process.pid)
+  const override = process.env.WP_MCP_SENTINEL_KEY;
+  if (override && override.trim().length > 0) return override.trim();
+  return String(process.pid);
 }
 
 export function sentinelPath(): string {
-  return join(tmpdir(), `${SENTINEL_PREFIX}${writerKey()}`)
+  return join(tmpdir(), `${SENTINEL_PREFIX}${writerKey()}`);
 }
 
 function readPid(filePath: string): number | null {
   try {
-    const pid = parseInt(readFileSync(filePath, 'utf-8'), 10)
-    return Number.isFinite(pid) && pid > 0 ? pid : null
+    const pid = parseInt(readFileSync(filePath, "utf-8"), 10);
+    return Number.isFinite(pid) && pid > 0 ? pid : null;
   } catch {
-    return null
+    return null;
   }
 }
 
 function isPidAlive(pid: number): boolean {
   try {
-    process.kill(pid, 0)
-    return true
+    process.kill(pid, 0);
+    return true;
   } catch {
-    return false
+    return false;
   }
 }
 
 export function isMcpReady(): boolean {
-  if (process.platform === 'win32') return false
-  let entries: readonly string[]
+  if (process.platform === "win32") return false;
+  let entries: readonly string[];
   try {
-    entries = readdirSync(tmpdir())
+    entries = readdirSync(tmpdir());
   } catch {
-    return false
+    return false;
   }
   for (const name of entries) {
-    if (!name.startsWith(SENTINEL_PREFIX)) continue
-    const pid = readPid(join(tmpdir(), name))
-    if (pid !== null && isPidAlive(pid)) return true
+    if (!name.startsWith(SENTINEL_PREFIX)) continue;
+    const pid = readPid(join(tmpdir(), name));
+    if (pid !== null && isPidAlive(pid)) return true;
   }
-  return false
+  return false;
 }
 
 export function writeSentinel(): void {
-  writeFileSync(sentinelPath(), String(process.pid), 'utf-8')
+  writeFileSync(sentinelPath(), String(process.pid), "utf-8");
 }
 
 export function deleteSentinel(): void {
   try {
-    unlinkSync(sentinelPath())
+    unlinkSync(sentinelPath());
   } catch {
     // ignore — sentinel may not exist
   }

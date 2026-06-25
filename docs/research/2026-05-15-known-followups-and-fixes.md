@@ -1,9 +1,9 @@
 ---
 type: research
-title: 'Known follow-ups from /verify — best-practice fixes'
-subject: 'tracked-but-gitignored generated files; in-flight source updates; auto-sync drift'
-date: '2026-05-15'
-last_updated: '2026-05-15'
+title: "Known follow-ups from /verify — best-practice fixes"
+subject: "tracked-but-gitignored generated files; in-flight source updates; auto-sync drift"
+date: "2026-05-15"
+last_updated: "2026-05-15"
 confidence: high
 verdict: adopt
 ---
@@ -129,12 +129,14 @@ agent-kit just shipped 6 commits this session. Wedging a 100-file index-cleanup 
    ```
 
    `.codex/hooks.json` is now consistently ignored alongside agents+skills; `.codex/prompts/` remains tracked (operator-curated content).
+
 4. **Commit `src/codex/app-server/*`** updates as a focused commit — these are real schema enhancements (HookEventName camelCase normalize transform, ConfigBatchWriteResponse passthrough).
 5. **Commit `src/cli/commands/init/*.test.ts`** drift as in-flight follow-up — these match the codex hook trust scaffolder series.
 
 Confidence: **high** for items 1-4 (canonical patterns, well-cited). Medium for item 5 (in-flight changes from a parallel author; would prefer their authorship but folding in is consistent with the user's "sweep" preference earlier this session).
 
 Conditions that would change the recommendation:
+
 - If `.codex/prompts/` turns out to also be auto-regenerated → extend the gitignore simplification to ignore it too
 - If a downstream consumer such as `ingest-lens` depends on the tracked
   `.codex/agents/` content → coordinate the cleanup with their `wp setup` flow

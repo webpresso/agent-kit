@@ -12,7 +12,7 @@
 
 // Set IS_REACT_ACT_ENVIRONMENT to true for test environment
 // This tells React 18+ that we're in a test environment and act() warnings should work correctly
-;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 /**
  * Suppress console output globally for clean test output
@@ -20,9 +20,9 @@
  */
 const noop = () => {
   // Intentionally empty - suppresses console output
-}
-global.console.error = noop
-global.console.warn = noop
-global.console.log = noop
+};
+global.console.error = noop;
+global.console.warn = noop;
+global.console.log = noop;
 
-export const __reactSetupModule = true
+export const __reactSetupModule = true;

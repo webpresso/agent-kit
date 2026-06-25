@@ -1,7 +1,7 @@
-import { vi } from 'vitest'
+import { vi } from "vitest";
 
-import type { SyncAdapter } from './blueprint-server.js'
-import { _setSyncAdapterFactory } from './blueprint-server.js'
+import type { SyncAdapter } from "./blueprint-server.js";
+import { _setSyncAdapterFactory } from "./blueprint-server.js";
 import {
   callTool,
   cleanupTempDir,
@@ -11,71 +11,71 @@ import {
   writeBlueprintFixture,
   trustDossierFixture,
   type ToolMap,
-} from './blueprint-server.test-harness.js'
+} from "./blueprint-server.test-harness.js";
 
 export interface PlatformHarness {
-  readonly tmpDir: string
-  readonly tools: ToolMap
+  readonly tmpDir: string;
+  readonly tools: ToolMap;
 }
 
 export interface PlatformBlueprintHarness extends PlatformHarness {
-  readonly overviewPath: string
+  readonly overviewPath: string;
 }
 
 const TASK_VERIFICATION_BLOCK = `**Verification:**
 
 \`\`\`webpresso-evidence-v1
 [{"command":"wp_test --files src/mcp/blueprint-server.platform-first.lifecycle.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-28T12:00:00.000Z"}]
-\`\`\``
+\`\`\``;
 
 export async function makePlatformHarness(
-  prefix = 'wp-bs-platform-test-',
+  prefix = "wp-bs-platform-test-",
 ): Promise<PlatformHarness> {
-  const tmpDir = createTempBlueprintRepo(prefix)
-  const tools = await registerBlueprintToolMap(tmpDir)
-  return { tmpDir, tools }
+  const tmpDir = createTempBlueprintRepo(prefix);
+  const tools = await registerBlueprintToolMap(tmpDir);
+  return { tmpDir, tools };
 }
 
 export async function makePlatformBlueprintHarness(options: {
-  readonly prefix: string
-  readonly stateDir: string
-  readonly slug: string
-  readonly content: string
-  readonly validate?: boolean
+  readonly prefix: string;
+  readonly stateDir: string;
+  readonly slug: string;
+  readonly content: string;
+  readonly validate?: boolean;
 }): Promise<PlatformBlueprintHarness> {
-  const tmpDir = createTempBlueprintRepo(options.prefix)
+  const tmpDir = createTempBlueprintRepo(options.prefix);
   const { overviewPath } = writeBlueprintFixture(tmpDir, {
     stateDir: options.stateDir,
     slug: options.slug,
     content: options.content,
-  })
-  const tools = await registerBlueprintToolMap(tmpDir)
+  });
+  const tools = await registerBlueprintToolMap(tmpDir);
   if (options.validate) {
-    await callTool(tools, 'wp_blueprint_validate', { path: overviewPath })
-    markBlueprintValidated(tmpDir, options.slug)
+    await callTool(tools, "wp_blueprint_validate", { path: overviewPath });
+    markBlueprintValidated(tmpDir, options.slug);
   }
-  return { tmpDir, overviewPath, tools }
+  return { tmpDir, overviewPath, tools };
 }
 
 export function installMockSyncAdapter(): {
-  readonly pushEvent: ReturnType<typeof vi.fn<SyncAdapter['pushEvent']>>
-  readonly ensureFresh: ReturnType<typeof vi.fn<SyncAdapter['ensureFresh']>>
+  readonly pushEvent: ReturnType<typeof vi.fn<SyncAdapter["pushEvent"]>>;
+  readonly ensureFresh: ReturnType<typeof vi.fn<SyncAdapter["ensureFresh"]>>;
 } {
-  const pushEvent = vi.fn<SyncAdapter['pushEvent']>().mockResolvedValue(undefined)
-  const ensureFresh = vi.fn<SyncAdapter['ensureFresh']>().mockResolvedValue(undefined)
-  _setSyncAdapterFactory(() => ({ pushEvent, ensureFresh }))
-  return { pushEvent, ensureFresh }
+  const pushEvent = vi.fn<SyncAdapter["pushEvent"]>().mockResolvedValue(undefined);
+  const ensureFresh = vi.fn<SyncAdapter["ensureFresh"]>().mockResolvedValue(undefined);
+  _setSyncAdapterFactory(() => ({ pushEvent, ensureFresh }));
+  return { pushEvent, ensureFresh };
 }
 
 export function installNullSyncAdapter(): void {
-  _setSyncAdapterFactory(() => null)
+  _setSyncAdapterFactory(() => null);
 }
 
 export function resetPlatformFirstTestState(tempDirs: readonly string[]): void {
-  _setSyncAdapterFactory(null)
-  vi.unstubAllEnvs()
+  _setSyncAdapterFactory(null);
+  vi.unstubAllEnvs();
   for (const dir of tempDirs) {
-    cleanupTempDir(dir)
+    cleanupTempDir(dir);
   }
 }
 
@@ -108,7 +108,7 @@ Blueprint used to test task advance.
 
 **Acceptance:**
 - [ ] The task is advanced
-`
+`;
 
 export const PROMOTE_BLUEPRINT = `---
 type: blueprint
@@ -138,7 +138,7 @@ Blueprint used to test promote.
 **Acceptance:**
 - [ ] The blueprint is promoted
 ${trustDossierFixture()}
-`
+`;
 
 export const FINALIZE_BLUEPRINT = `---
 type: blueprint
@@ -168,7 +168,7 @@ ${TASK_VERIFICATION_BLOCK}
 
 **Acceptance:**
 - [x] The blueprint is finalized
-`
+`;
 
 export const FINALIZE_BLUEPRINT_UNVERIFIED = `---
 type: blueprint
@@ -197,7 +197,7 @@ Blueprint used to test finalize rejection without verification.
 
 **Acceptance:**
 - [x] The blueprint is finalized
-`
+`;
 
 export const PROMOTE_TO_COMPLETED_BLUEPRINT = `---
 type: blueprint
@@ -227,7 +227,7 @@ ${TASK_VERIFICATION_BLOCK}
 
 **Acceptance:**
 - [x] The blueprint is promoted
-`
+`;
 
 export const PROMOTE_TO_COMPLETED_BLUEPRINT_UNVERIFIED = `---
 type: blueprint
@@ -256,4 +256,4 @@ Blueprint used to test completed promotion rejection without verification.
 
 **Acceptance:**
 - [x] The blueprint is promoted
-`
+`;

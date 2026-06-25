@@ -1,6 +1,6 @@
 ---
 type: migration
-last_updated: '2026-05-09'
+last_updated: "2026-05-09"
 ---
 
 # Migrating from webpresso's internal blueprint package
@@ -9,14 +9,14 @@ Webpresso is adopter zero of agent-kit. Before agent-kit existed, the
 repo hosted the Blueprint runtime, symlinker, `blueprint-plan`
 validator, and `audit-tph` scripts as separate internal concerns:
 
-| Historical concern | Now lives in agent-kit at | Import change |
-|---|---|---|
-| legacy blueprint package source | `src/blueprint/*` | `@webpresso/blueprint` → `@webpresso/agent-kit/blueprint` |
-| legacy blueprint local entrypoint | `src/blueprint/local.ts` | `@webpresso/blueprint/local` → `@webpresso/agent-kit/blueprint/local` |
-| legacy blueprint-plan validator | `src/docs-linter/blueprint-plan.ts` | Import from `@webpresso/agent-kit/docs-linter` |
-| legacy TPH audit script | `src/audit/audit-tph.ts` | Invoke via `wp audit tph` CLI |
-| legacy TPH E2E audit script | `src/audit/audit-tph-e2e.ts` | Invoke via `wp audit tph-e2e` |
-| legacy symlinker maintenance surface | `src/symlinker/` | Invoke via `wp sync` (use `wp sync --check` for drift) |
+| Historical concern                   | Now lives in agent-kit at           | Import change                                                         |
+| ------------------------------------ | ----------------------------------- | --------------------------------------------------------------------- |
+| legacy blueprint package source      | `src/blueprint/*`                   | `@webpresso/blueprint` → `@webpresso/agent-kit/blueprint`             |
+| legacy blueprint local entrypoint    | `src/blueprint/local.ts`            | `@webpresso/blueprint/local` → `@webpresso/agent-kit/blueprint/local` |
+| legacy blueprint-plan validator      | `src/docs-linter/blueprint-plan.ts` | Import from `@webpresso/agent-kit/docs-linter`                        |
+| legacy TPH audit script              | `src/audit/audit-tph.ts`            | Invoke via `wp audit tph` CLI                                         |
+| legacy TPH E2E audit script          | `src/audit/audit-tph-e2e.ts`        | Invoke via `wp audit tph-e2e`                                         |
+| legacy symlinker maintenance surface | `src/symlinker/`                    | Invoke via `wp sync` (use `wp sync --check` for drift)                |
 
 ## The migration plan
 

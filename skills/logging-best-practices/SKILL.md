@@ -6,14 +6,14 @@ status: active
 scope: repo
 applies_to: [agents]
 related: []
-created: '2026-05-07'
-last_reviewed: '2026-05-07'
+created: "2026-05-07"
+last_reviewed: "2026-05-07"
 name: logging-best-practices
 description: Logging best practices focused on wide events (canonical log lines) for powerful debugging and analytics
 license: MIT
-metadata: 
+metadata:
   author: boristane
-  version: '1.0.0'
+  version: "1.0.0"
 upstream:
   source: https://github.com/boristane/agent-skills/tree/main/skills/logging-best-practices
   last_synced: "2026-05-28"
@@ -44,30 +44,30 @@ Emit **one context-rich event per request per service**. Instead of scattering l
 
 ```typescript
 const wideEvent: Record<string, unknown> = {
-  method: 'POST',
-  path: '/checkout',
-  requestId: c.get('requestId'),
+  method: "POST",
+  path: "/checkout",
+  requestId: c.get("requestId"),
   timestamp: new Date().toISOString(),
-}
+};
 
 try {
-  const user = await getUser(c.get('userId'))
-  wideEvent.user = { id: user.id, subscription: user.subscription }
+  const user = await getUser(c.get("userId"));
+  wideEvent.user = { id: user.id, subscription: user.subscription };
 
-  const cart = await getCart(user.id)
-  wideEvent.cart = { total_cents: cart.total, item_count: cart.items.length }
+  const cart = await getCart(user.id);
+  wideEvent.cart = { total_cents: cart.total, item_count: cart.items.length };
 
-  wideEvent.status_code = 200
-  wideEvent.outcome = 'success'
-  return c.json({ success: true })
+  wideEvent.status_code = 200;
+  wideEvent.outcome = "success";
+  return c.json({ success: true });
 } catch (error) {
-  wideEvent.status_code = 500
-  wideEvent.outcome = 'error'
-  wideEvent.error = { message: error.message, type: error.name }
-  throw error
+  wideEvent.status_code = 500;
+  wideEvent.outcome = "error";
+  wideEvent.error = { message: error.message, type: error.name };
+  throw error;
 } finally {
-  wideEvent.duration_ms = Date.now() - startTime
-  logger.info(wideEvent)
+  wideEvent.duration_ms = Date.now() - startTime;
+  logger.info(wideEvent);
 }
 ```
 

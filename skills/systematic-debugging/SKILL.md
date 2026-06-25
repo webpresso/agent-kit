@@ -6,8 +6,8 @@ status: active
 scope: repo
 applies_to: [agents]
 related: []
-created: '2026-05-07'
-last_reviewed: '2026-05-07'
+created: "2026-05-07"
+last_reviewed: "2026-05-07"
 name: systematic-debugging
 description: Provides systematic debugging methodology for bugs, test failures, and unexpected behavior. Emphasizes root cause investigation before proposing fixes
 ---

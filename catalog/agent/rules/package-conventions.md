@@ -6,12 +6,12 @@ status: active
 scope: repo
 applies_to: [agents]
 related: []
-created: '2026-05-07'
-last_reviewed: '2026-05-28'
-paths: 
-  - '**/*.ts'
-  - 'package.json'
-  - '.npmrc'
+created: "2026-05-07"
+last_reviewed: "2026-05-28"
+paths:
+  - "**/*.ts"
+  - "package.json"
+  - ".npmrc"
 ---
 
 # Webpresso Public Package Conventions

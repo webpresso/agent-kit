@@ -20,23 +20,23 @@
  */
 export interface ProvisionedDatabaseHandle {
   /** Opaque identifier for the provisioned database. */
-  id: string
+  id: string;
   /**
    * Canonical connection string. Used as the default runtime URL when the
    * caller does not supply a {@link DatabaseUrlSelector}.
    */
-  primaryConnectionUri: string
+  primaryConnectionUri: string;
   /**
    * Optional application-tier URL (e.g. pooled/session-mode endpoint) for
    * workloads that hold long-lived connections or depend on prepared
    * statements.
    */
-  applicationConnectionUri?: string
+  applicationConnectionUri?: string;
   /**
    * Optional runtime-tier URL (e.g. direct/short-lived endpoint) for
    * standard request-scoped worker runtimes.
    */
-  runtimeConnectionUri?: string
+  runtimeConnectionUri?: string;
 }
 
 /**
@@ -45,9 +45,9 @@ export interface ProvisionedDatabaseHandle {
  * `HASURA_GRAPHQL_METADATA_DATABASE_URL`).
  */
 export type DatabaseUrlSelector = (handle: ProvisionedDatabaseHandle) => {
-  runtimeDatabaseUrl: string
-  metadataDatabaseUrl?: string
-}
+  runtimeDatabaseUrl: string;
+  metadataDatabaseUrl?: string;
+};
 
 /**
  * Generic launch profile: everything needed to build a single launch
@@ -56,19 +56,19 @@ export type DatabaseUrlSelector = (handle: ProvisionedDatabaseHandle) => {
  */
 export interface LaunchProfile {
   /** Working directory of the runtime being launched. */
-  cwd: string
+  cwd: string;
   /** Plain, non-secret env vars the runtime requires. */
-  vars: Record<string, string>
+  vars: Record<string, string>;
   /** Optional log-file path the caller will use for the spawned process. */
-  logFile?: string
+  logFile?: string;
   /** Optional provisioned database handle to expose via env vars. */
-  databaseHandle?: ProvisionedDatabaseHandle
+  databaseHandle?: ProvisionedDatabaseHandle;
   /**
    * Optional selector that maps a {@link ProvisionedDatabaseHandle} to the
    * runtime/metadata URLs exported to the launch environment. Defaults to
    * the handle's {@link ProvisionedDatabaseHandle.primaryConnectionUri}.
    */
-  databaseUrlSelector?: DatabaseUrlSelector
+  databaseUrlSelector?: DatabaseUrlSelector;
 }
 
 /**
@@ -80,24 +80,24 @@ export interface LaunchProfile {
  */
 export interface LaunchRegistration {
   /** Spawn command (e.g. node, pnpm). */
-  command: string
+  command: string;
   /** Arguments to pass to the command. */
-  args: readonly string[]
+  args: readonly string[];
   /** Working directory for the spawn. */
-  cwd: string
+  cwd: string;
   /** Effective environment for the spawn. */
-  env: NodeJS.ProcessEnv
+  env: NodeJS.ProcessEnv;
   /** Ports allocated for this launch. */
   ports: {
-    api: number
-    inspector: number
-  }
+    api: number;
+    inspector: number;
+  };
   /** Optional log-file path threaded through from the profile. */
-  logFile?: string
+  logFile?: string;
   /**
    * The provisioned database handle (if any) used to assemble this
    * registration, forwarded so callers can later tear down the resource
    * without re-plumbing state.
    */
-  databaseHandle?: ProvisionedDatabaseHandle
+  databaseHandle?: ProvisionedDatabaseHandle;
 }

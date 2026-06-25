@@ -4,8 +4,8 @@ status: accepted
 severity: medium
 category: complexity
 review_cadence: monthly
-last_reviewed: '2026-06-19'
-created: '2026-06-19'
+last_reviewed: "2026-06-19"
+created: "2026-06-19"
 linked_blueprints: []
 affected_modules:
   - src/cli/commands/hooks (doctor / manifest reconcile)
@@ -41,7 +41,7 @@ Neither remediation the doctor suggests is safe on the agent-kit self-repo:
   canonical sources under `catalog/` and the tracked `.agent`/`.claude`
   surfaces." So the gated path is a destructive maintainer operation, not a
   reconcile.
-- `--restore-hooks` reconciles *manifest → live*, which would **strip**
+- `--restore-hooks` reconciles _manifest → live_, which would **strip**
   consumer-added entries that are absent from the manifest (e.g. the
   `check-gstack*` hooks), since the manifest is the authority in that direction.
 - There is **no command that reconciles the other direction** (regenerate the
@@ -70,7 +70,7 @@ surfaced during the same `wp hooks doctor` run and has no clean remediation.
 ## Remediation approaches (not yet chosen)
 
 1. Add a non-destructive `wp hooks doctor --reconcile` (or `wp hooks
-   sync-manifest`) that regenerates `.webpresso/hooks-manifest.json` from the
+sync-manifest`) that regenerates `.webpresso/hooks-manifest.json` from the
    live `settings.json`, preserving divergent consumer entries.
 2. Teach the manifest check to classify known third-party hook families
    (gstack, OMC, rtk) as expected `unknown` entries so they do not count as

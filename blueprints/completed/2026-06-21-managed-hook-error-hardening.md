@@ -3,11 +3,11 @@ type: blueprint
 title: Managed hook exit-code hardening and error visibility
 owner: ozby
 status: completed
-completed_at: '2026-06-21'
+completed_at: "2026-06-21"
 complexity: S
-created: '2026-06-21'
-last_updated: '2026-06-21'
-progress: '100% (managed hook child failures degrade by event policy, bounded errors persist, and wp hooks errors exposes recent records)'
+created: "2026-06-21"
+last_updated: "2026-06-21"
+progress: "100% (managed hook child failures degrade by event policy, bounded errors persist, and wp hooks errors exposes recent records)"
 depends_on: []
 tags:
   - hooks
@@ -28,58 +28,58 @@ diagnostic metadata, and expose recent records through `wp hooks errors`.
 - [x] Child exit `0` passes through unchanged.
 - [x] Child exit `2` remains meaningful and passes through unchanged.
 - [x] Unexpected `wp-pretool-guard` failures fail closed with PreToolUse deny
-  JSON.
+      JSON.
 - [x] Unexpected Stop/PreCompact failures exit `0` with `{}` JSON.
 - [x] Other unexpected managed hook failures exit `0` with stderr-only
-  diagnostics.
+      diagnostics.
 - [x] Persisted records include only bounded metadata: hook bin, hook
-  name/event, phase, status/signal, fallback action, and bounded infrastructure
-  detail.
+      name/event, phase, status/signal, fallback action, and bounded infrastructure
+      detail.
 - [x] `wp hooks errors` prints recent repo-scoped managed hook degradation
-  records.
+      records.
 - [x] Blueprint coverage travels with the implementation branch and passes the
-  blueprint lifecycle gate before PR creation.
+      blueprint lifecycle gate before PR creation.
 - [x] Blueprint lifecycle verification remains bounded on large blueprint
-  histories by reading local git config before shell fallback, caching parser
-  git metadata, parsing status transitions from one bounded `git log -p`, and
-  degrading transition-history checks when their time budget is exhausted.
+      histories by reading local git config before shell fallback, caching parser
+      git metadata, parsing status transitions from one bounded `git log -p`, and
+      degrading transition-history checks when their time budget is exhausted.
 
 ## Tasks
 
 #### Task 1.1: Harden managed hook child-failure fallback policy
 
 - [x] Convert unexpected child nonzero/signal results to event-specific safe
-  fallbacks while preserving exit `2` passthrough.
+      fallbacks while preserving exit `2` passthrough.
 - [x] Persist bounded managed-hook degradation records for launch, spawn, child,
-  and signal failures without storing hook stdin, tool input, environment, or
-  child output.
+      and signal failures without storing hook stdin, tool input, environment, or
+      child output.
 
 #### Task 1.2: Expose recent managed hook failures through CLI
 
 - [x] Add `wp hooks errors` as a read-only command over the repo-scoped error
-  store.
+      store.
 - [x] Cover human-readable and JSON output paths.
 
 #### Task 1.3: Package the implementation for review
 
 - [x] Keep this blueprint in the PR diff so the blueprint coverage gate can
-  connect the implementation to its plan.
+      connect the implementation to its plan.
 - [x] Validate the PR branch from an isolated worktree before opening the PR.
 - [x] Keep generated hook smoke tests bounded by deduping duplicate command
-  strings before execution while still covering every managed hook bin.
+      strings before execution while still covering every managed hook bin.
 
 #### Task 1.4: Fix blueprint lifecycle audit timeout
 
 - [x] Cache DB parser organization detection per git root and read local
-  `.git/config` before shell fallback instead of spawning `git remote get-url
-  origin` once per blueprint.
+      `.git/config` before shell fallback instead of spawning `git remote get-url
+origin` once per blueprint.
 - [x] Bound best-effort transition-history checks and emit an advisory warning
-  instead of hanging the audit on repositories with many blueprint history
-  probes.
+      instead of hanging the audit on repositories with many blueprint history
+      probes.
 - [x] Reduce transition-history probes from `git log` plus `git show` to one
-  bounded patch scan per blueprint, and make lifecycle tests use a deterministic
-  fake git surface for history assertions instead of real subprocess-heavy temp
-  repositories.
+      bounded patch scan per blueprint, and make lifecycle tests use a deterministic
+      fake git surface for history assertions instead of real subprocess-heavy temp
+      repositories.
 
 ## Verification
 
@@ -109,21 +109,21 @@ diagnostic metadata, and expose recent records through `wp hooks errors`.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-21-managed-hook-error-hardening.md |
+| ID  | Claim                                                          | Evidence                                                             |
+| --- | -------------------------------------------------------------- | -------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-21-managed-hook-error-hardening.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

@@ -6,8 +6,8 @@ status: active
 scope: repo
 applies_to: [agents, humans]
 related: [blueprint-scoping]
-created: '2026-05-11'
-last_reviewed: '2026-05-31'
+created: "2026-05-11"
+last_reviewed: "2026-05-31"
 ---
 
 # Extraction parity — byte-identity + mutation-score verification
@@ -46,12 +46,12 @@ candidate difference. Classify each one before marking the task DONE.
 The following changes do **not** invalidate a pure-relocation claim, but each
 line must be listed in the blueprint task with its category:
 
-| Category | Example |
-| --- | --- |
-| Import path updates | `@scope/old-package` → `@scope/new-package` |
-| Subpath alias changes | `@workspace/utils` → `@webpresso/runtime/utils` |
-| Shebang line adjustments | `#!/usr/bin/env node` unchanged; path to bin updated |
-| `package.json` name / version fields | `"name": "old"` → `"name": "new"` |
+| Category                             | Example                                              |
+| ------------------------------------ | ---------------------------------------------------- |
+| Import path updates                  | `@scope/old-package` → `@scope/new-package`          |
+| Subpath alias changes                | `@workspace/utils` → `@webpresso/runtime/utils`      |
+| Shebang line adjustments             | `#!/usr/bin/env node` unchanged; path to bin updated |
+| `package.json` name / version fields | `"name": "old"` → `"name": "new"`                    |
 
 ### Unacceptable without explicit justification
 
@@ -108,6 +108,7 @@ A blueprint task that claims parity DONE must cite all three items:
 
 ```markdown
 **Parity evidence:**
+
 - `diff -ru <old-src-dir> <new-src-dir>` output:
   - [ ] Empty (full pass), OR
   - [ ] Non-empty — listed below with category justification:
@@ -115,7 +116,7 @@ A blueprint task that claims parity DONE must cite all three items:
 - Mutation score: **before XX.XX% → after YY.YY%** (Δ = Z pts)
   - [ ] New score ≥ old score − 2 ✓
 - Any unacceptable diff lines addressed:
-  - [ ] None found, OR  [ ] <line> — reverted / justified: <reason>
+  - [ ] None found, OR [ ] <line> — reverted / justified: <reason>
 ```
 
 ---
@@ -127,6 +128,7 @@ file-move task completes:
 
 ```markdown
 #### Task N.M: Verify byte-identity and mutation-score parity
+
 - [ ] Run `diff -ru <old-src-dir> <new-src-dir>` — output must be empty or
       contain only acceptable-category lines (see `extraction-parity` rule).
 - [ ] Capture mutation score before relocation; confirm new score ≥ old − 2.

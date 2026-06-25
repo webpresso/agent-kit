@@ -3,11 +3,11 @@ type: blueprint
 title: Blueprint lifecycle hygiene enforcement
 owner: ozby
 status: completed
-completed_at: '2026-06-04'
+completed_at: "2026-06-04"
 complexity: L
-created: '2026-06-03'
-last_updated: '2026-06-04'
-progress: '100% (all remaining lifecycle-hygiene tasks verified on 2026-06-04; ready to finalize truthfully)'
+created: "2026-06-03"
+last_updated: "2026-06-04"
+progress: "100% (all remaining lifecycle-hygiene tasks verified on 2026-06-04; ready to finalize truthfully)"
 review_target: internal agent-kit governance
 depends_on: []
 cross_repo_depends_on: []
@@ -22,7 +22,7 @@ tags:
 
 # Blueprint lifecycle hygiene enforcement
 
-**Goal:** Make the blueprint lifecycle *self-policing*. Today a blueprint can be
+**Goal:** Make the blueprint lifecycle _self-policing_. Today a blueprint can be
 fully done yet sit in `in-progress/`, claim `progress: 100%` while half its
 tasks are open, drift its `last_updated` out of sync with reality, reach
 `completed` through a tool that skips the open-task guard, and the
@@ -52,7 +52,7 @@ at edit time — not left to discipline.
   pretool-guard hook (`wp-pretool-guard`) that fires on every agent `git mv` /
   blueprint edit.
 - **New user-visible capability:** a maintainer (or agent) running `wp audit
-  blueprint-lifecycle` gets told, with a fixable message, when a blueprint is
+blueprint-lifecycle` gets told, with a fixable message, when a blueprint is
   done-but-stuck, lying about progress, stale, illegally moved, or when the
   README index no longer matches the `blueprints/` tree — instead of those
   failures being invisible until someone notices by hand.
@@ -68,7 +68,7 @@ Confirmed by reading source (file:line cited so Phase 0 can re-verify):
    **never fires**. The trustworthy progress signal lives in the `tasks` table
    (`deriveStatusFromCheckboxes`, `src/blueprint/db/parser/blueprint-db-parser.ts:169`).
 2. **Double registration.** Both `blueprint-lifecycle` and
-   `blueprint-lifecycle-sql` dispatch to the *same* `auditBlueprintLifecycleSql`
+   `blueprint-lifecycle-sql` dispatch to the _same_ `auditBlueprintLifecycleSql`
    (`src/cli/commands/audit.ts:37-38` and `:109-110`) → the `guardrails`
    aggregate runs it twice.
 3. **`blueprint-lifecycle-sql` is not a first-class kind.** It is absent from
@@ -80,12 +80,12 @@ Confirmed by reading source (file:line cited so Phase 0 can re-verify):
    from the transition handler.
 5. **Markdown fallback is far weaker than the SQL path.** When no projection DB
    exists, `auditBlueprintLifecycleSql` falls back to `auditBlueprintLifecycle`
-   (`src/audit/repo-guardrails.ts:302`), which has *none* of the four SQL checks
+   (`src/audit/repo-guardrails.ts:302`), which has _none_ of the four SQL checks
    — so CI strength depends on whether a `.blueprints.db` is present at audit time.
 6. **Three divergent validators, none of the richest in CI.** MCP `runValidate`
    (requires `owner`, `Acceptance`, `Product wedge anchor`), the docs-linter
    `validateBlueprintPlan` (`src/docs-linter/blueprint-plan.ts` — `**Status:**`
-   required, `completed`-requires-all-done, accepts `in_progress` *underscore*),
+   required, `completed`-requires-all-done, accepts `in_progress` _underscore_),
    and the markdown audit (`type`, `status===folder`) disagree on required
    fields and on the task-status spelling (`in_progress` vs DB `in-progress`).
    The docs-linter and `runValidate` are **not wired into CI**; the pretool-guard
@@ -123,28 +123,28 @@ AFTER
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-| -------- | ------ | --------- |
-| Where new checks live | Extend the existing `blueprint-lifecycle` (SQL) audit for concerns 3 + 4; add exactly **two** net-new surfaces (`blueprint-readme-drift` audit, pretool-guard transition matrix). | KISS/YAGNI (`engineering-principles.md`): the SQL audit already has DB plumbing, fallback, and 3 of the needed checks. Avoid a 3rd/4th overlapping audit kind. |
-| Progress source of truth | **Derive `progress_pct` from the `tasks` roll-up**; stop trusting any hand-entered `progress` field. Recompute-and-flag any divergence. | The checkboxes/`tasks` table are the SSOT; a duplicated hand-maintained field is the exact thing concern 4 distrusts. (DRY) |
-| Staleness + `last_updated` ground truth | Use **git mtime** (`git log -1 --format=%cI -- <file>`), not the self-reported `last_updated` frontmatter. | Auditing the claim against itself is circular. Git is tamper-resistant. Bound the git call + degrade gracefully when not in a git tree (`no-timeout-as-fix.md`). |
-| README enforcement shape | **Marker-block generated index** (per-state live counts + state list) with `--check`/`--fix`; leave the authoring/transition prose hand-editable. | Only the volatile part (counts, state list) drifts; full generation would force valuable prose into a template with one user (YAGNI). Mirrors doctoc `--dryrun` + the existing audit `--fix` precedent. |
-| Risk of CI-blocking false positives | Land staleness + `last_updated` freshness **warn-first** (separate non-aggregate kind or severity flag), promote to blocking after a soak. | git-mtime misfires on rebases/squash/bulk-reformat; clock skew on `last_updated`. Phase them in (per architect risk #4). |
-| Exemptions | `draft/` exempt from required-field/section checks; `archived/` + `completed/` exempt from staleness/transition-out/progress; `parked/` exempt from staleness (optionally require a `parked_reason`). | Draft is where churn lives; terminal/paused states are intentionally static. **(F7)** Do **not** reuse `ACTIVE_BLUEPRINT_STATUSES` (`repo-guardrails.ts:102`) for staleness scoping — verified it equals `{draft, planned, in-progress, parked}`, which *includes* the two states staleness must exempt. Define a dedicated `STALENESS_SCOPE = {in-progress}` (optionally `+planned`). Mirror the docs-linter draft-exemption (`EXECUTABLE_BLUEPRINT_STATUSES`, `blueprint-plan.ts:31`) for the field/section checks. |
-| Threshold storage **(F1)** | The existing `_budgets.ts` schema (`budgetEntrySchema`, `:12`) and `DEFAULT_BUDGETS` `satisfies Record<string, {max_bytes; suggest_compact_at?}>` (`:22`) only accept **byte** budgets. WIP-count / day-threshold values do **not** fit. Extend `BudgetEntry`/`budgetEntrySchema`/the `satisfies` type to admit a generic numeric (`max?: number`, `max_days?: number`) **before** Tasks 1.3/3.1 — that's the new Task 0.5. | Verified: a `{ max: 3 }` or `{ max_days: 14 }` entry fails both the zod validation and the `satisfies` typecheck today. Reusing `_budgets.ts` is still right (one override surface), but it needs the schema widened first. |
-| Validator consolidation | Converge the three validators on **one** required-field set + **one** task-status spelling (`in-progress`, hyphen). Promote the richest checks (`completed`-requires-all-done) into the CI audit path. | Three divergent validators is the root of the "validation" gap; pick one contract. |
-| Walker hygiene | Every new walker skips `.claude/worktrees`, `.omc`, `.omx`, `_sandbox`. | Worktree copies pollute results; precedent in `no-first-party-mjs.ts:8`. |
+| Decision                                | Choice                                                                                                                                                                                                                                                                                                                                                                                                                      | Rationale                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Where new checks live                   | Extend the existing `blueprint-lifecycle` (SQL) audit for concerns 3 + 4; add exactly **two** net-new surfaces (`blueprint-readme-drift` audit, pretool-guard transition matrix).                                                                                                                                                                                                                                           | KISS/YAGNI (`engineering-principles.md`): the SQL audit already has DB plumbing, fallback, and 3 of the needed checks. Avoid a 3rd/4th overlapping audit kind.                                                                                                                                                                                                                                                                                                                                                        |
+| Progress source of truth                | **Derive `progress_pct` from the `tasks` roll-up**; stop trusting any hand-entered `progress` field. Recompute-and-flag any divergence.                                                                                                                                                                                                                                                                                     | The checkboxes/`tasks` table are the SSOT; a duplicated hand-maintained field is the exact thing concern 4 distrusts. (DRY)                                                                                                                                                                                                                                                                                                                                                                                           |
+| Staleness + `last_updated` ground truth | Use **git mtime** (`git log -1 --format=%cI -- <file>`), not the self-reported `last_updated` frontmatter.                                                                                                                                                                                                                                                                                                                  | Auditing the claim against itself is circular. Git is tamper-resistant. Bound the git call + degrade gracefully when not in a git tree (`no-timeout-as-fix.md`).                                                                                                                                                                                                                                                                                                                                                      |
+| README enforcement shape                | **Marker-block generated index** (per-state live counts + state list) with `--check`/`--fix`; leave the authoring/transition prose hand-editable.                                                                                                                                                                                                                                                                           | Only the volatile part (counts, state list) drifts; full generation would force valuable prose into a template with one user (YAGNI). Mirrors doctoc `--dryrun` + the existing audit `--fix` precedent.                                                                                                                                                                                                                                                                                                               |
+| Risk of CI-blocking false positives     | Land staleness + `last_updated` freshness **warn-first** (separate non-aggregate kind or severity flag), promote to blocking after a soak.                                                                                                                                                                                                                                                                                  | git-mtime misfires on rebases/squash/bulk-reformat; clock skew on `last_updated`. Phase them in (per architect risk #4).                                                                                                                                                                                                                                                                                                                                                                                              |
+| Exemptions                              | `draft/` exempt from required-field/section checks; `archived/` + `completed/` exempt from staleness/transition-out/progress; `parked/` exempt from staleness (optionally require a `parked_reason`).                                                                                                                                                                                                                       | Draft is where churn lives; terminal/paused states are intentionally static. **(F7)** Do **not** reuse `ACTIVE_BLUEPRINT_STATUSES` (`repo-guardrails.ts:102`) for staleness scoping — verified it equals `{draft, planned, in-progress, parked}`, which _includes_ the two states staleness must exempt. Define a dedicated `STALENESS_SCOPE = {in-progress}` (optionally `+planned`). Mirror the docs-linter draft-exemption (`EXECUTABLE_BLUEPRINT_STATUSES`, `blueprint-plan.ts:31`) for the field/section checks. |
+| Threshold storage **(F1)**              | The existing `_budgets.ts` schema (`budgetEntrySchema`, `:12`) and `DEFAULT_BUDGETS` `satisfies Record<string, {max_bytes; suggest_compact_at?}>` (`:22`) only accept **byte** budgets. WIP-count / day-threshold values do **not** fit. Extend `BudgetEntry`/`budgetEntrySchema`/the `satisfies` type to admit a generic numeric (`max?: number`, `max_days?: number`) **before** Tasks 1.3/3.1 — that's the new Task 0.5. | Verified: a `{ max: 3 }` or `{ max_days: 14 }` entry fails both the zod validation and the `satisfies` typecheck today. Reusing `_budgets.ts` is still right (one override surface), but it needs the schema widened first.                                                                                                                                                                                                                                                                                           |
+| Validator consolidation                 | Converge the three validators on **one** required-field set + **one** task-status spelling (`in-progress`, hyphen). Promote the richest checks (`completed`-requires-all-done) into the CI audit path.                                                                                                                                                                                                                      | Three divergent validators is the root of the "validation" gap; pick one contract.                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Walker hygiene                          | Every new walker skips `.claude/worktrees`, `.omc`, `.omx`, `_sandbox`.                                                                                                                                                                                                                                                                                                                                                     | Worktree copies pollute results; precedent in `no-first-party-mjs.ts:8`.                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort |
-| ---- | ----- | ------------ | -------------- | ------ |
-| **Wave 0a (gate)** | 0.0 | None — **CRITICAL prerequisite (A1)** | 1 agent | S |
-| **Wave 0b (Phase 0)** | 0.1, 0.3, 0.4, 0.5 ‖ 0.2 (after 0.0) | 0.0 for 0.2 | 4-5 agents | XS-S |
-| **Wave 1** | 1.1, 2.1, 2.2, 4.1, 4.2 | Wave 0 (0.1/0.2/0.5) | 5 agents | S-M |
-| **Wave 2** | 1.2, 1.3 ‖ 0.6 (after 2.1) | Wave 0/1 + 1.1 (shared-file lane) | serialized after 1.1 | XS-S |
-| **Wave 3** | 3.1 (staleness, warn-first) | 0.5, 1.1 | 1 agent | M |
-| **Critical path** | 0.0 → 0.2 → 1.1 → 1.2/1.3 → 3.1 | — | 5 waves | L |
+| Wave                  | Tasks                                | Dependencies                          | Parallelizable       | Effort |
+| --------------------- | ------------------------------------ | ------------------------------------- | -------------------- | ------ |
+| **Wave 0a (gate)**    | 0.0                                  | None — **CRITICAL prerequisite (A1)** | 1 agent              | S      |
+| **Wave 0b (Phase 0)** | 0.1, 0.3, 0.4, 0.5 ‖ 0.2 (after 0.0) | 0.0 for 0.2                           | 4-5 agents           | XS-S   |
+| **Wave 1**            | 1.1, 2.1, 2.2, 4.1, 4.2              | Wave 0 (0.1/0.2/0.5)                  | 5 agents             | S-M    |
+| **Wave 2**            | 1.2, 1.3 ‖ 0.6 (after 2.1)           | Wave 0/1 + 1.1 (shared-file lane)     | serialized after 1.1 | XS-S   |
+| **Wave 3**            | 3.1 (staleness, warn-first)          | 0.5, 1.1                              | 1 agent              | M      |
+| **Critical path**     | 0.0 → 0.2 → 1.1 → 1.2/1.3 → 3.1      | —                                     | 5 waves              | L      |
 
 **15 tasks** (added 0.0, 0.5, 0.6, 4.2 during refinement; **3.2 dropped** by
 deep-interview decision). 0.6 backfill depends on 2.1 (spelling/field
@@ -154,7 +154,7 @@ convergence); the self-audit gate depends on 0.6.
 > `**Files:**` targets revealed that **1.1, 1.2, 1.3, 2.2 (audit half), 3.1, 3.2
 > all edit `src/audit/blueprint-lifecycle-sql.ts`**. Those cannot run as truly
 > independent parallel agents — they must be **serialized in one owner-lane** (or
-> merged) to avoid edit conflicts. The genuine parallelism here is *across files*
+> merged) to avoid edit conflicts. The genuine parallelism here is _across files_
 > (ingester `0.2`, registration `0.1`, `_budgets` `0.5`, transition guard `0.3`,
 > CI `0.4`, `repo-guardrails`+docs-linter `2.1`, README `4.1`, pretool Bash
 > `2.2`-half), not within the audit file. Wave numbers above reflect that
@@ -166,12 +166,12 @@ T-shirt sizing per task below (XS/S/M/L/XL). No day/week estimates.
 
 ### Parallel Metrics Snapshot
 
-| Metric | Meaning | Target | Actual |
-| ------ | ------- | ------ | ------ |
-| RW0 | Ready tasks in Wave 0 | ≥ agents/2 | 5 |
-| CPR | total_tasks / critical_path_length = 13 / 5 | ≥ 2.5 | 2.6 |
-| DD | dependency_edges / total_tasks ≈ 13 / 13 | ≤ 2.0 | ~1.0 |
-| CP | same-file overlaps per wave | 0 | **>0 on `blueprint-lifecycle-sql.ts`** — resolved by serializing that lane (see note) |
+| Metric | Meaning                                     | Target     | Actual                                                                                |
+| ------ | ------------------------------------------- | ---------- | ------------------------------------------------------------------------------------- |
+| RW0    | Ready tasks in Wave 0                       | ≥ agents/2 | 5                                                                                     |
+| CPR    | total_tasks / critical_path_length = 13 / 5 | ≥ 2.5      | 2.6                                                                                   |
+| DD     | dependency_edges / total_tasks ≈ 13 / 13    | ≤ 2.0      | ~1.0                                                                                  |
+| CP     | same-file overlaps per wave                 | 0          | **>0 on `blueprint-lifecycle-sql.ts`** — resolved by serializing that lane (see note) |
 
 **Parallelization score: B** — RW0 and CPR/DD meet target, but the
 `blueprint-lifecycle-sql.ts` contention forces a serial sub-lane. Acceptable for
@@ -195,6 +195,7 @@ before `/pll`.
 > `~/Library/Application Support/webpresso/`.
 >
 > **Phase 0 task changes vs the pre-fold version:**
+>
 > - **0.1 = the core**: markdown → ephemeral `:memory:` projection audit; delete the persistent-DB read path **and** the markdown-fallback (`auditBlueprintLifecycle`); unify CLI+MCP on it; remove the `-sql` double-registration.
 > - **0.4 replaced**: was "DB-in-CI vs markdown-parity BLOCKER" (now moot) → **delete legacy migration** (`legacy-migration.ts`, `LEGACY_*`, `.agent/.blueprints.db`).
 > - **0.2 reframed**: `progress_pct` from task roll-up lives in the shared ingester → benefits both the ephemeral audit projection and the persistent MCP projection.
@@ -227,9 +228,9 @@ master plan"), so **consolidate to one canonical copy in `completed/`** and
 Then add a check (markdown-side, in `auditBlueprintLifecycle` so it works before
 the DB is built) that fails when two blueprint files anywhere under `blueprints/`
 share a derived slug. **(C6 — audit alone is insufficient; codex finding.)** The
-audit only catches dupes *when it runs*, but the projection **ingester upserts by
+audit only catches dupes _when it runs_, but the projection **ingester upserts by
 slug** (`ingester.ts:114`, slug derived without state at `:34`) and would corrupt
-the projection *before* any audit. So **also harden the ingester to detect/refuse
+the projection _before_ any audit. So **also harden the ingester to detect/refuse
 a duplicate DB slug** (fail or warn-loudly on the second insert for the same
 slug) rather than silently `ON CONFLICT DO UPDATE`-overwriting. Note the
 `scanner.ts:111` dupe check is **not** equivalent — its slugs are state-qualified
@@ -523,7 +524,7 @@ pre-cutoff files via a one-time waiver list — pick one and document it.
 to store an integer threshold in `src/audit/_budgets.ts`, but the existing
 `budgetEntrySchema` (`_budgets.ts:12`) requires `max_bytes: z.number().int().positive()`
 and `DEFAULT_BUDGETS` is typed `... satisfies Record<string, { max_bytes: number; suggest_compact_at?: number }>`
-(`:22`). A `{ max: 3 }` / `{ max_days: 14 }` entry fails *both* the zod parse and
+(`:22`). A `{ max: 3 }` / `{ max_days: 14 }` entry fails _both_ the zod parse and
 the `satisfies` typecheck. Widen `BudgetEntry`, `budgetEntrySchema`, and the
 `satisfies` constraint to also admit optional `max?: number` and `max_days?: number`
 (keep `max_bytes` optional, not required, so byte and count budgets coexist).
@@ -570,9 +571,10 @@ FROM blueprints b JOIN tasks t ON t.blueprint_slug = b.slug
 WHERE b.status = 'in-progress'
 GROUP BY b.slug HAVING total > 0 AND terminal = total
 ```
+
 **(A7 + C5 — needs a parser change, not SQL-only.)** Exclude illustrative
 `#### Task` blocks inside `## Appendix`/superseded sections. **codex verified**
-`parseTasks` (`blueprint-db-parser.ts:255`) scans *all* `#### Task` headers across
+`parseTasks` (`blueprint-db-parser.ts:255`) scans _all_ `#### Task` headers across
 the body with **no phase-section metadata**, so the SQL layer cannot tell an
 appendix task from a real one. The fix must record provenance at parse/ingest
 time (e.g. tag each task with its enclosing `### Phase N` / `## Appendix` and skip
@@ -685,18 +687,20 @@ work before the DB is built). **Exempt `draft/`** from the strict-field subset
 (mirror `EXECUTABLE_BLUEPRINT_STATUSES`, `blueprint-plan.ts:31`).
 
 **(F4 — reconcile the three divergent required-field sets first.)** Verified the
-three existing validators require *different* fields and there is no canonical
+three existing validators require _different_ fields and there is no canonical
 set:
+
 - `runValidate` (`blueprint-server.ts:680`): `type, title, status, complexity, owner` (+ tasks, `**Acceptance:**`, `## Product wedge anchor`) — **no `last_updated`**.
 - `blueprint.yaml` schema: `type, status, complexity, last_updated` — **no `owner`/`title`**.
 - markdown audit: `type`, `status`-vs-folder only.
-**Decided (deep-interview): the canonical required set is `type, title, status, complexity, owner, last_updated`** (the superset). Make all three validators agree on it for non-draft blueprints.
+  **Decided (deep-interview): the canonical required set is `type, title, status, complexity, owner, last_updated`** (the superset). Make all three validators agree on it for non-draft blueprints.
 
 **(F3 — task-status spelling convergence is a breaking change; do the migration in this task.)** Verified the spelling is split, **opposite** to the obvious guess:
+
 - docs-linter `TASK_STATUSES` (`blueprint-plan.ts:39`) and its error message (`:367`) require **underscore** `in_progress`.
 - the SQLite `tasks.status` CHECK (`0001_seed.sql:43`) and the parser canonical (`blueprint-db-parser.ts:36,162`) use **hyphen** `in-progress`.
-- the docs-linter's *blueprint-level* status message (`:343`) already uses hyphen — internal inconsistency.
-Converge on **hyphen** `in-progress` (matches the DB + parser, which is the SSOT). Update `TASK_STATUSES` + the `:367` message, **and** migrate any existing blueprint markdown that uses `in_progress` and the task template, in this same task — otherwise those blueprints start failing the linter. (The parser already accepts both at `:162`, so the DB side is safe.)
+- the docs-linter's _blueprint-level_ status message (`:343`) already uses hyphen — internal inconsistency.
+  Converge on **hyphen** `in-progress` (matches the DB + parser, which is the SSOT). Update `TASK_STATUSES` + the `:367` message, **and** migrate any existing blueprint markdown that uses `in_progress` and the task template, in this same task — otherwise those blueprints start failing the linter. (The parser already accepts both at `:162`, so the DB side is safe.)
 
 **Files:**
 
@@ -737,7 +741,7 @@ for a move. Therefore transition legality cannot live in that validator. Use two
 correct surfaces instead:
 
 - **Primary (CI-gated): an audit check.** For each blueprint, recover its
-  *previous* lifecycle dir and compare `from → to` against the matrix. Lives in
+  _previous_ lifecycle dir and compare `from → to` against the matrix. Lives in
   `blueprint-lifecycle-sql.ts` (or a sibling helper) reusing the Task 3.1 git
   helper. **(A5 — two reliability hazards, found in Phase 3; both make a naive
   version fail OPEN silently.)** (1) The CI `wp-audits` job checkout
@@ -752,7 +756,7 @@ correct surfaces instead:
   gate) — and downgrade the plan's own language from "reliable gate" accordingly
   (Open Question #7).
 - **Assist (fast feedback, best-effort): a Bash-guard parse.** In the
-  pretool-guard *forbidden-commands*/Bash validator (which already inspects Bash
+  pretool-guard _forbidden-commands_/Bash validator (which already inspects Bash
   commands), parse `git mv blueprints/<from>/… blueprints/<to>/…` and reject an
   illegal move before it happens. This only covers agent-issued `git mv` (not
   plain `mv` or out-of-tool git), so it is an early-warning, not the gate.
@@ -761,14 +765,14 @@ The no-op `validateBlueprint` is **not** the home for this; leave it (or wire it
 real implementation as separate future work). **Decided matrix (deep-interview)**
 — note `completed → in-progress` (reopen) is **allowed**:
 
-| from → to | legal targets |
-| --------- | ------------- |
-| draft | planned, archived |
-| planned | in-progress, parked, archived |
-| in-progress | completed, parked, archived |
-| parked | in-progress, planned, archived |
-| completed | **in-progress (reopen)**, archived |
-| archived | (terminal) |
+| from → to   | legal targets                      |
+| ----------- | ---------------------------------- |
+| draft       | planned, archived                  |
+| planned     | in-progress, parked, archived      |
+| in-progress | completed, parked, archived        |
+| parked      | in-progress, planned, archived     |
+| completed   | **in-progress (reopen)**, archived |
+| archived    | (terminal)                         |
 
 **Files:**
 
@@ -809,7 +813,7 @@ blueprints whose last git commit touch (`git log -1 --format=%cI -- <file>`, sam
 `'blueprint-stale-in-progress-days': { max_days: 14 }` (requires the widened
 schema from Task 0.5 — **F1**). `planned` is **not** in scope. **(F7)** Scope to a
 dedicated `STALENESS_SCOPE = {in-progress}` set — do **not** reuse
-`ACTIVE_BLUEPRINT_STATUSES` (`repo-guardrails.ts:102`), which *includes* `draft`
+`ACTIVE_BLUEPRINT_STATUSES` (`repo-guardrails.ts:102`), which _includes_ `draft`
 and `parked` (the states this check must exempt). Exempt
 `draft`, `parked`, `completed`, `archived`. Bound the git call and **degrade
 gracefully** (skip with a notice) when not in a git tree — never raise a timeout
@@ -930,40 +934,40 @@ pattern per repo precedent, e.g. `.changeset/blueprint-lifecycle-hygiene.md`).
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-| ---- | ------- | ---------------- |
-| Type safety | repo typecheck recipe | Zero errors |
-| Lint | repo lint recipe (scoped) | Zero violations |
-| Tests | repo test recipe (scoped) | All pass |
-| Full QA | repo full-QA recipe (`wp_qa`) | All pass |
-| Self-audit | `wp audit blueprint-lifecycle` on this repo | Green — **only after Task 0.6 backfill** (A2); not achievable on the raw backlog |
-| Mutation | repo mutation recipe | No drop vs baseline (extraction-parity tolerance) |
+| Gate        | Command                                     | Success Criteria                                                                 |
+| ----------- | ------------------------------------------- | -------------------------------------------------------------------------------- |
+| Type safety | repo typecheck recipe                       | Zero errors                                                                      |
+| Lint        | repo lint recipe (scoped)                   | Zero violations                                                                  |
+| Tests       | repo test recipe (scoped)                   | All pass                                                                         |
+| Full QA     | repo full-QA recipe (`wp_qa`)               | All pass                                                                         |
+| Self-audit  | `wp audit blueprint-lifecycle` on this repo | Green — **only after Task 0.6 backfill** (A2); not achievable on the raw backlog |
+| Mutation    | repo mutation recipe                        | No drop vs baseline (extraction-parity tolerance)                                |
 
 ## Cross-Plan References
 
-| Type | Blueprint / state | Relationship |
-| ---- | ----------------- | ------------ |
-| **Sequencing** | `in-progress/no-first-party-mjs-audit-rollout` (67%) | **Lands first** — it owns `audit.ts`/`audit-core.ts`/`audit.test.ts`/`server.integration.test.ts`; re-verify this plan's `file:line` citations after it merges. Its overview uses `in_progress`/`pending` → a concrete Task 0.6/2.1 migration target. |
-| Disjoint | `planned/2026-06-02-…wp-deploy-orchestrator-toolchain-isolation` | File-disjoint except both add entries to the multi-entry `audit.ts` dispatch (additive, no clash). |
-| Disjoint | `~/.claude/plans/for-all-glistening-moon.md` (master) + native-runtime/vitest-launcher plans | No overlap; this plan's work is genuinely net-new. `forbidden-commands.ts` was expanded by `9494eced` — re-read before Task 2.2. |
-| Downstream | consumer repos (`ingest-lens`, `edge-matte`) | Inherit the stricter audit on next agent-kit bump; check they don't pin `blueprint-lifecycle-sql` by name before Task 0.1 removes it (A8). Tighter CI once released. |
+| Type           | Blueprint / state                                                                            | Relationship                                                                                                                                                                                                                                          |
+| -------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Sequencing** | `in-progress/no-first-party-mjs-audit-rollout` (67%)                                         | **Lands first** — it owns `audit.ts`/`audit-core.ts`/`audit.test.ts`/`server.integration.test.ts`; re-verify this plan's `file:line` citations after it merges. Its overview uses `in_progress`/`pending` → a concrete Task 0.6/2.1 migration target. |
+| Disjoint       | `planned/2026-06-02-…wp-deploy-orchestrator-toolchain-isolation`                             | File-disjoint except both add entries to the multi-entry `audit.ts` dispatch (additive, no clash).                                                                                                                                                    |
+| Disjoint       | `~/.claude/plans/for-all-glistening-moon.md` (master) + native-runtime/vitest-launcher plans | No overlap; this plan's work is genuinely net-new. `forbidden-commands.ts` was expanded by `9494eced` — re-read before Task 2.2.                                                                                                                      |
+| Downstream     | consumer repos (`ingest-lens`, `edge-matte`)                                                 | Inherit the stricter audit on next agent-kit bump; check they don't pin `blueprint-lifecycle-sql` by name before Task 0.1 removes it (A8). Tighter CI once released.                                                                                  |
 
 ## Edge Cases and Error Handling
 
-| Edge Case | Risk | Solution | Task |
-| --------- | ---- | -------- | ---- |
-| Rebase/squash changes git mtime | Staleness false positive | Warn-first; git is still better than the self-reported field | 3.1 |
-| No `.blueprints.db` in CI | Core checks silently vanish | Build-DB-first or markdown-parity fallback | 0.4 |
-| `draft/` intentionally incomplete | Frontmatter/section false positives | Exempt `draft/` from the strict subset | 2.1 |
-| `parked/` intentionally idle | Staleness false positive | Exempt `parked/`; optionally require `parked_reason` | 3.1 |
-| Worktree copies (`.claude/worktrees`, `.omc`, `.omx`, `_sandbox`) | Duplicate/false matches | Shared skip-list (precedent `no-first-party-mjs.ts:8`) | all walkers |
-| Blueprints with progress not expressible as checkboxes (e.g. research) | Derived progress wrong | Keep an opt-in manual-progress escape hatch only if a real case appears (YAGNI) | 0.2 |
-| **(F6)** Untracked new blueprint (not yet `git add`ed) | `git ls-files`-based walkers miss it → undercount / missed violation | Count/scan via `readdirSync` (filesystem), reserve git only for mtime/rename history | 1.3, 4.1, all walkers |
-| **(F2)** Move done via plain `mv` / editor / out-of-tool git | Bash-guard assist won't fire | Audit-layer history check is the gate (fail-open); Bash-guard is early-warning only | 2.2 |
-| **(A1)** Two blueprint files share a filename → same slug → DB PK collision | One silently overwrites the other; all derivations corrupt | De-dupe + `slug-uniqueness` check (hard prerequisite) | 0.0 |
-| **(A3)** Activating dead check #4 reddens CI on 49 completed blueprints | CI red before remediation lands | Measure first; skip prose-completed (0-task); warn-first; depend on backfill | 0.2, 0.6 |
-| **(A6)** Task `dropped` (de-scoped) never counts toward `done` | Finished blueprint can't reach 100% → deadlock | Terminal = `done ∪ dropped` for completion checks | 0.2, 1.1 |
-| **(A5)** Shallow CI clone (no `fetch-depth`) | Transition history absent → gate fails open silently | `fetch-depth: 0`; prefer frontmatter-history over rename detection; documented fail-open | 2.2 |
+| Edge Case                                                                   | Risk                                                                 | Solution                                                                                 | Task                  |
+| --------------------------------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | --------------------- |
+| Rebase/squash changes git mtime                                             | Staleness false positive                                             | Warn-first; git is still better than the self-reported field                             | 3.1                   |
+| No `.blueprints.db` in CI                                                   | Core checks silently vanish                                          | Build-DB-first or markdown-parity fallback                                               | 0.4                   |
+| `draft/` intentionally incomplete                                           | Frontmatter/section false positives                                  | Exempt `draft/` from the strict subset                                                   | 2.1                   |
+| `parked/` intentionally idle                                                | Staleness false positive                                             | Exempt `parked/`; optionally require `parked_reason`                                     | 3.1                   |
+| Worktree copies (`.claude/worktrees`, `.omc`, `.omx`, `_sandbox`)           | Duplicate/false matches                                              | Shared skip-list (precedent `no-first-party-mjs.ts:8`)                                   | all walkers           |
+| Blueprints with progress not expressible as checkboxes (e.g. research)      | Derived progress wrong                                               | Keep an opt-in manual-progress escape hatch only if a real case appears (YAGNI)          | 0.2                   |
+| **(F6)** Untracked new blueprint (not yet `git add`ed)                      | `git ls-files`-based walkers miss it → undercount / missed violation | Count/scan via `readdirSync` (filesystem), reserve git only for mtime/rename history     | 1.3, 4.1, all walkers |
+| **(F2)** Move done via plain `mv` / editor / out-of-tool git                | Bash-guard assist won't fire                                         | Audit-layer history check is the gate (fail-open); Bash-guard is early-warning only      | 2.2                   |
+| **(A1)** Two blueprint files share a filename → same slug → DB PK collision | One silently overwrites the other; all derivations corrupt           | De-dupe + `slug-uniqueness` check (hard prerequisite)                                    | 0.0                   |
+| **(A3)** Activating dead check #4 reddens CI on 49 completed blueprints     | CI red before remediation lands                                      | Measure first; skip prose-completed (0-task); warn-first; depend on backfill             | 0.2, 0.6              |
+| **(A6)** Task `dropped` (de-scoped) never counts toward `done`              | Finished blueprint can't reach 100% → deadlock                       | Terminal = `done ∪ dropped` for completion checks                                        | 0.2, 1.1              |
+| **(A5)** Shallow CI clone (no `fetch-depth`)                                | Transition history absent → gate fails open silently                 | `fetch-depth: 0`; prefer frontmatter-history over rename detection; documented fail-open | 2.2                   |
 
 ## Non-goals
 
@@ -976,12 +980,12 @@ pattern per repo precedent, e.g. `.changeset/blueprint-lifecycle-hygiene.md`).
 
 ## Risks
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-| New checks block CI on legitimate edge cases | Contributor friction | Warn-first for staleness/freshness; phased rollout; budget overrides |
-| Transition matrix too strict | Blocks valid workflow moves | Matrix decided (deep-interview), incl. `completed → in-progress` reopen; budget-overridable, fail-open |
-| Markdown fallback divergence persists | CI weaker than expected | Task 0.4 forces parity-or-build-first decision |
-| git dependency for mtime | Fails in non-git contexts | Bounded call + graceful skip (`no-timeout-as-fix.md`) |
+| Risk                                         | Impact                      | Mitigation                                                                                             |
+| -------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------ |
+| New checks block CI on legitimate edge cases | Contributor friction        | Warn-first for staleness/freshness; phased rollout; budget overrides                                   |
+| Transition matrix too strict                 | Blocks valid workflow moves | Matrix decided (deep-interview), incl. `completed → in-progress` reopen; budget-overridable, fail-open |
+| Markdown fallback divergence persists        | CI weaker than expected     | Task 0.4 forces parity-or-build-first decision                                                         |
+| git dependency for mtime                     | Fails in non-git contexts   | Bounded call + graceful skip (`no-timeout-as-fix.md`)                                                  |
 
 ## Decisions (resolved 2026-06-03 via deep-interview)
 
@@ -989,25 +993,25 @@ All 9 open questions are answered. The blueprint is now in active execution
 from `in-progress/` (pending the execution of Task 0.0 de-dup + Task 0.6 backfill, which the plan
 already sequences).
 
-| # | Question | Decision | Affects |
-| - | -------- | -------- | ------- |
-| 1/9 | WIP cap + README reconciliation (A4) | **Cap = 3**, overridable via budget; **update the README prose** ("at most 3 per lane") so the drift gate stays truthful — do not keep "exactly one". | 1.3, 4.1, README |
-| 2 | Staleness scope/threshold | **14 days, `in-progress` only**; `draft/planned/parked/completed/archived` exempt. Warn-first. | 3.1 |
-| 3/7 | Transition matrix + fail policy (A5) | Use the matrix but **allow `completed → in-progress` (reopen)**; **fail-open** best-effort + add **`fetch-depth: 0`** to the `wp-audits` CI job. | 2.2 |
-| 4 | Manual `progress` frontmatter field | **Drop it — derive-only SSOT** from the `tasks` roll-up. No hand-entered progress field; no divergence check needed. | 0.2, 2.1 |
-| 5 | Canonical required-field set (F4) | **`type, title, status, complexity, owner, last_updated`** enforced by all three validators (non-draft). | 2.1 |
-| 6 | Terminal-task semantics (A6/C3) | **terminal = `done ∪ dropped`** for completion/`all-done` checks; `progress_pct` displays `done`-only. | 0.2, 0.3, 1.1 |
-| 8 | Duplicate `…toolchain-isolation.md` (A1) | **Consolidate to one canonical copy in `completed/`** (its content says shipped) and **delete the duplicate**. | 0.0 |
-| — | Task 3.2 (`last_updated` vs git) | **Dropped** — overlaps 2.1's required+audited field; the git-mtime cross-check is the noisier half. | 3.2 (removed) |
+| #   | Question                                 | Decision                                                                                                                                              | Affects          |
+| --- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| 1/9 | WIP cap + README reconciliation (A4)     | **Cap = 3**, overridable via budget; **update the README prose** ("at most 3 per lane") so the drift gate stays truthful — do not keep "exactly one". | 1.3, 4.1, README |
+| 2   | Staleness scope/threshold                | **14 days, `in-progress` only**; `draft/planned/parked/completed/archived` exempt. Warn-first.                                                        | 3.1              |
+| 3/7 | Transition matrix + fail policy (A5)     | Use the matrix but **allow `completed → in-progress` (reopen)**; **fail-open** best-effort + add **`fetch-depth: 0`** to the `wp-audits` CI job.      | 2.2              |
+| 4   | Manual `progress` frontmatter field      | **Drop it — derive-only SSOT** from the `tasks` roll-up. No hand-entered progress field; no divergence check needed.                                  | 0.2, 2.1         |
+| 5   | Canonical required-field set (F4)        | **`type, title, status, complexity, owner, last_updated`** enforced by all three validators (non-draft).                                              | 2.1              |
+| 6   | Terminal-task semantics (A6/C3)          | **terminal = `done ∪ dropped`** for completion/`all-done` checks; `progress_pct` displays `done`-only.                                                | 0.2, 0.3, 1.1    |
+| 8   | Duplicate `…toolchain-isolation.md` (A1) | **Consolidate to one canonical copy in `completed/`** (its content says shipped) and **delete the duplicate**.                                        | 0.0              |
+| —   | Task 3.2 (`last_updated` vs git)         | **Dropped** — overlaps 2.1's required+audited field; the git-mtime cross-check is the noisier half.                                                   | 3.2 (removed)    |
 
 ## Technology Choices
 
-| Component | Technology | Version | Why |
-| --------- | ---------- | ------- | --- |
-| Frontmatter validation | zod | repo current | Already used in the audit layer (`_budgets.ts:14`); no new dep |
-| Progress / status SSOT | SQLite projection `tasks` table | existing | Trustworthy task roll-up vs self-reported fields |
-| Staleness / freshness ground truth | `git log` via bounded `execFileSync` | system git | Tamper-resistant; precedent `no-first-party-mjs.ts` |
-| README drift | marker-block + `--check`/`--fix` | n/a | Models doctoc `--dryrun`; reuses existing audit `--fix` pattern |
+| Component                          | Technology                           | Version      | Why                                                             |
+| ---------------------------------- | ------------------------------------ | ------------ | --------------------------------------------------------------- |
+| Frontmatter validation             | zod                                  | repo current | Already used in the audit layer (`_budgets.ts:14`); no new dep  |
+| Progress / status SSOT             | SQLite projection `tasks` table      | existing     | Trustworthy task roll-up vs self-reported fields                |
+| Staleness / freshness ground truth | `git log` via bounded `execFileSync` | system git   | Tamper-resistant; precedent `no-first-party-mjs.ts`             |
+| README drift                       | marker-block + `--check`/`--fix`     | n/a          | Models doctoc `--dryrun`; reuses existing audit `--fix` pattern |
 
 ## Refinement Ledger (plan-refine `fact check`, 2026-06-03)
 
@@ -1015,16 +1019,16 @@ Phase 1 (technology) + Phase 2 (codebase) of `plan-refine`. Every `file:line`
 claim in this blueprint was verified against the actual source. All 7 background
 findings confirmed; 8 new findings (F1-F8) surfaced and applied.
 
-| ID | Sev | Claim / assumption | Reality (verified) | Fix applied |
-| -- | --- | ------------------ | ------------------ | ----------- |
-| F1 | HIGH | Store WIP/staleness thresholds in `_budgets.ts` as `{max}`/`{max_days}` | `budgetEntrySchema` (`_budgets.ts:12`) requires `max_bytes`; `DEFAULT_BUDGETS satisfies Record<…,{max_bytes;suggest_compact_at?}>` (`:22`) — `{max}`/`{max_days}` fails zod + typecheck | Added **Task 0.5** (widen schema); 1.3 & 3.1 now depend on it |
-| F2 | HIGH | Add transition matrix to the pretool-guard file validator (`shared/validators/blueprint.ts`) | `validateBlueprint(filePath)` (`:62`) gets one Write/Edit path; `git mv` is a Bash command it never sees | Rewrote Task 2.2: audit-primary (git rename history) + Bash-guard assist; not the file validator |
-| F3 | MED | "Converge task-status on hyphen; fix docs-linter" (implied trivial) | docs-linter requires **underscore** `in_progress` (`blueprint-plan.ts:39,367`); DB CHECK (`0001_seed.sql:43`) + parser (`:162`) use **hyphen** — converging is a breaking change | Task 2.1 now includes migrating existing markdown + template in the same task |
-| F4 | MED | One frontmatter schema closes the validation gap | Three validators require *different* sets (`runValidate`: type/title/status/complexity/owner; `blueprint.yaml`: type/status/complexity/last_updated; audit: type/status) | Task 2.1 reconciles all three; canonical set added to Open Questions #5 |
-| F5 | LOW | `--fix` mirrors `auditBlueprintLifecycle`'s `options.fix` | `auditBlueprintLifecycle` (`:302`) has **no** fix path; the precedent is `auditDocsFrontmatter`/`applyDocsFrontmatterFix` (`:256`/`:670`) | Corrected Task 4.1 citation |
-| F6 | MED | Walkers can use git to enumerate blueprints | `no-first-party-mjs` uses `git ls-files` (tracked only); untracked drafts would be invisible | Tasks 1.3/4.1 specify `readdirSync` for counting; git reserved for mtime/rename. Edge-case row added |
-| F7 | LOW | Reuse `ACTIVE_BLUEPRINT_STATUSES` for staleness exemptions | It equals `{draft,planned,in-progress,parked}` (`repo-guardrails.ts:102`) — *includes* the states staleness must exempt | Key Decisions + Task 3.1: use a dedicated `STALENESS_SCOPE` |
-| F8 | INFO | `complexity` enum unenforced | Already DB-CHECK-constrained at ingest (`0001_seed.sql:6`); markdown check is for *earlier* feedback, not a missing guard | Noted; Task 2.1 framing unchanged (pre-DB feedback still valuable) |
+| ID  | Sev  | Claim / assumption                                                                           | Reality (verified)                                                                                                                                                                      | Fix applied                                                                                          |
+| --- | ---- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| F1  | HIGH | Store WIP/staleness thresholds in `_budgets.ts` as `{max}`/`{max_days}`                      | `budgetEntrySchema` (`_budgets.ts:12`) requires `max_bytes`; `DEFAULT_BUDGETS satisfies Record<…,{max_bytes;suggest_compact_at?}>` (`:22`) — `{max}`/`{max_days}` fails zod + typecheck | Added **Task 0.5** (widen schema); 1.3 & 3.1 now depend on it                                        |
+| F2  | HIGH | Add transition matrix to the pretool-guard file validator (`shared/validators/blueprint.ts`) | `validateBlueprint(filePath)` (`:62`) gets one Write/Edit path; `git mv` is a Bash command it never sees                                                                                | Rewrote Task 2.2: audit-primary (git rename history) + Bash-guard assist; not the file validator     |
+| F3  | MED  | "Converge task-status on hyphen; fix docs-linter" (implied trivial)                          | docs-linter requires **underscore** `in_progress` (`blueprint-plan.ts:39,367`); DB CHECK (`0001_seed.sql:43`) + parser (`:162`) use **hyphen** — converging is a breaking change        | Task 2.1 now includes migrating existing markdown + template in the same task                        |
+| F4  | MED  | One frontmatter schema closes the validation gap                                             | Three validators require _different_ sets (`runValidate`: type/title/status/complexity/owner; `blueprint.yaml`: type/status/complexity/last_updated; audit: type/status)                | Task 2.1 reconciles all three; canonical set added to Open Questions #5                              |
+| F5  | LOW  | `--fix` mirrors `auditBlueprintLifecycle`'s `options.fix`                                    | `auditBlueprintLifecycle` (`:302`) has **no** fix path; the precedent is `auditDocsFrontmatter`/`applyDocsFrontmatterFix` (`:256`/`:670`)                                               | Corrected Task 4.1 citation                                                                          |
+| F6  | MED  | Walkers can use git to enumerate blueprints                                                  | `no-first-party-mjs` uses `git ls-files` (tracked only); untracked drafts would be invisible                                                                                            | Tasks 1.3/4.1 specify `readdirSync` for counting; git reserved for mtime/rename. Edge-case row added |
+| F7  | LOW  | Reuse `ACTIVE_BLUEPRINT_STATUSES` for staleness exemptions                                   | It equals `{draft,planned,in-progress,parked}` (`repo-guardrails.ts:102`) — _includes_ the states staleness must exempt                                                                 | Key Decisions + Task 3.1: use a dedicated `STALENESS_SCOPE`                                          |
+| F8  | INFO | `complexity` enum unenforced                                                                 | Already DB-CHECK-constrained at ingest (`0001_seed.sql:6`); markdown check is for _earlier_ feedback, not a missing guard                                                               | Noted; Task 2.1 framing unchanged (pre-DB feedback still valuable)                                   |
 
 **Confirmed-as-stated (no change needed):** dead `progress_pct` (`ingester.ts:200`);
 double-registration (`audit.ts:37-38`/`:109-110`); `blueprint-lifecycle-sql` absent
@@ -1037,19 +1041,19 @@ deliberate (`blueprint.yaml:36`).
 
 ### Refinement Summary
 
-| Metric | Value |
-| ------ | ----- |
-| Findings total | 8 (F1-F8) |
-| HIGH | 2 (F1, F2) |
-| MEDIUM | 3 (F3, F4, F6) |
-| LOW/INFO | 3 (F5, F7, F8) |
-| Fixes applied | 8/8 |
-| Background claims verified | 10/10 confirmed |
-| Tasks (was → now) | 12 → 13 (added 0.5) |
-| Parallelization score | B (CP>0 on `blueprint-lifecycle-sql.ts` → serialized lane) |
-| Critical path | 5 waves |
-| Open Questions | 5 (must resolve before `draft → planned`) |
-| Phases run | 1 (Technology), 2 (Codebase), 5 (Graph), 6 (Apply) |
+| Metric                     | Value                                                      |
+| -------------------------- | ---------------------------------------------------------- |
+| Findings total             | 8 (F1-F8)                                                  |
+| HIGH                       | 2 (F1, F2)                                                 |
+| MEDIUM                     | 3 (F3, F4, F6)                                             |
+| LOW/INFO                   | 3 (F5, F7, F8)                                             |
+| Fixes applied              | 8/8                                                        |
+| Background claims verified | 10/10 confirmed                                            |
+| Tasks (was → now)          | 12 → 13 (added 0.5)                                        |
+| Parallelization score      | B (CP>0 on `blueprint-lifecycle-sql.ts` → serialized lane) |
+| Critical path              | 5 waves                                                    |
+| Open Questions             | 5 (must resolve before `draft → planned`)                  |
+| Phases run                 | 1 (Technology), 2 (Codebase), 5 (Graph), 6 (Apply)         |
 
 **Not yet run (at fact-check time):** Phase 3 + Phase 4 — now completed below.
 
@@ -1060,21 +1064,22 @@ Phase 3 (adversarial architecture review, `oh-my-claudecode:critic`) + Phase 4
 but one CRITICAL and several MAJOR design hazards block promotion until resolved.
 All applied or routed to Open Questions below.
 
-| ID | Sev | Hazard (verified) | Fix applied |
-| -- | --- | ----------------- | ----------- |
-| A1 | **CRITICAL** | slug = filename only (`document-paths.ts:48`); `slug` is PK with `ON CONFLICT DO UPDATE` (`ingester.ts:115-119`). Repo **currently** has `…toolchain-isolation.md` in BOTH `in-progress/` and `planned/` → one row silently overwrites the other → all DB-derived checks read corrupt data | Added **Task 0.0** (de-dupe + `slug-uniqueness` check); gates rest of Phase 0. OQ#8 |
-| A2 | MAJOR | "self-audit green" gate is unachievable: existing blueprints use `in_progress`/`pending`, lack `last_updated`, parent-roadmaps have 0 tasks | Added **Task 0.6** backfill; self-audit gate now depends on it |
-| A3 | MAJOR | Task 0.2 activates dead check #4 → reddens CI on 49 completed blueprints with unchecked boxes | Task 0.2: measure-first + skip prose-completed (0-task) + warn-first; depends on 0.6 |
-| A4 | MAJOR | WIP default 3 contradicts README "exactly one per lane"; repo has 2 in-progress now | Task 1.3 reconcile-in-same-change; OQ#9 |
-| A5 | MAJOR | `wp-audits` CI checkout has no `fetch-depth` (`ci.webpresso.yml:134`) → shallow clone → transition history absent → gate fails open silently; rename detection also heuristic | Task 2.2: add `fetch-depth: 0`, prefer frontmatter-history over rename, documented fail-open; OQ#7 |
-| A6 | MAJOR | `done = total` ignores `dropped`/`blocked` (seed allows `dropped`, `0001_seed.sql:43`) → de-scope deadlock | Tasks 0.2/1.1: terminal = `done ∪ dropped`; OQ#6 |
-| A7 | MINOR | Appendix/illustrative `#### Task` blocks inflate `total` | Task 1.1: scope counts to `### Phase N` descendants + fixture |
-| A8 | MINOR | Removing `blueprint-lifecycle-sql` may break consumer-repo CI that pins it | Task 0.1: grep must span `ingest-lens`/`edge-matte`; Cross-Plan row |
-| A9 | MINOR | README index regeneration → per-PR churn + merge conflicts | Task 4.1: counts-only marker block (6 rows), no per-blueprint rows |
-| — | MAJOR (exec) | CI runs `audit guardrails` with no `.blueprints.db` → all new SQL checks **inert in CI** | **Elevated Task 0.4** to a blocker |
-| — | MINOR (skeptic) | Task 3.2 (`last_updated` vs git) overlaps the required+audited field from 2.1 and is the noisier check | Task 3.2 flagged as drop/merge candidate |
+| ID  | Sev             | Hazard (verified)                                                                                                                                                                                                                                                                          | Fix applied                                                                                        |
+| --- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| A1  | **CRITICAL**    | slug = filename only (`document-paths.ts:48`); `slug` is PK with `ON CONFLICT DO UPDATE` (`ingester.ts:115-119`). Repo **currently** has `…toolchain-isolation.md` in BOTH `in-progress/` and `planned/` → one row silently overwrites the other → all DB-derived checks read corrupt data | Added **Task 0.0** (de-dupe + `slug-uniqueness` check); gates rest of Phase 0. OQ#8                |
+| A2  | MAJOR           | "self-audit green" gate is unachievable: existing blueprints use `in_progress`/`pending`, lack `last_updated`, parent-roadmaps have 0 tasks                                                                                                                                                | Added **Task 0.6** backfill; self-audit gate now depends on it                                     |
+| A3  | MAJOR           | Task 0.2 activates dead check #4 → reddens CI on 49 completed blueprints with unchecked boxes                                                                                                                                                                                              | Task 0.2: measure-first + skip prose-completed (0-task) + warn-first; depends on 0.6               |
+| A4  | MAJOR           | WIP default 3 contradicts README "exactly one per lane"; repo has 2 in-progress now                                                                                                                                                                                                        | Task 1.3 reconcile-in-same-change; OQ#9                                                            |
+| A5  | MAJOR           | `wp-audits` CI checkout has no `fetch-depth` (`ci.webpresso.yml:134`) → shallow clone → transition history absent → gate fails open silently; rename detection also heuristic                                                                                                              | Task 2.2: add `fetch-depth: 0`, prefer frontmatter-history over rename, documented fail-open; OQ#7 |
+| A6  | MAJOR           | `done = total` ignores `dropped`/`blocked` (seed allows `dropped`, `0001_seed.sql:43`) → de-scope deadlock                                                                                                                                                                                 | Tasks 0.2/1.1: terminal = `done ∪ dropped`; OQ#6                                                   |
+| A7  | MINOR           | Appendix/illustrative `#### Task` blocks inflate `total`                                                                                                                                                                                                                                   | Task 1.1: scope counts to `### Phase N` descendants + fixture                                      |
+| A8  | MINOR           | Removing `blueprint-lifecycle-sql` may break consumer-repo CI that pins it                                                                                                                                                                                                                 | Task 0.1: grep must span `ingest-lens`/`edge-matte`; Cross-Plan row                                |
+| A9  | MINOR           | README index regeneration → per-PR churn + merge conflicts                                                                                                                                                                                                                                 | Task 4.1: counts-only marker block (6 rows), no per-blueprint rows                                 |
+| —   | MAJOR (exec)    | CI runs `audit guardrails` with no `.blueprints.db` → all new SQL checks **inert in CI**                                                                                                                                                                                                   | **Elevated Task 0.4** to a blocker                                                                 |
+| —   | MINOR (skeptic) | Task 3.2 (`last_updated` vs git) overlaps the required+audited field from 2.1 and is the noisier check                                                                                                                                                                                     | Task 3.2 flagged as drop/merge candidate                                                           |
 
 **Phase 4 cross-plan findings (applied):**
+
 - Premise correction: the audit files were **committed** (`9494eced`), not in-flight; Task 0.1's "add to `AUDIT_KINDS`" sub-goal is already done → re-scoped to the double-dispatch removal only.
 - **Sequence after** `in-progress/no-first-party-mjs-audit-rollout` (owns the audit-registration files; 67%); re-verify `file:line` citations after it lands. Cross-Plan row added.
 - `forbidden-commands.ts` was expanded by `9494eced` → re-read before Task 2.2.
@@ -1087,14 +1092,14 @@ Independent second opinion from the Codex CLI (read-only, verified against sourc
 Three P1s — **two genuinely new** (C1, C2) that the internal passes missed — plus
 three P2s. All applied.
 
-| ID | Sev | Finding (verified against source) | Fix applied |
-| -- | --- | --------------------------------- | ----------- |
-| C1 | **P1** | CLI and MCP run **different** audits: CLI `audit.ts:37` → SQL; MCP `src/mcp/tools/audit.ts:160-162` → markdown `auditBlueprintLifecycle`. The plan's Product wedge anchor wrongly treated them as one surface — new SQL checks would be invisible to `wp_audit`. | Task 0.1: align MCP dispatch with CLI + parity test. Task 4.1: register the new kind in the MCP switch + description, not just `AUDIT_KINDS` |
-| C2 | **P1** | **Dependency cycle** `0.2 → 0.6 → 2.1 → 0.2` (I introduced it: 0.2's body required backfill 0.6, 0.6 deps 2.1, 2.1 deps 0.2). Graph unexecutable. | Task 0.2 decoupled: ships check #4 **warn-only**, `Depends: 0.0` only; 0.6 later promotes it to blocking |
-| C3 | **P1** | `terminal = done ∪ dropped` contradicts `assertBlueprintCanComplete:1454` (rejects any non-`done`) and Task 0.3's "any non-done rejected" → preserves the deadlock. `handleFinalize:1370` already allows `dropped`. | Task 0.3: relax `assertBlueprintCanComplete` filter to allow `dropped`; align transition/finalize/promote on the terminal definition |
-| C4 | P2 | Parser already normalizes explicit `**Status:** dropped` (`blueprint-db-parser.ts:159`, type at `:32`) — only *checkbox*-derived status omits it. | Tasks 0.2/0.3 tests cover explicit `dropped`, not just checkbox-derived |
-| C5 | P2 | Appendix-task exclusion can't be SQL-only: `parseTasks:255` scans all `#### Task` headers with no phase metadata. | Task 1.1: record phase-provenance in the **parser + ingester**, not just the SQL query |
-| C6 | P2 | Slug de-dupe via audit is insufficient — ingester upserts by slug (`ingester.ts:114`) and corrupts the projection *before* any audit runs; `scanner.ts:111` dupe-check is state-qualified, so it never sees it. | Task 0.0: also harden the **ingester** to refuse/flag a duplicate DB slug |
+| ID  | Sev    | Finding (verified against source)                                                                                                                                                                                                                                | Fix applied                                                                                                                                  |
+| --- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| C1  | **P1** | CLI and MCP run **different** audits: CLI `audit.ts:37` → SQL; MCP `src/mcp/tools/audit.ts:160-162` → markdown `auditBlueprintLifecycle`. The plan's Product wedge anchor wrongly treated them as one surface — new SQL checks would be invisible to `wp_audit`. | Task 0.1: align MCP dispatch with CLI + parity test. Task 4.1: register the new kind in the MCP switch + description, not just `AUDIT_KINDS` |
+| C2  | **P1** | **Dependency cycle** `0.2 → 0.6 → 2.1 → 0.2` (I introduced it: 0.2's body required backfill 0.6, 0.6 deps 2.1, 2.1 deps 0.2). Graph unexecutable.                                                                                                                | Task 0.2 decoupled: ships check #4 **warn-only**, `Depends: 0.0` only; 0.6 later promotes it to blocking                                     |
+| C3  | **P1** | `terminal = done ∪ dropped` contradicts `assertBlueprintCanComplete:1454` (rejects any non-`done`) and Task 0.3's "any non-done rejected" → preserves the deadlock. `handleFinalize:1370` already allows `dropped`.                                              | Task 0.3: relax `assertBlueprintCanComplete` filter to allow `dropped`; align transition/finalize/promote on the terminal definition         |
+| C4  | P2     | Parser already normalizes explicit `**Status:** dropped` (`blueprint-db-parser.ts:159`, type at `:32`) — only _checkbox_-derived status omits it.                                                                                                                | Tasks 0.2/0.3 tests cover explicit `dropped`, not just checkbox-derived                                                                      |
+| C5  | P2     | Appendix-task exclusion can't be SQL-only: `parseTasks:255` scans all `#### Task` headers with no phase metadata.                                                                                                                                                | Task 1.1: record phase-provenance in the **parser + ingester**, not just the SQL query                                                       |
+| C6  | P2     | Slug de-dupe via audit is insufficient — ingester upserts by slug (`ingester.ts:114`) and corrupts the projection _before_ any audit runs; `scanner.ts:111` dupe-check is state-qualified, so it never sees it.                                                  | Task 0.0: also harden the **ingester** to refuse/flag a duplicate DB slug                                                                    |
 
 Codex also flagged the **highest risk** as "false enforcement coverage" — MCP calls
 the markdown audit, CI falls back without DB parity, and duplicate-slug ingestion
@@ -1104,14 +1109,14 @@ is YAGNI (already flagged drop/merge).
 
 ### Final Summary (post Phases 1-6 + codex review)
 
-| Metric | Value |
-| ------ | ----- |
-| Findings total | 8 fact-check (F1-F8) + 9 adversarial (A1-A9) + 6 codex (C1-C6) + exec/skeptic/cross-plan |
-| CRITICAL / P1 | 1 (A1) + 3 codex P1 (C1-C3) |
-| Tasks (orig → now) | 12 → 15 (added 0.0, 0.5, 0.6, 4.2; dropped 3.2) |
-| Verdict | **IN EXECUTION** — all 9 open questions were resolved via deep-interview (2026-06-03), and the foundation implementation slice is underway. Remaining work is completing the task graph and backfill, not resolving design ambiguity. |
-| Highest risk | False enforcement coverage (C1/C6/0.4): a check that's registered but doesn't actually run on the MCP/CI/pre-ingest surface |
-| Reviews run | plan-refine Phases 1-6 + `/codex review` + deep-interview — three review passes + decision interview |
+| Metric             | Value                                                                                                                                                                                                                                 |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Findings total     | 8 fact-check (F1-F8) + 9 adversarial (A1-A9) + 6 codex (C1-C6) + exec/skeptic/cross-plan                                                                                                                                              |
+| CRITICAL / P1      | 1 (A1) + 3 codex P1 (C1-C3)                                                                                                                                                                                                           |
+| Tasks (orig → now) | 12 → 15 (added 0.0, 0.5, 0.6, 4.2; dropped 3.2)                                                                                                                                                                                       |
+| Verdict            | **IN EXECUTION** — all 9 open questions were resolved via deep-interview (2026-06-03), and the foundation implementation slice is underway. Remaining work is completing the task graph and backfill, not resolving design ambiguity. |
+| Highest risk       | False enforcement coverage (C1/C6/0.4): a check that's registered but doesn't actually run on the MCP/CI/pre-ingest surface                                                                                                           |
+| Reviews run        | plan-refine Phases 1-6 + `/codex review` + deep-interview — three review passes + decision interview                                                                                                                                  |
 
 ## Trust Dossier
 
@@ -1125,21 +1130,21 @@ is YAGNI (already flagged drop/merge).
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-03-blueprint-lifecycle-hygiene-enforcement.md |
+| ID  | Claim                                                          | Evidence                                                                        |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-03-blueprint-lifecycle-hygiene-enforcement.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

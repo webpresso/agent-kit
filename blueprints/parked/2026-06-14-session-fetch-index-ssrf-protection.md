@@ -4,8 +4,8 @@ title: Session fetch-index SSRF protection
 owner: ozby
 status: parked
 complexity: S
-created: '2026-06-14'
-last_updated: '2026-06-15'
+created: "2026-06-14"
+last_updated: "2026-06-15"
 progress: "Implemented in PR #139; parked for legal lifecycle transition from planned pending finalization"
 depends_on: []
 cross_repo_depends_on: []
@@ -14,8 +14,8 @@ tags:
   - ssrf
   - session-memory
   - fetch
-worktree_owner_id: ''
-worktree_owner_branch: ''
+worktree_owner_id: ""
+worktree_owner_branch: ""
 ---
 
 # Session fetch-index SSRF protection
@@ -24,7 +24,6 @@ worktree_owner_branch: ''
 
 Implemented in PR #139 on branch `work/ultragoal-9-blueprints-20260614221933`.
 Task status and acceptance checkboxes below were reconciled from the landed code paths and focused verification evidence in this PR. The file is parked because CI enforces the legal first transition from `planned`; finalization can move parked/resumed work through the lifecycle after merge.
-
 
 **Goal:** Ensure `wp_session_fetch_and_index` rejects internal/cloud-metadata endpoints — including literal IPs, hostnames that resolve to internal addresses, and canonical IPv6/IPv4-mapped encodings — while preserving legitimate external documentation fetching.
 
@@ -39,35 +38,35 @@ Task status and acceptance checkboxes below were reconciled from the landed code
 
 ## Quick Reference (Execution Waves)
 
-| Wave              | Tasks          | Dependencies | Parallelizable | Effort (T-shirt) |
-| ----------------- | -------------- | ------------ | -------------- | ---------------- |
-| **Wave 0**        | 1.1            | None         | 1 agent        | S                |
-| **Wave 1**        | 1.2, 1.3       | Task 1.1     | 2 agents       | XS-S             |
-| **Critical path** | 1.1 → 1.2      | —            | 2 waves        | S                |
+| Wave              | Tasks     | Dependencies | Parallelizable | Effort (T-shirt) |
+| ----------------- | --------- | ------------ | -------------- | ---------------- |
+| **Wave 0**        | 1.1       | None         | 1 agent        | S                |
+| **Wave 1**        | 1.2, 1.3  | Task 1.1     | 2 agents       | XS-S             |
+| **Critical path** | 1.1 → 1.2 | —            | 2 waves        | S                |
 
 ### Parallel Metrics Snapshot
 
-| Metric | Formula / Meaning                  | Target               | Actual | Notes |
-| ------ | ---------------------------------- | -------------------- | ------ | ----- |
-| RW0    | Ready tasks in Wave 0              | ≥ 3                  | 1      | Address-policy semantics must land before dependent tests/docs can be finalized. |
-| CPR    | total_tasks / critical_path_length | ≥ 2.5                | 1.5    | Improved from the stale 3-task serial plan; still intentionally narrow because this is a small security hardening patch. |
-| DD     | dependency_edges / total_tasks     | ≤ 2.0                | 0.67   | 2 dependency edges / 3 tasks. |
-| CP     | same-file overlaps per wave        | 0                    | 0      | Wave 1 splits fetch/MCP tests from blueprint/docs validation. |
+| Metric | Formula / Meaning                  | Target | Actual | Notes                                                                                                                    |
+| ------ | ---------------------------------- | ------ | ------ | ------------------------------------------------------------------------------------------------------------------------ |
+| RW0    | Ready tasks in Wave 0              | ≥ 3    | 1      | Address-policy semantics must land before dependent tests/docs can be finalized.                                         |
+| CPR    | total_tasks / critical_path_length | ≥ 2.5  | 1.5    | Improved from the stale 3-task serial plan; still intentionally narrow because this is a small security hardening patch. |
+| DD     | dependency_edges / total_tasks     | ≤ 2.0  | 0.67   | 2 dependency edges / 3 tasks.                                                                                            |
+| CP     | same-file overlaps per wave        | 0      | 0      | Wave 1 splits fetch/MCP tests from blueprint/docs validation.                                                            |
 
 **Parallelization score: C.** The first-pass plan was effectively already implemented in the repo. The remaining work has one real sequencing point (address classification contract before downstream integration assertions), after which two tasks can run in parallel. Further splitting would create artificial subtasks with little independent test value.
 
 ## Fact-Check Findings
 
-| ID | Severity | Claim | Verified Reality | Blueprint Fix |
-| -- | -------- | ----- | ---------------- | ------------- |
-| F1 | HIGH | `normalizeUrl` does not block private IPs. | **Stale.** Current `src/session-memory/fetch-index.ts:199-225` calls `isInternalHost(parsed.hostname, { signal, timeoutMs })` before fetch and throws `blocked_host`. | Treat SSRF guard as existing source and plan residual hardening only. |
-| F2 | HIGH | Cloud metadata endpoint `169.254.169.254` is reachable. | **Stale.** Current `src/session-memory/fetch-index.test.ts` covers `http://169.254.169.254/latest/meta-data/` rejection before `fetchImpl` is called. | Keep metadata regression coverage and add canonical encoding variants. |
-| F3 | LOW | URL credentials are rejected. | Confirmed at `src/session-memory/fetch-index.ts:67-81`; credentials still raise `invalid_url`. | No action. |
-| F4 | MEDIUM | `FetchAndIndexOptions` lives in `types.ts`. | Corrected: `FetchAndIndexOptions` lives in `src/session-memory/fetch-index.ts:37-48`; store-layer `FetchIndexOptions` is separate in `types.ts`. | Keep allowlist changes local to `fetch-index.ts`. |
-| F5 | LOW | `FetchIndexErrorCode` already includes `invalid_url`. | Confirmed; current source also already includes `blocked_host` at `src/session-memory/fetch-index.ts:7-16` and MCP warning handling at `src/mcp/tools/session-fetch-and-index.ts:124-147`. | Preserve `blocked_host` as distinct from malformed URL failures. |
-| F6 | HIGH | Static literal-IP blocking is sufficient SSRF protection. | Corrected by current source: `isInternalHost` resolves non-literal hostnames via `dns.promises.lookup(hostname, { all: true })` and fails closed on lookup error (`src/session-memory/ip-guard.ts:131-144`). | Keep DNS resolution default and bounded by timeout/signal. |
-| F7 | HIGH | IPv6-mapped IPv4 protection covers canonical URL forms. | **Gap.** Node canonicalizes `http://[::ffff:127.0.0.1]/` to hostname `[::ffff:7f00:1]`. Current `ipv4MappedIpv6Suffix()` only recognizes dotted suffixes (`::ffff:127.0.0.1`), so canonical hex-mapped loopback/link-local/private IPv4 forms need explicit tests and parsing. | Task 1.1 adds canonical IPv4-mapped IPv6 decoding and tests. |
-| F8 | MEDIUM | Blocking only RFC1918/loopback/link-local/ULA is enough for SSRF. | Partial. Current `isInternalIpv4()` blocks `0/8`, `10/8`, `127/8`, `169.254/16`, `172.16/12`, `192.168/16`, but not CGNAT `100.64/10`, benchmark `198.18/15`, or other special-use/non-global ranges. For an SSRF guard, default-deny should cover non-global/special-use addresses unless explicitly allowlisted. | Task 1.1 expands the address policy and documents any intentionally allowed public ranges. |
+| ID  | Severity | Claim                                                             | Verified Reality                                                                                                                                                                                                                                                                                                   | Blueprint Fix                                                                              |
+| --- | -------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| F1  | HIGH     | `normalizeUrl` does not block private IPs.                        | **Stale.** Current `src/session-memory/fetch-index.ts:199-225` calls `isInternalHost(parsed.hostname, { signal, timeoutMs })` before fetch and throws `blocked_host`.                                                                                                                                              | Treat SSRF guard as existing source and plan residual hardening only.                      |
+| F2  | HIGH     | Cloud metadata endpoint `169.254.169.254` is reachable.           | **Stale.** Current `src/session-memory/fetch-index.test.ts` covers `http://169.254.169.254/latest/meta-data/` rejection before `fetchImpl` is called.                                                                                                                                                              | Keep metadata regression coverage and add canonical encoding variants.                     |
+| F3  | LOW      | URL credentials are rejected.                                     | Confirmed at `src/session-memory/fetch-index.ts:67-81`; credentials still raise `invalid_url`.                                                                                                                                                                                                                     | No action.                                                                                 |
+| F4  | MEDIUM   | `FetchAndIndexOptions` lives in `types.ts`.                       | Corrected: `FetchAndIndexOptions` lives in `src/session-memory/fetch-index.ts:37-48`; store-layer `FetchIndexOptions` is separate in `types.ts`.                                                                                                                                                                   | Keep allowlist changes local to `fetch-index.ts`.                                          |
+| F5  | LOW      | `FetchIndexErrorCode` already includes `invalid_url`.             | Confirmed; current source also already includes `blocked_host` at `src/session-memory/fetch-index.ts:7-16` and MCP warning handling at `src/mcp/tools/session-fetch-and-index.ts:124-147`.                                                                                                                         | Preserve `blocked_host` as distinct from malformed URL failures.                           |
+| F6  | HIGH     | Static literal-IP blocking is sufficient SSRF protection.         | Corrected by current source: `isInternalHost` resolves non-literal hostnames via `dns.promises.lookup(hostname, { all: true })` and fails closed on lookup error (`src/session-memory/ip-guard.ts:131-144`).                                                                                                       | Keep DNS resolution default and bounded by timeout/signal.                                 |
+| F7  | HIGH     | IPv6-mapped IPv4 protection covers canonical URL forms.           | **Gap.** Node canonicalizes `http://[::ffff:127.0.0.1]/` to hostname `[::ffff:7f00:1]`. Current `ipv4MappedIpv6Suffix()` only recognizes dotted suffixes (`::ffff:127.0.0.1`), so canonical hex-mapped loopback/link-local/private IPv4 forms need explicit tests and parsing.                                     | Task 1.1 adds canonical IPv4-mapped IPv6 decoding and tests.                               |
+| F8  | MEDIUM   | Blocking only RFC1918/loopback/link-local/ULA is enough for SSRF. | Partial. Current `isInternalIpv4()` blocks `0/8`, `10/8`, `127/8`, `169.254/16`, `172.16/12`, `192.168/16`, but not CGNAT `100.64/10`, benchmark `198.18/15`, or other special-use/non-global ranges. For an SSRF guard, default-deny should cover non-global/special-use addresses unless explicitly allowlisted. | Task 1.1 expands the address policy and documents any intentionally allowed public ranges. |
 
 ## Tasks
 
@@ -165,42 +164,42 @@ Confirm the MCP tool still surfaces hardened host rejections as user-meaningful 
 
 ## Edge Cases
 
-| ID | Case | Handling | Severity |
-| -- | ---- | -------- | -------- |
-| E1 | DNS rebinding: hostname resolves to public IP at check time, private IP at fetch time | Mitigated by resolving at request time inside `isInternalHost` and validating every returned address. Residual TOCTOU window between lookup and fetch remains a documented non-goal. | MEDIUM |
-| E2 | IPv6-mapped IPv4 dotted form (`::ffff:127.0.0.1`) | Existing tests cover dotted form; keep it blocked without DNS lookup. | MEDIUM |
-| E3 | IPv6-mapped IPv4 canonical hex form (`[::ffff:7f00:1]`) | Task 1.1 decodes canonical hex-mapped IPv4 suffixes before applying IPv4 policy. | HIGH |
-| E4 | Hostname with trailing dot (`localhost.`) | Existing `normalizeHostname` strips trailing dots; keep regression coverage. | LOW |
-| E5 | IDN/punycode hostnames | `URL.hostname` returns punycode; DNS resolution covers the post-resolution IP regardless. | LOW |
-| E6 | `0.0.0.0` as hostname | Existing IPv4 policy blocks `0/8`; keep `0.0.0.0` coverage. | LOW |
-| E7 | Bracketed IPv6 host (`[::1]`) | Existing normalization strips brackets before `net.isIP()`/range checks. | MEDIUM |
-| E8 | Allowlist bypass with wildcards | Explicit exact hostnames only in `allowedHosts`; no glob/wildcard matching. | MEDIUM |
-| E9 | `wp_session_fetch_and_index` does not expose `allowedHosts` to callers | By design — `allowedHosts` is a code-level opt-in for internal callers. MCP callers cannot self-allowlist. | LOW |
-| E10 | Special-use/non-global IPv4 ranges not covered by RFC1918 | Task 1.1 blocks representative special-use ranges (`100.64/10`, `198.18/15`, documentation/test nets, and `192.0.0.0/24`) to avoid non-public network probing. | MEDIUM |
-| E11 | DNS lookup failure for legitimate public documentation host | Current source fails closed by returning `true` from `isInternalHost` on lookup error. This favors SSRF safety over availability; warning remains generic `blocked_host`. | MEDIUM |
+| ID  | Case                                                                                  | Handling                                                                                                                                                                             | Severity |
+| --- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| E1  | DNS rebinding: hostname resolves to public IP at check time, private IP at fetch time | Mitigated by resolving at request time inside `isInternalHost` and validating every returned address. Residual TOCTOU window between lookup and fetch remains a documented non-goal. | MEDIUM   |
+| E2  | IPv6-mapped IPv4 dotted form (`::ffff:127.0.0.1`)                                     | Existing tests cover dotted form; keep it blocked without DNS lookup.                                                                                                                | MEDIUM   |
+| E3  | IPv6-mapped IPv4 canonical hex form (`[::ffff:7f00:1]`)                               | Task 1.1 decodes canonical hex-mapped IPv4 suffixes before applying IPv4 policy.                                                                                                     | HIGH     |
+| E4  | Hostname with trailing dot (`localhost.`)                                             | Existing `normalizeHostname` strips trailing dots; keep regression coverage.                                                                                                         | LOW      |
+| E5  | IDN/punycode hostnames                                                                | `URL.hostname` returns punycode; DNS resolution covers the post-resolution IP regardless.                                                                                            | LOW      |
+| E6  | `0.0.0.0` as hostname                                                                 | Existing IPv4 policy blocks `0/8`; keep `0.0.0.0` coverage.                                                                                                                          | LOW      |
+| E7  | Bracketed IPv6 host (`[::1]`)                                                         | Existing normalization strips brackets before `net.isIP()`/range checks.                                                                                                             | MEDIUM   |
+| E8  | Allowlist bypass with wildcards                                                       | Explicit exact hostnames only in `allowedHosts`; no glob/wildcard matching.                                                                                                          | MEDIUM   |
+| E9  | `wp_session_fetch_and_index` does not expose `allowedHosts` to callers                | By design — `allowedHosts` is a code-level opt-in for internal callers. MCP callers cannot self-allowlist.                                                                           | LOW      |
+| E10 | Special-use/non-global IPv4 ranges not covered by RFC1918                             | Task 1.1 blocks representative special-use ranges (`100.64/10`, `198.18/15`, documentation/test nets, and `192.0.0.0/24`) to avoid non-public network probing.                       | MEDIUM   |
+| E11 | DNS lookup failure for legitimate public documentation host                           | Current source fails closed by returning `true` from `isInternalHost` on lookup error. This favors SSRF safety over availability; warning remains generic `blocked_host`.            | MEDIUM   |
 
 ## Risks
 
-| Risk | Mitigation |
-| ---- | ---------- |
-| DNS rebinding bypasses the check via a TOCTOU window | DNS resolution is default inside `isInternalHost`, but the residual lookup-to-fetch gap is out of scope unless a future plan pins resolved IPs into the socket/agent. |
-| Canonical IPv4-mapped IPv6 encodings bypass dotted-suffix checks | Task 1.1 adds hex-suffix decoding and fetch/MCP regression tests. |
-| Over-blocking special-use ranges prevents a legitimate local/operator fetch | Keep `allowedHosts` as an exact-host code-level bypass; MCP remains default-deny. |
-| DNS lookup latency on the fetch path | Lookup is bounded with timeout/signal; do not raise global timeouts as a fix. |
-| Public-package dependency creep | Prefer extending the existing helper without adding a dependency; if a dependency is introduced, run package-surface/tarball checks because this is a public package. |
+| Risk                                                                        | Mitigation                                                                                                                                                            |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DNS rebinding bypasses the check via a TOCTOU window                        | DNS resolution is default inside `isInternalHost`, but the residual lookup-to-fetch gap is out of scope unless a future plan pins resolved IPs into the socket/agent. |
+| Canonical IPv4-mapped IPv6 encodings bypass dotted-suffix checks            | Task 1.1 adds hex-suffix decoding and fetch/MCP regression tests.                                                                                                     |
+| Over-blocking special-use ranges prevents a legitimate local/operator fetch | Keep `allowedHosts` as an exact-host code-level bypass; MCP remains default-deny.                                                                                     |
+| DNS lookup latency on the fetch path                                        | Lookup is bounded with timeout/signal; do not raise global timeouts as a fix.                                                                                         |
+| Public-package dependency creep                                             | Prefer extending the existing helper without adding a dependency; if a dependency is introduced, run package-surface/tarball checks because this is a public package. |
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-| ---- | ------- | ---------------- |
-| Unit tests (ip-guard) | `./bin/wp test --file src/session-memory/ip-guard.test.ts` | Pass with canonical IPv4-mapped and special-use range coverage. |
-| Unit tests (fetch-index) | `./bin/wp test --file src/session-memory/fetch-index.test.ts` | Pass with blocked-host regressions and existing fetch behaviors. |
-| MCP integration | `./bin/wp test --file src/mcp/tools/session-fetch-and-index.test.ts` | Pass with meaningful `blocked_host` warning behavior. |
-| Full suite | `./bin/wp test` | All tests pass, no regressions. |
-| Lint | `./bin/wp lint` | Zero issues. |
-| Type safety | `./bin/wp typecheck` | Zero errors. |
-| Blueprint lifecycle | `./bin/wp audit blueprint-lifecycle` | Pass or record blocker evidence. |
-| Public package safety (only if dependency/package surface changes) | `vp pack --dry-run` or repo-equivalent package-surface check | Tarball excludes private/generated/secret-bearing files. |
+| Gate                                                               | Command                                                              | Success Criteria                                                 |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Unit tests (ip-guard)                                              | `./bin/wp test --file src/session-memory/ip-guard.test.ts`           | Pass with canonical IPv4-mapped and special-use range coverage.  |
+| Unit tests (fetch-index)                                           | `./bin/wp test --file src/session-memory/fetch-index.test.ts`        | Pass with blocked-host regressions and existing fetch behaviors. |
+| MCP integration                                                    | `./bin/wp test --file src/mcp/tools/session-fetch-and-index.test.ts` | Pass with meaningful `blocked_host` warning behavior.            |
+| Full suite                                                         | `./bin/wp test`                                                      | All tests pass, no regressions.                                  |
+| Lint                                                               | `./bin/wp lint`                                                      | Zero issues.                                                     |
+| Type safety                                                        | `./bin/wp typecheck`                                                 | Zero errors.                                                     |
+| Blueprint lifecycle                                                | `./bin/wp audit blueprint-lifecycle`                                 | Pass or record blocker evidence.                                 |
+| Public package safety (only if dependency/package surface changes) | `vp pack --dry-run` or repo-equivalent package-surface check         | Tarball excludes private/generated/secret-bearing files.         |
 
 ## Non-goals
 
@@ -219,22 +218,22 @@ Confirm the MCP tool still surfaces hardened host rejections as user-meaningful 
 
 ## Refinement Summary
 
-| Metric                    | Value |
-| ------------------------- | ----- |
-| Findings total            | 8 |
-| Critical                  | 0 |
+| Metric                    | Value                                                                                                                  |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Findings total            | 8                                                                                                                      |
+| Critical                  | 0                                                                                                                      |
 | High                      | 4 (F1/F2 stale vulnerability claims now implemented; F6 DNS default confirmed; F7 remaining canonical IPv4-mapped gap) |
-| Medium                    | 2 (F4 path correction; F8 special-use range hardening) |
-| Low                       | 2 (F3 credential rejection; F5 distinct `blocked_host`) |
-| Fixes applied             | 8/8 reflected in this blueprint |
-| Cross-plans updated       | 0 (one informational reference found; no incompatible dependency) |
-| Edge cases documented     | 11 |
-| Risks documented          | 5 |
-| **Parallelization score** | C (1 task in Wave 0, 2 tasks in Wave 1) |
-| **Critical path**         | 2 waves (Task 1.1 → Task 1.2/1.3) |
-| **Max parallel agents**   | 2 |
-| **Total tasks**           | 3 |
-| **Blueprint compliant**   | 3/3 (all tasks have lane prefixes, Status, Depends, Files, Steps (TDD), Acceptance) |
+| Medium                    | 2 (F4 path correction; F8 special-use range hardening)                                                                 |
+| Low                       | 2 (F3 credential rejection; F5 distinct `blocked_host`)                                                                |
+| Fixes applied             | 8/8 reflected in this blueprint                                                                                        |
+| Cross-plans updated       | 0 (one informational reference found; no incompatible dependency)                                                      |
+| Edge cases documented     | 11                                                                                                                     |
+| Risks documented          | 5                                                                                                                      |
+| **Parallelization score** | C (1 task in Wave 0, 2 tasks in Wave 1)                                                                                |
+| **Critical path**         | 2 waves (Task 1.1 → Task 1.2/1.3)                                                                                      |
+| **Max parallel agents**   | 2                                                                                                                      |
+| **Total tasks**           | 3                                                                                                                      |
+| **Blueprint compliant**   | 3/3 (all tasks have lane prefixes, Status, Depends, Files, Steps (TDD), Acceptance)                                    |
 
 **Key refinements applied:**
 

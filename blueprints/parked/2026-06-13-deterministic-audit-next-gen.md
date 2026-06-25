@@ -6,9 +6,9 @@ title: >-
 owner: ozby
 status: parked
 complexity: L
-created: '2026-06-13'
-last_updated: '2026-06-21'
-progress: '0% (0/10 tasks done, 0 blocked, updated 2026-06-21)'
+created: "2026-06-13"
+last_updated: "2026-06-21"
+progress: "0% (0/10 tasks done, 0 blocked, updated 2026-06-21)"
 parked_reason: >-
   Refresh needed before execution: audit registry/result contracts have drifted;
   SARIF/diff-aware task inventory must be updated against current audit surface.
@@ -55,19 +55,20 @@ review, and easier to consume in both CLI and GitHub.
 
 ## Fact-Check Summary
 
-| ID | Severity | Claim checked | Repo evidence | Planning consequence |
-| -- | -------- | ------------- | ------------- | -------------------- |
-| F1 | HIGH | Audit registration already has a single dispatch surface. | `src/cli/commands/audit.ts`, `src/cli/commands/audit-core.ts`. | Improvements should layer into the existing audit framework, not build a second one. |
-| F2 | HIGH | Some deterministic audits already support `--fix`. | `src/audit/blueprint-readme-drift.ts`, wired through `audit.ts`. | Expand safe autofix patterns rather than inventing a new fixer system. |
-| F3 | HIGH | The shared audit finding contract is still shallow. | `src/audit/repo-guardrails.ts` defines `RepoAuditViolation` as `{ file?: string; message: string }`. | Treat richer metadata as a real shared-contract expansion, not as already-landed capability. |
-| F4 | MEDIUM | Severity and rule-style metadata already exist in some audit-specific paths. | Examples: `src/audit/hook-vendor-drift.ts`, `src/audit/bucket-boundary.ts`, `src/audit/package-surface.ts`, TPH detectors. | Normalize upward from existing pockets of structure instead of inventing a second parallel format. |
-| F5 | MEDIUM | Diff-aware audit plumbing partially exists already. | `src/cli/commands/audit-core.ts` and `src/cli/commands/audit.ts` already carry `changedOnly` through some audit paths such as `bucket-boundary`. | The deterministic plan should standardize and broaden `--changed-only`, not claim it is net-new everywhere. |
-| F6 | MEDIUM | MCP/CLI result surfaces already prefer structured output. | `src/mcp/tools/audit.ts`, summary-result helpers. | Normalized richer metadata can feed both CLI and MCP naturally. |
-| F7 | HIGH | External best practice strongly supports deterministic CI gates plus machine-readable reporting. | Semgrep/reviewdog/GitHub SARIF/Biome patterns. | Prioritize SARIF + diff-aware reporting + safe autofix before any AI hard gating. |
+| ID  | Severity | Claim checked                                                                                    | Repo evidence                                                                                                                                    | Planning consequence                                                                                        |
+| --- | -------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| F1  | HIGH     | Audit registration already has a single dispatch surface.                                        | `src/cli/commands/audit.ts`, `src/cli/commands/audit-core.ts`.                                                                                   | Improvements should layer into the existing audit framework, not build a second one.                        |
+| F2  | HIGH     | Some deterministic audits already support `--fix`.                                               | `src/audit/blueprint-readme-drift.ts`, wired through `audit.ts`.                                                                                 | Expand safe autofix patterns rather than inventing a new fixer system.                                      |
+| F3  | HIGH     | The shared audit finding contract is still shallow.                                              | `src/audit/repo-guardrails.ts` defines `RepoAuditViolation` as `{ file?: string; message: string }`.                                             | Treat richer metadata as a real shared-contract expansion, not as already-landed capability.                |
+| F4  | MEDIUM   | Severity and rule-style metadata already exist in some audit-specific paths.                     | Examples: `src/audit/hook-vendor-drift.ts`, `src/audit/bucket-boundary.ts`, `src/audit/package-surface.ts`, TPH detectors.                       | Normalize upward from existing pockets of structure instead of inventing a second parallel format.          |
+| F5  | MEDIUM   | Diff-aware audit plumbing partially exists already.                                              | `src/cli/commands/audit-core.ts` and `src/cli/commands/audit.ts` already carry `changedOnly` through some audit paths such as `bucket-boundary`. | The deterministic plan should standardize and broaden `--changed-only`, not claim it is net-new everywhere. |
+| F6  | MEDIUM   | MCP/CLI result surfaces already prefer structured output.                                        | `src/mcp/tools/audit.ts`, summary-result helpers.                                                                                                | Normalized richer metadata can feed both CLI and MCP naturally.                                             |
+| F7  | HIGH     | External best practice strongly supports deterministic CI gates plus machine-readable reporting. | Semgrep/reviewdog/GitHub SARIF/Biome patterns.                                                                                                   | Prioritize SARIF + diff-aware reporting + safe autofix before any AI hard gating.                           |
 
 ## Scope
 
 ### In scope
+
 - enrich deterministic audit metadata
 - add SARIF export path
 - add diff-aware / changed-only reporting modes
@@ -75,6 +76,7 @@ review, and easier to consume in both CLI and GitHub.
 - clarify blocking vs signal audit classes
 
 ### Out of scope
+
 - replacing deterministic audits with AI
 - full code scanning platform rearchitecture
 - retrofitting every audit in one giant commit
@@ -99,12 +101,12 @@ review, and easier to consume in both CLI and GitHub.
 
 ## Quick Reference
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort |
-| ---- | ----- | ------------ | -------------- | ------ |
-| 0 | 0.1, 1.1, 1.2, 1.3 | None | Yes | S |
-| 1 | 2.1, 2.2 | 0.1, 1.1, 1.2, 1.3 | Yes | M |
-| 2 | 3.1, 3.2 | 1.1, 1.2, 2.1, 2.2 | Yes | M |
-| 3 | 4.1, 4.2 | 3.1, 3.2 | Yes | M-L |
+| Wave | Tasks              | Dependencies       | Parallelizable | Effort |
+| ---- | ------------------ | ------------------ | -------------- | ------ |
+| 0    | 0.1, 1.1, 1.2, 1.3 | None               | Yes            | S      |
+| 1    | 2.1, 2.2           | 0.1, 1.1, 1.2, 1.3 | Yes            | M      |
+| 2    | 3.1, 3.2           | 1.1, 1.2, 2.1, 2.2 | Yes            | M      |
+| 3    | 4.1, 4.2           | 3.1, 3.2           | Yes            | M-L    |
 
 ## Phases
 
@@ -227,6 +229,7 @@ review, and easier to consume in both CLI and GitHub.
   - [ ] No ambiguous or behavior-changing fixes auto-apply
 
 **Seed candidates to validate first:**
+
 - `blueprint-readme-drift`
 - docs frontmatter normalization
 - selected generated-surface alignment audits where the intended file content is already derivable deterministically
@@ -276,6 +279,7 @@ review, and easier to consume in both CLI and GitHub.
 ## Merge Criteria
 
 Do not mark this blueprint complete until:
+
 - the deterministic audit result contract carries richer structured metadata
 - SARIF export exists
 - diff-aware reporting is standardized across the intended audit subset
@@ -284,6 +288,6 @@ Do not mark this blueprint complete until:
 
 ## Cross-Plan References
 
-| Reference | Relationship |
-| --- | --- |
+| Reference                                       | Relationship                                                                         |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------ |
 | `../draft/2026-06-13-ai-assisted-audit-lane.md` | Deterministic-first foundation; AI lane stays advisory on top of this contract work. |

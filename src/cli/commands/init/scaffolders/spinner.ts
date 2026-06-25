@@ -6,21 +6,21 @@
  */
 
 export type Spinner = {
-  start(): void
-  succeed(text?: string): void
-  fail(text?: string): void
-}
+  start(): void;
+  succeed(text?: string): void;
+  fail(text?: string): void;
+};
 
-export type SpinnerFactory = (text: string) => Spinner
+export type SpinnerFactory = (text: string) => Spinner;
 
 const noopSpinner: Spinner = {
   start() {},
   succeed() {},
   fail() {},
-}
+};
 
 function noopFactory(_text: string): Spinner {
-  return noopSpinner
+  return noopSpinner;
 }
 
 /**
@@ -29,14 +29,14 @@ function noopFactory(_text: string): Spinner {
  * - TTY: ora-backed spinner.
  */
 export async function defaultSpinnerFactory(): Promise<SpinnerFactory> {
-  if (!process.stdout.isTTY) return noopFactory
-  const { default: ora } = await import('ora')
-  return (text: string) => ora(text).start() as Spinner
+  if (!process.stdout.isTTY) return noopFactory;
+  const { default: ora } = await import("ora");
+  return (text: string) => ora(text).start() as Spinner;
 }
 
 /**
  * Synchronous noop factory — safe for injection in tests and non-TTY paths.
  */
 export function makeNoopSpinnerFactory(): SpinnerFactory {
-  return noopFactory
+  return noopFactory;
 }

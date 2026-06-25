@@ -19,16 +19,16 @@
 
 export type WebpressoSourceAlias =
   | { find: string | RegExp; replacement: string }
-  | Record<string, string>
+  | Record<string, string>;
 
-export const webpressoSourceCondition = '@webpresso/source' as const
+export const webpressoSourceCondition = "@webpresso/source" as const;
 
 /**
  * Vite client environments use top-level resolve conditions. Keep this list
  * deliberately narrow: Vite still applies the built-in import/default matches
  * for matching module types.
  */
-export const webpressoSourceResolveConditions = [webpressoSourceCondition] as const
+export const webpressoSourceResolveConditions = [webpressoSourceCondition] as const;
 
 /**
  * Vitest's default node environment runs through Vite's SSR resolver. Official
@@ -37,29 +37,29 @@ export const webpressoSourceResolveConditions = [webpressoSourceCondition] as co
  */
 export const webpressoSourceSsrResolveConditions = [
   webpressoSourceCondition,
-  'module',
-  'node',
-  'development|production',
-] as const
+  "module",
+  "node",
+  "development|production",
+] as const;
 
 export interface WebpressoSourceResolveOptions {
-  alias?: WebpressoSourceAlias[] | Record<string, string>
-  dedupe?: string[]
-  tsconfigPaths?: boolean
+  alias?: WebpressoSourceAlias[] | Record<string, string>;
+  dedupe?: string[];
+  tsconfigPaths?: boolean;
 }
 
 export interface WebpressoSourceResolveConfig {
   resolve: {
-    conditions: string[]
-    tsconfigPaths?: boolean
-    alias?: WebpressoSourceAlias[] | Record<string, string>
-    dedupe?: string[]
-  }
+    conditions: string[];
+    tsconfigPaths?: boolean;
+    alias?: WebpressoSourceAlias[] | Record<string, string>;
+    dedupe?: string[];
+  };
   ssr: {
     resolve: {
-      conditions: string[]
-    }
-  }
+      conditions: string[];
+    };
+  };
 }
 
 export function createWebpressoSourceResolveConfig(
@@ -77,5 +77,5 @@ export function createWebpressoSourceResolveConfig(
         conditions: [...webpressoSourceSsrResolveConditions],
       },
     },
-  }
+  };
 }

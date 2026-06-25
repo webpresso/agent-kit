@@ -1,13 +1,13 @@
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs'
-import path from 'node:path'
-import { tmpdir } from 'node:os'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
+import path from "node:path";
+import { tmpdir } from "node:os";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { openDb } from './connection.js'
-import { ingestBlueprints, ingestAll, ingestRunnerEvent } from './ingester.js'
-import { coldStartIfNeeded } from './cold-start.js'
-import { resolveBlueprintProjectionDbPath } from './paths.js'
-import type { RunnerEvent } from '#runners/types'
+import { openDb } from "./connection.js";
+import { ingestBlueprints, ingestAll, ingestRunnerEvent } from "./ingester.js";
+import { coldStartIfNeeded } from "./cold-start.js";
+import { resolveBlueprintProjectionDbPath } from "./paths.js";
+import type { RunnerEvent } from "#runners/types";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -45,7 +45,7 @@ A minimal fixture blueprint.
 #### Task 1.1: Write the thing
 **Status:** todo
 - [ ] Do it
-`
+`;
 
 const BLUEPRINT_CONTENT_UPDATED = `---
 type: blueprint
@@ -67,7 +67,7 @@ A modified fixture blueprint.
 #### Task 1.1: Write the thing
 **Status:** in-progress
 - [x] Started
-`
+`;
 
 const COMPLETED_BLUEPRINT_CONTENT = `---
 type: blueprint
@@ -84,7 +84,7 @@ depends_on: []
 # Old Task
 
 Completed blueprint fixture.
-`
+`;
 
 const TECH_DEBT_CONTENT = `---
 type: tech-debt
@@ -101,165 +101,165 @@ linked_blueprints:
 # High-severity testing debt
 
 Insufficient coverage after refactor.
-`
+`;
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 function makeTempRepo(): string {
-  const dir = mkdtempSync(path.join(tmpdir(), 'wp-ingest-test-'))
+  const dir = mkdtempSync(path.join(tmpdir(), "wp-ingest-test-"));
   // Create blueprint structure
-  mkdirSync(path.join(dir, 'blueprints', 'planned', 'my-feature'), { recursive: true })
-  mkdirSync(path.join(dir, 'blueprints', 'completed', 'old-task'), { recursive: true })
+  mkdirSync(path.join(dir, "blueprints", "planned", "my-feature"), { recursive: true });
+  mkdirSync(path.join(dir, "blueprints", "completed", "old-task"), { recursive: true });
   writeFileSync(
-    path.join(dir, 'blueprints', 'planned', 'my-feature', '_overview.md'),
+    path.join(dir, "blueprints", "planned", "my-feature", "_overview.md"),
     BLUEPRINT_CONTENT,
-    'utf8',
-  )
+    "utf8",
+  );
   writeFileSync(
-    path.join(dir, 'blueprints', 'completed', 'old-task', '_overview.md'),
+    path.join(dir, "blueprints", "completed", "old-task", "_overview.md"),
     COMPLETED_BLUEPRINT_CONTENT,
-    'utf8',
-  )
+    "utf8",
+  );
   // Create tech-debt structure
-  mkdirSync(path.join(dir, 'tech-debt', 'needs-remediation'), { recursive: true })
+  mkdirSync(path.join(dir, "tech-debt", "needs-remediation"), { recursive: true });
   writeFileSync(
-    path.join(dir, 'tech-debt', 'needs-remediation', 'h-001-test.md'),
+    path.join(dir, "tech-debt", "needs-remediation", "h-001-test.md"),
     TECH_DEBT_CONTENT,
-    'utf8',
-  )
+    "utf8",
+  );
   // Minimal package.json so resolveBlueprintRoot picks up the generic layout
-  writeFileSync(path.join(dir, 'package.json'), '{"name":"test-consumer"}', 'utf8')
-  return dir
+  writeFileSync(path.join(dir, "package.json"), '{"name":"test-consumer"}', "utf8");
+  return dir;
 }
 
-let tmpRepoDir: string
-let dbPath: string
+let tmpRepoDir: string;
+let dbPath: string;
 
 function cleanupProjectionArtifacts(cwd: string): void {
-  const projectionPath = resolveBlueprintProjectionDbPath(cwd)
-  rmSync(path.dirname(projectionPath), { recursive: true, force: true })
+  const projectionPath = resolveBlueprintProjectionDbPath(cwd);
+  rmSync(path.dirname(projectionPath), { recursive: true, force: true });
 }
 
 beforeEach(() => {
-  tmpRepoDir = makeTempRepo()
-  dbPath = path.join(tmpRepoDir, 'test.db')
-  cleanupProjectionArtifacts(tmpRepoDir)
-})
+  tmpRepoDir = makeTempRepo();
+  dbPath = path.join(tmpRepoDir, "test.db");
+  cleanupProjectionArtifacts(tmpRepoDir);
+});
 
 afterEach(() => {
-  cleanupProjectionArtifacts(tmpRepoDir)
-  rmSync(tmpRepoDir, { recursive: true, force: true })
-})
+  cleanupProjectionArtifacts(tmpRepoDir);
+  rmSync(tmpRepoDir, { recursive: true, force: true });
+});
 
 // ---------------------------------------------------------------------------
 // ingestBlueprints
 // ---------------------------------------------------------------------------
 
-describe('ingestBlueprints', () => {
-  it('inserts all blueprints found in the blueprints directory', async () => {
-    const conn = openDb(dbPath)
+describe("ingestBlueprints", () => {
+  it("inserts all blueprints found in the blueprints directory", async () => {
+    const conn = openDb(dbPath);
     try {
-      const result = await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir })
-      expect(result.blueprintsIngested).toBe(2)
-      expect(result.errors).toHaveLength(0)
+      const result = await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir });
+      expect(result.blueprintsIngested).toBe(2);
+      expect(result.errors).toHaveLength(0);
 
-      const rows = conn.db.prepare('SELECT slug FROM blueprints ORDER BY slug').all() as Array<{
-        slug: string
-      }>
-      expect(rows.map((r) => r.slug)).toStrictEqual(['my-feature', 'old-task'])
+      const rows = conn.db.prepare("SELECT slug FROM blueprints ORDER BY slug").all() as Array<{
+        slug: string;
+      }>;
+      expect(rows.map((r) => r.slug)).toStrictEqual(["my-feature", "old-task"]);
     } finally {
-      conn.close()
+      conn.close();
     }
-  })
+  });
 
-  it('ingests canonical flat-file blueprints alongside folder blueprints', async () => {
+  it("ingests canonical flat-file blueprints alongside folder blueprints", async () => {
     writeFileSync(
-      path.join(tmpRepoDir, 'blueprints', 'planned', 'flat-plan.md'),
-      BLUEPRINT_CONTENT.replace('# My Feature Blueprint', '# Flat Plan Blueprint'),
-      'utf8',
-    )
+      path.join(tmpRepoDir, "blueprints", "planned", "flat-plan.md"),
+      BLUEPRINT_CONTENT.replace("# My Feature Blueprint", "# Flat Plan Blueprint"),
+      "utf8",
+    );
 
-    const conn = openDb(dbPath)
+    const conn = openDb(dbPath);
     try {
-      const result = await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir })
-      expect(result.blueprintsIngested).toBe(3)
+      const result = await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir });
+      expect(result.blueprintsIngested).toBe(3);
 
-      const rows = conn.db.prepare('SELECT slug FROM blueprints ORDER BY slug').all() as Array<{
-        slug: string
-      }>
-      expect(rows.map((r) => r.slug)).toStrictEqual(['flat-plan', 'my-feature', 'old-task'])
+      const rows = conn.db.prepare("SELECT slug FROM blueprints ORDER BY slug").all() as Array<{
+        slug: string;
+      }>;
+      expect(rows.map((r) => r.slug)).toStrictEqual(["flat-plan", "my-feature", "old-task"]);
     } finally {
-      conn.close()
+      conn.close();
     }
-  })
+  });
 
-  it('surfaces duplicate slugs instead of silently overwriting rows', async () => {
-    mkdirSync(path.join(tmpRepoDir, 'blueprints', 'completed', 'my-feature'), {
+  it("surfaces duplicate slugs instead of silently overwriting rows", async () => {
+    mkdirSync(path.join(tmpRepoDir, "blueprints", "completed", "my-feature"), {
       recursive: true,
-    })
+    });
     writeFileSync(
-      path.join(tmpRepoDir, 'blueprints', 'completed', 'my-feature', '_overview.md'),
-      COMPLETED_BLUEPRINT_CONTENT.replace('# Old Task', '# My Feature Blueprint (Completed)'),
-      'utf8',
-    )
+      path.join(tmpRepoDir, "blueprints", "completed", "my-feature", "_overview.md"),
+      COMPLETED_BLUEPRINT_CONTENT.replace("# Old Task", "# My Feature Blueprint (Completed)"),
+      "utf8",
+    );
 
-    const conn = openDb(dbPath)
+    const conn = openDb(dbPath);
     try {
-      const result = await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir })
+      const result = await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir });
 
       expect(
         result.errors.some((error) =>
           error.includes('duplicate slug "my-feature" appears in multiple blueprint documents'),
         ),
-      ).toBe(true)
+      ).toBe(true);
 
-      const rows = conn.db.prepare('SELECT slug FROM blueprints ORDER BY slug').all() as Array<{
-        slug: string
-      }>
-      expect(rows.map((r) => r.slug)).toStrictEqual(['old-task'])
+      const rows = conn.db.prepare("SELECT slug FROM blueprints ORDER BY slug").all() as Array<{
+        slug: string;
+      }>;
+      expect(rows.map((r) => r.slug)).toStrictEqual(["old-task"]);
     } finally {
-      conn.close()
+      conn.close();
     }
-  })
+  });
 
-  it('stores tasks, tags, risks, and edge cases for each blueprint', async () => {
-    const conn = openDb(dbPath)
+  it("stores tasks, tags, risks, and edge cases for each blueprint", async () => {
+    const conn = openDb(dbPath);
     try {
-      await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir })
+      await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir });
 
       const tags = conn.db
-        .prepare('SELECT tag_slug FROM blueprint_tags WHERE blueprint_slug = ?')
-        .all('my-feature') as Array<{ tag_slug: string }>
-      expect(tags.map((t) => t.tag_slug).sort()).toStrictEqual(['ingester', 'testing'])
+        .prepare("SELECT tag_slug FROM blueprint_tags WHERE blueprint_slug = ?")
+        .all("my-feature") as Array<{ tag_slug: string }>;
+      expect(tags.map((t) => t.tag_slug).sort()).toStrictEqual(["ingester", "testing"]);
 
       const tasks = conn.db
-        .prepare('SELECT task_id, status FROM tasks WHERE blueprint_slug = ?')
-        .all('my-feature') as Array<{ task_id: string; status: string }>
-      expect(tasks).toHaveLength(1)
-      expect(tasks[0]?.task_id).toBe('1.1')
-      expect(tasks[0]?.status).toBe('todo')
+        .prepare("SELECT task_id, status FROM tasks WHERE blueprint_slug = ?")
+        .all("my-feature") as Array<{ task_id: string; status: string }>;
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0]?.task_id).toBe("1.1");
+      expect(tasks[0]?.status).toBe("todo");
 
       const risks = conn.db
-        .prepare('SELECT risk_id, severity FROM risks WHERE blueprint_slug = ?')
-        .all('my-feature') as Array<{ risk_id: string; severity: string }>
-      expect(risks).toHaveLength(1)
-      expect(risks[0]?.risk_id).toBe('R1')
+        .prepare("SELECT risk_id, severity FROM risks WHERE blueprint_slug = ?")
+        .all("my-feature") as Array<{ risk_id: string; severity: string }>;
+      expect(risks).toHaveLength(1);
+      expect(risks[0]?.risk_id).toBe("R1");
 
       const edges = conn.db
-        .prepare('SELECT edge_id FROM edge_cases WHERE blueprint_slug = ?')
-        .all('my-feature') as Array<{ edge_id: string }>
-      expect(edges).toHaveLength(1)
-      expect(edges[0]?.edge_id).toBe('E1')
+        .prepare("SELECT edge_id FROM edge_cases WHERE blueprint_slug = ?")
+        .all("my-feature") as Array<{ edge_id: string }>;
+      expect(edges).toHaveLength(1);
+      expect(edges[0]?.edge_id).toBe("E1");
     } finally {
-      conn.close()
+      conn.close();
     }
-  })
+  });
 
-  it('derives progress_pct from done tasks only and leaves prose-completed blueprints null', async () => {
+  it("derives progress_pct from done tasks only and leaves prose-completed blueprints null", async () => {
     writeFileSync(
-      path.join(tmpRepoDir, 'blueprints', 'planned', 'my-feature', '_overview.md'),
+      path.join(tmpRepoDir, "blueprints", "planned", "my-feature", "_overview.md"),
       `---
 type: blueprint
 status: planned
@@ -283,140 +283,140 @@ last_updated: '2026-04-01'
 **Status:** todo
 - [ ] todo
 `,
-      'utf8',
-    )
+      "utf8",
+    );
 
-    const conn = openDb(dbPath)
+    const conn = openDb(dbPath);
     try {
-      await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir })
+      await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir });
 
       const planned = conn.db
-        .prepare('SELECT progress_pct FROM blueprints WHERE slug = ?')
-        .get('my-feature') as { progress_pct: number | null }
+        .prepare("SELECT progress_pct FROM blueprints WHERE slug = ?")
+        .get("my-feature") as { progress_pct: number | null };
       const completed = conn.db
-        .prepare('SELECT progress_pct FROM blueprints WHERE slug = ?')
-        .get('old-task') as { progress_pct: number | null }
+        .prepare("SELECT progress_pct FROM blueprints WHERE slug = ?")
+        .get("old-task") as { progress_pct: number | null };
 
-      expect(planned.progress_pct).toBe(33)
-      expect(completed.progress_pct).toBeNull()
+      expect(planned.progress_pct).toBe(33);
+      expect(completed.progress_pct).toBeNull();
     } finally {
-      conn.close()
+      conn.close();
     }
-  })
-})
+  });
+});
 
 // ---------------------------------------------------------------------------
 // ingestAll — idempotency
 // ---------------------------------------------------------------------------
 
-describe('ingestAll', () => {
-  it('is idempotent: running twice yields the same row counts', async () => {
-    const conn = openDb(dbPath)
+describe("ingestAll", () => {
+  it("is idempotent: running twice yields the same row counts", async () => {
+    const conn = openDb(dbPath);
     try {
-      await ingestAll({ db: conn.db, cwd: tmpRepoDir })
+      await ingestAll({ db: conn.db, cwd: tmpRepoDir });
 
       const countAfterFirst = (
-        conn.db.prepare('SELECT COUNT(*) as n FROM blueprints').get() as { n: number }
-      ).n
+        conn.db.prepare("SELECT COUNT(*) as n FROM blueprints").get() as { n: number }
+      ).n;
 
       // Second run — hashes match, nothing re-ingested
-      await ingestAll({ db: conn.db, cwd: tmpRepoDir })
+      await ingestAll({ db: conn.db, cwd: tmpRepoDir });
 
       const countAfterSecond = (
-        conn.db.prepare('SELECT COUNT(*) as n FROM blueprints').get() as { n: number }
-      ).n
+        conn.db.prepare("SELECT COUNT(*) as n FROM blueprints").get() as { n: number }
+      ).n;
 
-      expect(countAfterSecond).toBe(countAfterFirst)
+      expect(countAfterSecond).toBe(countAfterFirst);
     } finally {
-      conn.close()
+      conn.close();
     }
-  })
+  });
 
-  it('ingests blueprints and tech-debt items', async () => {
-    const conn = openDb(dbPath)
+  it("ingests blueprints and tech-debt items", async () => {
+    const conn = openDb(dbPath);
     try {
-      const result = await ingestAll({ db: conn.db, cwd: tmpRepoDir })
-      expect(result.blueprintsIngested).toBe(2)
-      expect(result.techDebtIngested).toBe(1)
-      expect(result.errors).toHaveLength(0)
+      const result = await ingestAll({ db: conn.db, cwd: tmpRepoDir });
+      expect(result.blueprintsIngested).toBe(2);
+      expect(result.techDebtIngested).toBe(1);
+      expect(result.errors).toHaveLength(0);
     } finally {
-      conn.close()
+      conn.close();
     }
-  })
-})
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Hash-gated re-ingest
 // ---------------------------------------------------------------------------
 
-describe('hash-gated re-ingest', () => {
-  it('re-ingests a blueprint when content changes', async () => {
-    const conn = openDb(dbPath)
+describe("hash-gated re-ingest", () => {
+  it("re-ingests a blueprint when content changes", async () => {
+    const conn = openDb(dbPath);
     try {
-      await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir })
+      await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir });
 
       const before = conn.db
-        .prepare('SELECT title, status FROM blueprints WHERE slug = ?')
-        .get('my-feature') as { title: string; status: string }
-      expect(before.status).toBe('planned')
+        .prepare("SELECT title, status FROM blueprints WHERE slug = ?")
+        .get("my-feature") as { title: string; status: string };
+      expect(before.status).toBe("planned");
 
       // Overwrite the file
       writeFileSync(
-        path.join(tmpRepoDir, 'blueprints', 'planned', 'my-feature', '_overview.md'),
+        path.join(tmpRepoDir, "blueprints", "planned", "my-feature", "_overview.md"),
         BLUEPRINT_CONTENT_UPDATED,
-        'utf8',
-      )
+        "utf8",
+      );
 
-      await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir })
+      await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir });
 
       const after = conn.db
-        .prepare('SELECT title, status FROM blueprints WHERE slug = ?')
-        .get('my-feature') as { title: string; status: string }
-      expect(after.status).toBe('in-progress')
-      expect(after.title).toBe('My Feature Blueprint (Updated)')
+        .prepare("SELECT title, status FROM blueprints WHERE slug = ?")
+        .get("my-feature") as { title: string; status: string };
+      expect(after.status).toBe("in-progress");
+      expect(after.title).toBe("My Feature Blueprint (Updated)");
     } finally {
-      conn.close()
+      conn.close();
     }
-  })
+  });
 
-  it('skips unchanged blueprints (content_hash match)', async () => {
-    const conn = openDb(dbPath)
+  it("skips unchanged blueprints (content_hash match)", async () => {
+    const conn = openDb(dbPath);
     try {
-      await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir })
+      await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir });
 
       // Record ingested_at for first run
       const first = conn.db
-        .prepare('SELECT ingested_at FROM blueprints WHERE slug = ?')
-        .get('my-feature') as { ingested_at: number }
+        .prepare("SELECT ingested_at FROM blueprints WHERE slug = ?")
+        .get("my-feature") as { ingested_at: number };
 
       // Run again without changes
-      await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir })
+      await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir });
 
       const second = conn.db
-        .prepare('SELECT ingested_at FROM blueprints WHERE slug = ?')
-        .get('my-feature') as { ingested_at: number }
+        .prepare("SELECT ingested_at FROM blueprints WHERE slug = ?")
+        .get("my-feature") as { ingested_at: number };
 
       // ingested_at must not change if hash matched (skipped)
-      expect(second.ingested_at).toBe(first.ingested_at)
+      expect(second.ingested_at).toBe(first.ingested_at);
     } finally {
-      conn.close()
+      conn.close();
     }
-  })
-})
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Transactional — one bad file does not block others
 // ---------------------------------------------------------------------------
 
-describe('transactional error isolation', () => {
-  it('continues ingesting valid files when one file is malformed', async () => {
+describe("transactional error isolation", () => {
+  it("continues ingesting valid files when one file is malformed", async () => {
     // Write a directory-structure file that will cause readFileSync to throw
     // (use a path that glob matches but can't be parsed as UTF-8)
-    mkdirSync(path.join(tmpRepoDir, 'blueprints', 'planned', 'bad-bp'), { recursive: true })
+    mkdirSync(path.join(tmpRepoDir, "blueprints", "planned", "bad-bp"), { recursive: true });
     writeFileSync(
-      path.join(tmpRepoDir, 'blueprints', 'planned', 'bad-bp', '_overview.md'),
+      path.join(tmpRepoDir, "blueprints", "planned", "bad-bp", "_overview.md"),
       Buffer.from([0xff, 0xfe, 0x00, 0x01]), // invalid UTF-8 — still a Buffer, parseable
-    )
+    );
     // Actually parseBlueprintForDb is fault-tolerant; to force an error we make
     // the ingester see an unreadable file by overriding it to a directory.
     // Instead: write content that produces a completely empty slug (won't match
@@ -426,279 +426,279 @@ describe('transactional error isolation', () => {
     // slug derivation would produce a slug that violates the NOT NULL constraint.
     // easiest: just verify the error is captured and other rows still land.
 
-    const conn = openDb(dbPath)
+    const conn = openDb(dbPath);
     try {
-      const result = await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir })
+      const result = await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir });
       // bad-bp has invalid UTF-8; parseBlueprintForDb handles it gracefully.
       // The key assertion: at least the 2 good blueprints are present.
-      const count = (conn.db.prepare('SELECT COUNT(*) as n FROM blueprints').get() as { n: number })
-        .n
-      expect(count).toBeGreaterThanOrEqual(2)
+      const count = (conn.db.prepare("SELECT COUNT(*) as n FROM blueprints").get() as { n: number })
+        .n;
+      expect(count).toBeGreaterThanOrEqual(2);
       // No fatal crash — function returned an object (didn't throw)
-      expect(result).not.toStrictEqual(undefined)
+      expect(result).not.toStrictEqual(undefined);
     } finally {
-      conn.close()
+      conn.close();
     }
-  })
-})
+  });
+});
 
 // ---------------------------------------------------------------------------
 // ingestRunnerEvent
 // ---------------------------------------------------------------------------
 
-describe('ingestRunnerEvent', () => {
-  it('persists a started event with null message and exit_code', () => {
-    const conn = openDb(':memory:')
+describe("ingestRunnerEvent", () => {
+  it("persists a started event with null message and exit_code", () => {
+    const conn = openDb(":memory:");
     try {
-      const event: RunnerEvent = { type: 'started', ts: '2026-05-12T10:00:00Z', handle: 'h-001' }
+      const event: RunnerEvent = { type: "started", ts: "2026-05-12T10:00:00Z", handle: "h-001" };
       ingestRunnerEvent({
         db: conn.db,
-        executionHandle: 'h-001',
+        executionHandle: "h-001",
         sequence: 1,
         event,
-        runnerVersion: '1.0.0',
-      })
+        runnerVersion: "1.0.0",
+      });
       const row = conn.db
-        .prepare('SELECT * FROM runner_events WHERE execution_handle = ?')
-        .get('h-001') as {
-        kind: string
-        message: string | null
-        exit_code: number | null
-        ts: string
-        file_path: string | null
-      }
-      expect(row.kind).toStrictEqual('started')
-      expect(row.message).toStrictEqual(null)
-      expect(row.exit_code).toStrictEqual(null)
-      expect(row.file_path).toStrictEqual(null)
-      expect(row.ts).toStrictEqual('2026-05-12T10:00:00Z')
+        .prepare("SELECT * FROM runner_events WHERE execution_handle = ?")
+        .get("h-001") as {
+        kind: string;
+        message: string | null;
+        exit_code: number | null;
+        ts: string;
+        file_path: string | null;
+      };
+      expect(row.kind).toStrictEqual("started");
+      expect(row.message).toStrictEqual(null);
+      expect(row.exit_code).toStrictEqual(null);
+      expect(row.file_path).toStrictEqual(null);
+      expect(row.ts).toStrictEqual("2026-05-12T10:00:00Z");
     } finally {
-      conn.close()
+      conn.close();
     }
-  })
+  });
 
-  it('persists a stdout event with message set to line', () => {
-    const conn = openDb(':memory:')
+  it("persists a stdout event with message set to line", () => {
+    const conn = openDb(":memory:");
     try {
       const event: RunnerEvent = {
-        type: 'stdout',
-        ts: '2026-05-12T10:01:00Z',
-        handle: 'h-001',
-        line: 'Hello, world!',
-      }
+        type: "stdout",
+        ts: "2026-05-12T10:01:00Z",
+        handle: "h-001",
+        line: "Hello, world!",
+      };
       ingestRunnerEvent({
         db: conn.db,
-        executionHandle: 'h-001',
+        executionHandle: "h-001",
         sequence: 2,
         event,
-        runnerVersion: '1.0.0',
-      })
+        runnerVersion: "1.0.0",
+      });
       const row = conn.db
-        .prepare('SELECT * FROM runner_events WHERE execution_handle = ?')
-        .get('h-001') as { kind: string; message: string | null; exit_code: number | null }
-      expect(row.kind).toStrictEqual('stdout')
-      expect(row.message).toStrictEqual('Hello, world!')
-      expect(row.exit_code).toStrictEqual(null)
+        .prepare("SELECT * FROM runner_events WHERE execution_handle = ?")
+        .get("h-001") as { kind: string; message: string | null; exit_code: number | null };
+      expect(row.kind).toStrictEqual("stdout");
+      expect(row.message).toStrictEqual("Hello, world!");
+      expect(row.exit_code).toStrictEqual(null);
     } finally {
-      conn.close()
+      conn.close();
     }
-  })
+  });
 
-  it('persists a completed event with exit_code', () => {
-    const conn = openDb(':memory:')
+  it("persists a completed event with exit_code", () => {
+    const conn = openDb(":memory:");
     try {
       const event: RunnerEvent = {
-        type: 'completed',
-        ts: '2026-05-12T10:02:00Z',
-        handle: 'h-001',
+        type: "completed",
+        ts: "2026-05-12T10:02:00Z",
+        handle: "h-001",
         exitCode: 42,
-      }
+      };
       ingestRunnerEvent({
         db: conn.db,
-        executionHandle: 'h-001',
+        executionHandle: "h-001",
         sequence: 3,
         event,
-        runnerVersion: '1.0.0',
-      })
+        runnerVersion: "1.0.0",
+      });
       const row = conn.db
-        .prepare('SELECT * FROM runner_events WHERE execution_handle = ?')
-        .get('h-001') as { kind: string; message: string | null; exit_code: number | null }
-      expect(row.kind).toStrictEqual('completed')
-      expect(row.exit_code).toStrictEqual(42)
-      expect(row.message).toStrictEqual(null)
+        .prepare("SELECT * FROM runner_events WHERE execution_handle = ?")
+        .get("h-001") as { kind: string; message: string | null; exit_code: number | null };
+      expect(row.kind).toStrictEqual("completed");
+      expect(row.exit_code).toStrictEqual(42);
+      expect(row.message).toStrictEqual(null);
     } finally {
-      conn.close()
+      conn.close();
     }
-  })
+  });
 
-  it('persists a failed event with exit_code=0 and message set to error', () => {
-    const conn = openDb(':memory:')
+  it("persists a failed event with exit_code=0 and message set to error", () => {
+    const conn = openDb(":memory:");
     try {
       const event: RunnerEvent = {
-        type: 'failed',
-        ts: '2026-05-12T10:03:00Z',
-        handle: 'h-001',
-        error: 'something went wrong',
-      }
+        type: "failed",
+        ts: "2026-05-12T10:03:00Z",
+        handle: "h-001",
+        error: "something went wrong",
+      };
       ingestRunnerEvent({
         db: conn.db,
-        executionHandle: 'h-001',
+        executionHandle: "h-001",
         sequence: 4,
         event,
-        runnerVersion: '1.0.0',
-      })
+        runnerVersion: "1.0.0",
+      });
       const row = conn.db
-        .prepare('SELECT * FROM runner_events WHERE execution_handle = ?')
-        .get('h-001') as { kind: string; message: string | null; exit_code: number | null }
-      expect(row.kind).toStrictEqual('failed')
-      expect(row.exit_code).toStrictEqual(0)
-      expect(row.message).toStrictEqual('something went wrong')
+        .prepare("SELECT * FROM runner_events WHERE execution_handle = ?")
+        .get("h-001") as { kind: string; message: string | null; exit_code: number | null };
+      expect(row.kind).toStrictEqual("failed");
+      expect(row.exit_code).toStrictEqual(0);
+      expect(row.message).toStrictEqual("something went wrong");
     } finally {
-      conn.close()
+      conn.close();
     }
-  })
+  });
 
-  it('persists a cancelled event', () => {
-    const conn = openDb(':memory:')
+  it("persists a cancelled event", () => {
+    const conn = openDb(":memory:");
     try {
-      const event: RunnerEvent = { type: 'cancelled', ts: '2026-05-12T10:04:00Z', handle: 'h-001' }
+      const event: RunnerEvent = { type: "cancelled", ts: "2026-05-12T10:04:00Z", handle: "h-001" };
       ingestRunnerEvent({
         db: conn.db,
-        executionHandle: 'h-001',
+        executionHandle: "h-001",
         sequence: 5,
         event,
-        runnerVersion: '1.0.0',
-      })
+        runnerVersion: "1.0.0",
+      });
       const row = conn.db
-        .prepare('SELECT * FROM runner_events WHERE execution_handle = ?')
-        .get('h-001') as {
-        kind: string
-        message: string | null
-        exit_code: number | null
-        file_path: string | null
-      }
-      expect(row.kind).toStrictEqual('cancelled')
-      expect(row.message).toStrictEqual(null)
-      expect(row.exit_code).toStrictEqual(null)
-      expect(row.file_path).toStrictEqual(null)
+        .prepare("SELECT * FROM runner_events WHERE execution_handle = ?")
+        .get("h-001") as {
+        kind: string;
+        message: string | null;
+        exit_code: number | null;
+        file_path: string | null;
+      };
+      expect(row.kind).toStrictEqual("cancelled");
+      expect(row.message).toStrictEqual(null);
+      expect(row.exit_code).toStrictEqual(null);
+      expect(row.file_path).toStrictEqual(null);
     } finally {
-      conn.close()
+      conn.close();
     }
-  })
+  });
 
-  it('throws when runnerVersion is an empty string', () => {
-    const conn = openDb(':memory:')
+  it("throws when runnerVersion is an empty string", () => {
+    const conn = openDb(":memory:");
     try {
-      const event: RunnerEvent = { type: 'started', ts: '2026-05-12T10:00:00Z', handle: 'h-001' }
+      const event: RunnerEvent = { type: "started", ts: "2026-05-12T10:00:00Z", handle: "h-001" };
       expect(() =>
         ingestRunnerEvent({
           db: conn.db,
-          executionHandle: 'h-001',
+          executionHandle: "h-001",
           sequence: 1,
           event,
-          runnerVersion: '',
+          runnerVersion: "",
         }),
-      ).toThrow()
+      ).toThrow();
       // No row should have been written
       const count = (
-        conn.db.prepare('SELECT COUNT(*) as n FROM runner_events').get() as { n: number }
-      ).n
-      expect(count).toStrictEqual(0)
+        conn.db.prepare("SELECT COUNT(*) as n FROM runner_events").get() as { n: number }
+      ).n;
+      expect(count).toStrictEqual(0);
     } finally {
-      conn.close()
+      conn.close();
     }
-  })
+  });
 
-  it('persists two events with the same handle but different sequences', () => {
-    const conn = openDb(':memory:')
+  it("persists two events with the same handle but different sequences", () => {
+    const conn = openDb(":memory:");
     try {
-      const event1: RunnerEvent = { type: 'started', ts: '2026-05-12T10:00:00Z', handle: 'h-002' }
+      const event1: RunnerEvent = { type: "started", ts: "2026-05-12T10:00:00Z", handle: "h-002" };
       const event2: RunnerEvent = {
-        type: 'stdout',
-        ts: '2026-05-12T10:00:01Z',
-        handle: 'h-002',
-        line: 'output line',
-      }
+        type: "stdout",
+        ts: "2026-05-12T10:00:01Z",
+        handle: "h-002",
+        line: "output line",
+      };
       ingestRunnerEvent({
         db: conn.db,
-        executionHandle: 'h-002',
+        executionHandle: "h-002",
         sequence: 1,
         event: event1,
-        runnerVersion: '1.0.0',
-      })
+        runnerVersion: "1.0.0",
+      });
       ingestRunnerEvent({
         db: conn.db,
-        executionHandle: 'h-002',
+        executionHandle: "h-002",
         sequence: 2,
         event: event2,
-        runnerVersion: '1.0.0',
-      })
+        runnerVersion: "1.0.0",
+      });
       const rows = conn.db
         .prepare(
-          'SELECT sequence, kind FROM runner_events WHERE execution_handle = ? ORDER BY sequence',
+          "SELECT sequence, kind FROM runner_events WHERE execution_handle = ? ORDER BY sequence",
         )
-        .all('h-002') as Array<{ sequence: number; kind: string }>
-      expect(rows).toHaveLength(2)
-      expect(rows[0]).toStrictEqual({ sequence: 1, kind: 'started' })
-      expect(rows[1]).toStrictEqual({ sequence: 2, kind: 'stdout' })
+        .all("h-002") as Array<{ sequence: number; kind: string }>;
+      expect(rows).toHaveLength(2);
+      expect(rows[0]).toStrictEqual({ sequence: 1, kind: "started" });
+      expect(rows[1]).toStrictEqual({ sequence: 2, kind: "stdout" });
     } finally {
-      conn.close()
+      conn.close();
     }
-  })
-})
+  });
+});
 
 // ---------------------------------------------------------------------------
 // coldStartIfNeeded
 // ---------------------------------------------------------------------------
 
-describe('coldStartIfNeeded', () => {
-  it('creates the DB when missing and returns rebuilt=true', async () => {
-    const target = resolveBlueprintProjectionDbPath(tmpRepoDir)
+describe("coldStartIfNeeded", () => {
+  it("creates the DB when missing and returns rebuilt=true", async () => {
+    const target = resolveBlueprintProjectionDbPath(tmpRepoDir);
 
-    const result = await coldStartIfNeeded(tmpRepoDir)
+    const result = await coldStartIfNeeded(tmpRepoDir);
 
-    expect(result.rebuilt).toBe(true)
-    expect(existsSync(target)).toBe(true)
-    expect(existsSync(`${target}.meta.json`)).toBe(true)
-    expect(result.blueprintsCount).toBeGreaterThanOrEqual(0)
-  })
+    expect(result.rebuilt).toBe(true);
+    expect(existsSync(target)).toBe(true);
+    expect(existsSync(`${target}.meta.json`)).toBe(true);
+    expect(result.blueprintsCount).toBeGreaterThanOrEqual(0);
+  });
 
-  it('is a no-op when DB already exists', async () => {
-    const target = resolveBlueprintProjectionDbPath(tmpRepoDir)
+  it("is a no-op when DB already exists", async () => {
+    const target = resolveBlueprintProjectionDbPath(tmpRepoDir);
 
     // First call creates the DB
-    await coldStartIfNeeded(tmpRepoDir)
-    expect(existsSync(target)).toBe(true)
-    expect(existsSync(`${target}.meta.json`)).toBe(true)
+    await coldStartIfNeeded(tmpRepoDir);
+    expect(existsSync(target)).toBe(true);
+    expect(existsSync(`${target}.meta.json`)).toBe(true);
 
     // Second call must be a no-op
-    const result = await coldStartIfNeeded(tmpRepoDir)
-    expect(result.rebuilt).toBe(false)
-    expect(result.blueprintsCount).toBe(0)
-    expect(result.techDebtCount).toBe(0)
-    expect(result.durationMs).toBe(0)
-  })
+    const result = await coldStartIfNeeded(tmpRepoDir);
+    expect(result.rebuilt).toBe(false);
+    expect(result.blueprintsCount).toBe(0);
+    expect(result.techDebtCount).toBe(0);
+    expect(result.durationMs).toBe(0);
+  });
 
-  it('populates blueprint and tech-debt rows on first cold-start', async () => {
-    const target = resolveBlueprintProjectionDbPath(tmpRepoDir)
+  it("populates blueprint and tech-debt rows on first cold-start", async () => {
+    const target = resolveBlueprintProjectionDbPath(tmpRepoDir);
 
-    const result = await coldStartIfNeeded(tmpRepoDir)
-    expect(result.rebuilt).toBe(true)
-    expect(existsSync(`${target}.meta.json`)).toBe(true)
+    const result = await coldStartIfNeeded(tmpRepoDir);
+    expect(result.rebuilt).toBe(true);
+    expect(existsSync(`${target}.meta.json`)).toBe(true);
 
     // Verify rows by opening the DB we just built
-    const conn = openDb(target)
+    const conn = openDb(target);
     try {
       const bpCount = (
-        conn.db.prepare('SELECT COUNT(*) as n FROM blueprints').get() as { n: number }
-      ).n
+        conn.db.prepare("SELECT COUNT(*) as n FROM blueprints").get() as { n: number }
+      ).n;
       const tdCount = (
-        conn.db.prepare('SELECT COUNT(*) as n FROM tech_debt_items').get() as { n: number }
-      ).n
-      expect(bpCount).toBe(2)
-      expect(tdCount).toBe(1)
+        conn.db.prepare("SELECT COUNT(*) as n FROM tech_debt_items").get() as { n: number }
+      ).n;
+      expect(bpCount).toBe(2);
+      expect(tdCount).toBe(1);
     } finally {
-      conn.close()
+      conn.close();
     }
-  })
-})
+  });
+});

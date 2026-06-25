@@ -4,9 +4,9 @@ title: Webpresso-owned gstack-derived skill package
 owner: ozby
 status: completed
 complexity: L
-created: '2026-06-19'
-last_updated: '2026-06-20'
-progress: '100% (implemented; review follow-up hardened)'
+created: "2026-06-19"
+last_updated: "2026-06-20"
+progress: "100% (implemented; review follow-up hardened)"
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -16,8 +16,8 @@ tags:
   - codex
   - package-surface
   - provenance
-worktree_owner_id: ''
-worktree_owner_branch: ''
+worktree_owner_id: ""
+worktree_owner_branch: ""
 ---
 
 # Webpresso-owned gstack-derived skill package
@@ -35,23 +35,23 @@ Absorb the useful MIT-licensed gstack workflow ideas into Webpresso-owned Claude
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort |
-| ---- | ----- | ------------ | -------------- | ------ |
-| **Wave 0** | 1.1, 1.2, 1.3 | None | 3 agents | S |
-| **Wave 1** | 2.1, 2.2, 2.3 | Wave 0 | 3 agents | S-M |
-| **Wave 2** | 3.1, 3.2 | Wave 1 | 2 agents | M |
-| **Wave 3** | 4.1 | Wave 2 | 1 agent | M |
-| **Wave 4** | 5.1 | Wave 3 | 1 agent | S |
-| **Critical path** | 1.1 → 2.1 → 3.1 → 4.1 → 5.1 | — | 5 waves | L |
+| Wave              | Tasks                       | Dependencies | Parallelizable | Effort |
+| ----------------- | --------------------------- | ------------ | -------------- | ------ |
+| **Wave 0**        | 1.1, 1.2, 1.3               | None         | 3 agents       | S      |
+| **Wave 1**        | 2.1, 2.2, 2.3               | Wave 0       | 3 agents       | S-M    |
+| **Wave 2**        | 3.1, 3.2                    | Wave 1       | 2 agents       | M      |
+| **Wave 3**        | 4.1                         | Wave 2       | 1 agent        | M      |
+| **Wave 4**        | 5.1                         | Wave 3       | 1 agent        | S      |
+| **Critical path** | 1.1 → 2.1 → 3.1 → 4.1 → 5.1 | —            | 5 waves        | L      |
 
 ### Parallel Metrics Snapshot
 
-| Metric | Formula / Meaning | Target | Actual |
-| ------ | ----------------- | ------ | ------ |
-| RW0 | Ready tasks in Wave 0 | ≥ planned agents / 2 | 3 |
-| CPR | total_tasks / critical_path_length | ≥ 2.5 | 2.0 |
-| DD | dependency_edges / total_tasks | ≤ 2.0 | 1.2 |
-| CP | same-file overlaps per wave | 0 | 0 |
+| Metric | Formula / Meaning                  | Target               | Actual |
+| ------ | ---------------------------------- | -------------------- | ------ |
+| RW0    | Ready tasks in Wave 0              | ≥ planned agents / 2 | 3      |
+| CPR    | total_tasks / critical_path_length | ≥ 2.5                | 2.0    |
+| DD     | dependency_edges / total_tasks     | ≤ 2.0                | 1.2    |
+| CP     | same-file overlaps per wave        | 0                    | 0      |
 
 **Refinement delta:** CPR is below the ideal 2.5 because public package staging, generated skill installation, and migration must sequence after the package-surface allowlist exists. The plan keeps Wave 0 broad enough for parallel setup without allowing shared-file conflicts.
 
@@ -59,26 +59,26 @@ Absorb the useful MIT-licensed gstack workflow ideas into Webpresso-owned Claude
 
 ## Technology Choices
 
-| Choice | Decision | Rationale | Fix |
-| ------ | -------- | --------- | --- |
-| Source boundary | Private workspace package `packages/gstack` named `@repo/gstack` | Gives build/test isolation while preventing a public dependency leak | Fx1 |
-| Upstream sync | One-time curated source mine with provenance, not perpetual overlay | User prefers sleek Webpresso fit over easy sync; large sync can be later blueprint work | Fx2 |
-| Runtime payload | Markdown skill sources + tiny POSIX helpers only | Upstream install is >1GB and includes ~61MB binary artifacts; bundling them violates package-sleek requirement | Fx3 |
-| Public surface | Stage allowlisted Claude/Codex generated skills into `@webpresso/agent-kit` | Users install one agent-kit package; private workspace deps do not leak | Fx4 |
-| Skill names | Unprefixed Webpresso-owned names | User explicitly wants skills considered ours, not `gstack-*` | Fx5 |
+| Choice          | Decision                                                                    | Rationale                                                                                                      | Fix |
+| --------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | --- |
+| Source boundary | Private workspace package `packages/gstack` named `@repo/gstack`            | Gives build/test isolation while preventing a public dependency leak                                           | Fx1 |
+| Upstream sync   | One-time curated source mine with provenance, not perpetual overlay         | User prefers sleek Webpresso fit over easy sync; large sync can be later blueprint work                        | Fx2 |
+| Runtime payload | Markdown skill sources + tiny POSIX helpers only                            | Upstream install is >1GB and includes ~61MB binary artifacts; bundling them violates package-sleek requirement | Fx3 |
+| Public surface  | Stage allowlisted Claude/Codex generated skills into `@webpresso/agent-kit` | Users install one agent-kit package; private workspace deps do not leak                                        | Fx4 |
+| Skill names     | Unprefixed Webpresso-owned names                                            | User explicitly wants skills considered ours, not `gstack-*`                                                   | Fx5 |
 
 ## Fact-Check Findings
 
-| ID | Severity | Claim | Verified Reality | Fix Applied |
-| -- | -------- | ----- | ---------------- | ----------- |
-| F1 | CRITICAL | We can bundle gstack runtime into agent-kit without bloat. | Local upstream install is about 1.1GB with `node_modules`; source excluding `.git`, `node_modules`, and generated host dirs is still about 366MB due prebuilt artifacts. | Fx3 — hard no-binary/no-heavy-dep gate. |
-| F2 | CRITICAL | Public package can include curated skill assets without special checks. | Repo public package policy treats tarballs as disclosure surfaces and requires explicit file/bin/export checks. | Fx4 — package-surface allowlist and tarball size tests are first-class. |
-| F3 | HIGH | MIT license lets us detach without ongoing obligations. | MIT permits modification/distribution but requires preserving copyright/license notices in substantial copies. | Fx6 — provenance and NOTICE are publish-blocking gates. |
-| F4 | HIGH | Current agent-kit policy already supports this direction. | `catalog/agent/rules/gstack-routing.md` currently says gstack is not bundled and hard-rules never replicate skills. | Fx7 — replace policy deliberately. |
-| F5 | HIGH | Existing gstack setup/update can remain unchanged. | `wp setup`/`wp update` currently clone/pull upstream gstack and run upstream `./setup`. | Fx8 — migrate to Webpresso staging/install path. |
-| F6 | HIGH | Claude auth needs API key or credentials file. | User's Claude CLI is logged in with first-party `claude.ai`; upstream gstack's gate misses that. | Fx9 — detect `claude auth status` plus existing fallbacks. |
-| F7 | MEDIUM | `mktemp /tmp/name-XXXXXX.patch` is portable. | macOS `mktemp` requires Xs at the end; suffix after Xs fails. | Fx10 — use portable temp-file pattern and test. |
-| F8 | MEDIUM | Unprefixed skill names are safe by default. | Generic names like `review` and `ship` can collide with other skill packs. | Fx11 — generated skill collision audit. |
+| ID  | Severity | Claim                                                                   | Verified Reality                                                                                                                                                         | Fix Applied                                                             |
+| --- | -------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| F1  | CRITICAL | We can bundle gstack runtime into agent-kit without bloat.              | Local upstream install is about 1.1GB with `node_modules`; source excluding `.git`, `node_modules`, and generated host dirs is still about 366MB due prebuilt artifacts. | Fx3 — hard no-binary/no-heavy-dep gate.                                 |
+| F2  | CRITICAL | Public package can include curated skill assets without special checks. | Repo public package policy treats tarballs as disclosure surfaces and requires explicit file/bin/export checks.                                                          | Fx4 — package-surface allowlist and tarball size tests are first-class. |
+| F3  | HIGH     | MIT license lets us detach without ongoing obligations.                 | MIT permits modification/distribution but requires preserving copyright/license notices in substantial copies.                                                           | Fx6 — provenance and NOTICE are publish-blocking gates.                 |
+| F4  | HIGH     | Current agent-kit policy already supports this direction.               | `catalog/agent/rules/gstack-routing.md` currently says gstack is not bundled and hard-rules never replicate skills.                                                      | Fx7 — replace policy deliberately.                                      |
+| F5  | HIGH     | Existing gstack setup/update can remain unchanged.                      | `wp setup`/`wp update` currently clone/pull upstream gstack and run upstream `./setup`.                                                                                  | Fx8 — migrate to Webpresso staging/install path.                        |
+| F6  | HIGH     | Claude auth needs API key or credentials file.                          | User's Claude CLI is logged in with first-party `claude.ai`; upstream gstack's gate misses that.                                                                         | Fx9 — detect `claude auth status` plus existing fallbacks.              |
+| F7  | MEDIUM   | `mktemp /tmp/name-XXXXXX.patch` is portable.                            | macOS `mktemp` requires Xs at the end; suffix after Xs fails.                                                                                                            | Fx10 — use portable temp-file pattern and test.                         |
+| F8  | MEDIUM   | Unprefixed skill names are safe by default.                             | Generic names like `review` and `ship` can collide with other skill packs.                                                                                               | Fx11 — generated skill collision audit.                                 |
 
 ---
 
@@ -113,25 +113,25 @@ Removing `~/.claude/skills/gstack` mutates user-owned home state. It must never 
 
 ## Edge Cases
 
-| # | Edge Case | Severity | Handling | Fix |
-| -- | --------- | -------- | -------- | --- |
-| E1 | Packed tarball includes upstream binary or `node_modules` | CRITICAL | Tarball audit fails on path/content patterns and size budget | Fx3 |
-| E2 | MIT attribution missing from staged derived assets | CRITICAL | Package-surface gate requires NOTICE/provenance files | Fx6 |
-| E3 | `@repo/gstack` leaks into packed dependencies | HIGH | Prepack/manifest tests assert no workspace private dep | Fx4 |
-| E4 | Existing external gstack shadows Webpresso skill names | HIGH | Setup warns, collision check reports, optional migration backs up/removes external checkout | Fx8, Fx11 |
-| E5 | Other installed skill packs own `review` or `ship` | MEDIUM | Collision audit runs before install and reports exact path/name conflict | Fx11 |
-| E6 | Claude auth uses first-party login without API key | HIGH | Auth helper checks `claude auth status` before env/file fallback | Fx9 |
-| E7 | macOS temp file suffix breaks nested Claude review | MEDIUM | Portable `mktemp -t` pattern and Darwin test | Fx10 |
+| #   | Edge Case                                                 | Severity | Handling                                                                                    | Fix       |
+| --- | --------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------- | --------- |
+| E1  | Packed tarball includes upstream binary or `node_modules` | CRITICAL | Tarball audit fails on path/content patterns and size budget                                | Fx3       |
+| E2  | MIT attribution missing from staged derived assets        | CRITICAL | Package-surface gate requires NOTICE/provenance files                                       | Fx6       |
+| E3  | `@repo/gstack` leaks into packed dependencies             | HIGH     | Prepack/manifest tests assert no workspace private dep                                      | Fx4       |
+| E4  | Existing external gstack shadows Webpresso skill names    | HIGH     | Setup warns, collision check reports, optional migration backs up/removes external checkout | Fx8, Fx11 |
+| E5  | Other installed skill packs own `review` or `ship`        | MEDIUM   | Collision audit runs before install and reports exact path/name conflict                    | Fx11      |
+| E6  | Claude auth uses first-party login without API key        | HIGH     | Auth helper checks `claude auth status` before env/file fallback                            | Fx9       |
+| E7  | macOS temp file suffix breaks nested Claude review        | MEDIUM   | Portable `mktemp -t` pattern and Darwin test                                                | Fx10      |
 
 ## Risks
 
-| Risk | Severity | Mitigation | Fix |
-| ---- | -------- | ---------- | --- |
-| Package bloat makes `wp` slow/heavy | CRITICAL | No binaries/heavy deps; tarball size ceiling; browser/design deferred | Fx3 |
-| Public package leaks internal/private content | CRITICAL | Allowlist staging + package-surface guardrail | Fx4 |
-| Legal attribution regression | HIGH | MIT NOTICE/provenance publish-blocking tests | Fx6 |
-| User data loss from removing external gstack checkout | HIGH | Opt-in flag, dry-run, backup, idempotency, refusal without flag | Fx8 |
-| Skill name conflicts break other toolchains | HIGH | Collision audit and install refusal/reporting | Fx11 |
+| Risk                                                  | Severity | Mitigation                                                            | Fix  |
+| ----------------------------------------------------- | -------- | --------------------------------------------------------------------- | ---- |
+| Package bloat makes `wp` slow/heavy                   | CRITICAL | No binaries/heavy deps; tarball size ceiling; browser/design deferred | Fx3  |
+| Public package leaks internal/private content         | CRITICAL | Allowlist staging + package-surface guardrail                         | Fx4  |
+| Legal attribution regression                          | HIGH     | MIT NOTICE/provenance publish-blocking tests                          | Fx6  |
+| User data loss from removing external gstack checkout | HIGH     | Opt-in flag, dry-run, backup, idempotency, refusal without flag       | Fx8  |
+| Skill name conflicts break other toolchains           | HIGH     | Collision audit and install refusal/reporting                         | Fx11 |
 
 ---
 
@@ -444,7 +444,6 @@ Run final packaging, docs, and blueprint verification to ensure the new package 
 - [x] External gstack cleanup is explicit, backed up, idempotent, and verified.
 - [x] Package-surface, tarball, typecheck, lint, tests, and blueprint checks pass.
 
-
 ## Implementation Evidence
 
 Implemented on 2026-06-20:
@@ -483,21 +482,21 @@ Verification evidence:
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-webpresso-gstack-package.md |
+| ID  | Claim                                                          | Evidence                                                         |
+| --- | -------------------------------------------------------------- | ---------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-19-webpresso-gstack-package.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

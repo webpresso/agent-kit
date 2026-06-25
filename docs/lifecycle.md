@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-06-15'
+last_updated: "2026-06-15"
 ---
 
 # Blueprint lifecycle
@@ -12,14 +12,14 @@ it have lots of transitions.
 
 ## States
 
-| State | Directory | Semantics |
-|---|---|---|
-| `draft` | `blueprints/draft/<slug>.md` by default, or `blueprints/draft/<slug>/_overview.md` | Freshly created. Still being scoped. May reference unverified claims. Not ready to execute. |
-| `planned` | `blueprints/planned/<slug>.md` by default, or `blueprints/planned/<slug>/_overview.md` | Refined, fact-checked, task graph ready. Can be picked up by an agent. Tasks haven't started. |
+| State         | Directory                                                                                      | Semantics                                                                                                                                                          |
+| ------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `draft`       | `blueprints/draft/<slug>.md` by default, or `blueprints/draft/<slug>/_overview.md`             | Freshly created. Still being scoped. May reference unverified claims. Not ready to execute.                                                                        |
+| `planned`     | `blueprints/planned/<slug>.md` by default, or `blueprints/planned/<slug>/_overview.md`         | Refined, fact-checked, task graph ready. Can be picked up by an agent. Tasks haven't started.                                                                      |
 | `in-progress` | `blueprints/in-progress/<slug>.md` by default, or `blueprints/in-progress/<slug>/_overview.md` | At least one task has started. Progress is tracked in the canonical blueprint markdown frontmatter (`progress:` field) and via per-task `**Status:**` annotations. |
-| `completed` | `blueprints/completed/<slug>.md` by default, or `blueprints/completed/<slug>/_overview.md` | Every task marked `done`. Acceptance criteria ticked. Ready for archival. |
-| `archived` | `blueprints/archived/<slug>.md` by default, or `blueprints/archived/<slug>/_overview.md` | Historical record. Read-only. |
-| `parked` | `blueprints/parked/<slug>.md` by default, or `blueprints/parked/<slug>/_overview.md` | Paused indefinitely. Reason captured in frontmatter. Resumes into `planned/` or `in-progress/`. |
+| `completed`   | `blueprints/completed/<slug>.md` by default, or `blueprints/completed/<slug>/_overview.md`     | Every task marked `done`. Acceptance criteria ticked. Ready for archival.                                                                                          |
+| `archived`    | `blueprints/archived/<slug>.md` by default, or `blueprints/archived/<slug>/_overview.md`       | Historical record. Read-only.                                                                                                                                      |
+| `parked`      | `blueprints/parked/<slug>.md` by default, or `blueprints/parked/<slug>/_overview.md`           | Paused indefinitely. Reason captured in frontmatter. Resumes into `planned/` or `in-progress/`.                                                                    |
 
 ## Transitions
 
@@ -65,11 +65,11 @@ Minimum required:
 ```yaml
 ---
 type: blueprint
-status: draft        # draft | planned | in-progress | completed | archived | parked
-complexity: M        # XS | S | M | L | XL — t-shirt sizing
+status: draft # draft | planned | in-progress | completed | archived | parked
+complexity: M # XS | S | M | L | XL — t-shirt sizing
 created: 2026-04-22
 last_updated: 2026-04-22
-progress: '0% (0 of N tasks completed)'
+progress: "0% (0 of N tasks completed)"
 ---
 ```
 
@@ -137,7 +137,7 @@ Rules (enforced by the `blueprint-plan` docs-linter validator at
   use canonical task statuses only: `todo | in-progress | blocked | done`.
 - Every executable task must include explicit `**Status:**`.
 - `in-progress → done` requires recorded evidence (`wp blueprint task <slug>
-  <id> verify`); the engine refuses to complete a task without it.
+<id> verify`); the engine refuses to complete a task without it.
 
 ## Blueprint scoping rule
 
@@ -196,7 +196,7 @@ flowchart TD
   the SQLite section below). Derived; rebuilt with `wp blueprint db build`.
 - **OMX runtime state** — when the optional OMX `/pll` adapter runs a blueprint,
   it keeps its own runtime snapshot (mapping each task's `todo|in-progress|
-  blocked|done` to OMX team-task status). It is a handoff/derived layer, not
+blocked|done` to OMX team-task status). It is a handoff/derived layer, not
   required for the public package core: Agent Kit exposes the Blueprint DAG and
   lifecycle primitives, and runtime-specific adapters such as OMX consume them.
 

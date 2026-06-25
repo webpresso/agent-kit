@@ -80,7 +80,7 @@ TARGET_FILE=${TARGET_FILE:?set TARGET_FILE to one changed file}
 
 #### Timed Claude wrapper
 
-Run the review through a timeout wrapper. Use `claude --print`; do not recommend `--bare` for this path, because it breaks the intended first-party CLI-login mode in the reproduced environment.
+Run the review through a timeout wrapper. Use `claude --print`; do not recommend `--bare` for this path, because it breaks the intended first-party CLI-login mode in the reproduced environment. Do not add artificial budget caps; only pass a budget flag when the user explicitly requested one.
 
 ```bash
 CLAUDE_REVIEW_TIMEOUT_SECONDS=${CLAUDE_REVIEW_TIMEOUT_SECONDS:-180}

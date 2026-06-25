@@ -4,9 +4,9 @@ title: Decompose blueprint MCP server
 owner: ozby
 status: parked
 complexity: XL
-created: '2026-06-14'
-last_updated: '2026-06-21'
-progress: '0% (0/9 tasks done, 0 blocked, updated 2026-06-21)'
+created: "2026-06-14"
+last_updated: "2026-06-21"
+progress: "0% (0/9 tasks done, 0 blocked, updated 2026-06-21)"
 parked_reason: >-
   Refresh needed before execution: shared-module extraction partially landed and
   blueprint-server line/function inventory drifted; avoid duplicating extraction work.
@@ -31,62 +31,62 @@ tags:
 
 ## Fact-Check Findings
 
-| ID | Severity | Claim | Verified Reality |
-| -- | -------- | ----- | ---------------- |
-| F1 | HIGH | 3,194 lines. | `wc -l` returns 3,194. Confirmed. |
-| F2 | HIGH | 58 functions (export + plain named), 24 import statements. | Confirmed via AST scan: 58 named functions (3 `export function`, 55 `function`), 24 `import` lines. |
-| F3 | HIGH | Imports from ~22 module areas. | Confirmed: `#db/*`, `#core/*`, `#lifecycle/*`, `#utils/*`, `#evidence`, `#freshness`, `#projects`, `#aggregate`, `#project-resolver`, `#projection-ready`, `#next-action`, `#mcp/tools/_shared`, lazy `#sync/*` and `#paths` imports, `gray-matter`, `zod`, plus node builtins. |
-| F4 | MEDIUM | Tool handlers mixed with DB/FS/sync logic. | Confirmed: 16 handler functions (`handleQuery`, `handleNew`, `handleValidate`, `handleTaskNext`, `handleTaskAdvance`, `handleTaskVerify`, `handlePromote`, `handleFinalize`, `handleDepgraph`, `handleBlueprintList`, `handleBlueprintGet`, `handleBlueprintContext`, `handleBlueprintPut`, `handleBlueprintTransition`, `handleBlueprintCreate`, `handleProjects`) co-located with `openDbRW`, `readVt`/`writeVt`, `reIngest`, `resolveToolProject`, `runPlatformMutationSync`, and mutation freshness helpers in one file. |
-| F5 | MEDIUM | 16 MCP tools registered. | Confirmed: 15 in `registerBlueprintTools` + `wp_blueprint_projects` in `registerBlueprintServer`. Total: 16 tools mapped to 16 handlers. |
-| F6 | MEDIUM | Shared schemas (`summaryEnvelopeOutputSchema`, `nextActionOutputSchema`) are inline. | Confirmed: defined at lines 2556/2565 inside `registerBlueprintTools`. Must move to `_shared/` for reuse across handler modules. |
-| F7 | LOW | `src/mcp/blueprint/` directory does not exist. | Confirmed: neither `src/mcp/blueprint/` nor `src/mcp/blueprint/handlers/` nor `src/mcp/blueprint/_shared/` exists. All are greenfield. |
-| F8 | LOW | `src/mcp/server.integration.test.ts` exists (11,468 bytes). | Confirmed: file present at expected path. Also 20+ blueprint-server test files exist in `src/mcp/`. |
-| F9 | LOW | Handler files listed in original blueprint. | Confirmed: 16 handler names listed match the 16 actual `handleXxx` functions. |
-| F10 | HIGH | Sync adapter is module-level mutable singleton. | Confirmed: `_syncAdapterFactory` (line 123) is module-level mutable state, resolved via `resolveSyncAdapter` (line 143), with exported test seam `_setSyncAdapterFactory` (line 131); mutation handlers reach it via `runPlatformMutationSync` (line 225). Moving mutation handlers out without moving this singleton forces a `handlers/ → blueprint-server.ts → handlers/` import cycle. Resolved by Task 1.0 (extract to `_shared/sync.ts`, pass resolver as a parameter). |
+| ID  | Severity | Claim                                                                                | Verified Reality                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| --- | -------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1  | HIGH     | 3,194 lines.                                                                         | `wc -l` returns 3,194. Confirmed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| F2  | HIGH     | 58 functions (export + plain named), 24 import statements.                           | Confirmed via AST scan: 58 named functions (3 `export function`, 55 `function`), 24 `import` lines.                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| F3  | HIGH     | Imports from ~22 module areas.                                                       | Confirmed: `#db/*`, `#core/*`, `#lifecycle/*`, `#utils/*`, `#evidence`, `#freshness`, `#projects`, `#aggregate`, `#project-resolver`, `#projection-ready`, `#next-action`, `#mcp/tools/_shared`, lazy `#sync/*` and `#paths` imports, `gray-matter`, `zod`, plus node builtins.                                                                                                                                                                                                                                              |
+| F4  | MEDIUM   | Tool handlers mixed with DB/FS/sync logic.                                           | Confirmed: 16 handler functions (`handleQuery`, `handleNew`, `handleValidate`, `handleTaskNext`, `handleTaskAdvance`, `handleTaskVerify`, `handlePromote`, `handleFinalize`, `handleDepgraph`, `handleBlueprintList`, `handleBlueprintGet`, `handleBlueprintContext`, `handleBlueprintPut`, `handleBlueprintTransition`, `handleBlueprintCreate`, `handleProjects`) co-located with `openDbRW`, `readVt`/`writeVt`, `reIngest`, `resolveToolProject`, `runPlatformMutationSync`, and mutation freshness helpers in one file. |
+| F5  | MEDIUM   | 16 MCP tools registered.                                                             | Confirmed: 15 in `registerBlueprintTools` + `wp_blueprint_projects` in `registerBlueprintServer`. Total: 16 tools mapped to 16 handlers.                                                                                                                                                                                                                                                                                                                                                                                     |
+| F6  | MEDIUM   | Shared schemas (`summaryEnvelopeOutputSchema`, `nextActionOutputSchema`) are inline. | Confirmed: defined at lines 2556/2565 inside `registerBlueprintTools`. Must move to `_shared/` for reuse across handler modules.                                                                                                                                                                                                                                                                                                                                                                                             |
+| F7  | LOW      | `src/mcp/blueprint/` directory does not exist.                                       | Confirmed: neither `src/mcp/blueprint/` nor `src/mcp/blueprint/handlers/` nor `src/mcp/blueprint/_shared/` exists. All are greenfield.                                                                                                                                                                                                                                                                                                                                                                                       |
+| F8  | LOW      | `src/mcp/server.integration.test.ts` exists (11,468 bytes).                          | Confirmed: file present at expected path. Also 20+ blueprint-server test files exist in `src/mcp/`.                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| F9  | LOW      | Handler files listed in original blueprint.                                          | Confirmed: 16 handler names listed match the 16 actual `handleXxx` functions.                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| F10 | HIGH     | Sync adapter is module-level mutable singleton.                                      | Confirmed: `_syncAdapterFactory` (line 123) is module-level mutable state, resolved via `resolveSyncAdapter` (line 143), with exported test seam `_setSyncAdapterFactory` (line 131); mutation handlers reach it via `runPlatformMutationSync` (line 225). Moving mutation handlers out without moving this singleton forces a `handlers/ → blueprint-server.ts → handlers/` import cycle. Resolved by Task 1.0 (extract to `_shared/sync.ts`, pass resolver as a parameter).                                                |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
-| ---- | ----- | ------------ | -------------- | ---------------- |
-| **Wave 0** | 1.0, 1.1 | None | 2 agents | M / S-M |
-| **Wave 1** | 1.2, 1.3, 1.4, 1.5, 1.6 | Wave 0 (Task 1.1; mutation handlers 1.4/1.5 also need Task 1.0) | 5 agents | S-M |
-| **Wave 2** | 2.1 | Wave 1 | 1 agent | M |
-| **Wave 3** | 2.2 | Wave 2 | 1 agent | S |
-| **Critical path** | 1.1 → {1.2…1.6} → 2.1 → 2.2 | — | 4 waves | M |
+| Wave              | Tasks                       | Dependencies                                                    | Parallelizable | Effort (T-shirt) |
+| ----------------- | --------------------------- | --------------------------------------------------------------- | -------------- | ---------------- |
+| **Wave 0**        | 1.0, 1.1                    | None                                                            | 2 agents       | M / S-M          |
+| **Wave 1**        | 1.2, 1.3, 1.4, 1.5, 1.6     | Wave 0 (Task 1.1; mutation handlers 1.4/1.5 also need Task 1.0) | 5 agents       | S-M              |
+| **Wave 2**        | 2.1                         | Wave 1                                                          | 1 agent        | M                |
+| **Wave 3**        | 2.2                         | Wave 2                                                          | 1 agent        | S                |
+| **Critical path** | 1.1 → {1.2…1.6} → 2.1 → 2.2 | —                                                               | 4 waves        | M                |
 
 ### Parallel Metrics Snapshot
 
-| Metric | Formula / Meaning | Target | Actual |
-| ------ | ----------------- | ------ | ------ |
-| RW0 | Ready tasks in Wave 0 | ≥ 3 | 2 |
-| CPR | total_tasks / critical_path_length | ≥ 2.5 | 2.25 |
-| DD | dependency_edges / total_tasks | ≤ 2.0 | 1.33 |
-| CP | same-file overlaps per wave | 0 | 0 |
+| Metric | Formula / Meaning                  | Target | Actual |
+| ------ | ---------------------------------- | ------ | ------ |
+| RW0    | Ready tasks in Wave 0              | ≥ 3    | 2      |
+| CPR    | total_tasks / critical_path_length | ≥ 2.5  | 2.25   |
+| DD     | dependency_edges / total_tasks     | ≤ 2.0  | 1.33   |
+| CP     | same-file overlaps per wave        | 0      | 0      |
 
 **Parallelization score: B** — Wave 0 is now correctly limited to the two foundational extractions (Task 1.0 sync seam, Task 1.1 shared helpers) because the handler tasks (1.2–1.6) genuinely depend on the `_shared/` modules those tasks create. Five handler agents fan out in Wave 1 once the foundation lands (CREATE-only, no file conflicts), then one serialized rewire in Wave 2 and one contract-test task in Wave 3. RW0 (2) is below the ≥3 target because the dependency reality (handlers cannot typecheck before `_shared/` exists) does not permit honest over-parallelization at Wave 0; the wide fan-out happens in Wave 1 (5 agents).
 
 ## Edge Cases
 
-| # | Scenario | Impact | Mitigation |
-| -- | -------- | ------ | ---------- |
-| E1 | Handler breaks tool schema contract during extraction | Tool returns wrong shape to MCP client | Each handler keeps its existing Zod/JSON schemas co-located; schema extraction is CREATE-only in Wave 0–1, unchanged until Wave 2 wiring. |
-| E2 | Merge conflict with in-flight blueprint work | Stale imports or duplicated code after rebase | Keep diff mechanical; all changes are file MOVEs not LOGIC changes. Rebase checklist in Task 2.1. |
-| E3 | Shared schemas (`summaryEnvelopeOutputSchema`, `nextActionOutputSchema`) imported from `_shared/` but handler tests use them | Tests break if import path wrong | Extract schemas into `_shared/schema.ts` in Task 1.1; all handlers import them via the `#mcp/blueprint/_shared/schema` subpath. Tests verify schema identity. |
-| E4 | Existing test files import from `./blueprint-server.ts` directly | ~20 test files need import path updates | Test imports stay pointing at `blueprint-server.ts` (which re-exports or keeps the wiring). Tests that test internal helpers need new import paths — handled in Task 1.1 acceptance. |
-| E5 | `registerBlueprintTools` vs `registerBlueprintServer` split | Two registration entry points, handler duplication risk | `registerBlueprintServer` wraps `registerBlueprintTools` + adds `wp_blueprint_projects`. Keep both in the slim server file; only handler *implementations* move out. |
-| E6 | Sync adapter singleton (`_syncAdapterFactory`/`resolveSyncAdapter`/`_setSyncAdapterFactory`/`runPlatformMutationSync`, lines 116–186, 225) is module-level mutable state reached by mutation handlers | Moving mutation handlers while the singleton stays in `blueprint-server.ts` forces a `handlers/ → blueprint-server.ts → handlers/` import cycle the Risk table forbids | The sync seam **MOVES** to `src/mcp/blueprint/_shared/sync.ts` in blocking Task 1.0. Mutation handlers (1.4, 1.5, and the `put`/`create` handlers in 1.6) receive the resolved adapter — or a `() => Promise<SyncAdapter \| null>` resolver — as an explicit parameter. No handler imports back from `blueprint-server.ts`. |
-| E7 | Mutation freshness helpers (`hashMutationPayload`, `validateMutationFreshnessToken`, etc.) used by multiple handlers | Duplicate or circular imports if placed in wrong module | Extract to `_shared/freshness.ts` in Task 1.1; handlers import via `#mcp/blueprint/_shared/freshness`. |
-| E8 | Projection-read helpers (`getCurrentProjectBlueprint`, `listCurrentProjectBlueprintRows`, `staleProjectionResponse`, lines 1591–1651) are also called by `persistBlueprintMarkdown` (line 391) | Keeping them handler-private creates a `_shared/ → handlers/` back-edge (cycle) | Extract these three into `src/mcp/blueprint/_shared/projection.ts` in Task 1.1 so both `_shared/db.ts` (via `persistBlueprintMarkdown`) and the list/get/context handlers import them from one `_shared/` home. |
+| #   | Scenario                                                                                                                                                                                              | Impact                                                                                                                                                                 | Mitigation                                                                                                                                                                                                                                                                                                                  |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| E1  | Handler breaks tool schema contract during extraction                                                                                                                                                 | Tool returns wrong shape to MCP client                                                                                                                                 | Each handler keeps its existing Zod/JSON schemas co-located; schema extraction is CREATE-only in Wave 0–1, unchanged until Wave 2 wiring.                                                                                                                                                                                   |
+| E2  | Merge conflict with in-flight blueprint work                                                                                                                                                          | Stale imports or duplicated code after rebase                                                                                                                          | Keep diff mechanical; all changes are file MOVEs not LOGIC changes. Rebase checklist in Task 2.1.                                                                                                                                                                                                                           |
+| E3  | Shared schemas (`summaryEnvelopeOutputSchema`, `nextActionOutputSchema`) imported from `_shared/` but handler tests use them                                                                          | Tests break if import path wrong                                                                                                                                       | Extract schemas into `_shared/schema.ts` in Task 1.1; all handlers import them via the `#mcp/blueprint/_shared/schema` subpath. Tests verify schema identity.                                                                                                                                                               |
+| E4  | Existing test files import from `./blueprint-server.ts` directly                                                                                                                                      | ~20 test files need import path updates                                                                                                                                | Test imports stay pointing at `blueprint-server.ts` (which re-exports or keeps the wiring). Tests that test internal helpers need new import paths — handled in Task 1.1 acceptance.                                                                                                                                        |
+| E5  | `registerBlueprintTools` vs `registerBlueprintServer` split                                                                                                                                           | Two registration entry points, handler duplication risk                                                                                                                | `registerBlueprintServer` wraps `registerBlueprintTools` + adds `wp_blueprint_projects`. Keep both in the slim server file; only handler _implementations_ move out.                                                                                                                                                        |
+| E6  | Sync adapter singleton (`_syncAdapterFactory`/`resolveSyncAdapter`/`_setSyncAdapterFactory`/`runPlatformMutationSync`, lines 116–186, 225) is module-level mutable state reached by mutation handlers | Moving mutation handlers while the singleton stays in `blueprint-server.ts` forces a `handlers/ → blueprint-server.ts → handlers/` import cycle the Risk table forbids | The sync seam **MOVES** to `src/mcp/blueprint/_shared/sync.ts` in blocking Task 1.0. Mutation handlers (1.4, 1.5, and the `put`/`create` handlers in 1.6) receive the resolved adapter — or a `() => Promise<SyncAdapter \| null>` resolver — as an explicit parameter. No handler imports back from `blueprint-server.ts`. |
+| E7  | Mutation freshness helpers (`hashMutationPayload`, `validateMutationFreshnessToken`, etc.) used by multiple handlers                                                                                  | Duplicate or circular imports if placed in wrong module                                                                                                                | Extract to `_shared/freshness.ts` in Task 1.1; handlers import via `#mcp/blueprint/_shared/freshness`.                                                                                                                                                                                                                      |
+| E8  | Projection-read helpers (`getCurrentProjectBlueprint`, `listCurrentProjectBlueprintRows`, `staleProjectionResponse`, lines 1591–1651) are also called by `persistBlueprintMarkdown` (line 391)        | Keeping them handler-private creates a `_shared/ → handlers/` back-edge (cycle)                                                                                        | Extract these three into `src/mcp/blueprint/_shared/projection.ts` in Task 1.1 so both `_shared/db.ts` (via `persistBlueprintMarkdown`) and the list/get/context handlers import them from one `_shared/` home.                                                                                                             |
 
 ## Risks
 
-| Risk | Severity | Mitigation |
-| ---- | -------- | ---------- |
-| Merge conflicts with in-flight blueprint work | HIGH | Coordinate with active blueprint tasks; keep refactor purely mechanical. Rebase after each Wave task completes. |
-| Subtle behavioral drift during handler move | HIGH | TDD steps in every task: extract → test passes → commit. Zero logic changes in Wave 0–1; Wave 2 only changes import paths and wiring. |
-| import path churn breaks existing 20+ test files | MEDIUM | Handler extraction moves handler bodies to new files but leaves re-exports or keeps wiring in `blueprint-server.ts`. Tests targeting the server file continue to work; handler-level tests are new. |
-| Circular dependency between `_shared/` and handler modules | MEDIUM | `_shared/` modules have zero imports from `handlers/`. The sync seam (Task 1.0) and projection helpers (E8) are extracted to `_shared/` specifically to remove the two real back-edges. Enforced by lint rule in CI. |
-| Handler extraction exposes internal signatures that should stay private | LOW | Export only the handler function; keep helper functions module-scoped (no `export` unless needed). |
+| Risk                                                                    | Severity | Mitigation                                                                                                                                                                                                           |
+| ----------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Merge conflicts with in-flight blueprint work                           | HIGH     | Coordinate with active blueprint tasks; keep refactor purely mechanical. Rebase after each Wave task completes.                                                                                                      |
+| Subtle behavioral drift during handler move                             | HIGH     | TDD steps in every task: extract → test passes → commit. Zero logic changes in Wave 0–1; Wave 2 only changes import paths and wiring.                                                                                |
+| import path churn breaks existing 20+ test files                        | MEDIUM   | Handler extraction moves handler bodies to new files but leaves re-exports or keeps wiring in `blueprint-server.ts`. Tests targeting the server file continue to work; handler-level tests are new.                  |
+| Circular dependency between `_shared/` and handler modules              | MEDIUM   | `_shared/` modules have zero imports from `handlers/`. The sync seam (Task 1.0) and projection helpers (E8) are extracted to `_shared/` specifically to remove the two real back-edges. Enforced by lint rule in CI. |
+| Handler extraction exposes internal signatures that should stay private | LOW      | Export only the handler function; keep helper functions module-scoped (no `export` unless needed).                                                                                                                   |
 
 ## Non-goals
 
@@ -100,7 +100,7 @@ tags:
 
 ## Tasks
 
-#### Task 1.0: Extract sync-adapter seam to _shared/sync.ts
+#### Task 1.0: Extract sync-adapter seam to \_shared/sync.ts
 
 **Status:** todo
 
@@ -162,16 +162,16 @@ Extract standalone helper functions from `blueprint-server.ts` into `src/mcp/blu
 
 **Functions to extract (by module):**
 
-| Module | Functions |
-| ------ | --------- |
-| `db.ts` | `openDbRW`, `reIngest`, `persistBlueprintMarkdown`, `dbPath` arrow |
-| `errors.ts` | `err`, `jsonContent`, `parseStructuredJson`, `finishPayload` |
-| `validation-timestamp.ts` | `readVt`, `writeVt`, `vtPath` arrow |
-| `payload.ts` | `sortKeys`, `toStr` arrow, `bytes` arrow |
-| `schema.ts` | `summaryEnvelopeOutputSchema`, `nextActionOutputSchema` (move from lines 2556/2565) |
-| `project.ts` | `findBlueprintDir`, `projectCandidateView`, `projectDisambiguationError`, `resolveFallbackProjectCwd`, `buildFallbackCurrentProject`, `resolveToolProject` |
-| `freshness.ts` | `hashMutationPayload`, `mutationFreshnessError`, `validateMutationFreshnessToken`, `readMutationReplay`, `recordMutationReplay` |
-| `projection.ts` | `getCurrentProjectBlueprint`, `listCurrentProjectBlueprintRows`, `staleProjectionResponse` (lines 1591–1651) — also consumed by `persistBlueprintMarkdown` in `db.ts`, so they belong in `_shared/`, not in a handler (E8) |
+| Module                    | Functions                                                                                                                                                                                                                  |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `db.ts`                   | `openDbRW`, `reIngest`, `persistBlueprintMarkdown`, `dbPath` arrow                                                                                                                                                         |
+| `errors.ts`               | `err`, `jsonContent`, `parseStructuredJson`, `finishPayload`                                                                                                                                                               |
+| `validation-timestamp.ts` | `readVt`, `writeVt`, `vtPath` arrow                                                                                                                                                                                        |
+| `payload.ts`              | `sortKeys`, `toStr` arrow, `bytes` arrow                                                                                                                                                                                   |
+| `schema.ts`               | `summaryEnvelopeOutputSchema`, `nextActionOutputSchema` (move from lines 2556/2565)                                                                                                                                        |
+| `project.ts`              | `findBlueprintDir`, `projectCandidateView`, `projectDisambiguationError`, `resolveFallbackProjectCwd`, `buildFallbackCurrentProject`, `resolveToolProject`                                                                 |
+| `freshness.ts`            | `hashMutationPayload`, `mutationFreshnessError`, `validateMutationFreshnessToken`, `readMutationReplay`, `recordMutationReplay`                                                                                            |
+| `projection.ts`           | `getCurrentProjectBlueprint`, `listCurrentProjectBlueprintRows`, `staleProjectionResponse` (lines 1591–1651) — also consumed by `persistBlueprintMarkdown` in `db.ts`, so they belong in `_shared/`, not in a handler (E8) |
 
 **Steps (TDD):**
 
@@ -215,12 +215,12 @@ Extract the 4 read-only (no-mutation) handlers into `src/mcp/blueprint/handlers/
 
 **Handlers:**
 
-| File | Original Function | Original Lines (approx) |
-| ---- | ----------------- | ------------------------ |
-| `query.ts` | `handleQuery` | 721–758 |
-| `validate.ts` | `handleValidate` | 837–862 |
-| `depgraph.ts` | `handleDepgraph` | 1482–1589 |
-| `projects.ts` | `handleProjects` | 3119–3194 |
+| File          | Original Function | Original Lines (approx) |
+| ------------- | ----------------- | ----------------------- |
+| `query.ts`    | `handleQuery`     | 721–758                 |
+| `validate.ts` | `handleValidate`  | 837–862                 |
+| `depgraph.ts` | `handleDepgraph`  | 1482–1589               |
+| `projects.ts` | `handleProjects`  | 3119–3194               |
 
 **Steps (TDD):**
 
@@ -259,11 +259,11 @@ Extract the 3 projection-list handlers that query the SQLite blueprint projectio
 
 **Handlers:**
 
-| File | Original Function | Original Lines (approx) |
-| ---- | ----------------- | ------------------------ |
-| `list.ts` | `handleBlueprintList` | 1591–1791 |
-| `get.ts` | `handleBlueprintGet` | 1625–2024 |
-| `context.ts` | `handleBlueprintContext` | 2026–2218 |
+| File         | Original Function        | Original Lines (approx) |
+| ------------ | ------------------------ | ----------------------- |
+| `list.ts`    | `handleBlueprintList`    | 1591–1791               |
+| `get.ts`     | `handleBlueprintGet`     | 1625–2024               |
+| `context.ts` | `handleBlueprintContext` | 2026–2218               |
 
 **Steps (TDD):**
 
@@ -301,11 +301,11 @@ Extract the 3 task-level mutation handlers. These handlers edit task status in b
 
 **Handlers:**
 
-| File | Original Function | Original Lines (approx) |
-| ---- | ----------------- | ------------------------ |
-| `task-next.ts` | `handleTaskNext` | 864–995 |
-| `task-advance.ts` | `handleTaskAdvance` | 997–1146 |
-| `task-verify.ts` | `handleTaskVerify` | 1148–1283 |
+| File              | Original Function   | Original Lines (approx) |
+| ----------------- | ------------------- | ----------------------- |
+| `task-next.ts`    | `handleTaskNext`    | 864–995                 |
+| `task-advance.ts` | `handleTaskAdvance` | 997–1146                |
+| `task-verify.ts`  | `handleTaskVerify`  | 1148–1283               |
 
 **Steps (TDD):**
 
@@ -343,11 +343,11 @@ Extract the 3 blueprint-level lifecycle mutation handlers. These move blueprints
 
 **Handlers:**
 
-| File | Original Function | Original Lines (approx) |
-| ---- | ----------------- | ------------------------ |
-| `promote.ts` | `handlePromote` | 1285–1364 |
-| `finalize.ts` | `handleFinalize` (+ `assertBlueprintCanComplete`) | 1366–1480 |
-| `transition.ts` | `handleBlueprintTransition` (+ `applyLocalBlueprintTransition`) | 2356–2483 |
+| File            | Original Function                                               | Original Lines (approx) |
+| --------------- | --------------------------------------------------------------- | ----------------------- |
+| `promote.ts`    | `handlePromote`                                                 | 1285–1364               |
+| `finalize.ts`   | `handleFinalize` (+ `assertBlueprintCanComplete`)               | 1366–1480               |
+| `transition.ts` | `handleBlueprintTransition` (+ `applyLocalBlueprintTransition`) | 2356–2483               |
 
 **Steps (TDD):**
 
@@ -387,11 +387,11 @@ Extract the 3 document-level handlers that create or replace blueprint markdown.
 
 **Handlers:**
 
-| File | Original Function | Original Lines (approx) |
-| ---- | ----------------- | ------------------------ |
-| `new.ts` | `handleNew` | 759–836 |
-| `create.ts` | `handleBlueprintCreate` | 2485–2574 |
-| `put.ts` | `handleBlueprintPut` (+ `renderBlueprintMarkdownFromDocument`) | 2220–2354 |
+| File        | Original Function                                              | Original Lines (approx) |
+| ----------- | -------------------------------------------------------------- | ----------------------- |
+| `new.ts`    | `handleNew`                                                    | 759–836                 |
+| `create.ts` | `handleBlueprintCreate`                                        | 2485–2574               |
+| `put.ts`    | `handleBlueprintPut` (+ `renderBlueprintMarkdownFromDocument`) | 2220–2354               |
 
 **Steps (TDD):**
 
@@ -418,6 +418,7 @@ Extract the 3 document-level handlers that create or replace blueprint markdown.
 **Depends:** Task 1.0, Task 1.1, Task 1.2, Task 1.3, Task 1.4, Task 1.5, Task 1.6
 
 Rewrite `src/mcp/blueprint-server.ts` to import all handlers and helpers from `#mcp/blueprint/_shared/*` and `#mcp/blueprint/handlers/*`. Remove all extracted function bodies. Keep only:
+
 - Constants (`VALIDATE_TS_FILE`, `ROWS_CAP`, timeouts, `BLUEPRINT_TEMPLATE`, etc.)
 - `registerBlueprintTools` — now imports handler modules and passes the resolved sync adapter (from `#mcp/blueprint/_shared/sync`) into the mutation handlers
 - `registerBlueprintServer` — wrapper that adds `wp_blueprint_projects`
@@ -479,35 +480,35 @@ Add tests that verify every handler module is registered under the correct MCP t
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-| ---- | ------- | ---------------- |
-| Line budget | `wc -l src/mcp/blueprint-server.ts` | ≤ 300 lines |
-| Integration | `./bin/wp test --file src/mcp/server.integration.test.ts` | Pass |
-| Contract tests | `./bin/wp test --file src/mcp/blueprint/handlers/index.test.ts` | Pass |
-| All handler tests | `./bin/wp test --file src/mcp/blueprint/handlers/` | All pass |
-| Type safety | `./bin/wp typecheck` | Zero errors |
-| Lint | `./bin/wp lint --file src/mcp/blueprint-server.ts --file src/mcp/blueprint/` | Zero violations (incl. no `../` parent-relative imports) |
-| No dead imports | manual review of `blueprint-server.ts` imports | Only `#mcp/blueprint/_shared/*`, `#mcp/blueprint/handlers/*`, node builtins, and `./auto-discover.js` / `./_tail-hints.js` |
+| Gate              | Command                                                                      | Success Criteria                                                                                                           |
+| ----------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Line budget       | `wc -l src/mcp/blueprint-server.ts`                                          | ≤ 300 lines                                                                                                                |
+| Integration       | `./bin/wp test --file src/mcp/server.integration.test.ts`                    | Pass                                                                                                                       |
+| Contract tests    | `./bin/wp test --file src/mcp/blueprint/handlers/index.test.ts`              | Pass                                                                                                                       |
+| All handler tests | `./bin/wp test --file src/mcp/blueprint/handlers/`                           | All pass                                                                                                                   |
+| Type safety       | `./bin/wp typecheck`                                                         | Zero errors                                                                                                                |
+| Lint              | `./bin/wp lint --file src/mcp/blueprint-server.ts --file src/mcp/blueprint/` | Zero violations (incl. no `../` parent-relative imports)                                                                   |
+| No dead imports   | manual review of `blueprint-server.ts` imports                               | Only `#mcp/blueprint/_shared/*`, `#mcp/blueprint/handlers/*`, node builtins, and `./auto-discover.js` / `./_tail-hints.js` |
 
 ---
 
 ## Refinement Summary
 
-| Metric | Value |
-| ------ | ----- |
-| Findings total | 10 |
-| Critical | 0 |
-| High | 4 (F1, F2, F3, F10) |
-| Medium | 4 (F4, F5, F6, F7) |
-| Low | 2 (F8, F9) |
-| Fixes applied | 10/10 |
-| Edge cases documented | 8 |
-| Risks documented | 5 |
+| Metric                    | Value                                        |
+| ------------------------- | -------------------------------------------- |
+| Findings total            | 10                                           |
+| Critical                  | 0                                            |
+| High                      | 4 (F1, F2, F3, F10)                          |
+| Medium                    | 4 (F4, F5, F6, F7)                           |
+| Low                       | 2 (F8, F9)                                   |
+| Fixes applied             | 10/10                                        |
+| Edge cases documented     | 8                                            |
+| Risks documented          | 5                                            |
 | **Parallelization score** | B (2 tasks in Wave 0, 5 in Wave 1, CPR 2.25) |
-| **Critical path** | 4 waves (1.1 → {1.2…1.6} → 2.1 → 2.2) |
-| **Max parallel agents** | 5 (Wave 1 handler fan-out) |
-| **Total tasks** | 9 |
-| **Blueprint compliant** | 9/9 |
+| **Critical path**         | 4 waves (1.1 → {1.2…1.6} → 2.1 → 2.2)        |
+| **Max parallel agents**   | 5 (Wave 1 handler fan-out)                   |
+| **Total tasks**           | 9                                            |
+| **Blueprint compliant**   | 9/9                                          |
 
 ### Key refinements applied
 

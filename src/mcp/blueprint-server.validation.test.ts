@@ -1,22 +1,22 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import path from 'node:path'
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type { ToolHandler, ToolHandlerResult, ToolRegistrar } from './auto-discover.js'
-import { registerBlueprintTools } from './blueprint-server.js'
+import type { ToolHandler, ToolHandlerResult, ToolRegistrar } from "./auto-discover.js";
+import { registerBlueprintTools } from "./blueprint-server.js";
 
-type RegisteredTool = { name: string; handler: ToolHandler }
+type RegisteredTool = { name: string; handler: ToolHandler };
 
 function makeRegistrar(): { registrar: ToolRegistrar; tools: Map<string, RegisteredTool> } {
-  const tools = new Map<string, RegisteredTool>()
+  const tools = new Map<string, RegisteredTool>();
   const registrar: ToolRegistrar = {
     registerTool(name, _desc, _schema, _outSchema, handler) {
-      tools.set(name, { name, handler })
+      tools.set(name, { name, handler });
     },
-  }
-  return { registrar, tools }
+  };
+  return { registrar, tools };
 }
 
 async function callTool(
@@ -24,17 +24,17 @@ async function callTool(
   name: string,
   input: unknown,
 ): Promise<ToolHandlerResult> {
-  const tool = tools.get(name)
-  if (!tool) throw new Error(`Tool "${name}" not registered`)
-  return tool.handler(input)
+  const tool = tools.get(name);
+  if (!tool) throw new Error(`Tool "${name}" not registered`);
+  return tool.handler(input);
 }
 
 function parseResult(result: ToolHandlerResult): unknown {
-  const text = result.content[0]
-  if (!text || text.type !== 'text' || typeof text.text !== 'string') {
-    throw new Error('Expected text content block')
+  const text = result.content[0];
+  if (!text || text.type !== "text" || typeof text.text !== "string") {
+    throw new Error("Expected text content block");
   }
-  return JSON.parse(text.text)
+  return JSON.parse(text.text);
 }
 
 const VALID_BLUEPRINT_WITH_LANE = `---
@@ -64,7 +64,7 @@ A well-formed blueprint using lane-prefixed task headers.
 
 **Acceptance:**
 - [ ] The thing is done
-`
+`;
 
 const DRAFT_BLUEPRINT_STRICT_FIELDS_EXEMPT = `---
 type: blueprint
@@ -87,48 +87,48 @@ A draft blueprint that intentionally omits title/owner/complexity/last_updated.
 
 **Acceptance:**
 - [ ] The draft task exists
-`
+`;
 
-describe('wp_blueprint_validate lane headers', () => {
-  let tmpDir: string
-  let tools: Map<string, RegisteredTool>
+describe("wp_blueprint_validate lane headers", () => {
+  let tmpDir: string;
+  let tools: Map<string, RegisteredTool>;
 
   beforeEach(async () => {
-    tmpDir = mkdtempSync(path.join(tmpdir(), 'wp-bs-validate-'))
-    const { registrar, tools: map } = makeRegistrar()
-    tools = map
-    await registerBlueprintTools(registrar, tmpDir)
-  })
+    tmpDir = mkdtempSync(path.join(tmpdir(), "wp-bs-validate-"));
+    const { registrar, tools: map } = makeRegistrar();
+    tools = map;
+    await registerBlueprintTools(registrar, tmpDir);
+  });
 
   afterEach(() => {
-    rmSync(tmpDir, { recursive: true, force: true })
-  })
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
 
-  it('accepts lane-prefixed task headers', async () => {
-    const overviewPath = path.join(tmpDir, 'blueprints', 'draft', 'lane-feature', '_overview.md')
-    mkdirSync(path.dirname(overviewPath), { recursive: true })
-    writeFileSync(overviewPath, VALID_BLUEPRINT_WITH_LANE, 'utf8')
+  it("accepts lane-prefixed task headers", async () => {
+    const overviewPath = path.join(tmpDir, "blueprints", "draft", "lane-feature", "_overview.md");
+    mkdirSync(path.dirname(overviewPath), { recursive: true });
+    writeFileSync(overviewPath, VALID_BLUEPRINT_WITH_LANE, "utf8");
 
-    const result = await callTool(tools, 'wp_blueprint_validate', { path: overviewPath })
-    const data = parseResult(result) as { valid: boolean; gaps: string[]; summary: string }
+    const result = await callTool(tools, "wp_blueprint_validate", { path: overviewPath });
+    const data = parseResult(result) as { valid: boolean; gaps: string[]; summary: string };
 
-    expect(result.isError).toStrictEqual(false)
-    expect(data.valid).toBe(true)
-    expect(data.gaps).toStrictEqual([])
-    expect(data.summary).toContain('is valid')
-  })
+    expect(result.isError).toStrictEqual(false);
+    expect(data.valid).toBe(true);
+    expect(data.gaps).toStrictEqual([]);
+    expect(data.summary).toContain("is valid");
+  });
 
-  it('exempts drafts from the strict required frontmatter subset', async () => {
-    const overviewPath = path.join(tmpDir, 'blueprints', 'draft', 'draft-exempt', '_overview.md')
-    mkdirSync(path.dirname(overviewPath), { recursive: true })
-    writeFileSync(overviewPath, DRAFT_BLUEPRINT_STRICT_FIELDS_EXEMPT, 'utf8')
+  it("exempts drafts from the strict required frontmatter subset", async () => {
+    const overviewPath = path.join(tmpDir, "blueprints", "draft", "draft-exempt", "_overview.md");
+    mkdirSync(path.dirname(overviewPath), { recursive: true });
+    writeFileSync(overviewPath, DRAFT_BLUEPRINT_STRICT_FIELDS_EXEMPT, "utf8");
 
-    const result = await callTool(tools, 'wp_blueprint_validate', { path: overviewPath })
-    const data = parseResult(result) as { valid: boolean; gaps: string[]; summary: string }
+    const result = await callTool(tools, "wp_blueprint_validate", { path: overviewPath });
+    const data = parseResult(result) as { valid: boolean; gaps: string[]; summary: string };
 
-    expect(result.isError).toStrictEqual(false)
-    expect(data.valid).toBe(true)
-    expect(data.gaps).toStrictEqual([])
-    expect(data.summary).toContain('is valid')
-  })
-})
+    expect(result.isError).toStrictEqual(false);
+    expect(data.valid).toBe(true);
+    expect(data.gaps).toStrictEqual([]);
+    expect(data.summary).toContain("is valid");
+  });
+});

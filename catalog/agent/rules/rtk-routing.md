@@ -6,10 +6,10 @@ status: active
 scope: repo
 applies_to: [agents]
 related: []
-created: '2026-05-07'
-last_reviewed: '2026-05-07'
-paths: 
-  - '**/*'
+created: "2026-05-07"
+last_reviewed: "2026-05-07"
+paths:
+  - "**/*"
 ---
 
 # RTK Tool Routing
@@ -44,6 +44,6 @@ This rule is fallback-only; it should not compete with SessionStart routing.
 
 ## Subprocess coverage note
 
-wp_* tools shelling out via child_process.spawn own their own filtering; rtk PreToolUse hook
-only fires for top-level Bash calls and does NOT reach into wp_* internals. CLI verbs
+wp*\* tools shelling out via child_process.spawn own their own filtering; rtk PreToolUse hook
+only fires for top-level Bash calls and does NOT reach into wp*\* internals. CLI verbs
 (wp <verb> from a shell) ARE rewritten by rtk.

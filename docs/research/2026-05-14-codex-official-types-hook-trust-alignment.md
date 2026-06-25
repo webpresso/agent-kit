@@ -3,7 +3,7 @@ type: research
 title: "Codex Official Types and Hook Trust Alignment"
 subject: "How agent-kit should align Codex hook trust automation with official Codex types and public repositories"
 date: 2026-05-14
-last_updated: '2026-05-14'
+last_updated: "2026-05-14"
 confidence: medium
 verdict: trial
 ---
@@ -158,7 +158,6 @@ Implement a bounded migration from manual hook hashing to app-server-derived hoo
 - **Adopt:** OpenAI adds a first-class `hooks/trust`/`hooks/approve` method or publishes a stable TS protocol SDK.
 - **Hold:** app-server removes or gates `hooks/list`/`config/batchWrite` in a way that prevents local setup tools from updating user hook state.
 - **Reject manual fallback:** upstream changes hook hashing/keying again and our fallback cannot be proven with contract tests.
-
 
 ## Fact-check Addendum (2026-05-14)
 

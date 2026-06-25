@@ -15,83 +15,83 @@
  * `base-kit` bootstrap. `base-kit` is default-on for every selection mode; use
  * `--without base-kit` to opt out explicitly.
  */
-import { createInterface } from 'node:readline/promises'
+import { createInterface } from "node:readline/promises";
 
-import { OPTIONAL_SHARED_SKILLS, RENDERED_SKILLS } from './scaffold-agent.js'
+import { OPTIONAL_SHARED_SKILLS, RENDERED_SKILLS } from "./scaffold-agent.js";
 
 export const TIER3_SKILLS = [
-  'base-kit',
-  'tanstack-query',
-  'better-auth-best-practices',
-  'react-doctor',
-  'frontend-design',
-  'web-design-guidelines',
-  'vercel-react-best-practices',
-] as const
+  "base-kit",
+  "tanstack-query",
+  "better-auth-best-practices",
+  "react-doctor",
+  "frontend-design",
+  "web-design-guidelines",
+  "vercel-react-best-practices",
+] as const;
 
-export type Tier3Skill = (typeof TIER3_SKILLS)[number]
-const DEFAULT_TIER3_SKILLS: readonly Tier3Skill[] = ['base-kit']
-export const OPT_IN_SHARED_SKILLS = [...OPTIONAL_SHARED_SKILLS, ...RENDERED_SKILLS] as const
-export const OPT_IN_SKILLS = [...OPT_IN_SHARED_SKILLS, ...TIER3_SKILLS] as const
+export type Tier3Skill = (typeof TIER3_SKILLS)[number];
+const DEFAULT_TIER3_SKILLS: readonly Tier3Skill[] = ["base-kit"];
+export const OPT_IN_SHARED_SKILLS = [...OPTIONAL_SHARED_SKILLS, ...RENDERED_SKILLS] as const;
+export const OPT_IN_SKILLS = [...OPT_IN_SHARED_SKILLS, ...TIER3_SKILLS] as const;
 
 export interface ResolveSkillsInput {
-  withFlag?: string
-  withoutFlag?: string
-  allFlag?: boolean
-  yesFlag?: boolean
-  existing?: readonly string[]
-  isTTY?: boolean
-  inputStream?: NodeJS.ReadableStream
-  outputStream?: NodeJS.WritableStream
+  withFlag?: string;
+  withoutFlag?: string;
+  allFlag?: boolean;
+  yesFlag?: boolean;
+  existing?: readonly string[];
+  isTTY?: boolean;
+  inputStream?: NodeJS.ReadableStream;
+  outputStream?: NodeJS.WritableStream;
 }
 
 export interface ResolveSkillsResult {
-  selected: string[]
-  aborted: boolean
-  source: 'all' | 'with' | 'existing' | 'interactive' | 'default'
+  selected: string[];
+  aborted: boolean;
+  source: "all" | "with" | "existing" | "interactive" | "default";
 }
 
 export function parseWithFlag(raw: string | undefined): string[] {
-  if (!raw) return []
+  if (!raw) return [];
   return raw
-    .split(',')
+    .split(",")
     .map((s) => s.trim())
-    .filter((s) => s.length > 0)
+    .filter((s) => s.length > 0);
 }
 
 export function validateTier3Names(names: readonly string[]): {
-  valid: string[]
-  invalid: string[]
+  valid: string[];
+  invalid: string[];
 } {
-  const valid: string[] = []
-  const invalid: string[] = []
-  const allowed: ReadonlySet<string> = new Set<string>(OPT_IN_SKILLS)
+  const valid: string[] = [];
+  const invalid: string[] = [];
+  const allowed: ReadonlySet<string> = new Set<string>(OPT_IN_SKILLS);
   for (const name of names) {
-    if (allowed.has(name)) valid.push(name)
-    else invalid.push(name)
+    if (allowed.has(name)) valid.push(name);
+    else invalid.push(name);
   }
-  return { valid, invalid }
+  return { valid, invalid };
 }
 
 function validateWithoutFlag(raw: string | undefined): string[] {
-  const requested = parseWithFlag(raw)
-  const { valid, invalid } = validateTier3Names(requested)
+  const requested = parseWithFlag(raw);
+  const { valid, invalid } = validateTier3Names(requested);
   if (invalid.length > 0) {
     throw new Error(
-      `Unknown opt-in skills in --without: ${invalid.join(', ')}\nAvailable: ${OPT_IN_SKILLS.join(', ')}`,
-    )
+      `Unknown opt-in skills in --without: ${invalid.join(", ")}\nAvailable: ${OPT_IN_SKILLS.join(", ")}`,
+    );
   }
-  return valid
+  return valid;
 }
 
 function defaultOnUnlessOptedOut(
   selected: readonly string[],
   withoutFlag: string | undefined,
 ): string[] {
-  const without = new Set(validateWithoutFlag(withoutFlag))
-  const withDefault = new Set<string>([...DEFAULT_TIER3_SKILLS, ...selected])
-  for (const skill of without) withDefault.delete(skill)
-  return OPT_IN_SKILLS.filter((skill) => withDefault.has(skill))
+  const without = new Set(validateWithoutFlag(withoutFlag));
+  const withDefault = new Set<string>([...DEFAULT_TIER3_SKILLS, ...selected]);
+  for (const skill of without) withDefault.delete(skill);
+  return OPT_IN_SKILLS.filter((skill) => withDefault.has(skill));
 }
 
 export async function resolveTier3Selection(
@@ -101,75 +101,75 @@ export async function resolveTier3Selection(
     return {
       selected: defaultOnUnlessOptedOut(OPT_IN_SKILLS, input.withoutFlag),
       aborted: false,
-      source: 'all',
-    }
+      source: "all",
+    };
   }
 
   if (input.withFlag !== undefined) {
-    const requested = parseWithFlag(input.withFlag)
-    const { valid, invalid } = validateTier3Names(requested)
+    const requested = parseWithFlag(input.withFlag);
+    const { valid, invalid } = validateTier3Names(requested);
     if (invalid.length > 0) {
       throw new Error(
-        `Unknown opt-in skills: ${invalid.join(', ')}\nAvailable: ${OPT_IN_SKILLS.join(', ')}`,
-      )
+        `Unknown opt-in skills: ${invalid.join(", ")}\nAvailable: ${OPT_IN_SKILLS.join(", ")}`,
+      );
     }
     return {
       selected: defaultOnUnlessOptedOut(valid, input.withoutFlag),
       aborted: false,
-      source: 'with',
-    }
+      source: "with",
+    };
   }
 
   if (input.existing && input.existing.length > 0) {
-    const { valid } = validateTier3Names(input.existing)
+    const { valid } = validateTier3Names(input.existing);
     return {
       selected: defaultOnUnlessOptedOut(valid, input.withoutFlag),
       aborted: false,
-      source: 'existing',
-    }
+      source: "existing",
+    };
   }
 
   if (input.yesFlag || !input.isTTY) {
     return {
       selected: defaultOnUnlessOptedOut([], input.withoutFlag),
       aborted: false,
-      source: 'default',
-    }
+      source: "default",
+    };
   }
 
-  const result = await interactivePrompt(input)
+  const result = await interactivePrompt(input);
   return {
     ...result,
     selected: defaultOnUnlessOptedOut(result.selected, input.withoutFlag),
-  }
+  };
 }
 
 async function interactivePrompt(input: ResolveSkillsInput): Promise<ResolveSkillsResult> {
   const rl = createInterface({
     input: input.inputStream ?? process.stdin,
     output: input.outputStream ?? process.stdout,
-  })
-  const selected: string[] = []
+  });
+  const selected: string[] = [];
   try {
-    ;(input.outputStream ?? process.stdout).write(
-      'Opt-in skill selection (press Enter to skip, y to include, q to abort):\n',
-    )
+    (input.outputStream ?? process.stdout).write(
+      "Opt-in skill selection (press Enter to skip, y to include, q to abort):\n",
+    );
     for (const skill of OPT_IN_SKILLS) {
-      if (skill === 'base-kit') {
-        selected.push(skill)
-        ;(input.outputStream ?? process.stdout).write(
-          '  base-kit is default-on; pass --without base-kit to opt out.\n',
-        )
-        continue
+      if (skill === "base-kit") {
+        selected.push(skill);
+        (input.outputStream ?? process.stdout).write(
+          "  base-kit is default-on; pass --without base-kit to opt out.\n",
+        );
+        continue;
       }
-      const answer = (await rl.question(`  include ${skill}? [y/N/q] `)).trim().toLowerCase()
-      if (answer === 'q') {
-        return { selected: [], aborted: true, source: 'interactive' }
+      const answer = (await rl.question(`  include ${skill}? [y/N/q] `)).trim().toLowerCase();
+      if (answer === "q") {
+        return { selected: [], aborted: true, source: "interactive" };
       }
-      if (answer === 'y' || answer === 'yes') selected.push(skill)
+      if (answer === "y" || answer === "yes") selected.push(skill);
     }
-    return { selected, aborted: false, source: 'interactive' }
+    return { selected, aborted: false, source: "interactive" };
   } finally {
-    rl.close()
+    rl.close();
   }
 }

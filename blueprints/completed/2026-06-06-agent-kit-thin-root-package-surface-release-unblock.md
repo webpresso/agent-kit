@@ -3,11 +3,11 @@ type: blueprint
 title: Agent-kit thin-root package-surface release unblock
 owner: ozby
 status: completed
-completed_at: '2026-06-07'
+completed_at: "2026-06-07"
 complexity: M
-created: '2026-06-06'
-last_updated: '2026-06-07'
-progress: '100% (thin-root pack surface shipped; public-readiness and package-surface pass on the staged tree; remote tag and npm registry confirm the hosted Release published @webpresso/agent-kit@0.29.3 without the old ERR_STRING_TOO_LONG blocker)'
+created: "2026-06-06"
+last_updated: "2026-06-07"
+progress: "100% (thin-root pack surface shipped; public-readiness and package-surface pass on the staged tree; remote tag and npm registry confirm the hosted Release published @webpresso/agent-kit@0.29.3 without the old ERR_STRING_TOO_LONG blocker)"
 depends_on: []
 tags:
   - distribution
@@ -81,25 +81,25 @@ After (thin-root B)
 
 ## Key Decisions
 
-| Decision | Rationale |
-| --- | --- |
-| All tarball proofs run against a staged runtime tree. | Unstaged pack checks can miss the real leak. |
-| Deny `bin/runtime/**`, `dist/runtime/**`, and `dist/runtime-packages/**` from the root tarball. | These are the duplicated runtime payload classes that caused the publish failure. |
-| Keep `bin/wp` as a **real file, not a symlink**. | Current launcher/package-surface policy depends on a real staged launcher in the root package. |
-| Prove runtime optional dependencies against the **actual prepared/prepack manifest**, not only `createPackedManifest(...)`. | In-memory helper proof can false-green if the prepare/restore path regresses. |
-| Re-anchor tarball-size budgets to measured staged thin-root output with ≤10% headroom. | Existing fat-tarball budgets would allow a false-green migration. |
-| Do not create new audit surfaces. | Reuse `public-readiness`, `package-surface`, and package-manifest proof lanes already present in-repo. |
+| Decision                                                                                                                    | Rationale                                                                                              |
+| --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| All tarball proofs run against a staged runtime tree.                                                                       | Unstaged pack checks can miss the real leak.                                                           |
+| Deny `bin/runtime/**`, `dist/runtime/**`, and `dist/runtime-packages/**` from the root tarball.                             | These are the duplicated runtime payload classes that caused the publish failure.                      |
+| Keep `bin/wp` as a **real file, not a symlink**.                                                                            | Current launcher/package-surface policy depends on a real staged launcher in the root package.         |
+| Prove runtime optional dependencies against the **actual prepared/prepack manifest**, not only `createPackedManifest(...)`. | In-memory helper proof can false-green if the prepare/restore path regresses.                          |
+| Re-anchor tarball-size budgets to measured staged thin-root output with ≤10% headroom.                                      | Existing fat-tarball budgets would allow a false-green migration.                                      |
+| Do not create new audit surfaces.                                                                                           | Reuse `public-readiness`, `package-surface`, and package-manifest proof lanes already present in-repo. |
 
 ## Fact Check Findings
 
-| ID | Severity | Claim | Verified reality | Blueprint fix |
-| --- | --- | --- | --- | --- |
-| F1 | CRITICAL | Root tarball leakage can be proven from a clean checkout. | False. Leak paths appear only after runtime build + stage populate `bin/`/`dist/`. | Make staged build+stage a prerequisite for every tarball proof in this blueprint. |
-| F2 | CRITICAL | Current audits already reject all leaked runtime payload trees. | False. Current root proof lanes still positively require hybrid/C runtime paths and do not deny every leaked staged path class. | Replace positive root-runtime requirements with thin-root negative assertions. |
-| F3 | CRITICAL | Runtime optional dependencies are already fully proven. | False. Current proof can stop at `createPackedManifest(...)` without proving the actual prepack rewrite. | Add prepared-manifest proof against the rewritten root `package.json`. |
-| F4 | HIGH | Root tarball leakage is only `dist/runtime-packages/**`. | Incomplete. The staged leak classes also include `bin/runtime/**` and `dist/runtime/**`. | Explicitly list all denied path classes in tasks and acceptance. |
-| F5 | HIGH | The release blocker is still package publish permission. | No longer true. Runtime package bootstrap/publisher access is fixed; current blocker is the oversized root tarball. | Focus this blueprint exclusively on root package-surface cutover. |
-| F6 | MEDIUM | Source `package.json` already contains runtime optional dependencies. | False. Runtime packages are injected in the prepared/packed manifest path. | Verify prepared manifest content, not source manifest content. |
+| ID  | Severity | Claim                                                                 | Verified reality                                                                                                                | Blueprint fix                                                                     |
+| --- | -------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| F1  | CRITICAL | Root tarball leakage can be proven from a clean checkout.             | False. Leak paths appear only after runtime build + stage populate `bin/`/`dist/`.                                              | Make staged build+stage a prerequisite for every tarball proof in this blueprint. |
+| F2  | CRITICAL | Current audits already reject all leaked runtime payload trees.       | False. Current root proof lanes still positively require hybrid/C runtime paths and do not deny every leaked staged path class. | Replace positive root-runtime requirements with thin-root negative assertions.    |
+| F3  | CRITICAL | Runtime optional dependencies are already fully proven.               | False. Current proof can stop at `createPackedManifest(...)` without proving the actual prepack rewrite.                        | Add prepared-manifest proof against the rewritten root `package.json`.            |
+| F4  | HIGH     | Root tarball leakage is only `dist/runtime-packages/**`.              | Incomplete. The staged leak classes also include `bin/runtime/**` and `dist/runtime/**`.                                        | Explicitly list all denied path classes in tasks and acceptance.                  |
+| F5  | HIGH     | The release blocker is still package publish permission.              | No longer true. Runtime package bootstrap/publisher access is fixed; current blocker is the oversized root tarball.             | Focus this blueprint exclusively on root package-surface cutover.                 |
+| F6  | MEDIUM   | Source `package.json` already contains runtime optional dependencies. | False. Runtime packages are injected in the prepared/packed manifest path.                                                      | Verify prepared manifest content, not source manifest content.                    |
 
 ## Cross-references
 
@@ -110,13 +110,13 @@ After (thin-root B)
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
-| --- | --- | --- | --- | --- |
-| Wave 0 | 1.0 | None | 1 agent | XS |
-| Wave 1 | 1.1 | Wave 0 | 1 agent | M |
-| Wave 2 | 1.2 | Wave 1 | 1 agent | M |
-| Wave 3 | 1.3 | Wave 2 | 1 agent | S |
-| Critical path | 1.0 → 1.1 → 1.2 → 1.3 | — | 4 waves | M |
+| Wave          | Tasks                 | Dependencies | Parallelizable | Effort (T-shirt) |
+| ------------- | --------------------- | ------------ | -------------- | ---------------- |
+| Wave 0        | 1.0                   | None         | 1 agent        | XS               |
+| Wave 1        | 1.1                   | Wave 0       | 1 agent        | M                |
+| Wave 2        | 1.2                   | Wave 1       | 1 agent        | M                |
+| Wave 3        | 1.3                   | Wave 2       | 1 agent        | S                |
+| Critical path | 1.0 → 1.1 → 1.2 → 1.3 | —            | 4 waves        | M                |
 
 ### Phase 1: root tarball cutover [Complexity: M]
 
@@ -252,22 +252,22 @@ publish blocker is actually gone.
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-| --- | --- | --- |
-| Staged pack surface | `vp run build:runtime-binaries && vp run stage:plugin-runtime && npm pack --dry-run --json` | No packed `bin/runtime/**`, `dist/runtime/**`, or `dist/runtime-packages/**`; `bin/wp` present |
-| Scoped tests | `wp test --file scripts/public-readiness.test.ts --file src/audit/package-surface.test.ts --file src/build/package-manifest.test.ts` | All targeted tests pass |
-| Public readiness | `vp run build:runtime-binaries && vp run stage:plugin-runtime && vp run public:readiness` | Thin-root readiness passes on staged tree |
-| Package surface | `vp run build:runtime-binaries && vp run stage:plugin-runtime && wp audit package-surface` | Thin-root package-surface audit passes on staged tree |
-| Hosted release | `gh run rerun <release-run-id>` | Root package publish completes without tarball/package-surface failure |
+| Gate                | Command                                                                                                                              | Success Criteria                                                                               |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| Staged pack surface | `vp run build:runtime-binaries && vp run stage:plugin-runtime && npm pack --dry-run --json`                                          | No packed `bin/runtime/**`, `dist/runtime/**`, or `dist/runtime-packages/**`; `bin/wp` present |
+| Scoped tests        | `wp test --file scripts/public-readiness.test.ts --file src/audit/package-surface.test.ts --file src/build/package-manifest.test.ts` | All targeted tests pass                                                                        |
+| Public readiness    | `vp run build:runtime-binaries && vp run stage:plugin-runtime && vp run public:readiness`                                            | Thin-root readiness passes on staged tree                                                      |
+| Package surface     | `vp run build:runtime-binaries && vp run stage:plugin-runtime && wp audit package-surface`                                           | Thin-root package-surface audit passes on staged tree                                          |
+| Hosted release      | `gh run rerun <release-run-id>`                                                                                                      | Root package publish completes without tarball/package-surface failure                         |
 
 ## Edge Cases and Error Handling
 
-| Edge Case | Risk | Solution | Task |
-| --- | --- | --- | --- |
-| Running proofs on an unstaged checkout | False-green leak detection | Require build+stage before every pack/readiness/package-surface proof | 1.1, 1.2, 1.3 |
-| Windows runtime filenames use `wp.exe` | Partial deny-path coverage | Define payload classes as `wp|wp.exe` in tasks/tests | 1.1, 1.2 |
-| Prepared manifest path regresses while helper output still passes | Missing runtime optional deps at publish time | Verify the actual prepared/prepack root manifest, not only helper output | 1.2 |
-| Stale blueprint gating path in `public-readiness.ts` | Readiness points at obsolete plan | Repoint readiness to the active thin-root/canonical blueprint set | 1.2 |
+| Edge Case                                                         | Risk                                          | Solution                                                                 | Task                   |
+| ----------------------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------ | ---------------------- | -------- |
+| Running proofs on an unstaged checkout                            | False-green leak detection                    | Require build+stage before every pack/readiness/package-surface proof    | 1.1, 1.2, 1.3          |
+| Windows runtime filenames use `wp.exe`                            | Partial deny-path coverage                    | Define payload classes as `wp                                            | wp.exe` in tasks/tests | 1.1, 1.2 |
+| Prepared manifest path regresses while helper output still passes | Missing runtime optional deps at publish time | Verify the actual prepared/prepack root manifest, not only helper output | 1.2                    |
+| Stale blueprint gating path in `public-readiness.ts`              | Readiness points at obsolete plan             | Repoint readiness to the active thin-root/canonical blueprint set        | 1.2                    |
 
 ## Non-goals
 
@@ -277,11 +277,11 @@ publish blocker is actually gone.
 
 ## Risks
 
-| Risk | Impact | Mitigation |
-| --- | --- | --- |
-| `bin/runtime-manifest.json` is removed too early | Could break current diagnostics/launcher assumptions | Keep the manifest decision explicit in Task 1.2; preserve it for this unblock unless proof shows it is unnecessary |
-| Root staging still writes into publishable trees after `files` changes | Root tarball can still bloat on future releases | Task 1.1 owns both `files` and staging destination decisions |
-| Hosted release fails for a different post-packaging reason | Tarball fix alone may not finish the ship lane | Keep Task 1.3 acceptance specific to root publish completion and fold any new blocker back into the canonical runtime blueprint |
+| Risk                                                                   | Impact                                               | Mitigation                                                                                                                      |
+| ---------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `bin/runtime-manifest.json` is removed too early                       | Could break current diagnostics/launcher assumptions | Keep the manifest decision explicit in Task 1.2; preserve it for this unblock unless proof shows it is unnecessary              |
+| Root staging still writes into publishable trees after `files` changes | Root tarball can still bloat on future releases      | Task 1.1 owns both `files` and staging destination decisions                                                                    |
+| Hosted release fails for a different post-packaging reason             | Tarball fix alone may not finish the ship lane       | Keep Task 1.3 acceptance specific to root publish completion and fold any new blocker back into the canonical runtime blueprint |
 
 ## Trust Dossier
 
@@ -295,21 +295,21 @@ publish blocker is actually gone.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-06-agent-kit-thin-root-package-surface-release-unblock.md |
+| ID  | Claim                                                          | Evidence                                                                                    |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-06-agent-kit-thin-root-package-surface-release-unblock.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

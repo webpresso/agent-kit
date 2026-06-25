@@ -37,37 +37,37 @@
  * repo itself.
  */
 
-import { createHash } from 'node:crypto'
-import { mkdirSync, realpathSync } from 'node:fs'
-import path from 'node:path'
+import { createHash } from "node:crypto";
+import { mkdirSync, realpathSync } from "node:fs";
+import path from "node:path";
 
-import lockfile from 'proper-lockfile'
+import lockfile from "proper-lockfile";
 
-import { getStateRoot, getSurfacePath, NotInGitRepoError } from '#paths/state-root.js'
+import { getStateRoot, getSurfacePath, NotInGitRepoError } from "#paths/state-root.js";
 
-const SURFACE_DB = 'blueprints/blueprints.db'
-const SURFACE_DB_LOCK = 'blueprints/blueprints.db.lock'
-const SURFACE_MARKDOWN_LOCK = 'blueprints/markdown.lock'
+const SURFACE_DB = "blueprints/blueprints.db";
+const SURFACE_DB_LOCK = "blueprints/blueprints.db.lock";
+const SURFACE_MARKDOWN_LOCK = "blueprints/markdown.lock";
 
 export class LockTimeoutError extends Error {
-  readonly lockPath: string
-  readonly nextAction: 'reingest_project'
+  readonly lockPath: string;
+  readonly nextAction: "reingest_project";
 
   constructor(lockPath: string, cause?: unknown) {
-    super(`Timed out acquiring blueprint lock at ${lockPath}`)
-    this.name = 'LockTimeoutError'
-    this.lockPath = lockPath
-    this.nextAction = 'reingest_project'
+    super(`Timed out acquiring blueprint lock at ${lockPath}`);
+    this.name = "LockTimeoutError";
+    this.lockPath = lockPath;
+    this.nextAction = "reingest_project";
     if (cause !== undefined) {
-      ;(this as Error & { cause?: unknown }).cause = cause
+      (this as Error & { cause?: unknown }).cause = cause;
     }
   }
 }
 
 function nonGitStatePath(cwd: string, filename: string): string {
-  const absoluteCwd = realpathSync(cwd)
-  const cwdKey = createHash('sha256').update(absoluteCwd).digest('hex').slice(0, 16)
-  return path.join(getStateRoot(), 'non-git', cwdKey, filename)
+  const absoluteCwd = realpathSync(cwd);
+  const cwdKey = createHash("sha256").update(absoluteCwd).digest("hex").slice(0, 16);
+  return path.join(getStateRoot(), "non-git", cwdKey, filename);
 }
 
 /**
@@ -78,10 +78,10 @@ function nonGitStatePath(cwd: string, filename: string): string {
  */
 export function resolveBlueprintProjectionDbPath(cwd: string): string {
   try {
-    return getSurfacePath(SURFACE_DB, 'repo', cwd)
+    return getSurfacePath(SURFACE_DB, "repo", cwd);
   } catch (err) {
-    if (err instanceof NotInGitRepoError) return nonGitStatePath(cwd, '.blueprints.db')
-    throw err
+    if (err instanceof NotInGitRepoError) return nonGitStatePath(cwd, ".blueprints.db");
+    throw err;
   }
 }
 
@@ -90,10 +90,10 @@ export function resolveBlueprintProjectionDbPath(cwd: string): string {
  */
 export function resolveBlueprintProjectionDbLockPath(cwd: string): string {
   try {
-    return getSurfacePath(SURFACE_DB_LOCK, 'repo', cwd)
+    return getSurfacePath(SURFACE_DB_LOCK, "repo", cwd);
   } catch (err) {
-    if (err instanceof NotInGitRepoError) return nonGitStatePath(cwd, '.blueprints.lock')
-    throw err
+    if (err instanceof NotInGitRepoError) return nonGitStatePath(cwd, ".blueprints.lock");
+    throw err;
   }
 }
 
@@ -105,38 +105,38 @@ export function resolveBlueprintProjectionDbLockPath(cwd: string): string {
  */
 export function resolveBlueprintMarkdownLockPath(cwd: string): string {
   try {
-    return getSurfacePath(SURFACE_MARKDOWN_LOCK, 'repo', cwd)
+    return getSurfacePath(SURFACE_MARKDOWN_LOCK, "repo", cwd);
   } catch (err) {
     if (err instanceof NotInGitRepoError) {
-      return nonGitStatePath(cwd, '.blueprints.markdown.lock')
+      return nonGitStatePath(cwd, ".blueprints.markdown.lock");
     }
-    throw err
+    throw err;
   }
 }
 
 export interface AcquireLockOptions {
   /** Lock-acquisition timeout. Default 5000ms. */
-  readonly timeoutMs?: number
+  readonly timeoutMs?: number;
   /** Stale-lock window (proper-lockfile recovers if holder died). Default 30000ms. */
-  readonly staleMs?: number
+  readonly staleMs?: number;
 }
 
-const DEFAULT_TIMEOUT_MS = 5_000
-const DEFAULT_STALE_MS = 30_000
+const DEFAULT_TIMEOUT_MS = 5_000;
+const DEFAULT_STALE_MS = 30_000;
 
 async function acquireWriteLockAt(
   lockPath: string,
   opts: AcquireLockOptions,
 ): Promise<() => Promise<void>> {
-  mkdirSync(path.dirname(lockPath), { recursive: true })
+  mkdirSync(path.dirname(lockPath), { recursive: true });
 
-  const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS
-  const staleMs = opts.staleMs ?? DEFAULT_STALE_MS
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const staleMs = opts.staleMs ?? DEFAULT_STALE_MS;
 
   // proper-lockfile uses exponential backoff (factor 2). Pick a retry budget
   // whose accumulated wait is ≥ timeoutMs without overshooting too far.
-  const minTimeout = 50
-  const maxTimeout = 500
+  const minTimeout = 50;
+  const maxTimeout = 500;
 
   try {
     const release = await lockfile.lock(lockPath, {
@@ -148,10 +148,10 @@ async function acquireWriteLockAt(
         maxTimeout,
         factor: 2,
       },
-    })
-    return release
+    });
+    return release;
   } catch (err) {
-    throw new LockTimeoutError(lockPath, err)
+    throw new LockTimeoutError(lockPath, err);
   }
 }
 
@@ -165,7 +165,7 @@ export function acquireProjectionDbWriteLock(
   cwd: string,
   opts: AcquireLockOptions = {},
 ): Promise<() => Promise<void>> {
-  return acquireWriteLockAt(resolveBlueprintProjectionDbLockPath(cwd), opts)
+  return acquireWriteLockAt(resolveBlueprintProjectionDbLockPath(cwd), opts);
 }
 
 /**
@@ -178,7 +178,7 @@ export function acquireMarkdownWriteLock(
   cwd: string,
   opts: AcquireLockOptions = {},
 ): Promise<() => Promise<void>> {
-  return acquireWriteLockAt(resolveBlueprintMarkdownLockPath(cwd), opts)
+  return acquireWriteLockAt(resolveBlueprintMarkdownLockPath(cwd), opts);
 }
 
 /**
@@ -191,11 +191,11 @@ export async function withProjectionDbWriteLock<T>(
   fn: () => Promise<T> | T,
   opts: AcquireLockOptions = {},
 ): Promise<T> {
-  const release = await acquireProjectionDbWriteLock(cwd, opts)
+  const release = await acquireProjectionDbWriteLock(cwd, opts);
   try {
-    return await fn()
+    return await fn();
   } finally {
-    await release()
+    await release();
   }
 }
 
@@ -208,10 +208,10 @@ export async function withMarkdownWriteLock<T>(
   fn: () => Promise<T> | T,
   opts: AcquireLockOptions = {},
 ): Promise<T> {
-  const release = await acquireMarkdownWriteLock(cwd, opts)
+  const release = await acquireMarkdownWriteLock(cwd, opts);
   try {
-    return await fn()
+    return await fn();
   } finally {
-    await release()
+    await release();
   }
 }

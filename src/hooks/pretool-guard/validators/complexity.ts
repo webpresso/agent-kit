@@ -1,30 +1,30 @@
-import type { ToolInput, ValidationResult } from '#hooks/shared/types'
+import type { ToolInput, ValidationResult } from "#hooks/shared/types";
 
-import { getContent, getFilePath } from '#hooks/shared/types'
-import { createSkipResult } from './skip-result.js'
+import { getContent, getFilePath } from "#hooks/shared/types";
+import { createSkipResult } from "./skip-result.js";
 
-const MAX_FILE_LINES = 500
+const MAX_FILE_LINES = 500;
 
 export function validateComplexity(input: ToolInput): ValidationResult {
-  if (process.env.COMPLEXITY_WARNING_SKIP === '1') return createSkipResult('complexity')
+  if (process.env.COMPLEXITY_WARNING_SKIP === "1") return createSkipResult("complexity");
 
-  const filePath = getFilePath(input)
-  const content = getContent(input)
+  const filePath = getFilePath(input);
+  const content = getContent(input);
 
-  if (!content || !filePath) return { validator: 'complexity', passed: true }
+  if (!content || !filePath) return { validator: "complexity", passed: true };
 
-  const hasExtension = /\.[^/]+$/.test(filePath)
+  const hasExtension = /\.[^/]+$/.test(filePath);
   if (hasExtension && !/\.(ts|tsx|js|jsx)$/.test(filePath))
-    return { validator: 'complexity', passed: true }
+    return { validator: "complexity", passed: true };
 
-  const lines = content.split('\n').length
+  const lines = content.split("\n").length;
   if (lines > MAX_FILE_LINES) {
     return {
-      validator: 'complexity',
+      validator: "complexity",
       passed: true,
       message: `Warning: File has ${lines} lines (>${MAX_FILE_LINES}). Consider splitting.`,
-    }
+    };
   }
 
-  return { validator: 'complexity', passed: true }
+  return { validator: "complexity", passed: true };
 }

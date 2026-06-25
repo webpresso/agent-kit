@@ -4,9 +4,9 @@ title: "Codex/Claude shared skill contract and context budget"
 owner: agent-kit
 status: completed
 complexity: M
-created: '2026-06-08'
-last_updated: '2026-06-08'
-progress: '100% (6/6 tasks complete; shared-favorites contract, opt-in projection, AGENTS budget guard, consumer smoke, and regression coverage verified on 2026-06-08)'
+created: "2026-06-08"
+last_updated: "2026-06-08"
+progress: "100% (6/6 tasks complete; shared-favorites contract, opt-in projection, AGENTS budget guard, consumer smoke, and regression coverage verified on 2026-06-08)"
 depends_on:
   - blueprints/completed/2026-06-08-hooks-orchestrator-contract-series.md
 cross_repo_depends_on: []
@@ -33,21 +33,21 @@ tags:
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-| -------- | ------ | --------- |
-| Shared default set | Tier-1 favorites only | These are the highest-value cross-host skills and match the intended “same everywhere” baseline. |
-| Tier-2 handling | Opt-in add-ons | Cuts host-visible skill noise without deleting useful skills. |
-| Monorepo navigation | Scaffold source, opt-in projection | Keeps repo-owned continuity while removing a known large default prompt surface. |
-| OMX/gstack | Global-first | Already the correct ownership boundary; do not project them repo-wide to solve context issues. |
-| Root AGENTS budget | ≤ 8 KB generated default | Forces durable contract language only; longer guidance moves to docs. |
+| Decision            | Choice                             | Rationale                                                                                        |
+| ------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Shared default set  | Tier-1 favorites only              | These are the highest-value cross-host skills and match the intended “same everywhere” baseline. |
+| Tier-2 handling     | Opt-in add-ons                     | Cuts host-visible skill noise without deleting useful skills.                                    |
+| Monorepo navigation | Scaffold source, opt-in projection | Keeps repo-owned continuity while removing a known large default prompt surface.                 |
+| OMX/gstack          | Global-first                       | Already the correct ownership boundary; do not project them repo-wide to solve context issues.   |
+| Root AGENTS budget  | ≤ 8 KB generated default           | Forces durable contract language only; longer guidance moves to docs.                            |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable |
-| ---- | ----- | ------------ | -------------- |
-| **Wave 0** | 1.1, 1.2 | None | 1 agent |
-| **Wave 1** | 2.1, 2.2 | 1.1 | 1 agent |
-| **Wave 2** | 3.1, 3.2 | 2.1, 2.2 | 1 agent |
+| Wave       | Tasks    | Dependencies | Parallelizable |
+| ---------- | -------- | ------------ | -------------- |
+| **Wave 0** | 1.1, 1.2 | None         | 1 agent        |
+| **Wave 1** | 2.1, 2.2 | 1.1          | 1 agent        |
+| **Wave 2** | 3.1, 3.2 | 2.1, 2.2     | 1 agent        |
 
 ### Phase 1: Define the shared skill contract [Complexity: S]
 
@@ -167,13 +167,13 @@ Keep the blueprint surface and generated repo surfaces in sync after the new pla
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-| ---- | ------- | ---------------- |
-| Unit/integration tests | `wp test` on touched init/symlink/smoke tests | All targeted tests pass |
-| Type safety | `wp typecheck` | Zero errors |
-| Lint | `wp lint` on touched files | Zero violations |
-| Blueprint drift | `wp audit blueprint-readme-drift` | No drift |
-| Consumer smoke | `bun scripts/public-consumer-smoke.ts --setup-only --skip-build` | Shared favorites present, non-favorites absent, AGENTS budget green |
+| Gate                   | Command                                                          | Success Criteria                                                    |
+| ---------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Unit/integration tests | `wp test` on touched init/symlink/smoke tests                    | All targeted tests pass                                             |
+| Type safety            | `wp typecheck`                                                   | Zero errors                                                         |
+| Lint                   | `wp lint` on touched files                                       | Zero violations                                                     |
+| Blueprint drift        | `wp audit blueprint-readme-drift`                                | No drift                                                            |
+| Consumer smoke         | `bun scripts/public-consumer-smoke.ts --setup-only --skip-build` | Shared favorites present, non-favorites absent, AGENTS budget green |
 
 ## Fresh verification evidence
 
@@ -203,21 +203,21 @@ Keep the blueprint surface and generated repo surfaces in sync after the new pla
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-08-codex-claude-shared-skill-contract-and-context-budget.md |
+| ID  | Claim                                                          | Evidence                                                                                      |
+| --- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-08-codex-claude-shared-skill-contract-and-context-budget.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

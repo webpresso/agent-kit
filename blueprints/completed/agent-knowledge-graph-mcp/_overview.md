@@ -34,7 +34,7 @@ promoted_to_completed: 2026-05-11
 
 ## Product wedge anchor
 
-- **Stage outcome:** Cite VISION.md ("One command, fully wired") + the Elegance Pass 2026 stage outcome. The original blueprint planned a full Kuzu+remark+chokidar knowledge graph; research + deeper investigation (2026-05-11) showed: (a) GitNexus is the validated architecture analog but PolyForm-NC licensed and source-code-domain not agent-asset-domain, so reuse impossible; (b) the original q-* class of pollution is already zero; (c) Blueprint #1's content-hash compile-manifest already detects drift between canonical `.agent/` and per-IDE outputs; (d) the tech-debt lifecycle has only 1 file — auto-filing from a full KG has no real consumer demand yet. **But** monorepo has 4 `.agent/` files exceeding Codex's 8000-char budget today (skill-creator 22KB, openai-docs 33KB, agent-practices 20KB, soa.md 16KB), broken refs in agent-assets aren't checked anywhere, and the tech-debt loop is dormant. So ship a 3-verb minimal slice now that addresses concrete pain; defer the full KG behind concrete gating conditions.
+- **Stage outcome:** Cite VISION.md ("One command, fully wired") + the Elegance Pass 2026 stage outcome. The original blueprint planned a full Kuzu+remark+chokidar knowledge graph; research + deeper investigation (2026-05-11) showed: (a) GitNexus is the validated architecture analog but PolyForm-NC licensed and source-code-domain not agent-asset-domain, so reuse impossible; (b) the original q-\* class of pollution is already zero; (c) Blueprint #1's content-hash compile-manifest already detects drift between canonical `.agent/` and per-IDE outputs; (d) the tech-debt lifecycle has only 1 file — auto-filing from a full KG has no real consumer demand yet. **But** monorepo has 4 `.agent/` files exceeding Codex's 8000-char budget today (skill-creator 22KB, openai-docs 33KB, agent-practices 20KB, soa.md 16KB), broken refs in agent-assets aren't checked anywhere, and the tech-debt loop is dormant. So ship a 3-verb minimal slice now that addresses concrete pain; defer the full KG behind concrete gating conditions.
 - **Consuming surface:** Three new audit verbs (`wp audit skill-sizes`, `wp audit broken-refs`, `wp audit memory-rotation`) + `wp tech-debt new --from-audit <name>` integration + pre-commit hook wiring via `wp setup --with husky` extension.
 - **New user-visible capability:** A developer can run `wp audit --all` and see (1) which skills exceed runtime budgets, (2) which `.agent/` refs are broken, (3) which AGENTS.md rotations need review. CI gates these via `webpresso/agent-kit-action@v1`. Any audit finding can auto-file an `h-NNN-*.md` tech-debt item with appropriate `review_cadence` — the lifecycle starts compounding instead of staying dormant.
 
@@ -70,14 +70,14 @@ Walk `.agent/skills/<name>/SKILL.md` files. For each, measure description bytes 
 # .agent/.audit-budgets.yaml (committed)
 budgets:
   codex-skill-listing-total:
-    max_bytes: 7000              # Codex 8000-char hard cap with 1KB headroom
+    max_bytes: 7000 # Codex 8000-char hard cap with 1KB headroom
   claude-skill-description-each:
     max_bytes: 800
   agents-md-section-each:
     max_bytes: 4096
     suggest_compact_at: 0.75
   skill-md-total-each:
-    max_bytes: 16384             # warn beyond 16KB; the monorepo's 22-33KB files trigger
+    max_bytes: 16384 # warn beyond 16KB; the monorepo's 22-33KB files trigger
 ```
 
 Output:
@@ -166,40 +166,41 @@ If any condition fails, the minimal slice is the permanent shape. If all three b
 
 ## Technology Choices
 
-| Decision | Choice | Reasoning |
-|---|---|---|
-| Ref resolver | **`remark-validate-links`** (MIT, Node-native) | Replaces DIY resolver; covers our entire ref taxonomy; quiet but stable maintenance |
-| Size budget | **In-tree regex + bytes count** | No new dep; budgets configurable in `.agent/.audit-budgets.yaml` |
-| Rotation audit | **Reads `.agent/.rotation-log.jsonl`** | Memory merger from blueprint #1 writes it; this audit just surfaces |
-| Tech-debt schema | **Reuses existing `src/blueprint/tech-debt/schema.ts`** | Already in tree; extend with `--from-audit` semantics |
-| Pre-commit | **Extends `wp setup --with husky`** | Existing scaffolder; ~1-2 hours work |
-| Kuzu / chokidar | **None at v0.12.0** | Deferred behind gating conditions |
-| simhash near-dup detection | **Skipped at v0.12.0** | No need without full KG; revisit if blueprint deferred-KG lands |
-| Backwards compat | **None** | Net new at v0.12.0 |
+| Decision                   | Choice                                                  | Reasoning                                                                           |
+| -------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Ref resolver               | **`remark-validate-links`** (MIT, Node-native)          | Replaces DIY resolver; covers our entire ref taxonomy; quiet but stable maintenance |
+| Size budget                | **In-tree regex + bytes count**                         | No new dep; budgets configurable in `.agent/.audit-budgets.yaml`                    |
+| Rotation audit             | **Reads `.agent/.rotation-log.jsonl`**                  | Memory merger from blueprint #1 writes it; this audit just surfaces                 |
+| Tech-debt schema           | **Reuses existing `src/blueprint/tech-debt/schema.ts`** | Already in tree; extend with `--from-audit` semantics                               |
+| Pre-commit                 | **Extends `wp setup --with husky`**                     | Existing scaffolder; ~1-2 hours work                                                |
+| Kuzu / chokidar            | **None at v0.12.0**                                     | Deferred behind gating conditions                                                   |
+| simhash near-dup detection | **Skipped at v0.12.0**                                  | No need without full KG; revisit if blueprint deferred-KG lands                     |
+| Backwards compat           | **None**                                                | Net new at v0.12.0                                                                  |
 
 ## Edge cases
 
-| ID | Severity | Case | Mitigation |
-|---|---|---|---|
-| A1 | HIGH | Consumer's `.audit-budgets.yaml` is missing | Default budgets ship in agent-kit; warn but don't fail |
-| A2 | MEDIUM | `remark-validate-links` flags a ref to a generated file (e.g., `.claude/skills/foo`) as broken | Audit resolver consults the compile-manifest from blueprint #1; refs to generated paths marked `is_generated: true` and not flagged |
-| A3 | MEDIUM | Pre-commit `--staged` mode hits a file with no source on disk yet (renamed away then back) | Skip silently; full audit runs in CI for any missed cases |
-| A4 | LOW | `--from-audit` files duplicate `h-NNN-*.md` for same finding across runs | Content-hash idempotency key prevents duplicates |
-| A5 | LOW | Memory rotation log is large (rotation events accumulate over months) | Rotate the log itself (`.agent/.rotation-log.jsonl` → `.rotation-log.jsonl.YYYY-MM`) on each calendar month |
-| A6 | LOW | A skill at exactly 100% of budget — pass or fail? | Pass at 100%, fail at 101%; budget is inclusive maximum |
+| ID  | Severity | Case                                                                                           | Mitigation                                                                                                                          |
+| --- | -------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| A1  | HIGH     | Consumer's `.audit-budgets.yaml` is missing                                                    | Default budgets ship in agent-kit; warn but don't fail                                                                              |
+| A2  | MEDIUM   | `remark-validate-links` flags a ref to a generated file (e.g., `.claude/skills/foo`) as broken | Audit resolver consults the compile-manifest from blueprint #1; refs to generated paths marked `is_generated: true` and not flagged |
+| A3  | MEDIUM   | Pre-commit `--staged` mode hits a file with no source on disk yet (renamed away then back)     | Skip silently; full audit runs in CI for any missed cases                                                                           |
+| A4  | LOW      | `--from-audit` files duplicate `h-NNN-*.md` for same finding across runs                       | Content-hash idempotency key prevents duplicates                                                                                    |
+| A5  | LOW      | Memory rotation log is large (rotation events accumulate over months)                          | Rotate the log itself (`.agent/.rotation-log.jsonl` → `.rotation-log.jsonl.YYYY-MM`) on each calendar month                         |
+| A6  | LOW      | A skill at exactly 100% of budget — pass or fail?                                              | Pass at 100%, fail at 101%; budget is inclusive maximum                                                                             |
 
 ## Risks
 
-| ID | Severity | Risk | Mitigation |
-|---|---|---|---|
-| AR1 | MEDIUM | `remark-validate-links` last commit was 2025-02 — risk of unmaintained dep | Small surface, MIT license, forkable in a day; we use only the ref-resolution API |
-| AR2 | MEDIUM | Auto-filing tech-debt creates noise if budgets are wrong out of the gate | Ship with **measure-only** mode for first 2 weeks; `--from-audit` requires explicit invocation, not auto-on-CI-failure |
-| AR3 | LOW | Pre-commit slow-down on large `.agent/` (>500 files) | Bench at scale; `--staged` mode scopes to changed files; full audit only runs locally on explicit `wp audit` |
-| AR4 | LOW | Deferred-KG never lands because gating conditions never become true | This is by design — minimal slice is the permanent shape if the full KG isn't justified by real usage |
+| ID  | Severity | Risk                                                                       | Mitigation                                                                                                             |
+| --- | -------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| AR1 | MEDIUM   | `remark-validate-links` last commit was 2025-02 — risk of unmaintained dep | Small surface, MIT license, forkable in a day; we use only the ref-resolution API                                      |
+| AR2 | MEDIUM   | Auto-filing tech-debt creates noise if budgets are wrong out of the gate   | Ship with **measure-only** mode for first 2 weeks; `--from-audit` requires explicit invocation, not auto-on-CI-failure |
+| AR3 | LOW      | Pre-commit slow-down on large `.agent/` (>500 files)                       | Bench at scale; `--staged` mode scopes to changed files; full audit only runs locally on explicit `wp audit`           |
+| AR4 | LOW      | Deferred-KG never lands because gating conditions never become true        | This is by design — minimal slice is the permanent shape if the full KG isn't justified by real usage                  |
 
 ## Tasks (~4 tasks)
 
 #### Task 1.1: Audit budgets + `.audit-budgets.yaml` template
+
 **Status:** done
 **Depends:** None
 
@@ -208,6 +209,7 @@ Create `src/audits/_budgets.ts` (default budgets + loader). Add `catalog/agent/.
 **Acceptance:** Defaults work without consumer config; override via committed yaml.
 
 #### Task 1.2: Three audit verbs
+
 **Status:** done
 **Depends:** Task 1.1
 
@@ -216,6 +218,7 @@ Create `src/audits/_budgets.ts` (default budgets + loader). Add `catalog/agent/.
 **Acceptance:** Each audit on fixture data exits 0/1 correctly with JSON output; integrated test against monorepo's actual `.agent/` confirms the 4 oversized files are flagged.
 
 #### Task 1.3: `wp tech-debt new --from-audit`
+
 **Status:** done
 **Depends:** Task 1.2
 
@@ -224,6 +227,7 @@ Extend `src/cli/commands/tech-debt/new.ts` with `--from-audit <name>` mode. Read
 **Acceptance:** Filed `.md` passes existing Zod validation; re-running is a no-op; `linked_blueprints` correctly populated.
 
 #### Task 1.4: Pre-commit hook extension + consumer rollouts
+
 **Status:** done
 **Depends:** Task 1.2
 
@@ -233,12 +237,12 @@ Extend `wp setup --with husky` to wire `wp audit skill-sizes --staged` + `wp aud
 
 ## Quick Reference
 
-| Wave | Tasks | Parallel agents | Effort (CC) |
-|---|---|---|---|
-| Wave 0 | 1.1 | 1 | ~2 hours |
-| Wave 1 | 1.2 | 1 | ~half day |
-| Wave 2 | 1.3, 1.4 | 2 | ~half day |
-| **Total** | **4 tasks** | | **~1-1.5 days CC / ~1 week human** |
+| Wave      | Tasks       | Parallel agents | Effort (CC)                        |
+| --------- | ----------- | --------------- | ---------------------------------- |
+| Wave 0    | 1.1         | 1               | ~2 hours                           |
+| Wave 1    | 1.2         | 1               | ~half day                          |
+| Wave 2    | 1.3, 1.4    | 2               | ~half day                          |
+| **Total** | **4 tasks** |                 | **~1-1.5 days CC / ~1 week human** |
 
 Parallelization score: A.
 
@@ -250,6 +254,7 @@ Parallelization score: A.
 4. ✅ **Pre-commit hook integration (D4)** — yes
 
 Blueprint ready to promote `draft/` → `planned/`.
+
 ## Historical verification note
 
 This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
@@ -266,21 +271,21 @@ This blueprint contains done tasks recorded before the current per-task `**Verif
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/agent-knowledge-graph-mcp/_overview.md |
+| ID  | Claim                                                          | Evidence                                                          |
+| --- | -------------------------------------------------------------- | ----------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/agent-knowledge-graph-mcp/\_overview.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

@@ -26,11 +26,13 @@ Remove obsolete generated `setup-webpresso` and `resolve-webpresso-cli-versions`
 **Status:** done
 **Wave:** 0
 **Files:**
+
 - `catalog/base-kit/.github/actions/setup-webpresso/action.yml.tmpl`
 - `catalog/base-kit/scripts/resolve-webpresso-cli-versions.cjs.tmpl`
 - `src/cli/commands/init/scaffold-base-kit.ts`
 
 **Acceptance:**
+
 - [x] Base-kit no longer contains a local `setup-webpresso` action template.
 - [x] Base-kit no longer emits `scripts/resolve-webpresso-cli-versions.cjs`.
 - [x] Init e2e tests assert the retired resolver is absent.
@@ -40,6 +42,7 @@ Remove obsolete generated `setup-webpresso` and `resolve-webpresso-cli-versions`
 **Status:** done
 **Wave:** 0
 **Files:**
+
 - `README.md`
 - `docs/README.md`
 - `docs/getting-started.md`
@@ -48,6 +51,7 @@ Remove obsolete generated `setup-webpresso` and `resolve-webpresso-cli-versions`
 - `src/hooks/doctor.ts`
 
 **Acceptance:**
+
 - [x] Public docs recommend `vp install -g @webpresso/agent-kit`.
 - [x] Runtime diagnostics recommend `vp install -g`, not `npm install -g`.
 - [x] Tests assert the new guidance.
@@ -57,9 +61,11 @@ Remove obsolete generated `setup-webpresso` and `resolve-webpresso-cli-versions`
 **Status:** done
 **Wave:** 0
 **Files:**
+
 - `catalog/base-kit/.github/workflows/ci.yml.tmpl`
 
 **Acceptance:**
+
 - [x] Base-kit CI installs global agent-kit through `vp install -g @webpresso/agent-kit@2.3.2`.
 - [x] No base-kit install path uses `agent-kit@latest`.
 
@@ -85,21 +91,21 @@ Remove obsolete generated `setup-webpresso` and `resolve-webpresso-cli-versions`
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-22-remove-legacy-agent-kit-bootstrap.md |
+| ID  | Claim                                                          | Evidence                                                                  |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-22-remove-legacy-agent-kit-bootstrap.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

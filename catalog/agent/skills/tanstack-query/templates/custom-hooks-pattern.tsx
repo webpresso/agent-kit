@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { useOrganizationsList } from '~/generated/frontend/hooks/useOrganizationsList'
+import { useMemo } from "react";
+import { useOrganizationsList } from "~/generated/frontend/hooks/useOrganizationsList";
 
 /**
  * Prefer generated CRUD hooks/options whenever generation can own the contract.
@@ -9,7 +9,7 @@ import { useOrganizationsList } from '~/generated/frontend/hooks/useOrganization
  * owner.
  */
 export function useOrganizationSwitcherModel() {
-  const { data } = useOrganizationsList({ first: 20 })
+  const { data } = useOrganizationsList({ first: 20 });
   return useMemo(
     () =>
       (data?.organizationsList.nodes ?? []).map((organization) => ({
@@ -17,7 +17,7 @@ export function useOrganizationSwitcherModel() {
         value: organization.id,
       })),
     [data?.organizationsList.nodes],
-  )
+  );
 }
 
 /**

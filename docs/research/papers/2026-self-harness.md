@@ -23,10 +23,10 @@ An LLM agent improves its **own** operating harness — no human engineers, no
 stronger external model. Three-stage iterative loop:
 
 1. **Weakness Mining** — run the fixed model on a held-in task split; cluster
-   *failed* traces by a deterministic signature: (terminal verifier-level
+   _failed_ traces by a deterministic signature: (terminal verifier-level
    cause, causal status of the agent behavior, abstract agent mechanism).
    Clusters ranked by support and actionability into an evidence bundle.
-2. **Harness Proposal** — the same model, in a proposer role, sees a *bounded*
+2. **Harness Proposal** — the same model, in a proposer role, sees a _bounded_
    context (declared editable surfaces, clustered failure patterns, passing
    behaviors to preserve, previously attempted edits) and generates K diverse,
    minimal candidate edits.

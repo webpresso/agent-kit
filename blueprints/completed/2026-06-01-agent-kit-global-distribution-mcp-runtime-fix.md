@@ -3,11 +3,11 @@ type: blueprint
 title: Agent-kit single global native binary + MCP `-32000` fix
 owner: ozby
 status: completed
-completed_at: '2026-06-07'
+completed_at: "2026-06-07"
 complexity: L
-created: '2026-06-01'
-last_updated: '2026-06-07'
-progress: '100% (root package and all 5 runtime packages published at 0.29.3; native plugin manifest, staged host bin/wp, public-readiness proof, hooks doctor, and MCP dev-workflow tooling all verify the single-global-native-binary cutover)'
+created: "2026-06-01"
+last_updated: "2026-06-07"
+progress: "100% (root package and all 5 runtime packages published at 0.29.3; native plugin manifest, staged host bin/wp, public-readiness proof, hooks doctor, and MCP dev-workflow tooling all verify the single-global-native-binary cutover)"
 depends_on: []
 tags:
   - mcp
@@ -79,9 +79,11 @@ and lifecycle proof lanes (`wp_audit(kind="package-surface")`, `scripts/public-r
 
 **Target (decided): pure-native plugin launch, no node.** The manifest points directly at a host
 native binary that is a real file in the plugin root:
+
 ```json
 "mcpServers": { "webpresso": { "command": "${CLAUDE_PLUGIN_ROOT}/bin/wp", "args": ["mcp"] } }
 ```
+
 Verified against the plugins reference: `command` can be any executable; `${CLAUDE_PLUGIN_ROOT}` is
 substituted; **Claude runs no install and strips symlinks resolving outside the plugin root on
 caching** — so `bin/wp` must be a **real, host-matching file inside the plugin root** (not the JS
@@ -91,27 +93,27 @@ directory.
 
 ## Fact Check Findings
 
-| ID | Severity | Claim | Verified reality | Blueprint fix |
-| --- | --- | --- | --- | --- |
-| F1 | CRITICAL | The `-32000` is the launcher using bare `node`. | Disproven: `node dist/...js mcp` works in 0.22.0, no-ops in 0.21.5 → build regression, not launcher. | Publish a working build; do not rely on launcher change to fix MCP. (Task 1.1) |
-| F2 | CRITICAL | The plugin can launch a native `node_modules/.bin/wp-agent-kit-runtime`. | Claude strips symlinks resolving outside the plugin root on caching and runs no install — a `.bin` symlink to a sibling optional-dep does not survive. | `bin/wp` must be a real staged file inside the plugin root. (Task 1.3, 1.4) |
-| F3 | HIGH | Staging yields a stable `bin/wp`. | `stage-plugin-runtime-artifacts.ts:51-52` stages per-target `bin/runtime/<target>/wp`, not a host `bin/wp`. Static `plugin.json` can't pick `<target>`. | Add a host-resolve step: copy `bin/runtime/<host-target>/wp` → real `bin/wp` during `wp setup`. (Task 1.3) |
-| F4 | HIGH | Hooks-native is large additional scope. | `wp hook <name>` already exists (`cli.ts:277`) and `RUNTIME_BIN_ARGS` already maps the `wp-*` hooks. | Migrate manifest hooks to `${CLAUDE_PLUGIN_ROOT}/bin/wp hook <name>` — low-cost. (Task 1.4) |
-| F5 | HIGH | One global binary serves PATH `wp` + plugin + hooks. | `vp install -g @webpresso/agent-kit` (canonical, `detect-pm.ts:43`) resolves the host runtime optional-dep. | Reuse the `detect-pm` builder; refresh on every `wp setup`. (Task 1.2, 1.3) |
-| F6 | MEDIUM | The setup path force-updates dev clones too. | Dev clones are detected by `detectGitInstall` (`detect-pm.ts:72`); clobbering destroys the dev-link. | `wp setup` self-update skips source/git clones; honors `WP_SKIP_AUTO_INSTALL`. (Task 1.3) |
-| F7 | MEDIUM | A new bespoke verifier is needed for the publishable package surface. | Completed 2026-06-02/03 blueprints already established `package-surface`, `public-readiness`, and `blueprint-lifecycle` as the canonical proof lanes. | Reuse those existing gates; do not add a parallel audit stack. (Tasks 1.2, 1.5) |
+| ID  | Severity | Claim                                                                    | Verified reality                                                                                                                                        | Blueprint fix                                                                                              |
+| --- | -------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| F1  | CRITICAL | The `-32000` is the launcher using bare `node`.                          | Disproven: `node dist/...js mcp` works in 0.22.0, no-ops in 0.21.5 → build regression, not launcher.                                                    | Publish a working build; do not rely on launcher change to fix MCP. (Task 1.1)                             |
+| F2  | CRITICAL | The plugin can launch a native `node_modules/.bin/wp-agent-kit-runtime`. | Claude strips symlinks resolving outside the plugin root on caching and runs no install — a `.bin` symlink to a sibling optional-dep does not survive.  | `bin/wp` must be a real staged file inside the plugin root. (Task 1.3, 1.4)                                |
+| F3  | HIGH     | Staging yields a stable `bin/wp`.                                        | `stage-plugin-runtime-artifacts.ts:51-52` stages per-target `bin/runtime/<target>/wp`, not a host `bin/wp`. Static `plugin.json` can't pick `<target>`. | Add a host-resolve step: copy `bin/runtime/<host-target>/wp` → real `bin/wp` during `wp setup`. (Task 1.3) |
+| F4  | HIGH     | Hooks-native is large additional scope.                                  | `wp hook <name>` already exists (`cli.ts:277`) and `RUNTIME_BIN_ARGS` already maps the `wp-*` hooks.                                                    | Migrate manifest hooks to `${CLAUDE_PLUGIN_ROOT}/bin/wp hook <name>` — low-cost. (Task 1.4)                |
+| F5  | HIGH     | One global binary serves PATH `wp` + plugin + hooks.                     | `vp install -g @webpresso/agent-kit` (canonical, `detect-pm.ts:43`) resolves the host runtime optional-dep.                                             | Reuse the `detect-pm` builder; refresh on every `wp setup`. (Task 1.2, 1.3)                                |
+| F6  | MEDIUM   | The setup path force-updates dev clones too.                             | Dev clones are detected by `detectGitInstall` (`detect-pm.ts:72`); clobbering destroys the dev-link.                                                    | `wp setup` self-update skips source/git clones; honors `WP_SKIP_AUTO_INSTALL`. (Task 1.3)                  |
+| F7  | MEDIUM   | A new bespoke verifier is needed for the publishable package surface.    | Completed 2026-06-02/03 blueprints already established `package-surface`, `public-readiness`, and `blueprint-lifecycle` as the canonical proof lanes.   | Reuse those existing gates; do not add a parallel audit stack. (Tasks 1.2, 1.5)                            |
 
 ## Key Decisions
 
-| Decision | Rationale |
-| --- | --- |
-| Pure-native manifest: `${CLAUDE_PLUGIN_ROOT}/bin/wp mcp` + `… hook <name>`. | No node, no JS shim, no symlink; path-stable; one native binary for MCP + hooks. |
-| `bin/wp` is a real host binary staged in the plugin root (not `.bin`, not a per-target path). | Caching strips external symlinks + no install; static `plugin.json` can't select `<target>`. |
-| Fix `-32000` by publishing a working build, not by changing the launcher. | Bare `node` works in 0.22.0; native is bun-compiled from the same source, so it would not have rescued 0.21.5. |
-| One global binary via `vp install -g`, refreshed on `wp setup`. | The native binary that `vp` resolves IS the one binary; mirrors omx/omc/codex/claude. |
-| Drop the separate `wp-agent-kit-runtime` bin; reuse the `detect-pm` install builder. | No second bin, no second install command (DRY); the manifest names `bin/wp` directly. |
-| Pure-native has no node fallback. | Accepted trade-off; load-bearing on staging + a readiness check that the cached `bin/wp` is a real executable. |
-| Reuse the shipped proof lanes. | Recent completed blueprints already hardened `package-surface`, `public-readiness`, and `blueprint-lifecycle`; this plan should extend those surfaces, not fork them. |
+| Decision                                                                                      | Rationale                                                                                                                                                             |
+| --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pure-native manifest: `${CLAUDE_PLUGIN_ROOT}/bin/wp mcp` + `… hook <name>`.                   | No node, no JS shim, no symlink; path-stable; one native binary for MCP + hooks.                                                                                      |
+| `bin/wp` is a real host binary staged in the plugin root (not `.bin`, not a per-target path). | Caching strips external symlinks + no install; static `plugin.json` can't select `<target>`.                                                                          |
+| Fix `-32000` by publishing a working build, not by changing the launcher.                     | Bare `node` works in 0.22.0; native is bun-compiled from the same source, so it would not have rescued 0.21.5.                                                        |
+| One global binary via `vp install -g`, refreshed on `wp setup`.                               | The native binary that `vp` resolves IS the one binary; mirrors omx/omc/codex/claude.                                                                                 |
+| Drop the separate `wp-agent-kit-runtime` bin; reuse the `detect-pm` install builder.          | No second bin, no second install command (DRY); the manifest names `bin/wp` directly.                                                                                 |
+| Pure-native has no node fallback.                                                             | Accepted trade-off; load-bearing on staging + a readiness check that the cached `bin/wp` is a real executable.                                                        |
+| Reuse the shipped proof lanes.                                                                | Recent completed blueprints already hardened `package-surface`, `public-readiness`, and `blueprint-lifecycle`; this plan should extend those surfaces, not fork them. |
 
 ## Cross-references
 
@@ -126,21 +128,21 @@ directory.
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
-| --- | --- | --- | --- | --- |
-| Wave 0 | 1.1, 1.2 | None | 2 agents | S-M |
-| Wave 1 | 1.3, 1.4 | Wave 0 | 2 agents | M / S |
-| Wave 2 | 1.5 | Wave 1 + 1.1 | 1 agent | S |
-| Critical path | 1.2 → 1.3 → 1.5 | — | 3 waves | L |
+| Wave          | Tasks           | Dependencies | Parallelizable | Effort (T-shirt) |
+| ------------- | --------------- | ------------ | -------------- | ---------------- |
+| Wave 0        | 1.1, 1.2        | None         | 2 agents       | S-M              |
+| Wave 1        | 1.3, 1.4        | Wave 0       | 2 agents       | M / S            |
+| Wave 2        | 1.5             | Wave 1 + 1.1 | 1 agent        | S                |
+| Critical path | 1.2 → 1.3 → 1.5 | —            | 3 waves        | L                |
 
 ### Parallel Metrics Snapshot
 
-| Metric | Formula / Meaning | Target | Actual |
-| --- | --- | --- | --- |
-| RW0 | Ready tasks in Wave 0 | ≥ 2 | 2 |
-| CPR | total_tasks / critical_path_length | ≥ 2.5 | 1.67 |
-| DD | dependency_edges / total_tasks | ≤ 2.0 | 1.0 |
-| CP | same-file overlaps per wave | 0 | 0 |
+| Metric | Formula / Meaning                  | Target | Actual |
+| ------ | ---------------------------------- | ------ | ------ |
+| RW0    | Ready tasks in Wave 0              | ≥ 2    | 2      |
+| CPR    | total_tasks / critical_path_length | ≥ 2.5  | 1.67   |
+| DD     | dependency_edges / total_tasks     | ≤ 2.0  | 1.0    |
+| CP     | same-file overlaps per wave        | 0      | 0      |
 
 Refinement delta: a distribution + launcher fix with an inherent publish→install→cutover chain;
 release (1.1) and optional-dep wiring (1.2) parallelize, then scaffolder (1.3) and manifest (1.4)
@@ -332,21 +334,21 @@ entry; refresh the global install with the published fix; verify native launch.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md |
+| ID  | Claim                                                          | Evidence                                                                              |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

@@ -1,50 +1,50 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from "vitest";
 
-const runStdioServer = vi.hoisted(() => vi.fn())
+const runStdioServer = vi.hoisted(() => vi.fn());
 
-vi.mock('#mcp/cli', () => ({
+vi.mock("#mcp/cli", () => ({
   runStdioServer,
-}))
+}));
 
-import { registerMcpCommand } from './mcp.js'
+import { registerMcpCommand } from "./mcp.js";
 
 function buildFakeCli() {
-  let registeredAction: (() => Promise<number>) | undefined
+  let registeredAction: (() => Promise<number>) | undefined;
 
   const cli = {
     command: (_name: string, _desc: string) => ({
       action: (fn: typeof registeredAction) => {
-        registeredAction = fn
+        registeredAction = fn;
       },
     }),
     getAction: () => registeredAction,
-  }
+  };
 
-  return cli
+  return cli;
 }
 
-describe('registerMcpCommand', () => {
-  it('calls runStdioServer once with no args', async () => {
-    runStdioServer.mockResolvedValue(undefined)
-    const cli = buildFakeCli()
-    registerMcpCommand(cli as never)
+describe("registerMcpCommand", () => {
+  it("calls runStdioServer once with no args", async () => {
+    runStdioServer.mockResolvedValue(undefined);
+    const cli = buildFakeCli();
+    registerMcpCommand(cli as never);
 
-    const action = cli.getAction()
-    expect(action).toBeDefined()
-    await action!()
+    const action = cli.getAction();
+    expect(action).toBeDefined();
+    await action!();
 
-    expect(runStdioServer).toHaveBeenCalledOnce()
-    expect(runStdioServer).toHaveBeenCalledWith()
-  })
+    expect(runStdioServer).toHaveBeenCalledOnce();
+    expect(runStdioServer).toHaveBeenCalledWith();
+  });
 
-  it('returns 0', async () => {
-    runStdioServer.mockResolvedValue(undefined)
-    const cli = buildFakeCli()
-    registerMcpCommand(cli as never)
+  it("returns 0", async () => {
+    runStdioServer.mockResolvedValue(undefined);
+    const cli = buildFakeCli();
+    registerMcpCommand(cli as never);
 
-    const action = cli.getAction()
-    const result = await action!()
+    const action = cli.getAction();
+    const result = await action!();
 
-    expect(result).toEqual(0)
-  })
-})
+    expect(result).toEqual(0);
+  });
+});

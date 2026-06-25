@@ -1,8 +1,8 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   DEFAULT_CI_ACT_TIMEOUT_MS,
@@ -12,293 +12,293 @@ import {
   parseCiActTimeoutMs,
   runCiActCommand,
   validateCiActCommand,
-} from './ci'
+} from "./ci";
 
-describe('wp ci command', () => {
+describe("wp ci command", () => {
   const defaultArchitecture =
-    process.platform === 'darwin' && process.arch === 'arm64' ? 'linux/arm64' : 'linux/amd64'
-  const tempDirs: string[] = []
+    process.platform === "darwin" && process.arch === "arm64" ? "linux/arm64" : "linux/amd64";
+  const tempDirs: string[] = [];
 
   afterEach(() => {
-    for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true })
-  })
+    for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  });
 
   function tempProjectRoot(): string {
-    const root = mkdtempSync(join(tmpdir(), 'wp-cli-ci-act-'))
-    tempDirs.push(root)
-    mkdirSync(join(root, '.github', 'workflows'), { recursive: true })
+    const root = mkdtempSync(join(tmpdir(), "wp-cli-ci-act-"));
+    tempDirs.push(root);
+    mkdirSync(join(root, ".github", "workflows"), { recursive: true });
     writeFileSync(
-      join(root, '.github', 'workflows', 'ci-e2e.yml'),
-      'name: ci-e2e\non: pull_request\njobs: {}\n',
-    )
-    return root
+      join(root, ".github", "workflows", "ci-e2e.yml"),
+      "name: ci-e2e\non: pull_request\njobs: {}\n",
+    );
+    return root;
   }
 
-  it('exports a dedicated ci act timeout budget above the generic runner default', () => {
-    expect(DEFAULT_CI_ACT_TIMEOUT_MS).toBe(20 * 60_000)
-    expect(MAX_CI_ACT_TIMEOUT_MS).toBe(60 * 60_000)
-  })
+  it("exports a dedicated ci act timeout budget above the generic runner default", () => {
+    expect(DEFAULT_CI_ACT_TIMEOUT_MS).toBe(20 * 60_000);
+    expect(MAX_CI_ACT_TIMEOUT_MS).toBe(60 * 60_000);
+  });
 
-  it('builds a public secret-gate act command by default', () => {
-    const command = buildCiActCommand({ workflow: 'ci-e2e' }, '/repo')
+  it("builds a public secret-gate act command by default", () => {
+    const command = buildCiActCommand({ workflow: "ci-e2e" }, "/repo");
 
-    expect(command.command).toBe('wp')
+    expect(command.command).toBe("wp");
     expect(command.args).toEqual([
-      'secrets',
-      'run',
-      '--sink',
-      'act',
-      '--profile',
-      'preview',
-      '--',
-      'act',
-      'pull_request',
-      '-W',
-      '/repo/.github/workflows/ci-e2e.yml',
-      '-P',
-      'ubicloud-standard-2=ghcr.io/catthehacker/ubuntu:full-latest',
-      '--rm',
-      '--container-architecture',
+      "secrets",
+      "run",
+      "--sink",
+      "act",
+      "--profile",
+      "preview",
+      "--",
+      "act",
+      "pull_request",
+      "-W",
+      "/repo/.github/workflows/ci-e2e.yml",
+      "-P",
+      "ubicloud-standard-2=ghcr.io/catthehacker/ubuntu:full-latest",
+      "--rm",
+      "--container-architecture",
       defaultArchitecture,
-    ])
-  })
+    ]);
+  });
 
-  it('forwards only documented safe act options', () => {
+  it("forwards only documented safe act options", () => {
     const command = buildCiActCommand(
       {
-        workflowPath: '.github/workflows/ci.yml',
+        workflowPath: ".github/workflows/ci.yml",
         execute: true,
-        job: 'webpresso',
-        eventName: 'workflow_dispatch',
-        envProfile: 'secrets-only',
-        containerArchitecture: 'linux/arm64',
-        platformImage: 'image',
-        eventPath: 'event.json',
+        job: "webpresso",
+        eventName: "workflow_dispatch",
+        envProfile: "secrets-only",
+        containerArchitecture: "linux/arm64",
+        platformImage: "image",
+        eventPath: "event.json",
       },
-      '/repo',
-    )
+      "/repo",
+    );
 
     expect(command.args).toEqual([
-      'secrets',
-      'run',
-      '--sink',
-      'act',
-      '--profile',
-      'preview',
-      '--',
-      'act',
-      'workflow_dispatch',
-      '-W',
-      '/repo/.github/workflows/ci.yml',
-      '-P',
-      'ubicloud-standard-2=image',
-      '--rm',
-      '-j',
-      'webpresso',
-      '-e',
-      '/repo/event.json',
-      '--container-architecture',
-      'linux/arm64',
-    ])
-  })
+      "secrets",
+      "run",
+      "--sink",
+      "act",
+      "--profile",
+      "preview",
+      "--",
+      "act",
+      "workflow_dispatch",
+      "-W",
+      "/repo/.github/workflows/ci.yml",
+      "-P",
+      "ubicloud-standard-2=image",
+      "--rm",
+      "-j",
+      "webpresso",
+      "-e",
+      "/repo/event.json",
+      "--container-architecture",
+      "linux/arm64",
+    ]);
+  });
 
-  it('keeps no-secret profiles on the wp secrets run sink path', () => {
+  it("keeps no-secret profiles on the wp secrets run sink path", () => {
     const command = buildCiActCommand(
       {
-        workflow: 'ci-e2e',
-        envProfile: 'public',
+        workflow: "ci-e2e",
+        envProfile: "public",
       },
-      '/repo',
-    )
+      "/repo",
+    );
 
-    expect(command.command).toBe('wp')
+    expect(command.command).toBe("wp");
     expect(command.args).toEqual([
-      'secrets',
-      'run',
-      '--sink',
-      'act',
-      '--profile',
-      'preview',
-      '--',
-      'act',
-      'pull_request',
-      '-W',
-      '/repo/.github/workflows/ci-e2e.yml',
-      '-P',
-      'ubicloud-standard-2=ghcr.io/catthehacker/ubuntu:full-latest',
-      '--rm',
-      '--container-architecture',
+      "secrets",
+      "run",
+      "--sink",
+      "act",
+      "--profile",
+      "preview",
+      "--",
+      "act",
+      "pull_request",
+      "-W",
+      "/repo/.github/workflows/ci-e2e.yml",
+      "-P",
+      "ubicloud-standard-2=ghcr.io/catthehacker/ubuntu:full-latest",
+      "--rm",
+      "--container-architecture",
       defaultArchitecture,
-    ])
-  })
+    ]);
+  });
 
-  it('does not expose legacy unsafe argv in the public helper contract', () => {
-    const command = buildCiActCommand({ workflow: 'ci-e2e' }, '/repo')
-    expect(command.args.join(' ')).not.toContain('--chef-token')
-    expect(command.args.join(' ')).not.toContain('--allow-local-chef-token')
-    expect(command.args.join(' ')).not.toContain('--allow-host-mutation')
-    expect(command.args.join(' ')).not.toContain('--direct')
-    expect(command.args.join(' ')).not.toContain('apps/scripts/src/ci/act.ts')
-    expect(command.args.join(' ')).not.toContain('apps/scripts/src/lib/with-secrets.ts')
-  })
+  it("does not expose legacy unsafe argv in the public helper contract", () => {
+    const command = buildCiActCommand({ workflow: "ci-e2e" }, "/repo");
+    expect(command.args.join(" ")).not.toContain("--chef-token");
+    expect(command.args.join(" ")).not.toContain("--allow-local-chef-token");
+    expect(command.args.join(" ")).not.toContain("--allow-host-mutation");
+    expect(command.args.join(" ")).not.toContain("--direct");
+    expect(command.args.join(" ")).not.toContain("apps/scripts/src/ci/act.ts");
+    expect(command.args.join(" ")).not.toContain("apps/scripts/src/lib/with-secrets.ts");
+  });
 
-  it('dry-runs by printing the sanitized command without spawning', async () => {
-    const run = vi.fn()
-    const stdout = vi.fn(() => true)
+  it("dry-runs by printing the sanitized command without spawning", async () => {
+    const run = vi.fn();
+    const stdout = vi.fn(() => true);
     const code = await runCiActCommand(
-      { workflow: 'ci-e2e' },
+      { workflow: "ci-e2e" },
       {
-        cwd: '/repo',
+        cwd: "/repo",
         run,
         stdout: { write: stdout },
       },
-    )
+    );
 
-    expect(code).toBe(0)
-    expect(run).not.toHaveBeenCalled()
-    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"command":"wp"'))
-    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('secrets'))
-    expect(stdout).toHaveBeenCalledWith(expect.not.stringContaining('chef-token'))
-  })
+    expect(code).toBe(0);
+    expect(run).not.toHaveBeenCalled();
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('"command":"wp"'));
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining("secrets"));
+    expect(stdout).toHaveBeenCalledWith(expect.not.stringContaining("chef-token"));
+  });
 
-  it('prints replay-mode dry-runs without spawning', async () => {
-    const run = vi.fn()
-    const stdout = vi.fn(() => true)
+  it("prints replay-mode dry-runs without spawning", async () => {
+    const run = vi.fn();
+    const stdout = vi.fn(() => true);
     const code = await runCiActCommand(
-      { workflow: 'ci-e2e', mode: 'replay' },
+      { workflow: "ci-e2e", mode: "replay" },
       {
-        cwd: '/repo',
+        cwd: "/repo",
         run,
         stdout: { write: stdout },
       },
-    )
+    );
 
-    expect(code).toBe(0)
-    expect(run).not.toHaveBeenCalled()
-    expect(stdout).toHaveBeenCalledWith(expect.stringContaining('[GENERATED_REPLAY_WORKFLOW]'))
-  })
+    expect(code).toBe(0);
+    expect(run).not.toHaveBeenCalled();
+    expect(stdout).toHaveBeenCalledWith(expect.stringContaining("[GENERATED_REPLAY_WORKFLOW]"));
+  });
 
-  it('executes through the shared secret-gate runner only when execute=true', async () => {
+  it("executes through the shared secret-gate runner only when execute=true", async () => {
     const run = vi.fn(async () => ({
       exitCode: 0,
       signal: null,
       timedOut: false,
       aborted: false,
-      stdout: 'ok',
-      stderr: '',
-    }))
-    const stdout = vi.fn(() => true)
+      stdout: "ok",
+      stderr: "",
+    }));
+    const stdout = vi.fn(() => true);
     const code = await runCiActCommand(
-      { workflow: 'ci-e2e', execute: true },
+      { workflow: "ci-e2e", execute: true },
       {
-        cwd: '/repo',
+        cwd: "/repo",
         run,
         stdout: { write: stdout },
       },
-    )
+    );
 
-    expect(code).toBe(0)
+    expect(code).toBe(0);
     expect(run).toHaveBeenCalledWith({
-      cwd: '/repo',
-      envProfile: 'none',
-      command: 'wp',
+      cwd: "/repo",
+      envProfile: "none",
+      command: "wp",
       timeoutMs: DEFAULT_CI_ACT_TIMEOUT_MS,
       args: [
-        'secrets',
-        'run',
-        '--sink',
-        'act',
-        '--profile',
-        'preview',
-        '--',
-        'act',
-        'pull_request',
-        '-W',
-        '/repo/.github/workflows/ci-e2e.yml',
-        '-P',
-        'ubicloud-standard-2=ghcr.io/catthehacker/ubuntu:full-latest',
-        '--rm',
-        '--container-architecture',
+        "secrets",
+        "run",
+        "--sink",
+        "act",
+        "--profile",
+        "preview",
+        "--",
+        "act",
+        "pull_request",
+        "-W",
+        "/repo/.github/workflows/ci-e2e.yml",
+        "-P",
+        "ubicloud-standard-2=ghcr.io/catthehacker/ubuntu:full-latest",
+        "--rm",
+        "--container-architecture",
         defaultArchitecture,
       ],
-    })
-  })
+    });
+  });
 
-  it('honors an explicit ci act timeout override', async () => {
+  it("honors an explicit ci act timeout override", async () => {
     const run = vi.fn(async () => ({
       exitCode: 0,
       signal: null,
       timedOut: false,
       aborted: false,
-      stdout: '',
-      stderr: '',
-    }))
+      stdout: "",
+      stderr: "",
+    }));
 
     await runCiActCommand(
-      { workflow: 'ci-e2e', execute: true, timeoutMs: 45_000 },
+      { workflow: "ci-e2e", execute: true, timeoutMs: 45_000 },
       {
-        cwd: '/repo',
+        cwd: "/repo",
         run,
       },
-    )
+    );
 
     expect(run).toHaveBeenCalledWith(
       expect.objectContaining({
         timeoutMs: 45_000,
       }),
-    )
-  })
+    );
+  });
 
-  it('rejects invalid ci act timeout values at the CLI and programmatic boundary', async () => {
-    expect(parseCiActTimeoutMs('45000')).toBe(45_000)
-    expect(() => parseCiActTimeoutMs('0')).toThrow('--timeout-ms must be a positive integer')
-    expect(() => parseCiActTimeoutMs('not-a-number')).toThrow(
-      '--timeout-ms must be a positive integer',
-    )
+  it("rejects invalid ci act timeout values at the CLI and programmatic boundary", async () => {
+    expect(parseCiActTimeoutMs("45000")).toBe(45_000);
+    expect(() => parseCiActTimeoutMs("0")).toThrow("--timeout-ms must be a positive integer");
+    expect(() => parseCiActTimeoutMs("not-a-number")).toThrow(
+      "--timeout-ms must be a positive integer",
+    );
     expect(() => parseCiActTimeoutMs(String(MAX_CI_ACT_TIMEOUT_MS + 1))).toThrow(
       `--timeout-ms must be <= ${MAX_CI_ACT_TIMEOUT_MS}`,
-    )
-    expect(() => normalizeCiActTimeoutMs(0)).toThrow('--timeout-ms must be a positive integer')
+    );
+    expect(() => normalizeCiActTimeoutMs(0)).toThrow("--timeout-ms must be a positive integer");
 
     await expect(
       runCiActCommand(
-        { workflow: 'ci-e2e', execute: true, timeoutMs: MAX_CI_ACT_TIMEOUT_MS + 1 },
+        { workflow: "ci-e2e", execute: true, timeoutMs: MAX_CI_ACT_TIMEOUT_MS + 1 },
         {
-          cwd: '/repo',
+          cwd: "/repo",
           run: vi.fn(),
         },
       ),
-    ).rejects.toThrow(`--timeout-ms must be <= ${MAX_CI_ACT_TIMEOUT_MS}`)
-  })
+    ).rejects.toThrow(`--timeout-ms must be <= ${MAX_CI_ACT_TIMEOUT_MS}`);
+  });
 
-  it('returns nonzero when the child is terminated by signal', async () => {
+  it("returns nonzero when the child is terminated by signal", async () => {
     const code = await runCiActCommand(
-      { workflow: 'ci-e2e', execute: true },
+      { workflow: "ci-e2e", execute: true },
       {
-        cwd: '/repo',
+        cwd: "/repo",
         run: async () => ({
           exitCode: 143,
-          signal: 'SIGTERM',
+          signal: "SIGTERM",
           timedOut: false,
           aborted: false,
-          stdout: '',
-          stderr: '',
+          stdout: "",
+          stderr: "",
         }),
       },
-    )
+    );
 
-    expect(code).toBe(143)
-  })
+    expect(code).toBe(143);
+  });
 
-  it('does not require repo-local adapter or wrapper paths', () => {
-    expect(validateCiActCommand()).toBeNull()
-  })
+  it("does not require repo-local adapter or wrapper paths", () => {
+    expect(validateCiActCommand()).toBeNull();
+  });
 
-  it('emits a non-security-equivalent warning in replay mode', async () => {
-    const root = tempProjectRoot()
-    const stderr = vi.fn(() => true)
+  it("emits a non-security-equivalent warning in replay mode", async () => {
+    const root = tempProjectRoot();
+    const stderr = vi.fn(() => true);
     const code = await runCiActCommand(
-      { workflow: 'ci-e2e', execute: true, mode: 'replay' },
+      { workflow: "ci-e2e", execute: true, mode: "replay" },
       {
         cwd: root,
         run: async () => ({
@@ -306,16 +306,16 @@ describe('wp ci command', () => {
           signal: null,
           timedOut: false,
           aborted: false,
-          stdout: '',
-          stderr: '',
+          stdout: "",
+          stderr: "",
         }),
         stderr: { write: stderr },
       },
-    )
+    );
 
-    expect(code).toBe(0)
+    expect(code).toBe(0);
     expect(stderr).toHaveBeenCalledWith(
-      expect.stringContaining('not security-equivalent to GitHub CI or OIDC'),
-    )
-  })
-})
+      expect.stringContaining("not security-equivalent to GitHub CI or OIDC"),
+    );
+  });
+});

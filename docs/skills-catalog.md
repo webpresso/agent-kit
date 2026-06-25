@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-06-13'
+last_updated: "2026-06-13"
 ---
 
 # Skills catalog
@@ -20,15 +20,15 @@ available unless you explicitly opt out of the relevant host/runtime.
 
 **Commands** (`.agent/commands/`):
 
-| Slash | What it does |
-|---|---|
-| `/verify` | Post-implementation quality gate — 6 phases, evidence-before-claims, test-quality audit, legacy/dead-code sweep |
-| `/plan-refine` | Hardens a blueprint before `/pll` — tech fact-check, path verification, architecture review, cross-plan alignment |
-| `/pll` | Parallel lane launch — runs independent blueprint lanes in git worktrees, one commit per lane after `/verify` passes |
-| `/audit` | Code-quality audits (code, test, dup, ux) writing to `docs/research/quality-audits/` |
-| `/fix` | Minimal-correct-fix protocol with iron-law invariants |
-| `/fix-all` | Parallel DAG error-fix across the repo |
-| `/brainstorm` | Pre-plan ideation workflow |
+| Slash          | What it does                                                                                                         |
+| -------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `/verify`      | Post-implementation quality gate — 6 phases, evidence-before-claims, test-quality audit, legacy/dead-code sweep      |
+| `/plan-refine` | Hardens a blueprint before `/pll` — tech fact-check, path verification, architecture review, cross-plan alignment    |
+| `/pll`         | Parallel lane launch — runs independent blueprint lanes in git worktrees, one commit per lane after `/verify` passes |
+| `/audit`       | Code-quality audits (code, test, dup, ux) writing to `docs/research/quality-audits/`                                 |
+| `/fix`         | Minimal-correct-fix protocol with iron-law invariants                                                                |
+| `/fix-all`     | Parallel DAG error-fix across the repo                                                                               |
+| `/brainstorm`  | Pre-plan ideation workflow                                                                                           |
 
 **Paired skills** (`.agent/skills/<name>/SKILL.md`):
 
@@ -47,11 +47,11 @@ Framework-agnostic, cross-stack skills that stay in the catalog but are **not**
 projected into host-visible surfaces by default. Add them with `wp setup --with`
 or `wp skill install`.
 
-| Skill | Scope |
-|---|---|
-| `systematic-debugging/` | Root-cause-first debugging methodology. Iron law: no fixes without root cause investigation. |
-| `test-driven-development/` | TDD methodology for implementing features + bugfixes. Requires failing tests before production code. |
-| `deep-research/` | Multi-phase web research workflow. Balanced pro/con sentiment, 2026-best-practices alignment, timestamped output to `docs/research/`. |
+| Skill                      | Scope                                                                                                                                 |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `systematic-debugging/`    | Root-cause-first debugging methodology. Iron law: no fixes without root cause investigation.                                          |
+| `test-driven-development/` | TDD methodology for implementing features + bugfixes. Requires failing tests before production code.                                  |
+| `deep-research/`           | Multi-phase web research workflow. Balanced pro/con sentiment, 2026-best-practices alignment, timestamped output to `docs/research/`. |
 
 Five skills from webpresso's `.agent/skills/` that are `[OMX]`-marked
 and are therefore **not** in the catalog — install OMX separately if
@@ -62,8 +62,8 @@ you want them: `ai-slop-cleaner`, `autoresearch`, `code-review`,
 
 `monorepo-navigation/` is special:
 
-| Skill | Applies to |
-|---|---|
+| Skill                  | Applies to                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `monorepo-navigation/` | **Template-based.** Rendered from `pnpm-workspace.yaml` + `package.json` during `wp setup` into the consumer-owned source skill under `agent-skills/monorepo-navigation/`. Placeholders (`{{PACKAGES_TABLE}}`, `{{KEY_LOCATIONS}}`, …) fill what the tool can infer; `{{TODO: ...}}` markers flag fields that need human judgment. The rendered source exists by default, but host-visible projection is opt-in. It also ships `examples/webpresso.md` as a reference. |
 
 ### Tier 4 — Tech/library skills (opt-in via `--with`)
@@ -77,15 +77,14 @@ wp setup --with tanstack-query,better-auth-best-practices,react-doctor
 wp skill install tanstack-query
 ```
 
-| Skill | Applies to |
-|---|---|
-| `tanstack-query/` | React Query. Multi-file: `.claude-plugin/`, `references/`, `rules/`, `templates/`. |
-| `better-auth-best-practices/` | Better-auth library setup + patterns. |
-| `react-doctor/` | React diagnostic runbook. |
-| `frontend-design/` | Design-quality methodology for frontend work. |
-| `web-design-guidelines/` | General web-UI guidelines. |
+| Skill                          | Applies to                                                                             |
+| ------------------------------ | -------------------------------------------------------------------------------------- |
+| `tanstack-query/`              | React Query. Multi-file: `.claude-plugin/`, `references/`, `rules/`, `templates/`.     |
+| `better-auth-best-practices/`  | Better-auth library setup + patterns.                                                  |
+| `react-doctor/`                | React diagnostic runbook.                                                              |
+| `frontend-design/`             | Design-quality methodology for frontend work.                                          |
+| `web-design-guidelines/`       | General web-UI guidelines.                                                             |
 | `vercel-react-best-practices/` | Vercel / React deployment hygiene, server-cache patterns, edge-runtime considerations. |
-
 
 ### Curated plan/review workflows
 
@@ -99,11 +98,11 @@ These are catalog-owned skills for repo operations or general engineering
 practice. They can be installed explicitly with `wp skill install <name>` when
 a consumer wants the surface.
 
-| Skill | Scope |
-|---|---|
-| `hooks-doctor/` | Verify and troubleshoot webpresso plugin hook installation health. |
-| `lore-protocol/` | Structured commit-message / Lore protocol guidance. |
-| `tech-debt/` | Manage the `wp tech-debt` lifecycle and tech-debt audits. |
+| Skill                     | Scope                                                                         |
+| ------------------------- | ----------------------------------------------------------------------------- |
+| `hooks-doctor/`           | Verify and troubleshoot webpresso plugin hook installation health.            |
+| `lore-protocol/`          | Structured commit-message / Lore protocol guidance.                           |
+| `tech-debt/`              | Manage the `wp tech-debt` lifecycle and tech-debt audits.                     |
 | `logging-best-practices/` | General logging-quality practices from the vendored third-party skill source. |
 
 Two skills from webpresso's `.agent/skills/` that are `[OMX]`-marked
@@ -114,38 +113,38 @@ and therefore **not** in the catalog: `visual-verdict`, `web-clone`.
 At `.agent/workflows/*.md`. Each is a short procedural guide the agent
 invokes when a matching trigger fires.
 
-| Workflow | Trigger |
-|---|---|
-| `execute-plan.md` | Driving a blueprint to done |
-| `write-plan.md` | Drafting a new blueprint |
-| `debug.md` | Investigating a failure |
-| `docs.md` | Updating affected documentation |
-| `test.md` | Writing or fixing tests |
-| `conf.md` | Confidence / verification workflow |
+| Workflow                 | Trigger                                 |
+| ------------------------ | --------------------------------------- |
+| `execute-plan.md`        | Driving a blueprint to done             |
+| `write-plan.md`          | Drafting a new blueprint                |
+| `debug.md`               | Investigating a failure                 |
+| `docs.md`                | Updating affected documentation         |
+| `test.md`                | Writing or fixing tests                 |
+| `conf.md`                | Confidence / verification workflow      |
 | `fix-all-md-warnings.md` | Resolving markdown lint across the repo |
 
 ## Rules (always installed)
 
 At `.agent/rules/*.md`. Short enforceable rules that cite and diff well.
 
-| Rule | Gist |
-|---|---|
-| `agent-guide.md` | Top-level behavior rules and deterministic boundaries. |
-| `blueprint-scoping.md` | Infra blueprints must anchor to a product wedge or stay in `draft/`. |
-| `changeset-release.md` | Changesets release protocol and versioning boundaries. |
-| `cmd-execution.md` | How to run repo commands through the supported facade. |
-| `engineering-principles.md` | General implementation quality principles. |
-| `extraction-parity.md` | Keep extracted/shared surfaces behaviorally equivalent. |
-| `generated-code-governance.md` | Do not hand-edit generated files; regenerate from source truth. |
-| `workflow-skills-routing.md` | Workflow/browser skill routing and ownership rules. |
-| `no-timeout-as-fix.md` | Treat timeout failures as diagnostics, not fixes. |
-| `package-conventions.md` | Workspace/package conventions, import boundaries, and publish rules. |
-| `pre-implementation.md` | Blueprint-before-nontrivial-implementation gate. |
-| `public-package-safety.md` | Public package/tarball safety requirements. |
-| `repo-restrictions.md` | What agents may and may not do in this repo. |
-| `rtk-routing.md` | RTK integration routing and guard expectations. |
-| `supported-agent-clis.md` | Single source of truth for supported agent CLI tiers. |
-| `ts-coding-conventions.md` | TypeScript coding conventions for generated/consumer code. |
+| Rule                           | Gist                                                                 |
+| ------------------------------ | -------------------------------------------------------------------- |
+| `agent-guide.md`               | Top-level behavior rules and deterministic boundaries.               |
+| `blueprint-scoping.md`         | Infra blueprints must anchor to a product wedge or stay in `draft/`. |
+| `changeset-release.md`         | Changesets release protocol and versioning boundaries.               |
+| `cmd-execution.md`             | How to run repo commands through the supported facade.               |
+| `engineering-principles.md`    | General implementation quality principles.                           |
+| `extraction-parity.md`         | Keep extracted/shared surfaces behaviorally equivalent.              |
+| `generated-code-governance.md` | Do not hand-edit generated files; regenerate from source truth.      |
+| `workflow-skills-routing.md`   | Workflow/browser skill routing and ownership rules.                  |
+| `no-timeout-as-fix.md`         | Treat timeout failures as diagnostics, not fixes.                    |
+| `package-conventions.md`       | Workspace/package conventions, import boundaries, and publish rules. |
+| `pre-implementation.md`        | Blueprint-before-nontrivial-implementation gate.                     |
+| `public-package-safety.md`     | Public package/tarball safety requirements.                          |
+| `repo-restrictions.md`         | What agents may and may not do in this repo.                         |
+| `rtk-routing.md`               | RTK integration routing and guard expectations.                      |
+| `supported-agent-clis.md`      | Single source of truth for supported agent CLI tiers.                |
+| `ts-coding-conventions.md`     | TypeScript coding conventions for generated/consumer code.           |
 
 ## Guides (always installed)
 
@@ -210,19 +209,19 @@ when there is a concrete upstream contract.
 
 ## Counts
 
-| Category | Count |
-|---|---|
-| Commands | 10 |
-| Skills (shared favorites) | 6 |
-| Skills (shared + rendered opt-ins) | 4 |
-| Skills (tech/library opt-in) | 6 |
-| Skills (operational/domain) | 4 |
-| Workflows | 7 |
-| Rules | 16 |
-| Guides | 4 |
-| Doc templates | 11 |
-| `AGENTS.md.tpl` | 1 |
-| Harness manifests/docs | 3 |
+| Category                           | Count |
+| ---------------------------------- | ----- |
+| Commands                           | 10    |
+| Skills (shared favorites)          | 6     |
+| Skills (shared + rendered opt-ins) | 4     |
+| Skills (tech/library opt-in)       | 6     |
+| Skills (operational/domain)        | 4     |
+| Workflows                          | 7     |
+| Rules                              | 16    |
+| Guides                             | 4     |
+| Doc templates                      | 11    |
+| `AGENTS.md.tpl`                    | 1     |
+| Harness manifests/docs             | 3     |
 
 Total catalog size: **72 primary files** by current doc grouping (plus the
 support files inside multi-file skills like `tanstack-query/` and the reference

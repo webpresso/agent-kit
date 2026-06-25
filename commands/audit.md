@@ -1,6 +1,7 @@
 ---
 description: Run a webpresso audit
 ---
+
 Use the `mcp__webpresso__wp_audit` tool when the requested audit is available
 through MCP, or `./bin/wp audit <kind>` from this source repo for the full CLI
 registry. Common `kind` values include `guardrails`, `quality`,

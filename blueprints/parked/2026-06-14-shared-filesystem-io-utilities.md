@@ -4,8 +4,8 @@ title: Shared filesystem I/O utilities
 owner: ozby
 status: parked
 complexity: M
-created: '2026-06-14'
-last_updated: '2026-06-15'
+created: "2026-06-14"
+last_updated: "2026-06-15"
 progress: "Implemented in PR #139; parked for legal lifecycle transition from planned pending finalization"
 depends_on: []
 cross_repo_depends_on: []
@@ -14,8 +14,8 @@ tags:
   - utilities
   - filesystem
   - json
-worktree_owner_id: ''
-worktree_owner_branch: ''
+worktree_owner_id: ""
+worktree_owner_branch: ""
 ---
 
 # Shared filesystem I/O utilities
@@ -24,7 +24,6 @@ worktree_owner_branch: ''
 
 Implemented in PR #139 on branch `work/ultragoal-9-blueprints-20260614221933`.
 Task status and acceptance checkboxes below were reconciled from the landed code paths and focused verification evidence in this PR. The file is parked because CI enforces the legal first transition from `planned`; finalization can move parked/resumed work through the lifecycle after merge.
-
 
 **Goal:** Eliminate duplicated directory walking and JSON file read/write patterns across `src/audit/`, `src/cli/`, `src/blueprint/`, and `src/hooks/` without changing graceful-degradation semantics at call sites that intentionally swallow read/parse failures.
 
@@ -36,42 +35,42 @@ Task status and acceptance checkboxes below were reconciled from the landed code
 
 ## Fact-Check Findings
 
-| ID | Severity | Claim | Verified Reality | Blueprint Fix |
-| -- | -------- | ----- | ---------------- | ------------- |
-| F1 | HIGH | `walkMdFiles` is duplicated verbatim. | Confirmed at `src/audit/broken-refs.ts:55` and `src/audit/tech-debt.ts:24` — same recursive closure pattern. | Task 1.2 replaces both with `walkDirectory(dir, { extensions: ['.md'] })` and keeps targeted regression tests. |
-| F2 | HIGH | 10+ directory-walking implementations exist. | Confirmed: current grep finds 20+ walk-like functions in non-test `src/` (`walkMdFiles`, `walkMarkdownFiles`, `walkFiles`, inner `walk`, `walkDir`, `walkDirectories`, `walkSkillDirs`, plus callback/AST variants). Not all are safe utility migrations. | Task 1.2 migrates only straightforward filesystem traversal sites; callback visitors, violation accumulators, and AST walks stay out of scope. |
-| F3 | HIGH | `JSON.parse(readFileSync(...))` is repeated 9+ times. | Confirmed live count: `rg 'JSON\.parse\(\s*readFileSync' src --glob '!*.test.ts' \| wc -l` = **47**. | Tasks 1.3, 1.4, and 1.5 split the migration by non-overlapping file clusters and target a ≥70% reduction to **≤14** remaining single-call sites. |
-| F4 | HIGH | `writeFileSync(...JSON.stringify(...))` is repeated 10+ times with inconsistent trailing newlines. | Confirmed live rough count: direct non-test `src/` `writeFileSync` + `JSON.stringify` grep = **15**. Formats vary between no newline, `+ '\n'`, template newline, and compact JSON. | `writeJsonFile` defaults to `JSON.stringify(data, null, 2) + '\n'`; callers must opt out with `trailingNewline: false` or `indent: 0` where compact/no-newline output is intentional. |
-| F5 | INFO | A shared `readJsonFile<T>` does not exist yet. | False — a local `readJsonFile<T>(path): T` exists at `src/audit/agents.ts:411`, consumed at `agents.ts:35` and `agents.ts:241`. `src/wp-extension/index.ts` also has an injected local seam. | Task 1.1 promotes the `agents.ts` helper into `src/utils/read-json-file.ts`; Task 1.3 removes the local copy. |
-| F6 | MEDIUM | Zod is unused in `src/`, so schema validation is unnecessary. | Corrected: Zod is used in `src/blueprint/aggregate.ts`, `src/blueprint/tracked-document/schema.ts`, `src/e2e/config.ts`, `src/runners/types.ts`, and `src/symlinker/overlay-loader.ts`. However, the listed `JSON.parse(readFileSync(...))` migration sites do not currently validate through Zod. | Keep `readJsonFile<T>(path)` type-assertion-only for KISS/YAGNI; schema validation is a future helper if a migrated site already validates. |
-| F7 | HIGH | All JSON read sites can migrate mechanically to a throwing helper. | False for graceful-degradation readers. `src/blueprint/freshness.ts:108/114` deliberately returns `null` on read/parse failure. | Exclude graceful-degradation reads from `readJsonFile`; migrate `freshness.ts` write-only through `writeJsonFile` in Task 1.4. |
+| ID  | Severity | Claim                                                                                              | Verified Reality                                                                                                                                                                                                                                                                                   | Blueprint Fix                                                                                                                                                                         |
+| --- | -------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1  | HIGH     | `walkMdFiles` is duplicated verbatim.                                                              | Confirmed at `src/audit/broken-refs.ts:55` and `src/audit/tech-debt.ts:24` — same recursive closure pattern.                                                                                                                                                                                       | Task 1.2 replaces both with `walkDirectory(dir, { extensions: ['.md'] })` and keeps targeted regression tests.                                                                        |
+| F2  | HIGH     | 10+ directory-walking implementations exist.                                                       | Confirmed: current grep finds 20+ walk-like functions in non-test `src/` (`walkMdFiles`, `walkMarkdownFiles`, `walkFiles`, inner `walk`, `walkDir`, `walkDirectories`, `walkSkillDirs`, plus callback/AST variants). Not all are safe utility migrations.                                          | Task 1.2 migrates only straightforward filesystem traversal sites; callback visitors, violation accumulators, and AST walks stay out of scope.                                        |
+| F3  | HIGH     | `JSON.parse(readFileSync(...))` is repeated 9+ times.                                              | Confirmed live count: `rg 'JSON\.parse\(\s*readFileSync' src --glob '!*.test.ts' \| wc -l` = **47**.                                                                                                                                                                                               | Tasks 1.3, 1.4, and 1.5 split the migration by non-overlapping file clusters and target a ≥70% reduction to **≤14** remaining single-call sites.                                      |
+| F4  | HIGH     | `writeFileSync(...JSON.stringify(...))` is repeated 10+ times with inconsistent trailing newlines. | Confirmed live rough count: direct non-test `src/` `writeFileSync` + `JSON.stringify` grep = **15**. Formats vary between no newline, `+ '\n'`, template newline, and compact JSON.                                                                                                                | `writeJsonFile` defaults to `JSON.stringify(data, null, 2) + '\n'`; callers must opt out with `trailingNewline: false` or `indent: 0` where compact/no-newline output is intentional. |
+| F5  | INFO     | A shared `readJsonFile<T>` does not exist yet.                                                     | False — a local `readJsonFile<T>(path): T` exists at `src/audit/agents.ts:411`, consumed at `agents.ts:35` and `agents.ts:241`. `src/wp-extension/index.ts` also has an injected local seam.                                                                                                       | Task 1.1 promotes the `agents.ts` helper into `src/utils/read-json-file.ts`; Task 1.3 removes the local copy.                                                                         |
+| F6  | MEDIUM   | Zod is unused in `src/`, so schema validation is unnecessary.                                      | Corrected: Zod is used in `src/blueprint/aggregate.ts`, `src/blueprint/tracked-document/schema.ts`, `src/e2e/config.ts`, `src/runners/types.ts`, and `src/symlinker/overlay-loader.ts`. However, the listed `JSON.parse(readFileSync(...))` migration sites do not currently validate through Zod. | Keep `readJsonFile<T>(path)` type-assertion-only for KISS/YAGNI; schema validation is a future helper if a migrated site already validates.                                           |
+| F7  | HIGH     | All JSON read sites can migrate mechanically to a throwing helper.                                 | False for graceful-degradation readers. `src/blueprint/freshness.ts:108/114` deliberately returns `null` on read/parse failure.                                                                                                                                                                    | Exclude graceful-degradation reads from `readJsonFile`; migrate `freshness.ts` write-only through `writeJsonFile` in Task 1.4.                                                        |
 
 ## Cross-plan alignment
 
-| Related blueprint | Relationship | Required coordination |
-| ----------------- | ------------ | --------------------- |
-| `blueprints/planned/2026-06-14-add-atomic-file-write-helper.md` | Downstream dependency on the `writeJsonFile` helper created here. It expects state-bearing writes (`freshness.ts`, `blueprint-server.ts`, `config.ts`, `guard-switch/state.ts`, installer writes) to be routed through the shared helper once, then upgraded with an `atomic` option downstream. | This blueprint now includes `src/blueprint/freshness.ts` as **write-only** migration and keeps state-bearing write sites in one JSON migration sweep. Do not add atomic behavior here; leave that to the downstream blueprint to avoid scope creep. |
-| `blueprints/planned/2026-06-14-audit-dynamic-regexp-construction.md` | Both plans touch `src/audit/architecture-drift.ts` and `src/audit/package-surface.ts`. | If both execute concurrently, serialize same-file tasks or run this plan after the regexp helper consolidation to avoid merge conflicts. No semantic dependency. |
-| `blueprints/planned/2026-06-14-fix-stream-resource-leaks.md` | Overlaps `src/cli/commands/compile.ts` and `src/cli/commands/quality-log-store.ts`; that blueprint verified the resource fixes and tests already exist. | Preserve `compile.test.ts` no-`openSync` coverage and `quality-log-store.test.ts` pre-`finalize()` stream-error coverage when migrating JSON/walk helpers in those files. Serialize implementation if either plan is actively editing the same files. |
-| `blueprints/planned/2026-06-14-type-safe-sqlite-and-json-parsing.md` | Both plans touch `src/mcp/blueprint-server.ts`; this plan only owns eligible filesystem JSON I/O, while the type-safety plan owns SQLite row schemas/casts and unsafe JSON value validation. | Serialize `src/mcp/blueprint-server.ts` edits. During Task 1.4 pre-flight, skip any `blueprint-server.ts` site that is part of SQLite row validation or has no filesystem JSON read/write migration; do not mix helper migration with schema/cast refactors. |
+| Related blueprint                                                    | Relationship                                                                                                                                                                                                                                                                                     | Required coordination                                                                                                                                                                                                                                        |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `blueprints/planned/2026-06-14-add-atomic-file-write-helper.md`      | Downstream dependency on the `writeJsonFile` helper created here. It expects state-bearing writes (`freshness.ts`, `blueprint-server.ts`, `config.ts`, `guard-switch/state.ts`, installer writes) to be routed through the shared helper once, then upgraded with an `atomic` option downstream. | This blueprint now includes `src/blueprint/freshness.ts` as **write-only** migration and keeps state-bearing write sites in one JSON migration sweep. Do not add atomic behavior here; leave that to the downstream blueprint to avoid scope creep.          |
+| `blueprints/planned/2026-06-14-audit-dynamic-regexp-construction.md` | Both plans touch `src/audit/architecture-drift.ts` and `src/audit/package-surface.ts`.                                                                                                                                                                                                           | If both execute concurrently, serialize same-file tasks or run this plan after the regexp helper consolidation to avoid merge conflicts. No semantic dependency.                                                                                             |
+| `blueprints/planned/2026-06-14-fix-stream-resource-leaks.md`         | Overlaps `src/cli/commands/compile.ts` and `src/cli/commands/quality-log-store.ts`; that blueprint verified the resource fixes and tests already exist.                                                                                                                                          | Preserve `compile.test.ts` no-`openSync` coverage and `quality-log-store.test.ts` pre-`finalize()` stream-error coverage when migrating JSON/walk helpers in those files. Serialize implementation if either plan is actively editing the same files.        |
+| `blueprints/planned/2026-06-14-type-safe-sqlite-and-json-parsing.md` | Both plans touch `src/mcp/blueprint-server.ts`; this plan only owns eligible filesystem JSON I/O, while the type-safety plan owns SQLite row schemas/casts and unsafe JSON value validation.                                                                                                     | Serialize `src/mcp/blueprint-server.ts` edits. During Task 1.4 pre-flight, skip any `blueprint-server.ts` site that is part of SQLite row validation or has no filesystem JSON read/write migration; do not mix helper migration with schema/cast refactors. |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
-| ---- | ----- | ------------ | -------------- | ---------------- |
-| **Wave 0** | 1.1 | None | 1 agent | S |
-| **Wave 1** | 1.2, 1.3, 1.4 | 1.1 | 3 agents (no same-file overlap) | S, S, M |
-| **Wave 2** | 1.5 | 1.2 | 1 agent | S |
-| **Critical path** | 1.1 → 1.2 → 1.5 | — | 3 waves | M |
+| Wave              | Tasks           | Dependencies | Parallelizable                  | Effort (T-shirt) |
+| ----------------- | --------------- | ------------ | ------------------------------- | ---------------- |
+| **Wave 0**        | 1.1             | None         | 1 agent                         | S                |
+| **Wave 1**        | 1.2, 1.3, 1.4   | 1.1          | 3 agents (no same-file overlap) | S, S, M          |
+| **Wave 2**        | 1.5             | 1.2          | 1 agent                         | S                |
+| **Critical path** | 1.1 → 1.2 → 1.5 | —            | 3 waves                         | M                |
 
 ### Parallel Metrics Snapshot
 
-| Metric | Formula / Meaning | Target | Actual |
-| ------ | ----------------- | ------ | ------ |
-| RW0 | Ready tasks in Wave 0 | ≥ planned agents / 2 | 1 |
-| CPR | total_tasks / critical_path_length | ≥ 2.5 | 1.67 |
-| DD | dependency_edges / total_tasks | ≤ 2.0 | 0.8 |
-| CP | same-file overlaps per wave | 0 | 0 |
+| Metric | Formula / Meaning                  | Target               | Actual |
+| ------ | ---------------------------------- | -------------------- | ------ |
+| RW0    | Ready tasks in Wave 0              | ≥ planned agents / 2 | 1      |
+| CPR    | total_tasks / critical_path_length | ≥ 2.5                | 1.67   |
+| DD     | dependency_edges / total_tasks     | ≤ 2.0                | 0.8    |
+| CP     | same-file overlaps per wave        | 0                    | 0      |
 
 > **Refinement delta:** The previous 3-task shape falsely put same-file walk and JSON edits in one wave. The plan is now split into five file-cluster tasks: non-overlap audit JSON and CLI/MCP JSON work can run beside walk migration, while the three overlap files (`architecture-drift.ts`, `repo-guardrails.ts`, `compile.ts`/`omx/index.ts`) are serialized into Task 1.5. CPR remains below target because helper creation is a true first step, but CP is now zero for planned waves.
 
@@ -135,12 +134,12 @@ Replace the two duplicated `walkMdFiles` implementations and selected simple fil
 
 - Modify: `src/audit/broken-refs.ts`
 - Modify: `src/audit/tech-debt.ts`
-- Modify: `src/audit/repo-guardrails.ts` *(walk-only edits; JSON edits move to Task 1.5)*
-- Modify: `src/audit/architecture-drift.ts` *(walk-only edits; JSON edits move to Task 1.5)*
+- Modify: `src/audit/repo-guardrails.ts` _(walk-only edits; JSON edits move to Task 1.5)_
+- Modify: `src/audit/architecture-drift.ts` _(walk-only edits; JSON edits move to Task 1.5)_
 - Modify: `src/audit/session-memory-hardcut.ts`
 - Modify: `src/audit/skill-sizes.ts`
-- Modify: `src/cli/commands/compile.ts` *(walk-only edits; JSON edits move to Task 1.5)*
-- Modify: `src/cli/commands/init/scaffolders/omx/index.ts` *(walk-only edits; JSON edits move to Task 1.5)*
+- Modify: `src/cli/commands/compile.ts` _(walk-only edits; JSON edits move to Task 1.5)_
+- Modify: `src/cli/commands/init/scaffolders/omx/index.ts` _(walk-only edits; JSON edits move to Task 1.5)_
 
 **Steps (TDD):**
 
@@ -225,7 +224,7 @@ Migrate non-audit JSON I/O sites that do not overlap the walk migration. Include
 - Modify: `src/runtime/package-version.ts`
 - Modify: `src/config/internal-subpath-imports.ts`
 - Modify: `src/tool-runtime/resolve-runner.ts`
-- Modify: `src/blueprint/freshness.ts` *(write-only; keep read path returning `null` on failure)*
+- Modify: `src/blueprint/freshness.ts` _(write-only; keep read path returning `null` on failure)_
 
 **Steps (TDD):**
 
@@ -282,43 +281,43 @@ After Task 1.2 lands, migrate JSON I/O in files that were already touched for di
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-| ---- | ------- | ---------------- |
-| Unit tests (utils) | `./bin/wp test --file src/utils/walk-directory.test.ts --file src/utils/read-json-file.test.ts --file src/utils/write-json-file.test.ts` | Pass |
-| Regression tests (walk) | `./bin/wp test --file src/audit/broken-refs.test.ts --file src/audit/tech-debt.test.ts` | Pass |
-| JSON migration count | `rg 'JSON\.parse\(\s*readFileSync' src --glob '!*.test.ts' \| wc -l` and direct `writeFileSync`+`JSON.stringify` grep | Record the measured before/after eligible-site delta. Target ≥70% reduction of eligible throwing single-call reads/writes; if graceful-degradation or non-filesystem sites are excluded, document the residual count instead of forcing a hard ≤14/≤4 threshold. |
-| Full test suite | `./bin/wp test --suite all` | Pass |
-| Type safety | `./bin/wp typecheck` | Zero errors |
-| Lint | `./bin/wp lint` | Zero violations |
-| Blueprint lifecycle | `./bin/wp audit blueprint-lifecycle` | This blueprint remains lifecycle-valid |
+| Gate                    | Command                                                                                                                                  | Success Criteria                                                                                                                                                                                                                                                 |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit tests (utils)      | `./bin/wp test --file src/utils/walk-directory.test.ts --file src/utils/read-json-file.test.ts --file src/utils/write-json-file.test.ts` | Pass                                                                                                                                                                                                                                                             |
+| Regression tests (walk) | `./bin/wp test --file src/audit/broken-refs.test.ts --file src/audit/tech-debt.test.ts`                                                  | Pass                                                                                                                                                                                                                                                             |
+| JSON migration count    | `rg 'JSON\.parse\(\s*readFileSync' src --glob '!*.test.ts' \| wc -l` and direct `writeFileSync`+`JSON.stringify` grep                    | Record the measured before/after eligible-site delta. Target ≥70% reduction of eligible throwing single-call reads/writes; if graceful-degradation or non-filesystem sites are excluded, document the residual count instead of forcing a hard ≤14/≤4 threshold. |
+| Full test suite         | `./bin/wp test --suite all`                                                                                                              | Pass                                                                                                                                                                                                                                                             |
+| Type safety             | `./bin/wp typecheck`                                                                                                                     | Zero errors                                                                                                                                                                                                                                                      |
+| Lint                    | `./bin/wp lint`                                                                                                                          | Zero violations                                                                                                                                                                                                                                                  |
+| Blueprint lifecycle     | `./bin/wp audit blueprint-lifecycle`                                                                                                     | This blueprint remains lifecycle-valid                                                                                                                                                                                                                           |
 
 ## Edge Cases
 
-| ID | Edge Case | Severity | Mitigation |
-| -- | --------- | -------- | ---------- |
-| E1 | Empty directory passed to `walkDirectory` | LOW | Return empty array (natural behavior of `readdirSync`) |
-| E2 | JSON file with BOM or non-UTF-8 encoding | MEDIUM | Use `readFileSync(path, 'utf8')`; non-UTF-8 remains out of scope |
-| E3 | Very large JSON files (memory pressure) | LOW | Out of scope — existing pattern already loads full file; streaming JSON is a separate concern |
-| E4 | `walkDirectory` on missing/non-directory path | MEDIUM | Propagate native `ENOENT` / `ENOTDIR` with path context; test missing-root behavior |
-| E5 | `readJsonFile` parse-failure message clarity | MEDIUM | Wrap read/parse errors with file path context; test that messages include the file path |
-| E6 | `writeJsonFile` on read-only filesystem | LOW | Propagate native `fs` error, consistent with original `writeFileSync` |
-| E7 | `walkDirectory` sort stability with mixed case | LOW | Use deterministic lexical sort; document if case-sensitive order differs by platform |
-| E8 | Swallow-and-return-null read sites (for example `src/blueprint/freshness.ts:108/114`) | HIGH | Do not migrate graceful-degradation reads to throwing `readJsonFile`; migrate write-only when safe |
-| E9 | Compact JSON files become pretty-printed by default | MEDIUM | Add `indent: 0` option and require callers to opt in where compact output is intentional |
-| E10 | File mode changes when replacing config writes | HIGH | `writeJsonFile` must pass through write options such as `{ mode: 0o600 }`; Task 1.4 acceptance explicitly checks mode-sensitive config writes |
-| E11 | Downstream atomic-write plan expects state-bearing writes to use this helper | MEDIUM | Route state-bearing JSON writes through `writeJsonFile` here, but do not implement atomic semantics until the downstream blueprint |
+| ID  | Edge Case                                                                             | Severity | Mitigation                                                                                                                                    |
+| --- | ------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| E1  | Empty directory passed to `walkDirectory`                                             | LOW      | Return empty array (natural behavior of `readdirSync`)                                                                                        |
+| E2  | JSON file with BOM or non-UTF-8 encoding                                              | MEDIUM   | Use `readFileSync(path, 'utf8')`; non-UTF-8 remains out of scope                                                                              |
+| E3  | Very large JSON files (memory pressure)                                               | LOW      | Out of scope — existing pattern already loads full file; streaming JSON is a separate concern                                                 |
+| E4  | `walkDirectory` on missing/non-directory path                                         | MEDIUM   | Propagate native `ENOENT` / `ENOTDIR` with path context; test missing-root behavior                                                           |
+| E5  | `readJsonFile` parse-failure message clarity                                          | MEDIUM   | Wrap read/parse errors with file path context; test that messages include the file path                                                       |
+| E6  | `writeJsonFile` on read-only filesystem                                               | LOW      | Propagate native `fs` error, consistent with original `writeFileSync`                                                                         |
+| E7  | `walkDirectory` sort stability with mixed case                                        | LOW      | Use deterministic lexical sort; document if case-sensitive order differs by platform                                                          |
+| E8  | Swallow-and-return-null read sites (for example `src/blueprint/freshness.ts:108/114`) | HIGH     | Do not migrate graceful-degradation reads to throwing `readJsonFile`; migrate write-only when safe                                            |
+| E9  | Compact JSON files become pretty-printed by default                                   | MEDIUM   | Add `indent: 0` option and require callers to opt in where compact output is intentional                                                      |
+| E10 | File mode changes when replacing config writes                                        | HIGH     | `writeJsonFile` must pass through write options such as `{ mode: 0o600 }`; Task 1.4 acceptance explicitly checks mode-sensitive config writes |
+| E11 | Downstream atomic-write plan expects state-bearing writes to use this helper          | MEDIUM   | Route state-bearing JSON writes through `writeJsonFile` here, but do not implement atomic semantics until the downstream blueprint            |
 
 ## Risks
 
-| Risk | Severity | Mitigation |
-| ---- | -------- | ---------- |
-| Subtle traversal order changes break tests | HIGH | Return sorted paths; add before/after comparison tests for the two duplicated `walkMdFiles` sites |
-| Migrating a swallow-and-return-null read to the throwing helper introduces a silent behavior regression | HIGH | Exclude graceful-degradation reads; pre-flight every JSON-read site before replacing |
-| Config write permissions change during helper migration | HIGH | `writeJsonFile` supports/pass-throughs write options; verify `src/cli/commands/config.ts` preserves `0o600` |
-| Compact JSON output changes to pretty JSON unexpectedly | MEDIUM | Support `indent: 0` and require explicit options for compact writers such as guard state/installer config where compactness is intentional |
-| Same-file overlap between walk and JSON tasks causes merge conflicts | MEDIUM | Split Task 1.5 after Task 1.2; Wave 1 tasks have CP = 0 |
-| Cross-plan conflict with atomic write helper blueprint | MEDIUM | This blueprint performs one helper migration sweep; downstream blueprint extends helper options and marks state-bearing sites atomic without remigrating raw writes |
-| Large PR scope causes review fatigue | MEDIUM | Five file-cluster tasks with focused tests; batch commits by task and keep replacements mechanical |
+| Risk                                                                                                    | Severity | Mitigation                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Subtle traversal order changes break tests                                                              | HIGH     | Return sorted paths; add before/after comparison tests for the two duplicated `walkMdFiles` sites                                                                   |
+| Migrating a swallow-and-return-null read to the throwing helper introduces a silent behavior regression | HIGH     | Exclude graceful-degradation reads; pre-flight every JSON-read site before replacing                                                                                |
+| Config write permissions change during helper migration                                                 | HIGH     | `writeJsonFile` supports/pass-throughs write options; verify `src/cli/commands/config.ts` preserves `0o600`                                                         |
+| Compact JSON output changes to pretty JSON unexpectedly                                                 | MEDIUM   | Support `indent: 0` and require explicit options for compact writers such as guard state/installer config where compactness is intentional                          |
+| Same-file overlap between walk and JSON tasks causes merge conflicts                                    | MEDIUM   | Split Task 1.5 after Task 1.2; Wave 1 tasks have CP = 0                                                                                                             |
+| Cross-plan conflict with atomic write helper blueprint                                                  | MEDIUM   | This blueprint performs one helper migration sweep; downstream blueprint extends helper options and marks state-bearing sites atomic without remigrating raw writes |
+| Large PR scope causes review fatigue                                                                    | MEDIUM   | Five file-cluster tasks with focused tests; batch commits by task and keep replacements mechanical                                                                  |
 
 ## Non-goals
 
@@ -333,22 +332,22 @@ After Task 1.2 lands, migrate JSON I/O in files that were already touched for di
 
 ## Refinement Summary
 
-| Metric | Value |
-| ------ | ----- |
-| Findings total | 7 |
-| High | 5 (F1-F4, F7) |
-| Medium | 1 (F6) |
-| Low | 0 |
-| Info | 1 (F5 — existing `readJsonFile` to promote) |
-| Fixes applied | 7/7 — counts refreshed, Zod claim corrected, graceful reads excluded, compact/mode options added, downstream atomic dependency reconciled |
-| Cross-plans updated | 2 alignment rows added here for resource-leak and type-safe SQLite invariants; 4 related plans noted for execution coordination |
-| Edge cases documented | 11 |
-| Risks documented | 7 |
-| **Parallelization score** | C (5 tasks, CP = 0; CPR 1.67 due true helper setup step) |
-| **Critical path** | 3 waves (1.1 → 1.2 → 1.5) |
-| **Max parallel agents** | 3 in Wave 1 |
-| **Total tasks** | 5 |
-| **Blueprint compliant** | 5/5 — all tasks have lane prefixes, Status, Depends, Files, Steps (TDD), and Acceptance |
+| Metric                    | Value                                                                                                                                     |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Findings total            | 7                                                                                                                                         |
+| High                      | 5 (F1-F4, F7)                                                                                                                             |
+| Medium                    | 1 (F6)                                                                                                                                    |
+| Low                       | 0                                                                                                                                         |
+| Info                      | 1 (F5 — existing `readJsonFile` to promote)                                                                                               |
+| Fixes applied             | 7/7 — counts refreshed, Zod claim corrected, graceful reads excluded, compact/mode options added, downstream atomic dependency reconciled |
+| Cross-plans updated       | 2 alignment rows added here for resource-leak and type-safe SQLite invariants; 4 related plans noted for execution coordination           |
+| Edge cases documented     | 11                                                                                                                                        |
+| Risks documented          | 7                                                                                                                                         |
+| **Parallelization score** | C (5 tasks, CP = 0; CPR 1.67 due true helper setup step)                                                                                  |
+| **Critical path**         | 3 waves (1.1 → 1.2 → 1.5)                                                                                                                 |
+| **Max parallel agents**   | 3 in Wave 1                                                                                                                               |
+| **Total tasks**           | 5                                                                                                                                         |
+| **Blueprint compliant**   | 5/5 — all tasks have lane prefixes, Status, Depends, Files, Steps (TDD), and Acceptance                                                   |
 
 ### Refinement deltas
 

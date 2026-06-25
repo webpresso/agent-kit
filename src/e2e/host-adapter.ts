@@ -1,28 +1,28 @@
-import type { E2eHostAdapter } from './types.js'
+import type { E2eHostAdapter } from "./types.js";
 
-export const DEFAULT_HOST_ADAPTER_EXPORT_NAME = 'webpressoE2eHostAdapter'
-export const LEGACY_HOST_ADAPTER_EXPORT_NAME = 'webpressoE2eHostAdapter'
+export const DEFAULT_HOST_ADAPTER_EXPORT_NAME = "webpressoE2eHostAdapter";
+export const LEGACY_HOST_ADAPTER_EXPORT_NAME = "webpressoE2eHostAdapter";
 export const FALLBACK_HOST_ADAPTER_EXPORT_NAMES = [
   DEFAULT_HOST_ADAPTER_EXPORT_NAME,
   LEGACY_HOST_ADAPTER_EXPORT_NAME,
-  'default',
-] as const
+  "default",
+] as const;
 
 export function isE2eHostAdapter(value: unknown): value is E2eHostAdapter {
-  if (typeof value !== 'object' || value === null) {
-    return false
+  if (typeof value !== "object" || value === null) {
+    return false;
   }
 
-  const candidate = value as Partial<Record<keyof E2eHostAdapter, unknown>>
+  const candidate = value as Partial<Record<keyof E2eHostAdapter, unknown>>;
 
   return (
-    typeof candidate.listSuites === 'function' &&
-    typeof candidate.resolveSuiteId === 'function' &&
+    typeof candidate.listSuites === "function" &&
+    typeof candidate.resolveSuiteId === "function" &&
     (candidate.resolveSuiteGroup === undefined ||
-      typeof candidate.resolveSuiteGroup === 'function') &&
-    typeof candidate.normalizeFilePath === 'function' &&
-    typeof candidate.resolveSuiteForFile === 'function' &&
+      typeof candidate.resolveSuiteGroup === "function") &&
+    typeof candidate.normalizeFilePath === "function" &&
+    typeof candidate.resolveSuiteForFile === "function" &&
     (candidate.buildExecutionPlan === undefined ||
-      typeof candidate.buildExecutionPlan === 'function')
-  )
+      typeof candidate.buildExecutionPlan === "function")
+  );
 }

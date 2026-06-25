@@ -15,6 +15,7 @@ This guide records the v1 DB-branching contract for secret orchestration.
 - **Non-DB apps:** skip DB branching entirely with explicit evidence
 
 The contract is provider-neutral at the type level:
+
 - branch creation metadata
 - connection-string handoff
 - smoke-check command

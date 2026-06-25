@@ -1,6 +1,6 @@
-import { randomUUID } from 'node:crypto'
+import { randomUUID } from "node:crypto";
 
-import { resolveScratchWorktreePath } from '#worktrees/location.js'
+import { resolveScratchWorktreePath } from "#worktrees/location.js";
 
 /**
  * Generates an agent-kit managed scratch worktree path for the given task.
@@ -10,5 +10,5 @@ import { resolveScratchWorktreePath } from '#worktrees/location.js'
  * visible sibling checkout.
  */
 export function generateWorktreePath(repoRoot: string, taskId: string): string {
-  return resolveScratchWorktreePath(repoRoot, taskId, 'local-worktree', randomUUID())
+  return resolveScratchWorktreePath(repoRoot, taskId, "local-worktree", randomUUID());
 }

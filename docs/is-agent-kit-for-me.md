@@ -2,7 +2,7 @@
 type: guide
 title: Is webpresso for me?
 description: A one-screen answer to whether webpresso fits your repo.
-last_updated: '2026-05-29'
+last_updated: "2026-05-29"
 ---
 
 # Is webpresso for me?

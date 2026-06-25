@@ -1,9 +1,6 @@
 [workspace]
 resolver = "2"
-members = [
-    "crates/session-memory-core",
-    "crates/session-memory-napi",
-]
+members = ["crates/session-memory-core", "crates/session-memory-napi"]
 
 [workspace.package]
 version = "0.1.0"

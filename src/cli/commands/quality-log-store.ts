@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { randomUUID } from "node:crypto";
 import {
   closeSync,
   createWriteStream,
@@ -11,76 +11,76 @@ import {
   utimesSync,
   rmSync,
   writeFileSync,
-} from 'node:fs'
-import { dirname, join } from 'node:path'
+} from "node:fs";
+import { dirname, join } from "node:path";
 
-import { getSurfacePath } from '#paths/state-root.js'
-import { readTrustedJsonFile } from '#shared-utils/read-json-file.js'
-import { shortId } from '#shared-utils/short-id.js'
-import { writeJsonFile } from '#shared-utils/write-json-file.js'
+import { getSurfacePath } from "#paths/state-root.js";
+import { readTrustedJsonFile } from "#shared-utils/read-json-file.js";
+import { shortId } from "#shared-utils/short-id.js";
+import { writeJsonFile } from "#shared-utils/write-json-file.js";
 
 export const CLI_LOG_COMMANDS = [
-  'test',
-  'typecheck',
-  'qa',
-  'audit',
-  'e2e',
-  'lint',
-  'format',
-] as const
+  "test",
+  "typecheck",
+  "qa",
+  "audit",
+  "e2e",
+  "lint",
+  "format",
+] as const;
 
-const ORPHAN_LOG_GRACE_MS = 60_000
+const ORPHAN_LOG_GRACE_MS = 60_000;
 
-export type CliLogCommandName = (typeof CLI_LOG_COMMANDS)[number]
+export type CliLogCommandName = (typeof CLI_LOG_COMMANDS)[number];
 
 export interface CliLogEntry {
-  readonly id: string
-  readonly command: CliLogCommandName
-  readonly timestamp: string
-  readonly exitCode: number
-  readonly logPath: string
-  readonly options?: Record<string, unknown>
-  readonly summary?: string
+  readonly id: string;
+  readonly command: CliLogCommandName;
+  readonly timestamp: string;
+  readonly exitCode: number;
+  readonly logPath: string;
+  readonly options?: Record<string, unknown>;
+  readonly summary?: string;
 }
 
 interface CliLogIndex {
-  readonly version: 1
-  readonly command: CliLogCommandName
-  readonly entries: readonly CliLogEntry[]
+  readonly version: 1;
+  readonly command: CliLogCommandName;
+  readonly entries: readonly CliLogEntry[];
 }
 
 export function isCliLogCommandName(value: string): value is CliLogCommandName {
-  return (CLI_LOG_COMMANDS as readonly string[]).includes(value)
+  return (CLI_LOG_COMMANDS as readonly string[]).includes(value);
 }
 
 export function createCliLogSink(command: CliLogCommandName, cwd = process.cwd()): CliLogSink {
-  const id = createLogId()
-  const commandDir = getCommandLogDir(command, cwd)
-  mkdirSync(commandDir, { recursive: true })
-  const absoluteLogPath = join(commandDir, `${id}.log`)
-  const activeMarkerPath = getActiveMarkerPath(absoluteLogPath)
-  writeFileSync(activeMarkerPath, `${process.pid}\n${new Date().toISOString()}\n`, 'utf8')
+  const id = createLogId();
+  const commandDir = getCommandLogDir(command, cwd);
+  mkdirSync(commandDir, { recursive: true });
+  const absoluteLogPath = join(commandDir, `${id}.log`);
+  const activeMarkerPath = getActiveMarkerPath(absoluteLogPath);
+  writeFileSync(activeMarkerPath, `${process.pid}\n${new Date().toISOString()}\n`, "utf8");
 
-  let fd: number
+  let fd: number;
   try {
-    fd = openSync(absoluteLogPath, 'a')
+    fd = openSync(absoluteLogPath, "a");
   } catch (error) {
-    rmSync(activeMarkerPath, { force: true })
-    throw error
+    rmSync(activeMarkerPath, { force: true });
+    throw error;
   }
 
   const stream = createWriteStream(absoluteLogPath, {
-    encoding: 'utf8',
+    encoding: "utf8",
     fd,
-    flags: 'a',
+    flags: "a",
     autoClose: true,
-  })
-  let streamError: Error | undefined
-  let rejectPendingFinalize: ((error: Error) => void) | undefined
-  stream.on('error', (error: Error) => {
-    streamError = error
-    rejectPendingFinalize?.(error)
-  })
+  });
+  let streamError: Error | undefined;
+  let rejectPendingFinalize: ((error: Error) => void) | undefined;
+  stream.on("error", (error: Error) => {
+    streamError = error;
+    rejectPendingFinalize?.(error);
+  });
 
   return {
     command,
@@ -88,24 +88,24 @@ export function createCliLogSink(command: CliLogCommandName, cwd = process.cwd()
     id,
     absoluteLogPath,
     write(chunk: string): void {
-      stream.write(chunk)
+      stream.write(chunk);
     },
     async finalize(metadata): Promise<CliLogEntry> {
       await new Promise<void>((resolve, reject) => {
         if (streamError) {
-          reject(streamError)
-          return
+          reject(streamError);
+          return;
         }
-        rejectPendingFinalize = reject
+        rejectPendingFinalize = reject;
         stream.end(() => {
-          rejectPendingFinalize = undefined
+          rejectPendingFinalize = undefined;
           if (streamError) {
-            reject(streamError)
-            return
+            reject(streamError);
+            return;
           }
-          resolve()
-        })
-      })
+          resolve();
+        });
+      });
       const entry: CliLogEntry = {
         id,
         command,
@@ -114,42 +114,42 @@ export function createCliLogSink(command: CliLogCommandName, cwd = process.cwd()
         logPath: absoluteLogPath,
         ...(metadata.options ? { options: metadata.options } : {}),
         ...(metadata.summary ? { summary: metadata.summary } : {}),
-      }
+      };
       try {
-        markLogRecentlyFinalized(absoluteLogPath)
-        writeLogEntry(entry, cwd)
+        markLogRecentlyFinalized(absoluteLogPath);
+        writeLogEntry(entry, cwd);
       } finally {
-        rmSync(activeMarkerPath, { force: true })
+        rmSync(activeMarkerPath, { force: true });
       }
-      return entry
+      return entry;
     },
-  }
+  };
 }
 
 export interface CliLogSink {
-  readonly command: CliLogCommandName
-  readonly cwd: string
-  readonly id: string
-  readonly absoluteLogPath: string
-  write(chunk: string): void
+  readonly command: CliLogCommandName;
+  readonly cwd: string;
+  readonly id: string;
+  readonly absoluteLogPath: string;
+  write(chunk: string): void;
   finalize(metadata: {
-    readonly exitCode: number
-    readonly summary?: string
-    readonly options?: Record<string, unknown>
-    readonly timestamp?: string
-  }): Promise<CliLogEntry>
+    readonly exitCode: number;
+    readonly summary?: string;
+    readonly options?: Record<string, unknown>;
+    readonly timestamp?: string;
+  }): Promise<CliLogEntry>;
 }
 
 export function readCliLogEntries(
   command: CliLogCommandName,
   cwd = process.cwd(),
 ): readonly CliLogEntry[] {
-  const indexPath = getCommandIndexPath(command, cwd)
+  const indexPath = getCommandIndexPath(command, cwd);
   try {
-    const parsed = readTrustedJsonFile<CliLogIndex>(indexPath)
-    return Array.isArray(parsed.entries) ? parsed.entries : []
+    const parsed = readTrustedJsonFile<CliLogIndex>(indexPath);
+    return Array.isArray(parsed.entries) ? parsed.entries : [];
   } catch {
-    return []
+    return [];
   }
 }
 
@@ -158,69 +158,69 @@ export function readCliLogEntry(
   ordinal = 1,
   cwd = process.cwd(),
 ): CliLogEntry | undefined {
-  if (!Number.isInteger(ordinal) || ordinal < 1) return
-  return readCliLogEntries(command, cwd)[ordinal - 1]
+  if (!Number.isInteger(ordinal) || ordinal < 1) return;
+  return readCliLogEntries(command, cwd)[ordinal - 1];
 }
 
 function writeLogEntry(entry: CliLogEntry, cwd: string): void {
   withCommandIndexLock(entry.command, cwd, () => {
-    const indexPath = getCommandIndexPath(entry.command, cwd)
-    mkdirSync(dirname(indexPath), { recursive: true })
+    const indexPath = getCommandIndexPath(entry.command, cwd);
+    mkdirSync(dirname(indexPath), { recursive: true });
 
     const currentEntries = readCliLogEntries(entry.command, cwd).filter(
       (current) => current.id !== entry.id,
-    )
-    const nextEntries = [entry, ...currentEntries].slice(0, 10)
-    const retainedLogPaths = new Set(nextEntries.map((item) => item.logPath))
+    );
+    const nextEntries = [entry, ...currentEntries].slice(0, 10);
+    const retainedLogPaths = new Set(nextEntries.map((item) => item.logPath));
 
     for (const removed of currentEntries.slice(9)) {
       if (!retainedLogPaths.has(removed.logPath) && canPruneLogPath(removed.logPath)) {
-        rmSync(removed.logPath, { force: true })
+        rmSync(removed.logPath, { force: true });
       }
     }
 
-    pruneInactiveOrphanedLogFiles(entry.command, retainedLogPaths, cwd)
+    pruneInactiveOrphanedLogFiles(entry.command, retainedLogPaths, cwd);
 
     const index: CliLogIndex = {
       version: 1,
       command: entry.command,
       entries: nextEntries,
-    }
-    writeIndexAtomically(indexPath, index)
-  })
+    };
+    writeIndexAtomically(indexPath, index);
+  });
 }
 
 function withCommandIndexLock<T>(command: CliLogCommandName, cwd: string, fn: () => T): T {
-  const commandDir = getCommandLogDir(command, cwd)
-  mkdirSync(commandDir, { recursive: true })
-  const lockPath = join(commandDir, 'index.lock')
-  const started = Date.now()
-  let fd: number | undefined
+  const commandDir = getCommandLogDir(command, cwd);
+  mkdirSync(commandDir, { recursive: true });
+  const lockPath = join(commandDir, "index.lock");
+  const started = Date.now();
+  let fd: number | undefined;
 
   while (fd === undefined) {
     try {
-      fd = openSync(lockPath, 'wx')
+      fd = openSync(lockPath, "wx");
     } catch (error) {
-      if (!isFileExistsError(error)) throw error
+      if (!isFileExistsError(error)) throw error;
       if (Date.now() - started > 5_000) {
-        throw new Error(`Timed out waiting for CLI log index lock: ${lockPath}`)
+        throw new Error(`Timed out waiting for CLI log index lock: ${lockPath}`);
       }
-      sleepSync(10)
+      sleepSync(10);
     }
   }
 
   try {
-    return fn()
+    return fn();
   } finally {
-    closeSync(fd)
-    rmSync(lockPath, { force: true })
+    closeSync(fd);
+    rmSync(lockPath, { force: true });
   }
 }
 
 function writeIndexAtomically(indexPath: string, index: CliLogIndex): void {
-  const tmpPath = `${indexPath}.${process.pid}.${randomUUID()}.tmp`
-  writeJsonFile(tmpPath, index)
-  renameSync(tmpPath, indexPath)
+  const tmpPath = `${indexPath}.${process.pid}.${randomUUID()}.tmp`;
+  writeJsonFile(tmpPath, index);
+  renameSync(tmpPath, indexPath);
 }
 
 function pruneInactiveOrphanedLogFiles(
@@ -228,72 +228,72 @@ function pruneInactiveOrphanedLogFiles(
   retainedLogPaths: ReadonlySet<string>,
   cwd: string,
 ): void {
-  const directory = getCommandLogDir(command, cwd)
-  mkdirSync(directory, { recursive: true })
+  const directory = getCommandLogDir(command, cwd);
+  mkdirSync(directory, { recursive: true });
   for (const file of readdirSync(directory)) {
-    if (!file.endsWith('.log')) continue
-    const absolutePath = join(directory, file)
+    if (!file.endsWith(".log")) continue;
+    const absolutePath = join(directory, file);
     if (!retainedLogPaths.has(absolutePath) && canPruneLogPath(absolutePath)) {
-      rmSync(absolutePath, { force: true })
+      rmSync(absolutePath, { force: true });
     }
   }
 }
 
 function markLogRecentlyFinalized(logPath: string): void {
-  const now = new Date()
+  const now = new Date();
   try {
-    utimesSync(logPath, now, now)
+    utimesSync(logPath, now, now);
   } catch (error) {
-    if (!isMissingFileError(error)) throw error
-    mkdirSync(dirname(logPath), { recursive: true })
-    writeFileSync(logPath, '', { flag: 'a' })
-    utimesSync(logPath, now, now)
+    if (!isMissingFileError(error)) throw error;
+    mkdirSync(dirname(logPath), { recursive: true });
+    writeFileSync(logPath, "", { flag: "a" });
+    utimesSync(logPath, now, now);
   }
 }
 
 function canPruneLogPath(logPath: string): boolean {
-  if (isActiveLogPath(logPath)) return false
+  if (isActiveLogPath(logPath)) return false;
   try {
-    return Date.now() - statSync(logPath).mtimeMs > ORPHAN_LOG_GRACE_MS
+    return Date.now() - statSync(logPath).mtimeMs > ORPHAN_LOG_GRACE_MS;
   } catch {
-    return false
+    return false;
   }
 }
 
 function isActiveLogPath(logPath: string): boolean {
   try {
-    readFileSync(getActiveMarkerPath(logPath), 'utf8')
-    return true
+    readFileSync(getActiveMarkerPath(logPath), "utf8");
+    return true;
   } catch {
-    return false
+    return false;
   }
 }
 
 function getActiveMarkerPath(logPath: string): string {
-  return `${logPath}.active`
+  return `${logPath}.active`;
 }
 
 function sleepSync(ms: number): void {
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
 function isFileExistsError(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'EEXIST'
+  return typeof error === "object" && error !== null && "code" in error && error.code === "EEXIST";
 }
 
 function isMissingFileError(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'
+  return typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT";
 }
 
 function getCommandLogDir(command: CliLogCommandName, cwd: string): string {
-  return getSurfacePath(join('cli-logs', command), 'repo', cwd)
+  return getSurfacePath(join("cli-logs", command), "repo", cwd);
 }
 
 function getCommandIndexPath(command: CliLogCommandName, cwd: string): string {
-  return join(getCommandLogDir(command, cwd), 'index.json')
+  return join(getCommandLogDir(command, cwd), "index.json");
 }
 
 function createLogId(now = new Date()): string {
-  const iso = now.toISOString().replaceAll(':', '-').replaceAll('.', '-')
-  return `${iso}-${shortId(6)}`
+  const iso = now.toISOString().replaceAll(":", "-").replaceAll(".", "-");
+  return `${iso}-${shortId(6)}`;
 }

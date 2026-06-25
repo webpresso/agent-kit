@@ -4,9 +4,9 @@ status: completed
 title: CI Act Default Architecture Contract Hardening
 owner: webpresso
 complexity: M
-created: '2026-06-17'
-last_updated: '2026-06-17'
-progress: '85% (default image manifest verified; contract hardening + tests implemented; final verification complete)'
+created: "2026-06-17"
+last_updated: "2026-06-17"
+progress: "85% (default image manifest verified; contract hardening + tests implemented; final verification complete)"
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -62,12 +62,12 @@ Add explicit Apple Silicon macOS, Intel macOS, Linux arm64, override-wins, and s
 
 ## Verification Gates
 
-| Gate | Command | Status |
-| --- | --- | --- |
-| Focused tests | `./bin/wp test --file src/ci/act-runner.test.ts --file src/ci/act-helper.test.ts --file src/cli/commands/ci.test.ts` | passed |
-| Focused lint | `./bin/wp lint --file src/ci/act-runner.ts --file src/ci/act-runner.test.ts --file src/ci/act-helper.ts --file src/ci/act-helper.test.ts --file src/cli/commands/ci.test.ts` | passed |
-| Typecheck | `./bin/wp typecheck` | passed |
-| CLI dry-run | `./bin/wp ci act --workflow ci-e2e --dry-run` | passed |
+| Gate          | Command                                                                                                                                                                      | Status |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| Focused tests | `./bin/wp test --file src/ci/act-runner.test.ts --file src/ci/act-helper.test.ts --file src/cli/commands/ci.test.ts`                                                         | passed |
+| Focused lint  | `./bin/wp lint --file src/ci/act-runner.ts --file src/ci/act-runner.test.ts --file src/ci/act-helper.ts --file src/ci/act-helper.test.ts --file src/cli/commands/ci.test.ts` | passed |
+| Typecheck     | `./bin/wp typecheck`                                                                                                                                                         | passed |
+| CLI dry-run   | `./bin/wp ci act --workflow ci-e2e --dry-run`                                                                                                                                | passed |
 
 ## Non-goals
 
@@ -87,21 +87,21 @@ Add explicit Apple Silicon macOS, Intel macOS, Linux arm64, override-wins, and s
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/ci-act-default-architecture-contract-hardening.md |
+| ID  | Claim                                                          | Evidence                                                                    |
+| --- | -------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/ci-act-default-architecture-contract-hardening.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

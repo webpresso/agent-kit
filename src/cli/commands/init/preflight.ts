@@ -4,78 +4,78 @@
  * Checks the 5-point compatibility matrix from docs/is-webpresso-for-me.md.
  * In non-strict mode: warns and continues. In strict mode: aborts on mismatch.
  */
-import { spawnSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join, relative } from "node:path";
 
-import { getManagedRunner } from '#tool-runtime'
-import { resolveBlueprintRoot } from '#utils/blueprint-root'
+import { getManagedRunner } from "#tool-runtime";
+import { resolveBlueprintRoot } from "#utils/blueprint-root";
 
 export interface PreflightResult {
-  ok: boolean
-  score: number // 0-5
-  warnings: readonly string[]
+  ok: boolean;
+  score: number; // 0-5
+  warnings: readonly string[];
 }
 
 export const DOCS_URL =
-  'https://github.com/webpresso/webpresso/blob/main/docs/is-webpresso-for-me.md'
+  "https://github.com/webpresso/webpresso/blob/main/docs/is-webpresso-for-me.md";
 
 /**
  * Returns the major version number from a semver string like "24.0.0" or "v24.0.0".
  * Returns null when the string is not parseable.
  */
 function parseMajor(version: string): number | null {
-  const cleaned = version.startsWith('v') ? version.slice(1) : version
-  const major = parseInt(cleaned.split('.')[0] ?? '', 10)
-  return isNaN(major) ? null : major
+  const cleaned = version.startsWith("v") ? version.slice(1) : version;
+  const major = parseInt(cleaned.split(".")[0] ?? "", 10);
+  return isNaN(major) ? null : major;
 }
 
 function checkTypeScriptWorkspace(repoRoot: string): string | null {
-  const hasConfig = existsSync(join(repoRoot, 'tsconfig.json'))
+  const hasConfig = existsSync(join(repoRoot, "tsconfig.json"));
   if (!hasConfig) {
-    return 'tsconfig.json not found at repo root — TypeScript workspace required (see docs)'
+    return "tsconfig.json not found at repo root — TypeScript workspace required (see docs)";
   }
-  const nodeMajor = parseMajor(process.version)
+  const nodeMajor = parseMajor(process.version);
   if (nodeMajor === null || nodeMajor < 24) {
-    return `Node ${process.version} detected — Node ≥ 24 required (see docs)`
+    return `Node ${process.version} detected — Node ≥ 24 required (see docs)`;
   }
-  return null
+  return null;
 }
 
 function checkVp(): string | null {
-  const resolution = getManagedRunner('vp', { outputPolicy: 'structured' })
-  const result = spawnSync(resolution.command, [...resolution.args, '--version'], {
-    encoding: 'utf8',
-  })
+  const resolution = getManagedRunner("vp", { outputPolicy: "structured" });
+  const result = spawnSync(resolution.command, [...resolution.args, "--version"], {
+    encoding: "utf8",
+  });
   if (result.error !== undefined || (result.status !== null && result.status !== 0)) {
-    return 'bundled Vite+ runner unavailable — reinstall @webpresso/agent-kit without omitting dependencies (see docs)'
+    return "bundled Vite+ runner unavailable — reinstall @webpresso/agent-kit without omitting dependencies (see docs)";
   }
-  return null
+  return null;
 }
 
 function checkWorkersOrVite(repoRoot: string): string | null {
-  const hasWrangler = existsSync(join(repoRoot, 'wrangler.toml'))
-  const hasVite = existsSync(join(repoRoot, 'vite.config.ts'))
+  const hasWrangler = existsSync(join(repoRoot, "wrangler.toml"));
+  const hasVite = existsSync(join(repoRoot, "vite.config.ts"));
   if (!hasWrangler && !hasVite) {
-    return 'Neither wrangler.toml nor vite.config.ts found at repo root — Workers or Vite project required (see docs)'
+    return "Neither wrangler.toml nor vite.config.ts found at repo root — Workers or Vite project required (see docs)";
   }
-  return null
+  return null;
 }
 
 function checkBlueprintLifecycle(repoRoot: string): string | null {
-  const blueprintRoot = resolveBlueprintRoot(repoRoot)
+  const blueprintRoot = resolveBlueprintRoot(repoRoot);
   if (!existsSync(blueprintRoot)) {
-    const displayPath = relative(repoRoot, blueprintRoot).replaceAll('\\', '/') || 'blueprints'
-    return `${displayPath}/ directory not found — blueprint lifecycle required (run \`wp setup --with base-kit\` to scaffold it)`
+    const displayPath = relative(repoRoot, blueprintRoot).replaceAll("\\", "/") || "blueprints";
+    return `${displayPath}/ directory not found — blueprint lifecycle required (run \`wp setup --with base-kit\` to scaffold it)`;
   }
-  return null
+  return null;
 }
 
 function checkAgentInstructionSurface(repoRoot: string): string | null {
-  if (!existsSync(join(repoRoot, '.agent'))) {
-    return '.agent/ directory not found — agent instruction surface missing (run `wp setup` to scaffold it)'
+  if (!existsSync(join(repoRoot, ".agent"))) {
+    return ".agent/ directory not found — agent instruction surface missing (run `wp setup` to scaffold it)";
   }
-  return null
+  return null;
 }
 
 /**
@@ -92,18 +92,18 @@ export async function runPreflight(repoRoot: string, strict: boolean): Promise<P
     () => checkWorkersOrVite(repoRoot),
     () => checkBlueprintLifecycle(repoRoot),
     () => checkAgentInstructionSurface(repoRoot),
-  ]
+  ];
 
-  const warnings: string[] = []
+  const warnings: string[] = [];
   for (const check of checks) {
-    const warning = check()
+    const warning = check();
     if (warning !== null) {
-      warnings.push(warning)
+      warnings.push(warning);
     }
   }
 
-  const score = checks.length - warnings.length
-  const ok = strict ? warnings.length === 0 : true
+  const score = checks.length - warnings.length;
+  const ok = strict ? warnings.length === 0 : true;
 
-  return { ok, score, warnings }
+  return { ok, score, warnings };
 }

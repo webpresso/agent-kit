@@ -3,9 +3,7 @@
   "additionalProperties": false,
   "definitions": {
     "BlockDecisionWire": {
-      "enum": [
-        "block"
-      ],
+      "enum": ["block"],
       "type": "string"
     }
   },

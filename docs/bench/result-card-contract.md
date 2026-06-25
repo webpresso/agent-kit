@@ -50,15 +50,15 @@ the `report.json` file (for example `scripts/bench/runs/<run-id>/report.json`).
 
 Each metric row in a result card proves one metric class:
 
-| Metric class | What it measures |
-| --- | --- |
-| `byte_proxy` | Deterministic UTF-8 byte delta (`gainBytes`) |
-| `provider_tokens_cost` | Actual provider token usage and USD cost |
-| `recall` | Information-retrieval recall@k from qrels |
-| `hook_latency` | Separately instrumented hook execution time |
-| `native_speedup` | Native addon throughput vs TypeScript fallback |
-| `replacement_parity` | Behavioral equivalence against the reference implementation |
-| `rtk_context_mode` | RTK context-mode token reduction |
+| Metric class           | What it measures                                            |
+| ---------------------- | ----------------------------------------------------------- |
+| `byte_proxy`           | Deterministic UTF-8 byte delta (`gainBytes`)                |
+| `provider_tokens_cost` | Actual provider token usage and USD cost                    |
+| `recall`               | Information-retrieval recall@k from qrels                   |
+| `hook_latency`         | Separately instrumented hook execution time                 |
+| `native_speedup`       | Native addon throughput vs TypeScript fallback              |
+| `replacement_parity`   | Behavioral equivalence against the reference implementation |
+| `rtk_context_mode`     | RTK context-mode token reduction                            |
 
 A public claim of one class cannot be satisfied by a card of a different class.
 For example, a `byte_proxy` measurement does NOT prove provider token savings;

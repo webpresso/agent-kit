@@ -4,9 +4,9 @@ title: "wp setup: phase-aware gstack subprocess hardening"
 owner: agent-kit
 status: completed
 complexity: S
-created: '2026-06-08'
-last_updated: '2026-06-08'
-progress: '100% (2 of 2 tasks completed)'
+created: "2026-06-08"
+last_updated: "2026-06-08"
+progress: "100% (2 of 2 tasks completed)"
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -30,19 +30,19 @@ tags:
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-| -------- | ------ | --------- |
-| Fix boundary | agent-kit gstack wrapper | `wp setup` owns subprocess supervision, log capture, and user-facing progress semantics. |
-| Upstream scope | no gstack fork in this change | Preserve the existing ownership lane; harden the wrapper around any external child, not just Playwright. |
-| User feedback model | periodic quiet-mode heartbeat with last-output summary | Prevents perceived hangs without streaming raw logs or masking real inactivity timeouts. |
-| Timeout model | keep inactivity timeout authoritative | Heartbeats must not reset inactivity or paper over stuck children. |
+| Decision            | Choice                                                 | Rationale                                                                                                |
+| ------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| Fix boundary        | agent-kit gstack wrapper                               | `wp setup` owns subprocess supervision, log capture, and user-facing progress semantics.                 |
+| Upstream scope      | no gstack fork in this change                          | Preserve the existing ownership lane; harden the wrapper around any external child, not just Playwright. |
+| User feedback model | periodic quiet-mode heartbeat with last-output summary | Prevents perceived hangs without streaming raw logs or masking real inactivity timeouts.                 |
+| Timeout model       | keep inactivity timeout authoritative                  | Heartbeats must not reset inactivity or paper over stuck children.                                       |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable |
-| ---- | ----- | ------------ | -------------- |
-| **Wave 0** | 1.1 | None | 1 agent |
-| **Wave 1** | 1.2 | Task 1.1 | 1 agent |
+| Wave       | Tasks | Dependencies | Parallelizable |
+| ---------- | ----- | ------------ | -------------- |
+| **Wave 0** | 1.1   | None         | 1 agent        |
+| **Wave 1** | 1.2   | Task 1.1     | 1 agent        |
 
 ### Phase 1: Wrapper observability + proof [Complexity: S]
 
@@ -93,19 +93,19 @@ Document the refined behavior in the setup guide: quiet mode remains concise, bu
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-| ---- | ------- | ---------------- |
-| Unit tests | `vp run test:unit -- src/cli/commands/init/scaffolders/gstack/index.test.ts` | New runner tests pass |
-| Type safety | `vp run typecheck` | Zero errors |
-| Docs drift | `vp run docs:check` | No docs-frontmatter regressions |
+| Gate        | Command                                                                      | Success Criteria                |
+| ----------- | ---------------------------------------------------------------------------- | ------------------------------- |
+| Unit tests  | `vp run test:unit -- src/cli/commands/init/scaffolders/gstack/index.test.ts` | New runner tests pass           |
+| Type safety | `vp run typecheck`                                                           | Zero errors                     |
+| Docs drift  | `vp run docs:check`                                                          | No docs-frontmatter regressions |
 
 ## Edge Cases and Error Handling
 
-| Edge Case | Risk | Solution | Task |
-| --------- | ---- | -------- | ---- |
-| Child outputs progress bars / ANSI fragments | Heartbeat preview becomes noisy | Sanitize ANSI and summarize last non-empty visible line | 1.1 |
-| Child is chatty | Heartbeats become spam | Only emit heartbeats when the child has been quiet for at least one heartbeat interval | 1.1 |
-| Heartbeat loop masks a real stall | Setup never fails | Heartbeats must not refresh inactivity timers | 1.1 |
+| Edge Case                                    | Risk                            | Solution                                                                               | Task |
+| -------------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------- | ---- |
+| Child outputs progress bars / ANSI fragments | Heartbeat preview becomes noisy | Sanitize ANSI and summarize last non-empty visible line                                | 1.1  |
+| Child is chatty                              | Heartbeats become spam          | Only emit heartbeats when the child has been quiet for at least one heartbeat interval | 1.1  |
+| Heartbeat loop masks a real stall            | Setup never fails               | Heartbeats must not refresh inactivity timers                                          | 1.1  |
 
 ## Non-goals
 
@@ -115,9 +115,9 @@ Document the refined behavior in the setup guide: quiet mode remains concise, bu
 
 ## Risks
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-| Heartbeat phrasing becomes too noisy | Setup output regresses | Keep messages short, periodic, and quiet-mode only |
+| Risk                                            | Impact                  | Mitigation                                                 |
+| ----------------------------------------------- | ----------------------- | ---------------------------------------------------------- |
+| Heartbeat phrasing becomes too noisy            | Setup output regresses  | Keep messages short, periodic, and quiet-mode only         |
 | Last-output parsing misses progress-only chunks | Heartbeat lacks context | Fall back to elapsed + silence age without failing the run |
 
 ## Trust Dossier
@@ -132,21 +132,21 @@ Document the refined behavior in the setup guide: quiet mode remains concise, bu
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-08-wp-setup-phase-aware-gstack-subprocess-hardening.md |
+| ID  | Claim                                                          | Evidence                                                                                 |
+| --- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-08-wp-setup-phase-aware-gstack-subprocess-hardening.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

@@ -43,14 +43,14 @@ resolved (see below).
 
 ## What stops working when this flag is set
 
-| Feature | Behavior when disabled |
-| ------- | ---------------------- |
-| `pushEvent` calls | Silently skipped; no events sent to platform-api. |
-| Replica refresh (`getSnapshot`) | Not called; local SQLite data is used as-is regardless of TTL. |
-| Template catalog (`listTemplates`) | Returns empty list; `wp blueprint new --template` falls back to local templates only. |
-| Health check (`healthCheck`) | Returns `{ ok: false, latencyMs: 0 }` immediately without making a network call. |
-| `wp blueprint` CLI mutation commands | Write to local SQLite + markdown files only (pre-sync behavior). |
-| `wp audit blueprint-lifecycle` | Reads from local SQLite replica only; platform state is not consulted. |
+| Feature                              | Behavior when disabled                                                                |
+| ------------------------------------ | ------------------------------------------------------------------------------------- |
+| `pushEvent` calls                    | Silently skipped; no events sent to platform-api.                                     |
+| Replica refresh (`getSnapshot`)      | Not called; local SQLite data is used as-is regardless of TTL.                        |
+| Template catalog (`listTemplates`)   | Returns empty list; `wp blueprint new --template` falls back to local templates only. |
+| Health check (`healthCheck`)         | Returns `{ ok: false, latencyMs: 0 }` immediately without making a network call.      |
+| `wp blueprint` CLI mutation commands | Write to local SQLite + markdown files only (pre-sync behavior).                      |
+| `wp audit blueprint-lifecycle`       | Reads from local SQLite replica only; platform state is not consulted.                |
 
 Local history and markdown files remain authoritative and are not affected.
 No data is lost — mutations accumulate locally and will sync on re-enable.
@@ -60,7 +60,7 @@ No data is lost — mutations accumulate locally and will sync on re-enable.
 ## How to re-enable
 
 1. Confirm the platform-api issue is resolved (check status page or `ak
-   blueprint healthCheck`).
+blueprint healthCheck`).
 2. Unset the variable:
 
    ```bash
@@ -91,8 +91,8 @@ No data is lost — mutations accumulate locally and will sync on re-enable.
 ## Why this flag exists (CEO review 1A)
 
 The platform sync layer is additive — it should never block local development
-workflows.  If the platform is unavailable, agents must be able to continue
-working without degradation.  `WP_BLUEPRINT_PLATFORM_DISABLED=1` is the
+workflows. If the platform is unavailable, agents must be able to continue
+working without degradation. `WP_BLUEPRINT_PLATFORM_DISABLED=1` is the
 guaranteed escape hatch that restores pre-sync behavior with a single env var,
 without requiring a code change or a package downgrade.
 
@@ -103,7 +103,7 @@ without requiring a code change or a package downgrade.
 - `WP_BLUEPRINT_PLATFORM_URL` — overrides the default platform-api base URL
   (useful for pointing at a staging environment).
 - `WP_BLUEPRINT_REPLICA_TTL_S` — controls how often the local replica is
-  refreshed from the platform (default: 30 s).  Set to `0` to always pull.
+  refreshed from the platform (default: 30 s). Set to `0` to always pull.
 - `src/blueprint/sync/types.ts` — `BlueprintPlatformClient` interface
   definition (the OSS boundary).
 - `blueprints/in-progress/blueprint-platform-sync/notes/api-contract.md` —

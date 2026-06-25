@@ -7,54 +7,54 @@
  * Filesystem operations abstraction.
  */
 export interface FileSystem {
-  readFile(path: string): Promise<string>
-  writeFile(path: string, content: string): Promise<void>
-  copyFile(src: string, dest: string): Promise<void>
-  existsSync(path: string): boolean
+  readFile(path: string): Promise<string>;
+  writeFile(path: string, content: string): Promise<void>;
+  copyFile(src: string, dest: string): Promise<void>;
+  existsSync(path: string): boolean;
 }
 
 /**
  * Glob function signature.
  */
-export type GlobFunction = (patterns: string[], options: unknown) => Promise<string[]>
+export type GlobFunction = (patterns: string[], options: unknown) => Promise<string[]>;
 
 /**
  * Logger abstraction (no spinners - direct output only).
  */
 export interface Logger {
-  info(msg: string): void
-  success(msg: string): void
-  error(msg: string): void
-  warn(msg: string): void
-  debug(msg: string): void
-  log(msg: string): void
+  info(msg: string): void;
+  success(msg: string): void;
+  error(msg: string): void;
+  warn(msg: string): void;
+  debug(msg: string): void;
+  log(msg: string): void;
 }
 
 /**
  * Process environment abstraction.
  */
 export interface ProcessEnv {
-  cwd(): string
-  exit(code: number): void
-  execSync(cmd: string, opts: unknown): string
+  cwd(): string;
+  exit(code: number): void;
+  execSync(cmd: string, opts: unknown): string;
 }
 
 /**
  * Dependencies for ValidateCommand.
  */
 export interface ValidatorDeps {
-  fs: FileSystem
-  logger: Logger
-  process: ProcessEnv
-  glob: GlobFunction
+  fs: FileSystem;
+  logger: Logger;
+  process: ProcessEnv;
+  glob: GlobFunction;
 }
 
 /**
  * Dependencies for MigrateCommand.
  */
 export interface MigratorDeps {
-  fs: FileSystem
-  logger: Logger
-  process: ProcessEnv
-  glob: GlobFunction
+  fs: FileSystem;
+  logger: Logger;
+  process: ProcessEnv;
+  glob: GlobFunction;
 }

@@ -6,43 +6,43 @@
  * - Each accepted task block has **Acceptance:** with at least one checkbox
  */
 
-import type { ValidationResult } from '#core/types'
+import type { ValidationResult } from "#core/types";
 
-import { parseTaskBlocks } from './task-blocks.js'
+import { parseTaskBlocks } from "./task-blocks.js";
 
-const DEPENDS_REGEX = /\*\*Depends:\*\*/
-const ACCEPTANCE_WITH_CHECKBOX_REGEX = /\*\*Acceptance(?:\s+Criteria)?:\*\*[\s\S]*?- \[[ x]\]/
+const DEPENDS_REGEX = /\*\*Depends:\*\*/;
+const ACCEPTANCE_WITH_CHECKBOX_REGEX = /\*\*Acceptance(?:\s+Criteria)?:\*\*[\s\S]*?- \[[ x]\]/;
 
 /** Extract doc type from frontmatter */
 function extractDocType(markdown: string): string | null {
-  const match = /^type:\s*(\S+)/m.exec(markdown)
-  return match?.[1] ?? null
+  const match = /^type:\s*(\S+)/m.exec(markdown);
+  return match?.[1] ?? null;
 }
 
 interface TaskSectionIssue {
-  taskId: string
-  missingDepends: boolean
-  missingAcceptance: boolean
+  taskId: string;
+  missingDepends: boolean;
+  missingAcceptance: boolean;
 }
 
 /** Find task blocks missing required sections */
 function findTaskSectionIssues(markdown: string): TaskSectionIssue[] {
-  const issues: TaskSectionIssue[] = []
+  const issues: TaskSectionIssue[] = [];
 
   function checkBlock(taskId: string, block: string): void {
-    const missingDepends = !DEPENDS_REGEX.test(block)
-    const missingAcceptance = !ACCEPTANCE_WITH_CHECKBOX_REGEX.test(block)
+    const missingDepends = !DEPENDS_REGEX.test(block);
+    const missingAcceptance = !ACCEPTANCE_WITH_CHECKBOX_REGEX.test(block);
 
     if (missingDepends || missingAcceptance) {
-      issues.push({ taskId, missingDepends, missingAcceptance })
+      issues.push({ taskId, missingDepends, missingAcceptance });
     }
   }
 
   for (const { taskId, block } of parseTaskBlocks(markdown)) {
-    checkBlock(taskId, block)
+    checkBlock(taskId, block);
   }
 
-  return issues
+  return issues;
 }
 
 /**
@@ -51,29 +51,29 @@ function findTaskSectionIssues(markdown: string): TaskSectionIssue[] {
  */
 export function validateTaskSections(markdown: string, docType?: string): ValidationResult {
   // Determine doc type from parameter or frontmatter
-  const type = docType ?? extractDocType(markdown)
+  const type = docType ?? extractDocType(markdown);
 
   // Only validate blueprint type documents, not parent-roadmap
-  if (type !== 'blueprint') {
-    return { valid: true }
+  if (type !== "blueprint") {
+    return { valid: true };
   }
 
-  const issues = findTaskSectionIssues(markdown)
+  const issues = findTaskSectionIssues(markdown);
 
   if (!issues.length) {
-    return { valid: true }
+    return { valid: true };
   }
 
-  const errorMessages: string[] = []
+  const errorMessages: string[] = [];
   for (const issue of issues) {
-    const missing: string[] = []
-    if (issue.missingDepends) missing.push('**Depends:**')
-    if (issue.missingAcceptance) missing.push('**Acceptance:** with checkbox')
-    errorMessages.push(`Task ${issue.taskId} missing required sections: ${missing.join(', ')}`)
+    const missing: string[] = [];
+    if (issue.missingDepends) missing.push("**Depends:**");
+    if (issue.missingAcceptance) missing.push("**Acceptance:** with checkbox");
+    errorMessages.push(`Task ${issue.taskId} missing required sections: ${missing.join(", ")}`);
   }
 
   return {
     valid: false,
-    error: errorMessages.join('; '),
-  }
+    error: errorMessages.join("; "),
+  };
 }

@@ -16,8 +16,8 @@
  * / `coldStartIfNeeded` paths. An in-memory DB has no file, no lock, no metadata.
  */
 
-import { openDb, type DbConnection } from './connection.js'
-import { ingestAll } from './ingester.js'
+import { openDb, type DbConnection } from "./connection.js";
+import { ingestAll } from "./ingester.js";
 
 /**
  * Parse `blueprints/` (+ `tech-debt/`) markdown under `cwd` into a fresh
@@ -25,12 +25,12 @@ import { ingestAll } from './ingester.js'
  * `close()` it (typically in a `finally`).
  */
 export async function buildEphemeralProjection(cwd: string): Promise<DbConnection> {
-  const conn = openDb(':memory:')
+  const conn = openDb(":memory:");
   try {
-    await ingestAll({ db: conn.db, cwd })
+    await ingestAll({ db: conn.db, cwd });
   } catch (error) {
-    conn.close()
-    throw error
+    conn.close();
+    throw error;
   }
-  return conn
+  return conn;
 }

@@ -1,39 +1,39 @@
-import type { ValidationError } from '#config/docs-lint/index'
+import type { ValidationError } from "#config/docs-lint/index";
 
-import { existsSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 
 /** External or special URL prefixes to skip */
 const SKIPPED_PREFIXES = [
-  'http://',
-  'https://',
-  'mailto:',
-  'tel:',
-  '#', // anchor-only links
-  'file://', // file:// URIs (deep links, not relative paths)
-  'plan://', // plan:// protocol for cross-plan references
-]
+  "http://",
+  "https://",
+  "mailto:",
+  "tel:",
+  "#", // anchor-only links
+  "file://", // file:// URIs (deep links, not relative paths)
+  "plan://", // plan:// protocol for cross-plan references
+];
 
 /**
  * Check if href should be skipped (external or special URLs)
  */
 function shouldSkipLink(href: string): boolean {
   if (SKIPPED_PREFIXES.some((prefix) => href.startsWith(prefix))) {
-    return true
+    return true;
   }
   // Skip template placeholders like {source}.md or ${name}.md
   if (/[{$]/.test(href)) {
-    return true
+    return true;
   }
-  return false
+  return false;
 }
 
 /**
  * Check if href points to a markdown file (the only type we validate)
  */
 function isValidMarkdownLink(href: string): boolean {
-  const pathWithoutAnchor = href.split('#')[0]
-  return pathWithoutAnchor?.endsWith('.md') ?? false
+  const pathWithoutAnchor = href.split("#")[0];
+  return pathWithoutAnchor?.endsWith(".md") ?? false;
 }
 
 /**
@@ -43,36 +43,36 @@ function extractLinksFromLine(
   line: string,
   lineNumber: number,
 ): Array<{ href: string; line: number; isImage: boolean }> {
-  const links: Array<{ href: string; line: number; isImage: boolean }> = []
+  const links: Array<{ href: string; line: number; isImage: boolean }> = [];
   // Simpler regex that avoids catastrophic backtracking
   // Matches: [text](url) and ![alt](url)
   // Uses possessive-like pattern by not allowing backtracking on bracket content
-  const linkRegex = /(!?\[[^\]]*\])\(([^)]+)\)/g
-  let match: RegExpExecArray | null
+  const linkRegex = /(!?\[[^\]]*\])\(([^)]+)\)/g;
+  let match: RegExpExecArray | null;
 
-  match = linkRegex.exec(line)
+  match = linkRegex.exec(line);
   while (match !== null) {
-    const isImage = match[1]?.startsWith('!')
-    const href = match[2]?.trim()
+    const isImage = match[1]?.startsWith("!");
+    const href = match[2]?.trim();
 
     if (!href) {
-      match = linkRegex.exec(line)
-      continue
+      match = linkRegex.exec(line);
+      continue;
     }
     if (shouldSkipLink(href)) {
-      match = linkRegex.exec(line)
-      continue
+      match = linkRegex.exec(line);
+      continue;
     }
     if (!isValidMarkdownLink(href)) {
-      match = linkRegex.exec(line)
-      continue
+      match = linkRegex.exec(line);
+      continue;
     }
 
-    links.push({ href, line: lineNumber, isImage: isImage ?? false })
-    match = linkRegex.exec(line)
+    links.push({ href, line: lineNumber, isImage: isImage ?? false });
+    match = linkRegex.exec(line);
   }
 
-  return links
+  return links;
 }
 
 /**
@@ -83,27 +83,27 @@ function extractLinksFromLine(
 export function extractLinks(
   content: string,
 ): Array<{ href: string; line: number; isImage: boolean }> {
-  const links: Array<{ href: string; line: number; isImage: boolean }> = []
-  const lines = content.split('\n')
-  let inCodeBlock = false
+  const links: Array<{ href: string; line: number; isImage: boolean }> = [];
+  const lines = content.split("\n");
+  let inCodeBlock = false;
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    if (!line) continue
+    const line = lines[i];
+    if (!line) continue;
 
     // Track code block boundaries
-    if (line.trim().startsWith('```')) {
-      inCodeBlock = !inCodeBlock
-      continue
+    if (line.trim().startsWith("```")) {
+      inCodeBlock = !inCodeBlock;
+      continue;
     }
 
     // Skip content inside code blocks
-    if (inCodeBlock) continue
+    if (inCodeBlock) continue;
 
-    links.push(...extractLinksFromLine(line, i + 1))
+    links.push(...extractLinksFromLine(line, i + 1));
   }
 
-  return links
+  return links;
 }
 
 /**
@@ -112,11 +112,11 @@ export function extractLinks(
  */
 export function resolveLinkPath(href: string, fromFile: string): string {
   // Strip hash anchor if present
-  const [pathPart] = href.split('#')
-  if (!pathPart) return ''
+  const [pathPart] = href.split("#");
+  if (!pathPart) return "";
 
   // Resolve relative to the directory containing the document
-  return resolve(dirname(fromFile), pathPart)
+  return resolve(dirname(fromFile), pathPart);
 }
 
 /**
@@ -132,26 +132,26 @@ export function resolveLinkPath(href: string, fromFile: string): string {
  * - Links inside code blocks
  */
 export function validateLinks(filePath: string, content: string): ValidationError[] {
-  const errors: ValidationError[] = []
-  const links = extractLinks(content)
+  const errors: ValidationError[] = [];
+  const links = extractLinks(content);
 
   for (const link of links) {
-    const resolvedPath = resolveLinkPath(link.href, filePath)
+    const resolvedPath = resolveLinkPath(link.href, filePath);
 
-    if (!resolvedPath) continue
+    if (!resolvedPath) continue;
 
     // Check if file exists
     if (!existsSync(resolvedPath)) {
       errors.push({
         file: filePath,
         line: link.line,
-        severity: 'error',
-        source: 'structure',
-        message: `Broken ${link.isImage ? 'image' : 'link'}: ${link.href} (resolved to ${resolvedPath})`,
-        ruleId: 'broken-link',
-      })
+        severity: "error",
+        source: "structure",
+        message: `Broken ${link.isImage ? "image" : "link"}: ${link.href} (resolved to ${resolvedPath})`,
+        ruleId: "broken-link",
+      });
     }
   }
 
-  return errors
+  return errors;
 }

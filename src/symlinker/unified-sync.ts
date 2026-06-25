@@ -33,26 +33,26 @@ import {
   symlinkSync,
   unlinkSync,
   writeFileSync,
-} from 'node:fs'
-import { dirname, join, relative, resolve } from 'node:path'
+} from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 
-import { type ContentKind, type ContentRecord, loadContent } from '#content/loader'
+import { type ContentKind, type ContentRecord, loadContent } from "#content/loader";
 
 import {
   type UnifiedConsumerConfig,
   selectUnifiedConsumers,
   unifiedRuleFilename,
-} from './consumers.js'
+} from "./consumers.js";
 
 export interface UnifiedSyncOptions {
-  readonly catalogDir: string
-  readonly consumerRoot: string
+  readonly catalogDir: string;
+  readonly consumerRoot: string;
   /** Optional kind filter. Default: rules + skills. */
-  readonly kinds?: readonly ContentKind[]
+  readonly kinds?: readonly ContentKind[];
   /** When true, report mismatches without writing. */
-  readonly check?: boolean
+  readonly check?: boolean;
   /** Override consumer registry (testing). Takes precedence over `hosts`. */
-  readonly consumers?: readonly UnifiedConsumerConfig[]
+  readonly consumers?: readonly UnifiedConsumerConfig[];
   /**
    * Selected agent hosts (`hosts.selected` from `.webpressorc.json`). When
    * `consumers` is not given, the active consumer set is host-gated via
@@ -60,34 +60,34 @@ export interface UnifiedSyncOptions {
    * projection, OpenCode gets `.opencode/skills`. Undefined → plugin-first
    * default (no host skill dirs).
    */
-  readonly hosts?: readonly string[]
+  readonly hosts?: readonly string[];
   /**
    * Optional allowlist of skill slugs. When provided, only `kind === 'skill'`
    * records whose slug is in this set are projected. Rules are unaffected.
    * Used by `wp setup` to gate Tier-3 skills behind opt-in selection while
    * still letting all canonical rules flow through.
    */
-  readonly allowedSkillSlugs?: ReadonlySet<string>
+  readonly allowedSkillSlugs?: ReadonlySet<string>;
   /**
    * Optional set of skill slugs that must NOT be pruned even though they are
    * absent from the projected record set. Used by `wp setup` for skills that
    * are produced by separate scaffolders (e.g. the rendered
    * generated skills that are produced outside the catalog.
    */
-  readonly preserveSkillSlugs?: ReadonlySet<string>
+  readonly preserveSkillSlugs?: ReadonlySet<string>;
 }
 
 export interface UnifiedSyncMismatch {
-  readonly consumerId: string
-  readonly targetPath: string
-  readonly reason: string
+  readonly consumerId: string;
+  readonly targetPath: string;
+  readonly reason: string;
 }
 
 export interface UnifiedSyncResult {
   /** Number of writes performed (or, in check mode, mismatches detected). */
-  readonly fixCount: number
+  readonly fixCount: number;
   /** Mismatches surfaced in check mode. Empty in non-check mode. */
-  readonly mismatches: readonly UnifiedSyncMismatch[]
+  readonly mismatches: readonly UnifiedSyncMismatch[];
 }
 
 /**
@@ -98,39 +98,39 @@ export interface UnifiedSyncResult {
 function createSymlinkWithType(
   target: string,
   linkPath: string,
-  type: 'file' | 'dir',
+  type: "file" | "dir",
   label: string,
 ): void {
   try {
-    symlinkSync(target, linkPath, type)
+    symlinkSync(target, linkPath, type);
   } catch (error) {
-    const code = (error as NodeJS.ErrnoException).code
-    if (process.platform === 'win32' && code === 'EPERM') {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (process.platform === "win32" && code === "EPERM") {
       throw new Error(
         `Cannot create symlink ${label} → ${target}: Windows denied permission. ` +
-          'Enable Developer Mode (Settings → Privacy & security → For developers) ' +
-          'or run this script from an elevated shell.',
+          "Enable Developer Mode (Settings → Privacy & security → For developers) " +
+          "or run this script from an elevated shell.",
         { cause: error },
-      )
+      );
     }
-    throw error
+    throw error;
   }
 }
 
 function atomicWriteFile(filePath: string, content: string | Buffer): void {
-  mkdirSync(dirname(filePath), { recursive: true })
-  const tmp = `${filePath}.tmp-${process.pid}-${Date.now()}`
-  writeFileSync(tmp, content)
-  renameSync(tmp, filePath)
+  mkdirSync(dirname(filePath), { recursive: true });
+  const tmp = `${filePath}.tmp-${process.pid}-${Date.now()}`;
+  writeFileSync(tmp, content);
+  renameSync(tmp, filePath);
 }
 
 function safeRemove(path: string): void {
   try {
-    const st = lstatSync(path)
+    const st = lstatSync(path);
     if (st.isSymbolicLink() || st.isFile()) {
-      unlinkSync(path)
+      unlinkSync(path);
     } else {
-      rmSync(path, { recursive: true, force: true })
+      rmSync(path, { recursive: true, force: true });
     }
   } catch {
     // already gone
@@ -139,21 +139,21 @@ function safeRemove(path: string): void {
 
 export function isSymlinkPointingTo(linkPath: string, expectedAbs: string): boolean {
   try {
-    const st = lstatSync(linkPath)
-    if (!st.isSymbolicLink()) return false
-    const target = readlinkSync(linkPath)
-    const resolved = resolve(dirname(linkPath), target)
-    return resolved === expectedAbs
+    const st = lstatSync(linkPath);
+    if (!st.isSymbolicLink()) return false;
+    const target = readlinkSync(linkPath);
+    const resolved = resolve(dirname(linkPath), target);
+    return resolved === expectedAbs;
   } catch {
-    return false
+    return false;
   }
 }
 
 interface PlannedTarget {
-  readonly consumer: UnifiedConsumerConfig
-  readonly record: ContentRecord
-  readonly targetPath: string
-  readonly entryName: string
+  readonly consumer: UnifiedConsumerConfig;
+  readonly record: ContentRecord;
+  readonly targetPath: string;
+  readonly entryName: string;
 }
 
 function planTargets(
@@ -161,25 +161,25 @@ function planTargets(
   consumers: readonly UnifiedConsumerConfig[],
   consumerRoot: string,
 ): PlannedTarget[] {
-  const out: PlannedTarget[] = []
+  const out: PlannedTarget[] = [];
   for (const consumer of consumers) {
     for (const record of records) {
-      if (record.kind !== consumer.acceptsKind) continue
-      const consumerDirAbs = join(consumerRoot, consumer.dir)
-      let entryName: string
-      let targetPath: string
-      if (record.kind === 'rule') {
-        entryName = unifiedRuleFilename(consumer, record.slug)
-        targetPath = join(consumerDirAbs, entryName)
+      if (record.kind !== consumer.acceptsKind) continue;
+      const consumerDirAbs = join(consumerRoot, consumer.dir);
+      let entryName: string;
+      let targetPath: string;
+      if (record.kind === "rule") {
+        entryName = unifiedRuleFilename(consumer, record.slug);
+        targetPath = join(consumerDirAbs, entryName);
       } else {
         // skills: dir-shaped
-        entryName = record.slug
-        targetPath = join(consumerDirAbs, entryName)
+        entryName = record.slug;
+        targetPath = join(consumerDirAbs, entryName);
       }
-      out.push({ consumer, record, targetPath, entryName })
+      out.push({ consumer, record, targetPath, entryName });
     }
   }
-  return out
+  return out;
 }
 
 /**
@@ -187,127 +187,127 @@ function planTargets(
  * Mirrors files; subdirectories are created on-demand. Files are atomic-written.
  */
 function copyDirRecursive(srcDir: string, destDir: string): number {
-  let writes = 0
-  mkdirSync(destDir, { recursive: true })
+  let writes = 0;
+  mkdirSync(destDir, { recursive: true });
   for (const entry of readdirSync(srcDir, { withFileTypes: true })) {
-    const srcPath = join(srcDir, entry.name)
-    const destPath = join(destDir, entry.name)
+    const srcPath = join(srcDir, entry.name);
+    const destPath = join(destDir, entry.name);
     if (entry.isDirectory()) {
-      writes += copyDirRecursive(srcPath, destPath)
+      writes += copyDirRecursive(srcPath, destPath);
     } else if (entry.isFile()) {
-      const srcContent = readFileSync(srcPath)
-      let needsWrite = true
+      const srcContent = readFileSync(srcPath);
+      let needsWrite = true;
       if (existsSync(destPath)) {
         try {
-          const existing = readFileSync(destPath)
-          if (existing.equals(srcContent)) needsWrite = false
+          const existing = readFileSync(destPath);
+          if (existing.equals(srcContent)) needsWrite = false;
         } catch {
           // fall through to write
         }
       }
       if (needsWrite) {
-        atomicWriteFile(destPath, srcContent)
-        writes++
+        atomicWriteFile(destPath, srcContent);
+        writes++;
       }
     }
   }
-  return writes
+  return writes;
 }
 
 function dirsEqual(srcDir: string, destDir: string): boolean {
-  if (!existsSync(destDir)) return false
+  if (!existsSync(destDir)) return false;
   const srcEntries = readdirSync(srcDir, { withFileTypes: true })
     .map((e) => e.name)
-    .toSorted()
+    .toSorted();
   const destEntries = readdirSync(destDir, { withFileTypes: true })
     .map((e) => e.name)
-    .toSorted()
-  if (srcEntries.length !== destEntries.length) return false
+    .toSorted();
+  if (srcEntries.length !== destEntries.length) return false;
   for (let i = 0; i < srcEntries.length; i++) {
-    if (srcEntries[i] !== destEntries[i]) return false
-    const srcSub = join(srcDir, srcEntries[i] as string)
-    const destSub = join(destDir, srcEntries[i] as string)
-    const srcStat = lstatSync(srcSub)
+    if (srcEntries[i] !== destEntries[i]) return false;
+    const srcSub = join(srcDir, srcEntries[i] as string);
+    const destSub = join(destDir, srcEntries[i] as string);
+    const srcStat = lstatSync(srcSub);
     if (srcStat.isDirectory()) {
-      if (!dirsEqual(srcSub, destSub)) return false
+      if (!dirsEqual(srcSub, destSub)) return false;
     } else if (srcStat.isFile()) {
-      const srcContent = readFileSync(srcSub)
-      const destContent = readFileSync(destSub)
-      if (!srcContent.equals(destContent)) return false
+      const srcContent = readFileSync(srcSub);
+      const destContent = readFileSync(destSub);
+      if (!srcContent.equals(destContent)) return false;
     }
   }
-  return true
+  return true;
 }
 
 /**
  * Apply a single planned target. Returns 1 on write, 0 if already correct.
  */
 function applyTarget(plan: PlannedTarget, check: boolean): { wrote: number; mismatch?: string } {
-  const { consumer, record, targetPath } = plan
-  const sourcePath = record.kind === 'skill' ? dirname(record.filePath) : record.filePath
+  const { consumer, record, targetPath } = plan;
+  const sourcePath = record.kind === "skill" ? dirname(record.filePath) : record.filePath;
 
   switch (consumer.strategy) {
-    case 'symlink': {
+    case "symlink": {
       // Use the resolved (real) source path so links survive pnpm version churn.
-      if (isSymlinkPointingTo(targetPath, sourcePath)) return { wrote: 0 }
-      if (check) return { wrote: 1, mismatch: 'symlink missing or pointing elsewhere' }
-      mkdirSync(dirname(targetPath), { recursive: true })
-      safeRemove(targetPath)
-      const rel = relative(dirname(targetPath), sourcePath)
-      const symType: 'file' | 'dir' = record.kind === 'skill' ? 'dir' : 'file'
-      createSymlinkWithType(rel, targetPath, symType, `${consumer.dir}/${plan.entryName}`)
-      return { wrote: 1 }
+      if (isSymlinkPointingTo(targetPath, sourcePath)) return { wrote: 0 };
+      if (check) return { wrote: 1, mismatch: "symlink missing or pointing elsewhere" };
+      mkdirSync(dirname(targetPath), { recursive: true });
+      safeRemove(targetPath);
+      const rel = relative(dirname(targetPath), sourcePath);
+      const symType: "file" | "dir" = record.kind === "skill" ? "dir" : "file";
+      createSymlinkWithType(rel, targetPath, symType, `${consumer.dir}/${plan.entryName}`);
+      return { wrote: 1 };
     }
-    case 'copy': {
-      if (record.kind === 'skill') {
+    case "copy": {
+      if (record.kind === "skill") {
         // Compare dir contents; copy if differs.
-        if (dirsEqual(sourcePath, targetPath)) return { wrote: 0 }
-        if (check) return { wrote: 1, mismatch: 'copied skill dir differs from source' }
+        if (dirsEqual(sourcePath, targetPath)) return { wrote: 0 };
+        if (check) return { wrote: 1, mismatch: "copied skill dir differs from source" };
         // Replace existing target if it's a symlink/file; clean recursively if dir.
         if (existsSync(targetPath)) {
-          const st = lstatSync(targetPath)
-          if (st.isSymbolicLink() || st.isFile()) unlinkSync(targetPath)
+          const st = lstatSync(targetPath);
+          if (st.isSymbolicLink() || st.isFile()) unlinkSync(targetPath);
         }
-        mkdirSync(targetPath, { recursive: true })
-        copyDirRecursive(sourcePath, targetPath)
-        return { wrote: 1 }
+        mkdirSync(targetPath, { recursive: true });
+        copyDirRecursive(sourcePath, targetPath);
+        return { wrote: 1 };
       }
       // rule: single file copy with content compare.
-      const sourceBytes = readFileSync(sourcePath)
-      let same = false
+      const sourceBytes = readFileSync(sourcePath);
+      let same = false;
       if (existsSync(targetPath)) {
         try {
-          const existing = readFileSync(targetPath)
-          same = existing.equals(sourceBytes)
+          const existing = readFileSync(targetPath);
+          same = existing.equals(sourceBytes);
         } catch {
-          same = false
+          same = false;
         }
       }
-      if (same) return { wrote: 0 }
-      if (check) return { wrote: 1, mismatch: 'copied rule differs from source' }
-      atomicWriteFile(targetPath, sourceBytes)
-      return { wrote: 1 }
+      if (same) return { wrote: 0 };
+      if (check) return { wrote: 1, mismatch: "copied rule differs from source" };
+      atomicWriteFile(targetPath, sourceBytes);
+      return { wrote: 1 };
     }
-    case 'transform': {
-      const transform = consumer.transform
+    case "transform": {
+      const transform = consumer.transform;
       if (!transform) {
         throw new Error(
           `Unified consumer '${consumer.id}' uses strategy 'transform' but no transform fn was provided.`,
-        )
+        );
       }
-      const expected = transform({ record, targetPath })
-      let same = false
+      const expected = transform({ record, targetPath });
+      let same = false;
       if (existsSync(targetPath)) {
         try {
-          same = readFileSync(targetPath, 'utf8') === expected
+          same = readFileSync(targetPath, "utf8") === expected;
         } catch {
-          same = false
+          same = false;
         }
       }
-      if (same) return { wrote: 0 }
-      if (check) return { wrote: 1, mismatch: 'transformed output differs from source' }
-      atomicWriteFile(targetPath, expected)
-      return { wrote: 1 }
+      if (same) return { wrote: 0 };
+      if (check) return { wrote: 1, mismatch: "transformed output differs from source" };
+      atomicWriteFile(targetPath, expected);
+      return { wrote: 1 };
     }
   }
 }
@@ -325,82 +325,82 @@ function pruneStale(
   check: boolean,
   preserveSkillSlugs: ReadonlySet<string> | undefined,
 ): { removed: number; mismatches: UnifiedSyncMismatch[] } {
-  const expectedByConsumerDir = new Map<string, Set<string>>()
+  const expectedByConsumerDir = new Map<string, Set<string>>();
   for (const plan of plans) {
-    const key = plan.consumer.dir
-    let set = expectedByConsumerDir.get(key)
+    const key = plan.consumer.dir;
+    let set = expectedByConsumerDir.get(key);
     if (!set) {
-      set = new Set()
-      expectedByConsumerDir.set(key, set)
+      set = new Set();
+      expectedByConsumerDir.set(key, set);
     }
-    set.add(plan.entryName)
+    set.add(plan.entryName);
   }
 
-  let removed = 0
-  const mismatches: UnifiedSyncMismatch[] = []
+  let removed = 0;
+  const mismatches: UnifiedSyncMismatch[] = [];
 
   // Each unique dir gets a single sweep — multiple consumers can share a dir
   // (e.g. .claude/skills hosts both rules and skills).
-  const dirs = new Set(consumers.map((c) => c.dir))
+  const dirs = new Set(consumers.map((c) => c.dir));
   for (const dir of dirs) {
-    const dirAbs = join(consumerRoot, dir)
-    if (!existsSync(dirAbs)) continue
-    const expected = expectedByConsumerDir.get(dir) ?? new Set<string>()
-    const consumersForDir = consumers.filter((c) => c.dir === dir)
+    const dirAbs = join(consumerRoot, dir);
+    if (!existsSync(dirAbs)) continue;
+    const expected = expectedByConsumerDir.get(dir) ?? new Set<string>();
+    const consumersForDir = consumers.filter((c) => c.dir === dir);
 
-    const acceptsSkill = consumersForDir.some((c) => c.acceptsKind === 'skill')
+    const acceptsSkill = consumersForDir.some((c) => c.acceptsKind === "skill");
 
     for (const entry of readdirSync(dirAbs, { withFileTypes: true })) {
-      const name = entry.name
-      if (name === 'README.md' || name === '.gitkeep' || name.startsWith('.')) continue
-      if (expected.has(name)) continue
+      const name = entry.name;
+      if (name === "README.md" || name === ".gitkeep" || name.startsWith(".")) continue;
+      if (expected.has(name)) continue;
       if (
         acceptsSkill &&
         preserveSkillSlugs !== undefined &&
         preserveSkillSlugs.has(name) &&
         entry.isDirectory()
       )
-        continue
+        continue;
 
       // Only prune entries that match a managed shape: rule extension OR a
       // directory (skill).
       const matchesRulePattern = consumersForDir.some(
-        (c) => c.acceptsKind === 'rule' && name.endsWith(c.ruleExtension ?? '.md'),
-      )
+        (c) => c.acceptsKind === "rule" && name.endsWith(c.ruleExtension ?? ".md"),
+      );
       const matchesSkillPattern =
-        consumersForDir.some((c) => c.acceptsKind === 'skill') && entry.isDirectory()
+        consumersForDir.some((c) => c.acceptsKind === "skill") && entry.isDirectory();
       // Also handle stale symlinks of either shape.
-      const isLink = entry.isSymbolicLink()
+      const isLink = entry.isSymbolicLink();
 
-      if (!matchesRulePattern && !matchesSkillPattern && !isLink) continue
+      if (!matchesRulePattern && !matchesSkillPattern && !isLink) continue;
 
-      const fullPath = join(dirAbs, name)
+      const fullPath = join(dirAbs, name);
       if (check) {
         mismatches.push({
           consumerId: consumersForDir[0]?.id ?? dir,
           targetPath: fullPath,
-          reason: 'stale entry not in unified record set',
-        })
-        removed++
-        continue
+          reason: "stale entry not in unified record set",
+        });
+        removed++;
+        continue;
       }
-      safeRemove(fullPath)
-      removed++
+      safeRemove(fullPath);
+      removed++;
     }
   }
 
-  return { removed, mismatches }
+  return { removed, mismatches };
 }
 
 /**
  * Main entrypoint. See module docstring.
  */
 export function runUnifiedSync(options: UnifiedSyncOptions): UnifiedSyncResult {
-  const kinds = options.kinds ?? (['rule', 'skill'] as const)
-  const kindSet = new Set<ContentKind>(kinds)
+  const kinds = options.kinds ?? (["rule", "skill"] as const);
+  const kindSet = new Set<ContentKind>(kinds);
   const consumers = (options.consumers ?? selectUnifiedConsumers(options.hosts)).filter(
     (consumer) => kindSet.has(consumer.acceptsKind),
-  )
+  );
 
   // Realpath both roots so symlink target paths (computed via `relative()`)
   // stay in a single realm. Without this, on macOS where tmpdir() resolves
@@ -409,49 +409,49 @@ export function runUnifiedSync(options: UnifiedSyncOptions): UnifiedSyncResult {
   // boundary and lands on a non-existent path.
   const consumerRoot = (() => {
     if (existsSync(options.consumerRoot)) {
-      mkdirSync(options.consumerRoot, { recursive: true })
-      return realpathSync(options.consumerRoot)
+      mkdirSync(options.consumerRoot, { recursive: true });
+      return realpathSync(options.consumerRoot);
     }
-    mkdirSync(options.consumerRoot, { recursive: true })
-    return realpathSync(options.consumerRoot)
-  })()
+    mkdirSync(options.consumerRoot, { recursive: true });
+    return realpathSync(options.consumerRoot);
+  })();
 
   const loaded = loadContent({
     catalogDir: options.catalogDir,
     consumerRoot,
     kinds,
-  })
+  });
 
   const filteredRecords = options.allowedSkillSlugs
     ? loaded.records.filter(
-        (r) => r.kind !== 'skill' || (options.allowedSkillSlugs as ReadonlySet<string>).has(r.slug),
+        (r) => r.kind !== "skill" || (options.allowedSkillSlugs as ReadonlySet<string>).has(r.slug),
       )
-    : loaded.records
+    : loaded.records;
 
   if (loaded.collisions.length > 0) {
     const lines = loaded.collisions.map(
       (c) => `  - ${c.kind}/${c.slug}: canonical=${c.canonical} consumer=${c.consumer}`,
-    )
+    );
     throw new Error(
-      `wp sync: slug collisions between catalog and consumer (rename consumer copy):\n${lines.join('\n')}`,
-    )
+      `wp sync: slug collisions between catalog and consumer (rename consumer copy):\n${lines.join("\n")}`,
+    );
   }
 
-  const plans = planTargets(filteredRecords, consumers, consumerRoot)
+  const plans = planTargets(filteredRecords, consumers, consumerRoot);
 
-  let fixCount = 0
-  const mismatches: UnifiedSyncMismatch[] = []
+  let fixCount = 0;
+  const mismatches: UnifiedSyncMismatch[] = [];
 
   for (const plan of plans) {
-    const result = applyTarget(plan, options.check === true)
+    const result = applyTarget(plan, options.check === true);
     if (result.wrote > 0) {
-      fixCount += result.wrote
+      fixCount += result.wrote;
       if (options.check === true && result.mismatch !== undefined) {
         mismatches.push({
           consumerId: plan.consumer.id,
           targetPath: plan.targetPath,
           reason: result.mismatch,
-        })
+        });
       }
     }
   }
@@ -462,9 +462,9 @@ export function runUnifiedSync(options: UnifiedSyncOptions): UnifiedSyncResult {
     consumerRoot,
     options.check === true,
     options.preserveSkillSlugs,
-  )
-  fixCount += prune.removed
-  mismatches.push(...prune.mismatches)
+  );
+  fixCount += prune.removed;
+  mismatches.push(...prune.mismatches);
 
-  return { fixCount, mismatches }
+  return { fixCount, mismatches };
 }

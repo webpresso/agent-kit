@@ -4,9 +4,9 @@ title: "Fix agent-kit release finalization gating for GitHub releases and runtim
 owner: ozby
 status: completed
 complexity: M
-created: '2026-06-11'
-last_updated: '2026-06-11'
-progress: '100% (completed)'
+created: "2026-06-11"
+last_updated: "2026-06-11"
+progress: "100% (completed)"
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -43,11 +43,11 @@ post-publish release finalization
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-| -------- | ------ | --------- |
-| Publish-success gate | `steps.changesets.outputs.published` | Changesets owns the publish contract; npm registry visibility is eventually consistent. |
-| Registry confirmation | bounded warning-only probe | Keeps diagnostics without allowing a false negative to suppress release finalization. |
-| Failure mode | explicit post-publish assertion step | Prevents a green workflow when publish happened but tag/release/assets did not. |
+| Decision              | Choice                               | Rationale                                                                               |
+| --------------------- | ------------------------------------ | --------------------------------------------------------------------------------------- |
+| Publish-success gate  | `steps.changesets.outputs.published` | Changesets owns the publish contract; npm registry visibility is eventually consistent. |
+| Registry confirmation | bounded warning-only probe           | Keeps diagnostics without allowing a false negative to suppress release finalization.   |
+| Failure mode          | explicit post-publish assertion step | Prevents a green workflow when publish happened but tag/release/assets did not.         |
 
 ## Quick Reference (Execution Waves)
 
@@ -104,11 +104,11 @@ GitHub Release, and 5 runtime assets.
 
 ## Verification Gates
 
-| Gate        | Command                            | Success Criteria |
-| ----------- | ---------------------------------- | ---------------- |
-| Lint        | `wp_lint` on `src/build/auth-preflight-packages.test.ts` | Zero violations |
-| Tests       | `wp_test` on `src/build/auth-preflight-packages.test.ts`, `scripts/public-readiness.test.ts` | All pass |
-| Workflow lint | `actionlint .github/workflows/release.yml` | Zero errors |
+| Gate          | Command                                                                                      | Success Criteria |
+| ------------- | -------------------------------------------------------------------------------------------- | ---------------- |
+| Lint          | `wp_lint` on `src/build/auth-preflight-packages.test.ts`                                     | Zero violations  |
+| Tests         | `wp_test` on `src/build/auth-preflight-packages.test.ts`, `scripts/public-readiness.test.ts` | All pass         |
+| Workflow lint | `actionlint .github/workflows/release.yml`                                                   | Zero errors      |
 
 ## Cross-Plan References
 
@@ -119,10 +119,10 @@ GitHub Release, and 5 runtime assets.
 
 ## Edge Cases and Error Handling
 
-| Edge Case | Risk | Solution | Task |
-| --------- | ---- | -------- | ---- |
-| npm registry visibility lags publish | False negative suppresses release finalization | Keep probing as warning-only, never the primary gate | 1.1 |
-| Release rerun after partial finalization | Duplicate branch/release mutations | Record explicit compatibility-branch status and use create-or-upload release logic | 1.1 |
+| Edge Case                                | Risk                                           | Solution                                                                           | Task |
+| ---------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------- | ---- |
+| npm registry visibility lags publish     | False negative suppresses release finalization | Keep probing as warning-only, never the primary gate                               | 1.1  |
+| Release rerun after partial finalization | Duplicate branch/release mutations             | Record explicit compatibility-branch status and use create-or-upload release logic | 1.1  |
 
 ## Non-goals
 
@@ -131,14 +131,14 @@ GitHub Release, and 5 runtime assets.
 
 ## Risks
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
+| Risk                                          | Impact                 | Mitigation                                                                                                                             |
+| --------------------------------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | Final assertion becomes too strict for reruns | Legitimate rerun fails | Allow explicit compatibility-branch terminal states (`created`, `existing`, `skipped-no-dist`) and verify release assets idempotently. |
 
 ## Technology Choices
 
-| Component | Technology | Version | Why |
-| --------- | ---------- | ------- | --- |
+| Component              | Technology                           | Version | Why                                                                     |
+| ---------------------- | ------------------------------------ | ------- | ----------------------------------------------------------------------- |
 | Workflow orchestration | GitHub Actions + `changesets/action` | current | Owns the publish contract and exposes the canonical `published` output. |
 
 ## Trust Dossier
@@ -153,21 +153,21 @@ GitHub Release, and 5 runtime assets.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/fix-agent-kit-release-finalization-gating-for-github-releases-and-runtime-assets.md |
+| ID  | Claim                                                          | Evidence                                                                                                      |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/fix-agent-kit-release-finalization-gating-for-github-releases-and-runtime-assets.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-22T00:00:00.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
 
 ### Residual Unknowns
 

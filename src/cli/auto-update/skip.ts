@@ -23,32 +23,32 @@
  * get a banner. That check belongs in the installer module.
  */
 
-export const INFORMATIONAL_FLAGS = new Set(['--version', '-v', '--help', '-h'])
+export const INFORMATIONAL_FLAGS = new Set(["--version", "-v", "--help", "-h"]);
 
 export const CI_ENV_KEYS = [
-  'CI',
-  'CONTINUOUS_INTEGRATION',
-  'BUILD_NUMBER',
-  'RUN_ID',
-  'GITHUB_ACTIONS',
-  'GITLAB_CI',
-  'CIRCLECI',
-  'TRAVIS',
-  'APPVEYOR',
-  'BUILDKITE',
-  'DRONE',
-  'JENKINS_URL',
-] as const
+  "CI",
+  "CONTINUOUS_INTEGRATION",
+  "BUILD_NUMBER",
+  "RUN_ID",
+  "GITHUB_ACTIONS",
+  "GITLAB_CI",
+  "CIRCLECI",
+  "TRAVIS",
+  "APPVEYOR",
+  "BUILDKITE",
+  "DRONE",
+  "JENKINS_URL",
+] as const;
 
-const SKIP_SUBCOMMANDS = new Set(['mcp', 'hook'])
+const SKIP_SUBCOMMANDS = new Set(["mcp", "hook"]);
 
 export function shouldSkipUpdateCheck(env: NodeJS.ProcessEnv, argv: string[]): boolean {
-  if (hasInformationalFlag(argv)) return true
-  if (argv[2] !== undefined && SKIP_SUBCOMMANDS.has(argv[2])) return true
-  if (env.WP_SKIP_UPDATE_CHECK === '1') return true
-  if (isPackageLifecycleEnvironment(env)) return true
-  if (isCiEnvironment(env)) return true
-  return false
+  if (hasInformationalFlag(argv)) return true;
+  if (argv[2] !== undefined && SKIP_SUBCOMMANDS.has(argv[2])) return true;
+  if (env.WP_SKIP_UPDATE_CHECK === "1") return true;
+  if (isPackageLifecycleEnvironment(env)) return true;
+  if (isCiEnvironment(env)) return true;
+  return false;
 }
 
 /**
@@ -57,36 +57,36 @@ export function shouldSkipUpdateCheck(env: NodeJS.ProcessEnv, argv: string[]): b
  * but block automatic install.
  */
 export function shouldSkipAutoInstall(env: NodeJS.ProcessEnv): boolean {
-  return env.WP_SKIP_AUTO_INSTALL === '1'
+  return env.WP_SKIP_AUTO_INSTALL === "1";
 }
 
 function hasInformationalFlag(argv: string[]): boolean {
   // Skip argv[0] (runtime) and argv[1] (script path). Inspect the rest.
   for (let i = 2; i < argv.length; i++) {
-    const arg = argv[i]
-    if (arg !== undefined && INFORMATIONAL_FLAGS.has(arg)) return true
+    const arg = argv[i];
+    if (arg !== undefined && INFORMATIONAL_FLAGS.has(arg)) return true;
   }
-  return false
+  return false;
 }
 
 function isCiEnvironment(env: NodeJS.ProcessEnv): boolean {
   // Match the convention used by `is-ci` / `ci-info`: `CI` set to any
   // truthy-looking value counts. Some CI vendors set `CI=1` rather than
   // `CI=true`, so don't anchor on a specific value.
-  if (env.CI !== undefined && env.CI !== '' && env.CI !== 'false' && env.CI !== '0') return true
+  if (env.CI !== undefined && env.CI !== "" && env.CI !== "false" && env.CI !== "0") return true;
   for (const key of CI_ENV_KEYS) {
-    if (key === 'CI') continue
-    const value = env[key]
-    if (value !== undefined && value !== '' && value !== 'false' && value !== '0') return true
+    if (key === "CI") continue;
+    const value = env[key];
+    if (value !== undefined && value !== "" && value !== "false" && value !== "0") return true;
   }
-  return false
+  return false;
 }
 
 export function isPackageLifecycleEnvironment(env: NodeJS.ProcessEnv): boolean {
-  const lifecycleEvent = env.npm_lifecycle_event
-  const packageJsonPath = env.npm_package_json
+  const lifecycleEvent = env.npm_lifecycle_event;
+  const packageJsonPath = env.npm_package_json;
   return Boolean(
     (lifecycleEvent && lifecycleEvent.trim().length > 0) ||
     (packageJsonPath && packageJsonPath.trim().length > 0),
-  )
+  );
 }

@@ -6,10 +6,10 @@ status: active
 scope: repo
 applies_to: [agents]
 related: []
-created: '2026-05-07'
-last_reviewed: '2026-05-07'
-paths: 
-  - '**/*'
+created: "2026-05-07"
+last_reviewed: "2026-05-07"
+paths:
+  - "**/*"
 ---
 
 # Command Execution Rules
@@ -30,12 +30,12 @@ END:    qa command              → final verification (minutes)
 
 Use the narrowest scope that proves your change:
 
-| Concern    | Scoped form                          |
-| ---------- | ------------------------------------ |
-| Lint       | `lint --file <paths...>` / `--package <name>` / `lint --affected [--branch]` |
-| Tests      | `test --file <paths...>` / `--package <name>` / `test --affected [--branch]` |
-| Format     | `format --file <paths...>` / `format --affected [--branch]` |
-| Typecheck  | `typecheck --package <name>`         |
+| Concern   | Scoped form                                                                  |
+| --------- | ---------------------------------------------------------------------------- |
+| Lint      | `lint --file <paths...>` / `--package <name>` / `lint --affected [--branch]` |
+| Tests     | `test --file <paths...>` / `--package <name>` / `test --affected [--branch]` |
+| Format    | `format --file <paths...>` / `format --affected [--branch]`                  |
+| Typecheck | `typecheck --package <name>`                                                 |
 
 When this repo exposes the webpresso quality MCP/CLI surface, prefer
 `wp_qa`/`wp_lint`/`wp_typecheck`/`wp_test` leaves (or the equivalent wrapped
@@ -112,6 +112,7 @@ cd <repo-root> && ./node_modules/.bin/oxfmt --write --ignore-path .gitignore
 
   Use `wp secrets run --sink <sink> --profile <profile> -- <cmd>` for canonical
   secret-touching operations.
+
 - Use the `WP_` environment variable namespace for webpresso CLI behavior. For
   update checks, the opt-out is `WP_SKIP_UPDATE_CHECK=1`.
 - The compiled `wp` binary is canonical for consumers, CI, and the installed plugin.

@@ -1,14 +1,14 @@
-import { z } from 'zod'
+import { z } from "zod";
 
-import type { ToolDescriptor } from '#mcp/auto-discover'
+import type { ToolDescriptor } from "#mcp/auto-discover";
 
-import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
-import { readonlyOpsBaseSchema, resolveReadonlyCwd, runReadonlyCommand } from './_readonly-ops.js'
+import { createSummaryOutputSchema, createSummaryResult } from "./_shared/result.js";
+import { readonlyOpsBaseSchema, resolveReadonlyCwd, runReadonlyCommand } from "./_readonly-ops.js";
 
 const inputSchema = readonlyOpsBaseSchema
   .extend({
-    suite: z.literal('session-memory').optional().default('session-memory'),
-    mode: z.enum(['dry-run', 'live']).optional().default('dry-run'),
+    suite: z.literal("session-memory").optional().default("session-memory"),
+    mode: z.enum(["dry-run", "live"]).optional().default("dry-run"),
     scenario: z.string().optional(),
     variant: z.string().optional(),
     allVariants: z.boolean().optional(),
@@ -16,54 +16,54 @@ const inputSchema = readonlyOpsBaseSchema
     model: z.string().optional(),
     outputRoot: z.string().optional(),
   })
-  .strict()
+  .strict();
 
 const outputSchema = createSummaryOutputSchema({
   details: z.object({
     cwd: z.string(),
-    suite: z.literal('session-memory'),
-    mode: z.enum(['dry-run', 'live']),
+    suite: z.literal("session-memory"),
+    mode: z.enum(["dry-run", "live"]),
     command: z.record(z.string(), z.unknown()),
     result: z.record(z.string(), z.unknown()),
   }),
-})
+});
 
 function buildArgs(input: z.infer<typeof inputSchema>): string[] {
-  const args = ['bench', 'session-memory']
-  if (input.mode === 'dry-run') args.push('--dry-run')
-  if (input.scenario) args.push('--scenario', input.scenario)
-  if (input.variant) args.push('--variant', input.variant)
-  if (input.allVariants) args.push('--all-variants')
-  if (input.trials !== undefined) args.push('--trials', String(input.trials))
-  if (input.model) args.push('--model', input.model)
-  if (input.outputRoot) args.push('--output-root', input.outputRoot)
-  return args
+  const args = ["bench", "session-memory"];
+  if (input.mode === "dry-run") args.push("--dry-run");
+  if (input.scenario) args.push("--scenario", input.scenario);
+  if (input.variant) args.push("--variant", input.variant);
+  if (input.allVariants) args.push("--all-variants");
+  if (input.trials !== undefined) args.push("--trials", String(input.trials));
+  if (input.model) args.push("--model", input.model);
+  if (input.outputRoot) args.push("--output-root", input.outputRoot);
+  return args;
 }
 
 const tool: ToolDescriptor = {
-  name: 'wp_bench',
+  name: "wp_bench",
   description:
-    'Run bounded Webpresso benchmark flows. Defaults session-memory benchmarks to --dry-run unless live mode is explicit.',
+    "Run bounded Webpresso benchmark flows. Defaults session-memory benchmarks to --dry-run unless live mode is explicit.",
   inputSchema,
   outputSchema,
   annotations: {
-    title: 'WP bench',
+    title: "WP bench",
     readOnlyHint: false,
     destructiveHint: false,
     idempotentHint: false,
     openWorldHint: false,
   },
   handler: async (raw, extra) => {
-    const input = inputSchema.parse(raw ?? {})
-    const cwd = resolveReadonlyCwd(input)
-    const args = buildArgs(input)
-    const result = await runReadonlyCommand('bench', './bin/wp', args, {
+    const input = inputSchema.parse(raw ?? {});
+    const cwd = resolveReadonlyCwd(input);
+    const args = buildArgs(input);
+    const result = await runReadonlyCommand("bench", "./bin/wp", args, {
       cwd,
       timeoutMs: input.timeoutMs,
       maxOutputBytes: input.maxOutputBytes,
       signal: extra?.signal,
       parseJson: true,
-    })
+    });
     return createSummaryResult({
       passed: result.passed,
       summary: result.passed
@@ -87,8 +87,8 @@ const tool: ToolDescriptor = {
       timedOut: result.timedOut,
       aborted: result.aborted,
       warnings: result.warnings,
-    })
+    });
   },
-}
+};
 
-export default tool
+export default tool;

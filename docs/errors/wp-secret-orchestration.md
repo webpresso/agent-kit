@@ -3,7 +3,7 @@ type: guide
 title: WP secret orchestration errors
 status: draft
 created: 2026-06-19
-last_updated: '2026-06-19'
+last_updated: "2026-06-19"
 ---
 
 # WP secret orchestration errors

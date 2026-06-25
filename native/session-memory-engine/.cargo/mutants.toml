@@ -12,12 +12,7 @@
 timeout_multiplier = 2.0
 
 # Exclude generated or trivial code from mutation
-exclude_items_re = [
-    "fn fmt",
-    "fn default",
-]
+exclude_items_re = ["fn fmt", "fn default"]
 
 # Exclude test modules themselves
-exclude_re = [
-    "tests/",
-]
+exclude_re = ["tests/"]

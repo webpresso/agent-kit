@@ -4,9 +4,9 @@ title: "Version-safe browser ensure command"
 owner: agent
 status: completed
 complexity: M
-created: '2026-06-23'
-last_updated: '2026-06-23'
-completed_at: '2026-06-23'
+created: "2026-06-23"
+last_updated: "2026-06-23"
+completed_at: "2026-06-23"
 tags:
   - browser
   - cli
@@ -59,22 +59,22 @@ installer must resolve through the same package/runtime source that doctor uses.
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| -- | ----- | -------- |
-| C1 | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-23-browser-ensure-version-safe.md |
+| ID  | Claim                                                          | Evidence                                                            |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/completed/2026-06-23-browser-ensure-version-safe.md |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| -- | -------- | ------------- | --------------------- | --------- |
-| D1 | Preserve executable lifecycle state under the hard completed-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                     | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
+| --- | ---------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard completed-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
-| lifecycle | wp audit blueprint-lifecycle | pass | pass at 2026-06-23T00:00:00.000Z |
-| trust | wp audit blueprint-trust | pass | pass at 2026-06-23T21:50:20.000Z |
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-23T00:00:00.000Z |
+| trust     | wp audit blueprint-trust     | pass             | pass at 2026-06-23T21:50:20.000Z |
 
 ### Residual Unknowns
 

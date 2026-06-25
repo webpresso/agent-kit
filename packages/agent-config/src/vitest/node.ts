@@ -12,62 +12,62 @@
  * ```
  */
 
-import type { UserWorkspaceConfig, ViteUserConfigExport } from 'vite-plus/test/config'
+import type { UserWorkspaceConfig, ViteUserConfigExport } from "vite-plus/test/config";
 
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { defineConfig } from 'vite-plus/test/config'
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { defineConfig } from "vite-plus/test/config";
 
-import { createFlakinessReporter } from './flakiness-reporter.js'
-import { generatedRuntimeAliases } from './generated-runtime-aliases.js'
-import { resolvedExecArgv, resolvedMaxWorkers, resolvedPool } from './pool-defaults.js'
-import { assertNonWorkersVitest4 } from './version-guard.js'
+import { createFlakinessReporter } from "./flakiness-reporter.js";
+import { generatedRuntimeAliases } from "./generated-runtime-aliases.js";
+import { resolvedExecArgv, resolvedMaxWorkers, resolvedPool } from "./pool-defaults.js";
+import { assertNonWorkersVitest4 } from "./version-guard.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const configDir = __dirname
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const configDir = __dirname;
 
-assertNonWorkersVitest4({ caller: 'nodeConfig' })
+assertNonWorkersVitest4({ caller: "nodeConfig" });
 
 // Route bun:sqlite → better-sqlite3 shim so Node-based vitest can load `@webpresso/agent-kit/blueprint`.
 const bunSqliteAlias = [
   {
     find: /^bun:sqlite$/,
-    replacement: join(configDir, 'bun-sqlite-shim.js'),
+    replacement: join(configDir, "bun-sqlite-shim.js"),
   },
-] as const
+] as const;
 
 // Force @webpresso/* packages through Vite's transform so the bun:sqlite alias applies even when imported from node_modules.
 const webpressoInline = {
   deps: { inline: [/webpresso/] },
-} as const
+} as const;
 
-export type ResolveAliasEntry = { find: string | RegExp; replacement: string }
+export type ResolveAliasEntry = { find: string | RegExp; replacement: string };
 
 export interface CreateNodeProjectsOptions {
-  unitInclude?: string[]
-  unitExclude?: string[]
-  integrationInclude?: string[]
-  maxWorkers?: number
-  fileParallelism?: boolean
-  isolate?: boolean
-  testTimeout?: number
+  unitInclude?: string[];
+  unitExclude?: string[];
+  integrationInclude?: string[];
+  maxWorkers?: number;
+  fileParallelism?: boolean;
+  isolate?: boolean;
+  testTimeout?: number;
   /**
    * Extra resolve aliases appended (after the built-ins) to BOTH the unit and
    * integration projects. Lets a consumer inject repo-specific module rewrites
    * without copying the canonical node config.
    */
-  extraAlias?: readonly ResolveAliasEntry[]
+  extraAlias?: readonly ResolveAliasEntry[];
   /**
    * Extra `server.deps.inline` entries merged (after the built-in webpresso
    * inline) into BOTH projects, so the consumer's aliases apply to additional
    * packages imported from node_modules.
    */
-  extraInline?: readonly (string | RegExp)[]
+  extraInline?: readonly (string | RegExp)[];
   /**
    * Extra setup files appended to BOTH projects (the integration project keeps
    * its built-in node-setup; extras run after it).
    */
-  extraSetupFiles?: readonly string[]
+  extraSetupFiles?: readonly string[];
 }
 
 /**
@@ -91,36 +91,36 @@ export function createNodeProjects(
   options: CreateNodeProjectsOptions = {},
 ): UserWorkspaceConfig[] {
   const unitInclude = options.unitInclude ?? [
-    'src/**/*.test.ts',
-    'src/**/__tests__/**/*.test.{ts,tsx}',
-    'src/**/__tests__/**/*.spec.{ts,tsx}',
-  ]
-  const extraUnitExclude = options.unitExclude ?? []
-  const integrationInclude = options.integrationInclude ?? ['src/**/*.integration.test.ts']
-  const projectMaxWorkers = options.maxWorkers ?? resolvedMaxWorkers
-  const projectFileParallelism = options.fileParallelism
-  const projectIsolate = options.isolate
-  const projectTestTimeout = options.testTimeout
-  const extraAlias = options.extraAlias ?? []
-  const extraSetupFiles = options.extraSetupFiles ?? []
+    "src/**/*.test.ts",
+    "src/**/__tests__/**/*.test.{ts,tsx}",
+    "src/**/__tests__/**/*.spec.{ts,tsx}",
+  ];
+  const extraUnitExclude = options.unitExclude ?? [];
+  const integrationInclude = options.integrationInclude ?? ["src/**/*.integration.test.ts"];
+  const projectMaxWorkers = options.maxWorkers ?? resolvedMaxWorkers;
+  const projectFileParallelism = options.fileParallelism;
+  const projectIsolate = options.isolate;
+  const projectTestTimeout = options.testTimeout;
+  const extraAlias = options.extraAlias ?? [];
+  const extraSetupFiles = options.extraSetupFiles ?? [];
   const sharedResolve = {
     alias: [...generatedRuntimeAliases, ...bunSqliteAlias, ...extraAlias],
     tsconfigPaths: true,
-  } as unknown as UserWorkspaceConfig['resolve']
+  } as unknown as UserWorkspaceConfig["resolve"];
   const projectInline = {
     deps: { inline: [...webpressoInline.deps.inline, ...(options.extraInline ?? [])] },
-  } as const
+  } as const;
 
   return [
     {
       resolve: sharedResolve,
-      server: projectInline as unknown as UserWorkspaceConfig['server'],
+      server: projectInline as unknown as UserWorkspaceConfig["server"],
       test: {
         server: projectInline,
         name: `${name}/unit`,
         globals: true,
         restoreMocks: true,
-        environment: 'node',
+        environment: "node",
         pool: resolvedPool,
         maxWorkers: projectMaxWorkers,
         fileParallelism: projectFileParallelism,
@@ -129,21 +129,21 @@ export function createNodeProjects(
         ...(extraSetupFiles.length > 0 && { setupFiles: [...extraSetupFiles] }),
         include: unitInclude,
         exclude: [
-          '**/*.integration.test.ts',
-          '**/.stryker-tmp/**',
-          'node_modules/**',
+          "**/*.integration.test.ts",
+          "**/.stryker-tmp/**",
+          "node_modules/**",
           ...extraUnitExclude,
         ],
-      } as unknown as UserWorkspaceConfig['test'],
+      } as unknown as UserWorkspaceConfig["test"],
     },
     {
       resolve: sharedResolve,
-      server: projectInline as unknown as UserWorkspaceConfig['server'],
+      server: projectInline as unknown as UserWorkspaceConfig["server"],
       test: {
         name: `${name}/integration`,
         globals: true,
         restoreMocks: true,
-        environment: 'node',
+        environment: "node",
         pool: resolvedPool,
         maxWorkers: projectMaxWorkers,
         fileParallelism: projectFileParallelism,
@@ -151,15 +151,15 @@ export function createNodeProjects(
         ...(projectTestTimeout !== undefined && { testTimeout: projectTestTimeout }),
         execArgv: resolvedExecArgv,
         onConsoleLog: () => false,
-        silent: process.env.VITEST_CONSOLE === '1' ? false : 'passed-only',
-        setupFiles: [join(configDir, 'node-setup.js'), ...extraSetupFiles],
+        silent: process.env.VITEST_CONSOLE === "1" ? false : "passed-only",
+        setupFiles: [join(configDir, "node-setup.js"), ...extraSetupFiles],
         include: integrationInclude,
-        exclude: ['**/.stryker-tmp/**', 'node_modules/**'],
-        reporters: ['default', createFlakinessReporter()],
+        exclude: ["**/.stryker-tmp/**", "node_modules/**"],
+        reporters: ["default", createFlakinessReporter()],
         retry: process.env.CI ? 2 : 0,
-      } as unknown as UserWorkspaceConfig['test'],
+      } as unknown as UserWorkspaceConfig["test"],
     },
-  ]
+  ];
 }
 
 export const nodeConfig = defineConfig({
@@ -171,14 +171,14 @@ export const nodeConfig = defineConfig({
   test: {
     globals: true,
     restoreMocks: true,
-    environment: 'node',
-    setupFiles: [join(configDir, 'node-setup.js')],
+    environment: "node",
+    setupFiles: [join(configDir, "node-setup.js")],
     onConsoleLog: () => false, // Suppress all console output
     pool: resolvedPool,
     // Suppress console output in tests by default.
     // Tests should assert behavior, not log to stdout.
     // To see console output, run with VITEST_CONSOLE=1.
-    silent: process.env.VITEST_CONSOLE === '1' ? false : 'passed-only',
+    silent: process.env.VITEST_CONSOLE === "1" ? false : "passed-only",
     // Note: Vitest v4 removed poolOptions - maxWorkers are now top-level
     maxWorkers: resolvedMaxWorkers,
     // Cap each fork worker's V8 heap to 2GB (Node 24 default is 4.2GB).
@@ -188,30 +188,30 @@ export const nodeConfig = defineConfig({
     execArgv: resolvedExecArgv,
     teardownTimeout: 10000,
     include: [
-      'src/**/*.test.ts',
-      'src/**/__tests__/**/*.test.{ts,tsx}',
-      'src/**/__tests__/**/*.spec.{ts,tsx}',
+      "src/**/*.test.ts",
+      "src/**/__tests__/**/*.test.{ts,tsx}",
+      "src/**/__tests__/**/*.spec.{ts,tsx}",
     ],
-    exclude: ['**/.stryker-tmp/**', 'node_modules/**'],
-    reporters: ['default', createFlakinessReporter()],
+    exclude: ["**/.stryker-tmp/**", "node_modules/**"],
+    reporters: ["default", createFlakinessReporter()],
     retry: process.env.CI ? 2 : 0,
     coverage: {
-      provider: 'istanbul',
-      reporter: ['text', 'json', 'html', 'lcov'],
-      include: ['src/**/*.ts'],
+      provider: "istanbul",
+      reporter: ["text", "json", "html", "lcov"],
+      include: ["src/**/*.ts"],
       exclude: [
-        'node_modules/',
-        'dist/',
-        '**/*.d.ts',
-        '**/*.config.*',
-        '**/tests/**',
-        '**/__tests__/**',
-        '**/__test-utils__/**',
-        '**/*.test.ts',
-        '**/*.spec.ts',
-        '**/index.ts', // Common exclusion for barrel exports
-        '**/types.ts',
-        '**/types/**',
+        "node_modules/",
+        "dist/",
+        "**/*.d.ts",
+        "**/*.config.*",
+        "**/tests/**",
+        "**/__tests__/**",
+        "**/__test-utils__/**",
+        "**/*.test.ts",
+        "**/*.spec.ts",
+        "**/index.ts", // Common exclusion for barrel exports
+        "**/types.ts",
+        "**/types/**",
       ],
       // Industry-standard 80% coverage thresholds (Atlassian recommendation)
       // 80% catches critical gaps without excessive build failures
@@ -224,6 +224,6 @@ export const nodeConfig = defineConfig({
       },
     },
   },
-} as unknown as ViteUserConfigExport)
+} as unknown as ViteUserConfigExport);
 
-export default nodeConfig
+export default nodeConfig;

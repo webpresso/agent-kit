@@ -1,7 +1,7 @@
-import { existsSync, readdirSync, readlinkSync, rmSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, readdirSync, readlinkSync, rmSync } from "node:fs";
+import { join } from "node:path";
 
-const GENERATED_SKILL_DIRS = ['.claude/skills', '.agents/skills'] as const
+const GENERATED_SKILL_DIRS = [".claude/skills", ".agents/skills"] as const;
 
 /**
  * Skill dirs agent-kit projects (by symlink) for specific hosts. When a host
@@ -9,57 +9,57 @@ const GENERATED_SKILL_DIRS = ['.claude/skills', '.agents/skills'] as const
  * skill dir stops being an active projection target and any leftover symlinks
  * from a previous `wp setup` must be pruned so skills are not double-shown.
  */
-const PRUNABLE_SKILL_DIRS = ['.claude/skills', '.agents/skills', '.opencode/skills'] as const
+const PRUNABLE_SKILL_DIRS = [".claude/skills", ".agents/skills", ".opencode/skills"] as const;
 
 export interface OrphanedSkill {
-  readonly name: string
-  readonly path: string
-  readonly runtimeDir: string
+  readonly name: string;
+  readonly path: string;
+  readonly runtimeDir: string;
 }
 
 function listDirEntries(dir: string): string[] {
-  if (!existsSync(dir)) return []
+  if (!existsSync(dir)) return [];
   try {
     return readdirSync(dir, { withFileTypes: true })
       .filter((e) => e.isDirectory() || e.isSymbolicLink())
-      .map((e) => e.name)
+      .map((e) => e.name);
   } catch {
-    return []
+    return [];
   }
 }
 
 function listCanonicalSkills(cwd: string): Set<string> {
-  const canonicalDir = join(cwd, '.agent', 'skills')
-  if (!existsSync(canonicalDir)) return new Set()
+  const canonicalDir = join(cwd, ".agent", "skills");
+  if (!existsSync(canonicalDir)) return new Set();
   try {
     return new Set(
       readdirSync(canonicalDir, { withFileTypes: true })
         .filter((e) => e.isDirectory() || e.isSymbolicLink())
         .map((e) => e.name),
-    )
+    );
   } catch {
-    return new Set()
+    return new Set();
   }
 }
 
 export function findOrphanedSkills(cwd: string): OrphanedSkill[] {
-  const canonical = listCanonicalSkills(cwd)
-  const orphans: OrphanedSkill[] = []
+  const canonical = listCanonicalSkills(cwd);
+  const orphans: OrphanedSkill[] = [];
 
   for (const runtimeDir of GENERATED_SKILL_DIRS) {
-    const absDir = join(cwd, runtimeDir)
+    const absDir = join(cwd, runtimeDir);
     for (const name of listDirEntries(absDir)) {
       if (!canonical.has(name)) {
         orphans.push({
           name,
           path: join(absDir, name),
           runtimeDir,
-        })
+        });
       }
     }
   }
 
-  return orphans
+  return orphans;
 }
 
 /**
@@ -76,51 +76,51 @@ export function pruneInactiveSkillDirs(
   activeSkillDirs: ReadonlySet<string>,
   dryRun: boolean,
 ): string[] {
-  const removed: string[] = []
+  const removed: string[] = [];
   for (const rel of PRUNABLE_SKILL_DIRS) {
-    if (activeSkillDirs.has(rel)) continue
-    const absDir = join(cwd, rel)
-    if (!existsSync(absDir)) continue
-    let entries
+    if (activeSkillDirs.has(rel)) continue;
+    const absDir = join(cwd, rel);
+    if (!existsSync(absDir)) continue;
+    let entries;
     try {
-      entries = readdirSync(absDir, { withFileTypes: true })
+      entries = readdirSync(absDir, { withFileTypes: true });
     } catch {
-      continue
+      continue;
     }
     for (const entry of entries) {
       // Only prune symlinks: agent-kit always projects these dirs as symlinks,
       // so a real directory here is user-authored and must be preserved.
-      if (!entry.isSymbolicLink()) continue
-      const linkPath = join(absDir, entry.name)
-      let target: string
+      if (!entry.isSymbolicLink()) continue;
+      const linkPath = join(absDir, entry.name);
+      let target: string;
       try {
-        target = readlinkSync(linkPath, 'utf8')
+        target = readlinkSync(linkPath, "utf8");
       } catch {
-        continue
+        continue;
       }
       // Guard: only remove links that point at a skills source.
-      if (!target.includes('skills')) continue
-      if (!dryRun) rmSync(linkPath, { force: true })
-      removed.push(linkPath)
+      if (!target.includes("skills")) continue;
+      if (!dryRun) rmSync(linkPath, { force: true });
+      removed.push(linkPath);
     }
   }
-  return removed
+  return removed;
 }
 
 export async function removeOrphanedSkills(
   orphans: readonly OrphanedSkill[],
   dryRun: boolean,
 ): Promise<void> {
-  const canonicalPrefix = '.agent/'
+  const canonicalPrefix = ".agent/";
   for (const orphan of orphans) {
     // Safety guard: never remove anything under .agent/
     if (orphan.path.includes(`${canonicalPrefix}skills`)) {
       throw new Error(
         `removeOrphanedSkills: refusing to remove canonical source path: ${orphan.path}`,
-      )
+      );
     }
     if (!dryRun) {
-      rmSync(orphan.path, { recursive: true, force: true })
+      rmSync(orphan.path, { recursive: true, force: true });
     }
   }
 }
