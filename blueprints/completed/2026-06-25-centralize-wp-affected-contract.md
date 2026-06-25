@@ -3,6 +3,8 @@ type: blueprint
 title: "Centralize --affected as a wp-owned contract"
 owner: ozby
 status: completed
+historical_zero_task_waiver: true
+historical_zero_task_rationale: "Historical completed record created before strict task-block requirements; preserved as an audited zero-task completion note."
 complexity: L
 created: "2026-06-25"
 last_updated: "2026-06-25"
