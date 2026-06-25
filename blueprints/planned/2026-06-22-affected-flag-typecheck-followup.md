@@ -5,8 +5,8 @@ owner: ozby
 status: planned
 complexity: M
 created: "2026-06-22"
-last_updated: "2026-06-25"
-progress: "85% (diagnostic-importer timeout fixed; residual work is affected-vs-full YAGNI measurement)"
+last_updated: "2026-06-26"
+progress: "85% (diagnostic-importer timeout fixed with helper and public-entry proofs; residual work is affected-vs-full YAGNI measurement)"
 depends_on:
   - 2026-06-25-centralize-wp-affected-contract
 cross_repo_depends_on: []
@@ -30,7 +30,7 @@ Plan-refine verification on 2026-06-25 found these pieces already present on `ma
 
 - `src/git/affected.ts` owns the shared `--affected` / `--branch` option contract, including invalid `--branch` without `--affected` and conflicts with explicit target flags.
 - `src/typecheck/affected.ts` builds a TypeScript compiler `Program`, constructs a reverse-dependency graph, and checks the changed-file-plus-importer closure.
-- `src/typecheck/affected.test.ts` contains tests for unchanged transitive importers, tsconfig path aliases, and diagnostics in unchanged importers.
+- `src/typecheck/affected.test.ts` contains tests for unchanged transitive importers, tsconfig path aliases, diagnostics in unchanged importers, and the public `runAffectedTypecheck` nonzero result path.
 - `src/cli/commands/typecheck.ts` wires `wp typecheck --affected [--branch]` to the closure runner and exposes it in CLI help.
 - `src/cli/commands/typecheck.test.ts` covers the CLI option/help surface.
 
@@ -60,7 +60,7 @@ Targeted tests for `src/git/affected.test.ts`, `src/cli/commands/typecheck.test.
 
 Profile and stabilize the diagnostic-importer case in `src/typecheck/affected.test.ts` so it reliably proves that an unchanged importer broken by a changed shared type is reported by `wp typecheck --affected`. Keep the fixture minimal and avoid using a timeout increase as the primary fix.
 
-**Completed (2026-06-25):** the test now calls `collectAffectedDiagnostics` directly after building the reverse-importer closure, so it proves the compiler diagnostic at the owning boundary instead of depending on CLI log finalization. `runAffectedTypecheck` uses the same exported helper.
+**Completed (2026-06-25, strengthened 2026-06-26):** the test now calls `collectAffectedDiagnostics` directly after building the reverse-importer closure, so it proves the compiler diagnostic at the owning boundary instead of depending on CLI log finalization. A separate public-entry regression calls `runAffectedTypecheck` directly and asserts the nonzero result plus checked closure files, preserving the exit-code wiring proof without returning to the timeout-prone full CLI runner.
 
 **Files:**
 
@@ -80,6 +80,7 @@ Profile and stabilize the diagnostic-importer case in `src/typecheck/affected.te
 
 - [x] `wp test --file src/typecheck/affected.test.ts` passes without increasing the timeout as the primary fix.
 - [x] The unchanged-importer diagnostic assertion remains in place.
+- [x] The public `runAffectedTypecheck` path still returns exit code 1 for importer diagnostics.
 - [x] Any production-code change is justified by profiling evidence.
 - [x] Targeted typecheck and lint pass for changed files.
 
@@ -169,12 +170,12 @@ Refinement delta: this residual plan is intentionally narrow and is **not** a `/
 
 ### Promotion Gates
 
-| Gate                | Command                                       | Expected outcome | Last result                            |
-| ------------------- | --------------------------------------------- | ---------------- | -------------------------------------- |
-| lifecycle           | wp audit blueprint-lifecycle                  | pass             | pass at 2026-06-25T00:00:00.000Z       |
-| diagnostic-importer | wp test --file src/typecheck/affected.test.ts | pass             | pass twice at 2026-06-25T00:00:00.000Z |
-| typecheck           | wp typecheck                                  | pass             | pass in PR #277 CI at 2026-06-25       |
-| lint                | wp lint                                       | pass             | pass in PR #277 CI at 2026-06-25       |
+| Gate                | Command                                       | Expected outcome | Last result                      |
+| ------------------- | --------------------------------------------- | ---------------- | -------------------------------- |
+| lifecycle           | wp audit blueprint-lifecycle                  | pass             | pass at 2026-06-25T00:00:00.000Z |
+| diagnostic-importer | wp test --file src/typecheck/affected.test.ts | pass             | pass at 2026-06-26T00:00:00.000Z |
+| typecheck           | wp typecheck                                  | pass             | pass in PR #277 CI at 2026-06-25 |
+| lint                | wp lint                                       | pass             | pass in PR #277 CI at 2026-06-25 |
 
 ### Residual Unknowns
 

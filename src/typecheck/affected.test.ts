@@ -5,7 +5,11 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { collectAffectedDiagnostics, planAffectedTypecheckClosure } from "./affected.js";
+import {
+  collectAffectedDiagnostics,
+  planAffectedTypecheckClosure,
+  runAffectedTypecheck,
+} from "./affected.js";
 
 const tempDirs: string[] = [];
 
@@ -79,6 +83,23 @@ describe("affected typecheck closure", () => {
     expect(
       plan.closureFiles.map((file) => path.relative(root, file.fileName).replaceAll("\\", "/")),
     ).toEqual(["src/a.ts", "src/aliased.ts"]);
+  });
+
+  it("returns a failing public result when unchanged importers have diagnostics", async () => {
+    const root = makeProject();
+    write(root, "src/a.ts", "export interface Shape { value: string }\n");
+    write(
+      root,
+      "src/b.ts",
+      "import type { Shape } from './a';\nexport const b: Shape = { value: 1 };\n",
+    );
+
+    const result = await runAffectedTypecheck({ repoRoot: root, files: ["src/a.ts"] });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.entry.exitCode).toBe(1);
+    expect(result.entry.summary).toBe("typecheck failed (exit 1)");
+    expect(result.checkedFiles).toEqual(["src/a.ts", "src/b.ts"]);
   });
 
   it("reports diagnostics in unchanged importers included by the closure", () => {
