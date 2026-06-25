@@ -2,11 +2,11 @@
 type: blueprint
 title: "Centralize --affected as a wp-owned contract"
 owner: ozby
-status: planned
+status: completed
 complexity: L
 created: "2026-06-25"
 last_updated: "2026-06-25"
-progress: "implemented; verification complete except unrelated full-scan guardrail baseline failures"
+progress: "100% (implemented and plan-refine verified; unrelated full-scan guardrail baseline failures remain outside this blueprint)"
 depends_on:
   - 2026-06-22-affected-flag-across-quality-commands
 cross_repo_depends_on: []
@@ -55,6 +55,18 @@ blueprints as historical records.
       commands, retaining only formatter restage mechanics in shell.
 - [x] Update tests for shared resolver, quality commands, audit scoping, and hook
       scaffolds.
+
+## Plan-refine closeout (2026-06-25)
+
+This blueprint was already implemented on `main`; leaving it in `planned/` was stale lifecycle state. Verification during refinement found:
+
+- Shared resolver and contract tests in `src/git/affected.ts` and `src/git/affected.test.ts`.
+- `wp typecheck --affected` wired to `#typecheck/affected` and exposed in CLI help.
+- Audit `--affected`, `--branch`, and deprecated `--changed-only` compatibility in `src/cli/commands/audit.ts`.
+- Generated and live hooks delegate to `wp format --affected` and `wp audit guardrails --affected`.
+- Isolated targeted tests passed for `src/git/affected.test.ts`, `src/cli/commands/typecheck.test.ts`, and `src/cli/commands/audit.test.ts`.
+
+The separate typecheck reverse-closure follow-up remains in `planned/` only for residual hardening/measurement gaps that are not covered by this completed ownership-contract blueprint.
 
 ## Verification plan
 
