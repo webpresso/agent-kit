@@ -142,29 +142,22 @@ function ensureBuiltPackedDist() {
 function ensureBuiltNativeRuntimeArtifacts() {
   if (packedNativeRuntimeBuilt) return;
   ensureBuiltPackedDist();
-  // Cross-compiling all runtime targets here costs minutes. When CI has already
-  // staged them from the same fresh source (the workflow's "Stage native runtime
-  // artifacts" step sets WP_RUNTIME_PRESTAGED=1), trust those binaries instead of
-  // rebuilding. Locally the variable is unset, so the build still runs and proves
-  // the current source — preserving the packed-surface correctness contract.
-  if (process.env.WP_RUNTIME_PRESTAGED !== "1") {
-    execFileSync("bun", ["scripts/build-runtime-binaries.ts"], {
-      cwd: REPO_ROOT,
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        HUSKY: "0",
-      },
-    });
-    execFileSync("bun", ["scripts/stage-plugin-runtime-artifacts.ts"], {
-      cwd: REPO_ROOT,
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        HUSKY: "0",
-      },
-    });
-  }
+  execFileSync("bun", ["scripts/build-runtime-binaries.ts"], {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      HUSKY: "0",
+    },
+  });
+  execFileSync("bun", ["scripts/stage-plugin-runtime-artifacts.ts"], {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      HUSKY: "0",
+    },
+  });
   packedNativeRuntimeBuilt = true;
 }
 

@@ -200,13 +200,7 @@ jobs:
         env:
           WP_NATIVE_SESSION_MEMORY_BUILD_FROM_SOURCE: "1"
         run: pnpm exec tsx --eval "import { loadNativeSessionMemoryEngine } from './src/session-memory/native-runtime.ts'; loadNativeSessionMemoryEngine()"
-      - name: Test
-        # Runtime binaries were just staged from this same fresh source, so the
-        # packed-surface contract test trusts them instead of cross-compiling all
-        # targets again (minutes saved). See package.contract.integration.test.ts.
-        env:
-          WP_RUNTIME_PRESTAGED: "1"
-        run: pnpm run test
+      - run: pnpm run test
       - name: Cursor hook contract slice
         run: |
           bun src/cli/cli.ts test \

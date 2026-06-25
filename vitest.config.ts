@@ -47,6 +47,11 @@ export const SUBPROCESS_SUFFIX_GLOBS = [
 // forks) or self-spawn many child processes (oversubscription). Routing is an
 // explicit list, per the "isolate the exact offender" note above — not a suffix.
 export const SERIAL_SUBPROCESS_GLOBS = [
+  // Mutates the shared package.json in place (prepare/restore around `npm pack`)
+  // and rebuilds dist; if it runs in the parallel pool, sibling tests that spawn
+  // the real CLI (e.g. init.e2e) read a half-prepared manifest and exit 1. The
+  // serial-subprocess project runs in its own groupOrder so it never overlaps them.
+  "package.contract.integration.test.ts",
   "scripts/release.integration.test.ts",
   "scripts/release.subprocess.test.ts",
   // Build the compiled runtime into the shared dist/runtime tree — concurrent
