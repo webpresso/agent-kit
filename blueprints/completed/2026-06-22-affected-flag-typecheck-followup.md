@@ -2,11 +2,11 @@
 type: blueprint
 title: "Harden and measure typecheck --affected reverse-dependency closure"
 owner: ozby
-status: planned
+status: completed
 complexity: M
 created: "2026-06-22"
 last_updated: "2026-06-26"
-progress: "95% (affected-vs-full YAGNI measurement captured; final verification and lifecycle move pending)"
+progress: "100% (affected-vs-full YAGNI measurement captured; affected closure retained; final gates passed)"
 depends_on:
   - 2026-06-25-centralize-wp-affected-contract
 cross_repo_depends_on: []
@@ -113,7 +113,7 @@ Create a durable, bounded measurement that compares the reverse-importer closure
 - [x] A durable measurement artifact or documented smoke result exists.
 - [x] The plan records whether affected closure is retained or descope-to-full is chosen.
 - [x] No flaky wall-clock threshold is added to the normal unit suite.
-- [ ] Targeted tests/typecheck pass.
+- [x] Targeted tests/typecheck pass.
 
 ## Quick Reference (Execution Waves)
 
@@ -139,8 +139,8 @@ Refinement delta: this residual plan is intentionally narrow and is **not** a `/
 - [x] The reverse-closure soundness test passes reliably under the default test timeout.
 - [x] A measured YAGNI decision exists for closure narrowing versus whole-repo fallback.
 - [x] No duplicated affected git resolver or CLI flag parsing is introduced.
-- [ ] `wp test --file src/typecheck/affected.test.ts` passes.
-- [ ] `wp audit blueprint-lifecycle` passes after updating the blueprint record.
+- [x] `wp test --file src/typecheck/affected.test.ts` passes.
+- [x] `wp audit blueprint-lifecycle` passes after updating the blueprint record.
 
 ## Out of scope
 
@@ -154,16 +154,16 @@ Refinement delta: this residual plan is intentionally narrow and is **not** a `/
 
 - promotion-ready: true
 - unresolved-count: 0
-- verified-at: 2026-06-22T00:00:00.000Z
-- verified-head: 45289c257910767ff10aa219afdbf2233c6ca880
+- verified-at: 2026-06-25T23:53:38Z
+- verified-head: 27101197ee7ee0e4d66eae5484d5550dacd1066f
 - trust-gate-version: v1
 
 ### Material Claims
 
-| ID  | Claim                                                                       | Evidence                                                               |
-| --- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| C1  | This residual hardening blueprint has a canonical repository document.      | repo:blueprints/planned/2026-06-22-affected-flag-typecheck-followup.md |
-| C2  | Affected closure narrowing is meaningfully faster than full typecheck here. | repo:blueprints/planned/2026-06-22-affected-flag-typecheck-followup.md |
+| ID  | Claim                                                                       | Evidence                                                                 |
+| --- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| C1  | This residual hardening blueprint has a canonical repository document.      | repo:blueprints/completed/2026-06-22-affected-flag-typecheck-followup.md |
+| C2  | Affected closure narrowing is meaningfully faster than full typecheck here. | repo:blueprints/completed/2026-06-22-affected-flag-typecheck-followup.md |
 
 ### Material Decisions
 
@@ -174,12 +174,12 @@ Refinement delta: this residual plan is intentionally narrow and is **not** a `/
 
 ### Promotion Gates
 
-| Gate                | Command                                       | Expected outcome | Last result                      |
-| ------------------- | --------------------------------------------- | ---------------- | -------------------------------- |
-| lifecycle           | wp audit blueprint-lifecycle                  | pass             | pass at 2026-06-25T00:00:00.000Z |
-| diagnostic-importer | wp test --file src/typecheck/affected.test.ts | pass             | pass at 2026-06-26T00:00:00.000Z |
-| typecheck           | wp typecheck                                  | pass             | pass in PR #277 CI at 2026-06-25 |
-| lint                | wp lint                                       | pass             | pass in PR #277 CI at 2026-06-25 |
+| Gate                | Command                                       | Expected outcome | Last result                          |
+| ------------------- | --------------------------------------------- | ---------------- | ------------------------------------ |
+| lifecycle           | wp audit blueprint-lifecycle                  | pass             | pass at 2026-06-25T23:53:38Z         |
+| diagnostic-importer | wp test --file src/typecheck/affected.test.ts | pass             | pass at 2026-06-25T23:53:38Z         |
+| typecheck           | wp typecheck                                  | pass             | pass locally at 2026-06-25T23:53:38Z |
+| lint                | wp lint                                       | pass             | pass locally at 2026-06-25T23:53:38Z |
 
 ### Residual Unknowns
 
