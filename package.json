@@ -1,6 +1,6 @@
 {
   "name": "@webpresso/agent-kit",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "private": false,
   "description": "TypeScript infrastructure for AI-agent-driven development: the `wp` CLI + MCP server give agents planning (blueprints), tests, mutation, e2e, CI, docs, and tech-debt — summary-first so they keep context, and enforced as pre-commit/CI contracts. Manages AGENTS.md / CLAUDE.md and per-agent surfaces.",
   "keywords": [
