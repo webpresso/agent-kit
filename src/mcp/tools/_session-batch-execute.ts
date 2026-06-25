@@ -106,7 +106,7 @@ const outputSchema = createSummaryOutputSchema({
 const tool: ToolDescriptor = {
   name: "wp_session_batch_execute",
   description:
-    "Run multiple shell commands through session-memory execution, using the native backend when available and TypeScript fallback otherwise; optionally search indexed results.",
+    "Run multiple shell commands through session-memory execution, using the native backend when available and TypeScript fallback otherwise; optionally search indexed results. Use for planned multi-command evidence gathering (grep/find/git log batches); prefer over raw chained Bash; run `wp session batch-execute` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   annotations: {

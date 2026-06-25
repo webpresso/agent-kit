@@ -270,7 +270,7 @@ export function buildRecallPayload(
 const tool: ToolDescriptor = {
   name: "wp_session_restore",
   description:
-    "Restore bounded session continuity context with unified provenance and preview-only results.",
+    "Restore bounded session continuity context with unified provenance and preview-only results. Use for resuming or restoring prior context after compaction; prefer over re-reading transcripts; run `wp session restore` directly only if this tool is unavailable.",
   inputSchema: sessionRecallInputSchema,
   outputSchema: sessionRecallOutputSchema,
   annotations: {

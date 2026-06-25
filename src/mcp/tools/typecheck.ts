@@ -74,7 +74,7 @@ function summarizeTypecheckResult(options: {
 const tool: ToolDescriptor = {
   name: "wp_typecheck",
   description:
-    "Run `tsc --noEmit` per resolved package (or at cwd) and return structured diagnostics parsed from tsc stdout.",
+    "Run `tsc --noEmit` per resolved package (or at cwd) and return structured diagnostics parsed from tsc stdout. Use for type checking / TS errors; prefer over tsc or bun run typecheck; run `wp typecheck` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   annotations: {

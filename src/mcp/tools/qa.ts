@@ -259,7 +259,7 @@ function summarizeQa(
 const tool: ToolDescriptor = {
   name: "wp_qa",
   description:
-    "Run `wp_lint`, `wp_typecheck`, and `wp_test` in parallel via `Promise.all`. Returns `{passed, lint, typecheck, test}` where the top-level `passed` is the AND of the three sub-results.",
+    "Run `wp_lint`, `wp_typecheck`, and `wp_test` in parallel via `Promise.all`. Returns `{passed, lint, typecheck, test}` where the top-level `passed` is the AND of the three sub-results. Use for full QA pass / markdown lint; prefer over bun run qa or markdownlint-cli2; run `wp qa` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   annotations: {

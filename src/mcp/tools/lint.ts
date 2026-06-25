@@ -197,7 +197,7 @@ function summarizeLintResult(options: {
 const tool: ToolDescriptor = {
   name: "wp_lint",
   description:
-    "Run lint via the `vp lint` facade. Returns `{passed, issues: [{file, line, rule, message}]}`.",
+    "Run lint via the `vp lint` facade. Returns `{passed, issues: [{file, line, rule, message}]}`. Use for linting / code-style checks; prefer over oxlint or bun run lint; run `wp lint` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   annotations: {

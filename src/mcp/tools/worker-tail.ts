@@ -76,7 +76,7 @@ function parseEvents(output: string, maxEvents: number): Array<Record<string, un
 const tool: ToolDescriptor = {
   name: "wp_worker_tail",
   description:
-    "Run `wrangler tail` via the public secret-gate contract and return bounded, redacted tail output.",
+    "Run `wrangler tail` via the public secret-gate contract and return bounded, redacted tail output. Use for Cloudflare Worker tail logs; prefer over wrangler tail; run `wp worker tail` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   annotations: {

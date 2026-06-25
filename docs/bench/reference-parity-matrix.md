@@ -25,7 +25,7 @@ being present does not mean the release claim is green: required rows must be
 | resume injection             | Claude SessionStart and instruction surfaces           | full          | src/hooks/sessionstart/index.test.ts                                | yes                  | passed |
 | tool discovery               | MCP session tools                                      | full          | src/mcp/server.integration.test.ts                                  | yes                  | passed |
 | indexed search               | session memory store                                   | full          | src/session-memory/store.test.ts                                    | yes                  | passed |
-| routing injection            | Claude SessionStart and generated instruction surfaces | full          | src/hooks/shared/routing-block.test.ts                              | yes                  | passed |
+| routing injection            | generated instruction surfaces + MCP tool descriptions | full          | src/hooks/shared/instruction-surfaces.test.ts                       | yes                  | passed |
 | pretool session redirect     | Claude PreToolUse                                      | full          | src/hooks/pretool-guard/dev-routing.test.ts                         | yes                  | passed |
 | posttool broad capture       | PostToolUse metadata capture                           | full          | src/hooks/post-tool/lint-after-edit.test.ts                         | yes                  | passed |
 | registry/routing consistency | MCP registry plus routing source                       | full          | src/mcp/tools/\_registry.test.ts                                    | yes                  | passed |

@@ -42,7 +42,7 @@ const outputSchema = createSummaryOutputSchema({
 const tool: ToolDescriptor = {
   name: "wp_format",
   description:
-    "Run formatter via the repo formatting surface. By default writes fixes in place; pass `check: true` to verify without writing.",
+    "Run formatter via the repo formatting surface. By default writes fixes in place; pass `check: true` to verify without writing. Use for formatting source files; prefer over oxfmt or prettier; run `wp format` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   annotations: {

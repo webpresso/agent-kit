@@ -5,7 +5,6 @@ import { performance } from "node:perf_hooks";
 import { spawnSync } from "node:child_process";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { WP_ROUTING_BLOCK } from "#hooks/shared/routing-block";
 import { SessionMemorySessionStore } from "../../session-memory/session.js";
 import { Database } from "#db/sqlite.js";
 
@@ -44,10 +43,12 @@ describe("sessionstart hook buildOutput", () => {
 
   beforeEach(() => {
     dirs = [];
+    mockReadUpdateBanner.mockReturnValue(null);
   });
 
   afterEach(() => {
     for (const d of dirs) rmSync(d, { recursive: true, force: true });
+    vi.clearAllMocks();
   });
 
   function tmp(): string {
@@ -69,25 +70,24 @@ describe("sessionstart hook buildOutput", () => {
     expect(parsed.hookSpecificOutput.additionalContext).toContain(contents);
   });
 
-  it("always emits routing block even when .agent/routing.md is absent", () => {
+  it("emits empty additionalContext when .agent/routing.md is absent", () => {
     const cwd = tmp();
     const out = buildOutput({}, cwd, {});
     expect(out).not.toBeNull();
     const parsed = JSON.parse(out as string) as ParsedOutput;
-    expect(parsed.hookSpecificOutput.additionalContext).toContain("<wp_routing>");
+    expect(parsed.hookSpecificOutput.additionalContext).toBe("");
   });
 
-  it("always emits routing block when .agent/routing.md is empty", () => {
+  it("emits empty additionalContext when .agent/routing.md is empty", () => {
     const cwd = tmp();
     writeRoutingMd(cwd, "");
     const out = buildOutput({}, cwd, {});
     expect(out).not.toBeNull();
     const parsed = JSON.parse(out as string) as ParsedOutput;
-    expect(parsed.hookSpecificOutput.additionalContext).toContain("<wp_routing>");
-    expect(parsed.hookSpecificOutput.additionalContext).not.toContain("routing.md");
+    expect(parsed.hookSpecificOutput.additionalContext).toBe("");
   });
 
-  it("prepends WP_ROUTING_BLOCK before .agent/routing.md content", () => {
+  it("emits .agent/routing.md content as additionalContext (no injected block)", () => {
     const cwd = tmp();
     const contents = "# Routing\n\nGo to docs.";
     writeRoutingMd(cwd, contents);
@@ -95,17 +95,14 @@ describe("sessionstart hook buildOutput", () => {
     const out = buildOutput({}, cwd, {});
     expect(out).not.toBeNull();
     const parsed = JSON.parse(out as string) as ParsedOutput;
-    const ctx = parsed.hookSpecificOutput.additionalContext;
-    // Routing block must come before routing.md content
-    expect(ctx.indexOf(WP_ROUTING_BLOCK)).toBeLessThan(ctx.indexOf(contents));
-    expect(ctx).toContain(WP_ROUTING_BLOCK + "\n\n" + contents);
+    expect(parsed.hookSpecificOutput.additionalContext).toBe(contents);
   });
 
-  it("always emits routing block when .agent/routing.md is missing (nonexistent dir)", () => {
+  it("emits empty additionalContext when .agent/routing.md is missing (nonexistent dir)", () => {
     const out = buildOutput({}, "/definitely/not/a/real/path/xyz", {});
     expect(out).not.toBeNull();
     const parsed = JSON.parse(out as string) as ParsedOutput;
-    expect(parsed.hookSpecificOutput.additionalContext).toContain("<wp_routing>");
+    expect(parsed.hookSpecificOutput.additionalContext).toBe("");
   });
 
   it("output is valid JSON with hookSpecificOutput.additionalContext field", () => {
@@ -232,7 +229,7 @@ describe("sessionstart hook buildOutput", () => {
   });
 
   it.each(["startup", "resume", "compact"])(
-    "injects bounded continuity restore context for %s SessionStart without dropping routing",
+    "injects bounded continuity restore context for %s SessionStart",
     (source) => {
       const cwd = tmp();
       const dbPath = join(cwd, "sessions.sqlite");
@@ -265,11 +262,9 @@ describe("sessionstart hook buildOutput", () => {
       const parsed = JSON.parse(out) as ParsedOutput;
       const ctx = parsed.hookSpecificOutput.additionalContext;
 
-      expect(ctx).toContain(WP_ROUTING_BLOCK);
       expect(ctx).toContain("<wp_session_continuity");
       expect(ctx).toContain(`source="${source}"`);
       expect(ctx).toContain(`Restore ${source} continuity`);
-      expect(ctx.indexOf(WP_ROUTING_BLOCK)).toBeLessThan(ctx.indexOf("<wp_session_continuity"));
     },
   );
 
@@ -359,7 +354,7 @@ describe("sessionstart hook buildOutput", () => {
     expect(ctx).not.toContain("hunter2");
   });
 
-  it("skips continuity restore when the resume cap is exceeded before querying", () => {
+  it("emits empty context, skipping continuity restore, when the resume cap is exceeded", () => {
     const cwd = tmp();
     const out = buildOutput(
       { source: "resume", session_id: "session-1" },
@@ -383,7 +378,7 @@ describe("sessionstart hook buildOutput", () => {
     );
     const ctx = (JSON.parse(out) as ParsedOutput).hookSpecificOutput.additionalContext;
 
-    expect(ctx).toContain(WP_ROUTING_BLOCK);
+    expect(ctx).toBe("");
     expect(ctx).not.toContain("<wp_session_continuity");
   });
 
@@ -467,7 +462,7 @@ describe("sessionstart hook buildOutput", () => {
     expect(ctx.indexOf("<wp_session_continuity")).toBeLessThan(ctx.indexOf("<wp_update>"));
   });
 
-  it("fails open to routing-only JSON when continuity storage is unavailable", () => {
+  it("fails open to empty JSON when continuity storage is unavailable", () => {
     const cwd = tmp();
     const out = buildOutput(
       { source: "resume", session_id: "session-1" },
@@ -482,7 +477,7 @@ describe("sessionstart hook buildOutput", () => {
     );
     const parsed = JSON.parse(out) as ParsedOutput;
 
-    expect(parsed.hookSpecificOutput.additionalContext).toContain(WP_ROUTING_BLOCK);
+    expect(parsed.hookSpecificOutput.additionalContext).toBe("");
     expect(parsed.hookSpecificOutput.additionalContext).not.toContain("<wp_session_continuity");
   });
 
@@ -498,13 +493,9 @@ describe("sessionstart hook buildOutput", () => {
     const parsed = JSON.parse(result.stdout) as ParsedOutput;
     const ctx = parsed.hookSpecificOutput.additionalContext;
     expect(parsed.hookSpecificOutput.hookEventName).toBe("SessionStart");
-    const routingIndex = ctx.indexOf("<wp_routing>");
-    expect(routingIndex).toBe(0);
-    expect(ctx).toContain('<tool name="wp_test">');
-    const continuityIndex = ctx.indexOf("<wp_session_continuity");
-    if (continuityIndex !== -1) {
-      expect(routingIndex).toBeLessThan(continuityIndex);
-    }
+    // Fails open with valid JSON; no routing block is injected anymore.
+    expect(typeof ctx).toBe("string");
+    expect(ctx).not.toContain("<wp_routing>");
   });
 });
 
@@ -546,6 +537,6 @@ describe("sessionstart hook update banner", () => {
     const out = buildOutput({}, cwd, {});
     const parsed = JSON.parse(out) as ParsedOutput;
     expect(parsed.hookSpecificOutput.additionalContext).not.toContain("<wp_update>");
-    expect(parsed.hookSpecificOutput.additionalContext).toContain("<wp_routing>");
+    expect(parsed.hookSpecificOutput.additionalContext).toBe("");
   });
 });

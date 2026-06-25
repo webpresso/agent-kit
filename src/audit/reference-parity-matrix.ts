@@ -66,14 +66,10 @@ const STATUSES = new Set<ReferenceParityStatus>(["passed", "open", "blocked"]);
 
 const FULL_PASSED_PROOF_MARKERS: Readonly<Record<ReferenceParityCapability, readonly string[]>> = {
   "lifecycle capture": ["SessionMemorySessionStore", "captureEvent", "restore"],
-  "resume injection": ["SessionStart", "WP_ROUTING_BLOCK", "additionalContext"],
+  "resume injection": ["SessionStart", "wp_session_continuity", "additionalContext"],
   "tool discovery": ["tools/list", "wp_session_execute", "wp_session_search"],
   "indexed search": ["SessionMemoryStore", "searchUnified", "restore context"],
-  "routing injection": [
-    "<wp_session_context>",
-    "wp_session_batch_execute",
-    "wp_session_execute_file",
-  ],
+  "routing injection": ["native_tool_names", "wp_session_batch_execute", "wp_session_execute_file"],
   "pretool session redirect": [
     "routeToolInputToSessionMemory",
     "wp_session_batch_execute",

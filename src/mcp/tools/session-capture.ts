@@ -31,7 +31,7 @@ function captureDisabled(): boolean {
 const tool: ToolDescriptor = {
   name: "wp_session_capture",
   description:
-    "Manually capture typed continuity content into session memory so it survives compaction and becomes recallable via wp_session_restore.",
+    "Manually capture typed continuity content into session memory so it survives compaction and becomes recallable via wp_session_restore. Use for manually capturing decisions, constraints, or rejected approaches for continuity; run `wp session capture` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   annotations: {

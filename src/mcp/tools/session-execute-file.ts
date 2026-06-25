@@ -348,7 +348,7 @@ function payloadFrom(result: FileOperationResult) {
 const tool: ToolDescriptor = {
   name: "wp_session_execute_file",
   description:
-    "Run explicit bounded local file read/metadata operations under repo-root validation and index overflow into session memory.",
+    "Run explicit bounded local file read/metadata operations under repo-root validation and index overflow into session memory. Use for read-to-analyze: inspecting large files with a bounded preview; prefer over cat or raw Read of huge files; run `wp session execute-file` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   annotations: {

@@ -54,7 +54,7 @@ const outputSchema = createSummaryOutputSchema({
 const tool: ToolDescriptor = {
   name: "wp_session_execute",
   description:
-    "Run one shell command through session-memory execution, using the native backend when available and TypeScript fallback otherwise; index output for search.",
+    "Run one shell command through session-memory execution, using the native backend when available and TypeScript fallback otherwise; index output for search. Use for one bounded shell command whose output may be large or reused; prefer over raw Bash with large output; run `wp session execute` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   annotations: {

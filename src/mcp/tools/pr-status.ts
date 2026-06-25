@@ -47,7 +47,7 @@ function prViewFields(includeChecks: boolean, includeReviews: boolean): string {
 const tool: ToolDescriptor = {
   name: "wp_pr_status",
   description:
-    "Read-only PR status summary via GitHub CLI: branch PR metadata, optional checks, and optional reviews with bounded output.",
+    "Read-only PR status summary via GitHub CLI: branch PR metadata, optional checks, and optional reviews with bounded output. Use for PR status / GitHub checks / review decision; prefer over gh pr view or gh pr checks; run `wp pr status` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   annotations: {

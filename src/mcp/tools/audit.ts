@@ -528,7 +528,7 @@ export async function dispatchAudit(input: AkAuditInput): Promise<AuditPayload> 
 
 const tool: ToolDescriptor = {
   name: "wp_audit",
-  description: `Run a packaged repo audit. \`kind\` selects the audit (${KINDS.join(", ")}). Returns {passed, kind, details}.`,
+  description: `Run a packaged repo audit. \`kind\` selects the audit (${KINDS.join(", ")}). Returns {passed, kind, details}. Use for a single repo audit (blueprints, catalog drift, bundle budget, docs frontmatter); prefer over just audit; run \`wp audit\` directly only if this tool is unavailable.`,
   inputSchema,
   outputSchema,
   annotations: {

@@ -14,10 +14,11 @@ paths:
 
 # RTK Tool Routing
 
-Fallback-only note: if SessionStart already injected `WP_ROUTING_BLOCK`, or
-rtk already injected its own `rtk *` guidance, follow that and do not
-duplicate it. This rule exists to preserve the same routing in plain repo
-contexts where no injected routing block is present.
+`rtk *` and the `wp_*` MCP tools are independent lanes. Webpresso-owned dev
+workflows route to the matching `wp_*` MCP tool — each tool's `description`
+states when to use it, and `pretool-guard` denies the common raw equivalents.
+There is no injected routing block; the tool descriptions plus AGENTS.md are the
+source of routing guidance.
 
 Use `rtk *` for shell-tool output filtering on the long-tail command surface
 that webpresso does not own.
@@ -27,7 +28,8 @@ that webpresso does not own.
 - webpresso owns `wp_*` dev-workflow routing and MCP-shaped deny wording
 - rtk owns shell-tool output filtering for the long-tail surface (`git`, `gh`,
   `kubectl`, `cargo`, `pytest`, `ruff`, and similar non-quality-engine tools)
-- this rule is fallback-only; it should not compete with SessionStart routing
+- `wp_*` and `rtk *` are independent lanes; prefer the `wp_*` MCP tool for
+  webpresso-owned workflows
 - `.omx` is runtime/state, not a direct hook surface
 
 ## Hard rules
@@ -40,7 +42,7 @@ that webpresso does not own.
 
 Webpresso owns workflow, browser, QA, design, and DX skills as native package assets.
 Browser runtime checks and lightweight page inspection route through `wp browser`.
-This rule is fallback-only; it should not compete with SessionStart routing.
+Keep these as an independent lane from the `wp_*` MCP tools.
 
 ## Subprocess coverage note
 

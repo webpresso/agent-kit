@@ -33,7 +33,8 @@ const outputSchema = createSummaryOutputSchema({
 
 const tool: ToolDescriptor = {
   name: "wp_session_stats",
-  description: "Report bounded local session-memory continuity and index counts.",
+  description:
+    "Report bounded local session-memory continuity and index counts. Use for read-only session-memory counts and source diagnostics; run `wp session stats` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   annotations: {

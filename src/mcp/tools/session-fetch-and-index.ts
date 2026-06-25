@@ -219,7 +219,7 @@ export async function handleSessionFetchAndIndex(
 const tool: ToolDescriptor = {
   name: "wp_session_fetch_and_index",
   description:
-    "Fetch an absolute http(s) URL and index bounded content into the local session-memory index.",
+    "Fetch an absolute http(s) URL and index bounded content into the local session-memory index. Use for absolute http(s) fetches with SSRF checks, byte caps, indexing; prefer over curl, wget, or raw WebFetch; run `wp session fetch-and-index` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   annotations: {

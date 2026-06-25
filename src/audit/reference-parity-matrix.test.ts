@@ -50,11 +50,11 @@ function write(root: string, relativePath: string, content: string): void {
 function seedArtifacts(root: string): void {
   const artifacts: Record<string, string> = {
     "src/session-memory/session.test.ts": "describe SessionMemorySessionStore captureEvent restore",
-    "src/hooks/sessionstart/index.test.ts": "SessionStart WP_ROUTING_BLOCK additionalContext",
+    "src/hooks/sessionstart/index.test.ts": "SessionStart wp_session_continuity additionalContext",
     "src/mcp/server.integration.test.ts": "tools/list wp_session_execute wp_session_search",
     "src/session-memory/store.test.ts": "SessionMemoryStore searchUnified restore context",
-    "src/hooks/shared/routing-block.test.ts":
-      "<wp_session_context> wp_session_batch_execute wp_session_execute_file",
+    "src/hooks/shared/instruction-surfaces.test.ts":
+      "native_tool_names wp_session_batch_execute wp_session_execute_file",
     "src/hooks/pretool-guard/dev-routing.test.ts":
       "routeToolInputToSessionMemory wp_session_batch_execute routeCommand",
     "src/hooks/post-tool/lint-after-edit.test.ts": "PostToolUse capturePostToolUse byte-caps",
@@ -115,8 +115,8 @@ function passingRows(): string[] {
     row("indexed search", "src/session-memory/store.test.ts", {
       hostScope: "session memory store",
     }),
-    row("routing injection", "src/hooks/shared/routing-block.test.ts", {
-      hostScope: "Claude SessionStart and generated instruction surfaces",
+    row("routing injection", "src/hooks/shared/instruction-surfaces.test.ts", {
+      hostScope: "generated instruction surfaces + MCP tool descriptions",
     }),
     row("pretool session redirect", "src/hooks/pretool-guard/dev-routing.test.ts", {
       hostScope: "Claude PreToolUse",

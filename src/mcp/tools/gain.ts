@@ -30,7 +30,7 @@ function commandFor(input: z.infer<typeof inputSchema>): { command: string; args
 const tool: ToolDescriptor = {
   name: "wp_gain",
   description:
-    "Read existing Webpresso session-memory or RTK gain totals with bounded output; does not create gain data.",
+    "Read existing Webpresso session-memory or RTK gain totals with bounded output; does not create gain data. Use for token-savings / gain report; prefer over rtk gain; run `wp gain` directly only if this tool is unavailable.",
   inputSchema,
   outputSchema,
   annotations: {

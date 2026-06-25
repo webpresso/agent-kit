@@ -1,4 +1,4 @@
-import { createRoutingInstructionSource } from "#hooks/shared/routing-block";
+import { WP_TOOL_NAMES } from "#mcp/tools/_names";
 
 export const INSTRUCTION_SURFACE_HOSTS = ["claude", "codex", "cursor", "opencode"] as const;
 
@@ -9,7 +9,6 @@ export type InstructionSurfaceInput = {
   readonly projectRoutingMarkdown?: string | null;
   readonly extraSections?: readonly (string | null | undefined)[];
   readonly includeEnvelope?: boolean;
-  readonly includeRoutingContent?: boolean;
 };
 
 export type InstructionSurface = {
@@ -29,7 +28,7 @@ const HOST_POLICIES = {
   claude: {
     artifactName: "SessionStart.additionalContext",
     stdoutNoop:
-      "SessionStart always writes a JSON additionalContext envelope; an empty project routing file still emits the shared routing source.",
+      "SessionStart writes a JSON additionalContext envelope; with no project routing or continuity events it emits empty context. Tool routing comes from the wp_* MCP tool descriptions, not an injected block.",
     lifecycleNotes: [
       "SessionStart is context injection only and cannot block tool calls.",
       "PreToolUse remains the lifecycle for deny decisions.",
@@ -68,6 +67,8 @@ const HOST_POLICIES = {
   },
 } as const satisfies Record<InstructionSurfaceHost, HostInstructionPolicy>;
 
+const ROUTING_SOURCE_NAME = "wp_routing";
+
 function nonEmpty(value: string | null | undefined): value is string {
   return value !== null && value !== undefined && value.length > 0;
 }
@@ -84,22 +85,13 @@ function xmlEscape(value: string): string {
     .replaceAll('"', "&quot;");
 }
 
-export function routingToolNamesFromSource(content: string): readonly string[] {
-  return [...content.matchAll(/<tool name="([^"]+)">/gu)].map((match) => match[1] as string);
-}
-
-function renderHostEnvelope(
-  host: InstructionSurfaceHost,
-  policy: HostInstructionPolicy,
-  sourceName: string,
-  routingContent: string,
-): string {
-  const toolNames = routingToolNamesFromSource(routingContent).join(", ");
+function renderHostEnvelope(host: InstructionSurfaceHost, policy: HostInstructionPolicy): string {
+  const toolNames = WP_TOOL_NAMES.join(", ");
   const lifecycleNotes = policy.lifecycleNotes
     .map((note) => `    <note>${xmlEscape(note)}</note>`)
     .join("\n");
 
-  return `<wp_instruction_surface host="${host}" artifact="${xmlEscape(policy.artifactName)}" source="${sourceName}">
+  return `<wp_instruction_surface host="${host}" artifact="${xmlEscape(policy.artifactName)}" source="${ROUTING_SOURCE_NAME}">
   <host_contract>
     <native_tool_names>${xmlEscape(toolNames)}</native_tool_names>
     <stdout_noop>${xmlEscape(policy.stdoutNoop)}</stdout_noop>
@@ -113,14 +105,9 @@ ${lifecycleNotes}
 
 export function renderInstructionSurface(input: InstructionSurfaceInput): InstructionSurface {
   const policy = HOST_POLICIES[input.host];
-  const source = createRoutingInstructionSource();
   const includeEnvelope = input.includeEnvelope ?? true;
-  const includeRoutingContent = input.includeRoutingContent ?? false;
   const sections = [
-    ...(includeEnvelope
-      ? [renderHostEnvelope(input.host, policy, source.name, source.content)]
-      : []),
-    includeRoutingContent ? source.content : null,
+    ...(includeEnvelope ? [renderHostEnvelope(input.host, policy)] : []),
     input.projectRoutingMarkdown ?? null,
     ...(input.extraSections ?? []),
   ].filter(nonEmpty);
@@ -141,6 +128,5 @@ export function renderSessionStartInstructionContext(input: {
     projectRoutingMarkdown: input.projectRoutingMarkdown,
     extraSections: input.extraSections,
     includeEnvelope: false,
-    includeRoutingContent: true,
   }).content;
 }
