@@ -144,11 +144,16 @@ export function classifyWebpressoHookBin(
   return WEBPRESSO_HOOK_BIN_NAMES.has(binName) ? { kind: 'canonical', binName } : null
 }
 
-function extractAgentKitCodexBinName(command: string): string | null {
-  return extractWpHookCommandBinName(command) ?? extractOwnedLegacyManagedHookBinName(command)
-}
-
-function extractClaudeBinName(command: string): string | null {
+/**
+ * Resolve a canonical webpresso hook bin name from an installed hook command,
+ * or null when the command is not an agent-kit-owned hook invocation.
+ *
+ * Matching is anchored: a `wp hook <name>` invocation, or a
+ * `<managed-dir>/wp-<name>.sh` launcher path. A bare mention of a bin name in
+ * an unrelated command must NOT classify as canonical — that over-match was the
+ * source of a misclassification regression.
+ */
+export function extractWebpressoHookBinName(command: string): string | null {
   return extractWpHookCommandBinName(command) ?? extractOwnedLegacyManagedHookBinName(command)
 }
 
@@ -158,14 +163,6 @@ function extractWpHookCommandBinName(command: string): string | null {
   if (subcommand && isHookName(subcommand)) {
     const binName = `wp-${subcommand}`
     if (WEBPRESSO_HOOK_BIN_NAMES.has(binName)) return binName
-  }
-
-  const isLegacyManagedWrapper =
-    command.includes('/.codex/managed-hooks/') || command.includes('/.claude/hooks/managed/')
-  if (isLegacyManagedWrapper) {
-    for (const binName of WEBPRESSO_HOOK_BIN_NAMES) {
-      if (command.includes(binName)) return binName
-    }
   }
 
   return null
@@ -266,7 +263,7 @@ function normalizeCodexAgentKitCommands(hooks: HooksMap): HooksMap {
         hooks: group.hooks.flatMap((hook) => {
           const command = hook.command
           if (typeof command !== 'string') return hook
-          const classification = classifyWebpressoHookBin(extractAgentKitCodexBinName(command))
+          const classification = classifyWebpressoHookBin(extractWebpressoHookBinName(command))
           if (classification === null && !isLegacyManagedOnlyHookCommand(command)) return hook
           return []
         }),
@@ -291,7 +288,7 @@ function normalizeClaudeAgentKitCommands(hooks: HooksMap): HooksMap {
         hooks: group.hooks.flatMap((hook) => {
           const command = hook.command
           if (typeof command !== 'string') return hook
-          const classification = classifyWebpressoHookBin(extractClaudeBinName(command))
+          const classification = classifyWebpressoHookBin(extractWebpressoHookBinName(command))
           if (classification === null && !isLegacyManagedOnlyHookCommand(command)) return hook
           return []
         }),

@@ -27,6 +27,7 @@ import {
   readHooksManifest,
 } from '#cli/commands/init/scaffolders/agent-hooks/manifest.js'
 import { setupCommandForRepo } from '#cli/commands/init/detect-consumer.js'
+import { isAgentKitSourceRepo } from '#cli/commands/init/source-repo-hook-policy.js'
 import {
   findAgentKitPackageRoot,
   resolveAgentKitPackageRoot,
@@ -1461,7 +1462,7 @@ async function defaultRunRestoreFix(cwd: string): Promise<number> {
       cwd,
       yes: true,
       restoreHooks: true,
-      sourceMaintenance: setupCommandForRepo(cwd).startsWith('WP_FORCE_SOURCE=1 '),
+      sourceMaintenance: isAgentKitSourceRepo(cwd),
     },
     { stdout: { write: () => true } },
   )

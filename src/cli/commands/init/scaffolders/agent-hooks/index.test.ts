@@ -17,6 +17,7 @@ import { buildCursorHooksConfig } from './emitters/cursor.js'
 import {
   buildWebpressoHookGroups,
   classifyWebpressoHookBin,
+  extractWebpressoHookBinName,
   hoistTopLevelEvents,
   hookSubcommandFor,
   resolvePackageRootForHookLaunchers,
@@ -1291,6 +1292,37 @@ describe('classifyWebpressoHookBin', () => {
     expect(classifyWebpressoHookBin('old-pretool-guard')).toBeNull()
     expect(classifyWebpressoHookBin(null)).toBeNull()
     expect(classifyWebpressoHookBin('not-webpresso')).toBeNull()
+  })
+})
+
+describe('extractWebpressoHookBinName', () => {
+  it('resolves a canonical bin from a `wp hook <name>` invocation', () => {
+    expect(
+      extractWebpressoHookBinName(
+        "if [ -x '/r/bin/wp' ]; then (cd '/r' && /r/bin/wp hook pretool-guard); fi",
+      ),
+    ).toBe('wp-pretool-guard')
+  })
+
+  it('resolves a canonical bin from a managed-hooks `<dir>/wp-<name>.sh` launcher', () => {
+    expect(
+      extractWebpressoHookBinName(
+        "if [ -x '/r/.codex/managed-hooks/wp-pretool-guard.sh' ]; then '/r/.codex/managed-hooks/wp-pretool-guard.sh'; fi",
+      ),
+    ).toBe('wp-pretool-guard')
+  })
+
+  it('does NOT classify a bare bin-name mention inside an unrelated managed-dir command', () => {
+    // Regression: the old fallthrough matched the bin name anywhere in a command
+    // that merely contained a managed-hooks dir substring, so a non-invocation
+    // like writing a note next to the managed dir was misclassified as canonical.
+    expect(
+      extractWebpressoHookBinName("echo wp-pretool-guard >> '/r/.codex/managed-hooks/notes.txt'"),
+    ).toBeNull()
+  })
+
+  it('returns null for commands unrelated to webpresso hooks', () => {
+    expect(extractWebpressoHookBinName('ls -la /tmp')).toBeNull()
   })
 })
 
