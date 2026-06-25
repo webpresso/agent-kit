@@ -382,6 +382,51 @@ describe('hooks/doctor', () => {
       expect(kills.length).toBeGreaterThan(0)
     })
 
+    it('fails a hung decision probe instead of hanging --probe-decisions', async () => {
+      vi.stubEnv('WP_DOCTOR_HOOK_TIMEOUT_MS', '5')
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (String(path) === rtkMarker) throw new Error('ENOENT')
+        return true
+      }) as typeof accessSync)
+      mockStatSync.mockReturnValue({ mode: 0o755 } as unknown as ReturnType<typeof statSync>)
+      const kills: string[] = []
+      mockSpawn.mockImplementation(() => {
+        // A child that never emits 'close' — without a bounded probe this would
+        // hang doctor forever.
+        const child = new EventEmitter() as EventEmitter & {
+          stdout: EventEmitter
+          stderr: EventEmitter
+          stdin: { write: (chunk: string, cb?: () => void) => void; end: () => void }
+          kill: () => boolean
+        }
+        child.stdout = new EventEmitter()
+        child.stderr = new EventEmitter()
+        child.stdin = {
+          write: (_chunk: string, cb?: () => void) => {
+            cb?.()
+          },
+          end: () => {},
+        }
+        child.kill = () => {
+          kills.push('killed')
+          return true
+        }
+        return child as unknown as ReturnType<typeof spawn>
+      })
+
+      vi.stubGlobal('process', fakeProcess())
+
+      const { runHooksDoctor } = await import('#hooks/doctor')
+      const result = await runHooksDoctor({ skipMcp: true, hosts: 'skip', probeDecisions: true })
+      const decisionChecks = result.checks.filter((c) => c.name.startsWith('decision probe:'))
+
+      expect(decisionChecks.length).toBeGreaterThan(0)
+      expect(decisionChecks.every((c) => c.detail === 'decision probe timed out after 5ms')).toBe(
+        true,
+      )
+      expect(kills.length).toBeGreaterThan(0)
+    })
+
     it('reports the managed PreCompact snapshot hook when skipMcp is true', async () => {
       mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
         if (String(path) === rtkMarker) throw new Error('ENOENT')
