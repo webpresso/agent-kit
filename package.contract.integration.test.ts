@@ -22,6 +22,7 @@ import { probeRuntimeTypecheckParity } from "./src/typecheck/runtime-parity.js";
 
 const REPO_ROOT = process.cwd();
 const PACKAGE_JSON_PATH = join(REPO_ROOT, "package.json");
+const DIST_SENTINEL = join(REPO_ROOT, "dist", "esm", "index.js");
 const MIGRATION_SENTINEL = join(
   REPO_ROOT,
   "dist",
@@ -98,26 +99,27 @@ function parseNpmJson<T>(raw: string): T {
 
 function ensureBuiltPackedDist() {
   if (packedDistBuilt) return;
-  // Packed-install contracts must prove the current source tree, not whatever
-  // dist/ was left by a previous local build or test worker. Global installs
-  // can fall back to dist/esm when optional runtime packages are unavailable,
-  // so stale dist is a real packaged-surface regression.
-  execFileSync("./node_modules/.bin/tshy", [], {
-    cwd: REPO_ROOT,
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      HUSKY: "0",
-    },
-  });
-  execFileSync("bun", ["src/build/normalize-tsconfig-json-exports.ts"], {
-    cwd: REPO_ROOT,
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      HUSKY: "0",
-    },
-  });
+  // Vitest globalSetup builds dist once before workers fork. Reuse that current
+  // compiled tree when present; rebuilding inside the first package-surface
+  // assertion can exceed the test's fixed 30s timeout and duplicates work.
+  if (!existsSync(DIST_SENTINEL)) {
+    execFileSync("./node_modules/.bin/tshy", [], {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        HUSKY: "0",
+      },
+    });
+    execFileSync("bun", ["src/build/normalize-tsconfig-json-exports.ts"], {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        HUSKY: "0",
+      },
+    });
+  }
   if (!existsSync(MIGRATION_SENTINEL)) {
     execFileSync("bun", ["src/build/blueprint-migration-assets.ts"], {
       cwd: REPO_ROOT,
@@ -444,7 +446,7 @@ describe("tooling umbrella package integration contract", () => {
         join(packedPackageRoot, "bin", "wp"),
         ["setup", "--yes", "--cwd", tmpRoot],
         {
-          cwd: launcherRoot,
+          cwd: tmpRoot,
           encoding: "utf8",
           env: {
             ...process.env,
@@ -488,7 +490,7 @@ describe("tooling umbrella package integration contract", () => {
         join(tmpRoot, "package.json"),
         JSON.stringify({ name: "packed-migration-smoke", private: true }, null, 2) + "\n",
       );
-      execFileSync("npm", ["install", tarballPath, "--omit=optional", "--ignore-scripts"], {
+      execFileSync("npm", ["install", tarballPath, "--omit=optional"], {
         cwd: tmpRoot,
         encoding: "utf8",
         env: { ...process.env, HUSKY: "0" },
@@ -541,23 +543,19 @@ describe("tooling umbrella package integration contract", () => {
         PATH: [join(globalPrefix, "bin"), globalPrefix, process.env.PATH ?? ""].join(delimiter),
       };
 
-      execFileSync("npm", ["install", "--global", runtimeTarballPath, "--ignore-scripts"], {
+      execFileSync("npm", ["install", "--global", runtimeTarballPath], {
         cwd: tmpRoot,
         encoding: "utf8",
         env,
         stdio: ["ignore", "pipe", "pipe"],
       });
 
-      execFileSync(
-        "npm",
-        ["install", "--global", tarballPath, "--omit=optional", "--ignore-scripts", "--force"],
-        {
-          cwd: tmpRoot,
-          encoding: "utf8",
-          env,
-          stdio: ["ignore", "pipe", "pipe"],
-        },
-      );
+      execFileSync("npm", ["install", "--global", tarballPath, "--omit=optional", "--force"], {
+        cwd: tmpRoot,
+        encoding: "utf8",
+        env,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
 
       const runtimeProbe = probeRuntimeTypecheckParity({
         command: join(unpackedRuntimePackageRoot, "bin", "wp"),
