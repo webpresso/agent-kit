@@ -1,130 +1,150 @@
 ---
 type: blueprint
-title: "typecheck --affected via reverse-dependency import-graph closure"
+title: "Harden and measure typecheck --affected reverse-dependency closure"
 owner: ozby
 status: planned
-complexity: L
+complexity: M
 created: "2026-06-22"
-last_updated: "2026-06-22"
-progress: "0% (planned; split out of the file-based --affected blueprint during /codex review)"
+last_updated: "2026-06-26"
+progress: "85% (diagnostic-importer timeout fixed with helper and public-entry proofs; residual work is affected-vs-full YAGNI measurement)"
 depends_on:
-  - 2026-06-22-affected-flag-across-quality-commands
+  - 2026-06-25-centralize-wp-affected-contract
 cross_repo_depends_on: []
 tags:
   - cli
   - dx
   - typecheck
   - git
+  - performance
 ---
 
-# `typecheck --affected` via reverse-dependency closure
+# Harden and measure `typecheck --affected` reverse-dependency closure
 
 ## Goal
 
-Extend `wp typecheck` with the same `--affected` / `--affected --branch` flags
-the file-based commands get in
-[`2026-06-22-affected-flag-across-quality-commands`](./2026-06-22-affected-flag-across-quality-commands.md),
-but **soundly** — typecheck the changed files **plus every file that transitively
-imports them**, not just the changed files.
+Finish the residual hardening for `wp typecheck --affected` now that the central affected contract has already delivered the core implementation. Do **not** reimplement affected flag parsing, git changed-file resolution, audit scoping, or hook integration; those are completed in `blueprints/completed/2026-06-25-centralize-wp-affected-contract.md`.
 
-## Why this is a separate blueprint
+## Already done / do not duplicate
 
-Split out during the `/codex` outside-voice review of the parent blueprint. It is
-a different class of work from the file-based commands:
+Plan-refine verification on 2026-06-25 found these pieces already present on `main`:
 
-- **A naive `tsc <changed files>` is unsound.** `tsc` loads the changed files and
-  _their imports_ (downstream) but **not their importers** (upstream). A
-  shared-type change in `a.ts` that breaks an _unchanged_ `b.ts` (which imports
-  `a`) reports a **false green** — the one failure mode a typechecker must never
-  have. (Parent finding F4/F5.)
-- **Package-scoping doesn't narrow anything here.** `pnpm-workspace.yaml` is
-  `[., apps/*, packages/*]` and the root `.` package holds essentially all of
-  `src/`, so "affected package = root" ≈ whole-repo typecheck for the common case
-  (edits under `src/`). (Parent finding F4.)
-- **No import-graph tooling is installed.** `package.json` has `typescript` only —
-  no `ts-morph` / `madge` / `dependency-cruiser`. The sound closure must be built
-  on the TypeScript compiler API from scratch. (Parent finding F5.)
-- **typecheck has no `--file` flag today** (`--pretty`, `--full` only;
-  `buildTypecheckCommand` runs whole-program `tsc --noEmit` because root has no
-  `check-types` script), so file-target handling is itself net-new.
+- `src/git/affected.ts` owns the shared `--affected` / `--branch` option contract, including invalid `--branch` without `--affected` and conflicts with explicit target flags.
+- `src/typecheck/affected.ts` builds a TypeScript compiler `Program`, constructs a reverse-dependency graph, and checks the changed-file-plus-importer closure.
+- `src/typecheck/affected.test.ts` contains tests for unchanged transitive importers, tsconfig path aliases, diagnostics in unchanged importers, and the public `runAffectedTypecheck` nonzero result path.
+- `src/cli/commands/typecheck.ts` wires `wp typecheck --affected [--branch]` to the closure runner and exposes it in CLI help.
+- `src/cli/commands/typecheck.test.ts` covers the CLI option/help surface.
 
-This is `L`/compiler-analysis work; the parent blueprint stays shippable and
-green without it.
+Targeted tests for `src/git/affected.test.ts`, `src/cli/commands/typecheck.test.ts`, and `src/cli/commands/audit.test.ts` passed in the installed workspace. The isolated `src/typecheck/affected.test.ts` command exited 143 in one run, and the combined targeted run showed the diagnostic-importer test timing out at Vitest's 10s default. Treat that as the remaining correctness/performance signal, not as a reason to rebuild the feature from scratch.
 
-## Dependency
+## Residual findings from refinement
 
-Consumes the shared `#git/changed-files` resolver (`{ files, degraded, reason }`)
-delivered by **Task 1** of the parent blueprint. Do not duplicate the git-diff
-logic — import it. Same semantics: `--affected` = staged `ACMR` set;
-`--affected --branch` = `origin/${GITHUB_BASE_REF ?? 'main'}...HEAD`;
-`--branch` alone errors; `--affected` ⟂ `--file` (once typecheck gains `--file`).
-
-## Approach (to be hardened in refinement)
-
-1. Resolve the changed set via the shared resolver.
-2. Build a TypeScript `Program` for the project and compute the
-   **reverse-dependency closure**: starting from the changed set, add every
-   source file that transitively imports a changed file (respecting `#`-subpath
-   and tsconfig path mapping — regex import scanning is **not** acceptable, it
-   misses aliased and re-exported edges).
-3. Run `tsc --noEmit` over `changed ∪ importers`.
-4. **Degrade safely:** if the resolver is degraded, the closure can't be computed,
-   or the set can't narrow (single-package / resolver unavailable / missing base
-   ref), fall back to whole-repo `tsc --noEmit` + a notice. Never skip.
-
-## Open design questions (resolve in `/plan-refine`)
-
-- Compiler-API `Program` build cost vs. whole-repo `tsc` — does the closure
-  actually save wall-clock once program construction is paid for? Measure before
-  committing; if it doesn't beat whole-repo `tsc` for typical change sets, this
-  feature isn't worth shipping (YAGNI gate).
-- Incremental/`--build` + project references as an alternative narrowing
-  mechanism (the repo currently uses a single tsconfig, no project refs).
-- Where the closure module lives (`src/git/affected-typecheck.ts`) and whether it
-  can reuse any existing import-scanning surface
-  (`src/config/internal-subpath-imports.ts`, `src/config/docs-lint/cli/validators/imports.ts`).
-
-## Delivered groundwork (2026-06-22 follow-up)
-
-This PR delivered the exact-scope planner groundwork without claiming the full
-reverse-dependency `--affected` closure:
-
-- `wp typecheck --file <path>` resolves source files to their owning typecheck
-  scopes and runs the normal scope-level typecheck once per scope.
-- `wp typecheck --package <name>` resolves exact `package.json` names only.
-- MCP `wp_typecheck` and the public `runTypecheck` helper share the same planner.
-- The compiled host runtime is now parity-guarded for `typecheck --help` and
-  `typecheck --file` scope reporting, so bare global/runtime lanes cannot drift
-  behind the JS CLI surface silently.
-- Packed/global smoke now proves bare `wp typecheck --help` and
-  `wp typecheck --file` against a real isolated global install plus the host
-  runtime helper package.
-- The future `--affected` work remains scoped to reverse-dependency closure and
-  measured narrowing.
-
-## Acceptance criteria (high level — refine before execution)
-
-- [ ] `wp typecheck --affected [--branch]` wired; `--branch` alone errors.
-- [ ] **Soundness guard test:** a shared-type change in `a.ts` that breaks an
-      _unchanged_ `b.ts` importing it IS caught by `--affected` (no false green).
-- [ ] Closure respects `#` subpath + tsconfig path mapping (aliased importers
-      included), proven by test.
-- [ ] Degraded / can't-narrow → whole-repo `tsc --noEmit` + notice, never skip.
-- [ ] Measured: closure run is not slower than whole-repo `tsc` for a typical
-      change set (else descope per YAGNI).
-- [ ] `wp audit tph` and `wp typecheck` green.
-
-## Out of scope
-
-- The file-based commands (`lint`, `format`, `test`) — parent blueprint.
-- Converging the existing changed-files implementations onto the shared resolver.
+| ID  | Severity | Finding                                                                                                                                                        | Fix                                                                                                                                                         |
+| --- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1  | HIGH     | The reverse-closure diagnostic test could exceed the 10s Vitest timeout locally because it proved a compiler diagnostic through the full async CLI log runner. | Fixed by exporting the affected diagnostic collector and making the soundness test assert diagnostics at the owner helper, without raising timeouts.        |
+| F2  | MEDIUM   | The original plan required measuring closure runtime against whole-repo `tsc`; no durable measurement artifact is attached to the completed implementation.    | Add a bounded benchmark/smoke comparison and document the result. If closure is not faster for representative changes, disable/descope narrowing per YAGNI. |
+| F3  | LOW      | The original plan text still described net-new implementation that is now done by the central affected contract.                                               | Keep this blueprint scoped to residual hardening only.                                                                                                      |
 
 ## Policy gates
 
-- **Engineering principles:** the measured-speedup acceptance criterion is the
-  YAGNI gate — if the closure doesn't beat whole-repo `tsc`, do not ship it.
-- **Public package safety:** N/A — CLI flag + internal module only; no
-  `package.json`/`files`/`bin`/`exports`/release-surface change.
+- **Engineering principles / YAGNI:** if measured affected closure runtime is not better than whole-repo typecheck for representative staged edits, prefer whole-repo fallback over extra compiler-analysis complexity.
+- **No-timeout-as-fix:** the diagnostic test timeout is a symptom. Prefer smaller fixtures, faster diagnostic collection, or narrower compiler host setup before increasing test timeout.
+- **Public package safety:** N/A — residual work stays in internal typecheck/test surfaces; no `package.json`, `files`, `bin`, `exports`, catalog, or release-surface changes.
+
+## Implementation tasks
+
+#### [test] Task 1.1: Stabilize the reverse-closure soundness test
+
+**Status:** done
+
+**Depends:** None
+
+Profile and stabilize the diagnostic-importer case in `src/typecheck/affected.test.ts` so it reliably proves that an unchanged importer broken by a changed shared type is reported by `wp typecheck --affected`. Keep the fixture minimal and avoid using a timeout increase as the primary fix.
+
+**Completed (2026-06-25, strengthened 2026-06-26):** the test now calls `collectAffectedDiagnostics` directly after building the reverse-importer closure, so it proves the compiler diagnostic at the owning boundary instead of depending on CLI log finalization. A separate public-entry regression calls `runAffectedTypecheck` directly and asserts the nonzero result plus checked closure files, preserving the exit-code wiring proof without returning to the timeout-prone full CLI runner.
+
+**Files:**
+
+- Modify: `src/typecheck/affected.test.ts`
+- Modify: `src/typecheck/affected.ts` (only if profiling shows avoidable compiler work)
+
+**Steps (TDD):**
+
+1. Run: `wp test --file src/typecheck/affected.test.ts` — reproduce the timeout/failure.
+2. Add temporary local timing/profiling or reduce the fixture to identify the slow step.
+3. Implement the smallest fixture or code-path change that keeps the diagnostic assertion and finishes under the default timeout.
+4. Run: `wp test --file src/typecheck/affected.test.ts` — verify PASS.
+5. Run: `wp typecheck --file src/typecheck/affected.ts --file src/typecheck/affected.test.ts`.
+6. Run: `wp lint --file src/typecheck/affected.ts --file src/typecheck/affected.test.ts`.
+
+**Acceptance:**
+
+- [x] `wp test --file src/typecheck/affected.test.ts` passes without increasing the timeout as the primary fix.
+- [x] The unchanged-importer diagnostic assertion remains in place.
+- [x] The public `runAffectedTypecheck` path still returns exit code 1 for importer diagnostics.
+- [x] Any production-code change is justified by profiling evidence.
+- [x] Targeted typecheck and lint pass for changed files.
+
+#### [perf] Task 1.2: Add affected-vs-full typecheck measurement evidence
+
+**Status:** todo
+
+**Depends:** Task 1.1
+
+Create a durable, bounded measurement that compares the reverse-importer closure path with whole-repo typecheck for a representative changed source file. The result decides whether affected narrowing remains enabled or should fall back to whole-repo typecheck under the YAGNI gate.
+
+**Files:**
+
+- Modify: `src/typecheck/affected.test.ts` or create a focused benchmark/smoke under the existing test/bench conventions
+- Modify: `blueprints/planned/2026-06-22-affected-flag-typecheck-followup.md`
+
+**Steps (TDD):**
+
+1. Define a representative changed-file fixture or repo-local smoke that exercises a non-trivial importer closure.
+2. Capture closure runtime and whole-repo typecheck runtime with bounded commands; avoid flaky wall-clock assertions in unit tests.
+3. Document the measured result in this blueprint's Trust Dossier / Promotion Gates.
+4. If closure is not meaningfully faster, update `runAffectedTypecheck` to widen to whole-repo typecheck with a notice.
+5. Run: `wp test --file src/typecheck/affected.test.ts`.
+6. Run: `wp typecheck --file src/typecheck/affected.ts --file src/typecheck/affected.test.ts`.
+
+**Acceptance:**
+
+- [ ] A durable measurement artifact or documented smoke result exists.
+- [ ] The plan records whether affected closure is retained or descope-to-full is chosen.
+- [ ] No flaky wall-clock threshold is added to the normal unit suite.
+- [ ] Targeted tests/typecheck pass.
+
+## Quick Reference (Execution Waves)
+
+| Wave              | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
+| ----------------- | ----- | ------------ | -------------- | ---------------- |
+| **Completed**     | 1.1   | None         | Done           | S                |
+| **Wave 0**        | 1.2   | 1.1          | 1 agent        | S                |
+| **Critical path** | 1.2   | —            | 1 wave         | S                |
+
+### Parallel Metrics Snapshot
+
+| Metric | Formula / Meaning                  | Target               | Actual |
+| ------ | ---------------------------------- | -------------------- | ------ |
+| RW0    | Ready tasks in Wave 0              | ≥ planned agents / 2 | 1      |
+| CPR    | total_tasks / critical path length | ≥ 2.5                | 1.0    |
+| DD     | dependency_edges / total_tasks     | ≤ 2.0                | 0      |
+| CP     | same-file overlaps per wave        | 0                    | 0      |
+
+Refinement delta: this residual plan is intentionally narrow and is **not** a `/pll` throughput candidate. The broader implementation tasks were already completed by the central affected contract; only serialized verification/performance hardening remains.
+
+## Acceptance criteria
+
+- [x] The reverse-closure soundness test passes reliably under the default test timeout.
+- [ ] A measured YAGNI decision exists for closure narrowing versus whole-repo fallback.
+- [ ] No duplicated affected git resolver or CLI flag parsing is introduced.
+- [ ] `wp test --file src/typecheck/affected.test.ts` passes.
+- [ ] `wp audit blueprint-lifecycle` passes after updating the blueprint record.
+
+## Out of scope
+
+- Reimplementing `--affected` option parsing or changed-file resolution.
+- Reworking `lint`, `format`, `test`, `audit`, or hook affected behavior.
+- Adding new import-graph dependencies such as `ts-morph`, `madge`, or `dependency-cruiser`.
 
 ## Trust Dossier
 
@@ -138,9 +158,9 @@ reverse-dependency `--affected` closure:
 
 ### Material Claims
 
-| ID  | Claim                                                          | Evidence                                                               |
-| --- | -------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/planned/2026-06-22-affected-flag-typecheck-followup.md |
+| ID  | Claim                                                                  | Evidence                                                               |
+| --- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| C1  | This residual hardening blueprint has a canonical repository document. | repo:blueprints/planned/2026-06-22-affected-flag-typecheck-followup.md |
 
 ### Material Decisions
 
@@ -150,9 +170,12 @@ reverse-dependency `--affected` closure:
 
 ### Promotion Gates
 
-| Gate      | Command                      | Expected outcome | Last result                      |
-| --------- | ---------------------------- | ---------------- | -------------------------------- |
-| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-22T00:00:00.000Z |
+| Gate                | Command                                       | Expected outcome | Last result                      |
+| ------------------- | --------------------------------------------- | ---------------- | -------------------------------- |
+| lifecycle           | wp audit blueprint-lifecycle                  | pass             | pass at 2026-06-25T00:00:00.000Z |
+| diagnostic-importer | wp test --file src/typecheck/affected.test.ts | pass             | pass at 2026-06-26T00:00:00.000Z |
+| typecheck           | wp typecheck                                  | pass             | pass in PR #277 CI at 2026-06-25 |
+| lint                | wp lint                                       | pass             | pass in PR #277 CI at 2026-06-25 |
 
 ### Residual Unknowns
 
