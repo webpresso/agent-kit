@@ -58,8 +58,14 @@ Use blueprints for non-trivial work. Specs live in
 [`blueprints/`](./blueprints/) with lifecycle directories such as
 `planned/`, `in-progress/`, and `completed/`. Keep tasks, dependencies,
 verification commands, and acceptance criteria current before execution.
+
+For any non-trivial change, run the gate **before the first edit**, in order:
+**worktree → blueprint → draft PR** — create a git worktree on a fresh branch
+and switch into it, create the blueprint on that branch, then open a draft PR
+early and push implementation commits to it. Never implement on `main`.
 PRs with any non-`*.md` changes must include a changed blueprint, unless a
 commit carries `Blueprint-exempt: <reason>` for a genuinely trivial exception.
+Full rule: `.agent/rules/pre-implementation.md` § Blueprint gate.
 
 Catalog-owned surfaces:
 
