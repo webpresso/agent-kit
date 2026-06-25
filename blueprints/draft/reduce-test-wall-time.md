@@ -4,7 +4,7 @@ status: draft
 complexity: M
 created: "2026-06-25"
 last_updated: "2026-06-25"
-progress: "70% (core changes implemented; full-suite package/hook bottlenecks remain)"
+progress: "75% (core changes implemented; full-suite hook/package wall-time bottlenecks remain)"
 depends_on: []
 cross_repo_depends_on: []
 tags: [performance, tests, ci]
@@ -115,7 +115,7 @@ Configure Vitest to use fork isolation with bounded file workers: CI max workers
 
 - [x] Subprocess tests are no longer globally serialized.
 - [x] CI workers capped at 2 and local workers capped at 3.
-- [ ] Full suite passes repeatedly without timeout increases. Blocked by `package.contract.integration.test.ts` and `src/hooks/pretool-guard/runner.subprocess.test.ts` evidence below.
+- [ ] Full suite passes repeatedly without timeout increases. Blocked by remaining wall-time target miss and `src/hooks/pretool-guard/runner.subprocess.test.ts` evidence below; package contract now passes but remains ~5 minutes by itself.
 
 #### [qa] Task 2.2: Parallelize local QA after build
 
@@ -183,7 +183,7 @@ Run targeted and broad verification, including repeated full suite attempts afte
 **Acceptance:**
 
 - [x] Scoped direct Vitest target passes: `pnpm exec vitest run scripts/bench/lib/claim-surfaces.test.ts src/build/native-session-memory-ci.test.ts --project unit` (13 tests, 6.99s Vitest duration). `vp run test -- <file>` selected broader project tests in this repo and was stopped.
-- [x] Residual blockers documented: `vp run test` exceeded 4 minutes and was stopped after shared-state/timeouts; `package.contract.integration.test.ts` remains an unresolved packed-install bottleneck and was reverted out of this implementation; `runner.subprocess.test.ts` fails alone from internal 8s child timeouts.
+- [x] Residual blockers documented: `vp run test` exceeded 4 minutes and was stopped after shared-state/timeouts; `package.contract.integration.test.ts` now passes with packed tarball reuse but remains a ~305s packed-install bottleneck; `runner.subprocess.test.ts` fails alone from internal 8s child timeouts.
 - [ ] Full suite repeated stability is blocked until package/hook subprocess bottlenecks are fixed.
 - [x] `vp run typecheck` and `vp run lint` pass. Changed-file `wp format --check` passes; full `wp format --check` is blocked by six pre-existing non-task files.
 
@@ -250,7 +250,7 @@ Run targeted and broad verification, including repeated full suite attempts afte
 - `bun scripts/check-workflow-action-pins.ts .` -> pass.
 - Changed-file format check -> pass. Full `wp format --check` remains blocked by pre-existing non-task formatting drift in six files.
 - `vp run test` with bounded subprocess workers exposed reproducible shared-state/time bottlenecks instead of passing under 4 minutes: package/release subprocess files and `src/hooks/pretool-guard/runner.subprocess.test.ts`. A tiny `serial-subprocess` project isolates package/release files; hook runner still fails alone because spawned hook binary exceeds its internal 8s timeout under this environment.
-- `package.contract.integration.test.ts` optimization was attempted but reverted because verification remained unstable/too slow; it remains the dominant unresolved packed-install bottleneck for a follow-up.
+- `pnpm exec vitest run package.contract.integration.test.ts --project serial-subprocess` -> pass (6 tests, 305.37s). The package contract uses packed tarball reuse and skips redundant dist rebuilds when Vitest globalSetup already built artifacts, but native packed installs remain the dominant wall-time bottleneck for a follow-up.
 
 ## Trust Dossier
 
