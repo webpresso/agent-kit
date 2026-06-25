@@ -1,107 +1,107 @@
-import { existsSync, mkdtempSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { existsSync, mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   scaffoldAgentHooks,
   trustCodexWebpressoHooksForRepo,
   type CodexTrustSyncWarning,
-} from './index.js'
+} from "./index.js";
 
-describe('codex app-server trust integration', () => {
-  const repos: string[] = []
+describe("codex app-server trust integration", () => {
+  const repos: string[] = [];
 
   afterEach(async () => {
     await Promise.all(
       repos
         .splice(0)
         .map((repoRoot) =>
-          import('node:fs/promises').then((fs) =>
+          import("node:fs/promises").then((fs) =>
             fs.rm(repoRoot, { recursive: true, force: true }),
           ),
         ),
-    )
-  })
+    );
+  });
 
   function tempRepo(): string {
-    const repoRoot = mkdtempSync(join(tmpdir(), 'wp-agent-hooks-app-server-'))
-    repos.push(repoRoot)
-    return repoRoot
+    const repoRoot = mkdtempSync(join(tmpdir(), "wp-agent-hooks-app-server-"));
+    repos.push(repoRoot);
+    return repoRoot;
   }
 
-  it('does not spawn codex app-server during dry-run', async () => {
-    const repoRoot = tempRepo()
-    let spawnCount = 0
+  it("does not spawn codex app-server during dry-run", async () => {
+    const repoRoot = tempRepo();
+    let spawnCount = 0;
 
     await scaffoldAgentHooks({
       repoRoot,
       options: { dryRun: true },
       createCodexAppServer: async () => {
-        spawnCount += 1
-        throw new Error('should not spawn in dry-run')
+        spawnCount += 1;
+        throw new Error("should not spawn in dry-run");
       },
-    })
+    });
 
-    expect(spawnCount).toBe(0)
-  })
+    expect(spawnCount).toBe(0);
+  });
 
-  it('emits a structured warning and leaves CODEX_HOME untouched when app-server is unavailable', async () => {
-    const repoRoot = tempRepo()
-    const warnings: CodexTrustSyncWarning[] = []
-    const configPath = join(repoRoot, '.codex-home', 'config.toml')
-    const previousCodexHome = process.env.CODEX_HOME
-    process.env.CODEX_HOME = join(repoRoot, '.codex-home')
+  it("emits a structured warning and leaves CODEX_HOME untouched when app-server is unavailable", async () => {
+    const repoRoot = tempRepo();
+    const warnings: CodexTrustSyncWarning[] = [];
+    const configPath = join(repoRoot, ".codex-home", "config.toml");
+    const previousCodexHome = process.env.CODEX_HOME;
+    process.env.CODEX_HOME = join(repoRoot, ".codex-home");
 
     await scaffoldAgentHooks({
       repoRoot,
       options: {},
       createCodexAppServer: async () => {
-        throw new Error('codex app-server unavailable')
+        throw new Error("codex app-server unavailable");
       },
       onCodexTrustSyncWarning: (warning) => warnings.push(warning),
-    })
+    });
 
     expect(warnings).toStrictEqual([
       {
-        kind: 'codex-app-server-trust-sync-warning',
-        message: 'codex app-server unavailable',
+        kind: "codex-app-server-trust-sync-warning",
+        message: "codex app-server unavailable",
       },
-    ])
-    expect(existsSync(configPath)).toBe(false)
-    if (previousCodexHome === undefined) delete process.env.CODEX_HOME
-    else process.env.CODEX_HOME = previousCodexHome
-  })
+    ]);
+    expect(existsSync(configPath)).toBe(false);
+    if (previousCodexHome === undefined) delete process.env.CODEX_HOME;
+    else process.env.CODEX_HOME = previousCodexHome;
+  });
 
-  it('reapplies trust sync through the same app-server-first path after later setup steps', async () => {
-    const repoRoot = tempRepo()
-    const hooksPath = join(repoRoot, '.codex', 'hooks.json')
-    const directHookCommand = `node /pkg/bin/wp hook pretool-guard # wp-pretool-guard`
-    const batchWrites: unknown[] = []
-    let listCall = 0
+  it("reapplies trust sync through the same app-server-first path after later setup steps", async () => {
+    const repoRoot = tempRepo();
+    const hooksPath = join(repoRoot, ".codex", "hooks.json");
+    const directHookCommand = `node /pkg/bin/wp hook pretool-guard # wp-pretool-guard`;
+    const batchWrites: unknown[] = [];
+    let listCall = 0;
 
     await scaffoldAgentHooks({
       repoRoot,
       options: {},
       createCodexAppServer: async () => ({
         async hooksList() {
-          return { data: [{ cwd: repoRoot, hooks: [], warnings: [], errors: [] }] }
+          return { data: [{ cwd: repoRoot, hooks: [], warnings: [], errors: [] }] };
         },
         async configBatchWrite() {
-          return {}
+          return {};
         },
         close() {},
       }),
-    })
+    });
 
     await trustCodexWebpressoHooksForRepo({
       repoRoot,
       options: {},
       createCodexAppServer: async () => ({
         async hooksList(cwds: string[]) {
-          listCall += 1
-          expect(cwds).toStrictEqual([repoRoot])
+          listCall += 1;
+          expect(cwds).toStrictEqual([repoRoot]);
           return {
             data: [
               {
@@ -109,43 +109,43 @@ describe('codex app-server trust integration', () => {
                 hooks: [
                   {
                     key: `${hooksPath}:pre_tool_use:0:0`,
-                    eventName: 'pre_tool_use',
-                    handlerType: 'command',
-                    matcher: 'Bash',
+                    eventName: "pre_tool_use",
+                    handlerType: "command",
+                    matcher: "Bash",
                     command: directHookCommand,
                     timeoutSec: 5,
                     statusMessage: null,
                     sourcePath: hooksPath,
-                    source: 'project',
+                    source: "project",
                     pluginId: null,
                     displayOrder: 0,
                     enabled: true,
                     isManaged: false,
-                    currentHash: 'sha256:abc123',
-                    trustStatus: listCall === 1 ? 'untrusted' : 'trusted',
+                    currentHash: "sha256:abc123",
+                    trustStatus: listCall === 1 ? "untrusted" : "trusted",
                   },
                 ],
                 warnings: [],
                 errors: [],
               },
             ],
-          }
+          };
         },
         async configBatchWrite(params) {
-          batchWrites.push(params)
-          return {}
+          batchWrites.push(params);
+          return {};
         },
         close() {},
       }),
-    })
+    });
 
-    expect(batchWrites).toHaveLength(1)
-  })
+    expect(batchWrites).toHaveLength(1);
+  });
 
-  it('skips (no spawn, no structured warning) via scaffoldAgentHooks when codex is absent', async () => {
-    const repoRoot = tempRepo()
-    let factoryCalls = 0
-    const warnings: CodexTrustSyncWarning[] = []
+  it("skips (no spawn, no structured warning) via scaffoldAgentHooks when codex is absent", async () => {
+    const repoRoot = tempRepo();
+    let factoryCalls = 0;
+    const warnings: CodexTrustSyncWarning[] = [];
 
     await scaffoldAgentHooks({
       repoRoot,
@@ -155,22 +155,22 @@ describe('codex app-server trust integration', () => {
       // transport error to the consumer.
       codexAvailable: () => false,
       createCodexAppServer: async () => {
-        factoryCalls += 1
-        throw new Error('codex app-server must not be started when codex is absent')
+        factoryCalls += 1;
+        throw new Error("codex app-server must not be started when codex is absent");
       },
       onCodexTrustSyncWarning: (warning) => warnings.push(warning),
-    })
+    });
 
-    expect(factoryCalls).toBe(0)
-    expect(warnings).toStrictEqual([])
-  })
+    expect(factoryCalls).toBe(0);
+    expect(warnings).toStrictEqual([]);
+  });
 
-  it('prints an info notice (and no structured warning) when codex is absent', async () => {
-    const repoRoot = tempRepo()
-    let factoryCalls = 0
-    const warnings: CodexTrustSyncWarning[] = []
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    let warnLines: string[] = []
+  it("prints an info notice (and no structured warning) when codex is absent", async () => {
+    const repoRoot = tempRepo();
+    let factoryCalls = 0;
+    const warnings: CodexTrustSyncWarning[] = [];
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    let warnLines: string[] = [];
 
     try {
       await trustCodexWebpressoHooksForRepo({
@@ -178,20 +178,20 @@ describe('codex app-server trust integration', () => {
         options: {},
         codexAvailable: () => false,
         createCodexAppServer: async () => {
-          factoryCalls += 1
-          throw new Error('codex app-server must not be started when codex is absent')
+          factoryCalls += 1;
+          throw new Error("codex app-server must not be started when codex is absent");
         },
         onCodexTrustSyncWarning: (warning) => warnings.push(warning),
-      })
+      });
       // Capture before mockRestore() — restoring resets mock.calls.
-      warnLines = warnSpy.mock.calls.map((call) => String(call[0]))
+      warnLines = warnSpy.mock.calls.map((call) => String(call[0]));
     } finally {
-      warnSpy.mockRestore()
+      warnSpy.mockRestore();
     }
 
-    expect(factoryCalls).toBe(0)
-    expect(warnings).toStrictEqual([])
-    const infoLines = warnLines.filter((line) => line.includes('codex not detected on PATH'))
-    expect(infoLines).toHaveLength(1)
-  })
-})
+    expect(factoryCalls).toBe(0);
+    expect(warnings).toStrictEqual([]);
+    const infoLines = warnLines.filter((line) => line.includes("codex not detected on PATH"));
+    expect(infoLines).toHaveLength(1);
+  });
+});
