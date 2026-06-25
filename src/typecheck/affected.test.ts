@@ -95,17 +95,25 @@ describe("affected typecheck closure", () => {
       path.relative(root, file.fileName).replaceAll("\\", "/"),
     );
     const diagnostics = collectAffectedDiagnostics(plan.program, plan.closureFiles);
+    const fileDiagnostics = diagnostics.filter(
+      (
+        diagnostic,
+      ): diagnostic is typeof diagnostic & { file: NonNullable<typeof diagnostic.file> } =>
+        diagnostic.file !== undefined,
+    );
+    const fileDiagnosticSummaries = fileDiagnostics.map((diagnostic) => ({
+      code: diagnostic.code,
+      file: path.relative(root, diagnostic.file.fileName).replaceAll("\\", "/"),
+      message: String(diagnostic.messageText),
+    }));
 
     expect(checkedFiles).toEqual(["src/a.ts", "src/b.ts"]);
-    expect(
-      diagnostics.some(
-        (diagnostic) =>
-          diagnostic.file &&
-          path.relative(root, diagnostic.file.fileName).replaceAll("\\", "/") === "src/b.ts" &&
-          String(diagnostic.messageText).includes(
-            "Type 'number' is not assignable to type 'string'",
-          ),
-      ),
-    ).toBe(true);
+    expect(fileDiagnosticSummaries).toEqual([
+      {
+        code: 2322,
+        file: "src/b.ts",
+        message: "Type 'number' is not assignable to type 'string'.",
+      },
+    ]);
   });
 });
