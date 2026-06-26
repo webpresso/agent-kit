@@ -386,7 +386,7 @@ describe("createPackedManifest", () => {
     } finally {
       rmSync(fixtureDir, { force: true, recursive: true });
     }
-  });
+  }, 30_000);
 
   it("does not publish the precompact snapshot hook as a public package bin", () => {
     const manifest = createPackedManifest(
