@@ -44,6 +44,12 @@ const keep = process.argv.includes("--keep");
 const includeMutation = process.argv.includes("--include-mutation");
 const skipBuild = process.argv.includes("--skip-build");
 const DEFAULT_PHASE_TIMEOUT_MS = 5 * 60 * 1000;
+// Cold packed-install setup includes `npm exec --package <tarball>` dependency
+// resolution before `wp setup` starts scaffolding. A measured success run on
+// 2026-06-26 took ~7m10s wall time (429_719ms), while the old 5 minute bound
+// killed the same proof at ~321_721ms. Keep the longer budget scoped to the
+// explicit packed-install setup phase only.
+const SETUP_PHASE_TIMEOUT_MS = 8 * 60 * 1000;
 const PACK_TIMEOUT_MS = 2 * 60 * 1000;
 const TARBALL_CONTRACT_TIMEOUT_MS = 30_000;
 
@@ -432,6 +438,7 @@ try {
       ],
       repo,
       setupEnv,
+      SETUP_PHASE_TIMEOUT_MS,
     );
     const setupPhaseResult = runResultsToPhaseResult("setup", t, [initGit, initNpm, setupResult]);
     phaseResults.push(setupPhaseResult);

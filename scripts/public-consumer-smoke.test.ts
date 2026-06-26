@@ -97,4 +97,14 @@ describe("public consumer smoke progress reporting", () => {
       "bun scripts/public-consumer-smoke.ts --setup-only --skip-build",
     );
   });
+
+  it("gives the explicit packed setup proof a longer timeout than generic phases", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const source = await readFile(join(import.meta.dirname, "public-consumer-smoke.ts"), "utf8");
+
+    expect(source).toContain("const DEFAULT_PHASE_TIMEOUT_MS = 5 * 60 * 1000");
+    expect(source).toContain("const SETUP_PHASE_TIMEOUT_MS = 8 * 60 * 1000");
+    expect(source).toContain("SETUP_PHASE_TIMEOUT_MS");
+  });
 });

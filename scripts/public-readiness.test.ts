@@ -457,8 +457,10 @@ describe("public-readiness runtime policy helpers", () => {
     const smokeSource = readFileSync(join(import.meta.dirname, "public-consumer-smoke.ts"), "utf8");
 
     expect(smokeSource).toContain("const DEFAULT_PHASE_TIMEOUT_MS = 5 * 60 * 1000");
+    expect(smokeSource).toContain("const SETUP_PHASE_TIMEOUT_MS = 8 * 60 * 1000");
     expect(smokeSource).toContain("timeout: timeoutMs");
     expect(smokeSource).toContain("timeout: TARBALL_CONTRACT_TIMEOUT_MS");
+    expect(smokeSource).toContain("SETUP_PHASE_TIMEOUT_MS");
     expect(smokeSource).toContain("formatPhaseProgressLine");
   });
 });
