@@ -6,11 +6,11 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   RUNTIME_TYPECHECK_PARITY_ROOT_FILE,
+  ensureRuntimeTypecheckParityWorkspace,
   findResolvedTypecheckScopeGaps,
   findTypecheckHelpSurfaceGaps,
   formatResolvedTypecheckScopes,
   formatRuntimeTypecheckParityFailures,
-  probeRuntimeTypecheckParity,
 } from "./runtime-parity.js";
 
 describe("typecheck runtime parity helpers", () => {
@@ -56,7 +56,7 @@ describe("typecheck runtime parity helpers", () => {
   });
 });
 
-describe("probeRuntimeTypecheckParity", () => {
+describe("ensureRuntimeTypecheckParityWorkspace", () => {
   const roots: string[] = [];
 
   afterEach(() => {
@@ -68,32 +68,12 @@ describe("probeRuntimeTypecheckParity", () => {
   it("reuses a caller-provided seeded workspace without reseeding it", () => {
     const workspaceRoot = mkdtempSync(join(tmpdir(), "wp-runtime-parity-test-"));
     roots.push(workspaceRoot);
-    const command = process.execPath;
-    const args = [
-      "--input-type=module",
-      "--eval",
-      [
-        "const args = process.argv.slice(1);",
-        "const emit = (value) => process.stdout.write(`${value}\\n`);",
-        "if (args[0] !== 'typecheck') process.exit(2);",
-        "if (args.includes('--help')) {",
-        "  emit('Usage: wp typecheck');",
-        "  emit('--file <path>');",
-        "  emit('--package <name>');",
-        "  process.exit(0);",
-        "}",
-        "emit('Resolved typecheck scopes: @parity/root, @parity/widget');",
-      ].join(" "),
-    ];
-
-    const firstProbe = probeRuntimeTypecheckParity({ command, args, workspaceRoot });
-    expect(firstProbe.ok).toBe(true);
+    ensureRuntimeTypecheckParityWorkspace(workspaceRoot);
 
     const rootFilePath = join(workspaceRoot, RUNTIME_TYPECHECK_PARITY_ROOT_FILE);
     writeFileSync(rootFilePath, "export const rootValue = 2\n", "utf8");
 
-    const secondProbe = probeRuntimeTypecheckParity({ command, args, workspaceRoot });
-    expect(secondProbe.ok).toBe(true);
+    ensureRuntimeTypecheckParityWorkspace(workspaceRoot);
     expect(readFileSync(rootFilePath, "utf8")).toBe("export const rootValue = 2\n");
   });
 });

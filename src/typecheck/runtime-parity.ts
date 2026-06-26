@@ -104,7 +104,7 @@ function isSeededWorkspaceFixture(root: string): boolean {
   );
 }
 
-function ensureSeededWorkspaceFixture(root: string): void {
+export function ensureRuntimeTypecheckParityWorkspace(root: string): void {
   if (isSeededWorkspaceFixture(root)) return;
   seedWorkspaceFixture(root);
 }
@@ -145,9 +145,14 @@ function runParityCommand(
   workspaceRoot: string,
   argv: readonly string[],
 ): ProbeExecutionResult {
+  const env = {
+    ...(options.env ?? process.env),
+    NODE_OPTIONS: options.env?.NODE_OPTIONS ?? "",
+  };
+
   const result = spawnSync(options.command, argv, {
     cwd: workspaceRoot,
-    env: options.env,
+    env,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
     timeout: options.timeoutMs ?? RUNTIME_TYPECHECK_PARITY_TIMEOUT_MS,
@@ -186,7 +191,7 @@ export function probeRuntimeTypecheckParity(
   const baseArgs = [...(options.args ?? [])];
 
   try {
-    ensureSeededWorkspaceFixture(workspaceRoot);
+    ensureRuntimeTypecheckParityWorkspace(workspaceRoot);
 
     const help = runParityCommand(options, workspaceRoot, [...baseArgs, "typecheck", "--help"]);
     const fileScope = runParityCommand(options, workspaceRoot, [

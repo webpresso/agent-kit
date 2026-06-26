@@ -42,6 +42,7 @@ tags: [performance, tests, packaging]
     - packed global install + parity smoke, previous shape: `224.740s`
     - packed global install + parity smoke, current one-install shape: `141.630s`
   - `./node_modules/.bin/vitest run src/hooks/pretool-guard/runner.subprocess.test.ts --project subprocess --reporter verbose` -> pass, 9 tests, duration `38.99s`
+  - `./bin/wp test --file package.contract.integration.test.ts --file src/typecheck/runtime-parity.test.ts --full` -> pass, 2 files / 12 tests, duration `263.52s`
   - `vp run typecheck` -> pass
   - `vp run lint` -> pass
   - `./bin/wp format --check --file package.contract.integration.test.ts --file src/typecheck/runtime-parity.ts --file src/typecheck/runtime-parity.test.ts --file blueprints/draft/2026-06-26-package-contract-packed-install-wall-time-followup.md` -> pass
