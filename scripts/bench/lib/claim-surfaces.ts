@@ -6,6 +6,18 @@ export type ClaimSurface = {
   readonly text: string;
 };
 
+export type EnumerateClaimSurfacesOptions = {
+  /**
+   * Include files listed by `npm pack --dry-run --json`.
+   *
+   * This is intentionally opt-in because `npm pack` may run package lifecycle
+   * scripts and is slow enough to dominate unit test wall-time. Release/public
+   * surface checks that need the packed tarball view should request it
+   * explicitly.
+   */
+  readonly includePackedSurface?: boolean;
+};
+
 async function readOptional(filePath: string): Promise<ClaimSurface | null> {
   try {
     const text = await fs.readFile(filePath, "utf8");
@@ -75,13 +87,17 @@ async function packedFilePaths(repoRoot: string): Promise<string[]> {
 }
 
 /**
- * Returns all claim surfaces for scanning.
+ * Returns claim surfaces for scanning.
  * Excludes docs/research/** (external comparison material, not scanned for claims).
- * Includes: working-tree markdown, package.json, latest CHANGELOG slice,
- *           packed tarball entries (via npm pack --dry-run JSON output),
- *           CLI source strings (scripts/bench/README.md, scripts/bench/PREFLIGHT.md if they exist)
+ * Includes by default: working-tree markdown, package.json, latest CHANGELOG slice,
+ *                     CLI source strings (scripts/bench/README.md,
+ *                     scripts/bench/PREFLIGHT.md if they exist).
+ * Includes packed tarball entries only when `includePackedSurface` is true.
  */
-export async function enumerateClaimSurfaces(repoRoot: string): Promise<readonly ClaimSurface[]> {
+export async function enumerateClaimSurfaces(
+  repoRoot: string,
+  options: EnumerateClaimSurfacesOptions = {},
+): Promise<readonly ClaimSurface[]> {
   const surfaces: ClaimSurface[] = [];
 
   const rootFiles = [
@@ -103,11 +119,15 @@ export async function enumerateClaimSurfaces(repoRoot: string): Promise<readonly
   const docsSurfaces = await collectMarkdownUnder(docsDir, excludeResearch);
   surfaces.push(...docsSurfaces);
 
-  const packedPaths = await packedFilePaths(repoRoot);
-  const packedSurfaces = await Promise.all(packedPaths.map((p) => readOptional(join(repoRoot, p))));
-  for (const s of packedSurfaces) {
-    if (s !== null && !surfaces.some((existing) => existing.path === s.path)) {
-      surfaces.push(s);
+  if (options.includePackedSurface === true) {
+    const packedPaths = await packedFilePaths(repoRoot);
+    const packedSurfaces = await Promise.all(
+      packedPaths.map((p) => readOptional(join(repoRoot, p))),
+    );
+    for (const s of packedSurfaces) {
+      if (s !== null && !surfaces.some((existing) => existing.path === s.path)) {
+        surfaces.push(s);
+      }
     }
   }
 

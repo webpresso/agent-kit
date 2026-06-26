@@ -2,9 +2,17 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { enumerateClaimSurfaces } from "./claim-surfaces";
+
+const { spawnSyncMock } = vi.hoisted(() => ({
+  spawnSyncMock: vi.fn(),
+}));
+
+vi.mock("node:child_process", () => ({
+  spawnSync: spawnSyncMock,
+}));
 
 function makeRoot(): string {
   return mkdtempSync(join(tmpdir(), "wp-claim-surfaces-"));
@@ -21,6 +29,7 @@ describe("enumerateClaimSurfaces", () => {
   let root = "";
 
   afterEach(() => {
+    spawnSyncMock.mockReset();
     if (root) rmSync(root, { recursive: true, force: true });
     root = "";
   });
@@ -33,6 +42,36 @@ describe("enumerateClaimSurfaces", () => {
     const paths = surfaces.map((s) => s.path);
 
     expect(paths).toContain(join(root, "README.md"));
+  });
+
+  it("does not run npm pack by default", async () => {
+    root = makeRoot();
+    write(root, "README.md", "# README");
+
+    await enumerateClaimSurfaces(root);
+
+    expect(spawnSyncMock).not.toHaveBeenCalled();
+  });
+
+  it("includes packed tarball entries only when requested", async () => {
+    root = makeRoot();
+    write(root, "README.md", "# README");
+    write(root, "dist/esm/index.js", "export {};\n");
+    spawnSyncMock.mockReturnValue({
+      status: 0,
+      stdout: JSON.stringify([{ files: [{ path: "README.md" }, { path: "dist/esm/index.js" }] }]),
+    });
+
+    const surfaces = await enumerateClaimSurfaces(root, { includePackedSurface: true });
+    const paths = surfaces.map((s) => s.path);
+
+    expect(spawnSyncMock).toHaveBeenCalledWith("npm", ["pack", "--dry-run", "--json"], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    expect(paths).toContain(join(root, "README.md"));
+    expect(paths).toContain(join(root, "dist", "esm", "index.js"));
+    expect(paths.filter((p) => p === join(root, "README.md"))).toHaveLength(1);
   });
 
   it("does NOT return anything under docs/research/", async () => {

@@ -24,6 +24,9 @@ describe("hermetic-env", () => {
       "WP_COMPILED_RUNTIME",
       "GITHUB_PAT",
       "QUALITY_ENGINE_COMPACT",
+      "GIT_DIR",
+      "GIT_WORK_TREE",
+      "GIT_INDEX_FILE",
     ]);
   });
 

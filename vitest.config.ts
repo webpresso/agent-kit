@@ -25,19 +25,42 @@ export const TEST_INCLUDE = [
 // subprocess project's `**/*.<suffix>.test.ts` globs would — exclude them so we
 // don't run duplicate/stale test files from nested worktrees.
 const BASE_EXCLUDE = ["**/node_modules/**", "**/dist/**", "**/.claude/**", "**/_worktrees/**"];
+const BOUNDED_WORKERS = process.env.CI === "true" ? 2 : 3;
 
 // Subprocess-heavy lane, classified by filename SUFFIX (not a maintained list):
 //   - *.integration.test.ts / *.e2e.test.ts — established conventions
 //   - *.subprocess.test.ts — plain unit tests that spawn real git/bun/node
-// Tests matching these spawn external processes; running them in the parallel
-// pool oversubscribes the machine and trips the 10s budget (see the original
-// maxWorkers note). They run serially (fileParallelism:false) at a 30s budget.
+// Tests matching these spawn external processes; run them in forked workers with
+// bounded file concurrency instead of globally serializing the lane. If a file
+// proves it shares mutable external state, isolate that exact offender rather
+// than putting the whole subprocess project back in serial mode.
 // The list is a SUFFIX GLOB, so it carries no agent-kit-internal filenames and
 // never needs editing when a new heavy test is added — the author names the file.
 export const SUBPROCESS_SUFFIX_GLOBS = [
   "**/*.integration.test.ts",
   "**/*.e2e.test.ts",
   "**/*.subprocess.test.ts",
+];
+
+// Files that must never run concurrently with siblings: they either build the
+// shared `dist/runtime`/`bin/runtime` tree (a write-write race under parallel
+// forks) or self-spawn many child processes (oversubscription). Routing is an
+// explicit list, per the "isolate the exact offender" note above — not a suffix.
+export const SERIAL_SUBPROCESS_GLOBS = [
+  // Mutates the shared package.json in place (prepare/restore around `npm pack`)
+  // and rebuilds dist; if it runs in the parallel pool, sibling tests that spawn
+  // the real CLI (e.g. init.e2e) read a half-prepared manifest and exit 1. The
+  // serial-subprocess project runs in its own groupOrder so it never overlaps them.
+  "package.contract.integration.test.ts",
+  "scripts/release.integration.test.ts",
+  "scripts/release.subprocess.test.ts",
+  // Build the compiled runtime into the shared dist/runtime tree — concurrent
+  // builds corrupt each other.
+  "src/hooks/__conformance__/parity.e2e.test.ts",
+  "scripts/runtime-typecheck-parity.integration.test.ts",
+  // Self-spawns 4 concurrent writer processes; running copies in parallel
+  // oversubscribes the machine.
+  "src/blueprint/db/wal-multiwindow.integration.test.ts",
 ];
 
 export default defineConfig({
@@ -62,8 +85,9 @@ export default defineConfig({
     // Root-only: builds dist once before workers fork (idempotent via sentinel).
     globalSetup: ["./src/test-helpers/global-setup.ts"],
 
-    // Two pools. `unit` runs parallel (fast); `subprocess` runs serial so the
-    // process-spawning tests can't oversubscribe the machine. Routing is by the
+    // Two fork pools. `unit` and `subprocess` both run with bounded file
+    // concurrency so process-spawning tests retain isolation without making the
+    // whole subprocess lane serial. Routing is by the
     // include globs above, so the default `vitest run`, `vitest run <file>`, and
     // MCP shard runs all land each file in the correct pool with no CLI changes.
     projects: [
@@ -73,7 +97,8 @@ export default defineConfig({
           name: "unit",
           include: TEST_INCLUDE,
           exclude: [...BASE_EXCLUDE, ...SUBPROCESS_SUFFIX_GLOBS],
-          maxWorkers: 4,
+          pool: "forks",
+          maxWorkers: BOUNDED_WORKERS,
           testTimeout: 10_000,
         },
       },
@@ -82,8 +107,21 @@ export default defineConfig({
         test: {
           name: "subprocess",
           include: SUBPROCESS_SUFFIX_GLOBS,
+          exclude: [...BASE_EXCLUDE, ...SERIAL_SUBPROCESS_GLOBS],
+          pool: "forks",
+          maxWorkers: BOUNDED_WORKERS,
+          testTimeout: 30_000,
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "serial-subprocess",
+          include: SERIAL_SUBPROCESS_GLOBS,
           exclude: BASE_EXCLUDE,
+          pool: "forks",
           fileParallelism: false,
+          sequence: { groupOrder: 1 },
           testTimeout: 30_000,
         },
       },

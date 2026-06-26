@@ -22,6 +22,7 @@ import { probeRuntimeTypecheckParity } from "./src/typecheck/runtime-parity.js";
 
 const REPO_ROOT = process.cwd();
 const PACKAGE_JSON_PATH = join(REPO_ROOT, "package.json");
+const DIST_SENTINEL = join(REPO_ROOT, "dist", "esm", "index.js");
 const MIGRATION_SENTINEL = join(
   REPO_ROOT,
   "dist",
@@ -40,6 +41,7 @@ const EXPECTED_BLUEPRINT_SCHEMA_VERSIONS = EXPECTED_BLUEPRINT_MIGRATION_SQL_FILE
 );
 const ORIGINAL_PACKAGE_JSON_TEXT = readFileSync(PACKAGE_JSON_PATH, "utf8");
 const PACK_LOCK_DIRECTORY = join(tmpdir(), "webpresso-agent-kit-npm-pack.lock");
+let packedTarballTempRoot: string | undefined;
 
 function acquirePackLock(): () => void {
   const started = Date.now();
@@ -80,6 +82,9 @@ type PackedTarballArtifact = {
   peerDependencies?: Record<string, string>;
 };
 
+type PackedSurfaceMetadata = Omit<PackedTarballArtifact, "tarballPath">;
+
+let packedSurfaceMetadataCache: PackedSurfaceMetadata | undefined;
 let packedTarballArtifactCache: PackedTarballArtifact | undefined;
 let packedDistBuilt = false;
 let packedNativeRuntimeBuilt = false;
@@ -94,26 +99,27 @@ function parseNpmJson<T>(raw: string): T {
 
 function ensureBuiltPackedDist() {
   if (packedDistBuilt) return;
-  // Packed-install contracts must prove the current source tree, not whatever
-  // dist/ was left by a previous local build or test worker. Global installs
-  // can fall back to dist/esm when optional runtime packages are unavailable,
-  // so stale dist is a real packaged-surface regression.
-  execFileSync("./node_modules/.bin/tshy", [], {
-    cwd: REPO_ROOT,
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      HUSKY: "0",
-    },
-  });
-  execFileSync("bun", ["src/build/normalize-tsconfig-json-exports.ts"], {
-    cwd: REPO_ROOT,
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      HUSKY: "0",
-    },
-  });
+  // Vitest globalSetup builds dist once before workers fork. Reuse that current
+  // compiled tree when present; rebuilding inside the first package-surface
+  // assertion can exceed the test's fixed 30s timeout and duplicates work.
+  if (!existsSync(DIST_SENTINEL)) {
+    execFileSync("./node_modules/.bin/tshy", [], {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        HUSKY: "0",
+      },
+    });
+    execFileSync("bun", ["src/build/normalize-tsconfig-json-exports.ts"], {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        HUSKY: "0",
+      },
+    });
+  }
   if (!existsSync(MIGRATION_SENTINEL)) {
     execFileSync("bun", ["src/build/blueprint-migration-assets.ts"], {
       cwd: REPO_ROOT,
@@ -157,13 +163,53 @@ function ensureBuiltNativeRuntimeArtifacts() {
   packedNativeRuntimeBuilt = true;
 }
 
-function ensurePackedTarballArtifact() {
-  if (packedTarballArtifactCache) return packedTarballArtifactCache;
+function preparePackageForPack(): void {
+  execFileSync("vp", ["run", "stage:workflow-skills"], {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      HUSKY: "0",
+    },
+  });
+  execFileSync("bun", ["src/build/package-manifest.ts", "prepare"], {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      HUSKY: "0",
+    },
+  });
+}
+
+function restorePackageAfterPack(): void {
+  execFileSync("bun", ["src/build/package-manifest.ts", "restore"], {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      HUSKY: "0",
+    },
+  });
+}
+
+function readPreparedManifest(): Omit<PackedTarballArtifact, "paths" | "tarballPath"> {
+  return JSON.parse(readFileSync(PACKAGE_JSON_PATH, "utf8")) as Omit<
+    PackedTarballArtifact,
+    "paths" | "tarballPath"
+  >;
+}
+
+function ensurePackedSurfaceMetadata() {
+  if (packedSurfaceMetadataCache) return packedSurfaceMetadataCache;
   ensureBuiltPackedDist();
   const release = acquirePackLock();
   let raw: string;
+  let manifest: Omit<PackedTarballArtifact, "paths" | "tarballPath">;
   try {
-    raw = execFileSync("npm", ["pack", "--json"], {
+    preparePackageForPack();
+    manifest = readPreparedManifest();
+    raw = execFileSync("npm", ["pack", "--dry-run", "--ignore-scripts", "--json"], {
       cwd: REPO_ROOT,
       encoding: "utf8",
       env: {
@@ -172,14 +218,54 @@ function ensurePackedTarballArtifact() {
       },
     });
   } finally {
-    release();
+    try {
+      restorePackageAfterPack();
+    } finally {
+      release();
+    }
+  }
+  const entries = parseNpmJson<Array<{ files?: Array<{ path?: string }> }>>(raw);
+  const paths =
+    entries[0]?.files
+      ?.map((file) => file.path)
+      .filter((path): path is string => typeof path === "string") ?? [];
+  packedSurfaceMetadataCache = { ...manifest, paths };
+  return packedSurfaceMetadataCache;
+}
+
+function ensurePackedTarballArtifact() {
+  if (packedTarballArtifactCache) return packedTarballArtifactCache;
+  ensureBuiltPackedDist();
+  const release = acquirePackLock();
+  let raw: string;
+  try {
+    preparePackageForPack();
+    packedTarballTempRoot = mkdtempSync(join(tmpdir(), "wp-packed-artifact-"));
+    raw = execFileSync(
+      "npm",
+      ["pack", "--ignore-scripts", "--json", "--pack-destination", packedTarballTempRoot],
+      {
+        cwd: REPO_ROOT,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          HUSKY: "0",
+        },
+      },
+    );
+  } finally {
+    try {
+      restorePackageAfterPack();
+    } finally {
+      release();
+    }
   }
   const entries = parseNpmJson<Array<{ filename?: string }>>(raw);
   const tarballName = entries[0]?.filename;
   if (!tarballName) {
     throw new Error("npm pack did not return a tarball filename");
   }
-  const tarballPath = join(REPO_ROOT, tarballName);
+  const tarballPath = join(packedTarballTempRoot ?? REPO_ROOT, tarballName);
   const paths = execFileSync("tar", ["-tf", tarballPath], {
     cwd: REPO_ROOT,
     encoding: "utf8",
@@ -201,8 +287,8 @@ function ensurePackedTarballArtifact() {
   return packedTarballArtifactCache;
 }
 
-function readPackedTarballArtifact() {
-  return ensurePackedTarballArtifact();
+function readPackedSurfaceMetadata() {
+  return ensurePackedSurfaceMetadata();
 }
 
 function listPackedManifestCatalogSpecifiers(pkg: {
@@ -274,10 +360,12 @@ function unpackTarball(tarballPath: string, destinationRoot: string): string {
 }
 
 afterAll(() => {
-  if (packedTarballArtifactCache) {
-    rmSync(packedTarballArtifactCache.tarballPath, { force: true });
+  if (packedTarballTempRoot) {
+    rmSync(packedTarballTempRoot, { force: true, recursive: true });
+    packedTarballTempRoot = undefined;
     packedTarballArtifactCache = undefined;
   }
+  packedSurfaceMetadataCache = undefined;
   if (readFileSync(PACKAGE_JSON_PATH, "utf8") !== ORIGINAL_PACKAGE_JSON_TEXT) {
     // Atomic restore: concurrent bun processes must never see a truncated package.json.
     const tmpPath = `${PACKAGE_JSON_PATH}.writing`;
@@ -288,7 +376,7 @@ afterAll(() => {
 
 describe("tooling umbrella package integration contract", () => {
   it("packs no banned internal tarball artifacts", () => {
-    const packedPaths = readPackedTarballArtifact().paths;
+    const packedPaths = readPackedSurfaceMetadata().paths;
     const banned = packedPaths.filter((path) =>
       FORBIDDEN_TARBALL_PATHS.some((pattern) => pattern.test(path)),
     );
@@ -302,13 +390,13 @@ describe("tooling umbrella package integration contract", () => {
   }, 30_000);
 
   it("packs a manifest with no workspace-only catalog specifiers", () => {
-    const packedManifest = readPackedTarballArtifact();
+    const packedManifest = readPackedSurfaceMetadata();
 
     expect(listPackedManifestCatalogSpecifiers(packedManifest)).toEqual([]);
   }, 30_000);
 
   it("packs the built blueprint migration SQL assets under dist/esm", () => {
-    const packedPaths = readPackedTarballArtifact().paths;
+    const packedPaths = readPackedSurfaceMetadata().paths;
 
     for (const file of EXPECTED_BLUEPRINT_MIGRATION_SQL_FILES) {
       expect(packedPaths).toContain(`dist/esm/blueprint/db/migrations/${file}`);
@@ -358,7 +446,7 @@ describe("tooling umbrella package integration contract", () => {
         join(packedPackageRoot, "bin", "wp"),
         ["setup", "--yes", "--cwd", tmpRoot],
         {
-          cwd: launcherRoot,
+          cwd: tmpRoot,
           encoding: "utf8",
           env: {
             ...process.env,
@@ -462,7 +550,7 @@ describe("tooling umbrella package integration contract", () => {
         stdio: ["ignore", "pipe", "pipe"],
       });
 
-      execFileSync("npm", ["install", "--global", tarballPath, "--omit=optional"], {
+      execFileSync("npm", ["install", "--global", tarballPath, "--omit=optional", "--force"], {
         cwd: tmpRoot,
         encoding: "utf8",
         env,
