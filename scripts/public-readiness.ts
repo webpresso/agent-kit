@@ -92,6 +92,77 @@ const DENIED_PACKED_RUNTIME_PAYLOAD_PREFIXES = [
   "native/session-memory-engine/",
 ] as const;
 
+const REQUIRED_SECRET_DOC_PATHS = [
+  "docs/README.md",
+  "docs/getting-started.md",
+  "docs/ci-act.md",
+  "docs/security-audits.md",
+  "docs/reusable-cloudflare-deploy-workflows.md",
+  "docs/guides/repo-to-preview-url.md",
+  "docs/secrets/providers.md",
+  "docs/secrets/bootstrap-github.md",
+  "docs/secrets/local-workplaces.md",
+  "docs/secrets/pulumi.md",
+  "docs/errors/wp-secret-orchestration.md",
+] as const;
+
+const SECRET_DOC_MARKERS: Readonly<
+  Record<(typeof REQUIRED_SECRET_DOC_PATHS)[number], readonly string[]>
+> = {
+  "docs/README.md": ["Secret orchestration", "Secret providers", "WP secret orchestration errors"],
+  "docs/getting-started.md": [
+    "wp secrets run --sink dev-server --profile preview -- codex",
+    "secret providers",
+    "WP secret orchestration errors",
+  ],
+  "docs/ci-act.md": [
+    "wp secrets run --sink act --profile <profile> --",
+    "secretEnvProfile",
+    "WP secret orchestration errors",
+  ],
+  "docs/security-audits.md": [
+    "secret-provider-quarantine",
+    "docs/secrets/providers.md",
+    "docs/errors/wp-secret-orchestration.md",
+  ],
+  "docs/reusable-cloudflare-deploy-workflows.md": [
+    "wp config secrets",
+    "wp secrets run --sink <sink> --profile <profile> -- <cmd>",
+    "docs/secrets/bootstrap-github.md",
+  ],
+  "docs/guides/repo-to-preview-url.md": [
+    "wp secrets doctor",
+    "wp preview --json",
+    "WP secret orchestration errors",
+  ],
+  "docs/secrets/providers.md": [
+    "schemaVersion",
+    "wp config secrets show",
+    "wp secrets run --sink dev-server --profile preview -- codex",
+    "configured provider CLI",
+  ],
+  "docs/secrets/bootstrap-github.md": [
+    "WP_GITHUB_BOOTSTRAP_PLANNED",
+    "CI_SECRET_PROVIDER_TOKEN_PRODUCTION",
+    "--apply",
+  ],
+  "docs/secrets/local-workplaces.md": [
+    ".git/webpresso/secrets.json",
+    "git-common-dir",
+    "wp config secrets status",
+  ],
+  "docs/secrets/pulumi.md": [
+    "wp secrets run --sink pulumi --profile preview -- pulumi preview",
+    "env injection only",
+    "full",
+  ],
+  "docs/errors/wp-secret-orchestration.md": [
+    "WP_SECRETS_CONFIG_INVALID",
+    "WP_GITHUB_BOOTSTRAP_MISSING_SECRET",
+    "WP_SECRETS_RUN_USAGE",
+  ],
+};
+
 function isAllowedPackedNativeAddon(path: string): boolean {
   return path.endsWith(".node");
 }
@@ -379,6 +450,37 @@ export function hasQualitativeBenchmarkClaim(text: string): boolean {
 
 export function listFirstPartyBenchmarkResultCards(root = ROOT): string[] {
   return listValidBenchmarkResultCards(root);
+}
+
+export function listMissingShippedSecretDocs(files: readonly string[]): string[] {
+  return REQUIRED_SECRET_DOC_PATHS.filter((path) => !files.includes(path));
+}
+
+export function evaluateSecretDocsContentGate(root = ROOT): CheckResult {
+  const failures: string[] = [];
+  for (const path of REQUIRED_SECRET_DOC_PATHS) {
+    const absolute = resolve(root, path);
+    if (!existsSync(absolute)) {
+      failures.push(`${path} missing`);
+      continue;
+    }
+    const text = readFileSync(absolute, "utf8");
+    const missingMarkers = SECRET_DOC_MARKERS[path].filter((marker) => !text.includes(marker));
+    const wordCount = text.trim().split(/\s+/u).filter(Boolean).length;
+    if (missingMarkers.length > 0 || wordCount < 40) {
+      failures.push(
+        missingMarkers.length > 0
+          ? `${path} missing markers: ${missingMarkers.join(", ")}`
+          : `${path} looks placeholder-only (${wordCount} words)`,
+      );
+    }
+  }
+  return failures.length === 0
+    ? pass(
+        "secret-docs-content-gate",
+        `secret docs present and non-placeholder: ${REQUIRED_SECRET_DOC_PATHS.length}`,
+      )
+    : fail("secret-docs-content-gate", failures.join("; "));
 }
 
 function listMarkdownFiles(root: string, dir: string): string[] {
@@ -967,6 +1069,18 @@ if (import.meta.main) {
               .join("; "),
           ),
     );
+    const missingSecretDocs = listMissingShippedSecretDocs(files);
+    results.push(
+      missingSecretDocs.length === 0
+        ? pass(
+            "tarball-secret-docs-surface",
+            `tarball includes README/runtime secret docs: ${REQUIRED_SECRET_DOC_PATHS.length}`,
+          )
+        : fail(
+            "tarball-secret-docs-surface",
+            `missing shipped secret/error docs: ${missingSecretDocs.join(", ")}`,
+          ),
+    );
   }
 
   // 4) Negative stale-literal checks on shipped/public surfaces
@@ -1031,9 +1145,10 @@ if (import.meta.main) {
     );
   }
 
-  // 6) README benchmark claim gate
+  // 6) README benchmark claim gate + shipped secret docs contract
   results.push(evaluateReadmeBenchmarkClaimGate(read("README.md")));
   results.push(evaluatePublicBenchmarkClaimGate(ROOT));
+  results.push(evaluateSecretDocsContentGate(ROOT));
 
   // G2) Metric-class binding check
   results.push(evaluateMetricClassBindingGate(ROOT));

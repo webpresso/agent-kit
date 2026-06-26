@@ -14,13 +14,7 @@
       "source": "./",
       "description": "Webpresso agent-kit: blueprints, skills, lore commit protocol, tech-debt lifecycle",
       "category": "development",
-      "keywords": [
-        "agent",
-        "blueprint",
-        "claude-code",
-        "skills",
-        "mcp"
-      ]
+      "keywords": ["agent", "blueprint", "claude-code", "skills", "mcp"]
     }
   ],
   "version": "2.4.1"

@@ -1,7 +1,7 @@
 ---
 title: Reusable Cloudflare deploy workflows
 type: guide
-last_updated: 2026-06-19
+last_updated: 2026-06-26
 ---
 
 # Reusable Cloudflare deploy workflows
@@ -33,6 +33,7 @@ This keeps CI aligned with the repo-local operator contract:
 
 - configure metadata with `wp config secrets ...`
 - run local secret-scoped commands through `wp secrets run --sink <sink> --profile <profile> -- <cmd>`
+- keep the operator docs aligned with [`docs/secrets/providers.md`](./secrets/providers.md) and [`docs/secrets/bootstrap-github.md`](./secrets/bootstrap-github.md)
 
 ### Caller requirements
 

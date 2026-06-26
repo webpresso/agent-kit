@@ -215,6 +215,45 @@ the only honest parallelism available — it touches `src/cli/**`, disjoint from
 the docs/packaging path, giving a 2-wide Wave 0. Faking further splits would
 introduce artificial dependencies.
 
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-26T11:45:00.000Z
+- verified-head: 9551de27cc62a9ba7880aa51957995e0e748d52a
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID  | Claim                                                                                                                                | Evidence                                                                                                      |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| C1  | Secret orchestration docs and error docs already exist and are the public surfaces this slice rewrites and packages.                 | repo:docs/secrets/providers.md; repo:docs/errors/wp-secret-orchestration.md                                   |
+| C2  | Public readiness and npm package surface are the owning guardrails for shipped README/runtime doc references.                        | repo:scripts/public-readiness.ts; repo:package.json                                                           |
+| C3  | Stale Context7 copy lives in init/setup output while legacy wrapper compatibility remains owned by runtime migration and audit code. | repo:src/cli/commands/init/index.ts; repo:src/cli/wrapped-wp.ts; repo:src/audit/secret-provider-quarantine.ts |
+
+### Material Decisions
+
+| ID  | Decision              | Chosen option                                                                                       | Rejected alternatives                                                                               | Rationale                                                                                                         |
+| --- | --------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| D1  | Documentation surface | Rewrite and package the existing `docs/secrets/*` and `docs/errors/wp-secret-orchestration.md` docs | Creating new root docs or replacing runtime `docsPath` references with external URLs                | Existing repo-local docs are already referenced by runtime errors and are reviewable in the npm tarball.          |
+| D2  | Compatibility cleanup | Remove only stale user-facing `with-secrets` init/setup copy                                        | Removing legacy parser, wrapper-bin recognition, migration, or quarantine enforcement in this slice | The user-visible copy can be corrected without changing compatibility behavior or broadening the migration scope. |
+| D3  | Guardrail owner       | Extend public readiness and package-surface tests for shipped secret/error docs                     | Relying on prose-only review or docs-governance changes                                             | CI should fail when referenced public docs are missing from the tarball or remain placeholder-only.               |
+
+### Promotion Gates
+
+| Gate            | Command                                                             | Expected outcome | Last result                             |
+| --------------- | ------------------------------------------------------------------- | ---------------- | --------------------------------------- |
+| blueprint-trust | ./bin/wp audit blueprint-trust                                      | pass             | pass after adding this dossier          |
+| docs-tests      | ./bin/wp test --file scripts/public-readiness.test.ts               | pass             | pass during implementation verification |
+| init-copy-tests | ./bin/wp test --file src/cli/commands/init/init.integration.test.ts | pass             | pass during implementation verification |
+| package-surface | ./bin/wp audit package-surface                                      | pass             | pass during implementation verification |
+
+### Residual Unknowns
+
+None.
+
 ## Verification Gates
 
 | Gate            | Command                     | Success Criteria         |

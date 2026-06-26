@@ -237,6 +237,22 @@ describe("wp init end-to-end", { timeout: 40_000 }, () => {
     rmSync(repo, { recursive: true, force: true });
   });
 
+  it("does not advertise the legacy with-secrets Context7 launch copy", async () => {
+    const badDir = join(tmpdir(), `wp-init-nogit-copy-${Date.now()}`);
+    mkdirSync(badDir, { recursive: true });
+    try {
+      const code = await runInit({ cwd: badDir, yes: true });
+
+      expect(code).toBe(0);
+      const logText = consoleLogSpy?.mock.calls.flat().join("\n") ?? "";
+      expect(logText).toContain("codex context7 mcp");
+      expect(logText).toContain("your secret provider");
+      expect(logText).not.toContain("with-secrets");
+    } finally {
+      rmSync(badDir, { recursive: true, force: true });
+    }
+  });
+
   it("falls back to user-only setup outside a git repo and configures Codex MCP", async () => {
     const badDir = join(tmpdir(), `wp-init-nogit-${Date.now()}`);
     mkdirSync(badDir, { recursive: true });
