@@ -1,10 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  RUNTIME_TYPECHECK_PARITY_ROOT_FILE,
   findResolvedTypecheckScopeGaps,
   findTypecheckHelpSurfaceGaps,
   formatResolvedTypecheckScopes,
   formatRuntimeTypecheckParityFailures,
+  probeRuntimeTypecheckParity,
 } from "./runtime-parity.js";
 
 describe("typecheck runtime parity helpers", () => {
@@ -47,5 +53,47 @@ describe("typecheck runtime parity helpers", () => {
         ],
       }),
     ).toBe("typecheck --help is missing the --file flag; typecheck --file failed (exit 1)");
+  });
+});
+
+describe("probeRuntimeTypecheckParity", () => {
+  const roots: string[] = [];
+
+  afterEach(() => {
+    for (const root of roots.splice(0)) {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("reuses a caller-provided seeded workspace without reseeding it", () => {
+    const workspaceRoot = mkdtempSync(join(tmpdir(), "wp-runtime-parity-test-"));
+    roots.push(workspaceRoot);
+    const command = process.execPath;
+    const args = [
+      "--input-type=module",
+      "--eval",
+      [
+        "const args = process.argv.slice(1);",
+        "const emit = (value) => process.stdout.write(`${value}\\n`);",
+        "if (args[0] !== 'typecheck') process.exit(2);",
+        "if (args.includes('--help')) {",
+        "  emit('Usage: wp typecheck');",
+        "  emit('--file <path>');",
+        "  emit('--package <name>');",
+        "  process.exit(0);",
+        "}",
+        "emit('Resolved typecheck scopes: @parity/root, @parity/widget');",
+      ].join(" "),
+    ];
+
+    const firstProbe = probeRuntimeTypecheckParity({ command, args, workspaceRoot });
+    expect(firstProbe.ok).toBe(true);
+
+    const rootFilePath = join(workspaceRoot, RUNTIME_TYPECHECK_PARITY_ROOT_FILE);
+    writeFileSync(rootFilePath, "export const rootValue = 2\n", "utf8");
+
+    const secondProbe = probeRuntimeTypecheckParity({ command, args, workspaceRoot });
+    expect(secondProbe.ok).toBe(true);
+    expect(readFileSync(rootFilePath, "utf8")).toBe("export const rootValue = 2\n");
   });
 });

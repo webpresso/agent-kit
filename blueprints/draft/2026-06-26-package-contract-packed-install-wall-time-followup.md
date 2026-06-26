@@ -6,7 +6,7 @@ status: draft
 complexity: M
 created: "2026-06-26"
 last_updated: "2026-06-26"
-progress: "0% (follow-up identified from completed reduce-test-wall-time blueprint)"
+progress: "65% (single packed local install landed and verified; global packed install remains dominant)"
 depends_on:
   - "blueprints/completed/2026-06-25-reduce-test-wall-time.md"
 cross_repo_depends_on: []
@@ -20,6 +20,34 @@ tags: [performance, tests, packaging]
 ## Why this exists
 
 `blueprints/completed/2026-06-25-reduce-test-wall-time.md` shipped the major wall-time reductions on `main`, but fresh closeout evidence on 2026-06-26 showed `package.contract.integration.test.ts --project serial-subprocess` still exceeded a 245.02-second timebox by itself. That means the remaining packed-install path now dominates the suite budget.
+
+## Fresh evidence (2026-06-26)
+
+- Previous merged-main baseline from the closeout blueprint:
+  - `pnpm exec vitest run package.contract.integration.test.ts --project serial-subprocess --reporter verbose` -> `real 420.82`
+  - slowest subtests in that baseline:
+    - setup-guidance smoke: `119.775s`
+    - global typecheck parity smoke: `226.206s`
+    - migration smoke: `39.467s`
+    - packed-surface metadata pack: `23.019s`
+- Current worktree evidence after this slice:
+  - `./node_modules/.bin/vitest run package.contract.integration.test.ts --project serial-subprocess --reporter verbose` -> pass, `real 372.24`, Vitest duration `363.26s`
+  - local packed-consumer assertions now break down as:
+    - packed-surface metadata assertions: `8ms`, `1ms`, `0ms` (prewarmed in `beforeAll`)
+    - setup-guidance smoke: `24.987s`
+    - migration smoke: `1.936s`
+    - packed global install + parity smoke: `224.740s`
+  - `./node_modules/.bin/vitest run src/hooks/pretool-guard/runner.subprocess.test.ts --project subprocess --reporter verbose` -> pass, 9 tests, duration `43.65s`
+  - `vp run typecheck` -> pass
+  - `vp run lint` -> pass
+  - `./bin/wp format --check --file package.contract.integration.test.ts --file src/typecheck/runtime-parity.ts --file src/typecheck/runtime-parity.test.ts --file blueprints/draft/2026-06-26-package-contract-packed-install-wall-time-followup.md` -> pass
+
+## Decision this slice
+
+- Keep the real tarball as the only packed-surface source.
+- Keep one shared local installed-consumer fixture across the setup-guidance and migration assertions.
+- Prewarm the tarball artifact and shared installed consumer in `beforeAll` so per-test timeouts cover only the assertion work, not the one-time package preparation.
+- Treat the remaining packed global install path as the next dominant bottleneck; the under-5-minute overall suite target remains impossible while that single assertion still consumes `224.740s`.
 
 ## Constraints
 
@@ -38,38 +66,38 @@ tags: [performance, tests, packaging]
 
 ### Task 1.1: Add durable timing breakdown for package-contract installs
 
-**Status:** pending
+**Status:** done
 
 Instrument or otherwise measure the major phases inside `package.contract.integration.test.ts` so future optimizations are aimed at the true hotspot, not guessed.
 
 **Acceptance:**
 
-- [ ] A fresh timing breakdown is recorded in this blueprint.
-- [ ] The dominant sub-phase is identified with evidence.
+- [x] A fresh timing breakdown is recorded in this blueprint.
+- [x] The dominant sub-phase is identified with evidence (`packed global installs keep bare wp typecheck targeting aligned...` at `224.740s`).
 
 ## Phase 2: Remove avoidable repeated work
 
 ### Task 2.1: Implement the smallest safe optimization for the dominant packed-install cost
 
-**Status:** pending
+**Status:** done
 
 Apply the minimal change that reduces packed-install wall time while preserving the same contract assertions and installation realism.
 
 **Acceptance:**
 
-- [ ] The optimized package-contract test still proves real packed-consumer behavior.
-- [ ] No timeout increases or coverage reductions are introduced.
+- [x] The optimized package-contract test still proves real packed-consumer behavior.
+- [x] No timeout increases or coverage reductions are introduced.
 
 ## Phase 3: Re-verify suite impact
 
 ### Task 3.1: Re-run package-contract timing and full-suite timing
 
-**Status:** pending
+**Status:** in_progress
 
 After the optimization, rerun the package-contract test and then the full suite to determine whether the original under-4-minute target becomes realistic again or needs another follow-up.
 
 **Acceptance:**
 
-- [ ] Fresh package-contract timing is recorded.
+- [x] Fresh package-contract timing is recorded.
 - [ ] Fresh full-suite timing is recorded.
-- [ ] A truthful lifecycle decision is made from evidence.
+- [x] A truthful lifecycle decision is made from evidence: this slice helped, but the objective is still blocked by the remaining global packed-install path.

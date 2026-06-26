@@ -14,7 +14,7 @@ import {
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createInstalledBlueprintMigrationSmokeScript } from "./scripts/packed-blueprint-migration-smoke.js";
 import { resolveRuntimeTarget, runtimePackageDirName } from "./src/build/runtime-targets.js";
@@ -41,17 +41,44 @@ const EXPECTED_BLUEPRINT_SCHEMA_VERSIONS = EXPECTED_BLUEPRINT_MIGRATION_SQL_FILE
 );
 const ORIGINAL_PACKAGE_JSON_TEXT = readFileSync(PACKAGE_JSON_PATH, "utf8");
 const PACK_LOCK_DIRECTORY = join(tmpdir(), "webpresso-agent-kit-npm-pack.lock");
+const PACK_LOCK_OWNER_PATH = join(PACK_LOCK_DIRECTORY, "owner.json");
+const PREPACK_PACKAGE_BACKUP_PATH = join(REPO_ROOT, ".package.json.prepack.backup");
 let packedTarballTempRoot: string | undefined;
+
+function isAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    return code !== "ESRCH";
+  }
+}
 
 function acquirePackLock(): () => void {
   const started = Date.now();
   while (true) {
     try {
       mkdirSync(PACK_LOCK_DIRECTORY);
+      writeFileSync(
+        PACK_LOCK_OWNER_PATH,
+        JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString() }),
+      );
       return () => rmSync(PACK_LOCK_DIRECTORY, { force: true, recursive: true });
     } catch (error) {
       const code = (error as { code?: string }).code;
       if (code !== "EEXIST") throw error;
+      try {
+        const owner = JSON.parse(readFileSync(PACK_LOCK_OWNER_PATH, "utf8")) as {
+          pid?: number;
+        };
+        if (typeof owner.pid === "number" && !isAlive(owner.pid)) {
+          rmSync(PACK_LOCK_DIRECTORY, { force: true, recursive: true });
+          continue;
+        }
+      } catch {
+        // Fall back to mtime-based stale lock recovery below.
+      }
       const ageMs = Date.now() - statSync(PACK_LOCK_DIRECTORY).mtimeMs;
       if (ageMs > 120_000) {
         rmSync(PACK_LOCK_DIRECTORY, { force: true, recursive: true });
@@ -81,10 +108,6 @@ type PackedTarballArtifact = {
   optionalDependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
 };
-
-type PackedSurfaceMetadata = Omit<PackedTarballArtifact, "tarballPath">;
-
-let packedSurfaceMetadataCache: PackedSurfaceMetadata | undefined;
 let packedTarballArtifactCache: PackedTarballArtifact | undefined;
 let packedDistBuilt = false;
 let packedNativeRuntimeBuilt = false;
@@ -164,6 +187,16 @@ function ensureBuiltNativeRuntimeArtifacts() {
 }
 
 function preparePackageForPack(): void {
+  if (existsSync(PREPACK_PACKAGE_BACKUP_PATH)) {
+    execFileSync("bun", ["src/build/package-manifest.ts", "restore"], {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        HUSKY: "0",
+      },
+    });
+  }
   execFileSync("vp", ["run", "stage:workflow-skills"], {
     cwd: REPO_ROOT,
     encoding: "utf8",
@@ -191,46 +224,6 @@ function restorePackageAfterPack(): void {
       HUSKY: "0",
     },
   });
-}
-
-function readPreparedManifest(): Omit<PackedTarballArtifact, "paths" | "tarballPath"> {
-  return JSON.parse(readFileSync(PACKAGE_JSON_PATH, "utf8")) as Omit<
-    PackedTarballArtifact,
-    "paths" | "tarballPath"
-  >;
-}
-
-function ensurePackedSurfaceMetadata() {
-  if (packedSurfaceMetadataCache) return packedSurfaceMetadataCache;
-  ensureBuiltPackedDist();
-  const release = acquirePackLock();
-  let raw: string;
-  let manifest: Omit<PackedTarballArtifact, "paths" | "tarballPath">;
-  try {
-    preparePackageForPack();
-    manifest = readPreparedManifest();
-    raw = execFileSync("npm", ["pack", "--dry-run", "--ignore-scripts", "--json"], {
-      cwd: REPO_ROOT,
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        HUSKY: "0",
-      },
-    });
-  } finally {
-    try {
-      restorePackageAfterPack();
-    } finally {
-      release();
-    }
-  }
-  const entries = parseNpmJson<Array<{ files?: Array<{ path?: string }> }>>(raw);
-  const paths =
-    entries[0]?.files
-      ?.map((file) => file.path)
-      .filter((path): path is string => typeof path === "string") ?? [];
-  packedSurfaceMetadataCache = { ...manifest, paths };
-  return packedSurfaceMetadataCache;
 }
 
 function ensurePackedTarballArtifact() {
@@ -288,7 +281,7 @@ function ensurePackedTarballArtifact() {
 }
 
 function readPackedSurfaceMetadata() {
-  return ensurePackedSurfaceMetadata();
+  return ensurePackedTarballArtifact();
 }
 
 function listPackedManifestCatalogSpecifiers(pkg: {
@@ -316,6 +309,87 @@ function createPackedTarball(): { tarballPath: string; cleanup: () => void } {
     tarballPath: artifact.tarballPath,
     cleanup: () => {},
   };
+}
+
+type InstalledPackedConsumerOptions = {
+  packageJson: Record<string, unknown>;
+  installPackageJson?: Record<string, unknown>;
+  tempPrefix: string;
+  omitDev?: boolean;
+};
+
+type InstalledPackedConsumer = {
+  root: string;
+  packageRoot: string;
+  wpBinPath: string;
+  cleanup: () => void;
+};
+
+let installedPackedConsumerCache: InstalledPackedConsumer | undefined;
+
+function createInstalledPackedConsumer(
+  tarballPath: string,
+  options: InstalledPackedConsumerOptions,
+): InstalledPackedConsumer {
+  const root = mkdtempSync(join(tmpdir(), options.tempPrefix));
+  writeFileSync(
+    join(root, "package.json"),
+    JSON.stringify(options.installPackageJson ?? options.packageJson, null, 2) + "\n",
+  );
+  const installArgs = [
+    "install",
+    tarballPath,
+    "--omit=optional",
+    "--no-audit",
+    "--fund=false",
+    "--package-lock=false",
+    "--prefer-offline",
+  ];
+  if (options.omitDev) {
+    installArgs.push("--omit=dev");
+  }
+  execFileSync("npm", installArgs, {
+    cwd: root,
+    encoding: "utf8",
+    env: { ...process.env, HUSKY: "0" },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  if (options.installPackageJson) {
+    writeFileSync(join(root, "package.json"), JSON.stringify(options.packageJson, null, 2) + "\n");
+  }
+
+  return {
+    root,
+    packageRoot: join(root, "node_modules", "@webpresso", "agent-kit"),
+    wpBinPath: join(root, "node_modules", "@webpresso", "agent-kit", "bin", "wp"),
+    cleanup: () => {
+      rmSync(root, { force: true, recursive: true });
+    },
+  };
+}
+
+function ensureInstalledPackedConsumer(): InstalledPackedConsumer {
+  if (installedPackedConsumerCache) return installedPackedConsumerCache;
+  const { tarballPath } = createPackedTarball();
+  installedPackedConsumerCache = createInstalledPackedConsumer(tarballPath, {
+    tempPrefix: "wp-packed-consumer-",
+    packageJson: {
+      name: "packed-consumer-smoke",
+      private: true,
+      devDependencies: {
+        "@webpresso/agent-config": "^0.1.5",
+        vitest: "^2.1.0",
+        "@playwright/test": "^1.55.0",
+        oxlint: "^1.0.0",
+        oxfmt: "^1.0.0",
+      },
+    },
+    installPackageJson: {
+      name: "packed-consumer-smoke",
+      private: true,
+    },
+  });
+  return installedPackedConsumerCache;
 }
 
 function createHostRuntimeTarball(tempRoot: string): { tarballPath: string } {
@@ -365,7 +439,10 @@ afterAll(() => {
     packedTarballTempRoot = undefined;
     packedTarballArtifactCache = undefined;
   }
-  packedSurfaceMetadataCache = undefined;
+  if (installedPackedConsumerCache) {
+    installedPackedConsumerCache.cleanup();
+    installedPackedConsumerCache = undefined;
+  }
   if (readFileSync(PACKAGE_JSON_PATH, "utf8") !== ORIGINAL_PACKAGE_JSON_TEXT) {
     // Atomic restore: concurrent bun processes must never see a truncated package.json.
     const tmpPath = `${PACKAGE_JSON_PATH}.writing`;
@@ -375,6 +452,11 @@ afterAll(() => {
 });
 
 describe("tooling umbrella package integration contract", () => {
+  beforeAll(() => {
+    ensurePackedTarballArtifact();
+    ensureInstalledPackedConsumer();
+  }, 300_000);
+
   it("packs no banned internal tarball artifacts", () => {
     const packedPaths = readPackedSurfaceMetadata().paths;
     const banned = packedPaths.filter((path) =>
@@ -404,49 +486,19 @@ describe("tooling umbrella package integration contract", () => {
   }, 30_000);
 
   it("packed consumers receive runtime-owned setup guidance without losing authoring deps", () => {
-    const { tarballPath, cleanup } = createPackedTarball();
-    const tmpRoot = mkdtempSync(join(tmpdir(), "wp-packed-consumer-"));
-    const launcherRoot = mkdtempSync(join(tmpdir(), "wp-packed-launcher-"));
-    const packedPackageRoot = join(launcherRoot, "package");
-    const fakeHome = join(tmpRoot, ".home");
-    const fakeCodexHome = join(tmpRoot, ".codex-home");
+    const installedConsumer = ensureInstalledPackedConsumer();
+    const fakeHome = join(installedConsumer.root, ".home");
+    const fakeCodexHome = join(installedConsumer.root, ".codex-home");
 
     try {
-      execFileSync("git", ["init", "-q"], { cwd: tmpRoot, encoding: "utf8" });
-      execFileSync("git", ["init", "-q"], { cwd: launcherRoot, encoding: "utf8" });
-      execFileSync("tar", ["-xzf", tarballPath, "-C", launcherRoot], { encoding: "utf8" });
-      execFileSync("npm", ["install", "--omit=dev", "--omit=optional", "--ignore-scripts"], {
-        cwd: packedPackageRoot,
-        encoding: "utf8",
-        env: { ...process.env, HUSKY: "0" },
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-      writeFileSync(
-        join(tmpRoot, "package.json"),
-        JSON.stringify(
-          {
-            name: "packed-consumer-smoke",
-            private: true,
-            devDependencies: {
-              "@webpresso/agent-config": "^0.1.5",
-              vitest: "^2.1.0",
-              "@playwright/test": "^1.55.0",
-              oxlint: "^1.0.0",
-              oxfmt: "^1.0.0",
-            },
-          },
-          null,
-          2,
-        ) + "\n",
-      );
-
-      chmodSync(join(packedPackageRoot, "bin", "wp"), 0o755);
+      execFileSync("git", ["init", "-q"], { cwd: installedConsumer.root, encoding: "utf8" });
+      chmodSync(installedConsumer.wpBinPath, 0o755);
 
       const output = execFileSync(
-        join(packedPackageRoot, "bin", "wp"),
-        ["setup", "--yes", "--cwd", tmpRoot],
+        installedConsumer.wpBinPath,
+        ["setup", "--yes", "--cwd", installedConsumer.root],
         {
-          cwd: tmpRoot,
+          cwd: installedConsumer.root,
           encoding: "utf8",
           env: {
             ...process.env,
@@ -455,7 +507,6 @@ describe("tooling umbrella package integration contract", () => {
             HOME: fakeHome,
             HUSKY: "0",
             WP_SKIP_CLAUDE_PLUGIN: "1",
-            WP_SKIP_OMC: "1",
             WP_SKIP_RTK: "1",
             WP_SKIP_UPDATE_CHECK: "1",
           },
@@ -475,42 +526,28 @@ describe("tooling umbrella package integration contract", () => {
         "Do not blanket-remove devDependencies just because wp can execute the tool.",
       );
     } finally {
-      cleanup();
-      rmSync(launcherRoot, { force: true, recursive: true });
-      rmSync(tmpRoot, { force: true, recursive: true });
+      rmSync(fakeCodexHome, { force: true, recursive: true });
+      rmSync(fakeHome, { force: true, recursive: true });
     }
   }, 120_000);
 
   it("installed packed consumers can execute blueprint DB migrations from the packaged dist asset path", () => {
-    const { tarballPath, cleanup } = createPackedTarball();
-    const tmpRoot = mkdtempSync(join(tmpdir(), "wp-packed-migration-consumer-"));
+    const installedConsumer = ensureInstalledPackedConsumer();
 
     try {
-      writeFileSync(
-        join(tmpRoot, "package.json"),
-        JSON.stringify({ name: "packed-migration-smoke", private: true }, null, 2) + "\n",
-      );
-      execFileSync("npm", ["install", tarballPath, "--omit=optional"], {
-        cwd: tmpRoot,
-        encoding: "utf8",
-        env: { ...process.env, HUSKY: "0" },
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-
-      const packageRoot = join(tmpRoot, "node_modules", "@webpresso", "agent-kit");
       const smokeOutput = execFileSync(
         "node",
         [
           "--input-type=module",
           "--eval",
           createInstalledBlueprintMigrationSmokeScript({
-            packageRoot,
+            packageRoot: installedConsumer.packageRoot,
             expectedSqlFiles: EXPECTED_BLUEPRINT_MIGRATION_SQL_FILES,
             expectedVersions: EXPECTED_BLUEPRINT_SCHEMA_VERSIONS,
           }),
         ],
         {
-          cwd: tmpRoot,
+          cwd: installedConsumer.root,
           encoding: "utf8",
           env: { ...process.env, HUSKY: "0" },
           stdio: ["ignore", "pipe", "pipe"],
@@ -520,8 +557,7 @@ describe("tooling umbrella package integration contract", () => {
       expect(smokeOutput).toContain('"versions"');
       expect(smokeOutput).toContain('"0001_seed.sql"');
     } finally {
-      cleanup();
-      rmSync(tmpRoot, { force: true, recursive: true });
+      // Keep the installed consumer fixture cached across package-contract cases.
     }
   }, 120_000);
 
@@ -542,28 +578,57 @@ describe("tooling umbrella package integration contract", () => {
         npm_config_prefix: globalPrefix,
         PATH: [join(globalPrefix, "bin"), globalPrefix, process.env.PATH ?? ""].join(delimiter),
       };
+      const workspaceRoot = join(tmpRoot, "typecheck-parity-workspace");
 
-      execFileSync("npm", ["install", "--global", runtimeTarballPath], {
-        cwd: tmpRoot,
-        encoding: "utf8",
-        env,
-        stdio: ["ignore", "pipe", "pipe"],
-      });
+      execFileSync(
+        "npm",
+        [
+          "install",
+          "--global",
+          runtimeTarballPath,
+          "--no-audit",
+          "--fund=false",
+          "--package-lock=false",
+          "--prefer-offline",
+        ],
+        {
+          cwd: tmpRoot,
+          encoding: "utf8",
+          env,
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      );
 
-      execFileSync("npm", ["install", "--global", tarballPath, "--omit=optional", "--force"], {
-        cwd: tmpRoot,
-        encoding: "utf8",
-        env,
-        stdio: ["ignore", "pipe", "pipe"],
-      });
+      execFileSync(
+        "npm",
+        [
+          "install",
+          "--global",
+          tarballPath,
+          "--omit=optional",
+          "--force",
+          "--no-audit",
+          "--fund=false",
+          "--package-lock=false",
+          "--prefer-offline",
+        ],
+        {
+          cwd: tmpRoot,
+          encoding: "utf8",
+          env,
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      );
 
       const runtimeProbe = probeRuntimeTypecheckParity({
         command: join(unpackedRuntimePackageRoot, "bin", "wp"),
         env,
+        workspaceRoot,
       });
       const probe = probeRuntimeTypecheckParity({
         command: "wp",
         env,
+        workspaceRoot,
       });
 
       expect(runtimeProbe.ok).toBe(true);
