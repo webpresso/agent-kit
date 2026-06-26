@@ -29,9 +29,13 @@ repeatable.
 - **Shared host surfaces:** one catalog projects rules, skills, hooks, Claude
   plugin metadata, Codex plugin metadata, and generated instruction files.
 - **Continuity without magic:** session memory is local storage with explicit
-  search, restore, capture, retrieve, reset, and doctor tools.
+  search, restore, capture, retrieve, reset, and doctor tools; methodology and
+  proof live in [`docs/bench/session-memory-methodology.md`](./docs/bench/session-memory-methodology.md).
 - **Safety by default:** secret, path, package, docs, blueprint, catalog, and
-  reference-parity audits fail before drift becomes release material.
+  reference-parity audits fail before drift becomes release material; see
+  [`docs/bench/reference-parity-matrix.md`](./docs/bench/reference-parity-matrix.md),
+  [`src/__integration__/reference-parity-host-smoke.integration.test.ts`](./src/__integration__/reference-parity-host-smoke.integration.test.ts),
+  and [`src/__integration__/reference-parity-tool-surface.integration.test.ts`](./src/__integration__/reference-parity-tool-surface.integration.test.ts).
 - **Evidence over claims:** public numeric benchmark claims require result-card evidence. Claim gate: checked-in first-party result card. See `docs/bench/result-cards/` and [`docs/bench/result-card-contract.md`](./docs/bench/result-card-contract.md).
 
 ## Quick start
