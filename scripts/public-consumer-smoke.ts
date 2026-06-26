@@ -44,6 +44,7 @@ const keep = process.argv.includes("--keep");
 const includeMutation = process.argv.includes("--include-mutation");
 const skipBuild = process.argv.includes("--skip-build");
 const DEFAULT_PHASE_TIMEOUT_MS = 5 * 60 * 1000;
+const RUN_RESULT_DETAIL_MAX_CHARS = 8_000;
 // Cold packed-install setup includes `npm exec --package <tarball>` dependency
 // resolution before `wp setup` starts scaffolding. A measured success run on
 // 2026-06-26 took ~7m10s wall time (429_719ms), while the old 5 minute bound
@@ -104,7 +105,7 @@ function run(
     return {
       command: [command, ...args].join(" "),
       ok: false,
-      detail: `exit ${failed.status ?? 1}${output ? `: ${output.slice(0, 800)}` : ""}`,
+      detail: `exit ${failed.status ?? 1}${output ? `: ${output.slice(0, RUN_RESULT_DETAIL_MAX_CHARS)}` : ""}`,
     };
   }
 }
@@ -260,7 +261,7 @@ function assertPackedSessionMemoryNativeContract(tarballPath: string): RunResult
       {
         command: "assert packed session-memory tarball contract",
         ok: false,
-        detail: `tar exit ${failed.status ?? 1}${output ? `: ${output.slice(0, 800)}` : ""}`,
+        detail: `tar exit ${failed.status ?? 1}${output ? `: ${output.slice(0, RUN_RESULT_DETAIL_MAX_CHARS)}` : ""}`,
       },
     ];
   }
@@ -297,7 +298,7 @@ function runResultsToPhaseResult(
   const output = runResults
     .map((r) => `[${r.ok ? "PASS" : "FAIL"}] ${r.command}: ${r.detail}`)
     .join("\n")
-    .slice(0, 8_000);
+    .slice(0, RUN_RESULT_DETAIL_MAX_CHARS);
   return {
     phase,
     status: failed.length === 0 ? "PASS" : "FAIL",
@@ -313,7 +314,7 @@ function runSingleToPhaseResult(phase: string, startMs: number, result: RunResul
     durationMs: Date.now() - startMs,
     capturedOutput: `[${result.ok ? "PASS" : "FAIL"}] ${result.command}: ${result.detail}`.slice(
       0,
-      8_000,
+      RUN_RESULT_DETAIL_MAX_CHARS,
     ),
   };
 }
@@ -375,7 +376,7 @@ try {
         phase: "pack",
         status: "PASS",
         durationMs: Date.now() - t,
-        capturedOutput: `packed: ${tarball}`.slice(0, 8_000),
+        capturedOutput: `packed: ${tarball}`.slice(0, RUN_RESULT_DETAIL_MAX_CHARS),
       } satisfies PhaseResult;
       phaseResults.push(packPhaseResult);
       logPhaseFinish(packPhaseResult);
@@ -385,7 +386,7 @@ try {
         phase: "pack",
         status: "FAIL",
         durationMs: Date.now() - t,
-        capturedOutput: msg.slice(0, 8_000),
+        capturedOutput: msg.slice(0, RUN_RESULT_DETAIL_MAX_CHARS),
       } satisfies PhaseResult;
       phaseResults.push(packPhaseResult);
       logPhaseFinish(packPhaseResult);

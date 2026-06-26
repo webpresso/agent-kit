@@ -105,6 +105,8 @@ describe("public consumer smoke progress reporting", () => {
 
     expect(source).toContain("const DEFAULT_PHASE_TIMEOUT_MS = 5 * 60 * 1000");
     expect(source).toContain("const SETUP_PHASE_TIMEOUT_MS = 8 * 60 * 1000");
+    expect(source).toContain("const RUN_RESULT_DETAIL_MAX_CHARS = 8_000");
+    expect(source).toContain("output.slice(0, RUN_RESULT_DETAIL_MAX_CHARS)");
     expect(source).toContain("SETUP_PHASE_TIMEOUT_MS");
   });
 });
