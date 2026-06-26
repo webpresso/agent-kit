@@ -14,7 +14,7 @@ Blueprint-backed execution over OMX.
 
 ## Source-of-truth rule
 
-- `webpresso/blueprints/` is the canonical plan store.
+- `blueprints/` is the default canonical plan store; `.webpressorc.json#blueprintsDir` can override it, and `webpresso/blueprints/` remains a legacy compatibility fallback.
 - `.omx/state/` is runtime/session/backend state only.
 - `.omx/plans/` is derived handoff metadata only, never the canonical plan.
 - Completion authority stays in Blueprint task-local canonical verification

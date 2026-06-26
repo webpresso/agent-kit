@@ -39,7 +39,7 @@ If no matching blueprint exists, stop and report that.
 
 ### Step 2: Load the canonical methodology
 
-Read [plan-refine](/.agent/skills/plan-refine/SKILL.md) and use it as the source of truth for refinement criteria.
+Read the host-visible `plan-refine` skill (`.agent/skills/plan-refine/SKILL.md`) and use it as the source of truth for refinement criteria.
 
 ### Step 3: Refine the blueprint end to end
 

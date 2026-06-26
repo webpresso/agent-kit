@@ -66,8 +66,8 @@ lanes contract, keep the shared surface policy-only:
 - document that Durable Object-backed previews must not depend on Preview
   URLs; the default is custom-domain environment previews, with
   `workers_dev_env` reserved for explicit exception cases;
-- keep the canonical production release metadata path at
-  `infra/release-metadata.production.json`;
+- keep the production release metadata path aligned with
+  `deploy.cloudflare.production.metadataPath` in the repo config;
 - require the consuming repo's workflow/verifier to fail closed for
   migration-bearing Durable Object releases;
 - keep provider-specific plumbing, secrets, bindings, and release mechanics

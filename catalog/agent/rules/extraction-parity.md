@@ -16,7 +16,7 @@ Applies to any blueprint that claims to be a **pure relocation** (moving code
 between packages without behaviour changes), including:
 
 - **Fold blueprints** — absorbing one package into another (e.g. folding
-  `@webpresso/quality-engine` into `webpresso`).
+  `@webpresso/quality-engine` into `@webpresso/agent-kit/quality-engine`).
 - **Extraction blueprints** — splitting a module out of a monorepo into a
   standalone public package.
 - Any task annotated with "zero behaviour change", "pure move", "rename only",
@@ -159,8 +159,8 @@ state that these semantics remained unchanged:
 - Durable Object-backed previews do **not** rely on provider Preview URLs;
   custom-domain environment previews are the default and `workers_dev_env` is
   exception-only;
-- production release metadata stays anchored at
-  `infra/release-metadata.production.json`;
+- production release metadata stays anchored to
+  `deploy.cloudflare.production.metadataPath` in the repo config;
 - migration-bearing Durable Object releases fail closed in the consuming
   repo's deploy verifier/workflow;
 - provider-specific deployment plumbing does not move into shared

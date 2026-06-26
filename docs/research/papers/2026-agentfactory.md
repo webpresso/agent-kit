@@ -6,7 +6,8 @@ last_updated: 2026-06-10
 status: active
 arxiv_id: "2603.18000"
 paper_url: https://arxiv.org/abs/2603.18000
-authors: Zhang Zhang et al.
+authors:
+  - "Zhang Zhang et al."
 year: 2026
 read_status: skimmed
 relevance: low

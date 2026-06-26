@@ -19,7 +19,7 @@ Manage the tech-debt lifecycle using `wp tech-debt` commands.
 ## Usage
 
 ```bash
-# Create a new tech-debt item (written to webpresso/tech-debt/<status>/h-NNN-<kebab-title>.md)
+# Create a new tech-debt item (written to tech-debt/<status>/h-NNN-<kebab-title>.md by default)
 wp tech-debt new "Legacy CLI complexity" \
   --severity medium \
   --category complexity \

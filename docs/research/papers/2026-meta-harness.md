@@ -6,7 +6,8 @@ last_updated: 2026-06-10
 status: active
 arxiv_id: "2603.28052"
 paper_url: https://arxiv.org/abs/2603.28052
-authors: Yoonho Lee, Roshen Nair, Qizheng Zhang, Kangwook Lee, Omar Khattab, Chelsea Finn (Stanford)
+authors:
+  - "Yoonho Lee, Roshen Nair, Qizheng Zhang, Kangwook Lee, Omar Khattab, Chelsea Finn (Stanford)"
 year: 2026
 read_status: skimmed
 relevance: high

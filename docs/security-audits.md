@@ -110,8 +110,7 @@ The approved boundary is:
 - local presets/config only via `@webpresso/agent-config`
 - `wp` execution through the global CLI / MCP surface
 - no repo-local `@webpresso/agent-kit` project dependency
-- no repo-local `setup-webpresso` action or
-  `scripts/resolve-webpresso-cli-versions.js` helper
+- no repo-local setup-webpresso action or version-resolution helper
 
 The audit automatically skips the `@webpresso/agent-kit` source repo itself.
 

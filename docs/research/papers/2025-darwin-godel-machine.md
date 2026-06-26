@@ -7,7 +7,8 @@ status: active
 arxiv_id: "2505.22954"
 paper_url: https://arxiv.org/abs/2505.22954
 page_url: https://sakana.ai/dgm/
-authors: Jenny Zhang, Shengran Hu, Cong Lu, Robert Lange, Jeff Clune (Sakana AI / UBC)
+authors:
+  - "Jenny Zhang, Shengran Hu, Cong Lu, Robert Lange, Jeff Clune (Sakana AI / UBC)"
 year: 2025
 read_status: skimmed
 relevance: medium

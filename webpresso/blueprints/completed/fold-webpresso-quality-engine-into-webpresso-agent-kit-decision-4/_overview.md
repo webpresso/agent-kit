@@ -15,7 +15,7 @@ tags: [extraction, hard-cut, decision-4, fold]
 
 ## Product wedge anchor
 
-- **Stage outcome:** Decision 4 of [`webpresso-public-extraction-roadmap`](../../../monorepo/webpresso/blueprints/completed/webpresso-public-extraction-roadmap/_overview.md) — "agent-kit + audit harness" brand wedge: one install, one CLI, one mental model. Also unblocks archiving `webpresso/quality-engine` on GitHub.
+- **Stage outcome:** Decision 4 of `webpresso-public-extraction-roadmap` — "agent-kit + audit harness" brand wedge: one install, one CLI, one mental model. Also unblocks archiving `webpresso/quality-engine` on GitHub.
 - **Consuming surface:** `wp audit mutation` / `wp audit quality` (already exposed by `agent-kit/src/cli/commands/audit.ts:89,91`) + new agent-kit subpath exports `@webpresso/agent-kit/quality-engine` and six leaf subpaths consumed by `monorepo/apps/{cli2,scripts,cli-wp}`.
 - **New user-visible capability:** After this lands, `pnpm add -D @webpresso/agent-kit` is sufficient for the entire audit/mutation/quality story. No second sibling-package install. The agent-kit README's "what changes after `wp setup`" earns the credibility signal that every audit lives in the same package as `wk`.
 
@@ -586,10 +586,10 @@ After the fold lands and quality-engine is archived, sweep agent-kit's package m
 
 ## Cross-Plan References
 
-| Type                | Blueprint                                                                                                                                             | Relationship                                                                                     |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Upstream (decision) | [`webpresso-public-extraction-roadmap`](../../../monorepo/webpresso/blueprints/completed/webpresso-public-extraction-roadmap/_overview.md) Decision 4 | This blueprint executes Decision 4; the parent was prematurely closed without filing this child. |
-| Pattern reference   | [`agent-kit-hard-cut-extraction`](../../../monorepo/webpresso/blueprints/completed/agent-kit-hard-cut-extraction/_overview.md)                        | Same hard-cut philosophy; reference for ordering and risk shape.                                 |
+| Type                | Blueprint                                        | Relationship                                                                                     |
+| ------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| Upstream (decision) | `webpresso-public-extraction-roadmap` Decision 4 | This blueprint executes Decision 4; the parent was prematurely closed without filing this child. |
+| Pattern reference   | `agent-kit-hard-cut-extraction`                  | Same hard-cut philosophy; reference for ordering and risk shape.                                 |
 
 ## Edge Cases and Error Handling
 

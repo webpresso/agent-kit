@@ -6,7 +6,8 @@ last_updated: 2026-06-10
 status: active
 arxiv_id: "2603.19461"
 paper_url: https://arxiv.org/abs/2603.19461
-authors: Jenny Zhang, Bingchen Zhao, Wannan Yang, Jakob Foerster, Jeff Clune, Minqi Jiang, Sam Devlin, Tatiana Shavrina
+authors:
+  - "Jenny Zhang, Bingchen Zhao, Wannan Yang, Jakob Foerster, Jeff Clune, Minqi Jiang, Sam Devlin, Tatiana Shavrina"
 year: 2026
 read_status: skimmed
 relevance: low

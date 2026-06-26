@@ -148,7 +148,7 @@ To pin the location explicitly — bypassing directory detection — set `bluepr
 This is the highest-priority override; all blueprint commands (`new`, `list`, `audit`,
 `start`, `finalize`, `move`) and the pretool hook validator read from the same source.
 
-Future `webpresso-hooks` candidates are tracked in `docs/research/quality-audits/webpresso-hooks-candidate-matrix.md`; only generic validators should move into that optional package.
+Future `webpresso-hooks` extraction candidates should be documented before any optional package is introduced; only generic validators should move into that seam.
 
 ## Why three layers and not two
 
