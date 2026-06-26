@@ -60,7 +60,7 @@ tags: [release, packaging, readiness, smoke]
 ## Verification
 
 - `./bin/wp test --file src/cli/commands/init/scaffold-agents-md.test.ts --file scripts/public-readiness.test.ts --file scripts/public-consumer-smoke.test.ts --file src/build/package-manifest.test.ts`
-- `./bin/wp lint --file docs/getting-started.md --file docs/guides/session-memory.md --file package.json --file scripts/public-consumer-smoke.test.ts --file scripts/public-consumer-smoke.ts --file scripts/public-consumer-smoke-progress.ts --file scripts/public-readiness.test.ts --file scripts/public-readiness.ts --file src/build/package-manifest.test.ts --file src/cli/commands/init/scaffold-agents-md.ts --file blueprints/draft/2026-06-26-thin-root-release-readiness-split.md`
+- `./bin/wp lint --file docs/getting-started.md --file docs/guides/session-memory.md --file package.json --file scripts/public-consumer-smoke.test.ts --file scripts/public-consumer-smoke.ts --file scripts/public-consumer-smoke-progress.ts --file scripts/public-readiness.test.ts --file scripts/public-readiness.ts --file src/build/package-manifest.test.ts --file src/cli/commands/init/scaffold-agents-md.ts --file blueprints/completed/2026-06-26-thin-root-release-readiness-split.md`
 - `./bin/wp typecheck --file src/cli/commands/init/scaffold-agents-md.ts --file scripts/public-consumer-smoke.ts --file scripts/public-readiness.ts --file src/build/package-manifest.test.ts`
 - `./bin/wp audit tph`
 - `./bin/wp audit blueprint-lifecycle`
@@ -75,8 +75,8 @@ tags: [release, packaging, readiness, smoke]
 
 - promotion-ready: true
 - unresolved-count: 0
-- verified-at: 2026-06-26T12:37:35.000Z
-- verified-head: 1e3c2ccc2a965463224f0f3efda7bba275d05d44
+- verified-at: 2026-06-26T13:21:02Z
+- verified-head: 99dae08326c08801e77f3c22fdc0e15d33a98de9
 - trust-gate-version: v1
 
 ### Material Claims
