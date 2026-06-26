@@ -1,92 +1,65 @@
 ---
 type: vision
-last_updated: 2026-05-27
+last_updated: 2026-06-25
 ---
 
-# agent-kit Vision
+# Agent Kit vision
 
 AI-agent setup should feel like plugging in a charger: one motion, immediate
 confidence, no manual wiring.
 
 ## North star
 
-> **One command gives every coding agent the same repo brain.**
-
-A developer runs:
+> One command gives every coding agent the same repo contract.
 
 ```bash
 wp setup
 ```
 
-Then Claude Code, Codex, Cursor, OpenCode, and compatible
-agents all inherit the same instructions, skills, hooks, planning files, and
-quality gates.
+After that, Claude, Codex, Cursor, OpenCode, and compatible hosts should see the
+same instructions, skills, hooks, planning files, MCP tools, and quality gates.
 
 ## Problem
 
-AI-agent repos too often feel hand-wired. Every surface gets its own slightly
-different instructions, hooks, skills, and planning habits. The result is drift,
-extra setup, and a product that only works for the person who already knows the
-maze.
+Agent-enabled repos drift. Each host gets its own rules, commands, hooks,
+skills, memory habits, and setup notes. The result is a fragile maze that works
+only for the person who built it.
 
 ## Product promise
 
-webpresso is a plug-and-play convenience library for AI coding work. It should
-hide setup mechanics behind safe defaults, keep advanced integrations optional,
-and make the right thing the easiest thing.
-
-## What we optimize for
-
-- **Zero learning curve:** the happy path is install, setup, done.
-- **Calm defaults:** no option soup in the public pitch.
-- **One source of truth:** edit canonical agent content once; project surfaces
-  follow.
-- **Safe re-runs:** setup is idempotent and preserves consumer-owned work.
-- **Proof over vibes:** tests, lint, typecheck, audits, and blueprint evidence
-  are easy for agents to run and cite.
-- **Evidence-gated evolution:** the harness itself improves from recorded
-  failure evidence — mined patterns and measured non-regression — never from
-  vibes. Proof over vibes applies to the kit, not just its consumers.
+Agent Kit is the harness around coding agents. It hides setup mechanics behind
+safe defaults, keeps advanced integrations optional, and makes the right thing
+easy to verify.
 
 ## Principles
 
-- **Default first:** the main story must work without a tour of flags or internals.
-- **One source of truth:** canonical agent content is edited once, then projected outward.
-- **Calm surface area:** advanced choices belong on a small add-ons shelf, not in the happy path.
-- **Re-runnable by design:** setup should be safe to run again without fear.
-- **Operational honesty:** quality gates and references should prove what is true now.
+- **Default first:** install, setup, doctor, done.
+- **One source of truth:** edit canonical content once; projections follow.
+- **Calm surface area:** advanced add-ons stay off the happy path.
+- **Safe re-runs:** setup preserves consumer-owned work.
+- **Evidence over assertions:** claims need tests, audits, docs gates, or result cards.
+- **Delete stale docs:** obsolete guidance is worse than missing guidance.
+- **Locked safety surfaces:** hooks, permissions, and secrets are never casual automation targets.
+- **Honest licensing:** the repo is public and source-available under Elastic License 2.0.
 
-## Boundaries
+## In scope
 
-**In scope**
+- `wp setup` as the primary product experience
+- CLI and MCP lanes for test, lint, typecheck, format, E2E, QA, docs, audits,
+  and release readiness
+- Session memory, worktrees, blueprints, hooks, skills, and host plugin artifacts
+- Secret-safe command execution and preview/deploy support
+- Evidence-gated harness improvement from real failures
 
-- `wp setup` as the primary product experience.
-- Catalog-backed instructions, skills, hooks, docs templates, and blueprint
-  scaffolding.
-- Quality commands for tests, lint, typecheck, E2E, and audits.
-- Weakness mining over agent-kit's own hook/QA evidence, and a
-  regression-gated path for harness changes — advisory first, gated
-  automation as the loop matures.
-- A small add-on shelf for teams that need more than the default setup.
+## Out of scope
 
-**Out of scope**
-
-- Owning peer tools such as OMX/OMC or RTK.
-- Replacing application test/build systems.
-- Model selection, prompt marketplaces, or AI-agent hosting.
-
-## Direction: self-improving harness
-
-What agent-kit installs around a coding agent is a **harness** — the industry
-now has a name and a playbook for improving one (see
-`docs/research/2026-06-10-harness-engineering-landscape.md`). The destination
-is a gated loop: mine failure evidence → propose minimal changes → validate
-against held-out consumer suites → promote with lineage. Guard hooks,
-permission policies, and secret handling are locked surfaces, permanently
-excluded from automated edits. The loop earns autonomy in stages; it never
-skips the gate.
+- Replacing application build systems
+- Owning model selection or agent hosting
+- Prompt marketplaces
+- Hosted access that conflicts with the project license
+- Unchecked self-modifying safety policy
 
 ## Design test
 
-If a new user has to understand add-ons, wiring, generated files, or blueprint
-internals before `wp setup` is useful, the product surface is wrong.
+If a new user must understand generated files, add-ons, or blueprint internals
+before `wp setup` is useful, the product surface is wrong.

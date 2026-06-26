@@ -6,7 +6,8 @@ last_updated: 2026-06-10
 status: active
 arxiv_id: "2605.09998"
 paper_url: https://arxiv.org/abs/2605.09998
-authors: Seth Karten, Joel Zhang, Tersoo Upaa Jr, Ruirong Feng, Wenzhe Li, Chengshuai Shi, Chi Jin, Kiran Vodrahalli
+authors:
+  - "Seth Karten, Joel Zhang, Tersoo Upaa Jr, Ruirong Feng, Wenzhe Li, Chengshuai Shi, Chi Jin, Kiran Vodrahalli"
 year: 2026
 read_status: skimmed
 relevance: medium

@@ -89,7 +89,7 @@ These are non-negotiable acceptance criteria. Cross-repo correlation cannot ship
 - v0.12.0: 3-verb audit slice (`wp audit skill-sizes`, `wp audit broken-refs`, `wp tech-debt new --from-audit`), pre-commit hooks via husky extension
 - v0.13.0: custom MCP (~300 LOC) over SQLite store, cold-start rebuild path, `wp blueprint browse` (Datasette), cross-repo correlation **with all 7 D8 requirements**
 
-## Deferred to TODOS.md
+## Deferred ideas from the original plan
 
 - **Full Kuzu+chokidar KG** behind concrete gating conditions in blueprint #2:
   1. Blueprint #1 manifest catches <90% of observed drift on monorepo over 30 days

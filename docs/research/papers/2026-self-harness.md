@@ -6,7 +6,8 @@ last_updated: 2026-06-10
 status: active
 arxiv_id: "2606.09498"
 paper_url: https://arxiv.org/abs/2606.09498
-authors: Hangfan Zhang, Shao Zhang, Kangcong Li, Chen Zhang, Yang Chen, Yiqun Zhang, Lei Bai, Shuyue Hu (Shanghai AI Laboratory)
+authors:
+  - "Hangfan Zhang, Shao Zhang, Kangcong Li, Chen Zhang, Yang Chen, Yiqun Zhang, Lei Bai, Shuyue Hu (Shanghai AI Laboratory)"
 year: 2026
 read_status: read
 relevance: high

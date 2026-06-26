@@ -20,14 +20,13 @@ recommendation: adopt-harness-vocabulary-and-file-gated-loop-roadmap
 "Harness engineering" became a named discipline over 2025–2026, with its own
 survey, three competing awesome-lists, a weekly-scored ranked list, and an
 active research school ("harness-update school") automating what used to be
-hand-tuned scaffolding. The headline result repeats across independent
-groups: **harness changes alone move benchmark pass rates by 15–40+ points on
-a fixed model**, often more than a model upgrade. Agent-kit is a harness
-product that predates the vocabulary — it ships the surfaces (rules, hooks,
-skills, routing, presets) and the enforcement (audits) but none of the
+hand-tuned scaffolding. The repeated result across independent groups is directional: harness
+changes can materially alter benchmark outcomes on a fixed model. Agent-kit is
+a harness product that predates the vocabulary — it ships the surfaces (rules,
+hooks, skills, routing, presets) and the enforcement (audits) but not the
 optimization loop (mining, gating, adaptation). This doc fixes the
-vocabulary, records the landscape, and anchors the
-[self-improving-harness roadmap](../../blueprints/planned/2026-06-10-self-improving-harness-roadmap.md).
+vocabulary and records the landscape. The matching roadmap is tracked in the
+blueprint store, which is intentionally outside this docs refresh scope.
 
 ## Definition and mapping to agent-kit
 
@@ -80,9 +79,6 @@ exists.
 
 ## Repo / product table
 
-Competitor-grade analysis (compulsory capabilities, better/worse scorecard)
-lives in
-[2026-06-10-harness-competitor-analysis.md](2026-06-10-harness-competitor-analysis.md).
 This table is the raw inventory.
 
 | Project                 | URL                                                        | Category                                                                                                                                                                            | Relevance to agent-kit                                                                                       | License           |
@@ -129,7 +125,7 @@ Initial sweep; this document is the baseline. Next review due ~2026-07-10.
    UBIQUITOUS_LANGUAGE (Harness, Harness surface, editable/locked surface,
    weakness mining, harness promotion gate, harness lineage, per-model
    overlay).
-2. **The gap is the loop, not the surfaces.** Agent-kit has best-in-class
+2. **The gap is the loop, not the surfaces.** Agent-kit has mature
    enforcement (audits) and distribution (symlinker/tiers) but no behavioral
    feedback loop: hook logs are written and never mined; harness changes ship
    without a behavioral regression gate; one canonical `.agent/` serves all

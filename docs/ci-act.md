@@ -61,8 +61,7 @@ The public helper does not accept secret-bearing or mutation-oriented argv:
 - arbitrary passthrough argv
 - public `act --secret`, `--secret-file`, bind, volume, or container mutation flags
 - provider-specific `secretEnvProfile` / `--secret-env-profile` selectors
-- consumer repo-local adapter paths such as `scripts/act-with-webpresso.ts` or
-  `src/secret-gate/runner.ts`
+- consumer repo-local secret or CI adapter paths
 
 ## Secret handling
 

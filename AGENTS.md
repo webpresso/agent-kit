@@ -130,8 +130,9 @@ Record durable architecture decisions in the repo's ADR/planning surface if one 
     no subagent overhead, never drops output).
   - Synthesis tasks or multi-part lookups → `Agent({ subagent_type: "general-purpose" })`.
   - Explore is acceptable **only** for a single targeted file/symbol lookup; always
-  include search breadth ("quick" | "medium" | "very thorough") in the prompt.
-  <!-- <<< user-owned (repo-customizations) -->
+    include search breadth ("quick" | "medium" | "very thorough") in the prompt.
+
+<!-- <<< user-owned (repo-customizations) -->
 
 <!-- >>> managed by webpresso (planning-and-release) -->
 

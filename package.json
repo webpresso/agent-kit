@@ -2,17 +2,19 @@
   "name": "@webpresso/agent-kit",
   "version": "2.4.1",
   "private": false,
-  "description": "TypeScript infrastructure for AI-agent-driven development: the `wp` CLI + MCP server give agents planning (blueprints), tests, mutation, e2e, CI, docs, and tech-debt — summary-first so they keep context, and enforced as pre-commit/CI contracts. Manages AGENTS.md / CLAUDE.md and per-agent surfaces.",
+  "description": "Source-available agent harness for repo setup, wp CLI gates, MCP tools, hooks, session memory, worktrees, secrets, docs audits, and evidence-backed release checks.",
   "keywords": [
     "agent",
+    "agent-harness",
     "audits",
-    "blueprint",
+    "blueprints",
     "claude-code",
-    "implementation-plan",
-    "mutation",
-    "quality-engine",
-    "skills",
-    "webpresso"
+    "codex",
+    "hooks",
+    "mcp",
+    "session-memory",
+    "webpresso",
+    "worktrees"
   ],
   "homepage": "https://github.com/webpresso/agent-kit#readme",
   "bugs": {

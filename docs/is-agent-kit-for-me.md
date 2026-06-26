@@ -1,50 +1,55 @@
 ---
 type: guide
-title: Is webpresso for me?
-description: A one-screen answer to whether webpresso fits your repo.
-last_updated: "2026-05-29"
+title: Is Agent Kit for me?
+description: A one-screen answer to whether Agent Kit fits your repo.
+last_updated: "2026-06-25"
 ---
 
-# Is webpresso for me?
+# Is Agent Kit for me?
 
-Yes, if your AI-agent repo is spending its context window on verbose tool
-output and duplicated guidance — and you want that fixed without hand-rolling
-per-agent plumbing.
+Use Agent Kit when coding agents need a real repo harness, not just better
+prompts.
 
-## Use it when
+## Good fit
 
-- Agents burn context on thousand-line test/lint/build logs you want returned
-  as compact, citable summaries.
-- You want output-filtering lanes and bundle budgets wired in by default.
-- You want planning files and quality gates available to agents by default.
-- You want `VISION.md`, architecture docs, and implementation checked for drift
-  in CI instead of trusted to stay in sync.
-- You want your `AGENTS.md`, `CLAUDE.md`, and per-agent surfaces generated and
-  kept in sync instead of copied by hand.
-- You want setup to be re-runnable instead of tribal knowledge.
+Agent Kit fits when you want:
 
-## Skip it when
+- one setup command for agent instructions, hooks, MCP config, skills, docs
+  templates, and safe ignores;
+- compact, citable quality output instead of thousand-line test/lint/build logs;
+- a stable `wp` facade for tests, lint, typecheck, format, E2E, QA, audits,
+  worktrees, secrets, and package tasks;
+- local session memory with explicit search, restore, capture, retrieve, reset,
+  and doctor commands;
+- docs, blueprints, catalog projections, paths, secrets, and package surfaces
+  checked for drift in CI;
+- generated Claude/Codex/host surfaces kept in sync from canonical sources.
 
-- You only want a prompt library.
-- You only need to emit shared instruction files — `AGENTS.md` plus an emitter
-  like rulesync already covers that, and `wp` is the layer above it.
-- You do not want repo-local agent files.
-- Your repo cannot run Node-based developer tooling.
+## Poor fit
 
-## The test
+Skip it when:
+
+- you only want a prompt or skill library;
+- you cannot run Node-based developer tooling;
+- you do not want repo-local agent files;
+- you need a hosted agent service rather than local repo automation;
+- you need OSI-open-source licensing for every dependency or tool in the stack.
+
+## Quick test
 
 Run:
 
 ```bash
-wp setup
+wp setup --project-init
+wp hooks doctor
 ```
 
-If the generated repo contract, hooks, blueprints, and templates are useful,
-webpresso fits. If not, remove the generated files and keep your current setup.
+If the generated repo contract, hooks, MCP tools, blueprints, and templates are
+useful, Agent Kit fits. If not, remove the generated files and keep your current
+setup.
 
 ## Mental model
 
-webpresso is not another agent, and it is not just an instruction-file emitter.
-It is the TypeScript runtime that keeps every agent in context — compact quality
-evidence, filtered output, budgeted bundles — and keeps the shared `AGENTS.md` /
-`CLAUDE.md` contract coherent on top.
+Agent Kit is not another agent. It is the TypeScript runtime that keeps agents
+inside a verifiable repo contract: compact evidence, filtered output, bounded
+MCP tools, synced host surfaces, and safety gates that humans can inspect.
