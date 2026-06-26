@@ -120,8 +120,12 @@ wp setup
 Packed-artifact rehearsals use the published package shape:
 
 ```bash
-vp run public:consumer-smoke -- --setup-only
+vp run public:readiness
+vp run public:consumer-smoke:setup
 ```
+
+`public:readiness` is the fast local release-readiness gate. `public:consumer-smoke:setup`
+is the slower explicit packed-install proof that runs `wp setup` from the tarball.
 
 ## Blueprint root
 

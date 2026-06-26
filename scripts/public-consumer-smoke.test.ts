@@ -6,6 +6,7 @@ import {
   type PhaseResult,
   type PhaseStatus,
 } from "./public-consumer-smoke-phases.js";
+import { formatPhaseProgressLine } from "./public-consumer-smoke-progress.js";
 
 function makePhase(phase: string, status: PhaseStatus): PhaseResult {
   return { phase, status, durationMs: 0, capturedOutput: `output of ${phase}` };
@@ -69,5 +70,43 @@ describe("summarizePhases", () => {
     const phases = [makePhase("build", "PASS"), makePhase("native-stage", "BLOCKED")];
     const result = summarizePhases(phases);
     expect(result.phases).toStrictEqual(phases);
+  });
+});
+
+describe("public consumer smoke progress reporting", () => {
+  it("formats visible phase start and finish lines", () => {
+    expect(
+      formatPhaseProgressLine("setup", "start", "npm exec --package tarball -- wp setup"),
+    ).toBe("[public-consumer-smoke] START setup :: npm exec --package tarball -- wp setup");
+    expect(formatPhaseProgressLine("setup", "finish", "PASS (123ms)")).toBe(
+      "[public-consumer-smoke] FINISH setup :: PASS (123ms)",
+    );
+  });
+
+  it("keeps the setup-only script alias wired to the canonical smoke command", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const packageJson = JSON.parse(
+      await readFile(join(import.meta.dirname, "..", "package.json"), "utf8"),
+    ) as { scripts?: Record<string, string> };
+
+    expect(packageJson.scripts?.["public:consumer-smoke"]).toBe(
+      "bun scripts/public-consumer-smoke.ts",
+    );
+    expect(packageJson.scripts?.["public:consumer-smoke:setup"]).toBe(
+      "bun scripts/public-consumer-smoke.ts --setup-only --skip-build",
+    );
+  });
+
+  it("gives the explicit packed setup proof a longer timeout than generic phases", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const source = await readFile(join(import.meta.dirname, "public-consumer-smoke.ts"), "utf8");
+
+    expect(source).toContain("const DEFAULT_PHASE_TIMEOUT_MS = 5 * 60 * 1000");
+    expect(source).toContain("const SETUP_PHASE_TIMEOUT_MS = 8 * 60 * 1000");
+    expect(source).toContain("const RUN_RESULT_DETAIL_MAX_CHARS = 8_000");
+    expect(source).toContain("output.slice(0, RUN_RESULT_DETAIL_MAX_CHARS)");
+    expect(source).toContain("SETUP_PHASE_TIMEOUT_MS");
   });
 });

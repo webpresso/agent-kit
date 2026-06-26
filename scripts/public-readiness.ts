@@ -35,7 +35,6 @@ import {
   CAPABILITY_REGISTRY,
   assertNoUnbackedMeasuredClaim,
 } from "./bench/lib/capability-registry.js";
-import type { PhaseSummary } from "./public-consumer-smoke-phases.js";
 
 type Status = "PASS" | "FAIL" | "BLOCKED";
 
@@ -77,10 +76,6 @@ const BLUEPRINT_PATH = resolve(
 const PUBLIC_HISTORY_TASK_ID = "1.5";
 
 export const DEFAULT_READINESS_COMMAND_TIMEOUT_MS = 60_000;
-// The setup-only packed consumer smoke has a 5 minute inner `wp setup` phase
-// budget plus native staging/pack phases. Keep the outer readiness bound above
-// that measured workload while still failing closed on hangs.
-export const PACKED_CONSUMER_SMOKE_TIMEOUT_MS = 480_000;
 export const NPM_PACK_TIMEOUT_MS = 120_000;
 export const GIT_LS_FILES_TIMEOUT_MS = 15_000;
 export const GH_REPO_VIEW_TIMEOUT_MS = 15_000;
@@ -756,16 +751,6 @@ export function evaluateCapabilityDocsGate(root = ROOT): CheckResult {
   return fail("capability-docs-gate", violations.join("; "));
 }
 
-// G6: Phased consumer-smoke aggregation display helper.
-function formatPhaseSummary(summary: PhaseSummary): string {
-  const lines: string[] = [`Overall: ${summary.overall}`];
-  for (const phase of summary.phases) {
-    const blockNote = phase.blockReason ? ` (${phase.blockReason})` : "";
-    lines.push(`  [${phase.status}] ${phase.phase}${blockNote} (${phase.durationMs}ms)`);
-  }
-  return lines.join("\n");
-}
-
 if (import.meta.main) {
   const results: CheckResult[] = [];
 
@@ -800,35 +785,7 @@ if (import.meta.main) {
     results.push(r.ok ? pass(name, "ok") : fail(name, formatRunFailureDetail(r)));
   }
 
-  // G6: Run consumer smoke with phase-level reporting.
-  const smokeResult = runReadinessCommand(
-    "bun",
-    ["scripts/public-consumer-smoke.ts", "--setup-only", "--skip-build"],
-    { ...process.env, WP_SKIP_UPDATE_CHECK: "1" },
-    { timeoutMs: PACKED_CONSUMER_SMOKE_TIMEOUT_MS },
-  );
-  const smokePhaseStatus: PhaseSummary["phases"][number]["status"] = smokeResult.ok
-    ? "PASS"
-    : "FAIL";
-  const smokeSummary: PhaseSummary = {
-    phases: [
-      {
-        phase: "packed-consumer-setup-smoke",
-        status: smokePhaseStatus,
-        durationMs: 0,
-        capturedOutput: smokeResult.stdout,
-      },
-    ],
-    overall: smokePhaseStatus,
-  };
-  console.log(formatPhaseSummary(smokeSummary));
-  results.push(
-    smokeResult.ok
-      ? pass("consumer-smoke-phases", "ok")
-      : fail("consumer-smoke-phases", formatRunFailureDetail(smokeResult)),
-  );
-
-  // 2) Package identity / metadata
+  // 2) Package identity / metadata and fast package-surface gates only
   const pkg = JSON.parse(read("package.json")) as {
     name?: string;
     version?: string;

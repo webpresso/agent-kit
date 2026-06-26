@@ -23,7 +23,6 @@ import {
   listMissingShippedSecretDocs,
   runReadinessCommand,
   formatRunFailureDetail,
-  PACKED_CONSUMER_SMOKE_TIMEOUT_MS,
 } from "./public-readiness.js";
 import type { PhaseSummary } from "./public-consumer-smoke-phases.js";
 import { computeOverallStatus } from "./public-consumer-smoke-phases.js";
@@ -454,20 +453,29 @@ describe("public-readiness runtime policy helpers", () => {
     expect(formatRunFailureDetail(result)).toContain("partial stderr");
   });
 
-  it("keeps the public-readiness smoke bound above the smoke script setup phase budget", () => {
-    const readinessSource = readFileSync(join(import.meta.dirname, "public-readiness.ts"), "utf8");
+  it("keeps the packed consumer smoke timeout bounded within the dedicated smoke script", () => {
     const smokeSource = readFileSync(join(import.meta.dirname, "public-consumer-smoke.ts"), "utf8");
 
-    expect(PACKED_CONSUMER_SMOKE_TIMEOUT_MS).toBeGreaterThanOrEqual(8 * 60 * 1000);
-    expect(readinessSource).toContain("{ timeoutMs: PACKED_CONSUMER_SMOKE_TIMEOUT_MS }");
     expect(smokeSource).toContain("const DEFAULT_PHASE_TIMEOUT_MS = 5 * 60 * 1000");
+    expect(smokeSource).toContain("const SETUP_PHASE_TIMEOUT_MS = 8 * 60 * 1000");
     expect(smokeSource).toContain("timeout: timeoutMs");
     expect(smokeSource).toContain("timeout: TARBALL_CONTRACT_TIMEOUT_MS");
+    expect(smokeSource).toContain("SETUP_PHASE_TIMEOUT_MS");
+    expect(smokeSource).toContain("formatPhaseProgressLine");
   });
 });
 
 describe("public release readiness gate wiring", () => {
   const repositoryRoot = join(import.meta.dirname, "..");
+
+  it("keeps public:readiness fast by not shelling into packed consumer smoke", () => {
+    const source = readFileSync(join(repositoryRoot, "scripts", "public-readiness.ts"), "utf8");
+
+    expect(source).not.toContain("scripts/public-consumer-smoke.ts");
+    expect(source).not.toContain("packed-consumer-setup-smoke");
+    expect(source).not.toContain("consumer-smoke-phases");
+    expect(source).toContain("package-surface-audit");
+  });
 
   it("exercises host fallback skill projection in the packed consumer smoke", () => {
     const source = readFileSync(

@@ -238,7 +238,8 @@ vp run native:session-memory:deny
 vp run native:session-memory:test
 vp run native:session-memory:bench:run
 vp run native:session-memory:bench:gate
-bun scripts/public-consumer-smoke.ts --setup-only --skip-build
+vp run public:readiness
+vp run public:consumer-smoke:setup
 ```
 
 The packed-consumer smoke inspects the actual tarball and fails if
@@ -246,6 +247,9 @@ The packed-consumer smoke inspects the actual tarball and fails if
 consumer package. It requires the compiled native loader JS so a consumer can
 resolve a prebuilt optional addon or take the TypeScript fallback without Rust
 sources.
+
+Use `public:readiness` for the fast local package/readme/policy gate, and
+`public:consumer-smoke:setup` for the slower packed-install proof.
 
 ## Fetch and index flow
 

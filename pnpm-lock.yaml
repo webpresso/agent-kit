@@ -54,9 +54,6 @@ importers:
       '@secretlint/secretlint-rule-preset-recommend':
         specifier: ^13.0.2
         version: 13.0.2
-      '@vitejs/plugin-react':
-        specifier: 'catalog:'
-        version: 6.0.2(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.1)(tsx@4.22.4)(yaml@2.9.0))
       '@webpresso/cli-contract':
         specifier: ^0.2.0
         version: 0.2.0
@@ -81,12 +78,6 @@ importers:
       ora:
         specifier: ^8.2.0
         version: 8.2.0
-      oxfmt:
-        specifier: ^0.48.0
-        version: 0.48.0
-      oxlint:
-        specifier: ^1.67.0
-        version: 1.67.0(oxlint-tsgolint@0.22.1)(vite-plus@0.1.22(@arethetypeswrong/core@0.18.3)(@types/node@25.9.1)(esbuild@0.28.1)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.1)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0))
       proper-lockfile:
         specifier: ^4.1.2
         version: 4.1.2
@@ -108,21 +99,9 @@ importers:
       ts-pattern:
         specifier: ^5.9.0
         version: 5.9.0
-      tsx:
-        specifier: ^4.21.0
-        version: 4.22.4
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
-      vite:
-        specifier: 'catalog:'
-        version: 8.0.14(@types/node@25.9.1)(esbuild@0.28.1)(tsx@4.22.4)(yaml@2.9.0)
-      vite-plus:
-        specifier: 'catalog:'
-        version: 0.1.22(@arethetypeswrong/core@0.18.3)(@types/node@25.9.1)(esbuild@0.28.1)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.1)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
-      vitest:
-        specifier: 'catalog:'
-        version: 4.1.7(@types/node@25.9.1)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.1)(tsx@4.22.4)(yaml@2.9.0))
       yaml:
         specifier: ^2.9.0
         version: 2.9.0
@@ -151,18 +130,39 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.9.1
+      '@vitejs/plugin-react':
+        specifier: 'catalog:'
+        version: 6.0.2(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.1)(tsx@4.22.4)(yaml@2.9.0))
       '@webpresso/agent-config':
         specifier: workspace:*
         version: link:packages/agent-config
       husky:
         specifier: ^9.1.7
         version: 9.1.7
+      oxfmt:
+        specifier: ^0.48.0
+        version: 0.48.0
+      oxlint:
+        specifier: ^1.67.0
+        version: 1.67.0(oxlint-tsgolint@0.22.1)(vite-plus@0.1.22(@arethetypeswrong/core@0.18.3)(@types/node@25.9.1)(esbuild@0.28.1)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.1)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0))
       publint:
         specifier: 'catalog:'
         version: 0.3.21
       tshy:
         specifier: 'catalog:'
         version: 4.1.2
+      tsx:
+        specifier: ^4.21.0
+        version: 4.22.4
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.14(@types/node@25.9.1)(esbuild@0.28.1)(tsx@4.22.4)(yaml@2.9.0)
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.1.22(@arethetypeswrong/core@0.18.3)(@types/node@25.9.1)(esbuild@0.28.1)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.1)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.7(@types/node@25.9.1)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.1)(tsx@4.22.4)(yaml@2.9.0))
     optionalDependencies:
       '@playwright/test':
         specifier: ^1.55.0
