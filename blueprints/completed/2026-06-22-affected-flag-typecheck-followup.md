@@ -154,8 +154,8 @@ Refinement delta: this residual plan is intentionally narrow and is **not** a `/
 
 - promotion-ready: true
 - unresolved-count: 0
-- verified-at: 2026-06-25T23:53:38Z
-- verified-head: 27101197ee7ee0e4d66eae5484d5550dacd1066f
+- verified-at: 2026-06-26T00:13:22Z
+- verified-head: d682e9fd76f1834f494240b0c06172a847d51436
 - trust-gate-version: v1
 
 ### Material Claims
@@ -176,10 +176,14 @@ Refinement delta: this residual plan is intentionally narrow and is **not** a `/
 
 | Gate                | Command                                       | Expected outcome | Last result                          |
 | ------------------- | --------------------------------------------- | ---------------- | ------------------------------------ |
-| lifecycle           | wp audit blueprint-lifecycle                  | pass             | pass at 2026-06-25T23:53:38Z         |
-| diagnostic-importer | wp test --file src/typecheck/affected.test.ts | pass             | pass at 2026-06-25T23:53:38Z         |
-| typecheck           | wp typecheck                                  | pass             | pass locally at 2026-06-25T23:53:38Z |
-| lint                | wp lint                                       | pass             | pass locally at 2026-06-25T23:53:38Z |
+| lifecycle           | wp audit blueprint-lifecycle                  | pass             | pass at 2026-06-26T00:13:22Z         |
+| diagnostic-importer | wp test --file src/typecheck/affected.test.ts | pass             | pass at 2026-06-26T00:13:22Z         |
+| typecheck           | wp typecheck                                  | pass             | pass locally at 2026-06-26T00:13:22Z |
+| lint                | wp lint                                       | pass             | pass locally at 2026-06-26T00:13:22Z |
+
+### Measurement Scope Note
+
+Broader CI/runtime variance and larger closure shapes were not benchmarked here by design; the YAGNI decision is based on the bounded local smoke recorded above, without adding flaky timing assertions.
 
 ### Residual Unknowns
 

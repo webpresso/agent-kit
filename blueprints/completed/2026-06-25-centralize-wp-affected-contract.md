@@ -68,7 +68,7 @@ This blueprint was already implemented on `main`; leaving it in `planned/` was s
 - Generated and live hooks delegate to `wp format --affected` and `wp audit guardrails --affected`.
 - Isolated targeted tests passed for `src/git/affected.test.ts`, `src/cli/commands/typecheck.test.ts`, and `src/cli/commands/audit.test.ts`.
 
-The separate typecheck reverse-closure follow-up remains in `planned/` only for residual hardening/measurement gaps that are not covered by this completed ownership-contract blueprint.
+The separate typecheck reverse-closure follow-up has since been completed as `blueprints/completed/2026-06-22-affected-flag-typecheck-followup.md`; its residual hardening/measurement scope stayed separate from this completed ownership-contract blueprint.
 
 ## Verification plan
 
