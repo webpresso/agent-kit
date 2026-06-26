@@ -68,3 +68,43 @@ tags: [release, packaging, readiness, smoke]
 - `vp run public:readiness`
 - `vp run public:consumer-smoke:setup`
 - `npm pack --ignore-scripts --dry-run --json`
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-26T12:37:35.000Z
+- verified-head: 1e3c2ccc2a965463224f0f3efda7bba275d05d44
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID  | Claim                                                                                                                 | Evidence                                                                                                                            |
+| --- | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| C1  | `public:readiness` no longer shells into packed consumer smoke.                                                       | repo:scripts/public-readiness.ts; repo:scripts/public-readiness.test.ts                                                             |
+| C2  | Packed install proof remains explicitly covered by `public:consumer-smoke:setup`.                                     | repo:package.json; repo:scripts/public-consumer-smoke.ts; repo:scripts/public-consumer-smoke.test.ts                                |
+| C3  | Root production dependencies exclude the moved repo-only toolchain packages while keeping runtime-owned dependencies. | repo:package.json; repo:src/build/package-manifest.test.ts                                                                          |
+| C4  | Packed consumer setup stays within prompt-budget and scaffold-contract expectations.                                  | repo:src/cli/commands/init/scaffold-agents-md.ts; repo:scripts/public-consumer-smoke.ts; repo:scripts/public-consumer-smoke.test.ts |
+
+### Material Decisions
+
+| ID  | Decision                        | Chosen option                                                                              | Rejected alternatives                                                       | Rationale                                                                                                                                                                         |
+| --- | ------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Public package structure        | Keep one public `@webpresso/agent-kit` package with a thinner runtime-owned install graph. | Split into multiple public packages.                                        | Matches the stated release contract while reducing default install weight.                                                                                                        |
+| D2  | Release proof split             | Make `public:readiness` fast/local and keep packed install as an explicit smoke command.   | Keep packed setup inside default readiness.                                 | Preserves the proof while reducing default readiness wall time.                                                                                                                   |
+| D3  | Packed setup timeout handling   | Scope a measured longer timeout only to the packed `setup` phase.                          | Raise the global smoke timeout or leave the false timeout failure in place. | Cold packed `npm exec --package PACKED_TARBALL_PATH -- wp setup` was measured above five minutes; the scoped bound fixes the wrong-workload timeout without masking other phases. |
+| D4  | Executable blueprint governance | Backfill an in-document Trust Dossier for the completed blueprint.                         | Leave the completed blueprint without trust metadata.                       | Satisfies executable-blueprint trust audits and preserves lifecycle history in place.                                                                                             |
+
+### Promotion Gates
+
+| Gate        | Command                                                                                                                                                                                              | Expected outcome | Last result        |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ------------------ |
+| lifecycle   | ./bin/wp audit blueprint-lifecycle                                                                                                                                                                   | pass             | pass on 2026-06-26 |
+| tph         | ./bin/wp audit tph                                                                                                                                                                                   | pass             | pass on 2026-06-26 |
+| smoke-tests | ./bin/wp test --file scripts/public-readiness.test.ts --file scripts/public-consumer-smoke.test.ts --file src/build/package-manifest.test.ts --file src/cli/commands/init/scaffold-agents-md.test.ts | pass             | pass on 2026-06-26 |
+
+### Residual Unknowns
+
+None.
