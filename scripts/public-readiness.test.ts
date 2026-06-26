@@ -12,6 +12,7 @@ import {
   evaluateRedactionGate,
   evaluateCapabilityDocsGate,
   evaluateCompiledRuntimeTypecheckParity,
+  evaluateSecretDocsContentGate,
   hasNumericBenchmarkClaim,
   listFirstPartyBenchmarkResultCards,
   evaluatePluginNativeLauncherPolicy,
@@ -19,6 +20,7 @@ import {
   listMissingPackedRuntimePaths,
   listMissingRuntimeOptionalDependencies,
   listMissingSessionMemoryNativeOptionalDependencies,
+  listMissingShippedSecretDocs,
   runReadinessCommand,
   formatRunFailureDetail,
   PACKED_CONSUMER_SMOKE_TIMEOUT_MS,
@@ -134,6 +136,102 @@ describe("public-readiness runtime policy helpers", () => {
       status: "PASS",
       detail: "host runtime linux-x64 exposes --file/--package and resolved scopes",
     });
+  });
+
+  it("flags missing shipped secret docs that README/runtime surfaces reference", () => {
+    expect(listMissingShippedSecretDocs(["README.md"])).toContain(
+      "docs/errors/wp-secret-orchestration.md",
+    );
+    expect(listMissingShippedSecretDocs(["README.md"])).toContain("docs/secrets/providers.md");
+  });
+
+  it("rejects placeholder-only secret docs and accepts the rewritten contract docs", () => {
+    const root = mkdtempSync(join(tmpdir(), "wp-secret-doc-gate-"));
+    mkdirSync(join(root, "docs", "errors"), { recursive: true });
+    mkdirSync(join(root, "docs", "guides"), { recursive: true });
+    mkdirSync(join(root, "docs", "secrets"), { recursive: true });
+    try {
+      writeFileSync(
+        join(root, "docs", "README.md"),
+        "# Secret orchestration\nSecret providers\nWP secret orchestration errors\n",
+      );
+      writeFileSync(
+        join(root, "docs", "getting-started.md"),
+        "wp secrets run --sink dev-server --profile preview -- codex\nsecret providers\nWP secret orchestration errors\n",
+      );
+      writeFileSync(
+        join(root, "docs", "ci-act.md"),
+        "wp secrets run --sink act --profile <profile> --\nsecretEnvProfile\nWP secret orchestration errors\n",
+      );
+      writeFileSync(
+        join(root, "docs", "security-audits.md"),
+        "secret-provider-quarantine\ndocs/secrets/providers.md\ndocs/errors/wp-secret-orchestration.md\n",
+      );
+      writeFileSync(
+        join(root, "docs", "reusable-cloudflare-deploy-workflows.md"),
+        "wp config secrets\nwp secrets run --sink <sink> --profile <profile> -- <cmd>\ndocs/secrets/bootstrap-github.md\n",
+      );
+      writeFileSync(
+        join(root, "docs", "guides", "repo-to-preview-url.md"),
+        "wp secrets doctor\nwp preview --json\nWP secret orchestration errors\n",
+      );
+      writeFileSync(
+        join(root, "docs", "secrets", "providers.md"),
+        "schemaVersion\nwp config secrets show\nwp secrets run --sink dev-server --profile preview -- codex\nshelling\nout to the configured provider CLI\n",
+      );
+      writeFileSync(
+        join(root, "docs", "secrets", "bootstrap-github.md"),
+        "WP_GITHUB_BOOTSTRAP_PLANNED\nCI_SECRET_PROVIDER_TOKEN_PRODUCTION\n--apply\n",
+      );
+      writeFileSync(
+        join(root, "docs", "secrets", "local-workplaces.md"),
+        ".git/webpresso/secrets.json\ngit-common-dir\nwp config secrets status\n",
+      );
+      writeFileSync(
+        join(root, "docs", "secrets", "pulumi.md"),
+        "wp secrets run --sink pulumi --profile preview -- pulumi preview\nenv injection only\nfull\n",
+      );
+      writeFileSync(
+        join(root, "docs", "errors", "wp-secret-orchestration.md"),
+        "WP_SECRETS_CONFIG_INVALID\nWP_GITHUB_BOOTSTRAP_MISSING_SECRET\nWP_SECRETS_RUN_USAGE\n",
+      );
+
+      expect(evaluateSecretDocsContentGate(root)).toMatchObject({ status: "FAIL" });
+
+      writeFileSync(
+        join(root, "docs", "secrets", "providers.md"),
+        [
+          "schemaVersion",
+          "wp config secrets show",
+          "wp secrets run --sink dev-server --profile preview -- codex",
+          "shelling",
+          "out to the configured provider CLI",
+          ...Array.from({ length: 60 }, (_, index) => `word${index}`),
+        ].join(" "),
+      );
+      for (const file of [
+        join(root, "docs", "README.md"),
+        join(root, "docs", "getting-started.md"),
+        join(root, "docs", "ci-act.md"),
+        join(root, "docs", "security-audits.md"),
+        join(root, "docs", "reusable-cloudflare-deploy-workflows.md"),
+        join(root, "docs", "guides", "repo-to-preview-url.md"),
+        join(root, "docs", "secrets", "bootstrap-github.md"),
+        join(root, "docs", "secrets", "local-workplaces.md"),
+        join(root, "docs", "secrets", "pulumi.md"),
+        join(root, "docs", "errors", "wp-secret-orchestration.md"),
+      ]) {
+        const text = readFileSync(file, "utf8");
+        writeFileSync(
+          file,
+          `${text} ${Array.from({ length: 60 }, (_, index) => `extra${index}`).join(" ")}`,
+        );
+      }
+
+      expect(evaluateSecretDocsContentGate(root)).toMatchObject({ status: "PASS" });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("flags missing packed thin-root artifacts including the staged host launcher", () => {

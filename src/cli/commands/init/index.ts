@@ -557,12 +557,12 @@ async function runUserOnlySetup(input: {
     case "created":
     case "overwritten":
       console.log(
-        `  codex context7 mcp: ✓ ${context7McpResult.targetPath} (uses ${CONTEXT7_API_KEY_ENV} from with-secrets)`,
+        `  codex context7 mcp: ✓ ${context7McpResult.targetPath} (uses ${CONTEXT7_API_KEY_ENV} from your secret provider)`,
       );
       break;
     case "identical":
       console.log(
-        `  codex context7 mcp: already configured at ${context7McpResult.targetPath} (launch Codex with: with-secrets -- codex)`,
+        `  codex context7 mcp: already configured at ${context7McpResult.targetPath} (launch Codex from a provider-backed shell that exports CONTEXT7_API_KEY)`,
       );
       break;
     case "skipped-dry":

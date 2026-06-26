@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: "2026-05-24"
+last_updated: "2026-06-26"
 ---
 
 # Secret-safe CI act contract
@@ -60,7 +60,7 @@ The public helper does not accept secret-bearing or mutation-oriented argv:
 - `--allow-host-mutation`
 - arbitrary passthrough argv
 - public `act --secret`, `--secret-file`, bind, volume, or container mutation flags
-- provider-specific `secretEnvProfile` / `--secret-env-profile` selectors
+- provider-specific `secretEnvProfile` / `--secret-env-profile` selectors (internal compatibility wiring, not public contract)
 - consumer repo-local secret or CI adapter paths
 
 ## Secret handling
@@ -70,4 +70,6 @@ Secrets must arrive through approved runtime/profile channels, not argv.
 config names there. Use `secretProfile` / `--secret-profile` for
 repo-owned aliases declared in `.webpresso/secrets.config.json`; provider-specific environment selectors remain internal implementation details behind those aliases. Returned stdout, stderr, raw output, JSON
 content, and structured metadata are redacted before they are exposed to the
-agent.
+agent. See [secret providers](./secrets/providers.md) for the config contract and
+[WP secret orchestration errors](./errors/wp-secret-orchestration.md) for error
+triage.

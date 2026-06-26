@@ -60,7 +60,10 @@ If the tool is missing, run `wp hooks doctor` and fix the host visibility issue
 it reports. For a checkout-to-preview walkthrough, see
 [`docs/guides/repo-to-preview-url.md`](./docs/guides/repo-to-preview-url.md).
 For generated-file ownership, see
-[`docs/getting-started.md`](./docs/getting-started.md).
+[`docs/getting-started.md`](./docs/getting-started.md). For the secret
+orchestration contract, see
+[`docs/secrets/providers.md`](./docs/secrets/providers.md) and
+[`docs/errors/wp-secret-orchestration.md`](./docs/errors/wp-secret-orchestration.md).
 
 ## Capability map
 
@@ -130,7 +133,9 @@ Agent Kit ships these secret-governance audits:
 | `wp audit secret-provider-quarantine` | Block direct provider CLI usage in source                              |
 | `wp audit secrets-config`             | Validate `.webpresso/secrets.config.json` without embedded secrets     |
 
-See [`docs/security-audits.md`](./docs/security-audits.md).
+See [`docs/security-audits.md`](./docs/security-audits.md),
+[`docs/secrets/providers.md`](./docs/secrets/providers.md), and
+[`docs/errors/wp-secret-orchestration.md`](./docs/errors/wp-secret-orchestration.md).
 
 ## Fit and non-goals
 
@@ -176,6 +181,8 @@ managed access to the software.
 
 - [`docs/README.md`](./docs/README.md) — documentation index
 - [`docs/getting-started.md`](./docs/getting-started.md) — install and first run
+- [`docs/secrets/providers.md`](./docs/secrets/providers.md) — provider/profile/sink contract
+- [`docs/errors/wp-secret-orchestration.md`](./docs/errors/wp-secret-orchestration.md) — secret/orchestration error reference
 - [`VISION.md`](./VISION.md) — product direction
 - [`CONTRIBUTING.md`](./CONTRIBUTING.md) — contributor workflow
 - [`SECURITY.md`](./SECURITY.md) — vulnerability reporting

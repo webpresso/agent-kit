@@ -1,6 +1,6 @@
 ---
 type: docs-index
-last_updated: "2026-06-25"
+last_updated: "2026-06-26"
 ---
 
 # Agent Kit docs
@@ -31,6 +31,16 @@ wp hooks doctor
 - [Hook doctor](./hooks-doctor.md)
 - [QA output](./qa-output.md)
 - [`wp` extension runtime](./wp-extension-runtime.md)
+
+## Secret orchestration
+
+- [Secret providers](./secrets/providers.md) — schema-v1 config, sink mapping, runtime model
+- [Local worktrees and runtime overrides](./secrets/local-workplaces.md) — committed vs local config ownership
+- [Bootstrap GitHub secrets](./secrets/bootstrap-github.md) — dry-run/apply contract
+- [Pulumi secret boundary](./secrets/pulumi.md) — env-injection-only Pulumi boundary
+- [WP secret orchestration errors](./errors/wp-secret-orchestration.md) — `WP_*` reference
+- [Repo checkout to preview URL](./guides/repo-to-preview-url.md) — operator walkthrough
+- [Secret-safe CI act contract](./ci-act.md) — public `wp ci act` input and redaction rules
 
 ## Evidence and release checks
 

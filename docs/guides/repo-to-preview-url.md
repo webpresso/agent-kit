@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: "2026-06-19"
+last_updated: "2026-06-26"
 ---
 
 # Repo checkout to preview URL
@@ -35,7 +35,9 @@ wp secrets doctor
 ```
 
 Expected outcome: a redacted, actionable diagnosis instead of provider-specific
-manual steps.
+manual steps. See [secret providers](../secrets/providers.md) for the config
+contract and [WP secret orchestration errors](../errors/wp-secret-orchestration.md)
+for the failure reference.
 
 ## 5. Ask for a preview
 
@@ -59,3 +61,9 @@ vp install -g @webpresso/agent-kit@<pinned-version>
 
 Keep the repo-local dependency surface on `@webpresso/agent-config`, not
 `@webpresso/agent-kit`.
+
+## Related docs
+
+- [Secret providers](../secrets/providers.md)
+- [Bootstrap GitHub secrets](../secrets/bootstrap-github.md)
+- [Security audits](../security-audits.md)

@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: "2026-06-12"
+last_updated: "2026-06-26"
 ---
 
 # Security audits
@@ -184,8 +184,11 @@ Each returns a structured result:
 ```
 
 Valid top-level fields: `schemaVersion`, `providers`, `profiles`, and `sinks`.
-The reusable workflow shell reads `providers.default.type` and
-`providers.default.project`. No secret values — only metadata.
+The reusable workflow shell reads repo metadata only. For the full schema-v1
+contract, local runtime override behavior, and error reference, see
+[`docs/secrets/providers.md`](./secrets/providers.md),
+[`docs/secrets/local-workplaces.md`](./secrets/local-workplaces.md), and
+[`docs/errors/wp-secret-orchestration.md`](./errors/wp-secret-orchestration.md).
 
 ## Source
 

@@ -92,7 +92,9 @@ wp secrets run --sink dev-server --profile preview -- codex
 wp secrets run --sink dev-server --profile preview -- claude
 ```
 
-See [secret providers](./secrets/providers.md) and
+See [secret providers](./secrets/providers.md),
+[local worktrees and runtime overrides](./secrets/local-workplaces.md),
+[WP secret orchestration errors](./errors/wp-secret-orchestration.md), and
 [security audits](./security-audits.md).
 
 ## Default skills

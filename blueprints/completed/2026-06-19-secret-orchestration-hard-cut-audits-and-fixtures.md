@@ -31,6 +31,9 @@ baseline passes.
 This blueprint records the repo-local execution evidence for Task 1.3 of the
 larger cross-repo secret-orchestration ultragoal.
 
+> [!NOTE]
+> Historical scope note: this document records the audit/fixture slice only. The later completed blueprint [`2026-06-20-global-wp-schema-v1-secret-contract.md`](./2026-06-20-global-wp-schema-v1-secret-contract.md) is the compatibility-preserving public contract; legacy `wp config secrets` and local wrapper compatibility were retained.
+
 ## Tasks
 
 #### [audit] Task 1.3: Extend hard-cut audits and add migration fixtures
