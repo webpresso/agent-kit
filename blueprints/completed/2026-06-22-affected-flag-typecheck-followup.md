@@ -2,11 +2,11 @@
 type: blueprint
 title: "Harden and measure typecheck --affected reverse-dependency closure"
 owner: ozby
-status: planned
+status: completed
 complexity: M
 created: "2026-06-22"
 last_updated: "2026-06-26"
-progress: "85% (diagnostic-importer timeout fixed with helper and public-entry proofs; residual work is affected-vs-full YAGNI measurement)"
+progress: "100% (affected-vs-full YAGNI measurement captured; affected closure retained; final gates passed)"
 depends_on:
   - 2026-06-25-centralize-wp-affected-contract
 cross_repo_depends_on: []
@@ -86,11 +86,13 @@ Profile and stabilize the diagnostic-importer case in `src/typecheck/affected.te
 
 #### [perf] Task 1.2: Add affected-vs-full typecheck measurement evidence
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1
 
 Create a durable, bounded measurement that compares the reverse-importer closure path with whole-repo typecheck for a representative changed source file. The result decides whether affected narrowing remains enabled or should fall back to whole-repo typecheck under the YAGNI gate.
+
+**Completed (2026-06-26):** a bounded local smoke staged a no-op comment in `src/typecheck/affected.ts`, then compared `./bin/wp typecheck --affected --full` with `./bin/wp typecheck --full` before restoring the temporary edit. The affected path checked one changed file with a two-file reverse-dependency closure in 13.31s real time; full typecheck took 21.50s real time. This is a meaningful local speedup (~38% less wall time) with no failing diagnostics, so the YAGNI decision is to retain affected closure narrowing. No wall-clock assertion was added to the unit suite.
 
 **Files:**
 
@@ -108,10 +110,10 @@ Create a durable, bounded measurement that compares the reverse-importer closure
 
 **Acceptance:**
 
-- [ ] A durable measurement artifact or documented smoke result exists.
-- [ ] The plan records whether affected closure is retained or descope-to-full is chosen.
-- [ ] No flaky wall-clock threshold is added to the normal unit suite.
-- [ ] Targeted tests/typecheck pass.
+- [x] A durable measurement artifact or documented smoke result exists.
+- [x] The plan records whether affected closure is retained or descope-to-full is chosen.
+- [x] No flaky wall-clock threshold is added to the normal unit suite.
+- [x] Targeted tests/typecheck pass.
 
 ## Quick Reference (Execution Waves)
 
@@ -135,10 +137,10 @@ Refinement delta: this residual plan is intentionally narrow and is **not** a `/
 ## Acceptance criteria
 
 - [x] The reverse-closure soundness test passes reliably under the default test timeout.
-- [ ] A measured YAGNI decision exists for closure narrowing versus whole-repo fallback.
-- [ ] No duplicated affected git resolver or CLI flag parsing is introduced.
-- [ ] `wp test --file src/typecheck/affected.test.ts` passes.
-- [ ] `wp audit blueprint-lifecycle` passes after updating the blueprint record.
+- [x] A measured YAGNI decision exists for closure narrowing versus whole-repo fallback.
+- [x] No duplicated affected git resolver or CLI flag parsing is introduced.
+- [x] `wp test --file src/typecheck/affected.test.ts` passes.
+- [x] `wp audit blueprint-lifecycle` passes after updating the blueprint record.
 
 ## Out of scope
 
@@ -152,30 +154,36 @@ Refinement delta: this residual plan is intentionally narrow and is **not** a `/
 
 - promotion-ready: true
 - unresolved-count: 0
-- verified-at: 2026-06-22T00:00:00.000Z
-- verified-head: 45289c257910767ff10aa219afdbf2233c6ca880
+- verified-at: 2026-06-26T00:13:22Z
+- verified-head: d682e9fd76f1834f494240b0c06172a847d51436
 - trust-gate-version: v1
 
 ### Material Claims
 
-| ID  | Claim                                                                  | Evidence                                                               |
-| --- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| C1  | This residual hardening blueprint has a canonical repository document. | repo:blueprints/planned/2026-06-22-affected-flag-typecheck-followup.md |
+| ID  | Claim                                                                       | Evidence                                                                 |
+| --- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| C1  | This residual hardening blueprint has a canonical repository document.      | repo:blueprints/completed/2026-06-22-affected-flag-typecheck-followup.md |
+| C2  | Affected closure narrowing is meaningfully faster than full typecheck here. | repo:blueprints/completed/2026-06-22-affected-flag-typecheck-followup.md |
 
 ### Material Decisions
 
-| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                       |
-| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history. |
+| ID  | Decision                                                                   | Chosen option                          | Rejected alternatives                                      | Rationale                                                                                                                                                        |
+| --- | -------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Preserve executable lifecycle state under the hard planned-state contract. | Backfill an in-document Trust Dossier. | Remove the document from executable lifecycle directories. | Existing executable blueprints stay auditable without losing lifecycle history.                                                                                  |
+| D2  | Decide whether affected closure narrowing survives the YAGNI gate.         | Retain affected closure narrowing.     | Widen every affected typecheck to full repo typecheck.     | Local bounded smoke showed affected closure at 13.31s versus full typecheck at 21.50s for a representative source edit, without adding a flaky timing assertion. |
 
 ### Promotion Gates
 
-| Gate                | Command                                       | Expected outcome | Last result                      |
-| ------------------- | --------------------------------------------- | ---------------- | -------------------------------- |
-| lifecycle           | wp audit blueprint-lifecycle                  | pass             | pass at 2026-06-25T00:00:00.000Z |
-| diagnostic-importer | wp test --file src/typecheck/affected.test.ts | pass             | pass at 2026-06-26T00:00:00.000Z |
-| typecheck           | wp typecheck                                  | pass             | pass in PR #277 CI at 2026-06-25 |
-| lint                | wp lint                                       | pass             | pass in PR #277 CI at 2026-06-25 |
+| Gate                | Command                                       | Expected outcome | Last result                          |
+| ------------------- | --------------------------------------------- | ---------------- | ------------------------------------ |
+| lifecycle           | wp audit blueprint-lifecycle                  | pass             | pass at 2026-06-26T00:13:22Z         |
+| diagnostic-importer | wp test --file src/typecheck/affected.test.ts | pass             | pass at 2026-06-26T00:13:22Z         |
+| typecheck           | wp typecheck                                  | pass             | pass locally at 2026-06-26T00:13:22Z |
+| lint                | wp lint                                       | pass             | pass locally at 2026-06-26T00:13:22Z |
+
+### Measurement Scope Note
+
+Broader CI/runtime variance and larger closure shapes were not benchmarked here by design; the YAGNI decision is based on the bounded local smoke recorded above, without adding flaky timing assertions.
 
 ### Residual Unknowns
 
