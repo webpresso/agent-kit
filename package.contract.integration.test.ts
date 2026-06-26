@@ -433,6 +433,47 @@ function unpackTarball(tarballPath: string, destinationRoot: string): string {
   return join(unpackRoot, "package");
 }
 
+function createPackedGlobalInstallTarball(
+  packageTarballPath: string,
+  runtimeTarballPath: string,
+  tempRoot: string,
+): string {
+  const target = resolveRuntimeTarget();
+  if (!target) {
+    throw new Error(`No compiled host runtime target for ${process.platform}/${process.arch}`);
+  }
+
+  const unpackDestinationRoot = join(tempRoot, "package-install");
+  const unpackedPackageRoot = unpackTarball(packageTarballPath, unpackDestinationRoot);
+  const manifestPath = join(unpackedPackageRoot, "package.json");
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as {
+    optionalDependencies?: Record<string, string>;
+  };
+  if (!manifest.optionalDependencies?.[target.packageName]) {
+    throw new Error(
+      `Packed manifest is missing host runtime optional dependency ${target.packageName}`,
+    );
+  }
+
+  // Keep the global parity install deterministic and npm-native: install the
+  // umbrella package once, and let npm place the host runtime under
+  // node_modules as a dependency rather than as a second top-level global wp.
+  manifest.optionalDependencies = {
+    [target.packageName]: `file:${runtimeTarballPath}`,
+  };
+  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
+
+  const repackedTarballPath = join(tempRoot, "agent-kit-global-install-fixture.tgz");
+  execFileSync(
+    "tar",
+    ["-czf", repackedTarballPath, "-C", join(unpackDestinationRoot, "unpacked"), "package"],
+    {
+      encoding: "utf8",
+    },
+  );
+  return repackedTarballPath;
+}
+
 afterAll(() => {
   if (packedTarballTempRoot) {
     rmSync(packedTarballTempRoot, { force: true, recursive: true });
@@ -568,6 +609,11 @@ describe("tooling umbrella package integration contract", () => {
     const globalPrefix = join(fakeHome, ".vite-plus");
     const { tarballPath: runtimeTarballPath } = createHostRuntimeTarball(tmpRoot);
     const unpackedRuntimePackageRoot = unpackTarball(runtimeTarballPath, join(tmpRoot, "runtime"));
+    const globalInstallTarballPath = createPackedGlobalInstallTarball(
+      tarballPath,
+      runtimeTarballPath,
+      tmpRoot,
+    );
 
     try {
       const env = {
@@ -585,28 +631,7 @@ describe("tooling umbrella package integration contract", () => {
         [
           "install",
           "--global",
-          runtimeTarballPath,
-          "--no-audit",
-          "--fund=false",
-          "--package-lock=false",
-          "--prefer-offline",
-        ],
-        {
-          cwd: tmpRoot,
-          encoding: "utf8",
-          env,
-          stdio: ["ignore", "pipe", "pipe"],
-        },
-      );
-
-      execFileSync(
-        "npm",
-        [
-          "install",
-          "--global",
-          tarballPath,
-          "--omit=optional",
-          "--force",
+          globalInstallTarballPath,
           "--no-audit",
           "--fund=false",
           "--package-lock=false",
