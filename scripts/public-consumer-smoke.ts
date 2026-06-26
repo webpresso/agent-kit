@@ -17,6 +17,7 @@ import {
   type PhaseStatus,
   type PhaseSummary,
 } from "./public-consumer-smoke-phases.js";
+import { formatPhaseProgressLine } from "./public-consumer-smoke-progress.js";
 
 export type { PhaseResult, PhaseStatus, PhaseSummary };
 export { computeOverallStatus, summarizePhases };
@@ -64,6 +65,16 @@ const expectedBlueprintMigrationSqlFiles = readdirSync(
 const expectedBlueprintSchemaVersions = expectedBlueprintMigrationSqlFiles.map((file) =>
   Number.parseInt(file.slice(0, file.indexOf("_")), 10),
 );
+
+function logPhaseStart(phase: string, detail?: string): void {
+  console.log(formatPhaseProgressLine(phase, "start", detail));
+}
+
+function logPhaseFinish(result: PhaseResult): void {
+  console.log(
+    formatPhaseProgressLine(result.phase, "finish", `${result.status} (${result.durationMs}ms)`),
+  );
+}
 
 function run(
   command: string,
@@ -280,7 +291,7 @@ function runResultsToPhaseResult(
   const output = runResults
     .map((r) => `[${r.ok ? "PASS" : "FAIL"}] ${r.command}: ${r.detail}`)
     .join("\n")
-    .slice(0, 800);
+    .slice(0, 8_000);
   return {
     phase,
     status: failed.length === 0 ? "PASS" : "FAIL",
@@ -296,7 +307,7 @@ function runSingleToPhaseResult(phase: string, startMs: number, result: RunResul
     durationMs: Date.now() - startMs,
     capturedOutput: `[${result.ok ? "PASS" : "FAIL"}] ${result.command}: ${result.detail}`.slice(
       0,
-      800,
+      8_000,
     ),
   };
 }
@@ -321,8 +332,11 @@ try {
   // Phase: build
   if (!skipBuild) {
     const t = Date.now();
+    logPhaseStart("build", "vp run build");
     const buildResult = run("vp", ["run", "build"], ROOT);
-    phaseResults.push(runSingleToPhaseResult("build", t, buildResult));
+    const buildPhaseResult = runSingleToPhaseResult("build", t, buildResult);
+    phaseResults.push(buildPhaseResult);
+    logPhaseFinish(buildPhaseResult);
     if (!buildResult.ok) {
       console.log(formatSummary(summarizePhases(phaseResults)));
       if (!keep) rmSync(tempRoot, { recursive: true, force: true });
@@ -333,8 +347,11 @@ try {
   // Phase: native-stage
   {
     const t = Date.now();
+    logPhaseStart("native-stage", "stage runtime and session-memory artifacts");
     const nativeResults = ensurePackableNativeRuntime();
-    phaseResults.push(runResultsToPhaseResult("native-stage", t, nativeResults));
+    const nativePhaseResult = runResultsToPhaseResult("native-stage", t, nativeResults);
+    phaseResults.push(nativePhaseResult);
+    logPhaseFinish(nativePhaseResult);
     if (nativeResults.some((r) => !r.ok)) {
       console.log(formatSummary(summarizePhases(phaseResults)));
       if (!keep) rmSync(tempRoot, { recursive: true, force: true });
@@ -346,21 +363,26 @@ try {
   {
     const t = Date.now();
     try {
+      logPhaseStart("pack", "npm pack --ignore-scripts --json");
       tarball = packCurrentArtifact(tempRoot);
-      phaseResults.push({
+      const packPhaseResult = {
         phase: "pack",
         status: "PASS",
         durationMs: Date.now() - t,
-        capturedOutput: `packed: ${tarball}`.slice(0, 800),
-      });
+        capturedOutput: `packed: ${tarball}`.slice(0, 8_000),
+      } satisfies PhaseResult;
+      phaseResults.push(packPhaseResult);
+      logPhaseFinish(packPhaseResult);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      phaseResults.push({
+      const packPhaseResult = {
         phase: "pack",
         status: "FAIL",
         durationMs: Date.now() - t,
-        capturedOutput: msg.slice(0, 800),
-      });
+        capturedOutput: msg.slice(0, 8_000),
+      } satisfies PhaseResult;
+      phaseResults.push(packPhaseResult);
+      logPhaseFinish(packPhaseResult);
       console.log(formatSummary(summarizePhases(phaseResults)));
       if (!keep) rmSync(tempRoot, { recursive: true, force: true });
       process.exit(1);
@@ -370,13 +392,17 @@ try {
   // Phase: tarball-contract
   {
     const t = Date.now();
+    logPhaseStart("tarball-contract", "inspect packed tarball contents");
     const contractResults = assertPackedSessionMemoryNativeContract(tarball);
-    phaseResults.push(runResultsToPhaseResult("tarball-contract", t, contractResults));
+    const contractPhaseResult = runResultsToPhaseResult("tarball-contract", t, contractResults);
+    phaseResults.push(contractPhaseResult);
+    logPhaseFinish(contractPhaseResult);
   }
 
   // Phase: setup
   {
     const t = Date.now();
+    logPhaseStart("setup", "npm exec --package <tarball> -- wp setup --project-init --host all");
     const initGit = run("git", ["init", repo], tempRoot);
     const initNpm = run("npm", ["init", "--yes"], repo);
     const setupEnv = {
@@ -407,24 +433,37 @@ try {
       repo,
       setupEnv,
     );
-    phaseResults.push(runResultsToPhaseResult("setup", t, [initGit, initNpm, setupResult]));
+    const setupPhaseResult = runResultsToPhaseResult("setup", t, [initGit, initNpm, setupResult]);
+    phaseResults.push(setupPhaseResult);
+    logPhaseFinish(setupPhaseResult);
 
     // Phase: setup-contract
     const tContract = Date.now();
+    logPhaseStart("setup-contract", "verify fresh consumer scaffold and authoring deps");
     const setupContractResults = assertSetupContract(repo);
-    phaseResults.push(runResultsToPhaseResult("setup-contract", tContract, setupContractResults));
+    const setupContractPhaseResult = runResultsToPhaseResult(
+      "setup-contract",
+      tContract,
+      setupContractResults,
+    );
+    phaseResults.push(setupContractPhaseResult);
+    logPhaseFinish(setupContractPhaseResult);
 
     if (!setupOnly) {
       pinPackedAgentKitDependency(repo, tarball);
 
       // Phase: install
       const tInstall = Date.now();
+      logPhaseStart("install", "npm install in packed consumer");
       const install = run("npm", ["install"], repo, setupEnv, 10 * 60 * 1000);
-      phaseResults.push(runSingleToPhaseResult("install", tInstall, install));
+      const installPhaseResult = runSingleToPhaseResult("install", tInstall, install);
+      phaseResults.push(installPhaseResult);
+      logPhaseFinish(installPhaseResult);
 
       if (install.ok) {
         // Phase: consume
         const tConsume = Date.now();
+        logPhaseStart("consume", "run scaffolded consumer quality checks");
         const consumeResults: RunResult[] = [];
         consumeResults.push(
           run(
@@ -450,7 +489,9 @@ try {
         }
         consumeResults.push(run("npm", ["run", "e2e"], repo, setupEnv));
         consumeResults.push(run("npm", ["run", "qa"], repo, setupEnv));
-        phaseResults.push(runResultsToPhaseResult("consume", tConsume, consumeResults));
+        const consumePhaseResult = runResultsToPhaseResult("consume", tConsume, consumeResults);
+        phaseResults.push(consumePhaseResult);
+        logPhaseFinish(consumePhaseResult);
       }
     }
   }

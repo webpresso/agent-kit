@@ -42,7 +42,7 @@ export function renderRepositoryMap(consumer: ConsumerContext): string {
   const packages = consumer.workspacePackages;
   if (packages.length === 0) {
     const name = consumer.packageJson?.name ?? "this project";
-    return `Single-package project: \`${name}\` (root: \`${consumer.repoRoot}\`).`;
+    return `Single-package project: \`${name}\`.`;
   }
   return packages.map((p) => `- \`${p.name}\` — \`${p.relativePath}\``).join("\n");
 }

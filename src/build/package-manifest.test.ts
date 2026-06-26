@@ -16,6 +16,7 @@ import { describe, expect, it } from "vitest";
 import {
   createPackedManifest,
   preparePackedManifest,
+  readWorkspaceCatalogs,
   restorePackedManifest,
 } from "./package-manifest.js";
 
@@ -132,6 +133,58 @@ describe("createPackedManifest", () => {
     expect(JSON.stringify(manifest)).not.toContain("catalog:");
     expect(JSON.stringify(manifest)).not.toContain("@webpresso/agent-kit-runtime");
   });
+  it("keeps repo-only toolchain packages out of the root production dependency section", () => {
+    const packageJson = readJsonObject(join(repoRoot, "package.json")) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+
+    for (const dependencyName of [
+      "vite-plus",
+      "vite",
+      "vitest",
+      "@vitejs/plugin-react",
+      "oxlint",
+      "oxfmt",
+      "tsx",
+    ]) {
+      expect(packageJson.dependencies?.[dependencyName]).toBeUndefined();
+      expect(typeof packageJson.devDependencies?.[dependencyName]).toBe("string");
+    }
+
+    expect(packageJson.dependencies?.typescript).toBeDefined();
+    expect(packageJson.dependencies?.["better-sqlite3"]).toBeDefined();
+  });
+
+  it("prepares the real root packed manifest without reintroducing repo-only toolchain deps", () => {
+    const packageJson = readJsonObject(join(repoRoot, "package.json"));
+    const packed = createPackedManifest(
+      packageJson,
+      readWorkspaceCatalogs(join(repoRoot, "pnpm-workspace.yaml")),
+    ) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+      optionalDependencies?: Record<string, string>;
+    };
+
+    expect(packed.devDependencies).toBeUndefined();
+    for (const dependencyName of [
+      "vite-plus",
+      "vite",
+      "vitest",
+      "@vitejs/plugin-react",
+      "oxlint",
+      "oxfmt",
+      "tsx",
+    ]) {
+      expect(packed.dependencies?.[dependencyName]).toBeUndefined();
+    }
+
+    expect(packed.dependencies?.typescript).toMatch(/^\^?\d/u);
+    expect(packed.dependencies?.["better-sqlite3"]).toMatch(/^\^?\d/u);
+    expect(packed.optionalDependencies?.["@playwright/test"]).toBeDefined();
+  });
+
   it("keeps transient prepack backup artifacts gitignored", () => {
     const gitignore = readFileSync(join(repoRoot, ".gitignore"), "utf8");
 
