@@ -12,6 +12,8 @@ progress: "100% (implemented and plan-refine verified; unrelated full-scan guard
 depends_on:
   - 2026-06-22-affected-flag-across-quality-commands
 cross_repo_depends_on: []
+historical_zero_task_waiver: true
+historical_zero_task_rationale: "Completed before the stricter lifecycle task parser/shape became mandatory; the executable checklist and trust dossier remain the durable record."
 tags:
   - cli
   - dx
