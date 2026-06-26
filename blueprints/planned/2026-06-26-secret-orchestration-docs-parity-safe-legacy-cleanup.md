@@ -1,0 +1,234 @@
+---
+type: blueprint
+title: "Secret orchestration docs parity + safe legacy cleanup"
+owner: codex
+status: planned
+complexity: M
+created: "2026-06-26"
+last_updated: "2026-06-26"
+progress: "0% (planned; refined + fact-checked)"
+depends_on: []
+cross_repo_depends_on: []
+tags: [secrets, docs, packaging, public-surface]
+---
+
+# Secret orchestration docs parity + safe legacy cleanup
+
+**Goal:** Ship accurate, packaged secret orchestration/operator docs and error
+docs, add guardrails that fail when shipped doc references drift or stay
+placeholder-only, and remove the remaining targeted user-facing `with-secrets`
+wording from the stale Context7 init/setup path **without deleting any
+compatibility code**.
+
+## Planning Summary
+
+- Goal input: `Secret orchestration docs parity and safe legacy cleanup`
+- Complexity: `M`
+- Default shape: flat file (`blueprints/<status>/<slug>.md`)
+- Refined: fact-checked against the worktree on 2026-06-26 (see
+  **Fact-check evidence**); `with-secrets` cleanup split out as an independent
+  lane for parallelism.
+
+## Problem
+
+The repo ships secret orchestration commands and runtime `docsPath` references,
+but the referenced docs are only partially discoverable, not fully packaged in
+the npm tarball, and some public entry docs still underspecify the real v1
+provider/profile contract. A stale Codex Context7 setup path still advertises
+`with-secrets` wording even though the intended operator-facing flow is
+provider-backed launch through the shared `wp` secret contract.
+
+## Scope
+
+- Rewrite secret/operator docs and secret error docs to match the current
+  shipped contract.
+- Link those docs from public entry surfaces and ensure tarball inclusion for
+  README/runtime references.
+- Extend readiness validation to fail when secret/error docs are missing or
+  placeholder-only.
+- Remove targeted stale `with-secrets` copy from init/setup output and mark
+  contradictory blueprint history as superseded.
+- Preserve compatibility code and legacy parser/surfaces in runtime/CLI.
+
+## Non-goals
+
+- Removing the legacy `{ manager, projectId }` parser.
+- Removing `wp config secrets`, `SECRET_WRAPPER_BINS`, `wp migrate secrets`,
+  `secret-provider-quarantine`, or internal `secretEnvProfile` wiring.
+- Changing CLI/API shape beyond the documented copy/packaging updates.
+
+## Fact-check evidence (Phase 1–2)
+
+Verified against the worktree on 2026-06-26; all material claims hold.
+
+| Claim                                      | Reality                                                                                           | Verdict  |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------- | -------- |
+| `docs/secrets/*` exist                     | `providers.md`, `bootstrap-github.md`, `local-workplaces.md`, `pulumi.md` present                 | ✅ holds |
+| Error doc exists                           | `docs/errors/wp-secret-orchestration.md` present                                                  | ✅ holds |
+| Readiness command exists                   | `package.json` → `"public:readiness": "bun scripts/public-readiness.ts"`                          | ✅ holds |
+| Tarball inclusion mechanism                | `package.json#files` is an explicit path list (no globs)                                          | ✅ holds |
+| Readiness can detect placeholder-only docs | `scripts/public-readiness.ts` enforces a per-doc required-substring list, not just file existence | ✅ holds |
+| Compatibility code stays                   | `with-secrets` still present in `wrapped-wp.ts`, `migrate.ts`, `secret-provider-quarantine.ts`    | ✅ holds |
+
+## Edge cases & risks
+
+| ID  | Severity | Item                                                                                                    | Mitigation                                                                                                                          |
+| --- | -------- | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| E1  | MEDIUM   | `package.json#files` lists explicit paths — a future secret doc will silently not ship until added      | Task 1.3 readiness check fails on a missing required doc, surfacing the omission at CI time rather than at publish time             |
+| E2  | MEDIUM   | Readiness uses content-substring matching — rewording a doc heading can false-fail the gate             | Keep the required-substring list (Task 1.3) aligned with doc headings; treat substring drift as an intentional, reviewed update     |
+| E3  | LOW      | Removing `with-secrets` copy could be over-applied and break the legacy parser/audit                    | Cleanup is scoped to init/setup user-facing output only (Task 1.4); a negative-assertion test guards copy, non-goals guard the code |
+| E4  | LOW      | Folder/status audit (`blueprint folder/status mismatch`) rejects a `planned/` file with `status: draft` | Frontmatter set to `status: planned` as part of the move into `planned/`                                                            |
+
+## Tasks
+
+### Phase 1: Docs, packaging, and guardrails [Complexity: M]
+
+#### [docs] Task 1.1: Rewrite public secret/operator docs
+
+**Status:** todo
+
+**Depends:** None
+
+Rewrite the secret/operator docs and the secret error doc so they document the
+shipped schema-v1 provider/profile contract: local-vs-committed config split,
+runtime fetch model, provider-backed launch expectations,
+doctor/status/run/bootstrap/migrate flows, sink/profile mapping, and actionable
+`WP_*` failures. Replace any placeholder/stub prose with the real contract.
+
+**Files:**
+
+- Modify: `docs/secrets/providers.md`
+- Modify: `docs/secrets/bootstrap-github.md`
+- Modify: `docs/secrets/local-workplaces.md`
+- Modify: `docs/secrets/pulumi.md`
+- Modify: `docs/errors/wp-secret-orchestration.md`
+
+**Acceptance:**
+
+- [ ] Secret/operator docs describe the current contract instead of placeholders/stubs.
+- [ ] Error doc enumerates the relevant `WP_*` secret/orchestration failures and fixes.
+
+#### [public-surface] Task 1.2: Link and package referenced docs
+
+**Status:** todo
+
+**Depends:** Task 1.1
+
+Add explicit links from public entry docs and include the referenced docs in
+`package.json#files` so README links and runtime `docsPath` targets ship in the
+public tarball. Because `files` is an explicit path list, every newly referenced
+secret/error doc must be appended here (see edge case E1).
+
+**Files:**
+
+- Modify: `package.json` (`files`)
+- Modify: `README.md`
+- Modify: `docs/README.md`
+- Modify: `docs/getting-started.md`
+- Modify: `docs/guides/repo-to-preview-url.md`
+
+**Acceptance:**
+
+- [ ] Public entry docs link to the secret/error docs.
+- [ ] `npm pack --dry-run --json` includes the referenced secret/error docs.
+
+#### [guardrails] Task 1.3: Readiness/test coverage for shipped docs
+
+**Status:** todo
+
+**Depends:** Task 1.2
+
+Extend `scripts/public-readiness.ts` (and its test) so readiness fails when
+shipped README/runtime secret docs are missing from the tarball or are
+placeholder-only (per-doc required-substring list). Keep the required-substring
+list aligned with the doc headings authored in Task 1.1 (edge case E2).
+
+**Files:**
+
+- Modify: `scripts/public-readiness.ts`
+- Modify: `scripts/public-readiness.test.ts`
+
+**Steps:**
+
+1. Add the secret/error docs to the readiness REQUIRED set with their
+   required-substring assertions.
+2. Add/extend tests asserting readiness fails on a missing or placeholder-only
+   secret doc.
+3. Run `vp run public:readiness` — verify green on the real tree.
+
+**Acceptance:**
+
+- [ ] Targeted tests cover shipped doc references and placeholder detection.
+- [ ] `vp run public:readiness` fails on missing/placeholder secret docs.
+
+#### [cleanup] Task 1.4: Remove stale `with-secrets` Context7 init/setup copy
+
+**Status:** todo
+
+**Depends:** None
+
+Remove the targeted user-facing `with-secrets` wording from the stale Context7
+init/setup output, replacing it with the provider-backed `wp secrets run` flow.
+This is a copy-only change to init/setup output — it must not touch the legacy
+parser, audit patterns, or `SECRET_WRAPPER_BINS` (non-goals; edge case E3).
+
+**Files:**
+
+- Modify: `src/cli/commands/init/index.ts`
+- Modify: `src/cli/commands/init/init.integration.test.ts`
+
+**Steps:**
+
+1. Add a failing negative-assertion test: init/setup output does not contain
+   `with-secrets`.
+2. Remove the stale copy from init/setup output.
+3. Run the init integration suite — verify PASS; confirm `with-secrets` still
+   present in `wrapped-wp.ts`/`migrate.ts`/`secret-provider-quarantine.ts`.
+
+**Acceptance:**
+
+- [ ] Init/setup output no longer mentions `with-secrets`.
+- [ ] Legacy compatibility code (parser, audit, wrapper bins) is unchanged.
+
+## Quick Reference (Execution Waves)
+
+| Wave              | Tasks           | Dependencies | Parallelizable | Effort (T-shirt) |
+| ----------------- | --------------- | ------------ | -------------- | ---------------- |
+| **Wave 0**        | 1.1, 1.4        | None         | 2 agents       | S–M              |
+| **Wave 1**        | 1.2             | Wave 0 (1.1) | 1 agent        | S                |
+| **Wave 2**        | 1.3             | Wave 1 (1.2) | 1 agent        | S                |
+| **Critical path** | 1.1 → 1.2 → 1.3 | —            | 3 waves        | M                |
+
+### Parallel Metrics Snapshot
+
+| Metric | Meaning                            | Target | Actual |
+| ------ | ---------------------------------- | ------ | ------ |
+| RW0    | Ready tasks in Wave 0              | ≥ 2    | 2      |
+| CPR    | total_tasks / critical_path_length | ≥ 2.5  | 1.33   |
+| DD     | dependency_edges / total_tasks     | ≤ 2.0  | 0.5    |
+| CP     | same-file overlaps per wave        | 0      | 0      |
+
+**Refinement delta:** CPR is below target because docs → link/package → readiness
+is an inherent sequential chain (each gate verifies the prior step's output).
+Splitting the `with-secrets` cleanup (Task 1.4) out of the original Task 1.3 is
+the only honest parallelism available — it touches `src/cli/**`, disjoint from
+the docs/packaging path, giving a 2-wide Wave 0. Faking further splits would
+introduce artificial dependencies.
+
+## Verification Gates
+
+| Gate            | Command                     | Success Criteria         |
+| --------------- | --------------------------- | ------------------------ |
+| Tests           | targeted vitest suites      | Updated tests pass       |
+| Readiness       | `vp run public:readiness`   | Green                    |
+| Package surface | `npm pack --dry-run --json` | Referenced docs included |
+| Lint/format     | scoped repo wrappers        | Green                    |
+
+## Promotion gate
+
+- [x] Material claims fact-checked against the worktree (see Fact-check evidence).
+- [x] Edge cases and risks enumerated with mitigations (E1–E4).
+- [x] Tasks self-contained with explicit `Files:` and `Depends:`.
+- [x] No "decide during implementation" placeholders.
+
+**Verdict:** `planned-eligible`.
