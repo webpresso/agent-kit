@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   chmodSync,
   existsSync,
@@ -40,10 +41,21 @@ const EXPECTED_BLUEPRINT_SCHEMA_VERSIONS = EXPECTED_BLUEPRINT_MIGRATION_SQL_FILE
   Number.parseInt(file.slice(0, file.indexOf("_")), 10),
 );
 const ORIGINAL_PACKAGE_JSON_TEXT = readFileSync(PACKAGE_JSON_PATH, "utf8");
-const PACK_LOCK_DIRECTORY = join(tmpdir(), "webpresso-agent-kit-npm-pack.lock");
+const PACK_LOCK_DIRECTORY = join(
+  tmpdir(),
+  `webpresso-agent-kit-npm-pack-${createHash("sha256").update(REPO_ROOT).digest("hex").slice(0, 12)}.lock`,
+);
 const PACK_LOCK_OWNER_PATH = join(PACK_LOCK_DIRECTORY, "owner.json");
 const PREPACK_PACKAGE_BACKUP_PATH = join(REPO_ROOT, ".package.json.prepack.backup");
+const PACK_LOCK_STALE_MS = 120_000;
+const PACK_LOCK_RETRY_MS = 100;
 let packedTarballTempRoot: string | undefined;
+
+type PackLockOwner = {
+  pid: number;
+  token: string;
+  startedAt: string;
+};
 
 function isAlive(pid: number): boolean {
   try {
@@ -55,39 +67,103 @@ function isAlive(pid: number): boolean {
   }
 }
 
+function readPackLockOwner(ownerPath = PACK_LOCK_OWNER_PATH): PackLockOwner | null {
+  try {
+    const owner = JSON.parse(readFileSync(ownerPath, "utf8")) as Partial<PackLockOwner>;
+    return typeof owner.pid === "number" &&
+      typeof owner.token === "string" &&
+      typeof owner.startedAt === "string"
+      ? (owner as PackLockOwner)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function readPackLockAgeMs(lockDirectory: string): number | null {
+  try {
+    return Date.now() - statSync(lockDirectory).mtimeMs;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+function writePackLockOwner(owner: PackLockOwner, ownerPath = PACK_LOCK_OWNER_PATH): void {
+  const tempPath = `${ownerPath}.${process.pid}.${Math.random().toString(16).slice(2)}.tmp`;
+  writeFileSync(tempPath, JSON.stringify(owner));
+  renameSync(tempPath, ownerPath);
+}
+
+function shouldReclaimStalePackLock(
+  owner: PackLockOwner | null,
+  ageMs: number,
+  isOwnerAlive: (pid: number) => boolean = isAlive,
+): owner is PackLockOwner {
+  return ageMs > PACK_LOCK_STALE_MS && owner !== null && !isOwnerAlive(owner.pid);
+}
+
+function createPackLockRelease(
+  ownerToken: string,
+  lockDirectory = PACK_LOCK_DIRECTORY,
+  ownerPath = PACK_LOCK_OWNER_PATH,
+): () => void {
+  return () => {
+    const owner = readPackLockOwner(ownerPath);
+    if (owner?.token !== ownerToken) return;
+    rmSync(lockDirectory, { force: true, recursive: true });
+  };
+}
+
+function removePackLockIfOwnerMatches(
+  expectedOwner: PackLockOwner,
+  lockDirectory = PACK_LOCK_DIRECTORY,
+  ownerPath = PACK_LOCK_OWNER_PATH,
+): boolean {
+  const owner = readPackLockOwner(ownerPath);
+  if (owner?.token !== expectedOwner.token) return false;
+  rmSync(lockDirectory, { force: true, recursive: true });
+  return true;
+}
+
+function removeOwnerlessPackLockIfStillOwnerless(
+  lockDirectory = PACK_LOCK_DIRECTORY,
+  ownerPath = PACK_LOCK_OWNER_PATH,
+): boolean {
+  if (readPackLockOwner(ownerPath) !== null) return false;
+  rmSync(lockDirectory, { force: true, recursive: true });
+  return true;
+}
+
 function acquirePackLock(): () => void {
-  const started = Date.now();
   while (true) {
     try {
+      const ownerToken = `${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
       mkdirSync(PACK_LOCK_DIRECTORY);
-      writeFileSync(
-        PACK_LOCK_OWNER_PATH,
-        JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString() }),
-      );
-      return () => rmSync(PACK_LOCK_DIRECTORY, { force: true, recursive: true });
+      writePackLockOwner({
+        pid: process.pid,
+        token: ownerToken,
+        startedAt: new Date().toISOString(),
+      });
+      return createPackLockRelease(ownerToken);
     } catch (error) {
       const code = (error as { code?: string }).code;
       if (code !== "EEXIST") throw error;
-      try {
-        const owner = JSON.parse(readFileSync(PACK_LOCK_OWNER_PATH, "utf8")) as {
-          pid?: number;
-        };
-        if (typeof owner.pid === "number" && !isAlive(owner.pid)) {
-          rmSync(PACK_LOCK_DIRECTORY, { force: true, recursive: true });
-          continue;
-        }
-      } catch {
-        // Fall back to mtime-based stale lock recovery below.
-      }
-      const ageMs = Date.now() - statSync(PACK_LOCK_DIRECTORY).mtimeMs;
-      if (ageMs > 120_000) {
-        rmSync(PACK_LOCK_DIRECTORY, { force: true, recursive: true });
+      const owner = readPackLockOwner();
+      const ageMs = readPackLockAgeMs(PACK_LOCK_DIRECTORY);
+      if (ageMs === null) {
         continue;
       }
-      if (Date.now() - started > 60_000) {
-        throw new Error(`Timed out waiting for npm pack lock at ${PACK_LOCK_DIRECTORY}`);
+      if (ageMs > PACK_LOCK_STALE_MS) {
+        if (shouldReclaimStalePackLock(owner, ageMs) && removePackLockIfOwnerMatches(owner)) {
+          continue;
+        }
+        if (owner === null && removeOwnerlessPackLockIfStillOwnerless()) {
+          continue;
+        }
       }
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100);
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, PACK_LOCK_RETRY_MS);
     }
   }
 }
@@ -497,6 +573,119 @@ describe("tooling umbrella package integration contract", () => {
     ensurePackedTarballArtifact();
     ensureInstalledPackedConsumer();
   }, 300_000);
+
+  it("treats a disappearing pack lock as a retry instead of a hard failure", () => {
+    const root = mkdtempSync(join(tmpdir(), "wp-pack-lock-age-"));
+    const lockDirectory = join(root, "lock");
+
+    try {
+      expect(readPackLockAgeMs(lockDirectory)).toBeNull();
+    } finally {
+      rmSync(root, { force: true, recursive: true });
+    }
+  });
+
+  it("does not let late cleanup delete a successor pack lock", () => {
+    const root = mkdtempSync(join(tmpdir(), "wp-pack-lock-release-"));
+    const lockDirectory = join(root, "lock");
+    const ownerPath = join(lockDirectory, "owner.json");
+
+    try {
+      mkdirSync(lockDirectory, { recursive: true });
+      writeFileSync(
+        ownerPath,
+        JSON.stringify({
+          pid: process.pid,
+          token: "first-owner",
+          startedAt: new Date().toISOString(),
+        }),
+      );
+      const release = createPackLockRelease("first-owner", lockDirectory, ownerPath);
+      writeFileSync(
+        ownerPath,
+        JSON.stringify({
+          pid: process.pid,
+          token: "second-owner",
+          startedAt: new Date().toISOString(),
+        }),
+      );
+
+      release();
+
+      expect(readFileSync(ownerPath, "utf8")).toContain('"token":"second-owner"');
+    } finally {
+      rmSync(root, { force: true, recursive: true });
+    }
+  });
+
+  it("does not let stale-owner reclaim delete a successor pack lock", () => {
+    const root = mkdtempSync(join(tmpdir(), "wp-pack-lock-reclaim-"));
+    const lockDirectory = join(root, "lock");
+    const ownerPath = join(lockDirectory, "owner.json");
+    const firstOwner = {
+      pid: process.pid,
+      token: "first-owner",
+      startedAt: new Date(Date.now() - 180_000).toISOString(),
+    } satisfies PackLockOwner;
+
+    try {
+      mkdirSync(lockDirectory, { recursive: true });
+      writeFileSync(ownerPath, JSON.stringify(firstOwner));
+      writeFileSync(
+        ownerPath,
+        JSON.stringify({
+          pid: process.pid,
+          token: "second-owner",
+          startedAt: new Date().toISOString(),
+        }),
+      );
+
+      expect(removePackLockIfOwnerMatches(firstOwner, lockDirectory, ownerPath)).toBe(false);
+      expect(readFileSync(ownerPath, "utf8")).toContain('"token":"second-owner"');
+    } finally {
+      rmSync(root, { force: true, recursive: true });
+    }
+  });
+
+  it("only reclaims stale locks when the owner metadata is valid and dead", () => {
+    const owner = {
+      pid: 123,
+      token: "stale-owner",
+      startedAt: new Date(1_000).toISOString(),
+    } satisfies PackLockOwner;
+
+    expect(shouldReclaimStalePackLock(null, PACK_LOCK_STALE_MS + 1, () => false)).toBe(false);
+    expect(shouldReclaimStalePackLock(owner, PACK_LOCK_STALE_MS - 1, () => false)).toBe(false);
+    expect(shouldReclaimStalePackLock(owner, PACK_LOCK_STALE_MS + 1, () => true)).toBe(false);
+    expect(shouldReclaimStalePackLock(owner, PACK_LOCK_STALE_MS + 1, () => false)).toBe(true);
+  });
+
+  it("only reclaims ownerless locks while they stay ownerless", () => {
+    const root = mkdtempSync(join(tmpdir(), "wp-pack-lock-ownerless-"));
+    const lockDirectory = join(root, "lock");
+    const ownerPath = join(lockDirectory, "owner.json");
+
+    try {
+      mkdirSync(lockDirectory, { recursive: true });
+      expect(removeOwnerlessPackLockIfStillOwnerless(lockDirectory, ownerPath)).toBe(true);
+      expect(existsSync(lockDirectory)).toBe(false);
+
+      mkdirSync(lockDirectory, { recursive: true });
+      writePackLockOwner(
+        {
+          pid: process.pid,
+          token: "live-owner",
+          startedAt: new Date().toISOString(),
+        },
+        ownerPath,
+      );
+
+      expect(removeOwnerlessPackLockIfStillOwnerless(lockDirectory, ownerPath)).toBe(false);
+      expect(readFileSync(ownerPath, "utf8")).toContain('"token":"live-owner"');
+    } finally {
+      rmSync(root, { force: true, recursive: true });
+    }
+  });
 
   it("packs no banned internal tarball artifacts", () => {
     const packedPaths = readPackedSurfaceMetadata().paths;

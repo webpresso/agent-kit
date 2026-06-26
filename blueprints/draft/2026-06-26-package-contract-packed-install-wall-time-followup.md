@@ -35,6 +35,8 @@ tags: [performance, tests, packaging]
     - `./node_modules/.bin/vitest run package.contract.integration.test.ts --project serial-subprocess --reporter verbose` -> pass, `real 372.24`, Vitest duration `363.26s`
   - current optimization checkpoint:
     - `./node_modules/.bin/vitest run package.contract.integration.test.ts --project serial-subprocess --reporter verbose` -> pass, duration `211.12s`
+    - final lock-hardening checkpoint:
+      - `./bin/wp test --file package.contract.integration.test.ts --full` -> pass, 1 file / 11 tests, duration `173.88s`
   - local packed-consumer assertions now break down as:
     - packed-surface metadata assertions: `8ms`, `1ms`, `0ms` (prewarmed in `beforeAll`)
     - setup-guidance smoke: `24.987s`
@@ -58,6 +60,8 @@ tags: [performance, tests, packaging]
 - The previous global parity test shape was doing an unsupported umbrella install (`--omit=optional`) and then compensating with a second top-level global runtime install that collided on `bin/wp`, required `--force`, and duplicated npm work.
 - The deterministic fix is to install the umbrella package globally only once, while rewiring just the host runtime optional dependency inside the test-local tarball fixture to the local runtime tarball. That keeps the real umbrella tarball and real runtime tarball in play, avoids registry dependence, and lets npm install the runtime as a dependency instead of as a second global owner of `wp`.
 - After that change, the global parity case is no longer the dominant majority of the file runtime, though it remains the largest single case.
+- Follow-up review also closed a stale-lock TOCTOU in the pack-lock helper: if another process released the lock between `EEXIST` handling and the mtime check, the helper now retries instead of throwing `ENOENT`.
+- The final lock hardening for this slice keeps the mutex repo-scoped instead of global across worktrees, writes `owner.json` atomically, and only reclaims stale locks when the stale directory is still ownerless or the recorded owner is both stale and dead. The helper no longer adds a second owner-wait timeout on top of the enclosing Vitest hook timeout.
 
 ## Constraints
 
