@@ -9,6 +9,8 @@ last_updated: "2026-06-25"
 progress: "100% (fix landed in PR #240; plan-refine verified code and threshold contract on 2026-06-25)"
 depends_on: []
 cross_repo_depends_on: []
+historical_zero_task_waiver: true
+historical_zero_task_rationale: "Completed before the stricter lifecycle task parser/shape became mandatory; implementation and verification evidence remain captured below."
 tags:
   - ci
   - performance

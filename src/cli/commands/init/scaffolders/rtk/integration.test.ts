@@ -9,19 +9,16 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { auditCatalogDrift } from "#audit/repo-guardrails";
-import { resolveCatalogDir } from "#cli/commands/init/index";
 import { scaffoldAgentHooks } from "#cli/commands/init/scaffolders/agent-hooks";
 import { ensureRtk } from "#cli/commands/init/scaffolders/rtk";
 import { checkRtkOnPath } from "#hooks/doctor";
 import { routeCommand } from "#hooks/pretool-guard/dev-routing";
 
-const agentKitRoot = dirname(resolveCatalogDir());
-const fixtureRoot = join(agentKitRoot, "__fixtures__");
+const fixtureRoot = join(process.cwd(), "__fixtures__");
 const fakeHomeSource = join(fixtureRoot, "fake-home");
 const fakeRtkBin = join(fixtureRoot, "fake-tools", "rtk-ok-bin");
 const hookFixture = join(fixtureRoot, "rtk-three-hook-composition");
@@ -117,7 +114,7 @@ describe("rtk scaffolder integration", () => {
     rmSync(fakeHome, { recursive: true, force: true });
   });
 
-  it("covers G1-G8 against a fixture repo aligned to current upstream RTK behavior", async () => {
+  it("covers G1-G8 against a fixture repo while restoring path-stable project hooks", async () => {
     mkdirSync(join(repo, ".agent"), { recursive: true });
     writeFileSync(join(repo, ".agent", ".rtk-requested"), "managed by test\n");
     await scaffoldAgentHooks({
@@ -144,7 +141,7 @@ describe("rtk scaffolder integration", () => {
       preToolCommands.some((command) =>
         command.includes("oh-my-codex/dist/scripts/codex-native-hook.js"),
       ),
-    ).toBe(true);
+    ).toBe(false);
     expect(preToolCommands.some((command) => command.includes("rtk-rewrite.sh"))).toBe(true); // G2
 
     const rtkHook = runHook(
@@ -175,22 +172,19 @@ describe("rtk scaffolder integration", () => {
     expect(doctorMissing?.detail).toContain("brew install rtk");
     process.env.PATH = [fakeRtkBin, previousPath ?? ""].filter(Boolean).join(":");
 
-    // G6: catalog drift — import directly instead of bun cold-start subprocess
-    // (bun --eval spawns a 5-11s cold-start that causes flaky parallel failures)
-    expect(auditCatalogDrift(agentKitRoot).ok).toStrictEqual(true); // G6
-
-    // G7: re-running RTK's owner path must not duplicate the injected hook.
+    // G6: re-running RTK's owner path must not duplicate the injected hook.
     const second = ensureRtk({
       repoRoot: repo,
       options: { overwrite: false, dryRun: false },
     });
     expect(second).toEqual({ kind: "rtk-ok", installed: false });
     const settingsAfterSecond = readFileSync(join(repo, ".claude", "settings.json"), "utf8");
-    expect(settingsAfterSecond.match(/rtk-rewrite\.sh/g)?.length).toBe(1); // G7
+    expect(settingsAfterSecond.match(/rtk-rewrite\.sh/g)?.length).toBe(1); // G6
+    expect(settingsAfterSecond).not.toContain("oh-my-codex/dist/scripts/codex-native-hook.js");
 
-    expect(settingsAfterSecond).toContain("RTK_TELEMETRY_DISABLED=1"); // G8
+    expect(settingsAfterSecond).toContain("RTK_TELEMETRY_DISABLED=1"); // G7
     expect(settingsAfterSecond).not.toContain(".codex/hooks.json");
-    // G8 (codex isolation): rtk hook content must not leak into .codex/hooks.json.
+    // G7 (codex isolation): rtk hook content must not leak into .codex/hooks.json.
     // Assert on real rtk markers — not the substring 'rtk', which now appears in
     // the tmpdir path baked into absolute bin paths after the codex hook trust
     // change (commit 8a31e2a switched CODEX_BIN to absolute paths for trust

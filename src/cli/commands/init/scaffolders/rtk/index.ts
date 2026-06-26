@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import type { MergeOptions } from "#cli/commands/init/merge";
@@ -35,6 +35,20 @@ const NOT_FOUND_HINT =
 const RTK_PROBE_TIMEOUT_MS = 3000;
 const RTK_HOOK_RELATIVE_PATH = join(".claude", "hooks", "rtk-rewrite.sh");
 const CLAUDE_SETTINGS_RELATIVE_PATH = join(".claude", "settings.json");
+const STALE_OMX_CLAUDE_COMMAND = "oh-my-codex/dist/scripts/codex-native-hook.js";
+
+type ClaudeHookConfig = {
+  hooks?: {
+    PreToolUse?: Array<{
+      matcher?: string;
+      hooks?: Array<{
+        type?: string;
+        command?: string;
+        timeout?: number;
+      }>;
+    }>;
+  };
+};
 
 function hasInstalledRtkHook(repoRoot: string): boolean {
   const hookPath = join(repoRoot, RTK_HOOK_RELATIVE_PATH);
@@ -47,6 +61,38 @@ function hasInstalledRtkHook(repoRoot: string): boolean {
   } catch {
     return false;
   }
+}
+
+function normalizeClaudeRtkSettings(repoRoot: string): void {
+  const settingsPath = join(repoRoot, CLAUDE_SETTINGS_RELATIVE_PATH);
+  if (!existsSync(settingsPath)) return;
+
+  let parsed: ClaudeHookConfig;
+  try {
+    parsed = JSON.parse(readFileSync(settingsPath, "utf8")) as ClaudeHookConfig;
+  } catch {
+    return;
+  }
+
+  const groups = parsed.hooks?.PreToolUse;
+  if (!Array.isArray(groups) || groups.length === 0) return;
+
+  const hasDirectWpGuard = groups.some((group) =>
+    (group.hooks ?? []).some((hook) => hook.command?.includes("wp-pretool-guard")),
+  );
+  if (!hasDirectWpGuard) return;
+
+  let changed = false;
+  const nextGroups = groups.filter((group) => {
+    const commands = (group.hooks ?? []).map((hook) => hook.command ?? "");
+    const isStaleOmcGroup = commands.some((command) => command.includes(STALE_OMX_CLAUDE_COMMAND));
+    if (isStaleOmcGroup) changed = true;
+    return !isStaleOmcGroup;
+  });
+
+  if (!changed) return;
+  parsed.hooks = { ...(parsed.hooks ?? {}), PreToolUse: nextGroups };
+  writeFileSync(settingsPath, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
 }
 
 export function ensureRtk(input: EnsureRtkInput): EnsureRtkResult {
@@ -93,6 +139,7 @@ export function ensureRtk(input: EnsureRtkInput): EnsureRtkResult {
   }
 
   if (hasInstalledRtkHook(input.repoRoot)) {
+    normalizeClaudeRtkSettings(input.repoRoot);
     spinner.succeed("rtk ready");
     return { kind: "rtk-ok", installed };
   }
@@ -111,6 +158,7 @@ export function ensureRtk(input: EnsureRtkInput): EnsureRtkResult {
     return { kind: "rtk-init-failed", exitCode: result.status ?? -1 };
   }
 
+  normalizeClaudeRtkSettings(input.repoRoot);
   spinner.succeed("rtk ready");
   return { kind: "rtk-ok", installed };
 }
