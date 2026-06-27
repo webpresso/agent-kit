@@ -13,7 +13,7 @@ Use this skill when the user asks for a Kimi reviewer / OpenCode Go review from 
 ## Model routing
 
 - Primary: `opencode-go/kimi-k2.7-code`
-- Fallbacks: `opencode-go/kimi-k2.6`, `opencode-go/kimi-k2.5`
+- Fallbacks: `opencode-go/kimi-k2.6`
 
 Use Kimi for agentic coding critique, implementation risk review, and alternative solution sketches.
 
@@ -47,12 +47,11 @@ If the primary model is unavailable or quota-limited, retry with one fallback fr
 
 ## Current OpenCode Go catalog covered
 
-| Family   | OpenCode Go model IDs                                                                                         |
-| -------- | ------------------------------------------------------------------------------------------------------------- |
-| DeepSeek | `opencode-go/deepseek-v4-pro`, `opencode-go/deepseek-v4-flash`                                                |
-| GLM      | `opencode-go/glm-5.2`, `opencode-go/glm-5.1`, `opencode-go/glm-5`                                             |
-| Kimi     | `opencode-go/kimi-k2.7-code`, `opencode-go/kimi-k2.6`, `opencode-go/kimi-k2.5`                                |
-| MiniMax  | `opencode-go/minimax-m3`, `opencode-go/minimax-m2.7`, `opencode-go/minimax-m2.5`                              |
-| MiMo     | `opencode-go/mimo-v2.5-pro`, `opencode-go/mimo-v2.5`, `opencode-go/mimo-v2-pro`, `opencode-go/mimo-v2-omni`   |
-| Qwen     | `opencode-go/qwen3.7-max`, `opencode-go/qwen3.7-plus`, `opencode-go/qwen3.6-plus`, `opencode-go/qwen3.5-plus` |
-| HY3      | `opencode-go/hy3-preview`                                                                                     |
+| Family   | OpenCode Go model IDs                                                             |
+| -------- | --------------------------------------------------------------------------------- |
+| DeepSeek | `opencode-go/deepseek-v4-pro`, `opencode-go/deepseek-v4-flash`                    |
+| GLM      | `opencode-go/glm-5.2`, `opencode-go/glm-5.1`                                      |
+| Kimi     | `opencode-go/kimi-k2.7-code`, `opencode-go/kimi-k2.6`                             |
+| MiniMax  | `opencode-go/minimax-m3`, `opencode-go/minimax-m2.7`                              |
+| MiMo     | `opencode-go/mimo-v2.5-pro`, `opencode-go/mimo-v2.5`                              |
+| Qwen     | `opencode-go/qwen3.7-max`, `opencode-go/qwen3.7-plus`, `opencode-go/qwen3.6-plus` |
