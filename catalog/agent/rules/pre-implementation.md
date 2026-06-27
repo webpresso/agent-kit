@@ -134,8 +134,9 @@ outside the agent can bypass it; that is documented, not promised.
 When a blueprint's PR merges: delete the remote branch (CI-feasible), and
 **locally** remove the worktree (`wp worktree remove`, the safe path that refuses
 dirty/force/current) and fast-forward the primary to `origin/main`. Local cleanup
-+ primary resync cannot run from GitHub Actions — use a local `wp` command / post-
-merge hook. Leave no stale worktrees or branches.
+
+- primary resync cannot run from GitHub Actions — use a local `wp` command / post-
+  merge hook. Leave no stale worktrees or branches.
 
 ## PR-level blueprint coverage gate
 
