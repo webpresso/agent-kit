@@ -417,6 +417,12 @@
         "default": "./dist/esm/quality-engine/index.js"
       }
     },
+    "./repo-root": {
+      "import": {
+        "types": "./dist/esm/repo-root/index.d.ts",
+        "default": "./dist/esm/repo-root/index.js"
+      }
+    },
     "./runners": {
       "import": {
         "types": "./dist/esm/runners/index.d.ts",
@@ -634,6 +640,7 @@
       "./oxlint/testing-quality": "./src/config/oxlint/testing-quality.ts",
       "./oxlint/tier-boundaries": "./src/config/oxlint/tier-boundaries.ts",
       "./quality-engine": "./src/quality-engine/index.ts",
+      "./repo-root": "./src/repo-root/index.ts",
       "./runners": "./src/runners/index.ts",
       "./symlinker": "./src/symlinker/index.ts",
       "./test": "./src/test/index.ts",

@@ -63,7 +63,7 @@ export interface ResolveProjectRootOptions {
  * (`.git`, `pnpm-workspace.yaml`) anchor at the workspace root in preference to
  * a closer weak marker (`package.json`) in a nested package dir.
  */
-function walkToProjectRoot(start: string): string | null {
+export function walkToProjectRoot(start: string): string | null {
   return walkUp(start, STRONG_MARKERS) ?? walkUp(start, WEWP_MARKERS);
 }
 
