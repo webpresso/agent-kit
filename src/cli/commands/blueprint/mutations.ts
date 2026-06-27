@@ -527,9 +527,17 @@ async function promoteBlueprintLocked(
   let content = readFileSync(currentDocumentPath, "utf8");
   let trustedSource = content;
   if (currentState === "draft" && toState === "planned") {
+    content = applyPromotionTrustGate({
+      repoRoot: cwd,
+      file: currentDocumentPath,
+      markdown: content,
+    });
+    trustedSource = readFileSync(currentDocumentPath, "utf8");
+
     // Governance Piece 1 — HARD gate at the promotion boundary: ≥2 distinct
-    // reviewer approvals in frontmatter `approvals:`. (The audit sweep warns on
-    // pre-rule blueprints; this blocks NEW promotions.)
+    // reviewer approvals in frontmatter `approvals:`, checked AFTER the trust gate
+    // so trust failures surface first. (The audit sweep only warns on pre-rule
+    // blueprints; this blocks NEW promotions.)
     const distinctApprovals = countDistinctApprovals(
       (matter(content).data as Record<string, unknown>).approvals,
     );
@@ -538,12 +546,6 @@ async function promoteBlueprintLocked(
         `Cannot promote "${slug}" to planned: ${distinctApprovals} distinct reviewer approval(s) in frontmatter \`approvals:\` (need ≥2). Record approvals from distinct reviewers (e.g. /plan-eng-review, /codex, /deepseek) — see catalog/agent/rules/pre-implementation.md.`,
       );
     }
-    content = applyPromotionTrustGate({
-      repoRoot: cwd,
-      file: currentDocumentPath,
-      markdown: content,
-    });
-    trustedSource = readFileSync(currentDocumentPath, "utf8");
   }
 
   // Platform-first path: push event + pull fresh replica before local move.
