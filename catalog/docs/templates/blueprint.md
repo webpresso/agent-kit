@@ -8,6 +8,7 @@ progress: "0% (drafted)"
 depends_on: []
 cross_repo_depends_on: []
 tags: []
+approvals: [] # ≥2 distinct reviewer approvals required before draft→planned (see ## Approvals)
 ---
 
 # {{title}}
@@ -49,6 +50,20 @@ tags: []
 
 > [!NOTE]
 > This template reflects the current preferred blueprint structure. Repo-wide validity is determined by the live blueprint parser/audit rules, so older blueprints may still use a different-but-valid section mix.
+
+## Approvals (≥2 required before promotion to `planned`)
+
+Promotion `draft → planned` requires **≥2 approvals from distinct reviewers**,
+recorded in the frontmatter `approvals:` list (the gate input; this checklist is
+a human-readable mirror). Each entry is a real independent review pass tied to
+evidence — `{ reviewer, verdict: approve, commit, evidence }`. Enforced by
+`wp audit blueprint-lifecycle` and the `wp blueprint promote` command. See
+`catalog/agent/rules/pre-implementation.md`.
+
+- [ ] Eng review (`/plan-eng-review`)
+- [ ] Codex (`/codex`)
+- [ ] Outside voice — `/deepseek` / `/mimo` / `/glm`
+- [ ] CEO review (`/plan-ceo-review`)
 
 ### Phase 1: [Phase Name] [Complexity: S]
 

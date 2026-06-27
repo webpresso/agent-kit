@@ -70,6 +70,19 @@ tags:
   - infra
   - observability
 
+# Required to promote past draft — ≥2 approvals from DISTINCT reviewers (the
+# gate input; the in-body `## Approvals` checklist is a human-readable mirror).
+# Enforced by `wp blueprint promote` + `wp audit blueprint-lifecycle`.
+approvals:
+  - reviewer: codex # enum: eng-review | codex | deepseek | mimo | glm | ceo-review
+    verdict: approve
+    commit: <sha-or-content-hash the review ran against>
+    evidence: <repo: path / review record>
+  - reviewer: deepseek
+    verdict: approve
+    commit: <sha-or-content-hash>
+    evidence: <repo: path / review record>
+
 # Optional — if blueprint is parked
 parked_reason: >-
   One or two sentences explaining why it's paused and what unblocks resumption.
