@@ -9,6 +9,7 @@ import { validatePackageImports } from "./package-imports.js";
 import { validatePlanFrontmatter } from "./plan-frontmatter.js";
 import { validateTestQuality } from "./test-quality.js";
 import { validateUxQuality } from "./ux-quality.js";
+import { validateWorktreeDiscipline } from "./worktree-discipline.js";
 
 export const VALIDATORS = [
   validateForbiddenCommands,
@@ -22,6 +23,7 @@ export const VALIDATORS = [
   validateCommandFile,
   validateTestQuality,
   validateUxQuality,
+  validateWorktreeDiscipline,
 ];
 
 export {
@@ -36,4 +38,5 @@ export {
   validatePlanFrontmatter,
   validateTestQuality,
   validateUxQuality,
+  validateWorktreeDiscipline,
 };

@@ -69,9 +69,15 @@ wp blueprint promote {slug}
 A non-trivial change is isolated from the first keystroke. Do all three before
 the first implementation edit, in this order:
 
-1. **Create a git worktree on a new branch and switch into it.** Never
-   implement on `main` or on an unrelated in-flight branch. Branch fresh from
-   the default branch so the PR diff is clean.
+1. **Create the worktree via `wp blueprint start <slug>` (uniform naming).** Never
+   implement on `main` or on an unrelated in-flight branch, and never in the
+   primary checkout. `wp blueprint start` creates/binds the managed worktree and
+   records `worktree_owner_branch`. It resolves deterministically to branch
+   **`bp/<slug>`** at `~/.agent/worktrees/repos/<repo-id>/blueprints/<slug>/owner`
+   (do NOT hardcode the path; do NOT use the deprecated in-repo `_worktrees/`
+   layout, raw `git worktree add`, or ad-hoc `fix/`/`feat/` branch names — they
+   break the slug↔branch↔worktree mapping). One blueprint = one `bp/<slug>`
+   branch = one worktree.
 2. **Create the blueprint on that branch.** The MCP `wp_blueprint_*` tools
    write blueprint files to the _primary_ checkout, not a linked worktree —
    after authoring, make sure the blueprint file actually lands on the worktree
@@ -91,6 +97,45 @@ the worktree/PR steps only for the same trivial cases this rule already skips
 - Doc-only changes with no source edits.
 - An in-progress or planned blueprint already tracks this exact change — update
   it instead of creating a duplicate.
+
+## Promotion gate: `draft` → `planned` needs ≥2 reviewer approvals
+
+A blueprint is a **folder** (`blueprints/<status>/<slug>/_overview.md`) and may
+not be promoted from `draft/` to `planned/` until it has **≥2 approvals from
+distinct reviewers** on the current content.
+
+- **Gate input = `_overview.md` frontmatter `approvals:`** (`reviewer` enum,
+  `verdict`, `commit`/hash, `evidence`). The markdown `## Approvals` checklist is
+  a human-readable mirror, never the gate.
+- **Durable record = committed in-folder review history** (`<slug>/reviews.md` +
+  per-review entries) — version-controlled second brain that keeps approvals AND
+  rejection reasoning. An approval counts only if a matching committed review
+  record exists for that reviewer at that commit/hash; editing frontmatter alone
+  fails the gate.
+- **`.webpresso` is a gitignored derived cache only** (fast lookup / scoreboard
+  aggregation), rebuildable from the committed records. The durable record is the
+  committed in-folder review history; the cache is the only non-committed copy and
+  is never the source of truth.
+- "Distinct" = distinct `reviewer` enum values (e.g. `eng-review` + one model, or
+  two different models — not the same reviewer twice). Enforced by
+  `wp audit blueprint-lifecycle` and the promotion command.
+
+## Primary-on-main discipline
+
+Primary checkouts under `~/repos/*` stay on `main` and are never worked on
+directly — all work happens in a `bp/<slug>` worktree (above). This is enforced
+as **strong agent-level prevention** (the pretool-guard hook blocks
+`git checkout`/`switch`/`branch`/`commit` when cwd is a primary checkout) plus a
+CI/`wp doctor` backstop. It is **not** a 100% guarantee — direct shell/git
+outside the agent can bypass it; that is documented, not promised.
+
+## On merge: clean up + resync
+
+When a blueprint's PR merges: delete the remote branch (CI-feasible), and
+**locally** remove the worktree (`wp worktree remove`, the safe path that refuses
+dirty/force/current) and fast-forward the primary to `origin/main`. Local cleanup
++ primary resync cannot run from GitHub Actions — use a local `wp` command / post-
+merge hook. Leave no stale worktrees or branches.
 
 ## PR-level blueprint coverage gate
 

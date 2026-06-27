@@ -26,6 +26,8 @@ import { resolveBlueprintRoot } from "#utils/blueprint-root.js";
 import { reIngestProjection } from "#projection-ready.js";
 import { assertAllTasksHaveCanonicalPassingEvidence } from "#verification.js";
 import { applyPromotionTrustGate } from "#trust/promotion.js";
+import matter from "gray-matter";
+import { countDistinctApprovals } from "#lifecycle/audit";
 
 // ---------------------------------------------------------------------------
 // Platform-first sync adapter (injectable for tests, Tasks 2.6 + 2.7)
@@ -531,6 +533,19 @@ async function promoteBlueprintLocked(
       markdown: content,
     });
     trustedSource = readFileSync(currentDocumentPath, "utf8");
+
+    // Governance Piece 1 — HARD gate at the promotion boundary: ≥2 distinct
+    // reviewer approvals in frontmatter `approvals:`, checked AFTER the trust gate
+    // so trust failures surface first. (The audit sweep only warns on pre-rule
+    // blueprints; this blocks NEW promotions.)
+    const distinctApprovals = countDistinctApprovals(
+      (matter(content).data as Record<string, unknown>).approvals,
+    );
+    if (distinctApprovals < 2) {
+      throw new Error(
+        `Cannot promote "${slug}" to planned: ${distinctApprovals} distinct reviewer approval(s) in frontmatter \`approvals:\` (need ≥2). Record approvals from distinct reviewers (e.g. /plan-eng-review, /codex, /deepseek) — see catalog/agent/rules/pre-implementation.md.`,
+      );
+    }
   }
 
   // Platform-first path: push event + pull fresh replica before local move.
