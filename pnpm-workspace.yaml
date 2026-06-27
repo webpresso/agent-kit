@@ -4,6 +4,7 @@ packages:
   - packages/*
 
 preferWorkspacePackages: true
+enableGlobalVirtualStore: true
 cleanupUnusedCatalogs: true
 
 catalog:
