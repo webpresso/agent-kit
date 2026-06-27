@@ -137,3 +137,38 @@ Mirror of frontmatter `approvals:` + `reviews.md` (the durable, committed record
 ## Risks
 - Piece 3 must not block legitimate git ops inside worktrees/CI; detection of "primary vs worktree" must be exact (`git rev-parse --git-common-dir` vs `--git-dir`).
 - ~~Approval-by-markdown is spoofable~~ → **resolved (Rev 3):** approvals are frontmatter cross-checked against the `.webpresso` review store; fabricated entries fail the gate.
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-27T00:00:00.000Z
+- verified-head: 4066602cd7aff29e449f1ef2890176fbb8f08a7e
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID  | Claim | Evidence |
+| --- | --- | --- |
+| C1  | This executable blueprint has a canonical repository document. | repo:blueprints/planned/blueprint-pr-governance/\_overview.md |
+| C2  | Approved by ≥2 distinct reviewers on the final rev (codex, deepseek). | repo:blueprints/planned/blueprint-pr-governance/reviews.md |
+
+### Material Decisions
+
+| ID  | Decision | Chosen option | Rejected alternatives | Rationale |
+| --- | --- | --- | --- | --- |
+| D1  | Where approvals live. | Committed in-folder records (second brain) + frontmatter gate input. | `.webpresso` (gitignored) as source of truth. | Gitignored state is ephemeral/non-portable; committed records are durable + auditable. |
+| D2  | PR auto-merge scope. | Split into its own hardened blueprint. | Ride along here. | Auto-merge is security-sensitive (non-spoofable approval source, branch protection) and too high blast-radius to bundle. |
+
+### Promotion Gates
+
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-27T00:00:00.000Z |
+| trust     | wp audit blueprint-trust     | pass             | pass at 2026-06-27T00:00:00.000Z |
+
+### Residual Unknowns
+
+None.

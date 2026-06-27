@@ -113,8 +113,9 @@ distinct reviewers** on the current content.
   record exists for that reviewer at that commit/hash; editing frontmatter alone
   fails the gate.
 - **`.webpresso` is a gitignored derived cache only** (fast lookup / scoreboard
-  aggregation), rebuildable from the committed records. Reviews are NEVER stored
-  in `~/.gstack/` (gstack was absorbed into `wp`).
+  aggregation), rebuildable from the committed records. The durable record is the
+  committed in-folder review history; the cache is the only non-committed copy and
+  is never the source of truth.
 - "Distinct" = distinct `reviewer` enum values (e.g. `eng-review` + one model, or
   two different models — not the same reviewer twice). Enforced by
   `wp audit blueprint-lifecycle` and the promotion command.
