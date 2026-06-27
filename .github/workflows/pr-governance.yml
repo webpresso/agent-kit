@@ -1,0 +1,51 @@
+name: PR governance (review→ready)
+
+# Governance Piece 4 (blueprint-pr-governance): flip a draft PR to "ready for
+# review" once its approval signal is green. The approval source is GitHub-native
+# and non-spoofable: it is the conclusion of the trusted "CI (agent-kit self)"
+# workflow (which already runs the blueprint approval gate via the Audits job).
+# We use `workflow_run` (NOT `pull_request_target`) so a fork PR can never run
+# this with write permissions against secrets. Auto-merge is intentionally NOT
+# here — it is a separate hardened blueprint.
+
+on:
+  workflow_run:
+    workflows: ["CI (agent-kit self)"]
+    types: [completed]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review-to-ready:
+    # Only act when the gating CI run succeeded and originated from a PR.
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Flip draft → ready when CI is green and the PR opts in
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          # Find the open PR for the CI run's head SHA.
+          pr=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --search "$HEAD_SHA" \
+                 --json number,isDraft,labels --jq '.[0]') || pr=""
+          if [ -z "$pr" ] || [ "$pr" = "null" ]; then
+            echo "No open PR for $HEAD_SHA; nothing to do."; exit 0
+          fi
+          number=$(echo "$pr" | jq -r '.number')
+          is_draft=$(echo "$pr" | jq -r '.isDraft')
+          # Safe-by-default: only auto-flip PRs that opted in with the label, so a
+          # PR can deliberately stay draft. The governance approval gate itself is
+          # enforced by the Audits job that already had to pass to reach here.
+          opted_in=$(echo "$pr" | jq -r '[.labels[].name] | index("governance:auto-ready") != null')
+          if [ "$is_draft" != "true" ]; then echo "PR #$number already ready."; exit 0; fi
+          if [ "$opted_in" != "true" ]; then
+            echo "PR #$number is draft without the 'governance:auto-ready' label; leaving as draft."; exit 0
+          fi
+          echo "CI green + opted in → marking PR #$number ready for review."
+          gh pr ready "$number" --repo "$GITHUB_REPOSITORY"
