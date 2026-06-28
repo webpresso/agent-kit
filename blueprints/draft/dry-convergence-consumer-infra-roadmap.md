@@ -6,7 +6,7 @@ status: draft
 complexity: XL
 created: "2026-06-28"
 last_updated: "2026-06-28"
-progress: "10% (Wave A foundation in PR webpresso/agent-kit#291: @webpresso/agent-core + agent-config re-exports)"
+progress: "25% (Wave A foundation merged + published: PR #291 landed `@webpresso/agent-core`, release-order fix PR #297 published 0.1.0/0.3.0, final type-contract cleanup PR #301 landed)"
 tags:
   - dry
   - extraction
@@ -31,10 +31,11 @@ package topology (see memory `webpresso-package-topology`):
 - **Consumers import `@webpresso/agent-config` ONLY (+ `@webpresso/runtime-env`),
   never `@webpresso/agent-kit`.** ingest's pnpm-workspace literally comments
   "agent-config is the consumer-installed package surface."
-- `@webpresso/agent-config` (`agent-kit/packages/agent-config`, v0.2.0) is the
-  **consumer surface**, currently **config-only** (tsconfig/vitest/stryker) and
-  **standalone** (deps: vite/vitest only). `@webpresso/agent-kit` (root, v2.x) is
-  the internal `wp` engine — not a consumer import.
+- `@webpresso/agent-config` (`agent-kit/packages/agent-config`, now **v0.3.0**) is the
+  **consumer surface**. It still owns the config presets, and now also re-exports
+  the shared low-level primitives under `/repo-root`, `/process`, `/e2e`, `/deploy`,
+  and `/dev`. `@webpresso/agent-kit` (root, v2.x) remains the internal `wp` engine
+  and public CLI/subpath host — not a consumer dependency.
 
 **Corrected architecture (decided):** introduce a **new shared low-level package
 `@webpresso/agent-core`** (`agent-kit/packages/agent-core`) hosting the generic
@@ -58,17 +59,13 @@ getAvailablePort error preservation, fail-closed secret-env) are sound and move
 verbatim into `agent-core`.
 
 ### Corrected Wave A (agent-core + agent-config surface)
-1. Create `packages/agent-core` (`@webpresso/agent-core`) with primitives:
-   `findRepoRoot`/`resolveFromRepoRoot`; `terminateProcessTreeWithEscalation`/
-   `signalProcessTree`; `getAvailablePort`/`waitForHttpOk`; fail-closed
-   `resolveE2eSecretEnv`; `assertSemanticReleaseVersion`/`validateReleaseMetadata`;
-   `resolveWorkspaceBinary`/`resolveVpCommand`/`buildChildEnv`. (Reuse the
-   reviewed code from the closed branch.)
-2. `@webpresso/agent-config` depends on `agent-core` and re-exports the consumer
-   subset under stable subpaths (`/repo-root`, `/process`, `/e2e`, `/deploy`, `/dev`).
-3. `@webpresso/agent-kit` depends on `agent-core`; delete its internal duplicate
-   copies and rewire `#`-importers. (Bigger internal refactor — may be its own PR.)
-4. Per-subpath import-stability tests on agent-config; `export-isolation` stays green.
+1. ✅ Created `packages/agent-core` (`@webpresso/agent-core`) with the shared
+   primitives (`repo-root`, `process`, `e2e`, `deploy`, `dev`).
+2. ✅ `@webpresso/agent-config` now depends on `agent-core` and re-exports the
+   consumer subset under stable subpaths (`/repo-root`, `/process`, `/e2e`, `/deploy`, `/dev`).
+3. ⏳ `@webpresso/agent-kit` still needs the larger internal duplicate-deletion / `#`-import
+   rewire pass.
+4. ✅ Per-subpath import-stability tests and `export-isolation` coverage landed with Wave A.
 
 The Wave B–E consumer migrations below still apply, but every consumer import
 resolves from **`@webpresso/agent-config`**, not `@webpresso/agent-kit`.
