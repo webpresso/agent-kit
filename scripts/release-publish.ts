@@ -310,7 +310,13 @@ function assertPreparedSessionMemoryNativePackage(
       `session-memory native package version mismatch for ${packageName}: expected ${version}, got ${manifest.version ?? "missing"}`,
     );
   }
-  return { name: packageName, version, root: preparedPackageRoot, manifestPath };
+  return {
+    name: packageName,
+    version,
+    root: preparedPackageRoot,
+    manifestPath,
+    workspaceDependencies: [],
+  };
 }
 
 function assertPreparedSessionMemoryNativePackages(
@@ -447,6 +453,7 @@ if (shouldPublishRuntimeMatrix(process.env)) {
           version: rootPackage.version,
           root: resolve(runtimePackageRoot, runtimePackage),
           manifestPath: resolve(runtimePackageRoot, runtimePackage, "package.json"),
+          workspaceDependencies: [],
         },
         publishState,
       ),
