@@ -108,3 +108,44 @@ After the Linux typecheck fix, CI `Test` exposed two additional global-virtual-s
 - [x] Launcher tests assert the stable launch fields plus required global-virtual-store `NODE_PATH` entries instead of exact-matching the full inherited process environment.
 - [x] Package-surface audit resolves the owned default secretlint preset to an absolute module path before passing `--secretlintrcJSON`, avoiding phantom rule resolution.
 - [x] Targeted slice passes: `vp exec vitest run scripts/bin-launcher.test.ts src/audit/package-surface.test.ts --project unit --reporter=dot` (61 tests).
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-28T02:41:00.000Z
+- verified-head: e361145978f14226e94eb45dbce33f7a86d37df5
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID  | Claim                                                                 | Evidence                                                                 |
+| --- | --------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| C1  | This executable blueprint has a canonical repository document.        | repo:blueprints/completed/2026-06-27-worktree-dependency-fast-install.md |
+| C2  | Fresh worktree dependency setup is faster with pnpm global store.     | repo:blueprints/completed/2026-06-27-worktree-dependency-fast-install.md |
+| C3  | Local changed-surface verification passed after the origin/main sync. | derived:C1,C2                                                            |
+
+### Material Decisions
+
+| ID  | Decision                              | Chosen option                                          | Rejected alternatives                         | Rationale                                                                                 |
+| --- | ------------------------------------- | ------------------------------------------------------ | --------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| D1  | Worktree dependency sharing strategy. | pnpm `enableGlobalVirtualStore: true`.                 | Copying/symlinking `node_modules` manually.   | Official pnpm worktree guidance supports the global virtual store for repeated worktrees. |
+| D2  | Missing Bun Fetch type dependency.    | Narrow pnpm `packageExtensions` entry for `bun-types`. | Broad DOM libs or disabling the global store. | Fixes the undeclared dependency edge directly without changing unrelated TypeScript libs. |
+| D3  | Blueprint lifecycle state.            | Move the completed plan to `blueprints/completed/`.    | Leave completed work in `blueprints/draft/`.  | Completed executable blueprints must remain auditable by the blueprint trust guardrail.   |
+
+### Promotion Gates
+
+| Gate       | Command                                                                                                                                             | Expected outcome | Last result                                          |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ---------------------------------------------------- |
+| format     | wp format --check                                                                                                                                   | pass             | pass scoped to changed files at 2026-06-28T02:41:59Z |
+| tests      | wp test --file bin/\_run.test.ts --file scripts/bin-launcher.test.ts --file src/audit/package-surface.test.ts --file src/typecheck/affected.test.ts | pass             | pass at 2026-06-28T02:42:14Z                         |
+| typecheck  | wp typecheck                                                                                                                                        | pass             | pass at 2026-06-28T02:42:30Z                         |
+| lint       | wp lint                                                                                                                                             | pass             | pass at 2026-06-28T02:42:40Z                         |
+| guardrails | wp audit guardrails --affected --branch                                                                                                             | pass             | pass at 2026-06-28T02:45:00Z                         |
+| blueprint  | wp audit blueprint-pr-coverage --base origin/main                                                                                                   | pass             | pass at 2026-06-28T02:43:00Z                         |
+
+### Residual Unknowns
+
+None.
