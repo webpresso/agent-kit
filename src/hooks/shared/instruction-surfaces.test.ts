@@ -53,15 +53,15 @@ describe("instruction surface renderer", () => {
       host: "claude",
       artifactName: "SessionStart.additionalContext",
       content: `<wp_instruction_surface host="claude" artifact="SessionStart.additionalContext" source="wp_routing">
-  <host_contract>
-    <native_tool_names>${tools}</native_tool_names>
-    <stdout_noop>SessionStart writes a JSON additionalContext envelope; with no project routing or continuity events it emits empty context. Tool routing comes from the wp_* MCP tool descriptions, not an injected block.</stdout_noop>
-    <lifecycle_notes>
-    <note>SessionStart is context injection only and cannot block tool calls.</note>
-    <note>PreToolUse remains the lifecycle for deny decisions.</note>
-    </lifecycle_notes>
-    <public_support>Public support: first-class Claude hook context surface.</public_support>
-  </host_contract>
+<host_contract>
+<native_tool_names>${tools}</native_tool_names>
+<stdout_noop>SessionStart writes a JSON additionalContext envelope; with no project routing or continuity events it emits empty context. Tool routing comes from the wp_* MCP tool descriptions, not an injected block.</stdout_noop>
+<lifecycle_notes>
+<note>SessionStart is context injection only and cannot block tool calls.</note>
+<note>PreToolUse remains the lifecycle for deny decisions.</note>
+</lifecycle_notes>
+<public_support>Public support: first-class Claude hook context surface.</public_support>
+</host_contract>
 </wp_instruction_surface>\n\nproject routing`,
     });
   });

@@ -188,7 +188,7 @@ Full details: `.agent/rules/package-conventions.md`
 
 - `@repo/workflow-skills` — `packages/workflow-skills`
 - `@webpresso/agent-config` — `packages/agent-config`
-- `@webpresso/agent-core` — `packages/agent-core` (shared low-level primitives; depended on by agent-kit and agent-config, never imported by consumers directly)
+- `@webpresso/agent-core` — `packages/agent-core`
 - `@webpresso/agent-kit` — `.`
 
 ## Tech stack
