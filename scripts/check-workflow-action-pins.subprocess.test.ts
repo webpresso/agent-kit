@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const SCRIPT_PATH = "scripts/check-workflow-action-pins.ts";
-const PINNED_CHECKOUT = "actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd";
+const PINNED_CHECKOUT = "actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0";
 
 function writeWorkflow(root: string, body: string): void {
   const workflowsDir = join(root, ".github", "workflows");
