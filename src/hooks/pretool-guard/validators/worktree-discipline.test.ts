@@ -116,6 +116,16 @@ describe("validateWorktreeDiscipline", () => {
     expect(r.passed).toBe(false);
   });
 
+  it("blocks ambient-primary `git commit` after a non-persistent subshell cd", () => {
+    const r = validateWorktreeDiscipline(bash(`(cd /tmp) && git commit -m "x"`, PRIMARY));
+    expect(r.passed).toBe(false);
+  });
+
+  it("allows ambient-non-primary `git commit` after a non-persistent subshell cd", () => {
+    const r = validateWorktreeDiscipline(bash(`(cd ${PRIMARY}) && git commit -m "x"`, "/tmp"));
+    expect(r.passed).toBe(true);
+  });
+
   it("blocks cumulative `git -C /tmp -C <primary> commit` (every -C applied)", () => {
     const r = validateWorktreeDiscipline(bash(`git -C /tmp -C ${PRIMARY} commit -m "x"`, "/tmp"));
     expect(r.passed).toBe(false);

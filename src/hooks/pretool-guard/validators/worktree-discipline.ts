@@ -35,10 +35,10 @@ const VALIDATOR_NAME = "worktree-discipline";
  *
  * Known best-effort limits (acceptable for an agent guard with a documented
  * `WORKTREE_DISCIPLINE_SKIP=1` escape — the threat model is accidental misuse,
- * not an adversary evading its own guard): subshell-scoped `cd` that does not
- * persist (`(cd /x) && git …`) is over-trusted; a forbidden git literal inside a
- * quoted argument (`echo "git commit"`) is matched; and `popd` / dir-stack
- * unwinding is not modeled.
+ * not an adversary evading its own guard): a forbidden git literal inside a
+ * quoted argument (`echo "git commit"`) is matched, and `popd` / dir-stack
+ * unwinding is not modeled. Subshell-scoped `cd` (`(cd /x) && git …`) is
+ * intentionally ignored because it does not persist for the later git op.
  *
  * Conservative on `git checkout`: only `checkout -b` (new branch) is blocked;
  * bare `git checkout <ref/path>` is left alone so file restores
@@ -110,7 +110,7 @@ const QUOTED_ARG = `(?:"[^"]+"|'[^']+'|\\S+)`;
 // A `cd`/`pushd` that changes the shell's dir: after a separator, optionally
 // preceded by env-assignments (`FOO=1 `) and a `command`/`builtin` prefix.
 const CD_SEGMENT = new RegExp(
-  `(?:^|&&|;|\\|\\||\\(|\\{)\\s*(?:[A-Za-z_]\\w*=\\S*\\s+)*(?:command\\s+|builtin\\s+)?(?:cd|pushd)\\s+(?!-)${DIR_TOKEN}`,
+  `(?:^|&&|;|\\|\\||\\{)\\s*(?:[A-Za-z_]\\w*=\\S*\\s+)*(?:command\\s+|builtin\\s+)?(?:cd|pushd)\\s+(?!-)${DIR_TOKEN}`,
   "gu",
 );
 const DASH_C = new RegExp(`-C\\s+${DIR_TOKEN}`, "gu");
