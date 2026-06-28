@@ -1,4 +1,6 @@
 import { execFileSync, spawnSync } from "node:child_process";
+import { mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { validateBlueprintTrust } from "./validator.js";
 import { parseTrustDossier } from "./dossier.js";
 import { parseAllowedWpCommand } from "./gates.js";
@@ -77,21 +79,117 @@ function readHead(repoRoot: string): string {
   }
 }
 
-export function runPromotionCommand(repoRoot: string, command: string): void {
+export type PromotionCommandOptions = {
+  timeoutMs?: number;
+  now?: Date;
+};
+
+const PROMOTION_GATE_TIMEOUT_MS = 30_000;
+const PROMOTION_GATE_TAIL_LIMIT = 500;
+
+export function runPromotionCommand(
+  repoRoot: string,
+  command: string,
+  options: PromotionCommandOptions = {},
+): void {
   const argv = parseAllowedWpCommand(command);
   const [binary, ...args] = argv;
   if (binary === undefined) throw new Error(`Promotion gate command is empty: ${command}`);
-  const result = spawnSync(binary, args, {
+  const executable = resolveWpExecutable(repoRoot, binary);
+  const result = spawnSync(executable, args, {
     cwd: repoRoot,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
-    timeout: 30_000,
-    env: { ...process.env, PATH: `${repoRoot}/bin:${process.env["PATH"] ?? ""}` },
+    timeout: options.timeoutMs ?? PROMOTION_GATE_TIMEOUT_MS,
+    env: { ...process.env, PATH: `${path.join(repoRoot, "bin")}:${process.env["PATH"] ?? ""}` },
   });
-  if (result.status !== 0)
-    throw new Error(
-      `Promotion gate failed (${command}): ${(result.stderr || result.stdout || "").slice(0, 500)}`,
-    );
+  if (result.status === 0 && result.error === undefined) return;
+
+  const logPath = writePromotionGateLog(repoRoot, command, executable, args, result, options.now);
+  throw new Error(
+    formatPromotionGateFailure(
+      command,
+      result,
+      logPath,
+      options.timeoutMs ?? PROMOTION_GATE_TIMEOUT_MS,
+    ),
+  );
+}
+
+function resolveWpExecutable(repoRoot: string, binary: string): string {
+  if (binary === "wp" || binary === "./bin/wp") return path.join(repoRoot, "bin", "wp");
+  return binary;
+}
+
+function formatPromotionGateFailure(
+  command: string,
+  result: ReturnType<typeof spawnSync>,
+  logPath: string,
+  timeoutMs: number,
+): string {
+  const parts = [describePromotionGateStatus(result, timeoutMs)];
+  const stderrTail = boundedTail(result.stderr);
+  const stdoutTail = boundedTail(result.stdout);
+  if (stderrTail) parts.push(`stderr: ${stderrTail}`);
+  if (stdoutTail) parts.push(`stdout: ${stdoutTail}`);
+  parts.push(`log: ${logPath}`);
+  return `Promotion gate failed (${command}): ${parts.join("; ")}`;
+}
+
+function describePromotionGateStatus(
+  result: ReturnType<typeof spawnSync>,
+  timeoutMs: number,
+): string {
+  if (isTimeoutResult(result)) return `timeout after ${timeoutMs}ms`;
+  if (result.status !== null) return `exit code ${result.status}`;
+  if (result.signal) return `signal ${result.signal}`;
+  if (result.error) return `launch error: ${result.error.message}`;
+  return "unknown failure";
+}
+
+function isTimeoutResult(result: ReturnType<typeof spawnSync>): boolean {
+  const error = result.error as NodeJS.ErrnoException | undefined;
+  return error?.code === "ETIMEDOUT";
+}
+
+function boundedTail(value: string | Buffer | null | undefined): string {
+  const text = typeof value === "string" ? value : (value?.toString("utf8") ?? "");
+  return text.trim().slice(-PROMOTION_GATE_TAIL_LIMIT);
+}
+
+function writePromotionGateLog(
+  repoRoot: string,
+  command: string,
+  executable: string,
+  args: string[],
+  result: ReturnType<typeof spawnSync>,
+  now = new Date(),
+): string {
+  const relativeLogPath = path.join(
+    "logs",
+    "blueprint-promotion-gates",
+    now.toISOString().slice(0, 10),
+    `${now.toISOString().replace(/[:.]/gu, "-")}.log`,
+  );
+  const absoluteLogPath = path.join(repoRoot, relativeLogPath);
+  mkdirSync(path.dirname(absoluteLogPath), { recursive: true });
+  const log = [
+    `command: ${command}`,
+    `executable: ${executable}`,
+    `args: ${JSON.stringify(args)}`,
+    `cwd: ${repoRoot}`,
+    `status: ${result.status ?? "null"}`,
+    `signal: ${result.signal ?? "null"}`,
+    `error: ${result.error ? result.error.message : "null"}`,
+    "",
+    "--- stdout ---",
+    typeof result.stdout === "string" ? result.stdout : (result.stdout?.toString("utf8") ?? ""),
+    "",
+    "--- stderr ---",
+    typeof result.stderr === "string" ? result.stderr : (result.stderr?.toString("utf8") ?? ""),
+  ].join("\n");
+  writeFileSync(absoluteLogPath, log);
+  return relativeLogPath;
 }
 
 function upsertReadinessValue(markdown: string, key: string, value: string): string {

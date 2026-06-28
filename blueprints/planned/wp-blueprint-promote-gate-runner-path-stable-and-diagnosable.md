@@ -5,8 +5,8 @@ status: planned
 complexity: S
 owner: ozby
 created: "2026-06-28"
-last_updated: "2026-06-27"
-progress: "0% (0/3 tasks done, 0 blocked, updated 2026-06-27)"
+last_updated: "2026-06-28"
+progress: "100% (3/3 tasks done, 0 blocked, updated 2026-06-28)"
 tags:
   - blueprint-tooling
   - mcp
@@ -56,10 +56,11 @@ The diagnostics half (b/a) is independent and can land first. Any launcher fix s
 
 ### Material Claims
 
-| ID  | Claim                                                                                                                                                      | Evidence                         |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| C1  | wp_blueprint_promote evaluates promotion-gate commands and blocks promotion on failure; the failure was observed live with an empty reason string.         | repo:src/mcp/blueprint-server.ts |
-| C2  | A path-stable launcher resolver is being introduced for the source-repo hook and may be reusable here; the shared root cause is plausible but unconfirmed. | repo:bin/\_run.js                |
+| ID  | Claim                                                                                                                                      | Evidence                              |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
+| C1  | wp_blueprint_promote calls applyPromotionTrustGate during draft->planned promotion and returns its thrown error text.                      | repo:src/mcp/blueprint-server.ts      |
+| C2  | applyPromotionTrustGate executes every parsed Promotion Gates command via runPromotionCommand.                                             | repo:src/blueprint/trust/promotion.ts |
+| C3  | The empty-message root cause was diagnostics rendering: the old runner emitted only captured stderr-or-stdout text and no status metadata. | repo:src/blueprint/trust/promotion.ts |
 
 ### Material Decisions
 
@@ -85,35 +86,41 @@ Tasks follow.
 
 #### Task 1.1: Discover the real promotion-gate evaluation path (mandatory first)
 
-**Status:** todo
+**Status:** done
 **Wave:** 0
 
 Trace how wp_blueprint_promote turns a Promotion Gate command into a pass/fail and produces the 'Promotion gate failed (<cmd>): ' string. Find handlePromote, applyPromotionTrustGate, and any helper that runs or validates the gate command. Determine whether a subprocess is spawned, what PATH/launcher it uses, whether stderr is captured, and whether a timeout exists. Record findings here.
 
+**Finding (2026-06-28):** draft->planned promotion calls `applyPromotionTrustGate` from `handlePromote` (`src/mcp/blueprint-server.ts:1136`). `applyPromotionTrustGate` parses the Trust Dossier and calls `runPromotionCommand` for each Promotion Gates row (`src/blueprint/trust/promotion.ts:47`). The confirmed root cause was diagnostics rendering in `runPromotionCommand`: the prior implementation spawned the command with stdout/stderr captured and reported only `(stderr || stdout).slice(0, 500)`, so launch failures, timeouts, and quiet non-zero exits could surface as an empty `Promotion gate failed (<cmd>): ` suffix.
+
 **Acceptance:**
 
-- [ ] The exact code path that evaluates a gate command is identified with file:line.
-- [ ] The root cause of the empty-message failure is confirmed (launch failure vs timeout vs discarded stderr vs validation mis-render).
+- [x] The exact code path that evaluates a gate command is identified with file:line.
+- [x] The root cause of the empty-message failure is confirmed (diagnostics mis-render / discarded status metadata).
 
 #### Task 1.2: Surface gate failure detail
 
-**Status:** todo
+**Status:** done
 **Wave:** 0
 
 Based on 1.1, ensure a failing gate reports exit code + bounded stderr/stdout tail + a log path. Never emit an empty 'Promotion gate failed (cmd): ' string.
 
+**Evidence (2026-06-28):** `runPromotionCommand` now formats exit code / launch error / signal / timeout, bounded stderr/stdout tails, and a `logs/blueprint-promotion-gates/...` log path. Regression coverage in `src/blueprint/trust/promotion.test.ts` exercises stderr/stdout exit-code detail and launch-error detail.
+
 **Acceptance:**
 
-- [ ] A deliberately failing gate reports a non-empty reason with exit code and stderr tail (summary-first, log path for overflow).
+- [x] A deliberately failing gate reports a non-empty reason with exit code and stderr tail (summary-first, log path for overflow).
 
 #### Task 1.3: Fix the confirmed failure mode
 
-**Status:** todo
+**Status:** done
 **Wave:** 1
 
 Apply the fix indicated by 1.1: if a subprocess launch is involved, make it path-stable (reuse the fix-flaky-pretool-guard resolver) with a usable PATH; if a timeout, bound and report it; if a validation mis-render, fix the rendering. Do not implement a launcher fix unless 1.1 confirms a subprocess launch is the cause.
 
+**Evidence (2026-06-28):** `wp` and `./bin/wp` promotion gates now resolve directly to `<repoRoot>/bin/wp`, while retaining `<repoRoot>/bin` on PATH for child commands. Timeout failures are explicitly rendered; tests cover exit-code output, path-stable launch failure, and timeout reporting. A real smoke command also called `applyPromotionTrustGate` with a Promotion Gates row of `wp test --file src/blueprint/trust/promotion.test.ts`; it executed through the repo-local `bin/wp` facade and printed `promotion smoke passed`.
+
 **Acceptance:**
 
-- [ ] A gate of wp test --file <existing passing test> succeeds under wp_blueprint_promote (if subprocess execution is the confirmed mechanism).
-- [ ] Regression test covers the confirmed failure mode and the diagnostics payload.
+- [x] A gate of wp test --file <existing passing test> succeeds under wp_blueprint_promote (subprocess execution path confirmed by the `promotion smoke passed` applyPromotionTrustGate command).
+- [x] Regression test covers the confirmed failure mode and the diagnostics payload.
