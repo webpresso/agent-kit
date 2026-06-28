@@ -22,24 +22,6 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    "./repo-root": {
-      "import": {
-        "types": "./dist/esm/repo-root/index.d.ts",
-        "default": "./dist/esm/repo-root/index.js"
-      }
-    },
-    "./process": {
-      "import": {
-        "types": "./dist/esm/process/index.d.ts",
-        "default": "./dist/esm/process/index.js"
-      }
-    },
-    "./e2e": {
-      "import": {
-        "types": "./dist/esm/e2e/index.d.ts",
-        "default": "./dist/esm/e2e/index.js"
-      }
-    },
     "./deploy": {
       "import": {
         "types": "./dist/esm/deploy/index.d.ts",
@@ -50,6 +32,24 @@
       "import": {
         "types": "./dist/esm/dev/index.d.ts",
         "default": "./dist/esm/dev/index.js"
+      }
+    },
+    "./e2e": {
+      "import": {
+        "types": "./dist/esm/e2e/index.d.ts",
+        "default": "./dist/esm/e2e/index.js"
+      }
+    },
+    "./process": {
+      "import": {
+        "types": "./dist/esm/process/index.d.ts",
+        "default": "./dist/esm/process/index.js"
+      }
+    },
+    "./repo-root": {
+      "import": {
+        "types": "./dist/esm/repo-root/index.d.ts",
+        "default": "./dist/esm/repo-root/index.js"
       }
     }
   },
