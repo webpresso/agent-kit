@@ -1,6 +1,6 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -32,6 +32,42 @@ describe("buildLaunchPlan", () => {
       entrypoint: "/repo/src/cli/cli.ts",
       args: ["/repo/src/cli/cli.ts", "hooks", "status", "--vendor", "codex"],
     });
+  });
+
+  it("adds pnpm global virtual-store NODE_PATH entries for source launches", () => {
+    const plan = buildLaunchPlan({
+      binName: "wp",
+      repoRoot: "/repo",
+      forwardedArgs: ["format", "--check"],
+      builtExists: true,
+      sourceExists: true,
+      sourceNeedsSourceLaunch: true,
+      pinnedNodeVersion: null,
+      runtimeManager: null,
+    });
+
+    const entries = plan.env?.NODE_PATH?.split(delimiter) ?? [];
+    expect(entries).toEqual(
+      expect.arrayContaining(["/repo/node_modules", "/repo/node_modules/.pnpm/node_modules"]),
+    );
+  });
+
+  it("adds pnpm global virtual-store NODE_PATH entries for built launches", () => {
+    const plan = buildLaunchPlan({
+      binName: "wp",
+      repoRoot: "/repo",
+      forwardedArgs: ["format", "--check"],
+      builtExists: true,
+      sourceExists: true,
+      sourceNeedsSourceLaunch: false,
+      pinnedNodeVersion: null,
+      runtimeManager: null,
+    });
+
+    const entries = plan.env?.NODE_PATH?.split(delimiter) ?? [];
+    expect(entries).toEqual(
+      expect.arrayContaining(["/repo/node_modules", "/repo/node_modules/.pnpm/node_modules"]),
+    );
   });
 
   it("preserves source-checkout fallback for migrated runtime commands when runtime is unstaged", () => {
