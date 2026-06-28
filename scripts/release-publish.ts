@@ -11,6 +11,7 @@ import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { preparePackedManifest, restorePackedManifest } from "../src/build/package-manifest.js";
+import { orderWorkspacePackagesForRelease } from "../src/build/workspace-release-order.js";
 import { RUNTIME_TARGETS, runtimePackageDirName } from "../src/build/runtime-targets.js";
 import {
   PUBLISH_RUNTIME_MATRIX_ENV,
@@ -41,6 +42,10 @@ interface PackageManifest {
   name?: string;
   version?: string;
   private?: boolean;
+  dependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
 }
 
 interface PublishablePackage {
@@ -48,6 +53,7 @@ interface PublishablePackage {
   version: string;
   root: string;
   manifestPath: string;
+  workspaceDependencies: readonly string[];
 }
 
 interface PublishedPackage {
@@ -77,6 +83,19 @@ function readManifest(manifestPath: string): PackageManifest {
   return JSON.parse(readFileSync(manifestPath, "utf8")) as PackageManifest;
 }
 
+function workspaceDependencyNames(manifest: PackageManifest): string[] {
+  return [
+    manifest.dependencies,
+    manifest.optionalDependencies,
+    manifest.peerDependencies,
+    manifest.devDependencies,
+  ]
+    .flatMap((deps) => Object.entries(deps ?? {}))
+    .filter(([, spec]) => spec.startsWith("workspace:"))
+    .map(([name]) => name)
+    .toSorted((left, right) => left.localeCompare(right));
+}
+
 function readPublishablePackage(packageRoot: string): PublishablePackage | null {
   const manifestPath = resolve(packageRoot, "package.json");
   if (!existsSync(manifestPath)) return null;
@@ -84,17 +103,23 @@ function readPublishablePackage(packageRoot: string): PublishablePackage | null 
   if (manifest.private === true) return null;
   if (!manifest.name || !manifest.version) return null;
   if (!manifest.name.startsWith("@webpresso/")) return null;
-  return { name: manifest.name, version: manifest.version, root: packageRoot, manifestPath };
+  return {
+    name: manifest.name,
+    version: manifest.version,
+    root: packageRoot,
+    manifestPath,
+    workspaceDependencies: workspaceDependencyNames(manifest),
+  };
 }
 
 function discoverWorkspacePackages(root: string): PublishablePackage[] {
   const packagesRoot = resolve(root, "packages");
   if (!existsSync(packagesRoot)) return [];
-  return readdirSync(packagesRoot, { withFileTypes: true })
+  const packages = readdirSync(packagesRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => readPublishablePackage(resolve(packagesRoot, entry.name)))
-    .filter((entry): entry is PublishablePackage => entry !== null)
-    .toSorted((left, right) => left.name.localeCompare(right.name));
+    .filter((entry): entry is PublishablePackage => entry !== null);
+  return orderWorkspacePackagesForRelease(packages);
 }
 
 function npmView(packageSpecifier: string, field: string): string | null {

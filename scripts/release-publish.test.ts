@@ -62,6 +62,8 @@ describe("release-publish runtime lane", () => {
     const source = readReleasePublishSource();
 
     expect(source).toContain("function discoverWorkspacePackages");
+    expect(source).toContain("workspaceDependencyNames(manifest)");
+    expect(source).toContain("orderWorkspacePackagesForRelease(packages)");
     expect(source).toContain("function publishSimpleWorkspacePackage");
     expect(source).toContain(
       "for (const workspacePackage of discoverWorkspacePackages(packageRoot))",
