@@ -10,13 +10,13 @@ leaf package depended on by both [`@webpresso/agent-kit`](../../) and
 
 ## Subpaths
 
-| Import                            | Provides                                                                              |
-| --------------------------------- | ------------------------------------------------------------------------------------- |
+| Import | Provides |
+| ------ | -------- |
 | `@webpresso/agent-core/repo-root` | Strict repo-root discovery (`findRepoRoot`, `resolveFromRepoRoot`, `walkToRepoRoot`). |
-| `@webpresso/agent-core/process`   | Process-tree signalling and graceful-then-forceful termination.                       |
-| `@webpresso/agent-core/e2e`       | Open-port resolution, HTTP health polling, fail-closed secret-env resolution.         |
-| `@webpresso/agent-core/deploy`    | Semantic release-version assertion and release-metadata validation.                   |
-| `@webpresso/agent-core/dev`       | Workspace-local binary/command resolution and child-process env construction.         |
+| `@webpresso/agent-core/process` | Process-tree signalling and graceful-then-forceful termination. |
+| `@webpresso/agent-core/e2e` | Open-port resolution, HTTP health polling, fail-closed secret-env resolution. |
+| `@webpresso/agent-core/deploy` | Semantic release-version assertion and release-metadata validation. |
+| `@webpresso/agent-core/dev` | Workspace-local binary/command resolution and child-process env construction. |
 
 ## License
 

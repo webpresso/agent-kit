@@ -61,12 +61,12 @@ This blocks **every** `packages/*`-only PR, not just agent-core.
 
 ## Key Decisions
 
-| Decision                    | Choice                                                    | Rationale                                                                                                                             |
-| --------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Coverage vs skip-not-fail   | Cover `packages/*` via per-owning-tsconfig programs       | Pure skip-not-fail would silently stop typechecking any package-only PR — a real coverage gap; violates the repo's fail-loud ethos.   |
-| Owning-tsconfig resolution  | Nearest `tsconfig.json` walking up to repoRoot            | Dependency-free, general; naturally maps `src/**` → root, `packages/x/**` → `packages/x/tsconfig.json`.                               |
-| Preserve fail-loud          | Fail-closed only when **zero** closure plans can be built | A changed `.ts` that belongs to no active program still fails, so the original diagnostic intent is kept.                             |
-| Reverse-closure granularity | Per owning tsconfig (no cross-package closure)            | Packages have isolated tsconfigs by design; cross-package type breaks are caught by the importing package's own typecheck or full CI. |
+| Decision | Choice | Rationale |
+| -------- | ------ | --------- |
+| Coverage vs skip-not-fail | Cover `packages/*` via per-owning-tsconfig programs | Pure skip-not-fail would silently stop typechecking any package-only PR — a real coverage gap; violates the repo's fail-loud ethos. |
+| Owning-tsconfig resolution | Nearest `tsconfig.json` walking up to repoRoot | Dependency-free, general; naturally maps `src/**` → root, `packages/x/**` → `packages/x/tsconfig.json`. |
+| Preserve fail-loud | Fail-closed only when **zero** closure plans can be built | A changed `.ts` that belongs to no active program still fails, so the original diagnostic intent is kept. |
+| Reverse-closure granularity | Per owning tsconfig (no cross-package closure) | Packages have isolated tsconfigs by design; cross-package type breaks are caught by the importing package's own typecheck or full CI. |
 
 ## Architecture Overview
 
@@ -128,7 +128,7 @@ counts per plan.
 
 - [ ] exitCode is the max across plans; checkedFiles is the union
 
-#### [qa] Task 1.3: Tests — packages/\* covered, mixed src+package, fail-closed preserved
+#### [qa] Task 1.3: Tests — packages/* covered, mixed src+package, fail-closed preserved
 
 **Status:** todo
 
@@ -154,11 +154,11 @@ Add tests to `src/typecheck/affected.test.ts` using a multi-tsconfig fixture
 
 ## Verification Gates
 
-| Gate      | Command                                                               | Success Criteria                           |
-| --------- | --------------------------------------------------------------------- | ------------------------------------------ |
-| Tests     | `wp test --file src/typecheck/affected.test.ts`                       | All pass                                   |
-| Typecheck | `wp typecheck --affected --branch` (with a packages/\* change staged) | No fail-closed; exits per real diagnostics |
-| Lint      | scoped oxlint                                                         | Zero violations                            |
+| Gate | Command | Success Criteria |
+| ---- | ------- | ---------------- |
+| Tests | `wp test --file src/typecheck/affected.test.ts` | All pass |
+| Typecheck | `wp typecheck --affected --branch` (with a packages/* change staged) | No fail-closed; exits per real diagnostics |
+| Lint | scoped oxlint | Zero violations |
 
 ## Non-goals
 
@@ -168,7 +168,7 @@ Add tests to `src/typecheck/affected.test.ts` using a multi-tsconfig fixture
 
 ## Risks
 
-| Risk                                         | Impact           | Mitigation                                                       |
-| -------------------------------------------- | ---------------- | ---------------------------------------------------------------- |
-| Over-skipping a genuinely unconfigured `.ts` | Missed typecheck | Fail-closed retained when zero plans build; test 3 guards it.    |
-| Per-package program startup cost             | Slower hook      | Only owning tsconfigs of changed files are loaded (typically 1). |
+| Risk | Impact | Mitigation |
+| ---- | ------ | ---------- |
+| Over-skipping a genuinely unconfigured `.ts` | Missed typecheck | Fail-closed retained when zero plans build; test 3 guards it. |
+| Per-package program startup cost | Slower hook | Only owning tsconfigs of changed files are loaded (typically 1). |

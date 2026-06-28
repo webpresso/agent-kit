@@ -55,15 +55,15 @@ redundant overhead — the root cause of "opencode-go reviews fail."
   `repo:packages/workflow-skills/src/skill-text.test.ts:83-125` (byte-identity).
 - All 8 source files carried `--dir "$PWD"` on the `opencode run` line.
 - `--dir` idle overhead reproduced this session: `opencode run --dir "$PWD"
-"<one word>"` = 12.2s wall vs ~2s without.
+  "<one word>"` = 12.2s wall vs ~2s without.
 
 ## Key Decisions
 
-| Decision                | Choice                                                | Rationale                                                                                                                                                                   |
-| ----------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Remove vs keep `--dir`  | Remove                                                | opencode runs in cwd already; `--dir "$PWD"` only adds redundant full-repo indexing.                                                                                        |
-| Output-capture guidance | Add one prose line                                    | The empty-output failure mode also comes from piping through `head`/`tail` under a `timeout` (buffered output lost on kill); document the reliable pattern next to the fix. |
-| Regression proof        | Assert the `opencode run` command line has no `--dir` | Prose still mentions `--dir` to warn against it, so the guard targets the command line specifically.                                                                        |
+| Decision | Choice | Rationale |
+| -------- | ------ | --------- |
+| Remove vs keep `--dir` | Remove | opencode runs in cwd already; `--dir "$PWD"` only adds redundant full-repo indexing. |
+| Output-capture guidance | Add one prose line | The empty-output failure mode also comes from piping through `head`/`tail` under a `timeout` (buffered output lost on kill); document the reliable pattern next to the fix. |
+| Regression proof | Assert the `opencode run` command line has no `--dir` | Prose still mentions `--dir` to warn against it, so the guard targets the command line specifically. |
 
 ### Phase 1: Fix [Complexity: XS]
 
@@ -100,9 +100,9 @@ opencode-go reviewer's `opencode run --model` command line does not contain
 
 ## Verification Gates
 
-| Gate       | Command                                                                           | Success Criteria  |
-| ---------- | --------------------------------------------------------------------------------- | ----------------- |
-| Tests      | `wp test --file packages/workflow-skills/src/skill-text.test.ts`                  | All pass          |
+| Gate | Command | Success Criteria |
+| ---- | ------- | ---------------- |
+| Tests | `wp test --file packages/workflow-skills/src/skill-text.test.ts` | All pass |
 | Functional | `opencode run --model opencode-go/deepseek-v4-pro "<review prompt>"` (no `--dir`) | Returns a verdict |
 
 ### Phase 2: Drift-proof model IDs via in-skill live discovery [Complexity: S]

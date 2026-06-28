@@ -154,8 +154,8 @@
     "lint:pkg": "publint && attw --pack . --profile esm-only"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "catalog:",
     "@webpresso/agent-core": "workspace:*",
+    "@vitejs/plugin-react": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",
     "vitest": "catalog:"
@@ -209,11 +209,11 @@
       "src/**/__fixtures__/**"
     ],
     "exports": {
+      "./repo-root": "./src/repo-root/index.ts",
+      "./process": "./src/process/index.ts",
+      "./e2e": "./src/e2e/index.ts",
       "./deploy": "./src/deploy/index.ts",
       "./dev": "./src/dev/index.ts",
-      "./e2e": "./src/e2e/index.ts",
-      "./process": "./src/process/index.ts",
-      "./repo-root": "./src/repo-root/index.ts",
       "./stryker": "./src/stryker/index.ts",
       "./tsconfig/base.json": "./src/tsconfig/base.json",
       "./tsconfig/cloudflare.json": "./src/tsconfig/cloudflare.json",
