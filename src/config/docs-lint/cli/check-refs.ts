@@ -124,7 +124,19 @@ export function validateFile(file: string): DeadRef[] {
     );
     return dead;
   }
-  const content = readFileSync(file, "utf-8");
+  // Belt-and-suspenders: a path can exist at glob time but be unreadable
+  // (EACCES, EISDIR, a special file, or removed before this read). Warn and
+  // skip rather than crashing the whole linter.
+  let content: string;
+  try {
+    content = readFileSync(file, "utf-8");
+  } catch (error: unknown) {
+    const reason = error instanceof Error ? error.message : String(error);
+    console.warn(
+      `⚠️  check-refs: skipping unreadable path: ${relative(DOCS_ROOT, file)} (${reason})`,
+    );
+    return dead;
+  }
   const refs = extractRefs(content);
 
   for (const { ref, line, type } of refs) {

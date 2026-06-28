@@ -30,6 +30,17 @@ describe("check-refs validateFile", () => {
     warn.mockRestore();
   });
 
+  it("skips an existing-but-unreadable path (EISDIR) with a warning", () => {
+    // A directory exists but readFileSync throws EISDIR — must not crash.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const result = validateFile(dir);
+
+    expect(result).toStrictEqual([]);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("skipping unreadable path"));
+    warn.mockRestore();
+  });
+
   it("still reports a dead reference in a readable file", () => {
     const doc = join(dir, "doc.md");
     writeFileSync(doc, "See `packages/does-not-exist/foo.ts` for details.\n");
