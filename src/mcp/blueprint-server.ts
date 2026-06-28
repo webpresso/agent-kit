@@ -72,6 +72,7 @@ import { bytes, sortKeys, toStr } from "#mcp/blueprint/_shared/payload";
 import { nextActionOutputSchema, summaryEnvelopeOutputSchema } from "#mcp/blueprint/_shared/schema";
 import { readVt, writeVt } from "#mcp/blueprint/_shared/validation-timestamp";
 import { applyPromotionTrustGate } from "#trust/promotion.js";
+import { validateBlueprintTrust } from "#trust/validator.js";
 
 export { _setSyncAdapterFactory };
 export type { SyncAdapter };
@@ -2061,6 +2062,43 @@ const putTaskSchema = z.object({
   acceptance: z.array(z.string().min(1)).min(1),
 });
 
+const putTrustReadinessSchema = z.object({
+  promotion_ready: z.boolean(),
+  unresolved_count: z.number().int().nonnegative(),
+  verified_at: z.string().min(1),
+  verified_head: z.string().min(1),
+  trust_gate_version: z.string().min(1),
+});
+
+const putMaterialClaimSchema = z.object({
+  id: z.string().min(1),
+  claim: z.string().min(1),
+  evidence: z.string().min(1),
+});
+
+const putMaterialDecisionSchema = z.object({
+  id: z.string().min(1),
+  decision: z.string().min(1),
+  chosen_option: z.string().min(1),
+  rejected_alternatives: z.string().min(1),
+  rationale: z.string().min(1),
+});
+
+const putPromotionGateSchema = z.object({
+  gate: z.string().min(1),
+  command: z.string().min(1),
+  expected_outcome: z.string().min(1),
+  last_result: z.string().min(1),
+});
+
+const putTrustDossierSchema = z.object({
+  readiness: putTrustReadinessSchema,
+  material_claims: z.array(putMaterialClaimSchema).min(1),
+  material_decisions: z.array(putMaterialDecisionSchema).min(1),
+  promotion_gates: z.array(putPromotionGateSchema).min(1),
+  residual_unknowns: z.union([z.string(), z.array(z.string())]).optional(),
+});
+
 const putDocumentSchema = z.object({
   type: z.literal("blueprint").default("blueprint"),
   title: z.string().min(1),
@@ -2078,6 +2116,7 @@ const putDocumentSchema = z.object({
   }),
   summary: z.string().min(1),
   tasks: z.array(putTaskSchema).min(1),
+  trust_dossier: putTrustDossierSchema.optional(),
 });
 
 const putSchema = MutationTarget.extend({
@@ -2086,6 +2125,151 @@ const putSchema = MutationTarget.extend({
   request_id: z.string().min(1).optional(),
   head_at_ingest: z.string().nullable().optional(),
 });
+
+const putTaskJsonSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+    title: { type: "string" },
+    status: { type: "string", enum: ["todo", "in-progress", "blocked", "done", "dropped"] },
+    wave: { type: "string" },
+    lane: { type: "string" },
+    description: { type: "string" },
+    acceptance: { type: "array", items: { type: "string" }, minItems: 1 },
+  },
+  required: ["id", "title", "acceptance"],
+  additionalProperties: false,
+};
+
+const putTrustDossierJsonSchema = {
+  type: "object",
+  properties: {
+    readiness: {
+      type: "object",
+      properties: {
+        promotion_ready: { type: "boolean" },
+        unresolved_count: { type: "integer", minimum: 0 },
+        verified_at: { type: "string" },
+        verified_head: { type: "string" },
+        trust_gate_version: { type: "string" },
+      },
+      required: [
+        "promotion_ready",
+        "unresolved_count",
+        "verified_at",
+        "verified_head",
+        "trust_gate_version",
+      ],
+      additionalProperties: false,
+    },
+    material_claims: {
+      type: "array",
+      minItems: 1,
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          claim: { type: "string" },
+          evidence: { type: "string", description: "repo:<path> evidence token" },
+        },
+        required: ["id", "claim", "evidence"],
+        additionalProperties: false,
+      },
+    },
+    material_decisions: {
+      type: "array",
+      minItems: 1,
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          decision: { type: "string" },
+          chosen_option: { type: "string" },
+          rejected_alternatives: { type: "string" },
+          rationale: { type: "string" },
+        },
+        required: ["id", "decision", "chosen_option", "rejected_alternatives", "rationale"],
+        additionalProperties: false,
+      },
+    },
+    promotion_gates: {
+      type: "array",
+      minItems: 1,
+      items: {
+        type: "object",
+        properties: {
+          gate: { type: "string" },
+          command: { type: "string", description: "wp or ./bin/wp facade command" },
+          expected_outcome: { type: "string" },
+          last_result: { type: "string" },
+        },
+        required: ["gate", "command", "expected_outcome", "last_result"],
+        additionalProperties: false,
+      },
+    },
+    residual_unknowns: {
+      oneOf: [{ type: "string" }, { type: "array", items: { type: "string" } }],
+      description: "Omit, pass an empty string, or pass an empty array to render exactly None.",
+    },
+  },
+  required: ["readiness", "material_claims", "material_decisions", "promotion_gates"],
+  additionalProperties: false,
+};
+
+const putDocumentJsonSchema = {
+  type: "object",
+  properties: {
+    type: { type: "string", const: "blueprint", default: "blueprint" },
+    title: { type: "string" },
+    status: {
+      type: "string",
+      enum: ["draft", "planned", "in-progress", "completed", "parked", "archived"],
+    },
+    complexity: { type: "string", enum: ["XS", "S", "M", "L", "XL"] },
+    owner: { type: "string" },
+    created: { type: "string" },
+    last_updated: { type: "string" },
+    progress: { type: "string" },
+    tags: { type: "array", items: { type: "string" } },
+    product_wedge_anchor: {
+      type: "object",
+      properties: {
+        stage_outcome: { type: "string" },
+        consuming_surface: { type: "string" },
+        new_user_visible_capability: { type: "string" },
+      },
+      required: ["stage_outcome", "consuming_surface", "new_user_visible_capability"],
+      additionalProperties: false,
+    },
+    summary: { type: "string" },
+    tasks: { type: "array", items: putTaskJsonSchema, minItems: 1 },
+    trust_dossier: putTrustDossierJsonSchema,
+  },
+  required: [
+    "title",
+    "status",
+    "complexity",
+    "owner",
+    "created",
+    "last_updated",
+    "product_wedge_anchor",
+    "summary",
+    "tasks",
+  ],
+  additionalProperties: false,
+};
+
+const putInputJsonSchema = {
+  type: "object",
+  properties: {
+    project_id: { type: "string" },
+    slug: { type: "string" },
+    document: putDocumentJsonSchema,
+    request_id: { type: "string" },
+    head_at_ingest: { type: ["string", "null"] },
+  },
+  required: ["project_id", "slug", "document"],
+};
 
 function renderBlueprintMarkdownFromDocument(
   slug: string,
@@ -2136,7 +2320,108 @@ function renderBlueprintMarkdownFromDocument(
     "",
   ]);
 
-  return [...frontmatter, ...sections, ...taskBlocks].join("\n").trimEnd() + "\n";
+  const trustDossierBlock = document.trust_dossier
+    ? renderTrustDossierMarkdown(document.trust_dossier)
+    : [];
+
+  return (
+    [...frontmatter, ...sections, ...taskBlocks, ...trustDossierBlock].join("\n").trimEnd() + "\n"
+  );
+}
+
+function renderTrustDossierMarkdown(dossier: z.infer<typeof putTrustDossierSchema>): string[] {
+  const residualUnknowns = normalizeResidualUnknowns(dossier.residual_unknowns);
+  return [
+    "## Trust Dossier",
+    "",
+    "### Readiness Verdict",
+    "",
+    `- promotion-ready: ${dossier.readiness.promotion_ready ? "true" : "false"}`,
+    `- unresolved-count: ${dossier.readiness.unresolved_count}`,
+    `- verified-at: ${dossier.readiness.verified_at}`,
+    `- verified-head: ${dossier.readiness.verified_head}`,
+    `- trust-gate-version: ${dossier.readiness.trust_gate_version}`,
+    "",
+    "### Material Claims",
+    "",
+    ...renderMarkdownTable(
+      ["ID", "Claim", "Evidence"],
+      dossier.material_claims.map((claim) => [claim.id, claim.claim, claim.evidence]),
+    ),
+    "",
+    "### Material Decisions",
+    "",
+    ...renderMarkdownTable(
+      ["ID", "Decision", "Chosen option", "Rejected alternatives", "Rationale"],
+      dossier.material_decisions.map((decision) => [
+        decision.id,
+        decision.decision,
+        decision.chosen_option,
+        decision.rejected_alternatives,
+        decision.rationale,
+      ]),
+    ),
+    "",
+    "### Promotion Gates",
+    "",
+    ...renderMarkdownTable(
+      ["Gate", "Command", "Expected outcome", "Last result"],
+      dossier.promotion_gates.map((gate) => [
+        gate.gate,
+        gate.command,
+        gate.expected_outcome,
+        gate.last_result,
+      ]),
+    ),
+    "",
+    "### Residual Unknowns",
+    "",
+    residualUnknowns,
+    "",
+  ];
+}
+
+function normalizeResidualUnknowns(
+  value: z.infer<typeof putTrustDossierSchema>["residual_unknowns"],
+): string {
+  if (value === undefined) return "None.";
+  if (Array.isArray(value)) {
+    const items = value.map((item) => item.trim()).filter(Boolean);
+    return items.length === 0 ? "None." : items.join("\n");
+  }
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? "None." : trimmed;
+}
+
+function renderMarkdownTable(
+  headers: readonly string[],
+  rows: readonly (readonly string[])[],
+): string[] {
+  return [
+    `| ${headers.map(markdownTableCell).join(" | ")} |`,
+    `| ${headers.map(() => "---").join(" | ")} |`,
+    ...rows.map((row) => `| ${row.map(markdownTableCell).join(" | ")} |`),
+  ];
+}
+
+function markdownTableCell(value: string): string {
+  return value.replace(/\s*\n\s*/gu, " ").trim();
+}
+
+function validatePutTrustDossier(repoRoot: string, file: string, markdown: string): string | null {
+  const validated = validateBlueprintTrust({
+    repoRoot,
+    file,
+    status: "draft",
+    markdown,
+    promotionCandidate: true,
+    requirePassingGates: false,
+    scanTaskAmbiguity: true,
+  });
+  if (validated.ok) return null;
+  return validated.violations
+    .map((violation) => `${violation.section}: ${violation.message}`)
+    .join("; ");
 }
 
 async function handleBlueprintPut(
@@ -2186,6 +2471,12 @@ async function handleBlueprintPut(
     : getBlueprintDocumentPaths(root, document.status as BlueprintStatus, slug).flat;
   try {
     const markdown = renderBlueprintMarkdownFromDocument(slug, document);
+    if (document.trust_dossier) {
+      const trustDossierFailure = validatePutTrustDossier(projectCwd, overviewPath, markdown);
+      if (trustDossierFailure) {
+        return err("wp_blueprint_put validation error", trustDossierFailure);
+      }
+    }
     const blueprint = await persistBlueprintMarkdown({
       projectCwd,
       slug,
@@ -2533,17 +2824,7 @@ export async function registerBlueprintTools(
   registrar.registerTool(
     "wp_blueprint_put",
     "Create or replace a blueprint from a structured whole-document payload. Renders markdown, validates it, re-ingests the projection, and returns revision metadata.",
-    {
-      type: "object",
-      properties: {
-        project_id: { type: "string" },
-        slug: { type: "string" },
-        document: { type: "object" },
-        request_id: { type: "string" },
-        head_at_ingest: { type: ["string", "null"] },
-      },
-      required: ["project_id", "slug", "document"],
-    },
+    putInputJsonSchema,
     {
       ...summaryEnvelopeOutputSchema,
       properties: {
