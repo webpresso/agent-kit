@@ -121,9 +121,84 @@ describe("validateWorktreeDiscipline", () => {
     expect(r.passed).toBe(false);
   });
 
-  it("allows ambient-non-primary `git commit` after a non-persistent subshell cd", () => {
+  it("fails closed on a non-persistent subshell cd before git commit", () => {
     const r = validateWorktreeDiscipline(bash(`(cd ${PRIMARY}) && git commit -m "x"`, "/tmp"));
+    expect(r.passed).toBe(false);
+  });
+
+  it("blocks `git commit` inside a subshell-local primary cd", () => {
+    const r = validateWorktreeDiscipline(bash(`(cd ${PRIMARY} && git commit -m "x")`, "/tmp"));
+    expect(r.passed).toBe(false);
+  });
+
+  it("allows `git commit` inside a subshell-local worktree cd", () => {
+    const r = validateWorktreeDiscipline(bash(`(cd ${WORKTREE} && git commit -m "x")`, PRIMARY));
     expect(r.passed).toBe(true);
+  });
+
+  it("fails closed on `cd - && git commit`", () => {
+    const r = validateWorktreeDiscipline(bash(`cd - && git commit -m "x"`, "/tmp"));
+    expect(r.passed).toBe(false);
+  });
+
+  it("blocks `cd -- <primary> && git commit`", () => {
+    const r = validateWorktreeDiscipline(bash(`cd -- ${PRIMARY} && git commit -m "x"`, "/tmp"));
+    expect(r.passed).toBe(false);
+  });
+
+  it("allows `pushd <worktree> && git commit` from primary", () => {
+    const r = validateWorktreeDiscipline(bash(`pushd ${WORKTREE} && git commit -m "x"`, PRIMARY));
+    expect(r.passed).toBe(true);
+  });
+
+  it("blocks `pushd <primary> && git commit` from elsewhere", () => {
+    const r = validateWorktreeDiscipline(bash(`pushd ${PRIMARY} && git commit -m "x"`, "/tmp"));
+    expect(r.passed).toBe(false);
+  });
+
+  it("fails closed for failed/unsupported cd before semicolon then git commit", () => {
+    const r = validateWorktreeDiscipline(
+      bash(`cd /definitely/not/a/worktree; git commit -m "x"`, PRIMARY),
+    );
+    expect(r.passed).toBe(false);
+  });
+
+  it("fails closed for skipped cd before semicolon then git commit", () => {
+    const r = validateWorktreeDiscipline(bash(`false && cd /tmp; git commit -m "x"`, PRIMARY));
+    expect(r.passed).toBe(false);
+  });
+
+  it("does not treat quoted cd text as an effective cwd change", () => {
+    const r = validateWorktreeDiscipline(bash(`echo "; cd /tmp" && git commit -m "x"`, PRIMARY));
+    expect(r.passed).toBe(false);
+  });
+
+  it("fails closed for semicolon cd before git commit", () => {
+    const r = validateWorktreeDiscipline(bash(`cd ${PRIMARY}; git commit -m "x"`, "/tmp"));
+    expect(r.passed).toBe(false);
+  });
+
+  it("fails closed for unsupported || cd control flow before git commit", () => {
+    const r = validateWorktreeDiscipline(bash(`true || cd /tmp && git commit -m "x"`, PRIMARY));
+    expect(r.passed).toBe(false);
+  });
+
+  it("applies git -C effective cwd to switch", () => {
+    expect(
+      validateWorktreeDiscipline(bash(`git -C ${WORKTREE} switch feature`, PRIMARY)).passed,
+    ).toBe(true);
+    expect(
+      validateWorktreeDiscipline(bash(`git -C ${PRIMARY} switch feature`, "/tmp")).passed,
+    ).toBe(false);
+  });
+
+  it("applies git -C effective cwd to branch creation", () => {
+    expect(
+      validateWorktreeDiscipline(bash(`git -C ${WORKTREE} branch feature`, PRIMARY)).passed,
+    ).toBe(true);
+    expect(
+      validateWorktreeDiscipline(bash(`git -C ${PRIMARY} branch feature`, "/tmp")).passed,
+    ).toBe(false);
   });
 
   it("blocks cumulative `git -C /tmp -C <primary> commit` (every -C applied)", () => {
