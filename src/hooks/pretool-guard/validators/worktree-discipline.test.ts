@@ -146,6 +146,11 @@ describe("validateWorktreeDiscipline", () => {
     expect(r.passed).toBe(false);
   });
 
+  it("allows `cd -- <worktree> && git commit` from primary", () => {
+    const r = validateWorktreeDiscipline(bash(`cd -- ${WORKTREE} && git commit -m "x"`, PRIMARY));
+    expect(r.passed).toBe(true);
+  });
+
   it("allows `pushd <worktree> && git commit` from primary", () => {
     const r = validateWorktreeDiscipline(bash(`pushd ${WORKTREE} && git commit -m "x"`, PRIMARY));
     expect(r.passed).toBe(true);
@@ -180,6 +185,13 @@ describe("validateWorktreeDiscipline", () => {
 
   it("fails closed for unsupported || cd control flow before git commit", () => {
     const r = validateWorktreeDiscipline(bash(`true || cd /tmp && git commit -m "x"`, PRIMARY));
+    expect(r.passed).toBe(false);
+  });
+
+  it("fails closed for unsupported || cd control flow from non-primary cwd", () => {
+    const r = validateWorktreeDiscipline(
+      bash(`true || cd ${WORKTREE} && git commit -m "x"`, "/tmp"),
+    );
     expect(r.passed).toBe(false);
   });
 
