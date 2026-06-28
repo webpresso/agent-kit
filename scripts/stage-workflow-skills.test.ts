@@ -86,8 +86,10 @@ describe("stageWorkflowSkills", () => {
     expect(readFileSync(path.join(root, "catalog/agent/skills/codex/SKILL.md"), "utf8")).toContain(
       "codex exec --sandbox read-only",
     );
+    // Qwen reviewer resolves its model from the live catalog (no hardcoded
+    // version ID), so assert the live-discovery marker rather than a pinned ID.
     expect(readFileSync(path.join(root, "catalog/agent/skills/qwen/SKILL.md"), "utf8")).toContain(
-      "opencode-go/qwen3.7-max",
+      "grep '^opencode-go/qwen'",
     );
   });
 

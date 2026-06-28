@@ -12,10 +12,9 @@ Use this skill when the user asks for a OpenCode Go aggregate reviewer / OpenCod
 
 ## Model routing
 
-- Primary: `opencode-go/qwen3.7-max`
-- Fallbacks: `opencode-go/minimax-m3`, `opencode-go/deepseek-v4-pro`, `opencode-go/qwen3.7-plus`
+Versions change over time, so this skill does **not** hardcode a model ID. Resolve the current model from the live catalog (`opencode models opencode-go`) so new releases are picked up automatically.
 
-Use the aggregate reviewer when the user wants an OpenCode Go review but did not specify a family. Prefer high-signal code review with Qwen Max; fall back to MiniMax M3 or DeepSeek Pro for availability.
+Use the aggregate reviewer when the user wants an OpenCode Go review but did not specify a family. Prefer a high-signal code-review model (newest Qwen `-max`), falling back to the newest MiniMax, then DeepSeek `-pro`, then anything available.
 
 ## Auth and availability check
 
@@ -37,21 +36,29 @@ trap 'rm -f "$PROMPT_FILE"' EXIT
 
 ## Review command
 
-Default to read-only review prompts: ask the model to inspect the diff/plan, cite concrete files, and avoid modifying files.
+Default to read-only review prompts: ask the model to inspect the diff/plan, cite concrete files, and avoid modifying files. Run from the repo directory — opencode already operates on the current working directory, so do NOT pass `--dir "$PWD"`: it forces a redundant full-repo index that stalls the review (and times out under load). For long reviews, write output to a file instead of piping through `head`/`tail` under a `timeout`, which discards buffered output when the process is killed.
 
 ```bash
-opencode run --model opencode-go/qwen3.7-max --dir "$PWD" "$(cat "$PROMPT_FILE")"
+# Aggregate reviewer: resolve a high-signal model from the live catalog
+# (auto-updates as new OpenCode Go releases land — no hardcoded version):
+CATALOG=$(opencode models opencode-go)
+MODEL=$(echo "$CATALOG" | grep '^opencode-go/qwen' | grep -- '-max$' | sort -V | tail -1)
+[ -z "$MODEL" ] && MODEL=$(echo "$CATALOG" | grep '^opencode-go/minimax' | sort -V | tail -1)
+[ -z "$MODEL" ] && MODEL=$(echo "$CATALOG" | grep '^opencode-go/deepseek' | grep -- '-pro$' | sort -V | tail -1)
+[ -z "$MODEL" ] && MODEL=$(echo "$CATALOG" | sort -V | tail -1)
+opencode run --model "$MODEL" "$(cat "$PROMPT_FILE")"
 ```
 
-If the primary model is unavailable or quota-limited, retry with one fallback from this skill's routing list.
+If `$MODEL` is empty, your OpenCode Go catalog is empty — run `opencode models opencode-go` and verify the provider is connected.
 
-## Current OpenCode Go catalog covered
+## Live catalog
 
-| Family   | OpenCode Go model IDs                                                             |
-| -------- | --------------------------------------------------------------------------------- |
-| DeepSeek | `opencode-go/deepseek-v4-pro`, `opencode-go/deepseek-v4-flash`                    |
-| GLM      | `opencode-go/glm-5.2`, `opencode-go/glm-5.1`                                      |
-| Kimi     | `opencode-go/kimi-k2.7-code`, `opencode-go/kimi-k2.6`                             |
-| MiniMax  | `opencode-go/minimax-m3`, `opencode-go/minimax-m2.7`                              |
-| MiMo     | `opencode-go/mimo-v2.5-pro`, `opencode-go/mimo-v2.5`                              |
-| Qwen     | `opencode-go/qwen3.7-max`, `opencode-go/qwen3.7-plus`, `opencode-go/qwen3.6-plus` |
+Model IDs drift, so this skill does not pin them. The authoritative list is
+the live catalog:
+
+```bash
+opencode models opencode-go
+```
+
+The routing and review command above resolve a high-signal model from that
+output at run time, so newly released versions are used automatically.
