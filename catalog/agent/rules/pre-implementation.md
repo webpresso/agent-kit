@@ -124,18 +124,23 @@ distinct reviewers** on the current content.
 
 Primary checkouts under `~/repos/*` stay on `main` and are never worked on
 directly — all work happens in a `bp/<slug>` worktree (above). This is enforced
-as **strong agent-level prevention** (the pretool-guard hook blocks
-`git checkout`/`switch`/`branch`/`commit` when cwd is a primary checkout) plus a
-CI/`wp doctor` backstop. It is **not** a 100% guarantee — direct shell/git
-outside the agent can bypass it; that is documented, not promised.
+as **strong agent-level prevention**: the pretool-guard hook blocks mutating Git
+operations (`commit`, branch-switching `checkout`/`switch`, and branch
+creation/copy/move/reset) when the effective cwd resolves to a primary checkout.
+Effective cwd means the tool cwd after simple success-gated `cd`/`pushd` chains
+and cumulative `git -C`; explicit file restores such as `git checkout -- path`
+remain allowed. The CI/`wp doctor` backstop checks the same discipline. It is
+**not** a 100% guarantee — direct shell/git outside the agent can bypass it;
+that is documented, not promised.
 
 ## On merge: clean up + resync
 
 When a blueprint's PR merges: delete the remote branch (CI-feasible), and
 **locally** remove the worktree (`wp worktree remove`, the safe path that refuses
 dirty/force/current) and fast-forward the primary to `origin/main`. Local cleanup
-+ primary resync cannot run from GitHub Actions — use a local `wp` command / post-
-merge hook. Leave no stale worktrees or branches.
+
+- primary resync cannot run from GitHub Actions — use a local `wp` command / post-
+  merge hook. Leave no stale worktrees or branches.
 
 ## PR-level blueprint coverage gate
 
