@@ -37,10 +37,10 @@ trap 'rm -f "$PROMPT_FILE"' EXIT
 
 ## Review command
 
-Default to read-only review prompts: ask the model to inspect the diff/plan, cite concrete files, and avoid modifying files.
+Default to read-only review prompts: ask the model to inspect the diff/plan, cite concrete files, and avoid modifying files. Run from the repo directory — opencode already operates on the current working directory, so do NOT pass `--dir "$PWD"`: it forces a redundant full-repo index that stalls the review (and times out under load). For long reviews, write output to a file instead of piping through `head`/`tail` under a `timeout`, which discards buffered output when the process is killed.
 
 ```bash
-opencode run --model opencode-go/glm-5.2 --dir "$PWD" "$(cat "$PROMPT_FILE")"
+opencode run --model opencode-go/glm-5.2 "$(cat "$PROMPT_FILE")"
 ```
 
 If the primary model is unavailable or quota-limited, retry with one fallback from this skill's routing list.

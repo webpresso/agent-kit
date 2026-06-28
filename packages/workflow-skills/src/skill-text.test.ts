@@ -67,6 +67,16 @@ describe("@repo/workflow-skills skill text contract", () => {
     for (const name of opencodeSkills) {
       const content = readFileSync(path.join(skillsDir, `${name}.md`), "utf8");
       expect(content).toContain("opencode run --model");
+      // The `opencode run` command line must NOT pass `--dir "$PWD"`: it forces a
+      // redundant full-repo index that stalls reviews (and times out under load).
+      // opencode already operates on the current working directory. The rationale
+      // prose may mention `--dir` to warn against it, so assert on the command
+      // line specifically, not the whole document.
+      const runLine = content
+        .split("\n")
+        .find((line) => line.startsWith("opencode run --model"));
+      expect(runLine).toBeDefined();
+      expect(runLine).not.toContain("--dir");
       expect(content).toContain("opencode models opencode-go");
       expect(content).toContain("opencode-go/deepseek-v4-pro");
       expect(content).toContain("opencode-go/glm-5.2");
