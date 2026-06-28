@@ -181,7 +181,9 @@ describe("affected typecheck closures across owning tsconfigs", () => {
     expect(plans).toHaveLength(1);
     expect(configRelative(root, plans[0]!.configPath)).toBe("packages/pkg-a/tsconfig.json");
     expect(
-      plans[0]!.closureFiles.map((file) => path.relative(root, file.fileName).replaceAll("\\", "/")),
+      plans[0]!.closureFiles.map((file) =>
+        path.relative(root, file.fileName).replaceAll("\\", "/"),
+      ),
     ).toEqual(["packages/pkg-a/src/a.ts"]);
   });
 

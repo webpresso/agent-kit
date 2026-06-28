@@ -58,6 +58,7 @@ getAvailablePort error preservation, fail-closed secret-env) are sound and move
 verbatim into `agent-core`.
 
 ### Corrected Wave A (agent-core + agent-config surface)
+
 1. Create `packages/agent-core` (`@webpresso/agent-core`) with primitives:
    `findRepoRoot`/`resolveFromRepoRoot`; `terminateProcessTreeWithEscalation`/
    `signalProcessTree`; `getAvailablePort`/`waitForHttpOk`; fail-closed
@@ -105,33 +106,28 @@ specifically for agent-kit public-API PRs and high-risk consumer migrations
 agent-kit **already exports** most of the shared surface; the bulk of this
 program is **migrate-and-delete**, not build:
 
-| Consumer duplication | Already in agent-kit | Action |
-| --- | --- | --- |
-| `worker-process-lifecycle.ts` (the aborted ingest salvage), ad-hoc `.kill()` | `process-supervisor` → `killProcessTree`, `terminateProcessTreeWithEscalation` (`#shared-utils`) | migrate, delete local |
-| `repo-root.ts` / `findRepoRoot` (×3 consumers, ×2 within ingest) | `@webpresso/webpresso/runtime/cli/find-repo-root` (already imported 163× in monorepo) | migrate, delete local |
-| e2e orchestration (port alloc, health-wait, host adapter, process kill) | `./e2e` harness + host-adapter pattern, `wp e2e` | move generic bits behind host adapter |
-| `e2e/smoke.spec.ts` (×3 byte-identical) | `catalog/base-kit/e2e` fixtures | scaffold from agent-kit |
-| `infra/vitest.config.ts` (aksa+edge identical) | `./test-preset` / agent-config vitest preset | extend preset |
-| deploy plan/adapter shape (×3) | `./deploy` plan schema + `DeployAdapter` | already adapter-based; keep impls local |
-| secret resolution wrappers | `wp secrets run`, `#runtime/executor` | route through CLI |
+| Consumer duplication                                                         | Already in agent-kit                                                                             | Action                                  |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------- |
+| `worker-process-lifecycle.ts` (the aborted ingest salvage), ad-hoc `.kill()` | `process-supervisor` → `killProcessTree`, `terminateProcessTreeWithEscalation` (`#shared-utils`) | migrate, delete local                   |
+| `repo-root.ts` / `findRepoRoot` (×3 consumers, ×2 within ingest)             | `@webpresso/webpresso/runtime/cli/find-repo-root` (already imported 163× in monorepo)            | migrate, delete local                   |
+| e2e orchestration (port alloc, health-wait, host adapter, process kill)      | `./e2e` harness + host-adapter pattern, `wp e2e`                                                 | move generic bits behind host adapter   |
+| `e2e/smoke.spec.ts` (×3 byte-identical)                                      | `catalog/base-kit/e2e` fixtures                                                                  | scaffold from agent-kit                 |
+| `infra/vitest.config.ts` (aksa+edge identical)                               | `./test-preset` / agent-config vitest preset                                                     | extend preset                           |
+| deploy plan/adapter shape (×3)                                               | `./deploy` plan schema + `DeployAdapter`                                                         | already adapter-based; keep impls local |
+| secret resolution wrappers                                                   | `wp secrets run`, `#runtime/executor`                                                            | route through CLI                       |
 
 ## DRY-candidate ledger (from 3-agent investigation)
 
 **Tier 0 — migrate to EXISTING agent-kit surface (no new agent-kit code):**
+
 1. Process lifecycle → `process-supervisor` (ingest e2e cleanup; do NOT add the salvage module).
 2. `findRepoRoot`/repo-root (ingest ×2, aksa, edge) → framework `find-repo-root`.
 3. `e2e/smoke.spec.ts` ×3 → agent-kit base-kit fixture.
 4. `infra/vitest.config.ts` (aksa, edge) → agent-config vitest preset (ingest already done).
 
-**Tier 1 — small extractions into agent-kit (new shared code, 2+ real users):**
-5. Neon branch provider (`neon-branches.ts`: ingest e2e 387L + ingest deploy 201L — already duplicated within ingest) → agent-kit db/launch provider (contract; Neon impl stays where API calls live, or behind a `launch` db-selector).
-6. e2e global-setup pattern (spawn server → waitForHealth → cleanup) ×3 → agent-kit e2e helper with consumer callback for the start command.
-7. release-version/release-gate (aksa `release-version.ts` 35L + ingest `release-gate.ts` 79L) → agent-kit release-metadata validation contract (consumers pass their metadata shape).
-8. e2e secret-env resolution (the fail-closed `resolveE2eSecretEnv` design from the aborted salvage) → agent-kit `#runtime`/e2e helper, NOT a consumer module.
+**Tier 1 — small extractions into agent-kit (new shared code, 2+ real users):** 5. Neon branch provider (`neon-branches.ts`: ingest e2e 387L + ingest deploy 201L — already duplicated within ingest) → agent-kit db/launch provider (contract; Neon impl stays where API calls live, or behind a `launch` db-selector). 6. e2e global-setup pattern (spawn server → waitForHealth → cleanup) ×3 → agent-kit e2e helper with consumer callback for the start command. 7. release-version/release-gate (aksa `release-version.ts` 35L + ingest `release-gate.ts` 79L) → agent-kit release-metadata validation contract (consumers pass their metadata shape). 8. e2e secret-env resolution (the fail-closed `resolveE2eSecretEnv` design from the aborted salvage) → agent-kit `#runtime`/e2e helper, NOT a consumer module.
 
-**Tier 2 — parameterize hybrids so the generic 40–70% can move:**
-9. `e2e-with-neon.ts` (ingest, 402L; ~70% generic) → reduce to a thin adapter over agent-kit e2e harness + launch + secrets, passing migration path / env-forward list / worker start command as inputs.
-10. deploy orchestration generic bits (process runner, neon provisioning) behind agent-kit; provider calls stay local.
+**Tier 2 — parameterize hybrids so the generic 40–70% can move:** 9. `e2e-with-neon.ts` (ingest, 402L; ~70% generic) → reduce to a thin adapter over agent-kit e2e harness + launch + secrets, passing migration path / env-forward list / worker start command as inputs. 10. deploy orchestration generic bits (process runner, neon provisioning) behind agent-kit; provider calls stay local.
 
 **Never centralize (confirmed):** custom-domain-preflight (aksa), worker-secrets/turnstile (aksa), probe-cloudflare-workers-auth + verify-deploy-contract (edge), neon/pulumi orchestration + lanes + suite manifests + journeys (ingest).
 
@@ -187,6 +183,7 @@ must NOT block consumer deletion work.**
 Reviewed by **Claude** (author) + **Codex** (gpt, outside voice). GLM-5.2 and
 Kimi (opencode-go free tier) stalled with no output and were dropped; a deepseek
 attempt was made as backup. Codex's accepted corrections, folded above:
+
 - Reframe "agent-kit already has the surface" → **promote/export-first, then
   migrate-and-delete** (v2.4.1 lacks `./process`/`./repo-root`/`./secrets`/`./release`).
 - A1 `./process`: export a **narrow, semantic** API (1–2 stable helpers), not all
@@ -206,6 +203,7 @@ attempt was made as backup. Codex's accepted corrections, folded above:
 - Add the canary + per-subpath import-stability tests + secrets boundary (above).
 
 ### Wave A export-shape corrections (supersede the table where they differ)
+
 - A1 → `./process`: `terminateProcessTreeWithEscalation` (+ `killProcessTree` only
   if a second caller needs it).
 - A2 → `./repo-root`: `findRepoRoot`, `resolveFromRepoRoot` only.
@@ -225,19 +223,20 @@ them to public subpath exports** (+ add the genuinely-new helpers). No public
 
 ### Wave A — agent-kit readiness (one PR per cohesive export; publish a version)
 
-| # | New/changed public export | Backing source | New or promote |
-| - | --- | --- | --- |
-| A1 | `./process` → `killProcessTree`, `forceKillProcessTree`, `terminateProcessTreeWithEscalation`, `terminateWorkerProcessTree` (process-group aware, win32 fallback) | `src/utils/process-supervisor.ts`, `src/cli/process-tree.ts` (exist) | **promote** internal → public |
-| A2 | `./repo-root` → `findRepoRoot`, `resolveFromRepoRoot`, `resolveWorkspaceBinary`, `resolveVpCommand` (optional marker-list param for edge's AGENTS.md case) | new module; reference impls in all 3 consumers + framework `find-repo-root` | **new** (consolidate 3 divergent copies) |
-| A3 | `./e2e` additions → `getAvailablePort`, `waitForHttpOk`, generic `withLocalServer({start, healthUrl})` (spawn→waitForHealth→cleanup) | new in `src/e2e/`; reference: ingest `e2e-with-neon.ts`, edge `global-setup.ts` | **new** |
-| A4 | `./e2e` (or `#runtime`) → fail-closed `resolveE2eSecretEnv({env, resolveRuntimeProfile, logger})` + `resolveE2eAuthSecrets` | design salvaged from aborted ingest PR #33 module | **new** (NOT a consumer module) |
-| A5 | `./deploy` addition → `validateReleaseMetadata({metadata, requested})` + `assertSemanticReleaseVersion` (consumer passes its metadata shape) | generalize ingest `release-gate.ts` (79L) + aksa `release-version.ts` (35L) | **new** (contract; impls converge) |
-| A6 | base-kit `e2e/smoke.spec.ts` fixture wired through `wp setup`/`catalog` so consumers stop hand-copying the byte-identical test | `catalog/base-kit/e2e/` (exists) | **wire-up** |
-| A7 | (decision) Neon/db branch provider: contract under `./launch` db-selector; Neon **API impl** may stay consumer-side per extraction-parity | ingest `neon-branches.ts` (387L e2e + 201L deploy, already dup’d within ingest) | **design call in A** |
+| #   | New/changed public export                                                                                                                                         | Backing source                                                                  | New or promote                           |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------- |
+| A1  | `./process` → `killProcessTree`, `forceKillProcessTree`, `terminateProcessTreeWithEscalation`, `terminateWorkerProcessTree` (process-group aware, win32 fallback) | `src/utils/process-supervisor.ts`, `src/cli/process-tree.ts` (exist)            | **promote** internal → public            |
+| A2  | `./repo-root` → `findRepoRoot`, `resolveFromRepoRoot`, `resolveWorkspaceBinary`, `resolveVpCommand` (optional marker-list param for edge's AGENTS.md case)        | new module; reference impls in all 3 consumers + framework `find-repo-root`     | **new** (consolidate 3 divergent copies) |
+| A3  | `./e2e` additions → `getAvailablePort`, `waitForHttpOk`, generic `withLocalServer({start, healthUrl})` (spawn→waitForHealth→cleanup)                              | new in `src/e2e/`; reference: ingest `e2e-with-neon.ts`, edge `global-setup.ts` | **new**                                  |
+| A4  | `./e2e` (or `#runtime`) → fail-closed `resolveE2eSecretEnv({env, resolveRuntimeProfile, logger})` + `resolveE2eAuthSecrets`                                       | design salvaged from aborted ingest PR #33 module                               | **new** (NOT a consumer module)          |
+| A5  | `./deploy` addition → `validateReleaseMetadata({metadata, requested})` + `assertSemanticReleaseVersion` (consumer passes its metadata shape)                      | generalize ingest `release-gate.ts` (79L) + aksa `release-version.ts` (35L)     | **new** (contract; impls converge)       |
+| A6  | base-kit `e2e/smoke.spec.ts` fixture wired through `wp setup`/`catalog` so consumers stop hand-copying the byte-identical test                                    | `catalog/base-kit/e2e/` (exists)                                                | **wire-up**                              |
+| A7  | (decision) Neon/db branch provider: contract under `./launch` db-selector; Neon **API impl** may stay consumer-side per extraction-parity                         | ingest `neon-branches.ts` (387L e2e + 201L deploy, already dup’d within ingest) | **design call in A**                     |
 
 Each Wave A PR: `export-isolation.test.ts` green, no monorepo imports, unit tests, review-agent gate.
 
 ### Wave B — ingest-lens (after Wave A publishes; bump dep)
+
 - Delete `apps/e2e/src/repo-root.ts` + `infra/src/deploy/repo-root.ts` → `@webpresso/agent-kit/repo-root` (A2).
 - `apps/e2e/scripts/e2e-with-neon.ts`: replace ad-hoc `.kill()`/port/health with A1+A3; adopt A4 for secret env. Target: shrink ~402L hybrid toward a thin adapter.
 - Collapse the two `neon-branches.ts` (e2e 387L + deploy 201L) into one; back with A7 where possible.
@@ -245,15 +244,18 @@ Each Wave A PR: `export-isolation.test.ts` green, no monorepo imports, unit test
 - `apps/e2e/.../smoke` → A6 fixture. Keep: suite-manifest, journeys, lanes, pulumi/neon orchestration, runtime-env-local (its own later sub-blueprint vs agent-kit secrets).
 
 ### Wave C — aksa
+
 - Delete `infra/src/deploy/deploy-runner.ts` repo-root bits → A2; route `run`/`runWithInput` through agent-kit process-exec if a public exec helper lands.
 - `infra/src/deploy/release-version.ts` (35L) → A5 validator. `e2e/smoke.spec.ts` → A6. `infra/vitest.config.ts` → agent-config vitest preset.
 - Keep: `deploy-worker.ts`, `worker-secrets.ts` (turnstile), `custom-domain-preflight.ts`, lanes.
 
 ### Wave D — edge-matte
+
 - `deploy-runner.ts` repo-root + `buildChildEnv` → A2 (buildChildEnv PATH-prepend is valuable; fold into A2). `global-setup.ts` (46L) → A3 `withLocalServer`. `e2e/smoke.spec.ts` → A6. `infra/vitest.config.ts` → preset.
 - Keep: `probe-cloudflare-workers-auth.ts`, `verify-deploy-contract.ts`.
 
 ### Wave E — webpresso/monorepo (private, last)
+
 - Apply A1–A6 across monorepo workers/e2e; it already imports framework `find-repo-root` 163× — converge any local repo-root/process/e2e dups onto the now-settled agent-kit surface. Review-gate as a private repo.
 
 ### Per-PR review-gate (every wave, every repo): see "Review-gate protocol" above.
