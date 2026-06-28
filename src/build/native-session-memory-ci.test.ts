@@ -29,7 +29,7 @@ function expectNativeCiGate(workflow: string): void {
     /name: Install Rust toolchain for native session-memory checks\n\s+run: rustup toolchain install 1\.88\.0 --profile minimal --component rustfmt,clippy/u,
   );
   expect(workflow).toContain("Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32");
-  expect(workflow).toContain("taiki-e/install-action@682e7d9e49c5e653d371fc6adbda67653461378a");
+  expect(workflow).toContain("taiki-e/install-action@bffeee26d4db9be238a4ea78d8826604ebcb594d");
   expect(workflow).toContain("tool: cargo-deny@0.19.9");
   expect(workflow).toContain("pnpm run native:session-memory:fmt");
   expect(workflow).toContain("pnpm run native:session-memory:clippy");
@@ -105,7 +105,7 @@ describe("native session-memory CI change-scope gating", () => {
 
     expect(changeScope).toContain("name: CI change scope");
     expect(changeScope).toContain("needs: auth-preflight");
-    expect(changeScope).toContain("actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd");
+    expect(changeScope).toContain("actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0");
     expect(changeScope).toContain("fetch-depth: 0");
     expect(changeScope).toContain("native_session_memory_changed:");
     expect(changeScope).toContain("playwright_e2e_present:");
