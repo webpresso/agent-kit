@@ -29,9 +29,9 @@ export async function runAffectedTypecheck(
   const repoRoot = path.resolve(options.repoRoot);
   const sink = createCliLogSink("typecheck", repoRoot);
 
-  let plan: AffectedClosurePlan;
+  let plans: readonly AffectedClosurePlan[];
   try {
-    plan = planAffectedTypecheckClosure(options);
+    plans = planAffectedTypecheckClosures(options);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     sink.write(`${message}\n`);
@@ -43,17 +43,23 @@ export async function runAffectedTypecheck(
     return { exitCode: 1, entry, checkedFiles: [] };
   }
 
-  sink.write(
-    `Affected typecheck config: ${path.relative(repoRoot, plan.configPath) || plan.configPath}\n`,
-  );
-  sink.write(`Affected typecheck changed files: ${plan.changedFiles.length}\n`);
-  sink.write(`Affected typecheck reverse-dependency closure: ${plan.closureFiles.length}\n`);
+  const diagnostics: ts.Diagnostic[] = [];
+  const checkedSet = new Set<string>();
+  for (const plan of plans) {
+    sink.write(
+      `Affected typecheck config: ${path.relative(repoRoot, plan.configPath) || plan.configPath}\n`,
+    );
+    sink.write(`Affected typecheck changed files: ${plan.changedFiles.length}\n`);
+    sink.write(`Affected typecheck reverse-dependency closure: ${plan.closureFiles.length}\n`);
+    diagnostics.push(...collectAffectedDiagnostics(plan.program, plan.closureFiles));
+    for (const file of plan.closureFiles) checkedSet.add(toRepoRelative(repoRoot, file.fileName));
+  }
 
-  const diagnostics = collectAffectedDiagnostics(plan.program, plan.closureFiles);
   if (diagnostics.length > 0) {
     sink.write(formatDiagnostics(diagnostics, repoRoot, Boolean(options.pretty)));
   }
 
+  const checkedFiles = [...checkedSet].sort((a, b) => a.localeCompare(b));
   const exitCode = diagnostics.length === 0 ? 0 : 1;
   const entry = await sink.finalize({
     exitCode,
@@ -61,18 +67,58 @@ export async function runAffectedTypecheck(
     options: {
       affected: true,
       files: [...options.files],
-      checkedFiles: plan.closureFiles.map((file) => toRepoRelative(repoRoot, file.fileName)),
+      checkedFiles,
       resolvedScopes: ["affected-closure"],
     },
   });
 
-  return {
-    exitCode,
-    entry,
-    checkedFiles: plan.closureFiles.map((file) => toRepoRelative(repoRoot, file.fileName)),
-  };
+  return { exitCode, entry, checkedFiles };
 }
 
+/**
+ * Plan a reverse-closure typecheck per owning tsconfig.
+ *
+ * Each changed file is grouped under the nearest `tsconfig.json` walking up to
+ * (and including) the repo root, so files under a workspace package's own
+ * `tsconfig.json` (e.g. `packages/agent-config`) are typechecked in *their*
+ * program instead of being dropped by the root program (whose `include` only
+ * covers `src/**`). Fail-closed is preserved: if no closure plan can be built
+ * for any changed file, this throws.
+ */
+export function planAffectedTypecheckClosures(
+  options: AffectedTypecheckOptions,
+): AffectedClosurePlan[] {
+  const repoRoot = path.resolve(options.repoRoot);
+
+  const filesByConfig = new Map<string, string[]>();
+  for (const file of options.files) {
+    const owningConfig = findOwningTsconfig(path.resolve(repoRoot, file), repoRoot);
+    if (!owningConfig) continue;
+    const group = filesByConfig.get(owningConfig) ?? [];
+    group.push(file);
+    filesByConfig.set(owningConfig, group);
+  }
+
+  const plans: AffectedClosurePlan[] = [];
+  for (const [configPath, files] of filesByConfig) {
+    const plan = buildClosurePlanForConfig(configPath, repoRoot, files);
+    if (plan) plans.push(plan);
+  }
+
+  if (plans.length === 0) {
+    throw new Error(
+      "Affected typecheck found no changed files inside any active TypeScript program.",
+    );
+  }
+
+  return plans.sort((a, b) => a.configPath.localeCompare(b.configPath));
+}
+
+/**
+ * Single-tsconfig closure planner (root program). Retained for the root-scoped
+ * case and the closure unit tests; throws when the changed files are not inside
+ * the resolved program.
+ */
 export function planAffectedTypecheckClosure(
   options: AffectedTypecheckOptions,
 ): AffectedClosurePlan {
@@ -80,6 +126,21 @@ export function planAffectedTypecheckClosure(
   const configPath = ts.findConfigFile(repoRoot, ts.sys.fileExists, "tsconfig.json");
   if (!configPath) throw new Error(`Unable to find tsconfig.json from ${repoRoot}`);
 
+  const plan = buildClosurePlanForConfig(configPath, repoRoot, options.files);
+  if (!plan) {
+    throw new Error(
+      "Affected typecheck found no changed files inside the active TypeScript program.",
+    );
+  }
+  return plan;
+}
+
+function buildClosurePlanForConfig(
+  configPath: string,
+  repoRoot: string,
+  files: readonly string[],
+): AffectedClosurePlan | null {
+  const configDir = path.dirname(configPath);
   const parsed = readTsConfig(configPath);
   const program = ts.createProgram({
     rootNames: parsed.fileNames,
@@ -90,21 +151,17 @@ export function planAffectedTypecheckClosure(
   const sourceFiles = program
     .getSourceFiles()
     .filter(
-      (sourceFile) => !sourceFile.isDeclarationFile && isWithin(sourceFile.fileName, repoRoot),
+      (sourceFile) => !sourceFile.isDeclarationFile && isWithin(sourceFile.fileName, configDir),
     );
   const byCanonicalPath = new Map<string, ts.SourceFile>();
   for (const sourceFile of sourceFiles)
     byCanonicalPath.set(canonicalPath(sourceFile.fileName), sourceFile);
 
-  const changedFiles = options.files
+  const changedFiles = files
     .map((file) => path.resolve(repoRoot, file))
     .map((file) => byCanonicalPath.get(canonicalPath(file)))
     .filter((file): file is ts.SourceFile => file !== undefined);
-  if (changedFiles.length === 0) {
-    throw new Error(
-      "Affected typecheck found no changed files inside the active TypeScript program.",
-    );
-  }
+  if (changedFiles.length === 0) return null;
 
   const reverseDependencies = buildReverseDependencyGraph(program, sourceFiles, byCanonicalPath);
   const closure = collectReverseClosure(changedFiles, reverseDependencies);
@@ -115,6 +172,25 @@ export function planAffectedTypecheckClosure(
     changedFiles,
     closureFiles: [...closure].sort((a, b) => a.fileName.localeCompare(b.fileName)),
   };
+}
+
+/**
+ * Nearest `tsconfig.json` governing `absFile`, searching from the file's
+ * directory up to (and including) `repoRoot`. Returns null when no tsconfig
+ * governs the file within the repo.
+ */
+function findOwningTsconfig(absFile: string, repoRoot: string): string | null {
+  const root = path.resolve(repoRoot);
+  let dir = path.dirname(path.resolve(absFile));
+  while (isWithin(dir, root)) {
+    const candidate = path.join(dir, "tsconfig.json");
+    if (ts.sys.fileExists(candidate)) return candidate;
+    if (dir === root) break;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
 }
 
 function readTsConfig(configPath: string): ts.ParsedCommandLine {
