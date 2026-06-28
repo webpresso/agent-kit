@@ -318,6 +318,16 @@ describe("validateWorktreeDiscipline", () => {
     expect(
       validateWorktreeDiscipline(bash(`git $(printf commit) --allow-empty -m x`, PRIMARY)).passed,
     ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(bash(`$(command -v git) -C ${PRIMARY} commit -m x`, "/tmp"))
+        .passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(bash(`$(command -v git) --no-pager commit -m x`, PRIMARY)).passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(bash(`$(command -v git) "commit" -m x`, PRIMARY)).passed,
+    ).toBe(false);
   });
 
   it("fails closed on git-dir/work-tree target overrides", () => {
@@ -364,10 +374,17 @@ describe("validateWorktreeDiscipline", () => {
         .passed,
     ).toBe(false);
     expect(
+      validateWorktreeDiscipline(bash(`bash -lc 'cd ${PRIMARY} && "git" commit -m x'`, "/tmp"))
+        .passed,
+    ).toBe(false);
+    expect(
       validateWorktreeDiscipline(bash(`sh -c 'cd ${PRIMARY} && git commit -m x'`, "/tmp")).passed,
     ).toBe(false);
     expect(
       validateWorktreeDiscipline(bash(`eval 'cd ${PRIMARY} && git commit -m x'`, "/tmp")).passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(bash(`eval 'cd ${PRIMARY} && "git" commit -m x'`, "/tmp")).passed,
     ).toBe(false);
   });
 

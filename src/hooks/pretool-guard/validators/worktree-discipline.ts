@@ -257,6 +257,32 @@ function hasEnvTargetOverrideBeforeGit(words: string[], gitIndex: number): boole
   return false;
 }
 
+function wordsContainGitMutation(words: string[]): boolean {
+  for (let i = 0; i < words.length; i += 1) {
+    if (words[i] === "git" && mutationLabelFromGitArgs(words.slice(i + 1))) return true;
+  }
+  return false;
+}
+
+function segmentContainsGitMutation(segment: string): boolean {
+  const words = shellWords(segment);
+  if (words === "ambiguous")
+    return /\bgit\b/u.test(segment) && /\b(?:commit|switch|checkout|branch)\b/u.test(segment);
+  return wordsContainGitMutation(words);
+}
+
+function quotedPayloads(command: string, prefix: RegExp): string[] {
+  const payloads: string[] = [];
+  for (const match of command.matchAll(prefix)) {
+    const quote = match[1];
+    if (!quote) continue;
+    const start = (match.index ?? 0) + match[0].length;
+    const end = command.indexOf(quote, start);
+    if (end > start) payloads.push(command.slice(start, end));
+  }
+  return payloads;
+}
+
 const BRANCH_ACTION_FLAGS = new Set([
   "--track",
   "--no-track",
@@ -317,20 +343,25 @@ function branchArgsMutate(args: string[]): boolean {
 }
 
 function hasAmbiguousGitMutationSyntax(command: string): boolean {
-  // Nested shells/eval re-interpret quoted code; do not try to model their cwd.
-  if (
-    /\b(?:bash|sh|zsh)\b[^;&|(){}]*(?:-c|-lc)\s+["'][^"']*\bgit\s+(?:commit|switch|checkout|branch)\b/u.test(
-      command,
-    )
-  )
-    return true;
-  if (/\beval\s+["'][^"']*\bgit\s+(?:commit|switch|checkout|branch)\b/u.test(command)) return true;
-  if (/\$\([^)]*\)\s+(?:commit|switch|checkout|branch)\b/u.test(command)) return true;
+  // Nested shells/eval/env -S re-interpret quoted code; do not try to model their cwd.
+  for (const payload of quotedPayloads(
+    command,
+    /\b(?:bash|sh|zsh)\b[^;&|(){}]*(?:-c|-lc)\s+(["'])/gu,
+  )) {
+    if (payload.split(/&&|;|\|\||[(){}]/u).some(segmentContainsGitMutation)) return true;
+  }
+  for (const payload of quotedPayloads(command, /\beval\s+(["'])/gu)) {
+    if (payload.split(/&&|;|\|\||[(){}]/u).some(segmentContainsGitMutation)) return true;
+  }
+  for (const payload of quotedPayloads(command, /\benv\b[^;&|(){}]*\s-S\s+(["'])/gu)) {
+    if (payload.split(/&&|;|\|\||[(){}]/u).some(segmentContainsGitMutation)) return true;
+  }
+
+  for (const match of command.matchAll(/(?:^|[;&|({]\s*)\$\([^)]*\)([^;&|(){}]*)/gu)) {
+    const words = shellWords(`git ${match[1] ?? ""}`);
+    if (words === "ambiguous" || wordsContainGitMutation(words)) return true;
+  }
   if (/\bgit\s+\$\([^)]*\)/u.test(command)) return true;
-  if (
-    /\benv\b[^;&|(){}]*\s-S\s+["'][^"']*\bgit\s+(?:commit|switch|checkout|branch)\b/u.test(command)
-  )
-    return true;
 
   for (const segment of splitShellSegments(command)) {
     const words = shellWords(segment);
