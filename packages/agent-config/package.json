@@ -1,6 +1,6 @@
 {
   "name": "@webpresso/agent-config",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": false,
   "description": "Shared vitest, tsconfig, stryker, and workers-test config for webpresso consumers. Binary-free — pure test/config tooling.",
   "homepage": "https://github.com/webpresso/agent-kit#readme",

@@ -1,6 +1,6 @@
 {
   "name": "agent-kit",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "description": "Webpresso agent-kit: blueprints, skills, lore commit protocol, tech-debt lifecycle",
   "author": {
     "name": "Webpresso",
@@ -11,7 +11,9 @@
   "mcpServers": {
     "webpresso": {
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/wp",
-      "args": ["mcp"],
+      "args": [
+        "mcp"
+      ],
       "env": {
         "WP_SKIP_UPDATE_CHECK": "1"
       }
