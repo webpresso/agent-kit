@@ -2,14 +2,15 @@
 type: blueprint
 title: "Secret orchestration docs parity + safe legacy cleanup"
 owner: codex
-status: planned
+status: completed
 complexity: M
 created: "2026-06-26"
-last_updated: "2026-06-26"
-progress: "0% (planned; refined + fact-checked)"
+last_updated: "2026-06-28"
+progress: "100% (4/4 tasks done; closeout-only after f7a441b3 landed implementation)"
 depends_on: []
 cross_repo_depends_on: []
 tags: [secrets, docs, packaging, public-surface]
+completed_at: "2026-06-28"
 ---
 
 # Secret orchestration docs parity + safe legacy cleanup
@@ -19,6 +20,11 @@ docs, add guardrails that fail when shipped doc references drift or stay
 placeholder-only, and remove the remaining targeted user-facing `with-secrets`
 wording from the stale Context7 init/setup path **without deleting any
 compatibility code**.
+
+**Final outcome:** Closeout-only lifecycle reconciliation on 2026-06-28 found
+that PR #281 / commit `f7a441b3` already delivered this blueprint on `main`.
+This completed record preserves the original scope while recording the shipped
+evidence and removing the stale `planned/` lifecycle state.
 
 ## Planning Summary
 
@@ -85,7 +91,12 @@ Verified against the worktree on 2026-06-26; all material claims hold.
 
 #### [docs] Task 1.1: Rewrite public secret/operator docs
 
-**Status:** todo
+**Status:** done
+**Verification:**
+
+```webpresso-evidence-v1
+[{"actor":"codex","agent":"codex","allow_manual":true,"description":"Verified closeout-only: f7a441b3 rewrote the secret/operator docs and secret orchestration error doc according to this task scope.","kind":"manual","log_excerpt":"git show --stat f7a441b3 includes docs/secrets/providers.md, docs/secrets/bootstrap-github.md, docs/secrets/local-workplaces.md, docs/secrets/pulumi.md, and docs/errors/wp-secret-orchestration.md.","result":"pass","ts":"2026-06-28T00:00:00.000Z"}]
+```
 
 **Depends:** None
 
@@ -105,12 +116,17 @@ doctor/status/run/bootstrap/migrate flows, sink/profile mapping, and actionable
 
 **Acceptance:**
 
-- [ ] Secret/operator docs describe the current contract instead of placeholders/stubs.
-- [ ] Error doc enumerates the relevant `WP_*` secret/orchestration failures and fixes.
+- [x] Secret/operator docs describe the current contract instead of placeholders/stubs.
+- [x] Error doc enumerates the relevant `WP_*` secret/orchestration failures and fixes.
 
 #### [public-surface] Task 1.2: Link and package referenced docs
 
-**Status:** todo
+**Status:** done
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","audit_kind":"package-surface","command":"vp run public:readiness","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-28T00:00:00.000Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Verified closeout-only: f7a441b3 linked and packaged the referenced secret/error docs.","kind":"manual","log_excerpt":"Refinement evidence recorded vp run public:readiness PASS after runtime binary staging, proving shipped docs and public readiness references are valid on the current tree.","result":"pass","ts":"2026-06-28T00:00:00.000Z"}]
+```
 
 **Depends:** Task 1.1
 
@@ -129,12 +145,17 @@ secret/error doc must be appended here (see edge case E1).
 
 **Acceptance:**
 
-- [ ] Public entry docs link to the secret/error docs.
-- [ ] `npm pack --dry-run --json` includes the referenced secret/error docs.
+- [x] Public entry docs link to the secret/error docs.
+- [x] `npm pack --dry-run --json` includes the referenced secret/error docs.
 
 #### [guardrails] Task 1.3: Readiness/test coverage for shipped docs
 
-**Status:** todo
+**Status:** done
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file scripts/public-readiness.test.ts src/cli/commands/init/init.integration.test.ts src/blueprint/lifecycle/audit.approval-gate.test.ts src/hooks/pretool-guard/validators/worktree-discipline.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-28T00:00:00.000Z"},{"agent":"codex","audit_kind":"public-readiness","command":"vp run public:readiness","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-06-28T00:00:00.000Z"}]
+```
 
 **Depends:** Task 1.2
 
@@ -158,12 +179,17 @@ list aligned with the doc headings authored in Task 1.1 (edge case E2).
 
 **Acceptance:**
 
-- [ ] Targeted tests cover shipped doc references and placeholder detection.
-- [ ] `vp run public:readiness` fails on missing/placeholder secret docs.
+- [x] Targeted tests cover shipped doc references and placeholder detection.
+- [x] `vp run public:readiness` fails on missing/placeholder secret docs.
 
 #### [cleanup] Task 1.4: Remove stale `with-secrets` Context7 init/setup copy
 
-**Status:** todo
+**Status:** done
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex","command":"./bin/wp test --file src/cli/commands/init/init.integration.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-28T00:00:00.000Z"},{"actor":"codex","agent":"codex","allow_manual":true,"description":"Verified closeout-only: the stale init/setup with-secrets copy was removed while compatibility code remains out of scope.","kind":"manual","log_excerpt":"Refinement evidence confirms init integration tests passed and with-secrets compatibility remains in wrapped-wp.ts, migrate.ts, and secret-provider-quarantine.ts.","result":"pass","ts":"2026-06-28T00:00:00.000Z"}]
+```
 
 **Depends:** None
 
@@ -187,8 +213,8 @@ parser, audit patterns, or `SECRET_WRAPPER_BINS` (non-goals; edge case E3).
 
 **Acceptance:**
 
-- [ ] Init/setup output no longer mentions `with-secrets`.
-- [ ] Legacy compatibility code (parser, audit, wrapper bins) is unchanged.
+- [x] Init/setup output no longer mentions `with-secrets`.
+- [x] Legacy compatibility code (parser, audit, wrapper bins) is unchanged.
 
 ## Quick Reference (Execution Waves)
 
@@ -254,6 +280,26 @@ introduce artificial dependencies.
 
 None.
 
+## Plan-refine closeout (2026-06-28)
+
+This blueprint was already implemented on `main` by PR #281 / commit
+`f7a441b3` ("Secret orchestration docs parity + safe cleanup"). The
+2026-06-28 ultragoal refinement therefore changed the execution verdict from a
+fresh implementation lane to `closeout-only`.
+
+Closeout evidence:
+
+- `f7a441b3` touched the documented docs, packaging, readiness, and init/setup
+  surfaces listed in this blueprint.
+- Targeted tests passed during refinement: `./bin/wp test --file
+scripts/public-readiness.test.ts src/cli/commands/init/init.integration.test.ts
+src/blueprint/lifecycle/audit.approval-gate.test.ts
+src/hooks/pretool-guard/validators/worktree-discipline.test.ts`.
+- `vp run public:readiness` passed after staging runtime binaries in the
+  refinement worktree.
+- Non-goals were preserved: compatibility code for legacy secret wrapper/migrate
+  paths remains outside this cleanup.
+
 ## Verification Gates
 
 | Gate            | Command                     | Success Criteria         |
@@ -270,4 +316,4 @@ None.
 - [x] Tasks self-contained with explicit `Files:` and `Depends:`.
 - [x] No "decide during implementation" placeholders.
 
-**Verdict:** `planned-eligible`.
+**Verdict:** `completed` (closeout-only; implementation already landed).
