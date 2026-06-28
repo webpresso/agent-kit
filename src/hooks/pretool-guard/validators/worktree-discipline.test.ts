@@ -50,8 +50,12 @@ describe("validateWorktreeDiscipline", () => {
     );
   });
 
-  it("allows branch listing `git branch -a` in a primary checkout", () => {
+  it("allows branch listing/delete-info forms in a primary checkout", () => {
     expect(validateWorktreeDiscipline(bash("git branch -a", PRIMARY)).passed).toBe(true);
+    expect(validateWorktreeDiscipline(bash("git branch --list", PRIMARY)).passed).toBe(true);
+    expect(validateWorktreeDiscipline(bash("git branch --delete feature", PRIMARY)).passed).toBe(
+      true,
+    );
   });
 
   it("allows a file restore `git checkout -- file.ts` in a primary checkout", () => {
@@ -62,6 +66,15 @@ describe("validateWorktreeDiscipline", () => {
     expect(validateWorktreeDiscipline(bash("git add file.ts", "/tmp/build")).passed).toBe(true);
     expect(validateWorktreeDiscipline(bash("git fetch", "/tmp/build")).passed).toBe(true);
     expect(validateWorktreeDiscipline(bash("git worktree list", "/tmp/build")).passed).toBe(true);
+  });
+
+  it("allows benign git commands with unsupported globals even in primary cwd", () => {
+    expect(validateWorktreeDiscipline(bash("git --literal-pathspecs status", PRIMARY)).passed).toBe(
+      true,
+    );
+    expect(validateWorktreeDiscipline(bash("git --no-optional-locks status", PRIMARY)).passed).toBe(
+      true,
+    );
   });
 
   it("allows `git commit` outside ~/repos (e.g. CI / other paths)", () => {
@@ -270,6 +283,13 @@ describe("validateWorktreeDiscipline", () => {
     expect(validateWorktreeDiscipline(bash(`git c""ommit -m x`, PRIMARY)).passed).toBe(false);
     expect(validateWorktreeDiscipline(bash(`git "branch" feat`, PRIMARY)).passed).toBe(false);
     expect(validateWorktreeDiscipline(bash(`git checkout "-b" feat`, PRIMARY)).passed).toBe(false);
+    expect(
+      validateWorktreeDiscipline(bash(`$(command -v git) commit --allow-empty -m x`, PRIMARY))
+        .passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(bash(`git $(printf commit) --allow-empty -m x`, PRIMARY)).passed,
+    ).toBe(false);
   });
 
   it("fails closed on git-dir/work-tree target overrides", () => {

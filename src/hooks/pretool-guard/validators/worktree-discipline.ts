@@ -198,16 +198,14 @@ function mutationLabelFromGitArgs(args: string[]): string | null {
     if (word === "commit") return "git commit";
     if (word === "switch")
       return args[i + 1] === "-h" || args[i + 1] === "--help" ? null : "git switch";
-    if (word === "checkout")
-      return args[i + 1] === "-b" || args[i + 1] === "-B" || args[i + 1] === "--orphan"
+    if (word === "checkout") {
+      const rest = args.slice(i + 1);
+      return rest.includes("-b") || rest.includes("-B") || rest.includes("--orphan")
         ? "git checkout"
         : null;
+    }
     if (word === "branch") {
-      const next = args[i + 1];
-      if (!next) return null;
-      return !next.startsWith("-") || next === "--track" || next === "-c" || next === "-C"
-        ? "git branch"
-        : null;
+      return branchArgsMutate(args.slice(i + 1)) ? "git branch" : null;
     }
     return null;
   }
@@ -251,6 +249,64 @@ function hasEnvTargetOverrideBeforeGit(words: string[], gitIndex: number): boole
   return false;
 }
 
+const BRANCH_ACTION_FLAGS = new Set([
+  "--track",
+  "--create-reflog",
+  "--force",
+  "-f",
+  "-c",
+  "-C",
+  "-m",
+  "-M",
+]);
+const BRANCH_READONLY_OR_DELETE_FLAGS = new Set([
+  "-a",
+  "--all",
+  "-r",
+  "--remotes",
+  "--list",
+  "-l",
+  "-v",
+  "-vv",
+  "--verbose",
+  "-d",
+  "-D",
+  "--delete",
+  "--contains",
+  "--no-contains",
+  "--merged",
+  "--no-merged",
+  "--points-at",
+  "--format",
+  "--sort",
+  "--column",
+  "--no-column",
+  "--color",
+  "--no-color",
+]);
+
+function branchArgsMutate(args: string[]): boolean {
+  if (args.length === 0) return false;
+  if (args.some((word) => word === "-d" || word === "-D" || word === "--delete")) return false;
+  if (args.some((word) => BRANCH_ACTION_FLAGS.has(word))) return true;
+
+  // Listing/info/delete options stay allowed for compatibility with the
+  // original guard. Unknown options fail closed only if followed by a branch-ish
+  // operand; otherwise benign commands like `git branch --list` remain allowed.
+  for (const word of args) {
+    if (!word) continue;
+    if (!word.startsWith("-")) return true;
+    if (
+      !BRANCH_READONLY_OR_DELETE_FLAGS.has(word) &&
+      !word.startsWith("--format=") &&
+      !word.startsWith("--sort=")
+    ) {
+      return args.some((candidate) => Boolean(candidate) && !candidate.startsWith("-"));
+    }
+  }
+  return false;
+}
+
 function hasAmbiguousGitMutationSyntax(command: string): boolean {
   // Nested shells/eval re-interpret quoted code; do not try to model their cwd.
   if (
@@ -260,6 +316,8 @@ function hasAmbiguousGitMutationSyntax(command: string): boolean {
   )
     return true;
   if (/\beval\s+["'][^"']*\bgit\s+(?:commit|switch|checkout|branch)\b/u.test(command)) return true;
+  if (/\$\([^)]*\)\s+(?:commit|switch|checkout|branch)\b/u.test(command)) return true;
+  if (/\bgit\s+\$\([^)]*\)/u.test(command)) return true;
 
   for (const segment of splitShellSegments(command)) {
     const words = shellWords(segment);
@@ -398,7 +456,7 @@ type ForbiddenOp = { label: string; globals: string; index: number };
 // checkout forms, or branch creation/copy/track forms. Listing/info/delete
 // branch flags are allowed.
 const FORBIDDEN_SUBCOMMAND =
-  "(commit\\b|switch\\b(?!\\s+(?:-h|--help)\\b)|checkout\\s+(?:-b|-B|--orphan)\\b|branch\\s+(?:(?!-|--)\\S|--track\\b|-c\\b|-C\\b))";
+  "(commit\\b|switch\\b(?!\\s+(?:-h|--help)\\b)|checkout\\s+(?:(?:\\S+\\s+)*)(?:-b|-B|--orphan)\\b|branch\\s+(?:(?!-|--)\\S|--track\\b|--no-track\\b|--create-reflog\\b|--force\\b|-f\\b|-c\\b|-C\\b|-m\\b|-M\\b))";
 const FORBIDDEN_OP = new RegExp(`\\bgit\\s+(${GIT_GLOBAL_RUN})${FORBIDDEN_SUBCOMMAND}`, "gu");
 
 function labelFor(subcommand: string): string {
