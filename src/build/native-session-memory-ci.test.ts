@@ -1,9 +1,26 @@
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
 const repositoryRoot = process.cwd();
+
+function nativeScopeFor(...paths: string[]): string {
+  return execFileSync("bash", ["scripts/ci/change-scope.sh", "classify-native", ...paths], {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+  }).trim();
+}
+
+function workflowSection(workflow: string, jobName: string): string {
+  const start = workflow.indexOf(`  ${jobName}:`);
+  expect(start).toBeGreaterThanOrEqual(0);
+  const rest = workflow.slice(start + 1);
+  const next = /\n  [a-z0-9-]+:\n/u.exec(rest);
+  return next ? rest.slice(0, next.index) : rest;
+}
 
 function expectNativeCiGate(workflow: string): void {
   expect(workflow).toContain("native-session-memory:");
@@ -57,6 +74,7 @@ describe("native session-memory CI warmup", () => {
     expect(workflow).toContain("loadNativeSessionMemoryEngine");
     expectNativeCiGate(workflow);
     expect(workflow).toMatch(/wp-check:[\s\S]*native-session-memory/u);
+    expect(workflow).toMatch(/wp-check:[\s\S]*ci-change-scope/u);
   });
 
   it("warms the native addon before the agent-kit self parallel test suite", () => {
@@ -71,5 +89,88 @@ describe("native session-memory CI warmup", () => {
     );
     expect(workflow).toContain("loadNativeSessionMemoryEngine");
     expectNativeCiGate(workflow);
+  });
+});
+
+describe("native session-memory CI change-scope gating", () => {
+  it("adds a fail-closed change-scope job before the native job", () => {
+    const workflow = readFileSync(
+      join(repositoryRoot, ".github", "workflows", "ci.agent-kit.yml"),
+      "utf8",
+    );
+    const changeScope = workflowSection(workflow, "ci-change-scope");
+    const nativeJob = workflowSection(workflow, "native-session-memory");
+    const e2eJob = workflowSection(workflow, "e2e");
+    const wpCheck = workflowSection(workflow, "wp-check");
+
+    expect(changeScope).toContain("name: CI change scope");
+    expect(changeScope).toContain("needs: auth-preflight");
+    expect(changeScope).toContain("actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd");
+    expect(changeScope).toContain("fetch-depth: 0");
+    expect(changeScope).toContain("native_session_memory_changed:");
+    expect(changeScope).toContain("playwright_e2e_present:");
+    expect(changeScope).toContain("scripts/ci/change-scope.sh");
+
+    expect(nativeJob).toContain("needs: [auth-preflight, ci-change-scope]");
+    expect(nativeJob).toContain("github.event_name != 'pull_request'");
+    expect(nativeJob).toContain(
+      "needs.ci-change-scope.outputs.native_session_memory_changed == 'true'",
+    );
+
+    expect(e2eJob).toContain("needs: [auth-preflight, ci-change-scope]");
+    expect(e2eJob).toContain("needs.ci-change-scope.outputs.playwright_e2e_present == 'true'");
+
+    expect(wpCheck).toContain("ci-change-scope,");
+    expect(wpCheck).toContain("native-session-memory,");
+    expect(wpCheck).toContain("contains(needs.*.result, 'failure')");
+    expect(wpCheck).toContain("contains(needs.*.result, 'cancelled')");
+    expect(wpCheck).not.toContain("contains(needs.*.result, 'skipped')");
+  });
+
+  it("classifies docs, blueprints, and markdown-only PRs as safe to skip", () => {
+    expect(nativeScopeFor("docs/bench/session-memory-methodology.md")).toBe("false");
+    expect(nativeScopeFor("blueprints/draft/example.md", "README.md")).toBe("false");
+    expect(nativeScopeFor(".changeset/native-docs.md")).toBe("false");
+  });
+
+  it("classifies native-impact and unknown paths as requiring native checks", () => {
+    expect(nativeScopeFor("native/session-memory-engine/Cargo.toml")).toBe("true");
+    expect(nativeScopeFor("src/session-memory/native-runtime.ts")).toBe("true");
+    expect(nativeScopeFor("scripts/build-session-memory-native-artifacts.ts")).toBe("true");
+    expect(nativeScopeFor("scripts/stage-session-memory-native-artifacts.ts")).toBe("true");
+    expect(nativeScopeFor("scripts/build-runtime-binaries.ts")).toBe("true");
+    expect(nativeScopeFor("package.json")).toBe("true");
+    expect(nativeScopeFor("pnpm-lock.yaml")).toBe("true");
+    expect(nativeScopeFor("pnpm-workspace.yaml")).toBe("true");
+    expect(nativeScopeFor(".github/workflows/ci.agent-kit.yml")).toBe("true");
+    expect(nativeScopeFor("src/build/native-session-memory-ci.test.ts")).toBe("true");
+    expect(nativeScopeFor("src/cli/cli.ts")).toBe("true");
+    expect(nativeScopeFor("blueprints/draft/native-fixture/package.json")).toBe("true");
+  });
+
+  it("fails closed on an empty or unreadable file list", () => {
+    expect(nativeScopeFor()).toBe("true");
+  });
+
+  it("emits a fail-closed native scope for non-PR events", () => {
+    const root = mkdtempSync(join(tmpdir(), "wp-native-scope-test-"));
+    const outputPath = join(root, "github-output");
+    try {
+      execFileSync("bash", ["scripts/ci/change-scope.sh"], {
+        cwd: repositoryRoot,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          GITHUB_EVENT_NAME: "push",
+          GITHUB_OUTPUT: outputPath,
+        },
+      });
+
+      const output = readFileSync(outputPath, "utf8");
+      expect(output).toContain("native_session_memory_changed=true");
+      expect(output).toContain("playwright_e2e_present=false");
+    } finally {
+      rmSync(root, { force: true, recursive: true });
+    }
   });
 });
