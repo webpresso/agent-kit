@@ -11,6 +11,7 @@ import {
   makeRegistrar,
   writeStaleProjectionMetadata,
 } from "./blueprint-server.test-harness.js";
+import type { ToolRegistrar } from "./auto-discover.js";
 import { registerBlueprintTools } from "./blueprint-server.js";
 
 describe("registerBlueprintTools bootstrap", () => {
@@ -66,5 +67,54 @@ describe("registerBlueprintTools bootstrap", () => {
     expect(existsSync(dbPath)).toBe(true);
     expect(readFileSync(`${dbPath}.meta.json`, "utf8")).toBe(staleMetadata);
     expect(tools.has("wp_blueprint_list")).toBe(true);
+  });
+
+  it("advertises the structured trust_dossier contract for wp_blueprint_put", async () => {
+    cwd = createTempBlueprintRepo("wp-bs-registration-put-schema-");
+    const schemas = new Map<string, Record<string, unknown>>();
+    const registrar: ToolRegistrar = {
+      registerTool(name, _description, inputSchema) {
+        schemas.set(name, inputSchema);
+      },
+    };
+
+    await registerBlueprintTools(registrar, cwd);
+
+    const putSchema = schemas.get("wp_blueprint_put") as
+      | {
+          properties?: {
+            document?: {
+              properties?: {
+                trust_dossier?: {
+                  properties?: {
+                    readiness?: { properties?: Record<string, unknown> };
+                    material_claims?: unknown;
+                    material_decisions?: unknown;
+                    promotion_gates?: unknown;
+                    residual_unknowns?: unknown;
+                  };
+                };
+              };
+            };
+          };
+        }
+      | undefined;
+
+    const trustDossier = putSchema?.properties?.document?.properties?.trust_dossier;
+    expect(trustDossier?.properties?.readiness?.properties).toMatchObject({
+      promotion_ready: { type: "boolean" },
+      unresolved_count: { type: "integer", minimum: 0 },
+      verified_at: { type: "string" },
+      verified_head: { type: "string" },
+      trust_gate_version: { type: "string" },
+    });
+    expect(trustDossier?.properties).toMatchObject({
+      material_claims: { type: "array", minItems: 1 },
+      material_decisions: { type: "array", minItems: 1 },
+      promotion_gates: { type: "array", minItems: 1 },
+    });
+    expect(trustDossier?.properties?.residual_unknowns).toMatchObject({
+      oneOf: [{ type: "string" }, { type: "array", items: { type: "string" } }],
+    });
   });
 });
