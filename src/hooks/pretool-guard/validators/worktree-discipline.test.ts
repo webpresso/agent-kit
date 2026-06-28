@@ -30,8 +30,24 @@ describe("validateWorktreeDiscipline", () => {
     expect(validateWorktreeDiscipline(bash("git checkout -b feature", PRIMARY)).passed).toBe(false);
   });
 
+  it("blocks other branch-creating checkout forms in a primary checkout", () => {
+    expect(validateWorktreeDiscipline(bash("git checkout -B feature", PRIMARY)).passed).toBe(false);
+    expect(validateWorktreeDiscipline(bash("git checkout --orphan feature", PRIMARY)).passed).toBe(
+      false,
+    );
+  });
+
   it("blocks branch creation `git branch <name>` in a primary checkout", () => {
     expect(validateWorktreeDiscipline(bash("git branch feature", PRIMARY)).passed).toBe(false);
+  });
+
+  it("blocks branch copy/track creation forms in a primary checkout", () => {
+    expect(
+      validateWorktreeDiscipline(bash("git branch --track feature origin/main", PRIMARY)).passed,
+    ).toBe(false);
+    expect(validateWorktreeDiscipline(bash("git branch -c main feature", PRIMARY)).passed).toBe(
+      false,
+    );
   });
 
   it("allows branch listing `git branch -a` in a primary checkout", () => {
@@ -40,6 +56,12 @@ describe("validateWorktreeDiscipline", () => {
 
   it("allows a file restore `git checkout -- file.ts` in a primary checkout", () => {
     expect(validateWorktreeDiscipline(bash("git checkout -- file.ts", PRIMARY)).passed).toBe(true);
+  });
+
+  it("allows benign git commands outside primary/worktree paths", () => {
+    expect(validateWorktreeDiscipline(bash("git add file.ts", "/tmp/build")).passed).toBe(true);
+    expect(validateWorktreeDiscipline(bash("git fetch", "/tmp/build")).passed).toBe(true);
+    expect(validateWorktreeDiscipline(bash("git worktree list", "/tmp/build")).passed).toBe(true);
   });
 
   it("allows `git commit` outside ~/repos (e.g. CI / other paths)", () => {
@@ -183,6 +205,11 @@ describe("validateWorktreeDiscipline", () => {
     expect(r.passed).toBe(false);
   });
 
+  it("fails closed for semicolon cd to worktree from non-primary cwd", () => {
+    const r = validateWorktreeDiscipline(bash(`cd ${WORKTREE}; git commit -m "x"`, "/tmp"));
+    expect(r.passed).toBe(false);
+  });
+
   it("fails closed for unsupported || cd control flow before git commit", () => {
     const r = validateWorktreeDiscipline(bash(`true || cd /tmp && git commit -m "x"`, PRIMARY));
     expect(r.passed).toBe(false);
@@ -211,6 +238,85 @@ describe("validateWorktreeDiscipline", () => {
     expect(
       validateWorktreeDiscipline(bash(`git -C ${PRIMARY} branch feature`, "/tmp")).passed,
     ).toBe(false);
+  });
+
+  it("fails closed on unsupported git globals before forbidden ops", () => {
+    expect(
+      validateWorktreeDiscipline(bash(`git --literal-pathspecs commit -m x`, PRIMARY)).passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(bash(`git --no-optional-locks commit -m x`, PRIMARY)).passed,
+    ).toBe(false);
+    expect(validateWorktreeDiscipline(bash(`git -P commit -m x`, PRIMARY)).passed).toBe(false);
+  });
+
+  it("fails closed on quoted or escaped git executable/subcommands", () => {
+    expect(validateWorktreeDiscipline(bash(`"git" commit -m x`, PRIMARY)).passed).toBe(false);
+    expect(validateWorktreeDiscipline(bash(`'git' commit -m x`, PRIMARY)).passed).toBe(false);
+    expect(validateWorktreeDiscipline(bash(String.raw`g\it commit -m x`, PRIMARY)).passed).toBe(
+      false,
+    );
+    expect(validateWorktreeDiscipline(bash(String.raw`gi\t commit -m x`, PRIMARY)).passed).toBe(
+      false,
+    );
+    expect(validateWorktreeDiscipline(bash(`g""it commit -m x`, PRIMARY)).passed).toBe(false);
+    expect(validateWorktreeDiscipline(bash(`git "commit" -m x`, PRIMARY)).passed).toBe(false);
+    expect(validateWorktreeDiscipline(bash(String.raw`git com\mit -m x`, PRIMARY)).passed).toBe(
+      false,
+    );
+    expect(validateWorktreeDiscipline(bash(String.raw`git co\mmit -m x`, PRIMARY)).passed).toBe(
+      false,
+    );
+    expect(validateWorktreeDiscipline(bash(`git c""ommit -m x`, PRIMARY)).passed).toBe(false);
+    expect(validateWorktreeDiscipline(bash(`git "branch" feat`, PRIMARY)).passed).toBe(false);
+    expect(validateWorktreeDiscipline(bash(`git checkout "-b" feat`, PRIMARY)).passed).toBe(false);
+  });
+
+  it("fails closed on git-dir/work-tree target overrides", () => {
+    expect(
+      validateWorktreeDiscipline(bash(`git --work-tree=${PRIMARY} commit -m x`, "/tmp")).passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(
+        bash(`git --git-dir ${PRIMARY}/.git --work-tree ${PRIMARY} commit -m x`, "/tmp"),
+      ).passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(
+        bash(`GIT_DIR=${PRIMARY}/.git GIT_WORK_TREE=${PRIMARY} git commit -m x`, "/tmp"),
+      ).passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(
+        bash(`FOO=1 GIT_DIR=${PRIMARY}/.git GIT_WORK_TREE=${PRIMARY} git commit -m x`, "/tmp"),
+      ).passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(bash(`env -C ${PRIMARY} git commit -m x`, "/tmp")).passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(
+        bash(`env GIT_DIR=${PRIMARY}/.git GIT_WORK_TREE=${PRIMARY} git commit -m x`, "/tmp"),
+      ).passed,
+    ).toBe(false);
+  });
+
+  it("fails closed on nested shell or eval git mutation forms", () => {
+    expect(
+      validateWorktreeDiscipline(bash(`bash -lc 'cd ${PRIMARY} && git commit -m x'`, "/tmp"))
+        .passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(bash(`sh -c 'cd ${PRIMARY} && git commit -m x'`, "/tmp")).passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(bash(`eval 'cd ${PRIMARY} && git commit -m x'`, "/tmp")).passed,
+    ).toBe(false);
+  });
+
+  it("does not exempt primary subdirs that merely contain .agent/worktrees", () => {
+    const fake = `${PRIMARY}/.agent/worktrees/fake`;
+    expect(validateWorktreeDiscipline(bash(`git commit -m x`, fake)).passed).toBe(false);
   });
 
   it("blocks cumulative `git -C /tmp -C <primary> commit` (every -C applied)", () => {

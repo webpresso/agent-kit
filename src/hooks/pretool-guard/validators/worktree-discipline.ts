@@ -53,15 +53,16 @@ export function validateWorktreeDiscipline(input: ToolInput): ValidationResult {
   const command = getCommand(input);
   if (!command) return { validator: VALIDATOR_NAME, passed: true };
 
-  if (hasAmbiguousGitMutationSyntax(command)) return blocked("git", input.cwd ?? "", true);
-
   // Evaluate EVERY forbidden op in the (possibly compound) command: block if any
   // one of them runs in a primary checkout, not just the first by check order.
   for (const op of forbiddenGitOps(command)) {
+    if (hasGitTargetOverride(op.globals)) return blocked(op.label, input.cwd ?? "", true);
     const effective = resolveEffectiveCwd(command, input.cwd ?? "", op.globals, op.index);
     if (effective.ambiguous) return blocked(op.label, input.cwd ?? "", true);
     if (isPrimaryReposCheckout(effective.cwd)) return blocked(op.label, effective.cwd, false);
   }
+
+  if (hasAmbiguousGitMutationSyntax(command)) return blocked("git", input.cwd ?? "", true);
   return { validator: VALIDATOR_NAME, passed: true };
 }
 
@@ -108,15 +109,11 @@ function isUnresolvable(token: string): boolean {
   return token === "-" || /[$`*?]/u.test(token) || /^~[^/]/u.test(token);
 }
 
-const AMBIGUOUS_GIT_ENV = /(?:^|[;&|({]\s*)(?:GIT_DIR|GIT_WORK_TREE)=\S+/u;
-const QUOTED_OR_ESCAPED_GIT = /(?:^|[;&|({]\s*)(?:["']git["']|git\\)\b/u;
-const QUOTED_OR_ESCAPED_FORBIDDEN_WORD =
-  /\bgit\b[^;&|(){}]*(?:["'](?:commit|switch|branch)["']|com\\mit|sw\\itch|br\\anch|checkout\s+["']-b["'])/u;
-const GIT_INVOCATION = /(?:^|[;&|({]\s*)git\b([^;&|(){}]*)/gu;
-const KNOWN_GIT_GLOBAL =
-  /^(?:-C(?:\s+\S+)?|-c(?:\s+\S+)?|--git-dir=\S+|--git-dir(?:\s+\S+)?|--work-tree=\S+|--work-tree(?:\s+\S+)?|-p|--paginate|--no-pager)$/u;
-const FORBIDDEN_WORD = /^(?:commit|switch|checkout|branch)$/u;
-const ALLOWED_NON_FORBIDDEN_WORD = /^(?:status|diff|log|show|rev-parse|branch)$/u;
+const GIT_TARGET_OVERRIDE = /(?:^|\s)(?:--git-dir(?:=|\s)|--work-tree(?:=|\s))/u;
+
+function hasGitTargetOverride(globals: string): boolean {
+  return GIT_TARGET_OVERRIDE.test(globals);
+}
 
 function shellWords(fragment: string): string[] | "ambiguous" {
   const words: string[] = [];
@@ -149,32 +146,146 @@ function shellWords(fragment: string): string[] | "ambiguous" {
   return words;
 }
 
-function hasAmbiguousGitMutationSyntax(command: string): boolean {
-  if (AMBIGUOUS_GIT_ENV.test(command)) return true;
-  if (QUOTED_OR_ESCAPED_GIT.test(command)) return true;
-  if (QUOTED_OR_ESCAPED_FORBIDDEN_WORD.test(command)) return true;
+function splitShellSegments(command: string): string[] {
+  const segments: string[] = [];
+  let current = "";
+  let quote: '"' | "'" | null = null;
+  let escaped = false;
+  for (const ch of command) {
+    if (escaped) {
+      current += `\\${ch}`;
+      escaped = false;
+      continue;
+    }
+    if (quote === '"' && ch === "\\") {
+      escaped = true;
+      continue;
+    }
+    if ((ch === '"' || ch === "'") && (quote === null || quote === ch)) {
+      quote = quote === ch ? null : ch;
+      current += ch;
+      continue;
+    }
+    if (!quote && /[;&|(){}]/u.test(ch)) {
+      if (current.trim()) segments.push(current);
+      current = "";
+      continue;
+    }
+    current += ch;
+  }
+  if (current.trim()) segments.push(current);
+  return segments;
+}
 
-  for (const match of command.matchAll(GIT_INVOCATION)) {
-    if (isInsideSingleOrDoubleQuotes(command, match.index ?? 0)) continue;
-    const words = shellWords(match[1] ?? "");
-    if (words === "ambiguous") return true;
+function mutationLabelFromGitArgs(args: string[]): string | null {
+  for (let i = 0; i < args.length; i += 1) {
+    const word = args[i];
+    if (!word) continue;
+    if (word === "-C" || word === "-c" || word === "--git-dir" || word === "--work-tree") {
+      i += 1;
+      continue;
+    }
+    if (
+      word.startsWith("-C") ||
+      word.startsWith("-c") ||
+      word.startsWith("--git-dir=") ||
+      word.startsWith("--work-tree=")
+    )
+      continue;
+    if (word === "-p" || word === "--paginate" || word === "--no-pager") continue;
+    if (word.startsWith("-")) continue;
+
+    if (word === "commit") return "git commit";
+    if (word === "switch")
+      return args[i + 1] === "-h" || args[i + 1] === "--help" ? null : "git switch";
+    if (word === "checkout")
+      return args[i + 1] === "-b" || args[i + 1] === "-B" || args[i + 1] === "--orphan"
+        ? "git checkout"
+        : null;
+    if (word === "branch") {
+      const next = args[i + 1];
+      if (!next) return null;
+      return !next.startsWith("-") || next === "--track" || next === "-c" || next === "-C"
+        ? "git branch"
+        : null;
+    }
+    return null;
+  }
+  return null;
+}
+
+function hasUnsupportedGlobalBeforeMutation(args: string[]): boolean {
+  let unsupported = false;
+  for (let i = 0; i < args.length; i += 1) {
+    const word = args[i];
+    if (!word) continue;
+    if (word === "-C" || word === "-c" || word === "--git-dir" || word === "--work-tree") {
+      i += 1;
+      continue;
+    }
+    if (
+      word.startsWith("-C") ||
+      word.startsWith("-c") ||
+      word.startsWith("--git-dir=") ||
+      word.startsWith("--work-tree=")
+    )
+      continue;
+    if (word === "-p" || word === "--paginate" || word === "--no-pager") continue;
+    if (word.startsWith("-")) {
+      unsupported = true;
+      continue;
+    }
+    return unsupported && mutationLabelFromGitArgs(args.slice(i)) !== null;
+  }
+  return false;
+}
+
+function hasEnvTargetOverrideBeforeGit(words: string[], gitIndex: number): boolean {
+  for (let i = 0; i < gitIndex; i += 1) {
+    const word = words[i];
+    if (!word) continue;
+    if (word.startsWith("GIT_DIR=") || word.startsWith("GIT_WORK_TREE=")) return true;
+    if (word === "env") continue;
+    if (word === "-C" && i + 1 < gitIndex) return true;
+  }
+  return false;
+}
+
+function hasAmbiguousGitMutationSyntax(command: string): boolean {
+  // Nested shells/eval re-interpret quoted code; do not try to model their cwd.
+  if (
+    /\b(?:bash|sh|zsh)\b[^;&|(){}]*(?:-c|-lc)\s+["'][^"']*\bgit\s+(?:commit|switch|checkout|branch)\b/u.test(
+      command,
+    )
+  )
+    return true;
+  if (/\beval\s+["'][^"']*\bgit\s+(?:commit|switch|checkout|branch)\b/u.test(command)) return true;
+
+  for (const segment of splitShellSegments(command)) {
+    const words = shellWords(segment);
+    if (words === "ambiguous")
+      return /\bgit\b/u.test(segment) && /\b(?:commit|switch|checkout|branch)\b/u.test(segment);
 
     for (let i = 0; i < words.length; i += 1) {
-      const word = words[i];
-      if (!word) continue;
-      if (KNOWN_GIT_GLOBAL.test(word)) {
-        if (
-          (word === "-C" || word === "-c" || word === "--git-dir" || word === "--work-tree") &&
-          i + 1 < words.length
+      if (words[i] !== "git") continue;
+      const args = words.slice(i + 1);
+      const mutation = mutationLabelFromGitArgs(args);
+      if (!mutation) continue;
+      if (hasEnvTargetOverrideBeforeGit(words, i)) return true;
+      if (
+        args.some(
+          (word) =>
+            word === "--git-dir" ||
+            word === "--work-tree" ||
+            word.startsWith("--git-dir=") ||
+            word.startsWith("--work-tree="),
         )
-          i += 1;
-        continue;
-      }
-      if (word.startsWith("-")) return true;
-      if (FORBIDDEN_WORD.test(word)) break;
-      if (ALLOWED_NON_FORBIDDEN_WORD.test(word)) break;
-      // Unknown first git word could be an alias for a forbidden mutation.
-      return true;
+      )
+        return true;
+      if (hasUnsupportedGlobalBeforeMutation(args)) return true;
+      // If the shell-tokenized form is a mutation but the literal regex did not
+      // match it, quotes or escapes changed argv shape. Fail closed.
+      if (forbiddenGitOps(segment).length === 0) return true;
     }
   }
   return false;
@@ -278,22 +389,23 @@ function resolveEffectiveCwd(
 // `git -C <dir> commit` is still recognised as a commit op, and the captured run
 // is replayed by resolveEffectiveCwd to honor every `-C`.
 const GIT_GLOBAL_RUN =
-  `(?:-C\\s+${QUOTED_ARG}\\s+|-c\\s+${QUOTED_ARG}\\s+|--git-dir=\\S+\\s+|` +
-  `--work-tree=\\S+\\s+|-p\\s+|--no-pager\\s+|--paginate\\s+)*`;
+  `(?:-C\\s+${QUOTED_ARG}\\s+|-c\\s+${QUOTED_ARG}\\s+|--git-dir(?:=\\S+|\\s+${QUOTED_ARG})\\s+|` +
+  `--work-tree(?:=\\S+|\\s+${QUOTED_ARG})\\s+|-p\\s+|--no-pager\\s+|--paginate\\s+)*`;
 
 type ForbiddenOp = { label: string; globals: string; index: number };
 
-// Any forbidden subcommand: commit, switch (not -h/--help), checkout -b, or
-// branch CREATION (`branch <name>`; listing/info/delete flags are allowed).
+// Any forbidden subcommand: commit, switch (not -h/--help), branch-creating
+// checkout forms, or branch creation/copy/track forms. Listing/info/delete
+// branch flags are allowed.
 const FORBIDDEN_SUBCOMMAND =
-  "(commit\\b|switch\\b(?!\\s+(?:-h|--help)\\b)|checkout\\s+-b\\b|branch\\s+(?!-|--)\\S)";
+  "(commit\\b|switch\\b(?!\\s+(?:-h|--help)\\b)|checkout\\s+(?:-b|-B|--orphan)\\b|branch\\s+(?:(?!-|--)\\S|--track\\b|-c\\b|-C\\b))";
 const FORBIDDEN_OP = new RegExp(`\\bgit\\s+(${GIT_GLOBAL_RUN})${FORBIDDEN_SUBCOMMAND}`, "gu");
 
 function labelFor(subcommand: string): string {
   if (subcommand.startsWith("commit")) return "git commit";
   if (subcommand.startsWith("switch")) return "git switch";
-  if (subcommand.startsWith("checkout")) return "git checkout -b";
-  return "git branch <name>";
+  if (subcommand.startsWith("checkout")) return "git checkout";
+  return "git branch";
 }
 
 /** Every forbidden git op in the command (label, its global-option run, position). */
