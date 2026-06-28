@@ -206,20 +206,7 @@ function mutationLabelFromGitArgs(args: string[]): string | null {
     if (word === "commit") return "git commit";
     if (word === "switch")
       return args[i + 1] === "-h" || args[i + 1] === "--help" ? null : "git switch";
-    if (word === "checkout") {
-      const rest = args.slice(i + 1);
-      return rest.some(
-        (arg) =>
-          arg === "-b" ||
-          arg === "-B" ||
-          arg === "--orphan" ||
-          arg === "--track" ||
-          arg.startsWith("-b") ||
-          arg.startsWith("-B"),
-      )
-        ? "git checkout"
-        : null;
-    }
+    if (word === "checkout") return checkoutArgsMutate(args.slice(i + 1)) ? "git checkout" : null;
     if (word === "branch") {
       return branchArgsMutate(args.slice(i + 1)) ? "git branch" : null;
     }
@@ -332,6 +319,21 @@ const BRANCH_READONLY_OR_DELETE_FLAGS = new Set([
   "--color",
   "--no-color",
 ]);
+
+function checkoutArgsMutate(args: string[]): boolean {
+  if (args.length === 0) return false;
+  if (args[0] === "--") return false;
+  if (args.some((arg) => arg === "-b" || arg === "-B" || arg === "--orphan" || arg === "--track"))
+    return true;
+  if (args.some((arg) => arg.startsWith("-b") || arg.startsWith("-B"))) return true;
+
+  for (const arg of args) {
+    if (!arg) continue;
+    if (arg === "--") return false;
+    if (!arg.startsWith("-")) return true;
+  }
+  return false;
+}
 
 function branchArgsMutate(args: string[]): boolean {
   if (args.length === 0) return false;

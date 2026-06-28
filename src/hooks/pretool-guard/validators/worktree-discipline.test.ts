@@ -98,6 +98,12 @@ describe("validateWorktreeDiscipline", () => {
 
   it("allows a file restore `git checkout -- file.ts` in a primary checkout", () => {
     expect(validateWorktreeDiscipline(bash("git checkout -- file.ts", PRIMARY)).passed).toBe(true);
+    expect(validateWorktreeDiscipline(bash("git checkout -- .", PRIMARY)).passed).toBe(true);
+  });
+
+  it("blocks legacy branch checkout in a primary checkout", () => {
+    expect(validateWorktreeDiscipline(bash("git checkout pr-294", PRIMARY)).passed).toBe(false);
+    expect(validateWorktreeDiscipline(bash("git checkout main", PRIMARY)).passed).toBe(false);
   });
 
   it("allows benign git commands outside primary/worktree paths", () => {
