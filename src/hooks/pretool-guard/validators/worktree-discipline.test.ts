@@ -35,6 +35,17 @@ describe("validateWorktreeDiscipline", () => {
     expect(validateWorktreeDiscipline(bash("git checkout --orphan feature", PRIMARY)).passed).toBe(
       false,
     );
+    expect(
+      validateWorktreeDiscipline(bash("git checkout --no-track -b feature HEAD", PRIMARY)).passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(bash("git checkout -q -B feature HEAD", PRIMARY)).passed,
+    ).toBe(false);
+    expect(validateWorktreeDiscipline(bash("git checkout -bfoo", PRIMARY)).passed).toBe(false);
+    expect(validateWorktreeDiscipline(bash("git checkout -Bfoo", PRIMARY)).passed).toBe(false);
+    expect(
+      validateWorktreeDiscipline(bash("git checkout --track origin/foo", PRIMARY)).passed,
+    ).toBe(false);
   });
 
   it("blocks branch creation `git branch <name>` in a primary checkout", () => {
@@ -45,9 +56,26 @@ describe("validateWorktreeDiscipline", () => {
     expect(
       validateWorktreeDiscipline(bash("git branch --track feature origin/main", PRIMARY)).passed,
     ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(bash("git branch --create-reflog feature", PRIMARY)).passed,
+    ).toBe(false);
+    expect(validateWorktreeDiscipline(bash("git branch --force feature", PRIMARY)).passed).toBe(
+      false,
+    );
+    expect(validateWorktreeDiscipline(bash("git branch -f feature HEAD", PRIMARY)).passed).toBe(
+      false,
+    );
+    expect(
+      validateWorktreeDiscipline(bash("git branch --no-track feature HEAD", PRIMARY)).passed,
+    ).toBe(false);
     expect(validateWorktreeDiscipline(bash("git branch -c main feature", PRIMARY)).passed).toBe(
       false,
     );
+    expect(validateWorktreeDiscipline(bash("git branch -C main feature", PRIMARY)).passed).toBe(
+      false,
+    );
+    expect(validateWorktreeDiscipline(bash("git branch -m old new", PRIMARY)).passed).toBe(false);
+    expect(validateWorktreeDiscipline(bash("git branch -M old new", PRIMARY)).passed).toBe(false);
   });
 
   it("allows branch listing/delete-info forms in a primary checkout", () => {
@@ -318,6 +346,15 @@ describe("validateWorktreeDiscipline", () => {
       validateWorktreeDiscipline(
         bash(`env GIT_DIR=${PRIMARY}/.git GIT_WORK_TREE=${PRIMARY} git commit -m x`, "/tmp"),
       ).passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(bash(`git --work-tree=${WORKTREE} commit -m x`, "/tmp")).passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(bash(`env -C ${WORKTREE} git commit -m x`, "/tmp")).passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(bash(`env -C ${PRIMARY} -S 'git commit -m x'`, "/tmp")).passed,
     ).toBe(false);
   });
 

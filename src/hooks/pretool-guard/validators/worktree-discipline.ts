@@ -200,7 +200,15 @@ function mutationLabelFromGitArgs(args: string[]): string | null {
       return args[i + 1] === "-h" || args[i + 1] === "--help" ? null : "git switch";
     if (word === "checkout") {
       const rest = args.slice(i + 1);
-      return rest.includes("-b") || rest.includes("-B") || rest.includes("--orphan")
+      return rest.some(
+        (arg) =>
+          arg === "-b" ||
+          arg === "-B" ||
+          arg === "--orphan" ||
+          arg === "--track" ||
+          arg.startsWith("-b") ||
+          arg.startsWith("-B"),
+      )
         ? "git checkout"
         : null;
     }
@@ -251,6 +259,7 @@ function hasEnvTargetOverrideBeforeGit(words: string[], gitIndex: number): boole
 
 const BRANCH_ACTION_FLAGS = new Set([
   "--track",
+  "--no-track",
   "--create-reflog",
   "--force",
   "-f",
@@ -318,6 +327,10 @@ function hasAmbiguousGitMutationSyntax(command: string): boolean {
   if (/\beval\s+["'][^"']*\bgit\s+(?:commit|switch|checkout|branch)\b/u.test(command)) return true;
   if (/\$\([^)]*\)\s+(?:commit|switch|checkout|branch)\b/u.test(command)) return true;
   if (/\bgit\s+\$\([^)]*\)/u.test(command)) return true;
+  if (
+    /\benv\b[^;&|(){}]*\s-S\s+["'][^"']*\bgit\s+(?:commit|switch|checkout|branch)\b/u.test(command)
+  )
+    return true;
 
   for (const segment of splitShellSegments(command)) {
     const words = shellWords(segment);
@@ -456,7 +469,7 @@ type ForbiddenOp = { label: string; globals: string; index: number };
 // checkout forms, or branch creation/copy/track forms. Listing/info/delete
 // branch flags are allowed.
 const FORBIDDEN_SUBCOMMAND =
-  "(commit\\b|switch\\b(?!\\s+(?:-h|--help)\\b)|checkout\\s+(?:(?:\\S+\\s+)*)(?:-b|-B|--orphan)\\b|branch\\s+(?:(?!-|--)\\S|--track\\b|--no-track\\b|--create-reflog\\b|--force\\b|-f\\b|-c\\b|-C\\b|-m\\b|-M\\b))";
+  "(commit\\b|switch\\b(?!\\s+(?:-h|--help)\\b)|checkout\\s+(?:(?:\\S+\\s+)*)(?:-b\\S*|-B\\S*|--orphan\\b|--track\\b)|branch\\s+(?:(?!-|--)\\S|--track\\b|--no-track\\b|--create-reflog\\b|--force\\b|-f\\b|-c\\b|-C\\b|-m\\b|-M\\b))";
 const FORBIDDEN_OP = new RegExp(`\\bgit\\s+(${GIT_GLOBAL_RUN})${FORBIDDEN_SUBCOMMAND}`, "gu");
 
 function labelFor(subcommand: string): string {
