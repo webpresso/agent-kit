@@ -49,7 +49,7 @@ export function validateWorktreeDiscipline(input: ToolInput): ValidationResult {
   const op = forbiddenGitOp(command);
   if (!op) return { validator: VALIDATOR_NAME, passed: true };
 
-  const effective = resolveEffectiveCwd(command, input.cwd ?? "", op.globals);
+  const effective = resolveEffectiveCwd(command, input.cwd ?? "", op.globals, op.index);
   if (effective.ambiguous) return blocked(op.label, input.cwd ?? "", true);
   if (!isPrimaryReposCheckout(effective.cwd)) return { validator: VALIDATOR_NAME, passed: true };
   return blocked(op.label, effective.cwd, false);
@@ -124,9 +124,17 @@ function applyDir(token: string | undefined, cwd: string): { cwd: string } | "am
  * caller fails closed so an unparseable move into a primary checkout cannot slip
  * past.
  */
-function resolveEffectiveCwd(command: string, baseCwd: string, opGlobals: string): EffectiveCwd {
+function resolveEffectiveCwd(
+  command: string,
+  baseCwd: string,
+  opGlobals: string,
+  opIndex: number,
+): EffectiveCwd {
   let cwd = baseCwd;
   for (const m of command.matchAll(CD_SEGMENT)) {
+    // Only `cd`s BEFORE the forbidden op establish its cwd; a trailing
+    // `… && git commit && cd /tmp` must not be judged against /tmp.
+    if (m.index !== undefined && m.index >= opIndex) break;
     const next = applyDir(m[1], cwd);
     if (next === "ambiguous") return { ambiguous: true };
     cwd = next.cwd;
@@ -147,9 +155,9 @@ const GIT_GLOBAL_RUN =
   `(?:-C\\s+${QUOTED_ARG}\\s+|-c\\s+${QUOTED_ARG}\\s+|--git-dir=\\S+\\s+|` +
   `--work-tree=\\S+\\s+|-p\\s+|--no-pager\\s+|--paginate\\s+)*`;
 
-type ForbiddenOp = { label: string; globals: string };
+type ForbiddenOp = { label: string; globals: string; index: number };
 
-/** Returns the forbidden git op (label + its global-option run), or null if allowed. */
+/** Returns the forbidden git op (label, its global-option run, command position), or null. */
 function forbiddenGitOp(command: string): ForbiddenOp | null {
   if (!/\bgit\b/.test(command)) return null;
   const checks: ReadonlyArray<readonly [string, string]> = [
@@ -161,7 +169,7 @@ function forbiddenGitOp(command: string): ForbiddenOp | null {
   ];
   for (const [subcommand, label] of checks) {
     const match = new RegExp(`\\bgit\\s+(${GIT_GLOBAL_RUN})${subcommand}`, "u").exec(command);
-    if (match) return { label, globals: match[1] ?? "" };
+    if (match) return { label, globals: match[1] ?? "", index: match.index };
   }
   return null;
 }

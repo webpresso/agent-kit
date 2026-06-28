@@ -100,6 +100,13 @@ describe("validateWorktreeDiscipline", () => {
     expect(r.passed).toBe(false);
   });
 
+  it("blocks `cd <primary> && git commit && cd /tmp` (trailing cd ignored)", () => {
+    const r = validateWorktreeDiscipline(
+      bash(`cd ${PRIMARY} && git commit -m "x" && cd /tmp`, "/tmp"),
+    );
+    expect(r.passed).toBe(false);
+  });
+
   it("blocks cumulative `git -C /tmp -C <primary> commit` (every -C applied)", () => {
     const r = validateWorktreeDiscipline(bash(`git -C /tmp -C ${PRIMARY} commit -m "x"`, "/tmp"));
     expect(r.passed).toBe(false);
