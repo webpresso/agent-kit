@@ -4,6 +4,7 @@ packages:
   - packages/*
 
 preferWorkspacePackages: true
+enableGlobalVirtualStore: true
 cleanupUnusedCatalogs: true
 
 catalog:
@@ -20,6 +21,14 @@ catalog:
 
 confirmModulesPurge: false
 verifyDepsBeforeRun: warn
+
+packageExtensions:
+  # bun-types imports undici-types for non-DOM Fetch API fallbacks but does
+  # not declare it. pnpm global virtual store uses stricter package realpaths,
+  # so make the package edge explicit instead of relying on phantom hoisting.
+  bun-types@*:
+    dependencies:
+      undici-types: ">=7.24.0 <7.24.7"
 
 minimumReleaseAgeExclude:
   - "@webpresso/runtime-format"

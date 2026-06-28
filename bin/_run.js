@@ -2,7 +2,7 @@
 
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { basename, dirname, join, relative } from "node:path";
+import { basename, delimiter, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -187,12 +187,30 @@ function sourceToBuiltRelativePath(sourceRelativePath) {
   return `dist/esm/${sourceRelativePath.slice(4).replace(/\.ts$/u, ".js")}`;
 }
 
-function buildSourceLaunchPlan(sourceEntrypoint, forwardedArgs) {
+function withPnpmGlobalVirtualStoreNodePath(repoRoot, env = process.env) {
+  const requiredEntries = [
+    join(repoRoot, "node_modules"),
+    join(repoRoot, "node_modules", ".pnpm", "node_modules"),
+  ];
+  const existingEntries =
+    typeof env.NODE_PATH === "string" && env.NODE_PATH.length > 0
+      ? env.NODE_PATH.split(delimiter).filter(Boolean)
+      : [];
+  const nodePath = [...new Set([...requiredEntries, ...existingEntries])].join(delimiter);
+
+  return {
+    ...env,
+    NODE_PATH: nodePath,
+  };
+}
+
+function buildSourceLaunchPlan(repoRoot, sourceEntrypoint, forwardedArgs) {
   return {
     mode: "source",
     runtime: process.env.BUN ?? "bun",
     entrypoint: sourceEntrypoint,
     args: [sourceEntrypoint, ...forwardedArgs],
+    env: withPnpmGlobalVirtualStoreNodePath(repoRoot),
   };
 }
 
@@ -384,7 +402,7 @@ export function buildLaunchPlan({
     !mustUseRuntimeWhenAvailable &&
     !shouldPreferBuiltDist(binName)
   ) {
-    return buildSourceLaunchPlan(sourceEntrypoint, forwardedArgs);
+    return buildSourceLaunchPlan(repoRoot, sourceEntrypoint, forwardedArgs);
   }
 
   const shouldSkipRuntimePlan =
@@ -432,7 +450,7 @@ export function buildLaunchPlan({
       resolvedSourceNeedsSourceLaunch);
 
   if (shouldPreferSource) {
-    return buildSourceLaunchPlan(sourceEntrypoint, forwardedArgs);
+    return buildSourceLaunchPlan(repoRoot, sourceEntrypoint, forwardedArgs);
   }
 
   if (hasBuilt) {
@@ -455,6 +473,7 @@ export function buildLaunchPlan({
             builtEntrypoint,
             ...forwardedArgs,
           ],
+          env: withPnpmGlobalVirtualStoreNodePath(repoRoot),
         };
       }
 
@@ -471,11 +490,12 @@ export function buildLaunchPlan({
       runtime: nodeExecPath,
       entrypoint: builtEntrypoint,
       args: [builtEntrypoint, ...forwardedArgs],
+      env: withPnpmGlobalVirtualStoreNodePath(repoRoot),
     };
   }
 
   if (hasSource) {
-    return buildSourceLaunchPlan(sourceEntrypoint, forwardedArgs);
+    return buildSourceLaunchPlan(repoRoot, sourceEntrypoint, forwardedArgs);
   }
 
   throw new Error(

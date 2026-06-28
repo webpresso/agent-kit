@@ -1,6 +1,6 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -20,6 +20,16 @@ import {
   formatCommandLaneSummary,
   getWpCommandLane,
 } from "../bin/runtime-lanes.js";
+
+function expectLaunchPlan(
+  plan: ReturnType<typeof buildLaunchPlan>,
+  expected: Omit<ReturnType<typeof buildLaunchPlan>, "env">,
+): void {
+  expect(plan).toMatchObject(expected);
+  expect(plan.env?.NODE_PATH?.split(delimiter)).toEqual(
+    expect.arrayContaining(["/repo/node_modules", "/repo/node_modules/.pnpm/node_modules"]),
+  );
+}
 
 const RUNTIME_MANIFEST = {
   binaryName: "wp",
@@ -50,7 +60,7 @@ describe("bin launcher", () => {
   });
 
   it("prefers built dist entrypoints when available", () => {
-    expect(
+    expectLaunchPlan(
       buildLaunchPlan({
         binName: "wp",
         repoRoot: "/repo",
@@ -62,12 +72,13 @@ describe("bin launcher", () => {
         pinnedNodeVersion: "24.17.0",
         runtimeManager: null,
       }),
-    ).toEqual({
-      mode: "built",
-      runtime: "/usr/bin/node",
-      args: ["/repo/dist/esm/cli/cli.js", "mcp"],
-      entrypoint: "/repo/dist/esm/cli/cli.js",
-    });
+      {
+        mode: "built",
+        runtime: "/usr/bin/node",
+        args: ["/repo/dist/esm/cli/cli.js", "mcp"],
+        entrypoint: "/repo/dist/esm/cli/cli.js",
+      },
+    );
   });
 
   it("routes phase-1 wp runtime-lane commands through the compiled runtime when present", () => {
@@ -148,7 +159,7 @@ describe("bin launcher", () => {
   });
 
   it("keeps wp setup on the built JS launcher even when the host runtime package is present", () => {
-    expect(
+    expectLaunchPlan(
       buildLaunchPlan({
         binName: "wp",
         repoRoot: "/repo",
@@ -164,12 +175,13 @@ describe("bin launcher", () => {
         pinnedNodeVersion: "24.17.0",
         runtimeManager: null,
       }),
-    ).toEqual({
-      mode: "built",
-      runtime: "/usr/bin/node",
-      args: ["/repo/dist/esm/cli/cli.js", "setup", "--yes"],
-      entrypoint: "/repo/dist/esm/cli/cli.js",
-    });
+      {
+        mode: "built",
+        runtime: "/usr/bin/node",
+        args: ["/repo/dist/esm/cli/cli.js", "setup", "--yes"],
+        entrypoint: "/repo/dist/esm/cli/cli.js",
+      },
+    );
   });
 
   it("keeps representative JS/Bun holdback commands on the built launcher when runtime is present", () => {
@@ -251,7 +263,7 @@ describe("bin launcher", () => {
   });
 
   it("keeps source-checkout fallback when a compiled runtime artifact is not present", () => {
-    expect(
+    expectLaunchPlan(
       buildLaunchPlan({
         binName: "wp",
         repoRoot: "/repo",
@@ -267,12 +279,13 @@ describe("bin launcher", () => {
         pinnedNodeVersion: "24.17.0",
         runtimeManager: null,
       }),
-    ).toEqual({
-      mode: "source",
-      runtime: "bun",
-      args: ["/repo/src/cli/cli.ts", "hook", "stop-qa"],
-      entrypoint: "/repo/src/cli/cli.ts",
-    });
+      {
+        mode: "source",
+        runtime: "bun",
+        args: ["/repo/src/cli/cli.ts", "hook", "stop-qa"],
+        entrypoint: "/repo/src/cli/cli.ts",
+      },
+    );
   });
 
   it("fails clearly when a caller explicitly requires an unavailable compiled runtime", () => {
@@ -434,7 +447,7 @@ describe("bin launcher", () => {
   });
 
   it("prefers source for wp when the cli tree requires a source launch", () => {
-    expect(
+    expectLaunchPlan(
       buildLaunchPlan({
         binName: "wp",
         repoRoot: "/repo",
@@ -447,12 +460,13 @@ describe("bin launcher", () => {
         pinnedNodeVersion: "24.17.0",
         runtimeManager: null,
       }),
-    ).toEqual({
-      mode: "source",
-      runtime: "bun",
-      args: ["/repo/src/cli/cli.ts", "bench", "session-memory", "--dry-run"],
-      entrypoint: "/repo/src/cli/cli.ts",
-    });
+      {
+        mode: "source",
+        runtime: "bun",
+        args: ["/repo/src/cli/cli.ts", "bench", "session-memory", "--dry-run"],
+        entrypoint: "/repo/src/cli/cli.ts",
+      },
+    );
   });
 
   it("hard-cuts direct hook bins from the public launcher table", () => {
@@ -472,7 +486,7 @@ describe("bin launcher", () => {
   });
 
   it("re-execs through mise when the built package pins a different exact Node version", () => {
-    expect(
+    expectLaunchPlan(
       buildLaunchPlan({
         binName: "wp",
         repoRoot: "/repo",
@@ -484,20 +498,21 @@ describe("bin launcher", () => {
         pinnedNodeVersion: "24.17.0",
         runtimeManager: { kind: "mise", command: "mise" },
       }),
-    ).toEqual({
-      mode: "built",
-      runtime: "mise",
-      args: [
-        "exec",
-        "node@24.17.0",
-        "--",
-        "/usr/bin/node",
-        "/repo/dist/esm/cli/cli.js",
-        "blueprint",
-        "audit",
-      ],
-      entrypoint: "/repo/dist/esm/cli/cli.js",
-    });
+      {
+        mode: "built",
+        runtime: "mise",
+        args: [
+          "exec",
+          "node@24.17.0",
+          "--",
+          "/usr/bin/node",
+          "/repo/dist/esm/cli/cli.js",
+          "blueprint",
+          "audit",
+        ],
+        entrypoint: "/repo/dist/esm/cli/cli.js",
+      },
+    );
   });
 
   it("fails clearly when the built package pins a different exact Node version and no manager is available", () => {
@@ -570,7 +585,7 @@ describe("WP_FORCE_SOURCE sourceOverride", () => {
       runtimeBinaryExists: () => true,
       runtimeBinaryPath: "/repo/bin/runtime/linux-x64/wp",
     });
-    expect(plan).toStrictEqual({
+    expectLaunchPlan(plan, {
       mode: "source",
       runtime: "bun",
       entrypoint: "/repo/src/cli/cli.ts",

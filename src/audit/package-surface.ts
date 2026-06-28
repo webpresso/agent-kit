@@ -164,9 +164,7 @@ const DEFAULT_FORBIDDEN_TARBALL_CONTENT_PATTERNS = [
   "/-----BEGIN [A-Z ]*PRIVATE KEY-----/",
 ] as const;
 const DEFAULT_DEEP_SCAN_EXCLUDED_PATH_PREFIXES = ["dist/"] as const;
-const SECRETLINT_DEFAULT_CONFIG = JSON.stringify({
-  rules: [{ id: "@secretlint/secretlint-rule-preset-recommend" }],
-});
+const SECRETLINT_DEFAULT_RULE_ID = "@secretlint/secretlint-rule-preset-recommend";
 
 interface PackageCandidate {
   name: string;
@@ -798,7 +796,7 @@ function runSecretlint(stageRoot: string, packageRoot: string): unknown {
   if (rcPath) {
     args.push("--secretlintrc", rcPath);
   } else {
-    args.push("--secretlintrcJSON", SECRETLINT_DEFAULT_CONFIG);
+    args.push("--secretlintrcJSON", defaultSecretlintConfig(command.toolRoot));
   }
   args.push(join(stageRoot, "**/*"));
 
@@ -818,6 +816,12 @@ function runSecretlint(stageRoot: string, packageRoot: string): unknown {
   } finally {
     rmSync(outputFile, { force: true });
   }
+}
+
+function defaultSecretlintConfig(toolRoot: string): string {
+  const requireFromToolRoot = createRequire(join(toolRoot, "package.json"));
+  const ruleId = requireFromToolRoot.resolve(SECRETLINT_DEFAULT_RULE_ID);
+  return JSON.stringify({ rules: [{ id: ruleId }] });
 }
 
 function resolveSecretlintCommand(): { bin: string; toolRoot: string } {

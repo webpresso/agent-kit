@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -92,6 +92,23 @@ function seedWorkspaceFixture(root: string): void {
   });
 }
 
+function isSeededWorkspaceFixture(root: string): boolean {
+  return (
+    existsSync(join(root, "package.json")) &&
+    existsSync(join(root, "pnpm-workspace.yaml")) &&
+    existsSync(join(root, "tsconfig.json")) &&
+    existsSync(join(root, RUNTIME_TYPECHECK_PARITY_ROOT_FILE)) &&
+    existsSync(join(root, "packages/widget/package.json")) &&
+    existsSync(join(root, "packages/widget/tsconfig.json")) &&
+    existsSync(join(root, RUNTIME_TYPECHECK_PARITY_WORKSPACE_FILE))
+  );
+}
+
+export function ensureRuntimeTypecheckParityWorkspace(root: string): void {
+  if (isSeededWorkspaceFixture(root)) return;
+  seedWorkspaceFixture(root);
+}
+
 export function formatResolvedTypecheckScopes(expectedScopes: readonly string[]): string {
   return `Resolved typecheck scopes: ${expectedScopes.join(", ")}`;
 }
@@ -128,9 +145,14 @@ function runParityCommand(
   workspaceRoot: string,
   argv: readonly string[],
 ): ProbeExecutionResult {
+  const env = {
+    ...(options.env ?? process.env),
+    NODE_OPTIONS: options.env?.NODE_OPTIONS ?? "",
+  };
+
   const result = spawnSync(options.command, argv, {
     cwd: workspaceRoot,
-    env: options.env,
+    env,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
     timeout: options.timeoutMs ?? RUNTIME_TYPECHECK_PARITY_TIMEOUT_MS,
@@ -169,7 +191,7 @@ export function probeRuntimeTypecheckParity(
   const baseArgs = [...(options.args ?? [])];
 
   try {
-    seedWorkspaceFixture(workspaceRoot);
+    ensureRuntimeTypecheckParityWorkspace(workspaceRoot);
 
     const help = runParityCommand(options, workspaceRoot, [...baseArgs, "typecheck", "--help"]);
     const fileScope = runParityCommand(options, workspaceRoot, [

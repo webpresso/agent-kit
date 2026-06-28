@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   collectAffectedDiagnostics,
   planAffectedTypecheckClosure,
+  filterActiveTypecheckFiles,
   planAffectedTypecheckClosures,
   runAffectedTypecheck,
 } from "./affected.js";
@@ -32,6 +33,7 @@ function makeProject(): string {
           paths: { "#lib/*": ["src/*"] },
         },
         include: ["src/**/*.ts"],
+        exclude: ["**/*.test.ts"],
       },
       null,
       2,
@@ -155,6 +157,7 @@ function makePackage(root: string, name: string): void {
           moduleResolution: "Bundler",
         },
         include: ["src/**/*.ts"],
+        exclude: ["**/*.test.ts"],
       },
       null,
       2,
@@ -181,7 +184,9 @@ describe("affected typecheck closures across owning tsconfigs", () => {
     expect(plans).toHaveLength(1);
     expect(configRelative(root, plans[0]!.configPath)).toBe("packages/pkg-a/tsconfig.json");
     expect(
-      plans[0]!.closureFiles.map((file) => path.relative(root, file.fileName).replaceAll("\\", "/")),
+      plans[0]!.closureFiles.map((file) =>
+        path.relative(root, file.fileName).replaceAll("\\", "/"),
+      ),
     ).toEqual(["packages/pkg-a/src/a.ts"]);
   });
 
@@ -200,6 +205,20 @@ describe("affected typecheck closures across owning tsconfigs", () => {
       "packages/pkg-a/tsconfig.json",
       "tsconfig.json",
     ]);
+  });
+
+  it("filters changed TS files to files covered by an active TypeScript program", () => {
+    const root = makeProject();
+    write(root, "src/covered.ts", "export const covered = 1;\n");
+    write(root, "src/covered.test.ts", "export const testOnly = 1;\n");
+    write(root, "bin/tool.test.ts", "export const binTest = 1;\n");
+
+    expect(
+      filterActiveTypecheckFiles({
+        repoRoot: root,
+        files: ["src/covered.ts", "src/covered.test.ts", "bin/tool.test.ts"],
+      }),
+    ).toEqual(["src/covered.ts"]);
   });
 
   it("fail-closes when a changed file is inside no active TypeScript program", () => {
