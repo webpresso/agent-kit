@@ -1,15 +1,15 @@
 ---
 type: system
-last_updated: "2026-04-25"
+last_updated: "2026-06-28"
 ---
 
 # Blueprint format specification
 
-A blueprint is a single Markdown file at either `blueprints/<state>/<slug>.md`
-or `blueprints/<state>/<slug>/_overview.md`
-with mandatory YAML frontmatter and a specific heading structure. This
-document is the authoritative spec — the `blueprint-plan` docs-linter
-enforces these rules.
+A blueprint is a folder at `blueprints/<state>/<slug>/_overview.md` (with
+optional sibling docs such as `reviews.md`), or — for legacy compatibility — a
+flat file `blueprints/<state>/<slug>.md`. Either shape carries mandatory YAML
+frontmatter and a specific heading structure. This document is the authoritative
+spec — the `blueprint-plan` docs-linter enforces these rules.
 
 ## File location
 
@@ -23,16 +23,18 @@ enforces these rules.
 └── parked/             # paused indefinitely
 ```
 
-Flat files are the default shape. Use one directory per blueprint only when the
-blueprint needs sibling docs, with `_overview.md` as the canonical entry point.
-Supporting files (research notes, data fixtures, etc.) can live alongside as
-peer files inside that folder shape.
+The folder shape is the default/canonical shape: each blueprint lives at
+`blueprints/<state>/<slug>/_overview.md`, with sibling docs alongside — notably
+`reviews.md` for the ≥2-approval promotion gate (see
+`catalog/agent/rules/pre-implementation.md`), plus any research notes or data
+fixtures as peer files. A flat `blueprints/<state>/<slug>.md` remains valid for
+legacy or simple drafts that never need siblings.
 
 When OMX or other runtimes materialize execution handoffs, keep that split
 explicit:
 
-- `blueprints/<state>/<slug>.md` is the default canonical plan.
-- `blueprints/<state>/<slug>/_overview.md` is the folder-shape canonical plan.
+- `blueprints/<state>/<slug>/_overview.md` is the default canonical plan (folder shape).
+- `blueprints/<state>/<slug>.md` is the flat, legacy-compatible canonical plan.
 - `.omx/state/` is runtime/session state only.
 - `.omx/plans/` is derived handoff metadata only, never a second plan store.
 - Completion authority stays with task-local canonical verification evidence in

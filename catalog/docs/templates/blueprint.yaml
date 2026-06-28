@@ -4,7 +4,7 @@ description: Blueprint template for features/initiatives
 notes:
   - "This file describes the current preferred blueprint structure, not an immutable final schema."
   - "Repo-wide validity is determined by the live blueprint parser/audit rules, not by requiring every optional section below."
-  - "Default creation shape: blueprints/<status>/<slug>.md. Folder-based blueprints remain valid at blueprints/<status>/<slug>/_overview.md when sibling docs are needed."
+  - "Default creation shape: blueprints/<status>/<slug>/_overview.md (folder, with sibling reviews.md for the >=2-approval gate). Flat blueprints/<status>/<slug>.md remains valid for legacy/simple drafts."
 
 frontmatter:
   required:
@@ -96,7 +96,7 @@ location:
 naming:
   pattern: "<slug>.md or _overview.md"
   case: exact
-  notes: "Use <slug>.md by default. Use folder + _overview.md when the blueprint needs sibling markdown docs."
+  notes: "Use folder + _overview.md by default (siblings like reviews.md). Flat <slug>.md remains valid for legacy/simple drafts."
 
 task_format:
   heading:
