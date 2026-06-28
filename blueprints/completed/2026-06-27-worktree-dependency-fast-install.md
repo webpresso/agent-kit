@@ -2,11 +2,11 @@
 type: blueprint
 title: "Worktree dependency fast install"
 owner: ozby
-status: draft
+status: completed
 complexity: S
 created: "2026-06-27"
 last_updated: "2026-06-28"
-progress: "100% (PoC proven; Linux CI type edge fixed; implementation verification refreshed)"
+progress: "100% (4 of 4 tasks completed; PoC, implementation, and CI verified)"
 depends_on: []
 cross_repo_depends_on: []
 tags: [devex, performance, worktrees, dependencies]
