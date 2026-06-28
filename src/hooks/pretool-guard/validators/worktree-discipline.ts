@@ -247,6 +247,7 @@ function hasEnvTargetOverrideBeforeGit(words: string[], gitIndex: number): boole
     if (word.startsWith("GIT_DIR=") || word.startsWith("GIT_WORK_TREE=")) return true;
     if (word === "env") continue;
     if (word === "-C" && i + 1 < gitIndex) return true;
+    if (word.startsWith("-C") && word.length > 2) return true;
   }
   return false;
 }
@@ -359,6 +360,7 @@ const BRANCH_READONLY_OR_DELETE_FLAGS = new Set([
 function checkoutArgsMutate(args: string[]): boolean {
   if (args.length === 0) return false;
   if (args[0] === "--") return false;
+  if (args[0] === "-") return true;
   if (args.some((arg) => arg === "-b" || arg === "-B" || arg === "--orphan" || arg === "--track"))
     return true;
   if (args.some((arg) => arg.startsWith("-b") || arg.startsWith("-B"))) return true;
@@ -403,6 +405,10 @@ function branchArgsMutate(args: string[]): boolean {
 }
 
 function hasAmbiguousGitMutationSyntax(command: string): boolean {
+  // Escaped shell builtins (`c\d`) are executed as builtins but are too easy to
+  // miss in the success-gated cwd model. Fail closed when a mutation is present.
+  if (/\bc\\d\b/u.test(command) && /\bgit\b/u.test(command)) return true;
+
   // Nested shells/eval/env -S re-interpret code; do not try to model their cwd.
   if (hasReinterpretedGitMutation(command)) return true;
 

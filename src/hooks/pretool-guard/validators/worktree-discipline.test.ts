@@ -107,6 +107,7 @@ describe("validateWorktreeDiscipline", () => {
   it("blocks legacy branch checkout in a primary checkout", () => {
     expect(validateWorktreeDiscipline(bash("git checkout pr-294", PRIMARY)).passed).toBe(false);
     expect(validateWorktreeDiscipline(bash("git checkout main", PRIMARY)).passed).toBe(false);
+    expect(validateWorktreeDiscipline(bash("git checkout -", PRIMARY)).passed).toBe(false);
   });
 
   it("allows legacy branch checkout in a managed worktree", () => {
@@ -170,6 +171,13 @@ describe("validateWorktreeDiscipline", () => {
   it("blocks `command cd <primary> && git commit` (no bypass)", () => {
     const r = validateWorktreeDiscipline(
       bash(`command cd ${PRIMARY} && git commit -m "x"`, "/tmp"),
+    );
+    expect(r.passed).toBe(false);
+  });
+
+  it("blocks escaped builtin `c\\d <primary> && git commit` (no bypass)", () => {
+    const r = validateWorktreeDiscipline(
+      bash(String.raw`c\d ${PRIMARY} && git commit -m x`, "/tmp"),
     );
     expect(r.passed).toBe(false);
   });
@@ -409,6 +417,9 @@ describe("validateWorktreeDiscipline", () => {
     ).toBe(false);
     expect(
       validateWorktreeDiscipline(bash(`env -C ${PRIMARY} git commit -m x`, "/tmp")).passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(bash(`env -C${PRIMARY} git commit -m x`, "/tmp")).passed,
     ).toBe(false);
     expect(
       validateWorktreeDiscipline(
