@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { installManagedRunnerHermeticHooks } from "#test-helpers/managed-runner";
 
@@ -14,7 +14,9 @@ import {
 } from "./typecheck";
 
 function buildFakeCli() {
-  let registeredAction: ((flags: Record<string, unknown>) => Promise<number>) | undefined;
+  let registeredAction:
+    | ((targetsOrFlags: unknown, maybeFlags?: Record<string, unknown>) => Promise<number>)
+    | undefined;
   const options: string[] = [];
   const chain = {
     option: (name: string) => {
@@ -108,8 +110,19 @@ describe("wp typecheck command", () => {
   it("documents that --file resolves owning scopes instead of isolated-file tsc", () => {
     expect(TYPECHECK_COMMAND_HELP).toContain("not isolated-file `tsc`");
     expect(TYPECHECK_COMMAND_HELP).toContain("wp typecheck --file src/index.ts");
+    expect(TYPECHECK_COMMAND_HELP).toContain("wp typecheck --file src/a.ts src/b.ts");
     expect(TYPECHECK_COMMAND_HELP).toContain("wp typecheck --package @webpresso/agent-kit");
     expect(TYPECHECK_COMMAND_HELP).toContain("wp typecheck --affected");
+  });
+
+  it("keeps bare positional typecheck targets rejected so callers use --file", async () => {
+    const cli = buildFakeCli();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    registerTypecheckCommand(cli as never);
+
+    await expect(cli.getAction()?.(["src/cli/commands/typecheck.ts"], {})).resolves.toBe(1);
+
+    expect(error).toHaveBeenCalledWith("File targets must be passed with --file.");
   });
 
   it("rejects --file plus --package together", async () => {

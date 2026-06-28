@@ -27,7 +27,9 @@ import { buildLintCommand, LINT_COMMAND_HELP, registerLintCommand } from "./lint
 
 function buildFakeCli() {
   const options: string[] = [];
-  let capturedAction: ((flags: Record<string, unknown>) => unknown) | undefined;
+  let capturedAction:
+    | ((targetsOrFlags: unknown, maybeFlags?: Record<string, unknown>) => unknown)
+    | undefined;
   const chain = {
     option: (name: string) => {
       options.push(name);
@@ -76,8 +78,47 @@ describe("wp lint command", () => {
   });
 
   it("documents the standardized --affected syntax", () => {
+    expect(LINT_COMMAND_HELP).toContain("wp lint --file src/a.ts src/b.ts");
     expect(LINT_COMMAND_HELP).toContain("wp lint --affected");
     expect(LINT_COMMAND_HELP).toContain("git add first");
+  });
+
+  it("accepts multiple file targets after one --file flag", async () => {
+    const cli = buildFakeCli();
+    registerLintCommand(cli as never);
+
+    await expect(
+      cli.getAction()?.(["src/cli/commands/lint.test.ts"], {
+        file: "src/cli/commands/lint.ts",
+      }),
+    ).resolves.toBe(0);
+
+    expect(qualityRunnerMocks.runCliCommandSequence).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadataOptions: expect.objectContaining({
+          files: ["src/cli/commands/lint.ts", "src/cli/commands/lint.test.ts"],
+        }),
+        commands: [
+          expect.objectContaining({
+            args: expect.arrayContaining([
+              "src/cli/commands/lint.ts",
+              "src/cli/commands/lint.test.ts",
+            ]),
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("keeps bare positional lint targets rejected so callers use --file", async () => {
+    const cli = buildFakeCli();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    registerLintCommand(cli as never);
+
+    await expect(cli.getAction()?.(["src/cli/commands/lint.ts"], {})).resolves.toBe(1);
+
+    expect(error).toHaveBeenCalledWith("File targets must be passed with --file.");
+    expect(qualityRunnerMocks.runCliCommandSequence).not.toHaveBeenCalled();
   });
 
   it("errors when --branch is provided without --affected", async () => {

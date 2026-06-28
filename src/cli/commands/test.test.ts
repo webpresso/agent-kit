@@ -75,6 +75,7 @@ describe("wp test command helpers", () => {
     expect(TEST_COMMAND_HELP).toContain("wp test --suite integration");
     expect(TEST_COMMAND_HELP).toContain("wp test --package cli2");
     expect(TEST_COMMAND_HELP).toContain("wp test --file apps/cli2/src/commands/target.test.ts");
+    expect(TEST_COMMAND_HELP).toContain("wp test --file src/a.test.ts src/b.test.ts");
   });
 
   it("builds package-target commands through the managed runtime core with passthrough args", () => {
@@ -98,6 +99,51 @@ describe("wp test command helpers", () => {
       command: "rtk",
       args: [expect.stringContaining("vitest"), "run", "apps/cli2/src/commands/target.test.ts"],
     });
+  });
+
+  it("accepts multiple file targets after one --file flag", async () => {
+    const cli = buildFakeCli();
+    registerTestCommand(cli as never);
+
+    await expect(
+      cli.getAction()?.(
+        ["src/cli/commands/init/init.integration.test.ts", "src/blueprint/lifecycle/audit.test.ts"],
+        { file: "scripts/public-readiness.test.ts" },
+      ),
+    ).resolves.toBe(0);
+
+    expect(qualityRunnerMocks.runCliCommandSequence).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadataOptions: expect.objectContaining({
+          file: [
+            "scripts/public-readiness.test.ts",
+            "src/cli/commands/init/init.integration.test.ts",
+            "src/blueprint/lifecycle/audit.test.ts",
+          ],
+        }),
+        commands: [
+          expect.objectContaining({
+            args: expect.arrayContaining([
+              "run",
+              "scripts/public-readiness.test.ts",
+              "src/cli/commands/init/init.integration.test.ts",
+              "src/blueprint/lifecycle/audit.test.ts",
+            ]),
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("keeps bare positional test targets rejected so callers use the explicit --file surface", async () => {
+    const cli = buildFakeCli();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    registerTestCommand(cli as never);
+
+    await expect(cli.getAction()?.(["src/cli/commands/test.test.ts"], {})).resolves.toBe(1);
+
+    expect(error).toHaveBeenCalledWith("File targets must be passed with --file.");
+    expect(qualityRunnerMocks.runCliCommandSequence).not.toHaveBeenCalled();
   });
 
   it("treats suite selection as a filter over explicit file targets", () => {
