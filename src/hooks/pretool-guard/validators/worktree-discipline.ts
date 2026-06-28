@@ -117,23 +117,10 @@ function hasGitTargetOverride(globals: string): boolean {
 }
 
 function hasMutationAliasConfig(globals: string): boolean {
-  if (
-    /(?:^|\s)-c\s+alias\.[^\s=]+=(?:"[^"]*"|'[^']*'|\S*)?(?:commit|switch|checkout|branch)\b/u.test(
-      globals,
-    )
-  )
-    return true;
-  const words = shellWords(globals);
-  if (words === "ambiguous")
-    return /alias\./u.test(globals) && /(?:commit|switch|checkout|branch)/u.test(globals);
-  for (let i = 0; i < words.length; i += 1) {
-    const word = words[i];
-    const value = word === "-c" ? words[i + 1] : word?.startsWith("-c") ? word.slice(2) : undefined;
-    if (!value?.startsWith("alias.")) continue;
-    if (/=(?:!\s*)?(?:commit|switch|checkout|branch)\b/u.test(value)) return true;
-    if (word === "-c") i += 1;
-  }
-  return false;
+  // Inline aliases can re-enter shell parsing (`!…`), quote-concatenate argv, or
+  // hide the git executable via command substitution. Treat alias definitions as
+  // unsupported in this safety guard rather than attempting to prove them safe.
+  return /(?:^|\s)-c(?:\s+|[^\s]*?)alias\./u.test(globals);
 }
 
 function shellWords(fragment: string): string[] | "ambiguous" {

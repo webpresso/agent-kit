@@ -304,6 +304,16 @@ describe("validateWorktreeDiscipline", () => {
     expect(
       validateWorktreeDiscipline(bash(`git -c alias.co='checkout -b feature' co`, PRIMARY)).passed,
     ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(
+        bash(`git -c alias.ci='!git co""mmit --allow-empty -m x' ci`, PRIMARY),
+      ).passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(
+        bash(`git -c alias.ci='!$(command -v git) commit --allow-empty -m x' ci`, PRIMARY),
+      ).passed,
+    ).toBe(false);
   });
 
   it("fails closed on unsupported git globals before forbidden ops", () => {
