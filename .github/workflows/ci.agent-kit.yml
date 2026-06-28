@@ -154,6 +154,10 @@ jobs:
           pnpm run stage:plugin-runtime
       - name: Open-source license surface
         run: pnpm run license:check
+      - name: Dependency security audit
+        run: pnpm run deps:security
+      - name: Dependency freshness audit
+        run: pnpm run deps:freshness
       - run: pnpm run typecheck
       - run: pnpm run lint
 

@@ -210,7 +210,7 @@ describe("compile contract: flatten → writeFlattenedAssets output shape", () =
 // ---------------------------------------------------------------------------
 
 describe("compile contract: rulesync version pin", () => {
-  it("installed rulesync matches pinned version 8.15.1 (skipped if not installed)", () => {
+  it("installed rulesync matches pinned version 9.0.1 (skipped if not installed)", () => {
     // Anchor to repo root via import.meta.dirname so the test is cwd-independent.
     const repoRoot = join(import.meta.dirname, "..", "..");
     const pkgPath = join(repoRoot, "node_modules", "rulesync", "package.json");
@@ -222,6 +222,6 @@ describe("compile contract: rulesync version pin", () => {
     const raw = readFileSync(pkgPath, "utf-8");
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     expect(typeof parsed.version).toBe("string");
-    expect(parsed.version).toBe("8.15.1");
+    expect(parsed.version).toBe("9.0.1");
   });
 });
