@@ -2126,6 +2126,151 @@ const putSchema = MutationTarget.extend({
   head_at_ingest: z.string().nullable().optional(),
 });
 
+const putTaskJsonSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+    title: { type: "string" },
+    status: { type: "string", enum: ["todo", "in-progress", "blocked", "done", "dropped"] },
+    wave: { type: "string" },
+    lane: { type: "string" },
+    description: { type: "string" },
+    acceptance: { type: "array", items: { type: "string" }, minItems: 1 },
+  },
+  required: ["id", "title", "acceptance"],
+  additionalProperties: false,
+};
+
+const putTrustDossierJsonSchema = {
+  type: "object",
+  properties: {
+    readiness: {
+      type: "object",
+      properties: {
+        promotion_ready: { type: "boolean" },
+        unresolved_count: { type: "integer", minimum: 0 },
+        verified_at: { type: "string" },
+        verified_head: { type: "string" },
+        trust_gate_version: { type: "string" },
+      },
+      required: [
+        "promotion_ready",
+        "unresolved_count",
+        "verified_at",
+        "verified_head",
+        "trust_gate_version",
+      ],
+      additionalProperties: false,
+    },
+    material_claims: {
+      type: "array",
+      minItems: 1,
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          claim: { type: "string" },
+          evidence: { type: "string", description: "repo:<path> evidence token" },
+        },
+        required: ["id", "claim", "evidence"],
+        additionalProperties: false,
+      },
+    },
+    material_decisions: {
+      type: "array",
+      minItems: 1,
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          decision: { type: "string" },
+          chosen_option: { type: "string" },
+          rejected_alternatives: { type: "string" },
+          rationale: { type: "string" },
+        },
+        required: ["id", "decision", "chosen_option", "rejected_alternatives", "rationale"],
+        additionalProperties: false,
+      },
+    },
+    promotion_gates: {
+      type: "array",
+      minItems: 1,
+      items: {
+        type: "object",
+        properties: {
+          gate: { type: "string" },
+          command: { type: "string", description: "wp or ./bin/wp facade command" },
+          expected_outcome: { type: "string" },
+          last_result: { type: "string" },
+        },
+        required: ["gate", "command", "expected_outcome", "last_result"],
+        additionalProperties: false,
+      },
+    },
+    residual_unknowns: {
+      oneOf: [{ type: "string" }, { type: "array", items: { type: "string" } }],
+      description: "Omit, pass an empty string, or pass an empty array to render exactly None.",
+    },
+  },
+  required: ["readiness", "material_claims", "material_decisions", "promotion_gates"],
+  additionalProperties: false,
+};
+
+const putDocumentJsonSchema = {
+  type: "object",
+  properties: {
+    type: { type: "string", const: "blueprint", default: "blueprint" },
+    title: { type: "string" },
+    status: {
+      type: "string",
+      enum: ["draft", "planned", "in-progress", "completed", "parked", "archived"],
+    },
+    complexity: { type: "string", enum: ["XS", "S", "M", "L", "XL"] },
+    owner: { type: "string" },
+    created: { type: "string" },
+    last_updated: { type: "string" },
+    progress: { type: "string" },
+    tags: { type: "array", items: { type: "string" } },
+    product_wedge_anchor: {
+      type: "object",
+      properties: {
+        stage_outcome: { type: "string" },
+        consuming_surface: { type: "string" },
+        new_user_visible_capability: { type: "string" },
+      },
+      required: ["stage_outcome", "consuming_surface", "new_user_visible_capability"],
+      additionalProperties: false,
+    },
+    summary: { type: "string" },
+    tasks: { type: "array", items: putTaskJsonSchema, minItems: 1 },
+    trust_dossier: putTrustDossierJsonSchema,
+  },
+  required: [
+    "title",
+    "status",
+    "complexity",
+    "owner",
+    "created",
+    "last_updated",
+    "product_wedge_anchor",
+    "summary",
+    "tasks",
+  ],
+  additionalProperties: false,
+};
+
+const putInputJsonSchema = {
+  type: "object",
+  properties: {
+    project_id: { type: "string" },
+    slug: { type: "string" },
+    document: putDocumentJsonSchema,
+    request_id: { type: "string" },
+    head_at_ingest: { type: ["string", "null"] },
+  },
+  required: ["project_id", "slug", "document"],
+};
+
 function renderBlueprintMarkdownFromDocument(
   slug: string,
   document: z.infer<typeof putDocumentSchema>,
@@ -2679,17 +2824,7 @@ export async function registerBlueprintTools(
   registrar.registerTool(
     "wp_blueprint_put",
     "Create or replace a blueprint from a structured whole-document payload. Renders markdown, validates it, re-ingests the projection, and returns revision metadata.",
-    {
-      type: "object",
-      properties: {
-        project_id: { type: "string" },
-        slug: { type: "string" },
-        document: { type: "object" },
-        request_id: { type: "string" },
-        head_at_ingest: { type: ["string", "null"] },
-      },
-      required: ["project_id", "slug", "document"],
-    },
+    putInputJsonSchema,
     {
       ...summaryEnvelopeOutputSchema,
       properties: {

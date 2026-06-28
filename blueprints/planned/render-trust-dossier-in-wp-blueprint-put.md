@@ -99,7 +99,7 @@ Read the trust gate (the code that emits 'missing Trust Dossier section', 'place
 
 Extend putDocumentSchema (~L2064) with an optional trust_dossier object and extend renderBlueprintMarkdownFromDocument (~L2090) to emit a `## Trust Dossier` section matching Task 1.1's findings. Add light put-time validation (repo: evidence without line numbers; wp-facade gate commands; residual_unknowns normalized to None. when empty).
 
-**Evidence (2026-06-28):** `putDocumentSchema` now accepts optional `trust_dossier` (`src/mcp/blueprint-server.ts:2102`). The renderer emits Trust Dossier after tasks, with residual unknowns normalized to `None.` for empty input (`src/mcp/blueprint-server.ts:2178`). `validatePutTrustDossier` runs the existing trust validator before persistence with `requirePassingGates: false` (`src/mcp/blueprint-server.ts:2266`). Tests reject `repo:package.json:1` and `node scripts/check.js` with clear errors (`src/mcp/blueprint-server.test.ts:208`).
+**Evidence (2026-06-28):** `putDocumentSchema` now accepts optional `trust_dossier` (`src/mcp/blueprint-server.ts`). The registered MCP input schema advertises the nested trust-dossier contract instead of an opaque `document` object (`src/mcp/blueprint-server.ts`; `src/mcp/blueprint-server.registration.test.ts`). The renderer emits Trust Dossier after tasks, with residual unknowns normalized to `None.` for empty input. `validatePutTrustDossier` runs the existing trust validator before persistence with `requirePassingGates: false`. Tests reject `repo:package.json:1` and `node scripts/check.js` with clear errors (`src/mcp/blueprint-server.trust-dossier.test.ts`).
 
 **Acceptance:**
 
@@ -113,7 +113,7 @@ Extend putDocumentSchema (~L2064) with an optional trust_dossier object and exte
 
 In blueprint-server.test.ts, author a temp blueprint via wp_blueprint_put with trust_dossier, then promote draft->planned and assert success WITHOUT the summary-embedding hack.
 
-**Evidence (2026-06-28):** `src/mcp/blueprint-server.test.ts` now authors a draft through `wp_blueprint_put` with structured `trust_dossier`, asserts the summary contains no embedded dossier markdown, promotes it with `wp_blueprint_promote`, and verifies the planned markdown records a passing gate. The same file asserts renderer ordering and exact required subsection text.
+**Evidence (2026-06-28):** `src/mcp/blueprint-server.trust-dossier.test.ts` now authors a draft through `wp_blueprint_put` with structured `trust_dossier`, asserts the summary contains no embedded dossier markdown, promotes it with `wp_blueprint_promote`, and verifies the planned markdown records a passing gate. The same split test file asserts renderer ordering and exact required subsection text while preserving the baseline blueprint-server test-size guard.
 
 **Acceptance:**
 
