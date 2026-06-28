@@ -66,6 +66,40 @@ describe("validateWorktreeDiscipline", () => {
     expect(r.passed).toBe(false);
   });
 
+  it("blocks env-prefixed `FOO=1 cd <primary> && git commit` (no bypass)", () => {
+    const r = validateWorktreeDiscipline(bash(`FOO=1 cd ${PRIMARY} && git commit -m "x"`, "/tmp"));
+    expect(r.passed).toBe(false);
+  });
+
+  it("blocks `command cd <primary> && git commit` (no bypass)", () => {
+    const r = validateWorktreeDiscipline(
+      bash(`command cd ${PRIMARY} && git commit -m "x"`, "/tmp"),
+    );
+    expect(r.passed).toBe(false);
+  });
+
+  it("blocks `builtin cd <primary> && git commit` (no bypass)", () => {
+    const r = validateWorktreeDiscipline(
+      bash(`builtin cd ${PRIMARY} && git commit -m "x"`, "/tmp"),
+    );
+    expect(r.passed).toBe(false);
+  });
+
+  it("blocks `git -C <primary> commit` (no bypass)", () => {
+    const r = validateWorktreeDiscipline(bash(`git -C ${PRIMARY} commit -m "x"`, "/tmp"));
+    expect(r.passed).toBe(false);
+  });
+
+  it("fails closed on an unresolved cd target (command substitution)", () => {
+    const r = validateWorktreeDiscipline(bash('cd "$(some-dir)" && git commit -m "x"', "/tmp"));
+    expect(r.passed).toBe(false);
+  });
+
+  it("fails closed on an unresolved `git -C` target", () => {
+    const r = validateWorktreeDiscipline(bash('git -C "$WT" commit -m "x"', "/tmp"));
+    expect(r.passed).toBe(false);
+  });
+
   it("ignores non-git bash commands", () => {
     expect(validateWorktreeDiscipline(bash("npm test", PRIMARY)).passed).toBe(true);
   });
