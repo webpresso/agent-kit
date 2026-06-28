@@ -22,7 +22,7 @@ approvals: [] # ≥2 distinct reviewer approvals required before draft→planned
 - Draft slug: `{{slug}}`
 - Output path: `{{output_path}}`
 - Generated command: `wp blueprint new "{{description}}" --complexity {{complexity}}`
-- Default shape: flat file (`blueprints/<status>/<slug>.md`)
+- Default shape: folder (`blueprints/<status>/<slug>/_overview.md`, with sibling `reviews.md` for approvals); flat `blueprints/<status>/<slug>.md` is legacy-valid
 - Validation scope: parser compliance before write
 
 ## Architecture Overview

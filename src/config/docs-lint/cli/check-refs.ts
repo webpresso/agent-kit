@@ -113,8 +113,17 @@ function checkRefExists(ref: string): boolean {
   return existsSync(fullPath);
 }
 
-function validateFile(file: string): DeadRef[] {
+export function validateFile(file: string): DeadRef[] {
   const dead: DeadRef[] = [];
+  // existsSync follows symlinks, so a dangling symlink (e.g. a stale projected
+  // agent-rule surface like `.claude/rules/*.md`) resolves to false. Skip it
+  // with a warning instead of crashing the whole linter on ENOENT.
+  if (!existsSync(file)) {
+    console.warn(
+      `⚠️  check-refs: skipping unreadable path (broken symlink): ${relative(DOCS_ROOT, file)}`,
+    );
+    return dead;
+  }
   const content = readFileSync(file, "utf-8");
   const refs = extractRefs(content);
 
