@@ -1,5 +1,25 @@
 # @webpresso/agent-config
 
+## 0.3.0
+
+### Minor Changes
+
+- c1aef0e: Introduce `@webpresso/agent-core`, a pure-Node leaf package of shared low-level
+  consumer-infra primitives (`/repo-root`, `/process`, `/e2e`, `/deploy`, `/dev`),
+  and wire `@webpresso/agent-config` onto it.
+
+  `@webpresso/agent-config` now depends on `@webpresso/agent-core` and re-exports
+  the consumer-facing subset under matching subpaths (`/repo-root`, `/process`,
+  `/e2e`, `/deploy`, `/dev`), so external consumers depend on a single surface —
+  `@webpresso/agent-config` — and never import `@webpresso/agent-core` (or
+  `@webpresso/agent-kit`) directly. This sets up the consumer-migration waves to
+  delete duplicated repo-root/process/e2e/deploy/dev helpers.
+
+### Patch Changes
+
+- Updated dependencies [c1aef0e]
+  - @webpresso/agent-core@0.1.0
+
 ## 0.2.0
 
 ### Minor Changes
@@ -33,6 +53,7 @@
 - 27f8157: Repair the extracted agent-config release surface by cataloging shared deps, removing the root package's non-publishable local manifest edge, and recording the new public package in the package-surface contract.
 
   Evidence:
+
   - docs/bench/reference-parity-matrix.md
   - src/**integration**/reference-parity-host-smoke.integration.test.ts
   - src/**integration**/reference-parity-tool-surface.integration.test.ts
