@@ -105,7 +105,52 @@ opencode-go reviewer's `opencode run --model` command line does not contain
 | Tests | `wp test --file packages/workflow-skills/src/skill-text.test.ts` | All pass |
 | Functional | `opencode run --model opencode-go/deepseek-v4-pro "<review prompt>"` (no `--dir`) | Returns a verdict |
 
+### Phase 2: Drift-proof model IDs via in-skill live discovery [Complexity: S]
+
+Hardcoded version IDs (`glm-5.2`, `deepseek-v4-pro`, …) drift — they went stale
+before and required manual cleanup. Root fix: stop hardcoding. Each reviewer
+resolves its model from the live catalog (`opencode models opencode-go`, already
+run in the availability check), preferring its capability tier and newest
+version, so new releases are used automatically.
+
+#### [docs] Task 2.1: Replace hardcoded IDs with live resolution in all 8 reviewers
+
+**Status:** todo
+
+For the 6 family skills (deepseek/glm/kimi/minimax/mimo/qwen): routing names the
+family + preferred tier; the review command resolves
+`MODEL=$(opencode models opencode-go | grep '^opencode-go/<family>'[ | grep tier] | sort -V | tail -1)`
+with a family-wide fallback, then `opencode run --model "$MODEL"`. The umbrella
+`opencode-go` skill resolves a high-signal model across families (qwen-max →
+minimax → deepseek-pro → any). The parked `hy3` skill resolves `hy3` live and
+prints a parked message when absent. The "catalog covered" table (the stale-prone
+artifact) is replaced by a live-catalog pointer.
+
+**Files:** `packages/workflow-skills/skills/*.md` (+ staged/generated trees)
+
+**Acceptance:**
+
+- [ ] No `opencode run` command hardcodes a versioned `opencode-go/<id>`
+- [ ] Each family resolves to the correct current model against the live catalog
+
+#### [qa] Task 2.2: Regression guards for live discovery
+
+**Status:** todo
+
+skill-text.test asserts each reviewer's run command uses `--model "$MODEL"`,
+contains no `opencode run --model opencode-go/<id>`, and resolves via
+`grep '^opencode-go/`. stage-workflow-skills.test asserts the live-discovery
+marker instead of a pinned ID.
+
+**Files:** `packages/workflow-skills/src/skill-text.test.ts`, `scripts/stage-workflow-skills.test.ts`
+
+**Acceptance:**
+
+- [ ] Guards fail against hardcoded-ID skills; pass against live-resolution skills
+
 ## Non-goals
 
-- Changing opencode-go model routing / IDs (separate, already current).
+- Changing the editorial family→task routing (which family for which review).
+- A scheduled CI cron / drift-audit (superseded by in-skill live discovery —
+  there is no committed ID to drift).
 - Altering the Codex/Claude reviewer skills.

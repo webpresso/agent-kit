@@ -12,8 +12,7 @@ Use this skill when the user asks for a HY3 preview reviewer / OpenCode Go revie
 
 ## Model routing
 
-- Primary: `opencode-go/hy3-preview` (NOTE: not currently in the live OpenCode Go catalog — this skill is parked until HY3 returns; `opencode models opencode-go` to re-check)
-- Fallbacks: none
+This skill does **not** hardcode a model ID — it resolves the HY3 family from the live catalog (`opencode models opencode-go`). NOTE: HY3 is **not currently in the live OpenCode Go catalog**, so this skill is parked until HY3 returns; the resolution below will pick it up automatically once it reappears.
 
 Use HY3 only when the user explicitly wants the preview model or a broad experimental comparison; prefer stable family skills for default reviews.
 
@@ -40,18 +39,22 @@ trap 'rm -f "$PROMPT_FILE"' EXIT
 Default to read-only review prompts: ask the model to inspect the diff/plan, cite concrete files, and avoid modifying files. Run from the repo directory — opencode already operates on the current working directory, so do NOT pass `--dir "$PWD"`: it forces a redundant full-repo index that stalls the review (and times out under load). For long reviews, write output to a file instead of piping through `head`/`tail` under a `timeout`, which discards buffered output when the process is killed.
 
 ```bash
-opencode run --model opencode-go/hy3-preview "$(cat "$PROMPT_FILE")"
+# Resolve the HY3 model from the live catalog (auto-updates if HY3 returns):
+MODEL=$(opencode models opencode-go | grep '^opencode-go/hy3' | sort -V | tail -1)
+[ -z "$MODEL" ] && { echo "HY3 is not in the live OpenCode Go catalog — this reviewer is parked. Use a stable family skill (deepseek/glm/qwen/...) instead."; exit 1; }
+opencode run --model "$MODEL" "$(cat "$PROMPT_FILE")"
 ```
 
-If the primary model is unavailable or quota-limited, retry with one fallback from this skill's routing list.
+If `$MODEL` is empty, HY3 has not returned to the catalog yet — use a stable family reviewer.
 
-## Current OpenCode Go catalog covered
+## Live catalog
 
-| Family   | OpenCode Go model IDs                                                             |
-| -------- | --------------------------------------------------------------------------------- |
-| DeepSeek | `opencode-go/deepseek-v4-pro`, `opencode-go/deepseek-v4-flash`                    |
-| GLM      | `opencode-go/glm-5.2`, `opencode-go/glm-5.1`                                      |
-| Kimi     | `opencode-go/kimi-k2.7-code`, `opencode-go/kimi-k2.6`                             |
-| MiniMax  | `opencode-go/minimax-m3`, `opencode-go/minimax-m2.7`                              |
-| MiMo     | `opencode-go/mimo-v2.5-pro`, `opencode-go/mimo-v2.5`                              |
-| Qwen     | `opencode-go/qwen3.7-max`, `opencode-go/qwen3.7-plus`, `opencode-go/qwen3.6-plus` |
+Model IDs drift, so this skill does not pin them. The authoritative list is
+the live catalog:
+
+```bash
+opencode models opencode-go
+```
+
+The routing and review command above resolve the `opencode-go/hy3` model from
+that output at run time, so HY3 is used automatically if/when it returns.

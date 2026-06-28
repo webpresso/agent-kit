@@ -72,21 +72,27 @@ describe("@repo/workflow-skills skill text contract", () => {
       // opencode already operates on the current working directory. The rationale
       // prose may mention `--dir` to warn against it, so assert on the command
       // line specifically, not the whole document.
-      const runLine = content
-        .split("\n")
-        .find((line) => line.startsWith("opencode run --model"));
-      expect(runLine).toBeDefined();
+      const runLine =
+        content.split("\n").find((line) => line.startsWith("opencode run --model")) ?? "";
+      // Live discovery: the run command must NOT hardcode a versioned model ID;
+      // it resolves the current model from the live catalog so new OpenCode Go
+      // releases are picked up automatically (no drift). `?? ""` keeps the
+      // assertions meaningful (a missing command line fails toContain clearly)
+      // without a weak toBeDefined.
+      expect(runLine).toContain('--model "$MODEL"');
       expect(runLine).not.toContain("--dir");
+      expect(content).not.toMatch(/opencode run --model opencode-go\//);
       expect(content).toContain("opencode models opencode-go");
-      expect(content).toContain("opencode-go/deepseek-v4-pro");
-      expect(content).toContain("opencode-go/glm-5.2");
-      expect(content).toContain("opencode-go/kimi-k2.7-code");
-      expect(content).toContain("opencode-go/minimax-m3");
-      expect(content).toContain("opencode-go/mimo-v2.5-pro");
-      expect(content).toContain("opencode-go/qwen3.7-max");
-      // hy3-preview is no longer in the live OpenCode Go catalog, so it is no
-      // longer in the shared "catalog covered" table (the hy3 skill itself is
-      // parked). Asserting every skill lists it would re-introduce the stale ID.
+      expect(content).toMatch(/grep '\^opencode-go\//);
+      // Positive contract: the resolution heuristic itself must be present.
+      expect(content).toContain("sort -V | tail -1");
+      // Family + aggregate reviewers read the catalog once into $CATALOG and
+      // re-grep the variable (no double `opencode models` round-trip). The
+      // parked hy3 reviewer is a single inline pipe, so it is exempt.
+      if (name !== "hy3") {
+        expect(content).toContain('echo "$CATALOG"');
+        expect(content).toContain("CATALOG=$(opencode models opencode-go)");
+      }
     }
   });
 
