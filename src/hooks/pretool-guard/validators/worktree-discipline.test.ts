@@ -106,6 +106,13 @@ describe("validateWorktreeDiscipline", () => {
     expect(validateWorktreeDiscipline(bash("git checkout main", PRIMARY)).passed).toBe(false);
   });
 
+  it("allows legacy branch checkout in a managed worktree", () => {
+    expect(validateWorktreeDiscipline(bash("git checkout pr-294", WORKTREE)).passed).toBe(true);
+    expect(
+      validateWorktreeDiscipline(bash(`git -C ${WORKTREE} checkout pr-294`, PRIMARY)).passed,
+    ).toBe(true);
+  });
+
   it("allows benign git commands outside primary/worktree paths", () => {
     expect(validateWorktreeDiscipline(bash("git add file.ts", "/tmp/build")).passed).toBe(true);
     expect(validateWorktreeDiscipline(bash("git fetch", "/tmp/build")).passed).toBe(true);

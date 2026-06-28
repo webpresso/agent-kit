@@ -40,11 +40,10 @@ const VALIDATOR_NAME = "worktree-discipline";
  * quoted argument (`echo "git commit"`) is matched, and `popd` / dir-stack
  * unwinding is not modeled.
  *
- * Conservative on `git checkout`: only `checkout -b` (new branch) is blocked;
- * bare `git checkout <ref/path>` is left alone so file restores
- * (`git checkout -- file`, `git checkout .`) are never false-positives. Branch
- * *listing* (`git branch`, `-a`, `--list`, …) is allowed; only branch *creation*
- * (`git branch <name>`) is blocked.
+ * Conservative on `git checkout`: branch switches/creation are blocked in
+ * primary checkouts, but explicit file restores (`git checkout -- file`,
+ * `git checkout -- .`) are allowed. Branch *listing* (`git branch`, `-a`,
+ * `--list`, …) is allowed; branch creation/copy/move/reset forms are blocked.
  */
 export function validateWorktreeDiscipline(input: ToolInput): ValidationResult {
   if (process.env.WORKTREE_DISCIPLINE_SKIP === "1") return createSkipResult(VALIDATOR_NAME);
@@ -525,7 +524,7 @@ type ForbiddenOp = { label: string; globals: string; index: number };
 // checkout forms, or branch creation/copy/track forms. Listing/info/delete
 // branch flags are allowed.
 const FORBIDDEN_SUBCOMMAND =
-  "(commit\\b|switch\\b(?!\\s+(?:-h|--help)\\b)|checkout\\s+(?:(?:\\S+\\s+)*)(?:-b\\S*|-B\\S*|--orphan\\b|--track\\b)|branch\\s+(?:(?!-|--)\\S|--track\\b|--no-track\\b|--create-reflog\\b|--force\\b|-f\\b|-c\\b|-C\\b|-m\\b|-M\\b))";
+  "(commit\\b|switch\\b(?!\\s+(?:-h|--help)\\b)|checkout\\s+(?!--(?:\\s|$))(?:(?:\\S+\\s+)*)\\S|branch\\s+(?:(?!-|--)\\S|--track\\b|--no-track\\b|--create-reflog\\b|--force\\b|-f\\b|-c\\b|-C\\b|-m\\b|-M\\b))";
 const FORBIDDEN_OP = new RegExp(`\\bgit\\s+(${GIT_GLOBAL_RUN})${FORBIDDEN_SUBCOMMAND}`, "gu");
 
 function labelFor(subcommand: string): string {
