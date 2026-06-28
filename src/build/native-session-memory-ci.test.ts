@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -127,25 +127,90 @@ describe("native session-memory CI change-scope gating", () => {
     expect(wpCheck).not.toContain("contains(needs.*.result, 'skipped')");
   });
 
-  it("classifies docs, blueprints, and markdown-only PRs as safe to skip", () => {
+  it("classifies docs, blueprints, markdown, and ordinary non-Rust changes as safe to skip", () => {
     expect(nativeScopeFor("docs/bench/session-memory-methodology.md")).toBe("false");
     expect(nativeScopeFor("blueprints/draft/example.md", "README.md")).toBe("false");
     expect(nativeScopeFor(".changeset/native-docs.md")).toBe("false");
+    expect(nativeScopeFor("src/cli/cli.ts")).toBe("false");
+    expect(nativeScopeFor("package.contract.integration.test.ts")).toBe("false");
+    expect(nativeScopeFor("scripts/bench/lib/result-card.ts")).toBe("false");
+    expect(nativeScopeFor("packages/agent-core/src/index.ts")).toBe("false");
+    expect(nativeScopeFor("src/session-memory/native-runtime.ts")).toBe("false");
+    expect(nativeScopeFor("blueprints/draft/native-fixture/package.json")).toBe("false");
   });
 
-  it("classifies native-impact and unknown paths as requiring native checks", () => {
+  it("classifies native-impact paths as requiring native checks", () => {
     expect(nativeScopeFor("native/session-memory-engine/Cargo.toml")).toBe("true");
-    expect(nativeScopeFor("src/session-memory/native-runtime.ts")).toBe("true");
+    expect(
+      nativeScopeFor("native/session-memory-engine/crates/session-memory-core/src/lib.rs"),
+    ).toBe("true");
+    expect(nativeScopeFor("some/new/native_extension.rs")).toBe("true");
     expect(nativeScopeFor("scripts/build-session-memory-native-artifacts.ts")).toBe("true");
     expect(nativeScopeFor("scripts/stage-session-memory-native-artifacts.ts")).toBe("true");
     expect(nativeScopeFor("scripts/build-runtime-binaries.ts")).toBe("true");
+    expect(nativeScopeFor("scripts/stage-plugin-runtime-artifacts.ts")).toBe("true");
     expect(nativeScopeFor("package.json")).toBe("true");
     expect(nativeScopeFor("pnpm-lock.yaml")).toBe("true");
     expect(nativeScopeFor("pnpm-workspace.yaml")).toBe("true");
     expect(nativeScopeFor(".github/workflows/ci.agent-kit.yml")).toBe("true");
+    expect(nativeScopeFor("scripts/ci/change-scope.sh")).toBe("true");
     expect(nativeScopeFor("src/build/native-session-memory-ci.test.ts")).toBe("true");
-    expect(nativeScopeFor("src/cli/cli.ts")).toBe("true");
-    expect(nativeScopeFor("blueprints/draft/native-fixture/package.json")).toBe("true");
+  });
+
+  it("preserves renamed native paths so native-to-non-native moves fail closed", () => {
+    const root = mkdtempSync(join(tmpdir(), "wp-native-scope-rename-test-"));
+    const scriptPath = join(repositoryRoot, "scripts", "ci", "change-scope.sh");
+    const outputPath = join(root, "github-output");
+    try {
+      execFileSync("git", ["init"], { cwd: root, encoding: "utf8" });
+      execFileSync("git", ["config", "user.email", "test@example.com"], { cwd: root });
+      execFileSync("git", ["config", "user.name", "Test User"], { cwd: root });
+
+      const nativeDir = join(root, "native", "session-memory-engine", "crates", "core", "src");
+      mkdirSync(nativeDir, { recursive: true });
+      writeFileSync(join(nativeDir, "lib.rs"), "pub fn old_native() {}\n");
+      execFileSync("git", ["add", "."], { cwd: root });
+      execFileSync("git", ["commit", "-m", "add native file"], { cwd: root, encoding: "utf8" });
+      const baseSha = execFileSync("git", ["rev-parse", "HEAD"], {
+        cwd: root,
+        encoding: "utf8",
+      }).trim();
+
+      const docsDir = join(root, "docs");
+      mkdirSync(docsDir, { recursive: true });
+      renameSync(join(nativeDir, "lib.rs"), join(docsDir, "lib.rs.md"));
+      execFileSync("git", ["add", "-A"], { cwd: root });
+      execFileSync("git", ["commit", "-m", "move native file to docs"], {
+        cwd: root,
+        encoding: "utf8",
+      });
+      const headSha = execFileSync("git", ["rev-parse", "HEAD"], {
+        cwd: root,
+        encoding: "utf8",
+      }).trim();
+
+      execFileSync("bash", [scriptPath], {
+        cwd: root,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          BASE_SHA: baseSha,
+          GITHUB_EVENT_NAME: "pull_request",
+          GITHUB_OUTPUT: outputPath,
+          HEAD_SHA: headSha,
+        },
+      });
+
+      const output = readFileSync(outputPath, "utf8");
+      const nativeScopeOutputs = output
+        .split("\n")
+        .filter((line) => line.startsWith("native_session_memory_changed="));
+      expect(nativeScopeOutputs[nativeScopeOutputs.length - 1]).toBe(
+        "native_session_memory_changed=true",
+      );
+    } finally {
+      rmSync(root, { force: true, recursive: true });
+    }
   });
 
   it("fails closed on an empty or unreadable file list", () => {
@@ -167,7 +232,12 @@ describe("native session-memory CI change-scope gating", () => {
       });
 
       const output = readFileSync(outputPath, "utf8");
-      expect(output).toContain("native_session_memory_changed=true");
+      const nativeScopeOutputs = output
+        .split("\n")
+        .filter((line) => line.startsWith("native_session_memory_changed="));
+      expect(nativeScopeOutputs[nativeScopeOutputs.length - 1]).toBe(
+        "native_session_memory_changed=true",
+      );
       expect(output).toContain("playwright_e2e_present=false");
     } finally {
       rmSync(root, { force: true, recursive: true });

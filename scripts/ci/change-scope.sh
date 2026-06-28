@@ -2,13 +2,25 @@
 set -euo pipefail
 
 # Decide whether expensive optional CI jobs must run.
-# Fail closed: unknown code paths and indeterminate probes require the relevant job.
+# Native session-memory checks are Rust/addon checks. For pull requests, run
+# them only when a changed path can affect those native checks or their CI
+# wiring. Empty/indeterminate diffs and non-PR events still fail closed below.
 
-is_known_non_native_path() {
+is_native_session_memory_impact_path() {
   local path="$1"
   case "$path" in
-    docs/*) return 0 ;;
-    *.md) return 0 ;;
+    native/session-memory-engine/*) return 0 ;;
+    *.rs) return 0 ;;
+    Cargo.toml | Cargo.lock | */Cargo.toml | */Cargo.lock) return 0 ;;
+    rust-toolchain.toml | */rust-toolchain.toml | deny.toml | */deny.toml) return 0 ;;
+    package.json | pnpm-lock.yaml | pnpm-workspace.yaml) return 0 ;;
+    .github/workflows/ci.agent-kit.yml) return 0 ;;
+    scripts/ci/change-scope.sh) return 0 ;;
+    scripts/build-runtime-binaries.ts) return 0 ;;
+    scripts/build-session-memory-native-artifacts.ts) return 0 ;;
+    scripts/stage-plugin-runtime-artifacts.ts) return 0 ;;
+    scripts/stage-session-memory-native-artifacts.ts) return 0 ;;
+    src/build/native-session-memory-ci.test.ts) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -19,7 +31,7 @@ native_session_memory_changed_for_files() {
   while IFS= read -r path; do
     [[ -z "$path" ]] && continue
     saw_file="true"
-    if ! is_known_non_native_path "$path"; then
+    if is_native_session_memory_impact_path "$path"; then
       printf 'true\n'
       return 0
     fi
@@ -76,11 +88,11 @@ if [[ -z "$base_sha" || -z "$head_sha" ]]; then
   exit 1
 fi
 
-changed_files="$(git diff --name-only "$base_sha" "$head_sha")"
+changed_files="$(git diff --name-only --no-renames "$base_sha" "$head_sha")"
 result="$(printf '%s\n' "$changed_files" | native_session_memory_changed_for_files)"
 echo "native_session_memory_changed=$result" >> "$output_path"
 
 echo "Native session-memory scope: native_session_memory_changed=$result"
 if [[ "$result" == "false" ]]; then
-  echo "Native session-memory scope: only known docs/blueprint/markdown paths changed."
+  echo "Native session-memory scope: no native session-memory CI inputs changed."
 fi
