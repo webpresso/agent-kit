@@ -156,6 +156,20 @@ describe("validateWorktreeDiscipline", () => {
     expect(r.passed).toBe(true);
   });
 
+  it("blocks a success-gated multi-cd chain ending in a primary checkout", () => {
+    const r = validateWorktreeDiscipline(
+      bash(`cd /tmp && cd ${PRIMARY} && git commit -m "x"`, "/var"),
+    );
+    expect(r.passed).toBe(false);
+  });
+
+  it("uses the final directory in a success-gated multi-cd chain", () => {
+    const r = validateWorktreeDiscipline(
+      bash(`cd ${PRIMARY} && cd /tmp && git commit -m "x"`, "/var"),
+    );
+    expect(r.passed).toBe(true);
+  });
+
   it("allows quoted `cd '<worktree>' && git commit` when ambient cwd is primary", () => {
     const r = validateWorktreeDiscipline(bash(`cd '${WORKTREE}' && git commit -m "x"`, PRIMARY));
     expect(r.passed).toBe(true);

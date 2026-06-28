@@ -485,7 +485,7 @@ const CD_CHAIN = new RegExp(
   String.raw`(?:^|[;&|(){}]\s*)?((?:\s*${CD_LEADER}${CD_TARGET}\s*&&)+)\s*$`,
   "u",
 );
-const CD_IN_CHAIN = new RegExp(String.raw`(?:^|&&)\s*${CD_LEADER}${CD_TARGET}\s*&&`, "gu");
+const CD_IN_CHAIN = new RegExp(String.raw`(?:^|&&)\s*${CD_LEADER}${CD_TARGET}\s*(?=&&)`, "gu");
 const CWD_WORD = new RegExp(
   String.raw`(?:^|[;{}()&|]\s*|\s+)(?:[A-Za-z_]\w*=\S*\s+)*(?:command\s+|builtin\s+)?(?:cd|pushd)\b`,
   "gu",
