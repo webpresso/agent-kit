@@ -27,6 +27,7 @@ export const TEST_COMMAND_HELP = [
   "  wp test --suite integration",
   "  wp test --package cli2",
   "  wp test --file apps/cli2/src/commands/target.test.ts",
+  "  wp test --file src/a.test.ts src/b.test.ts",
   "  wp test --affected              # staged changed source → colocated tests",
   "  wp test --affected --branch     # changed vs origin/${GITHUB_BASE_REF:-main}",
   "  wp test --package cli2 -- --reporter=dot",
@@ -62,10 +63,10 @@ export function createAkTestCommandConfig(input: AkTestCommandInput): CommandCon
 export function registerTestCommand(cli: CAC, deps: TestCommandDeps = {}): void {
   addAffectedOptions(
     cli
-      .command("test", TEST_COMMAND_HELP)
+      .command("test [...targets]", TEST_COMMAND_HELP)
       .option("--suite <name>", "Run the all, unit, or integration suite")
       .option("--package <name>", "Run tests for a package target")
-      .option("--file <path>", "Run tests for a file target"),
+      .option("--file <path>", "Run tests for a file target (repeatable)"),
   )
     .option("--watch", "Run Vitest in watch mode or vp test:watch for package targets")
     .option("--coverage", "Forward coverage to the underlying test runner")
@@ -79,14 +80,26 @@ export function registerTestCommand(cli: CAC, deps: TestCommandDeps = {}): void 
     .option("--log <mode>", "Forward vp log mode")
     .option("--full", "Print the full raw output instead of the default summary-first view")
     .option("--print-command", "Print the resolved command instead of executing it")
-    .action(async (flags: Record<string, unknown>) => {
+    .action(async (targetsOrFlags: unknown, maybeFlags?: Record<string, unknown>) => {
+      const positionalTargets = Array.isArray(targetsOrFlags)
+        ? targetsOrFlags.filter((target): target is string => typeof target === "string")
+        : [];
+      const flags = (maybeFlags ?? (isRecord(targetsOrFlags) ? targetsOrFlags : {})) as Record<
+        string,
+        unknown
+      >;
       const rawArgv = process.argv.slice(2);
       const affected = Boolean(flags.affected);
       const branch = Boolean(flags.branch);
       const cwd = process.cwd();
       let executionCwd = cwd;
       const packageTargets = toArray(flags.package as string | string[] | undefined);
-      const explicitFiles = toArray(flags.file as string | string[] | undefined);
+      const flagFiles = toArray(flags.file as string | string[] | undefined);
+      if (positionalTargets.length > 0 && flagFiles.length === 0) {
+        console.error("File targets must be passed with --file.");
+        return 1;
+      }
+      const explicitFiles = [...flagFiles, ...positionalTargets];
 
       let resolvedFiles: string[] | undefined =
         explicitFiles.length > 0 ? explicitFiles : undefined;
@@ -218,6 +231,10 @@ function shellQuote(value: string): string {
 function toArray(value: readonly string[] | string | undefined): string[] {
   if (value === undefined) return [];
   return typeof value === "string" ? [value] : [...value];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 function toOptionalNumber(value: unknown): number | undefined {

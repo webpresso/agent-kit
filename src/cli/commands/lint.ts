@@ -15,6 +15,7 @@ export const LINT_COMMAND_HELP = [
   "Examples:",
   "  wp lint",
   "  wp lint --file src/index.ts",
+  "  wp lint --file src/a.ts src/b.ts",
   "  wp lint --affected              # staged JS/TS files only",
   "  wp lint --affected --branch     # changed vs origin/${GITHUB_BASE_REF:-main}",
   "  wp lint --fix",
@@ -33,13 +34,25 @@ interface LintCommandDeps {
 export function registerLintCommand(cli: CAC, deps: LintCommandDeps = {}): void {
   addAffectedOptions(
     cli
-      .command("lint", LINT_COMMAND_HELP)
+      .command("lint [...targets]", LINT_COMMAND_HELP)
       .option("--file <path>", "Lint a file or path target (repeatable)"),
   )
     .option("--fix", "Apply autofixes via vp lint --fix")
     .option("--full", "Print the full raw output instead of the default summary-first view")
-    .action(async (flags: Record<string, unknown>) => {
-      const files = toArray(flags.file as string | string[] | undefined);
+    .action(async (targetsOrFlags: unknown, maybeFlags?: Record<string, unknown>) => {
+      const positionalTargets = Array.isArray(targetsOrFlags)
+        ? targetsOrFlags.filter((target): target is string => typeof target === "string")
+        : [];
+      const flags = (maybeFlags ?? (isRecord(targetsOrFlags) ? targetsOrFlags : {})) as Record<
+        string,
+        unknown
+      >;
+      const flagFiles = toArray(flags.file as string | string[] | undefined);
+      if (positionalTargets.length > 0 && flagFiles.length === 0) {
+        console.error("File targets must be passed with --file.");
+        return 1;
+      }
+      const files = [...flagFiles, ...positionalTargets];
       const affected = Boolean(flags.affected);
       const branch = Boolean(flags.branch);
       const fix = Boolean(flags.fix);
@@ -160,4 +173,8 @@ function filterLintableFiles(files: readonly string[], cwd: string): string[] {
 function toArray(value: readonly string[] | string | undefined): string[] {
   if (value === undefined) return [];
   return typeof value === "string" ? [value] : [...value];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
