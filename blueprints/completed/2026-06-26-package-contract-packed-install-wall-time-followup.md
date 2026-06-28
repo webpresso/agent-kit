@@ -120,3 +120,39 @@ After the optimization, rerun the package-contract test and then the full suite 
 - [x] Fresh hook-runner watch timing is recorded.
 - [x] Fresh full-suite timing is recorded.
 - [x] A truthful lifecycle decision is made from evidence: this slice materially helped, the full suite now passes with recorded timing, and the original under-4-minute target remains unmet for a later slice.
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-28T02:13:00.000Z
+- verified-head: 36be4840391e3b577585a595a70968bfd7d3a100
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID  | Claim                                                                                                                         | Evidence                                                                                   |
+| --- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| C1  | The packed-install hotspot was reduced without dropping the package-contract packed-consumer assertions.                      | repo:package.contract.integration.test.ts                                                  |
+| C2  | Runtime parity probing now supports a reused workspace while preserving parity checks for runtime and umbrella `wp` commands. | repo:src/typecheck/runtime-parity.ts                                                       |
+| C3  | The completed blueprint records full-suite timing and an honest lifecycle decision that the under-4-minute target is unmet.   | repo:blueprints/completed/2026-06-26-package-contract-packed-install-wall-time-followup.md |
+
+### Material Decisions
+
+| ID  | Decision                    | Chosen option                                                                                                              | Rejected alternatives                                                  | Rationale                                                                                    |
+| --- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| D1  | Packed consumer reuse       | Share one real installed packed-consumer fixture across assertions.                                                        | Reinstall for each assertion; mock packaged behavior.                  | Removes duplicate npm work while preserving real tarball/install coverage.                   |
+| D2  | Global parity install shape | Repack the umbrella tarball to point its host runtime dependency at the local runtime tarball, then install once globally. | Force-install runtime and umbrella as competing global owners of `wp`. | Keeps npm ownership deterministic and avoids duplicated global install work.                 |
+| D3  | Lock recovery               | Use repo-scoped owner-token pack locks with stale/dead-owner reclaim.                                                      | Global lock directory; timeout-only waits; blind stale deletion.       | Avoids cross-worktree collisions and prevents cleanup/reclaim from deleting successor locks. |
+
+### Promotion Gates
+
+| Gate      | Command                      | Expected outcome | Last result                      |
+| --------- | ---------------------------- | ---------------- | -------------------------------- |
+| lifecycle | wp audit blueprint-lifecycle | pass             | pass at 2026-06-28T02:13:00.000Z |
+
+### Residual Unknowns
+
+None.
