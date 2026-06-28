@@ -16,7 +16,7 @@ tags: [performance, tests, ci]
 
 **Goal:** Reduce local and CI test wall-time while keeping every PR on the full required suite.
 
-**Final outcome:** The scoped reductions in this blueprint shipped on `main` via PR #276 and materially improved the suite, but the original under-4-minute full-suite target was not met. The remaining packed-install bottleneck is tracked in `blueprints/completed/2026-06-26-package-contract-packed-install-wall-time-followup.md`.
+**Final outcome:** The scoped reductions in this blueprint shipped on `main` via PR #276 and materially improved the suite, but the original under-4-minute full-suite target was not met. The remaining packed-install bottleneck was split to, reduced in, and closed by `blueprints/completed/2026-06-26-package-contract-packed-install-wall-time-followup.md`; the suite still remains above the original under-4-minute target.
 
 ## Planning Summary
 
@@ -119,7 +119,7 @@ Configure Vitest to use fork isolation with bounded file workers: CI max workers
 
 - [x] Subprocess tests are no longer globally serialized.
 - [x] CI workers capped at 2 and local workers capped at 3.
-- [ ] Full suite passes repeatedly without timeout increases. Blocked by remaining wall-time target miss and `src/hooks/pretool-guard/runner.subprocess.test.ts` evidence below; package contract now passes but remains ~5 minutes by itself.
+- [ ] Full suite passes repeatedly under the original target without timeout increases. Not achieved in this slice; the PR #283 follow-up later reduced the package-contract hotspot and recorded `vp run test` passing in `521.68s`, so the under-4-minute target remains future work rather than an unresolved ambiguity here.
 
 #### [qa] Task 2.2: Parallelize local QA after build
 
@@ -195,15 +195,15 @@ Run targeted and broad verification, including repeated full suite attempts afte
 
 ## Verification Gates
 
-| Gate           | Command                                                                                                                   | Success Criteria                                         | Last result                                                                              |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Targeted tests | `pnpm exec vitest run scripts/bench/lib/claim-surfaces.test.ts src/build/native-session-memory-ci.test.ts --project unit` | Passes quickly without unit timeout                      | pass (32.07s real on 2026-06-26)                                                         |
-| Full tests     | `vp run test`                                                                                                             | Passes under 4 minutes after warmup                      | not rerun; impossible while `package.contract.integration.test.ts` alone exceeds 245.02s |
-| Stability      | `vp run test` repeated 3 times                                                                                            | All pass; no reproducible shared-state races             | deferred to follow-up; suite target still blocked by packed-install wall time            |
-| Type safety    | `vp run typecheck`                                                                                                        | Zero errors                                              | pass (20.16s real on 2026-06-26)                                                         |
-| Format         | `wp format --check`                                                                                                       | Zero formatting violations                               | pending final blueprint-only check                                                       |
-| Lint           | `vp run lint`                                                                                                             | Zero lint violations                                     | pass (16.90s real on 2026-06-26)                                                         |
-| CI             | PR #276 Actions                                                                                                           | Full required suite passes; timing compared before/after | pass (merged 2026-06-26 with required checks green)                                      |
+| Gate           | Command                                                                                                                   | Success Criteria                                         | Last result                                                                   |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Targeted tests | `pnpm exec vitest run scripts/bench/lib/claim-surfaces.test.ts src/build/native-session-memory-ci.test.ts --project unit` | Passes quickly without unit timeout                      | pass (32.07s real on 2026-06-26)                                              |
+| Full tests     | `vp run test`                                                                                                             | Passes under 4 minutes after warmup                      | follow-up rerun passed in 521.68s; original under-4 target still unmet        |
+| Stability      | `vp run test` repeated 3 times                                                                                            | All pass; no reproducible shared-state races             | deferred to follow-up; suite target still blocked by packed-install wall time |
+| Type safety    | `vp run typecheck`                                                                                                        | Zero errors                                              | pass (20.16s real on 2026-06-26)                                              |
+| Format         | `wp format --check`                                                                                                       | Zero formatting violations                               | pending final blueprint-only check                                            |
+| Lint           | `vp run lint`                                                                                                             | Zero lint violations                                     | pass (16.90s real on 2026-06-26)                                              |
+| CI             | PR #276 Actions                                                                                                           | Full required suite passes; timing compared before/after | pass (merged 2026-06-26 with required checks green)                           |
 
 ## Cross-Plan References
 
@@ -255,7 +255,7 @@ Run targeted and broad verification, including repeated full suite attempts afte
 - `bun scripts/check-workflow-action-pins.ts .` -> pass.
 - Changed-file format check -> pass. Full `wp format --check` remains blocked by pre-existing non-task formatting drift in six files.
 - `vp run test` with bounded subprocess workers exposed reproducible shared-state/time bottlenecks instead of passing under 4 minutes: package/release subprocess files and `src/hooks/pretool-guard/runner.subprocess.test.ts`. A tiny `serial-subprocess` project isolates package/release files; hook runner still fails alone because spawned hook binary exceeds its internal 8s timeout under this environment.
-- `pnpm exec vitest run package.contract.integration.test.ts --project serial-subprocess` -> pass (6 tests, 305.37s). With hook-style `GIT_DIR`/`GIT_WORK_TREE` inherited, the same contract passes (6 tests, 301.03s) after hermetic test setup strips Git control variables. The package contract uses packed tarball reuse and skips redundant dist rebuilds when Vitest globalSetup already built artifacts, but native packed installs remain the dominant wall-time bottleneck for a follow-up.
+- `pnpm exec vitest run package.contract.integration.test.ts --project serial-subprocess` -> pass (6 tests, 305.37s). With hook-style `GIT_DIR`/`GIT_WORK_TREE` inherited, the same contract passes (6 tests, 301.03s) after hermetic test setup strips Git control variables. The package contract uses packed tarball reuse and skips redundant dist rebuilds when Vitest globalSetup already built artifacts; at this checkpoint, native packed installs were the dominant wall-time bottleneck split to the follow-up.
 
 ## Verification Notes (2026-06-26 closeout)
 
@@ -270,6 +270,11 @@ Run targeted and broad verification, including repeated full suite attempts afte
 - Lifecycle decision:
   - This blueprint is completed as the truthful record of the landed reductions and their verification.
   - The unmet under-4-minute target is explicitly continued in `blueprints/completed/2026-06-26-package-contract-packed-install-wall-time-followup.md`.
+
+## Post-follow-up reconciliation (2026-06-28)
+
+- PR #283 completed the packed-install follow-up and reduced the `package.contract.integration.test.ts --project serial-subprocess` path from the closeout timeout/baseline to a final `./bin/wp test --file package.contract.integration.test.ts --full` pass in `173.88s`.
+- The same follow-up recorded the missing full-suite evidence: `vp run test` passed in `521.68s`, so this parent blueprint remains truthful: the shipped reductions helped, but the original under-4-minute suite target is still not met.
 
 ## Trust Dossier
 
