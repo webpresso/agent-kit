@@ -89,6 +89,26 @@ jobs:
             echo "- packages_token_ok: ${{ steps.packages.outputs.packages_token_ok }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
+  ci-change-scope:
+    name: CI change scope
+    runs-on: ubuntu-latest
+    needs: auth-preflight
+    if: ${{ needs.auth-preflight.outputs.repo_access_ok == 'true' && needs.auth-preflight.outputs.action_downloads_ok == 'true' && needs.auth-preflight.outputs.packages_token_ok == 'true' }}
+    outputs:
+      native_session_memory_changed: ${{ steps.scope.outputs.native_session_memory_changed }}
+      playwright_e2e_present: ${{ steps.scope.outputs.playwright_e2e_present }}
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          fetch-depth: 0
+      - name: Classify CI change scope
+        id: scope
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: scripts/ci/change-scope.sh
+
   blueprint-gate:
     name: Blueprint gate
     if: ${{ github.event_name == 'pull_request' && !startsWith(github.head_ref, 'changeset-release/') && needs.auth-preflight.outputs.repo_access_ok == 'true' && needs.auth-preflight.outputs.action_downloads_ok == 'true' && needs.auth-preflight.outputs.packages_token_ok == 'true' }}
@@ -140,8 +160,8 @@ jobs:
   native-session-memory:
     name: Native session-memory
     runs-on: ubuntu-latest
-    needs: auth-preflight
-    if: ${{ needs.auth-preflight.outputs.repo_access_ok == 'true' && needs.auth-preflight.outputs.action_downloads_ok == 'true' && needs.auth-preflight.outputs.packages_token_ok == 'true' }}
+    needs: [auth-preflight, ci-change-scope]
+    if: ${{ needs.auth-preflight.outputs.repo_access_ok == 'true' && needs.auth-preflight.outputs.action_downloads_ok == 'true' && needs.auth-preflight.outputs.packages_token_ok == 'true' && (github.event_name != 'pull_request' || needs.ci-change-scope.outputs.native_session_memory_changed == 'true') }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
@@ -253,8 +273,8 @@ jobs:
   e2e:
     name: E2E
     runs-on: ubuntu-latest
-    needs: auth-preflight
-    if: ${{ needs.auth-preflight.outputs.repo_access_ok == 'true' && needs.auth-preflight.outputs.action_downloads_ok == 'true' && needs.auth-preflight.outputs.packages_token_ok == 'true' }}
+    needs: [auth-preflight, ci-change-scope]
+    if: ${{ needs.auth-preflight.outputs.repo_access_ok == 'true' && needs.auth-preflight.outputs.action_downloads_ok == 'true' && needs.auth-preflight.outputs.packages_token_ok == 'true' && needs.ci-change-scope.outputs.playwright_e2e_present == 'true' }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
@@ -425,6 +445,7 @@ jobs:
     if: always()
     needs:
       [
+        ci-change-scope,
         lint-typecheck,
         test,
         native-session-memory,
