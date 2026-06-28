@@ -1,6 +1,6 @@
 ---
 type: research
-last_updated: "2026-06-13"
+last_updated: "2026-06-28"
 ---
 
 # Markdown fact-check and package references
@@ -15,9 +15,12 @@ If you just want to use the product, read:
 
 ## Current package identity
 
-- Source package in this repo: `@webpresso/agent-kit` `0.34.5`
-- Canonical release contract for this repo is `@webpresso/agent-kit`
-- Current source/public npm exports use `@webpresso/agent-kit/*`
+- Source packages in this repo currently publish as:
+  - `@webpresso/agent-kit` `2.4.2` (internal `wp` engine + public subpaths)
+  - `@webpresso/agent-config` `0.3.0` (consumer-installed package surface)
+  - `@webpresso/agent-core` `0.1.0` (shared low-level leaf; consumers should not import it directly)
+- Canonical consumer-facing package surface is `@webpresso/agent-config` for config presets and shared low-level primitives re-exported under `@webpresso/agent-config/*`.
+- Canonical executable/CLI package for this repo remains `@webpresso/agent-kit` (`wp`).
 - `webpresso` (unscoped) is retired for this repo and is not a supported package identity
 
 ## Current doc truths
@@ -31,7 +34,7 @@ If you just want to use the product, read:
   selected package satisfies the repo's published semver range and warns on
   mismatch; `vp run setup:agent` remains the repo script facade for teams that
   want one command.
-- Config/library subpaths rely on Node package `exports`.
+- Config/library subpaths rely on Node package `exports`, including the new `@webpresso/agent-config/{repo-root,process,e2e,deploy,dev}` re-exports backed by `@webpresso/agent-core`.
 - Workspace catalog versions come from pnpm catalogs.
 - Zod is on v4 in this workspace.
 
