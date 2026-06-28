@@ -16,7 +16,7 @@ tags: [performance, tests, ci]
 
 **Goal:** Reduce local and CI test wall-time while keeping every PR on the full required suite.
 
-**Final outcome:** The scoped reductions in this blueprint shipped on `main` via PR #276 and materially improved the suite, but the original under-4-minute full-suite target was not met. The remaining packed-install bottleneck is tracked in `blueprints/draft/2026-06-26-package-contract-packed-install-wall-time-followup.md`.
+**Final outcome:** The scoped reductions in this blueprint shipped on `main` via PR #276 and materially improved the suite, but the original under-4-minute full-suite target was not met. The remaining packed-install bottleneck is tracked in `blueprints/completed/2026-06-26-package-contract-packed-install-wall-time-followup.md`.
 
 ## Planning Summary
 
@@ -189,7 +189,7 @@ Run targeted and broad verification, including repeated full suite attempts afte
 - [x] Scoped direct Vitest target passes: `pnpm exec vitest run scripts/bench/lib/claim-surfaces.test.ts src/build/native-session-memory-ci.test.ts --project unit` (13 tests, 6.99s Vitest duration). `vp run test -- <file>` selected broader project tests in this repo and was stopped.
 - [x] Fresh 2026-06-26 evidence captured after the merged work landed on local `main`: targeted unit coverage passes in 32.07s real, `runner.subprocess.test.ts` passes alone in 61.47s real, `vp run typecheck` passes in 20.16s real, and `vp run lint` passes in 16.90s real.
 - [x] Residual blocker confirmed: `package.contract.integration.test.ts --project serial-subprocess` exceeded a 245.02s timebox by itself, proving the original under-4-minute full-suite target is still unmet even after the shipped reductions.
-- [x] Remaining packed-install work was split into follow-up blueprint `blueprints/draft/2026-06-26-package-contract-packed-install-wall-time-followup.md`, so this blueprint closes without overstating the original target.
+- [x] Remaining packed-install work was split into follow-up blueprint `blueprints/completed/2026-06-26-package-contract-packed-install-wall-time-followup.md`, so this blueprint closes without overstating the original target.
 
 ---
 
@@ -210,7 +210,7 @@ Run targeted and broad verification, including repeated full suite attempts afte
 | Type      | Blueprint                                                                                          | Relationship                                                                                                          |
 | --------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Related   | `blueprints/draft/subprocess-test-pool-isolation-via-subprocess-test-ts-suffix-vitest-projects.md` | Prior/related approach for subprocess test pool isolation; reuse only if reproducible races require serial isolation. |
-| Follow-up | `blueprints/draft/2026-06-26-package-contract-packed-install-wall-time-followup.md`                | Owns the remaining packed-install bottleneck that keeps the suite above the original under-4-minute target.           |
+| Follow-up | `blueprints/completed/2026-06-26-package-contract-packed-install-wall-time-followup.md`            | Owns the remaining packed-install bottleneck that keeps the suite above the original under-4-minute target.           |
 
 ## Edge Cases and Error Handling
 
@@ -269,7 +269,7 @@ Run targeted and broad verification, including repeated full suite attempts afte
   - `package.contract.integration.test.ts --project serial-subprocess` was re-run under a 245-second timebox and hit `EXIT=TIMEOUT` at `ELAPSED_SECONDS=245.02`, so the remaining packed-install path still consumes more than the blueprint's entire under-4-minute full-suite budget by itself.
 - Lifecycle decision:
   - This blueprint is completed as the truthful record of the landed reductions and their verification.
-  - The unmet under-4-minute target is explicitly continued in `blueprints/draft/2026-06-26-package-contract-packed-install-wall-time-followup.md`.
+  - The unmet under-4-minute target is explicitly continued in `blueprints/completed/2026-06-26-package-contract-packed-install-wall-time-followup.md`.
 
 ## Trust Dossier
 
@@ -283,11 +283,11 @@ Run targeted and broad verification, including repeated full suite attempts afte
 
 ### Material Claims
 
-| ID  | Claim                                                                                                                          | Evidence                                                                               |
-| --- | ------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| C1  | PR #276 landed the wall-time reductions on `main` and this completed blueprint is now the durable historical record.           | repo:blueprints/completed/2026-06-25-reduce-test-wall-time.md                          |
-| C2  | The original under-4-minute suite target remains unmet because `package.contract.integration.test.ts` is still the bottleneck. | repo:blueprints/completed/2026-06-25-reduce-test-wall-time.md                          |
-| C3  | The remaining packed-install work now has explicit follow-up ownership instead of staying ambiguous in a completed blueprint.  | repo:blueprints/draft/2026-06-26-package-contract-packed-install-wall-time-followup.md |
+| ID  | Claim                                                                                                                          | Evidence                                                                                   |
+| --- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| C1  | PR #276 landed the wall-time reductions on `main` and this completed blueprint is now the durable historical record.           | repo:blueprints/completed/2026-06-25-reduce-test-wall-time.md                              |
+| C2  | The original under-4-minute suite target remains unmet because `package.contract.integration.test.ts` is still the bottleneck. | repo:blueprints/completed/2026-06-25-reduce-test-wall-time.md                              |
+| C3  | The remaining packed-install work now has explicit follow-up ownership instead of staying ambiguous in a completed blueprint.  | repo:blueprints/completed/2026-06-26-package-contract-packed-install-wall-time-followup.md |
 
 ### Material Decisions
 
