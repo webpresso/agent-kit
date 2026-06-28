@@ -1,0 +1,94 @@
+{
+  "name": "@webpresso/agent-core",
+  "version": "0.0.0",
+  "private": false,
+  "description": "Shared low-level primitives for webpresso agent packages: repo-root discovery, process-tree termination, e2e port/health + fail-closed secret-env, release-version validation, workspace-binary resolution. Pure Node, no runtime dependencies.",
+  "homepage": "https://github.com/webpresso/agent-kit#readme",
+  "bugs": {
+    "url": "https://github.com/webpresso/agent-kit/issues"
+  },
+  "license": "Elastic-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webpresso/agent-kit.git"
+  },
+  "files": [
+    "dist/esm",
+    "!dist/**/*.map",
+    "!dist/**/*.test.*",
+    "LICENSE",
+    "README.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./deploy": {
+      "import": {
+        "types": "./dist/esm/deploy/index.d.ts",
+        "default": "./dist/esm/deploy/index.js"
+      }
+    },
+    "./dev": {
+      "import": {
+        "types": "./dist/esm/dev/index.d.ts",
+        "default": "./dist/esm/dev/index.js"
+      }
+    },
+    "./e2e": {
+      "import": {
+        "types": "./dist/esm/e2e/index.d.ts",
+        "default": "./dist/esm/e2e/index.js"
+      }
+    },
+    "./process": {
+      "import": {
+        "types": "./dist/esm/process/index.d.ts",
+        "default": "./dist/esm/process/index.js"
+      }
+    },
+    "./repo-root": {
+      "import": {
+        "types": "./dist/esm/repo-root/index.d.ts",
+        "default": "./dist/esm/repo-root/index.js"
+      }
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "tshy",
+    "prepublishOnly": "vp run build",
+    "typecheck": "tsc --noEmit",
+    "lint:pkg": "publint && attw --pack . --profile esm-only"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "catalog:",
+    "@types/node": "catalog:",
+    "publint": "catalog:",
+    "tshy": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "tshy": {
+    "dialects": [
+      "esm"
+    ],
+    "exclude": [
+      "src/**/*.test.ts",
+      "src/**/__fixtures__/**"
+    ],
+    "exports": {
+      "./deploy": "./src/deploy/index.ts",
+      "./dev": "./src/dev/index.ts",
+      "./e2e": "./src/e2e/index.ts",
+      "./process": "./src/process/index.ts",
+      "./repo-root": "./src/repo-root/index.ts"
+    },
+    "selfLink": false
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

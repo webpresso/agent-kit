@@ -31,7 +31,12 @@ the package contract.
   `@webpresso/agent-config/tsconfig/base.json`,
   `@webpresso/agent-config/vitest/node`,
   `@webpresso/agent-config/stryker`, and
-  `@webpresso/agent-config/workers-test`. Do not tell consumers to add
+  `@webpresso/agent-config/workers-test`. `@webpresso/agent-config` also
+  re-exports shared low-level primitives under
+  `@webpresso/agent-config/repo-root`, `/process`, `/e2e`, `/deploy`, and
+  `/dev` (sourced from the internal `@webpresso/agent-core` leaf). Consumers
+  import these from `@webpresso/agent-config` and never depend on
+  `@webpresso/agent-core` directly. Do not tell consumers to add
   `@webpresso/agent-kit` as a project dependency, and do not tell them to
   install retired split `@webpresso/agent-*` config packages.
 - **No `.mjs` source files.** Write `.ts` with a Bun/Node shebang or as a
