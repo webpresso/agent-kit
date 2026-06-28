@@ -164,7 +164,7 @@ function splitShellSegments(command: string): string[] {
       escaped = false;
       continue;
     }
-    if (quote === '"' && ch === "\\") {
+    if (quote !== "'" && ch === "\\") {
       escaped = true;
       continue;
     }
@@ -282,6 +282,43 @@ function quotedPayloads(command: string, prefix: RegExp): string[] {
   return payloads;
 }
 
+function payloadContainsGitMutation(payload: string): boolean {
+  return payload.split(/&&|;|\|\||[(){}]/u).some(segmentContainsGitMutation);
+}
+
+function hasReinterpretedGitMutation(command: string): boolean {
+  for (const segment of splitShellSegments(command)) {
+    const words = shellWords(segment);
+    if (words === "ambiguous") continue;
+
+    for (let i = 0; i < words.length; i += 1) {
+      const word = words[i];
+      if (!word) continue;
+
+      if (["bash", "sh", "zsh"].includes(basename(word))) {
+        const flagIndex = words.findIndex(
+          (candidate, candidateIndex) =>
+            candidateIndex > i &&
+            (candidate === "-c" || candidate === "-lc" || candidate.endsWith("c")),
+        );
+        if (flagIndex !== -1 && payloadContainsGitMutation(words.slice(flagIndex + 1).join(" ")))
+          return true;
+      }
+
+      if (word === "eval" && payloadContainsGitMutation(words.slice(i + 1).join(" "))) return true;
+
+      if (word === "env") {
+        const splitIndex = words.findIndex(
+          (candidate, candidateIndex) => candidateIndex > i && candidate === "-S",
+        );
+        if (splitIndex !== -1 && payloadContainsGitMutation(words.slice(splitIndex + 1).join(" ")))
+          return true;
+      }
+    }
+  }
+  return false;
+}
+
 const BRANCH_ACTION_FLAGS = new Set([
   "--track",
   "--no-track",
@@ -325,10 +362,10 @@ function checkoutArgsMutate(args: string[]): boolean {
   if (args.some((arg) => arg === "-b" || arg === "-B" || arg === "--orphan" || arg === "--track"))
     return true;
   if (args.some((arg) => arg.startsWith("-b") || arg.startsWith("-B"))) return true;
+  if (args.includes("--")) return false;
 
   for (const arg of args) {
     if (!arg) continue;
-    if (arg === "--") return false;
     if (!arg.startsWith("-")) return true;
   }
   return false;
@@ -366,18 +403,20 @@ function branchArgsMutate(args: string[]): boolean {
 }
 
 function hasAmbiguousGitMutationSyntax(command: string): boolean {
-  // Nested shells/eval/env -S re-interpret quoted code; do not try to model their cwd.
+  // Nested shells/eval/env -S re-interpret code; do not try to model their cwd.
+  if (hasReinterpretedGitMutation(command)) return true;
+
   for (const payload of quotedPayloads(
     command,
     /\b(?:bash|sh|zsh)\b[^;&|(){}]*(?:-c|-lc)\s+(["'])/gu,
   )) {
-    if (payload.split(/&&|;|\|\||[(){}]/u).some(segmentContainsGitMutation)) return true;
+    if (payloadContainsGitMutation(payload)) return true;
   }
   for (const payload of quotedPayloads(command, /\beval\s+(["'])/gu)) {
-    if (payload.split(/&&|;|\|\||[(){}]/u).some(segmentContainsGitMutation)) return true;
+    if (payloadContainsGitMutation(payload)) return true;
   }
   for (const payload of quotedPayloads(command, /\benv\b[^;&|(){}]*\s-S\s+(["'])/gu)) {
-    if (payload.split(/&&|;|\|\||[(){}]/u).some(segmentContainsGitMutation)) return true;
+    if (payloadContainsGitMutation(payload)) return true;
   }
 
   for (const match of command.matchAll(/(?:^|[;&|({]\s*)\$\([^)]*\)([^;&|(){}]*)/gu)) {
@@ -421,12 +460,14 @@ const DIR_TOKEN = String.raw`(?:"[^"]+"|'[^']+'|[^\s;&|(){}]+)`;
 const QUOTED_ARG = String.raw`(?:"[^"]+"|'[^']+'|\S+)`;
 const CD_TARGET = String.raw`(?:--\s+)?(${DIR_TOKEN}|-)`;
 const CD_LEADER = String.raw`(?:[A-Za-z_]\w*=\S*\s+)*(?:command\s+|builtin\s+)?(?:cd|pushd)\s+`;
-const CD_START = String.raw`(?:^|&&|\(|\{)`;
 // A success-gated cwd chain that directly governs the forbidden git op. We only
 // trust cwd changes in this shape; `;`, `||`, skipped/failed `cd`, quoted spoof
 // text, and other unsupported shell control flow fail closed instead.
-const CD_CHAIN = new RegExp(String.raw`(?:${CD_START}\s*${CD_LEADER}${CD_TARGET}\s*&&\s*)+$`, "u");
-const CD_IN_CHAIN = new RegExp(String.raw`${CD_START}\s*${CD_LEADER}${CD_TARGET}\s*&&`, "gu");
+const CD_CHAIN = new RegExp(
+  String.raw`(?:^|[;&|(){}]\s*)?((?:\s*${CD_LEADER}${CD_TARGET}\s*&&)+)\s*$`,
+  "u",
+);
+const CD_IN_CHAIN = new RegExp(String.raw`(?:^|&&)\s*${CD_LEADER}${CD_TARGET}\s*&&`, "gu");
 const CWD_WORD = new RegExp(
   String.raw`(?:^|[;{}()&|]\s*|\s+)(?:[A-Za-z_]\w*=\S*\s+)*(?:command\s+|builtin\s+)?(?:cd|pushd)\b`,
   "gu",
@@ -444,7 +485,7 @@ function isInsideSingleOrDoubleQuotes(command: string, index: number): boolean {
       escaped = false;
       continue;
     }
-    if (quote === '"' && ch === "\\") {
+    if (quote !== "'" && ch === "\\") {
       escaped = true;
       continue;
     }
@@ -469,6 +510,13 @@ function applyDir(token: string | undefined, cwd: string): { cwd: string } | "am
   return { cwd: resolveDir(token, cwd) };
 }
 
+function isTrustedCwdChainStart(commandPrefix: string, chainStart: number): boolean {
+  if (isInsideSingleOrDoubleQuotes(commandPrefix, chainStart)) return false;
+  if (chainStart === 0) return true;
+  const before = commandPrefix.slice(0, chainStart).trimEnd();
+  return before.endsWith("&&") || before.endsWith("(") || before.endsWith("{");
+}
+
 function applySuccessGatedCwdChain(commandPrefix: string, baseCwd: string): EffectiveCwd {
   const chain = CD_CHAIN.exec(commandPrefix);
   const chainStart = chain?.index ?? commandPrefix.length;
@@ -476,9 +524,10 @@ function applySuccessGatedCwdChain(commandPrefix: string, baseCwd: string): Effe
   // we cannot prove the chain governs the op. Fail closed.
   if (hasUnquotedCwdCommand(commandPrefix.slice(0, chainStart))) return { ambiguous: true };
   if (!chain) return { ambiguous: false, cwd: baseCwd };
+  if (!isTrustedCwdChainStart(commandPrefix, chainStart)) return { ambiguous: true };
 
   let cwd = baseCwd;
-  for (const m of chain[0].matchAll(CD_IN_CHAIN)) {
+  for (const m of (chain[1] ?? chain[0]).matchAll(CD_IN_CHAIN)) {
     const next = applyDir(m[1], cwd);
     if (next === "ambiguous") return { ambiguous: true };
     cwd = next.cwd;
@@ -539,7 +588,11 @@ function forbiddenGitOps(command: string): ForbiddenOp[] {
   if (!/\bgit\b/.test(command)) return [];
   const ops: ForbiddenOp[] = [];
   for (const m of command.matchAll(FORBIDDEN_OP)) {
-    ops.push({ label: labelFor(m[2] ?? ""), globals: m[1] ?? "", index: m.index ?? 0 });
+    const subcommand = m[2] ?? "";
+    const words = shellWords(subcommand);
+    if (words !== "ambiguous" && words[0] === "checkout" && !checkoutArgsMutate(words.slice(1)))
+      continue;
+    ops.push({ label: labelFor(subcommand), globals: m[1] ?? "", index: m.index ?? 0 });
   }
   return ops;
 }

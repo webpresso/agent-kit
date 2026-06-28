@@ -99,6 +99,9 @@ describe("validateWorktreeDiscipline", () => {
   it("allows a file restore `git checkout -- file.ts` in a primary checkout", () => {
     expect(validateWorktreeDiscipline(bash("git checkout -- file.ts", PRIMARY)).passed).toBe(true);
     expect(validateWorktreeDiscipline(bash("git checkout -- .", PRIMARY)).passed).toBe(true);
+    expect(validateWorktreeDiscipline(bash("git checkout HEAD -- README.md", PRIMARY)).passed).toBe(
+      true,
+    );
   });
 
   it("blocks legacy branch checkout in a primary checkout", () => {
@@ -134,6 +137,13 @@ describe("validateWorktreeDiscipline", () => {
 
   it("allows `cd <worktree> && git commit` even when ambient cwd is primary", () => {
     const r = validateWorktreeDiscipline(bash(`cd ${WORKTREE} && git commit -m "x"`, PRIMARY));
+    expect(r.passed).toBe(true);
+  });
+
+  it("allows a success-gated multi-cd chain ending in a managed worktree", () => {
+    const r = validateWorktreeDiscipline(
+      bash(`cd /tmp && cd ${WORKTREE} && git commit -m "x"`, PRIMARY),
+    );
     expect(r.passed).toBe(true);
   });
 
@@ -437,10 +447,25 @@ describe("validateWorktreeDiscipline", () => {
       validateWorktreeDiscipline(bash(`sh -c 'cd ${PRIMARY} && git commit -m x'`, "/tmp")).passed,
     ).toBe(false);
     expect(
+      validateWorktreeDiscipline(bash(`/bin/bash -lc $'cd ${PRIMARY} && git commit -m x'`, "/tmp"))
+        .passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(
+        bash(String.raw`/bin/bash -c cd\ ${PRIMARY}\ \&\&\ git\ commit\ -m\ x`, "/tmp"),
+      ).passed,
+    ).toBe(false);
+    expect(
       validateWorktreeDiscipline(bash(`eval 'cd ${PRIMARY} && git commit -m x'`, "/tmp")).passed,
     ).toBe(false);
     expect(
       validateWorktreeDiscipline(bash(`eval 'cd ${PRIMARY} && "git" commit -m x'`, "/tmp")).passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(bash(String.raw`eval git\ commit\ -m\ x`, PRIMARY)).passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(bash(String.raw`env -S git\ commit\ -m\ x`, PRIMARY)).passed,
     ).toBe(false);
   });
 
