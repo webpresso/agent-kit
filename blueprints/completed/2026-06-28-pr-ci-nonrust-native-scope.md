@@ -57,7 +57,7 @@ The prior slice added the required-check-safe `ci-change-scope` job and skipped 
 - [x] Empty/unreadable diff and non-PR events still fail closed.
 - [x] PR CI remains required-check-safe via `ci-change-scope` + `wp-check` aggregation.
 - [x] Outside voice review blocker for native-file renames was fixed and covered by regression test.
-- [ ] PR CI `WP check` passes after push.
+- [x] PR CI `WP check` passes after push.
 
 ## Verification evidence
 
@@ -73,7 +73,9 @@ Local validation on 2026-06-28:
 - `vp run blueprints:check` -> pass.
 - `vp run typecheck` -> pass.
 - `vp run lint` -> pass (with pre-existing `src/cli/commands/init/scaffolders/rtk/index.ts:94` oxlint parse advisory, command exit 0).
-- `./bin/wp audit guardrails` -> pending after trust-dossier metadata refresh.
+- `./bin/wp audit guardrails` -> pass after trust-dossier metadata refresh.
+- PR #306 GitHub checks -> pass on run `28311109109`; `E2E` skipped by design/config; `WP check` passed.
+- PR #306 merged at 2026-06-28T04:26:38Z as merge commit `48554354056d4760caf5f56d785e4af95d018f8c`.
 
 ## Trust Dossier
 
