@@ -108,6 +108,14 @@ describe("validateWorktreeDiscipline", () => {
     expect(validateWorktreeDiscipline(bash("git checkout pr-294", PRIMARY)).passed).toBe(false);
     expect(validateWorktreeDiscipline(bash("git checkout main", PRIMARY)).passed).toBe(false);
     expect(validateWorktreeDiscipline(bash("git checkout -", PRIMARY)).passed).toBe(false);
+    expect(validateWorktreeDiscipline(bash("git checkout -q -", PRIMARY)).passed).toBe(false);
+    expect(validateWorktreeDiscipline(bash("git checkout --quiet -", PRIMARY)).passed).toBe(false);
+    expect(validateWorktreeDiscipline(bash("git checkout -q --detach", PRIMARY)).passed).toBe(
+      false,
+    );
+    expect(validateWorktreeDiscipline(bash("git checkout --detach -q", PRIMARY)).passed).toBe(
+      false,
+    );
   });
 
   it("allows legacy branch checkout in a managed worktree", () => {

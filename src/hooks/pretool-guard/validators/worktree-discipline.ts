@@ -119,7 +119,7 @@ function hasMutationAliasConfig(globals: string): boolean {
   // Inline aliases can re-enter shell parsing (`!…`), quote-concatenate argv, or
   // hide the git executable via command substitution. Treat alias definitions as
   // unsupported in this safety guard rather than attempting to prove them safe.
-  return /(?:^|\s)-c(?:\s+|[^\s]*?)alias\./u.test(globals);
+  return /(?:^|\s)(?:-c(?:\s+|[^\s]*?)alias\.|--config-env(?:=|\s+)alias\.)/u.test(globals);
 }
 
 function shellWords(fragment: string): string[] | "ambiguous" {
@@ -244,7 +244,14 @@ function hasEnvTargetOverrideBeforeGit(words: string[], gitIndex: number): boole
   for (let i = 0; i < gitIndex; i += 1) {
     const word = words[i];
     if (!word) continue;
-    if (word.startsWith("GIT_DIR=") || word.startsWith("GIT_WORK_TREE=")) return true;
+    if (
+      word.startsWith("GIT_DIR=") ||
+      word.startsWith("GIT_WORK_TREE=") ||
+      word.startsWith("GIT_CONFIG_COUNT=") ||
+      /^GIT_CONFIG_KEY_\d+=alias\./u.test(word) ||
+      /^GIT_CONFIG_VALUE_\d+=/u.test(word)
+    )
+      return true;
     if (word === "env") continue;
     if (word === "-C" && i + 1 < gitIndex) return true;
     if (word.startsWith("-C") && word.length > 2) return true;
@@ -358,15 +365,20 @@ const BRANCH_READONLY_OR_DELETE_FLAGS = new Set([
 ]);
 
 function checkoutArgsMutate(args: string[]): boolean {
-  if (args.length === 0) return false;
-  if (args[0] === "--") return false;
-  if (args[0] === "-") return true;
-  if (args.some((arg) => arg === "-b" || arg === "-B" || arg === "--orphan" || arg === "--track"))
+  const nonQuietArgs = args.filter((arg) => arg !== "-q" && arg !== "--quiet");
+  if (nonQuietArgs.length === 0) return false;
+  if (nonQuietArgs[0] === "--") return false;
+  if (nonQuietArgs[0] === "-" || nonQuietArgs.includes("--detach")) return true;
+  if (
+    nonQuietArgs.some(
+      (arg) => arg === "-b" || arg === "-B" || arg === "--orphan" || arg === "--track",
+    )
+  )
     return true;
-  if (args.some((arg) => arg.startsWith("-b") || arg.startsWith("-B"))) return true;
-  if (args.includes("--")) return false;
+  if (nonQuietArgs.some((arg) => arg.startsWith("-b") || arg.startsWith("-B"))) return true;
+  if (nonQuietArgs.includes("--")) return false;
 
-  for (const arg of args) {
+  for (const arg of nonQuietArgs) {
     if (!arg) continue;
     if (!arg.startsWith("-")) return true;
   }
