@@ -1,7 +1,7 @@
 import type { ToolInput, ValidationResult } from "#hooks/shared/types";
 
 import { homedir } from "node:os";
-import { isAbsolute, resolve } from "node:path";
+import { basename, isAbsolute, resolve } from "node:path";
 
 import { getCommand, isBashInput } from "#hooks/shared/types";
 import { createSkipResult } from "./skip-result.js";
@@ -56,7 +56,8 @@ export function validateWorktreeDiscipline(input: ToolInput): ValidationResult {
   // Evaluate EVERY forbidden op in the (possibly compound) command: block if any
   // one of them runs in a primary checkout, not just the first by check order.
   for (const op of forbiddenGitOps(command)) {
-    if (hasGitTargetOverride(op.globals)) return blocked(op.label, input.cwd ?? "", true);
+    if (hasGitTargetOverride(op.globals) || hasMutationAliasConfig(op.globals))
+      return blocked(op.label, input.cwd ?? "", true);
     const effective = resolveEffectiveCwd(command, input.cwd ?? "", op.globals, op.index);
     if (effective.ambiguous) return blocked(op.label, input.cwd ?? "", true);
     if (isPrimaryReposCheckout(effective.cwd)) return blocked(op.label, effective.cwd, false);
@@ -113,6 +114,26 @@ const GIT_TARGET_OVERRIDE = /(?:^|\s)(?:--git-dir(?:=|\s)|--work-tree(?:=|\s))/u
 
 function hasGitTargetOverride(globals: string): boolean {
   return GIT_TARGET_OVERRIDE.test(globals);
+}
+
+function hasMutationAliasConfig(globals: string): boolean {
+  if (
+    /(?:^|\s)-c\s+alias\.[^\s=]+=(?:"[^"]*"|'[^']*'|\S*)?(?:commit|switch|checkout|branch)\b/u.test(
+      globals,
+    )
+  )
+    return true;
+  const words = shellWords(globals);
+  if (words === "ambiguous")
+    return /alias\./u.test(globals) && /(?:commit|switch|checkout|branch)/u.test(globals);
+  for (let i = 0; i < words.length; i += 1) {
+    const word = words[i];
+    const value = word === "-c" ? words[i + 1] : word?.startsWith("-c") ? word.slice(2) : undefined;
+    if (!value?.startsWith("alias.")) continue;
+    if (/=(?:!\s*)?(?:commit|switch|checkout|branch)\b/u.test(value)) return true;
+    if (word === "-c") i += 1;
+  }
+  return false;
 }
 
 function shellWords(fragment: string): string[] | "ambiguous" {
@@ -257,9 +278,14 @@ function hasEnvTargetOverrideBeforeGit(words: string[], gitIndex: number): boole
   return false;
 }
 
+function isGitExecutable(word: string | undefined): boolean {
+  if (!word) return false;
+  return word === "git" || basename(word) === "git";
+}
+
 function wordsContainGitMutation(words: string[]): boolean {
   for (let i = 0; i < words.length; i += 1) {
-    if (words[i] === "git" && mutationLabelFromGitArgs(words.slice(i + 1))) return true;
+    if (isGitExecutable(words[i]) && mutationLabelFromGitArgs(words.slice(i + 1))) return true;
   }
   return false;
 }
@@ -325,19 +351,28 @@ function branchArgsMutate(args: string[]): boolean {
   if (args.some((word) => word === "-d" || word === "-D" || word === "--delete")) return false;
   if (args.some((word) => BRANCH_ACTION_FLAGS.has(word))) return true;
 
-  // Listing/info/delete options stay allowed for compatibility with the
-  // original guard. Unknown options fail closed only if followed by a branch-ish
-  // operand; otherwise benign commands like `git branch --list` remain allowed.
-  for (const word of args) {
+  // Listing/info/filter options stay allowed, including their operands/patterns.
+  // Unknown option-bearing forms with operands fail closed; bare non-option first
+  // args are branch creation (`git branch <name>`).
+  let sawReadonly = false;
+  for (let i = 0; i < args.length; i += 1) {
+    const word = args[i];
     if (!word) continue;
-    if (!word.startsWith("-")) return true;
+    if (!word.startsWith("-")) return !sawReadonly;
     if (
-      !BRANCH_READONLY_OR_DELETE_FLAGS.has(word) &&
-      !word.startsWith("--format=") &&
-      !word.startsWith("--sort=")
+      BRANCH_READONLY_OR_DELETE_FLAGS.has(word) ||
+      word.startsWith("--format=") ||
+      word.startsWith("--sort=") ||
+      word.startsWith("--contains=") ||
+      word.startsWith("--no-contains=") ||
+      word.startsWith("--merged=") ||
+      word.startsWith("--no-merged=") ||
+      word.startsWith("--points-at=")
     ) {
-      return args.some((candidate) => Boolean(candidate) && !candidate.startsWith("-"));
+      sawReadonly = true;
+      continue;
     }
+    return args.some((candidate) => Boolean(candidate) && !candidate.startsWith("-"));
   }
   return false;
 }
@@ -369,8 +404,9 @@ function hasAmbiguousGitMutationSyntax(command: string): boolean {
       return /\bgit\b/u.test(segment) && /\b(?:commit|switch|checkout|branch)\b/u.test(segment);
 
     for (let i = 0; i < words.length; i += 1) {
-      if (words[i] !== "git") continue;
+      if (!isGitExecutable(words[i])) continue;
       const args = words.slice(i + 1);
+      if (hasMutationAliasConfig(args.join(" "))) return true;
       const mutation = mutationLabelFromGitArgs(args);
       if (!mutation) continue;
       if (hasEnvTargetOverrideBeforeGit(words, i)) return true;

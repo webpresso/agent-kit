@@ -81,6 +81,16 @@ describe("validateWorktreeDiscipline", () => {
   it("allows branch listing/delete-info forms in a primary checkout", () => {
     expect(validateWorktreeDiscipline(bash("git branch -a", PRIMARY)).passed).toBe(true);
     expect(validateWorktreeDiscipline(bash("git branch --list", PRIMARY)).passed).toBe(true);
+    expect(validateWorktreeDiscipline(bash("git branch --list feature", PRIMARY)).passed).toBe(
+      true,
+    );
+    expect(validateWorktreeDiscipline(bash("git branch --contains HEAD", PRIMARY)).passed).toBe(
+      true,
+    );
+    expect(validateWorktreeDiscipline(bash("git branch --merged main", PRIMARY)).passed).toBe(true);
+    expect(validateWorktreeDiscipline(bash("git branch -r origin/main", PRIMARY)).passed).toBe(
+      true,
+    );
     expect(validateWorktreeDiscipline(bash("git branch --delete feature", PRIMARY)).passed).toBe(
       true,
     );
@@ -281,6 +291,21 @@ describe("validateWorktreeDiscipline", () => {
     ).toBe(false);
   });
 
+  it("fails closed on inline git alias mutation globals", () => {
+    expect(
+      validateWorktreeDiscipline(bash(`git -c alias.ci='commit -m x' ci`, PRIMARY)).passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(bash(`git -c alias.sw='switch feature' sw`, PRIMARY)).passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(bash(`git -c alias.br='branch feature' br`, PRIMARY)).passed,
+    ).toBe(false);
+    expect(
+      validateWorktreeDiscipline(bash(`git -c alias.co='checkout -b feature' co`, PRIMARY)).passed,
+    ).toBe(false);
+  });
+
   it("fails closed on unsupported git globals before forbidden ops", () => {
     expect(
       validateWorktreeDiscipline(bash(`git --literal-pathspecs commit -m x`, PRIMARY)).passed,
@@ -365,6 +390,14 @@ describe("validateWorktreeDiscipline", () => {
     ).toBe(false);
     expect(
       validateWorktreeDiscipline(bash(`env -C ${PRIMARY} -S 'git commit -m x'`, "/tmp")).passed,
+    ).toBe(false);
+    expect(validateWorktreeDiscipline(bash(`"/usr/bin/git" commit -m x`, PRIMARY)).passed).toBe(
+      false,
+    );
+    expect(
+      validateWorktreeDiscipline(
+        bash(`GIT_DIR=${PRIMARY}/.git GIT_WORK_TREE=${PRIMARY} /usr/bin/git commit -m x`, "/tmp"),
+      ).passed,
     ).toBe(false);
   });
 
