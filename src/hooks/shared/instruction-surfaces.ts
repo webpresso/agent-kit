@@ -88,18 +88,18 @@ function xmlEscape(value: string): string {
 function renderHostEnvelope(host: InstructionSurfaceHost, policy: HostInstructionPolicy): string {
   const toolNames = WP_TOOL_NAMES.join(", ");
   const lifecycleNotes = policy.lifecycleNotes
-    .map((note) => `    <note>${xmlEscape(note)}</note>`)
+    .map((note) => `<note>${xmlEscape(note)}</note>`)
     .join("\n");
 
   return `<wp_instruction_surface host="${host}" artifact="${xmlEscape(policy.artifactName)}" source="${ROUTING_SOURCE_NAME}">
-  <host_contract>
-    <native_tool_names>${xmlEscape(toolNames)}</native_tool_names>
-    <stdout_noop>${xmlEscape(policy.stdoutNoop)}</stdout_noop>
-    <lifecycle_notes>
+<host_contract>
+<native_tool_names>${xmlEscape(toolNames)}</native_tool_names>
+<stdout_noop>${xmlEscape(policy.stdoutNoop)}</stdout_noop>
+<lifecycle_notes>
 ${lifecycleNotes}
-    </lifecycle_notes>
-    <public_support>${xmlEscape(policy.publicSupport)}</public_support>
-  </host_contract>
+</lifecycle_notes>
+<public_support>${xmlEscape(policy.publicSupport)}</public_support>
+</host_contract>
 </wp_instruction_surface>`;
 }
 
