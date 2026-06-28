@@ -7,8 +7,8 @@ status: planned
 complexity: S
 owner: ozby
 created: "2026-06-28"
-last_updated: "2026-06-27"
-progress: "0% (0/3 tasks done, 0 blocked, updated 2026-06-27)"
+last_updated: "2026-06-28"
+progress: "100% (3/3 tasks done, 0 blocked, updated 2026-06-28)"
 tags:
   - blueprint-tooling
   - mcp
@@ -80,36 +80,42 @@ Tasks follow.
 
 #### Task 1.1: Confirm the trust-gate's required dossier shape and ordering
 
-**Status:** todo
+**Status:** done
 **Wave:** 0
 
 Read the trust gate (the code that emits 'missing Trust Dossier section', 'placeholder values are not allowed', 'repo evidence path does not exist', 'must use wp facade commands', and 'Residual Unknowns must be exactly None.'). Record the exact required subsections, evidence-token grammar, gate-command rule, and any ordering constraint relative to tasks.
 
+**Finding (2026-06-28):** `parseTrustDossier` requires a `## Trust Dossier` section with exact `### Readiness Verdict`, `### Material Claims`, `### Material Decisions`, `### Promotion Gates`, and `### Residual Unknowns` subsections (`src/blueprint/trust/dossier.ts`). `validateTrustEvidence` accepts `repo:<path>` under the repo root and rejects line-number suffixes because they do not resolve as paths (`src/blueprint/trust/evidence.ts`). `parseAllowedWpCommand` restricts gates to `wp`/`./bin/wp` facade commands (`src/blueprint/trust/gates.ts`). `validateTrustAmbiguity` requires Residual Unknowns to be exactly `None.` (`src/blueprint/trust/ambiguity.ts`). Rendering must place the dossier after `####` task blocks, because the parser's H2/H3 section slicing would otherwise include task headings in Residual Unknowns.
+
 **Acceptance:**
 
-- [ ] The gate's required dossier structure and validation rules are documented in this blueprint with file references.
-- [ ] Any section-ordering requirement (dossier before/after tasks) is established empirically.
+- [x] The gate's required dossier structure and validation rules are documented in this blueprint with file references.
+- [x] Any section-ordering requirement (dossier before/after tasks) is established empirically.
 
 #### Task 1.2: Add optional trust_dossier to putDocumentSchema and render it
 
-**Status:** todo
+**Status:** done
 **Wave:** 0
 
 Extend putDocumentSchema (~L2064) with an optional trust_dossier object and extend renderBlueprintMarkdownFromDocument (~L2090) to emit a `## Trust Dossier` section matching Task 1.1's findings. Add light put-time validation (repo: evidence without line numbers; wp-facade gate commands; residual_unknowns normalized to None. when empty).
 
+**Evidence (2026-06-28):** `putDocumentSchema` now accepts optional `trust_dossier` (`src/mcp/blueprint-server.ts:2102`). The renderer emits Trust Dossier after tasks, with residual unknowns normalized to `None.` for empty input (`src/mcp/blueprint-server.ts:2178`). `validatePutTrustDossier` runs the existing trust validator before persistence with `requirePassingGates: false` (`src/mcp/blueprint-server.ts:2266`). Tests reject `repo:package.json:1` and `node scripts/check.js` with clear errors (`src/mcp/blueprint-server.test.ts:208`).
+
 **Acceptance:**
 
-- [ ] A put document with trust_dossier renders the gate-conformant section; existing draft puts are unaffected (optional field).
-- [ ] Put-time validation rejects line-numbered evidence and non-wp gate commands with a clear error.
+- [x] A put document with trust_dossier renders the gate-conformant section; existing draft puts are unaffected (optional field).
+- [x] Put-time validation rejects line-numbered evidence and non-wp gate commands with a clear error.
 
 #### Task 1.3: Round-trip test through promote
 
-**Status:** todo
+**Status:** done
 **Wave:** 0
 
 In blueprint-server.test.ts, author a temp blueprint via wp_blueprint_put with trust_dossier, then promote draft->planned and assert success WITHOUT the summary-embedding hack.
 
+**Evidence (2026-06-28):** `src/mcp/blueprint-server.test.ts` now authors a draft through `wp_blueprint_put` with structured `trust_dossier`, asserts the summary contains no embedded dossier markdown, promotes it with `wp_blueprint_promote`, and verifies the planned markdown records a passing gate. The same file asserts renderer ordering and exact required subsection text.
+
 **Acceptance:**
 
-- [ ] A put-then-promote round-trip passes draft->planned using only structured trust_dossier input.
-- [ ] Renderer/section tests assert the gate-required ordering and subsection text.
+- [x] A put-then-promote round-trip passes draft->planned using only structured trust_dossier input.
+- [x] Renderer/section tests assert the gate-required ordering and subsection text.
