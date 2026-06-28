@@ -49,7 +49,7 @@ stateDiagram-v2
 
 Rules:
 
-- **`draft → planned`** requires the plan pass format audit (`wp blueprint audit <slug> --strict`) and ideally `/plan-refine`. Enforced by `wp blueprint move <slug> planned` — the move command refuses if the audit fails.
+- **`draft → planned`** requires the plan pass format audit (`wp blueprint audit <slug> --strict`), ideally `/plan-refine`, **and ≥2 approvals from distinct reviewers** in frontmatter `approvals:`. Enforced by `wp blueprint move`/`promote <slug> planned` — the command refuses if the audit fails OR fewer than 2 distinct reviewer approvals are present (`wp audit blueprint-lifecycle` also flags it). See `catalog/agent/rules/pre-implementation.md`.
 - **`planned → in-progress`** is automatic on `wp blueprint start <slug>` or when an agent calls `wp blueprint task <slug> <task-id> start`. Don't manually move between these two states.
 - **`planned → completed`** is allowed for one-PR / one-lane execution when every task is already terminal (`done` or `dropped`), acceptance is verified, and the blueprint is not a zero-task placeholder. This is enforced by the lifecycle engine and SQL audit.
 - **`in-progress → completed`** requires every task's checklist ticked and frontmatter `status: completed` set. `wp blueprint finalize <slug>` validates and transitions.

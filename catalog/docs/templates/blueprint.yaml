@@ -31,6 +31,9 @@ frontmatter:
     cross_repo_depends_on:
       type: array
       description: Cross-repo blueprint dependencies expressed as { repo, slug, require_status? }
+    approvals:
+      type: array
+      description: "Reviewer approvals { reviewer, verdict, commit, evidence }; ≥2 from distinct reviewers REQUIRED to promote draft→planned (enforced by wp blueprint promote + wp audit blueprint-lifecycle)"
 
 sections:
   required: []
