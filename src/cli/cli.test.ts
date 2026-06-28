@@ -153,6 +153,7 @@ describe("wp root command surface", () => {
     expect(result.stdout.join("\n")).toContain("wp lint");
     expect(result.stdout.join("\n")).toContain("Usage:");
     expect(result.stdout.join("\n")).not.toContain("[...files]");
+    expect(result.stdout.join("\n")).toContain("[...targets]");
     expect(result.stdout.join("\n")).toContain("--file <path>");
   });
 
@@ -162,15 +163,16 @@ describe("wp root command surface", () => {
     expect(result.code).toBe(0);
     expect(result.stdout.join("\n")).toContain("wp format");
     expect(result.stdout.join("\n")).not.toContain("[...files]");
+    expect(result.stdout.join("\n")).toContain("[...targets]");
     expect(result.stdout.join("\n")).toContain("--file <path>");
   });
 
-  it("routes wp test to command-specific help without positional targets", async () => {
+  it("routes wp test to command-specific help with standardized file targeting", async () => {
     const result = await runAk(["test", "--help"]);
 
     expect(result.code).toBe(0);
     expect(result.stdout.join("\n")).toContain("wp test");
-    expect(result.stdout.join("\n")).not.toContain("[...targets]");
+    expect(result.stdout.join("\n")).toContain("[...targets]");
     expect(result.stdout.join("\n")).toContain("--file <path>");
     expect(result.stdout.join("\n")).toContain("--package <name>");
   });
