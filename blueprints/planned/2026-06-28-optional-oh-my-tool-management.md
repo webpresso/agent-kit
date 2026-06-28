@@ -1,6 +1,6 @@
 ---
 type: blueprint
-title: optional oh-my tool management in wp
+title: optional agent tool management in wp
 status: planned
 complexity: M
 owner: ozby
@@ -14,21 +14,21 @@ tags:
   - verification
 ---
 
-# Optional oh-my tool management in WP
+# Optional agent tool management in WP
 
 ## Product wedge anchor
 
-- **Stage outcome:** OMX/OMC remain optional and not default-installed while becoming first-class WP-managed add-ons when users explicitly opt in.
-- **Consuming surface:** `wp install/remove oh-my ...`, `wp update`, `wp setup --with ...`, blueprint diagnostics, docs, instruction templates, and verification skill guidance.
-- **New user-visible capability:** Canonical opt-in commands: `wp install oh-my codex|claude-code [--scope user|project]` and `wp remove oh-my codex|claude-code [--scope user|project]`.
+- **Stage outcome:** Codex, Claude Code, OpenCode, OMX, and OMC remain optional and not default-installed while becoming first-class WP-managed add-ons when users explicitly opt in.
+- **Consuming surface:** `wp install/remove ...`, `wp update`, `wp setup --with ...`, hook visibility diagnostics, blueprint diagnostics, docs, instruction templates, and verification skill guidance.
+- **New user-visible capability:** Canonical opt-in commands for Oh My tools plus base CLIs: `wp install oh-my codex|claude-code [--scope user|project]`, `wp install codex|claude-code|opencode`, and matching non-destructive `wp remove ...` ownership removal. A hook visibility command shows active hooks by folder/source and whether they are project or user/system-wide.
 
 ## Summary
 
-Add a narrow optional-tool adapter path for `omx` and `omc` that supports explicit install/adoption, update only when WP owns the requested scope, and non-destructive ownership removal. Keep the implementation small: an adapter registry for the two current tools, a package-manager namespace carve-out for `oh-my`, setup compatibility delegation, and aligned docs/help/instructions/tests.
+Add a narrow optional-tool adapter path for `codex`, `claude`, `opencode`, `omx`, and `omc` that supports explicit install/adoption, update only when WP owns the requested scope, and non-destructive ownership removal. Keep the implementation small: an adapter registry for these tools, a package-manager namespace carve-out for `oh-my`, direct base-CLI install/remove aliases, setup compatibility delegation, hook visibility reporting, and aligned docs/help/instructions/tests.
 
 ## Scope
 
-- Add minimal adapters for internal ids `omx` and `omc`, public names `codex` and `claude-code`, aliases only inside `oh-my` namespace.
+- Add minimal adapters for internal ids `codex`, `claude`, `opencode`, `omx`, and `omc`; Oh My public names stay `codex` and `claude-code` under the `oh-my` namespace, while base CLIs use `codex`, `claude-code`, and `opencode`.
 - Intercept only `wp install oh-my ...` and `wp remove oh-my ...`; all other install/add/remove package-manager flows remain routed through VP.
 - Preserve persisted state ids (`integrations.omx|omc`, `tooling-ownership.json` ids `omx|omc`).
 - Keep `wp setup --with omx|omc` as compatibility, delegating to the same adapter path and nudging users toward canonical commands.
@@ -48,12 +48,12 @@ Add a narrow optional-tool adapter path for `omx` and `omc` that supports explic
 **Status:** todo
 **Wave:** 0
 
-Implement a small internal registry for `omx` and `omc` with canonical public names, aliases, supported scopes, install/ensure/update, ownership claim/unclaim, and status/help copy. Install/adopt claims only the requested scope; removal unclaims only the requested scope and leaves native installs untouched.
+Implement a small internal registry for base CLIs (`codex`, `claude`, `opencode`) and Oh My tools (`omx`, `omc`) with canonical public names, aliases, supported scopes, install/ensure/update, ownership claim/unclaim, and status/help copy. Install/adopt claims only the requested scope; removal unclaims only the requested scope and leaves native installs untouched.
 
 **Acceptance:**
 
-- [ ] `wp install oh-my codex|claude-code [--scope user|project]` ensures and claims only the requested scope.
-- [ ] `wp remove oh-my codex|claude-code [--scope user|project]` clears WP ownership only and prints upstream uninstall guidance.
+- [ ] `wp install oh-my codex|claude-code [--scope user|project]` and `wp install codex|claude-code|opencode` ensure and claim only the requested scope.
+- [ ] Matching `wp remove ...` commands clear WP ownership only and print upstream uninstall guidance.
 - [ ] Foreign-scope installs are not silently claimed.
 
 #### Task 1.2: CLI routing carve-out and compatibility hints
@@ -61,12 +61,12 @@ Implement a small internal registry for `omx` and `omc` with canonical public na
 **Status:** todo
 **Wave:** 0
 
-Intercept only the `oh-my` namespace under install/remove, accept compatibility aliases only there, and make misdirected invocations fail with canonical hints. Keep non-`oh-my` package-manager verbs unchanged.
+Intercept only the `oh-my` namespace and explicit base CLI tool names under install/remove, accept compatibility aliases only in their intended namespaces, and make misdirected invocations fail with canonical hints. Keep all dependency/package-manager flows unchanged.
 
 **Acceptance:**
 
 - [ ] `wp install omx` / `wp install oh-my-codex` produce corrective hints.
-- [ ] Non-oh-my install/add/remove flows still proxy through VP.
+- [ ] Non-tool install/add/remove flows still proxy through VP.
 - [ ] `wp setup --with omx|omc` delegates to the adapter path and emits a nudge to `wp install oh-my ...`.
 
 #### Task 1.3: Update flow and blueprint guidance
@@ -74,23 +74,23 @@ Intercept only the `oh-my` namespace under install/remove, accept compatibility 
 **Status:** todo
 **Wave:** 0
 
-Ensure `wp update` refreshes OMX/OMC only when WP owns that scope; native unowned installs are not auto-adopted. Update blueprint exec missing-OMX diagnostics to recommend `wp install oh-my codex` first with upstream manual install as fallback.
+Ensure `wp update` refreshes base CLIs and OMX/OMC only when WP owns that scope; native unowned installs are not auto-adopted. Update blueprint exec missing-OMX diagnostics to recommend `wp install oh-my codex` first with upstream manual install as fallback.
 
 **Acceptance:**
 
-- [ ] Tests prove owned installs update and unowned native installs do not auto-adopt.
+- [ ] Tests prove owned base/Oh My installs update and unowned native installs do not auto-adopt.
 - [ ] Blueprint exec diagnostics use the new canonical guidance.
 
-#### Task 1.4: Docs, help, templates, and skill text
+#### Task 1.4: Hook visibility, docs, help, templates, and skill text
 
 **Status:** todo
 **Wave:** 0
 
-Refresh CLI/package-manager help, `docs/add-ons.md`, setup/init output strings, `catalog/AGENTS.md.tpl`, generated instruction wording derived from it, skill/docs catalog surfaces, and snapshots that assert old self-managed-only wording.
+Add hook visibility reporting that clearly lists active hook folders/sources for project (including git path) and user/system-wide paths. Refresh CLI/package-manager/help text, `docs/add-ons.md`, setup/init output strings, `catalog/AGENTS.md.tpl`, generated instruction wording derived from it, skill/docs catalog surfaces, and snapshots that assert old self-managed-only wording.
 
 **Acceptance:**
 
-- [ ] User-facing command/help/docs/instruction surfaces agree on optional WP-managed oh-my behavior.
+- [ ] User-facing command/help/docs/instruction surfaces agree on optional WP-managed base CLI and Oh My behavior plus hook visibility.
 - [ ] Generated/catalog surfaces remain package-safe.
 
 #### Task 1.5: Verify skill contract and gates
