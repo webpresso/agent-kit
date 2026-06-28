@@ -12,7 +12,7 @@ import {
   runCliCommandSequence,
   type CliSpawnCommand,
 } from "./quality-runner.js";
-import { runAffectedTypecheck } from "#typecheck/affected.js";
+import { filterActiveTypecheckFiles, runAffectedTypecheck } from "#typecheck/affected.js";
 import { planTypecheckExecution } from "#typecheck/planner.js";
 
 export const TYPECHECK_COMMAND_HELP = [
@@ -80,7 +80,7 @@ export function registerTypecheckCommand(cli: CAC, deps: TypecheckCommandDeps = 
             explicitTargets: [...explicitFiles, ...packages],
             explicitTargetFlags: "--file or --package",
             policy: "fallback-full",
-            mapChangedFiles: filterTypecheckableFiles,
+            mapChangedFiles: filterActiveTypecheckableFiles,
             emptyMessage: typecheckEmptyMessage,
             degradedFallbackMessage: (reason) =>
               `Unable to determine affected files for typecheck (${reason}); falling back to the full typecheck surface.`,
@@ -221,6 +221,13 @@ function filterTypecheckableFiles(files: readonly string[], cwd: string): string
   return files.filter((file) => {
     const extension = path.extname(file).toLowerCase();
     return TYPECHECK_EXTENSIONS.has(extension) && existsSync(path.join(cwd, file));
+  });
+}
+
+function filterActiveTypecheckableFiles(files: readonly string[], cwd: string): string[] {
+  return filterActiveTypecheckFiles({
+    repoRoot: cwd,
+    files: filterTypecheckableFiles(files, cwd),
   });
 }
 

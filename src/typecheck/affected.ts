@@ -75,6 +75,30 @@ export async function runAffectedTypecheck(
   return { exitCode, entry, checkedFiles };
 }
 
+export function filterActiveTypecheckFiles(options: AffectedTypecheckOptions): string[] {
+  const repoRoot = path.resolve(options.repoRoot);
+  const activeFiles: string[] = [];
+  const configCache = new Map<string, Set<string>>();
+
+  for (const file of options.files) {
+    const absoluteFile = path.resolve(repoRoot, file);
+    const owningConfig = findOwningTsconfig(absoluteFile, repoRoot);
+    if (!owningConfig) continue;
+
+    let programFiles = configCache.get(owningConfig);
+    if (!programFiles) {
+      programFiles = new Set(readTsConfig(owningConfig).fileNames.map(canonicalPath));
+      configCache.set(owningConfig, programFiles);
+    }
+
+    if (programFiles.has(canonicalPath(absoluteFile))) {
+      activeFiles.push(file);
+    }
+  }
+
+  return activeFiles;
+}
+
 /**
  * Plan a reverse-closure typecheck per owning tsconfig.
  *
