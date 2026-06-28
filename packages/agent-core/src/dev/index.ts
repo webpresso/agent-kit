@@ -2,7 +2,7 @@
  * Workspace-local command/binary resolution for consumer deploy/e2e scripts.
  * Command/env resolution (distinct from repo-root discovery).
  */
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 
 /** Resolve a workspace-local binary: `<repoRoot>/node_modules/.bin/<name>`. */
 export function resolveWorkspaceBinary(repoRoot: string, binaryName: string): string {
@@ -23,5 +23,5 @@ export function buildChildEnv(
   env: NodeJS.ProcessEnv = process.env,
 ): NodeJS.ProcessEnv {
   const localBin = join(repoRoot, "node_modules", ".bin");
-  return { ...env, PATH: env.PATH ? `${localBin}:${env.PATH}` : localBin };
+  return { ...env, PATH: env.PATH ? `${localBin}${delimiter}${env.PATH}` : localBin };
 }

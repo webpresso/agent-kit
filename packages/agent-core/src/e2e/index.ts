@@ -58,10 +58,12 @@ export async function waitForHttpOk(
       throw new Error(`Process for ${url} exited before becoming healthy`);
     }
     try {
-      const res = await fetchImpl(url);
+      // Bound each probe so a server that accepts the socket but never responds
+      // can't hang past the poll interval (no-timeout-as-fix: fail fast, retry).
+      const res = await fetchImpl(url, { signal: AbortSignal.timeout(intervalMs) });
       if (res.ok) return;
     } catch {
-      // Not up yet; keep polling until the deadline.
+      // Not up yet (or probe aborted); keep polling until the deadline.
     }
     await new Promise((resolveDelay) => setTimeout(resolveDelay, intervalMs));
   }
@@ -84,12 +86,16 @@ export interface ResolveE2eSecretEnvOptions {
   readonly providerTokenKeys?: readonly string[];
 }
 
+function isNonEmpty(value: string | undefined): boolean {
+  return typeof value === "string" && value.length > 0;
+}
+
 function allPresent(env: NodeJS.ProcessEnv, keys: readonly string[]): boolean {
-  return keys.length > 0 && keys.every((k) => typeof env[k] === "string" && env[k]!.length > 0);
+  return keys.length > 0 && keys.every((k) => isNonEmpty(env[k]));
 }
 
 function anyPresent(env: NodeJS.ProcessEnv, keys: readonly string[]): boolean {
-  return keys.some((k) => typeof env[k] === "string" && env[k]!.length > 0);
+  return keys.some((k) => isNonEmpty(env[k]));
 }
 
 /**
