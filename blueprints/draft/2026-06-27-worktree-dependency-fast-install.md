@@ -96,3 +96,15 @@ A CI/Linux reproduction showed `tshy` failing under pnpm global virtual store be
 - [x] Same container passes `tshy` with global virtual store disabled, proving a layout/manifest-edge issue.
 - [x] DOM-lib experiment rejected because it introduces a `ReadableStream` incompatibility.
 - [x] `packageExtensions` for `bun-types@* -> undici-types` passes `tshy` with global virtual store enabled.
+
+### Task 4: Fix full Test suite global-virtual-store exposures
+
+**Status:** done
+
+After the Linux typecheck fix, CI `Test` exposed two additional global-virtual-store issues: exact launcher-plan tests had not accounted for the intentional inherited `NODE_PATH` environment, and secretlint inline default config could not resolve the repo-owned preset from pnpm global-store package realpaths.
+
+**Acceptance:**
+
+- [x] Launcher tests assert the stable launch fields plus required global-virtual-store `NODE_PATH` entries instead of exact-matching the full inherited process environment.
+- [x] Package-surface audit resolves the owned default secretlint preset to an absolute module path before passing `--secretlintrcJSON`, avoiding phantom rule resolution.
+- [x] Targeted slice passes: `vp exec vitest run scripts/bin-launcher.test.ts src/audit/package-surface.test.ts --project unit --reporter=dot` (61 tests).
