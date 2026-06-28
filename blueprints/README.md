@@ -20,8 +20,12 @@ Each subdirectory represents a lifecycle state:
 ## Moving between states
 
 - `draft → planned`: the spec passes the plan-audit checklist
-  (`.agent/guides/plan-audit-checklist.md`).
-- `planned → in-progress`: work has started in a worktree or a lane.
+  (`.agent/guides/plan-audit-checklist.md`) **and carries ≥2 approvals from
+  distinct reviewers** in frontmatter `approvals:` (enforced by
+  `wp blueprint promote` + `wp audit blueprint-lifecycle`; see
+  `catalog/agent/rules/pre-implementation.md`).
+- `planned → in-progress`: work has started in a `bp/<slug>` worktree (via
+  `wp blueprint start <slug>`).
 - `planned → completed`: allowed for one-PR completion when every task is already terminal and verification is attached.
 - `in-progress → completed`: all acceptance criteria verified.
 - `completed → in-progress`: explicit reopen path when follow-up work is discovered after closeout.
@@ -47,4 +51,4 @@ _None currently._
 
 ## Planned readiness contract
 
-`planned/` means execution-ready with a valid Trust Dossier: material claims are evidenced, material decisions are closed, Promotion Gates have passing last results, and Residual Unknowns is exactly `None.`
+`planned/` means execution-ready with a valid Trust Dossier AND ≥2 distinct reviewer approvals (frontmatter `approvals:`): material claims are evidenced, material decisions are closed, Promotion Gates have passing last results, and Residual Unknowns is exactly `None.`
