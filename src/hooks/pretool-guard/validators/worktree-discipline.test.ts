@@ -100,6 +100,15 @@ describe("validateWorktreeDiscipline", () => {
     expect(r.passed).toBe(false);
   });
 
+  it("blocks a later forbidden op in primary in a compound command", () => {
+    // First op (commit) runs in /tmp (allowed), but the later switch runs in
+    // primary after the cd — every op must be evaluated.
+    const r = validateWorktreeDiscipline(
+      bash(`git commit -m "x" && cd ${PRIMARY} && git switch feat`, "/tmp"),
+    );
+    expect(r.passed).toBe(false);
+  });
+
   it("blocks `cd <primary> && git commit && cd /tmp` (trailing cd ignored)", () => {
     const r = validateWorktreeDiscipline(
       bash(`cd ${PRIMARY} && git commit -m "x" && cd /tmp`, "/tmp"),

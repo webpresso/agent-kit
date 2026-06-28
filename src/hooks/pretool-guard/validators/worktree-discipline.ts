@@ -33,6 +33,13 @@ const VALIDATOR_NAME = "worktree-discipline";
  * expansion / command substitution / glob) BLOCKS, since it could hide a move
  * into a primary checkout.
  *
+ * Known best-effort limits (acceptable for an agent guard with a documented
+ * `WORKTREE_DISCIPLINE_SKIP=1` escape — the threat model is accidental misuse,
+ * not an adversary evading its own guard): subshell-scoped `cd` that does not
+ * persist (`(cd /x) && git …`) is over-trusted; a forbidden git literal inside a
+ * quoted argument (`echo "git commit"`) is matched; and `popd` / dir-stack
+ * unwinding is not modeled.
+ *
  * Conservative on `git checkout`: only `checkout -b` (new branch) is blocked;
  * bare `git checkout <ref/path>` is left alone so file restores
  * (`git checkout -- file`, `git checkout .`) are never false-positives. Branch
@@ -46,13 +53,14 @@ export function validateWorktreeDiscipline(input: ToolInput): ValidationResult {
   const command = getCommand(input);
   if (!command) return { validator: VALIDATOR_NAME, passed: true };
 
-  const op = forbiddenGitOp(command);
-  if (!op) return { validator: VALIDATOR_NAME, passed: true };
-
-  const effective = resolveEffectiveCwd(command, input.cwd ?? "", op.globals, op.index);
-  if (effective.ambiguous) return blocked(op.label, input.cwd ?? "", true);
-  if (!isPrimaryReposCheckout(effective.cwd)) return { validator: VALIDATOR_NAME, passed: true };
-  return blocked(op.label, effective.cwd, false);
+  // Evaluate EVERY forbidden op in the (possibly compound) command: block if any
+  // one of them runs in a primary checkout, not just the first by check order.
+  for (const op of forbiddenGitOps(command)) {
+    const effective = resolveEffectiveCwd(command, input.cwd ?? "", op.globals, op.index);
+    if (effective.ambiguous) return blocked(op.label, input.cwd ?? "", true);
+    if (isPrimaryReposCheckout(effective.cwd)) return blocked(op.label, effective.cwd, false);
+  }
+  return { validator: VALIDATOR_NAME, passed: true };
 }
 
 function blocked(op: string, cwd: string, ambiguous: boolean): ValidationResult {
@@ -99,10 +107,10 @@ function isUnresolvable(token: string): boolean {
 
 const DIR_TOKEN = `("[^"]+"|'[^']+'|[^\\s;&|(){}]+)`;
 const QUOTED_ARG = `(?:"[^"]+"|'[^']+'|\\S+)`;
-// A `cd` that actually changes the shell's dir: after a separator, optionally
+// A `cd`/`pushd` that changes the shell's dir: after a separator, optionally
 // preceded by env-assignments (`FOO=1 `) and a `command`/`builtin` prefix.
 const CD_SEGMENT = new RegExp(
-  `(?:^|&&|;|\\|\\||\\(|\\{)\\s*(?:[A-Za-z_]\\w*=\\S*\\s+)*(?:command\\s+|builtin\\s+)?cd\\s+(?!-)${DIR_TOKEN}`,
+  `(?:^|&&|;|\\|\\||\\(|\\{)\\s*(?:[A-Za-z_]\\w*=\\S*\\s+)*(?:command\\s+|builtin\\s+)?(?:cd|pushd)\\s+(?!-)${DIR_TOKEN}`,
   "gu",
 );
 const DASH_C = new RegExp(`-C\\s+${DIR_TOKEN}`, "gu");
@@ -157,19 +165,25 @@ const GIT_GLOBAL_RUN =
 
 type ForbiddenOp = { label: string; globals: string; index: number };
 
-/** Returns the forbidden git op (label, its global-option run, command position), or null. */
-function forbiddenGitOp(command: string): ForbiddenOp | null {
-  if (!/\bgit\b/.test(command)) return null;
-  const checks: ReadonlyArray<readonly [string, string]> = [
-    ["commit\\b", "git commit"],
-    ["switch\\b(?!\\s+(?:-h|--help)\\b)", "git switch"],
-    ["checkout\\s+-b\\b", "git checkout -b"],
-    // branch CREATION only: `git branch <name>`; allow listing/info/delete flags.
-    ["branch\\s+(?!-|--)\\S", "git branch <name>"],
-  ];
-  for (const [subcommand, label] of checks) {
-    const match = new RegExp(`\\bgit\\s+(${GIT_GLOBAL_RUN})${subcommand}`, "u").exec(command);
-    if (match) return { label, globals: match[1] ?? "", index: match.index };
+// Any forbidden subcommand: commit, switch (not -h/--help), checkout -b, or
+// branch CREATION (`branch <name>`; listing/info/delete flags are allowed).
+const FORBIDDEN_SUBCOMMAND =
+  "(commit\\b|switch\\b(?!\\s+(?:-h|--help)\\b)|checkout\\s+-b\\b|branch\\s+(?!-|--)\\S)";
+const FORBIDDEN_OP = new RegExp(`\\bgit\\s+(${GIT_GLOBAL_RUN})${FORBIDDEN_SUBCOMMAND}`, "gu");
+
+function labelFor(subcommand: string): string {
+  if (subcommand.startsWith("commit")) return "git commit";
+  if (subcommand.startsWith("switch")) return "git switch";
+  if (subcommand.startsWith("checkout")) return "git checkout -b";
+  return "git branch <name>";
+}
+
+/** Every forbidden git op in the command (label, its global-option run, position). */
+function forbiddenGitOps(command: string): ForbiddenOp[] {
+  if (!/\bgit\b/.test(command)) return [];
+  const ops: ForbiddenOp[] = [];
+  for (const m of command.matchAll(FORBIDDEN_OP)) {
+    ops.push({ label: labelFor(m[2] ?? ""), globals: m[1] ?? "", index: m.index ?? 0 });
   }
-  return null;
+  return ops;
 }
