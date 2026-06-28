@@ -100,7 +100,7 @@ jobs:
         run: rustup toolchain install 1.88.0 --profile minimal
       - name: Build session-memory native artifact
         run: pnpm run build:session-memory-native -- --target ${{ matrix.target }}
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: session-memory-native-${{ matrix.target }}
           path: dist/session-memory-native/${{ matrix.target }}/session_memory_napi.node
