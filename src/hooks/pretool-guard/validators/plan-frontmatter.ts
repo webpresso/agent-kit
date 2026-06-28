@@ -1,6 +1,6 @@
 import type { ToolInput, ValidationResult } from "#hooks/shared/types";
 
-import jsYaml from "js-yaml";
+import * as jsYaml from "js-yaml";
 
 import { getContent, getFilePath } from "#hooks/shared/types";
 import {

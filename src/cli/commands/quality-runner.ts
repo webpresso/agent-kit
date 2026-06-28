@@ -1,5 +1,6 @@
 import { closeSync, openSync, readFileSync, readSync, statSync } from "node:fs";
 import { spawn } from "node:child_process";
+import { delimiter, join } from "node:path";
 
 import { applyOutputTransform, type Failure, type TransformResult } from "#output-transforms/index";
 import { createSessionElisionRecorder } from "#mcp/_session-elision.js";
@@ -290,14 +291,33 @@ function readByteRange(fd: number, byteLength: number, position: number): string
 }
 
 function buildChildEnv(command: CliSpawnCommand, cwd: string): NodeJS.ProcessEnv {
+  const baseEnv = withPnpmGlobalVirtualStoreNodePath(cwd, { ...process.env, ...command.env });
   if (!command.runtimeProfile) {
-    return { ...process.env, ...command.env };
+    return baseEnv;
   }
 
   const resolvedRuntime = resolveRuntimeEnvironment({
     cwd,
     profile: command.runtimeProfile,
-    env: { ...process.env, ...command.env },
+    env: baseEnv,
   });
-  return buildRuntimeProcessEnv(cwd, { ...process.env, ...command.env }, resolvedRuntime);
+  return buildRuntimeProcessEnv(cwd, baseEnv, resolvedRuntime);
+}
+
+function withPnpmGlobalVirtualStoreNodePath(
+  cwd: string,
+  env: NodeJS.ProcessEnv,
+): NodeJS.ProcessEnv {
+  const requiredEntries = [
+    join(cwd, "node_modules"),
+    join(cwd, "node_modules", ".pnpm", "node_modules"),
+  ];
+  const existingEntries =
+    typeof env.NODE_PATH === "string" && env.NODE_PATH.length > 0
+      ? env.NODE_PATH.split(delimiter).filter(Boolean)
+      : [];
+  return {
+    ...env,
+    NODE_PATH: [...new Set([...requiredEntries, ...existingEntries])].join(delimiter),
+  };
 }

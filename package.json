@@ -531,7 +531,9 @@
     "stage:session-memory-native": "bun scripts/stage-session-memory-native-artifacts.ts",
     "native:session-memory:deny": "cargo deny --manifest-path native/session-memory-engine/Cargo.toml check",
     "stage:workflow-skills": "bun scripts/stage-workflow-skills.ts",
-    "workflow-skills:coverage": "bun scripts/audit-workflow-skills-coverage.ts"
+    "workflow-skills:coverage": "bun scripts/audit-workflow-skills-coverage.ts",
+    "deps:freshness": "bun scripts/check-dependency-freshness.ts",
+    "deps:security": "pnpm audit --audit-level low"
   },
   "dependencies": {
     "@manypkg/find-root": "^3.1.0",
@@ -543,13 +545,13 @@
     "env-paths": "^4.0.0",
     "glob": "^13.0.6",
     "gray-matter": "^4.0.3",
-    "js-yaml": "^4.1.1",
-    "ora": "^8.2.0",
+    "js-yaml": "^5.2.0",
+    "ora": "^9.4.1",
     "proper-lockfile": "^4.1.2",
     "remark": "^15.0.1",
     "remark-frontmatter": "^5.0.0",
     "remark-validate-links": "^13.1.0",
-    "rulesync": "8.15.1",
+    "rulesync": "9.0.1",
     "secretlint": "^13.0.2",
     "ts-pattern": "^5.9.0",
     "typescript": "catalog:",
@@ -567,8 +569,8 @@
     "@vitejs/plugin-react": "catalog:",
     "@webpresso/agent-config": "workspace:*",
     "husky": "^9.1.7",
-    "oxfmt": "^0.48.0",
-    "oxlint": "^1.67.0",
+    "oxfmt": "^0.56.0",
+    "oxlint": "^1.71.0",
     "publint": "catalog:",
     "tshy": "catalog:",
     "tsx": "^4.21.0",
@@ -577,11 +579,11 @@
     "vitest": "catalog:"
   },
   "optionalDependencies": {
-    "@playwright/test": "^1.55.0",
+    "@playwright/test": "^1.61.1",
     "@stryker-mutator/core": "^9.6.1",
     "@stryker-mutator/typescript-checker": "^9.6.1",
     "@stryker-mutator/vitest-runner": "^9.6.1",
-    "wrangler": "^4.50.0"
+    "wrangler": "^4.105.0"
   },
   "tshy": {
     "dialects": [
@@ -649,7 +651,7 @@
   "engines": {
     "node": ">=24"
   },
-  "packageManager": "pnpm@11.1.1",
+  "packageManager": "pnpm@11.9.0",
   "webpresso": {
     "agentConfigVersion": "0.1.5"
   }

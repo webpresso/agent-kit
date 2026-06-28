@@ -159,7 +159,13 @@ export function serializeBlueprint(blueprint: Blueprint): string {
   }
 
   const { tasks: _tasks, task_statuses: _task_statuses, ...cleanedData } = data;
-  return matter.stringify(content, cleanedData);
+  return quoteGeneratedProgressScalar(matter.stringify(content, cleanedData), blueprint.progress);
+}
+
+function quoteGeneratedProgressScalar(serialized: string, progress: string | undefined): string {
+  if (!progress) return serialized;
+  const escaped = progress.replace(/'/g, "''");
+  return serialized.replace(/^progress: .+$/m, `progress: '${escaped}'`);
 }
 
 function extractCheckboxStatus(section: string): {

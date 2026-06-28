@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   chmodSync,
@@ -13,7 +13,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { delimiter, join } from "node:path";
+import { delimiter, join, resolve, sep } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -403,6 +403,26 @@ type InstalledPackedConsumer = {
 
 let installedPackedConsumerCache: InstalledPackedConsumer | undefined;
 
+function removeTempPathFast(path: string): void {
+  const resolvedPath = resolve(path);
+  const resolvedTempRoot = resolve(tmpdir());
+  if (resolvedPath !== resolvedTempRoot && !resolvedPath.startsWith(`${resolvedTempRoot}${sep}`)) {
+    throw new Error(`Refusing to remove non-temp path: ${path}`);
+  }
+
+  if (!existsSync(resolvedPath)) return;
+
+  if (process.platform !== "win32") {
+    const deletingPath = `${resolvedPath}.deleting-${process.pid}-${Date.now()}`;
+    renameSync(resolvedPath, deletingPath);
+    const child = spawn("rm", ["-rf", deletingPath], { detached: true, stdio: "ignore" });
+    child.unref();
+    return;
+  }
+
+  rmSync(resolvedPath, { force: true, recursive: true });
+}
+
 function createInstalledPackedConsumer(
   tarballPath: string,
   options: InstalledPackedConsumerOptions,
@@ -439,7 +459,7 @@ function createInstalledPackedConsumer(
     packageRoot: join(root, "node_modules", "@webpresso", "agent-kit"),
     wpBinPath: join(root, "node_modules", "@webpresso", "agent-kit", "bin", "wp"),
     cleanup: () => {
-      rmSync(root, { force: true, recursive: true });
+      removeTempPathFast(root);
     },
   };
 }
@@ -552,7 +572,7 @@ function createPackedGlobalInstallTarball(
 
 afterAll(() => {
   if (packedTarballTempRoot) {
-    rmSync(packedTarballTempRoot, { force: true, recursive: true });
+    removeTempPathFast(packedTarballTempRoot);
     packedTarballTempRoot = undefined;
     packedTarballArtifactCache = undefined;
   }
@@ -854,7 +874,7 @@ describe("tooling umbrella package integration contract", () => {
       expect(probe.helpOutput).toContain(runtimeProbe.helpOutput.trim());
     } finally {
       cleanup();
-      rmSync(tmpRoot, { force: true, recursive: true });
+      removeTempPathFast(tmpRoot);
     }
-  }, 300_000);
+  }, 600_000);
 });

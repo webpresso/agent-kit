@@ -1,3 +1,5 @@
+import { delimiter } from "node:path";
+
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { PROCESS_TREE_FORCE_KILL_GRACE_MS } from "#shared-utils/process-supervisor.js";
@@ -53,6 +55,21 @@ afterEach(() => {
 });
 
 describe("quality-runner supervision", () => {
+  it("passes pnpm global virtual-store NODE_PATH entries to child commands", async () => {
+    const { runLoggedChildCommand } = await import("./quality-runner.js");
+    spawnMock.mockReturnValue(fakeChild());
+
+    await runLoggedChildCommand(
+      { command: "node", args: ["child.js"] },
+      { cwd: "/repo", write: () => {} },
+    );
+
+    const spawnOptions = spawnMock.mock.calls[0]?.[2] as { env?: NodeJS.ProcessEnv } | undefined;
+    const entries = spawnOptions?.env?.NODE_PATH?.split(delimiter) ?? [];
+    expect(entries).toEqual(
+      expect.arrayContaining(["/repo/node_modules", "/repo/node_modules/.pnpm/node_modules"]),
+    );
+  });
   it("escalates hung POSIX children from SIGTERM to SIGKILL after the grace window", async () => {
     if (process.platform === "win32") return;
     vi.useFakeTimers();
