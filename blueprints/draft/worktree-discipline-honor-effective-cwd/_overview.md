@@ -12,6 +12,15 @@ tags:
   - dx
   - guard
   - reliability
+approvals:
+  - reviewer: codex
+    verdict: approve
+    rev: final
+    evidence: reviews.md
+  - reviewer: deepseek
+    verdict: approve
+    rev: final
+    evidence: reviews.md
 ---
 
 # Worktree-discipline guard honors effective cwd (leading cd and git -C)
@@ -43,6 +52,13 @@ New cases in worktree-discipline.test.ts that FAIL on the old input.cwd-only log
 ### Scope / locked
 
 Do not change forbiddenGitOp matchers, the WORKTREE_DISCIPLINE_SKIP env bypass, or the message copy beyond the cwd it reports. Do not touch other validators.
+
+## Approvals (≥2 required before promotion to `planned`)
+
+Mirror of frontmatter `approvals:` + `reviews.md` (the durable, committed records). Gate met: **2/2 distinct** (codex + deepseek) on the final rev.
+
+- [x] Codex (`/codex`) — APPROVE-WITH-NITS (final rev; prior rejects fixed — see `reviews.md`)
+- [x] Outside voice — DeepSeek (`/deepseek`) — APPROVE (final rev)
 
 #### Task 1.1: Failing regression tests for effective-cwd resolution
 
