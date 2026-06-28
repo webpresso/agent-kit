@@ -100,6 +100,16 @@ describe("validateWorktreeDiscipline", () => {
     expect(r.passed).toBe(false);
   });
 
+  it("blocks cumulative `git -C /tmp -C <primary> commit` (every -C applied)", () => {
+    const r = validateWorktreeDiscipline(bash(`git -C /tmp -C ${PRIMARY} commit -m "x"`, "/tmp"));
+    expect(r.passed).toBe(false);
+  });
+
+  it("allows cumulative `git -C /tmp -C <worktree> commit`", () => {
+    const r = validateWorktreeDiscipline(bash(`git -C /tmp -C ${WORKTREE} commit -m "x"`, PRIMARY));
+    expect(r.passed).toBe(true);
+  });
+
   it("ignores non-git bash commands", () => {
     expect(validateWorktreeDiscipline(bash("npm test", PRIMARY)).passed).toBe(true);
   });

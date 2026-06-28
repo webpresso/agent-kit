@@ -26,9 +26,10 @@ const VALIDATOR_NAME = "worktree-discipline";
  * ```
  *
  * The "effective cwd" is the tool's ambient `input.cwd` advanced by any leading
- * `cd <dir>` (incl. env-prefixed / `command` / `builtin` forms) and overridden
- * by a `git -C <dir>` flag, so `cd <worktree> && git commit` is judged against
- * the worktree. It is **fail-closed**: an unresolvable `cd`/`-C` target (shell
+ * `cd <dir>` (incl. env-prefixed / `command` / `builtin` forms) and then by
+ * EVERY `git -C <dir>` flag on the matched invocation (git applies them
+ * cumulatively). So `cd <worktree> && git commit` is judged against the
+ * worktree. It is **fail-closed**: an unresolvable `cd`/`-C` target (shell
  * expansion / command substitution / glob) BLOCKS, since it could hide a move
  * into a primary checkout.
  *
@@ -48,10 +49,10 @@ export function validateWorktreeDiscipline(input: ToolInput): ValidationResult {
   const op = forbiddenGitOp(command);
   if (!op) return { validator: VALIDATOR_NAME, passed: true };
 
-  const effective = resolveEffectiveCwd(command, input.cwd ?? "");
-  if (effective.ambiguous) return blocked(op, input.cwd ?? "", true);
+  const effective = resolveEffectiveCwd(command, input.cwd ?? "", op.globals);
+  if (effective.ambiguous) return blocked(op.label, input.cwd ?? "", true);
   if (!isPrimaryReposCheckout(effective.cwd)) return { validator: VALIDATOR_NAME, passed: true };
-  return blocked(op, effective.cwd, false);
+  return blocked(op.label, effective.cwd, false);
 }
 
 function blocked(op: string, cwd: string, ambiguous: boolean): ValidationResult {
@@ -97,54 +98,70 @@ function isUnresolvable(token: string): boolean {
 }
 
 const DIR_TOKEN = `("[^"]+"|'[^']+'|[^\\s;&|(){}]+)`;
+const QUOTED_ARG = `(?:"[^"]+"|'[^']+'|\\S+)`;
 // A `cd` that actually changes the shell's dir: after a separator, optionally
 // preceded by env-assignments (`FOO=1 `) and a `command`/`builtin` prefix.
 const CD_SEGMENT = new RegExp(
   `(?:^|&&|;|\\|\\||\\(|\\{)\\s*(?:[A-Za-z_]\\w*=\\S*\\s+)*(?:command\\s+|builtin\\s+)?cd\\s+(?!-)${DIR_TOKEN}`,
   "gu",
 );
-const GIT_DASH_C = new RegExp(`\\bgit\\s+(?:-c\\s+\\S+\\s+)*-C\\s+${DIR_TOKEN}`, "u");
+const DASH_C = new RegExp(`-C\\s+${DIR_TOKEN}`, "gu");
 
 type EffectiveCwd = { ambiguous: true } | { ambiguous: false; cwd: string };
 
+/** Apply one dir token to `cwd`, or signal ambiguity if it cannot be statically resolved. */
+function applyDir(token: string | undefined, cwd: string): { cwd: string } | "ambiguous" {
+  if (!token) return { cwd };
+  if (isUnresolvable(stripQuotes(token))) return "ambiguous";
+  return { cwd: resolveDir(token, cwd) };
+}
+
 /**
  * The directory the git op actually runs in: `baseCwd` advanced through each
- * leading `cd <dir>` segment, then overridden by a `git -C <dir>` flag. Returns
- * `{ ambiguous: true }` when a target cannot be statically resolved — the caller
- * fails closed so an unparseable move into a primary checkout cannot slip past.
+ * leading `cd <dir>` segment, then through EVERY `git -C <dir>` flag on the
+ * matched invocation (git rebases cwd per `-C`, cumulatively). Returns
+ * `{ ambiguous: true }` when any target cannot be statically resolved — the
+ * caller fails closed so an unparseable move into a primary checkout cannot slip
+ * past.
  */
-function resolveEffectiveCwd(command: string, baseCwd: string): EffectiveCwd {
+function resolveEffectiveCwd(command: string, baseCwd: string, opGlobals: string): EffectiveCwd {
   let cwd = baseCwd;
   for (const m of command.matchAll(CD_SEGMENT)) {
-    const token = m[1];
-    if (!token) continue;
-    if (isUnresolvable(stripQuotes(token))) return { ambiguous: true };
-    cwd = resolveDir(token, cwd);
+    const next = applyDir(m[1], cwd);
+    if (next === "ambiguous") return { ambiguous: true };
+    cwd = next.cwd;
   }
-  const dashC = GIT_DASH_C.exec(command);
-  if (dashC?.[1]) {
-    if (isUnresolvable(stripQuotes(dashC[1]))) return { ambiguous: true };
-    cwd = resolveDir(dashC[1], cwd);
+  for (const m of opGlobals.matchAll(DASH_C)) {
+    const next = applyDir(m[1], cwd);
+    if (next === "ambiguous") return { ambiguous: true };
+    cwd = next.cwd;
   }
   return { ambiguous: false, cwd };
 }
 
-// git global options that may sit between `git` and the subcommand: `-C <dir>`,
-// `-c <kv>` (arg-taking), and common flags. Skipping them means `git -C <dir>
-// commit` is still recognised as a commit op (and its -C is resolved by
-// resolveEffectiveCwd).
-const GIT_GLOBAL =
-  "(?:-C\\s+\\S+\\s+|-c\\s+\\S+\\s+|--git-dir=\\S+\\s+|--work-tree=\\S+\\s+|-p\\s+|--no-pager\\s+|--paginate\\s+)*";
-const gitOp = (subcommand: string): RegExp =>
-  new RegExp(`\\bgit\\s+${GIT_GLOBAL}${subcommand}`, "u");
+// git global options that may sit between `git` and the subcommand: `-C <dir>`
+// and `-c <kv>` (arg-taking), plus common flags. Skipping them means
+// `git -C <dir> commit` is still recognised as a commit op, and the captured run
+// is replayed by resolveEffectiveCwd to honor every `-C`.
+const GIT_GLOBAL_RUN =
+  `(?:-C\\s+${QUOTED_ARG}\\s+|-c\\s+${QUOTED_ARG}\\s+|--git-dir=\\S+\\s+|` +
+  `--work-tree=\\S+\\s+|-p\\s+|--no-pager\\s+|--paginate\\s+)*`;
 
-/** Returns the human label of the forbidden git op, or null if the command is allowed. */
-function forbiddenGitOp(command: string): string | null {
+type ForbiddenOp = { label: string; globals: string };
+
+/** Returns the forbidden git op (label + its global-option run), or null if allowed. */
+function forbiddenGitOp(command: string): ForbiddenOp | null {
   if (!/\bgit\b/.test(command)) return null;
-  if (gitOp("commit\\b").test(command)) return "git commit";
-  if (gitOp("switch\\b(?!\\s+(?:-h|--help)\\b)").test(command)) return "git switch";
-  if (gitOp("checkout\\s+-b\\b").test(command)) return "git checkout -b";
-  // branch CREATION only: `git branch <name>`; allow listing/info/delete flags.
-  if (gitOp("branch\\s+(?!-|--)\\S").test(command)) return "git branch <name>";
+  const checks: ReadonlyArray<readonly [string, string]> = [
+    ["commit\\b", "git commit"],
+    ["switch\\b(?!\\s+(?:-h|--help)\\b)", "git switch"],
+    ["checkout\\s+-b\\b", "git checkout -b"],
+    // branch CREATION only: `git branch <name>`; allow listing/info/delete flags.
+    ["branch\\s+(?!-|--)\\S", "git branch <name>"],
+  ];
+  for (const [subcommand, label] of checks) {
+    const match = new RegExp(`\\bgit\\s+(${GIT_GLOBAL_RUN})${subcommand}`, "u").exec(command);
+    if (match) return { label, globals: match[1] ?? "" };
+  }
   return null;
 }
