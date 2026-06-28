@@ -46,6 +46,26 @@ describe("validateWorktreeDiscipline", () => {
     expect(validateWorktreeDiscipline(bash('git commit -m "x"', "/tmp/build")).passed).toBe(true);
   });
 
+  it("allows `cd <worktree> && git commit` even when ambient cwd is primary", () => {
+    const r = validateWorktreeDiscipline(bash(`cd ${WORKTREE} && git commit -m "x"`, PRIMARY));
+    expect(r.passed).toBe(true);
+  });
+
+  it("allows quoted `cd '<worktree>' && git commit` when ambient cwd is primary", () => {
+    const r = validateWorktreeDiscipline(bash(`cd '${WORKTREE}' && git commit -m "x"`, PRIMARY));
+    expect(r.passed).toBe(true);
+  });
+
+  it("allows `git -C <worktree> commit` when ambient cwd is primary", () => {
+    const r = validateWorktreeDiscipline(bash(`git -C ${WORKTREE} commit -m "x"`, PRIMARY));
+    expect(r.passed).toBe(true);
+  });
+
+  it("still blocks `cd <primary> && git commit` when ambient cwd is elsewhere", () => {
+    const r = validateWorktreeDiscipline(bash(`cd ${PRIMARY} && git commit -m "x"`, "/tmp/build"));
+    expect(r.passed).toBe(false);
+  });
+
   it("ignores non-git bash commands", () => {
     expect(validateWorktreeDiscipline(bash("npm test", PRIMARY)).passed).toBe(true);
   });

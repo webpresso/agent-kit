@@ -1,6 +1,7 @@
 import type { ToolInput, ValidationResult } from "#hooks/shared/types";
 
 import { homedir } from "node:os";
+import { isAbsolute, resolve } from "node:path";
 
 import { getCommand, isBashInput } from "#hooks/shared/types";
 import { createSkipResult } from "./skip-result.js";
@@ -40,7 +41,7 @@ export function validateWorktreeDiscipline(input: ToolInput): ValidationResult {
   const op = forbiddenGitOp(command);
   if (!op) return { validator: VALIDATOR_NAME, passed: true };
 
-  const cwd = input.cwd ?? "";
+  const cwd = effectiveCwd(command, input.cwd ?? "");
   if (!isPrimaryReposCheckout(cwd)) return { validator: VALIDATOR_NAME, passed: true };
 
   return {
@@ -52,6 +53,40 @@ export function validateWorktreeDiscipline(input: ToolInput): ValidationResult {
       `bp/<slug> worktree), or cd into an existing ~/.agent/worktrees/ worktree. ` +
       `Bypass (exceptional): WORKTREE_DISCIPLINE_SKIP=1.`,
   };
+}
+
+function stripQuotes(value: string): string {
+  const first = value[0];
+  if ((first === '"' || first === "'") && value.at(-1) === first) return value.slice(1, -1);
+  return value;
+}
+
+/** Resolve a `cd`/`-C` target (handling quotes, `~`, and relative paths) to an absolute dir. */
+function resolveDir(raw: string, base: string): string {
+  let dir = stripQuotes(raw);
+  if (dir === "~") dir = homedir();
+  else if (dir.startsWith("~/")) dir = `${homedir()}/${dir.slice(2)}`;
+  return isAbsolute(dir) ? dir : resolve(base || homedir(), dir);
+}
+
+const CD_SEGMENT = /(?:^|&&|;|\|\||\(|\{)\s*cd\s+(?!-)("[^"]+"|'[^']+'|[^\s;&|(){}]+)/g;
+const GIT_DASH_C = /\bgit\s+(?:-c\s+\S+\s+)*-C\s+("[^"]+"|'[^']+'|[^\s;&|(){}]+)/;
+
+/**
+ * The directory the git op actually runs in: `baseCwd` advanced through each
+ * leading `cd <dir>` segment, then overridden by a `git -C <dir>` flag. Honoring
+ * these matches the command's real behavior, so `cd <worktree> && git commit` is
+ * evaluated against the worktree rather than the tool's ambient (often primary)
+ * cwd. Bare commits and `cd <primary> && git commit` still resolve to primary.
+ */
+function effectiveCwd(command: string, baseCwd: string): string {
+  let cwd = baseCwd;
+  for (const m of command.matchAll(CD_SEGMENT)) {
+    if (m[1]) cwd = resolveDir(m[1], cwd);
+  }
+  const dashC = GIT_DASH_C.exec(command);
+  if (dashC?.[1]) cwd = resolveDir(dashC[1], cwd);
+  return cwd;
 }
 
 /** A primary checkout = under ~/repos/ and NOT inside a managed worktree. */
