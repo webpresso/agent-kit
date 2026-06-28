@@ -264,9 +264,18 @@ function isGitExecutable(word: string | undefined): boolean {
   return word === "git" || basename(word) === "git";
 }
 
+function hasGitConfigAliasBeforeGit(words: string[], gitIndex: number): boolean {
+  return (
+    words.slice(0, gitIndex).some((word) => word.startsWith("GIT_CONFIG_COUNT=")) &&
+    words.slice(0, gitIndex).some((word) => /^GIT_CONFIG_KEY_\d+=alias\./u.test(word))
+  );
+}
+
 function wordsContainGitMutation(words: string[]): boolean {
   for (let i = 0; i < words.length; i += 1) {
-    if (isGitExecutable(words[i]) && mutationLabelFromGitArgs(words.slice(i + 1))) return true;
+    if (!isGitExecutable(words[i])) continue;
+    if (hasGitConfigAliasBeforeGit(words, i)) return true;
+    if (mutationLabelFromGitArgs(words.slice(i + 1))) return true;
   }
   return false;
 }
@@ -452,6 +461,7 @@ function hasAmbiguousGitMutationSyntax(command: string): boolean {
       if (!isGitExecutable(words[i])) continue;
       const args = words.slice(i + 1);
       if (hasMutationAliasConfig(args.join(" "))) return true;
+      if (hasGitConfigAliasBeforeGit(words, i)) return true;
       const mutation = mutationLabelFromGitArgs(args);
       if (!mutation) continue;
       if (hasEnvTargetOverrideBeforeGit(words, i)) return true;
