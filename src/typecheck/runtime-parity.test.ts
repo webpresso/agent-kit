@@ -1,6 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  RUNTIME_TYPECHECK_PARITY_ROOT_FILE,
+  ensureRuntimeTypecheckParityWorkspace,
   findResolvedTypecheckScopeGaps,
   findTypecheckHelpSurfaceGaps,
   formatResolvedTypecheckScopes,
@@ -47,5 +53,27 @@ describe("typecheck runtime parity helpers", () => {
         ],
       }),
     ).toBe("typecheck --help is missing the --file flag; typecheck --file failed (exit 1)");
+  });
+});
+
+describe("ensureRuntimeTypecheckParityWorkspace", () => {
+  const roots: string[] = [];
+
+  afterEach(() => {
+    for (const root of roots.splice(0)) {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("reuses a caller-provided seeded workspace without reseeding it", () => {
+    const workspaceRoot = mkdtempSync(join(tmpdir(), "wp-runtime-parity-test-"));
+    roots.push(workspaceRoot);
+    ensureRuntimeTypecheckParityWorkspace(workspaceRoot);
+
+    const rootFilePath = join(workspaceRoot, RUNTIME_TYPECHECK_PARITY_ROOT_FILE);
+    writeFileSync(rootFilePath, "export const rootValue = 2\n", "utf8");
+
+    ensureRuntimeTypecheckParityWorkspace(workspaceRoot);
+    expect(readFileSync(rootFilePath, "utf8")).toBe("export const rootValue = 2\n");
   });
 });

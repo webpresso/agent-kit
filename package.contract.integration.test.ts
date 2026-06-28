@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   chmodSync,
   existsSync,
@@ -14,7 +15,7 @@ import {
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createInstalledBlueprintMigrationSmokeScript } from "./scripts/packed-blueprint-migration-smoke.js";
 import { resolveRuntimeTarget, runtimePackageDirName } from "./src/build/runtime-targets.js";
@@ -40,27 +41,129 @@ const EXPECTED_BLUEPRINT_SCHEMA_VERSIONS = EXPECTED_BLUEPRINT_MIGRATION_SQL_FILE
   Number.parseInt(file.slice(0, file.indexOf("_")), 10),
 );
 const ORIGINAL_PACKAGE_JSON_TEXT = readFileSync(PACKAGE_JSON_PATH, "utf8");
-const PACK_LOCK_DIRECTORY = join(tmpdir(), "webpresso-agent-kit-npm-pack.lock");
+const PACK_LOCK_DIRECTORY = join(
+  tmpdir(),
+  `webpresso-agent-kit-npm-pack-${createHash("sha256").update(REPO_ROOT).digest("hex").slice(0, 12)}.lock`,
+);
+const PACK_LOCK_OWNER_PATH = join(PACK_LOCK_DIRECTORY, "owner.json");
+const PREPACK_PACKAGE_BACKUP_PATH = join(REPO_ROOT, ".package.json.prepack.backup");
+const PACK_LOCK_STALE_MS = 120_000;
+const PACK_LOCK_RETRY_MS = 100;
 let packedTarballTempRoot: string | undefined;
 
+type PackLockOwner = {
+  pid: number;
+  token: string;
+  startedAt: string;
+};
+
+function isAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    return code !== "ESRCH";
+  }
+}
+
+function readPackLockOwner(ownerPath = PACK_LOCK_OWNER_PATH): PackLockOwner | null {
+  try {
+    const owner = JSON.parse(readFileSync(ownerPath, "utf8")) as Partial<PackLockOwner>;
+    return typeof owner.pid === "number" &&
+      typeof owner.token === "string" &&
+      typeof owner.startedAt === "string"
+      ? (owner as PackLockOwner)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function readPackLockAgeMs(lockDirectory: string): number | null {
+  try {
+    return Date.now() - statSync(lockDirectory).mtimeMs;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+function writePackLockOwner(owner: PackLockOwner, ownerPath = PACK_LOCK_OWNER_PATH): void {
+  const tempPath = `${ownerPath}.${process.pid}.${Math.random().toString(16).slice(2)}.tmp`;
+  writeFileSync(tempPath, JSON.stringify(owner));
+  renameSync(tempPath, ownerPath);
+}
+
+function shouldReclaimStalePackLock(
+  owner: PackLockOwner | null,
+  ageMs: number,
+  isOwnerAlive: (pid: number) => boolean = isAlive,
+): owner is PackLockOwner {
+  return ageMs > PACK_LOCK_STALE_MS && owner !== null && !isOwnerAlive(owner.pid);
+}
+
+function createPackLockRelease(
+  ownerToken: string,
+  lockDirectory = PACK_LOCK_DIRECTORY,
+  ownerPath = PACK_LOCK_OWNER_PATH,
+): () => void {
+  return () => {
+    const owner = readPackLockOwner(ownerPath);
+    if (owner?.token !== ownerToken) return;
+    rmSync(lockDirectory, { force: true, recursive: true });
+  };
+}
+
+function removePackLockIfOwnerMatches(
+  expectedOwner: PackLockOwner,
+  lockDirectory = PACK_LOCK_DIRECTORY,
+  ownerPath = PACK_LOCK_OWNER_PATH,
+): boolean {
+  const owner = readPackLockOwner(ownerPath);
+  if (owner?.token !== expectedOwner.token) return false;
+  rmSync(lockDirectory, { force: true, recursive: true });
+  return true;
+}
+
+function removeOwnerlessPackLockIfStillOwnerless(
+  lockDirectory = PACK_LOCK_DIRECTORY,
+  ownerPath = PACK_LOCK_OWNER_PATH,
+): boolean {
+  if (readPackLockOwner(ownerPath) !== null) return false;
+  rmSync(lockDirectory, { force: true, recursive: true });
+  return true;
+}
+
 function acquirePackLock(): () => void {
-  const started = Date.now();
   while (true) {
     try {
+      const ownerToken = `${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
       mkdirSync(PACK_LOCK_DIRECTORY);
-      return () => rmSync(PACK_LOCK_DIRECTORY, { force: true, recursive: true });
+      writePackLockOwner({
+        pid: process.pid,
+        token: ownerToken,
+        startedAt: new Date().toISOString(),
+      });
+      return createPackLockRelease(ownerToken);
     } catch (error) {
       const code = (error as { code?: string }).code;
       if (code !== "EEXIST") throw error;
-      const ageMs = Date.now() - statSync(PACK_LOCK_DIRECTORY).mtimeMs;
-      if (ageMs > 120_000) {
-        rmSync(PACK_LOCK_DIRECTORY, { force: true, recursive: true });
+      const owner = readPackLockOwner();
+      const ageMs = readPackLockAgeMs(PACK_LOCK_DIRECTORY);
+      if (ageMs === null) {
         continue;
       }
-      if (Date.now() - started > 60_000) {
-        throw new Error(`Timed out waiting for npm pack lock at ${PACK_LOCK_DIRECTORY}`);
+      if (ageMs > PACK_LOCK_STALE_MS) {
+        if (shouldReclaimStalePackLock(owner, ageMs) && removePackLockIfOwnerMatches(owner)) {
+          continue;
+        }
+        if (owner === null && removeOwnerlessPackLockIfStillOwnerless()) {
+          continue;
+        }
       }
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100);
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, PACK_LOCK_RETRY_MS);
     }
   }
 }
@@ -81,10 +184,6 @@ type PackedTarballArtifact = {
   optionalDependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
 };
-
-type PackedSurfaceMetadata = Omit<PackedTarballArtifact, "tarballPath">;
-
-let packedSurfaceMetadataCache: PackedSurfaceMetadata | undefined;
 let packedTarballArtifactCache: PackedTarballArtifact | undefined;
 let packedDistBuilt = false;
 let packedNativeRuntimeBuilt = false;
@@ -164,6 +263,16 @@ function ensureBuiltNativeRuntimeArtifacts() {
 }
 
 function preparePackageForPack(): void {
+  if (existsSync(PREPACK_PACKAGE_BACKUP_PATH)) {
+    execFileSync("bun", ["src/build/package-manifest.ts", "restore"], {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        HUSKY: "0",
+      },
+    });
+  }
   execFileSync("vp", ["run", "stage:workflow-skills"], {
     cwd: REPO_ROOT,
     encoding: "utf8",
@@ -191,46 +300,6 @@ function restorePackageAfterPack(): void {
       HUSKY: "0",
     },
   });
-}
-
-function readPreparedManifest(): Omit<PackedTarballArtifact, "paths" | "tarballPath"> {
-  return JSON.parse(readFileSync(PACKAGE_JSON_PATH, "utf8")) as Omit<
-    PackedTarballArtifact,
-    "paths" | "tarballPath"
-  >;
-}
-
-function ensurePackedSurfaceMetadata() {
-  if (packedSurfaceMetadataCache) return packedSurfaceMetadataCache;
-  ensureBuiltPackedDist();
-  const release = acquirePackLock();
-  let raw: string;
-  let manifest: Omit<PackedTarballArtifact, "paths" | "tarballPath">;
-  try {
-    preparePackageForPack();
-    manifest = readPreparedManifest();
-    raw = execFileSync("npm", ["pack", "--dry-run", "--ignore-scripts", "--json"], {
-      cwd: REPO_ROOT,
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        HUSKY: "0",
-      },
-    });
-  } finally {
-    try {
-      restorePackageAfterPack();
-    } finally {
-      release();
-    }
-  }
-  const entries = parseNpmJson<Array<{ files?: Array<{ path?: string }> }>>(raw);
-  const paths =
-    entries[0]?.files
-      ?.map((file) => file.path)
-      .filter((path): path is string => typeof path === "string") ?? [];
-  packedSurfaceMetadataCache = { ...manifest, paths };
-  return packedSurfaceMetadataCache;
 }
 
 function ensurePackedTarballArtifact() {
@@ -288,7 +357,7 @@ function ensurePackedTarballArtifact() {
 }
 
 function readPackedSurfaceMetadata() {
-  return ensurePackedSurfaceMetadata();
+  return ensurePackedTarballArtifact();
 }
 
 function listPackedManifestCatalogSpecifiers(pkg: {
@@ -316,6 +385,87 @@ function createPackedTarball(): { tarballPath: string; cleanup: () => void } {
     tarballPath: artifact.tarballPath,
     cleanup: () => {},
   };
+}
+
+type InstalledPackedConsumerOptions = {
+  packageJson: Record<string, unknown>;
+  installPackageJson?: Record<string, unknown>;
+  tempPrefix: string;
+  omitDev?: boolean;
+};
+
+type InstalledPackedConsumer = {
+  root: string;
+  packageRoot: string;
+  wpBinPath: string;
+  cleanup: () => void;
+};
+
+let installedPackedConsumerCache: InstalledPackedConsumer | undefined;
+
+function createInstalledPackedConsumer(
+  tarballPath: string,
+  options: InstalledPackedConsumerOptions,
+): InstalledPackedConsumer {
+  const root = mkdtempSync(join(tmpdir(), options.tempPrefix));
+  writeFileSync(
+    join(root, "package.json"),
+    JSON.stringify(options.installPackageJson ?? options.packageJson, null, 2) + "\n",
+  );
+  const installArgs = [
+    "install",
+    tarballPath,
+    "--omit=optional",
+    "--no-audit",
+    "--fund=false",
+    "--package-lock=false",
+    "--prefer-offline",
+  ];
+  if (options.omitDev) {
+    installArgs.push("--omit=dev");
+  }
+  execFileSync("npm", installArgs, {
+    cwd: root,
+    encoding: "utf8",
+    env: { ...process.env, HUSKY: "0" },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  if (options.installPackageJson) {
+    writeFileSync(join(root, "package.json"), JSON.stringify(options.packageJson, null, 2) + "\n");
+  }
+
+  return {
+    root,
+    packageRoot: join(root, "node_modules", "@webpresso", "agent-kit"),
+    wpBinPath: join(root, "node_modules", "@webpresso", "agent-kit", "bin", "wp"),
+    cleanup: () => {
+      rmSync(root, { force: true, recursive: true });
+    },
+  };
+}
+
+function ensureInstalledPackedConsumer(): InstalledPackedConsumer {
+  if (installedPackedConsumerCache) return installedPackedConsumerCache;
+  const { tarballPath } = createPackedTarball();
+  installedPackedConsumerCache = createInstalledPackedConsumer(tarballPath, {
+    tempPrefix: "wp-packed-consumer-",
+    packageJson: {
+      name: "packed-consumer-smoke",
+      private: true,
+      devDependencies: {
+        "@webpresso/agent-config": "^0.1.5",
+        vitest: "^2.1.0",
+        "@playwright/test": "^1.55.0",
+        oxlint: "^1.0.0",
+        oxfmt: "^1.0.0",
+      },
+    },
+    installPackageJson: {
+      name: "packed-consumer-smoke",
+      private: true,
+    },
+  });
+  return installedPackedConsumerCache;
 }
 
 function createHostRuntimeTarball(tempRoot: string): { tarballPath: string } {
@@ -359,13 +509,57 @@ function unpackTarball(tarballPath: string, destinationRoot: string): string {
   return join(unpackRoot, "package");
 }
 
+function createPackedGlobalInstallTarball(
+  packageTarballPath: string,
+  runtimeTarballPath: string,
+  tempRoot: string,
+): string {
+  const target = resolveRuntimeTarget();
+  if (!target) {
+    throw new Error(`No compiled host runtime target for ${process.platform}/${process.arch}`);
+  }
+
+  const unpackDestinationRoot = join(tempRoot, "package-install");
+  const unpackedPackageRoot = unpackTarball(packageTarballPath, unpackDestinationRoot);
+  const manifestPath = join(unpackedPackageRoot, "package.json");
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as {
+    optionalDependencies?: Record<string, string>;
+  };
+  if (!manifest.optionalDependencies?.[target.packageName]) {
+    throw new Error(
+      `Packed manifest is missing host runtime optional dependency ${target.packageName}`,
+    );
+  }
+
+  // Keep the global parity install deterministic and npm-native: install the
+  // umbrella package once, and let npm place the host runtime under
+  // node_modules as a dependency rather than as a second top-level global wp.
+  manifest.optionalDependencies = {
+    [target.packageName]: `file:${runtimeTarballPath}`,
+  };
+  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
+
+  const repackedTarballPath = join(tempRoot, "agent-kit-global-install-fixture.tgz");
+  execFileSync(
+    "tar",
+    ["-czf", repackedTarballPath, "-C", join(unpackDestinationRoot, "unpacked"), "package"],
+    {
+      encoding: "utf8",
+    },
+  );
+  return repackedTarballPath;
+}
+
 afterAll(() => {
   if (packedTarballTempRoot) {
     rmSync(packedTarballTempRoot, { force: true, recursive: true });
     packedTarballTempRoot = undefined;
     packedTarballArtifactCache = undefined;
   }
-  packedSurfaceMetadataCache = undefined;
+  if (installedPackedConsumerCache) {
+    installedPackedConsumerCache.cleanup();
+    installedPackedConsumerCache = undefined;
+  }
   if (readFileSync(PACKAGE_JSON_PATH, "utf8") !== ORIGINAL_PACKAGE_JSON_TEXT) {
     // Atomic restore: concurrent bun processes must never see a truncated package.json.
     const tmpPath = `${PACKAGE_JSON_PATH}.writing`;
@@ -375,6 +569,124 @@ afterAll(() => {
 });
 
 describe("tooling umbrella package integration contract", () => {
+  beforeAll(() => {
+    ensurePackedTarballArtifact();
+    ensureInstalledPackedConsumer();
+  }, 300_000);
+
+  it("treats a disappearing pack lock as a retry instead of a hard failure", () => {
+    const root = mkdtempSync(join(tmpdir(), "wp-pack-lock-age-"));
+    const lockDirectory = join(root, "lock");
+
+    try {
+      expect(readPackLockAgeMs(lockDirectory)).toBeNull();
+    } finally {
+      rmSync(root, { force: true, recursive: true });
+    }
+  });
+
+  it("does not let late cleanup delete a successor pack lock", () => {
+    const root = mkdtempSync(join(tmpdir(), "wp-pack-lock-release-"));
+    const lockDirectory = join(root, "lock");
+    const ownerPath = join(lockDirectory, "owner.json");
+
+    try {
+      mkdirSync(lockDirectory, { recursive: true });
+      writeFileSync(
+        ownerPath,
+        JSON.stringify({
+          pid: process.pid,
+          token: "first-owner",
+          startedAt: new Date().toISOString(),
+        }),
+      );
+      const release = createPackLockRelease("first-owner", lockDirectory, ownerPath);
+      writeFileSync(
+        ownerPath,
+        JSON.stringify({
+          pid: process.pid,
+          token: "second-owner",
+          startedAt: new Date().toISOString(),
+        }),
+      );
+
+      release();
+
+      expect(readFileSync(ownerPath, "utf8")).toContain('"token":"second-owner"');
+    } finally {
+      rmSync(root, { force: true, recursive: true });
+    }
+  });
+
+  it("does not let stale-owner reclaim delete a successor pack lock", () => {
+    const root = mkdtempSync(join(tmpdir(), "wp-pack-lock-reclaim-"));
+    const lockDirectory = join(root, "lock");
+    const ownerPath = join(lockDirectory, "owner.json");
+    const firstOwner = {
+      pid: process.pid,
+      token: "first-owner",
+      startedAt: new Date(Date.now() - 180_000).toISOString(),
+    } satisfies PackLockOwner;
+
+    try {
+      mkdirSync(lockDirectory, { recursive: true });
+      writeFileSync(ownerPath, JSON.stringify(firstOwner));
+      writeFileSync(
+        ownerPath,
+        JSON.stringify({
+          pid: process.pid,
+          token: "second-owner",
+          startedAt: new Date().toISOString(),
+        }),
+      );
+
+      expect(removePackLockIfOwnerMatches(firstOwner, lockDirectory, ownerPath)).toBe(false);
+      expect(readFileSync(ownerPath, "utf8")).toContain('"token":"second-owner"');
+    } finally {
+      rmSync(root, { force: true, recursive: true });
+    }
+  });
+
+  it("only reclaims stale locks when the owner metadata is valid and dead", () => {
+    const owner = {
+      pid: 123,
+      token: "stale-owner",
+      startedAt: new Date(1_000).toISOString(),
+    } satisfies PackLockOwner;
+
+    expect(shouldReclaimStalePackLock(null, PACK_LOCK_STALE_MS + 1, () => false)).toBe(false);
+    expect(shouldReclaimStalePackLock(owner, PACK_LOCK_STALE_MS - 1, () => false)).toBe(false);
+    expect(shouldReclaimStalePackLock(owner, PACK_LOCK_STALE_MS + 1, () => true)).toBe(false);
+    expect(shouldReclaimStalePackLock(owner, PACK_LOCK_STALE_MS + 1, () => false)).toBe(true);
+  });
+
+  it("only reclaims ownerless locks while they stay ownerless", () => {
+    const root = mkdtempSync(join(tmpdir(), "wp-pack-lock-ownerless-"));
+    const lockDirectory = join(root, "lock");
+    const ownerPath = join(lockDirectory, "owner.json");
+
+    try {
+      mkdirSync(lockDirectory, { recursive: true });
+      expect(removeOwnerlessPackLockIfStillOwnerless(lockDirectory, ownerPath)).toBe(true);
+      expect(existsSync(lockDirectory)).toBe(false);
+
+      mkdirSync(lockDirectory, { recursive: true });
+      writePackLockOwner(
+        {
+          pid: process.pid,
+          token: "live-owner",
+          startedAt: new Date().toISOString(),
+        },
+        ownerPath,
+      );
+
+      expect(removeOwnerlessPackLockIfStillOwnerless(lockDirectory, ownerPath)).toBe(false);
+      expect(readFileSync(ownerPath, "utf8")).toContain('"token":"live-owner"');
+    } finally {
+      rmSync(root, { force: true, recursive: true });
+    }
+  });
+
   it("packs no banned internal tarball artifacts", () => {
     const packedPaths = readPackedSurfaceMetadata().paths;
     const banned = packedPaths.filter((path) =>
@@ -404,49 +716,19 @@ describe("tooling umbrella package integration contract", () => {
   }, 30_000);
 
   it("packed consumers receive runtime-owned setup guidance without losing authoring deps", () => {
-    const { tarballPath, cleanup } = createPackedTarball();
-    const tmpRoot = mkdtempSync(join(tmpdir(), "wp-packed-consumer-"));
-    const launcherRoot = mkdtempSync(join(tmpdir(), "wp-packed-launcher-"));
-    const packedPackageRoot = join(launcherRoot, "package");
-    const fakeHome = join(tmpRoot, ".home");
-    const fakeCodexHome = join(tmpRoot, ".codex-home");
+    const installedConsumer = ensureInstalledPackedConsumer();
+    const fakeHome = join(installedConsumer.root, ".home");
+    const fakeCodexHome = join(installedConsumer.root, ".codex-home");
 
     try {
-      execFileSync("git", ["init", "-q"], { cwd: tmpRoot, encoding: "utf8" });
-      execFileSync("git", ["init", "-q"], { cwd: launcherRoot, encoding: "utf8" });
-      execFileSync("tar", ["-xzf", tarballPath, "-C", launcherRoot], { encoding: "utf8" });
-      execFileSync("npm", ["install", "--omit=dev", "--omit=optional", "--ignore-scripts"], {
-        cwd: packedPackageRoot,
-        encoding: "utf8",
-        env: { ...process.env, HUSKY: "0" },
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-      writeFileSync(
-        join(tmpRoot, "package.json"),
-        JSON.stringify(
-          {
-            name: "packed-consumer-smoke",
-            private: true,
-            devDependencies: {
-              "@webpresso/agent-config": "^0.1.5",
-              vitest: "^2.1.0",
-              "@playwright/test": "^1.55.0",
-              oxlint: "^1.0.0",
-              oxfmt: "^1.0.0",
-            },
-          },
-          null,
-          2,
-        ) + "\n",
-      );
-
-      chmodSync(join(packedPackageRoot, "bin", "wp"), 0o755);
+      execFileSync("git", ["init", "-q"], { cwd: installedConsumer.root, encoding: "utf8" });
+      chmodSync(installedConsumer.wpBinPath, 0o755);
 
       const output = execFileSync(
-        join(packedPackageRoot, "bin", "wp"),
-        ["setup", "--yes", "--cwd", tmpRoot],
+        installedConsumer.wpBinPath,
+        ["setup", "--yes", "--cwd", installedConsumer.root],
         {
-          cwd: tmpRoot,
+          cwd: installedConsumer.root,
           encoding: "utf8",
           env: {
             ...process.env,
@@ -455,7 +737,6 @@ describe("tooling umbrella package integration contract", () => {
             HOME: fakeHome,
             HUSKY: "0",
             WP_SKIP_CLAUDE_PLUGIN: "1",
-            WP_SKIP_OMC: "1",
             WP_SKIP_RTK: "1",
             WP_SKIP_UPDATE_CHECK: "1",
           },
@@ -475,42 +756,28 @@ describe("tooling umbrella package integration contract", () => {
         "Do not blanket-remove devDependencies just because wp can execute the tool.",
       );
     } finally {
-      cleanup();
-      rmSync(launcherRoot, { force: true, recursive: true });
-      rmSync(tmpRoot, { force: true, recursive: true });
+      rmSync(fakeCodexHome, { force: true, recursive: true });
+      rmSync(fakeHome, { force: true, recursive: true });
     }
   }, 120_000);
 
   it("installed packed consumers can execute blueprint DB migrations from the packaged dist asset path", () => {
-    const { tarballPath, cleanup } = createPackedTarball();
-    const tmpRoot = mkdtempSync(join(tmpdir(), "wp-packed-migration-consumer-"));
+    const installedConsumer = ensureInstalledPackedConsumer();
 
     try {
-      writeFileSync(
-        join(tmpRoot, "package.json"),
-        JSON.stringify({ name: "packed-migration-smoke", private: true }, null, 2) + "\n",
-      );
-      execFileSync("npm", ["install", tarballPath, "--omit=optional"], {
-        cwd: tmpRoot,
-        encoding: "utf8",
-        env: { ...process.env, HUSKY: "0" },
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-
-      const packageRoot = join(tmpRoot, "node_modules", "@webpresso", "agent-kit");
       const smokeOutput = execFileSync(
         "node",
         [
           "--input-type=module",
           "--eval",
           createInstalledBlueprintMigrationSmokeScript({
-            packageRoot,
+            packageRoot: installedConsumer.packageRoot,
             expectedSqlFiles: EXPECTED_BLUEPRINT_MIGRATION_SQL_FILES,
             expectedVersions: EXPECTED_BLUEPRINT_SCHEMA_VERSIONS,
           }),
         ],
         {
-          cwd: tmpRoot,
+          cwd: installedConsumer.root,
           encoding: "utf8",
           env: { ...process.env, HUSKY: "0" },
           stdio: ["ignore", "pipe", "pipe"],
@@ -520,8 +787,7 @@ describe("tooling umbrella package integration contract", () => {
       expect(smokeOutput).toContain('"versions"');
       expect(smokeOutput).toContain('"0001_seed.sql"');
     } finally {
-      cleanup();
-      rmSync(tmpRoot, { force: true, recursive: true });
+      // Keep the installed consumer fixture cached across package-contract cases.
     }
   }, 120_000);
 
@@ -532,6 +798,11 @@ describe("tooling umbrella package integration contract", () => {
     const globalPrefix = join(fakeHome, ".vite-plus");
     const { tarballPath: runtimeTarballPath } = createHostRuntimeTarball(tmpRoot);
     const unpackedRuntimePackageRoot = unpackTarball(runtimeTarballPath, join(tmpRoot, "runtime"));
+    const globalInstallTarballPath = createPackedGlobalInstallTarball(
+      tarballPath,
+      runtimeTarballPath,
+      tmpRoot,
+    );
 
     try {
       const env = {
@@ -542,28 +813,36 @@ describe("tooling umbrella package integration contract", () => {
         npm_config_prefix: globalPrefix,
         PATH: [join(globalPrefix, "bin"), globalPrefix, process.env.PATH ?? ""].join(delimiter),
       };
+      const workspaceRoot = join(tmpRoot, "typecheck-parity-workspace");
 
-      execFileSync("npm", ["install", "--global", runtimeTarballPath], {
-        cwd: tmpRoot,
-        encoding: "utf8",
-        env,
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-
-      execFileSync("npm", ["install", "--global", tarballPath, "--omit=optional", "--force"], {
-        cwd: tmpRoot,
-        encoding: "utf8",
-        env,
-        stdio: ["ignore", "pipe", "pipe"],
-      });
+      execFileSync(
+        "npm",
+        [
+          "install",
+          "--global",
+          globalInstallTarballPath,
+          "--no-audit",
+          "--fund=false",
+          "--package-lock=false",
+          "--prefer-offline",
+        ],
+        {
+          cwd: tmpRoot,
+          encoding: "utf8",
+          env,
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      );
 
       const runtimeProbe = probeRuntimeTypecheckParity({
         command: join(unpackedRuntimePackageRoot, "bin", "wp"),
         env,
+        workspaceRoot,
       });
       const probe = probeRuntimeTypecheckParity({
         command: "wp",
         env,
+        workspaceRoot,
       });
 
       expect(runtimeProbe.ok).toBe(true);
