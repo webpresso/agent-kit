@@ -2,11 +2,11 @@
 type: blueprint
 title: "Package-contract packed-install wall-time follow-up"
 owner: ozby
-status: draft
+status: completed
 complexity: M
 created: "2026-06-26"
-last_updated: "2026-06-26"
-progress: "85% (single packed local install landed; global parity install now uses one deterministic umbrella install and no longer dominates the file)"
+last_updated: "2026-06-28"
+progress: "100% (targeted packed-install hotspot reduced and full-suite timing recorded; under-4-minute suite target remains out of scope for a later slice)"
 depends_on:
   - "blueprints/completed/2026-06-25-reduce-test-wall-time.md"
 cross_repo_depends_on: []
@@ -16,6 +16,8 @@ tags: [performance, tests, packaging]
 # Package-contract packed-install wall-time follow-up
 
 **Goal:** Reduce the remaining packed-install bottleneck so the full test suite can credibly approach the original under-4-minute wall-time target without weakening coverage or increasing timeouts.
+
+**Final outcome:** The packed-install bottleneck was reduced materially and the missing full-suite evidence is now recorded. The full suite still does not meet the original under-4-minute target (`vp run test` passed in `521.68s` on 2026-06-28), so any further wall-time work should be planned as a new slice outside this completed blueprint.
 
 ## Why this exists
 
@@ -48,9 +50,9 @@ tags: [performance, tests, packaging]
   - `vp run typecheck` -> pass
   - `vp run lint` -> pass
   - `./bin/wp format --check --file package.contract.integration.test.ts --file src/typecheck/runtime-parity.ts --file src/typecheck/runtime-parity.test.ts --file blueprints/draft/2026-06-26-package-contract-packed-install-wall-time-followup.md` -> pass
-  - attempted warm `vp run test` remeasure did **not** yield a trustworthy whole-suite wall time:
-    - before completion, the suite surfaced broader failures in `src/hooks/pretool-guard/runner.subprocess.test.ts` and `src/cli/commands/init/init.integration.test.ts`
-    - that means this slice can truthfully claim the targeted hotspot win, but not a clean end-to-end suite timing yet
+  - final merged-head full-suite checkpoint on 2026-06-28:
+    - `vp run test` -> pass, 621 files passed / 2 skipped, 6833 tests passed / 18 skipped / 8 todo, Vitest duration `521.68s`
+    - this is a trustworthy whole-suite timing after merging current `origin/main`; it confirms the targeted packed-install hotspot improved, but the original under-4-minute suite target is still not met
 
 ## Decision this slice
 
@@ -108,7 +110,7 @@ Apply the minimal change that reduces packed-install wall time while preserving 
 
 ### Task 3.1: Re-run package-contract timing and full-suite timing
 
-**Status:** in_progress
+**Status:** done
 
 After the optimization, rerun the package-contract test and then the full suite to determine whether the original under-4-minute target becomes realistic again or needs another follow-up.
 
@@ -116,5 +118,5 @@ After the optimization, rerun the package-contract test and then the full suite 
 
 - [x] Fresh package-contract timing is recorded.
 - [x] Fresh hook-runner watch timing is recorded.
-- [ ] Fresh full-suite timing is recorded.
-- [x] A truthful lifecycle decision is made from evidence: this slice materially helped, but the original full-suite target still needs a fresh whole-suite measurement and may now be blocked more by the parity probes themselves than by packed install duplication.
+- [x] Fresh full-suite timing is recorded.
+- [x] A truthful lifecycle decision is made from evidence: this slice materially helped, the full suite now passes with recorded timing, and the original under-4-minute target remains unmet for a later slice.
