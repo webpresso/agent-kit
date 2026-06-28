@@ -74,7 +74,9 @@ describe("@repo/workflow-skills skill text contract", () => {
       expect(content).toContain("opencode-go/minimax-m3");
       expect(content).toContain("opencode-go/mimo-v2.5-pro");
       expect(content).toContain("opencode-go/qwen3.7-max");
-      expect(content).toContain("opencode-go/hy3-preview");
+      // hy3-preview is no longer in the live OpenCode Go catalog, so it is no
+      // longer in the shared "catalog covered" table (the hy3 skill itself is
+      // parked). Asserting every skill lists it would re-introduce the stale ID.
     }
   });
 

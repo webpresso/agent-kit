@@ -1,0 +1,30 @@
+name: PR merge cleanup
+
+# Governance Piece 5 (CI-feasible half): delete the head branch when a PR merges.
+# The LOCAL half — `wp worktree remove` (safe path, refuses dirty/force/current)
+# + fast-forward the primary checkout to origin/main — cannot run from CI and is
+# documented in catalog/agent/rules/pre-implementation.md ("On merge: clean up + resync").
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+
+jobs:
+  delete-head-branch:
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete merged head branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
+            echo "Refusing to delete protected branch $BRANCH."; exit 0
+          fi
+          echo "Deleting merged head branch: $BRANCH"
+          git push origin --delete "$BRANCH" || echo "Branch already gone."

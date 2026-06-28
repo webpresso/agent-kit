@@ -42,6 +42,7 @@ interface LifecycleAuditFrontmatter {
   type?: unknown;
   worktreeOwnerId?: unknown;
   worktreeOwnerBranch?: unknown;
+  approvals?: unknown;
 }
 
 function isBlueprintOverview(file: string): boolean {
@@ -68,7 +69,68 @@ function readLifecycleAuditFrontmatter(raw: string): LifecycleAuditFrontmatter {
     type: data.type,
     worktreeOwnerId: data.worktree_owner_id,
     worktreeOwnerBranch: data.worktree_owner_branch,
+    approvals: data.approvals,
   };
+}
+
+/**
+ * The approval gate fires at the `draft`→`planned` promotion boundary (governance
+ * Piece 1). Later statuses (`in-progress`, `completed`) reached planned first via
+ * the transition matrix, so they inherit the approval; `parked`/`archived` are
+ * paused/abandoned. Checking only `planned` keeps the gate at the boundary it
+ * governs and avoids re-flagging already-promoted blueprints.
+ */
+const APPROVAL_GATED_STATUSES = new Set(["planned"]);
+
+/**
+ * Promotion gate: a blueprint past `draft` must carry ≥2 approvals from DISTINCT
+ * reviewers in its committed `_overview.md` frontmatter `approvals:` (the gate
+ * input; the markdown `## Approvals` checklist is a mirror). Frontmatter is
+ * version-controlled, so a fabricated tick is visible in git history / PR review.
+ */
+/**
+ * Count DISTINCT reviewers with an `approve` verdict in a frontmatter
+ * `approvals:` value. Shared by the audit sweep (warning) and the promote-time
+ * hard gate so both apply identical logic.
+ */
+export function countDistinctApprovals(approvals: unknown): number {
+  const entries = Array.isArray(approvals) ? approvals : [];
+  return new Set(
+    entries
+      .filter((e): e is Record<string, unknown> => Boolean(e) && typeof e === "object")
+      .filter((e) => String(e.verdict ?? "").toLowerCase() === "approve")
+      .map((e) =>
+        String(e.reviewer ?? "")
+          .trim()
+          .toLowerCase(),
+      )
+      .filter((reviewer) => reviewer.length > 0),
+  ).size;
+}
+
+export function validateApprovalGate(
+  file: string,
+  frontmatter: LifecycleAuditFrontmatter,
+): BlueprintAuditIssue[] {
+  if (frontmatter.type !== "blueprint") return [];
+  const status = typeof frontmatter.status === "string" ? frontmatter.status : "";
+  if (!APPROVAL_GATED_STATUSES.has(status)) return [];
+
+  const distinct = countDistinctApprovals(frontmatter.approvals);
+  if (distinct < 2) {
+    // WARNING on the audit sweep (non-breaking for pre-rule blueprints); the HARD
+    // block lives at the draft→planned promotion command (validateApprovalGate is
+    // also called there), so new promotions are prevented while existing planned
+    // blueprints surface a fixable warning rather than failing CI.
+    return [
+      {
+        file,
+        level: "warning",
+        message: `Blueprint is '${status}' but frontmatter \`approvals:\` has ${distinct} distinct approving reviewer(s) (need ≥2). Promotion past draft requires ≥2 distinct reviewer approvals — see catalog/agent/rules/pre-implementation.md.`,
+      },
+    ];
+  }
+  return [];
 }
 
 function countTaskHeadings(raw: string): number {
@@ -266,6 +328,12 @@ function validateOwnerBindingTruth(
       message:
         "In-progress executable blueprint is missing worktree_owner_branch; start or repair it with `wp blueprint start` / `wp worktree rebind`.",
     });
+  } else if (!ownerBranch.startsWith("bp/")) {
+    issues.push({
+      file,
+      level: "error",
+      message: `In-progress blueprint worktree_owner_branch "${ownerBranch}" does not follow the uniform \`bp/<slug>\` convention; create the worktree with \`wp blueprint start <slug>\`.`,
+    });
   }
 
   if (ownerId) {
@@ -441,6 +509,7 @@ async function auditBlueprintFile(
     ...validateTaskState(blueprint).map((issue) => Object.assign({}, issue, { file })),
     ...validateBlueprintEngineSemantics(file, blueprint),
     ...strictIssues,
+    ...validateApprovalGate(file, frontmatter),
     ...validateOwnerBindingTruth(file, frontmatter),
     ...validateExecutionMetadataTruth(file, blueprint),
   ];
