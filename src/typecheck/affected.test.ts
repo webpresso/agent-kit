@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   collectAffectedDiagnostics,
   planAffectedTypecheckClosure,
+  planAffectedTypecheckClosures,
   runAffectedTypecheck,
 } from "./affected.js";
 
@@ -136,5 +137,95 @@ describe("affected typecheck closure", () => {
         message: "Type 'number' is not assignable to type 'string'.",
       },
     ]);
+  });
+});
+
+function makePackage(root: string, name: string): void {
+  const pkgDir = path.join(root, "packages", name);
+  mkdirSync(path.join(pkgDir, "src"), { recursive: true });
+  writeFileSync(
+    path.join(pkgDir, "tsconfig.json"),
+    JSON.stringify(
+      {
+        compilerOptions: {
+          strict: true,
+          noEmit: true,
+          target: "ES2024",
+          module: "ESNext",
+          moduleResolution: "Bundler",
+        },
+        include: ["src/**/*.ts"],
+      },
+      null,
+      2,
+    ),
+    "utf8",
+  );
+}
+
+function configRelative(root: string, configPath: string): string {
+  return path.relative(root, configPath).replaceAll("\\", "/");
+}
+
+describe("affected typecheck closures across owning tsconfigs", () => {
+  it("plans a closure for a packages/* file in its own tsconfig (no fail-closed)", () => {
+    const root = makeProject();
+    makePackage(root, "pkg-a");
+    write(root, "packages/pkg-a/src/a.ts", "export const a: string = 'ok';\n");
+
+    const plans = planAffectedTypecheckClosures({
+      repoRoot: root,
+      files: ["packages/pkg-a/src/a.ts"],
+    });
+
+    expect(plans).toHaveLength(1);
+    expect(configRelative(root, plans[0]!.configPath)).toBe("packages/pkg-a/tsconfig.json");
+    expect(
+      plans[0]!.closureFiles.map((file) => path.relative(root, file.fileName).replaceAll("\\", "/")),
+    ).toEqual(["packages/pkg-a/src/a.ts"]);
+  });
+
+  it("plans separate closures for a mixed root + package change", () => {
+    const root = makeProject();
+    makePackage(root, "pkg-a");
+    write(root, "src/x.ts", "export const x = 1;\n");
+    write(root, "packages/pkg-a/src/a.ts", "export const a = 2;\n");
+
+    const plans = planAffectedTypecheckClosures({
+      repoRoot: root,
+      files: ["src/x.ts", "packages/pkg-a/src/a.ts"],
+    });
+
+    expect(plans.map((plan) => configRelative(root, plan.configPath))).toEqual([
+      "packages/pkg-a/tsconfig.json",
+      "tsconfig.json",
+    ]);
+  });
+
+  it("fail-closes when a changed file is inside no active TypeScript program", () => {
+    const root = makeProject();
+    // A valid src file keeps the root tsconfig program non-empty...
+    write(root, "src/keep.ts", "export const keep = 1;\n");
+    // ...but `scripts/foo.ts` is outside the root include (src/**) and under no
+    // package tsconfig, so no program governs the changed file.
+    write(root, "scripts/foo.ts", "export const foo = 1;\n");
+
+    expect(() =>
+      planAffectedTypecheckClosures({ repoRoot: root, files: ["scripts/foo.ts"] }),
+    ).toThrow(/no changed files inside any active TypeScript program/);
+  });
+
+  it("reports diagnostics found inside a package program", async () => {
+    const root = makeProject();
+    makePackage(root, "pkg-a");
+    write(root, "packages/pkg-a/src/a.ts", "export const a: string = 1;\n");
+
+    const result = await runAffectedTypecheck({
+      repoRoot: root,
+      files: ["packages/pkg-a/src/a.ts"],
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.checkedFiles).toEqual(["packages/pkg-a/src/a.ts"]);
   });
 });

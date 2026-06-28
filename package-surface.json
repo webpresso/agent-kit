@@ -1,5 +1,5 @@
 {
-  "allowedPublicPackages": ["@webpresso/agent-config"],
+  "allowedPublicPackages": ["@webpresso/agent-config", "@webpresso/agent-core"],
   "referenceConsumerBaselines": {
     "@webpresso/db-branching": "0.2.4",
     "@webpresso/db-branching-neon": "0.2.4"

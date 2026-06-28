@@ -63,6 +63,17 @@ describe("@webpresso/agent-config export isolation", () => {
     expect(exports).toHaveProperty("./workers-test");
   });
 
+  it("re-exports the agent-core consumer-primitive subset", () => {
+    const pkg = readPkg();
+    const exports = pkg.tshy?.exports ?? pkg.exports ?? {};
+
+    expect(exports).toHaveProperty("./repo-root");
+    expect(exports).toHaveProperty("./process");
+    expect(exports).toHaveProperty("./e2e");
+    expect(exports).toHaveProperty("./deploy");
+    expect(exports).toHaveProperty("./dev");
+  });
+
   it("does not import from @webpresso/agent-kit in source (no circular dep)", () => {
     const srcDir = join(ROOT, "src");
     const violations: string[] = [];

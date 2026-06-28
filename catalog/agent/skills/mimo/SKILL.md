@@ -12,8 +12,7 @@ Use this skill when the user asks for a MiMo reviewer / OpenCode Go review from 
 
 ## Model routing
 
-- Primary: `opencode-go/mimo-v2.5-pro`
-- Fallbacks: `opencode-go/mimo-v2.5`
+Versions change over time, so this skill does **not** hardcode a model ID. Resolve the current model from the live catalog (`opencode models opencode-go`) so new releases are picked up automatically. This reviewer uses the **MiMo** family on OpenCode Go (prefer the `-pro` tier).
 
 Use MiMo for cheap broad critique, multimodal-adjacent reasoning where appropriate, and quota-friendly follow-up review.
 
@@ -37,21 +36,28 @@ trap 'rm -f "$PROMPT_FILE"' EXIT
 
 ## Review command
 
-Default to read-only review prompts: ask the model to inspect the diff/plan, cite concrete files, and avoid modifying files.
+Default to read-only review prompts: ask the model to inspect the diff/plan, cite concrete files, and avoid modifying files. Run from the repo directory — opencode already operates on the current working directory, so do NOT pass `--dir "$PWD"`: it forces a redundant full-repo index that stalls the review (and times out under load). For long reviews, write output to a file instead of piping through `head`/`tail` under a `timeout`, which discards buffered output when the process is killed.
 
 ```bash
-opencode run --model opencode-go/mimo-v2.5-pro --dir "$PWD" "$(cat "$PROMPT_FILE")"
+# Resolve the current best model from the live catalog (auto-updates as new
+# OpenCode Go releases land — no hardcoded version to go stale):
+CATALOG=$(opencode models opencode-go)
+MODEL=$(echo "$CATALOG" | grep '^opencode-go/mimo' | grep -- '-pro$' | sort -V | tail -1)
+[ -z "$MODEL" ] && MODEL=$(echo "$CATALOG" | grep '^opencode-go/mimo' | sort -V | tail -1)
+opencode run --model "$MODEL" "$(cat "$PROMPT_FILE")"
 ```
 
-If the primary model is unavailable or quota-limited, retry with one fallback from this skill's routing list.
+If `$MODEL` is empty, the MiMo family is absent from your OpenCode Go catalog — run `opencode models opencode-go` and pick a reviewer family that is present.
 
-## Current OpenCode Go catalog covered
+## Live catalog
 
-| Family   | OpenCode Go model IDs                                                             |
-| -------- | --------------------------------------------------------------------------------- |
-| DeepSeek | `opencode-go/deepseek-v4-pro`, `opencode-go/deepseek-v4-flash`                    |
-| GLM      | `opencode-go/glm-5.2`, `opencode-go/glm-5.1`                                      |
-| Kimi     | `opencode-go/kimi-k2.7-code`, `opencode-go/kimi-k2.6`                             |
-| MiniMax  | `opencode-go/minimax-m3`, `opencode-go/minimax-m2.7`                              |
-| MiMo     | `opencode-go/mimo-v2.5-pro`, `opencode-go/mimo-v2.5`                              |
-| Qwen     | `opencode-go/qwen3.7-max`, `opencode-go/qwen3.7-plus`, `opencode-go/qwen3.6-plus` |
+Model IDs drift, so this skill does not pin them. The authoritative list is
+the live catalog:
+
+```bash
+opencode models opencode-go
+```
+
+The routing and review command above resolve the right `opencode-go/mimo`
+model from that output at run time, so newly released versions are used
+automatically.
