@@ -1,17 +1,19 @@
 ---
 type: blueprint
 title: Retire the legacy CLI alias from live docs (wp is canonical)
-status: planned
+status: archived
 complexity: XS
 owner: ozby
 created: "2026-06-27"
-last_updated: "2026-06-27"
-progress: "0% (0/1 tasks done, 0 blocked, updated 2026-06-27)"
+last_updated: "2026-06-28"
+progress: "0% (archived 2026-06-28; no remaining agent-kit-local work, external repo absent)"
 tags:
   - cli
   - docs
   - naming
 ---
+
+> **Archived 2026-06-28 (ultragoal plan realignment).** In the current `agent-kit` checkout, the named live local files already have no `ak` hits, and `./bin/wp audit no-legacy-cli-bin` passes. The only remaining scope described here is cross-repo (`/Users/ozby/repos/ingest-lens`), but that repo is not present in this workspace, so this is not executable as an `agent-kit` blueprint. Preserve as historical intent only; if ingest-lens cleanup is still needed, reopen it in that repo.
 
 # Retire the legacy CLI alias from live docs (wp is canonical)
 
@@ -86,3 +88,9 @@ Replace the retired `ak`-prefixed invocations with their `wp` equivalents in /Us
 - [ ] A grep for the retired alias over ALL intended live locations (workspace CLAUDE.md and each named ingest-lens path) returns nothing.
 - [ ] wp audit no-legacy-cli-bin stays green.
 - [ ] No non-Markdown file is modified.
+
+## Archive evidence (2026-06-28)
+
+- `./bin/wp audit no-legacy-cli-bin` → passed in the current `agent-kit` tree.
+- `rg -n '\bak\b' AGENTS.md CLAUDE.md` in this checkout returned no live hits.
+- The blueprint's named external target repo `/Users/ozby/repos/ingest-lens` is absent in this environment, so the remaining scope is cross-repo and not executable here.

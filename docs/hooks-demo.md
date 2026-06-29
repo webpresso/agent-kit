@@ -37,4 +37,4 @@ event when the tool name is `Bash`.
 
 - `wp hooks status`
 - `wp hooks doctor`
-- `wp setup --restore-hooks`
+- `wp setup repair --restore-hooks`

@@ -25,7 +25,7 @@ Make PR #275 merge cleanly on current `main` without reintroducing the retired `
 
 ## Tasks
 
-### [git] Task 1.1: Rebase the stale PR commit onto current main
+#### [git] Task 1.1: Rebase the stale PR commit onto current main
 
 **Status:** done
 
@@ -38,7 +38,7 @@ Make PR #275 merge cleanly on current `main` without reintroducing the retired `
 - [x] Branch is rebuilt from current `origin/main`
 - [x] Stale `instruction-surfaces*` conflicts are resolved in favor of current `main`
 
-### [docs] Task 1.2: Keep the refresh consistent with repo policy
+#### [docs] Task 1.2: Keep the refresh consistent with repo policy
 
 **Status:** done
 

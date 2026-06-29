@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: "2026-06-18"
+last_updated: "2026-06-29"
 ---
 
 # Add-ons
@@ -15,8 +15,10 @@ bootstrap.
   skills such as `autoplan`, `investigate`, `browse`, `qa-only`, and `qa`, are
   projected into supported host-visible surfaces by default.
 - **Default workstation presets:** `vision` and `rtk`.
-- **External tools:** OMX and OMC are intentionally self-managed. Install and
-  update them with their native installers if you choose to use them.
+- **Optional agent tools:** `wp install` can mark Codex, Claude Code, OpenCode,
+  and Oh My integrations as WP-owned. WP-owned scopes are refreshed by
+  `wp update`; `wp remove ...` clears ownership only and does not attempt a
+  native uninstall.
 
 Most repos should only run:
 
@@ -45,18 +47,40 @@ Use the same `--with` flow for non-default Webpresso skills such as
 | [`rtk`](https://github.com/rtk-ai/rtk)                          | Default preset. Skipped in CI or when `WP_SKIP_RTK=1`. | Shell-tool token filtering and routing/guard integration. | Apache-2.0      |
 | `vision`                                                        | Default preset.                                        | Starter `VISION.md` and vision audit support.             | MIT (this repo) |
 
-## External tools managed outside `wp setup`
+## Optional WP-managed agent tools
 
-These tools remain compatible with Webpresso, but `wp setup` no longer
-remembers or replays their installation on reruns:
+`wp setup` stays focused on repo scaffolding. Install optional agent CLIs and Oh
+My layers explicitly when a workstation or project needs them:
 
-| Tool                                       | Preferred install/update path                                 | Source                                                              |
-| ------------------------------------------ | ------------------------------------------------------------- | ------------------------------------------------------------------- |
-| [`omx`](https://oh-my-codex.dev/docs.html) | `npm install -g oh-my-codex`, then `omx setup` / `omx update` | official OMX docs                                                   |
-| `omc`                                      | Claude Code `/plugin` or `claude plugin` marketplace commands | [Claude Code plugin docs](https://code.claude.com/docs/en/settings) |
+```bash
+wp install codex
+wp install claude-code
+wp install opencode
+wp install oh-my codex
+wp install oh-my claude-code --scope user
+wp install oh-my opencode
+```
 
-See [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) for vendored catalog skills and
-integration license notes.
+`openagent` is accepted only as a compatibility alias for the canonical OpenCode
+command:
+
+```bash
+wp install oh-my openagent   # same target as: wp install oh-my opencode
+```
+
+When WP owns a user or project scope, future `wp update` runs refresh that scope
+before refreshing `@webpresso/agent-kit`. `wp remove ...` only clears the WP
+ownership record; it does not run a native uninstall. Use `--scope project` only
+for Oh My tools that support project-scoped setup.
+
+| Target           | Canonical command              | Notes                                   |
+| ---------------- | ------------------------------ | --------------------------------------- | --------- |
+| Codex CLI        | `wp install codex`             | User-scoped global CLI.                 |
+| Claude Code CLI  | `wp install claude-code`       | User-scoped global CLI.                 |
+| OpenCode CLI     | `wp install opencode`          | User-scoped global CLI.                 |
+| Oh My Codex      | `wp install oh-my codex`       | Supports `--scope user                  | project`. |
+| Oh My ClaudeCode | `wp install oh-my claude-code` | Supports `--scope user                  | project`. |
+| Oh My OpenAgent  | `wp install oh-my opencode`    | `openagent` is an alias, not canonical. |
 
 ## Default bootstrap
 

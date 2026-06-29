@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  decideMergeCleanup,
+  expectedPrimaryBranchForBaseRef,
   formatWorktreeList,
   parseWorktreePorcelain,
+  planMergeCleanup,
   resolveNewWorktreeTarget,
   resolveWorktreePath,
   sanitizeWorktreeSegment,
@@ -137,6 +140,186 @@ describe("resolveWorktreePath", () => {
     expect(() => resolveWorktreePath("nonexistent", ENTRIES)).toThrow(
       'No worktree matching "nonexistent"',
     );
+  });
+});
+
+describe("merge cleanup planning", () => {
+  it("derives the local primary branch from an origin-tracking base ref", () => {
+    expect(expectedPrimaryBranchForBaseRef("origin/main")).toBe("main");
+    expect(expectedPrimaryBranchForBaseRef("refs/remotes/origin/release")).toBe("release");
+    expect(expectedPrimaryBranchForBaseRef("main")).toBe("main");
+  });
+
+  it("builds the safe remove + fast-forward command plan", () => {
+    expect(planMergeCleanup("/repo/.agent/worktrees/feat-x", "origin/main")).toStrictEqual({
+      targetPath: "/repo/.agent/worktrees/feat-x",
+      baseRef: "origin/main",
+      expectedPrimaryBranch: "main",
+      removeArgs: ["worktree", "remove", "/repo/.agent/worktrees/feat-x"],
+      fetchArgs: ["fetch", "--prune", "origin"],
+      mergeArgs: ["merge", "--ff-only", "origin/main"],
+    });
+  });
+
+  it("refuses to remove the primary checkout itself", () => {
+    expect(() =>
+      decideMergeCleanup({
+        repoRoot: "/repo/main",
+        targetPath: "/repo/main",
+        baseRef: "origin/main",
+        entries: [{ path: "/repo/main", head: "aaaaaaa", branch: "refs/heads/main", bare: false }],
+        registryEntries: [{ repoRoot: "/repo/main", path: "/repo/main" }],
+        currentBranch: "main",
+        repoDirty: false,
+        targetDirty: false,
+      }),
+    ).toThrow("cannot remove the current/main checkout");
+  });
+
+  it("refuses unmanaged worktrees", () => {
+    expect(() =>
+      decideMergeCleanup({
+        repoRoot: "/repo/main",
+        targetPath: "/repo/.agent/worktrees/feat-x",
+        baseRef: "origin/main",
+        entries: [
+          { path: "/repo/main", head: "aaaaaaa", branch: "refs/heads/main", bare: false },
+          {
+            path: "/repo/.agent/worktrees/feat-x",
+            head: "bbbbbbb",
+            branch: "refs/heads/bp/x",
+            bare: false,
+          },
+        ],
+        registryEntries: [],
+        currentBranch: "main",
+        repoDirty: false,
+        targetDirty: false,
+      }),
+    ).toThrow("is not a registered managed worktree");
+  });
+
+  it("refuses locked worktrees", () => {
+    expect(() =>
+      decideMergeCleanup({
+        repoRoot: "/repo/main",
+        targetPath: "/repo/.agent/worktrees/feat-x",
+        baseRef: "origin/main",
+        entries: [
+          { path: "/repo/main", head: "aaaaaaa", branch: "refs/heads/main", bare: false },
+          {
+            path: "/repo/.agent/worktrees/feat-x",
+            head: "bbbbbbb",
+            branch: "refs/heads/bp/x",
+            bare: false,
+            locked: true,
+          },
+        ],
+        registryEntries: [{ repoRoot: "/repo/main", path: "/repo/.agent/worktrees/feat-x" }],
+        currentBranch: "main",
+        repoDirty: false,
+        targetDirty: false,
+      }),
+    ).toThrow("is locked");
+  });
+
+  it("refuses dirty target worktrees", () => {
+    expect(() =>
+      decideMergeCleanup({
+        repoRoot: "/repo/main",
+        targetPath: "/repo/.agent/worktrees/feat-x",
+        baseRef: "origin/main",
+        entries: [
+          { path: "/repo/main", head: "aaaaaaa", branch: "refs/heads/main", bare: false },
+          {
+            path: "/repo/.agent/worktrees/feat-x",
+            head: "bbbbbbb",
+            branch: "refs/heads/bp/x",
+            bare: false,
+          },
+        ],
+        registryEntries: [{ repoRoot: "/repo/main", path: "/repo/.agent/worktrees/feat-x" }],
+        currentBranch: "main",
+        repoDirty: false,
+        targetDirty: true,
+      }),
+    ).toThrow("has uncommitted changes");
+  });
+
+  it("refuses dirty primary checkouts", () => {
+    expect(() =>
+      decideMergeCleanup({
+        repoRoot: "/repo/main",
+        targetPath: "/repo/.agent/worktrees/feat-x",
+        baseRef: "origin/main",
+        entries: [
+          { path: "/repo/main", head: "aaaaaaa", branch: "refs/heads/main", bare: false },
+          {
+            path: "/repo/.agent/worktrees/feat-x",
+            head: "bbbbbbb",
+            branch: "refs/heads/bp/x",
+            bare: false,
+          },
+        ],
+        registryEntries: [{ repoRoot: "/repo/main", path: "/repo/.agent/worktrees/feat-x" }],
+        currentBranch: "main",
+        repoDirty: true,
+        targetDirty: false,
+      }),
+    ).toThrow("primary checkout /repo/main has uncommitted changes");
+  });
+
+  it("refuses when the primary checkout is not on the expected branch", () => {
+    expect(() =>
+      decideMergeCleanup({
+        repoRoot: "/repo/main",
+        targetPath: "/repo/.agent/worktrees/feat-x",
+        baseRef: "origin/main",
+        entries: [
+          { path: "/repo/main", head: "aaaaaaa", branch: "refs/heads/main", bare: false },
+          {
+            path: "/repo/.agent/worktrees/feat-x",
+            head: "bbbbbbb",
+            branch: "refs/heads/bp/x",
+            bare: false,
+          },
+        ],
+        registryEntries: [{ repoRoot: "/repo/main", path: "/repo/.agent/worktrees/feat-x" }],
+        currentBranch: "feat/not-main",
+        repoDirty: false,
+        targetDirty: false,
+      }),
+    ).toThrow("primary checkout must be on main");
+  });
+
+  it("returns the cleanup plan when all safety checks pass", () => {
+    expect(
+      decideMergeCleanup({
+        repoRoot: "/repo/main",
+        targetPath: "/repo/.agent/worktrees/feat-x",
+        baseRef: "origin/main",
+        entries: [
+          { path: "/repo/main", head: "aaaaaaa", branch: "refs/heads/main", bare: false },
+          {
+            path: "/repo/.agent/worktrees/feat-x",
+            head: "bbbbbbb",
+            branch: "refs/heads/bp/x",
+            bare: false,
+          },
+        ],
+        registryEntries: [{ repoRoot: "/repo/main", path: "/repo/.agent/worktrees/feat-x" }],
+        currentBranch: "main",
+        repoDirty: false,
+        targetDirty: false,
+      }),
+    ).toStrictEqual({
+      targetPath: "/repo/.agent/worktrees/feat-x",
+      baseRef: "origin/main",
+      expectedPrimaryBranch: "main",
+      removeArgs: ["worktree", "remove", "/repo/.agent/worktrees/feat-x"],
+      fetchArgs: ["fetch", "--prune", "origin"],
+      mergeArgs: ["merge", "--ff-only", "origin/main"],
+    });
   });
 });
 

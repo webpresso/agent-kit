@@ -8,6 +8,7 @@ import {
   deriveHookStatus,
   deriveHostSurfaceStatus,
   formatHostSurfaceStatusLine,
+  formatHookConfigSourceLine,
   WP_HOOK_SPECS,
   statusCommand,
 } from "./index.js";
@@ -307,6 +308,63 @@ describe("deriveHostSurfaceStatus", () => {
   });
 });
 
+it("formats hook config source fields with bounded path and gitPath", () => {
+  const repoRoot = `/repo/${"deep/".repeat(40)}project`;
+  const filePath = join(repoRoot, ".codex", "hooks.json");
+  const line = formatHookConfigSourceLine({
+    vendor: "codex",
+    repoRoot,
+    filePath,
+    hooks: 123456789,
+  });
+
+  expect(line).toContain("[codex] hooks status");
+  expect(line).toContain("hooks=123456789");
+  expect(line).toContain("path=");
+  expect(line).toContain("gitPath=.codex/hooks.json");
+  expect(line.length).toBeLessThan(220);
+});
+
+it("formats user/system hook config sources with bounded absolute path", () => {
+  const line = formatHookConfigSourceLine({
+    vendor: "claude",
+    repoRoot: "/repo/project",
+    filePath: `/Users/me/${"very-long/".repeat(40)}settings.json`,
+    hooks: 0,
+  });
+
+  expect(line).toContain("path=/Users/me/");
+  expect(line).not.toContain("gitPath=");
+  expect(line.length).toBeLessThan(180);
+});
+
+it("does not throw when hook config JSON is invalid or absent", async () => {
+  const repoRoot = mkdtempSync(join(tmpdir(), "wp-hooks-status-invalid-"));
+  mkdirSync(join(repoRoot, ".webpresso"), { recursive: true });
+  mkdirSync(join(repoRoot, ".codex"), { recursive: true });
+  writeFileSync(join(repoRoot, ".codex", "hooks.json"), "{not-json");
+  const previousCwd = process.cwd();
+  let output = "";
+  const writeSpy = vi
+    .spyOn(process.stdout, "write")
+    .mockImplementation((chunk: string | Uint8Array) => {
+      output += String(chunk);
+      return true;
+    });
+
+  try {
+    process.chdir(repoRoot);
+    await expect(statusCommand(["--vendor", "codex"])).resolves.toBeUndefined();
+  } finally {
+    process.chdir(previousCwd);
+    writeSpy.mockRestore();
+    rmSync(repoRoot, { recursive: true, force: true });
+  }
+
+  expect(output).toContain("[codex] hooks status");
+  expect(output).toContain("disabled");
+});
+
 describe("statusCommand source-repo guidance", () => {
   it("prints source-aware setup guidance when the source repo manifest is missing", async () => {
     const repoRoot = mkdtempSync(join(tmpdir(), "wp-hooks-status-source-"));
@@ -331,6 +389,6 @@ describe("statusCommand source-repo guidance", () => {
       rmSync(repoRoot, { recursive: true, force: true });
     }
 
-    expect(output).toContain("WP_FORCE_SOURCE=1 wp setup --source-maintenance");
+    expect(output).toContain("WP_FORCE_SOURCE=1 wp setup repair");
   });
 });

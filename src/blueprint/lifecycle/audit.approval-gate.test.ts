@@ -1,48 +1,132 @@
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
+import { afterEach, describe, expect, it } from "vitest";
 
 import { validateApprovalGate } from "./audit.js";
 
-const fm = (status: string, approvals?: unknown) => ({ type: "blueprint", status, approvals });
-const approve = (reviewer: string) => ({ reviewer, verdict: "approve" });
+const approve = (reviewer: string, evidence = "reviews.md") => ({
+  reviewer,
+  verdict: "approve",
+  evidence,
+});
+
+function makeBlueprintWithReviews(
+  status: string,
+  approvals?: unknown,
+  reviewsMarkdown = `# reviews
+
+| Date | Reviewer | Rev | Verdict | Note |
+| --- | --- | --- | --- | --- |
+| 2026-06-28 | codex | final | APPROVE | ok |
+| 2026-06-28 | deepseek | final | APPROVE | ok |
+`,
+): { root: string; file: string } {
+  const root = mkdtempSync(path.join(tmpdir(), "approval-gate-"));
+  mkdirSync(path.join(root, "blueprints", status, "sample"), { recursive: true });
+  writeFileSync(
+    path.join(root, "blueprints", status, "sample", "_overview.md"),
+    `---
+type: blueprint
+status: ${status}
+approvals: ${JSON.stringify(approvals ?? [])}
+---
+`,
+    "utf8",
+  );
+  writeFileSync(
+    path.join(root, "blueprints", status, "sample", "reviews.md"),
+    reviewsMarkdown,
+    "utf8",
+  );
+  return { root, file: path.join(root, "blueprints", status, "sample", "_overview.md") };
+}
+
+const tempRoots: string[] = [];
+
+afterEach(() => {
+  while (tempRoots.length > 0) rmSync(tempRoots.pop()!, { recursive: true, force: true });
+});
 
 describe("validateApprovalGate (≥2 distinct reviewer approvals past draft)", () => {
-  it("passes a planned blueprint with 2 distinct approvals", () => {
+  it("passes a planned blueprint with 2 distinct log-backed approvals", () => {
+    const { root, file } = makeBlueprintWithReviews("planned", [
+      approve("codex"),
+      approve("deepseek"),
+    ]);
+    tempRoots.push(root);
     expect(
-      validateApprovalGate("x", fm("planned", [approve("codex"), approve("deepseek")])),
+      validateApprovalGate(file, {
+        type: "blueprint",
+        status: "planned",
+        approvals: [approve("codex"), approve("deepseek")],
+      }),
     ).toEqual([]);
   });
 
-  it("fails a planned blueprint with only 1 approval", () => {
-    const issues = validateApprovalGate("x", fm("planned", [approve("codex")]));
+  it("fails a planned blueprint with only 1 log-backed approval", () => {
+    const approvals = [approve("codex")];
+    const { root, file } = makeBlueprintWithReviews("planned", approvals);
+    tempRoots.push(root);
+    const issues = validateApprovalGate(file, { type: "blueprint", status: "planned", approvals });
     expect(issues).toHaveLength(1);
-    expect(issues[0]?.level).toBe("warning");
-    expect(issues[0]?.message).toContain("≥2");
+    expect(issues[0]?.level).toBe("error");
+    expect(issues[0]?.message).toContain("backed by committed review evidence");
   });
 
-  it("fails when 2 approvals come from the SAME reviewer (not distinct)", () => {
+  it("fails when two approvals come from the same reviewer", () => {
+    const approvals = [approve("codex"), approve("Codex")];
+    const { root, file } = makeBlueprintWithReviews("planned", approvals);
+    tempRoots.push(root);
     expect(
-      validateApprovalGate("x", fm("planned", [approve("codex"), approve("Codex")])),
+      validateApprovalGate(file, { type: "blueprint", status: "planned", approvals }),
+    ).toHaveLength(1);
+  });
+
+  it("does not count a frontmatter approval with no matching committed review record", () => {
+    const approvals = [approve("codex"), approve("glm")];
+    const { root, file } = makeBlueprintWithReviews("planned", approvals);
+    tempRoots.push(root);
+    expect(
+      validateApprovalGate(file, { type: "blueprint", status: "planned", approvals }),
     ).toHaveLength(1);
   });
 
   it("does not count a reject toward the gate", () => {
-    const approvals = [approve("codex"), { reviewer: "deepseek", verdict: "reject" }];
-    expect(validateApprovalGate("x", fm("planned", approvals))).toHaveLength(1);
+    const approvals = [
+      approve("codex"),
+      { reviewer: "deepseek", verdict: "reject", evidence: "reviews.md" },
+    ];
+    const { root, file } = makeBlueprintWithReviews("planned", approvals);
+    tempRoots.push(root);
+    expect(
+      validateApprovalGate(file, { type: "blueprint", status: "planned", approvals }),
+    ).toHaveLength(1);
   });
 
-  it("exempts draft (gate applies only past draft)", () => {
-    expect(validateApprovalGate("x", fm("draft", []))).toEqual([]);
+  it("exempts draft", () => {
+    expect(
+      validateApprovalGate("x", { type: "blueprint", status: "draft", approvals: [] }),
+    ).toEqual([]);
   });
 
   it("exempts parked/archived", () => {
-    expect(validateApprovalGate("x", fm("parked", []))).toEqual([]);
-    expect(validateApprovalGate("x", fm("archived", []))).toEqual([]);
+    expect(
+      validateApprovalGate("x", { type: "blueprint", status: "parked", approvals: [] }),
+    ).toEqual([]);
+    expect(
+      validateApprovalGate("x", { type: "blueprint", status: "archived", approvals: [] }),
+    ).toEqual([]);
   });
 
   it("checks only the planned promotion boundary (in-progress/completed inherit it)", () => {
-    // The gate fires at draft→planned; later statuses reached planned first.
-    expect(validateApprovalGate("x", fm("in-progress", []))).toEqual([]);
-    expect(validateApprovalGate("x", fm("completed", []))).toEqual([]);
+    expect(
+      validateApprovalGate("x", { type: "blueprint", status: "in-progress", approvals: [] }),
+    ).toEqual([]);
+    expect(
+      validateApprovalGate("x", { type: "blueprint", status: "completed", approvals: [] }),
+    ).toEqual([]);
   });
 
   it("ignores non-blueprint documents", () => {
@@ -52,7 +136,9 @@ describe("validateApprovalGate (≥2 distinct reviewer approvals past draft)", (
   });
 
   it("treats missing/malformed approvals as zero", () => {
-    expect(validateApprovalGate("x", fm("planned"))).toHaveLength(1);
-    expect(validateApprovalGate("x", fm("planned", "nope"))).toHaveLength(1);
+    expect(validateApprovalGate("x", { type: "blueprint", status: "planned" })).toHaveLength(1);
+    expect(
+      validateApprovalGate("x", { type: "blueprint", status: "planned", approvals: "nope" }),
+    ).toHaveLength(1);
   });
 });

@@ -22,6 +22,7 @@ const HELP_TEXT = [
   "  adopt <blueprint-slug> <path>                 Claim existing checkout as owner",
   "  rebind <blueprint-slug> [--path <path>]       Repair owner metadata",
   "  remove <branch-or-path> [--force]             Remove a worktree",
+  "  merge-cleanup <branch-or-path> [--base <ref>] Remove managed worktree + ff-sync primary",
   "",
   "Options:",
   "  --name <name>       Human-friendly generated branch slug (new only)",
@@ -36,13 +37,13 @@ export function registerWorktreeRouter(cli: CAC): void {
   cli
     .command(
       "worktree [subcommand] [...args]",
-      "Agent-kit managed git worktrees (root, new, list, refresh, prune, migrate, adopt, rebind, remove)",
+      "Agent-kit managed git worktrees (root, new, list, refresh, prune, migrate, adopt, rebind, remove, merge-cleanup)",
     )
     .option("--base <ref>", "Base ref for the new branch (new only, default: HEAD)")
     .option("--path <dir>", "Explicit filesystem path for adopt/rebind only; rejected for new")
     .option("--name <name>", "Human-friendly generated branch slug (new only)")
     .option("--prefix <prefix>", "Prefix for generated branches (new only, default: agent)")
-    .option("--dry-run", "Print the resolved worktree target without writing (new only)")
+    .option("--dry-run", "Print the resolved worktree plan without writing")
     .option("--force", "Force remove even with uncommitted changes (remove only)")
     .option("--all", "Use global managed inventory where supported")
     .option("--repo <dir>", "Repo root for refresh/rebind (default: cwd)")

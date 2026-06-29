@@ -59,7 +59,7 @@ Enable pnpm's global virtual store in `pnpm-workspace.yaml`, keep worktree boots
 
 ## Tasks
 
-### Task 1: Enable pnpm global virtual store
+#### Task 1: Enable pnpm global virtual store
 
 **Status:** done
 
@@ -71,7 +71,7 @@ Add `enableGlobalVirtualStore: true` to `pnpm-workspace.yaml`.
 - [x] Local binaries resolve after install.
 - [x] Formatting/checks for touched files pass.
 
-### Task 2: Verify configuration and document evidence
+#### Task 2: Verify configuration and document evidence
 
 **Status:** done
 
@@ -84,7 +84,7 @@ Run targeted config verification and update this blueprint with final results.
 - [x] `vp run typecheck` passes.
 - [x] `vp run lint` passes; it reports an existing non-blocking parse note in `src/cli/commands/init/scaffolders/rtk/index.ts`.
 
-### Task 3: Fix Linux global-virtual-store type edge
+#### Task 3: Fix Linux global-virtual-store type edge
 
 **Status:** done
 
@@ -97,7 +97,7 @@ A CI/Linux reproduction showed `tshy` failing under pnpm global virtual store be
 - [x] DOM-lib experiment rejected because it introduces a `ReadableStream` incompatibility.
 - [x] `packageExtensions` for `bun-types@* -> undici-types` passes `tshy` with global virtual store enabled.
 
-### Task 4: Fix full Test suite global-virtual-store exposures
+#### Task 4: Fix full Test suite global-virtual-store exposures
 
 **Status:** done
 

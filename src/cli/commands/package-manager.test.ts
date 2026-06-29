@@ -74,6 +74,106 @@ describe("wp package-manager commands", () => {
     });
   });
 
+  it("installs a base optional tool through its adapter and claims user ownership", () => {
+    const run = vi.fn(() => spawnResult(0));
+    const writeOwnershipState = vi.fn();
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    expect(
+      runPackageManagerCommand("install", {
+        argv: ["node", "wp", "install", "codex"],
+        resolveVpCommand: () => GLOBAL_VP,
+        ownershipState: defaultToolingOwnershipState(),
+        writeOwnershipState,
+        run,
+      }),
+    ).toBe(0);
+
+    expect(run).toHaveBeenCalledWith(GLOBAL_VP, ["install", "-g", "@openai/codex"]);
+    expect(writeOwnershipState).toHaveBeenCalledWith({
+      version: 1,
+      tools: { codex: { user: { managedBy: "wp" } } },
+    });
+    expect(log.mock.calls.join("\n")).toContain("future `wp update` refreshes this scope");
+  });
+
+  it("installs Oh My Codex with strict project scope and claims current repo ownership", () => {
+    const run = vi.fn(() => spawnResult(0));
+    const writeOwnershipState = vi.fn();
+    vi.spyOn(console, "log").mockImplementation(() => {});
+
+    expect(
+      runPackageManagerCommand("install", {
+        argv: ["node", "wp", "install", "oh-my", "codex", "--scope=project"],
+        cwd: "/repo/current",
+        repoKey: "repo-123",
+        resolveVpCommand: () => GLOBAL_VP,
+        ownershipState: defaultToolingOwnershipState(),
+        writeOwnershipState,
+        run,
+      }),
+    ).toBe(0);
+
+    expect(run).toHaveBeenNthCalledWith(1, GLOBAL_VP, ["install", "-g", "oh-my-codex"]);
+    expect(run).toHaveBeenNthCalledWith(2, "omx", ["setup", "--yes", "--scope", "project"], {
+      cwd: "/repo/current",
+    });
+    expect(writeOwnershipState).toHaveBeenCalledWith({
+      version: 1,
+      tools: { omx: { projects: ["repo-123"] } },
+    });
+  });
+
+  it("rejects strict optional-tool grammar errors before spawning", () => {
+    const run = vi.fn(() => spawnResult(0));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    for (const argv of [
+      ["node", "wp", "install", "opencode", "garbage"],
+      ["node", "wp", "install", "codex", "--force"],
+      ["node", "wp", "install", "oh-my", "codex", "--scope"],
+      ["node", "wp", "install", "oh-my", "codex", "--scope", "user", "--scope", "project"],
+      ["node", "wp", "install", "opencode", "--scope", "project"],
+    ]) {
+      expect(
+        runPackageManagerCommand("install", {
+          argv,
+          resolveVpCommand: () => GLOBAL_VP,
+          run,
+        }),
+      ).toBe(1);
+    }
+
+    expect(run).not.toHaveBeenCalled();
+    const output = error.mock.calls.join("\n");
+    expect(output).toContain("wp install opencode");
+    expect(output).toContain("unsupported option --force");
+    expect(output).toContain("--scope requires user or project");
+    expect(output).toContain("duplicate --scope option");
+    expect(output).toContain("does not support --scope project");
+  });
+
+  it("removes only WP ownership and does not run native uninstall", () => {
+    const run = vi.fn(() => spawnResult(0));
+    const writeOwnershipState = vi.fn();
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    let ownershipState = defaultToolingOwnershipState();
+    ownershipState = claimUserOwnedTool(ownershipState, "openagent");
+
+    expect(
+      runPackageManagerCommand("remove", {
+        argv: ["node", "wp", "remove", "oh-my", "opencode"],
+        ownershipState,
+        writeOwnershipState,
+        run,
+      }),
+    ).toBe(0);
+
+    expect(run).not.toHaveBeenCalled();
+    expect(writeOwnershipState).toHaveBeenCalledWith(defaultToolingOwnershipState());
+    expect(log.mock.calls.join("\n")).toContain("native uninstall was not attempted");
+  });
+
   it("runs tooling refresh by default inside a package root", () => {
     const run = vi.fn(() => spawnResult(0));
     const { refreshClaudePlugin, refreshCodexPlugin } = successfulPluginRefreshes();
@@ -399,13 +499,12 @@ describe("wp package-manager commands", () => {
       }),
     ).toBe(0);
 
-    expect(run).toHaveBeenNthCalledWith(1, "claude", [
-      "plugin",
-      "update",
-      "--scope",
-      "project",
-      "oh-my-claudecode@omc",
-    ]);
+    expect(run).toHaveBeenNthCalledWith(
+      1,
+      "claude",
+      ["plugin", "update", "--scope", "project", "oh-my-claudecode@omc"],
+      { cwd: process.cwd() },
+    );
     expect(run).toHaveBeenNthCalledWith(2, GLOBAL_VP, ["install", "-g", "@webpresso/agent-kit"]);
     expect(refreshClaudePlugin).toHaveBeenCalledWith(
       "/global/lib/node_modules/@webpresso/agent-kit",

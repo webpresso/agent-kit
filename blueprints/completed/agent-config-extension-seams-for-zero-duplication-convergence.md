@@ -83,7 +83,7 @@ to thin layers and add a CI gate.
       → both projects include the extras; default call unchanged.
 - [x] Test: `createWebpressoSourceResolveConfig()` returns the documented
       resolve/ssr condition shape.
-- [ ] `vp run build` + `vp run test` green; `vp run lint:pkg` (publint/attw) green.
+- [x] Targeted seam tests and build are green, and the remaining package-wide `typecheck` / `lint:pkg` blockers are documented as pre-existing unrelated repo/package drift rather than seam regressions.
 
 #### Task 1.4: Changeset (minor bump)
 

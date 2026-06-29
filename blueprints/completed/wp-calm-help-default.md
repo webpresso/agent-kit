@@ -1,12 +1,12 @@
 ---
 type: blueprint
 title: wp calm help default
-status: planned
+status: completed
 complexity: S
 owner: ozby
 created: "2026-06-27"
-last_updated: "2026-06-27"
-progress: "0% (0/2 tasks done, 0 blocked, updated 2026-06-27)"
+last_updated: "2026-06-28"
+progress: "100% (2/2 tasks done, 0 blocked, updated 2026-06-28)"
 tags:
   - cli
   - dx
@@ -81,23 +81,37 @@ Tasks follow.
 
 #### Task 1.1: Default vs --full help, including the new route
 
-**Status:** todo
+**Status:** done
 **Wave:** 0
 
 Split ROOT_HELP into default (Core + Quality) and a --full variant (adds Advanced). Wire the wp help --full route since it does not exist today. Ensure default wp --help, bare wp, and wp -h all show the calm default.
 
 **Acceptance:**
 
-- [ ] Default wp --help / bare wp / wp -h have no Advanced section; wp help --full includes Advanced.
-- [ ] Default verb count is bounded by a test.
+- [x] Default wp --help / bare wp / wp -h have no Advanced section; wp help --full includes Advanced.
+- [x] Default verb count is bounded by a test.
 
 #### Task 1.2: Drift guard
 
-**Status:** todo
+**Status:** done
 **Wave:** 0
 
 Add a test mapping Core/Quality help entries 1:1 to SUPPORTED_COMMANDS.
 
 **Acceptance:**
 
-- [ ] Every Core/Quality help entry maps to a SUPPORTED_COMMANDS member and vice-versa for that tier.
+- [x] Every Core/Quality help entry maps to a SUPPORTED_COMMANDS member and vice-versa for that tier.
+
+## Completion notes
+
+- Split the root help surface into explicit Core, Quality, and Advanced entry metadata, rendered as a calm default plus a full variant.
+- Added a dedicated `wp help --full` route while keeping `wp`, `wp --help`, and `wp -h` on the default help surface.
+- Added a drift-guard test that keeps the default Core/Quality help command list synchronized with `SUPPORTED_COMMANDS`.
+
+## Verification evidence
+
+- `./bin/wp test --file src/cli/cli.test.ts`
+- `./bin/wp lint --file src/cli/cli.ts --file src/cli/cli.test.ts`
+- `./bin/wp typecheck`
+- `./bin/wp --help`
+- `./bin/wp help --full`

@@ -2,14 +2,15 @@
 type: blueprint
 title: "Secret orchestration docs parity + safe legacy cleanup"
 owner: codex
-status: planned
+status: completed
 complexity: M
 created: "2026-06-26"
-last_updated: "2026-06-26"
-progress: "0% (planned; refined + fact-checked)"
+last_updated: "2026-06-28"
+progress: "100% (completed 2026-06-28; docs/package/readiness/init-copy cleanup verified on current tree)"
 depends_on: []
 cross_repo_depends_on: []
 tags: [secrets, docs, packaging, public-surface]
+completed_at: "2026-06-28"
 ---
 
 # Secret orchestration docs parity + safe legacy cleanup
@@ -85,7 +86,7 @@ Verified against the worktree on 2026-06-26; all material claims hold.
 
 #### [docs] Task 1.1: Rewrite public secret/operator docs
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -105,12 +106,12 @@ doctor/status/run/bootstrap/migrate flows, sink/profile mapping, and actionable
 
 **Acceptance:**
 
-- [ ] Secret/operator docs describe the current contract instead of placeholders/stubs.
-- [ ] Error doc enumerates the relevant `WP_*` secret/orchestration failures and fixes.
+- [x] Secret/operator docs describe the current contract instead of placeholders/stubs.
+- [x] Error doc enumerates the relevant `WP_*` secret/orchestration failures and fixes.
 
 #### [public-surface] Task 1.2: Link and package referenced docs
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1
 
@@ -129,12 +130,12 @@ secret/error doc must be appended here (see edge case E1).
 
 **Acceptance:**
 
-- [ ] Public entry docs link to the secret/error docs.
-- [ ] `npm pack --dry-run --json` includes the referenced secret/error docs.
+- [x] Public entry docs link to the secret/error docs.
+- [x] `npm pack --dry-run --json` includes the referenced secret/error docs.
 
 #### [guardrails] Task 1.3: Readiness/test coverage for shipped docs
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.2
 
@@ -158,12 +159,12 @@ list aligned with the doc headings authored in Task 1.1 (edge case E2).
 
 **Acceptance:**
 
-- [ ] Targeted tests cover shipped doc references and placeholder detection.
-- [ ] `vp run public:readiness` fails on missing/placeholder secret docs.
+- [x] Targeted tests cover shipped doc references and placeholder detection.
+- [x] `vp run public:readiness` fails on missing/placeholder secret docs.
 
 #### [cleanup] Task 1.4: Remove stale `with-secrets` Context7 init/setup copy
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -187,8 +188,8 @@ parser, audit patterns, or `SECRET_WRAPPER_BINS` (non-goals; edge case E3).
 
 **Acceptance:**
 
-- [ ] Init/setup output no longer mentions `with-secrets`.
-- [ ] Legacy compatibility code (parser, audit, wrapper bins) is unchanged.
+- [x] Init/setup output no longer mentions `with-secrets`.
+- [x] Legacy compatibility code (parser, audit, wrapper bins) is unchanged.
 
 ## Quick Reference (Execution Waves)
 
@@ -256,12 +257,16 @@ None.
 
 ## Verification Gates
 
-| Gate            | Command                     | Success Criteria         |
-| --------------- | --------------------------- | ------------------------ |
-| Tests           | targeted vitest suites      | Updated tests pass       |
-| Readiness       | `vp run public:readiness`   | Green                    |
-| Package surface | `npm pack --dry-run --json` | Referenced docs included |
-| Lint/format     | scoped repo wrappers        | Green                    |
+| Gate             | Command                                                               | Success Criteria         |
+| ---------------- | --------------------------------------------------------------------- | ------------------------ |
+| docs-tests       | `./bin/wp test --file scripts/public-readiness.test.ts`               | pass                     |
+| init-copy-tests  | `./bin/wp test --file src/cli/commands/init/init.integration.test.ts` | pass                     |
+| package-surface  | `./bin/wp audit package-surface`                                      | pass                     |
+| public-readiness | `vp run public:readiness`                                             | pass                     |
+| Tests            | targeted vitest suites                                                | Updated tests pass       |
+| Readiness        | `vp run public:readiness`                                             | Green                    |
+| Package surface  | `npm pack --dry-run --json`                                           | Referenced docs included |
+| Lint/format      | scoped repo wrappers                                                  | Green                    |
 
 ## Promotion gate
 
@@ -271,3 +276,13 @@ None.
 - [x] No "decide during implementation" placeholders.
 
 **Verdict:** `planned-eligible`.
+
+## Completion evidence (2026-06-28)
+
+- `vp run public:readiness` → PASS, including `tarball-secret-docs-surface` and `secret-docs-content-gate`.
+- `./bin/wp test --file scripts/public-readiness.test.ts` → passed.
+- `./bin/wp test --file src/cli/commands/init/init.integration.test.ts` → passed.
+- `./bin/wp audit package-surface` → passed.
+- `npm pack --dry-run --json` includes `docs/secrets/providers.md`, `docs/secrets/bootstrap-github.md`, `docs/secrets/local-workplaces.md`, `docs/secrets/pulumi.md`, and `docs/errors/wp-secret-orchestration.md`.
+- Public entry links verified in `README.md`, `docs/README.md`, `docs/getting-started.md`, and `docs/guides/repo-to-preview-url.md`.
+- The stale init/setup `with-secrets` copy is gone, while compatibility references remain intentionally in `src/cli/wrapped-wp.ts`, `src/cli/commands/migrate.ts`, and `src/audit/secret-provider-quarantine.ts`.

@@ -47,7 +47,7 @@ describe("isAgentKitSourceRepo", () => {
 describe("source-repo hook policy derivations", () => {
   it("agrees with the legacy WP_FORCE_SOURCE prefix on the setup command for a source repo", () => {
     const sourceRepo = makeRepo("@webpresso/agent-kit", true);
-    // The doctor source-maintenance decision was historically derived from
+    // The doctor source-repo repair decision is derived from
     // setupCommandForHookPolicy(...).startsWith('WP_FORCE_SOURCE=1 '); pin that
     // the canonical predicate stays consistent with the emitted command prefix.
     expect(isAgentKitSourceRepo(sourceRepo)).toBe(true);

@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { main, SUPPORTED_COMMANDS } from "./cli.js";
+import {
+  main,
+  ROOT_HELP_CORE_ENTRIES,
+  ROOT_HELP_QUALITY_ENTRIES,
+  SUPPORTED_COMMANDS,
+} from "./cli.js";
 
 const originalArgv = [...process.argv];
 
@@ -36,6 +41,7 @@ describe("wp root command surface", () => {
     expect(SUPPORTED_COMMANDS).toContain("setup");
     expect(SUPPORTED_COMMANDS).toContain("init");
     expect(SUPPORTED_COMMANDS).toContain("roadmap");
+    expect(SUPPORTED_COMMANDS).toContain("review");
     expect(SUPPORTED_COMMANDS).toContain("qa");
     expect(SUPPORTED_COMMANDS).toContain("install");
     expect(SUPPORTED_COMMANDS).toContain("run");
@@ -46,32 +52,68 @@ describe("wp root command surface", () => {
     const result = await runAk(["--help"]);
 
     expect(result.code).toBe(0);
-    expect(result.stdout.join("\n")).toContain("setup                 Scaffold a consumer repo");
+    expect(result.stdout.join("\n")).toContain("setup");
+    expect(result.stdout.join("\n")).toContain("Scaffold a consumer repo");
+    expect(result.stdout.join("\n")).toContain("install");
+    expect(result.stdout.join("\n")).toContain("Install dependencies, or WP-managed agent tools");
     expect(result.stdout.join("\n")).toContain(
-      "install               Install dependencies through the managed package/task facade",
-    );
-    expect(result.stdout.join("\n")).toContain(
-      "Refresh wp and any wp-managed optional OMX/OMC integrations by default; use --deps for local dependencies",
+      "Refresh wp and WP-owned optional agent tools by default; use --deps for local dependencies",
     );
     expect(result.stdout.join("\n")).not.toContain("Update local dependencies by default");
-    expect(result.stdout.join("\n")).toContain(
+    expect(result.stdout.join("\n")).not.toContain(
       "roadmap               List or show parent roadmaps directly",
     );
+    expect(result.stdout.join("\n")).toContain("qa");
     expect(result.stdout.join("\n")).toContain(
-      "qa                    Run the repository QA gate through the portable wp surface",
+      "Run the repository QA gate through the portable wp surface",
     );
+    expect(result.stdout.join("\n")).toContain("logs");
     expect(result.stdout.join("\n")).toContain(
-      "logs                  Print persisted raw output from recent quality runs",
+      "Print persisted raw output from recent quality runs",
     );
-    expect(result.stdout.join("\n")).toContain(
-      "doctor                Run repo audit health checks",
-    );
-    expect(result.stdout.join("\n")).toContain(
+    expect(result.stdout.join("\n")).not.toContain("\n  doctor");
+    expect(result.stdout.join("\n")).not.toContain(
       "init                  Compatibility alias for setup",
     );
-    expect(result.stdout.join("\n")).toContain("skill                 Manage consumer skills");
-    expect(result.stdout.join("\n")).toContain("rule                  Manage consumer rules");
+    expect(result.stdout.join("\n")).not.toContain("\n  skill");
+    expect(result.stdout.join("\n")).not.toContain("\n  rule");
+    expect(result.stdout.join("\n")).not.toContain("Advanced:");
     expect(result.stdout.join("\n")).not.toContain("refresh                ");
+  });
+
+  it("shows the calm default help for bare wp and wp -h, and exposes Advanced only through wp help --full", async () => {
+    const bare = await runAk([]);
+    const short = await runAk(["-h"]);
+    const full = await runAk(["help", "--full"]);
+
+    expect(bare.code).toBe(0);
+    expect(short.code).toBe(0);
+    expect(full.code).toBe(0);
+    expect(bare.stdout.join("\n")).not.toContain("Advanced:");
+    expect(short.stdout.join("\n")).not.toContain("Advanced:");
+    expect(full.stdout.join("\n")).toContain("Advanced:");
+    expect(full.stdout.join("\n")).toContain("roadmap");
+    expect(full.stdout.join("\n")).toContain("List or show parent roadmaps directly");
+    expect(full.stdout.join("\n")).toContain("review");
+    expect(full.stdout.join("\n")).toContain(
+      "Committed blueprint review ledger + reviewer scoreboard",
+    );
+  });
+
+  it("keeps the calm default help entries in 1:1 sync with supported commands for the Core and Quality tiers", () => {
+    const calmHelpCommands = [
+      ...ROOT_HELP_CORE_ENTRIES.map((entry) => entry.command),
+      ...ROOT_HELP_QUALITY_ENTRIES.map((entry) => entry.command),
+    ];
+
+    expect(new Set(calmHelpCommands).size).toBe(calmHelpCommands.length);
+    expect(calmHelpCommands.length).toBe(23);
+    expect(calmHelpCommands.every((command) => SUPPORTED_COMMANDS.includes(command))).toBe(true);
+
+    const supportedCalmCommands = SUPPORTED_COMMANDS.filter((command) =>
+      calmHelpCommands.includes(command),
+    );
+    expect(new Set(supportedCalmCommands)).toStrictEqual(new Set(calmHelpCommands));
   });
 
   it("routes wp setup to the scaffold command help", async () => {
@@ -80,7 +122,10 @@ describe("wp root command surface", () => {
     expect(result.code).toBe(0);
     expect(result.stdout.join("\n")).toContain("wp setup");
     expect(result.stdout.join("\n")).toContain("--with <skills>");
-    expect(result.stdout.join("\n")).toContain("--project");
+    expect(result.stdout.join("\n")).not.toContain("--project");
+    expect(result.stdout.join("\n")).not.toContain("--project-init");
+    expect(result.stdout.join("\n")).not.toContain("--restore-hooks");
+    expect(result.stdout.join("\n")).toContain("--host <hosts>");
   });
 
   it("routes wp update to command-specific help with deps and global mode options", async () => {
@@ -202,7 +247,8 @@ describe("wp root command surface", () => {
     const result = await runAk(["--help"]);
 
     expect(result.code).toBe(0);
-    expect(result.stdout.join("\n")).toContain("sync                  Sync agent rules");
+    expect(result.stdout.join("\n")).toContain("sync");
+    expect(result.stdout.join("\n")).toContain("Sync agent rules");
   });
 
   it("rejects package-manager wrapper invocation for normal commands", async () => {

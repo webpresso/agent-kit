@@ -47,6 +47,7 @@ vi.mock("node:child_process", async (importOriginal) => {
 });
 
 import { auditBlueprintLifecycleSql } from "./blueprint-lifecycle-sql.js";
+import { writeWorktreeRegistry } from "#worktrees/registry.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -68,8 +69,11 @@ interface BlueprintFixture {
   status: string;
   /** Frontmatter `status:` value; defaults to the directory `status`. */
   frontmatterStatus?: string;
+  approvals?: unknown;
   /** Task blocks: each becomes a `#### Task X.Y` with the given **Status:**. */
   tasks?: ReadonlyArray<{ id: string; status: string }>;
+  worktreeOwnerBranch?: string;
+  worktreeOwnerId?: string;
 }
 
 function renderBlueprintMarkdown(slug: string, fx: BlueprintFixture): string {
@@ -82,6 +86,9 @@ function renderBlueprintMarkdown(slug: string, fx: BlueprintFixture): string {
     "complexity: S",
     'created: "2026-06-03"',
     'last_updated: "2026-06-03"',
+    ...(fx.approvals !== undefined ? [`approvals: ${JSON.stringify(fx.approvals)}`] : []),
+    ...(fx.worktreeOwnerId ? [`worktree_owner_id: ${fx.worktreeOwnerId}`] : []),
+    ...(fx.worktreeOwnerBranch ? [`worktree_owner_branch: ${fx.worktreeOwnerBranch}`] : []),
     "---",
     "",
     `# Blueprint ${slug}`,
@@ -89,6 +96,8 @@ function renderBlueprintMarkdown(slug: string, fx: BlueprintFixture): string {
   ];
   const body: string[] = [];
   for (const task of fx.tasks ?? []) {
+    const acceptanceLine =
+      task.status === "done" || task.status === "dropped" ? "- [x] done" : "- [ ] done";
     body.push(
       `#### Task ${task.id}: Step ${task.id}`,
       "",
@@ -96,7 +105,7 @@ function renderBlueprintMarkdown(slug: string, fx: BlueprintFixture): string {
       "",
       "**Acceptance:**",
       "",
-      "- [ ] done",
+      acceptanceLine,
       "",
     );
   }
@@ -171,6 +180,38 @@ function fakeRenameDiff(from: string, to: string): string {
   return `R100\t${from}\t${to}\n`;
 }
 
+function withOwnerBinding<T>(ownerId: string, branch: string, run: () => Promise<T>): Promise<T> {
+  const root = mkdtempSync(path.join(tmpdir(), "wp-test-worktree-root-"));
+  const ownerPath = path.join(root, "owner-path");
+  mkdirSync(ownerPath, { recursive: true });
+  writeWorktreeRegistry(
+    {
+      version: 1,
+      entries: [
+        {
+          id: ownerId,
+          repoNamespace: "test-repo",
+          repoRoot: cwd,
+          kind: "owner",
+          path: ownerPath,
+          branch,
+          blueprintSlug: branch.replace(/^bp\//, ""),
+          createdAt: "2026-06-28T00:00:00.000Z",
+          updatedAt: "2026-06-28T00:00:00.000Z",
+        },
+      ],
+    },
+    { root },
+  );
+  const prev = process.env.WP_AGENT_KIT_TEST_WORKTREE_ROOT;
+  process.env.WP_AGENT_KIT_TEST_WORKTREE_ROOT = root;
+  return run().finally(() => {
+    if (prev === undefined) delete process.env.WP_AGENT_KIT_TEST_WORKTREE_ROOT;
+    else process.env.WP_AGENT_KIT_TEST_WORKTREE_ROOT = prev;
+    rmSync(root, { recursive: true, force: true });
+  });
+}
+
 let cwd: string;
 
 beforeEach(() => {
@@ -190,9 +231,9 @@ describe("auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
   });
 
   it("reads no persistent DB — verdict comes purely from the markdown", async () => {
-    writeBlueprint(cwd, "active-wip", {
-      status: "in-progress",
-      tasks: [{ id: "1.1", status: "todo" }],
+    writeBlueprint(cwd, "completed-proof", {
+      status: "completed",
+      tasks: [{ id: "1.1", status: "done" }],
     });
     const result = await auditBlueprintLifecycleSql(cwd);
     expect(result.ok).toBe(true);
@@ -335,6 +376,57 @@ describe("auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     expect(result.violations.some((v) => /lane limit/i.test(v.message))).toBe(false);
   });
 
+  it("fails a planned blueprint without 2 distinct log-backed approvals", async () => {
+    const slug = "missing-approvals";
+    const status = "planned";
+    const dir = path.join(cwd, "blueprints", status, slug);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      path.join(dir, "_overview.md"),
+      renderBlueprintMarkdown(slug, {
+        status,
+        approvals: [{ reviewer: "codex", verdict: "approve", evidence: "reviews.md" }],
+        tasks: [{ id: "1.1", status: "todo" }],
+      }),
+    );
+    writeFileSync(
+      path.join(dir, "reviews.md"),
+      `# reviews
+
+| Date | Reviewer | Rev | Verdict | Note |
+| --- | --- | --- | --- | --- |
+| 2026-06-28 | codex | final | APPROVE | ok |
+`,
+    );
+
+    const result = await auditBlueprintLifecycleSql(cwd);
+    expect(result.ok).toBe(false);
+    expect(
+      result.violations.some(
+        (v) =>
+          v.file?.includes(`${slug}/_overview.md`) &&
+          /need ≥2|need >=2|distinct approving reviewer/i.test(v.message),
+      ),
+    ).toBe(true);
+  });
+
+  it("fails an in-progress blueprint whose worktree_owner_branch is not bp/<slug>", async () => {
+    writeBlueprint(cwd, "wrong-branch", {
+      status: "in-progress",
+      tasks: [{ id: "1.1", status: "todo" }],
+      worktreeOwnerId: "owner-1",
+      worktreeOwnerBranch: "feature/wrong-branch",
+    });
+
+    const result = await auditBlueprintLifecycleSql(cwd);
+    expect(result.ok).toBe(false);
+    expect(
+      result.violations.some(
+        (v) => v.message.includes("bp/<slug>") && v.message.includes("feature/wrong-branch"),
+      ),
+    ).toBe(true);
+  });
+
   it("changed-only ignores unrelated lifecycle debt", async () => {
     writeBlueprint(cwd, "unrelated-empty-wip", { status: "in-progress" });
     writeBlueprint(cwd, "changed-clean", {
@@ -402,6 +494,8 @@ describe("auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     writeBlueprint(cwd, "stale-blueprint", {
       status: "in-progress",
       tasks: [{ id: "1.1", status: "todo" }],
+      worktreeOwnerId: "owner-stale",
+      worktreeOwnerBranch: "bp/stale-blueprint",
     });
 
     mkdirSync(path.join(cwd, ".agent"), { recursive: true });
@@ -411,12 +505,14 @@ describe("auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
       "utf8",
     );
 
-    const result = await withFakeGit(
-      {
-        lastTouchIso: "2026-05-01T12:00:00+00:00",
-        trackedFiles: ["blueprints/in-progress/stale-blueprint.md"],
-      },
-      () => auditBlueprintLifecycleSql(cwd),
+    const result = await withOwnerBinding("owner-stale", "bp/stale-blueprint", () =>
+      withFakeGit(
+        {
+          lastTouchIso: "2026-05-01T12:00:00+00:00",
+          trackedFiles: ["blueprints/in-progress/stale-blueprint.md"],
+        },
+        () => auditBlueprintLifecycleSql(cwd),
+      ),
     );
     expect(result.ok).toBe(true);
     expect(
@@ -431,6 +527,8 @@ describe("auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     writeBlueprint(cwd, "fresh-blueprint", {
       status: "in-progress",
       tasks: [{ id: "1.1", status: "todo" }],
+      worktreeOwnerId: "owner-fresh",
+      worktreeOwnerBranch: "bp/fresh-blueprint",
     });
 
     mkdirSync(path.join(cwd, ".agent"), { recursive: true });
@@ -440,12 +538,14 @@ describe("auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
       "utf8",
     );
 
-    const result = await withFakeGit(
-      {
-        lastTouchIso: "2030-01-01T12:00:00+00:00",
-        trackedFiles: ["blueprints/in-progress/fresh-blueprint.md"],
-      },
-      () => auditBlueprintLifecycleSql(cwd),
+    const result = await withOwnerBinding("owner-fresh", "bp/fresh-blueprint", () =>
+      withFakeGit(
+        {
+          lastTouchIso: "2030-01-01T12:00:00+00:00",
+          trackedFiles: ["blueprints/in-progress/fresh-blueprint.md"],
+        },
+        () => auditBlueprintLifecycleSql(cwd),
+      ),
     );
     expect(result.ok).toBe(true);
     expect(result.violations.some((v) => v.message.startsWith("[warn]"))).toBe(false);
@@ -486,8 +586,12 @@ describe("auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     writeBlueprint(cwd, "nogit-blueprint", {
       status: "in-progress",
       tasks: [{ id: "1.1", status: "todo" }],
+      worktreeOwnerId: "owner-nogit",
+      worktreeOwnerBranch: "bp/nogit-blueprint",
     });
-    const result = await auditBlueprintLifecycleSql(cwd);
+    const result = await withOwnerBinding("owner-nogit", "bp/nogit-blueprint", () =>
+      auditBlueprintLifecycleSql(cwd),
+    );
     expect(result.ok).toBe(true);
     expect(result.title).toContain("staleness check skipped outside git");
     expect(result.violations.some((v) => v.message.startsWith("[warn]"))).toBe(false);
@@ -497,15 +601,19 @@ describe("auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     writeBlueprint(cwd, "git-status-failed", {
       status: "in-progress",
       tasks: [{ id: "1.1", status: "todo" }],
+      worktreeOwnerId: "owner-status-failed",
+      worktreeOwnerBranch: "bp/git-status-failed",
     });
 
-    const result = await withFakeGit(
-      {
-        lastTouchIso: "2030-01-01T12:00:00+00:00",
-        statusError: true,
-        trackedFiles: ["blueprints/in-progress/git-status-failed.md"],
-      },
-      () => auditBlueprintLifecycleSql(cwd),
+    const result = await withOwnerBinding("owner-status-failed", "bp/git-status-failed", () =>
+      withFakeGit(
+        {
+          lastTouchIso: "2030-01-01T12:00:00+00:00",
+          statusError: true,
+          trackedFiles: ["blueprints/in-progress/git-status-failed.md"],
+        },
+        () => auditBlueprintLifecycleSql(cwd),
+      ),
     );
     expect(result.ok).toBe(true);
     expect(result.title).toContain("transition history check skipped");

@@ -185,11 +185,7 @@ function resolveIntegrationConfig(
     if (!isExternalIntegrationName(entry)) continue;
     next[entry] = {
       enabled: true,
-      ...((entry === "omx" || entry === "omc") && flags.project === true
-        ? { scope: "project" as const }
-        : entry === "omx" || entry === "omc"
-          ? { scope: "user" as const }
-          : {}),
+      ...(entry === "omx" || entry === "omc" ? { scope: "user" as const } : {}),
     };
   }
 
@@ -250,6 +246,18 @@ function stripPresetValuesFromFlag(value: string | undefined): string | undefine
   return serializeCsvFlag(parseCsvFlag(value).filter((entry) => !isPreset(entry)));
 }
 
+function normalizeAllToken(
+  rawWith: string | undefined,
+  allFlag: boolean | undefined,
+): { with: string | undefined; all: boolean } {
+  const entries = parseCsvFlag(rawWith);
+  const wantsAll = allFlag === true || entries.includes("all");
+  return {
+    with: serializeCsvFlag(entries.filter((entry) => entry !== "all")),
+    all: wantsAll,
+  };
+}
+
 export interface InitFlags {
   with?: string;
   without?: string;
@@ -271,8 +279,24 @@ export interface InitFlags {
   userOnly?: boolean;
   "project-init"?: boolean;
   projectInit?: boolean;
-  sourceMaintenance?: boolean;
+  repair?: boolean;
 }
+
+export function getRepairCommandName(commandName: InitCommandName): `${InitCommandName}-repair` {
+  return `${commandName}-repair`;
+}
+
+const MOVED_PRIMARY_SETUP_FLAGS = [
+  "--overwrite",
+  "--prune",
+  "--restore-hooks",
+  "--disable-hooks",
+  "--strict",
+  "--user-only",
+  "--project-init",
+] as const;
+
+type MovedPrimarySetupFlag = (typeof MOVED_PRIMARY_SETUP_FLAGS)[number];
 
 export const EXIT_SUCCESS = 0;
 export const EXIT_SETUP_FAIL = 1;
@@ -281,6 +305,81 @@ export const EXIT_WRITE_FAIL = 3;
 
 export interface InitCommandDeps {
   readonly stdout?: OutputWriter;
+}
+
+function normalizeInitFlagsForExecution(flags: InitFlags): InitFlags {
+  const normalizedAll = normalizeAllToken(flags.with, flags.all);
+  return {
+    ...flags,
+    with: normalizedAll.with,
+    all: normalizedAll.all,
+  };
+}
+
+function formatMovedSetupFlagMessage(
+  commandName: InitCommandName,
+  flag: MovedPrimarySetupFlag,
+): string {
+  return `wp ${commandName}: \`${flag}\` moved to \`wp ${commandName} repair\`. Re-run \`wp ${commandName} repair ${flag}\`.`;
+}
+
+function formatRemovedSetupFlagMessage(
+  commandName: InitCommandName,
+  flag: "--yes" | "--all",
+): string {
+  if (flag === "--yes") {
+    return `wp ${commandName}: \`--yes\` was removed because non-interactive defaults are already the standard behavior. Re-run without it.`;
+  }
+  return `wp ${commandName}: \`--all\` was removed. Re-run with \`--with all\`.`;
+}
+
+function argvHasFlag(args: readonly string[], flag: string): boolean {
+  return args.some((arg) => arg === flag || arg.startsWith(`${flag}=`));
+}
+
+export function validatePrimarySetupArgv(
+  commandName: InitCommandName,
+  args: readonly string[],
+): string | null {
+  if (argvHasFlag(args, "--yes")) return formatRemovedSetupFlagMessage(commandName, "--yes");
+  if (argvHasFlag(args, "--all")) return formatRemovedSetupFlagMessage(commandName, "--all");
+  if (argvHasFlag(args, "--project")) {
+    return `wp ${commandName}: \`--project\` was removed. OMX/OMC compatibility presets now default to user scope; use \`wp install oh-my codex --scope project\` or \`wp install oh-my claude-code --scope project\` for project-scoped ownership.`;
+  }
+
+  for (const flag of MOVED_PRIMARY_SETUP_FLAGS) {
+    if (argvHasFlag(args, flag)) return formatMovedSetupFlagMessage(commandName, flag);
+  }
+
+  return null;
+}
+
+function findInvalidPrimarySetupFlag(
+  flags: InitFlags,
+): MovedPrimarySetupFlag | "--yes" | "--all" | "--project" | null {
+  if (flags.yes === true) return "--yes";
+  if (flags.all === true) return "--all";
+  if (flags.project === true) return "--project";
+  if (flags.overwrite === true) return "--overwrite";
+  if (flags.prune === true) return "--prune";
+  if ((flags.restoreHooks ?? flags["restore-hooks"] ?? false) === true) return "--restore-hooks";
+  if ((flags.disableHooks ?? flags["disable-hooks"]) !== undefined) return "--disable-hooks";
+  if (flags.strict === true) return "--strict";
+  if ((flags.userOnly ?? flags["user-only"] ?? false) === true) return "--user-only";
+  if ((flags.projectInit ?? flags["project-init"] ?? false) === true) return "--project-init";
+  return null;
+}
+
+function validatePrimarySetupFlags(commandName: InitCommandName, flags: InitFlags): string | null {
+  const invalidFlag = findInvalidPrimarySetupFlag(flags);
+  if (invalidFlag === null) return null;
+  if (invalidFlag === "--yes" || invalidFlag === "--all") {
+    return formatRemovedSetupFlagMessage(commandName, invalidFlag);
+  }
+  if (invalidFlag === "--project") {
+    return `wp ${commandName}: \`--project\` was removed. OMX/OMC compatibility presets now default to user scope; use \`wp install oh-my codex --scope project\` or \`wp install oh-my claude-code --scope project\` for project-scoped ownership.`;
+  }
+  return formatMovedSetupFlagMessage(commandName, invalidFlag);
 }
 
 export interface ResolveCatalogDirOptions {
@@ -821,6 +920,7 @@ function detectPlainDirectoryConsumer(startDir: string): ConsumerContext {
 }
 
 export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Promise<number> {
+  flags = normalizeInitFlagsForExecution(flags);
   const stdout = deps.stdout ?? process.stdout;
   const startMs = Date.now();
   const cwd = flags.cwd ?? process.cwd();
@@ -846,14 +946,15 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
   }
 
   const consumer = detectedConsumer ?? detectPlainDirectoryConsumer(cwd);
+  const sourceRepoRepair = isAgentKitSourceRepo(consumer.repoRoot) && flags.repair === true;
 
   // Self-repo guard: agent-kit is the SOURCE of every agent-surface template
   // (catalog/, the tracked .agent/.claude surfaces). Scaffolding into its own
   // working tree overwrites those canonical sources — the footgun where a stray
   // `wp setup` reported `overwritten: 2, drifted: 11, git index cleanup: 6
   // untracked` against the live repo. Refuse loudly and write nothing unless the
-  // maintainer explicitly opts in with source-maintenance mode.
-  if (isAgentKitSourceRepo(consumer.repoRoot) && flags.sourceMaintenance !== true) {
+  // maintainer explicitly opts in via the dedicated repair subcommand.
+  if (isAgentKitSourceRepo(consumer.repoRoot) && flags.repair !== true) {
     console.error(
       `wp setup: refusing to scaffold @webpresso/agent-kit's own repo (${consumer.repoRoot}).\n` +
         `  This repo is the source of the agent-surface templates; running setup here\n` +
@@ -874,9 +975,9 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     ? ("explicit" as const)
     : !hasGitRoot
       ? ("non-git-directory" as const)
-      : repoCollectionDetection.isCollectionRoot && flags.sourceMaintenance !== true
+      : repoCollectionDetection.isCollectionRoot
         ? ("repo-collection-root" as const)
-        : !initializedWebpressoProject && !forceProjectInit && flags.sourceMaintenance !== true
+        : !initializedWebpressoProject && !forceProjectInit && !sourceRepoRepair
           ? ("non-webpresso-project" as const)
           : null;
   const userOnlySetup = userOnlyReason !== null;
@@ -998,7 +1099,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
   if (legacyExternalIntegrations.length > 0) {
     console.log(
       `  external tools: ${legacyExternalIntegrations.join(", ")} are legacy compatibility presets only; ` +
-        "wp setup no longer remembers them across reruns, and native installers are preferred.",
+        "wp setup no longer installs them implicitly; use `wp install oh-my codex` or `wp install oh-my claude-code` to make WP own update refreshes.",
     );
   }
 
@@ -1810,7 +1911,7 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         "Ownership lanes:",
         "  Lane 1 wp_*   blueprint · audit · quality",
         "  Lane 2 rtk    shell-tool token filtering",
-        "  Lane 3 external tools (self-managed; install OMX/OMC separately if desired)",
+        "  Lane 3 optional agent tools (explicit `wp install ...`; WP-owned scopes refresh via `wp update`)",
       ].join("\n"),
     );
 
@@ -1849,34 +1950,30 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
 
 export type InitCommandName = "setup" | "init";
 
-export function registerInitCommand(cli: CAC, commandName: InitCommandName = "init"): void {
-  const description =
-    commandName === "setup"
-      ? "Scaffold webpresso catalog into the current repo"
-      : "Compatibility alias for wp setup";
-
-  // Help text is data-driven so adding a preset (PRESETS) automatically
-  // updates --help. Prevents the docs/code drift we discovered when
-  // omx landed without surfacing in --help.
+function registerPrimaryInitOptions(command: ReturnType<CAC["command"]>): void {
   const withHelp =
     `Comma-separated opt-in skills and/or presets to install ` +
-    `(non-interactive). Presets: ${USER_VISIBLE_PRESETS.join(", ")}. ` +
-    `Legacy compatibility presets (omx, omc) are intentionally omitted; ` +
-    `install those tools with their native installers instead. ` +
+    `(non-interactive). Presets: ${USER_VISIBLE_PRESETS.join(", ")} plus the special token \`all\`. ` +
+    `Legacy compatibility presets are intentionally omitted; ` +
+    `use wp install oh-my codex|claude-code when you want WP-owned refreshes. ` +
     `Opt-in skills are listed by 'wp skill list'.`;
   const withoutHelp = `Comma-separated opt-in skills and/or presets to opt out of for this run.`;
 
-  cli
-    .command(commandName, description)
+  command
     .option("--with <skills>", withHelp)
     .option("--without <skills>", withoutHelp)
     .option("--host <hosts>", "Comma-separated host targets: codex, claude, opencode, all, none")
-    .option("--all", "Install shared favorites plus every opt-in skill")
+    .option("--dry-run", "Show what would change without writing anything")
+    .option("--cwd <dir>", "Working tree to scaffold into (default: process.cwd())");
+}
+
+function registerRepairInitOptions(command: ReturnType<CAC["command"]>): void {
+  registerPrimaryInitOptions(command);
+  command
     .option(
       "--overwrite",
       "Force full-file replacement for eligible managed files (default: reconcile owned content and preserve divergent consumer files)",
     )
-    .option("--dry-run", "Show what would change without writing anything")
     .option(
       "--prune",
       "Remove outdated agent-kit plugin cache versions for supported hosts before visibility checks",
@@ -1886,20 +1983,29 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = "in
       "Restore managed Claude/Codex hook config from .webpresso/hooks-manifest.json",
     )
     .option("--disable-hooks <vendor>", "Disable managed hooks for claude, codex, or all")
-    .option("--yes", "Accept defaults, skip interactive prompts (default behavior)")
-    .option("--cwd <dir>", "Working tree to scaffold into (default: process.cwd())")
     .option("--strict", "Abort if any compatibility check fails (default: warn and continue)")
     .option("--user-only", "Skip repo-local writes and run only user/global setup")
     .option(
       "--project-init",
       "Bootstrap repo-local Webpresso project files even when the repo is not initialized yet",
-    )
-    .option("--project", "Configure OMX/OMC in project scope instead of the default user scope")
-    .option(
-      "--source-maintenance",
-      "Override the self-repo guard for @webpresso/agent-kit's own setup-surface maintenance (maintainers only)",
-    )
-    .action(async (flags: InitFlags) => {
+    );
+}
+
+export function registerInitCommand(cli: CAC, commandName: InitCommandName = "init"): void {
+  const description =
+    commandName === "setup"
+      ? "Scaffold webpresso catalog into the current repo"
+      : "Compatibility alias for wp setup";
+
+  registerPrimaryInitOptions(
+    cli.command(commandName, description).action(async (flags: InitFlags) => {
+      const validationError = validatePrimarySetupFlags(commandName, flags);
+      if (validationError) {
+        console.error(validationError);
+        const err = new Error("exit") as Error & { exitCode: number };
+        err.exitCode = EXIT_SETUP_FAIL;
+        throw err;
+      }
       const code = await runInit(flags);
       if (code !== EXIT_SUCCESS) {
         const err = new Error("exit") as Error & { exitCode: number };
@@ -1907,5 +2013,23 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = "in
         throw err;
       }
       return code;
-    });
+    }),
+  );
+
+  registerRepairInitOptions(
+    cli
+      .command(
+        getRepairCommandName(commandName),
+        `Advanced repair and maintenance alias for wp ${commandName} repair`,
+      )
+      .action(async (flags: InitFlags) => {
+        const code = await runInit({ ...flags, repair: true });
+        if (code !== EXIT_SUCCESS) {
+          const err = new Error("exit") as Error & { exitCode: number };
+          err.exitCode = code;
+          throw err;
+        }
+        return code;
+      }),
+  );
 }

@@ -81,7 +81,7 @@ tags: [performance, tests, packaging]
 
 ## Phase 1: Measure the packed-install path precisely
 
-### Task 1.1: Add durable timing breakdown for package-contract installs
+#### Task 1.1: Add durable timing breakdown for package-contract installs
 
 **Status:** done
 
@@ -94,7 +94,7 @@ Instrument or otherwise measure the major phases inside `package.contract.integr
 
 ## Phase 2: Remove avoidable repeated work
 
-### Task 2.1: Implement the smallest safe optimization for the dominant packed-install cost
+#### Task 2.1: Implement the smallest safe optimization for the dominant packed-install cost
 
 **Status:** done
 
@@ -108,7 +108,7 @@ Apply the minimal change that reduces packed-install wall time while preserving 
 
 ## Phase 3: Re-verify suite impact
 
-### Task 3.1: Re-run package-contract timing and full-suite timing
+#### Task 3.1: Re-run package-contract timing and full-suite timing
 
 **Status:** done
 

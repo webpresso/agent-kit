@@ -125,7 +125,7 @@ export function registerSyncCommand(cli: CAC): void {
         console.error(
           `wp sync --check: agent-kit source surfaces are not materialized in this worktree (${consumer.repoRoot}).\n` +
             `  This repo is the source of the canonical agent templates; a fresh git worktree needs\n` +
-            `  \`wp sync\` (or \`wp setup --source-maintenance\`) before \`wp sync --check\` can pass here.`,
+            `  \`wp sync\` (or \`wp setup repair\`) before \`wp sync --check\` can pass here.`,
         );
         return 1;
       }

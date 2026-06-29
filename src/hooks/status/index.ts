@@ -230,6 +230,24 @@ function bounded(value: string, maxLength: number): string {
   return value.length <= maxLength ? value : `${value.slice(0, maxLength - 1)}…`;
 }
 
+function gitRelativePath(filePath: string, repoRoot: string): string | null {
+  const normalizedRoot = repoRoot.endsWith("/") ? repoRoot : `${repoRoot}/`;
+  return filePath.startsWith(normalizedRoot) ? filePath.slice(normalizedRoot.length) : null;
+}
+
+export function formatHookConfigSourceLine(input: {
+  readonly vendor: "claude" | "codex";
+  readonly filePath: string;
+  readonly repoRoot: string;
+  readonly hooks: number;
+}): string {
+  const gitPath = gitRelativePath(input.filePath, input.repoRoot);
+  const source = gitPath
+    ? `path=${bounded(input.filePath, 96)} gitPath=${bounded(gitPath, 64)}`
+    : `path=${bounded(input.filePath, 128)}`;
+  return `[${input.vendor}] hooks status (hooks=${bounded(String(input.hooks), 16)} ${source})`;
+}
+
 export function formatHostSurfaceStatusLine(surface: HostSurfaceStatus): string {
   return (
     `${surface.host}: artifact=${surface.packagedArtifact} active=${surface.activeHooks} ` +
@@ -301,7 +319,9 @@ function printVendorStatus(
   const hooksMap = readHooksMap(filePath);
   const details = deriveHookStatus({ hooksMap, vendor, manifestExists, vendorState });
 
-  process.stdout.write(`\n[${vendor}] hooks status (${filePath})\n`);
+  process.stdout.write(
+    `\n${formatHookConfigSourceLine({ vendor, filePath, repoRoot, hooks: details.length })}\n`,
+  );
   process.stdout.write(`${"─".repeat(80)}\n`);
   for (const detail of details) {
     process.stdout.write(`${formatStatusLine(detail)}\n`);

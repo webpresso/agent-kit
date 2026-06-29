@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: "2026-06-25"
+last_updated: "2026-06-29"
 ---
 
 # Getting started
@@ -20,12 +20,13 @@ quality gates, docs templates, and safe ignores.
 ```bash
 vp install -g @webpresso/agent-kit
 cd your-repo
-wp setup --project-init
+wp setup repair --project-init
 wp hooks doctor
 ```
 
 No private registry is required. `wp` bundles the package/task facade it needs;
-a separate global `vp` install is not required.
+a separate global `vp` install is not required. Optional agent CLIs stay explicit:
+use `wp install codex|claude-code|opencode` or `wp install oh-my codex|claude-code|opencode` when you want WP to refresh them during `wp update`.
 
 For team repos, keep `wp` global and keep only `@webpresso/agent-config` as the
 local preset dependency. Do not add a consumer-local `@webpresso/agent-kit`

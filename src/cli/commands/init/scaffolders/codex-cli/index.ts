@@ -23,7 +23,7 @@ export type EnsureCodexCliResult =
   | { kind: "codex-cli-unavailable"; hint: string };
 
 const NOT_FOUND_HINT =
-  "codex is not on PATH after `wp install -g @openai/codex`. Install it manually and re-run.";
+  "codex is not on PATH after `wp install codex`. Re-run the WP-managed install or check PATH.";
 
 function shouldSkipCodexRefresh(env: NodeJS.ProcessEnv = process.env): boolean {
   return env.WP_SKIP_UPDATE_CHECK === "1" || isPackageLifecycleEnvironment(env);

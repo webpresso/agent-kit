@@ -142,7 +142,7 @@ export const BASE_KIT_QUALITY_TARGETS = QUALITY_BOOTSTRAP_ONLY_MAP.map(
  * status with thousands of newly-tracked artifacts.
  *
  * Verified failure mode (large multi-package workspace, 2026-05-07): the postinstall
- * `wp setup --overwrite` reduced pnpm-workspace.yaml from 221 lines (full
+ * `wp setup repair --overwrite` reduced pnpm-workspace.yaml from 221 lines (full
  * catalog) to 34 lines (generic template), removing catalog entries
  * referenced by `pnpm.overrides` and
  * making subsequent `vp install` fail with ERR_PNPM_CATALOG_IN_OVERRIDES.

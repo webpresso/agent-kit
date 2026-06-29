@@ -1,5 +1,6 @@
 import type { Blueprint } from "#core/parser";
 
+import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -43,6 +44,12 @@ interface LifecycleAuditFrontmatter {
   worktreeOwnerId?: unknown;
   worktreeOwnerBranch?: unknown;
   approvals?: unknown;
+}
+
+interface ApprovalEntry {
+  reviewer: string;
+  verdict: string;
+  evidence?: string;
 }
 
 function isBlueprintOverview(file: string): boolean {
@@ -94,18 +101,67 @@ const APPROVAL_GATED_STATUSES = new Set(["planned"]);
  * hard gate so both apply identical logic.
  */
 export function countDistinctApprovals(approvals: unknown): number {
-  const entries = Array.isArray(approvals) ? approvals : [];
   return new Set(
-    entries
-      .filter((e): e is Record<string, unknown> => Boolean(e) && typeof e === "object")
-      .filter((e) => String(e.verdict ?? "").toLowerCase() === "approve")
-      .map((e) =>
-        String(e.reviewer ?? "")
-          .trim()
-          .toLowerCase(),
-      )
-      .filter((reviewer) => reviewer.length > 0),
+    normalizeApprovalEntries(approvals)
+      .filter((entry) => entry.verdict === "approve")
+      .map((entry) => entry.reviewer),
   ).size;
+}
+
+function normalizeApprovalEntries(approvals: unknown): ApprovalEntry[] {
+  const entries = Array.isArray(approvals) ? approvals : [];
+  return entries
+    .filter((e): e is Record<string, unknown> => Boolean(e) && typeof e === "object")
+    .map((e) => ({
+      reviewer: String(e.reviewer ?? "")
+        .trim()
+        .toLowerCase(),
+      verdict: String(e.verdict ?? "")
+        .trim()
+        .toLowerCase(),
+      evidence:
+        typeof e.evidence === "string" && e.evidence.trim().length > 0
+          ? e.evidence.trim()
+          : undefined,
+    }))
+    .filter((entry) => entry.reviewer.length > 0);
+}
+
+function resolveApprovalEvidencePath(file: string, evidence: string | undefined): string | null {
+  if (!evidence) return null;
+  const resolved = path.resolve(path.dirname(file), evidence);
+  return existsSync(resolved) ? resolved : null;
+}
+
+function parseApprovedReviewersFromLedger(markdown: string): Set<string> {
+  const approved = new Set<string>();
+  for (const line of markdown.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("|")) continue;
+    const cells = trimmed
+      .slice(1, trimmed.endsWith("|") ? -1 : undefined)
+      .split("|")
+      .map((cell) => cell.trim());
+    if (cells.length < 4) continue;
+    if (cells.every((cell) => /^-+$/.test(cell))) continue;
+    const reviewer = cells[1]?.toLowerCase();
+    const verdict = cells[3]?.toLowerCase();
+    if (!reviewer || reviewer === "reviewer") continue;
+    if (verdict === "approve") approved.add(reviewer);
+  }
+  return approved;
+}
+
+export function countDistinctLogBackedApprovals(file: string, approvals: unknown): number {
+  const distinct = new Set<string>();
+  for (const entry of normalizeApprovalEntries(approvals)) {
+    if (entry.verdict !== "approve") continue;
+    const evidencePath = resolveApprovalEvidencePath(file, entry.evidence);
+    if (!evidencePath) continue;
+    const approvedReviewers = parseApprovedReviewersFromLedger(readFileSync(evidencePath, "utf8"));
+    if (approvedReviewers.has(entry.reviewer)) distinct.add(entry.reviewer);
+  }
+  return distinct.size;
 }
 
 export function validateApprovalGate(
@@ -116,17 +172,13 @@ export function validateApprovalGate(
   const status = typeof frontmatter.status === "string" ? frontmatter.status : "";
   if (!APPROVAL_GATED_STATUSES.has(status)) return [];
 
-  const distinct = countDistinctApprovals(frontmatter.approvals);
+  const distinct = countDistinctLogBackedApprovals(file, frontmatter.approvals);
   if (distinct < 2) {
-    // WARNING on the audit sweep (non-breaking for pre-rule blueprints); the HARD
-    // block lives at the draft→planned promotion command (validateApprovalGate is
-    // also called there), so new promotions are prevented while existing planned
-    // blueprints surface a fixable warning rather than failing CI.
     return [
       {
         file,
-        level: "warning",
-        message: `Blueprint is '${status}' but frontmatter \`approvals:\` has ${distinct} distinct approving reviewer(s) (need ≥2). Promotion past draft requires ≥2 distinct reviewer approvals — see catalog/agent/rules/pre-implementation.md.`,
+        level: "error",
+        message: `Blueprint is '${status}' but frontmatter \`approvals:\` has ${distinct} distinct approving reviewer(s) backed by committed review evidence (need ≥2). Promotion past draft requires ≥2 distinct reviewer approvals with matching committed review records — see catalog/agent/rules/pre-implementation.md.`,
       },
     ];
   }

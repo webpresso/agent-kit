@@ -26,7 +26,7 @@ Agent-kit owns the generated agent surfaces in this file; the Webpresso CLI host
 
 Defaults worth preserving:
 
-- External tools such as `omx` and `omc` are self-installed and updated with their native installers when you choose to use them; Webpresso workflow/browser skills are package defaults.
+- Optional agent tools can be WP-owned via `wp install codex|claude-code|opencode` or `wp install oh-my codex|claude-code|opencode`; `openagent` is a compatibility alias for `wp install oh-my opencode`, and WP-owned scopes participate in `wp update`.
 - `wp setup` repairs the managed `.gitignore` block for regenerated surfaces.
 - Consumer repos use the global `wp` install and keep only `@webpresso/agent-config` locally; do not add a consumer-local `@webpresso/agent-kit` dependency.
 - Track repo-owned instruction sources (`AGENTS.md`, `agent-rules/`, `agent-skills/`).

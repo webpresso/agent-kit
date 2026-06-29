@@ -3,11 +3,12 @@ type: blueprint
 title: >-
   Render Trust Dossier in wp_blueprint_put to close the dossier authoring
   catch-22
-status: planned
+status: completed
 complexity: S
 owner: ozby
 created: "2026-06-28"
 last_updated: "2026-06-28"
+completed_at: "2026-06-28"
 progress: "100% (3/3 tasks done, 0 blocked, updated 2026-06-28)"
 tags:
   - blueprint-tooling

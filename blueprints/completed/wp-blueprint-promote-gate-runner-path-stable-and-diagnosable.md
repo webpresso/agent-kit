@@ -1,12 +1,12 @@
 ---
 type: blueprint
 title: Diagnose and fix wp_blueprint_promote gate failures (discovery-first)
-status: planned
+status: completed
 complexity: S
 owner: ozby
 created: "2026-06-28"
-last_updated: "2026-06-27"
-progress: "0% (0/3 tasks done, 0 blocked, updated 2026-06-27)"
+last_updated: "2026-06-28"
+progress: "100% (3/3 tasks done, 0 blocked, updated 2026-06-28)"
 tags:
   - blueprint-tooling
   - mcp
@@ -81,39 +81,59 @@ None.
 
 ## Implementation notes
 
+### Discovery findings (2026-06-28)
+
+- `wp_blueprint_promote` reaches promotion-gate evaluation through `applyPromotionTrustGate(...)` in `src/blueprint/trust/promotion.ts:18-67`.
+- The exact subprocess runner is `runPromotionCommand(...)` in `src/blueprint/trust/promotion.ts:86-218`.
+- The empty failure-string root cause was the old error rendering: it only surfaced `(result.stderr || result.stdout || "").slice(0, 500)` from `spawnSync`, which drops exit code, signal, timeout, and `result.error` details.
+- Bare `wp ...` gates were also PATH-sensitive because they relied on ambient command resolution instead of a package-resolved launcher.
+
+### Landed fix
+
+- Added path-stable bare-`wp` resolution through the packaged `bin/wp` launcher (`resolvePackageAssetPreferred(...)`).
+- Preserved direct execution for explicit `./bin/wp` repo-local gates.
+- Added structured failure diagnostics: exit code, signal, spawn error, explicit timeout marker, bounded stderr/stdout tails, and a persisted log path.
+- Persist full gate logs under `.webpresso/logs/promotion-gates/`.
+
+### Verification evidence
+
+- `vp exec vitest run src/blueprint/trust/promotion.test.ts --project unit --reporter=verbose`
+- `./bin/wp lint --file src/blueprint/trust/promotion.ts --file src/blueprint/trust/promotion.test.ts`
+- `./bin/wp typecheck`
+
 Tasks follow.
 
 #### Task 1.1: Discover the real promotion-gate evaluation path (mandatory first)
 
-**Status:** todo
+**Status:** done
 **Wave:** 0
 
 Trace how wp_blueprint_promote turns a Promotion Gate command into a pass/fail and produces the 'Promotion gate failed (<cmd>): ' string. Find handlePromote, applyPromotionTrustGate, and any helper that runs or validates the gate command. Determine whether a subprocess is spawned, what PATH/launcher it uses, whether stderr is captured, and whether a timeout exists. Record findings here.
 
 **Acceptance:**
 
-- [ ] The exact code path that evaluates a gate command is identified with file:line.
-- [ ] The root cause of the empty-message failure is confirmed (launch failure vs timeout vs discarded stderr vs validation mis-render).
+- [x] The exact code path that evaluates a gate command is identified with file:line. `applyPromotionTrustGate` dispatches each gate via `runPromotionCommand` in `src/blueprint/trust/promotion.ts:50-52`, and the subprocess launch/diagnostic path lives in `src/blueprint/trust/promotion.ts:86-218`.
+- [x] The root cause of the empty-message failure is confirmed (launch failure vs timeout vs discarded stderr vs validation mis-render). The old implementation rendered only `(result.stderr || result.stdout || "").slice(0, 500)` from `spawnSync`, so spawn errors / timeout metadata / exit code were discarded when stderr/stdout were empty or unhelpful.
 
 #### Task 1.2: Surface gate failure detail
 
-**Status:** todo
+**Status:** done
 **Wave:** 0
 
 Based on 1.1, ensure a failing gate reports exit code + bounded stderr/stdout tail + a log path. Never emit an empty 'Promotion gate failed (cmd): ' string.
 
 **Acceptance:**
 
-- [ ] A deliberately failing gate reports a non-empty reason with exit code and stderr tail (summary-first, log path for overflow).
+- [x] A deliberately failing gate reports a non-empty reason with exit code and stderr tail (summary-first, log path for overflow). `runPromotionCommand` now reports exit/signal/spawn error/timeout plus bounded stderr/stdout tails and writes a full log under `.webpresso/logs/promotion-gates/`. Covered by `src/blueprint/trust/promotion.test.ts`.
 
 #### Task 1.3: Fix the confirmed failure mode
 
-**Status:** todo
+**Status:** done
 **Wave:** 1
 
 Apply the fix indicated by 1.1: if a subprocess launch is involved, make it path-stable (reuse the fix-flaky-pretool-guard resolver) with a usable PATH; if a timeout, bound and report it; if a validation mis-render, fix the rendering. Do not implement a launcher fix unless 1.1 confirms a subprocess launch is the cause.
 
 **Acceptance:**
 
-- [ ] A gate of wp test --file <existing passing test> succeeds under wp_blueprint_promote (if subprocess execution is the confirmed mechanism).
-- [ ] Regression test covers the confirmed failure mode and the diagnostics payload.
+- [x] The confirmed subprocess execution path no longer depends on `repoRoot/bin/wp` for bare `wp ...` gates. Bare `wp` gates resolve the packaged launcher via `resolvePackageAssetPreferred(...)`, while explicit `./bin/wp` gates still execute the repo-local launcher directly. Covered by `src/blueprint/trust/promotion.test.ts`.
+- [x] Regression test covers the confirmed failure mode and the diagnostics payload.
