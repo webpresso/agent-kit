@@ -408,11 +408,11 @@ jobs:
           # against the candidate source, not the last published package.
           vp install -g ../..
 
-          # Run wp setup --yes to avoid TTY prompts. Capture stdout + stderr.
+          # Run wp setup; non-interactive defaults are standard. Capture stdout + stderr.
           # Some delegated package-manager/plugin installers still emit ANSI even
           # when NO_COLOR is set, so normalize the captured transcript before
           # asserting the agent-kit-owned framing contract.
-          RAW_OUTPUT=$(wp setup --yes 2>&1) || {
+          RAW_OUTPUT=$(wp setup 2>&1) || {
             echo "--- wp setup output ---"
             echo "$RAW_OUTPUT"
             echo "FAIL: wp setup exited non-zero"

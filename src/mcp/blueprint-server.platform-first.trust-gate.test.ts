@@ -7,6 +7,7 @@ import {
   makePlatformBlueprintHarness,
   resetPlatformFirstTestState,
 } from "./blueprint-server.platform-first.test-harness.js";
+import { withApprovalFrontmatter } from "./blueprint-server.test-harness.js";
 
 describe("wp_blueprint_promote — planned trust gate ordering", () => {
   const tempDirs: string[] = [];
@@ -44,7 +45,8 @@ describe("wp_blueprint_promote — planned trust gate ordering", () => {
       prefix: "wp-bs-prm-trust-transition-",
       stateDir: "draft",
       slug: "promote-trust-transition-blueprint",
-      content: PROMOTE_BLUEPRINT,
+      content: withApprovalFrontmatter(PROMOTE_BLUEPRINT),
+      approvalLedger: true,
       validate: true,
     });
     tempDirs.push(harness.tmpDir);

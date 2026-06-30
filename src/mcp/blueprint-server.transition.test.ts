@@ -9,6 +9,8 @@ import {
   makeProjectionBackedBlueprintHarness,
   parseResult,
   trustDossierFixture,
+  withApprovalFrontmatter,
+  writeApprovalLedgerFixture,
   type ToolMap,
 } from "./blueprint-server.test-harness.js";
 
@@ -71,10 +73,15 @@ let tools: ToolMap;
 
 beforeEach(async () => {
   const harness = await makeProjectionBackedBlueprintHarness("wp-bs-transition-", [
-    { stateDir: "draft", slug: TRANSITION_SLUG, content: TRANSITION_BLUEPRINT },
+    {
+      stateDir: "draft",
+      slug: TRANSITION_SLUG,
+      content: withApprovalFrontmatter(TRANSITION_BLUEPRINT),
+    },
   ]);
   tmpDir = harness.tmpDir;
   overviewPath = harness.overviewPaths[0]!;
+  writeApprovalLedgerFixture(tmpDir, "draft", TRANSITION_SLUG);
   tools = harness.tools;
 });
 

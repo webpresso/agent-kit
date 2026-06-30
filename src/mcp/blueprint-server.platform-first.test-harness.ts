@@ -8,6 +8,7 @@ import {
   createTempBlueprintRepo,
   markBlueprintValidated,
   registerBlueprintToolMap,
+  writeApprovalLedgerFixture,
   writeBlueprintFixture,
   trustDossierFixture,
   type ToolMap,
@@ -41,6 +42,7 @@ export async function makePlatformBlueprintHarness(options: {
   readonly stateDir: string;
   readonly slug: string;
   readonly content: string;
+  readonly approvalLedger?: boolean;
   readonly validate?: boolean;
 }): Promise<PlatformBlueprintHarness> {
   const tmpDir = createTempBlueprintRepo(options.prefix);
@@ -49,6 +51,9 @@ export async function makePlatformBlueprintHarness(options: {
     slug: options.slug,
     content: options.content,
   });
+  if (options.approvalLedger) {
+    writeApprovalLedgerFixture(tmpDir, options.stateDir, options.slug);
+  }
   const tools = await registerBlueprintToolMap(tmpDir);
   if (options.validate) {
     await callTool(tools, "wp_blueprint_validate", { path: overviewPath });
