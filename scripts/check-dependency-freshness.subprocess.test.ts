@@ -1,8 +1,9 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
+import { parse as parseYaml } from "yaml";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const SCRIPT_PATH = "scripts/check-dependency-freshness.ts";
@@ -121,5 +122,34 @@ describe("check-dependency-freshness", () => {
     });
 
     expect(runCheck(root)).toContain("OK: declared dependencies and packageManager are current");
+  });
+});
+
+describe("Dependabot freshness policy", () => {
+  it("delays npm version updates long enough for pnpm minimum-release-age verification", () => {
+    const dependabotConfig = parseYaml(
+      readFileSync(resolve(process.cwd(), ".github/dependabot.yml"), "utf8"),
+    ) as {
+      updates?: Array<{
+        "package-ecosystem"?: unknown;
+        directory?: unknown;
+        cooldown?: {
+          "default-days"?: unknown;
+          "semver-minor-days"?: unknown;
+          "semver-patch-days"?: unknown;
+        };
+      }>;
+    };
+
+    const npmRootUpdate = dependabotConfig.updates?.find(
+      (entry) => entry["package-ecosystem"] === "npm" && entry.directory === "/",
+    );
+
+    expect(npmRootUpdate?.cooldown).toEqual(
+      expect.objectContaining({
+        "default-days": expect.any(Number),
+      }),
+    );
+    expect(npmRootUpdate?.cooldown?.["default-days"]).toBeGreaterThanOrEqual(1);
   });
 });
