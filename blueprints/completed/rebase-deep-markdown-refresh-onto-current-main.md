@@ -1,13 +1,16 @@
 ---
 type: blueprint
-status: draft
+status: completed
 complexity: XS
 created: "2026-06-26"
-last_updated: "2026-06-26"
-progress: "100% (implemented, awaiting verification record)"
+last_updated: "2026-06-30"
+progress: "100% (merged in PR #275; verification recorded)"
 depends_on: []
 cross_repo_depends_on: []
-tags: [docs, rebase, mergeability]
+tags:
+  - docs
+  - rebase
+  - mergeability
 ---
 
 # Rebase deep markdown refresh onto current main

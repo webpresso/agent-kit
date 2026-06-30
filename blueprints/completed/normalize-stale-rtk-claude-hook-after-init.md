@@ -1,13 +1,17 @@
 ---
 type: blueprint
-status: draft
+status: completed
 complexity: S
 created: "2026-06-26"
-last_updated: "2026-06-26"
-progress: "80% (implemented, targeted verification green)"
+last_updated: "2026-06-30"
+progress: "100% (merged in PR #279; targeted verification attached)"
 depends_on: []
 cross_repo_depends_on: []
-tags: [hooks, rtk, claude, reliability]
+tags:
+  - hooks
+  - rtk
+  - claude
+  - reliability
 ---
 
 # Normalize stale RTK Claude hook after init
@@ -59,7 +63,7 @@ normalizeClaudeRtkSettings removes only that stale group when wp-pretool-guard i
 
 > **Task header (current accepted form):** Use `#### [lane] Task X.Y:` when the task has a clear lane (`[schema]`, `[backend]`, `[ui]`, `[infra]`, `[docs]`, `[qa]`). `#### Task X.Y:` is still valid, but lane-prefixed headers are preferred in new blueprints.
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 

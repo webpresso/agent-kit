@@ -1,13 +1,19 @@
 ---
 type: blueprint
-status: draft
+status: completed
 complexity: M
 created: "2026-06-24"
-last_updated: "2026-06-24"
+last_updated: "2026-06-30"
 progress: "100% (codex event drift + claude type pin + workflow landed)"
 depends_on: []
 cross_repo_depends_on: []
-tags: [hooks, contract, drift, ci, codex, claude]
+tags:
+  - hooks
+  - contract
+  - drift
+  - ci
+  - codex
+  - claude
 ---
 
 # Scheduled hook contract drift detection

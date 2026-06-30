@@ -1,13 +1,17 @@
 ---
 type: blueprint
-status: draft
+status: completed
 complexity: S
 created: "2026-06-24"
-last_updated: "2026-06-24"
+last_updated: "2026-06-30"
 progress: "100% (flag + probe + tests + docs landed)"
 depends_on: []
 cross_repo_depends_on: []
-tags: [hooks, doctor, conformance, reliability]
+tags:
+  - hooks
+  - doctor
+  - conformance
+  - reliability
 ---
 
 # wp hooks doctor --probe-decisions semantic probe

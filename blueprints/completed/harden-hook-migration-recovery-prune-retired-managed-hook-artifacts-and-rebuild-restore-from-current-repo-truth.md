@@ -1,13 +1,17 @@
 ---
 type: blueprint
-status: draft
+status: completed
 complexity: S
 created: "2026-06-24"
-last_updated: "2026-06-24"
+last_updated: "2026-06-30"
 progress: "100% (implemented; documents PR #248)"
 depends_on: []
 cross_repo_depends_on: []
-tags: [hooks, setup, migration, agent-config]
+tags:
+  - hooks
+  - setup
+  - migration
+  - agent-config
 ---
 
 # Harden hook migration recovery: prune retired managed-hook artifacts and rebuild restore from current repo truth

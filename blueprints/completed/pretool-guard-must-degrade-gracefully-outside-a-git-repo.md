@@ -1,13 +1,17 @@
 ---
 type: blueprint
-status: draft
+status: completed
 complexity: S
 created: "2026-06-24"
-last_updated: "2026-06-24"
+last_updated: "2026-06-30"
 progress: "100% (fix + regression tests landed)"
 depends_on: []
 cross_repo_depends_on: []
-tags: [hooks, pretool-guard, bootstrap, reliability]
+tags:
+  - hooks
+  - pretool-guard
+  - bootstrap
+  - reliability
 ---
 
 # Pretool-guard must degrade gracefully outside a git repo

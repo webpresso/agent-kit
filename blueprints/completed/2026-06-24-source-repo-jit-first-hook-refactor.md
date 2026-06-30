@@ -1,13 +1,17 @@
 ---
 type: blueprint
-status: draft
+status: completed
 complexity: L
 created: "2026-06-24"
-last_updated: "2026-06-24"
-progress: "95% (implemented + rebased onto main; in PR #258)"
+last_updated: "2026-06-30"
+progress: "100% (merged in PR #258)"
 depends_on: []
 cross_repo_depends_on: []
-tags: [hooks, setup, source-mode, runtime]
+tags:
+  - hooks
+  - setup
+  - source-mode
+  - runtime
 ---
 
 # Source-repo JIT-first hook refactor

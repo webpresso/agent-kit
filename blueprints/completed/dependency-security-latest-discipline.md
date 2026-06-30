@@ -1,16 +1,22 @@
 ---
 type: blueprint
-title: "Dependency security latest discipline"
+title: Dependency security latest discipline
 owner: ozby
-status: draft
+status: completed
 complexity: M
 created: "2026-06-28"
-last_updated: "2026-06-28"
+last_updated: "2026-06-30"
 progress: "100% (implemented; local gates passed)"
 depends_on: []
 cross_repo_depends_on: []
-tags: [dependencies, security, ci, release]
+tags:
+  - dependencies
+  - security
+  - ci
+  - release
 approvals: []
+historical_zero_task_waiver: true
+historical_zero_task_rationale: Completed record uses older top-level task headings (`### Task N`) that predate the current lifecycle parser; shipped implementation and verification remain preserved below and landed in PR #313.
 ---
 
 # Dependency security latest discipline
