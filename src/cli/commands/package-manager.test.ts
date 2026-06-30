@@ -586,6 +586,41 @@ describe("wp package-manager commands", () => {
     expect(warn.mock.calls.join("\n")).not.toContain("wp update --global");
   });
 
+  it("warns without failing when WP-owned optional package refreshes fail", () => {
+    const run = vi.fn((command: string, args: readonly string[]) =>
+      command === GLOBAL_VP && args.join(" ") !== "install -g @webpresso/agent-kit"
+        ? spawnResult(9)
+        : spawnResult(0),
+    );
+    const { refreshClaudePlugin, refreshCodexPlugin } = successfulPluginRefreshes();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    let ownershipState = defaultToolingOwnershipState();
+    ownershipState = claimUserOwnedTool(ownershipState, "codex");
+    ownershipState = claimUserOwnedTool(ownershipState, "opencode");
+    ownershipState = claimUserOwnedTool(ownershipState, "omx");
+    ownershipState = claimUserOwnedTool(ownershipState, "openagent");
+
+    expect(
+      runPackageManagerCommand("update", {
+        argv: ["node", "wp", "update", "--global"],
+        resolveVpCommand: () => GLOBAL_VP,
+        ownershipState,
+        packageRoot: "/global/lib/node_modules/@webpresso/agent-kit",
+        refreshClaudePlugin,
+        refreshCodexPlugin,
+        run,
+      }),
+    ).toBe(0);
+
+    expect(run).toHaveBeenCalledWith(GLOBAL_VP, ["install", "-g", "@webpresso/agent-kit"]);
+    expect(warn.mock.calls.join("\n")).toContain("wp update: codex failed");
+    expect(warn.mock.calls.join("\n")).toContain("wp update: opencode failed");
+    expect(warn.mock.calls.join("\n")).toContain("wp update: omx failed");
+    expect(warn.mock.calls.join("\n")).toContain("wp update: openagent failed");
+    expect(error).not.toHaveBeenCalled();
+  });
+
   it("still exits non-zero when the core wp package refresh fails", () => {
     const run = vi.fn((command: string, args: readonly string[]) =>
       command === GLOBAL_VP && args.join(" ") === "install -g @webpresso/agent-kit"

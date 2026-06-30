@@ -73,7 +73,7 @@ function vpStep(
   args: readonly string[],
 ): OptionalToolCommandStep {
   const command = appendGlobalCapableVpArgs(vpCommand, args);
-  return { id, command: command[0]!, args: command.slice(1) };
+  return { id, command: command[0]!, args: command.slice(1), optional: true };
 }
 
 function packageAdapter(input: {

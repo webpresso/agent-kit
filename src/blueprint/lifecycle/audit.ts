@@ -1,5 +1,6 @@
 import type { Blueprint } from "#core/parser";
 
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -49,7 +50,18 @@ interface LifecycleAuditFrontmatter {
 interface ApprovalEntry {
   reviewer: string;
   verdict: string;
+  commit?: string;
   evidence?: string;
+  rev?: string;
+  targetHash?: string;
+}
+
+interface ApprovalReviewRecord {
+  reviewer: string;
+  verdict: string;
+  commit?: string;
+  rev?: string;
+  targetHash?: string;
 }
 
 function isBlueprintOverview(file: string): boolean {
@@ -119,9 +131,16 @@ function normalizeApprovalEntries(approvals: unknown): ApprovalEntry[] {
       verdict: String(e.verdict ?? "")
         .trim()
         .toLowerCase(),
+      commit:
+        typeof e.commit === "string" && e.commit.trim().length > 0 ? e.commit.trim() : undefined,
       evidence:
         typeof e.evidence === "string" && e.evidence.trim().length > 0
           ? e.evidence.trim()
+          : undefined,
+      rev: typeof e.rev === "string" && e.rev.trim().length > 0 ? e.rev.trim() : undefined,
+      targetHash:
+        typeof e.targetHash === "string" && e.targetHash.trim().length > 0
+          ? e.targetHash.trim()
           : undefined,
     }))
     .filter((entry) => entry.reviewer.length > 0);
@@ -129,14 +148,61 @@ function normalizeApprovalEntries(approvals: unknown): ApprovalEntry[] {
 
 function resolveApprovalEvidencePath(file: string, evidence: string | undefined): string | null {
   if (!evidence) return null;
+  if (path.isAbsolute(evidence)) return null;
+  const normalizedEvidence = normalizePath(evidence);
+  if (
+    normalizedEvidence.length === 0 ||
+    normalizedEvidence === "." ||
+    normalizedEvidence.startsWith("../") ||
+    normalizedEvidence.includes("/../")
+  ) {
+    return null;
+  }
   const resolved = path.resolve(path.dirname(file), evidence);
-  return existsSync(resolved) ? resolved : null;
+  const blueprintDir = path.dirname(file);
+  const relativeToBlueprint = normalizePath(path.relative(blueprintDir, resolved));
+  if (relativeToBlueprint === ".." || relativeToBlueprint.startsWith("../")) return null;
+  if (!existsSync(resolved)) return null;
+  if (!isGitTracked(findGitRoot(file), resolved)) return null;
+  return resolved;
 }
 
-function parseApprovedReviewersFromLedger(markdown: string): Set<string> {
-  const approved = new Set<string>();
+const REVIEW_ENTRY_MARKER = "<!-- wp:review-entry ";
+
+function parseApprovalReviewRecordsFromLedger(markdown: string): ApprovalReviewRecord[] {
+  const records: ApprovalReviewRecord[] = [];
   for (const line of markdown.split("\n")) {
     const trimmed = line.trim();
+    if (trimmed.startsWith(REVIEW_ENTRY_MARKER) && trimmed.endsWith("-->")) {
+      const json = trimmed.slice(REVIEW_ENTRY_MARKER.length, -3).trim();
+      try {
+        const parsed = JSON.parse(json) as Record<string, unknown>;
+        records.push({
+          reviewer: String(parsed.reviewer ?? "")
+            .trim()
+            .toLowerCase(),
+          verdict: String(parsed.verdict ?? "")
+            .trim()
+            .toLowerCase(),
+          commit:
+            typeof parsed.commit === "string" && parsed.commit.trim().length > 0
+              ? parsed.commit.trim()
+              : undefined,
+          rev:
+            typeof parsed.rev === "string" && parsed.rev.trim().length > 0
+              ? parsed.rev.trim()
+              : undefined,
+          targetHash:
+            typeof parsed.targetHash === "string" && parsed.targetHash.trim().length > 0
+              ? parsed.targetHash.trim()
+              : undefined,
+        });
+      } catch {
+        // Ignore malformed structured records; they remain human-visible evidence only.
+      }
+      continue;
+    }
+
     if (!trimmed.startsWith("|")) continue;
     const cells = trimmed
       .slice(1, trimmed.endsWith("|") ? -1 : undefined)
@@ -147,9 +213,46 @@ function parseApprovedReviewersFromLedger(markdown: string): Set<string> {
     const reviewer = cells[1]?.toLowerCase();
     const verdict = cells[3]?.toLowerCase();
     if (!reviewer || reviewer === "reviewer") continue;
-    if (verdict === "approve") approved.add(reviewer);
+    records.push({
+      reviewer,
+      verdict: verdict ?? "",
+      ...(cells[2] && cells[2] !== "Rev" ? { rev: cells[2] } : {}),
+    });
   }
-  return approved;
+  return records;
+}
+
+function approvalMatchesRecord(entry: ApprovalEntry, record: ApprovalReviewRecord): boolean {
+  if (record.reviewer !== entry.reviewer || record.verdict !== "approve") return false;
+  if (entry.rev !== undefined && record.rev !== entry.rev) return false;
+  if (entry.commit !== undefined && record.commit !== entry.commit) return false;
+  if (entry.targetHash !== undefined && record.targetHash !== entry.targetHash) return false;
+  return true;
+}
+
+function findGitRoot(file: string): string | null {
+  let current = path.dirname(file);
+  while (true) {
+    if (existsSync(path.join(current, ".git"))) return current;
+    const parent = path.dirname(current);
+    if (parent === current) return null;
+    current = parent;
+  }
+}
+
+function isGitTracked(repoRoot: string | null, file: string): boolean {
+  if (!repoRoot) return false;
+  const relative = path.relative(repoRoot, file);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) return false;
+  try {
+    execFileSync("git", ["ls-files", "--error-unmatch", "--", relative], {
+      cwd: repoRoot,
+      stdio: "ignore",
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function countDistinctLogBackedApprovals(file: string, approvals: unknown): number {
@@ -158,8 +261,10 @@ export function countDistinctLogBackedApprovals(file: string, approvals: unknown
     if (entry.verdict !== "approve") continue;
     const evidencePath = resolveApprovalEvidencePath(file, entry.evidence);
     if (!evidencePath) continue;
-    const approvedReviewers = parseApprovedReviewersFromLedger(readFileSync(evidencePath, "utf8"));
-    if (approvedReviewers.has(entry.reviewer)) distinct.add(entry.reviewer);
+    const records = parseApprovalReviewRecordsFromLedger(readFileSync(evidencePath, "utf8"));
+    if (records.some((record) => approvalMatchesRecord(entry, record))) {
+      distinct.add(entry.reviewer);
+    }
   }
   return distinct.size;
 }

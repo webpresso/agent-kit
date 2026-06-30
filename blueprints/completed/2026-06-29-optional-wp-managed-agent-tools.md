@@ -114,3 +114,44 @@ All task checkboxes are complete and the blueprint is 100% complete for this PR.
 - Typecheck: `./bin/wp typecheck` → passed.
 - Lint: `./bin/wp lint` → passed (reported existing parser note in `src/cli/commands/init/scaffolders/rtk/index.ts`).
 - Push hook verification during `git push -u origin wp-managed-agent-tools-optional` → audit guardrails passed, affected-closure typecheck passed, tests passed, blueprint PR coverage passed.
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-30T19:11:33.000Z
+- verified-head: 01e8d9e3f5bfb89cd3824bb75975b8b93ea98955
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID  | Claim                                                                   | Evidence                                                                                                                                           |
+| --- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C1  | Optional tool lifecycle behavior is implemented and covered directly.   | repo:src/cli/optional-tools.ts; repo:src/cli/optional-tools.test.ts; repo:src/cli/commands/package-manager.test.ts                                 |
+| C2  | Hook-source status output bounding is implemented and covered.          | repo:src/hooks/status/index.ts; repo:src/hooks/status/index.test.ts                                                                                |
+| C3  | Docs/help surfaces document canonical commands and ownership semantics. | repo:docs/add-ons.md; repo:src/cli/commands/docs-core.test.ts                                                                                      |
+| C4  | Outside-review blockers were addressed before merge.                    | repo:src/blueprint/lifecycle/audit.approval-gate.test.ts; repo:src/cli/commands/blueprint/mutations.test.ts; repo:src/github/pr-governance.test.ts |
+
+### Material Decisions
+
+| ID  | Decision                           | Chosen option                                                     | Rejected alternatives                       | Rationale                                                                          |
+| --- | ---------------------------------- | ----------------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------- |
+| D1  | Optional tool ownership semantics. | WP records ownership and remove clears records only.              | Native uninstall during `wp remove`.        | Avoid destructive external-tool mutations while preserving future update intent.   |
+| D2  | Optional update failure behavior.  | Advisory optional-tool refresh failures.                          | Make optional-agent refresh failures fatal. | Core `wp update` should not fail because an optional external tool is unavailable. |
+| D3  | Review evidence gate hardening.    | Repo-bounded, git-tracked review evidence with matching metadata. | Count reviewer names from arbitrary files.  | Promotion evidence must be auditable and resistant to local untracked spoofing.    |
+
+### Promotion Gates
+
+| Gate       | Command             | Expected outcome | Last result                      |
+| ---------- | ------------------- | ---------------- | -------------------------------- |
+| sync       | wp sync --check     | pass             | pass at 2026-06-30T19:11:33.000Z |
+| format     | wp format --check   | pass             | pass at 2026-06-30T19:11:33.000Z |
+| typecheck  | wp typecheck        | pass             | pass at 2026-06-30T19:11:33.000Z |
+| lint       | wp lint             | pass             | pass at 2026-06-30T19:11:33.000Z |
+| guardrails | wp audit guardrails | pass             | pass at 2026-06-30T19:11:33.000Z |
+
+### Residual Unknowns
+
+None.

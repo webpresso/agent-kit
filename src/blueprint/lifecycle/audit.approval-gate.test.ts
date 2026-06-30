@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -12,6 +13,24 @@ const approve = (reviewer: string, evidence = "reviews.md") => ({
   evidence,
 });
 
+const structuredApprove = (reviewer: string, overrides: Record<string, unknown> = {}): string =>
+  `<!-- wp:review-entry ${JSON.stringify({
+    id: `2026-06-28T00:00:00.000Z:${reviewer}:final`,
+    blueprintSlug: "planned/sample",
+    blueprintPath: "blueprints/planned/sample/_overview.md",
+    targetKind: "blueprint",
+    targetId: "planned/sample",
+    targetHash: "sha256:good",
+    timestamp: "2026-06-28T00:00:00.000Z",
+    reviewer,
+    verdict: "approve",
+    rev: "final",
+    commit: "abc123",
+    evidence: "reviews.md",
+    source: "structured",
+    ...overrides,
+  })} -->`;
+
 function makeBlueprintWithReviews(
   status: string,
   approvals?: unknown,
@@ -21,7 +40,13 @@ function makeBlueprintWithReviews(
 | --- | --- | --- | --- | --- |
 | 2026-06-28 | codex | final | APPROVE | ok |
 | 2026-06-28 | deepseek | final | APPROVE | ok |
+
+## Review entries
+
+${structuredApprove("codex")}
+${structuredApprove("deepseek")}
 `,
+  options: { trackReviews?: boolean } = { trackReviews: true },
 ): { root: string; file: string } {
   const root = mkdtempSync(path.join(tmpdir(), "approval-gate-"));
   mkdirSync(path.join(root, "blueprints", status, "sample"), { recursive: true });
@@ -40,6 +65,10 @@ approvals: ${JSON.stringify(approvals ?? [])}
     reviewsMarkdown,
     "utf8",
   );
+  if (options.trackReviews !== false) {
+    execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
+    execFileSync("git", ["add", "blueprints"], { cwd: root, stdio: "ignore" });
+  }
   return { root, file: path.join(root, "blueprints", status, "sample", "_overview.md") };
 }
 
@@ -90,6 +119,60 @@ describe("validateApprovalGate (≥2 distinct reviewer approvals past draft)", (
     tempRoots.push(root);
     expect(
       validateApprovalGate(file, { type: "blueprint", status: "planned", approvals }),
+    ).toHaveLength(1);
+  });
+
+  it("requires structured review metadata to match frontmatter approval metadata when provided", () => {
+    const approvals = [
+      { ...approve("codex"), rev: "final", commit: "abc123", targetHash: "sha256:good" },
+      { ...approve("deepseek"), rev: "final", commit: "abc123", targetHash: "sha256:wrong" },
+    ];
+    const { root, file } = makeBlueprintWithReviews("planned", approvals);
+    tempRoots.push(root);
+    expect(
+      validateApprovalGate(file, { type: "blueprint", status: "planned", approvals }),
+    ).toHaveLength(1);
+  });
+
+  it("counts the structured review record format emitted by wp review log", () => {
+    const approvals = [
+      { ...approve("codex"), rev: "final", commit: "abc123", targetHash: "sha256:good" },
+      { ...approve("deepseek"), rev: "final", commit: "abc123", targetHash: "sha256:good" },
+    ];
+    const { root, file } = makeBlueprintWithReviews("planned", approvals);
+    tempRoots.push(root);
+    expect(validateApprovalGate(file, { type: "blueprint", status: "planned", approvals })).toEqual(
+      [],
+    );
+  });
+
+  it("rejects absolute, parent-relative, and untracked evidence paths", () => {
+    const { root, file } = makeBlueprintWithReviews("planned", []);
+    tempRoots.push(root);
+    expect(
+      validateApprovalGate(file, {
+        type: "blueprint",
+        status: "planned",
+        approvals: [
+          approve("codex", path.join(root, "blueprints", "planned", "sample", "reviews.md")),
+          approve("deepseek", "../../reviews.md"),
+        ],
+      }),
+    ).toHaveLength(1);
+
+    const untracked = makeBlueprintWithReviews(
+      "planned",
+      [approve("codex"), approve("deepseek")],
+      undefined,
+      { trackReviews: false },
+    );
+    tempRoots.push(untracked.root);
+    expect(
+      validateApprovalGate(untracked.file, {
+        type: "blueprint",
+        status: "planned",
+        approvals: [approve("codex"), approve("deepseek")],
+      }),
     ).toHaveLength(1);
   });
 

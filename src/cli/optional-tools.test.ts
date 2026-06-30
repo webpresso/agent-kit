@@ -90,6 +90,7 @@ describe("optional tool registry", () => {
 
     expect(steps.map((step) => step.id)).toEqual(["codex", "omx", "omc", "omc-project"]);
     expect(steps.every((step) => step.command.length > 0)).toBe(true);
+    expect(steps.every((step) => step.optional === true)).toBe(true);
     expect(steps.find((step) => step.id === "omx")?.args).toEqual(["update", "-g", "oh-my-codex"]);
     expect(steps.filter((step) => step.id === "omx")).toHaveLength(1);
     expect(steps.find((step) => step.id === "omc-project")?.cwd).toBe("/repo/current");

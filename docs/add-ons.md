@@ -73,14 +73,14 @@ before refreshing `@webpresso/agent-kit`. `wp remove ...` only clears the WP
 ownership record; it does not run a native uninstall. Use `--scope project` only
 for Oh My tools that support project-scoped setup.
 
-| Target           | Canonical command              | Notes                                   |
-| ---------------- | ------------------------------ | --------------------------------------- | --------- |
-| Codex CLI        | `wp install codex`             | User-scoped global CLI.                 |
-| Claude Code CLI  | `wp install claude-code`       | User-scoped global CLI.                 |
-| OpenCode CLI     | `wp install opencode`          | User-scoped global CLI.                 |
-| Oh My Codex      | `wp install oh-my codex`       | Supports `--scope user                  | project`. |
-| Oh My ClaudeCode | `wp install oh-my claude-code` | Supports `--scope user                  | project`. |
-| Oh My OpenAgent  | `wp install oh-my opencode`    | `openagent` is an alias, not canonical. |
+| Target           | Canonical command              | Notes                                         |
+| ---------------- | ------------------------------ | --------------------------------------------- |
+| Codex CLI        | `wp install codex`             | User-scoped global CLI.                       |
+| Claude Code CLI  | `wp install claude-code`       | User-scoped global CLI.                       |
+| OpenCode CLI     | `wp install opencode`          | User-scoped global CLI.                       |
+| Oh My Codex      | `wp install oh-my codex`       | Supports `--scope user` or `--scope project`. |
+| Oh My ClaudeCode | `wp install oh-my claude-code` | Supports `--scope user` or `--scope project`. |
+| Oh My OpenAgent  | `wp install oh-my opencode`    | `openagent` is an alias, not canonical.       |
 
 ## Default bootstrap
 

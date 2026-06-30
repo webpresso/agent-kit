@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { decideReviewToReadyTransition } from "./pr-governance.js";
@@ -110,5 +113,22 @@ describe("decideReviewToReadyTransition", () => {
       reason: "ready_transition",
       command: ["gh", "pr", "ready", "12"],
     });
+  });
+
+  it("keeps the GitHub workflow aligned with the tested review-to-ready decision path", () => {
+    const workflow = readFileSync(
+      path.join(process.cwd(), ".github", "workflows", "pr-governance.yml"),
+      "utf8",
+    );
+
+    expect(workflow).toContain('workflows: ["CI (agent-kit self)"]');
+    expect(workflow).toContain("github.event.workflow_run.conclusion == 'success'");
+    expect(workflow).toContain("github.event.workflow_run.event == 'pull_request'");
+    expect(workflow).toContain("gh pr list");
+    expect(workflow).toContain('--search "$HEAD_SHA"');
+    expect(workflow).toContain('index("governance:auto-ready") != null');
+    expect(workflow).toContain('gh pr ready "$number"');
+    expect(workflow).not.toMatch(/^\s*pull_request_target:/m);
+    expect(workflow).not.toContain("gh pr merge");
   });
 });
