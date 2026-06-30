@@ -1,6 +1,6 @@
 {
   "name": "@webpresso/agent-core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "description": "Shared low-level primitives for webpresso agent packages: repo-root discovery, process-tree termination, e2e port/health + fail-closed secret-env, release-version validation, workspace-binary resolution. Pure Node, no runtime dependencies.",
   "homepage": "https://github.com/webpresso/agent-kit#readme",
