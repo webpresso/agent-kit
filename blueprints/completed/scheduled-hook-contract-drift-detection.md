@@ -1,5 +1,7 @@
 ---
 type: blueprint
+title: "Scheduled hook contract drift detection"
+owner: ozby
 status: completed
 complexity: M
 created: "2026-06-24"
@@ -143,3 +145,35 @@ to turn required CI red. Runs on a schedule, never as a required PR check.
 | `codex` CLI not installable in CI                   | event-drift job can't check | Script degrades to `skipped` (exit 0); install step is `continue-on-error` |
 | SDK install pulls native optional binaries          | slower job                  | Ephemeral `--no-save`, type-only use; never touches required CI            |
 | Golden goes stale after an intentional Codex change | false drift alert           | Drift output names added/removed events and points at the golden to update |
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-30T21:22:00Z
+- verified-head: 6554b58ad7d18b6d3b415869a680fccc934b3300
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID  | Claim                                                       | Evidence                                                             |
+| --- | ----------------------------------------------------------- | -------------------------------------------------------------------- |
+| C1  | This completed blueprint has a canonical repository record. | repo:blueprints/completed/scheduled-hook-contract-drift-detection.md |
+
+### Material Decisions
+
+| ID  | Decision        | Chosen option                                         | Rejected alternatives            | Rationale                                                                                       |
+| --- | --------------- | ----------------------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------- |
+| D1  | Lifecycle state | Keep this blueprint as a completed historical record. | Leave the record in draft state. | The implementation already landed on `main`; this record now matches shipped lifecycle reality. |
+
+### Promotion Gates
+
+| Gate       | Command                  | Expected outcome | Last result                  |
+| ---------- | ------------------------ | ---------------- | ---------------------------- |
+| trust-gate | wp audit blueprint-trust | pass             | pass at 2026-06-30T21:22:00Z |
+
+### Residual Unknowns
+
+None.

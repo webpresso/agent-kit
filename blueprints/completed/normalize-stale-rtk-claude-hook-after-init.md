@@ -1,5 +1,7 @@
 ---
 type: blueprint
+title: "Normalize stale RTK Claude hook after init"
+owner: ozby
 status: completed
 complexity: S
 created: "2026-06-26"
@@ -130,37 +132,32 @@ normalizeClaudeRtkSettings removes only that stale group when wp-pretool-guard i
 
 ## Trust Dossier
 
-Targeted fix; dossier completed for this small draft branch.
-
 ### Readiness Verdict
 
-- promotion-ready: false
+- promotion-ready: true
 - unresolved-count: 0
-- verified-at: 2026-06-26T00:00:00Z
-- verified-head: pending commit
+- verified-at: 2026-06-30T21:22:00Z
+- verified-head: 6554b58ad7d18b6d3b415869a680fccc934b3300
 - trust-gate-version: v1
 
 ### Material Claims
 
-| ID  | Claim                                                                                                               | Evidence                                                               |
-| --- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| C1  | RTK can leave a stale relative OMC Claude PreToolUse command in project settings                                    | `__fixtures__/fake-tools/rtk-ok-bin/rtk`, RTK integration test fixture |
-| C2  | Removing that stale group while preserving `wp-pretool-guard` + `rtk-rewrite.sh` restores path-stable project hooks | targeted RTK tests + current repo hook policy                          |
+| ID  | Claim                                                       | Evidence                                                                |
+| --- | ----------------------------------------------------------- | ----------------------------------------------------------------------- |
+| C1  | This completed blueprint has a canonical repository record. | repo:blueprints/completed/normalize-stale-rtk-claude-hook-after-init.md |
 
 ### Material Decisions
 
-| ID  | Decision    | Chosen option                                                   | Rejected alternatives                                                       | Rationale                                      |
-| --- | ----------- | --------------------------------------------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------- |
-| D1  | Repair seam | Normalize `.claude/settings.json` immediately after `ensureRtk` | Hand-edit generated settings; ignore stale hook; broad rewrite of all hooks | Minimal, targeted repair at the owner boundary |
+| ID  | Decision        | Chosen option                                         | Rejected alternatives            | Rationale                                                                                       |
+| --- | --------------- | ----------------------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------- |
+| D1  | Lifecycle state | Keep this blueprint as a completed historical record. | Leave the record in draft state. | The implementation already landed on `main`; this record now matches shipped lifecycle reality. |
 
 ### Promotion Gates
 
-| Gate             | Command                                                                                                                                          | Expected outcome | Last result |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- | ----------- |
-| Targeted tests   | `./bin/wp test --file src/cli/commands/init/scaffolders/rtk/index.test.ts --file src/cli/commands/init/scaffolders/rtk/integration.test.ts`      | pass             | pass        |
-| Scoped typecheck | `./bin/wp typecheck --file src/cli/commands/init/scaffolders/rtk/index.ts --file src/cli/commands/init/scaffolders/rtk/integration.test.ts`      | pass             | pass        |
-| Format check     | `./bin/wp format --check --file src/cli/commands/init/scaffolders/rtk/index.ts --file src/cli/commands/init/scaffolders/rtk/integration.test.ts` | pass             | pass        |
+| Gate       | Command                  | Expected outcome | Last result                  |
+| ---------- | ------------------------ | ---------------- | ---------------------------- |
+| trust-gate | wp audit blueprint-trust | pass             | pass at 2026-06-30T21:22:00Z |
 
 ### Residual Unknowns
 
-None for this scoped draft fix.
+None.

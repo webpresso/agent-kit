@@ -1,5 +1,7 @@
 ---
 type: blueprint
+title: "Pretool-guard must degrade gracefully outside a git repo"
+owner: ozby
 status: completed
 complexity: S
 created: "2026-06-24"
@@ -96,3 +98,35 @@ when the invoked subcommand is exempt.
 | Risk                            | Impact                           | Mitigation                                                                                      |
 | ------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------- |
 | mcp now skips the git hard-fail | mcp server starts outside a repo | Intended; mcp resolves repo state lazily with bounded discovery. Existing mcp test stays green. |
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-30T21:22:00Z
+- verified-head: 6554b58ad7d18b6d3b415869a680fccc934b3300
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID  | Claim                                                       | Evidence                                                                              |
+| --- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| C1  | This completed blueprint has a canonical repository record. | repo:blueprints/completed/pretool-guard-must-degrade-gracefully-outside-a-git-repo.md |
+
+### Material Decisions
+
+| ID  | Decision        | Chosen option                                         | Rejected alternatives            | Rationale                                                                                       |
+| --- | --------------- | ----------------------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------- |
+| D1  | Lifecycle state | Keep this blueprint as a completed historical record. | Leave the record in draft state. | The implementation already landed on `main`; this record now matches shipped lifecycle reality. |
+
+### Promotion Gates
+
+| Gate       | Command                  | Expected outcome | Last result                  |
+| ---------- | ------------------------ | ---------------- | ---------------------------- |
+| trust-gate | wp audit blueprint-trust | pass             | pass at 2026-06-30T21:22:00Z |
+
+### Residual Unknowns
+
+None.

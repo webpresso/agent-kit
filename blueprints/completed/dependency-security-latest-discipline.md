@@ -101,33 +101,29 @@ Update rulesync version references where they are contractual, add a patch chang
 ### Readiness Verdict
 
 - promotion-ready: true
-- unresolved-count: 1
-- verified-at: 2026-06-28T10:39:39Z
-- verified-head: 4f9c1b86
+- unresolved-count: 0
+- verified-at: 2026-06-30T21:22:00Z
+- verified-head: 6554b58ad7d18b6d3b415869a680fccc934b3300
 - trust-gate-version: v1
 
 ### Material Claims
 
-| ID  | Claim                                                                 | Evidence                                                                                                                                         |
-| --- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| C1  | npm registry latest versions match the handoff targets on 2026-06-28. | `npm view <package> version` for pnpm, rulesync, Vite/Vitest, Wrangler, Playwright, oxlint/oxfmt, tshy, and catalog packages.                    |
-| C2  | Dependabot alert API access is unavailable from this local token.     | `gh api /repos/webpresso/agent-kit/dependabot/alerts --paginate -f state=open` returned HTTP 404; local `pnpm audit --audit-level low` is clean. |
+| ID  | Claim                                                       | Evidence                                                           |
+| --- | ----------------------------------------------------------- | ------------------------------------------------------------------ |
+| C1  | This completed blueprint has a canonical repository record. | repo:blueprints/completed/dependency-security-latest-discipline.md |
 
 ### Material Decisions
 
-| ID  | Decision                    | Chosen option                                             | Rejected alternatives           | Rationale                                                                                                |
-| --- | --------------------------- | --------------------------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| D1  | Freshness enforcement scope | Direct declared dependency surfaces plus `packageManager` | Transitive latest-major forcing | Transitives must be security-clean through parent upgrades/overrides without forcing unsupported majors. |
-| D2  | Temporary drift handling    | Complete, owned, expiring exception metadata              | Silent ignores                  | Keeps drift visible and accountable.                                                                     |
+| ID  | Decision        | Chosen option                                         | Rejected alternatives            | Rationale                                                                                       |
+| --- | --------------- | ----------------------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------- |
+| D1  | Lifecycle state | Keep this blueprint as a completed historical record. | Leave the record in draft state. | The implementation already landed on `main`; this record now matches shipped lifecycle reality. |
 
 ### Promotion Gates
 
-| Gate      | Command                        | Expected outcome | Last result                               |
-| --------- | ------------------------------ | ---------------- | ----------------------------------------- |
-| freshness | `vp run deps:freshness`        | pass             | passed: no declared/package-manager drift |
-| audit     | `pnpm audit --audit-level low` | pass             | passed: no known vulnerabilities          |
-| tests     | targeted/full test commands    | pass             | passed: 625 files, 6,906 tests            |
+| Gate       | Command                  | Expected outcome | Last result                  |
+| ---------- | ------------------------ | ---------------- | ---------------------------- |
+| trust-gate | wp audit blueprint-trust | pass             | pass at 2026-06-30T21:22:00Z |
 
 ### Residual Unknowns
 
-- Final GitHub Dependabot open-alert count requires an API token/repo setting that can read the Dependabot alerts endpoint.
+None.
