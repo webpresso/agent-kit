@@ -24,6 +24,7 @@ const SUPPORTED_COMMANDS = [
   "config",
   "secrets",
   "roadmap",
+  "review",
   "sync",
   "audit",
   "qa",
@@ -64,71 +65,150 @@ const SUPPORTED_COMMANDS = [
   "run",
 ] as const;
 
-const ROOT_HELP = [
-  "Usage: wp [command] [options]",
-  "       webpresso [command] [options]  (alias)",
-  "",
-  "Core:",
-  "  setup                 Scaffold a consumer repo with the agent surface",
-  "  blueprint             Manage blueprints (list, new, show, exec, audit, ...)",
-  "  browser               Browser runtime helpers (doctor, ensure, install, open)",
-  "  config                Repo configuration (secrets set/show/status/setup)",
-  "  secrets               Secret orchestration commands (doctor)",
-  "  gain                  Show Webpresso gain metadata plus separate RTK gain totals",
-  "  sync                  Sync agent rules + skills across IDE surfaces (--kind, --check)",
-  "  bench                 Run the session-memory benchmark harness",
-  "  install               Install dependencies through the managed package/task facade",
-  "  add                   Add dependencies through the managed package/task facade",
-  "  remove                Remove dependencies through the managed package/task facade",
-  "  update                Refresh wp and any wp-managed optional OMX/OMC integrations by default; use --deps for local dependencies (--global is an alias)",
-  "  exec                  Run a binary through the managed package/task facade",
-  "  run                   Run a package script through the managed package/task facade",
-  "",
-  "Quality:",
-  "  audit                 Run packaged audits (bundle budgets, repo guardrails, TPH, tech-debt)",
-  "  qa                    Run the repository QA gate through the portable wp surface",
-  "  test                  Run tests through the portable webpresso surface",
-  "  typecheck             Typecheck the current workspace through the portable wp surface",
-  "  lint                  Lint via oxlint (via wp/VP; local runtime fallback only)",
-  "  format                Format through the portable wp surface (--check for CI/husky)",
-  "  e2e                   Build and run E2E commands through the portable webpresso surface",
-  "  ci                    Run repository CI helpers through the portable wp surface",
-  "  logs                  Print persisted raw output from recent quality runs",
-  "",
-  "Advanced:",
-  "  roadmap               List or show parent roadmaps directly",
-  "  compile               Compile .agent/ assets and run rulesync generate for target IDEs",
-  "  rule                  Manage consumer rules (new, list, show, deprecate)",
-  "  skill                 Manage consumer skills (new, list, show, deprecate, install, uninstall)",
-  "  docs                  Documentation tooling (lint)",
-  "  dev                   Run a manifest-backed development target",
-  "  doctor                Run repo audit health checks (hook/plugin health stays under hooks doctor)",
-  "  secrets               Secret orchestration doctor/bootstrap surface",
-  "  preview               Plan or run preview deploys through the shared secret surface",
-  "  cleanup               Cleanup preview resources through the shared secret surface",
-  "  migrate               Emit secret-migration patch plans for consumer repos",
-  "  err                   Run a command and show only failures (hooks + CI)",
-  "  tech-debt             Manage tech-debt lifecycle (new, list, review)",
-  "  worktree              Git worktree management with .agent/ seeding (new, list, remove)",
-  "  mcp                   Run the webpresso MCP server over stdio",
-  "  hooks                 Verify plugin hook installation health",
-  "  init                  Compatibility alias for setup",
-  "",
-  "Options:",
-  "  -h, --help     Display this message",
-  "  -v, --version  Display version number",
-  "",
-  "Run `wp <command> --help` for command-specific help.",
-].join("\n");
+type RootHelpEntry = { readonly command: string; readonly description: string };
 
-export { SUPPORTED_COMMANDS };
+const ROOT_HELP_CORE_ENTRIES: readonly RootHelpEntry[] = [
+  { command: "setup", description: "Scaffold a consumer repo with the agent surface" },
+  { command: "blueprint", description: "Manage blueprints (list, new, show, exec, audit, ...)" },
+  { command: "browser", description: "Browser runtime helpers (doctor, ensure, install, open)" },
+  { command: "config", description: "Repo configuration (secrets set/show/status/setup)" },
+  { command: "secrets", description: "Secret orchestration commands (doctor)" },
+  { command: "gain", description: "Show Webpresso gain metadata plus separate RTK gain totals" },
+  {
+    command: "sync",
+    description: "Sync agent rules + skills across IDE surfaces (--kind, --check)",
+  },
+  { command: "bench", description: "Run the session-memory benchmark harness" },
+  {
+    command: "install",
+    description:
+      "Install dependencies, or WP-managed agent tools (codex, claude-code, opencode, oh-my ...)",
+  },
+  { command: "add", description: "Add dependencies through the managed package/task facade" },
+  {
+    command: "remove",
+    description: "Remove dependencies, or clear WP ownership for managed agent tools",
+  },
+  {
+    command: "update",
+    description:
+      "Refresh wp and WP-owned optional agent tools by default; use --deps for local dependencies (--global is an alias)",
+  },
+  { command: "exec", description: "Run a binary through the managed package/task facade" },
+  { command: "run", description: "Run a package script through the managed package/task facade" },
+];
+
+const ROOT_HELP_QUALITY_ENTRIES: readonly RootHelpEntry[] = [
+  {
+    command: "audit",
+    description: "Run packaged audits (bundle budgets, repo guardrails, TPH, tech-debt)",
+  },
+  { command: "qa", description: "Run the repository QA gate through the portable wp surface" },
+  { command: "test", description: "Run tests through the portable webpresso surface" },
+  {
+    command: "typecheck",
+    description: "Typecheck the current workspace through the portable wp surface",
+  },
+  { command: "lint", description: "Lint via oxlint (via wp/VP; local runtime fallback only)" },
+  {
+    command: "format",
+    description: "Format through the portable wp surface (--check for CI/husky)",
+  },
+  {
+    command: "e2e",
+    description: "Build and run E2E commands through the portable webpresso surface",
+  },
+  { command: "ci", description: "Run repository CI helpers through the portable wp surface" },
+  { command: "logs", description: "Print persisted raw output from recent quality runs" },
+];
+
+const ROOT_HELP_ADVANCED_ENTRIES: readonly RootHelpEntry[] = [
+  { command: "roadmap", description: "List or show parent roadmaps directly" },
+  { command: "review", description: "Committed blueprint review ledger + reviewer scoreboard" },
+  {
+    command: "compile",
+    description: "Compile .agent/ assets and run rulesync generate for target IDEs",
+  },
+  { command: "rule", description: "Manage consumer rules (new, list, show, deprecate)" },
+  {
+    command: "skill",
+    description: "Manage consumer skills (new, list, show, deprecate, install, uninstall)",
+  },
+  { command: "docs", description: "Documentation tooling (lint)" },
+  { command: "dev", description: "Run a manifest-backed development target" },
+  {
+    command: "doctor",
+    description: "Run repo audit health checks (hook/plugin health stays under hooks doctor)",
+  },
+  { command: "secrets", description: "Secret orchestration doctor/bootstrap surface" },
+  {
+    command: "preview",
+    description: "Plan or run preview deploys through the shared secret surface",
+  },
+  {
+    command: "cleanup",
+    description: "Cleanup preview resources through the shared secret surface",
+  },
+  { command: "migrate", description: "Emit secret-migration patch plans for consumer repos" },
+  { command: "err", description: "Run a command and show only failures (hooks + CI)" },
+  { command: "tech-debt", description: "Manage tech-debt lifecycle (new, list, review)" },
+  {
+    command: "worktree",
+    description: "Git worktree management with .agent/ seeding (new, list, remove)",
+  },
+  { command: "mcp", description: "Run the webpresso MCP server over stdio" },
+  { command: "hooks", description: "Verify plugin hook installation health" },
+  { command: "init", description: "Compatibility alias for setup" },
+];
+
+function renderRootHelpEntries(entries: readonly RootHelpEntry[]): string[] {
+  return entries.map(({ command, description }) => `  ${command.padEnd(21, " ")}${description}`);
+}
+
+function buildRootHelp(options: { readonly full?: boolean } = {}): string {
+  const lines = [
+    "Usage: wp [command] [options]",
+    "       webpresso [command] [options]  (alias)",
+    "",
+    "Core:",
+    ...renderRootHelpEntries(ROOT_HELP_CORE_ENTRIES),
+    "",
+    "Quality:",
+    ...renderRootHelpEntries(ROOT_HELP_QUALITY_ENTRIES),
+  ];
+  if (options.full === true) {
+    lines.push("", "Advanced:", ...renderRootHelpEntries(ROOT_HELP_ADVANCED_ENTRIES));
+  }
+  lines.push(
+    "",
+    "Options:",
+    "  -h, --help     Display this message",
+    "  -v, --version  Display version number",
+    "",
+    "Run `wp <command> --help` for command-specific help.",
+  );
+  return lines.join("\n");
+}
+
+const ROOT_HELP = buildRootHelp();
+const ROOT_HELP_FULL = buildRootHelp({ full: true });
+
+export {
+  ROOT_HELP_ADVANCED_ENTRIES,
+  ROOT_HELP_CORE_ENTRIES,
+  ROOT_HELP_QUALITY_ENTRIES,
+  SUPPORTED_COMMANDS,
+};
 
 export async function main(): Promise<number> {
   const cli = cac("wp");
   const argv = normalizeArgv(process.argv);
   const command = argv[2];
+  const repairSubcommand =
+    (command === "setup" || command === "init") && argv[3] === "repair" ? command : null;
   const wantsVersion = argv.includes("--version") || argv.includes("-v");
   const wantsHelp = argv.includes("--help") || argv.includes("-h");
+  const wantsFullHelp = argv.includes("--full");
   const isNestedBlueprintHelp = command === "blueprint" && wantsHelp && argv.length > 4;
   const isRoadmapHelp = command === "roadmap" && wantsHelp;
   const isNestedBenchHelp = command === "bench" && wantsHelp && argv.length > 4;
@@ -142,6 +222,25 @@ export async function main(): Promise<number> {
   if (!command || command.startsWith("-")) {
     console.log(ROOT_HELP);
     return 0;
+  }
+
+  if (
+    command === "help" &&
+    argv
+      .slice(3)
+      .every((argument) => argument === "--full" || argument === "--help" || argument === "-h")
+  ) {
+    console.log(wantsFullHelp ? ROOT_HELP_FULL : ROOT_HELP);
+    return 0;
+  }
+
+  if ((command === "setup" || command === "init") && repairSubcommand === null) {
+    const { validatePrimarySetupArgv } = await import("./commands/init/index.js");
+    const validationError = validatePrimarySetupArgv(command, argv.slice(3));
+    if (validationError) {
+      console.error(validationError);
+      return 1;
+    }
   }
 
   if (isNestedBlueprintHelp) {
@@ -212,6 +311,11 @@ export async function main(): Promise<number> {
     case "roadmap": {
       const { registerRoadmapCommand } = await import("./commands/roadmap.js");
       registerRoadmapCommand(cli);
+      break;
+    }
+    case "review": {
+      const { registerReviewCommand } = await import("./commands/review.js");
+      registerReviewCommand(cli);
       break;
     }
     case "sync": {
@@ -388,9 +492,11 @@ export async function main(): Promise<number> {
 
   try {
     const effectiveArgv =
-      resolvedCommand && resolvedCommand !== command
-        ? [argv[0] ?? "node", argv[1] ?? "wp", resolvedCommand, ...argv.slice(3)]
-        : argv;
+      repairSubcommand !== null
+        ? [argv[0] ?? "node", argv[1] ?? "wp", `${repairSubcommand}-repair`, ...argv.slice(4)]
+        : resolvedCommand && resolvedCommand !== command
+          ? [argv[0] ?? "node", argv[1] ?? "wp", resolvedCommand, ...argv.slice(3)]
+          : argv;
     cli.parse(effectiveArgv, { run: false });
     const result = await cli.runMatchedCommand();
     return typeof result === "number" ? result : 0;

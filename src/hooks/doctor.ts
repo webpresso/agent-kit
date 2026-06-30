@@ -1479,7 +1479,7 @@ async function defaultRunRestoreFix(cwd: string): Promise<number> {
       cwd,
       yes: true,
       restoreHooks: true,
-      sourceMaintenance: isAgentKitSourceRepo(cwd),
+      repair: isAgentKitSourceRepo(cwd),
     },
     { stdout: { write: () => true } },
   );
@@ -1815,7 +1815,7 @@ export async function printHooksDoctor(opts: RunHooksDoctorOptions = {}): Promis
       `  • Refresh local hook/plugin surfaces: \`${setupCommandForRepo(opts.cwd ?? process.cwd())}\``,
     );
     console.error(
-      "  • Consumers: run `vp install -g @webpresso/agent-kit && wp setup`; source checkout: run `WP_FORCE_SOURCE=1 wp setup --source-maintenance`.",
+      "  • Consumers: run `vp install -g @webpresso/agent-kit && wp setup`; source checkout: run `WP_FORCE_SOURCE=1 wp setup repair`.",
     );
     console.error(
       "  • If install failed resolving @webpresso/agent-kit: make sure this repo uses the public npm registry, then rerun `vp install`",

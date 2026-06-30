@@ -19,7 +19,7 @@ import { z } from "zod";
 
 import { flattenAgentDir, writeFlattenedAssets } from "#compiler/flatten";
 
-const PINNED_RULESYNC_VERSION = "9.0.1";
+const PINNED_RULESYNC_VERSION = "9.0.2";
 const DEFAULT_TARGETS = "claude,codex,cursor,opencode";
 const COMPILE_MANIFEST_VERSION = 1;
 
@@ -181,7 +181,7 @@ export async function runCompile(options: {
       ok: false,
       targets: targetList,
       noOp: false,
-      message: "rulesync is not installed — run `pnpm add rulesync@9.0.1`",
+      message: "rulesync is not installed — run `vp add -w rulesync@9.0.2`",
     };
   }
 

@@ -208,8 +208,8 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       rmSync(fakeHome, { recursive: true, force: true });
     });
 
-    it("baseline: wp setup scaffolds the agent surface and exits 0 without needing --yes", () => {
-      const r = runAk(["setup", "--project-init", "--cwd", repo], {
+    it("baseline: wp setup repair scaffolds the agent surface on a fresh repo", () => {
+      const r = runAk(["setup", "repair", "--project-init", "--cwd", repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
       });
@@ -288,7 +288,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
         "1.1.0",
       );
 
-      const r = runAk(["setup", "--yes", "--prune", "--cwd", repo], {
+      const r = runAk(["setup", "repair", "--prune", "--cwd", repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
       });
@@ -307,7 +307,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
     });
 
     it("bootstrap: --with base-kit on an empty repo creates docs/hooks/scripts/act/test/e2e/ci scaffolds", () => {
-      const r = runAk(["setup", "--yes", "--project-init", "--with", "base-kit", "--cwd", repo], {
+      const r = runAk(["setup", "repair", "--project-init", "--with", "base-kit", "--cwd", repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
       });
@@ -343,7 +343,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
     });
 
     it("--with omx + fake omx on PATH: exits 0 and chains omx setup", () => {
-      const r = runAk(["setup", "--yes", "--with", "omx", "--cwd", repo], {
+      const r = runAk(["setup", "--with", "omx", "--cwd", repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
       });
@@ -352,21 +352,17 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(r.stdout).toContain("omx-fixture: setup --yes --scope user ran");
     });
 
-    it("--project + fake omx on PATH: chains project-scoped omx setup", () => {
-      const r = runAk(
-        ["setup", "--yes", "--project-init", "--with", "omx", "--project", "--cwd", repo],
-        {
-          PATH: pathWithFakeOmxOk(),
-          HOME: fakeHome,
-        },
-      );
-      expect(r.code).toBe(0);
-      expect(r.stdout).toContain("omx setup: ✓");
-      expect(r.stdout).toContain("omx-fixture: setup --yes --scope project ran");
+    it("--project now errors with migration guidance", () => {
+      const r = runAk(["setup", "--with", "omx", "--project", "--cwd", repo], {
+        PATH: pathWithFakeOmxOk(),
+        HOME: fakeHome,
+      });
+      expect(r.code).toBe(1);
+      expect(r.stderr).toContain("`--project` was removed");
     });
 
     it("--with omx re-applies agent hooks after omx rewrites codex hooks back to relative commands", () => {
-      const r = runAk(["setup", "--yes", "--project-init", "--with", "omx", "--cwd", repo], {
+      const r = runAk(["setup", "repair", "--project-init", "--with", "omx", "--cwd", repo], {
         PATH: makeRewritingOmxPath(repo),
         HOME: fakeHome,
       });
@@ -425,7 +421,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
     });
 
     it("--with omx + omx not on PATH: exits 1 with not-found hint", () => {
-      const r = runAk(["setup", "--yes", "--with", "omx", "--cwd", repo], {
+      const r = runAk(["setup", "--with", "omx", "--cwd", repo], {
         PATH: pathWithoutOmx(),
         HOME: fakeHome,
       });
@@ -434,7 +430,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
     });
 
     it("--with omx + omx setup fails: exits 3 (EXIT_WRITE_FAIL)", () => {
-      const r = runAk(["setup", "--yes", "--with", "omx", "--cwd", repo], {
+      const r = runAk(["setup", "--with", "omx", "--cwd", repo], {
         PATH: pathWithFakeOmxFail(),
         HOME: fakeHome,
       });
@@ -443,7 +439,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
     });
 
     it("runtime check: prints bun + vp + actionlint status regardless of presets", () => {
-      const r = runAk(["setup", "--yes", "--cwd", repo], {
+      const r = runAk(["setup", "--cwd", repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
       });
@@ -455,7 +451,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
     });
 
     it("runtime check: missing tool prints install hint, exit still 0", () => {
-      const r = runAk(["setup", "--yes", "--cwd", repo], {
+      const r = runAk(["setup", "--cwd", repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
       });
@@ -476,7 +472,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       try {
         const r = runAk([
           "setup",
-          "--yes",
+          "repair",
           "--project-init",
           "--with",
           "definitely-not-a-skill",
@@ -497,11 +493,12 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       // (the original gap that prompted docs/add-ons.md to exist).
       expect(r.stdout).toContain("Presets:");
       expect(r.stdout).toContain("lore-commits");
-      expect(r.stdout).toContain("omc");
-      expect(r.stdout).toContain("omx");
       expect(r.stdout).toContain("playwright-mcp");
       expect(r.stdout).toContain("rtk");
       expect(r.stdout).toContain("'wp skill list'");
+      expect(r.stdout).toContain("all");
+      expect(r.stdout).not.toContain("omx");
+      expect(r.stdout).not.toContain("omc");
     });
   },
 );

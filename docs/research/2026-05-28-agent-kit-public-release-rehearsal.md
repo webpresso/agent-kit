@@ -44,7 +44,7 @@ npm run public:readiness
 npm pack --dry-run --json
 npm run lint:pkg
 PACK_DIR=$(mktemp -d); PREFIX_DIR=$(mktemp -d); TARBALL=$(npm pack --pack-destination "$PACK_DIR" 2>/dev/null | tail -n1); npm install --prefix "$PREFIX_DIR" --package-lock=false "$PACK_DIR/$TARBALL"
-PACK_DIR2=$(mktemp -d); REPO_DIR=$(mktemp -d); git -C "$REPO_DIR" init -q; git -C "$REPO_DIR" config user.email noreply@example.com; git -C "$REPO_DIR" config user.name test; git -C "$REPO_DIR" commit --allow-empty -q -m bootstrap; TARBALL2=$(npm pack --pack-destination "$PACK_DIR2" 2>/dev/null | tail -n1); (cd "$REPO_DIR" && npm exec --yes --package "$PACK_DIR2/$TARBALL2" -- wp setup --yes)
+PACK_DIR2=$(mktemp -d); REPO_DIR=$(mktemp -d); git -C "$REPO_DIR" init -q; git -C "$REPO_DIR" config user.email noreply@example.com; git -C "$REPO_DIR" config user.name test; git -C "$REPO_DIR" commit --allow-empty -q -m bootstrap; TARBALL2=$(npm pack --pack-destination "$PACK_DIR2" 2>/dev/null | tail -n1); (cd "$REPO_DIR" && npm exec --yes --package "$PACK_DIR2/$TARBALL2" -- wp setup)
 npm publish --dry-run --access public
 ```
 
@@ -63,7 +63,7 @@ npm publish --dry-run --access public
   - marketplace validation passed
 - consumer install rehearsal via packed tarball → exit `0`
   - installed package manifest reported `catalogSpecs: []`
-- docs-style one-shot setup rehearsal (`npm exec --package <tarball> -- wp setup --yes`) → completed successfully
+- docs-style one-shot setup rehearsal (`npm exec --package <tarball> -- wp setup`) → completed successfully
   - package install now works
   - the packaged CLI runs
 - `npm publish --dry-run --access public` → exit `0`
@@ -216,7 +216,7 @@ git -C "$REPO_DIR" commit --allow-empty -q -m bootstrap
 npm pack --pack-destination "$PACK_DIR" >/tmp/wp-pack-path.txt
 TARBALL=$(tail -n1 /tmp/wp-pack-path.txt)
 cd "$REPO_DIR"
-npm exec --yes --package "$PACK_DIR/$TARBALL" -- wp setup --yes
+npm exec --yes --package "$PACK_DIR/$TARBALL" -- wp setup
 ```
 
 Exit code: `1`
@@ -302,7 +302,7 @@ Interpretation:
 
 2. **Public no-`vp` setup story is not actually executable yet.**
    - Impact: the README/docs one-shot npm path cannot be trusted for outside users.
-   - Evidence: `npm exec --yes --package "$PACK_DIR/$TARBALL" -- wp setup --yes` failed before CLI startup with the same `catalog:` protocol error.
+   - Evidence: `npm exec --yes --package "$PACK_DIR/$TARBALL" -- wp setup` failed before CLI startup with the same `catalog:` protocol error.
 
 3. **Publish dry-run emitted bin-removal warnings.**
    - Impact: unclear whether a real publish would preserve the intended CLI/bin surface.

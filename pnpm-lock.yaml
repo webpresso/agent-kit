@@ -103,8 +103,8 @@ importers:
         specifier: ^13.1.0
         version: 13.1.0
       rulesync:
-        specifier: 9.0.1
-        version: 9.0.1(valibot@1.4.0(typescript@6.0.3))
+        specifier: 9.0.2
+        version: 9.0.2(valibot@1.4.0(typescript@6.0.3))
       secretlint:
         specifier: ^13.0.2
         version: 13.0.2
@@ -4165,8 +4165,8 @@ packages:
     resolution: {integrity: sha512-nLTrUKm2UyiL7rlhapu/Zl45FwNgkZGaCpZbIHajDYgwlJCOzLSk+cIPAnsEqV955GjILJnKbdQC1nVPz+gAYQ==}
     engines: {node: '>= 18'}
 
-  rulesync@9.0.1:
-    resolution: {integrity: sha512-nxPPfGVkJIqIhPVcYrmUo4xlnX1TPSH0DHKVIHiXgzKhUdcoqUpcFD70sBoc1PJ54/uJveexWBVXmTwkjA0CSw==}
+  rulesync@9.0.2:
+    resolution: {integrity: sha512-5D+dPI17nLMZTmAhvlJRktf6jBw++h+tzyvC1wrg6FOdNgjDME6mG9LMu0prT0yLKCkg9w6mAdZa5Q2JZ9Iv+w==}
     engines: {node: '>=22.0.0', pnpm: '>=10'}
     hasBin: true
 
@@ -7174,7 +7174,7 @@ snapshots:
       es-errors: 1.3.0
       get-intrinsic: 1.3.0
       has-tostringtag: 1.0.2
-      hasown: 2.0.3
+      hasown: 2.0.4
 
   es-toolkit@1.47.1: {}
 
@@ -8766,7 +8766,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  rulesync@9.0.1(valibot@1.4.0(typescript@6.0.3)):
+  rulesync@9.0.2(valibot@1.4.0(typescript@6.0.3)):
     dependencies:
       '@modelcontextprotocol/sdk': 1.29.0(zod@4.4.3)
       '@octokit/request-error': 7.1.0

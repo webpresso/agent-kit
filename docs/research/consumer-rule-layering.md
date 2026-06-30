@@ -5,7 +5,7 @@ date: 2026-05-06
 last_updated: "2026-05-06"
 audience: agent-kit maintainers
 related:
-  - "webpresso/monorepo/package.json (postinstall: wp setup --overwrite)"
+  - "webpresso/monorepo/package.json (postinstall: wp setup repair --overwrite)"
   - "webpresso/agent-kit/src/cli/commands/init/merge.ts"
   - "webpresso/agent-kit/catalog/agent/rules/"
 ---
@@ -217,7 +217,7 @@ forgot."
 wp rules add <name>                   # scaffolds .agent/rules.local/<name>.md with frontmatter
 wp rules list                         # lists canonical + local rules with source
 wp audit managed-file-drift           # CI gate
-wp audit managed-file-drift --fix     # rewrites canonical files from catalog (alias for wp setup --overwrite scoped to managed files)
+wp audit managed-file-drift --fix     # rewrites canonical files from catalog (alias for wp setup repair --overwrite scoped to managed files)
 ```
 
 `wp rules add` is the discoverability primitive. A consumer who wants to add
@@ -249,7 +249,7 @@ stay visible at review time.
 
 The current state:
 
-- `monorepo/package.json#postinstall` runs `wp setup --yes --overwrite`.
+- `monorepo/package.json#postinstall` runs `wp setup repair --overwrite`.
 - Local edits to managed files are now silently clobbered.
 - Consumers have no clean place to add repo-specific rules.
 

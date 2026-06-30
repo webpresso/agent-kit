@@ -40,7 +40,7 @@ Skip it when:
 Run:
 
 ```bash
-wp setup --project-init
+wp setup repair --project-init
 wp hooks doctor
 ```
 

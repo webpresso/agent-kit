@@ -1,7 +1,10 @@
 import { execFileSync, spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { validateBlueprintTrust } from "./validator.js";
 import { parseTrustDossier } from "./dossier.js";
 import { parseAllowedWpCommand } from "./gates.js";
+import { resolvePackageAssetPreferred } from "#utils/package-assets.js";
 
 export { parseAllowedWpCommand };
 
@@ -11,6 +14,9 @@ export type PromotionTrustInput = {
   markdown: string;
   now?: Date;
 };
+
+const PROMOTION_GATE_TIMEOUT_MS = 30_000;
+const PROMOTION_GATE_STDIO_TAIL_LIMIT = 500;
 
 export function applyPromotionTrustGate(input: PromotionTrustInput): string {
   const now = (input.now ?? new Date()).toISOString();
@@ -77,21 +83,139 @@ function readHead(repoRoot: string): string {
   }
 }
 
-export function runPromotionCommand(repoRoot: string, command: string): void {
+export function runPromotionCommand(
+  repoRoot: string,
+  command: string,
+  deps: { spawn?: typeof spawnSync } = {},
+): void {
   const argv = parseAllowedWpCommand(command);
   const [binary, ...args] = argv;
   if (binary === undefined) throw new Error(`Promotion gate command is empty: ${command}`);
-  const result = spawnSync(binary, args, {
+  const invocation = resolvePromotionGateInvocation(repoRoot, binary, args);
+  const spawn = deps.spawn ?? spawnSync;
+  const result = spawn(invocation.command, invocation.args, {
     cwd: repoRoot,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
-    timeout: 30_000,
-    env: { ...process.env, PATH: `${repoRoot}/bin:${process.env["PATH"] ?? ""}` },
+    timeout: PROMOTION_GATE_TIMEOUT_MS,
+    env: invocation.env,
   });
-  if (result.status !== 0)
-    throw new Error(
-      `Promotion gate failed (${command}): ${(result.stderr || result.stdout || "").slice(0, 500)}`,
-    );
+  if (result.status === 0 && !result.error && result.signal === null) return;
+
+  const stdout = typeof result.stdout === "string" ? result.stdout : "";
+  const stderr = typeof result.stderr === "string" ? result.stderr : "";
+  const logPath = writePromotionGateLog(repoRoot, command, invocation, stdout, stderr, result);
+  throw new Error(formatPromotionGateFailure(command, stdout, stderr, result, logPath));
+}
+
+function resolvePromotionGateInvocation(
+  repoRoot: string,
+  binary: string,
+  args: readonly string[],
+): { command: string; args: string[]; env: NodeJS.ProcessEnv } {
+  if (binary === "./bin/wp") {
+    return {
+      command: join(repoRoot, "bin", process.platform === "win32" ? "wp.cmd" : "wp"),
+      args: [...args],
+      env: { ...process.env, PATH: `${repoRoot}/bin:${process.env["PATH"] ?? ""}` },
+    };
+  }
+
+  if (binary === "wp") {
+    const packagedLauncher = resolvePackagedWpLauncher();
+    return {
+      command: process.execPath,
+      args: [packagedLauncher, ...args],
+      env: { ...process.env },
+    };
+  }
+
+  return {
+    command: binary,
+    args: [...args],
+    env: { ...process.env, PATH: `${repoRoot}/bin:${process.env["PATH"] ?? ""}` },
+  };
+}
+
+function resolvePackagedWpLauncher(): string {
+  const launcher = resolvePackageAssetPreferred([
+    process.platform === "win32" ? "bin/wp.cmd" : "bin/wp",
+    "bin/wp",
+  ]);
+  if (!existsSync(launcher)) {
+    throw new Error(`Promotion gate failed: packaged wp launcher is unavailable at ${launcher}`);
+  }
+  return launcher;
+}
+
+function formatPromotionGateFailure(
+  command: string,
+  stdout: string,
+  stderr: string,
+  result: ReturnType<typeof spawnSync>,
+  logPath: string,
+): string {
+  const details: string[] = [];
+  if (typeof result.status === "number") details.push(`exit=${result.status}`);
+  if (result.signal) details.push(`signal=${result.signal}`);
+  if (result.error) {
+    const code =
+      typeof result.error === "object" &&
+      result.error !== null &&
+      "code" in result.error &&
+      typeof (result.error as { code?: unknown }).code === "string"
+        ? (result.error as { code: string }).code
+        : null;
+    details.push(code ? `spawn_error=${code}` : `spawn_error=${result.error.message}`);
+    if (code === "ETIMEDOUT") details.push(`timeout=${PROMOTION_GATE_TIMEOUT_MS}ms`);
+  }
+
+  const stderrTail = tailBounded(stderr);
+  const stdoutTail = tailBounded(stdout);
+  if (stderrTail.length > 0) details.push(`stderr_tail=${JSON.stringify(stderrTail)}`);
+  if (stdoutTail.length > 0) details.push(`stdout_tail=${JSON.stringify(stdoutTail)}`);
+  details.push(`log=${logPath}`);
+
+  return `Promotion gate failed (${command}): ${details.join("; ")}`;
+}
+
+function tailBounded(text: string): string {
+  if (text.length <= PROMOTION_GATE_STDIO_TAIL_LIMIT) return text.trim();
+  return text.slice(-PROMOTION_GATE_STDIO_TAIL_LIMIT).trim();
+}
+
+function writePromotionGateLog(
+  repoRoot: string,
+  command: string,
+  invocation: { command: string; args: string[] },
+  stdout: string,
+  stderr: string,
+  result: ReturnType<typeof spawnSync>,
+): string {
+  const logsDir = join(repoRoot, ".webpresso", "logs", "promotion-gates");
+  mkdirSync(logsDir, { recursive: true });
+  const logPath = join(logsDir, `${Date.now()}-promotion-gate.log`);
+  const errorBlock = result.error
+    ? `error: ${result.error.name}: ${result.error.message}\n`
+    : "error: none\n";
+  writeFileSync(
+    logPath,
+    [
+      `command: ${command}`,
+      `invocation: ${invocation.command} ${invocation.args.join(" ")}`,
+      `exit: ${result.status ?? "null"}`,
+      `signal: ${result.signal ?? "null"}`,
+      `timeout_ms: ${PROMOTION_GATE_TIMEOUT_MS}`,
+      errorBlock.trimEnd(),
+      "--- stderr ---",
+      stderr,
+      "--- stdout ---",
+      stdout,
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+  return logPath;
 }
 
 function upsertReadinessValue(markdown: string, key: string, value: string): string {

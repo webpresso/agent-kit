@@ -98,16 +98,16 @@ wp setup
 In the agent-kit source repo, use the source-aware form:
 
 ```bash
-WP_FORCE_SOURCE=1 wp setup --source-maintenance
+WP_FORCE_SOURCE=1 wp setup repair
 ```
 
 If a manifest already exists, `wp hooks doctor --fix` can use the narrower
 restore path:
 
 ```bash
-wp setup --restore-hooks
+wp setup repair --restore-hooks
 # source repo:
-WP_FORCE_SOURCE=1 wp setup --restore-hooks --source-maintenance
+WP_FORCE_SOURCE=1 wp setup repair --restore-hooks
 ```
 
 ### Codex hooks show `pending-trust`

@@ -551,7 +551,7 @@
     "remark": "^15.0.1",
     "remark-frontmatter": "^5.0.0",
     "remark-validate-links": "^13.1.0",
-    "rulesync": "9.0.1",
+    "rulesync": "9.0.2",
     "secretlint": "^13.0.2",
     "ts-pattern": "^5.9.0",
     "typescript": "catalog:",

@@ -746,7 +746,7 @@ describe("tooling umbrella package integration contract", () => {
 
       const output = execFileSync(
         installedConsumer.wpBinPath,
-        ["setup", "--yes", "--cwd", installedConsumer.root],
+        ["setup", "--cwd", installedConsumer.root],
         {
           cwd: installedConsumer.root,
           encoding: "utf8",

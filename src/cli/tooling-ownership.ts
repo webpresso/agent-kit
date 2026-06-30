@@ -5,7 +5,14 @@ import { getSurfacePath, NotInGitRepoError } from "#paths/state-root.js";
 
 export const TOOLING_OWNERSHIP_FILENAME = "tooling-ownership.json";
 
-export const MANAGED_TOOL_NAMES = ["omx", "omc"] as const;
+export const MANAGED_TOOL_NAMES = [
+  "codex",
+  "claude-code",
+  "opencode",
+  "omx",
+  "omc",
+  "openagent",
+] as const;
 export type ManagedToolName = (typeof MANAGED_TOOL_NAMES)[number];
 
 export interface ToolingOwnershipRecord {
@@ -128,6 +135,17 @@ export function claimProjectOwnedTool(
       [tool]: nextEntry(state.tools[tool], { projects }),
     },
   };
+}
+
+export function clearUserOwnedTool(
+  state: ToolingOwnershipState,
+  tool: ManagedToolName,
+): ToolingOwnershipState {
+  const projects = state.tools[tool]?.projects;
+  const tools = { ...state.tools };
+  if (projects && projects.length > 0) tools[tool] = { projects };
+  else delete tools[tool];
+  return { ...state, tools };
 }
 
 export function clearProjectOwnedTool(

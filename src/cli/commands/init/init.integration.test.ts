@@ -347,7 +347,7 @@ describe("wp init end-to-end", { timeout: 40_000 }, () => {
     expect(existsSync(join(repo, "AGENTS.md"))).toBe(false);
   });
 
-  it("proceeds past the self-repo guard when --source-maintenance is set", async () => {
+  it("proceeds past the self-repo guard when repair mode is requested", async () => {
     writeFileSync(
       join(repo, "package.json"),
       JSON.stringify(
@@ -359,12 +359,14 @@ describe("wp init end-to-end", { timeout: 40_000 }, () => {
     mkdirSync(join(repo, "src", "cli"), { recursive: true });
     writeFileSync(join(repo, "src", "cli", "cli.ts"), "");
 
-    const code = await runInit({ cwd: repo, yes: true, sourceMaintenance: true });
+    const code = await runInit({ cwd: repo, yes: true, repair: true });
 
     expect(code).toBe(0);
     // Proceeding past the guard runs project setup, not user-only setup.
     expect(existsSync(join(repo, ".webpressorc.json"))).toBe(true);
-    expect(readFileSync(join(repo, ".codex", "hooks.json"), "utf8")).toContain("WP_FORCE_SOURCE=1");
+    const codexHooks = readFileSync(join(repo, ".codex", "hooks.json"), "utf8");
+    expect(codexHooks).toContain(`${repo}/src/cli/cli.ts`);
+    expect(codexHooks).not.toContain("WP_FORCE_SOURCE=1");
   });
 
   it("migrates legacy .agent-kitrc.json state into .webpressorc.json on setup", async () => {
@@ -880,7 +882,7 @@ describe("wp init end-to-end", { timeout: 40_000 }, () => {
     mkdirSync(join(repo, "src", "cli"), { recursive: true });
     writeFileSync(join(repo, "src", "cli", "cli.ts"), "");
 
-    expect(await runInit({ cwd: repo, yes: true, sourceMaintenance: true })).toBe(0);
+    expect(await runInit({ cwd: repo, yes: true, repair: true })).toBe(0);
 
     const codexHooksPath = join(repo, ".codex", "hooks.json");
     const claudeSettingsPath = join(repo, ".claude", "settings.json");
@@ -918,9 +920,7 @@ describe("wp init end-to-end", { timeout: 40_000 }, () => {
       { claude: "enabled", codex: "enabled" },
     );
 
-    expect(
-      await runInit({ cwd: repo, yes: true, restoreHooks: true, sourceMaintenance: true }),
-    ).toBe(0);
+    expect(await runInit({ cwd: repo, yes: true, restoreHooks: true, repair: true })).toBe(0);
 
     const codexHooks = readFileSync(codexHooksPath, "utf8");
     const claudeSettings = readFileSync(claudeSettingsPath, "utf8");
@@ -929,12 +929,14 @@ describe("wp init end-to-end", { timeout: 40_000 }, () => {
       codex: Record<string, unknown>;
     }>(manifestPath);
 
-    expect(codexHooks).toContain("WP_FORCE_SOURCE=1");
-    expect(claudeSettings).toContain("WP_FORCE_SOURCE=1");
+    expect(codexHooks).toContain(`${repo}/src/cli/cli.ts`);
+    expect(claudeSettings).toContain(`${repo}/src/cli/cli.ts`);
+    expect(codexHooks).not.toContain("WP_FORCE_SOURCE=1");
+    expect(claudeSettings).not.toContain("WP_FORCE_SOURCE=1");
     expect(codexHooks).not.toContain("/.codex/managed-hooks/");
     expect(claudeSettings).not.toContain("/.claude/hooks/managed/");
-    expect(JSON.stringify(manifest.codex)).toContain("WP_FORCE_SOURCE=1");
-    expect(JSON.stringify(manifest.claude)).toContain("WP_FORCE_SOURCE=1");
+    expect(JSON.stringify(manifest.codex)).toContain(`${repo}/src/cli/cli.ts`);
+    expect(JSON.stringify(manifest.claude)).toContain(`${repo}/src/cli/cli.ts`);
   });
 
   it("does not mutate hook configs in disable-hooks dry-run mode", async () => {
@@ -1069,7 +1071,7 @@ describe("DX output: lane framing and next-steps block", { timeout: 15_000 }, ()
     const allOutput = logLines.join("\n");
     expect(allOutput).toContain("wp_*");
     expect(allOutput).toContain("rtk");
-    expect(allOutput).toContain("external tools");
+    expect(allOutput).toContain("optional agent tools");
   });
 
   it("does not replay remembered external integrations on plain reruns", async () => {
@@ -1106,7 +1108,8 @@ describe("DX output: lane framing and next-steps block", { timeout: 15_000 }, ()
 
     expect(omxCalls).toHaveLength(0);
     expect(omcCalls).toHaveLength(0);
-    expect(allOutput).toContain("wp setup no longer remembers them across reruns");
+    expect(allOutput).toContain("wp setup no longer installs them implicitly");
+    expect(allOutput).toContain("wp install oh-my codex");
     expect(rewritten.integrations ?? {}).toEqual({});
   });
 

@@ -19,6 +19,8 @@ tags:
   - package-surface
 worktree_owner_id: ""
 worktree_owner_branch: ""
+historical_zero_task_waiver: true
+historical_zero_task_rationale: "Historical completed blueprint preserved as a zero-task record during lifecycle hardening; no executable task blocks were authored in the original document."
 ---
 
 # Cross-host outside-voice skills for Codex, Claude, and OpenCode Go

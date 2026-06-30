@@ -45,7 +45,7 @@ export type EnsureOmxResult =
   | { kind: "omx-spawn-failed"; exitCode: number };
 
 const NOT_FOUND_HINT =
-  "omx (oh-my-codex) is not on PATH after `wp install -g oh-my-codex`. Install it manually and re-run.";
+  "omx (oh-my-codex) is not on PATH after `wp install oh-my codex`. Re-run the WP-managed install or check PATH.";
 
 // Quick, deterministic subprocesses (version probes, git queries) get a bound
 // so a hung/wrong binary can't stall `wp setup`. The managed install/update/

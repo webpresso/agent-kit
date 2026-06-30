@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -25,6 +26,40 @@ const TASK_VERIFICATION_BLOCK = `**Verification:**
 \`\`\`webpresso-evidence-v1
 [{"command":"wp_test --files src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-28T12:00:00.000Z"}]
 \`\`\``;
+
+const TRUST_DOSSIER_FOR_PROMOTION = `
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-22T00:00:00.000Z
+- verified-head: 0123456789abcdef0123456789abcdef01234567
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID | Claim | Evidence |
+| -- | ----- | -------- |
+| C1 | Package manifest exists | repo:package.json |
+
+### Material Decisions
+
+| ID | Decision | Chosen option | Rejected alternatives | Rationale |
+| -- | -------- | ------------- | --------------------- | --------- |
+| D1 | Storage | Markdown dossier | Sidecar | Reviewable with blueprint |
+
+### Promotion Gates
+
+| Gate | Command | Expected outcome | Last result |
+| ---- | ------- | ---------------- | ----------- |
+| lint | ./bin/wp lint | pass | pass at 2026-06-22T00:00:00.000Z |
+
+### Residual Unknowns
+
+None.
+`;
 
 const OVERVIEW_WITH_TASKS = `---
 type: blueprint
@@ -148,6 +183,37 @@ function makeRepo(blueprintSlug: string, content: string, state = "planned"): st
   return dir;
 }
 
+function makePromotionReadyDraft(approvals: string): string {
+  const overview = `${OVERVIEW_WITH_TASKS.replace("status: planned", "status: draft").replace(
+    "depends_on: []",
+    `depends_on: []\napprovals: ${approvals}`,
+  )}
+${TRUST_DOSSIER_FOR_PROMOTION}`;
+  const dir = makeRepo("draft-trusted", overview, "draft");
+  mkdirSync(path.join(dir, "bin"), { recursive: true });
+  writeFileSync(path.join(dir, "bin", "wp"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+  writeFileSync(
+    path.join(dir, "blueprints", "draft", "draft-trusted", "reviews.md"),
+    `# Review ledger — draft-trusted
+
+| Date | Reviewer | Rev | Verdict | Note |
+| --- | --- | --- | --- | --- |
+
+## Review entries
+
+<!-- wp:review-entry {"id":"2026-06-28T00:00:00.000Z:codex:final","blueprintSlug":"draft/draft-trusted","blueprintPath":"blueprints/draft/draft-trusted/_overview.md","targetKind":"blueprint","targetId":"draft/draft-trusted","targetHash":"sha256:good","timestamp":"2026-06-28T00:00:00.000Z","reviewer":"codex","verdict":"approve","rev":"final","commit":"abc123","evidence":"reviews.md","source":"structured"} -->
+<!-- wp:review-entry {"id":"2026-06-28T00:00:00.000Z:deepseek:final","blueprintSlug":"draft/draft-trusted","blueprintPath":"blueprints/draft/draft-trusted/_overview.md","targetKind":"blueprint","targetId":"draft/draft-trusted","targetHash":"sha256:good","timestamp":"2026-06-28T00:00:00.000Z","reviewer":"deepseek","verdict":"approve","rev":"final","commit":"abc123","evidence":"reviews.md","source":"structured"} -->
+`,
+    "utf8",
+  );
+  execFileSync("git", ["init"], { cwd: dir, stdio: "ignore" });
+  execFileSync("git", ["add", "blueprints/draft/draft-trusted/reviews.md"], {
+    cwd: dir,
+    stdio: "ignore",
+  });
+  return dir;
+}
+
 function makeFlatRepo(blueprintSlug: string, content: string, state = "planned"): string {
   const dir = mkdtempSync(path.join(tmpdir(), "wp-mutations-flat-test-"));
   mkdirSync(path.join(dir, "blueprints", state), { recursive: true });
@@ -210,6 +276,8 @@ afterEach(() => {
     rmSync(tmpRepoDir, { recursive: true, force: true });
     tmpRepoDir = "";
   }
+  _setSyncAdapterForCli(null);
+  vi.unstubAllEnvs();
 });
 
 // ---------------------------------------------------------------------------
@@ -350,6 +418,64 @@ describe("promoteBlueprint", () => {
     );
     expect(adapter.pushEvent).not.toHaveBeenCalled();
     expect(adapter.ensureFresh).toHaveBeenCalledOnce();
+  });
+
+  it("blocks draft to planned promotion when fewer than 2 approvals are log-backed", async () => {
+    vi.stubEnv("WP_BLUEPRINT_TRUST_GATE_TEST_HEAD", "0123456789abcdef0123456789abcdef01234567");
+    tmpRepoDir = makePromotionReadyDraft(
+      JSON.stringify([
+        {
+          reviewer: "codex",
+          verdict: "approve",
+          evidence: "reviews.md",
+          rev: "final",
+          commit: "abc123",
+          targetHash: "sha256:good",
+        },
+      ]),
+    );
+    const { adapter, pushEvent, ensureFresh } = makeMockAdapter();
+    _setSyncAdapterForCli(() => adapter);
+
+    await expect(promoteBlueprint(tmpRepoDir, "draft-trusted", "planned")).rejects.toThrow(
+      /1 distinct reviewer approval/,
+    );
+    expect(ensureFresh).toHaveBeenCalledOnce();
+    expect(pushEvent).not.toHaveBeenCalled();
+  });
+
+  it("allows draft to planned promotion with 2 valid log-backed approvals", async () => {
+    vi.stubEnv("WP_BLUEPRINT_TRUST_GATE_TEST_HEAD", "0123456789abcdef0123456789abcdef01234567");
+    tmpRepoDir = makePromotionReadyDraft(
+      JSON.stringify([
+        {
+          reviewer: "codex",
+          verdict: "approve",
+          evidence: "reviews.md",
+          rev: "final",
+          commit: "abc123",
+          targetHash: "sha256:good",
+        },
+        {
+          reviewer: "deepseek",
+          verdict: "approve",
+          evidence: "reviews.md",
+          rev: "final",
+          commit: "abc123",
+          targetHash: "sha256:good",
+        },
+      ]),
+    );
+    const { adapter, pushEvent, ensureFresh } = makeMockAdapter();
+    _setSyncAdapterForCli(() => adapter);
+
+    const result = await promoteBlueprint(tmpRepoDir, "draft-trusted", "planned");
+
+    expect(result.oldState).toBe("draft");
+    expect(result.newState).toBe("planned");
+    expect(ensureFresh).toHaveBeenCalledWith({ slug: "draft-trusted" });
+    expect(pushEvent).toHaveBeenCalledOnce();
+    expect(readOverview(tmpRepoDir, "draft-trusted", "planned")).toContain("status: planned");
   });
 
   it("moves directory to the target state folder and updates frontmatter", async () => {

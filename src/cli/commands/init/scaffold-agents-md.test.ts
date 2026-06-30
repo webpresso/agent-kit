@@ -142,7 +142,7 @@ describe("renderAgentsMd", () => {
       "- Repository map: bulleted list of workspace packages inferred from",
     );
     expect(rendered).not.toContain("- - `");
-    expect(rendered).toContain("External tools such as `omx` and `omc` are self-installed");
+    expect(rendered).toContain("Optional agent tools can be WP-owned");
     expect(rendered).not.toContain("wp setup --with omx");
     expect(rendered).not.toContain("omx setup --yes --scope user");
     expect(rendered).not.toContain("default workstation presets: `omx`");

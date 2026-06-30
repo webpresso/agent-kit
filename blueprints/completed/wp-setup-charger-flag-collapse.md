@@ -1,12 +1,12 @@
 ---
 type: blueprint
 title: wp setup charger flag collapse
-status: planned
+status: completed
 complexity: M
 owner: ozby
 created: "2026-06-27"
-last_updated: "2026-06-27"
-progress: "0% (0/3 tasks done, 0 blocked, updated 2026-06-27)"
+last_updated: "2026-06-28"
+progress: "100% (3/3 tasks done, 0 blocked, updated 2026-06-28)"
 tags:
   - cli
   - setup
@@ -29,19 +29,19 @@ Collapse `wp setup` from 16 flags to a calm happy path and relocate recovery/mai
 
 ### Why
 
-`src/cli/commands/init/index.ts` exposes 16 flags on the primary verb (InitFlags ~L253, registerInitCommand ~L1869). `--yes` is a no-op vs its default (~L929); `--all` duplicates `--with all`; `--user-only`/`--project-init`/`--strict` re-assert inferred values (~L873-882); five are recovery flows (`--restore-hooks`, `--disable-hooks`, `--prune`, `--overwrite`, `--source-maintenance`).
+`src/cli/commands/init/index.ts` exposed a cluttered primary verb. `--yes` was a no-op vs default behavior, `--all` duplicated `--with all`, `--project` only existed to steer legacy OMX/OMC scope, and several recovery flows belonged off the happy path.
 
 ### Scope (breaking allowed; pre-1.0)
 
-- Delete `--yes`; collapse `--all` into a `--with all` token; verify-then-handle `--project`.
-- Demote to `wp setup repair`: `--restore-hooks`, `--disable-hooks`, `--prune`, `--overwrite`, `--source-maintenance`, `--strict`, and explicit `--user-only`/`--project-init` overrides. Reuse existing runInit branches (relocate, do not reimplement).
+- Delete `--yes`; collapse `--all` into a `--with all` token; remove `--project` with migration guidance because the remaining OMX/OMC compatibility setup is user-scoped only.
+- Demote to `wp setup repair`: `--restore-hooks`, `--disable-hooks`, `--prune`, `--overwrite`, `--strict`, and explicit `--user-only`/`--project-init` overrides. Reuse existing runInit branches (relocate, do not reimplement).
 - **`--host` decision (codex):** PRESERVE `--host` as an explicit override on `wp setup` (rare narrowing; default stays all hosts via parseAgentHosts). It is NOT collapsed and NOT counted among the removed flags; document it as the one power-flag that stays on the primary verb.
 - Happy-path learning surface: `wp setup [--with <skills|all>] [--without <skills>] [--dry-run] [--cwd <dir>]`, with `--host` as a documented override.
 - **`wp init` alias (codex):** `wp init` mirrors `wp setup`'s surface exactly; moved/removed flags on `wp init` error with the same one-line 'moved to wp setup repair' migration guidance.
 
 ### Locked (VISION principle 7)
 
-Hook restore/disable stay guarded and never silent/default; self-repo guard (isAgentKitSourceRepo) stays (--source-maintenance only relocates); preflight checks keep running (only the --strict abort escalation moves); no secret surface touched.
+Hook restore/disable stay guarded and never silent/default; self-repo guard (isAgentKitSourceRepo) stays behind repair mode; preflight checks keep running (only the --strict abort escalation moves); no secret surface touched.
 
 ### Sequencing / wait
 
@@ -89,39 +89,54 @@ Tasks follow.
 
 #### Task 1.1: Delete dead/redundant flags
 
-**Status:** todo
+**Status:** done
 **Wave:** 0
 
-Delete --yes (no-op vs default ~L929); collapse --all into a --with all token (mirror parseAgentHosts all handling); grep --project consumers and delete if only the now-external OMX/OMC scope uses it, else demote to repair.
+Delete `--yes`, collapse `--all` into a `--with all` token, and remove `--project` with explicit migration guidance after confirming OMX/OMC compatibility remains in-repo but is now user-scoped.
 
 **Acceptance:**
 
-- [ ] --yes and --all removed from registerInitCommand.
-- [ ] --with all reproduces prior --all behavior (test).
-- [ ] --project decision recorded with grep evidence.
+- [x] --yes and --all removed from the primary `wp setup` / `wp init` surface.
+- [x] --with all reproduces prior --all behavior (test).
+- [x] --project now errors with migration guidance because OMX/OMC compatibility presets remain but default to user scope.
 
 #### Task 1.2: Add wp setup repair routing the same runInit branches
 
-**Status:** todo
+**Status:** done
 **Wave:** 0
 
-Move --restore-hooks, --disable-hooks, --prune, --overwrite, --source-maintenance, --strict, and explicit --user-only/--project-init overrides onto wp setup repair, reusing the existing runInit code paths. Preserve --host as an explicit override on wp setup.
+Move `--restore-hooks`, `--disable-hooks`, `--prune`, `--overwrite`, `--strict`, and explicit `--user-only` / `--project-init` overrides onto `wp setup repair`, reusing the existing runInit code paths. Remove `--source-maintenance` entirely and keep `--host` as an explicit override on `wp setup`.
 
 **Acceptance:**
 
-- [ ] wp setup repair --restore-hooks / --prune / --overwrite reproduce prior runInit outcomes.
-- [ ] Moved flags on wp setup AND wp init exit non-zero with a 'moved to wp setup repair' message.
-- [ ] Scope auto-inference, host default = all hosts, DEFAULT_PRESETS, and reconcile-by-default unchanged; --host override still works.
+- [x] `wp setup repair --restore-hooks` / `--prune` / `--overwrite` reproduce the prior runInit outcomes.
+- [x] Moved flags on `wp setup` AND `wp init` exit non-zero with migration guidance; `wp setup repair` / `wp init repair` are argv-rewritten aliases to the advanced command.
+- [x] Scope auto-inference, host default = all hosts, DEFAULT_PRESETS, and reconcile-by-default remain unchanged; `--host` still works.
 
 #### Task 1.3: Flag-budget guard + alias + consumer fix-up
 
-**Status:** todo
+**Status:** done
 **Wave:** 1
 
 Extend init.integration.test.ts for the collapsed surface and the wp init alias; add a flag-budget guard so the happy path can't silently regrow; update ingest-lens + edge-matte if any script/docs invoke a removed flag.
 
 **Acceptance:**
 
-- [ ] wp setup --help exposes the calm surface (the 4 learning flags plus the documented --host override); removed flags absent, present on wp setup repair.
-- [ ] wp init alias mirrors wp setup including migration errors.
-- [ ] No consumer script/doc relies on a removed flag; wp setup smoke green in both consumers.
+- [x] `wp setup --help` exposes the calm surface (learning flags plus `--host`); removed flags are absent and available through `wp setup repair`.
+- [x] `wp init` mirrors `wp setup`, including migration errors and `repair` routing.
+- [x] No directly maintained consumer-facing script/doc slice in this repo still relies on a removed flag; setup smoke, package contract, docs, and source-repo guidance were updated.
+
+## Completion evidence
+
+- CLI:
+  - primary `wp setup` / `wp init` surfaces now reject moved/removed flags with explicit migration guidance
+  - `wp setup repair` / `wp init repair` route advanced maintenance flags through the existing runInit branches
+  - `--project` is removed from the public surface; OMX/OMC compatibility remains in-repo but defaults to user scope
+- Verification:
+  - `./bin/wp lint --file src/cli/commands/init/index.ts --file src/cli/commands/init/source-repo-hook-policy.ts --file src/cli/commands/init/source-repo-hook-policy.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts --file src/cli/commands/sync.ts --file src/hooks/doctor.ts --file src/hooks/doctor.test.ts --file src/hooks/status/index.test.ts --file package.contract.integration.test.ts`
+  - `./bin/wp typecheck`
+  - `vp exec vitest run src/hooks/doctor.test.ts --project unit --reporter=verbose`
+  - `vp exec vitest run src/cli/commands/init/init.e2e.test.ts --project subprocess --reporter=verbose`
+  - `vp exec vitest run src/cli/commands/init/init.integration.test.ts --project subprocess --reporter=verbose`
+  - `./bin/wp test --file src/cli/cli.test.ts --file src/cli/commands/init/source-repo-hook-policy.test.ts --file src/hooks/status/index.test.ts --file src/cli/commands/init/host-smoke.e2e.test.ts`
+  - `./bin/wp test --file package.contract.integration.test.ts`

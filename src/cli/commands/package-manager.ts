@@ -6,10 +6,9 @@ import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 
 import {
-  isProjectOwnedTool,
-  isUserOwnedTool,
   readToolingOwnershipState,
   tryReadRepoKey,
+  writeToolingOwnershipState,
   type ToolingOwnershipState,
 } from "#cli/tooling-ownership";
 import {
@@ -21,8 +20,17 @@ import { resolveBundledVpCommand } from "#cli/auto-update/detect-pm.js";
 import { resolveAgentKitPackageRoot } from "#cli/commands/init/package-root";
 import { ensureClaudeCodeUserPlugin } from "#cli/commands/init/scaffolders/claude-plugin/index.js";
 import { ensureCodexUserPlugin } from "#cli/commands/init/scaffolders/codex-plugin/index.js";
-import { OMC_PLUGIN_ID } from "#cli/commands/init/scaffolders/omc/index.js";
 import { getManagedRunner } from "#tool-runtime";
+import {
+  claimOptionalToolOwnership,
+  clearOptionalToolOwnership,
+  formatOptionalToolInstallSuccess,
+  formatOptionalToolRemoveSuccess,
+  optionalToolUpdateSteps,
+  parseOptionalToolCommandArgs,
+  spawnResultStatus,
+  type OptionalToolCommandStep,
+} from "#cli/optional-tools.js";
 
 export const PACKAGE_MANAGER_VERBS = ["install", "add", "remove", "update", "exec", "run"] as const;
 
@@ -44,6 +52,7 @@ export interface PackageManagerCommandDeps {
   readonly mkdir?: typeof mkdirSync;
   readonly ownershipState?: ToolingOwnershipState;
   readonly repoKey?: string | null;
+  readonly writeOwnershipState?: (state: ToolingOwnershipState) => void;
   readonly run?: (
     command: string,
     args: readonly string[],
@@ -56,11 +65,13 @@ export interface PackageManagerCommandDeps {
 }
 
 const HELP_BY_VERB: Readonly<Record<PackageManagerVerb, string>> = {
-  install: "Install dependencies through the managed package/task facade.",
+  install:
+    "Install dependencies through the managed package/task facade, or WP-managed agent tools such as codex, claude-code, opencode, and oh-my tools.",
   add: "Add dependencies through the managed package/task facade.",
-  remove: "Remove dependencies through the managed package/task facade.",
+  remove:
+    "Remove dependencies through the managed package/task facade, or clear WP ownership for managed agent tools without native uninstall.",
   update:
-    "Refresh wp and any optional OMX/OMC integrations previously installed by wp; use --deps for local dependency updates through the managed package/task facade.",
+    "Refresh wp and any WP-owned optional agent tools; use --deps for local dependency updates through the managed package/task facade.",
   exec: "Run a binary through the managed package/task facade.",
   run: "Run a package script through the managed package/task facade.",
 };
@@ -71,7 +82,7 @@ interface PackageManagerCommandConfigWithId extends PackageManagerCommandConfig 
 }
 
 type GlobalUpdateStep =
-  | PackageManagerCommandConfigWithId
+  | (PackageManagerCommandConfigWithId & { readonly cwd?: string })
   | {
       readonly id: string;
       readonly optional?: boolean;
@@ -85,6 +96,7 @@ interface RequiredGlobalUpdateDeps {
   readonly repoKey: string | null;
   readonly vpCommand: GlobalCapableVpCommandInput;
   readonly packageRoot: string | null;
+  readonly cwd: string;
   readonly refreshClaudePlugin: (packageRoot: string) => SpawnSyncReturns<string>;
   readonly refreshCodexPlugin: (packageRoot: string) => SpawnSyncReturns<string>;
   readonly run: (
@@ -127,6 +139,11 @@ export function runPackageManagerCommand(
   const argv = deps.argv ?? process.argv;
   const cwd = deps.cwd ?? process.cwd();
 
+  if (verb === "install" || verb === "remove") {
+    const optionalResult = runOptionalToolPackageCommand(verb, deps);
+    if (optionalResult !== null) return optionalResult;
+  }
+
   if (verb === "update") {
     const mode = parseUpdateMode(extractVerbArgs(verb, argv));
     if (mode.kind === "error") return failUsage(mode.message);
@@ -154,6 +171,73 @@ export function runPackageManagerCommand(
   return typeof result.status === "number" ? result.status : 1;
 }
 
+function runOptionalToolPackageCommand(
+  verb: Extract<PackageManagerVerb, "install" | "remove">,
+  deps: PackageManagerCommandDeps,
+): number | null {
+  const argv = deps.argv ?? process.argv;
+  const args = extractVerbArgs(verb, argv);
+  const parsed = parseOptionalToolCommandArgs(args);
+  if (parsed.kind === "none") return null;
+  if (parsed.kind === "error") return failUsage(`wp ${verb}: ${parsed.message}`);
+
+  const cwd = deps.cwd ?? process.cwd();
+  const repoKey = deps.repoKey ?? tryReadRepoKey(cwd);
+  const ownershipState = deps.ownershipState ?? readToolingOwnershipState();
+  const writeOwnership = deps.writeOwnershipState ?? writeToolingOwnershipState;
+
+  if (verb === "remove") {
+    const nextState = clearOptionalToolOwnership(
+      ownershipState,
+      parsed.adapter,
+      parsed.scope,
+      repoKey,
+    );
+    if ("error" in nextState) return failUsage(`wp remove: ${nextState.error}`);
+    writeOwnership(nextState);
+    console.log(formatOptionalToolRemoveSuccess(parsed.adapter, parsed.scope));
+    return 0;
+  }
+
+  const vpCommand =
+    deps.resolveVpCommand !== undefined
+      ? deps.resolveVpCommand()
+      : (resolveGlobalCapableVpCommand() ?? resolveBundledVpCommand());
+  if (vpCommand === null) {
+    return failUsage(`wp install: no bundled Vite+ runner found; cannot install optional tool.`);
+  }
+
+  const ownership = claimOptionalToolOwnership(
+    ownershipState,
+    parsed.adapter,
+    parsed.scope,
+    repoKey,
+  );
+  if ("error" in ownership) return failUsage(`wp install: ${ownership.error}`);
+
+  const steps = parsed.adapter.install({ scope: parsed.scope, vpCommand, cwd });
+  for (const step of steps) {
+    const result = runOptionalToolStep(step, deps);
+    const status = spawnResultStatus(result);
+    if (status !== 0) {
+      console.error(formatGlobalUpdateFailure(step, result));
+      return status;
+    }
+  }
+
+  writeOwnership(ownership);
+  console.log(formatOptionalToolInstallSuccess(parsed.adapter, parsed.scope));
+  return 0;
+}
+
+function runOptionalToolStep(
+  step: OptionalToolCommandStep,
+  deps: PackageManagerCommandDeps,
+): SpawnSyncReturns<string> {
+  const run = deps.run ?? defaultRun;
+  return step.cwd ? run(step.command, step.args, { cwd: step.cwd }) : run(step.command, step.args);
+}
+
 function runGlobalUpdateCommand(deps: PackageManagerCommandDeps): number {
   const cwd = deps.cwd ?? process.cwd();
   const vpCommand =
@@ -170,6 +254,7 @@ function runGlobalUpdateCommand(deps: PackageManagerCommandDeps): number {
     exists: deps.exists ?? existsSync,
     mkdir: deps.mkdir ?? mkdirSync,
     ownershipState: deps.ownershipState ?? readToolingOwnershipState(),
+    cwd,
     packageRoot:
       deps.packageRoot === undefined
         ? resolveAgentKitPackageRoot({ moduleUrl: import.meta.url })
@@ -210,72 +295,50 @@ function runGlobalUpdateCommand(deps: PackageManagerCommandDeps): number {
 }
 
 function buildGlobalUpdateSteps(
-  deps: Pick<RequiredGlobalUpdateDeps, "ownershipState" | "repoKey" | "vpCommand">,
+  deps: Pick<RequiredGlobalUpdateDeps, "ownershipState" | "repoKey" | "vpCommand" | "cwd">,
 ): readonly GlobalUpdateStep[] {
-  const steps: GlobalUpdateStep[] = [];
-
-  if (
-    isUserOwnedTool(deps.ownershipState, "omx") ||
-    isProjectOwnedTool(deps.ownershipState, "omx", deps.repoKey)
-  ) {
-    const command = appendGlobalCapableVpArgs(deps.vpCommand, ["update", "-g", "oh-my-codex"]);
-    steps.push({
-      id: "omx",
-      optional: true,
-      command: command[0],
-      args: command.slice(1),
-    });
-  }
-
-  if (isUserOwnedTool(deps.ownershipState, "omc")) {
-    steps.push({
-      id: "omc",
-      optional: true,
-      command: "claude",
-      args: ["plugin", "update", "--scope", "user", OMC_PLUGIN_ID],
-    });
-  }
-
-  if (isProjectOwnedTool(deps.ownershipState, "omc", deps.repoKey)) {
-    steps.push({
-      id: "omc-project",
-      optional: true,
-      command: "claude",
-      args: ["plugin", "update", "--scope", "project", OMC_PLUGIN_ID],
-    });
-  }
+  const optionalSteps = optionalToolUpdateSteps({
+    ownershipState: deps.ownershipState,
+    repoKey: deps.repoKey,
+    vpCommand: deps.vpCommand,
+    cwd: deps.cwd,
+  });
 
   const command = appendGlobalCapableVpArgs(deps.vpCommand, [
     "install",
     "-g",
     "@webpresso/agent-kit",
   ]);
-  steps.push({
-    id: "wp",
-    command: command[0],
-    args: command.slice(1),
-  });
 
-  steps.push({
-    id: "claude-plugin",
-    optional: true,
-    run: refreshClaudePlugin,
-  });
-
-  steps.push({
-    id: "codex-plugin",
-    optional: true,
-    run: refreshCodexPlugin,
-  });
-
-  return steps;
+  return [
+    ...optionalSteps,
+    {
+      id: "wp",
+      command: command[0]!,
+      args: command.slice(1),
+    },
+    {
+      id: "claude-plugin",
+      optional: true,
+      run: refreshClaudePlugin,
+    },
+    {
+      id: "codex-plugin",
+      optional: true,
+      run: refreshCodexPlugin,
+    },
+  ];
 }
 
 function runGlobalUpdateStep(
   step: GlobalUpdateStep,
   deps: RequiredGlobalUpdateDeps,
 ): SpawnSyncReturns<string> {
-  if ("command" in step) return deps.run(step.command, step.args);
+  if ("command" in step) {
+    return step.cwd
+      ? deps.run(step.command, step.args, { cwd: step.cwd })
+      : deps.run(step.command, step.args);
+  }
   return step.run(deps);
 }
 

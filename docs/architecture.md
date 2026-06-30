@@ -186,7 +186,7 @@ old surface. Both steps matter.
 - **Editing `.claude/commands/`** — overwritten on next `wp sync`.
 - **Forgetting to commit `.agent/`** — collaborators get the old
   surface or none at all.
-- **`wp setup --overwrite` without diffing first** — force-replaces
+- **`wp setup repair --overwrite` without diffing first** — force-replaces
   eligible managed whole files you may have intended to customize.
 
 ## See also

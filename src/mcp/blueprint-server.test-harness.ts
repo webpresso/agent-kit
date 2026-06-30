@@ -1,4 +1,5 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { tmpdir } from "node:os";
 
@@ -92,6 +93,61 @@ export function trustDossierFixture(evidence = "repo:package.json"): string {
 
 None.
 `;
+}
+
+export function approvalFrontmatterFixture(): string {
+  return `approvals:
+  - reviewer: codex
+    verdict: approve
+    evidence: reviews.md
+  - reviewer: deepseek
+    verdict: approve
+    evidence: reviews.md
+`;
+}
+
+export function withApprovalFrontmatter(content: string): string {
+  if (!content.startsWith("---\n")) {
+    throw new Error("Blueprint fixture must start with frontmatter fence");
+  }
+  return content.replace("---\n", `---\n${approvalFrontmatterFixture()}`);
+}
+
+export function writeApprovalLedgerFixture(cwd: string, stateDir: string, slug: string): string {
+  const ledgerPath = path.join(cwd, "blueprints", stateDir, slug, "reviews.md");
+  const records = ["codex", "deepseek"].map((reviewer, index) => ({
+    id: `2026-06-28T00:00:0${index}.000Z:${reviewer}:fixture`,
+    blueprintSlug: `${stateDir}/${slug}`,
+    targetKind: "blueprint",
+    targetId: `${stateDir}/${slug}`,
+    timestamp: `2026-06-28T00:00:0${index}.000Z`,
+    reviewer,
+    verdict: "approve",
+    evidence: "reviews.md",
+    source: "structured",
+  }));
+  const entries = records
+    .map((record) => `<!-- wp:review-entry ${JSON.stringify(record)} -->`)
+    .join("\n");
+  writeFileSync(
+    ledgerPath,
+    `# Review ledger — ${slug}
+
+| Date | Reviewer | Rev | Verdict | Note |
+| ---- | -------- | --- | ------- | ---- |
+
+${entries}
+`,
+    "utf8",
+  );
+  if (!existsSync(path.join(cwd, ".git"))) {
+    execFileSync("git", ["init", "-q"], { cwd, stdio: "ignore" });
+  }
+  execFileSync("git", ["add", "--", path.relative(cwd, ledgerPath)], {
+    cwd,
+    stdio: "ignore",
+  });
+  return ledgerPath;
 }
 
 export function writeBlueprintFixture(

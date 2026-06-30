@@ -20,6 +20,7 @@ import {
   extractWebpressoHookBinName,
   hoistTopLevelEvents,
   hookSubcommandFor,
+  resolveSourceRepoHookLauncher,
   resolvePackageRootForHookLaunchers,
   restoreManagedHooksFromManifest,
   scaffoldAgentHooks,
@@ -88,13 +89,16 @@ describe("scaffoldAgentHooks", () => {
   let repoRoot: string;
   let previousCodexHome: string | undefined;
   let previousHome: string | undefined;
+  let previousBun: string | undefined;
 
   beforeEach(() => {
     repoRoot = mkdtempSync(join(tmpdir(), "wp-agent-hooks-"));
     previousCodexHome = process.env.CODEX_HOME;
     previousHome = process.env.HOME;
+    previousBun = process.env.BUN;
     process.env.HOME = join(repoRoot, ".home");
     process.env.CODEX_HOME = join(repoRoot, ".codex-home");
+    delete process.env.BUN;
   });
 
   afterEach(async () => {
@@ -102,6 +106,8 @@ describe("scaffoldAgentHooks", () => {
     else process.env.CODEX_HOME = previousCodexHome;
     if (previousHome === undefined) delete process.env.HOME;
     else process.env.HOME = previousHome;
+    if (previousBun === undefined) delete process.env.BUN;
+    else process.env.BUN = previousBun;
     await import("node:fs/promises").then((fs) =>
       fs.rm(repoRoot, { recursive: true, force: true }),
     );
@@ -1164,9 +1170,12 @@ hooks:
       (candidate) => candidate.includes("wp-pretool-guard"),
     );
 
-    expect(command).toContain("WP_FORCE_SOURCE=1");
-    expect(command).toContain("/node");
-    expect(command).not.toContain("/bun");
+    expect(command).toContain(`'${repoRoot}/src/cli/cli.ts' hook pretool-guard`);
+    expect(command).toContain(`/bin/runtime/${process.platform}-${process.arch}/wp`);
+    expect(command).not.toContain("WP_FORCE_SOURCE=1");
+    expect(command).not.toContain("/bin/wp");
+    expect(command).not.toContain(" command -v ");
+    expect(command).not.toContain("eval ");
   });
 
   it("writes source-repo hook commands as direct wp invocations with forced source mode", async () => {
@@ -1182,23 +1191,216 @@ hooks:
     const codex = JSON.parse(readFileSync(join(repoRoot, ".codex", "hooks.json"), "utf8")) as {
       hooks: { SessionStart: Array<{ hooks: Array<{ command: string }> }> };
     };
-    const expected = directWpHookCommand(repoRoot, "wp-sessionstart-routing", {
-      forceSource: true,
-    });
+    const claudeCommand = claude.hooks.SessionStart.flatMap((g) =>
+      g.hooks.map((h) => h.command),
+    )[0];
+    const codexCommand = codex.hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command))[0];
 
-    expect(claude.hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command))).toContain(
-      expected,
+    expect(claudeCommand).toContain(
+      `'/opt/homebrew/bin/bun' '${repoRoot}/src/cli/cli.ts' hook sessionstart-routing`,
     );
-    expect(codex.hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command))).toContain(
-      expected,
+    expect(claudeCommand).toContain(
+      `'${repoRoot}/bin/runtime/${process.platform}-${process.arch}/wp' hook sessionstart-routing`,
     );
-    expect(result.manifest.codex.SessionStart?.[0]?.hooks[0]?.command).toBe(expected);
+    expect(codexCommand).toBe(claudeCommand);
+    expect(result.manifest.codex.SessionStart?.[0]?.hooks[0]?.command).toBe(claudeCommand);
     expect(codex.hooks.SessionStart[0]?.hooks[0]?.timeout).toBe(20);
     expect(claude.hooks.SessionStart[0]?.hooks[0]?.timeout).toBe(20);
-
-    expect(JSON.stringify(codex)).toContain("WP_FORCE_SOURCE=1");
+    expect(codexCommand).toContain(".bun/bin/bun");
+    expect(codexCommand).toContain(`'/usr/local/bin/bun'`);
+    expect(JSON.stringify(codex)).not.toContain("WP_FORCE_SOURCE=1");
     expect(existsSync(join(repoRoot, ".claude", "hooks", "managed"))).toBe(false);
     expect(existsSync(join(repoRoot, ".codex", "managed-hooks"))).toBe(false);
+  });
+
+  it("prefers the compiled source-repo hook launcher when the runtime binary is executable", () => {
+    const root = "/repo";
+    const resolution = resolveSourceRepoHookLauncher(root, {
+      platform: "linux",
+      arch: "x64",
+      env: { BUN: "/custom/bun" },
+      homeDirectory: "/home/dev",
+      isExecutable: (path) => path === "/repo/bin/runtime/linux-x64/wp" || path === "/custom/bun",
+    });
+
+    expect(resolution).toStrictEqual({
+      kind: "compiled",
+      launcherPath: "/repo/bin/runtime/linux-x64/wp",
+      cliPath: "/repo/src/cli/cli.ts",
+    });
+  });
+
+  it("falls back to an absolute bun launcher when no compiled runtime is executable", () => {
+    const root = "/repo";
+    const resolution = resolveSourceRepoHookLauncher(root, {
+      platform: "linux",
+      arch: "x64",
+      env: { BUN: "/custom/bun" },
+      homeDirectory: "/home/dev",
+      isExecutable: (path) => path === "/custom/bun",
+    });
+
+    expect(resolution).toStrictEqual({
+      kind: "bun",
+      launcherPath: "/custom/bun",
+      cliPath: "/repo/src/cli/cli.ts",
+    });
+  });
+
+  it("returns none when neither the compiled runtime nor any absolute bun is executable", () => {
+    const resolution = resolveSourceRepoHookLauncher("/repo", {
+      platform: "linux",
+      arch: "x64",
+      env: { BUN: "bun" },
+      homeDirectory: "/home/dev",
+      isExecutable: () => false,
+    });
+
+    expect(resolution).toStrictEqual({
+      kind: "none",
+      cliPath: "/repo/src/cli/cli.ts",
+    });
+  });
+
+  it("fresh-clone source-repo hooks succeed under sanitized PATH via absolute bun fallback", async () => {
+    writeFileSync(join(repoRoot, "package.json"), JSON.stringify({ name: "@webpresso/agent-kit" }));
+    mkdirSync(join(repoRoot, "src", "cli"), { recursive: true });
+    writeFileSync(join(repoRoot, "src", "cli", "cli.ts"), "");
+    const fakeBun = join(repoRoot, ".home", ".bun", "bin", "bun");
+    mkdirSync(join(fakeBun, ".."), { recursive: true });
+    writeFileSync(fakeBun, "#!/bin/sh\nprintf '{}\\n'\n", { mode: 0o755 });
+    chmodSync(fakeBun, 0o755);
+    process.env.BUN = fakeBun;
+
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false });
+
+    const claude = JSON.parse(readFileSync(join(repoRoot, ".claude", "settings.json"), "utf8")) as {
+      hooks: { PreToolUse: Array<{ hooks: Array<{ command: string }> }> };
+    };
+    const command = claude.hooks.PreToolUse.flatMap((g) => g.hooks.map((h) => h.command)).find(
+      (candidate) => candidate.includes("wp-pretool-guard"),
+    );
+    const result = spawnSync("sh", ["-c", command ?? ""], {
+      cwd: repoRoot,
+      env: { ...process.env, PATH: "/usr/bin:/bin" },
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("{}\n");
+    delete process.env.BUN;
+  });
+
+  it("picks up a compiled runtime that appears after setup because source-repo resolution happens at hook time", async () => {
+    writeFileSync(join(repoRoot, "package.json"), JSON.stringify({ name: "@webpresso/agent-kit" }));
+    mkdirSync(join(repoRoot, "src", "cli"), { recursive: true });
+    writeFileSync(join(repoRoot, "src", "cli", "cli.ts"), "");
+    const fakeBun = join(repoRoot, ".home", ".bun", "bin", "bun");
+    mkdirSync(join(fakeBun, ".."), { recursive: true });
+    writeFileSync(fakeBun, "#!/bin/sh\nprintf 'bun\\n' >&2\nprintf '{}\\n'\n", { mode: 0o755 });
+    chmodSync(fakeBun, 0o755);
+    process.env.BUN = fakeBun;
+
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false });
+
+    const runtimeBin = join(
+      repoRoot,
+      "bin",
+      "runtime",
+      `${process.platform}-${process.arch}`,
+      "wp",
+    );
+    mkdirSync(join(runtimeBin, ".."), { recursive: true });
+    writeFileSync(runtimeBin, "#!/bin/sh\nprintf '{}\\n'\n", { mode: 0o755 });
+    chmodSync(runtimeBin, 0o755);
+
+    const claude = JSON.parse(readFileSync(join(repoRoot, ".claude", "settings.json"), "utf8")) as {
+      hooks: { PreToolUse: Array<{ hooks: Array<{ command: string }> }> };
+    };
+    const command = claude.hooks.PreToolUse.flatMap((g) => g.hooks.map((h) => h.command)).find(
+      (candidate) => candidate.includes("wp-pretool-guard"),
+    );
+    const result = spawnSync("sh", ["-c", command ?? ""], {
+      cwd: repoRoot,
+      env: { ...process.env, PATH: "/usr/bin:/bin" },
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe("{}\n");
+    expect(result.stderr).not.toContain("bun");
+    delete process.env.BUN;
+  });
+
+  it("fails closed for source-repo pretool-guard when no compiled runtime or absolute bun launcher is executable", async () => {
+    writeFileSync(join(repoRoot, "package.json"), JSON.stringify({ name: "@webpresso/agent-kit" }));
+    mkdirSync(join(repoRoot, "src", "cli"), { recursive: true });
+    writeFileSync(join(repoRoot, "src", "cli", "cli.ts"), "");
+
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false });
+
+    const claude = JSON.parse(readFileSync(join(repoRoot, ".claude", "settings.json"), "utf8")) as {
+      hooks: { PreToolUse: Array<{ hooks: Array<{ command: string }> }> };
+    };
+    const command = claude.hooks.PreToolUse.flatMap((g) => g.hooks.map((h) => h.command)).find(
+      (candidate) => candidate.includes("wp-pretool-guard"),
+    );
+    const disabledCommand = (command ?? "")
+      .replaceAll("/opt/homebrew/bin/bun", `${repoRoot}/missing-opt-homebrew-bun`)
+      .replaceAll(`${process.env.HOME}/.bun/bin/bun`, `${repoRoot}/missing-home-bun`)
+      .replaceAll("/usr/local/bin/bun", `${repoRoot}/missing-usr-local-bun`);
+    const result = spawnSync("sh", ["-c", disabledCommand], {
+      cwd: repoRoot,
+      env: { ...process.env, PATH: "/usr/bin:/bin" },
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('"permissionDecision":"deny"');
+    expect(result.stdout).toContain("wp not found on PATH");
+  });
+
+  it("preserves exit-2 policy denials from the compiled source-repo runtime without falling back to bun", async () => {
+    writeFileSync(join(repoRoot, "package.json"), JSON.stringify({ name: "@webpresso/agent-kit" }));
+    mkdirSync(join(repoRoot, "src", "cli"), { recursive: true });
+    writeFileSync(join(repoRoot, "src", "cli", "cli.ts"), "");
+    const fakeBun = join(repoRoot, ".home", ".bun", "bin", "bun");
+    mkdirSync(join(fakeBun, ".."), { recursive: true });
+    writeFileSync(fakeBun, "#!/bin/sh\nprintf 'bun-fallback\\n' >&2\nprintf '{}\\n'\n", {
+      mode: 0o755,
+    });
+    chmodSync(fakeBun, 0o755);
+    process.env.BUN = fakeBun;
+
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false });
+
+    const runtimeBin = join(
+      repoRoot,
+      "bin",
+      "runtime",
+      `${process.platform}-${process.arch}`,
+      "wp",
+    );
+    mkdirSync(join(runtimeBin, ".."), { recursive: true });
+    writeFileSync(runtimeBin, "#!/bin/sh\nexit 2\n", { mode: 0o755 });
+    chmodSync(runtimeBin, 0o755);
+
+    const claude = JSON.parse(readFileSync(join(repoRoot, ".claude", "settings.json"), "utf8")) as {
+      hooks: { PreToolUse: Array<{ hooks: Array<{ command: string }> }> };
+    };
+    const command = claude.hooks.PreToolUse.flatMap((g) => g.hooks.map((h) => h.command)).find(
+      (candidate) => candidate.includes("wp-pretool-guard"),
+    );
+    const result = spawnSync("sh", ["-c", command ?? ""], {
+      cwd: repoRoot,
+      env: { ...process.env, PATH: "/usr/bin:/bin" },
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(2);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).not.toContain("bun-fallback");
+    delete process.env.BUN;
   });
 
   it("wires the managed PreCompact lane for Claude and Codex but not unsupported Cursor output", async () => {
