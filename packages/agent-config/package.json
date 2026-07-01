@@ -60,33 +60,33 @@
     },
     "./tsconfig/base.json": {
       "import": {
-        "types": "./dist/esm/tsconfig/base.json",
         "default": "./dist/esm/tsconfig/base.json"
-      }
+      },
+      "default": "./dist/esm/tsconfig/base.json"
     },
     "./tsconfig/cloudflare.json": {
       "import": {
-        "types": "./dist/esm/tsconfig/cloudflare.json",
         "default": "./dist/esm/tsconfig/cloudflare.json"
-      }
+      },
+      "default": "./dist/esm/tsconfig/cloudflare.json"
     },
     "./tsconfig/library.json": {
       "import": {
-        "types": "./dist/esm/tsconfig/library.json",
         "default": "./dist/esm/tsconfig/library.json"
-      }
+      },
+      "default": "./dist/esm/tsconfig/library.json"
     },
     "./tsconfig/react-library.json": {
       "import": {
-        "types": "./dist/esm/tsconfig/react-library.json",
         "default": "./dist/esm/tsconfig/react-library.json"
-      }
+      },
+      "default": "./dist/esm/tsconfig/react-library.json"
     },
     "./tsconfig/react-router.json": {
       "import": {
-        "types": "./dist/esm/tsconfig/react-router.json",
         "default": "./dist/esm/tsconfig/react-router.json"
-      }
+      },
+      "default": "./dist/esm/tsconfig/react-router.json"
     },
     "./vitest/flakiness-reporter": {
       "import": {
@@ -154,7 +154,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "tshy",
+    "build": "tshy && bun scripts/normalize-tsconfig-json-exports.ts",
     "prepublishOnly": "vp run build",
     "typecheck": "tsc --noEmit",
     "lint:pkg": "publint && attw --pack . --profile esm-only"
@@ -218,6 +218,7 @@
       "./deploy": "./src/deploy/index.ts",
       "./dev": "./src/dev/index.ts",
       "./e2e": "./src/e2e/index.ts",
+      "./playwright/quality-scaffold": "./src/playwright/quality-scaffold.ts",
       "./process": "./src/process/index.ts",
       "./repo-root": "./src/repo-root/index.ts",
       "./stryker": "./src/stryker/index.ts",
@@ -234,8 +235,7 @@
       "./vitest/react-setup.ts": "./src/vitest/react-setup.ts",
       "./vitest/source-conditions": "./src/vitest/source-conditions.ts",
       "./vitest/workers": "./src/vitest/workers.ts",
-      "./workers-test": "./src/workers-test/index.ts",
-      "./playwright/quality-scaffold": "./src/playwright/quality-scaffold.ts"
+      "./workers-test": "./src/workers-test/index.ts"
     },
     "selfLink": false
   },
