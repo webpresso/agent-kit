@@ -95,6 +95,13 @@ independent projection DBs because their checked-out blueprints may differ.
 If HEAD changes (e.g. `git checkout`), the next MCP call detects the mismatch
 and returns `next_action: { kind: 'reingest_project' }` instead of stale data.
 
+**Structured creation:** `wp blueprint new`, `wp_blueprint_new`, and
+`wp_blueprint_create` all route through `BlueprintCreationService`, which emits
+folder-shaped drafts at `blueprints/draft/<slug>/_overview.md` and validates that
+blueprint drafts have parser-visible `#### Task X.Y:` sections before returning
+or writing markdown. Legacy flat files remain readable, but new generated
+blueprints use the folder shape.
+
 **Retry-safe mutations:** `wp_blueprint_create`,
 `wp_blueprint_task_advance`, and `wp_blueprint_task_verify` accept optional
 `request_id` values. Replaying the same mutation with the same `request_id` and

@@ -29,8 +29,28 @@ function createRepo(prefix: string): string {
 function git(cwd: string, ...args: string[]): string {
   return execFileSync(
     "git",
-    ["-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", ...args],
-    { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    [
+      "-c",
+      "core.hooksPath=/dev/null",
+      "-c",
+      "commit.gpgsign=false",
+      "-c",
+      "gc.auto=0",
+      "-c",
+      "credential.helper=",
+      ...args,
+    ],
+    {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      env: {
+        ...process.env,
+        GIT_CONFIG_NOSYSTEM: "1",
+        GIT_OPTIONAL_LOCKS: "0",
+        GIT_TERMINAL_PROMPT: "0",
+      },
+    },
   ).trim();
 }
 
@@ -44,7 +64,7 @@ afterEach(() => {
   while (tempDirs.length > 0) rmSync(tempDirs.pop()!, { recursive: true, force: true });
 });
 
-describe("changed-files resolver", { timeout: 20_000 }, () => {
+describe("changed-files resolver", () => {
   it("uses origin/main as the default branch base ref", () => {
     expect(defaultBranchBaseRef({} as NodeJS.ProcessEnv)).toBe("origin/main");
     expect(defaultBranchBaseRef({ GITHUB_BASE_REF: "release/1.x" })).toBe("origin/release/1.x");
@@ -54,7 +74,7 @@ describe("changed-files resolver", { timeout: 20_000 }, () => {
     const repo = createRepo("wp-git-changed-staged-");
     writeRepoFile(repo, "README.md", "base\n");
     git(repo, "add", "README.md");
-    git(repo, "commit", "-m", "base");
+    git(repo, "commit", "-q", "--no-verify", "--no-gpg-sign", "-m", "base");
 
     const filename = "src/with space.ts";
     writeRepoFile(repo, filename, "export const value = 1\n");
@@ -71,11 +91,11 @@ describe("changed-files resolver", { timeout: 20_000 }, () => {
     const repo = createRepo("wp-git-changed-branch-");
     writeRepoFile(repo, "src/base.ts", "export const base = true\n");
     git(repo, "add", "src/base.ts");
-    git(repo, "commit", "-m", "base");
+    git(repo, "commit", "-q", "--no-verify", "--no-gpg-sign", "-m", "base");
 
     writeRepoFile(repo, "src/feature.ts", "export const feature = true\n");
     git(repo, "add", "src/feature.ts");
-    git(repo, "commit", "-m", "feature");
+    git(repo, "commit", "-q", "--no-verify", "--no-gpg-sign", "-m", "feature");
 
     expect(getBranchChangedFiles(repo, "HEAD~1")).toEqual({
       files: ["src/feature.ts"],
@@ -88,10 +108,10 @@ describe("changed-files resolver", { timeout: 20_000 }, () => {
     const repo = createRepo("wp-git-changed-branch-filter-");
     writeRepoFile(repo, "src/remove-me.ts", "export const doomed = true\n");
     git(repo, "add", "src/remove-me.ts");
-    git(repo, "commit", "-m", "base");
+    git(repo, "commit", "-q", "--no-verify", "--no-gpg-sign", "-m", "base");
 
     git(repo, "rm", "src/remove-me.ts");
-    git(repo, "commit", "-m", "delete");
+    git(repo, "commit", "-q", "--no-verify", "--no-gpg-sign", "-m", "delete");
 
     expect(getBranchChangedFiles(repo, "HEAD~1")).toEqual({
       files: [],
@@ -104,7 +124,7 @@ describe("changed-files resolver", { timeout: 20_000 }, () => {
     const repo = createRepo("wp-git-changed-missing-base-");
     writeRepoFile(repo, "README.md", "base\n");
     git(repo, "add", "README.md");
-    git(repo, "commit", "-m", "base");
+    git(repo, "commit", "-q", "--no-verify", "--no-gpg-sign", "-m", "base");
 
     expect(getBranchChangedFiles(repo)).toEqual({
       files: [],
@@ -154,7 +174,7 @@ describe("changed-files resolver", { timeout: 20_000 }, () => {
     const repo = createRepo("wp-git-changed-submodule-");
     writeRepoFile(repo, "README.md", "base\n");
     git(repo, "add", "README.md");
-    git(repo, "commit", "-m", "base");
+    git(repo, "commit", "-q", "--no-verify", "--no-gpg-sign", "-m", "base");
 
     writeRepoFile(repo, "src/keep.ts", "export const keep = true\n");
     git(repo, "add", "src/keep.ts");

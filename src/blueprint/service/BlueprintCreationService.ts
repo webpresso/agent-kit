@@ -32,6 +32,8 @@ const DEFAULT_TEMPLATE_PATH = resolvePackageAssetPreferred([
 export interface CreateBlueprintDraftInput {
   complexity: PlanComplexity;
   goal: string;
+  /** Optional display title/slug seed. When omitted, the goal is used for CLI parity. */
+  title?: string;
   type?: BlueprintDocumentType;
 }
 
@@ -255,13 +257,14 @@ export class BlueprintCreationService {
 
   async compileDraft(input: CreateBlueprintDraftInput): Promise<CompiledBlueprintDraft> {
     const goal = normalizeGoal(input.goal);
+    const titleInput = input.title === undefined ? goal : normalizeGoal(input.title);
     const type = input.type ?? "blueprint";
-    const baseSlug = deriveSlug(goal);
-    assertGoalProducesUsableSlug(goal, baseSlug);
+    const baseSlug = deriveSlug(titleInput);
+    assertGoalProducesUsableSlug(titleInput, baseSlug);
 
     const slug = this.resolveCollisionSafeSlug(baseSlug);
-    const title = sentenceCase(goal);
-    const outputPath = getBlueprintDocumentPaths(this.blueprintsRoot, "draft", slug).flat;
+    const title = sentenceCase(titleInput);
+    const outputPath = getBlueprintDocumentPaths(this.blueprintsRoot, "draft", slug).folder;
     const relativeFilePath = toPortableRelativePath(this.projectRoot, outputPath);
     const date = formatDate(this.now());
     const template =
@@ -293,7 +296,10 @@ export class BlueprintCreationService {
             template ?? "",
           );
 
-    parseBlueprint(markdown, slug);
+    const validation = validateGeneratedDraft(markdown, slug, type);
+    if (!validation.valid) {
+      throw new Error(validation.error ?? "Generated blueprint failed validation.");
+    }
 
     return {
       complexity: input.complexity,
@@ -339,6 +345,7 @@ export class BlueprintCreationService {
       };
     } catch (error) {
       await rm(tempDir, { force: true, recursive: true });
+      await removeIfEmpty(path.dirname(finalPath));
       await removeIfEmpty(draftRoot);
       throw error;
     }

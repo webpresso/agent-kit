@@ -42,8 +42,10 @@ describe("wp_blueprint_new — platform-first", () => {
     }>(result);
 
     expect(result.isError).toStrictEqual(false);
-    expect(data.target_path).toMatch(/\.md$/);
+    expect(data.target_path).toMatch(/platform-new-feature\/_overview\.md$/);
     expect(data.template).toContain("Platform New Feature");
+    expect(data.template).toContain("## Planning Summary");
+    expect(data.template).toContain("#### Task 1.1:");
 
     expect(pushEvent).toHaveBeenCalledOnce();
     const [eventArg] = pushEvent.mock.calls[0] ?? [];

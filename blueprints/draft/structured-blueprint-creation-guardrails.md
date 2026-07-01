@@ -4,7 +4,7 @@ status: draft
 complexity: M
 created: "2026-07-01"
 last_updated: "2026-07-01"
-progress: "0% (drafted)"
+progress: "0% (draft; implementation evidence recorded)"
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -39,11 +39,12 @@ MCP wp_blueprint_create ┘
 
 ## Key Decisions
 
-| Decision                     | Choice                                                                       | Rationale                                                                    |
-| ---------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Single creation owner        | Route MCP scaffold/write through `BlueprintCreationService`                  | Prevents CLI/MCP template drift and makes the parser validation gate shared. |
-| Keep completion gate         | Preserve existing zero-task completion rejection                             | Completion guard is correct; creation must also make the valid path obvious. |
-| No hand-authored bypass docs | Update docs/tool descriptions to say creation uses structured service output | Agents should call CLI/MCP and not invent markdown skeletons.                |
+| Decision                     | Choice                                                                       | Rationale                                                                               |
+| ---------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Single creation owner        | Route MCP scaffold/write through `BlueprintCreationService`                  | Prevents CLI/MCP template drift and makes the parser validation gate shared.            |
+| Keep completion gate         | Preserve existing zero-task completion rejection                             | Completion guard is correct; creation must also make the valid path obvious.            |
+| No hand-authored bypass docs | Update docs/tool descriptions to say creation uses structured service output | Agents should call CLI/MCP and not invent markdown skeletons.                           |
+| Vite+ owns ox execution      | Route lint/format through `vp lint`/`vp fmt`, not direct `oxlint`/`oxfmt`    | Vite+ ships editor/LSP `ox*` shims; agent-kit execution surfaces should use the facade. |
 
 ## Quick Reference (Execution Waves)
 
@@ -142,6 +143,27 @@ Run focused tests plus repo-level gates that prove structured creation and lifec
 - [ ] Targeted tests pass.
 - [ ] `vp run blueprints:check` passes.
 - [ ] Typecheck/lint/test gates pass or any unrelated blocker is documented with evidence.
+
+## Implementation Evidence
+
+- Shared blueprint creation owner implemented in `src/blueprint/service/BlueprintCreationService.ts` and `src/mcp/blueprint-server.ts`; MCP-local `BLUEPRINT_TEMPLATE` removed.
+- Generated drafts now use the folder-shaped overview path (`blueprints/draft/<slug>/_overview.md`) and are parser-validated before successful compile/create returns.
+- Direct `oxlint`/`oxfmt` execution removed from command builders, runner aliases, docs, and templates; compatibility aliases resolve to `vp lint` / `vp fmt`. Remaining direct `ox*` strings are intentional forbidden-command/blocklist tests or docs saying the shims are not agent-facing execution paths.
+- Promotion trust gates now prefer repo-local `bin/wp` for bare `wp` gate commands, with packaged fallback when a repo launcher is absent.
+
+## Verification Evidence
+
+- `pnpm exec vitest run src/tool-runtime/resolve-runner.test.ts src/quality-engine/command-builder.test.ts src/config/oxlint/oxlintrc.integration.test.ts src/audit/repo-guardrails.test.ts src/audit/toolchain-isolation.test.ts` — 5 files, 234 tests passed.
+- `pnpm exec vitest run src/blueprint/trust/promotion.test.ts src/mcp/blueprint-server.transition.test.ts src/mcp/blueprint-server.platform-first.lifecycle.test.ts src/mcp/blueprint-server.platform-first.trust-gate.test.ts src/cli/commands/blueprint/mutations.test.ts` — 5 files, 57 tests passed.
+- `pnpm exec vitest run src/git/changed-files.subprocess.test.ts` — 1 file, 8 tests passed.
+- `vp run typecheck` — passed.
+- `vp run lint` — passed via `vp lint`.
+- `vp run docs:check` — passed.
+- `vp run blueprints:check` — passed.
+- `vp run catalog:check` — passed.
+- `vp run build` — passed.
+- `vp run test` — 641 files passed, 1 skipped; 7061 tests passed, 15 skipped, 8 todo.
+- Direct-ox audit: high-signal grep found only intentional deny/blocklist tests plus documentation identifying `node_modules/.bin/oxfmt` as non-agent-facing.
 
 ## Verification Gates
 

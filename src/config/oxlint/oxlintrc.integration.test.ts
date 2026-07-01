@@ -8,8 +8,8 @@ import { afterEach, describe, expect, it } from "vitest";
 /**
  * End-to-end proof of the Tier-1 shared oxlint config: the generated, shipped
  * `dist/.../oxlintrc.json` works as an external `--config` for a consumer that
- * has NO local oxlint config and NO oxlint dependency. Exercises the real
- * oxlint binary against the real webpresso jsPlugins.
+ * has NO local oxlint config and NO direct oxlint dependency. Exercises the real
+ * Vite+ lint facade against the real webpresso jsPlugins.
  *
  * Gated on the built artifacts because oxlint loads jsPlugins as compiled `.js`
  * (it cannot load the `.ts` sources) — so this is meaningful only after `build`
@@ -18,10 +18,10 @@ import { afterEach, describe, expect, it } from "vitest";
  */
 const ROOT = process.cwd();
 const SHARED_CONFIG = join(ROOT, "dist/esm/config/oxlint/oxlintrc.json");
-const OXLINT_BIN = join(ROOT, "node_modules/.bin/oxlint");
-const BUILT = existsSync(SHARED_CONFIG) && existsSync(OXLINT_BIN);
+const VP_BIN = join(ROOT, "node_modules/.bin/vp");
+const BUILT = existsSync(SHARED_CONFIG) && existsSync(VP_BIN);
 
-describe.skipIf(!BUILT)("shared oxlint config (built dist) as external --config", () => {
+describe.skipIf(!BUILT)("shared oxlint config (built dist) via Vite+ lint facade", () => {
   const dirs: string[] = [];
   afterEach(() => {
     for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
@@ -30,6 +30,7 @@ describe.skipIf(!BUILT)("shared oxlint config (built dist) as external --config"
   function makeConsumer(): string {
     const dir = mkdtempSync(join(tmpdir(), "wp-oxlint-e2e-"));
     dirs.push(dir);
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ type: "module" }) + "\n");
     mkdirSync(join(dir, "src"), { recursive: true });
     mkdirSync(join(dir, "dist"), { recursive: true });
     // A real webpresso-imports violation (relative parent import).
@@ -45,8 +46,8 @@ describe.skipIf(!BUILT)("shared oxlint config (built dist) as external --config"
     return dir;
   }
 
-  function runOxlint(cwd: string): { status: number | null; out: string } {
-    const result = spawnSync(OXLINT_BIN, ["--config", SHARED_CONFIG, "."], {
+  function runVpLint(cwd: string): { status: number | null; out: string } {
+    const result = spawnSync(VP_BIN, ["lint", "--config", SHARED_CONFIG, "."], {
       cwd,
       encoding: "utf8",
     });
@@ -54,19 +55,19 @@ describe.skipIf(!BUILT)("shared oxlint config (built dist) as external --config"
   }
 
   it("flags a webpresso jsPlugin rule in consumer source", () => {
-    const { out } = runOxlint(makeConsumer());
+    const { out } = runVpLint(makeConsumer());
     expect(out).toContain("webpresso-imports(no-relative-parent-imports)");
     expect(out).toContain("src/bad.ts");
   });
 
   it("applies ignorePatterns relative to the consumer project, not the config dir", () => {
-    const { out } = runOxlint(makeConsumer());
+    const { out } = runVpLint(makeConsumer());
     // dist/ignored.ts contains the same violation but must be skipped.
     expect(out).not.toContain("ignored.ts");
   });
 
   it("exits non-zero when the consumer has lint errors", () => {
-    const { status } = runOxlint(makeConsumer());
+    const { status } = runVpLint(makeConsumer());
     expect(status).not.toBe(0);
   });
 });

@@ -79,16 +79,14 @@ breaks auto-logging and hides real output.
 
 Use the `wp_format` MCP tool or `wp format`. Do not present raw
 TypeScript/Bun source-entrypoint commands as agent-facing fallbacks; those
-belong inside source-level tests only. **Never
-invoke `oxfmt` directly without the correct flags** — it requires
-`--ignore-path .gitignore` to skip `.prettierignore` (which contains `*` and
-silently excludes every file), and the binary lives in `node_modules/.bin`, not a
-global install.
+belong inside source-level tests only. Do not invoke `oxfmt` directly: in Vite+
+projects the `node_modules/.bin/oxfmt` shim is for editor/LSP discovery, while
+normal formatting goes through the Vite+ facade.
 
-If `wp_format` is unavailable, the correct direct invocation is:
+If `wp_format` is unavailable, use the repo-owned Vite+ facade:
 
 ```bash
-cd <repo-root> && ./node_modules/.bin/oxfmt --write --ignore-path .gitignore
+cd <repo-root> && vp fmt .
 ```
 
 ## Other Rules

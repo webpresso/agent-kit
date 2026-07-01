@@ -143,8 +143,29 @@ describe("runPromotionCommand", () => {
     }
   });
 
-  it("uses the packaged wp launcher for bare wp commands instead of repoRoot/bin/wp", () => {
-    const root = mkdtempSync(path.join(tmpdir(), "promotion-bare-wp-"));
+  it("uses repoRoot/bin/wp for bare wp commands when a repo launcher exists", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "promotion-bare-wp-local-"));
+    try {
+      const localLauncher = path.join(root, "bin", process.platform === "win32" ? "wp.cmd" : "wp");
+      mkdirSync(path.dirname(localLauncher), { recursive: true });
+      writeFileSync(localLauncher, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+      const spawn = vi.fn(() => ({ status: 0, signal: null, stdout: "", stderr: "" }));
+
+      runPromotionCommand(root, "wp lint", { spawn });
+
+      expect(spawn).toHaveBeenCalledTimes(1);
+      const [command, args, options] = spawn.mock.calls[0] ?? [];
+      expect(command).toBe(localLauncher);
+      expect(args).toEqual(["lint"]);
+      expect(options.cwd).toBe(root);
+      expect(options.env.PATH ?? "").toContain(`${root}${path.sep}bin`);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("falls back to the packaged wp launcher for bare wp commands when no repo launcher exists", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "promotion-bare-wp-packaged-"));
     try {
       const spawn = vi.fn(() => ({ status: 0, signal: null, stdout: "", stderr: "" }));
       runPromotionCommand(root, "wp lint", { spawn });
@@ -153,9 +174,6 @@ describe("runPromotionCommand", () => {
       const [command, args, options] = spawn.mock.calls[0] ?? [];
       expect(command).toBe(process.execPath);
       expect(args[0]).toMatch(/(?:^|\/)bin\/wp(?:\.cmd)?$/);
-      expect(args[0]).not.toBe(
-        path.join(root, "bin", process.platform === "win32" ? "wp.cmd" : "wp"),
-      );
       expect(args.slice(1)).toEqual(["lint"]);
       expect(options.cwd).toBe(root);
       expect(options.env.PATH ?? "").not.toContain(`${root}${path.sep}bin`);

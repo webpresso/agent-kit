@@ -22,6 +22,8 @@ export interface ResolveRunnerOptions {
   /** @deprecated Use {@link outputPolicy} for explicit output routing. */
   readonly filterOutput?: boolean;
   readonly outputPolicy?: ManagedRunnerOutputPolicy;
+  /** @internal Test seam for package-bin resolution failures. */
+  readonly resolvePackageBin?: (packageName: string, binName: string) => string | null;
 }
 
 type ManagedToolSpec =
@@ -31,13 +33,27 @@ type ManagedToolSpec =
       readonly binName: string;
       readonly fallbackArgs?: readonly string[];
       readonly runWithNode?: boolean;
+      /** When the managed package is unavailable, use the facade command directly instead of `vp exec <bin>`. */
+      readonly fallbackToFacade?: boolean;
     };
 
 const require = createRequire(import.meta.url);
 
 const MANAGED_TOOL_PREFIX: Readonly<Record<string, ManagedToolSpec>> = {
-  oxfmt: { packageName: "oxfmt", binName: "oxfmt" },
-  oxlint: { packageName: "oxlint", binName: "oxlint" },
+  oxfmt: {
+    packageName: "vite-plus",
+    binName: "vp",
+    fallbackArgs: ["fmt"],
+    runWithNode: true,
+    fallbackToFacade: true,
+  },
+  oxlint: {
+    packageName: "vite-plus",
+    binName: "vp",
+    fallbackArgs: ["lint"],
+    runWithNode: true,
+    fallbackToFacade: true,
+  },
   playwright: { packageName: "@playwright/test", binName: "playwright" },
   stryker: { packageName: "@stryker-mutator/core", binName: "stryker" },
   tsc: { packageName: "typescript", binName: "tsc" },
@@ -137,13 +153,15 @@ export function resolveRunner(
 function resolveManagedTool(
   tool: string,
   spec: ManagedToolSpec,
-  options: Pick<ResolveRunnerOptions, "nodeExecPath"> = {},
+  options: Pick<ResolveRunnerOptions, "nodeExecPath"> & {
+    readonly resolvePackageBin?: typeof resolvePackageBin;
+  } = {},
 ): ManagedRunnerResolution {
   if ("command" in spec) {
     return { tool, command: spec.command, args: [...spec.args], source: "managed" };
   }
 
-  const binPath = resolvePackageBin(spec.packageName, spec.binName);
+  const binPath = (options.resolvePackageBin ?? resolvePackageBin)(spec.packageName, spec.binName);
   if (binPath) {
     if (spec.runWithNode) {
       return {
@@ -154,6 +172,10 @@ function resolveManagedTool(
       };
     }
     return { tool, command: binPath, args: [...(spec.fallbackArgs ?? [])], source: "managed" };
+  }
+
+  if (spec.fallbackToFacade) {
+    return { tool, command: "vp", args: [...(spec.fallbackArgs ?? [])], source: "fallback" };
   }
 
   if (tool !== "vp") {

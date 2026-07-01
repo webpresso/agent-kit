@@ -35,6 +35,7 @@ describe("wp_blueprint_promote — planned trust gate ordering", () => {
     expect(ensureFresh).toHaveBeenCalledOnce();
   });
 
+  // Full hard-gate path: real git provenance checks + promotion gate subprocess + projection reingest.
   it("calls pushEvent + ensureFresh for revision-token planned transition", async () => {
     const { pushEvent, ensureFresh } = installMockSyncAdapter();
     const harness = await makePlatformBlueprintHarness({
@@ -73,5 +74,5 @@ describe("wp_blueprint_promote — planned trust gate ordering", () => {
       toStatus: "planned",
     });
     expect(ensureFresh).toHaveBeenCalledTimes(2);
-  });
+  }, 20_000);
 });

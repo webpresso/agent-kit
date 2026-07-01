@@ -27,16 +27,20 @@ function bundledVpArgs(...tail: string[]) {
 }
 
 describe("buildLintCommand", () => {
-  it("builds basic lint command", () => {
+  it("builds basic lint command through Vite+", () => {
     const cmd = buildLintCommand({ type: "all", value: [] });
-    expect(cmd.command).toBe("oxlint");
-    expect(cmd.args).toEqual(["."]);
+    expect(cmd.command).toBe(process.execPath);
+    expect(cmd.args).toEqual([expect.stringMatching(/vite-plus.*bin.*vp/), "lint", "."]);
   });
 
-  it("builds lint command with paths", () => {
+  it("builds lint command with paths through Vite+", () => {
     const cmd = buildLintCommand({ type: "package", value: ["packages/cli2"] });
-    expect(cmd.command).toBe("oxlint");
-    expect(cmd.args).toEqual(["packages/cli2"]);
+    expect(cmd.command).toBe(process.execPath);
+    expect(cmd.args).toEqual([
+      expect.stringMatching(/vite-plus.*bin.*vp/),
+      "lint",
+      "packages/cli2",
+    ]);
   });
 
   it("builds lint command with fix flag", () => {
@@ -358,7 +362,7 @@ describe("commandConfigToString", () => {
   });
 
   it("handles empty args", () => {
-    expect(commandConfigToString({ command: "oxlint", args: [] })).toBe("oxlint");
+    expect(commandConfigToString({ command: "vp", args: ["lint", "."] })).toBe("vp lint .");
   });
 
   it("handles multiple args", () => {

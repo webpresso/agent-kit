@@ -20,7 +20,7 @@ Refine a blueprint by applying the canonical plan-refine methodology to the actu
 
 ## What This Command Does
 
-Edits the canonical blueprint markdown (`blueprints/*/<slug>.md` by default, or `blueprints/*/<slug>/_overview.md` for folder-shaped plans) so the blueprint is:
+Edits the canonical blueprint markdown (`blueprints/*/<slug>/_overview.md` for current generated plans, or legacy `blueprints/*/<slug>.md`) so the blueprint is:
 
 - fact-checked against current docs and repo reality
 - aligned with planning and testing rules
