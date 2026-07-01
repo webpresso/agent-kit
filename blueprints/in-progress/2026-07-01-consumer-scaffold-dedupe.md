@@ -1,16 +1,21 @@
 ---
 type: blueprint
 owner: webpresso
-title: "Consumer scaffold dedupe"
-status: parked
+title: Consumer scaffold dedupe
+status: in-progress
 complexity: M
-created: "2026-07-01"
-last_updated: "2026-07-01"
+created: '2026-07-01'
+last_updated: '2026-07-01'
 progress_pct: 45
-progress: "Agent-config Playwright quality scaffold surface is implemented; final consumer smoke deletion waits for package publication."
-parked_reason: "Waiting for @webpresso/agent-config release containing ./playwright/quality-scaffold before deleting remaining consumer root smoke specs."
+progress: 67% (2/3 tasks done, 1 blocked, updated 2026-07-01)
+parked_reason: >-
+  Waiting for @webpresso/agent-config release containing
+  ./playwright/quality-scaffold before deleting remaining consumer root smoke
+  specs.
 depends_on:
-  - "webpresso/monorepo#101: consumer duplication gate"
+  - 'webpresso/monorepo#101: consumer duplication gate'
+worktree_owner_id: owner-7b5c97a59849
+worktree_owner_branch: bp/2026-07-01-consumer-scaffold-dedupe
 ---
 
 # Consumer scaffold dedupe
