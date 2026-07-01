@@ -4,7 +4,7 @@ status: draft
 complexity: S
 created: "2026-07-01"
 last_updated: "2026-07-01"
-progress: "0% (drafted)"
+progress: "100% (implemented; verification passed)"
 depends_on: []
 cross_repo_depends_on: []
 tags: [native, session-memory, ci, performance]
@@ -24,7 +24,7 @@ tags: [native, session-memory, ci, performance]
 
 #### [backend] Task 1.1: Stream snapshot serialization and cap enforcement
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -45,11 +45,11 @@ Fix `session_memory_core::session::snapshot` so the time cap is enforced while r
 
 **Acceptance:**
 
-- [ ] Regression proof fails before production change and passes after.
-- [ ] `snapshot()` still persists valid JSON for captured events.
-- [ ] No benchmark threshold or timeout is increased.
-- [ ] `pnpm run native:session-memory:test` passes.
-- [ ] `pnpm run native:session-memory:bench:run && pnpm run native:session-memory:bench:gate` passes locally or any environment limitation is recorded with evidence.
+- [x] Regression proof fails before production change and passes after.
+- [x] `snapshot()` still persists valid JSON for captured events.
+- [x] No benchmark threshold or timeout is increased.
+- [x] `pnpm run native:session-memory:test` passes.
+- [x] `pnpm run native:session-memory:bench:run && pnpm run native:session-memory:bench:gate` passes locally.
 
 ## Verification Gates
 
@@ -64,3 +64,14 @@ Fix `session_memory_core::session::snapshot` so the time cap is enforced while r
 - Raising `snapshot_50_events` thresholds or workflow timeouts.
 - Broad benchmark redesign beyond the failing hot path.
 - Release-package changes from PR #337.
+
+
+## Verification evidence
+
+Fresh verification on 2026-07-01:
+
+- Regression-first proof: `cargo test --manifest-path native/session-memory-engine/Cargo.toml --package session-memory-core test_snapshot_zero_cap_does_not_scan_full_backlog -- --exact --nocapture` failed before the production change with SQLite `OperationInterrupted`, then passed after the fix.
+- `pnpm run native:session-memory:fmt` passed.
+- `pnpm run native:session-memory:test` passed: 37 Rust tests across `session-memory-core` and `session-memory-napi`, including the new zero-cap backlog regression.
+- `pnpm run native:session-memory:clippy` passed with `-D warnings`.
+- `pnpm run native:session-memory:bench:run && pnpm run native:session-memory:bench:gate` passed; `snapshot_50_events` mean was 117,030 ns and median was 117,468 ns against the unchanged 500,000 ns SLO.

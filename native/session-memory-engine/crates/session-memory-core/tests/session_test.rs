@@ -148,6 +148,62 @@ fn test_snapshot_timeout_returns_partial() {
 }
 
 #[test]
+fn test_snapshot_zero_cap_does_not_scan_full_backlog() {
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
+
+    let (mut conn, _dir) = make_conn();
+    let agent_id = "agent-large-timeout";
+    let repo_hash = "repo-large-timeout";
+    let event_count = 5_000;
+
+    {
+        let tx = conn.transaction().unwrap();
+        {
+            let mut stmt = tx
+                .prepare(
+                    "INSERT INTO session_events(
+                         session_id, event_id, repo_hash, ts, event_type, tool_name, content, summary, priority, metadata_json
+                     ) VALUES(?1, ?2, ?3, ?4, 'tool_command', 'Bash', ?5, NULL, 50, '{}')",
+                )
+                .unwrap();
+            for i in 0..event_count {
+                stmt.execute(rusqlite::params![
+                    agent_id,
+                    format!("e{i}"),
+                    repo_hash,
+                    i as i64,
+                    format!("command output {i}"),
+                ])
+                .unwrap();
+            }
+        }
+        tx.commit().unwrap();
+    }
+
+    let progress_calls = Arc::new(AtomicUsize::new(0));
+    let progress_calls_for_handler = Arc::clone(&progress_calls);
+    conn.progress_handler(
+        100,
+        Some(move || progress_calls_for_handler.fetch_add(1, Ordering::SeqCst) > 50),
+    )
+    .unwrap();
+
+    let snap = snapshot(&conn, repo_hash, agent_id, 0);
+    conn.progress_handler(0, None::<fn() -> bool>).unwrap();
+
+    let snap = snap
+        .expect("zero-cap snapshot should stop at its cap instead of scanning the full backlog");
+    assert!(!snap.complete, "zero-cap snapshot should be partial");
+    assert!(
+        snap.event_count < event_count,
+        "zero-cap snapshot should not collect the full backlog"
+    );
+}
+
+#[test]
 fn test_restore_empty_query_returns_recent() {
     let (conn, _dir) = make_conn();
     let agent_id = "agent-empty-q";
