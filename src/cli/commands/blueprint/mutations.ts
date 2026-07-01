@@ -19,6 +19,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { parseBlueprint } from "#core/parser";
+import { escapeRegex } from "#utils/string";
 import { openDb } from "#db/connection.js";
 import { resolveBlueprintProjectionDbPath, withMarkdownWriteLock } from "#db/paths.js";
 import { type BlueprintShape, getBlueprintDocumentPaths } from "#utils/document-paths.js";
@@ -27,7 +28,7 @@ import { reIngestProjection } from "#projection-ready.js";
 import { assertAllTasksHaveCanonicalPassingEvidence } from "#verification.js";
 import { applyPromotionTrustGate } from "#trust/promotion.js";
 import matter from "gray-matter";
-import { countDistinctApprovals } from "#lifecycle/audit";
+import { countDistinctLogBackedApprovals } from "#lifecycle/audit";
 
 // ---------------------------------------------------------------------------
 // Platform-first sync adapter (injectable for tests, Tasks 2.6 + 2.7)
@@ -310,7 +311,7 @@ function findTaskStatusLine(
   lines: readonly string[],
   taskId: string,
 ): { lineIndex: number; currentStatus: string; prefix: string; suffix: string } | null {
-  const escapedId = taskId.replace(/\./g, "\\.");
+  const escapedId = escapeRegex(taskId);
   const taskPattern = new RegExp(`^####\\s+(?:\\[[^\\]]+\\]\\s+)?Task\\s+${escapedId}[:\\s]`);
   let inBlock = false;
 
@@ -538,12 +539,13 @@ async function promoteBlueprintLocked(
     // reviewer approvals in frontmatter `approvals:`, checked AFTER the trust gate
     // so trust failures surface first. (The audit sweep only warns on pre-rule
     // blueprints; this blocks NEW promotions.)
-    const distinctApprovals = countDistinctApprovals(
+    const distinctApprovals = countDistinctLogBackedApprovals(
+      currentDocumentPath,
       (matter(content).data as Record<string, unknown>).approvals,
     );
     if (distinctApprovals < 2) {
       throw new Error(
-        `Cannot promote "${slug}" to planned: ${distinctApprovals} distinct reviewer approval(s) in frontmatter \`approvals:\` (need ≥2). Record approvals from distinct reviewers (e.g. /plan-eng-review, /codex, /deepseek) — see catalog/agent/rules/pre-implementation.md.`,
+        `Cannot promote "${slug}" to planned: ${distinctApprovals} distinct reviewer approval(s) in frontmatter \`approvals:\` are backed by committed review evidence (need ≥2). Record approvals from distinct reviewers and commit the matching review ledger (e.g. reviews.md) — see catalog/agent/rules/pre-implementation.md.`,
       );
     }
   }
@@ -574,7 +576,6 @@ async function promoteBlueprintLocked(
           file: currentDocumentPath,
           markdown: refreshedSource,
         });
-        trustedSource = refreshedSource;
       }
     }
   }

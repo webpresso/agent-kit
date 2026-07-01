@@ -1,12 +1,12 @@
 ---
 type: blueprint
 title: Fix flaky pretool-guard in agent-kit source repo via path-stable hook launcher
-status: planned
+status: completed
 complexity: S
 owner: ozby
 created: "2026-06-27"
-last_updated: "2026-06-27"
-progress: "0% (0/4 tasks done, 0 blocked, updated 2026-06-27)"
+last_updated: "2026-06-28"
+progress: "100% (4/4 tasks done, 0 blocked, updated 2026-06-28)"
 tags:
   - hooks
   - dx
@@ -108,51 +108,63 @@ Implementation-time verification (test/typecheck/lint) lives in Task 1.4 below; 
 
 #### Task 1.1: Injectable launcher resolver (compiled binary then absolute bun, no bare-bun)
 
-**Status:** todo
+**Status:** done
 **Wave:** 0
 
 Pure resolver (injected platform/arch/env/exists-probe): compiled bin/runtime binary (existsSync+executable), then $BUN if absolute and executable, then an absolute candidate dir that is executable (/opt/homebrew/bin/bun, ~/.bun/bin/bun, /usr/local/bin/bun). NO command -v, NO bare bun. Returns a discriminated result (compiled, bun, or none). Existing means existsSync-filtered (command-exists.ts:59-78).
 
 **Acceptance:**
 
-- [ ] Resolver is pure/deterministic; unit-tested for compiled-present, bun-absolute-present, and nothing-resolvable (none).
-- [ ] Never returns a bare bun or a relative path.
+- [x] Resolver is pure/deterministic; unit-tested for compiled-present, bun-absolute-present, and nothing-resolvable (none).
+- [x] Never returns a bare bun or a relative path.
 
 #### Task 1.2: Emit the hook-time launcher prelude for the source repo
 
-**Status:** todo
+**Status:** done
 **Wave:** 0
 
 When sourceRepoHooksMustForceSource(repoRoot), emit a POSIX prelude resolving the launcher at hook time: prefer the executable compiled runtime binary, else an executable absolute bun on src/cli/cli.ts, else fail closed. Quote all paths; no command -v, eval, or bare bun; preserve status -eq 2 then exit 2; do not fall back from an exit-2 denial to bun. No bin/wp and no vp-node shim. Drop the vestigial WP_FORCE_SOURCE=1 or document why cli.ts needs it.
 
 **Acceptance:**
 
-- [ ] Source-repo command has the compiled-binary branch, the absolute-bun-on-cli.ts branch, and a fail-closed deny when neither is executable.
-- [ ] No bin/wp launcher, no vp-node shim, no command -v, no bare bun in the emitted command.
-- [ ] Consumer command byte-identical to today; hookCommandEnvPrefix import removed if unused; cognitive complexity at most 8.
+- [x] Source-repo command has the compiled-binary branch, the absolute-bun-on-cli.ts branch, and a fail-closed deny when neither is executable.
+- [x] No bin/wp launcher, no vp-node shim, no command -v, no bare bun in the emitted command.
+- [x] Consumer command byte-identical to today; hookCommandEnvPrefix import removed if unused; cognitive complexity at most 8.
 
 #### Task 1.3: Replace the enshrined-bug test plus host-independent regressions
 
-**Status:** todo
+**Status:** done
 **Wave:** 0
 
 Replace the 'uses node instead of bun when source-mode setup emits hook commands' test (around index.test.ts:1153) with substring assertions on the new shape (NOT helper-equality). Add host-independent regressions that stub PATH and place fake executables on disk and assert exit codes.
 
 **Acceptance:**
 
-- [ ] Branch coverage: compiled-present, absolute-bun fallback, and nothing-resolvable then fail-closed deny.
-- [ ] Regression: fresh clone (bin/runtime absent) under a sanitized PATH still runs empty-json exit 0; runtime-appears-after-setup is picked up because resolution is at hook time.
-- [ ] status -eq 2 then exit 2 preservation asserted.
+- [x] Branch coverage: compiled-present, absolute-bun fallback, and nothing-resolvable then fail-closed deny.
+- [x] Regression: fresh clone (bin/runtime absent) under a sanitized PATH still runs empty-json exit 0; runtime-appears-after-setup is picked up because resolution is at hook time.
+- [x] status -eq 2 then exit 2 preservation asserted.
 
 #### Task 1.4: Scoped verification
 
-**Status:** todo
+**Status:** done
 **Wave:** 1
 
 Verify on the changed surface only.
 
 **Acceptance:**
 
-- [ ] wp test --file src/cli/commands/init/scaffolders/agent-hooks/index.test.ts green.
-- [ ] wp typecheck and wp lint green on the changed file.
-- [ ] Note in bin/\_run.test.ts that the runtime-hooks to compiled-dispatch contract is no longer exercised by the generated source-repo hook.
+- [x] wp test --file src/cli/commands/init/scaffolders/agent-hooks/index.test.ts green.
+- [x] wp typecheck and wp lint green on the changed file.
+- [x] Note in bin/\_run.test.ts that the runtime-hooks to compiled-dispatch contract is no longer exercised by the generated source-repo hook.
+
+## Completion notes
+
+- Implemented a hook-time source-repo launcher that prefers `bin/runtime/<target>/wp`, otherwise uses only absolute bun launchers on `src/cli/cli.ts`, and fails closed for pretool-guard when nothing executable is available.
+- Added pure resolver coverage plus subprocess regressions for sanitized-PATH fresh clones, runtime-after-setup pickup, fail-closed deny behavior, and exit-2 preservation.
+- Preserved consumer hook launcher shape; only source-repo hook commands switched away from `bin/wp` and the vp-node shim.
+
+## Verification evidence
+
+- `./bin/wp test --file src/cli/commands/init/scaffolders/agent-hooks/index.test.ts`
+- `./bin/wp lint --file src/cli/commands/init/scaffolders/agent-hooks/index.ts --file src/cli/commands/init/scaffolders/agent-hooks/index.test.ts --file bin/_run.test.ts`
+- `./bin/wp typecheck`

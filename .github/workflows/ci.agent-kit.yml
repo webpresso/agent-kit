@@ -183,7 +183,7 @@ jobs:
         with:
           workspaces: native/session-memory-engine -> target
       - name: Install cargo-deny
-        uses: taiki-e/install-action@bffeee26d4db9be238a4ea78d8826604ebcb594d # v2
+        uses: taiki-e/install-action@16b05812d776ae1dfaabc8277e421fb6d2506419 # v2
         with:
           tool: cargo-deny@0.19.9
       - run: pnpm install --frozen-lockfile
@@ -271,6 +271,8 @@ jobs:
         uses: docker://ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f # latest on 2026-05-30
         with:
           args: dir --exit-code 1 /github/workspace/.webpresso-packed-surface
+      - name: Security/code-quality regression audit
+        run: ./bin/wp audit security-quality-regressions
       - name: Run wp audit guardrails
         run: ./bin/wp audit guardrails
 
@@ -408,11 +410,11 @@ jobs:
           # against the candidate source, not the last published package.
           vp install -g ../..
 
-          # Run wp setup --yes to avoid TTY prompts. Capture stdout + stderr.
+          # Run wp setup; non-interactive defaults are standard. Capture stdout + stderr.
           # Some delegated package-manager/plugin installers still emit ANSI even
           # when NO_COLOR is set, so normalize the captured transcript before
           # asserting the agent-kit-owned framing contract.
-          RAW_OUTPUT=$(wp setup --yes 2>&1) || {
+          RAW_OUTPUT=$(wp setup 2>&1) || {
             echo "--- wp setup output ---"
             echo "$RAW_OUTPUT"
             echo "FAIL: wp setup exited non-zero"

@@ -1,5 +1,7 @@
 import type { Blueprint } from "#core/parser";
 
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -43,6 +45,23 @@ interface LifecycleAuditFrontmatter {
   worktreeOwnerId?: unknown;
   worktreeOwnerBranch?: unknown;
   approvals?: unknown;
+}
+
+interface ApprovalEntry {
+  reviewer: string;
+  verdict: string;
+  commit?: string;
+  evidence?: string;
+  rev?: string;
+  targetHash?: string;
+}
+
+interface ApprovalReviewRecord {
+  reviewer: string;
+  verdict: string;
+  commit?: string;
+  rev?: string;
+  targetHash?: string;
 }
 
 function isBlueprintOverview(file: string): boolean {
@@ -94,18 +113,160 @@ const APPROVAL_GATED_STATUSES = new Set(["planned"]);
  * hard gate so both apply identical logic.
  */
 export function countDistinctApprovals(approvals: unknown): number {
-  const entries = Array.isArray(approvals) ? approvals : [];
   return new Set(
-    entries
-      .filter((e): e is Record<string, unknown> => Boolean(e) && typeof e === "object")
-      .filter((e) => String(e.verdict ?? "").toLowerCase() === "approve")
-      .map((e) =>
-        String(e.reviewer ?? "")
-          .trim()
-          .toLowerCase(),
-      )
-      .filter((reviewer) => reviewer.length > 0),
+    normalizeApprovalEntries(approvals)
+      .filter((entry) => entry.verdict === "approve")
+      .map((entry) => entry.reviewer),
   ).size;
+}
+
+function normalizeApprovalEntries(approvals: unknown): ApprovalEntry[] {
+  const entries = Array.isArray(approvals) ? approvals : [];
+  return entries
+    .filter((e): e is Record<string, unknown> => Boolean(e) && typeof e === "object")
+    .map((e) => ({
+      reviewer: String(e.reviewer ?? "")
+        .trim()
+        .toLowerCase(),
+      verdict: String(e.verdict ?? "")
+        .trim()
+        .toLowerCase(),
+      commit:
+        typeof e.commit === "string" && e.commit.trim().length > 0 ? e.commit.trim() : undefined,
+      evidence:
+        typeof e.evidence === "string" && e.evidence.trim().length > 0
+          ? e.evidence.trim()
+          : undefined,
+      rev: typeof e.rev === "string" && e.rev.trim().length > 0 ? e.rev.trim() : undefined,
+      targetHash:
+        typeof e.targetHash === "string" && e.targetHash.trim().length > 0
+          ? e.targetHash.trim()
+          : undefined,
+    }))
+    .filter((entry) => entry.reviewer.length > 0);
+}
+
+function resolveApprovalEvidencePath(file: string, evidence: string | undefined): string | null {
+  if (!evidence) return null;
+  if (path.isAbsolute(evidence)) return null;
+  const normalizedEvidence = normalizePath(evidence);
+  if (
+    normalizedEvidence.length === 0 ||
+    normalizedEvidence === "." ||
+    normalizedEvidence.startsWith("../") ||
+    normalizedEvidence.includes("/../")
+  ) {
+    return null;
+  }
+  const resolved = path.resolve(path.dirname(file), evidence);
+  const blueprintDir = path.dirname(file);
+  const relativeToBlueprint = normalizePath(path.relative(blueprintDir, resolved));
+  if (relativeToBlueprint === ".." || relativeToBlueprint.startsWith("../")) return null;
+  if (!existsSync(resolved)) return null;
+  if (!isGitTracked(findGitRoot(file), resolved)) return null;
+  return resolved;
+}
+
+const REVIEW_ENTRY_MARKER = "<!-- wp:review-entry ";
+
+function parseApprovalReviewRecordsFromLedger(markdown: string): ApprovalReviewRecord[] {
+  const records: ApprovalReviewRecord[] = [];
+  for (const line of markdown.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith(REVIEW_ENTRY_MARKER) && trimmed.endsWith("-->")) {
+      const json = trimmed.slice(REVIEW_ENTRY_MARKER.length, -3).trim();
+      try {
+        const parsed = JSON.parse(json) as Record<string, unknown>;
+        records.push({
+          reviewer: String(parsed.reviewer ?? "")
+            .trim()
+            .toLowerCase(),
+          verdict: String(parsed.verdict ?? "")
+            .trim()
+            .toLowerCase(),
+          commit:
+            typeof parsed.commit === "string" && parsed.commit.trim().length > 0
+              ? parsed.commit.trim()
+              : undefined,
+          rev:
+            typeof parsed.rev === "string" && parsed.rev.trim().length > 0
+              ? parsed.rev.trim()
+              : undefined,
+          targetHash:
+            typeof parsed.targetHash === "string" && parsed.targetHash.trim().length > 0
+              ? parsed.targetHash.trim()
+              : undefined,
+        });
+      } catch {
+        // Ignore malformed structured records; they remain human-visible evidence only.
+      }
+      continue;
+    }
+
+    if (!trimmed.startsWith("|")) continue;
+    const cells = trimmed
+      .slice(1, trimmed.endsWith("|") ? -1 : undefined)
+      .split("|")
+      .map((cell) => cell.trim());
+    if (cells.length < 4) continue;
+    if (cells.every((cell) => /^-+$/.test(cell))) continue;
+    const reviewer = cells[1]?.toLowerCase();
+    const verdict = cells[3]?.toLowerCase();
+    if (!reviewer || reviewer === "reviewer") continue;
+    records.push({
+      reviewer,
+      verdict: verdict ?? "",
+      ...(cells[2] && cells[2] !== "Rev" ? { rev: cells[2] } : {}),
+    });
+  }
+  return records;
+}
+
+function approvalMatchesRecord(entry: ApprovalEntry, record: ApprovalReviewRecord): boolean {
+  if (record.reviewer !== entry.reviewer || record.verdict !== "approve") return false;
+  if (entry.rev !== undefined && record.rev !== entry.rev) return false;
+  if (entry.commit !== undefined && record.commit !== entry.commit) return false;
+  if (entry.targetHash !== undefined && record.targetHash !== entry.targetHash) return false;
+  return true;
+}
+
+function findGitRoot(file: string): string | null {
+  let current = path.dirname(file);
+  while (true) {
+    if (existsSync(path.join(current, ".git"))) return current;
+    const parent = path.dirname(current);
+    if (parent === current) return null;
+    current = parent;
+  }
+}
+
+function isGitTracked(repoRoot: string | null, file: string): boolean {
+  if (!repoRoot) return false;
+  const relative = path.relative(repoRoot, file);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) return false;
+  try {
+    execFileSync("git", ["ls-files", "--error-unmatch", "--", relative], {
+      cwd: repoRoot,
+      stdio: "ignore",
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function countDistinctLogBackedApprovals(file: string, approvals: unknown): number {
+  const distinct = new Set<string>();
+  for (const entry of normalizeApprovalEntries(approvals)) {
+    if (entry.verdict !== "approve") continue;
+    const evidencePath = resolveApprovalEvidencePath(file, entry.evidence);
+    if (!evidencePath) continue;
+    const records = parseApprovalReviewRecordsFromLedger(readFileSync(evidencePath, "utf8"));
+    if (records.some((record) => approvalMatchesRecord(entry, record))) {
+      distinct.add(entry.reviewer);
+    }
+  }
+  return distinct.size;
 }
 
 export function validateApprovalGate(
@@ -116,17 +277,13 @@ export function validateApprovalGate(
   const status = typeof frontmatter.status === "string" ? frontmatter.status : "";
   if (!APPROVAL_GATED_STATUSES.has(status)) return [];
 
-  const distinct = countDistinctApprovals(frontmatter.approvals);
+  const distinct = countDistinctLogBackedApprovals(file, frontmatter.approvals);
   if (distinct < 2) {
-    // WARNING on the audit sweep (non-breaking for pre-rule blueprints); the HARD
-    // block lives at the draft→planned promotion command (validateApprovalGate is
-    // also called there), so new promotions are prevented while existing planned
-    // blueprints surface a fixable warning rather than failing CI.
     return [
       {
         file,
-        level: "warning",
-        message: `Blueprint is '${status}' but frontmatter \`approvals:\` has ${distinct} distinct approving reviewer(s) (need ≥2). Promotion past draft requires ≥2 distinct reviewer approvals — see catalog/agent/rules/pre-implementation.md.`,
+        level: "error",
+        message: `Blueprint is '${status}' but frontmatter \`approvals:\` has ${distinct} distinct approving reviewer(s) backed by committed review evidence (need ≥2). Promotion past draft requires ≥2 distinct reviewer approvals with matching committed review records — see catalog/agent/rules/pre-implementation.md.`,
       },
     ];
   }

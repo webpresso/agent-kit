@@ -11,6 +11,8 @@ depends_on:
   - "blueprints/completed/2026-06-25-reduce-test-wall-time.md"
 cross_repo_depends_on: []
 tags: [ci, github-actions, performance, native]
+historical_zero_task_waiver: true
+historical_zero_task_rationale: "Historical completed blueprint preserved as a zero-task record during lifecycle hardening; no executable task blocks were authored in the original document."
 ---
 
 # PR CI change-scope gating for redundant jobs

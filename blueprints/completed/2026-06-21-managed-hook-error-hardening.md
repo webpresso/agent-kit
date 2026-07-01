@@ -48,6 +48,8 @@ diagnostic metadata, and expose recent records through `wp hooks errors`.
 
 #### Task 1.1: Harden managed hook child-failure fallback policy
 
+**Status:** done
+
 - [x] Convert unexpected child nonzero/signal results to event-specific safe
       fallbacks while preserving exit `2` passthrough.
 - [x] Persist bounded managed-hook degradation records for launch, spawn, child,
@@ -56,11 +58,15 @@ diagnostic metadata, and expose recent records through `wp hooks errors`.
 
 #### Task 1.2: Expose recent managed hook failures through CLI
 
+**Status:** done
+
 - [x] Add `wp hooks errors` as a read-only command over the repo-scoped error
       store.
 - [x] Cover human-readable and JSON output paths.
 
 #### Task 1.3: Package the implementation for review
+
+**Status:** done
 
 - [x] Keep this blueprint in the PR diff so the blueprint coverage gate can
       connect the implementation to its plan.
@@ -69,6 +75,8 @@ diagnostic metadata, and expose recent records through `wp hooks errors`.
       strings before execution while still covering every managed hook bin.
 
 #### Task 1.4: Fix blueprint lifecycle audit timeout
+
+**Status:** done
 
 - [x] Cache DB parser organization detection per git root and read local
       `.git/config` before shell fallback instead of spawning `git remote get-url

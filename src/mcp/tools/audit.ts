@@ -412,6 +412,19 @@ export async function dispatchAudit(input: AkAuditInput): Promise<AuditPayload> 
         details: auditResult,
       };
     }
+    case "security-quality-regressions": {
+      const { auditSecurityQualityRegressions } =
+        await import("#audit/security-quality-regressions");
+      const auditResult = auditSecurityQualityRegressions(
+        input.cwd ?? input.directory ?? process.cwd(),
+      );
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      };
+    }
     case "secret-provider-quarantine": {
       const { auditSecretProviderQuarantine } = await import("#audit/secret-provider-quarantine");
       const auditResult = auditSecretProviderQuarantine(

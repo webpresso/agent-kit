@@ -16,6 +16,8 @@ tags:
   - claude
   - gstack
   - omx
+historical_zero_task_waiver: true
+historical_zero_task_rationale: "Historical completed blueprint preserved as a zero-task record during lifecycle hardening; no executable task blocks were authored in the original document."
 ---
 
 # Hook Simplification + gstack/OMX Legacy Removal Gate

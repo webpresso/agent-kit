@@ -10,6 +10,8 @@ progress: "100%"
 depends_on: []
 cross_repo_depends_on: []
 tags: [release, packaging, readiness, smoke]
+historical_zero_task_waiver: true
+historical_zero_task_rationale: "Historical completed blueprint preserved as a zero-task record during lifecycle hardening; no executable task blocks were authored in the original document."
 ---
 
 # Thin-root release readiness split for `@webpresso/agent-kit`

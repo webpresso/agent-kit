@@ -1,6 +1,6 @@
 ---
 type: docs-index
-last_updated: "2026-06-26"
+last_updated: "2026-06-29"
 ---
 
 # Agent Kit docs
@@ -10,7 +10,7 @@ with the shortest safe path:
 
 ```bash
 vp install -g @webpresso/agent-kit
-wp setup --project-init
+wp setup repair --project-init
 wp hooks doctor
 ```
 
@@ -18,7 +18,7 @@ wp hooks doctor
 
 - [Getting started](./getting-started.md) — install, setup ownership, first tool call
 - [Is Agent Kit for me?](./is-agent-kit-for-me.md) — fit, tradeoffs, and non-goals
-- [Add-ons](./add-ons.md) — optional skills and integrations
+- [Add-ons](./add-ons.md) — optional skills, WP-owned agent tools, and integrations
 - [Markdown fact check](./markdown-fact-check.md) — how public docs stay falsifiable
 
 ## Core references

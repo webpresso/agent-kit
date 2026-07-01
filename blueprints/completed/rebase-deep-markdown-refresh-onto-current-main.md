@@ -1,13 +1,18 @@
 ---
 type: blueprint
-status: draft
+title: "Rebase deep markdown refresh onto current main"
+owner: ozby
+status: completed
 complexity: XS
 created: "2026-06-26"
-last_updated: "2026-06-26"
-progress: "100% (implemented, awaiting verification record)"
+last_updated: "2026-06-30"
+progress: "100% (merged in PR #275; verification recorded)"
 depends_on: []
 cross_repo_depends_on: []
-tags: [docs, rebase, mergeability]
+tags:
+  - docs
+  - rebase
+  - mergeability
 ---
 
 # Rebase deep markdown refresh onto current main
@@ -25,7 +30,7 @@ Make PR #275 merge cleanly on current `main` without reintroducing the retired `
 
 ## Tasks
 
-### [git] Task 1.1: Rebase the stale PR commit onto current main
+#### [git] Task 1.1: Rebase the stale PR commit onto current main
 
 **Status:** done
 
@@ -38,7 +43,7 @@ Make PR #275 merge cleanly on current `main` without reintroducing the retired `
 - [x] Branch is rebuilt from current `origin/main`
 - [x] Stale `instruction-surfaces*` conflicts are resolved in favor of current `main`
 
-### [docs] Task 1.2: Keep the refresh consistent with repo policy
+#### [docs] Task 1.2: Keep the refresh consistent with repo policy
 
 **Status:** done
 
@@ -66,3 +71,35 @@ Make PR #275 merge cleanly on current `main` without reintroducing the retired `
 
 - rewriting the docs refresh itself beyond mergeability/policy fixes
 - changing current routing-source behavior on `main`
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-30T21:22:00Z
+- verified-head: 6554b58ad7d18b6d3b415869a680fccc934b3300
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID  | Claim                                                       | Evidence                                                                    |
+| --- | ----------------------------------------------------------- | --------------------------------------------------------------------------- |
+| C1  | This completed blueprint has a canonical repository record. | repo:blueprints/completed/rebase-deep-markdown-refresh-onto-current-main.md |
+
+### Material Decisions
+
+| ID  | Decision        | Chosen option                                         | Rejected alternatives            | Rationale                                                                                       |
+| --- | --------------- | ----------------------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------- |
+| D1  | Lifecycle state | Keep this blueprint as a completed historical record. | Leave the record in draft state. | The implementation already landed on `main`; this record now matches shipped lifecycle reality. |
+
+### Promotion Gates
+
+| Gate       | Command                  | Expected outcome | Last result                  |
+| ---------- | ------------------------ | ---------------- | ---------------------------- |
+| trust-gate | wp audit blueprint-trust | pass             | pass at 2026-06-30T21:22:00Z |
+
+### Residual Unknowns
+
+None.

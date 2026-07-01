@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: "2026-06-26"
+last_updated: "2026-07-01"
 ---
 
 # Security audits
@@ -118,6 +118,46 @@ The audit automatically skips the `@webpresso/agent-kit` source repo itself.
 wp audit consumer-agent-kit-dependency
 ```
 
+### `security-quality-regressions`
+
+Fails on high-signal security and quality smells that have already produced
+GitHub CodeQL or Code Quality findings in this repo.
+
+**Catches:**
+
+- workflow files without top-level least-privilege `permissions`
+- URL allow-list checks that rely on substring matching instead of parsing
+  `URL` protocol/hostname
+- dynamic `RegExp` construction that escapes only dots instead of using
+  `escapeRegex`/`escapeRegExp`
+- markdown table pipe escaping that uses local pipe-only backslash replacement
+
+```bash
+wp audit security-quality-regressions
+```
+
+This audit is intentionally narrow. GitHub CodeQL and Code Quality remain the
+authoritative analyzers for broad security and maintainability coverage.
+
+## GitHub merge protection runbook
+
+After the current backlog is green, enable native GitHub rulesets on `main`:
+
+1. In repository settings, open **Rules → Rulesets** and edit the active default
+   branch ruleset.
+2. Enable **Require code scanning results**.
+   - Tool: `CodeQL`
+   - Security alerts: `Medium or higher`
+   - Alerts: `Errors and Warnings`
+3. Confirm a recent pull request has a successful `CodeQL - Code Quality` check.
+4. Enable **Require code quality results**.
+   - Severity: `Warnings and higher`
+5. Keep `WP check` required so local guardrails, tests, lint, and typecheck stay
+   merge-blocking.
+
+AI findings are advisory for now: GitHub documents them as a recent-default-branch
+view, not as a stable REST/ruleset gate.
+
 ## Pre-commit wiring
 
 Add to `.husky/pre-commit`:
@@ -196,4 +236,5 @@ contract, local runtime override behavior, and error reference, see
 - [`src/audit/no-dev-vars.ts`](../src/audit/no-dev-vars.ts)
 - [`src/audit/secret-provider-quarantine.ts`](../src/audit/secret-provider-quarantine.ts)
 - [`src/audit/secrets-config.ts`](../src/audit/secrets-config.ts)
+- [`src/audit/security-quality-regressions.ts`](../src/audit/security-quality-regressions.ts)
 - [`src/audit/lib/secrets-policy.ts`](../src/audit/lib/secrets-policy.ts) — shared types and helpers

@@ -14,6 +14,7 @@ export const FORMAT_COMMAND_HELP = [
   "Examples:",
   "  wp format            # rewrite files in place",
   "  wp format --file src/index.ts",
+  "  wp format --file src/a.ts src/b.ts",
   "  wp format --affected              # staged formatable files only",
   "  wp format --affected --branch     # changed vs origin/${GITHUB_BASE_REF:-main}",
   "  wp format --check    # exit 1 on any unformatted file (no writes)",
@@ -48,13 +49,25 @@ interface FormatCommandDeps {
 export function registerFormatCommand(cli: CAC, deps: FormatCommandDeps = {}): void {
   addAffectedOptions(
     cli
-      .command("format", FORMAT_COMMAND_HELP)
+      .command("format [...targets]", FORMAT_COMMAND_HELP)
       .option("--file <path>", "Format a file or path target (repeatable)"),
   )
     .option("--check", "Check formatting without writing changes; exit 1 on drift")
     .option("--full", "Print the full raw output instead of the default summary-first view")
-    .action(async (flags: Record<string, unknown>) => {
-      const files = toArray(flags.file as string | string[] | undefined);
+    .action(async (targetsOrFlags: unknown, maybeFlags?: Record<string, unknown>) => {
+      const positionalTargets = Array.isArray(targetsOrFlags)
+        ? targetsOrFlags.filter((target): target is string => typeof target === "string")
+        : [];
+      const flags = (maybeFlags ?? (isRecord(targetsOrFlags) ? targetsOrFlags : {})) as Record<
+        string,
+        unknown
+      >;
+      const flagFiles = toArray(flags.file as string | string[] | undefined);
+      if (positionalTargets.length > 0 && flagFiles.length === 0) {
+        console.error("File targets must be passed with --file.");
+        return 1;
+      }
+      const files = [...flagFiles, ...positionalTargets];
       const affected = Boolean(flags.affected);
       const branch = Boolean(flags.branch);
       const check = Boolean(flags.check);
@@ -194,4 +207,8 @@ function filterFormatableFiles(files: readonly string[], cwd: string): string[] 
 function toArray(value: readonly string[] | string | undefined): string[] {
   if (value === undefined) return [];
   return typeof value === "string" ? [value] : [...value];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }

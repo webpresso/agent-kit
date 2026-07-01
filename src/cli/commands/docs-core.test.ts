@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { runDocsLint } from "./docs-core.js";
@@ -202,5 +205,24 @@ describe("runDocsLint", () => {
         expect(typeof v.rule).toBe("string");
       }
     });
+  });
+});
+
+describe("docs/add-ons optional-tool table", () => {
+  it("keeps the optional agent-tools table well-formed", () => {
+    const markdown = readFileSync(path.join(process.cwd(), "docs", "add-ons.md"), "utf8");
+    const lines = markdown.split("\n");
+    const headerIndex = lines.findIndex((line) =>
+      line.startsWith("| Target           | Canonical command"),
+    );
+
+    expect(headerIndex).toBeGreaterThanOrEqual(0);
+    const table = lines.slice(headerIndex, headerIndex + 8);
+    const columnCounts = table.map(
+      (line) => line.split("|").slice(1, line.endsWith("|") ? -1 : undefined).length,
+    );
+    expect(new Set(columnCounts)).toEqual(new Set([3]));
+    expect(table.join("\n")).toContain("Supports `--scope user` or `--scope project`.");
+    expect(table.join("\n")).not.toContain("user                  | project");
   });
 });

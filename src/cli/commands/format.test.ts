@@ -27,7 +27,9 @@ import { buildFormatCommand, FORMAT_COMMAND_HELP, registerFormatCommand } from "
 
 function buildFakeCli() {
   const options: string[] = [];
-  let capturedAction: ((flags: Record<string, unknown>) => unknown) | undefined;
+  let capturedAction:
+    | ((targetsOrFlags: unknown, maybeFlags?: Record<string, unknown>) => unknown)
+    | undefined;
   const chain = {
     option: (name: string) => {
       options.push(name);
@@ -79,8 +81,47 @@ describe("wp format command", () => {
   });
 
   it("documents the standardized --affected syntax", () => {
+    expect(FORMAT_COMMAND_HELP).toContain("wp format --file src/a.ts src/b.ts");
     expect(FORMAT_COMMAND_HELP).toContain("wp format --affected");
     expect(FORMAT_COMMAND_HELP).toContain("git add first");
+  });
+
+  it("accepts multiple file targets after one --file flag", async () => {
+    const cli = buildFakeCli();
+    registerFormatCommand(cli as never);
+
+    await expect(
+      cli.getAction()?.(["src/cli/commands/format.test.ts"], {
+        file: "src/cli/commands/format.ts",
+      }),
+    ).resolves.toBe(0);
+
+    expect(qualityRunnerMocks.runCliCommandSequence).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadataOptions: expect.objectContaining({
+          files: ["src/cli/commands/format.ts", "src/cli/commands/format.test.ts"],
+        }),
+        commands: [
+          expect.objectContaining({
+            args: expect.arrayContaining([
+              "src/cli/commands/format.ts",
+              "src/cli/commands/format.test.ts",
+            ]),
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("keeps bare positional format targets rejected so callers use --file", async () => {
+    const cli = buildFakeCli();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    registerFormatCommand(cli as never);
+
+    await expect(cli.getAction()?.(["src/cli/commands/format.ts"], {})).resolves.toBe(1);
+
+    expect(error).toHaveBeenCalledWith("File targets must be passed with --file.");
+    expect(qualityRunnerMocks.runCliCommandSequence).not.toHaveBeenCalled();
   });
 
   it("errors when --branch is provided without --affected", async () => {

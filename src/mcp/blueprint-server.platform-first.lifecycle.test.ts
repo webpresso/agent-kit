@@ -9,6 +9,7 @@ import {
   makePlatformBlueprintHarness,
   resetPlatformFirstTestState,
 } from "./blueprint-server.platform-first.test-harness.js";
+import { withApprovalFrontmatter } from "./blueprint-server.test-harness.js";
 
 const PROMOTE_TO_COMPLETED_ZERO_TASK_BLUEPRINT = `---
 type: blueprint
@@ -45,7 +46,8 @@ describe("wp_blueprint_promote — platform-first", () => {
       prefix: "wp-bs-prm-",
       stateDir: "draft",
       slug: promoteSlug,
-      content: PROMOTE_BLUEPRINT,
+      content: withApprovalFrontmatter(PROMOTE_BLUEPRINT),
+      approvalLedger: true,
       validate: true,
     });
     tempDirs.push(harness.tmpDir);

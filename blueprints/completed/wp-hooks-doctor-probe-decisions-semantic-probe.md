@@ -1,13 +1,19 @@
 ---
 type: blueprint
-status: draft
+title: "wp hooks doctor --probe-decisions semantic probe"
+owner: ozby
+status: completed
 complexity: S
 created: "2026-06-24"
-last_updated: "2026-06-24"
+last_updated: "2026-06-30"
 progress: "100% (flag + probe + tests + docs landed)"
 depends_on: []
 cross_repo_depends_on: []
-tags: [hooks, doctor, conformance, reliability]
+tags:
+  - hooks
+  - doctor
+  - conformance
+  - reliability
 ---
 
 # wp hooks doctor --probe-decisions semantic probe
@@ -78,3 +84,35 @@ adds optional semantic confirmation reusing the conformance matrix.
 | Risk                                    | Impact                    | Mitigation                                                                                           |
 | --------------------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------- |
 | Prod doctor imports test-support matrix | bundle includes matrix.ts | matrix.ts is pure data/functions (~320 lines), already in the build graph; no test-framework imports |
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-30T21:22:00Z
+- verified-head: 6554b58ad7d18b6d3b415869a680fccc934b3300
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID  | Claim                                                       | Evidence                                                                    |
+| --- | ----------------------------------------------------------- | --------------------------------------------------------------------------- |
+| C1  | This completed blueprint has a canonical repository record. | repo:blueprints/completed/wp-hooks-doctor-probe-decisions-semantic-probe.md |
+
+### Material Decisions
+
+| ID  | Decision        | Chosen option                                         | Rejected alternatives            | Rationale                                                                                       |
+| --- | --------------- | ----------------------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------- |
+| D1  | Lifecycle state | Keep this blueprint as a completed historical record. | Leave the record in draft state. | The implementation already landed on `main`; this record now matches shipped lifecycle reality. |
+
+### Promotion Gates
+
+| Gate       | Command                  | Expected outcome | Last result                  |
+| ---------- | ------------------------ | ---------------- | ---------------------------- |
+| trust-gate | wp audit blueprint-trust | pass             | pass at 2026-06-30T21:22:00Z |
+
+### Residual Unknowns
+
+None.

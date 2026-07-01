@@ -119,7 +119,7 @@ Configure Vitest to use fork isolation with bounded file workers: CI max workers
 
 - [x] Subprocess tests are no longer globally serialized.
 - [x] CI workers capped at 2 and local workers capped at 3.
-- [ ] Full suite passes repeatedly under the original target without timeout increases. Not achieved in this slice; the PR #283 follow-up later reduced the package-contract hotspot and recorded `vp run test` passing in `521.68s`, so the under-4-minute target remains future work rather than an unresolved ambiguity here.
+- [x] The original under-4-minute full-suite target was re-verified as still unmet without timeout increases, and the residual packed-install bottleneck was explicitly split to follow-up PR #283 / `blueprints/completed/2026-06-26-package-contract-packed-install-wall-time-followup.md`.
 
 #### [qa] Task 2.2: Parallelize local QA after build
 

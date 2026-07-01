@@ -158,6 +158,9 @@ describe("buildLaunchPlan", () => {
     });
   });
 
+  // The generated source-repo hook command now prefers the compiled runtime directly
+  // at hook time, so this selector-path test covers only explicit `bin/wp hook ...`
+  // dispatch, not the generated hook launcher contract.
   it("uses source for source-repo hook dispatch when generated commands force source and runtime hooks are disabled", () => {
     const repoRoot = createSourceRepo();
     const plan = buildLaunchPlan({

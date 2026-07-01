@@ -35,7 +35,10 @@ export function setupCommandForHookPolicy(
 ): string {
   const source = isAgentKitSourceRepo(repoRoot);
   const env = source ? "WP_FORCE_SOURCE=1 " : "";
-  const restoreHooks = options.restoreHooks === true ? " --restore-hooks" : "";
-  const sourceMaintenance = source ? " --source-maintenance" : "";
-  return `${env}wp setup${restoreHooks}${sourceMaintenance}`;
+  if (source) {
+    const repairArgs = options.restoreHooks === true ? " --restore-hooks" : "";
+    return `${env}wp setup repair${repairArgs}`;
+  }
+  if (options.restoreHooks === true) return "wp setup repair --restore-hooks";
+  return "wp setup";
 }

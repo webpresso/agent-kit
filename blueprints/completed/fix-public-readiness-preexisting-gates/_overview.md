@@ -15,6 +15,8 @@ tags:
   - setup
   - smoke
 completed_at: "2026-06-23"
+historical_zero_task_waiver: true
+historical_zero_task_rationale: "Historical completed blueprint preserved as a zero-task record during lifecycle hardening; no executable task blocks were authored in the original document."
 ---
 
 # Fix pre-existing public-readiness gates

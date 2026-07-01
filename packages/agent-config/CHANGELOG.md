@@ -1,5 +1,32 @@
 # @webpresso/agent-config
 
+## 0.3.3
+
+### Patch Changes
+
+- 0a800b7: Publish the agent-core subpath exports before rebuilding agent-config so the consumer dedupe config package can resolve `@webpresso/agent-core/*` during release publish.
+
+  AI contract evidence: `docs/bench/reference-parity-matrix.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, `src/__integration__/reference-parity-tool-surface.integration.test.ts`, `docs/bench/session-memory-methodology.md`.
+
+- Updated dependencies [0a800b7]
+  - @webpresso/agent-core@0.1.2
+
+## 0.3.2
+
+### Patch Changes
+
+- c901cab: Add a shared Playwright quality-scaffold config surface so consumers can stop committing duplicate generic smoke scaffold files, and publish TypeScript-compatible tsconfig JSON exports for current consumers.
+
+  AI contract evidence: `docs/bench/reference-parity-matrix.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, `src/__integration__/reference-parity-tool-surface.integration.test.ts`, `docs/bench/session-memory-methodology.md`.
+
+## 0.3.1
+
+### Patch Changes
+
+- 4237f06: Upgrade dependency/tooling pins to the latest verified versions and add a dependency freshness gate with Dependabot coverage; AI contract evidence: `docs/bench/reference-parity-matrix.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, `src/__integration__/reference-parity-tool-surface.integration.test.ts`, `docs/bench/session-memory-methodology.md`.
+- Updated dependencies [4237f06]
+  - @webpresso/agent-core@0.1.1
+
 ## 0.3.0
 
 ### Minor Changes
@@ -53,6 +80,7 @@
 - 27f8157: Repair the extracted agent-config release surface by cataloging shared deps, removing the root package's non-publishable local manifest edge, and recording the new public package in the package-surface contract.
 
   Evidence:
+
   - docs/bench/reference-parity-matrix.md
   - src/**integration**/reference-parity-host-smoke.integration.test.ts
   - src/**integration**/reference-parity-tool-surface.integration.test.ts

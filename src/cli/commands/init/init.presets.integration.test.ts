@@ -237,11 +237,11 @@ describe("runInit() — external presets (integration)", { timeout: 20_000 }, ()
       expect(claudePluginCalls).toStrictEqual([]);
     });
 
-    it("passes project scope to omx setup when --project is requested", async () => {
-      const code = await runInitSilently({ cwd: repo, yes: true, with: "omx", project: true });
+    it("keeps omx compatibility setup on user scope", async () => {
+      const code = await runInitSilently({ cwd: repo, yes: true, with: "omx" });
       expect(code).toBe(EXIT_SUCCESS);
       const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === "omx");
-      expect(omxCalls[1]?.[1]).toEqual(["setup", "--yes", "--scope", "project"]);
+      expect(omxCalls[1]?.[1]).toEqual(["setup", "--yes", "--scope", "user"]);
     });
 
     it("repairs .gitignore so regenerated Codex and OMX surfaces stay ignored", async () => {
@@ -381,8 +381,8 @@ describe("runInit() — external presets (integration)", { timeout: 20_000 }, ()
       ]);
     });
 
-    it("uses project scope for OMC when --project is requested", async () => {
-      const code = await runInitSilently({ cwd: repo, yes: true, with: "omc", project: true });
+    it("keeps omc compatibility setup on user scope", async () => {
+      const code = await runInitSilently({ cwd: repo, yes: true, with: "omc" });
 
       expect(code).toBe(EXIT_SUCCESS);
       const claudeCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === "claude");
@@ -393,7 +393,7 @@ describe("runInit() — external presets (integration)", { timeout: 20_000 }, ()
           "marketplace",
           "add",
           "--scope",
-          "project",
+          "user",
           "https://github.com/Yeachan-Heo/oh-my-claudecode",
         ],
         expect.any(Object),
@@ -465,16 +465,16 @@ describe("runInit() — external presets (integration)", { timeout: 20_000 }, ()
       ]);
     });
 
-    it("passes project scope to both OMX and OMC when --project is requested", async () => {
-      const code = await runInitSilently({ cwd: repo, yes: true, with: "omx,omc", project: true });
+    it("keeps combined OMX and OMC compatibility setup on user scope", async () => {
+      const code = await runInitSilently({ cwd: repo, yes: true, with: "omx,omc" });
 
       expect(code).toBe(EXIT_SUCCESS);
       const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === "omx");
       const claudeCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === "claude");
-      expect(omxCalls[1]?.[1]).toEqual(["setup", "--yes", "--scope", "project"]);
+      expect(omxCalls[1]?.[1]).toEqual(["setup", "--yes", "--scope", "user"]);
       expect(claudeCalls).toContainEqual([
         "claude",
-        ["plugin", "install", "--scope", "project", "oh-my-claudecode@omc"],
+        ["plugin", "install", "--scope", "user", "oh-my-claudecode@omc"],
         expect.any(Object),
       ]);
     });

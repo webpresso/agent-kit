@@ -21,7 +21,7 @@ affected_modules:
 
 ```
 [ ] hooks manifest: 7 missing (claude/Stop, …); 19 unknown (claude/Stop, …)
-    — run `wp setup --restore-hooks --source-maintenance`;
+    — run `WP_FORCE_SOURCE=1 wp setup repair --restore-hooks`;
     — hand-edited? review with `wp hooks status`
 ```
 
@@ -36,11 +36,11 @@ rtk) plus consumer-added entries (e.g. `check-gstack*` presence guards) and
 
 Neither remediation the doctor suggests is safe on the agent-kit self-repo:
 
-- `wp setup` (and `--restore-hooks`, `--dry-run`) **refuse to run** here without
-  `--source-maintenance`. The guard message: "running setup here overwrites the
-  canonical sources under `catalog/` and the tracked `.agent`/`.claude`
-  surfaces." So the gated path is a destructive maintainer operation, not a
-  reconcile.
+- `wp setup repair --restore-hooks` on the agent-kit source repo still requires
+  the maintainer-only source override (`WP_FORCE_SOURCE=1`). The guard message
+  remains: "running setup here overwrites the canonical sources under
+  `catalog/` and the tracked `.agent`/`.claude` surfaces." So the gated path is
+  a destructive maintainer operation, not a reconcile.
 - `--restore-hooks` reconciles _manifest → live_, which would **strip**
   consumer-added entries that are absent from the manifest (e.g. the
   `check-gstack*` hooks), since the manifest is the authority in that direction.
@@ -55,9 +55,9 @@ with a permanently red doctor check and no non-destructive way to clear it.
 
 - Erodes trust in `wp hooks doctor` as the canonical post-setup success signal —
   a red check that is actually benign trains operators to ignore the doctor.
-- The only documented fixes are either guarded (`--source-maintenance`,
-  overwrites tracked sources) or lossy (`--restore-hooks`, drops divergent
-  consumer hooks).
+- The only documented fixes are either guarded (`WP_FORCE_SOURCE=1 wp setup
+repair --restore-hooks`, which overwrites tracked sources) or lossy
+  (`--restore-hooks`, drops divergent consumer hooks).
 
 ## Discovered via
 

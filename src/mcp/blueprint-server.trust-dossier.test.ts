@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -82,6 +82,38 @@ const trustDossier = {
   residual_unknowns: [],
 } as const;
 
+function addPromotionApprovalsToDraft(draftPath: string): void {
+  const original = readFileSync(draftPath, "utf8");
+  const withApprovals = original.replace(
+    'last_updated: "2026-05-29"\n',
+    [
+      'last_updated: "2026-05-29"',
+      "approvals:",
+      "  - reviewer: codex",
+      "    verdict: approve",
+      "    evidence: reviews.md",
+      "  - reviewer: deepseek",
+      "    verdict: approve",
+      "    evidence: reviews.md",
+      "",
+    ].join("\n"),
+  );
+  writeFileSync(draftPath, withApprovals, "utf8");
+  writeFileSync(
+    path.join(path.dirname(draftPath), "reviews.md"),
+    [
+      "# Review ledger — structured-trust-round-trip",
+      "",
+      "| Date | Reviewer | Rev | Verdict | Note |",
+      "| --- | --- | --- | --- | --- |",
+      "| 2026-06-28 | codex | final | APPROVE | structured trust dossier accepted |",
+      "| 2026-06-28 | deepseek | final | APPROVE | structured trust dossier accepted |",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+}
+
 describe("wp_blueprint_put trust dossier", () => {
   it("renders structured trust_dossier after tasks using gate-required subsection text", async () => {
     const result = await callTool(tools, "wp_blueprint_put", {
@@ -141,6 +173,11 @@ describe("wp_blueprint_put trust dossier", () => {
   });
 
   it("promotes a blueprint authored through structured trust_dossier without summary embedding", async () => {
+    mkdirSync(path.join(tmpDir, "bin"), { recursive: true });
+    writeFileSync(path.join(tmpDir, "bin", "wp"), "#!/bin/sh\nexit 0\n", {
+      encoding: "utf8",
+      mode: 0o755,
+    });
     const putResult = await callTool(tools, "wp_blueprint_put", {
       project_id: tmpDir,
       slug: "structured-trust-round-trip",
@@ -148,13 +185,22 @@ describe("wp_blueprint_put trust dossier", () => {
         ...document,
         title: "Structured Trust Round Trip",
         summary: "No embedded dossier markdown here.",
-        trust_dossier: trustDossier,
+        trust_dossier: {
+          ...trustDossier,
+          promotion_gates: [
+            {
+              ...trustDossier.promotion_gates[0],
+              command: "./bin/wp lint",
+            },
+          ],
+        },
       },
     });
     const putData = parseResult(putResult) as { path: string };
     const draft = readFileSync(putData.path, "utf8");
     expect(draft).toContain("## Summary\n\nNo embedded dossier markdown here.");
     expect(draft).toContain("## Trust Dossier");
+    addPromotionApprovalsToDraft(putData.path);
 
     const promoteResult = await callTool(tools, "wp_blueprint_promote", {
       project_id: tmpDir,

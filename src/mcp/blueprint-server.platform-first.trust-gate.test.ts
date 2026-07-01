@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { callTool, parseResult } from "./blueprint-server.test-harness.js";
+import { callTool, parseResult, withApprovalFrontmatter } from "./blueprint-server.test-harness.js";
 import {
   PROMOTE_BLUEPRINT,
   installMockSyncAdapter,
@@ -11,10 +11,7 @@ import {
 describe("wp_blueprint_promote — planned trust gate ordering", () => {
   const tempDirs: string[] = [];
 
-  afterEach(() => {
-    resetPlatformFirstTestState(tempDirs);
-    tempDirs.splice(0);
-  });
+  afterEach(() => resetPlatformFirstTestState(tempDirs.splice(0)));
 
   it("does not publish platform status changes when the planned trust gate fails", async () => {
     const { pushEvent, ensureFresh } = installMockSyncAdapter();
@@ -44,7 +41,8 @@ describe("wp_blueprint_promote — planned trust gate ordering", () => {
       prefix: "wp-bs-prm-trust-transition-",
       stateDir: "draft",
       slug: "promote-trust-transition-blueprint",
-      content: PROMOTE_BLUEPRINT,
+      content: withApprovalFrontmatter(PROMOTE_BLUEPRINT),
+      approvalLedger: true,
       validate: true,
     });
     tempDirs.push(harness.tmpDir);

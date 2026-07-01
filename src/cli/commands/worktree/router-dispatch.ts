@@ -26,6 +26,7 @@ import {
 import {
   pruneStaleWorktreeRegistryEntries,
   readWorktreeRegistry,
+  removeWorktreeRegistryEntries,
   upsertWorktreeRegistryEntry,
   type ManagedWorktreeEntry,
 } from "#worktrees/registry.js";
@@ -55,6 +56,26 @@ export interface NewWorktreeTarget {
   branch: string;
   path: string;
   generated: boolean;
+}
+
+export interface MergeCleanupPlan {
+  readonly targetPath: string;
+  readonly baseRef: string;
+  readonly expectedPrimaryBranch: string;
+  readonly removeArgs: readonly string[];
+  readonly fetchArgs: readonly string[];
+  readonly mergeArgs: readonly string[];
+}
+
+export interface MergeCleanupDecisionInput {
+  readonly repoRoot: string;
+  readonly targetPath: string;
+  readonly baseRef: string;
+  readonly entries: readonly WorktreeEntry[];
+  readonly registryEntries: readonly Pick<ManagedWorktreeEntry, "repoRoot" | "path">[];
+  readonly currentBranch: string;
+  readonly repoDirty: boolean;
+  readonly targetDirty: boolean;
 }
 
 export interface NewWorktreeTargetInput {
@@ -206,6 +227,64 @@ export function resolveWorktreePath(nameOrPath: string, entries: WorktreeEntry[]
     );
   }
   return match.path;
+}
+
+export function expectedPrimaryBranchForBaseRef(baseRef: string): string {
+  const trimmed = baseRef.trim();
+  if (trimmed.startsWith("origin/")) return trimmed.slice("origin/".length);
+  if (trimmed.startsWith("refs/remotes/origin/"))
+    return trimmed.slice("refs/remotes/origin/".length);
+  return trimmed;
+}
+
+export function planMergeCleanup(targetPath: string, baseRef: string): MergeCleanupPlan {
+  const expectedPrimaryBranch = expectedPrimaryBranchForBaseRef(baseRef);
+  return {
+    targetPath,
+    baseRef,
+    expectedPrimaryBranch,
+    removeArgs: ["worktree", "remove", targetPath],
+    fetchArgs: ["fetch", "--prune", "origin"],
+    mergeArgs: ["merge", "--ff-only", baseRef],
+  };
+}
+
+export function decideMergeCleanup(input: MergeCleanupDecisionInput): MergeCleanupPlan {
+  const entry = input.entries.find((candidate) => candidate.path === input.targetPath);
+  const plan = planMergeCleanup(input.targetPath, input.baseRef);
+
+  if (input.targetPath === input.repoRoot) {
+    throw new Error("wp worktree merge-cleanup refused: cannot remove the current/main checkout");
+  }
+  if (
+    !input.registryEntries.some(
+      (candidate) => candidate.repoRoot === input.repoRoot && candidate.path === input.targetPath,
+    )
+  ) {
+    throw new Error(
+      `wp worktree merge-cleanup refused: ${input.targetPath} is not a registered managed worktree for this repository`,
+    );
+  }
+  if (entry?.locked) {
+    throw new Error(`wp worktree merge-cleanup refused: ${input.targetPath} is locked`);
+  }
+  if (input.targetDirty) {
+    throw new Error(
+      `wp worktree merge-cleanup refused: ${input.targetPath} has uncommitted changes`,
+    );
+  }
+  if (input.repoDirty) {
+    throw new Error(
+      `wp worktree merge-cleanup refused: primary checkout ${input.repoRoot} has uncommitted changes`,
+    );
+  }
+  if (input.currentBranch !== plan.expectedPrimaryBranch) {
+    throw new Error(
+      `wp worktree merge-cleanup refused: primary checkout must be on ${plan.expectedPrimaryBranch} before fast-forward sync (current: ${input.currentBranch || "(detached)"})`,
+    );
+  }
+
+  return plan;
 }
 
 export function gitBranchExists(repoRoot: string, branch: string): boolean {
@@ -455,6 +534,65 @@ function handleRemove(nameOrPath: string, opts: WorktreeCommandOptions): void {
   }
 }
 
+function isDirty(path: string): boolean {
+  const status = spawnSync("git", ["status", "--porcelain"], { cwd: path, encoding: "utf8" });
+  if (status.status !== 0) return true;
+  return String(status.stdout ?? "").trim().length > 0;
+}
+
+function currentBranch(repoRoot: string): string {
+  const result = spawnSync("git", ["branch", "--show-current"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+  });
+  return result.status === 0 ? String(result.stdout ?? "").trim() : "";
+}
+
+function handleMergeCleanup(nameOrPath: string, opts: WorktreeCommandOptions): void {
+  const cwd = opts.cwd ?? process.cwd();
+  const repoRoot = getProjectRoot({ startDir: cwd });
+  const entries = listEntries(repoRoot);
+  const resolved = resolveWorktreePath(nameOrPath, entries);
+  const baseRef = opts.base?.trim() || "origin/main";
+  const plan = decideMergeCleanup({
+    repoRoot,
+    targetPath: resolved,
+    baseRef,
+    entries,
+    registryEntries: readWorktreeRegistry().entries,
+    currentBranch: currentBranch(repoRoot),
+    repoDirty: isDirty(repoRoot),
+    targetDirty: isDirty(resolved),
+  });
+
+  if (opts.dryRun) {
+    console.log("[dry-run] Would run merge cleanup:");
+    console.log(`  remove: git ${plan.removeArgs.join(" ")}`);
+    console.log(`  fetch:  git ${plan.fetchArgs.join(" ")}`);
+    console.log(`  sync:   git ${plan.mergeArgs.join(" ")}`);
+    return;
+  }
+
+  const removeResult = spawnSync("git", [...plan.removeArgs], { cwd: repoRoot, stdio: "inherit" });
+  if (removeResult.status !== 0) {
+    throw new Error("git worktree remove failed");
+  }
+  removeWorktreeRegistryEntries(
+    (candidate) => candidate.repoRoot === repoRoot && candidate.path === resolved,
+  );
+
+  const fetchResult = spawnSync("git", [...plan.fetchArgs], { cwd: repoRoot, stdio: "inherit" });
+  if (fetchResult.status !== 0) {
+    throw new Error("git fetch --prune origin failed");
+  }
+  const mergeResult = spawnSync("git", [...plan.mergeArgs], { cwd: repoRoot, stdio: "inherit" });
+  if (mergeResult.status !== 0) {
+    throw new Error(`git merge --ff-only ${baseRef} failed`);
+  }
+
+  console.log(`Removed worktree ${resolved} and fast-forwarded ${repoRoot} to ${baseRef}.`);
+}
+
 export async function executeWorktreeSubcommand(
   subcommand: string,
   args: string[],
@@ -497,9 +635,19 @@ export async function executeWorktreeSubcommand(
       handleRemove(nameOrPath, opts);
       return;
     }
+    case "merge-cleanup": {
+      const nameOrPath = args[0];
+      if (!nameOrPath) {
+        throw new Error(
+          "Usage: wp worktree merge-cleanup <branch-or-path> [--base <ref>] [--dry-run]",
+        );
+      }
+      handleMergeCleanup(nameOrPath, opts);
+      return;
+    }
     default: {
       throw new Error(
-        `Unknown worktree subcommand: "${subcommand}"\n\nUse one of: root, new, list, refresh, prune, migrate, adopt, rebind, remove`,
+        `Unknown worktree subcommand: "${subcommand}"\n\nUse one of: root, new, list, refresh, prune, migrate, adopt, rebind, remove, merge-cleanup`,
       );
     }
   }

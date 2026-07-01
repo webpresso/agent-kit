@@ -13,6 +13,7 @@ import {
   evaluateCapabilityDocsGate,
   evaluateCompiledRuntimeTypecheckParity,
   evaluateSecretDocsContentGate,
+  sourceContainsUrlOrigin,
   hasNumericBenchmarkClaim,
   listFirstPartyBenchmarkResultCards,
   evaluatePluginNativeLauncherPolicy,
@@ -57,6 +58,23 @@ describe("public-readiness runtime policy helpers", () => {
         "@webpresso/agent-kit-runtime-darwin-arm64": "0.28.0",
       }),
     ).toEqual(["@webpresso/agent-kit-runtime-windows-x64"]);
+  });
+
+  it("detects registry URL literals by parsed origin rather than substring matching", () => {
+    expect(
+      sourceContainsUrlOrigin(
+        'const registry = "https://registry.npmjs.org/@webpresso%2Fagent-kit";',
+        "https:",
+        "registry.npmjs.org",
+      ),
+    ).toBe(true);
+    expect(
+      sourceContainsUrlOrigin(
+        'const registry = "https://registry.npmjs.org.evil.example/@webpresso%2Fagent-kit";',
+        "https:",
+        "registry.npmjs.org",
+      ),
+    ).toBe(false);
   });
 
   it("flags missing or mismatched session-memory native optional dependencies", () => {

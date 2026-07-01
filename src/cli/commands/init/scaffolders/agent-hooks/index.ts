@@ -9,10 +9,11 @@
  *
  * Runs by default on every `wp setup`.
  */
-import { existsSync, readdirSync, rmSync } from "node:fs";
+import { accessSync, constants, existsSync, readdirSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, join, resolve } from "node:path";
+import { basename, isAbsolute, join, resolve } from "node:path";
 
+import { resolveRuntimeTarget, runtimeBinaryFilename } from "#build/runtime-targets.js";
 import { isHookName } from "#cli/commands/hook.js";
 import { type MergeOptions, type MergeResult, patchJsonFile } from "#cli/commands/init/merge";
 import {
@@ -23,10 +24,7 @@ import { CodexAppServerClient } from "#codex/app-server/client.js";
 import type { CodexAppServerApi } from "#codex/app-server/types.js";
 import { commandExists as defaultCommandExists, pathCandidates } from "#runtime/command-exists.js";
 import { CLAUDE_PLUGIN_ID } from "#cli/commands/init/scaffolders/claude-plugin/index.js";
-import {
-  hookCommandEnvPrefix,
-  sourceRepoHooksMustForceSource,
-} from "#cli/commands/init/source-repo-hook-policy.js";
+import { sourceRepoHooksMustForceSource } from "#cli/commands/init/source-repo-hook-policy.js";
 import {
   syncCodexHookTrustWithAppServer,
   type SyncCodexHookTrustResult,
@@ -101,14 +99,106 @@ function hookSubcommandForRequired(binName: string): string {
   return hookName;
 }
 
-function buildDirectWpHookCommand(repoRoot: string, name: string): string {
+function isExecutablePath(path: string): boolean {
+  try {
+    accessSync(path, constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function sourceRepoHookRuntimePath(
+  repoRoot: string,
+  platform: NodeJS.Platform = process.platform,
+  arch: NodeJS.Architecture = process.arch,
+): string | undefined {
+  const target = resolveRuntimeTarget(platform, arch);
+  if (!target) return undefined;
+  return join(repoRoot, "bin", "runtime", target.id, runtimeBinaryFilename(target));
+}
+
+function sourceRepoAbsoluteBunCandidates(
+  env: NodeJS.ProcessEnv = process.env,
+  homeDirectory = env.HOME ?? homedir(),
+): string[] {
+  const candidates = [
+    env.BUN,
+    "/opt/homebrew/bin/bun",
+    join(homeDirectory, ".bun", "bin", "bun"),
+    "/usr/local/bin/bun",
+  ].filter((value): value is string => typeof value === "string" && value.length > 0);
+  return [...new Set(candidates.filter((candidate) => isAbsolute(candidate)))];
+}
+
+export type SourceRepoHookLauncherResolution =
+  | { kind: "compiled"; launcherPath: string; cliPath: string }
+  | { kind: "bun"; launcherPath: string; cliPath: string }
+  | { kind: "none"; cliPath: string };
+
+export function resolveSourceRepoHookLauncher(
+  repoRoot: string,
+  options: {
+    readonly platform?: NodeJS.Platform;
+    readonly arch?: NodeJS.Architecture;
+    readonly env?: NodeJS.ProcessEnv;
+    readonly homeDirectory?: string;
+    readonly isExecutable?: (path: string) => boolean;
+  } = {},
+): SourceRepoHookLauncherResolution {
+  const cliPath = join(repoRoot, "src", "cli", "cli.ts");
+  const executable = options.isExecutable ?? isExecutablePath;
+  const runtimePath = sourceRepoHookRuntimePath(repoRoot, options.platform, options.arch);
+  if (runtimePath && executable(runtimePath)) {
+    return { kind: "compiled", launcherPath: runtimePath, cliPath };
+  }
+  for (const candidate of sourceRepoAbsoluteBunCandidates(options.env, options.homeDirectory)) {
+    if (executable(candidate)) return { kind: "bun", launcherPath: candidate, cliPath };
+  }
+  return { kind: "none", cliPath };
+}
+
+function buildHookStatusGuard(command: string, fallback: string): string {
+  return `${command}; status=$?; if [ "$status" -eq 2 ]; then exit 2; elif [ "$status" -ne 0 ]; then ${fallback}; fi`;
+}
+
+function buildSourceRepoDirectHookCommand(repoRoot: string, name: string): string {
+  const repoRootPath = quoteShell(repoRoot);
+  const hookName = hookSubcommandForRequired(name);
+  const fallback = missingLauncherFallbackCommand(name);
+  const cliPath = quoteShell(join(repoRoot, "src", "cli", "cli.ts"));
+  const runtimePath = sourceRepoHookRuntimePath(repoRoot);
+  const branches: string[] = [];
+  if (runtimePath) {
+    const quotedRuntimePath = quoteShell(runtimePath);
+    branches.push(
+      `if [ -x ${quotedRuntimePath} ]; then (cd ${repoRootPath} && ${buildHookStatusGuard(`${quotedRuntimePath} hook ${hookName}`, fallback)} );`,
+    );
+  }
+  for (const bunPath of sourceRepoAbsoluteBunCandidates()) {
+    const quotedBunPath = quoteShell(bunPath);
+    branches.push(
+      `${branches.length === 0 ? "if" : "elif"} [ -x ${quotedBunPath} ]; then (cd ${repoRootPath} && ${buildHookStatusGuard(`${quotedBunPath} ${cliPath} hook ${hookName}`, fallback)} );`,
+    );
+  }
+  const noneBranch =
+    branches.length === 0 ? `if false; then true; else ${fallback}; fi` : `else ${fallback}; fi`;
+  return `${branches.join(" ")} ${noneBranch} # ${name}`;
+}
+
+function buildConsumerDirectWpHookCommand(repoRoot: string, name: string): string {
   const wpPath = quoteShell(resolveWpHookLauncherPath());
   const nodePath = quoteShell(resolveNodeForHookLauncher());
   const repoRootPath = quoteShell(repoRoot);
   const hookName = hookSubcommandForRequired(name);
   const fallback = missingLauncherFallbackCommand(name);
-  const envPrefix = hookCommandEnvPrefix(repoRoot);
-  return `if [ -x ${nodePath} ] && [ -f ${wpPath} ]; then (cd ${repoRootPath} && ${envPrefix}${nodePath} ${wpPath} hook ${hookName}); status=$?; if [ "$status" -eq 2 ]; then exit 2; elif [ "$status" -ne 0 ]; then ${fallback}; fi; else ${fallback}; fi # ${name}`;
+  return `if [ -x ${nodePath} ] && [ -f ${wpPath} ]; then (cd ${repoRootPath} && ${nodePath} ${wpPath} hook ${hookName}); status=$?; if [ "$status" -eq 2 ]; then exit 2; elif [ "$status" -ne 0 ]; then ${fallback}; fi; else ${fallback}; fi # ${name}`;
+}
+
+function buildDirectWpHookCommand(repoRoot: string, name: string): string {
+  return sourceRepoHooksMustForceSource(repoRoot)
+    ? buildSourceRepoDirectHookCommand(repoRoot, name)
+    : buildConsumerDirectWpHookCommand(repoRoot, name);
 }
 
 const CC_BIN = (repoRoot: string) => (name: string) => buildDirectWpHookCommand(repoRoot, name);

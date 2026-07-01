@@ -519,6 +519,29 @@ export async function auditBlueprintLifecycleSql(
     titleNotices.push(`changed-only: ${changedScope.slugs.size} blueprint(s)`);
   }
 
+  const { runBlueprintAudit } = await import("../blueprint/lifecycle/audit.js");
+  const lifecycle = await runBlueprintAudit({ projectRoot: cwd, all: true, strict: true });
+  const lifecycleIssues =
+    options.changedOnly && changedScope
+      ? lifecycle.issues.filter((issue) =>
+          issue.file
+            ? violationTouchesBlueprintScope(
+                { file: issue.file, message: issue.message },
+                changedScope,
+              )
+            : true,
+        )
+      : lifecycle.issues;
+  checked += lifecycleIssues.length;
+  for (const issue of lifecycleIssues) {
+    const target = issue.level === "error" ? violations : advisoryViolations;
+    target.push({
+      ...(issue.file ? { file: issue.file } : {}),
+      message:
+        issue.level === "warning" ? `${STALENESS_WARNING_PREFIX} ${issue.message}` : issue.message,
+    });
+  }
+
   const conn = await buildEphemeralProjection(cwd);
   const { db } = conn;
 

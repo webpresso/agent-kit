@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -9,6 +10,8 @@ import {
   makeProjectionBackedBlueprintHarness,
   parseResult,
   trustDossierFixture,
+  withApprovalFrontmatter,
+  writeApprovalLedgerFixture,
   type ToolMap,
 } from "./blueprint-server.test-harness.js";
 
@@ -64,6 +67,10 @@ Blueprint used to test atomic transitions.
 - [ ] Task remains pending until transitioned work begins
 ${trustDossierFixture()}
 `;
+const TRANSITION_APPROVED_BLUEPRINT = withApprovalFrontmatter(TRANSITION_BLUEPRINT);
+const TRANSITION_APPROVED_HASH = createHash("sha256")
+  .update(TRANSITION_APPROVED_BLUEPRINT)
+  .digest("hex");
 
 let tmpDir: string;
 let overviewPath: string;
@@ -71,10 +78,15 @@ let tools: ToolMap;
 
 beforeEach(async () => {
   const harness = await makeProjectionBackedBlueprintHarness("wp-bs-transition-", [
-    { stateDir: "draft", slug: TRANSITION_SLUG, content: TRANSITION_BLUEPRINT },
+    {
+      stateDir: "draft",
+      slug: TRANSITION_SLUG,
+      content: TRANSITION_APPROVED_BLUEPRINT,
+    },
   ]);
   tmpDir = harness.tmpDir;
   overviewPath = harness.overviewPaths[0]!;
+  writeApprovalLedgerFixture(tmpDir, "draft", TRANSITION_SLUG);
   tools = harness.tools;
 });
 
@@ -84,17 +96,11 @@ afterEach(() => {
 
 describe("wp_blueprint_transition", () => {
   it("transitions a draft blueprint to planned when expected_version matches", async () => {
-    const getResult = await callTool(tools, "wp_blueprint_get", {
-      project_id: tmpDir,
-      slug: TRANSITION_SLUG,
-    });
-    const before = parseResult(getResult) as { content_hash: string };
-
     const result = await callTool(tools, "wp_blueprint_transition", {
       project_id: tmpDir,
       slug: TRANSITION_SLUG,
       to_state: "planned",
-      expected_version: before.content_hash,
+      expected_version: TRANSITION_APPROVED_HASH,
     });
     const data = parseResult(result) as {
       slug: string;
@@ -110,7 +116,7 @@ describe("wp_blueprint_transition", () => {
     expect(data.old_status).toBe("draft");
     expect(data.new_status).toBe("planned");
     expect(data.status).toBe("planned");
-    expect(data.content_hash).not.toBe(before.content_hash);
+    expect(data.content_hash).not.toBe(TRANSITION_APPROVED_HASH);
     expect(data.failures).toStrictEqual([]);
     const plannedPath = overviewPath.replace("/draft/", "/planned/");
     expect(readFileSync(plannedPath, "utf8")).toContain("status: planned");
@@ -191,17 +197,11 @@ describe("wp_blueprint_transition", () => {
   });
 
   it("refuses to transition directly to completed while a task is still open (closes the finalize-bypass hole)", async () => {
-    const getResult = await callTool(tools, "wp_blueprint_get", {
-      project_id: tmpDir,
-      slug: TRANSITION_SLUG,
-    });
-    const before = parseResult(getResult) as { content_hash: string };
-
     const result = await callTool(tools, "wp_blueprint_transition", {
       project_id: tmpDir,
       slug: TRANSITION_SLUG,
       to_state: "completed",
-      expected_version: before.content_hash,
+      expected_version: TRANSITION_APPROVED_HASH,
     });
 
     expect(result.isError).toStrictEqual(true);
