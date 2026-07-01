@@ -68,11 +68,11 @@ The consumer dedupe release PR bumped `@webpresso/agent-config`, but publish fai
 
 ### Material Claims
 
-| ID  | Claim                                                                                                                                 | Evidence                                                             |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| C1  | Published `@webpresso/agent-core@0.1.1` is insufficient for `@webpresso/agent-config` release publish.                                | repo:blueprints/completed/2026-07-01-agent-config-publish-unblock.md |
-| C2  | The repo-local agent-core package already declares the needed subpath exports.                                                        | repo:packages/agent-core/package.json                                |
-| C3  | Patching agent-core and agent-config together gives Changesets a release path that publishes the dependency before rebuilding config. | repo:.changeset/agent-config-publish-unblock.md                      |
+| ID  | Claim                                                                                                                                 | Evidence                                                                       |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| C1  | Published `@webpresso/agent-core@0.1.1` is insufficient for `@webpresso/agent-config` release publish.                                | repo:blueprints/completed/2026-07-01-agent-config-publish-unblock.md           |
+| C2  | The repo-local agent-core package already declares the needed subpath exports.                                                        | repo:packages/agent-core/package.json                                          |
+| C3  | Patching agent-core and agent-config together gives Changesets a release path that publishes the dependency before rebuilding config. | repo:packages/agent-config/CHANGELOG.md; repo:packages/agent-core/CHANGELOG.md |
 
 ### Material Decisions
 
