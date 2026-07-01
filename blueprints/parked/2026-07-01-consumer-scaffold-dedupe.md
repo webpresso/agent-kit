@@ -2,12 +2,13 @@
 type: blueprint
 owner: webpresso
 title: "Consumer scaffold dedupe"
-status: in-progress
+status: parked
 complexity: M
 created: "2026-07-01"
 last_updated: "2026-07-01"
 progress_pct: 45
-progress: "Added agent-config Playwright quality scaffold surface; consumer migration and duplication-gate extension remain."
+progress: "Agent-config Playwright quality scaffold surface is implemented; final consumer smoke deletion waits for package publication."
+parked_reason: "Waiting for @webpresso/agent-config release containing ./playwright/quality-scaffold before deleting remaining consumer root smoke specs."
 depends_on:
   - "webpresso/monorepo#101: consumer duplication gate"
 ---
@@ -54,7 +55,9 @@ Add a public agent-config subpath that exposes a config factory and package-owne
 
 #### [consumer] Task 1.2: Migrate consumers off duplicate smoke scaffold files
 
-**Status:** todo
+**Status:** blocked
+
+**Blocked:** Waiting for @webpresso/agent-config release containing `./playwright/quality-scaffold` before downstream consumers can import it in CI.
 
 **Depends:** Task 1.1
 
@@ -68,7 +71,7 @@ Update consumers that only need the generic root quality smoke scaffold to use t
 
 #### [audit] Task 1.3: Extend duplication lock for remaining setup placeholders
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1
 
@@ -76,8 +79,8 @@ Extend the consumer duplication gate to include smoke fixture and template-only 
 
 **Acceptance:**
 
-- [ ] Duplication gate fails if the generic fixture/changelog boilerplate reappears across consumers without exception.
-- [ ] Verification evidence is recorded before PR readiness.
+- [x] Duplication gate fails if the generic fixture/changelog boilerplate reappears across consumers without exception.
+- [x] Verification evidence is recorded before PR readiness.
 
 ## Verification
 
@@ -91,3 +94,40 @@ Planned final gates:
 - `vp run --filter @webpresso/agent-config test`
 - `vp run --filter @webpresso/agent-config typecheck`
 - Consumer targeted E2E/config tests for migrated repos.
+
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: false
+- unresolved-count: 2
+- verified-at: 2026-07-01T00:00:00.000Z
+- verified-head: pending-consumer-migration
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID | Claim | Evidence |
+| --- | --- | --- |
+| C1 | Consumers still carry duplicated generic smoke scaffolds until a package-owned replacement is published. | repo:consumer duplication audit output |
+| C2 | `@webpresso/agent-config/playwright/quality-scaffold` provides the package-owned replacement surface. | repo:packages/agent-config/src/playwright/quality-scaffold.ts |
+
+### Material Decisions
+
+| ID | Decision | Chosen option | Rejected alternatives | Rationale |
+| --- | --- | --- | --- | --- |
+| D1 | Smoke scaffold ownership | Publish package-owned Playwright quality scaffold first | Delete consumer smoke specs before replacement release | Keeps consumer E2E commands green while moving ownership upstream. |
+| D2 | Consumer migration timing | Keep root smoke deletion blocked until package release | Import unpublished package subpath in consumer CI | Avoids red downstream PRs against current published agent-config. |
+
+### Promotion Gates
+
+| Gate | Command | Expected outcome | Last result |
+| --- | --- | --- | --- |
+| package-tests | targeted Vitest and Playwright smoke commands | pass | pass on 2026-07-01 |
+| consumer-migration | downstream consumer PR checks | pass | pending |
+
+### Residual Unknowns
+
+- Exact published version carrying the new agent-config subpath.
+- Timing for deleting the remaining root smoke spec/fixture from consumers after publication.
