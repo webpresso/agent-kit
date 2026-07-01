@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: "2026-06-29"
+last_updated: "2026-07-01"
 ---
 
 # Add-ons
@@ -61,11 +61,12 @@ wp install oh-my claude-code --scope user
 wp install oh-my opencode
 ```
 
-`openagent` is accepted only as a compatibility alias for the canonical OpenCode
-command:
+`openagent` and `omo` are accepted only as compatibility aliases for the canonical OpenCode
+command. The OpenCode Oh My layer is [Oh My OpenAgent](https://github.com/code-yeongyu/oh-my-openagent); WP keeps the documented path on the `wp`/`vp` facade:
 
 ```bash
 wp install oh-my openagent   # same target as: wp install oh-my opencode
+wp install oh-my omo         # same target as: wp install oh-my opencode
 ```
 
 When WP owns a user or project scope, future `wp update` runs refresh that scope
@@ -80,7 +81,7 @@ for Oh My tools that support project-scoped setup.
 | OpenCode CLI     | `wp install opencode`          | User-scoped global CLI.                       |
 | Oh My Codex      | `wp install oh-my codex`       | Supports `--scope user` or `--scope project`. |
 | Oh My ClaudeCode | `wp install oh-my claude-code` | Supports `--scope user` or `--scope project`. |
-| Oh My OpenAgent  | `wp install oh-my opencode`    | `openagent` is an alias, not canonical.       |
+| Oh My OpenAgent  | `wp install oh-my opencode`    | `openagent`/`omo` are aliases, not canonical. |
 
 ## Default bootstrap
 

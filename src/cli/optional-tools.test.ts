@@ -40,11 +40,14 @@ describe("optional tool registry", () => {
     expect(resolveOptionalTool("oh-my", "opencode")?.adapter.id).toBe("openagent");
   });
 
-  it("accepts openagent only as an Oh My OpenCode compatibility alias", () => {
+  it("accepts OpenAgent aliases only inside the Oh My OpenCode namespace", () => {
     expect(resolveOptionalTool("base", "openagent")).toBeNull();
-    const resolved = resolveOptionalTool("oh-my", "openagent");
-    expect(resolved?.adapter.id).toBe("openagent");
-    expect(optionalToolCanonicalCommand(resolved!.adapter)).toBe("wp install oh-my opencode");
+    expect(resolveOptionalTool("base", "omo")).toBeNull();
+    for (const alias of ["openagent", "omo", "oh-my-openagent"] as const) {
+      const resolved = resolveOptionalTool("oh-my", alias);
+      expect(resolved?.adapter.id).toBe("openagent");
+      expect(optionalToolCanonicalCommand(resolved!.adapter)).toBe("wp install oh-my opencode");
+    }
   });
 
   it("rejects typoed optional-tool args with canonical examples", () => {
@@ -94,6 +97,21 @@ describe("optional tool registry", () => {
     expect(steps.find((step) => step.id === "omx")?.args).toEqual(["update", "-g", "oh-my-codex"]);
     expect(steps.filter((step) => step.id === "omx")).toHaveLength(1);
     expect(steps.find((step) => step.id === "omc-project")?.cwd).toBe("/repo/current");
+  });
+
+  it("refreshes Oh My OpenAgent via vp dlx instead of a global package update", () => {
+    const state = claimUserOwnedTool(defaultToolingOwnershipState(), "openagent");
+    const steps = optionalToolUpdateSteps({
+      ownershipState: state,
+      repoKey: "repo-123",
+      vpCommand: VP,
+      cwd: "/repo/current",
+    });
+
+    expect(steps).toHaveLength(1);
+    expect(steps[0]).toMatchObject({ id: "openagent", command: VP });
+    expect(steps[0]?.args.slice(0, 3)).toEqual(["dlx", "oh-my-openagent@latest", "install"]);
+    expect(steps[0]?.args).toContain("--platform=opencode");
   });
 
   it("ignores project ownership from other repos", () => {

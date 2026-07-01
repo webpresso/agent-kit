@@ -98,6 +98,23 @@ function packageAdapter(input: {
   };
 }
 
+const OPENAGENT_INSTALL_ARGS = [
+  "dlx",
+  "oh-my-openagent@latest",
+  "install",
+  "--no-tui",
+  "--platform=opencode",
+  "--claude=no",
+  "--gemini=no",
+  "--copilot=no",
+  "--openai=no",
+  "--opencode-zen=no",
+  "--zai-coding-plan=no",
+  "--opencode-go=no",
+  "--kimi-for-coding=no",
+  "--vercel-ai-gateway=no",
+] as const;
+
 export const OPTIONAL_TOOL_ADAPTERS: readonly OptionalToolAdapter[] = [
   packageAdapter({
     id: "codex",
@@ -179,20 +196,13 @@ export const OPTIONAL_TOOL_ADAPTERS: readonly OptionalToolAdapter[] = [
     id: "openagent",
     namespace: "oh-my",
     canonicalName: "opencode",
-    aliases: ["openagent", "oh-my-openagent", "oh-my-opencode"],
+    aliases: ["openagent", "omo", "oh-my-openagent", "oh-my-opencode"],
     supportedScopes: ["user"],
     ownershipName: "Oh My OpenAgent for OpenCode",
-    install: ({ vpCommand }) => [
-      vpStep(vpCommand, "openagent", ["install", "-g", "oh-my-openagent"]),
-      {
-        id: "openagent-setup",
-        command: "oh-my-openagent",
-        args: ["install", "--no-tui", "--platform=opencode"],
-      },
-    ],
+    install: ({ vpCommand }) => [vpStep(vpCommand, "openagent", OPENAGENT_INSTALL_ARGS)],
     update: ({ ownershipState, vpCommand }) =>
       isUserOwnedTool(ownershipState, "openagent")
-        ? [vpStep(vpCommand, "openagent", ["update", "-g", "oh-my-openagent"])]
+        ? [vpStep(vpCommand, "openagent", OPENAGENT_INSTALL_ARGS)]
         : [],
   },
 ];
