@@ -3,40 +3,18 @@
 [![License: Elastic--2.0](https://img.shields.io/badge/License-Elastic--2.0-0f766e.svg)](./LICENSE)
 [![CI](https://github.com/webpresso/agent-kit/actions/workflows/ci.agent-kit.yml/badge.svg)](https://github.com/webpresso/agent-kit/actions/workflows/ci.agent-kit.yml)
 
-> A public, source-available harness for agent-ready repos: one `wp` runtime
-> for setup, hooks, MCP tools, memory, worktrees, browser QA, secrets, audits,
+> TypeScript-first agent harness for guarded develop/deploy workflows: one `wp`
+> runtime for setup, MCP tools, hooks, memory, worktrees, QA, secrets, audits,
 > blueprints, and evidence gates.
 
-## Why this exists
+Agent Kit is the repo-level harness around coding agents. It gives TypeScript
+projects a repeatable `wp` command surface, generated host instructions, MCP
+quality tools, local continuity, and policy checks so agent work can be run,
+reviewed, and repaired with evidence.
 
-Coding agents are useful until every host gets a different prompt, hook, test
-command, memory store, and safety rule. Agent Kit turns that pile of local
-conventions into one repo contract that agents can run and humans can audit.
-
-It is not another agent. It is the harness around agents: the CLI, MCP server,
-hooks, generated host surfaces, docs checks, and release gates that keep work
-repeatable.
-
-## What you get
-
-- **One setup path:** `wp setup --project-init` creates the agent surface,
-  quality scripts, safe ignores, docs templates, and blueprint folders.
-- **One command facade:** `wp test`, `wp lint`, `wp typecheck`, `wp format`,
-  `wp e2e`, `wp qa`, `wp audit`, `wp worktree`, and `wp secrets` give agents a
-  stable interface instead of repo-specific tribal knowledge.
-- **Agent-safe MCP tools:** `wp_*` tools return bounded JSON summaries with
-  failure evidence, output sizes, and token-saved metadata instead of raw logs.
-- **Shared host surfaces:** one catalog projects rules, skills, hooks, Claude
-  plugin metadata, Codex plugin metadata, and generated instruction files.
-- **Continuity without magic:** session memory is local storage with explicit
-  search, restore, capture, retrieve, reset, and doctor tools; methodology and
-  proof live in [`docs/bench/session-memory-methodology.md`](./docs/bench/session-memory-methodology.md).
-- **Safety by default:** secret, path, package, docs, blueprint, catalog, and
-  reference-parity audits fail before drift becomes release material; see
-  [`docs/bench/reference-parity-matrix.md`](./docs/bench/reference-parity-matrix.md),
-  [`src/__integration__/reference-parity-host-smoke.integration.test.ts`](./src/__integration__/reference-parity-host-smoke.integration.test.ts),
-  and [`src/__integration__/reference-parity-tool-surface.integration.test.ts`](./src/__integration__/reference-parity-tool-surface.integration.test.ts).
-- **Evidence over claims:** public numeric benchmark claims require result-card evidence. Claim gate: checked-in first-party result card. See `docs/bench/result-cards/` and [`docs/bench/result-card-contract.md`](./docs/bench/result-card-contract.md).
+It is not another agent or remote orchestration service. It is the
+source-available scaffolding and guardrail layer that helps Claude, Codex, and
+other MCP-capable hosts operate inside a repo contract.
 
 ## Quick start
 
@@ -45,7 +23,7 @@ Requires Node.js 24 or newer.
 ```bash
 vp install -g @webpresso/agent-kit
 cd your-repo
-wp setup --project-init
+wp setup repair --project-init
 wp hooks doctor
 ```
 
@@ -65,21 +43,40 @@ orchestration contract, see
 [`docs/secrets/providers.md`](./docs/secrets/providers.md) and
 [`docs/errors/wp-secret-orchestration.md`](./docs/errors/wp-secret-orchestration.md).
 
-## Capability map
+## What `wp` guards
 
-| Area                  | What `wp` provides                                                                                                         | Proof                                                                                                |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Setup and onboarding  | Idempotent setup, AGENTS/CLAUDE wiring, generated host surfaces, base scripts, templates, and gitignore protection         | [`src/cli/commands/init/`](./src/cli/commands/init/)                                                 |
-| CLI quality gates     | Test, lint, typecheck, format, E2E, QA, CI, logs, package-manager facade, and release/readiness commands                   | [`src/cli/cli.ts`](./src/cli/cli.ts)                                                                 |
-| MCP tools             | Agent-safe tools for quality gates, audits, worktrees, PR status, release readiness, gain, bench, and session memory       | [`src/mcp/tools/_registry.ts`](./src/mcp/tools/_registry.ts)                                         |
-| Session memory        | Local continuity tools with bounded output, reset safety, and explicit non-goals                                           | [`docs/guides/session-memory.md`](./docs/guides/session-memory.md)                                   |
-| Worktrees             | Managed worktrees under `~/.agent/worktrees`, blueprint owner binding, scratch lanes, list/prune/refresh/migrate           | [`docs/worktrees.md`](./docs/worktrees.md)                                                           |
-| Browser and QA        | Browser doctor/ensure helpers plus bundled browse, QA, design-review, and devex-review skills                              | [`src/browser/`](./src/browser/), [`docs/qa-output.md`](./docs/qa-output.md)                         |
-| Secrets and preview   | Provider-neutral secret execution, secret doctor, preview/cleanup/deploy paths, and CI act secret redaction                | [`docs/secrets/providers.md`](./docs/secrets/providers.md), [`docs/ci-act.md`](./docs/ci-act.md)     |
-| Audits                | Guardrails for docs, blueprints, catalog drift, reference parity, paths, licenses, secrets, tech debt, and package surface | [`src/audit/`](./src/audit/)                                                                         |
-| Blueprints            | Lifecycle folders, task metadata, dependency graph tools, MCP authoring, and drift checks                                  | [`docs/blueprint-format.md`](./docs/blueprint-format.md), [`docs/lifecycle.md`](./docs/lifecycle.md) |
-| Plugin artifacts      | Package-owned Claude/Codex plugin metadata; setup writes active host config instead of relying on marketplace side effects | [`.claude-plugin/`](./.claude-plugin/), [`.codex-plugin/`](./.codex-plugin/)                         |
-| Runtime/package gates | Packed-artifact smoke tests, public readiness, package lint, path checks, and secret checks                                | [`scripts/public-readiness.ts`](./scripts/public-readiness.ts), [`package.json`](./package.json)     |
+| Outcome                                | What Agent Kit provides                                                                                                                                                              | Proof                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Start from a known repo contract       | `wp setup repair --project-init` creates or repairs agent instructions, host config, docs templates, blueprint folders, quality scripts, and safe ignores.                           | [setup command source](https://github.com/webpresso/agent-kit/tree/main/src/cli/commands/init)                                                                                                                                                                                                                                                                                                                                                       |
+| Give agents stable commands            | `wp test`, `wp lint`, `wp typecheck`, `wp format`, `wp e2e`, `wp qa`, `wp audit`, `wp worktree`, and `wp secrets` wrap repo-specific tooling behind one facade.                      | [CLI entrypoint](https://github.com/webpresso/agent-kit/blob/main/src/cli/cli.ts)                                                                                                                                                                                                                                                                                                                                                                    |
+| Expose bounded MCP tools               | `wp_*` MCP tools return JSON summaries with failure evidence, output limits, and token-saved metadata instead of raw terminal dumps.                                                 | [MCP registry](https://github.com/webpresso/agent-kit/blob/main/src/mcp/tools/_registry.ts)                                                                                                                                                                                                                                                                                                                                                          |
+| Keep host surfaces consistent          | One catalog projects rules, skills, hooks, Claude plugin metadata, Codex plugin metadata, and generated instruction files.                                                           | [Claude plugin](./.claude-plugin/), [Codex plugin](./.codex-plugin/)                                                                                                                                                                                                                                                                                                                                                                                 |
+| Preserve local continuity              | Session memory is local storage with explicit search, restore, capture, retrieve, reset, and doctor tools.                                                                           | [`docs/guides/session-memory.md`](./docs/guides/session-memory.md), [`docs/bench/session-memory-methodology.md`](./docs/bench/session-memory-methodology.md)                                                                                                                                                                                                                                                                                         |
+| Isolate risky work                     | Managed worktrees and blueprint owner binding keep implementation lanes separate from the main checkout.                                                                             | [`docs/worktrees.md`](./docs/worktrees.md)                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Run browser QA with evidence           | Browser doctor/ensure helpers and bundled browse, QA, design-review, and devex-review skills support local or explicit preview URLs.                                                 | [browser source](https://github.com/webpresso/agent-kit/tree/main/src/browser), [`docs/qa-output.md`](./docs/qa-output.md)                                                                                                                                                                                                                                                                                                                           |
+| Handle secrets without committing them | Provider/profile/sink contracts route secrets through configured runtime channels for local commands, CI rehearsal, and supported preview/deploy workflows with repo-specific setup. | [`docs/secrets/providers.md`](./docs/secrets/providers.md), [`docs/ci-act.md`](./docs/ci-act.md)                                                                                                                                                                                                                                                                                                                                                     |
+| Block drift before release             | Guardrails cover docs, blueprints, catalog drift, reference parity, paths, licenses, secrets, tech debt, and package surface.                                                        | [audit source](https://github.com/webpresso/agent-kit/tree/main/src/audit), [`docs/bench/reference-parity-matrix.md`](./docs/bench/reference-parity-matrix.md), [host smoke test](https://github.com/webpresso/agent-kit/blob/main/src/__integration__/reference-parity-host-smoke.integration.test.ts), [tool surface test](https://github.com/webpresso/agent-kit/blob/main/src/__integration__/reference-parity-tool-surface.integration.test.ts) |
+| Tie claims to evidence                 | Public benchmark and release claims require checked-in result cards, docs gates, audits, or tests before publication.                                                                | [`docs/bench/result-card-contract.md`](./docs/bench/result-card-contract.md), [public readiness script](https://github.com/webpresso/agent-kit/blob/main/scripts/public-readiness.ts)                                                                                                                                                                                                                                                                |
+
+## Develop/deploy workflow shape
+
+Agent Kit keeps agent work inside a verifiable loop:
+
+1. **Repair the surface:** `wp setup repair --project-init` and
+   `wp hooks doctor` make host instructions, hooks, MCP tools, and ignored
+   generated files visible.
+2. **Plan the change:** blueprints record scope, dependencies, acceptance
+   criteria, and verification commands before non-trivial edits.
+3. **Work in a lane:** `wp worktree` creates isolated checkouts for feature,
+   repair, or QA work.
+4. **Run guarded commands:** agents use `wp_*` MCP tools or the `wp` CLI facade
+   for tests, lint, typecheck, format, browser QA, audits, and secret-scoped
+   commands.
+5. **Preview/deploy with repo setup:** supported preview/deploy paths rely on
+   repo-specific scripts, configured secret profiles, and explicit evidence;
+   Agent Kit supplies guardrails rather than a hands-off production deployer.
+6. **Publish evidence:** docs checks, audits, result cards, PR notes, and
+   release gates make public claims reviewable.
 
 ## Session-memory contract
 
@@ -139,9 +136,9 @@ See [`docs/security-audits.md`](./docs/security-audits.md),
 
 ## Fit and non-goals
 
-Use Agent Kit when you want a repo-level agent harness: setup, host surfaces,
-quality gates, MCP tools, session memory, worktrees, blueprints, and audit
-policy in one repeatable package.
+Use Agent Kit when you want a TypeScript-first repo harness for setup, host
+surfaces, quality gates, MCP tools, session memory, worktrees, blueprints,
+preview/deploy guardrails, and audit policy in one repeatable package.
 
 Skip it when you only want a prompt library, cannot run Node-based developer
 tooling, or do not want repo-local agent files. See

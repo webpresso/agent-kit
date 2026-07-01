@@ -1,13 +1,14 @@
 ---
 type: guide
-last_updated: "2026-06-29"
+last_updated: "2026-07-01"
 ---
 
 # Getting started
 
-Agent Kit makes a repo usable by coding agents in one setup pass. It installs a
-shared harness: CLI commands, MCP tools, host instructions, hooks, skills,
-quality gates, docs templates, and safe ignores.
+Agent Kit makes a TypeScript repo usable by coding agents through a guarded
+develop/deploy harness: CLI commands, MCP tools, host instructions, hooks,
+skills, quality gates, docs templates, worktree lanes, secret boundaries, and
+safe ignores.
 
 ## Requirements
 
@@ -79,8 +80,10 @@ wp browser doctor
 wp browser ensure chromium
 ```
 
-Browser skills prefer repo-local preview/dev-server URLs. Otherwise provide a
-URL explicitly.
+Browser skills prefer repo-local preview/dev-server URLs. Supported
+preview/deploy workflows depend on the repo's own scripts, configured secret
+profiles, and explicit verification evidence; Agent Kit supplies the guardrails,
+not a hands-off production deployer. Otherwise provide a URL explicitly.
 
 ## Secrets
 
