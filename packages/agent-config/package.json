@@ -40,6 +40,12 @@
         "default": "./dist/esm/e2e/index.js"
       }
     },
+    "./playwright/quality-scaffold": {
+      "import": {
+        "types": "./dist/esm/playwright/quality-scaffold.d.ts",
+        "default": "./dist/esm/playwright/quality-scaffold.js"
+      }
+    },
     "./process": {
       "import": {
         "types": "./dist/esm/process/index.d.ts",
@@ -140,12 +146,6 @@
       "import": {
         "types": "./dist/esm/workers-test/index.d.ts",
         "default": "./dist/esm/workers-test/index.js"
-      }
-    },
-    "./playwright/quality-scaffold": {
-      "import": {
-        "types": "./dist/esm/playwright/quality-scaffold.d.ts",
-        "default": "./dist/esm/playwright/quality-scaffold.js"
       }
     }
   },
