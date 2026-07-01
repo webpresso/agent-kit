@@ -105,3 +105,50 @@ Fresh verification on 2026-07-01:
 - `wp audit absolute-path-policy --root .` passed.
 - `wp audit no-dev-vars` passed.
 - `wp audit blueprint-lifecycle --affected --branch` passed after moving the worktree to a non-`blueprints` path to avoid path-segment misclassification.
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-07-01T14:45:00Z
+- verified-head: 59abb6f49cdc38d2de17bdb091f23b51fa493ba2
+- trust-gate-version: v1
+
+The verified-head field records the local validation checkpoint before the final trust-dossier update. The final merge proof is PR CI on the published branch head.
+
+### Material Claims
+
+| ID  | Claim                                                                                                                       | Evidence                                                                                                            |
+| --- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| C1  | Verify now requires two outside-model approvals by default unless the user explicitly asks for a different count or mix.    | repo:catalog/agent/skills/verify/SKILL.md; repo:skills/verify/SKILL.md                                              |
+| C2  | Verify requires outside approval evidence as PR comments when a PR exists, including approving model/tool name and verdict. | repo:catalog/agent/skills/verify/SKILL.md; repo:skills/verify/SKILL.md                                              |
+| C3  | Operator docs and command surfaces mention the outside-approval requirement.                                                | repo:catalog/agent/commands/verify.md; repo:docs/skills-catalog.md                                                  |
+| C4  | The stale Codex outside-voice command flag is removed at the workflow-skills source and generated skill copies.             | repo:packages/workflow-skills/skills/codex.md; repo:catalog/agent/skills/codex/SKILL.md; repo:skills/codex/SKILL.md |
+| C5  | The blueprint records completion and verification evidence for the outside-approval policy update.                          | repo:blueprints/completed/verify-skill-requires-two-outside-model-approvals-by-default.md                           |
+
+### Material Decisions
+
+| ID  | Decision                        | Chosen option                                                                                                        | Rejected alternatives                                                                    | Rationale                                                                            |
+| --- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| D1  | Default outside-approval count  | Require two extra model approvals by default.                                                                        | Require one model; require a fixed provider pair; require human approvals in this skill. | Matches the user request while preserving branch-protection/human-review separation. |
+| D2  | Host-specific reviewer fallback | Prefer Claude+OpenCode from Codex, Codex+OpenCode from Claude, else two distinct OpenCode Go reviewers if available. | Always require unavailable hosts; silently waive unavailable reviewers.                  | Keeps the policy future-proofed and explicit about availability gaps.                |
+| D3  | Approval evidence location      | Require PR comments when a PR exists and final-report evidence otherwise.                                            | Only local notes; comments without model names.                                          | Makes model approvals auditable by reviewers and maintainers.                        |
+| D4  | Codex outside-voice command fix | Remove the unsupported --ask-for-approval flag from source and generated copies.                                     | Keep stale command text; patch only generated copies.                                    | Source-owned repair prevents regeneration from reintroducing the stale flag.         |
+
+### Promotion Gates
+
+| Gate       | Command                      | Expected outcome | Last result                      |
+| ---------- | ---------------------------- | ---------------- | -------------------------------- |
+| sync       | wp sync --check              | pass             | pass at 2026-07-01T14:45:00.000Z |
+| format     | wp format --check            | pass             | pass at 2026-07-01T14:45:00.000Z |
+| docs       | wp audit docs-frontmatter    | pass             | pass at 2026-07-01T14:45:00.000Z |
+| agents     | wp audit agents              | pass             | pass at 2026-07-01T14:45:00.000Z |
+| tph        | wp audit tph                 | pass             | pass at 2026-07-01T14:45:00.000Z |
+| blueprint  | wp audit blueprint-lifecycle | pass             | pass at 2026-07-01T14:45:00.000Z |
+| guardrails | wp audit guardrails          | pass             | pass at 2026-07-01T14:45:00.000Z |
+
+### Residual Unknowns
+
+None.
