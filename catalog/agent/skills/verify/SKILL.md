@@ -129,13 +129,53 @@ Before claiming done:
 
 This phase exists to catch the garbage that often slips in beside otherwise-correct work.
 
-## Phase 6 — Final completion statement
+## Phase 6 — Outside-model approval gate
+
+Before claiming merge-ready, obtain outside-voice model approvals unless the
+user explicitly asked for a different approval count or reviewer mix.
+
+Default policy:
+
+- Require **two extra model approvals** by default.
+- If the user asks for more, fewer, zero, or specific reviewers, follow that
+  explicit instruction and report the chosen requirement.
+- These approvals are model outside-voice approvals, not a substitute for
+  required human GitHub reviews or branch-protection approvals.
+
+Reviewer preference:
+
+- When running from Codex, prefer **Claude + one OpenCode Go reviewer**.
+- When running from Claude, prefer **Codex + one OpenCode Go reviewer**.
+- When Codex/Claude outside voice is unavailable, use **two distinct OpenCode Go
+  reviewers** if OpenCode is logged in.
+- Prefer the repo's outside-voice skills instead of hand-rolled commands:
+  `$agent-kit:claude`, `$agent-kit:codex`, and one or more OpenCode Go reviewer
+  skills such as `$agent-kit:opencode-go`, `$agent-kit:qwen`,
+  `$agent-kit:deepseek`, `$agent-kit:glm`, `$agent-kit:kimi`,
+  `$agent-kit:minimax`, or `$agent-kit:mimo`.
+
+Approval evidence requirements:
+
+- Each outside reviewer must return a clear `APPROVED`/`BLOCKED` (or equivalent)
+  verdict with enough evidence to identify what it reviewed.
+- Record outside approval evidence as PR comments when a PR exists.
+- Each PR comment must include the approving model/tool name, provider/family
+  when known, verdict, reviewed commit or branch, and any blockers or caveats.
+- If there is no PR yet, record the same evidence in the final Verify report and
+  add the PR comments once the PR exists before calling the PR merge-ready.
+- If an outside reviewer is unavailable (not installed, not logged in, missing
+  model, timeout after the reviewer skill's allowed retry path), do not silently
+  count it. Try the next preferred reviewer. If the required count still cannot
+  be met, report the exact approval gap and say the work is **not merge-ready**.
+
+## Phase 7 — Final completion statement
 
 Report:
 
 - what was verified
 - which commands/logs prove it
 - which docs/help/instruction surfaces were refreshed when command or operator guidance changed
+- which outside models approved it, with PR comment links when a PR exists
 - what remains intentionally out of scope
 
 When catalog assets, generated instruction templates, or checked-in generated instruction copies changed, include the repo's public-package-safety or package-surface leak checks in the verification evidence.

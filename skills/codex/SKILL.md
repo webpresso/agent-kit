@@ -36,7 +36,7 @@ trap 'rm -f "$PROMPT_FILE"' EXIT
 3. Run Codex non-interactively in read-only mode:
 
 ```bash
-codex exec --sandbox read-only --ask-for-approval never --cd "$PWD" - <"$PROMPT_FILE"
+codex exec --sandbox read-only --cd "$PWD" - <"$PROMPT_FILE"
 ```
 
 4. Summarize findings with severity, evidence, and whether you independently verified them.
