@@ -139,17 +139,14 @@ describe("createPackedManifest", () => {
       devDependencies?: Record<string, string>;
     };
 
-    for (const dependencyName of [
-      "vite-plus",
-      "vite",
-      "vitest",
-      "@vitejs/plugin-react",
-      "oxlint",
-      "oxfmt",
-      "tsx",
-    ]) {
+    for (const dependencyName of ["vite-plus", "vite", "vitest", "@vitejs/plugin-react", "tsx"]) {
       expect(packageJson.dependencies?.[dependencyName]).toBeUndefined();
       expect(typeof packageJson.devDependencies?.[dependencyName]).toBe("string");
+    }
+
+    for (const vitePlusOwnedDependency of ["oxlint", "oxfmt"]) {
+      expect(packageJson.dependencies?.[vitePlusOwnedDependency]).toBeUndefined();
+      expect(packageJson.devDependencies?.[vitePlusOwnedDependency]).toBeUndefined();
     }
 
     expect(packageJson.dependencies?.typescript).toBeDefined();

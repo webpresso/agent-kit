@@ -22,24 +22,6 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    "./repo-root": {
-      "import": {
-        "types": "./dist/esm/repo-root/index.d.ts",
-        "default": "./dist/esm/repo-root/index.js"
-      }
-    },
-    "./process": {
-      "import": {
-        "types": "./dist/esm/process/index.d.ts",
-        "default": "./dist/esm/process/index.js"
-      }
-    },
-    "./e2e": {
-      "import": {
-        "types": "./dist/esm/e2e/index.d.ts",
-        "default": "./dist/esm/e2e/index.js"
-      }
-    },
     "./deploy": {
       "import": {
         "types": "./dist/esm/deploy/index.d.ts",
@@ -52,6 +34,24 @@
         "default": "./dist/esm/dev/index.js"
       }
     },
+    "./e2e": {
+      "import": {
+        "types": "./dist/esm/e2e/index.d.ts",
+        "default": "./dist/esm/e2e/index.js"
+      }
+    },
+    "./process": {
+      "import": {
+        "types": "./dist/esm/process/index.d.ts",
+        "default": "./dist/esm/process/index.js"
+      }
+    },
+    "./repo-root": {
+      "import": {
+        "types": "./dist/esm/repo-root/index.d.ts",
+        "default": "./dist/esm/repo-root/index.js"
+      }
+    },
     "./stryker": {
       "import": {
         "types": "./dist/esm/stryker/index.d.ts",
@@ -60,33 +60,33 @@
     },
     "./tsconfig/base.json": {
       "import": {
-        "types": "./dist/esm/tsconfig/base.json",
         "default": "./dist/esm/tsconfig/base.json"
-      }
+      },
+      "default": "./dist/esm/tsconfig/base.json"
     },
     "./tsconfig/cloudflare.json": {
       "import": {
-        "types": "./dist/esm/tsconfig/cloudflare.json",
         "default": "./dist/esm/tsconfig/cloudflare.json"
-      }
+      },
+      "default": "./dist/esm/tsconfig/cloudflare.json"
     },
     "./tsconfig/library.json": {
       "import": {
-        "types": "./dist/esm/tsconfig/library.json",
         "default": "./dist/esm/tsconfig/library.json"
-      }
+      },
+      "default": "./dist/esm/tsconfig/library.json"
     },
     "./tsconfig/react-library.json": {
       "import": {
-        "types": "./dist/esm/tsconfig/react-library.json",
         "default": "./dist/esm/tsconfig/react-library.json"
-      }
+      },
+      "default": "./dist/esm/tsconfig/react-library.json"
     },
     "./tsconfig/react-router.json": {
       "import": {
-        "types": "./dist/esm/tsconfig/react-router.json",
         "default": "./dist/esm/tsconfig/react-router.json"
-      }
+      },
+      "default": "./dist/esm/tsconfig/react-router.json"
     },
     "./vitest/flakiness-reporter": {
       "import": {
@@ -141,6 +141,12 @@
         "types": "./dist/esm/workers-test/index.d.ts",
         "default": "./dist/esm/workers-test/index.js"
       }
+    },
+    "./playwright/quality-scaffold": {
+      "import": {
+        "types": "./dist/esm/playwright/quality-scaffold.d.ts",
+        "default": "./dist/esm/playwright/quality-scaffold.js"
+      }
     }
   },
   "publishConfig": {
@@ -148,7 +154,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "tshy",
+    "build": "tshy && bun scripts/normalize-tsconfig-json-exports.ts",
     "prepublishOnly": "vp run build",
     "typecheck": "tsc --noEmit",
     "lint:pkg": "publint && attw --pack . --profile esm-only"
@@ -212,6 +218,7 @@
       "./deploy": "./src/deploy/index.ts",
       "./dev": "./src/dev/index.ts",
       "./e2e": "./src/e2e/index.ts",
+      "./playwright/quality-scaffold": "./src/playwright/quality-scaffold.ts",
       "./process": "./src/process/index.ts",
       "./repo-root": "./src/repo-root/index.ts",
       "./stryker": "./src/stryker/index.ts",
