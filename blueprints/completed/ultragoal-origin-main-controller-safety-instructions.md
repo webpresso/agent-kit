@@ -2,11 +2,12 @@
 type: blueprint
 title: Ultragoal origin/main controller safety instructions
 owner: agent-kit
-status: in-progress
+status: completed
+completed_at: "2026-07-01"
 complexity: S
 created: "2026-07-01"
 last_updated: "2026-07-01"
-progress: 90% (0/1 tasks done, 0 blocked, updated 2026-07-01)
+progress: 100% (1/1 tasks done, 0 blocked, updated 2026-07-01)
 depends_on: []
 cross_repo_depends_on: []
 tags: [agent-instructions, ultragoal, worktree-discipline]
@@ -43,7 +44,13 @@ worktree_owner_branch: bp/ultragoal-origin-main-controller-safety-instructions
 
 #### [docs] Task 1.1: Add origin/main Ultragoal discipline to agent instructions
 
-**Status:** in-progress
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"audit_kind":"sync","command":"wp sync --check","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-07-01T18:54:00.000Z"},{"audit_kind":"agents","command":"wp audit agents","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-07-01T18:54:00.000Z"},{"audit_kind":"format","command":"wp format --check","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-07-01T18:54:00.000Z"},{"audit_kind":"blueprint-lifecycle","command":"wp audit blueprint-lifecycle --staged","exit_code":0,"kind":"audit","passed":true,"result":"pass","ts":"2026-07-01T18:54:00.000Z"}]
+```
 
 **Depends:** None
 
@@ -109,7 +116,7 @@ Update the repo-owned instruction sources so future agents know that Ultragoal o
 | --- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | C1  | Ultragoal instructions now forbid primary/main checkout controllers. | repo:AGENTS.md; repo:catalog/AGENTS.md.tpl; repo:catalog/agent/rules/pre-implementation.md |
 | C2  | Instructions require controller worktrees to start from origin/main. | repo:AGENTS.md; repo:catalog/AGENTS.md.tpl; repo:catalog/agent/rules/pre-implementation.md |
-| C3  | The instruction update was verified with repo-owned gates.           | repo:blueprints/in-progress/ultragoal-origin-main-controller-safety-instructions.md        |
+| C3  | The instruction update was verified with repo-owned gates.           | repo:blueprints/completed/ultragoal-origin-main-controller-safety-instructions.md          |
 
 ### Material Decisions
 
