@@ -447,8 +447,8 @@ export function normalizeCommandForRouting(command: string): string {
   command = stripLeadingSecretWrappers(command);
   const trimmed = stripCorepackPackageManagerProxy(stripLeadingEnvironmentAssignments(command));
   let match = VP_COMMAND_PREFIX.exec(trimmed);
-  let next = trimmed;
   let prefix = "vp";
+  let next: string;
 
   if (match?.groups?.rest) {
     next = match.groups.rest.trim();

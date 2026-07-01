@@ -11,8 +11,6 @@ const SECRET_BEARING_ACTION_PREFIXES = [
 ] as const;
 const FULL_SHA_PATTERN = /@[0-9a-f]{40}(?:\s|$)/iu;
 const INFISICAL_INDICATORS = [/INFISICAL_TOKEN/u, /\binfisical export\b/u] as const;
-const EXPLICIT_CI_SECRET_PATTERN =
-  /ci_secret_provider_token:\s*\n(?:\s+.*\n)*?\s+required:\s*(?:true|false)/iu;
 
 function walkWorkflowFiles(dir: string): string[] {
   if (!existsSync(dir)) return [];
@@ -37,6 +35,22 @@ function isSecretBearing(content: string): boolean {
   );
 }
 
+function declaresCiSecretProviderToken(content: string): boolean {
+  const lines = content.split(/\r?\n/u);
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!lines[index]?.trim().startsWith("ci_secret_provider_token:")) continue;
+    const secretIndent = (lines[index]?.match(/^\s*/u)?.[0].length ?? 0) + 1;
+    for (let childIndex = index + 1; childIndex < lines.length; childIndex += 1) {
+      const line = lines[childIndex] ?? "";
+      if (line.trim().length === 0) continue;
+      const indent = line.match(/^\s*/u)?.[0].length ?? 0;
+      if (indent < secretIndent) break;
+      if (/^\s+required:\s*(?:true|false)\s*$/iu.test(line)) return true;
+    }
+  }
+  return false;
+}
+
 function findViolations(root: string, file: string): RepoAuditViolation[] {
   const relPath = relative(root, file).replace(/\\/gu, "/");
   const content = readFileSync(file, "utf8");
@@ -58,7 +72,7 @@ function findViolations(root: string, file: string): RepoAuditViolation[] {
     });
   }
 
-  if (isReusableWorkflow && hasSecretBearingAccess && !EXPLICIT_CI_SECRET_PATTERN.test(content)) {
+  if (isReusableWorkflow && hasSecretBearingAccess && !declaresCiSecretProviderToken(content)) {
     violations.push({
       file: relPath,
       message: `${relPath}: reusable secret-bearing workflows must declare ci_secret_provider_token explicitly`,

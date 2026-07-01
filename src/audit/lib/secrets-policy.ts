@@ -114,7 +114,7 @@ function requireRecord(value: unknown, sourceLabel: string, name: string): Recor
 function buildProfilesMetadata(
   value: unknown,
   sourceLabel: string,
-  allowedProviders?: ReadonlySet<string>,
+  allowedProviders: ReadonlySet<string>,
 ): Readonly<Record<string, { readonly environment: string }>> | undefined {
   if (value === undefined) return undefined;
   const profileEntries = requireRecord(value, sourceLabel, "profiles");
@@ -126,7 +126,7 @@ function buildProfilesMetadata(
     }
     const profile = profileValue as Record<string, unknown>;
     const provider = profile.provider;
-    if (allowedProviders && provider !== undefined) {
+    if (provider !== undefined) {
       if (typeof provider !== "string" || !allowedProviders.has(provider)) {
         throw new Error(
           `${sourceLabel}: profile "${profileId}" references unknown provider "${String(provider)}"`,

@@ -73,19 +73,32 @@ export function findWrongTaskHeaders(content: string): WrongTaskHeaderResult {
  * Exported for testability.
  */
 export function findMalformedTaskIds(content: string): number {
-  const taskHeaderMatches = content.matchAll(
-    /^####\s+(?:\[[^\]]+\]\s+)?Task\s+([^:\s]+(?:\.[^:\s]+)*)\s*:/gm,
-  );
-
   let malformedCount = 0;
-  for (const match of taskHeaderMatches) {
-    const taskId = match[1]?.trim();
-    if (!taskId || !TASK_ID_REGEX.test(taskId)) {
+  for (const line of content.split(/\r?\n/u)) {
+    const taskId = parseFourHashTaskId(line);
+    if (taskId !== null && !TASK_ID_REGEX.test(taskId)) {
       malformedCount += 1;
     }
   }
 
   return malformedCount;
+}
+
+function parseFourHashTaskId(line: string): string | null {
+  const trimmed = line.trimStart();
+  if (!trimmed.startsWith("#### ")) return null;
+  let rest = trimmed.slice("#### ".length);
+  if (rest.startsWith("[")) {
+    const laneEnd = rest.indexOf("]");
+    if (laneEnd === -1) return null;
+    rest = rest.slice(laneEnd + 1).trimStart();
+  }
+  if (!rest.startsWith("Task ")) return null;
+  rest = rest.slice("Task ".length).trimStart();
+  const colon = rest.indexOf(":");
+  if (colon === -1) return null;
+  const taskId = rest.slice(0, colon).trim();
+  return taskId.length === 0 || /\s/u.test(taskId) ? null : taskId;
 }
 
 /**

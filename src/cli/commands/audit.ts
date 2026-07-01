@@ -155,6 +155,8 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
     (await import("#audit/secret-provider-quarantine")).auditSecretProviderQuarantine(root),
   "github-actions-secrets": async (root) =>
     (await import("#audit/github-actions-secrets")).auditGitHubActionsSecrets(root),
+  "security-quality-regressions": async (root) =>
+    (await import("#audit/security-quality-regressions")).auditSecurityQualityRegressions(root),
   "secrets-config": async (root) =>
     (await import("#audit/secrets-config")).auditSecretsConfig(root),
   "consumer-agent-kit-dependency": async (root) =>

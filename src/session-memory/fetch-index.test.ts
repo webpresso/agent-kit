@@ -262,6 +262,34 @@ describe("fetchAndIndex", () => {
     s.close();
   });
 
+  it("drops script and style blocks without double-decoding entities", async () => {
+    const s = store();
+    await fetchAndIndex({
+      url: "https://example.com/html",
+      store: s,
+      fetchImpl: vi.fn(async () =>
+        response(
+          [
+            "<style>.secret { display: none }</style>",
+            "<script>window.secret = 'hidden'</script>",
+            "<h2>Title &amp; docs</h2>",
+            "<p>&amp;lt;safe&amp;gt;</p>",
+          ].join(""),
+          "text/html",
+        ),
+      ),
+    });
+
+    const titleText = s.search({ query: "Title", limit: 1 })[0]?.text ?? "";
+    const bodyText = s.search({ query: "safe", limit: 1 })[0]?.text ?? "";
+    const indexedText = `${titleText}\n${bodyText}`;
+    expect(titleText).toContain("## Title & docs");
+    expect(bodyText).toContain("&lt;safe&gt;");
+    expect(indexedText).not.toContain("hidden");
+    expect(indexedText).not.toContain("display: none");
+    s.close();
+  });
+
   it("fetches JSON as structured chunks and indexes it", async () => {
     const s = store();
     await fetchAndIndex({

@@ -53,6 +53,9 @@ on:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
+permissions:
+  contents: read
+
 env:
   # Opt the workflow's JavaScript actions into Node.js 24 ahead of the
   # 2026-06-02 GitHub default switch (replaces the deprecation warning

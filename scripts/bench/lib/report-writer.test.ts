@@ -94,6 +94,40 @@ describe("report-writer", () => {
     );
   });
 
+  it("escapes pipe characters in markdown table cells without backslash escapes", () => {
+    const report: SessionMemoryReport = {
+      run_id: "pipe",
+      model: "model",
+      dry_run: false,
+      cache_disclaimer: null,
+      cells: [
+        {
+          scenario_id: "scenario",
+          variant: "variant",
+          trials: 1,
+          status: "ok",
+          cost_usd: 0,
+          cost_mean_usd: 0,
+          cost_std_usd: 0,
+          input_tokens: 0,
+          output_tokens: 0,
+          cache_creation_input_tokens: 0,
+          cache_read_input_tokens: 0,
+          total_tokens: 0,
+          duration_ms_mean: 0,
+          duration_ms_std: 0,
+          local_wall_ms_mean: 0,
+          local_wall_ms_std: 0,
+          recall_at_5: 0,
+          recall_reason: "left | right",
+          wall_sec: 0,
+        },
+      ],
+    };
+
+    expect(renderReport(report)).toContain("left &#124; right");
+  });
+
   it("writes the rendered markdown to disk and creates parent directories", () => {
     const outPath = join(dir, "runs", "abc123", "report.md");
     const report: SessionMemoryReport = {
@@ -349,7 +383,7 @@ describe("report-writer", () => {
 
     const text = renderReport(report);
 
-    expect(text).toContain("matched 5/5 qrels from transcript with pipe \\| marker");
+    expect(text).toContain("matched 5/5 qrels from transcript with pipe &#124; marker");
     expect(text).toContain("missing scored response text in transcript");
   });
 });

@@ -55,6 +55,7 @@ import { resolveProjectRoot } from "#mcp/tools/_shared/project-root.js";
 import { maybeHint } from "./_tail-hints.js";
 import type { ToolHandlerResult, ToolRegistrar } from "./auto-discover.js";
 import { writeFileAtomic } from "#shared-utils/write-json-file.js";
+import { escapeRegex } from "#utils/string";
 
 import {
   resolveSyncAdapter,
@@ -902,7 +903,7 @@ async function handleTaskAdvance(
       let inBlock = false;
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i] ?? "";
-        if (line.match(new RegExp(`#### Task\\s+${task_id.replace(/\./g, "\\.")}`))) inBlock = true;
+        if (line.match(new RegExp(`#### Task\\s+${escapeRegex(task_id)}`))) inBlock = true;
         else if (inBlock && line.startsWith("#### ")) break;
         else if (inBlock && line.startsWith("**Status:**")) {
           lines[i] = `**Status:** ${to}`;
@@ -1143,7 +1144,7 @@ async function handlePromote(
       return err("wp_blueprint_promote failed", toStr(e));
     }
   }
-  let trustedSource =
+  const trustedSource =
     trustedMarkdown === undefined ? undefined : readFileSync(overviewPath, "utf8");
   // Platform-first path: push event + pull fresh replica before local move.
   // Iron rule: resolveSyncAdapter() returns null when WP_BLUEPRINT_PLATFORM_DISABLED=1.
@@ -1176,7 +1177,6 @@ async function handlePromote(
           file: overviewPath,
           markdown: refreshedSource,
         });
-        trustedSource = refreshedSource;
       } catch (e) {
         return err("wp_blueprint_promote failed", toStr(e));
       }
@@ -2625,7 +2625,6 @@ async function handleBlueprintTransition(
           file: found.path,
           markdown: refreshedSource,
         });
-        trustedSource = refreshedSource;
       } catch (e) {
         return err("wp_blueprint_transition failed", toStr(e));
       }
