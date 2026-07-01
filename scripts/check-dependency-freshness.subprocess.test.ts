@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -122,6 +122,32 @@ describe("check-dependency-freshness", () => {
     });
 
     expect(runCheck(root)).toContain("OK: declared dependencies and packageManager are current");
+  });
+
+  it("parses pnpm outdated JSON even when pnpm prefixes stdout warnings", () => {
+    const binDir = join(root, "bin");
+    mkdirSync(binDir, { recursive: true });
+    const fakePnpm = join(binDir, "pnpm");
+    const fakeNpm = join(binDir, "npm");
+    writeFileSync(
+      fakePnpm,
+      [
+        "#!/bin/sh",
+        "printf '%s\\n' '[WARN] deprecated fixture warning emitted before JSON'",
+        'printf \'%s\\n\' \'{"vite":{"wanted":"8.1.0","latest":"8.1.0","dependencyType":"devDependencies"}}\'',
+      ].join("\n"),
+    );
+    writeFileSync(fakeNpm, "#!/bin/sh\nprintf '%s\\n' '11.9.0'\n");
+    chmodSync(fakePnpm, 0o755);
+    chmodSync(fakeNpm, 0o755);
+
+    expect(
+      runCheck(root, {
+        PATH: `${binDir}:${process.env.PATH ?? ""}`,
+        WP_DEPS_FRESHNESS_OUTDATED_JSON: "",
+        WP_DEPS_FRESHNESS_PNPM_LATEST: "",
+      }),
+    ).toContain("OK: declared dependencies and packageManager are current");
   });
 });
 

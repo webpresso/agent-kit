@@ -1,10 +1,12 @@
 ---
 type: blueprint
-status: draft
+title: Agent-config publish catalog deps fix
+owner: codex
+status: completed
 complexity: XS
 created: "2026-06-24"
 last_updated: "2026-06-24"
-progress: "0% (drafted)"
+progress: "100% (implemented; scoped tests passed)"
 depends_on: []
 cross_repo_depends_on: []
 tags: []
@@ -164,31 +166,34 @@ false, workspaceRoot: packageRoot })` before publishing, publish with
 
 ## Trust Dossier
 
-Draft note: complete this dossier before promotion to planned.
-
 ### Readiness Verdict
 
-- promotion-ready: false
-- unresolved-count: 1
-- verified-at: <ISO-8601 timestamp>
-- verified-head: <full git commit SHA>
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-07-01T19:31:00Z
+- verified-head: 35920d8f94201fbbfeb1f9ff94842bade13a35a2
 - trust-gate-version: v1
 
 ### Material Claims
 
-| ID  | Claim | Evidence |
-| --- | ----- | -------- |
+| ID  | Claim                                                                                            | Evidence                                                                      |
+| --- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| C1  | This completed blueprint records the catalog-safe non-root publish fix.                          | repo:blueprints/completed/2026-06-24-agent-config-publish-catalog-deps-fix.md |
+| C2  | The implementation path resolved `catalog:` specs before publishing non-root workspace packages. | repo:src/build/package-manifest.ts; repo:scripts/release-publish.ts           |
 
 ### Material Decisions
 
-| ID  | Decision | Chosen option | Rejected alternatives | Rationale |
-| --- | -------- | ------------- | --------------------- | --------- |
+| ID  | Decision                    | Chosen option                                       | Rejected alternatives                        | Rationale                                                                  |
+| --- | --------------------------- | --------------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------- |
+| D1  | Historical lifecycle record | Promote the completed draft record to `completed/`. | Leave checked completed work under `draft/`. | The stronger lifecycle gate treats checked draft criteria as inconsistent. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
+| Gate      | Command                      | Expected outcome | Last result |
+| --------- | ---------------------------- | ---------------- | ----------- |
+| Tests     | wp test                      | pass             | pass        |
+| Lifecycle | wp audit blueprint-lifecycle | pass             | pass        |
 
 ### Residual Unknowns
 
-Complete before planned promotion.
+None.

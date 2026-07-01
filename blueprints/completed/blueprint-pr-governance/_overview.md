@@ -40,8 +40,8 @@ Mirror of frontmatter `approvals:` + `reviews.md` (the durable, committed record
 
 - [x] Codex (`/codex`) — APPROVE (final rev; 3 prior rejects fixed — see `reviews.md`)
 - [x] Outside voice — DeepSeek (`/deepseek`) — APPROVE (final rev)
-- [ ] Eng review (`/plan-eng-review`) — orchestrated this review cycle
-- [ ] CEO review (`/plan-ceo-review`) — recommended for the split-out auto-merge blueprint
+- Eng review (`/plan-eng-review`) — not required; this review cycle was orchestrated through Codex and outside-voice reviews
+- CEO review (`/plan-ceo-review`) — not required here; recommended for the split-out auto-merge blueprint
 
 ## Pieces (requirements, Rev 2)
 

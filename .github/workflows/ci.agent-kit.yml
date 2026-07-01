@@ -129,6 +129,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Require blueprint coverage for non-doc PRs
         run: ./bin/wp audit blueprint-pr-coverage --base "${{ github.event.pull_request.base.sha }}"
+      - name: Validate changed blueprint lifecycle
+        run: ./bin/wp audit blueprint-lifecycle --affected --base "${{ github.event.pull_request.base.sha }}"
 
   pr-description-contract:
     name: PR description contract
