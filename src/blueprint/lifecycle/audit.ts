@@ -687,13 +687,41 @@ function validateExecutionMetadataTruth(file: string, blueprint: Blueprint): Blu
 
 const lifecycleTaskStatuses = new Set(["todo", "in-progress", "blocked", "done", "dropped"]);
 
-function validateBlueprintPlacement(file: string, blueprint: Blueprint): BlueprintAuditIssue[] {
-  const issues: BlueprintAuditIssue[] = [];
+function statusFromScannedSlug(slug: string): string | undefined {
+  const status = slug.split("/")[0];
+  return lifecycleBlueprintStatusSchema.safeParse(status).success ? status : undefined;
+}
+
+function statusFromBlueprintPath(file: string): string | undefined {
   const normalized = normalizePath(file);
-  // Try both layouts (webpresso legacy + generic).
+  const markers = [
+    "/webpresso/blueprints/",
+    "webpresso/blueprints/",
+    "/blueprints/",
+    "blueprints/",
+  ];
+  for (const marker of markers) {
+    let start = 0;
+    while (start < normalized.length) {
+      const index = normalized.indexOf(marker, start);
+      if (index === -1) break;
+      const relativeBlueprintPath = normalized.slice(index + marker.length);
+      const parsed = parseBlueprintDocumentRelativePath(relativeBlueprintPath);
+      if (parsed) return parsed.state;
+      start = index + 1;
+    }
+  }
+  return undefined;
+}
+
+function validateBlueprintPlacement(
+  file: string,
+  blueprint: Blueprint,
+  scannedSlug?: string,
+): BlueprintAuditIssue[] {
+  const issues: BlueprintAuditIssue[] = [];
   const folderStatus =
-    normalized.split("/webpresso/blueprints/")[1]?.split("/")[0] ??
-    normalized.split("/blueprints/")[1]?.split("/")[0];
+    (scannedSlug ? statusFromScannedSlug(scannedSlug) : undefined) ?? statusFromBlueprintPath(file);
   if (!folderStatus) return issues;
 
   if (!lifecycleBlueprintStatusSchema.safeParse(blueprint.status).success) {
@@ -728,7 +756,7 @@ async function auditBlueprintFile(
     ? validateCompletedZeroTaskBlueprint(file, frontmatter, countTaskHeadings(raw))
     : [];
   return [
-    ...validateBlueprintPlacement(file, blueprint),
+    ...validateBlueprintPlacement(file, blueprint, slug),
     ...validateTaskState(blueprint).map((issue) => Object.assign({}, issue, { file })),
     ...validateBlueprintEngineSemantics(file, blueprint),
     ...strictIssues,
