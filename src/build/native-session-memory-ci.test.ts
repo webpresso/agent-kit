@@ -29,7 +29,7 @@ function expectNativeCiGate(workflow: string): void {
     /name: Install Rust toolchain for native session-memory checks\n\s+run: rustup toolchain install 1\.88\.0 --profile minimal --component rustfmt,clippy/u,
   );
   expect(workflow).toContain("Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32");
-  expect(workflow).toContain("taiki-e/install-action@bffeee26d4db9be238a4ea78d8826604ebcb594d");
+  expect(workflow).toContain("taiki-e/install-action@16b05812d776ae1dfaabc8277e421fb6d2506419");
   expect(workflow).toContain("tool: cargo-deny@0.19.9");
   expect(workflow).toContain("pnpm run native:session-memory:fmt");
   expect(workflow).toContain("pnpm run native:session-memory:clippy");
