@@ -56,6 +56,9 @@ describe("@webpresso/agent-config export isolation", () => {
     expect(exports).toHaveProperty("./vitest/flakiness-reporter");
     expect(exports).toHaveProperty("./vitest/source-conditions");
 
+    // playwright group
+    expect(exports).toHaveProperty("./playwright/quality-scaffold");
+
     // stryker group
     expect(exports).toHaveProperty("./stryker");
 

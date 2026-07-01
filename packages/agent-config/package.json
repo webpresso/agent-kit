@@ -22,24 +22,6 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    "./repo-root": {
-      "import": {
-        "types": "./dist/esm/repo-root/index.d.ts",
-        "default": "./dist/esm/repo-root/index.js"
-      }
-    },
-    "./process": {
-      "import": {
-        "types": "./dist/esm/process/index.d.ts",
-        "default": "./dist/esm/process/index.js"
-      }
-    },
-    "./e2e": {
-      "import": {
-        "types": "./dist/esm/e2e/index.d.ts",
-        "default": "./dist/esm/e2e/index.js"
-      }
-    },
     "./deploy": {
       "import": {
         "types": "./dist/esm/deploy/index.d.ts",
@@ -50,6 +32,24 @@
       "import": {
         "types": "./dist/esm/dev/index.d.ts",
         "default": "./dist/esm/dev/index.js"
+      }
+    },
+    "./e2e": {
+      "import": {
+        "types": "./dist/esm/e2e/index.d.ts",
+        "default": "./dist/esm/e2e/index.js"
+      }
+    },
+    "./process": {
+      "import": {
+        "types": "./dist/esm/process/index.d.ts",
+        "default": "./dist/esm/process/index.js"
+      }
+    },
+    "./repo-root": {
+      "import": {
+        "types": "./dist/esm/repo-root/index.d.ts",
+        "default": "./dist/esm/repo-root/index.js"
       }
     },
     "./stryker": {
@@ -141,6 +141,12 @@
         "types": "./dist/esm/workers-test/index.d.ts",
         "default": "./dist/esm/workers-test/index.js"
       }
+    },
+    "./playwright/quality-scaffold": {
+      "import": {
+        "types": "./dist/esm/playwright/quality-scaffold.d.ts",
+        "default": "./dist/esm/playwright/quality-scaffold.js"
+      }
     }
   },
   "publishConfig": {
@@ -228,7 +234,8 @@
       "./vitest/react-setup.ts": "./src/vitest/react-setup.ts",
       "./vitest/source-conditions": "./src/vitest/source-conditions.ts",
       "./vitest/workers": "./src/vitest/workers.ts",
-      "./workers-test": "./src/workers-test/index.ts"
+      "./workers-test": "./src/workers-test/index.ts",
+      "./playwright/quality-scaffold": "./src/playwright/quality-scaffold.ts"
     },
     "selfLink": false
   },

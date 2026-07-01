@@ -6,8 +6,8 @@ status: in-progress
 complexity: M
 created: "2026-07-01"
 last_updated: "2026-07-01"
-progress_pct: 20
-progress: "Extract remaining generic consumer scaffold surfaces into agent-config/setup ownership."
+progress_pct: 45
+progress: "Added agent-config Playwright quality scaffold surface; consumer migration and duplication-gate extension remain."
 depends_on:
   - "webpresso/monorepo#101: consumer duplication gate"
 ---
@@ -40,7 +40,7 @@ Move generic, repeated consumer scaffold files out of hand-maintained consumer r
 
 #### [config] Task 1.1: Add agent-config Playwright quality scaffold surface
 
-**Status:** in-progress
+**Status:** done
 
 **Depends:** None
 
@@ -48,9 +48,9 @@ Add a public agent-config subpath that exposes a config factory and package-owne
 
 **Acceptance:**
 
-- [ ] Exported subpath is listed in package exports and tshy exports.
-- [ ] Tests prove the factory points at package-owned smoke specs and preserves caller overrides.
-- [ ] Package build/typecheck tests pass for the new surface.
+- [x] Exported subpath is listed in package exports and tshy exports.
+- [x] Tests prove the factory points at package-owned smoke specs and preserves caller overrides.
+- [x] Package build/typecheck tests pass for the new surface.
 
 #### [consumer] Task 1.2: Migrate consumers off duplicate smoke scaffold files
 
@@ -80,6 +80,13 @@ Extend the consumer duplication gate to include smoke fixture and template-only 
 - [ ] Verification evidence is recorded before PR readiness.
 
 ## Verification
+
+- `pnpm exec vitest run packages/agent-config/src/playwright/quality-scaffold.test.ts packages/agent-config/src/export-isolation.test.ts` passed (7 tests).
+- `pnpm --filter @webpresso/agent-core run build` then `pnpm --dir packages/agent-config exec tsc --noEmit` passed.
+- `pnpm --filter @webpresso/agent-config run build` passed.
+- `pnpm --dir packages/agent-config exec playwright test --config /tmp/agent-config-quality-scaffold.config.mjs` passed (1 package-owned smoke test).
+
+Planned final gates:
 
 - `vp run --filter @webpresso/agent-config test`
 - `vp run --filter @webpresso/agent-config typecheck`
