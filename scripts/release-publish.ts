@@ -189,6 +189,13 @@ function manifestVersionChangedSinceFirstParent(pkg: PublishablePackage): boolea
   }
 }
 
+function buildWorkspaceDependencies(pkg: PublishablePackage): void {
+  for (const dependencyName of pkg.workspaceDependencies) {
+    const buildResult = run("pnpm", ["--filter", dependencyName, "run", "build"], packageRoot);
+    if (exitCode(buildResult) !== 0) process.exit(exitCode(buildResult));
+  }
+}
+
 function publishSimpleWorkspacePackage(pkg: PublishablePackage): PublishState | null {
   assertNotBehindRegistry(pkg);
   if (npmVersionExists(pkg.name, pkg.version)) {
@@ -203,6 +210,8 @@ function publishSimpleWorkspacePackage(pkg: PublishablePackage): PublishState | 
     );
     return null;
   }
+
+  buildWorkspaceDependencies(pkg);
 
   const buildResult = run("pnpm", ["--filter", pkg.name, "run", "build"], packageRoot);
   if (exitCode(buildResult) !== 0) process.exit(exitCode(buildResult));

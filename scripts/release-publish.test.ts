@@ -77,6 +77,24 @@ describe("release-publish runtime lane", () => {
     );
   });
 
+  it("builds direct workspace dependencies before building a publishable workspace package", () => {
+    const source = readReleasePublishSource();
+    const workspacePublish = source.slice(
+      source.indexOf("function publishSimpleWorkspacePackage"),
+      source.indexOf("function publishPreparedPackage"),
+    );
+
+    expect(source).toContain("function buildWorkspaceDependencies");
+    expect(source).toContain("for (const dependencyName of pkg.workspaceDependencies)");
+    expect(source).toContain("['--filter', dependencyName, 'run', 'build']");
+    expect(workspacePublish).toContain("buildWorkspaceDependencies(pkg)");
+    expect(workspacePublish.indexOf("buildWorkspaceDependencies(pkg)")).toBeLessThan(
+      workspacePublish.indexOf(
+        "const buildResult = run('pnpm', ['--filter', pkg.name, 'run', 'build'], packageRoot)",
+      ),
+    );
+  });
+
   it("fails before publish when a local package manifest is behind npm latest", () => {
     const source = readReleasePublishSource();
 
