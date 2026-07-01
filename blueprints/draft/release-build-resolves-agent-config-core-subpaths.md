@@ -4,7 +4,7 @@ status: draft
 complexity: S
 created: "2026-07-01"
 last_updated: "2026-07-01"
-progress: "0% (drafted)"
+progress: "100% (implemented; local verification passing)"
 depends_on: []
 cross_repo_depends_on: []
 tags: []
@@ -13,7 +13,7 @@ approvals: [] # ≥2 distinct reviewer approvals required before draft→planned
 
 # Release build resolves agent-config core subpaths
 
-**Goal:** Release build resolves agent-config core subpaths
+**Goal:** Make the release publish script build direct workspace dependencies before building a publishable package, so `@webpresso/agent-config` can resolve `@webpresso/agent-core/*` subpath exports during release reruns when `agent-core` was already published and skipped.
 
 ## Planning Summary
 
@@ -28,14 +28,20 @@ approvals: [] # ≥2 distinct reviewer approvals required before draft→planned
 ## Architecture Overview
 
 ```text
-[Diagram showing how components connect before/after]
+release-publish.ts
+  ├─ discoverWorkspacePackages(orderWorkspacePackagesForRelease)
+  ├─ publishSimpleWorkspacePackage(agent-core)
+  │    └─ skips publish if version already exists
+  └─ publishSimpleWorkspacePackage(agent-config)
+       ├─ buildWorkspaceDependencies(agent-config) -> pnpm --filter @webpresso/agent-core run build
+       └─ pnpm --filter @webpresso/agent-config run build
 ```
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-| -------- | ------ | --------- |
-|          |        |           |
+| Decision                                                  | Choice                                                                                | Rationale                                                                                                                          |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Build direct workspace dependencies in the release script | Add `buildWorkspaceDependencies(pkg)` before each publishable workspace package build | Release uses workspace symlinks; skipped already-published packages can leave dependency `dist/` outputs absent in a clean runner. |
 
 ## Quick Reference (Execution Waves)
 
@@ -72,70 +78,43 @@ committed `reviews.md` structured record with a separate tracked transcript/arti
 
 > **Task header (current accepted form):** Use `#### [lane] Task X.Y:` when the task has a clear lane (`[schema]`, `[backend]`, `[ui]`, `[infra]`, `[docs]`, `[qa]`). `#### Task X.Y:` is still valid, but lane-prefixed headers are preferred in new blueprints.
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
-[Self-contained description. An independent agent must be able to execute
-this task with ONLY this text + the codebase + repo-owned commands. Never
-reference "see above" or "as described in Task X.Y" — inline all context.]
+Fix the release failure from GitHub Actions job `84612126635`: `@webpresso/agent-config@0.3.4` failed to build because TypeScript could not resolve `@webpresso/agent-core/deploy`, `/dev`, `/e2e`, `/process`, and `/repo-root`. In a clean release rerun, `@webpresso/agent-core@0.1.2` was already published and skipped, so its workspace `dist/` exports were never rebuilt before `agent-config` compiled against the workspace symlink.
 
 **Files:**
 
-- Create: `exact/path/to/file.ts`
-- Create: `exact/path/to/file.test.ts`
-- Modify: `exact/path/to/existing.ts`
+- Modify: `scripts/release-publish.ts`
+- Modify: `scripts/release-publish.test.ts`
 
 **Steps (TDD):**
 
-1. Write failing test for [specific behavior]
-2. Run the repo's scoped test recipe — verify FAIL
-3. Implement minimal code to pass
-4. Run the repo's scoped test recipe — verify PASS
-5. Refactor if needed (complexity <= 8)
+1. Add a release-script regression test that requires direct workspace dependencies to build before the package build.
+2. Implement `buildWorkspaceDependencies(pkg)` using the existing `run`/`exitCode` helpers.
+3. Call the helper before `pnpm --filter <pkg> run build` in `publishSimpleWorkspacePackage`.
+4. Verify the release-path failure mode by building `@webpresso/agent-core` before `@webpresso/agent-config` in a clean local tree.
 
 **Acceptance:**
 
-- [ ] Test file created with failing test
-- [ ] Implementation passes all tests
-- [ ] Scoped lint passes
-- [ ] Verification commands recorded in the task notes
-
-#### Task 1.2: [Component Name]
-
-**Status:** todo
-
-**Depends:** Task 1.1
-
-[Self-contained description.]
-
-**Files:**
-
-- Create: `exact/path/to/file.ts`
-
-**Steps (TDD):**
-
-1. Write failing test
-2. Run the repo's scoped test recipe — verify FAIL
-3. Implement
-4. Run the repo's scoped test recipe — verify PASS
-
-**Acceptance:**
-
-- [ ] Tests pass
-- [ ] Lint passes
+- Done: Regression test covers dependency build ordering
+- Done: Implementation exits on dependency build failure
+- Done: `@webpresso/agent-core` then `@webpresso/agent-config` build sequence passes
+- Done: Test/typecheck/lint/format evidence recorded
 
 ---
 
 ## Verification Gates
 
-| Gate        | Command                      | Success Criteria                                |
-| ----------- | ---------------------------- | ----------------------------------------------- |
-| Type safety | repo typecheck recipe        | Zero errors                                     |
-| Lint        | repo lint recipe (scoped)    | Zero violations                                 |
-| Tests       | repo test recipe (scoped)    | All pass                                        |
-| Full QA     | repo full-QA recipe          | All pass                                        |
-| Perf        | bundle / runtime measurement | No regression vs baseline (or N/A — delete row) |
+| Gate                | Command                                                                                        | Success Criteria    |
+| ------------------- | ---------------------------------------------------------------------------------------------- | ------------------- |
+| Type safety         | `./bin/wp typecheck`                                                                           | Passed              |
+| Lint                | `./bin/wp lint`                                                                                | Passed              |
+| Format              | `./bin/wp format --check`                                                                      | Passed              |
+| Tests               | `./bin/wp test --file scripts/release-publish.test.ts`                                         | Passed              |
+| Release-path build  | `vp run --filter @webpresso/agent-core build && vp run --filter @webpresso/agent-config build` | Passed              |
+| Blueprint lifecycle | `./bin/wp audit blueprint-lifecycle --json`                                                    | Passed (`ok: true`) |
 
 ## Cross-Plan References
 
@@ -152,13 +131,15 @@ reference "see above" or "as described in Task X.Y" — inline all context.]
 
 ## Non-goals
 
-- [What this blueprint does NOT cover]
+- Publishing directly from a local machine.
+- Changing package versions or release provenance.
+- Replacing `workspace:*` dependencies.
 
 ## Risks
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-|      |        |            |
+| Risk                                          | Impact                      | Mitigation                                                                                |
+| --------------------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------- |
+| Duplicate dependency builds in release reruns | Slightly longer release job | Keep the helper scoped to direct workspace dependencies and existing package build order. |
 
 ## Technology Choices
 
@@ -168,31 +149,40 @@ reference "see above" or "as described in Task X.Y" — inline all context.]
 
 ## Trust Dossier
 
-Draft note: complete this dossier before promotion to planned.
+Implementation dossier for the release-fix PR.
 
 ### Readiness Verdict
 
-- promotion-ready: false
-- unresolved-count: 1
-- verified-at: <ISO-8601 timestamp>
-- verified-head: <full git commit SHA>
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-07-01T20:30:00Z
+- verified-head: PR #356 head (`Fix release workspace dependency builds` commit)
 - trust-gate-version: v1
 
 ### Material Claims
 
-| ID  | Claim | Evidence |
-| --- | ----- | -------- |
+| ID  | Claim                                                                                                                                                                  | Evidence                                                                                                                                  |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| C1  | Release failure was caused by `agent-config` compiling against an unbuilt workspace `agent-core` symlink after the already-published `agent-core` package was skipped. | GitHub job `84612126635` log; local clean build reproduced missing `@webpresso/agent-core/*` subpaths until `agent-core` was built first. |
+| C2  | Building direct workspace dependencies before each publishable workspace package build resolves the failure path.                                                      | `vp run --filter @webpresso/agent-core build && vp run --filter @webpresso/agent-config build` passed.                                    |
 
 ### Material Decisions
 
-| ID  | Decision | Chosen option | Rejected alternatives | Rationale |
-| --- | -------- | ------------- | --------------------- | --------- |
+| ID  | Decision                                        | Chosen option                                           | Rejected alternatives                                                                         | Rationale                                                                                       |
+| --- | ----------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| D1  | Where to fix release dependency build readiness | Release script pre-builds direct workspace dependencies | Change package exports; force publish already-published packages; rely on global `wp` changes | The failure is release-orchestration-specific and reproducible with local package dist missing. |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| ---- | ------- | ---------------- | ----------- |
+| Gate             | Command                                                                                        | Expected outcome | Last result |
+| ---------------- | ---------------------------------------------------------------------------------------------- | ---------------- | ----------- |
+| Test             | `./bin/wp test --file scripts/release-publish.test.ts`                                         | pass             | pass        |
+| Dependency build | `vp run --filter @webpresso/agent-core build && vp run --filter @webpresso/agent-config build` | pass             | pass        |
+| Typecheck        | `./bin/wp typecheck`                                                                           | pass             | pass        |
+| Lint             | `./bin/wp lint`                                                                                | pass             | pass        |
+| Format           | `./bin/wp format --check`                                                                      | pass             | pass        |
+| Blueprint audit  | `./bin/wp audit blueprint-lifecycle --json`                                                    | ok               | ok          |
 
 ### Residual Unknowns
 
-Complete before planned promotion.
+None for the code fix; GitHub Actions still needs to validate after PR update.
