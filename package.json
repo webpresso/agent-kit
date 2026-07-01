@@ -569,8 +569,6 @@
     "@vitejs/plugin-react": "catalog:",
     "@webpresso/agent-config": "workspace:*",
     "husky": "^9.1.7",
-    "oxfmt": "^0.57.0",
-    "oxlint": "^1.72.0",
     "publint": "catalog:",
     "tshy": "catalog:",
     "tsx": "^4.21.0",

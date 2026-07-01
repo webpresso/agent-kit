@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -18,6 +18,21 @@ describe("bundled tsconfig JSON files", () => {
     const target = await readFile(join(TSCONFIG_DIR, fileName));
 
     expect(() => JSON.parse(target.toString("utf8"))).not.toThrow();
+  });
+
+  it("exposes tsconfig JSON subpaths with TypeScript-compatible defaults", async () => {
+    const packageJsonPath = resolve(TSCONFIG_DIR, "../../package.json");
+    const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8")) as {
+      exports?: Record<string, unknown>;
+    };
+
+    for (const fileName of configFiles) {
+      const subpath = `./tsconfig/${fileName}`;
+      expect(packageJson.exports?.[subpath]).toEqual({
+        import: { default: `./dist/esm/tsconfig/${fileName}` },
+        default: `./dist/esm/tsconfig/${fileName}`,
+      });
+    }
   });
 
   it("react-library preset owns the React ambient types it requires", async () => {
