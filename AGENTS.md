@@ -68,6 +68,12 @@ commit carries `Blueprint-exempt: <reason>` or the PR is a Dependabot
 dependency-only update.
 Full rule: `.agent/rules/pre-implementation.md` § Blueprint gate.
 
+For Ultragoal or other multi-blueprint runs: never run the controller from a
+primary/main checkout. Fetch `origin/main`, create a dedicated controller
+worktree with `./bin/wp worktree new bp/<slug> --base origin/main`, run every
+`./bin/wp blueprint start <slug>` from that controller, and finish only after
+`$agent-kit:verify`, green PR checks, merge, and the final Ultragoal checkpoint.
+
 Catalog-owned surfaces:
 
 - `.agent/commands/` — slash-command sources
