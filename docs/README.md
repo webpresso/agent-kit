@@ -5,8 +5,8 @@ last_updated: "2026-07-01"
 
 # Agent Kit docs
 
-Agent Kit is a public, source-available harness for coding-agent repos. Start
-with the shortest safe path:
+Agent Kit is a public, source-available, TypeScript-first agent harness
+for guarded develop/deploy workflows. Start with the shortest safe path:
 
 ```bash
 vp install -g @webpresso/agent-kit
@@ -16,7 +16,7 @@ wp hooks doctor
 
 ## Read first
 
-- [Getting started](./getting-started.md) — install, setup ownership, first tool call
+- [Getting started](./getting-started.md) — install, guarded setup ownership, first tool call
 - [Is Agent Kit for me?](./is-agent-kit-for-me.md) — fit, tradeoffs, and non-goals
 - [Add-ons](./add-ons.md) — optional skills, WP-owned agent tools, and integrations
 - [Markdown fact check](./markdown-fact-check.md) — how public docs stay falsifiable
@@ -39,7 +39,7 @@ wp hooks doctor
 - [Bootstrap GitHub secrets](./secrets/bootstrap-github.md) — dry-run/apply contract
 - [Pulumi secret boundary](./secrets/pulumi.md) — env-injection-only Pulumi boundary
 - [WP secret orchestration errors](./errors/wp-secret-orchestration.md) — `WP_*` reference
-- [Repo checkout to preview URL](./guides/repo-to-preview-url.md) — operator walkthrough
+- [Repo checkout to preview URL](./guides/repo-to-preview-url.md) — supported preview workflow with repo-specific setup/secrets
 - [Secret-safe CI act contract](./ci-act.md) — public `wp ci act` input and redaction rules
 
 ## Evidence and release checks
