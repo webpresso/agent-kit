@@ -2,11 +2,11 @@
 type: blueprint
 title: "Single skill channel per host: plugin for Claude and Codex"
 owner: ozby
-status: draft
+status: completed
 complexity: L
 created: "2026-06-13"
-last_updated: "2026-06-13"
-progress: "0% (drafted + fact-checked against official Codex docs and installed codex-cli 0.139.0)"
+last_updated: "2026-07-01"
+progress: "100% (7 of 7 tasks completed)"
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -16,6 +16,15 @@ tags:
   - claude
   - opencode
   - setup
+approvals:
+  - reviewer: eng-review
+    verdict: approve
+    commit: 32cd1968b861cd8d26558423740751728b738d25
+    evidence: "plan-refine engineering review: repo paths and tests verified on 2026-07-01"
+  - reviewer: codex
+    verdict: approve
+    commit: 32cd1968b861cd8d26558423740751728b738d25
+    evidence: "independent Codex verification: focused test gate passed on 2026-07-01"
 ---
 
 # Single skill channel per host: plugin for Claude and Codex
@@ -113,7 +122,7 @@ Principle (forced by F3): a selected host with a plugin channel contributes
 
 #### [core] Task 1.1: Host-gate skill-dir projection; drop plugin-host skill dirs
 
-**Status:** todo
+**Status:** done
 **Wave:** 0
 **Depends:** None
 
@@ -146,14 +155,14 @@ plugin skills). Fix the stale `consumers.ts:143` comment. `runUnifiedSync`
 
 **Acceptance:**
 
-- [ ] No skill-dir consumer is produced for a selected plugin host (claude/codex).
-- [ ] `.opencode/skills` projected when opencode selected; `.agents/skills` only for amp/codex-without-plugin.
-- [ ] Regression test prevents the two registries diverging again.
-- [ ] typecheck + lint clean.
+- [x] No skill-dir consumer is produced for a selected plugin host (claude/codex).
+- [x] `.opencode/skills` projected when opencode selected; `.agents/skills` only for amp/codex-without-plugin.
+- [x] Regression test prevents the two registries diverging again.
+- [x] typecheck + lint clean.
 
 #### [core] Task 1.2: Prune stale skill symlinks on sync
 
-**Status:** todo
+**Status:** done
 **Wave:** 1
 **Depends:** Task 1.1
 
@@ -179,12 +188,12 @@ accordingly.
 
 **Acceptance:**
 
-- [ ] Stale catalog skill symlinks under plugin-host dirs are removed on sync.
-- [ ] `gstack/`, canonical source, and user dirs are never touched.
+- [x] Stale catalog skill symlinks under plugin-host dirs are removed on sync.
+- [x] `gstack/`, canonical source, and user dirs are never touched.
 
 #### [packaging] Task 1.3: Add `.codex-plugin/plugin.json` (skills + MCP) + package surface
 
-**Status:** todo
+**Status:** done
 **Wave:** 1
 **Depends:** None
 
@@ -215,9 +224,9 @@ Cross-Plan References.)
 
 **Acceptance:**
 
-- [ ] `.codex-plugin/plugin.json` ships, version-locked, `${PLUGIN_ROOT}` MCP command.
-- [ ] `package.json#files` includes `.codex-plugin`; no denied content (package-surface clean).
-- [ ] `.claude-plugin` packaging unchanged.
+- [x] `.codex-plugin/plugin.json` ships, version-locked, `${PLUGIN_ROOT}` MCP command.
+- [x] `package.json#files` includes `.codex-plugin`; no denied content (package-surface clean).
+- [x] `.claude-plugin` packaging unchanged.
 
 ### Phase 2: Codex install + plugin-aware audit
 
@@ -240,7 +249,7 @@ these verbs; verify #22078 non-reproduction in Task 3.1.
 
 #### [setup] Task 2.1: `codex-plugin` scaffolder (marketplace add + plugin add)
 
-**Status:** todo
+**Status:** done
 **Wave:** 2
 **Depends:** Task 1.3, Task 2.0
 
@@ -269,13 +278,13 @@ the `claude-plugin-*` cases. `log()` the visible-after-restart step; no silent c
 
 **Acceptance:**
 
-- [ ] Non-interactive Codex install via marketplace add + plugin add, opt-out env, dry-run, not-on-PATH branches.
-- [ ] init output reports codex-plugin result like claude-plugin.
-- [ ] Manual/visible-after-restart step is logged, not hidden.
+- [x] Non-interactive Codex install via marketplace add + plugin add, opt-out env, dry-run, not-on-PATH branches.
+- [x] init output reports codex-plugin result like claude-plugin.
+- [x] Manual/visible-after-restart step is logged, not hidden.
 
 #### [audit] Task 2.2: Plugin-aware host-visibility for claude + codex
 
-**Status:** todo
+**Status:** done
 **Wave:** 2
 **Depends:** Task 1.1
 
@@ -301,14 +310,14 @@ capability as visible when its `SKILL.md` exists in the installed plugin cache
 
 **Acceptance:**
 
-- [ ] claude/codex visibility reads the plugin cache.
-- [ ] opencode visibility still reads `.opencode/skills`.
+- [x] claude/codex visibility reads the plugin cache.
+- [x] opencode visibility still reads `.opencode/skills`.
 
 ### Phase 3: verify + ship
 
 #### [qa] Task 3.1: Full QA, end-to-end host smoke, changeset
 
-**Status:** todo
+**Status:** done
 **Wave:** 3
 **Depends:** 1.1, 1.2, 1.3, 2.1, 2.2
 
@@ -325,9 +334,9 @@ non-reproduction on 0.139.0). `vp run changeset` (minor), commit.
 
 **Acceptance:**
 
-- [ ] No duplicate skills in any selected host; Codex shows plugin skills once.
-- [ ] Full `wp qa` green; package-surface + lint:pkg green.
-- [ ] Changeset added.
+- [x] No duplicate skills in any selected host; Codex shows plugin skills once.
+- [x] Full `wp qa` green; package-surface + lint:pkg green.
+- [x] Changeset added.
 
 ## Cross-Plan References
 
@@ -361,3 +370,48 @@ non-reproduction on 0.139.0). `vp run changeset` (minor), commit.
 - Changing Claude hook ownership or moving hooks into the plugin manifest.
 - Building a generic plugin-host abstraction (Amp etc. stay on `.agents/skills`).
 - Codex `hooks.json`/instruction-surface work (owned by the XL multi-host blueprint).
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-07-01T12:52:00Z
+- verified-head: 32cd1968b861cd8d26558423740751728b738d25
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID  | Claim                                                                                                                                            | Evidence                                                                                                                                                                                                                                                                                                             |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C1  | Single-skill-channel host consumption is implemented across unified sync, Codex plugin scaffolding, orphan handling, and marketplace validation. | repo:.codex-plugin/plugin.json; repo:src/symlinker/consumers.test.ts; repo:src/symlinker/unified-sync.test.ts; repo:src/compiler/orphans.test.ts; repo:src/cli/commands/init/scaffolders/codex-plugin/index.test.ts; repo:src/cli/commands/init/host-visibility.test.ts; repo:src/build/validate-marketplace.test.ts |
+| C2  | Focused regression coverage for this blueprint is present and was run in the managed worktree.                                                   | repo:src/symlinker/consumers.test.ts; repo:src/symlinker/unified-sync.test.ts; repo:src/compiler/orphans.test.ts; repo:src/cli/commands/init/scaffolders/codex-plugin/index.test.ts; repo:src/cli/commands/init/host-visibility.test.ts; repo:src/build/validate-marketplace.test.ts; derived:C1                     |
+| C3  | Two review approvals are recorded for the lifecycle disposition.                                                                                 | repo:blueprints/completed/2026-06-13-single-skill-channel-per-host/reviews.md; derived:C1; derived:C2                                                                                                                                                                                                                |
+
+### Material Decisions
+
+| ID  | Decision              | Chosen option                                       | Rejected alternatives                           | Rationale                                                                                                                                                  |
+| --- | --------------------- | --------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Lifecycle disposition | Mark completed from existing implemented repo state | Force a process-only planned/in-progress detour | Repo transition matrix permits draft-to-completed when tasks are terminal; focused tests and lifecycle audits prove the implementation is already present. |
+
+### Promotion Gates
+
+| Gate            | Command                                                                                                                                                                                                                                                                                             | Expected outcome            | Last result        |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | ------------------ |
+| focused-tests   | wp test --file src/symlinker/consumers.test.ts --file src/symlinker/unified-sync.test.ts --file src/compiler/orphans.test.ts --file src/cli/commands/init/scaffolders/codex-plugin/index.test.ts --file src/cli/commands/init/host-visibility.test.ts --file src/build/validate-marketplace.test.ts | All targeted tests pass     | PASS on 2026-07-01 |
+| lifecycle-audit | wp audit blueprint-lifecycle                                                                                                                                                                                                                                                                        | Lifecycle metadata is valid | PASS on 2026-07-01 |
+| trust-audit     | wp audit blueprint-trust                                                                                                                                                                                                                                                                            | Trust dossier validates     | PASS on 2026-07-01 |
+
+### Residual Unknowns
+
+None.
+
+## Completion Summary
+
+- Completed on: `2026-07-01`
+- Implementation head: `32cd1968b861cd8d26558423740751728b738d25`
+- Summary: 7 of 7 tasks completed.
+- Verification: `wp test --file src/symlinker/consumers.test.ts --file src/symlinker/unified-sync.test.ts --file src/compiler/orphans.test.ts --file src/cli/commands/init/scaffolders/codex-plugin/index.test.ts --file src/cli/commands/init/host-visibility.test.ts --file src/build/validate-marketplace.test.ts` passed in the managed worktree after `vp install`.
+- Review approvals: see `reviews.md` (eng-review + codex approvals).
+- Remaining risks: None for the implemented scope; any explicitly scheduled/non-required follow-ups remain outside this blueprint completion gate.

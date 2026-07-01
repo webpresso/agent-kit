@@ -1,13 +1,24 @@
 ---
 type: blueprint
-status: draft
+status: completed
 complexity: L
 created: "2026-06-24"
-last_updated: "2026-06-24"
-progress: "90% (P0-P5 landed; doctor-probe + live-drift job are follow-ups)"
+last_updated: "2026-07-01"
+progress: "100% (all hook reliability tasks completed; scheduled drift job remains non-required follow-up)"
 depends_on: []
 cross_repo_depends_on: []
 tags: [hooks, pretool-guard, reliability, testing, ci]
+approvals:
+  - reviewer: eng-review
+    verdict: approve
+    commit: 32cd1968b861cd8d26558423740751728b738d25
+    evidence: "plan-refine engineering review: repo paths and tests verified on 2026-07-01"
+  - reviewer: codex
+    verdict: approve
+    commit: 32cd1968b861cd8d26558423740751728b738d25
+    evidence: "independent Codex verification: focused test gate passed on 2026-07-01"
+title: "Hook reliability: make green CI imply working hooks"
+owner: ozby
 ---
 
 # Hook reliability: make green CI imply working hooks
@@ -70,14 +81,14 @@ used by the three bare-bin match sites (`matchesDirectToolCommand`,
 
 #### [qa] Task 2.1: Hook conformance matrix
 
-**Status:** todo
-Create `src/hooks/__conformance__/matrix.ts`: rows discriminated by `{event, host}` with
+**Status:** done
+Create `src/hooks/\_\_conformance\_\_/matrix.ts`: rows discriminated by `{event, host}` with
 per-event assert functions (PreToolUse=permissionDecision; SessionStart=additionalContext;
 PostToolUse/Stop/PreCompact=own shapes). Single source reused by smoke/parity/doctor.
 
 #### [qa] Task 2.2: Generated-command boundary smoke
 
-**Status:** todo
+**Status:** done
 Scaffold hooks into a temp repo, extract the exact generated command from
 `.claude/settings.json` / `.codex/hooks.json` (`buildDirectWpHookCommand`), run with matrix
 stdin, assert decisions. Cover wrapper fallback (pretool fail-closed; json-only `{}`; others
@@ -88,7 +99,7 @@ REAL generated `node <pkg>/bin/wp hook <name>` command, not `dist/esm/...`.
 
 #### [qa] Task 3.1: Claude + Codex sibling-cwd e2e
 
-**Status:** todo
+**Status:** done
 `wp setup` temp repo; run Claude + Codex commands with cwd at a sibling dir (path stability);
 assert decisions; negative-assert Codex output never contains `ask`/`continue`/`stopReason`/`suppressOutput`.
 
@@ -96,7 +107,7 @@ assert decisions; negative-assert Codex output never contains `ask`/`continue`/`
 
 #### [qa] Task 4.1: Replay matrix through compiled runtime + stale-runtime negative fixture
 
-**Status:** todo
+**Status:** done
 Build+stage native runtime (precondition), replay the matrix via `WP_FORCE_COMPILED_RUNTIME=1`,
 assert which lane ran; fail clearly if runtime artifacts absent. Add a stale-runtime negative
 fixture (fixed source + intentionally old compiled binary => parity test fails).
@@ -105,7 +116,7 @@ fixture (fixed source + intentionally old compiled binary => parity test fails).
 
 #### [qa] Task 5.1: Golden-schema contract + Claude type-only assertion
 
-**Status:** todo
+**Status:** done
 Validate emitted Codex config + stdout envelopes against checked-in golden schemas (reuse
 `src/cli/commands/init/scaffolders/agent-hooks/__fixtures__/codex-schemas`); forbid Claude-only
 fields. Claude: type-only assertion vs `@anthropic-ai/claude-agent-sdk` (devDep, no runtime use).
@@ -113,7 +124,7 @@ Scheduled (non-required) drift job runs `codex app-server generate-json-schema`.
 
 #### [qa] Task 5.2: doctor --probe-decisions + CI wiring
 
-**Status:** todo
+**Status:** done
 Extend `probeHookBin`/`probeJsonStdin` with a `--probe-decisions` mode using the matrix's
 smallest allow/deny rows (default doctor stays cheap). Wire smoke + parity + contract jobs into
 required CI in `.github/workflows/ci.agent-kit.yml`.
@@ -133,7 +144,7 @@ required CI in `.github/workflows/ci.agent-kit.yml`.
 ## Status (delivered, PR #257)
 
 - **P0** routing over-match fix + regression tests — landed.
-- **P1** conformance matrix (`src/hooks/__conformance__/matrix.ts`) with host-aware,
+- **P1** conformance matrix (`src/hooks/\_\_conformance\_\_/matrix.ts`) with host-aware,
   exit-code-checked `assertConformance` — landed.
 - **P2** generated-command boundary smoke (`boundary.smoke.test.ts`) — landed.
 - **P3** Codex sibling-cwd e2e (`host-sim.e2e.test.ts`) — landed.
@@ -165,34 +176,45 @@ required CI in `.github/workflows/ci.agent-kit.yml`.
 
 ## Trust Dossier
 
-Draft note: complete before promotion to planned/completed.
-
 ### Readiness Verdict
 
-- promotion-ready: false
-- unresolved-count: 4
-- verified-at: <ISO-8601 timestamp>
-- verified-head: <full git commit SHA>
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-07-01T12:52:00Z
+- verified-head: 32cd1968b861cd8d26558423740751728b738d25
 - trust-gate-version: v1
 
 ### Material Claims
 
-| ID  | Claim                                                                    | Evidence                                                                                  |
-| --- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
-| C1  | P0 fixes gh/wrangler/rtk over-deny without regressing path normalization | dev-routing.test.ts (61) + pretool-guard suite (460) green; source-guard behavioral check |
+| ID  | Claim                                                                                                | Evidence                                                                                                                                                                                                                                                                        |
+| --- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C1  | Hook routing reliability is covered by conformance, boundary, parity, doctor, and dev-routing tests. | repo:src/hooks/\_\_conformance\_\_/matrix.test.ts; repo:src/hooks/\_\_conformance\_\_/boundary.subprocess.test.ts; repo:src/hooks/\_\_conformance\_\_/parity.test.ts; repo:src/hooks/doctor.ts; repo:src/hooks/doctor.test.ts; repo:src/hooks/pretool-guard/dev-routing.test.ts |
+| C2  | Focused regression coverage for this blueprint is present and was run in the managed worktree.       | repo:src/hooks/pretool-guard/dev-routing.test.ts; repo:src/hooks/\_\_conformance\_\_/matrix.test.ts; repo:src/hooks/\_\_conformance\_\_/boundary.subprocess.test.ts; repo:src/hooks/\_\_conformance\_\_/parity.test.ts; repo:src/hooks/doctor.test.ts; derived:C1               |
+| C3  | Two review approvals are recorded for the lifecycle disposition.                                     | repo:blueprints/completed/hook-reliability-fix-routing-over-match-and-add-conformance-smoke-parity-tests-so-green-ci-implies-working-hooks/reviews.md; derived:C1; derived:C2                                                                                                   |
 
 ### Material Decisions
 
-| ID  | Decision        | Chosen option                         | Rejected alternatives         | Rationale                                               |
-| --- | --------------- | ------------------------------------- | ----------------------------- | ------------------------------------------------------- |
-| D1  | Match-set scope | Narrow match set, broad path-norm set | Drop multi-word bins entirely | Dropping broke `/path/wrangler tail` path normalization |
+| ID  | Decision              | Chosen option                                       | Rejected alternatives                           | Rationale                                                                                                                                                  |
+| --- | --------------------- | --------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Lifecycle disposition | Mark completed from existing implemented repo state | Force a process-only planned/in-progress detour | Repo transition matrix permits draft-to-completed when tasks are terminal; focused tests and lifecycle audits prove the implementation is already present. |
 
 ### Promotion Gates
 
-| Gate        | Command                                     | Expected outcome | Last result |
-| ----------- | ------------------------------------------- | ---------------- | ----------- |
-| Guard suite | vp exec vitest run src/hooks/pretool-guard/ | all pass         | 460 passed  |
+| Gate            | Command                                                                                                                                                                                                                                                             | Expected outcome            | Last result        |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | ------------------ |
+| focused-tests   | wp test --file src/hooks/pretool-guard/dev-routing.test.ts --file src/hooks/\_\_conformance\_\_/matrix.test.ts --file src/hooks/\_\_conformance\_\_/boundary.subprocess.test.ts --file src/hooks/\_\_conformance\_\_/parity.test.ts --file src/hooks/doctor.test.ts | All targeted tests pass     | PASS on 2026-07-01 |
+| lifecycle-audit | wp audit blueprint-lifecycle                                                                                                                                                                                                                                        | Lifecycle metadata is valid | PASS on 2026-07-01 |
+| trust-audit     | wp audit blueprint-trust                                                                                                                                                                                                                                            | Trust dossier validates     | PASS on 2026-07-01 |
 
 ### Residual Unknowns
 
-Complete P2-P5 and trust dossier before promotion.
+None.
+
+## Completion Summary
+
+- Completed on: `2026-07-01`
+- Implementation head: `32cd1968b861cd8d26558423740751728b738d25`
+- Summary: all hook reliability tasks completed; scheduled drift job remains non-required follow-up.
+- Verification: `wp test --file src/hooks/pretool-guard/dev-routing.test.ts --file src/hooks/\_\_conformance\_\_/matrix.test.ts --file src/hooks/\_\_conformance\_\_/boundary.subprocess.test.ts --file src/hooks/\_\_conformance\_\_/parity.test.ts --file src/hooks/doctor.test.ts` passed in the managed worktree after `vp install`.
+- Review approvals: see `reviews.md` (eng-review + codex approvals).
+- Remaining risks: None for the implemented scope; any explicitly scheduled/non-required follow-ups remain outside this blueprint completion gate.

@@ -1,17 +1,27 @@
 ---
 type: blueprint
-status: draft
+status: completed
 complexity: XS
 created: "2026-06-28"
-last_updated: "2026-06-28"
-progress: "0% (0 of 2 tasks completed)"
+last_updated: "2026-07-01"
+progress: "100% (4 of 4 tasks completed)"
 depends_on: []
 cross_repo_depends_on: []
 tags:
   - workflow-skills
   - reviewers
   - dx
-approvals: [] # ≥2 distinct reviewer approvals required before draft→planned
+approvals:
+  - reviewer: eng-review
+    verdict: approve
+    commit: 32cd1968b861cd8d26558423740751728b738d25
+    evidence: "plan-refine engineering review: repo paths and tests verified on 2026-07-01"
+  - reviewer: codex
+    verdict: approve
+    commit: 32cd1968b861cd8d26558423740751728b738d25
+    evidence: "independent Codex verification: focused test gate passed on 2026-07-01"
+title: "Fix opencode-go reviewer reliability (drop redundant `--dir '$PWD'`)"
+owner: ozby
 ---
 
 # Fix opencode-go reviewer reliability (drop redundant `--dir "$PWD"`)
@@ -69,7 +79,7 @@ redundant overhead — the root cause of "opencode-go reviews fail."
 
 #### [docs] Task 1.1: Drop `--dir "$PWD"` from the 8 reviewer sources + restage
 
-**Status:** todo
+**Status:** done
 
 Edit `packages/workflow-skills/skills/{deepseek,glm,hy3,kimi,mimo,minimax,opencode-go,qwen}.md`
 to remove `--dir "$PWD"` from the `opencode run` line and add a one-line
@@ -80,12 +90,12 @@ rationale. Re-run `stage:workflow-skills` + `generate-skills` so catalog and
 
 **Acceptance:**
 
-- [ ] No `opencode run` command line in any tree contains `--dir`
-- [ ] Byte-identity test (source == catalog == skills/) green
+- [x] No `opencode run` command line in any tree contains `--dir`
+- [x] Byte-identity test (source == catalog == skills/) green
 
 #### [qa] Task 1.2: Regression guard in skill-text contract
 
-**Status:** todo
+**Status:** done
 
 Add an assertion to `packages/workflow-skills/src/skill-text.test.ts` that each
 opencode-go reviewer's `opencode run --model` command line does not contain
@@ -95,8 +105,8 @@ opencode-go reviewer's `opencode run --model` command line does not contain
 
 **Acceptance:**
 
-- [ ] New assertion fails against the old (`--dir`) command lines
-- [ ] skill-text + stage + generate tests green
+- [x] New assertion fails against the old (`--dir`) command lines
+- [x] skill-text + stage + generate tests green
 
 ## Verification Gates
 
@@ -115,7 +125,7 @@ version, so new releases are used automatically.
 
 #### [docs] Task 2.1: Replace hardcoded IDs with live resolution in all 8 reviewers
 
-**Status:** todo
+**Status:** done
 
 For the 6 family skills (deepseek/glm/kimi/minimax/mimo/qwen): routing names the
 family + preferred tier; the review command resolves
@@ -130,12 +140,12 @@ artifact) is replaced by a live-catalog pointer.
 
 **Acceptance:**
 
-- [ ] No `opencode run` command hardcodes a versioned `opencode-go/<id>`
-- [ ] Each family resolves to the correct current model against the live catalog
+- [x] No `opencode run` command hardcodes a versioned `opencode-go/<id>`
+- [x] Each family resolves to the correct current model against the live catalog
 
 #### [qa] Task 2.2: Regression guards for live discovery
 
-**Status:** todo
+**Status:** done
 
 skill-text.test asserts each reviewer's run command uses `--model "$MODEL"`,
 contains no `opencode run --model opencode-go/<id>`, and resolves via
@@ -146,7 +156,7 @@ marker instead of a pinned ID.
 
 **Acceptance:**
 
-- [ ] Guards fail against hardcoded-ID skills; pass against live-resolution skills
+- [x] Guards fail against hardcoded-ID skills; pass against live-resolution skills
 
 ## Non-goals
 
@@ -154,3 +164,48 @@ marker instead of a pinned ID.
 - A scheduled CI cron / drift-audit (superseded by in-skill live discovery —
   there is no committed ID to drift).
 - Altering the Codex/Claude reviewer skills.
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-07-01T12:52:00Z
+- verified-head: 32cd1968b861cd8d26558423740751728b738d25
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID  | Claim                                                                                                                           | Evidence                                                                                                  |
+| --- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| C1  | The opencode-go review-dir overhead fix is implemented in the workflow skill text and locked by its skill-text regression test. | repo:packages/workflow-skills/skills/opencode-go.md; repo:packages/workflow-skills/src/skill-text.test.ts |
+| C2  | Focused regression coverage for this blueprint is present and was run in the managed worktree.                                  | repo:packages/workflow-skills/src/skill-text.test.ts; derived:C1                                          |
+| C3  | Two review approvals are recorded for the lifecycle disposition.                                                                | repo:blueprints/completed/fix-opencode-go-review-dir-overhead/reviews.md; derived:C1; derived:C2          |
+
+### Material Decisions
+
+| ID  | Decision              | Chosen option                                       | Rejected alternatives                           | Rationale                                                                                                                                                  |
+| --- | --------------------- | --------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Lifecycle disposition | Mark completed from existing implemented repo state | Force a process-only planned/in-progress detour | Repo transition matrix permits draft-to-completed when tasks are terminal; focused tests and lifecycle audits prove the implementation is already present. |
+
+### Promotion Gates
+
+| Gate            | Command                                                        | Expected outcome            | Last result        |
+| --------------- | -------------------------------------------------------------- | --------------------------- | ------------------ |
+| focused-tests   | wp test --file packages/workflow-skills/src/skill-text.test.ts | All targeted tests pass     | PASS on 2026-07-01 |
+| lifecycle-audit | wp audit blueprint-lifecycle                                   | Lifecycle metadata is valid | PASS on 2026-07-01 |
+| trust-audit     | wp audit blueprint-trust                                       | Trust dossier validates     | PASS on 2026-07-01 |
+
+### Residual Unknowns
+
+None.
+
+## Completion Summary
+
+- Completed on: `2026-07-01`
+- Implementation head: `32cd1968b861cd8d26558423740751728b738d25`
+- Summary: 4 of 4 tasks completed.
+- Verification: `wp test --file packages/workflow-skills/src/skill-text.test.ts` passed in the managed worktree after `vp install`.
+- Review approvals: see `reviews.md` (eng-review + codex approvals).
+- Remaining risks: None for the implemented scope; any explicitly scheduled/non-required follow-ups remain outside this blueprint completion gate.
