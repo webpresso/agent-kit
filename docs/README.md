@@ -46,7 +46,7 @@ wp hooks doctor
 
 - [Reference parity matrix](./bench/reference-parity-matrix.md)
 - [Result-card contract](./bench/result-card-contract.md)
-- [Package/readiness notes](./github-action.md)
+- [GitHub Action and PR gate notes](./github-action.md) — `WP check`, branch protection, and PR model-disclosure requirements
 - [2026-07-01 weekly merge docs audit](./release/2026-07-01-weekly-merge-doc-audit.md)
 
 ## Documentation rules
