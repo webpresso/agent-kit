@@ -47,10 +47,22 @@ describe("review command helpers", () => {
     tempDirs.push(projectRoot);
     writeFileSync(path.join(projectRoot, "package.json"), '{"name":"consumer"}\n', "utf8");
     writeConsumerBlueprint(projectRoot, "planned", "blueprint-pr-governance");
+    const legacyOverviewPath = writeConsumerBlueprint(projectRoot, "completed", "legacy-review");
+    writeFileSync(
+      path.join(path.dirname(legacyOverviewPath), "reviews.md"),
+      `# Review ledger — legacy-review
+
+## Review entries
+
+<!-- wp:review-entry {"reviewer":"deepseek","rev":"final","verdict":"approve","commit":"abc123"} -->
+`,
+      "utf8",
+    );
 
     const entry = await logReviewEntry(projectRoot, "blueprint-pr-governance", {
       reviewer: "Codex",
       targetKind: "blueprint",
+      targetId: 348 as unknown as string,
       artifact: "review-artifacts/codex-final.md",
       targetHash: "sha256:abc",
       verdict: "approve",
@@ -68,7 +80,7 @@ describe("review command helpers", () => {
     expect(entry.reviewer).toBe("codex");
     expect(entry.verdict).toBe("approve");
     expect(entry.targetKind).toBe("blueprint");
-    expect(entry.targetId).toBe("planned/blueprint-pr-governance");
+    expect(entry.targetId).toBe("348");
     expect(entry.artifact).toBe("review-artifacts/codex-final.md");
     expect(entry.targetHash).toBe("sha256:abc");
     expect(entry.agreementWithFinal).toBe(true);
@@ -85,6 +97,7 @@ describe("review command helpers", () => {
     expect(markdown).toContain("| codex |");
     expect(markdown).toContain("<!-- wp:review-entry ");
     expect(markdown).toContain('"artifact":"review-artifacts/codex-final.md"');
+    expect(markdown.match(/## Review entries/g)).toHaveLength(1);
 
     const cachePath = path.join(projectRoot, ".webpresso", "reviews", "index.json");
     expect(existsSync(cachePath)).toBe(true);
