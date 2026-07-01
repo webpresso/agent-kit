@@ -29,6 +29,7 @@ Promotion past draft must require two distinct approvals that are backed by comm
 
 - Strengthen the approval evidence parser/gate in `src/blueprint/lifecycle/audit.ts`.
 - Add regression tests in `src/blueprint/lifecycle/audit.approval-gate.test.ts`.
+- Require audit-side structured review entries to have the same core logger-shaped fields emitted by `wp review log`; underspecified JSON comments must remain human-visible but must not count.
 - Keep existing valid structured approval records working when they include provenance metadata.
 - Do not require GitHub PR review state in this local lifecycle gate; GitHub branch protection remains a separate policy surface.
 
@@ -67,6 +68,33 @@ Add regression coverage showing that bare `wp:review-entry` records without prov
 - [ ] Two distinct approval entries with matching committed provenance artifacts satisfy the gate.
 - [ ] Failure messaging tells operators to record provenance-backed outside-model evidence.
 - [ ] Targeted tests, typecheck, lint, and blueprint audit pass.
+
+#### [governance] Task 1.2: Reject underspecified structured approval comments
+
+**Status:** todo
+
+**Depends:** Task 1.1
+
+Close the post-merge architect finding from PR #348: audit-side structured review parsing accepted comments with only `reviewer`, `verdict`, `source`, and `artifact`. Those comments can be hand-authored and are not equivalent to the structured record shape emitted by `wp review log`.
+
+**Files:**
+
+- Modify: `src/blueprint/lifecycle/audit.ts`
+- Modify: `src/blueprint/lifecycle/audit.approval-gate.test.ts`
+
+**Steps (TDD):**
+
+1. Add a regression where two underspecified `wp:review-entry` comments reference tracked artifacts but omit required logger fields.
+2. Verify the regression fails against the merged PR #348 implementation.
+3. Require core structured-entry fields before audit converts a JSON comment into a countable review record.
+4. Rerun targeted approval-gate tests and scoped verification.
+
+**Acceptance:**
+
+- [ ] Underspecified structured comments with tracked artifacts do not satisfy the planned promotion approval gate.
+- [ ] Full `wp review log`-shaped entries with tracked artifacts still satisfy the gate.
+- [ ] Audit and promotion continue to share the same provenance-backed counter.
+- [ ] Targeted tests, typecheck, lint, format check, blueprint audit, guardrails, and sync check pass.
 
 **Verification:**
 

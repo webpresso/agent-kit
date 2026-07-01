@@ -179,6 +179,7 @@ function parseApprovalReviewRecordsFromLedger(markdown: string): ApprovalReviewR
       const json = trimmed.slice(REVIEW_ENTRY_MARKER.length, -3).trim();
       try {
         const parsed = JSON.parse(json) as Record<string, unknown>;
+        if (!isStructuredApprovalReviewRecord(parsed)) continue;
         records.push({
           reviewer: String(parsed.reviewer ?? "")
             .trim()
@@ -230,6 +231,19 @@ function parseApprovalReviewRecordsFromLedger(markdown: string): ApprovalReviewR
     });
   }
   return records;
+}
+
+function isStructuredApprovalReviewRecord(value: Record<string, unknown>): boolean {
+  return (
+    typeof value.id === "string" &&
+    typeof value.blueprintSlug === "string" &&
+    typeof value.blueprintPath === "string" &&
+    typeof value.timestamp === "string" &&
+    typeof value.reviewer === "string" &&
+    typeof value.verdict === "string" &&
+    typeof value.targetKind === "string" &&
+    typeof value.targetId === "string"
+  );
 }
 
 function resolveReviewArtifactPath(

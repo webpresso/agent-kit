@@ -240,6 +240,25 @@ ${structuredApprove("deepseek", { source: "manual" })}
     ).toHaveLength(1);
   });
 
+  it("rejects underspecified structured review entries even when they reference tracked artifacts", () => {
+    const approvals = [approve("codex"), approve("deepseek")];
+    const { root, file } = makeBlueprintWithReviews(
+      "planned",
+      approvals,
+      `# reviews
+
+## Review entries
+
+<!-- wp:review-entry {"reviewer":"codex","verdict":"approve","source":"structured","artifact":"review-artifacts/codex.md"} -->
+<!-- wp:review-entry {"reviewer":"deepseek","verdict":"approve","source":"structured","artifact":"review-artifacts/deepseek.md"} -->
+`,
+    );
+    tempRoots.push(root);
+    expect(
+      validateApprovalGate(file, { type: "blueprint", status: "planned", approvals }),
+    ).toHaveLength(1);
+  });
+
   it("rejects absolute, parent-relative, and untracked evidence paths", () => {
     const { root, file } = makeBlueprintWithReviews("planned", []);
     tempRoots.push(root);
