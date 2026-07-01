@@ -614,7 +614,10 @@ export function registerReviewCommand(cli: CAC): void {
     .option("--reviewer <name>", "Reviewer id for `review log`")
     .option("--target-kind <kind>", "blueprint | pull-request")
     .option("--target-id <id>", "Target slug / PR number / stable review target id")
-    .option("--artifact <path>", "Committed review transcript/artifact path relative to blueprint")
+    .option(
+      "--artifact <path>",
+      "Committed review transcript/artifact path relative to blueprint (required for promotion-counted approvals)",
+    )
     .option("--target-hash <hash>", "Reviewed content hash / head sha for the target")
     .option("--verdict <verdict>", "approve | approve-with-nits | reject | no-verdict")
     .option("--rev <rev>", "Review revision label")

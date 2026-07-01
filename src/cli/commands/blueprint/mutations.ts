@@ -283,7 +283,6 @@ async function reIngestDb(cwd: string): Promise<void> {
 }
 
 /**
-/**
  * Update `status:` in YAML frontmatter. Preserves everything else verbatim.
  */
 function updateFrontmatterStatus(content: string, newStatus: string): string {

@@ -329,13 +329,13 @@ export function validateApprovalGate(
   const status = typeof frontmatter.status === "string" ? frontmatter.status : "";
   if (!APPROVAL_GATED_STATUSES.has(status)) return [];
 
-  const distinct = countDistinctLogBackedApprovals(file, frontmatter.approvals);
+  const distinct = countDistinctProvenanceBackedApprovals(file, frontmatter.approvals);
   if (distinct < 2) {
     return [
       {
         file,
         level: "error",
-        message: `Blueprint is '${status}' but frontmatter \`approvals:\` has ${distinct} distinct approving reviewer(s) backed by committed review evidence (need ≥2). Promotion past draft requires ≥2 distinct reviewer approvals with matching committed review records — see catalog/agent/rules/pre-implementation.md.`,
+        message: `Blueprint is '${status}' but frontmatter \`approvals:\` has ${distinct} distinct provenance-backed approving reviewer(s) backed by committed review evidence artifacts (need ≥2). Promotion past draft requires ≥2 distinct reviewer approvals with matching committed review records that reference separate tracked outside-model review artifacts — see catalog/agent/rules/pre-implementation.md.`,
       },
     ];
   }
