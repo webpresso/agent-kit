@@ -1,5 +1,16 @@
 # @webpresso/agent-config
 
+## 0.3.3
+
+### Patch Changes
+
+- 0a800b7: Publish the agent-core subpath exports before rebuilding agent-config so the consumer dedupe config package can resolve `@webpresso/agent-core/*` during release publish.
+
+  AI contract evidence: `docs/bench/reference-parity-matrix.md`, `src/__integration__/reference-parity-host-smoke.integration.test.ts`, `src/__integration__/reference-parity-tool-surface.integration.test.ts`, `docs/bench/session-memory-methodology.md`.
+
+- Updated dependencies [0a800b7]
+  - @webpresso/agent-core@0.1.2
+
 ## 0.3.2
 
 ### Patch Changes
