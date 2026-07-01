@@ -1,0 +1,198 @@
+---
+type: blueprint
+status: draft
+complexity: S
+created: "2026-07-01"
+last_updated: "2026-07-01"
+progress: "0% (drafted)"
+depends_on: []
+cross_repo_depends_on: []
+tags: []
+approvals: [] # ≥2 distinct reviewer approvals required before draft→planned (see ## Approvals)
+---
+
+# Release build resolves agent-config core subpaths
+
+**Goal:** Release build resolves agent-config core subpaths
+
+## Planning Summary
+
+- Goal input: `Release build resolves agent-config core subpaths`
+- Complexity: `S`
+- Draft slug: `release-build-resolves-agent-config-core-subpaths`
+- Output path: `blueprints/draft/release-build-resolves-agent-config-core-subpaths.md`
+- Generated command: `wp blueprint new "Release build resolves agent-config core subpaths" --complexity S`
+- Default shape: folder (`blueprints/<status>/<slug>/_overview.md`, with sibling `reviews.md` for approvals); flat `blueprints/<status>/<slug>.md` is legacy-valid
+- Validation scope: parser compliance before write
+
+## Architecture Overview
+
+```text
+[Diagram showing how components connect before/after]
+```
+
+## Key Decisions
+
+| Decision | Choice | Rationale |
+| -------- | ------ | --------- |
+|          |        |           |
+
+## Quick Reference (Execution Waves)
+
+| Wave              | Tasks | Dependencies | Parallelizable |
+| ----------------- | ----- | ------------ | -------------- |
+| **Wave 0**        | 1.1   | None         | 1 agent        |
+| **Critical path** | 1.1   | --           | 1 wave         |
+
+**Note:** Use t-shirt sizing (XS/S/M/L/XL) for individual task estimates, NOT day/week estimates.
+
+**Lifecycle:** Blueprint frontmatter `status` is one of `draft`, `planned`, `parked`, `in-progress`, `completed`, `archived`. Use `parked` when the blueprint is intentionally paused but should remain distinct from active planning or abandoned work. There is no blueprint-level `blocked` status; when work waits on an external dependency, set the task **Status:** to `blocked` and add a non-empty **Blocked:** line with the reason.
+
+> [!NOTE]
+> This template reflects the current preferred blueprint structure. Repo-wide validity is determined by the live blueprint parser/audit rules, so older blueprints may still use a different-but-valid section mix.
+
+## Approvals (≥2 required before promotion to `planned`)
+
+Promotion `draft → planned` requires **≥2 provenance-backed approvals from distinct reviewers**,
+recorded in the frontmatter `approvals:` list (the gate input; this checklist is
+a human-readable mirror). Each entry is a real independent review pass tied to a
+committed `reviews.md` structured record with a separate tracked transcript/artifact
+(for example `artifact: review-artifacts/deepseek-final.md`). Enforced by
+`wp audit blueprint-lifecycle` and the `wp blueprint promote` command. See
+`catalog/agent/rules/pre-implementation.md`.
+
+- [ ] Eng review (`/plan-eng-review`)
+- [ ] Codex (`/codex`)
+- [ ] Outside voice — `/deepseek` / `/mimo` / `/glm`
+- [ ] CEO review (`/plan-ceo-review`)
+
+### Phase 1: [Phase Name] [Complexity: S]
+
+#### Task 1.1: [Component Name]
+
+> **Task header (current accepted form):** Use `#### [lane] Task X.Y:` when the task has a clear lane (`[schema]`, `[backend]`, `[ui]`, `[infra]`, `[docs]`, `[qa]`). `#### Task X.Y:` is still valid, but lane-prefixed headers are preferred in new blueprints.
+
+**Status:** todo
+
+**Depends:** None
+
+[Self-contained description. An independent agent must be able to execute
+this task with ONLY this text + the codebase + repo-owned commands. Never
+reference "see above" or "as described in Task X.Y" — inline all context.]
+
+**Files:**
+
+- Create: `exact/path/to/file.ts`
+- Create: `exact/path/to/file.test.ts`
+- Modify: `exact/path/to/existing.ts`
+
+**Steps (TDD):**
+
+1. Write failing test for [specific behavior]
+2. Run the repo's scoped test recipe — verify FAIL
+3. Implement minimal code to pass
+4. Run the repo's scoped test recipe — verify PASS
+5. Refactor if needed (complexity <= 8)
+
+**Acceptance:**
+
+- [ ] Test file created with failing test
+- [ ] Implementation passes all tests
+- [ ] Scoped lint passes
+- [ ] Verification commands recorded in the task notes
+
+#### Task 1.2: [Component Name]
+
+**Status:** todo
+
+**Depends:** Task 1.1
+
+[Self-contained description.]
+
+**Files:**
+
+- Create: `exact/path/to/file.ts`
+
+**Steps (TDD):**
+
+1. Write failing test
+2. Run the repo's scoped test recipe — verify FAIL
+3. Implement
+4. Run the repo's scoped test recipe — verify PASS
+
+**Acceptance:**
+
+- [ ] Tests pass
+- [ ] Lint passes
+
+---
+
+## Verification Gates
+
+| Gate        | Command                      | Success Criteria                                |
+| ----------- | ---------------------------- | ----------------------------------------------- |
+| Type safety | repo typecheck recipe        | Zero errors                                     |
+| Lint        | repo lint recipe (scoped)    | Zero violations                                 |
+| Tests       | repo test recipe (scoped)    | All pass                                        |
+| Full QA     | repo full-QA recipe          | All pass                                        |
+| Perf        | bundle / runtime measurement | No regression vs baseline (or N/A — delete row) |
+
+## Cross-Plan References
+
+| Type       | Blueprint | Relationship |
+| ---------- | --------- | ------------ |
+| Upstream   | None      |              |
+| Downstream | None      |              |
+
+## Edge Cases and Error Handling
+
+| Edge Case | Risk | Solution | Task |
+| --------- | ---- | -------- | ---- |
+|           |      |          |      |
+
+## Non-goals
+
+- [What this blueprint does NOT cover]
+
+## Risks
+
+| Risk | Impact | Mitigation |
+| ---- | ------ | ---------- |
+|      |        |            |
+
+## Technology Choices
+
+| Component | Technology | Version | Why |
+| --------- | ---------- | ------- | --- |
+|           |            |         |     |
+
+## Trust Dossier
+
+Draft note: complete this dossier before promotion to planned.
+
+### Readiness Verdict
+
+- promotion-ready: false
+- unresolved-count: 1
+- verified-at: <ISO-8601 timestamp>
+- verified-head: <full git commit SHA>
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID  | Claim | Evidence |
+| --- | ----- | -------- |
+
+### Material Decisions
+
+| ID  | Decision | Chosen option | Rejected alternatives | Rationale |
+| --- | -------- | ------------- | --------------------- | --------- |
+
+### Promotion Gates
+
+| Gate | Command | Expected outcome | Last result |
+| ---- | ------- | ---------------- | ----------- |
+
+### Residual Unknowns
+
+Complete before planned promotion.
