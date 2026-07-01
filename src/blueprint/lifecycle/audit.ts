@@ -59,8 +59,10 @@ interface ApprovalEntry {
 interface ApprovalReviewRecord {
   reviewer: string;
   verdict: string;
+  artifact?: string;
   commit?: string;
   rev?: string;
+  source?: string;
   targetHash?: string;
 }
 
@@ -184,6 +186,10 @@ function parseApprovalReviewRecordsFromLedger(markdown: string): ApprovalReviewR
           verdict: String(parsed.verdict ?? "")
             .trim()
             .toLowerCase(),
+          artifact:
+            typeof parsed.artifact === "string" && parsed.artifact.trim().length > 0
+              ? parsed.artifact.trim()
+              : undefined,
           commit:
             typeof parsed.commit === "string" && parsed.commit.trim().length > 0
               ? parsed.commit.trim()
@@ -191,6 +197,10 @@ function parseApprovalReviewRecordsFromLedger(markdown: string): ApprovalReviewR
           rev:
             typeof parsed.rev === "string" && parsed.rev.trim().length > 0
               ? parsed.rev.trim()
+              : undefined,
+          source:
+            typeof parsed.source === "string" && parsed.source.trim().length > 0
+              ? parsed.source.trim()
               : undefined,
           targetHash:
             typeof parsed.targetHash === "string" && parsed.targetHash.trim().length > 0
@@ -222,12 +232,36 @@ function parseApprovalReviewRecordsFromLedger(markdown: string): ApprovalReviewR
   return records;
 }
 
+function resolveReviewArtifactPath(
+  file: string,
+  ledgerPath: string,
+  artifact: string | undefined,
+): string | null {
+  if (!artifact) return null;
+  if (artifact === "reviews.md") return null;
+  const resolved = resolveApprovalEvidencePath(file, artifact);
+  if (!resolved) return null;
+  if (path.resolve(resolved) === path.resolve(ledgerPath)) return null;
+  return resolved;
+}
+
 function approvalMatchesRecord(entry: ApprovalEntry, record: ApprovalReviewRecord): boolean {
   if (record.reviewer !== entry.reviewer || record.verdict !== "approve") return false;
   if (entry.rev !== undefined && record.rev !== entry.rev) return false;
   if (entry.commit !== undefined && record.commit !== entry.commit) return false;
   if (entry.targetHash !== undefined && record.targetHash !== entry.targetHash) return false;
   return true;
+}
+
+function approvalMatchesProvenanceBackedRecord(
+  file: string,
+  ledgerPath: string,
+  entry: ApprovalEntry,
+  record: ApprovalReviewRecord,
+): boolean {
+  if (!approvalMatchesRecord(entry, record)) return false;
+  if (record.source !== "structured") return false;
+  return resolveReviewArtifactPath(file, ledgerPath, record.artifact) !== null;
 }
 
 function findGitRoot(file: string): string | null {
@@ -263,6 +297,24 @@ export function countDistinctLogBackedApprovals(file: string, approvals: unknown
     if (!evidencePath) continue;
     const records = parseApprovalReviewRecordsFromLedger(readFileSync(evidencePath, "utf8"));
     if (records.some((record) => approvalMatchesRecord(entry, record))) {
+      distinct.add(entry.reviewer);
+    }
+  }
+  return distinct.size;
+}
+
+export function countDistinctProvenanceBackedApprovals(file: string, approvals: unknown): number {
+  const distinct = new Set<string>();
+  for (const entry of normalizeApprovalEntries(approvals)) {
+    if (entry.verdict !== "approve") continue;
+    const evidencePath = resolveApprovalEvidencePath(file, entry.evidence);
+    if (!evidencePath) continue;
+    const records = parseApprovalReviewRecordsFromLedger(readFileSync(evidencePath, "utf8"));
+    if (
+      records.some((record) =>
+        approvalMatchesProvenanceBackedRecord(file, evidencePath, entry, record),
+      )
+    ) {
       distinct.add(entry.reviewer);
     }
   }

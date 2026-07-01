@@ -109,9 +109,11 @@ distinct reviewers** on the current content.
   a human-readable mirror, never the gate.
 - **Durable record = committed in-folder review history** (`<slug>/reviews.md` +
   per-review entries) — version-controlled second brain that keeps approvals AND
-  rejection reasoning. An approval counts only if a matching committed review
-  record exists for that reviewer at that commit/hash; editing frontmatter alone
-  fails the gate.
+  rejection reasoning. New `draft → planned` promotions count an approval only
+  when the matching structured `wp:review-entry` is committed and references a
+  separate tracked review transcript/artifact via `artifact` (for example
+  `review-artifacts/deepseek-final.md`). Editing frontmatter alone, or adding a
+  self-authored ledger summary without a tracked artifact, fails the gate.
 - **`.webpresso` is a gitignored derived cache only** (fast lookup / scoreboard
   aggregation), rebuildable from the committed records. The durable record is the
   committed in-folder review history; the cache is the only non-committed copy and

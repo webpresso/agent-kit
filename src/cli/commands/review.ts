@@ -31,6 +31,7 @@ export interface ReviewEntry {
   readonly blueprintPath: string;
   readonly targetKind: ReviewTargetKind;
   readonly targetId: string;
+  readonly artifact?: string;
   readonly targetHash?: string;
   readonly timestamp: string;
   readonly reviewer: string;
@@ -53,6 +54,7 @@ interface ReviewCommandOptions {
   reviewer?: string;
   targetKind?: string;
   targetId?: string;
+  artifact?: string;
   targetHash?: string;
   verdict?: string;
   rev?: string;
@@ -447,6 +449,7 @@ export async function logReviewEntry(
     blueprintPath: location.path,
     targetKind,
     targetId: input.targetId?.trim() || location.slug,
+    ...(input.artifact?.trim() ? { artifact: input.artifact.trim() } : {}),
     ...(input.targetHash?.trim() ? { targetHash: input.targetHash.trim() } : {}),
     timestamp,
     reviewer,
@@ -611,6 +614,7 @@ export function registerReviewCommand(cli: CAC): void {
     .option("--reviewer <name>", "Reviewer id for `review log`")
     .option("--target-kind <kind>", "blueprint | pull-request")
     .option("--target-id <id>", "Target slug / PR number / stable review target id")
+    .option("--artifact <path>", "Committed review transcript/artifact path relative to blueprint")
     .option("--target-hash <hash>", "Reviewed content hash / head sha for the target")
     .option("--verdict <verdict>", "approve | approve-with-nits | reject | no-verdict")
     .option("--rev <rev>", "Review revision label")

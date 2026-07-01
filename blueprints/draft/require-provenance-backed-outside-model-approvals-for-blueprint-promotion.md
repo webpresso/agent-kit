@@ -4,7 +4,7 @@ status: draft
 complexity: S
 created: "2026-07-01"
 last_updated: "2026-07-01"
-progress: "0% (drafted; urgent governance fix requested from PR #345 postmortem)"
+progress: "100% (1/1 tasks done; urgent governance fix implemented)"
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -42,7 +42,7 @@ Promotion past draft must require two distinct approvals that are backed by comm
 
 #### [governance] Task 1.1: Require review-entry provenance for approval counting
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -63,10 +63,21 @@ Add regression coverage showing that bare `wp:review-entry` records without prov
 
 **Acceptance:**
 
-- [ ] Bare `{reviewer, rev, verdict, commit}` review-entry comments no longer satisfy the approval gate.
-- [ ] Two distinct approval entries with matching committed provenance artifacts satisfy the gate.
-- [ ] Failure messaging tells operators to record provenance-backed outside-model evidence.
-- [ ] Targeted tests, typecheck, lint, and blueprint audit pass.
+- [x] Bare `{reviewer, rev, verdict, commit}` review-entry comments no longer satisfy the approval gate.
+- [x] Two distinct approval entries with matching committed provenance artifacts satisfy the gate.
+- [x] Failure messaging tells operators to record provenance-backed outside-model evidence.
+- [x] Targeted tests, typecheck, lint, and blueprint audit pass.
+
+**Verification:**
+
+```webpresso-evidence-v1
+[
+  {"command":"./bin/wp test --file src/cli/commands/blueprint/mutations.test.ts --file src/cli/commands/review.test.ts --file src/blueprint/lifecycle/audit.approval-gate.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-07-01T00:00:00.000Z"},
+  {"command":"./bin/wp typecheck","exit_code":0,"kind":"typecheck","result":"pass","ts":"2026-07-01T00:00:00.000Z"},
+  {"command":"./bin/wp lint","exit_code":0,"kind":"lint","result":"pass","ts":"2026-07-01T00:00:00.000Z"},
+  {"command":"./bin/wp blueprint audit --all --strict","exit_code":0,"kind":"audit","result":"pass","ts":"2026-07-01T00:00:00.000Z"}
+]
+```
 
 ## Verification Gates
 

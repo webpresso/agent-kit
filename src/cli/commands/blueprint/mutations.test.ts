@@ -183,17 +183,38 @@ function makeRepo(blueprintSlug: string, content: string, state = "planned"): st
   return dir;
 }
 
-function makePromotionReadyDraft(approvals: string): string {
+function makePromotionReadyDraft(
+  approvals: string,
+  options: { provenanceArtifacts?: boolean } = {},
+): string {
   const overview = `${OVERVIEW_WITH_TASKS.replace("status: planned", "status: draft").replace(
     "depends_on: []",
     `depends_on: []\napprovals: ${approvals}`,
   )}
 ${TRUST_DOSSIER_FOR_PROMOTION}`;
   const dir = makeRepo("draft-trusted", overview, "draft");
+  const blueprintDir = path.join(dir, "blueprints", "draft", "draft-trusted");
   mkdirSync(path.join(dir, "bin"), { recursive: true });
   writeFileSync(path.join(dir, "bin", "wp"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+  if (options.provenanceArtifacts === true) {
+    mkdirSync(path.join(blueprintDir, "review-artifacts"), { recursive: true });
+    writeFileSync(
+      path.join(blueprintDir, "review-artifacts", "codex-final.md"),
+      "# Codex final review transcript\n\nVERDICT: APPROVE\n",
+      "utf8",
+    );
+    writeFileSync(
+      path.join(blueprintDir, "review-artifacts", "deepseek-final.md"),
+      "# DeepSeek final review transcript\n\nVERDICT: APPROVE\n",
+      "utf8",
+    );
+  }
+  const codexArtifact =
+    options.provenanceArtifacts === true ? ',"artifact":"review-artifacts/codex-final.md"' : "";
+  const deepseekArtifact =
+    options.provenanceArtifacts === true ? ',"artifact":"review-artifacts/deepseek-final.md"' : "";
   writeFileSync(
-    path.join(dir, "blueprints", "draft", "draft-trusted", "reviews.md"),
+    path.join(blueprintDir, "reviews.md"),
     `# Review ledger — draft-trusted
 
 | Date | Reviewer | Rev | Verdict | Note |
@@ -201,13 +222,13 @@ ${TRUST_DOSSIER_FOR_PROMOTION}`;
 
 ## Review entries
 
-<!-- wp:review-entry {"id":"2026-06-28T00:00:00.000Z:codex:final","blueprintSlug":"draft/draft-trusted","blueprintPath":"blueprints/draft/draft-trusted/_overview.md","targetKind":"blueprint","targetId":"draft/draft-trusted","targetHash":"sha256:good","timestamp":"2026-06-28T00:00:00.000Z","reviewer":"codex","verdict":"approve","rev":"final","commit":"abc123","evidence":"reviews.md","source":"structured"} -->
-<!-- wp:review-entry {"id":"2026-06-28T00:00:00.000Z:deepseek:final","blueprintSlug":"draft/draft-trusted","blueprintPath":"blueprints/draft/draft-trusted/_overview.md","targetKind":"blueprint","targetId":"draft/draft-trusted","targetHash":"sha256:good","timestamp":"2026-06-28T00:00:00.000Z","reviewer":"deepseek","verdict":"approve","rev":"final","commit":"abc123","evidence":"reviews.md","source":"structured"} -->
+<!-- wp:review-entry {"id":"2026-06-28T00:00:00.000Z:codex:final","blueprintSlug":"draft/draft-trusted","blueprintPath":"blueprints/draft/draft-trusted/_overview.md","targetKind":"blueprint","targetId":"draft/draft-trusted","targetHash":"sha256:good","timestamp":"2026-06-28T00:00:00.000Z","reviewer":"codex","verdict":"approve","rev":"final","commit":"abc123","evidence":"reviews.md","source":"structured"${codexArtifact}} -->
+<!-- wp:review-entry {"id":"2026-06-28T00:00:00.000Z:deepseek:final","blueprintSlug":"draft/draft-trusted","blueprintPath":"blueprints/draft/draft-trusted/_overview.md","targetKind":"blueprint","targetId":"draft/draft-trusted","targetHash":"sha256:good","timestamp":"2026-06-28T00:00:00.000Z","reviewer":"deepseek","verdict":"approve","rev":"final","commit":"abc123","evidence":"reviews.md","source":"structured"${deepseekArtifact}} -->
 `,
     "utf8",
   );
   execFileSync("git", ["init"], { cwd: dir, stdio: "ignore" });
-  execFileSync("git", ["add", "blueprints/draft/draft-trusted/reviews.md"], {
+  execFileSync("git", ["add", "blueprints/draft/draft-trusted"], {
     cwd: dir,
     stdio: "ignore",
   });
@@ -438,13 +459,13 @@ describe("promoteBlueprint", () => {
     _setSyncAdapterForCli(() => adapter);
 
     await expect(promoteBlueprint(tmpRepoDir, "draft-trusted", "planned")).rejects.toThrow(
-      /1 distinct reviewer approval/,
+      /0 distinct provenance-backed reviewer approval/,
     );
     expect(ensureFresh).toHaveBeenCalledOnce();
     expect(pushEvent).not.toHaveBeenCalled();
   });
 
-  it("allows draft to planned promotion with 2 valid log-backed approvals", async () => {
+  it("blocks draft to planned promotion when 2 approvals only have bare ledger summaries", async () => {
     vi.stubEnv("WP_BLUEPRINT_TRUST_GATE_TEST_HEAD", "0123456789abcdef0123456789abcdef01234567");
     tmpRepoDir = makePromotionReadyDraft(
       JSON.stringify([
@@ -465,6 +486,39 @@ describe("promoteBlueprint", () => {
           targetHash: "sha256:good",
         },
       ]),
+    );
+    const { adapter, pushEvent, ensureFresh } = makeMockAdapter();
+    _setSyncAdapterForCli(() => adapter);
+
+    await expect(promoteBlueprint(tmpRepoDir, "draft-trusted", "planned")).rejects.toThrow(
+      /provenance-backed reviewer approval/i,
+    );
+    expect(ensureFresh).toHaveBeenCalledOnce();
+    expect(pushEvent).not.toHaveBeenCalled();
+  });
+
+  it("allows draft to planned promotion with 2 provenance-backed approvals", async () => {
+    vi.stubEnv("WP_BLUEPRINT_TRUST_GATE_TEST_HEAD", "0123456789abcdef0123456789abcdef01234567");
+    tmpRepoDir = makePromotionReadyDraft(
+      JSON.stringify([
+        {
+          reviewer: "codex",
+          verdict: "approve",
+          evidence: "reviews.md",
+          rev: "final",
+          commit: "abc123",
+          targetHash: "sha256:good",
+        },
+        {
+          reviewer: "deepseek",
+          verdict: "approve",
+          evidence: "reviews.md",
+          rev: "final",
+          commit: "abc123",
+          targetHash: "sha256:good",
+        },
+      ]),
+      { provenanceArtifacts: true },
     );
     const { adapter, pushEvent, ensureFresh } = makeMockAdapter();
     _setSyncAdapterForCli(() => adapter);

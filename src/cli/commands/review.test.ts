@@ -51,6 +51,7 @@ describe("review command helpers", () => {
     const entry = await logReviewEntry(projectRoot, "blueprint-pr-governance", {
       reviewer: "Codex",
       targetKind: "blueprint",
+      artifact: "review-artifacts/codex-final.md",
       targetHash: "sha256:abc",
       verdict: "approve",
       rev: "final",
@@ -68,6 +69,7 @@ describe("review command helpers", () => {
     expect(entry.verdict).toBe("approve");
     expect(entry.targetKind).toBe("blueprint");
     expect(entry.targetId).toBe("planned/blueprint-pr-governance");
+    expect(entry.artifact).toBe("review-artifacts/codex-final.md");
     expect(entry.targetHash).toBe("sha256:abc");
     expect(entry.agreementWithFinal).toBe(true);
 
@@ -82,6 +84,7 @@ describe("review command helpers", () => {
     expect(markdown).toContain("| Date | Reviewer | Rev | Verdict | Note |");
     expect(markdown).toContain("| codex |");
     expect(markdown).toContain("<!-- wp:review-entry ");
+    expect(markdown).toContain('"artifact":"review-artifacts/codex-final.md"');
 
     const cachePath = path.join(projectRoot, ".webpresso", "reviews", "index.json");
     expect(existsSync(cachePath)).toBe(true);
