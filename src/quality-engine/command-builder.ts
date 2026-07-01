@@ -21,7 +21,7 @@ import { extractPackagePath } from "./workspace-config.js";
  * Can be executed by CLI tools using system-commands or similar.
  */
 export interface CommandConfig {
-  /** Command to execute (e.g., 'pnpm', 'oxlint', 'vitest') */
+  /** Command to execute (e.g., 'pnpm', 'vp', 'vitest') */
   command: string;
   /** Command arguments */
   args: string[];
@@ -56,7 +56,7 @@ export interface LintOptions {
 }
 
 /**
- * Build oxlint command configuration.
+ * Build lint command configuration through the repo-managed Vite+ facade.
  */
 export function buildLintCommand(
   resolved: ResolvedTarget,
@@ -79,9 +79,10 @@ export function buildLintCommand(
     args.push("--fix-dangerously");
   }
 
+  const resolution = getManagedRunner("vp", { outputPolicy: "structured" });
   return {
-    command: "oxlint",
-    args,
+    command: resolution.command,
+    args: [...resolution.args, "lint", ...args],
   };
 }
 

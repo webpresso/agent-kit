@@ -21,6 +21,7 @@ import matter from "gray-matter";
 import { z } from "zod";
 
 import { parseBlueprint } from "#core/parser";
+import { BlueprintCreationService } from "#service/BlueprintCreationService";
 import { refreshBlueprintReadmeIndex } from "#audit/blueprint-readme-drift";
 import { setBlueprintFrontmatterFields } from "#lifecycle/engine";
 import { openDb } from "#db/connection.js";
@@ -130,39 +131,6 @@ const LIFECYCLE_ADVICE =
   "/verify before finalize";
 const ALL_STATES = ["draft", "planned", "in-progress", "parked", "archived", "completed"] as const;
 const NON_COMPLETED = ["draft", "planned", "in-progress", "parked", "archived"] as const;
-const BLUEPRINT_TEMPLATE = `---
-type: blueprint
-title: "{TITLE}"
-status: draft
-complexity: {COMPLEXITY}
-owner: ""
-created: {DATE}
-last_updated: {DATE}
----
-
-## Product wedge anchor
-
-- **Stage outcome:** <cite roadmap section + specific outcome>
-- **Consuming surface:** <route / component / verb + path>
-- **New user-visible capability:** <one sentence>
-
-## Summary
-
-{GOAL}
-
-## Tasks
-
-#### Task 1.1: <task title>
-
-**Status:** todo
-**Wave:** 0
-**Files:**
-- (path)
-
-**Acceptance:**
-- [ ] <criterion>
-`;
-
 function todayIsoDate(): string {
   return new Date().toISOString().split("T")[0] ?? new Date().toISOString();
 }
@@ -202,14 +170,6 @@ async function awaitBounded<T>(
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
   }
-}
-
-function titleToSlug(t: string): string {
-  return t
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 80);
 }
 
 function openDbRW(cwd: string) {
@@ -576,11 +536,12 @@ async function handleNew(cwd: string, raw: unknown): Promise<ToolHandlerResult> 
   const p = newSchema.safeParse(raw);
   if (!p.success) return err("wp_blueprint_new validation error", p.error.message);
   const { title, complexity, goal_prompt, examples_count } = p.data;
-  const today = new Date().toISOString().split("T")[0] ?? "";
-  const template = BLUEPRINT_TEMPLATE.replace(/{TITLE}/g, title)
-    .replace(/{COMPLEXITY}/g, complexity)
-    .replace(/{DATE}/g, today)
-    .replace("{GOAL}", goal_prompt);
+  const draft = await new BlueprintCreationService(cwd).compileDraft({
+    complexity,
+    goal: goal_prompt,
+    title,
+  });
+  const template = draft.markdown;
   const rulesFile = path.join(cwd, ".agent", "rules", "blueprint-scoping.md");
   const rulesContext = existsSync(rulesFile) ? readFileSync(rulesFile, "utf8") : null;
   const examples: Array<{ slug: string; title: string; complexity: string }> = [];
@@ -608,8 +569,8 @@ async function handleNew(cwd: string, raw: unknown): Promise<ToolHandlerResult> 
     }
   }
   const b = bytes(template);
-  const slug = titleToSlug(title);
-  const targetPath = getBlueprintDocumentPaths(resolveBlueprintRoot(cwd), "draft", slug).flat;
+  const slug = draft.slug;
+  const targetPath = draft.outputPath;
 
   // Platform-first path: push event to register the blueprint before returning the scaffold.
   // Iron rule: resolveSyncAdapter() returns null when WP_BLUEPRINT_PLATFORM_DISABLED=1.
@@ -2739,29 +2700,19 @@ async function handleBlueprintCreate(
       : null;
   if (replay) return replay;
 
-  const today = new Date().toISOString().split("T")[0] ?? "";
-  const slug = titleToSlug(title);
-  const root = resolveBlueprintRoot(projectCwd);
-  const overviewPath = getBlueprintDocumentPaths(root, "draft", slug).flat;
-
   try {
-    mkdirSync(path.dirname(overviewPath), { recursive: true });
-    const content = BLUEPRINT_TEMPLATE.replace(/{TITLE}/g, title)
-      .replace(/{COMPLEXITY}/g, complexity)
-      .replace(/{DATE}/g, today)
-      .replace("{GOAL}", goal);
-    await persistBlueprintMarkdown({
-      projectCwd,
-      slug,
-      blueprintPath: overviewPath,
-      markdown: content,
+    const created = await new BlueprintCreationService(projectCwd).create({
+      complexity,
+      goal,
+      title,
     });
+    await reIngest(projectCwd);
 
-    const b = bytes(content);
+    const b = bytes(created.markdown);
     const payload: Record<string, unknown> = {
-      summary: `Blueprint "${slug}" created at ${overviewPath}`,
-      slug,
-      path: overviewPath,
+      summary: `Blueprint "${created.slug}" created at ${created.outputPath}`,
+      slug: created.slug,
+      path: created.outputPath,
       idempotent: false,
       next_action: makeNextAction(
         "verify_task",
@@ -2804,7 +2755,7 @@ export async function registerBlueprintTools(
 
   registrar.registerTool(
     "wp_blueprint_new",
-    "Return a drafting bundle for a new blueprint (no LLM call). Returns { target_path, template, rules_context, examples, lifecycle_advice, validation_required }.",
+    "Return a parser-validated structured drafting bundle from the shared BlueprintCreationService (no LLM call, no file write). Returns { target_path, template, rules_context, examples, lifecycle_advice, validation_required }.",
     {
       type: "object",
       properties: {
@@ -3075,7 +3026,7 @@ export async function registerBlueprintTools(
 
   registrar.registerTool(
     "wp_blueprint_create",
-    "Create a new blueprint markdown under blueprints/draft/<slug>.md by default (folder-shaped `<slug>/_overview.md` remains supported elsewhere) and re-ingest. Accepts optional request_id for idempotent retries and optional head_at_ingest from wp_blueprint_projects/wp_blueprint_list to reject stale writes. Returns { slug, path, next_action, idempotent }.",
+    "Create a parser-validated structured blueprint through the shared BlueprintCreationService under blueprints/draft/<slug>/_overview.md and re-ingest. Accepts optional request_id for idempotent retries and optional head_at_ingest from wp_blueprint_projects/wp_blueprint_list to reject stale writes. Returns { slug, path, next_action, idempotent }.",
     {
       type: "object",
       properties: {

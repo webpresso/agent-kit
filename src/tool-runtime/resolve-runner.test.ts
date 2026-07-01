@@ -52,12 +52,49 @@ describe("resolveRunner", () => {
     });
   });
 
-  it("resolves oxfmt through managed vp exec instead of a bare binary", () => {
+  it("resolves oxfmt through the bundled Vite+ fmt facade", () => {
     expect(resolveRunner("oxfmt", { outputPolicy: "structured" })).toEqual({
       tool: "oxfmt",
-      command: expect.stringContaining("oxfmt"),
-      args: [],
+      command: process.execPath,
+      args: [expect.stringMatching(/vite-plus.*bin.*vp/), "fmt"],
       source: "managed",
+    });
+  });
+
+  it("resolves oxlint through the bundled Vite+ lint facade", () => {
+    expect(resolveRunner("oxlint", { outputPolicy: "structured" })).toEqual({
+      tool: "oxlint",
+      command: process.execPath,
+      args: [expect.stringMatching(/vite-plus.*bin.*vp/), "lint"],
+      source: "managed",
+    });
+  });
+
+  it("falls back oxlint to `vp lint`, never `vp exec oxlint` or `vp exec vp`", () => {
+    expect(
+      resolveRunner("oxlint", {
+        outputPolicy: "structured",
+        resolvePackageBin: () => null,
+      }),
+    ).toEqual({
+      tool: "oxlint",
+      command: "vp",
+      args: ["lint"],
+      source: "fallback",
+    });
+  });
+
+  it("falls back oxfmt to `vp fmt`, never `vp exec oxfmt` or `vp exec vp`", () => {
+    expect(
+      resolveRunner("oxfmt", {
+        outputPolicy: "structured",
+        resolvePackageBin: () => null,
+      }),
+    ).toEqual({
+      tool: "oxfmt",
+      command: "vp",
+      args: ["fmt"],
+      source: "fallback",
     });
   });
 

@@ -197,6 +197,12 @@ wp blueprint db query cross-repo-blocked-on --param org_filter=acme-corp
 Source of truth for all templates: `src/blueprint/db/templates.ts`.
 Template runner implementation: `src/blueprint/db/template-runner.ts`.
 
+For blueprint creation, prefer `wp blueprint new`, `wp_blueprint_new`, or
+`wp_blueprint_create` instead of hand-authoring markdown. Those surfaces share
+`BlueprintCreationService`, return/write folder-shaped drafts at
+`blueprints/draft/<slug>/_overview.md`, and validate parser-visible task
+sections before success.
+
 For retry-safe blueprint mutations, pass `request_id` to
 `wp_blueprint_create`, `wp_blueprint_task_advance`, and
 `wp_blueprint_task_verify`. The server treats identical retries as idempotent

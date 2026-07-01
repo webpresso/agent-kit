@@ -131,8 +131,8 @@ describe("auditToolchainIsolation", () => {
     );
     mkdirSync(templateRoot, { recursive: true });
     writePackage(templateRoot, {
-      scripts: { build: "vite build", lint: "oxlint ." },
-      devDependencies: { typescript: "^6.0.0", vite: "^8.0.0", oxlint: "^1.0.0" },
+      scripts: { build: "vite build", lint: "vp lint ." },
+      devDependencies: { typescript: "^6.0.0", vite: "^8.0.0", "vite-plus": "^0.2.1" },
     });
 
     expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 });

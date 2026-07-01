@@ -11,6 +11,8 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 
+import { parseBlueprint } from "#core/parser";
+
 import {
   callTool,
   cleanupTempDir,
@@ -73,8 +75,13 @@ describe("wp_blueprint_create", () => {
     };
     expect(result.isError).toStrictEqual(false);
     expect(data.slug).toBe("my-created-blueprint");
-    expect(data.path).toContain(".md");
+    expect(data.path).toMatch(/my-created-blueprint\/_overview\.md$/);
     expect(existsSync(data.path)).toBe(true);
+    const createdMarkdown = readFileSync(data.path, "utf8");
+    const parsed = parseBlueprint(createdMarkdown, data.slug);
+    expect(parsed.tasks.length).toBeGreaterThan(0);
+    expect(createdMarkdown).toContain("## Planning Summary");
+    expect(createdMarkdown).toContain("#### Task 1.1:");
     expect(data.next_action.kind).toBe("verify_task");
     expect(data.failures).toStrictEqual([]);
     const readmeText = readFileSync(path.join(tmpDir, "blueprints", "README.md"), "utf8");

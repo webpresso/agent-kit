@@ -109,7 +109,7 @@ const ROOT_HELP_QUALITY_ENTRIES: readonly RootHelpEntry[] = [
     command: "typecheck",
     description: "Typecheck the current workspace through the portable wp surface",
   },
-  { command: "lint", description: "Lint via oxlint (via wp/VP; local runtime fallback only)" },
+  { command: "lint", description: "Lint through the portable Vite+ facade" },
   {
     command: "format",
     description: "Format through the portable wp surface (--check for CI/husky)",

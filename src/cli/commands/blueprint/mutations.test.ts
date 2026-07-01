@@ -497,6 +497,7 @@ describe("promoteBlueprint", () => {
     expect(pushEvent).not.toHaveBeenCalled();
   });
 
+  // Full hard-gate path: real git provenance checks + promotion gate subprocess + projection reingest.
   it("allows draft to planned promotion with 2 provenance-backed approvals", async () => {
     vi.stubEnv("WP_BLUEPRINT_TRUST_GATE_TEST_HEAD", "0123456789abcdef0123456789abcdef01234567");
     tmpRepoDir = makePromotionReadyDraft(
@@ -530,7 +531,7 @@ describe("promoteBlueprint", () => {
     expect(ensureFresh).toHaveBeenCalledWith({ slug: "draft-trusted" });
     expect(pushEvent).toHaveBeenCalledOnce();
     expect(readOverview(tmpRepoDir, "draft-trusted", "planned")).toContain("status: planned");
-  });
+  }, 20_000);
 
   it("moves directory to the target state folder and updates frontmatter", async () => {
     tmpRepoDir = makeRepo("my-feature", OVERVIEW_WITH_TASKS, "planned");

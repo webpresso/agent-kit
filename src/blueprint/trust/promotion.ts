@@ -113,15 +113,24 @@ function resolvePromotionGateInvocation(
   binary: string,
   args: readonly string[],
 ): { command: string; args: string[]; env: NodeJS.ProcessEnv } {
-  if (binary === "./bin/wp") {
-    return {
-      command: join(repoRoot, "bin", process.platform === "win32" ? "wp.cmd" : "wp"),
-      args: [...args],
-      env: { ...process.env, PATH: `${repoRoot}/bin:${process.env["PATH"] ?? ""}` },
-    };
-  }
+  if (binary === "./bin/wp" || binary === "wp") {
+    const localLauncher = resolveRepoWpLauncher(repoRoot);
+    if (localLauncher !== null) {
+      return {
+        command: localLauncher,
+        args: [...args],
+        env: { ...process.env, PATH: `${repoRoot}/bin:${process.env["PATH"] ?? ""}` },
+      };
+    }
 
-  if (binary === "wp") {
+    if (binary === "./bin/wp") {
+      return {
+        command: join(repoRoot, "bin", process.platform === "win32" ? "wp.cmd" : "wp"),
+        args: [...args],
+        env: { ...process.env, PATH: `${repoRoot}/bin:${process.env["PATH"] ?? ""}` },
+      };
+    }
+
     const packagedLauncher = resolvePackagedWpLauncher();
     return {
       command: process.execPath,
@@ -135,6 +144,11 @@ function resolvePromotionGateInvocation(
     args: [...args],
     env: { ...process.env, PATH: `${repoRoot}/bin:${process.env["PATH"] ?? ""}` },
   };
+}
+
+function resolveRepoWpLauncher(repoRoot: string): string | null {
+  const launcher = join(repoRoot, "bin", process.platform === "win32" ? "wp.cmd" : "wp");
+  return existsSync(launcher) ? launcher : null;
 }
 
 function resolvePackagedWpLauncher(): string {

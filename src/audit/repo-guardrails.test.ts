@@ -1869,7 +1869,7 @@ describe("auditNoRelativePackageScripts", () => {
     writePackageJson(join(root, "packages", "a"), {
       build: "pnpm --filter scripts add-js-extensions dist",
       typecheck: "tsc --noEmit",
-      lint: "oxlint src",
+      lint: "wp lint --file src",
     });
     const result = auditNoRelativePackageScripts(root);
     expect(result.ok).toBe(true);
