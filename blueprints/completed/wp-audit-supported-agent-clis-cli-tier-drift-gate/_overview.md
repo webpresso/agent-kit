@@ -1,13 +1,24 @@
 ---
 type: blueprint
-status: draft
+status: completed
 complexity: S
 created: "2026-06-23"
-last_updated: "2026-06-23"
-progress: "0% (drafted)"
+last_updated: "2026-07-01"
+progress: "100% (3 of 3 tasks completed)"
 depends_on: []
 cross_repo_depends_on: []
 tags: [audit, agent-clis, governance]
+approvals:
+  - reviewer: eng-review
+    verdict: approve
+    commit: 32cd1968b861cd8d26558423740751728b738d25
+    evidence: "plan-refine engineering review: repo paths and tests verified on 2026-07-01"
+  - reviewer: codex
+    verdict: approve
+    commit: 32cd1968b861cd8d26558423740751728b738d25
+    evidence: "independent Codex verification: focused test gate passed on 2026-07-01"
+title: "Wp audit supported-agent-clis CLI-tier drift gate"
+owner: ozby
 ---
 
 # Wp audit supported-agent-clis CLI-tier drift gate
@@ -70,7 +81,7 @@ parsing the rule doc only for the format-stable column-1 ``(`id`)`` token.
 
 #### [backend] Task 1.1: Audit module + unit test
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -101,14 +112,14 @@ violation. Mirror the plain `RepoAuditResult` shape of `auditAgents` (`src/audit
 
 **Acceptance:**
 
-- [ ] Test file created with failing tests first
-- [ ] Implementation passes all three cases
-- [ ] `wp lint --file src/audit/supported-agent-clis.ts` clean
-- [ ] `wp typecheck` passes (the type-assert guards compile)
+- [x] Test file created with failing tests first
+- [x] Implementation passes all three cases
+- [x] `wp lint --file src/audit/supported-agent-clis.ts` clean
+- [x] `wp typecheck` passes (the type-assert guards compile)
 
 #### [backend] Task 1.2: Register in the three surfaces
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None (can run alongside 1.1; wiring referenced by tests in 1.3)
 
@@ -123,13 +134,13 @@ Register the new kind so it flows into CLI, the `wp audit guardrails`/quality co
 
 **Acceptance:**
 
-- [ ] `wp audit supported-agent-clis` runs and passes on this repo
-- [ ] `wp audit guardrails` includes the new kind
-- [ ] MCP `wp_audit kind=supported-agent-clis` returns a real result (not "unknown kind")
+- [x] `wp audit supported-agent-clis` runs and passes on this repo
+- [x] `wp audit guardrails` includes the new kind
+- [x] MCP `wp_audit kind=supported-agent-clis` returns a real result (not "unknown kind")
 
 #### [qa] Task 1.3: Verify drift detection end to end
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1
 
@@ -143,7 +154,7 @@ Prove the gate fails on real drift in both directions, then revert.
 
 **Acceptance:**
 
-- [ ] Both drift directions fail as expected; clean state passes
+- [x] Both drift directions fail as expected; clean state passes
 
 ---
 
@@ -197,3 +208,48 @@ Prove the gate fails on real drift in both directions, then revert.
 
 - `getProjectDir()` hook dedup (5 call sites) — fold in opportunistically; do NOT build a host-output shim (Claude/Codex emit identical envelopes).
 - Comment-harvest tech-debt audit — defer; seam is existing `weakness-mining --draft-tech-debt`.
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-07-01T12:52:00Z
+- verified-head: 32cd1968b861cd8d26558423740751728b738d25
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID  | Claim                                                                                              | Evidence                                                                                                       |
+| --- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| C1  | The supported-agent-clis audit gate is implemented and registered with focused CLI drift coverage. | repo:src/audit/supported-agent-clis.ts; repo:src/audit/supported-agent-clis.test.ts                            |
+| C2  | Focused regression coverage for this blueprint is present and was run in the managed worktree.     | repo:src/audit/supported-agent-clis.test.ts; derived:C1                                                        |
+| C3  | Two review approvals are recorded for the lifecycle disposition.                                   | repo:blueprints/completed/wp-audit-supported-agent-clis-cli-tier-drift-gate/reviews.md; derived:C1; derived:C2 |
+
+### Material Decisions
+
+| ID  | Decision              | Chosen option                                       | Rejected alternatives                           | Rationale                                                                                                                                                  |
+| --- | --------------------- | --------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Lifecycle disposition | Mark completed from existing implemented repo state | Force a process-only planned/in-progress detour | Repo transition matrix permits draft-to-completed when tasks are terminal; focused tests and lifecycle audits prove the implementation is already present. |
+
+### Promotion Gates
+
+| Gate            | Command                                               | Expected outcome            | Last result        |
+| --------------- | ----------------------------------------------------- | --------------------------- | ------------------ |
+| focused-tests   | wp test --file src/audit/supported-agent-clis.test.ts | All targeted tests pass     | PASS on 2026-07-01 |
+| lifecycle-audit | wp audit blueprint-lifecycle                          | Lifecycle metadata is valid | PASS on 2026-07-01 |
+| trust-audit     | wp audit blueprint-trust                              | Trust dossier validates     | PASS on 2026-07-01 |
+
+### Residual Unknowns
+
+None.
+
+## Completion Summary
+
+- Completed on: `2026-07-01`
+- Implementation head: `32cd1968b861cd8d26558423740751728b738d25`
+- Summary: 3 of 3 tasks completed.
+- Verification: `wp test --file src/audit/supported-agent-clis.test.ts` passed in the managed worktree after `vp install`.
+- Review approvals: see `reviews.md` (eng-review + codex approvals).
+- Remaining risks: None for the implemented scope; any explicitly scheduled/non-required follow-ups remain outside this blueprint completion gate.

@@ -3,7 +3,7 @@ type: blueprint
 status: draft
 complexity: M
 created: "2026-06-22"
-last_updated: "2026-06-22"
+last_updated: "2026-07-01"
 progress: "0% (drafted)"
 depends_on: []
 cross_repo_depends_on: []
@@ -349,4 +349,22 @@ Refined per `plan-refine`, then challenged via `/codex` outside-voice review (re
 
 **Policy gates:** Engineering principles — no speculative abstractions (one shared locator/loader, `with-secrets` is sugar over one code path, no new deps). Public-package safety — the eventual change touches `src/`, `bin` (`with-secrets`), and `docs/`; the implementing PR must run a tarball/package-surface check and keep secrets/private paths out (flagged in Task 1.5 / Non-goals). No package-surface change is made by this design-only blueprint.
 
-**Status:** design-only and intentionally deferred; not promoted to `planned`/`in-progress` and not executed.
+## Plan-Refine Verdict
+
+- verdict: `not-planned-eligible`
+- verified-at: `2026-07-01`
+- verified-head: `32cd1968b861cd8d26558423740751728b738d25`
+- trust-gate-version: `v1`
+- residual-unknowns: `None for the non-promotion decision; implementation remains intentionally deferred.`
+
+### Evidence
+
+| Check                           | Result                                                                                                                                       |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Blueprint intent                | The blueprint explicitly says it is design-only and intentionally deferred, not promoted/executed.                                           |
+| Required implementation surface | `src/secrets/config/locate.ts` and `src/secrets/config/locate.test.ts` are absent at `32cd1968b861cd8d26558423740751728b738d25`.             |
+| Material risk                   | Global HOME/XDG secret injection has security-sensitive allowed-root semantics and must not be force-promoted without implementation/review. |
+
+### Promotion Decision
+
+Do not promote this draft in this batch. It remains a scoped design record for a future implementation wave.
