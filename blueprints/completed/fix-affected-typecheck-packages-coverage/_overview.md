@@ -1,17 +1,27 @@
 ---
 type: blueprint
-status: draft
+status: completed
 complexity: S
 created: "2026-06-28"
-last_updated: "2026-06-28"
-progress: "0% (0 of 3 tasks completed)"
+last_updated: "2026-07-01"
+progress: "100% (3 of 3 tasks completed)"
 depends_on: []
 cross_repo_depends_on: []
 tags:
   - typecheck
   - hooks
   - dx
-approvals: [] # ≥2 distinct reviewer approvals required before draft→planned
+approvals:
+  - reviewer: eng-review
+    verdict: approve
+    commit: 32cd1968b861cd8d26558423740751728b738d25
+    evidence: "plan-refine engineering review: repo paths and tests verified on 2026-07-01"
+  - reviewer: codex
+    verdict: approve
+    commit: 32cd1968b861cd8d26558423740751728b738d25
+    evidence: "independent Codex verification: focused test gate passed on 2026-07-01"
+title: "Fix affected-typecheck coverage for `packages/*` sub-packages"
+owner: ozby
 ---
 
 # Fix affected-typecheck coverage for `packages/*` sub-packages
@@ -87,7 +97,7 @@ closure tests.
 
 #### [backend] Task 1.1: Group affected files by owning tsconfig and plan per project
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -106,12 +116,12 @@ throws the fail-closed error only when zero plans build. Keep
 
 **Acceptance:**
 
-- [ ] `planAffectedTypecheckClosures` returns ≥1 plan for a `packages/*`-only change
-- [ ] Fail-closed throw retained when no plan can be built
+- [x] `planAffectedTypecheckClosures` returns ≥1 plan for a `packages/*`-only change
+- [x] Fail-closed throw retained when no plan can be built
 
 #### [backend] Task 1.2: Aggregate diagnostics across plans in runAffectedTypecheck
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1
 
@@ -126,11 +136,11 @@ counts per plan.
 
 **Acceptance:**
 
-- [ ] exitCode is the max across plans; checkedFiles is the union
+- [x] exitCode is the max across plans; checkedFiles is the union
 
 #### [qa] Task 1.3: Tests — packages/\* covered, mixed src+package, fail-closed preserved
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.2
 
@@ -150,7 +160,7 @@ Add tests to `src/typecheck/affected.test.ts` using a multi-tsconfig fixture
 
 **Acceptance:**
 
-- [ ] All new tests pass; existing closure tests stay green
+- [x] All new tests pass; existing closure tests stay green
 
 ## Verification Gates
 
@@ -172,3 +182,48 @@ Add tests to `src/typecheck/affected.test.ts` using a multi-tsconfig fixture
 | -------------------------------------------- | ---------------- | ---------------------------------------------------------------- |
 | Over-skipping a genuinely unconfigured `.ts` | Missed typecheck | Fail-closed retained when zero plans build; test 3 guards it.    |
 | Per-package program startup cost             | Slower hook      | Only owning tsconfigs of changed files are loaded (typically 1). |
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-07-01T12:52:00Z
+- verified-head: 32cd1968b861cd8d26558423740751728b738d25
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID  | Claim                                                                                                                    | Evidence                                                                                              |
+| --- | ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| C1  | Affected typecheck package closure coverage is implemented and regression-tested for package-level dependency expansion. | repo:src/typecheck/affected.ts; repo:src/typecheck/affected.test.ts                                   |
+| C2  | Focused regression coverage for this blueprint is present and was run in the managed worktree.                           | repo:src/typecheck/affected.test.ts; derived:C1                                                       |
+| C3  | Two review approvals are recorded for the lifecycle disposition.                                                         | repo:blueprints/completed/fix-affected-typecheck-packages-coverage/reviews.md; derived:C1; derived:C2 |
+
+### Material Decisions
+
+| ID  | Decision              | Chosen option                                       | Rejected alternatives                           | Rationale                                                                                                                                                  |
+| --- | --------------------- | --------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Lifecycle disposition | Mark completed from existing implemented repo state | Force a process-only planned/in-progress detour | Repo transition matrix permits draft-to-completed when tasks are terminal; focused tests and lifecycle audits prove the implementation is already present. |
+
+### Promotion Gates
+
+| Gate            | Command                                       | Expected outcome            | Last result        |
+| --------------- | --------------------------------------------- | --------------------------- | ------------------ |
+| focused-tests   | wp test --file src/typecheck/affected.test.ts | All targeted tests pass     | PASS on 2026-07-01 |
+| lifecycle-audit | wp audit blueprint-lifecycle                  | Lifecycle metadata is valid | PASS on 2026-07-01 |
+| trust-audit     | wp audit blueprint-trust                      | Trust dossier validates     | PASS on 2026-07-01 |
+
+### Residual Unknowns
+
+None.
+
+## Completion Summary
+
+- Completed on: `2026-07-01`
+- Implementation head: `32cd1968b861cd8d26558423740751728b738d25`
+- Summary: 3 of 3 tasks completed.
+- Verification: `wp test --file src/typecheck/affected.test.ts` passed in the managed worktree after `vp install`.
+- Review approvals: see `reviews.md` (eng-review + codex approvals).
+- Remaining risks: None for the implemented scope; any explicitly scheduled/non-required follow-ups remain outside this blueprint completion gate.
