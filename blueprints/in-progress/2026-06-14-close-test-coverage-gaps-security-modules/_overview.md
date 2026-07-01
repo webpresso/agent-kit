@@ -1,12 +1,12 @@
 ---
 type: blueprint
-title: "Close test coverage gaps in security-critical modules"
+title: Close test coverage gaps in security-critical modules
 owner: ozby
-status: planned
+status: in-progress
 complexity: M
 created: "2026-06-14"
 last_updated: "2026-07-01"
-progress: "0% (0/9 tasks done, 0 blocked; promoted to planned after refresh and outside-model approvals)"
+progress: 0% (0/9 tasks done, 0 blocked, updated 2026-07-01)
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -24,6 +24,8 @@ approvals:
     verdict: approve
     rev: final
     evidence: reviews.md
+worktree_owner_id: owner-d9cf178a3c31
+worktree_owner_branch: bp/2026-06-14-close-test-coverage-gaps-security-modules
 ---
 
 # Close test coverage gaps in security-critical modules
