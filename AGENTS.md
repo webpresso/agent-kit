@@ -64,7 +64,8 @@ For any non-trivial change, run the gate **before the first edit**, in order:
 and switch into it, create the blueprint on that branch, then open a draft PR
 early and push implementation commits to it. Never implement on `main`.
 PRs with any non-`*.md` changes must include a changed blueprint, unless a
-commit carries `Blueprint-exempt: <reason>` for a genuinely trivial exception.
+commit carries `Blueprint-exempt: <reason>` or the PR is a Dependabot
+dependency-only update.
 Full rule: `.agent/rules/pre-implementation.md` § Blueprint gate.
 
 Catalog-owned surfaces:

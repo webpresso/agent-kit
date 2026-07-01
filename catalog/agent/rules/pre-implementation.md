@@ -148,15 +148,20 @@ gate is deliberately stricter and easier to inspect than the local
 pre-implementation judgment:
 
 - PRs whose changed files are **all `*.md`** are exempt.
-- Any PR with at least one non-`*.md` changed file must include a changed file
-  under `blueprints/`.
+- Dependabot dependency-only PRs are exempt when every changed file is a package
+  manifest, lockfile, or GitHub Actions workflow file and the commit history
+  contains Dependabot's `updated-dependencies` metadata.
+- Any other PR with at least one non-`*.md` changed file must include a changed
+  file under `blueprints/`.
 - Truly trivial non-`*.md` PRs may use an explicit commit-message trailer:
   `Blueprint-exempt: <reason>`.
 
 The exemption trailer is intentionally git-inspectable and must include a real
 reason. Do not use it for features, behavioral fixes, refactors, security
-changes, CI changes, dependency changes, generated-code churn, or anything that
-would benefit from durable task/evidence tracking. If a branch starts with a
+changes, CI changes, generated-code churn, manually-authored dependency changes,
+or anything that would benefit from durable task/evidence tracking. Dependabot
+package/lockfile/action-version PRs should rely on the automatic dependency-only
+exemption instead of adding fake blueprint churn. If a branch starts with a
 trivial exempt commit and grows, add or update a blueprint before opening the
 PR.
 

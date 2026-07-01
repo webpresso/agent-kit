@@ -4,6 +4,9 @@ import type { RepoAuditResult } from "./repo-guardrails.js";
 
 const TITLE = "Blueprint PR coverage";
 const BLUEPRINT_EXEMPT_PATTERN = /^Blueprint-exempt:\s*(\S.*)$/im;
+const DEPENDABOT_UPDATED_DEPENDENCIES_PATTERN = /^updated-dependencies:\s*$/im;
+const DEPENDABOT_DEPENDENCY_ONLY_WARNING =
+  "[warn] Dependabot dependency-only update detected; blueprint coverage not required";
 
 export interface BlueprintPrCoverageOptions {
   /** PR base ref/sha. Used as `<baseRef>...HEAD`. */
@@ -39,6 +42,10 @@ export function auditBlueprintPrCoverage(
 
   if (changedFiles.some(isBlueprintFile)) {
     return pass(changedFiles.length);
+  }
+
+  if (isDependabotDependencyOnlyUpdate(rootDirectory, options, changedFiles)) {
+    return passWithWarning(DEPENDABOT_DEPENDENCY_ONLY_WARNING, changedFiles.length);
   }
 
   const exemption = findBlueprintExemption(rootDirectory, options);
@@ -108,6 +115,17 @@ function resolveChangedFiles(
   return { files: splitLines(result.stdout) };
 }
 
+function isDependabotDependencyOnlyUpdate(
+  cwd: string,
+  options: BlueprintPrCoverageOptions,
+  changedFiles: readonly string[],
+): boolean {
+  if (!changedFiles.every(isDependabotDependencyFile)) return false;
+
+  const messages = options.commitMessages ?? readCommitMessages(cwd, options.baseRef);
+  return messages.some((message) => DEPENDABOT_UPDATED_DEPENDENCIES_PATTERN.test(message));
+}
+
 function findBlueprintExemption(cwd: string, options: BlueprintPrCoverageOptions): string | null {
   const messages = options.commitMessages ?? readCommitMessages(cwd, options.baseRef);
   for (const message of messages) {
@@ -150,6 +168,25 @@ function isMarkdownFile(filePath: string): boolean {
 
 function isBlueprintFile(filePath: string): boolean {
   return normalizePath(filePath).startsWith("blueprints/");
+}
+
+function isDependabotDependencyFile(filePath: string): boolean {
+  const normalized = normalizePath(filePath);
+  const basename = normalized.split("/").at(-1) ?? normalized;
+
+  return (
+    normalized === "package.json" ||
+    normalized.endsWith("/package.json") ||
+    normalized === "pnpm-lock.yaml" ||
+    normalized === "package-lock.json" ||
+    normalized === "npm-shrinkwrap.json" ||
+    normalized === "yarn.lock" ||
+    normalized === "bun.lock" ||
+    normalized === "bun.lockb" ||
+    normalized === "deno.lock" ||
+    normalized === "pnpm-workspace.yaml" ||
+    (normalized.startsWith(".github/workflows/") && /\.ya?ml$/u.test(basename))
+  );
 }
 
 function normalizePath(filePath: string): string {
