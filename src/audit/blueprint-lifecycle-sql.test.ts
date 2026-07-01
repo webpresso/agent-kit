@@ -451,6 +451,31 @@ describe("auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     expect(result.violations.some((v) => v.message.includes("unrelated-empty-wip"))).toBe(false);
   });
 
+  it("changed-only fails a completed-looking blueprint left in draft", async () => {
+    writeBlueprint(cwd, "draft-complete-left-behind", {
+      status: "draft",
+      tasks: [{ id: "1.1", status: "done" }],
+    });
+
+    const result = await withFakeGit(
+      {
+        baseDiff: "M\tblueprints/draft/draft-complete-left-behind.md\n",
+        mergeBase: "fake-base",
+        trackedFiles: ["blueprints/draft/draft-complete-left-behind.md"],
+      },
+      () => auditBlueprintLifecycleSql(cwd, { changedOnly: true, baseRef: "origin/main" }),
+    );
+
+    expect(result.ok).toBe(false);
+    expect(
+      result.violations.some(
+        (v) =>
+          v.file === "blueprints/draft/draft-complete-left-behind.md" &&
+          /draft.*checked|acceptance criteria/i.test(v.message),
+      ),
+    ).toBe(true);
+  });
+
   it("changed-only still fails changed blueprint lifecycle violations", async () => {
     writeBlueprint(cwd, "changed-empty-wip", { status: "in-progress" });
     writeBlueprint(cwd, "unrelated-clean", {

@@ -225,8 +225,8 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(existsSync(path.join(repo, ".node-version"))).toBe(false);
       expect(existsSync(path.join(repo, ".nvmrc"))).toBe(false);
       expect(existsSync(path.join(repo, ".husky", "pre-commit"))).toBe(true);
-      expect(existsSync(path.join(repo, ".husky", "commit-msg"))).toBe(false);
-      expect(existsSync(path.join(repo, ".husky", "pre-push"))).toBe(false);
+      expect(existsSync(path.join(repo, ".husky", "commit-msg"))).toBe(true);
+      expect(existsSync(path.join(repo, ".husky", "pre-push"))).toBe(true);
       expect(existsSync(path.join(repo, "scripts", "check-no-dev-vars.ts"))).toBe(false);
       expect(existsSync(path.join(repo, "scripts", "resolve-webpresso-cli-versions.cjs"))).toBe(
         false,
@@ -328,8 +328,8 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
         false,
       );
       expect(existsSync(path.join(repo, ".husky", "pre-commit"))).toBe(true);
-      expect(existsSync(path.join(repo, ".husky", "commit-msg"))).toBe(false);
-      expect(existsSync(path.join(repo, ".husky", "pre-push"))).toBe(false);
+      expect(existsSync(path.join(repo, ".husky", "commit-msg"))).toBe(true);
+      expect(existsSync(path.join(repo, ".husky", "pre-push"))).toBe(true);
       expect(existsSync(path.join(repo, ".actrc"))).toBe(true);
       expect(existsSync(path.join(repo, "Brewfile"))).toBe(false);
       expect(existsSync(path.join(repo, ".node-version"))).toBe(false);

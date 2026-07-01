@@ -1,6 +1,8 @@
 ---
 type: blueprint
-status: draft
+title: Fix session-memory snapshot bench gate
+owner: codex
+status: completed
 complexity: S
 created: "2026-07-01"
 last_updated: "2026-07-01"
@@ -74,3 +76,37 @@ Fresh verification on 2026-07-01:
 - `pnpm run native:session-memory:test` passed: 37 Rust tests across `session-memory-core` and `session-memory-napi`, including the new zero-cap backlog regression.
 - `pnpm run native:session-memory:clippy` passed with `-D warnings`.
 - `pnpm run native:session-memory:bench:run && pnpm run native:session-memory:bench:gate` passed; `snapshot_50_events` mean was 117,030 ns and median was 117,468 ns against the unchanged 500,000 ns SLO.
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-07-01T16:11:54Z
+- verified-head: d107df0455218358dbbbd25d6db418bd0f863d8e
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID  | Claim                                                                                                    | Evidence                                                                       |
+| --- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| C1  | PR #339 fixed the `snapshot_50_events` bench gate without raising the benchmark threshold.               | repo:blueprints/completed/2026-07-01-fix-session-memory-snapshot-bench-gate.md |
+| C2  | The shipped fix streams snapshot serialization and keeps the public `SnapshotResult` contract unchanged. | repo:native/session-memory-engine/crates/session-memory-core/src/session.rs    |
+
+### Material Decisions
+
+| ID  | Decision          | Chosen option                           | Rejected alternatives                   | Rationale                                                             |
+| --- | ----------------- | --------------------------------------- | --------------------------------------- | --------------------------------------------------------------------- |
+| D1  | Bench gate repair | Fix the snapshot hot path at the owner. | Raise benchmark thresholds or timeouts. | Preserves the SLO while removing the synchronous-path outlier source. |
+
+### Promotion Gates
+
+| Gate      | Command                      | Expected outcome | Last result |
+| --------- | ---------------------------- | ---------------- | ----------- |
+| Test      | wp test                      | pass             | pass        |
+| Lifecycle | wp audit blueprint-lifecycle | pass             | pass        |
+
+### Residual Unknowns
+
+None.

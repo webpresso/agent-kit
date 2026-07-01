@@ -1184,6 +1184,38 @@ describe("auditBlueprintLifecycle — branch coverage", () => {
     expect(result.ok).toBe(true);
   });
 
+  test("draft blueprint with checked acceptance criteria fails lifecycle audit", () => {
+    const root = tempRepo();
+    mkdirSync(join(root, "blueprints", "draft", "done-draft"), { recursive: true });
+    writeFileSync(
+      join(root, "blueprints", "draft", "done-draft", "_overview.md"),
+      [
+        "---",
+        "type: blueprint",
+        "status: draft",
+        "---",
+        "# Done Draft",
+        "",
+        "## Acceptance",
+        "",
+        "- [x] Implemented",
+      ].join("\n"),
+    );
+
+    const result = auditBlueprintLifecycle(root);
+
+    expect(result.ok).toBe(false);
+    expect(
+      result.violations.some(
+        (violation: RepoAuditViolation) =>
+          violation.file === "blueprints/draft/done-draft/_overview.md" &&
+          violation.message.includes(
+            "Plan has status: draft but 1 acceptance criteria are checked",
+          ),
+      ),
+    ).toBe(true);
+  });
+
   test("blueprint with wrong type produces type violation", () => {
     const root = tempRepo();
     mkdirSync(join(root, "blueprints", "draft", "bp"), { recursive: true });
