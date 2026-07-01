@@ -1,0 +1,1 @@
+{"version":3,"file":"no-legacy-cli-bin.d.ts","sourceRoot":"","sources":["../../../../../src/cli/bundle/audits/no-legacy-cli-bin.ts"],"names":[],"mappings":"AA8DA,MAAM,WAAW,mBAAmB;IAClC,QAAQ,CAAC,IAAI,EAAE,MAAM,CAAC;IACtB,QAAQ,CAAC,KAAK,EAAE,MAAM,CAAC;IACvB,QAAQ,CAAC,IAAI,EAAE,MAAM,CAAC;CACvB;AAgGD,wBAAgB,sBAAsB,CAAC,QAAQ,SAAgB,GAAG,IAAI,CAkBrE"}
