@@ -59,20 +59,18 @@ Use blueprints for non-trivial work. Specs live in
 `planned/`, `in-progress/`, and `completed/`. Keep tasks, dependencies,
 verification commands, and acceptance criteria current before execution.
 
-For any non-trivial change, run the gate **before the first edit**, in order:
-**worktree → blueprint → draft PR** — create a git worktree on a fresh branch
-and switch into it, create the blueprint on that branch, then open a draft PR
-early and push implementation commits to it. Never implement on `main`.
+For non-trivial changes, run **worktree → blueprint → draft PR** before the
+first edit: use a fresh-branch worktree, create the blueprint there, then open a
+draft PR before implementation commits. Never implement on `main`.
 PRs with any non-`*.md` changes must include a changed blueprint, unless a
 commit carries `Blueprint-exempt: <reason>` or the PR is a Dependabot
 dependency-only update.
 Full rule: `.agent/rules/pre-implementation.md` § Blueprint gate.
 
-For Ultragoal or other multi-blueprint runs: never run the controller from a
-primary/main checkout. Fetch `origin/main`, create a dedicated controller
-worktree with `./bin/wp worktree new bp/<slug> --base origin/main`, run every
-`./bin/wp blueprint start <slug>` from that controller, and finish only after
-`$agent-kit:verify`, green PR checks, merge, and the final Ultragoal checkpoint.
+Ultragoal: primary/main is never the controller. Fetch `origin/main`, create
+`./bin/wp worktree new bp/<slug> --base origin/main`, run all
+`./bin/wp blueprint start <slug>` there, and finish after `$agent-kit:verify`,
+green PR checks, merge, final checkpoint.
 
 Catalog-owned surfaces:
 
@@ -146,8 +144,8 @@ Record durable architecture decisions in the repo's ADR/planning surface if one 
 ## Safety boundaries
 
 - Do not commit secrets or credentials.
-- Do not create or persist secret-bearing files like `.env`, `.env.local`, `.env.*.local`, `.dev.vars`, or `.dev.vars.example`.
-- Route secret-scoped commands through the repo contract (`wp secrets doctor --profile <profile> --json` + `wp secrets run --sink <sink> --profile <profile> -- <cmd>`).
+- Do not persist secret files (`.env*`, `.dev.vars*`).
+- Use `wp secrets doctor`/`wp secrets run` for secret-scoped commands.
 - Keep secret/path checks on shared audit surfaces when available.
 - Do not commit agent surfaces (`.agent/`, `.agents/`, `.cursor/`, `.omx/`, `.omc/`, `.codex/`, `.opencode/`).
 - Do not hand-edit generated or derived surfaces; edit the catalog in agent-kit.
