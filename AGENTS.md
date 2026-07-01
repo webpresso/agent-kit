@@ -103,6 +103,21 @@ If a gate fails, fix the root cause or record the blocker with evidence.
 Explain why the change exists, what tradeoffs were made, and what was verified.
 Record durable architecture decisions in the repo's ADR/planning surface if one exists.
 
+## Continuation and git state
+
+- Do not stop with staged or dirty task-owned work when a safe local
+  commit/push/PR update remains. Staging is an intermediate step, not a final
+  state.
+- After verification, commit completed task-owned changes to the task branch
+  and push/update the PR when credentials and branch policy allow. Never push
+  directly to `main`, never commit secrets, and never commit ignored runtime or
+  generated agent surfaces.
+- Before the final response, run `git status --short --branch` and report the
+  exact state: uncommitted, committed, pushed, PR-open, and/or merged. If work
+  cannot be committed or pushed, state the blocker and the remaining file state
+  explicitly. Do not imply done or merged while work is only staged,
+  uncommitted, or unpushed.
+
 <!-- <<< managed by webpresso (operating-contract) -->
 
 <!-- >>> user-owned (repo-customizations) -->

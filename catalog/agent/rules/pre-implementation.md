@@ -111,6 +111,13 @@ current `HEAD`.
   checks, merge, and the final Ultragoal checkpoint. Do not call the aggregate
   Codex goal complete or write the final checkpoint before the merge has landed.
 
+Do not leave staged changes as the stop state. Staging is only an intermediate
+step between editing and committing. After verification, commit task-owned
+changes to the task branch and push/update the draft PR when credentials and
+branch policy allow. If committing or pushing is blocked, keep unrelated files
+out of the commit and report the exact blocker plus the exact `git status --short --branch` output; never present staged, uncommitted, unpushed, or unmerged work as
+finished.
+
 **When to skip:**
 
 - Typos, renames, or one-line fixes (same skip condition as the rest of this
