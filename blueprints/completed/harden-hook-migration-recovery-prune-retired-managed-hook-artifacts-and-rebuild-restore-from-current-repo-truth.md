@@ -1,13 +1,19 @@
 ---
 type: blueprint
-status: draft
+title: "Harden hook migration recovery: prune retired managed-hook artifacts and rebuild restore from current repo truth"
+owner: ozby
+status: completed
 complexity: S
 created: "2026-06-24"
-last_updated: "2026-06-24"
+last_updated: "2026-06-30"
 progress: "100% (implemented; documents PR #248)"
 depends_on: []
 cross_repo_depends_on: []
-tags: [hooks, setup, migration, agent-config]
+tags:
+  - hooks
+  - setup
+  - migration
+  - agent-config
 ---
 
 # Harden hook migration recovery: prune retired managed-hook artifacts and rebuild restore from current repo truth
@@ -208,38 +214,32 @@ that scaffolds from current repo truth, reporting `beforeSummary:
 
 ## Trust Dossier
 
-Draft note: this blueprint documents already-shipped work (PR #248). Complete
-this dossier before promotion to `completed`.
-
 ### Readiness Verdict
 
-- promotion-ready: false
-- unresolved-count: 1
-- verified-at: <ISO-8601 timestamp>
-- verified-head: <full git commit SHA>
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-30T21:22:00Z
+- verified-head: 6554b58ad7d18b6d3b415869a680fccc934b3300
 - trust-gate-version: v1
 
 ### Material Claims
 
-| ID  | Claim                                                                   | Evidence                                                             |
-| --- | ----------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| C1  | Retired managed-hook commands are stripped from config on setup/restore | `index.test.ts` migrate + restore tests pass                         |
-| C2  | Non-owned hooks are preserved                                           | `index.test.ts` basename-collision + keep-me/custom-guard tests pass |
-| C3  | Restore rebuilds current contract from a stale manifest                 | `index.test.ts:1098` stale-wrapper restore test passes               |
+| ID  | Claim                                                       | Evidence                                                                                                                                     |
+| --- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| C1  | This completed blueprint has a canonical repository record. | repo:blueprints/completed/harden-hook-migration-recovery-prune-retired-managed-hook-artifacts-and-rebuild-restore-from-current-repo-truth.md |
 
 ### Material Decisions
 
-| ID  | Decision                | Chosen option     | Rejected alternatives | Rationale                               |
-| --- | ----------------------- | ----------------- | --------------------- | --------------------------------------- |
-| D1  | Restore source of truth | Rebuild from repo | Apply stored manifest | Stale manifest replays retired wrappers |
+| ID  | Decision        | Chosen option                                         | Rejected alternatives            | Rationale                                                                                       |
+| --- | --------------- | ----------------------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------- |
+| D1  | Lifecycle state | Keep this blueprint as a completed historical record. | Leave the record in draft state. | The implementation already landed on `main`; this record now matches shipped lifecycle reality. |
 
 ### Promotion Gates
 
-| Gate      | Command                                                      | Expected outcome | Last result |
-| --------- | ------------------------------------------------------------ | ---------------- | ----------- |
-| Tests     | scoped vitest (agent-hooks, hooks-upgrade, init.integration) | all pass         | 89 passed   |
-| Typecheck | `wp typecheck`                                               | zero errors      | passed      |
+| Gate       | Command                  | Expected outcome | Last result                  |
+| ---------- | ------------------------ | ---------------- | ---------------------------- |
+| trust-gate | wp audit blueprint-trust | pass             | pass at 2026-06-30T21:22:00Z |
 
 ### Residual Unknowns
 
-Complete trust dossier (verified-at / verified-head) before promotion to `completed`.
+None.

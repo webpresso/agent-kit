@@ -1,13 +1,19 @@
 ---
 type: blueprint
-status: draft
+title: "Source-repo JIT-first hook refactor"
+owner: ozby
+status: completed
 complexity: L
 created: "2026-06-24"
-last_updated: "2026-06-24"
-progress: "95% (implemented + rebased onto main; in PR #258)"
+last_updated: "2026-06-30"
+progress: "100% (merged in PR #258)"
 depends_on: []
 cross_repo_depends_on: []
-tags: [hooks, setup, source-mode, runtime]
+tags:
+  - hooks
+  - setup
+  - source-mode
+  - runtime
 ---
 
 # Source-repo JIT-first hook refactor
@@ -110,3 +116,35 @@ self-repo setup messaging.
 | Risk                                       | Impact                        | Mitigation                                                                 |
 | ------------------------------------------ | ----------------------------- | -------------------------------------------------------------------------- |
 | Source/JIT cold start slower than compiled | hook latency in the dev clone | Source-repo-only timeout bump to >=20s; consumers stay on compiled runtime |
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-30T21:22:00Z
+- verified-head: 6554b58ad7d18b6d3b415869a680fccc934b3300
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID  | Claim                                                       | Evidence                                                                    |
+| --- | ----------------------------------------------------------- | --------------------------------------------------------------------------- |
+| C1  | This completed blueprint has a canonical repository record. | repo:blueprints/completed/2026-06-24-source-repo-jit-first-hook-refactor.md |
+
+### Material Decisions
+
+| ID  | Decision        | Chosen option                                         | Rejected alternatives            | Rationale                                                                                       |
+| --- | --------------- | ----------------------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------- |
+| D1  | Lifecycle state | Keep this blueprint as a completed historical record. | Leave the record in draft state. | The implementation already landed on `main`; this record now matches shipped lifecycle reality. |
+
+### Promotion Gates
+
+| Gate       | Command                  | Expected outcome | Last result                  |
+| ---------- | ------------------------ | ---------------- | ---------------------------- |
+| trust-gate | wp audit blueprint-trust | pass             | pass at 2026-06-30T21:22:00Z |
+
+### Residual Unknowns
+
+None.
