@@ -91,7 +91,7 @@ function normalizeClaudeRtkSettings(repoRoot: string): void {
   });
 
   if (!changed) return;
-  parsed.hooks = { ...(parsed.hooks ?? {}), PreToolUse: nextGroups };
+  parsed.hooks = { ...parsed.hooks, PreToolUse: nextGroups };
   writeFileSync(settingsPath, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
 }
 
