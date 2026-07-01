@@ -72,18 +72,19 @@ tags:
   - infra
   - observability
 
-# Required to promote past draft — ≥2 approvals from DISTINCT reviewers (the
-# gate input; the in-body `## Approvals` checklist is a human-readable mirror).
-# Enforced by `wp blueprint promote` + `wp audit blueprint-lifecycle`.
+# Required to promote past draft — ≥2 provenance-backed approvals from DISTINCT
+# reviewers. The in-body `## Approvals` checklist is a human-readable mirror.
+# New promotions require matching structured reviews.md entries that reference
+# separate tracked transcript/artifact files.
 approvals:
   - reviewer: codex # enum: eng-review | codex | deepseek | mimo | glm | ceo-review
     verdict: approve
     commit: <sha-or-content-hash the review ran against>
-    evidence: <repo: path / review record>
+    evidence: reviews.md # ledger path; its matching wp:review-entry has artifact: <tracked transcript>
   - reviewer: deepseek
     verdict: approve
     commit: <sha-or-content-hash>
-    evidence: <repo: path / review record>
+    evidence: reviews.md # ledger path; its matching wp:review-entry has artifact: <tracked transcript>
 
 # Optional — if blueprint is parked
 parked_reason: >-

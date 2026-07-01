@@ -27,6 +27,7 @@ const structuredApprove = (reviewer: string, overrides: Record<string, unknown> 
     rev: "final",
     commit: "abc123",
     evidence: "reviews.md",
+    artifact: `review-artifacts/${reviewer}.md`,
     source: "structured",
     ...overrides,
   })} -->`;
@@ -65,6 +66,19 @@ approvals: ${JSON.stringify(approvals ?? [])}
     reviewsMarkdown,
     "utf8",
   );
+  mkdirSync(path.join(root, "blueprints", status, "sample", "review-artifacts"), {
+    recursive: true,
+  });
+  writeFileSync(
+    path.join(root, "blueprints", status, "sample", "review-artifacts", "codex.md"),
+    "# Codex review\n\nVerdict: APPROVE\n",
+    "utf8",
+  );
+  writeFileSync(
+    path.join(root, "blueprints", status, "sample", "review-artifacts", "deepseek.md"),
+    "# DeepSeek review\n\nVerdict: APPROVE\n",
+    "utf8",
+  );
   if (options.trackReviews !== false) {
     execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
     execFileSync("git", ["add", "blueprints"], { cwd: root, stdio: "ignore" });
@@ -79,7 +93,7 @@ afterEach(() => {
 });
 
 describe("validateApprovalGate (≥2 distinct reviewer approvals past draft)", () => {
-  it("passes a planned blueprint with 2 distinct log-backed approvals", () => {
+  it("passes a planned blueprint with 2 distinct provenance-backed approvals", () => {
     const { root, file } = makeBlueprintWithReviews("planned", [
       approve("codex"),
       approve("deepseek"),
@@ -94,14 +108,14 @@ describe("validateApprovalGate (≥2 distinct reviewer approvals past draft)", (
     ).toEqual([]);
   });
 
-  it("fails a planned blueprint with only 1 log-backed approval", () => {
+  it("fails a planned blueprint with only 1 provenance-backed approval", () => {
     const approvals = [approve("codex")];
     const { root, file } = makeBlueprintWithReviews("planned", approvals);
     tempRoots.push(root);
     const issues = validateApprovalGate(file, { type: "blueprint", status: "planned", approvals });
     expect(issues).toHaveLength(1);
     expect(issues[0]?.level).toBe("error");
-    expect(issues[0]?.message).toContain("backed by committed review evidence");
+    expect(issues[0]?.message).toContain("provenance-backed");
   });
 
   it("fails when two approvals come from the same reviewer", () => {
@@ -134,7 +148,7 @@ describe("validateApprovalGate (≥2 distinct reviewer approvals past draft)", (
     ).toHaveLength(1);
   });
 
-  it("counts the structured review record format emitted by wp review log", () => {
+  it("counts the structured review record format emitted by wp review log with artifacts", () => {
     const approvals = [
       { ...approve("codex"), rev: "final", commit: "abc123", targetHash: "sha256:good" },
       { ...approve("deepseek"), rev: "final", commit: "abc123", targetHash: "sha256:good" },
@@ -144,6 +158,86 @@ describe("validateApprovalGate (≥2 distinct reviewer approvals past draft)", (
     expect(validateApprovalGate(file, { type: "blueprint", status: "planned", approvals })).toEqual(
       [],
     );
+  });
+
+  it("rejects bare structured review records without separate artifacts", () => {
+    const approvals = [
+      { ...approve("codex"), rev: "final", commit: "abc123", targetHash: "sha256:good" },
+      { ...approve("deepseek"), rev: "final", commit: "abc123", targetHash: "sha256:good" },
+    ];
+    const { root, file } = makeBlueprintWithReviews(
+      "planned",
+      approvals,
+      `# reviews
+
+## Review entries
+
+${structuredApprove("codex", { artifact: undefined })}
+${structuredApprove("deepseek", { artifact: undefined })}
+`,
+    );
+    tempRoots.push(root);
+    expect(
+      validateApprovalGate(file, { type: "blueprint", status: "planned", approvals }),
+    ).toHaveLength(1);
+  });
+
+  it("rejects review entries whose artifact points back at the review ledger", () => {
+    const approvals = [
+      { ...approve("codex"), rev: "final", commit: "abc123", targetHash: "sha256:good" },
+      { ...approve("deepseek"), rev: "final", commit: "abc123", targetHash: "sha256:good" },
+    ];
+    const { root, file } = makeBlueprintWithReviews(
+      "planned",
+      approvals,
+      `# reviews
+
+## Review entries
+
+${structuredApprove("codex", { artifact: "reviews.md" })}
+${structuredApprove("deepseek", { artifact: "reviews.md" })}
+`,
+    );
+    tempRoots.push(root);
+    expect(
+      validateApprovalGate(file, { type: "blueprint", status: "planned", approvals }),
+    ).toHaveLength(1);
+  });
+
+  it("rejects review entries with untracked artifacts", () => {
+    const approvals = [
+      { ...approve("codex"), rev: "final", commit: "abc123", targetHash: "sha256:good" },
+      { ...approve("deepseek"), rev: "final", commit: "abc123", targetHash: "sha256:good" },
+    ];
+    const { root, file } = makeBlueprintWithReviews("planned", approvals, undefined, {
+      trackReviews: false,
+    });
+    tempRoots.push(root);
+    expect(
+      validateApprovalGate(file, { type: "blueprint", status: "planned", approvals }),
+    ).toHaveLength(1);
+  });
+
+  it("rejects review entries not emitted by the structured review logger", () => {
+    const approvals = [
+      { ...approve("codex"), rev: "final", commit: "abc123", targetHash: "sha256:good" },
+      { ...approve("deepseek"), rev: "final", commit: "abc123", targetHash: "sha256:good" },
+    ];
+    const { root, file } = makeBlueprintWithReviews(
+      "planned",
+      approvals,
+      `# reviews
+
+## Review entries
+
+${structuredApprove("codex", { source: "manual" })}
+${structuredApprove("deepseek", { source: "manual" })}
+`,
+    );
+    tempRoots.push(root);
+    expect(
+      validateApprovalGate(file, { type: "blueprint", status: "planned", approvals }),
+    ).toHaveLength(1);
   });
 
   it("rejects absolute, parent-relative, and untracked evidence paths", () => {

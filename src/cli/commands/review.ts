@@ -31,6 +31,7 @@ export interface ReviewEntry {
   readonly blueprintPath: string;
   readonly targetKind: ReviewTargetKind;
   readonly targetId: string;
+  readonly artifact?: string;
   readonly targetHash?: string;
   readonly timestamp: string;
   readonly reviewer: string;
@@ -53,6 +54,7 @@ interface ReviewCommandOptions {
   reviewer?: string;
   targetKind?: string;
   targetId?: string;
+  artifact?: string;
   targetHash?: string;
   verdict?: string;
   rev?: string;
@@ -238,12 +240,32 @@ function parseStructuredEntries(markdown: string): ReviewEntry[] {
     const json = trimmed.slice(REVIEW_ENTRY_MARKER.length, -3).trim();
     try {
       const parsed = JSON.parse(json) as ReviewEntry;
+      if (!isStructuredReviewEntry(parsed)) continue;
       entries.push({ ...parsed, source: "structured" });
     } catch {
       // Ignore malformed structured entries; human ledger remains source-visible.
     }
   }
   return entries;
+}
+
+function isStructuredReviewEntry(value: Partial<ReviewEntry>): value is ReviewEntry {
+  return (
+    typeof value.id === "string" &&
+    typeof value.blueprintSlug === "string" &&
+    typeof value.blueprintPath === "string" &&
+    typeof value.timestamp === "string" &&
+    typeof value.reviewer === "string" &&
+    typeof value.verdict === "string" &&
+    typeof value.targetKind === "string" &&
+    typeof value.targetId === "string"
+  );
+}
+
+function normalizeOptionalText(value: unknown): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  const normalized = String(value).trim();
+  return normalized.length > 0 ? normalized : undefined;
 }
 
 function dedupeReviewEntries(entries: readonly ReviewEntry[]): ReviewEntry[] {
@@ -318,18 +340,17 @@ function appendTableRow(markdown: string, entry: ReviewEntry): string {
 
 function appendStructuredEntry(markdown: string, entry: ReviewEntry): string {
   const payload = JSON.stringify(entry);
-  const block = [
-    REVIEW_SECTION_HEADING,
-    "",
+  const entryBlock = [
     `${REVIEW_ENTRY_MARKER}${payload} -->`,
     `### ${entry.timestamp.slice(0, 10)} — ${entry.reviewer} — ${entry.verdict.toUpperCase()}`,
     "",
     ...(entry.note ? [entry.note, ""] : []),
   ].join("\n");
+  const block = [REVIEW_SECTION_HEADING, "", entryBlock].join("\n");
 
   if (markdown.includes(`${REVIEW_ENTRY_MARKER}${payload} -->`)) return markdown;
   if (markdown.includes(REVIEW_SECTION_HEADING)) {
-    return `${markdown.trimEnd()}\n\n${block}\n`;
+    return `${markdown.trimEnd()}\n\n${entryBlock}\n`;
   }
   return `${markdown.trimEnd()}\n\n${block}\n`;
 }
@@ -441,19 +462,24 @@ export async function logReviewEntry(
   const timestamp = new Date().toISOString();
   const reviewer = parseReviewerId(input.reviewer);
   const targetKind = normalizeTargetKind(input.targetKind, "blueprint");
+  const targetId = normalizeOptionalText(input.targetId) ?? location.slug;
+  const artifact = normalizeOptionalText(input.artifact);
+  const targetHash = normalizeOptionalText(input.targetHash);
+  const evidence = normalizeOptionalText(input.evidence) ?? "reviews.md";
   const entry: ReviewEntry = {
     id: `${timestamp}:${reviewer}:${input.rev ?? "final"}`,
     blueprintSlug: location.slug,
     blueprintPath: location.path,
     targetKind,
-    targetId: input.targetId?.trim() || location.slug,
-    ...(input.targetHash?.trim() ? { targetHash: input.targetHash.trim() } : {}),
+    targetId,
+    ...(artifact ? { artifact } : {}),
+    ...(targetHash ? { targetHash } : {}),
     timestamp,
     reviewer,
     verdict: normalizeVerdict(input.verdict),
     ...(input.rev ? { rev: input.rev } : {}),
     ...(input.commit ? { commit: input.commit } : {}),
-    evidence: input.evidence?.trim() || "reviews.md",
+    evidence,
     ...(input.note ? { note: input.note } : {}),
     ...(input.taskType ? { taskType: input.taskType } : {}),
     ...(parseOptionalNumber(input.findingsSurvived, "--findings-survived") !== undefined
@@ -611,6 +637,10 @@ export function registerReviewCommand(cli: CAC): void {
     .option("--reviewer <name>", "Reviewer id for `review log`")
     .option("--target-kind <kind>", "blueprint | pull-request")
     .option("--target-id <id>", "Target slug / PR number / stable review target id")
+    .option(
+      "--artifact <path>",
+      "Committed review transcript/artifact path relative to blueprint (required for promotion-counted approvals)",
+    )
     .option("--target-hash <hash>", "Reviewed content hash / head sha for the target")
     .option("--verdict <verdict>", "approve | approve-with-nits | reject | no-verdict")
     .option("--rev <rev>", "Review revision label")
