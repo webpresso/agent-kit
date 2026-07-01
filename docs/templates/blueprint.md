@@ -53,10 +53,11 @@ approvals: [] # ≥2 distinct reviewer approvals required before draft→planned
 
 ## Approvals (≥2 required before promotion to `planned`)
 
-Promotion `draft → planned` requires **≥2 approvals from distinct reviewers**,
+Promotion `draft → planned` requires **≥2 provenance-backed approvals from distinct reviewers**,
 recorded in the frontmatter `approvals:` list (the gate input; this checklist is
-a human-readable mirror). Each entry is a real independent review pass tied to
-evidence — `{ reviewer, verdict: approve, commit, evidence }`. Enforced by
+a human-readable mirror). Each entry is a real independent review pass tied to a
+committed `reviews.md` structured record with a separate tracked transcript/artifact
+(for example `artifact: review-artifacts/deepseek-final.md`). Enforced by
 `wp audit blueprint-lifecycle` and the `wp blueprint promote` command. See
 `catalog/agent/rules/pre-implementation.md`.
 
