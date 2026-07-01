@@ -24,6 +24,7 @@ export const TYPECHECK_COMMAND_HELP = [
   "Examples:",
   "  wp typecheck",
   "  wp typecheck --file src/index.ts",
+  "  wp typecheck --file src/a.ts src/b.ts",
   "  wp typecheck --package @webpresso/agent-kit",
   "  wp typecheck --affected              # staged changed source → reverse-importer closure",
   "  wp typecheck --affected --branch     # changed vs origin/${GITHUB_BASE_REF:-main}",
@@ -52,7 +53,7 @@ export interface TypecheckCommandConfig {
 export function registerTypecheckCommand(cli: CAC, deps: TypecheckCommandDeps = {}): void {
   addAffectedOptions(
     cli
-      .command("typecheck", TYPECHECK_COMMAND_HELP)
+      .command("typecheck [...targets]", TYPECHECK_COMMAND_HELP)
       .option("--file <path>", "Resolve a source file to its owning typecheck scope (repeatable)")
       .option(
         "--package <name>",
@@ -61,8 +62,20 @@ export function registerTypecheckCommand(cli: CAC, deps: TypecheckCommandDeps = 
   )
     .option("--pretty", "Keep TypeScript pretty output enabled")
     .option("--full", "Print the full raw output instead of the default summary-first view")
-    .action(async (flags: Record<string, unknown>) => {
-      const explicitFiles = toArray(flags.file as string | string[] | undefined);
+    .action(async (targetsOrFlags: unknown, maybeFlags?: Record<string, unknown>) => {
+      const positionalTargets = Array.isArray(targetsOrFlags)
+        ? targetsOrFlags.filter((target): target is string => typeof target === "string")
+        : [];
+      const flags = (maybeFlags ?? (isRecord(targetsOrFlags) ? targetsOrFlags : {})) as Record<
+        string,
+        unknown
+      >;
+      const flagFiles = toArray(flags.file as string | string[] | undefined);
+      if (positionalTargets.length > 0 && flagFiles.length === 0) {
+        console.error("File targets must be passed with --file.");
+        return 1;
+      }
+      const explicitFiles = [...flagFiles, ...positionalTargets];
       const packages = toArray(flags.package as string | string[] | undefined);
       const affected = Boolean(flags.affected);
       const branch = Boolean(flags.branch);
@@ -213,6 +226,10 @@ export async function runTypecheckCommand(
 function toArray(value: readonly string[] | string | undefined): string[] {
   if (value === undefined) return [];
   return typeof value === "string" ? [value] : [...value];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 const TYPECHECK_EXTENSIONS = new Set([".ts", ".tsx", ".mts", ".cts"]);
