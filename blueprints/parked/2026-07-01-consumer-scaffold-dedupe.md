@@ -95,7 +95,6 @@ Planned final gates:
 - `vp run --filter @webpresso/agent-config typecheck`
 - Consumer targeted E2E/config tests for migrated repos.
 
-
 ## Trust Dossier
 
 ### Readiness Verdict
@@ -108,24 +107,24 @@ Planned final gates:
 
 ### Material Claims
 
-| ID | Claim | Evidence |
-| --- | --- | --- |
-| C1 | Consumers still carry duplicated generic smoke scaffolds until a package-owned replacement is published. | repo:consumer duplication audit output |
-| C2 | `@webpresso/agent-config/playwright/quality-scaffold` provides the package-owned replacement surface. | repo:packages/agent-config/src/playwright/quality-scaffold.ts |
+| ID  | Claim                                                                                                    | Evidence                                                      |
+| --- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| C1  | Consumers still carry duplicated generic smoke scaffolds until a package-owned replacement is published. | repo:consumer duplication audit output                        |
+| C2  | `@webpresso/agent-config/playwright/quality-scaffold` provides the package-owned replacement surface.    | repo:packages/agent-config/src/playwright/quality-scaffold.ts |
 
 ### Material Decisions
 
-| ID | Decision | Chosen option | Rejected alternatives | Rationale |
-| --- | --- | --- | --- | --- |
-| D1 | Smoke scaffold ownership | Publish package-owned Playwright quality scaffold first | Delete consumer smoke specs before replacement release | Keeps consumer E2E commands green while moving ownership upstream. |
-| D2 | Consumer migration timing | Keep root smoke deletion blocked until package release | Import unpublished package subpath in consumer CI | Avoids red downstream PRs against current published agent-config. |
+| ID  | Decision                  | Chosen option                                           | Rejected alternatives                                  | Rationale                                                          |
+| --- | ------------------------- | ------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------ |
+| D1  | Smoke scaffold ownership  | Publish package-owned Playwright quality scaffold first | Delete consumer smoke specs before replacement release | Keeps consumer E2E commands green while moving ownership upstream. |
+| D2  | Consumer migration timing | Keep root smoke deletion blocked until package release  | Import unpublished package subpath in consumer CI      | Avoids red downstream PRs against current published agent-config.  |
 
 ### Promotion Gates
 
-| Gate | Command | Expected outcome | Last result |
-| --- | --- | --- | --- |
-| package-tests | targeted Vitest and Playwright smoke commands | pass | pass on 2026-07-01 |
-| consumer-migration | downstream consumer PR checks | pass | pending |
+| Gate               | Command                                       | Expected outcome | Last result        |
+| ------------------ | --------------------------------------------- | ---------------- | ------------------ |
+| package-tests      | targeted Vitest and Playwright smoke commands | pass             | pass on 2026-07-01 |
+| consumer-migration | downstream consumer PR checks                 | pass             | pending            |
 
 ### Residual Unknowns
 

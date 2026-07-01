@@ -1,6 +1,6 @@
 ---
 type: docs-index
-last_updated: "2026-06-29"
+last_updated: "2026-07-01"
 ---
 
 # Agent Kit docs
@@ -47,6 +47,7 @@ wp hooks doctor
 - [Reference parity matrix](./bench/reference-parity-matrix.md)
 - [Result-card contract](./bench/result-card-contract.md)
 - [Package/readiness notes](./github-action.md)
+- [2026-07-01 weekly merge docs audit](./release/2026-07-01-weekly-merge-doc-audit.md)
 
 ## Documentation rules
 

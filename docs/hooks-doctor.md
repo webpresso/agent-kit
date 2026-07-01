@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: 2026-06-13
+last_updated: 2026-07-01
 ---
 
 # wp hooks doctor
@@ -127,6 +127,28 @@ If `.webpresso/hooks-manifest.json` is missing, doctor treats all installed hook
 Re-run the exact command printed by doctor/status to regenerate the manifest. `wp hooks doctor --fix` reports
 this as `requires-approval` instead of silently running the broader setup flow
 for you.
+
+## Reliability guardrails
+
+Recent hook-reliability work made doctor/status the operator-facing place to
+check these invariants:
+
+- `--probe-decisions` runs semantic allow/deny rows against the real
+  `pretool-guard`; the same boundary is also covered by CI conformance tests.
+- `WP_DOCTOR_HOOK_TIMEOUT_MS` is a diagnostic escape hatch only. Prefer fixing
+  slow or hung hooks over raising timeouts.
+- Hooks invoked outside a git repo degrade with a clear diagnostic instead of
+  throwing or widening discovery into parent directories.
+- Worktree-discipline checks honor the effective cwd from `cd` and `git -C`, so
+  a legitimate command in an agent worktree is judged against that worktree.
+- Legacy managed wrapper files are migrated or reported by setup/doctor rather
+  than preserved as silent alternate launch paths.
+- Source-repo hook self-hosting is JIT-first: generated launchers should resolve
+  the checked-out source package explicitly instead of depending on a stale
+  globally installed copy.
+
+The scheduled hook-contract drift workflow remains an early-warning job, not a
+required PR check, because it depends on live upstream host schemas.
 
 ## Session-continuity release gate
 

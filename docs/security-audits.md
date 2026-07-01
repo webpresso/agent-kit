@@ -139,6 +139,47 @@ wp audit security-quality-regressions
 This audit is intentionally narrow. GitHub CodeQL and Code Quality remain the
 authoritative analyzers for broad security and maintainability coverage.
 
+### GitHub API verification
+
+Use GitHub's official REST APIs as the evidence source when checking whether
+`main` is clean after a remediation PR. The Code Quality endpoints use API
+version `2026-03-10`; classic tokens need `repo` (or `public_repo` for public
+repos only), and fine-grained tokens need repository **Code quality: read** for
+finding reads. Official references: [Code Quality REST](https://docs.github.com/en/rest/code-quality/code-quality), [Code scanning REST](https://docs.github.com/en/rest/code-scanning/code-scanning), [Secret scanning REST](https://docs.github.com/en/rest/secret-scanning/secret-scanning), and [Dependabot alerts REST](https://docs.github.com/en/rest/dependabot/alerts).
+
+```bash
+repo=webpresso/agent-kit
+
+# Code Quality / AI quality findings
+gh api --paginate \
+  -H 'X-GitHub-Api-Version: 2026-03-10' \
+  "/repos/$repo/code-quality/findings?state=open&per_page=100" \
+  --jq 'length' | awk '{s+=$1} END{print s+0}'
+
+# Code Quality setup state
+gh api \
+  -H 'X-GitHub-Api-Version: 2026-03-10' \
+  "/repos/$repo/code-quality/setup"
+```
+
+For the full security dashboard zero-count check, run all open-alert APIs
+through `gh api --paginate` and require each count to be `0` before closing the
+remediation loop:
+
+```bash
+repo=webpresso/agent-kit
+for endpoint in \
+  "/repos/$repo/code-quality/findings?state=open&per_page=100" \
+  "/repos/$repo/code-scanning/alerts?state=open&per_page=100" \
+  "/repos/$repo/secret-scanning/alerts?state=open&per_page=100" \
+  "/repos/$repo/dependabot/alerts?state=open&per_page=100"
+do
+  printf '%s\t' "$endpoint"
+  gh api --paginate -H 'X-GitHub-Api-Version: 2026-03-10' "$endpoint" \
+    --jq 'length' | awk '{s+=$1} END{print s+0}'
+done
+```
+
 ## GitHub merge protection runbook
 
 After the current backlog is green, enable native GitHub rulesets on `main`:
@@ -152,11 +193,13 @@ After the current backlog is green, enable native GitHub rulesets on `main`:
 3. Confirm a recent pull request has a successful `CodeQL - Code Quality` check.
 4. Enable **Require code quality results**.
    - Severity: `Warnings and higher`
-5. Keep `WP check` required so local guardrails, tests, lint, and typecheck stay
-   merge-blocking.
+5. Keep `WP check` required so local guardrails, tests, lint, typecheck, and the
+   repo-specific `security-quality-regressions` audit stay merge-blocking.
 
-AI findings are advisory for now: GitHub documents them as a recent-default-branch
-view, not as a stable REST/ruleset gate.
+The Code Quality / AI quality findings UI should not be treated as the only
+evidence surface. Verify the REST count with
+`/repos/{owner}/{repo}/code-quality/findings?state=open` and keep the GitHub
+ruleset plus `WP check` as the merge-blocking controls.
 
 ## Pre-commit wiring
 
@@ -182,6 +225,7 @@ In `.github/workflows/ci.yml`:
     wp audit no-dev-vars
     wp audit secret-provider-quarantine
     wp audit secrets-config
+    wp audit security-quality-regressions
 ```
 
 ## MCP usage
@@ -194,6 +238,7 @@ wp_audit(kind="no-dev-vars")
 wp_audit(kind="secret-provider-quarantine")
 wp_audit(kind="secrets-config")
 wp_audit(kind="consumer-agent-kit-dependency")
+wp_audit(kind="security-quality-regressions")
 ```
 
 Each returns a structured result:

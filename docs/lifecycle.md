@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: "2026-06-15"
+last_updated: "2026-07-01"
 ---
 
 # Blueprint lifecycle
@@ -237,4 +237,8 @@ wp blueprint db browse   # open Datasette UI for human exploration
 
 ## Planned as a hard trust state
 
-`planned/` is an execution-ready trust state. A planned blueprint must have zero material unknowns, zero open design questions, a complete Trust Dossier, and passing Promotion Gates. Draft remains the only lifecycle state for unresolved questions or speculative claims. Normal promotion into planned must use `wp blueprint promote <slug> planned`; recovery `move` is not the normal lifecycle path.
+`planned/` is an execution-ready trust state. A planned blueprint must have zero material unknowns, zero open design questions, a complete Trust Dossier, passing Promotion Gates, and ≥2 distinct approvals when promoted from draft. Draft remains the only lifecycle state for unresolved questions or speculative claims. Normal promotion into planned must use `wp blueprint promote <slug> planned`; recovery `move` is not the normal lifecycle path.
+
+Blueprint-owner branches should use the `bp/<slug>` convention. When a PR changes
+non-markdown files, keep the blueprint changed in the same PR unless the commit
+uses a documented trivial exemption.
