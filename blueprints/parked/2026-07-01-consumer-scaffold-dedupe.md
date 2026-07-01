@@ -2,20 +2,18 @@
 type: blueprint
 owner: webpresso
 title: Consumer scaffold dedupe
-status: in-progress
+status: parked
 complexity: M
-created: '2026-07-01'
-last_updated: '2026-07-01'
-progress_pct: 45
-progress: 67% (2/3 tasks done, 1 blocked, updated 2026-07-01)
+created: "2026-07-01"
+last_updated: "2026-07-02"
+progress_pct: 67
+progress: 67% (2/3 tasks done, 1 blocked, updated 2026-07-02)
 parked_reason: >-
-  Waiting for @webpresso/agent-config release containing
-  ./playwright/quality-scaffold before deleting remaining consumer root smoke
-  specs.
+  @webpresso/agent-config@0.3.4 now publishes ./playwright/quality-scaffold;
+  parked until downstream webpresso/monorepo#101 deletes the remaining generic
+  consumer root smoke spec/fixture files and proves consumer E2E in CI.
 depends_on:
-  - 'webpresso/monorepo#101: consumer duplication gate'
-worktree_owner_id: owner-7b5c97a59849
-worktree_owner_branch: bp/2026-07-01-consumer-scaffold-dedupe
+  - "webpresso/monorepo#101: consumer duplication gate"
 ---
 
 # Consumer scaffold dedupe
@@ -62,7 +60,7 @@ Add a public agent-config subpath that exposes a config factory and package-owne
 
 **Status:** blocked
 
-**Blocked:** Waiting for @webpresso/agent-config release containing `./playwright/quality-scaffold` before downstream consumers can import it in CI.
+**Blocked:** Waiting for downstream consumers to adopt published `@webpresso/agent-config@0.3.4` and remove remaining generic smoke scaffold files with green consumer E2E.
 
 **Depends:** Task 1.1
 
@@ -105,24 +103,24 @@ Planned final gates:
 ### Readiness Verdict
 
 - promotion-ready: false
-- unresolved-count: 2
+- unresolved-count: 1
 - verified-at: 2026-07-01T00:00:00.000Z
-- verified-head: pending-consumer-migration
+- verified-head: parked-downstream-consumer-migration
 - trust-gate-version: v1
 
 ### Material Claims
 
-| ID  | Claim                                                                                                    | Evidence                                                      |
-| --- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| C1  | Consumers still carry duplicated generic smoke scaffolds until a package-owned replacement is published. | repo:consumer duplication audit output                        |
-| C2  | `@webpresso/agent-config/playwright/quality-scaffold` provides the package-owned replacement surface.    | repo:packages/agent-config/src/playwright/quality-scaffold.ts |
+| ID  | Claim                                                                                                                          | Evidence                                         |
+| --- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
+| C1  | Downstream consumers still carry duplicated generic smoke scaffolds until they adopt the published replacement.                | repo:consumer duplication audit output           |
+| C2  | `@webpresso/agent-config/playwright/quality-scaffold` provides the package-owned replacement surface in the published package. | `npm view @webpresso/agent-config@0.3.4 exports` |
 
 ### Material Decisions
 
-| ID  | Decision                  | Chosen option                                           | Rejected alternatives                                  | Rationale                                                          |
-| --- | ------------------------- | ------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------ |
-| D1  | Smoke scaffold ownership  | Publish package-owned Playwright quality scaffold first | Delete consumer smoke specs before replacement release | Keeps consumer E2E commands green while moving ownership upstream. |
-| D2  | Consumer migration timing | Keep root smoke deletion blocked until package release  | Import unpublished package subpath in consumer CI      | Avoids red downstream PRs against current published agent-config.  |
+| ID  | Decision                  | Chosen option                                                                              | Rejected alternatives                                  | Rationale                                                                                      |
+| --- | ------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| D1  | Smoke scaffold ownership  | Publish package-owned Playwright quality scaffold first                                    | Delete consumer smoke specs before replacement release | Keeps consumer E2E commands green while moving ownership upstream.                             |
+| D2  | Consumer migration timing | Park downstream root smoke deletion until consumer CI adopts @webpresso/agent-config@0.3.4 | Delete consumer smoke specs in this repo PR            | Keeps this repo truthful while downstream webpresso/monorepo#101 owns consumer deletion proof. |
 
 ### Promotion Gates
 
@@ -133,5 +131,4 @@ Planned final gates:
 
 ### Residual Unknowns
 
-- Exact published version carrying the new agent-config subpath.
 - Timing for deleting the remaining root smoke spec/fixture from consumers after publication.

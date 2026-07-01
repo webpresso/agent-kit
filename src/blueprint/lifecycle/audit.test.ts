@@ -85,6 +85,39 @@ last_updated: 2026-04-02
     ).toBe(true);
   });
 
+  it("derives placement from the repo blueprint root when the worktree path itself contains blueprints", async () => {
+    const parent = mkdtempSync(path.join(os.tmpdir(), "bp-audit-parent-blueprints-"));
+    const projectRoot = path.join(parent, "blueprints", "controller-slug", "owner");
+    tempDirs.push(parent);
+    mkdirSync(path.join(projectRoot, "blueprints", "completed"), { recursive: true });
+    writeFileSync(path.join(projectRoot, "package.json"), '{"type":"module"}\n', "utf-8");
+    writeFileSync(
+      path.join(projectRoot, "blueprints", "completed", "path-safe.md"),
+      `---
+type: blueprint
+status: completed
+complexity: S
+created: 2026-07-02
+last_updated: 2026-07-02
+---
+
+# path-safe
+
+#### Task 1.1: Done
+**Status:** done
+
+**Depends:** None
+
+- [x] a
+`,
+      "utf-8",
+    );
+
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true });
+    expect(result.ok).toBe(true);
+    expect(result.issues).toStrictEqual([]);
+  });
+
   it("requires in-progress executable blueprints to have owner worktree bindings", async () => {
     const projectRoot = mkdtempSync(path.join(os.tmpdir(), "bp-audit-missing-owner-"));
     tempDirs.push(projectRoot);
