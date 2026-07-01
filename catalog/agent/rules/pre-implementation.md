@@ -90,6 +90,27 @@ Never push directly to `main`; every change lands via a PR with green CI. Skip
 the worktree/PR steps only for the same trivial cases this rule already skips
 (typos, renames, one-line or doc-only fixes).
 
+### Ultragoal controller worktrees
+
+Ultragoal and other multi-blueprint orchestration runs have an additional
+origin/main discipline because `wp worktree new` defaults to caller `HEAD`, and
+`wp blueprint start <slug>` creates the owner branch from the caller worktree's
+current `HEAD`.
+
+- Never run Ultragoal from the primary checkout, from `main`, from a detached
+  checkout, or from a stale controller. Use the primary checkout only for
+  setup-only commands such as `git fetch origin main`.
+- Create a dedicated controller worktree from current `origin/main`, for
+  example: `./bin/wp worktree new bp/ultragoal-<slug> --base origin/main`.
+- Run every Ultragoal-managed `./bin/wp blueprint start <slug>` from that
+  controller worktree, not from the primary checkout. Recreate or rebase stale
+  owner worktrees before continuing them.
+- Keep `.omx/ultragoal/*` in the controller worktree for that run; do not create
+  or mutate Ultragoal state in the primary checkout.
+- A final Ultragoal completion claim requires `$agent-kit:verify`, green PR
+  checks, merge, and the final Ultragoal checkpoint. Do not call the aggregate
+  Codex goal complete or write the final checkpoint before the merge has landed.
+
 **When to skip:**
 
 - Typos, renames, or one-line fixes (same skip condition as the rest of this
