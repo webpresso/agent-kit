@@ -8,7 +8,6 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 
 use rusqlite::{Connection, Result as SqlResult, params};
-use serde_json::json;
 use thiserror::Error;
 
 use crate::search::SearchHit;
@@ -98,47 +97,49 @@ pub fn snapshot(
 ) -> SessionResult<SnapshotResult> {
     let deadline = Instant::now() + Duration::from_millis(cap_ms);
 
-    // Gather all unsnapshotted events for this agent
     let mut stmt = conn.prepare(
         "SELECT event_id, tool_name, content FROM session_events
          WHERE repo_hash = ?1 AND session_id = ?2
          ORDER BY ts ASC, rowid ASC",
     )?;
-    let events: Vec<(String, String, String)> = stmt
-        .query_map(params![repo_hash, agent_id], |r| {
-            Ok((r.get(0)?, r.get(1)?, r.get(2)?))
-        })?
-        .collect::<SqlResult<Vec<_>>>()?;
+    let mut rows = stmt.query(params![repo_hash, agent_id])?;
 
     let snapshot_id = new_snapshot_id(conn)?;
     let created_at = now_unix();
 
-    // Build content_json from events (partial if deadline exceeded)
-    let mut collected: Vec<(String, String, String)> = Vec::new();
+    // Stream rows straight into JSON so the cap is honored while rows are
+    // consumed and the hot path does not allocate a second JSON value graph.
+    let mut content_json = Vec::with_capacity(1024);
+    content_json.push(b'[');
+    let mut event_count = 0usize;
     let mut complete = true;
-    for (i, (event_id, tool_name, content)) in events.into_iter().enumerate() {
-        if Instant::now() > deadline {
-            // Deadline exceeded — return partial
+    loop {
+        if Instant::now() >= deadline {
             complete = false;
-            let _ = i; // suppress warning
             break;
         }
-        collected.push((event_id, tool_name, content));
-    }
 
-    let content_json = serde_json::to_string(
-        &collected
-            .iter()
-            .map(|(event_id, tool_name, content)| {
-                json!({
-                    "event_id": event_id,
-                    "tool_name": tool_name,
-                    "content": content,
-                })
-            })
-            .collect::<Vec<_>>(),
-    )
-    .map_err(|error| rusqlite::Error::ToSqlConversionFailure(Box::new(error)))?;
+        let Some(row) = rows.next()? else {
+            break;
+        };
+
+        let event_id: String = row.get(0)?;
+        let tool_name: String = row.get(1)?;
+        let content: String = row.get(2)?;
+        append_snapshot_event_json(
+            &mut content_json,
+            event_count,
+            &event_id,
+            &tool_name,
+            &content,
+        )
+        .map_err(|error| rusqlite::Error::ToSqlConversionFailure(Box::new(error)))?;
+        event_count += 1;
+    }
+    content_json.push(b']');
+
+    let content_json = String::from_utf8(content_json)
+        .map_err(|error| rusqlite::Error::ToSqlConversionFailure(Box::new(error)))?;
     conn.execute(
         "INSERT INTO sessions(agent_id, snapshot_id, repo_hash, created_at, status, content_json)
          VALUES(?1, ?2, ?3, ?4, ?5, ?6)",
@@ -154,9 +155,29 @@ pub fn snapshot(
 
     Ok(SnapshotResult {
         snapshot_id,
-        event_count: collected.len(),
+        event_count,
         complete,
     })
+}
+
+fn append_snapshot_event_json(
+    buffer: &mut Vec<u8>,
+    index: usize,
+    event_id: &str,
+    tool_name: &str,
+    content: &str,
+) -> Result<(), serde_json::Error> {
+    if index > 0 {
+        buffer.push(b',');
+    }
+    buffer.extend_from_slice(br#"{"event_id":"#);
+    serde_json::to_writer(&mut *buffer, event_id)?;
+    buffer.extend_from_slice(br#","tool_name":"#);
+    serde_json::to_writer(&mut *buffer, tool_name)?;
+    buffer.extend_from_slice(br#","content":"#);
+    serde_json::to_writer(&mut *buffer, content)?;
+    buffer.push(b'}');
+    Ok(())
 }
 
 /// Restore recent session events for `agent_id` matching `query`.
