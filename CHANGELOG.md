@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.4.4
+
+### Patch Changes
+
+- be11a55: Move standard Husky hook entrypoints under setup ownership with managed and user-owned sections so `wp setup` can refresh Webpresso hook behavior while preserving repo-local custom commands.
+
+  Generated commit-msg and pre-push hooks no longer enforce Lore trailers by default; stale Lore-only hook bodies are cleaned during setup while unknown local hook bodies are migrated into user-owned sections.
+
+- ffa0560: Add WP-managed optional agent tool installs/removals for Codex, Claude Code, OpenCode, OMX, OMC, and Oh My OpenCode/OpenAgent; refresh update ownership semantics, hook-source status, and operator docs/help guidance.
+
+  AI contract references: `docs/bench/reference-parity-matrix.md`; `src/__integration__/reference-parity-host-smoke.integration.test.ts`; `src/__integration__/reference-parity-tool-surface.integration.test.ts`; `docs/bench/session-memory-methodology.md`.
+
+- ee5a0b7: Complete the ultragoal blueprint lifecycle batch with Trust Dossiers, review records, and verification evidence while leaving the deferred global-home secret-config discovery blueprint in draft as not-planned-eligible.
+
 ## 2.4.3
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@webpresso/agent-kit",
-  "version": "2.4.3",
+  "version": "2.4.4",
   "private": false,
   "description": "Source-available agent harness for repo setup, wp CLI gates, MCP tools, hooks, session memory, worktrees, secrets, docs audits, and evidence-backed release checks.",
   "keywords": [
