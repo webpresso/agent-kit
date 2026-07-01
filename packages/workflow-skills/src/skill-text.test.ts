@@ -139,4 +139,39 @@ describe("@repo/workflow-skills skill text contract", () => {
       expect(packageRoot).toBe(source);
     }
   });
+
+  it("requires docs/help/instruction drift checks for command-surface changes", () => {
+    const repoRoot = path.resolve(import.meta.dirname, "../../..");
+    for (const file of [
+      path.join(repoRoot, "catalog/agent/skills/verify/SKILL.md"),
+      path.join(repoRoot, "skills/verify/SKILL.md"),
+    ]) {
+      const content = readFileSync(file, "utf8");
+      expect(content).toContain("command, install path, setup path, update path");
+      expect(content).toContain("CLI help text");
+      expect(content).toContain("docs/guides");
+      expect(content).toContain("generated instruction templates");
+      expect(content).toContain("skill text and catalog references");
+      expect(content).toContain("which docs/help/instruction surfaces were refreshed");
+      expect(content).toContain("public-package-safety or package-surface leak checks");
+    }
+  });
+
+  it("keeps optional-tool installer guidance on wp/vp surfaces rather than npm or npx", () => {
+    const repoRoot = path.resolve(import.meta.dirname, "../../..");
+    const userFacingFiles = [
+      "docs/add-ons.md",
+      "AGENTS.md",
+      "catalog/AGENTS.md.tpl",
+      "src/cli/cli.ts",
+      "src/cli/commands/package-manager.ts",
+      "src/cli/commands/init/index.ts",
+      "src/cli/commands/blueprint/router.ts",
+    ];
+
+    for (const file of userFacingFiles) {
+      const content = readFileSync(path.join(repoRoot, file), "utf8");
+      expect(content).not.toMatch(/npm install -g|npx\s/);
+    }
+  });
 });

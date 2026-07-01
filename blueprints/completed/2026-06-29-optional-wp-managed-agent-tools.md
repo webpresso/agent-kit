@@ -4,7 +4,7 @@ status: completed
 owner: agent-kit
 complexity: M
 created: 2026-06-29
-last_updated: 2026-06-30
+last_updated: 2026-07-01
 title: Optional WP-managed agent tools
 progress: "100% (5 of 5 tasks completed)"
 ---
@@ -18,11 +18,11 @@ Harden optional WP-managed agent-tool install/remove/update behavior without add
 ## Acceptance Criteria
 
 - `wp install codex|claude-code|opencode` and `wp install oh-my codex|claude-code|opencode` use explicit adapter-owned command specs.
-- `openagent` is accepted only as an alias for canonical `wp install oh-my opencode`.
+- `openagent` and `omo` are accepted only as aliases for canonical `wp install oh-my opencode`.
 - Optional-tool args accept only no args, `--scope user|project`, or `--scope=user|project`; typoed flags/trailing args fail with canonical examples.
 - `wp remove ...` clears WP ownership only and states no native uninstall was attempted.
 - `wp update` refreshes only WP-owned optional scopes and keeps non-optional package-manager flows delegated through VP.
-- Hook-source status output bounds `hooks`, `path`, and `gitPath` fields.
+- Hook-source status output clearly lists project and system hook sources with available hooks, bounding `hooks`, `path`, and `gitPath` fields.
 - Docs/help/instruction surfaces mention the canonical OpenCode command, `openagent` alias, WP ownership semantics, and `wp`/`vp`-only user-facing install guidance.
 
 ## Tasks
@@ -40,7 +40,7 @@ Add direct coverage for optional-tool adapter uniqueness, alias resolution, cano
 - [x] Every managed id has exactly one adapter.
 - [x] Direct base names do not resolve inside `oh-my`.
 - [x] Oh My internal ids do not resolve as direct base tools.
-- [x] `openagent` resolves only to Oh My OpenCode.
+- [x] `openagent` and `omo` resolve only to Oh My OpenCode.
 - [x] Duplicate scope, missing scope, unsupported flags, unsupported project scope, and trailing args fail with canonical examples.
 
 #### [cli] Task 1.2: Optional-tool registry/router hardening
@@ -55,7 +55,7 @@ Make `src/cli/optional-tools.ts` the registry-owned source for optional-tool ids
 
 - [x] Base installs use `wp install codex|claude-code|opencode`.
 - [x] Oh My installs use `wp install oh-my codex|claude-code|opencode`.
-- [x] `openagent` is accepted only as the compatibility alias for `wp install oh-my opencode`.
+- [x] `openagent` and `omo` are accepted only as compatibility aliases for `wp install oh-my opencode`.
 - [x] Non-optional package-manager commands still delegate through VP.
 
 #### [cli] Task 1.3: Registry-driven update and ownership behavior
@@ -84,6 +84,8 @@ Bound hook-source status display values so malformed or long project/user/system
 
 - [x] Invalid JSON does not throw.
 - [x] Missing files produce inactive or empty-hook rows.
+- [x] Project sources include git-relative paths and absolute paths.
+- [x] System sources include absolute paths for Claude, Codex, and OpenCode.
 - [x] `hooks`, `path`, and `gitPath` are bounded in formatted output.
 
 #### [docs] Task 1.5: Docs/help/instruction surface alignment
@@ -96,7 +98,7 @@ Update user-facing docs/help/instruction surfaces to make canonical optional-too
 
 **Acceptance:**
 
-- [x] Docs/help mention canonical OpenCode command and `openagent` compatibility alias.
+- [x] Docs/help mention canonical OpenCode command and `openagent`/`omo` compatibility aliases.
 - [x] WP ownership means future `wp update` participation.
 - [x] Remove copy states native uninstall was not attempted.
 - [x] User-facing install guidance avoids non-`vp` installer instructions.
@@ -104,6 +106,8 @@ Update user-facing docs/help/instruction surfaces to make canonical optional-too
 ## Verification
 
 All task checkboxes are complete and the blueprint is 100% complete for this PR.
+
+2026-07-01 follow-up delta: aligned Oh My OpenAgent with the upstream `oh-my-openagent` one-shot installer shape through `vp dlx`, added the `omo` Oh My namespace alias, expanded hook-source status to project/system paths for Claude/Codex/OpenCode, and tightened the verify skill docs/help/instruction drift contract.
 
 ## Completion Evidence
 

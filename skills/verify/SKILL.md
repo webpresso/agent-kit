@@ -90,9 +90,16 @@ Rules:
 
 Ask:
 
-- Did the change alter a public/shared export, type, config shape, command, or generated surface?
-- Do consumers, mocks, fixtures, or docs still reference the old shape?
+- Did the change alter a public/shared export, type, config shape, command, install path, setup path, update path, operator guidance, or generated surface?
+- Do consumers, mocks, fixtures, docs, help text, generated instruction templates, or skill/catalog references still mention the old shape?
 - Does another package, blueprint, or agent surface need to be updated in the same change?
+
+For command-surface, install/setup/update, or operator-guidance changes, explicitly scan affected docs/help/instruction surfaces before proceeding. Include, at minimum:
+
+- CLI help text
+- docs/guides
+- generated instruction templates and checked-in generated instruction copies
+- skill text and catalog references
 
 Hard stop if a shared contract changed and consumers were not updated.
 
@@ -128,6 +135,9 @@ Report:
 
 - what was verified
 - which commands/logs prove it
+- which docs/help/instruction surfaces were refreshed when command or operator guidance changed
 - what remains intentionally out of scope
+
+When catalog assets, generated instruction templates, or checked-in generated instruction copies changed, include the repo's public-package-safety or package-surface leak checks in the verification evidence.
 
 If any required check is missing, the correct result is **not done yet**, not a softer claim.

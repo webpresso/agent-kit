@@ -153,6 +153,38 @@ describe("wp package-manager commands", () => {
     expect(output).toContain("does not support --scope project");
   });
 
+  it("installs Oh My OpenAgent for OpenCode through vp dlx and claims user ownership", () => {
+    const run = vi.fn(() => spawnResult(0));
+    const writeOwnershipState = vi.fn();
+    vi.spyOn(console, "log").mockImplementation(() => {});
+
+    expect(
+      runPackageManagerCommand("install", {
+        argv: ["node", "wp", "install", "oh-my", "omo"],
+        resolveVpCommand: () => GLOBAL_VP,
+        ownershipState: defaultToolingOwnershipState(),
+        writeOwnershipState,
+        run,
+      }),
+    ).toBe(0);
+
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(run).toHaveBeenCalledWith(
+      GLOBAL_VP,
+      expect.arrayContaining([
+        "dlx",
+        "oh-my-openagent@latest",
+        "install",
+        "--no-tui",
+        "--platform=opencode",
+      ]),
+    );
+    expect(writeOwnershipState).toHaveBeenCalledWith({
+      version: 1,
+      tools: { openagent: { user: { managedBy: "wp" } } },
+    });
+  });
+
   it("removes only WP ownership and does not run native uninstall", () => {
     const run = vi.fn(() => spawnResult(0));
     const writeOwnershipState = vi.fn();
