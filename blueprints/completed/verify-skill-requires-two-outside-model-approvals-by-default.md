@@ -40,7 +40,11 @@ Modify `catalog/agent/skills/verify/SKILL.md` so Verify requires two additional 
 **Files:**
 
 - Modify: `catalog/agent/skills/verify/SKILL.md`
-- Modify: `catalog/agent/skills/codex/SKILL.md`
+- Modify: `catalog/agent/commands/verify.md`
+- Modify: `docs/skills-catalog.md`
+- Regenerate: `skills/verify/SKILL.md`
+- Modify source: `packages/workflow-skills/skills/codex.md`
+- Regenerate: `catalog/agent/skills/codex/SKILL.md` and `skills/codex/SKILL.md`
 
 **Acceptance:**
 
@@ -92,7 +96,12 @@ Fresh verification on 2026-07-01:
 - `codex exec --help` shows `--sandbox` and `--cd` but no `--ask-for-approval`; the Codex outside-voice skill command was updated accordingly.
 - `claude --help` and `claude auth --help` confirm `claude --print` and `claude auth status` remain valid for the Claude outside-voice skill.
 - `opencode run --help`, `opencode providers list`, and `opencode models opencode-go` confirm OpenCode Go is available and exposes reviewer families including DeepSeek, GLM, Kimi, MiMo, MiniMax, and Qwen.
-- `wp format --check --affected --branch` passed.
-- `wp audit agents` passed.
+- `vp run build` refreshed generated skill/docs/package assets, including `skills/verify/SKILL.md` and `skills/codex/SKILL.md`.
 - `wp sync --check` passed after `wp sync` refreshed managed `AGENTS.md` blocks.
-- `wp audit blueprint-lifecycle` passed.
+- `wp format --check --affected --branch` passed.
+- `vp run docs:check` passed.
+- `wp audit agents` passed.
+- `wp audit tph` passed.
+- `wp audit absolute-path-policy --root .` passed.
+- `wp audit no-dev-vars` passed.
+- `wp audit blueprint-lifecycle --affected --branch` passed after moving the worktree to a non-`blueprints` path to avoid path-segment misclassification.

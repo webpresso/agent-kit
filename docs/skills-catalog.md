@@ -20,20 +20,20 @@ available unless you explicitly opt out of the relevant host/runtime.
 
 **Commands** (`.agent/commands/`):
 
-| Slash          | What it does                                                                                                         |
-| -------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `/verify`      | Post-implementation quality gate — 6 phases, evidence-before-claims, test-quality audit, legacy/dead-code sweep      |
-| `/plan-refine` | Hardens a blueprint before `/pll` — tech fact-check, path verification, architecture review, cross-plan alignment    |
-| `/pll`         | Parallel lane launch — runs independent blueprint lanes in git worktrees, one commit per lane after `/verify` passes |
-| `/audit`       | Code-quality audits (code, test, dup, ux) writing to `docs/research/quality-audits/`                                 |
-| `/fix`         | Minimal-correct-fix protocol with iron-law invariants                                                                |
-| `/fix-all`     | Parallel DAG error-fix across the repo                                                                               |
-| `/brainstorm`  | Pre-plan ideation workflow                                                                                           |
+| Slash          | What it does                                                                                                                                                                      |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/verify`      | Post-implementation quality gate — 7 phases, evidence-before-claims, test-quality audit, legacy/dead-code sweep, and default two outside-model approvals with PR-comment evidence |
+| `/plan-refine` | Hardens a blueprint before `/pll` — tech fact-check, path verification, architecture review, cross-plan alignment                                                                 |
+| `/pll`         | Parallel lane launch — runs independent blueprint lanes in git worktrees, one commit per lane after `/verify` passes                                                              |
+| `/audit`       | Code-quality audits (code, test, dup, ux) writing to `docs/research/quality-audits/`                                                                                              |
+| `/fix`         | Minimal-correct-fix protocol with iron-law invariants                                                                                                                             |
+| `/fix-all`     | Parallel DAG error-fix across the repo                                                                                                                                            |
+| `/brainstorm`  | Pre-plan ideation workflow                                                                                                                                                        |
 
 **Paired skills** (`.agent/skills/<name>/SKILL.md`):
 
 - `fix/` — backs `/fix`
-- `verify/` — backs `/verify`
+- `verify/` — backs `/verify`; requires two outside-model approvals by default before merge-ready claims unless the user explicitly asks for a different count or mix
 - `testing-philosophy/` — canonical "no bullshit tests" testing philosophy
 - `tph/` — literal `/tph` shortcut skill that delegates to `testing-philosophy/` and `wp audit tph`
 - `plan-refine/` — backs `/plan-refine`; 6-step refinement pipeline
