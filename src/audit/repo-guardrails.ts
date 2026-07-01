@@ -4,6 +4,7 @@ import { join, relative, resolve, sep } from "node:path";
 import matter from "gray-matter";
 import { z } from "zod";
 
+import { validatePlanState } from "#core/validation/state.js";
 import { blueprintDerivedHandoffSchema } from "#execution/types";
 import {
   BLUEPRINT_OVERVIEW_FILENAME,
@@ -378,6 +379,14 @@ export function auditBlueprintLifecycle(
         violations.push({
           file: relativePath(root, canonicalPath),
           message: `Blueprint status must match folder (${status})`,
+        });
+      }
+
+      const stateValidation = validatePlanState(raw, relativeBlueprintPath);
+      if (!stateValidation.valid && stateValidation.error) {
+        violations.push({
+          file: relativePath(root, canonicalPath),
+          message: stateValidation.error,
         });
       }
 

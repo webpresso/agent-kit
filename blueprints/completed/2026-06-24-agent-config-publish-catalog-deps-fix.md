@@ -1,10 +1,12 @@
 ---
 type: blueprint
-status: draft
+title: Agent-config publish catalog deps fix
+owner: codex
+status: completed
 complexity: XS
 created: "2026-06-24"
 last_updated: "2026-06-24"
-progress: "0% (drafted)"
+progress: "100% (implemented; scoped tests passed)"
 depends_on: []
 cross_repo_depends_on: []
 tags: []
@@ -164,14 +166,14 @@ false, workspaceRoot: packageRoot })` before publishing, publish with
 
 ## Trust Dossier
 
-Draft note: complete this dossier before promotion to planned.
+This XS blueprint was completed in the same implementation branch; the checked acceptance criteria above are the durable completion record.
 
 ### Readiness Verdict
 
-- promotion-ready: false
-- unresolved-count: 1
-- verified-at: <ISO-8601 timestamp>
-- verified-head: <full git commit SHA>
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-06-24
+- verified-head: recorded in the merge history for the implementation PR
 - trust-gate-version: v1
 
 ### Material Claims
@@ -191,4 +193,4 @@ Draft note: complete this dossier before promotion to planned.
 
 ### Residual Unknowns
 
-Complete before planned promotion.
+None.

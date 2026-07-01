@@ -1,6 +1,8 @@
 ---
 type: blueprint
-status: draft
+title: Fix session-memory snapshot bench gate
+owner: codex
+status: completed
 complexity: S
 created: "2026-07-01"
 last_updated: "2026-07-01"
