@@ -4,7 +4,7 @@ status: draft
 complexity: S
 created: "2026-07-01"
 last_updated: "2026-07-01"
-progress: "100% (1/1 tasks done; urgent governance fix implemented)"
+progress: "draft (urgent governance fix implemented in PR #348; blueprint intentionally remains unpromoted while repairing the promotion gate)"
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -42,7 +42,7 @@ Promotion past draft must require two distinct approvals that are backed by comm
 
 #### [governance] Task 1.1: Require review-entry provenance for approval counting
 
-**Status:** done
+**Status:** todo
 
 **Depends:** None
 
@@ -63,10 +63,10 @@ Add regression coverage showing that bare `wp:review-entry` records without prov
 
 **Acceptance:**
 
-- [x] Bare `{reviewer, rev, verdict, commit}` review-entry comments no longer satisfy the approval gate.
-- [x] Two distinct approval entries with matching committed provenance artifacts satisfy the gate.
-- [x] Failure messaging tells operators to record provenance-backed outside-model evidence.
-- [x] Targeted tests, typecheck, lint, and blueprint audit pass.
+- [ ] Bare `{reviewer, rev, verdict, commit}` review-entry comments no longer satisfy the approval gate.
+- [ ] Two distinct approval entries with matching committed provenance artifacts satisfy the gate.
+- [ ] Failure messaging tells operators to record provenance-backed outside-model evidence.
+- [ ] Targeted tests, typecheck, lint, and blueprint audit pass.
 
 **Verification:**
 
