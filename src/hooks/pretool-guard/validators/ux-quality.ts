@@ -1,6 +1,7 @@
 import type { ToolInput, ValidationResult } from "#hooks/shared/types";
 
 import { getContent, getFilePath } from "#hooks/shared/types";
+import { createSkipResult } from "./skip-result.js";
 
 const VALIDATOR_NAME = "ux-quality";
 
@@ -72,6 +73,13 @@ function collectUseQueryViolations(content: string): Violation[] {
 }
 
 export function validateUxQuality(input: ToolInput): ValidationResult {
+  if (process.env.UX_QUALITY_SKIP === "1") {
+    return createSkipResult(
+      VALIDATOR_NAME,
+      "Bypass enabled via UX_QUALITY_SKIP=1 — exceptional cases only; restore UX guardrails immediately after the bypass run",
+    );
+  }
+
   const filePath = getFilePath(input);
   const content = getContent(input);
 

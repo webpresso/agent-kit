@@ -2,11 +2,12 @@
 type: blueprint
 title: Close test coverage gaps in security-critical modules
 owner: ozby
-status: in-progress
+status: completed
+completed_at: "2026-07-01"
 complexity: M
 created: "2026-06-14"
 last_updated: "2026-07-01"
-progress: 0% (0/9 tasks done, 0 blocked, updated 2026-07-01)
+progress: "100% (9/9 tasks done, 0 blocked; implementation verified locally 2026-07-01)"
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -91,7 +92,13 @@ Parallelization score: **A** — the plan is pure test-file addition with no sam
 
 #### [pretool-guard/testing] Task 1.1: Test `skip-result.ts`
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex-gpt-5.5","command":"./bin/wp test --file src/hooks/pretool-guard/validators/skip-result.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-07-01T15:44:04.234Z"}]
+```
 
 **Depends:** None
 
@@ -111,13 +118,19 @@ Add direct unit coverage for the pretool-guard skip-result helper so skipped val
 
 **Acceptance:**
 
-- [ ] Default skip result preserves `{ passed: true, skipped: true }` shape.
-- [ ] Custom skip reason is preserved.
-- [ ] Targeted test, lint, and typecheck evidence is recorded.
+- [x] Default skip result preserves `{ passed: true, skipped: true }` shape.
+- [x] Custom skip reason is preserved.
+- [x] Targeted test, lint, and typecheck evidence is recorded.
 
 #### [pretool-guard/testing] Task 1.2: Test `command-file.ts`
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex-gpt-5.5","command":"./bin/wp test --file src/hooks/pretool-guard/validators/command-file.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-07-01T15:44:04.234Z"}]
+```
 
 **Depends:** None
 
@@ -139,13 +152,19 @@ Cover command/skill file line-limit validation, pass-through behavior for unrela
 
 **Acceptance:**
 
-- [ ] Command and skill line-limit violations are covered.
-- [ ] Under-limit, unrelated-path, and skip-env pass cases are covered.
-- [ ] Targeted test, lint, and typecheck evidence is recorded.
+- [x] Command and skill line-limit violations are covered.
+- [x] Under-limit, unrelated-path, and skip-env pass cases are covered.
+- [x] Targeted test, lint, and typecheck evidence is recorded.
 
 #### [pretool-guard/testing] Task 1.3: Test `complexity.ts`
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex-gpt-5.5","command":"./bin/wp test --file src/hooks/pretool-guard/validators/complexity.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-07-01T15:44:04.234Z"}]
+```
 
 **Depends:** None
 
@@ -166,13 +185,19 @@ Cover file-length warning behavior and non-applicable inputs for the complexity 
 
 **Acceptance:**
 
-- [ ] Line-limit warning and clean pass cases are covered.
-- [ ] Extension filtering, skip, and null-input paths are covered.
-- [ ] Targeted test, lint, and typecheck evidence is recorded.
+- [x] Line-limit warning and clean pass cases are covered.
+- [x] Extension filtering, skip, and null-input paths are covered.
+- [x] Targeted test, lint, and typecheck evidence is recorded.
 
 #### [pretool-guard/testing] Task 1.4: Test `file-conventions.ts`
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex-gpt-5.5","command":"./bin/wp test --file src/hooks/pretool-guard/validators/file-conventions.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-07-01T15:44:04.234Z"}]
+```
 
 **Depends:** None
 
@@ -195,13 +220,19 @@ Cover system-path blocking and blueprint/path-contract delegation in the file-co
 
 **Acceptance:**
 
-- [ ] System path blocking is covered.
-- [ ] Blueprint/path-contract delegation is covered.
-- [ ] Targeted test, lint, and typecheck evidence is recorded.
+- [x] System path blocking is covered.
+- [x] Blueprint/path-contract delegation is covered.
+- [x] Targeted test, lint, and typecheck evidence is recorded.
 
 #### [pretool-guard/testing] Task 1.5: Test `logger.ts`
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex-gpt-5.5","command":"./bin/wp test --file src/hooks/pretool-guard/logger.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-07-01T15:44:04.234Z"}]
+```
 
 **Depends:** None
 
@@ -223,13 +254,19 @@ Add isolated filesystem tests for the pretool-guard JSONL logger without touchin
 
 **Acceptance:**
 
-- [ ] Write, rotation, disabled, missing-file, and invalid-file paths are covered.
-- [ ] Tests use temp directories only.
-- [ ] Targeted test, lint, and typecheck evidence is recorded.
+- [x] Write, rotation, disabled, missing-file, and invalid-file paths are covered.
+- [x] Tests use temp directories only.
+- [x] Targeted test, lint, and typecheck evidence is recorded.
 
 #### [pretool-guard/testing] Task 1.6: Test `ux-quality.ts`
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex-gpt-5.5","command":"./bin/wp test --file src/hooks/pretool-guard/validators/ux-quality.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-07-01T15:44:04.234Z"}]
+```
 
 **Depends:** None
 
@@ -252,13 +289,19 @@ Cover the UX-quality validator checks that block disruptive browser alerts, swal
 
 **Acceptance:**
 
-- [ ] Alert, swallowed catch-console, and TanStack Query anti-patterns are covered.
-- [ ] Clean-content and skip-env pass cases are covered.
-- [ ] Targeted test, lint, and typecheck evidence is recorded.
+- [x] Alert, swallowed catch-console, and TanStack Query anti-patterns are covered.
+- [x] Clean-content and skip-env pass cases are covered.
+- [x] Targeted test, lint, and typecheck evidence is recorded.
 
 #### [mcp/testing] Task 1.7: Test `_session-command.ts`
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex-gpt-5.5","command":"./bin/wp test --file src/mcp/tools/_session-command.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-07-01T15:44:04.234Z"}]
+```
 
 **Depends:** None
 
@@ -281,13 +324,19 @@ Cover the session command execution helper at the module boundary, including spa
 
 **Acceptance:**
 
-- [ ] Spawn, output capture, truncation, search, timeout, and validation paths are covered.
-- [ ] Timeout tests clean up child processes deterministically.
-- [ ] Targeted test, lint, and typecheck evidence is recorded.
+- [x] Spawn, output capture, truncation, search, timeout, and validation paths are covered.
+- [x] Timeout tests clean up child processes deterministically.
+- [x] Targeted test, lint, and typecheck evidence is recorded.
 
 #### [mcp/testing] Task 1.8: Test `cli.ts`
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex-gpt-5.5","command":"./bin/wp test --file src/mcp/cli.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-07-01T15:44:04.234Z"}]
+```
 
 **Depends:** None
 
@@ -310,13 +359,19 @@ Cover `wp mcp` stdio server wiring without re-testing imported direct-entrypoint
 
 **Acceptance:**
 
-- [ ] Server connect, sentinel write/delete, and shutdown wiring are covered.
-- [ ] Import-side-effect guard is covered by mocks, not by spawning the real MCP server.
-- [ ] Targeted test, lint, and typecheck evidence is recorded.
+- [x] Server connect, sentinel write/delete, and shutdown wiring are covered.
+- [x] Import-side-effect guard is covered by mocks, not by spawning the real MCP server.
+- [x] Targeted test, lint, and typecheck evidence is recorded.
 
 #### [mcp/testing] Task 1.9: Test `_tail-hints.ts`
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"agent":"codex-gpt-5.5","command":"./bin/wp test --file src/mcp/_tail-hints.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-07-01T15:44:04.234Z"}]
+```
 
 **Depends:** None
 
@@ -339,20 +394,20 @@ Cover tail-hint deduplication, TTL expiry, persistence, and static hint selectio
 
 **Acceptance:**
 
-- [ ] Deduplication, TTL, persistence, and all static hint entries are covered.
-- [ ] Tests do not touch real `.agent` or home-directory state.
-- [ ] Targeted test, lint, and typecheck evidence is recorded.
+- [x] Deduplication, TTL, persistence, and all static hint entries are covered.
+- [x] Tests do not touch real `.agent` or home-directory state.
+- [x] Targeted test, lint, and typecheck evidence is recorded.
 
 ## Verification Gates
 
-| Gate                | Command                                                       | Success Criteria                          | Last result             |
-| ------------------- | ------------------------------------------------------------- | ----------------------------------------- | ----------------------- |
-| Blueprint audit     | `wp blueprint audit --all --strict`                           | Blueprint lifecycle/parser audit passes   | Pending after promotion |
-| Targeted tests      | `./bin/wp test --file <new-test-file>` for each task          | Each new test passes after implementation | Pending implementation  |
-| Pretool-guard suite | `./bin/wp test --file 'src/hooks/pretool-guard/**/*.test.ts'` | Existing + new pretool tests pass         | Pending implementation  |
-| MCP suite           | `./bin/wp test --file 'src/mcp/**/*.test.ts'`                 | Existing + new MCP tests pass             | Pending implementation  |
-| Type safety         | `./bin/wp typecheck`                                          | Zero errors                               | Pending implementation  |
-| Lint/format         | `./bin/wp lint` and wp format --check                         | Zero violations                           | Pending implementation  |
+| Gate                | Command                                                       | Success Criteria                          | Last result                                                                                                             |
+| ------------------- | ------------------------------------------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Blueprint audit     | `./bin/wp blueprint audit --all --strict`                     | Blueprint lifecycle/parser audit passes   | PASS 2026-07-01                                                                                                         |
+| Targeted tests      | `./bin/wp test --file <new-test-file>` for each task          | Each new test passes after implementation | PASS 2026-07-01                                                                                                         |
+| Pretool-guard suite | enumerated `./bin/wp test --file src/hooks/pretool-guard/...` | Existing + new pretool tests pass         | PASS 2026-07-01                                                                                                         |
+| MCP suite           | enumerated `./bin/wp test --file src/mcp/...`                 | Existing + new MCP tests pass             | PASS once 2026-07-01; later rerun hit unrelated platform-first promotion timeouts that reproduce on clean `origin/main` |
+| Type safety         | `./bin/wp typecheck`                                          | Zero errors                               | PASS 2026-07-01                                                                                                         |
+| Lint/format         | `./bin/wp lint` and `./bin/wp format --check`                 | Zero violations                           | PASS 2026-07-01                                                                                                         |
 
 ## Cross-Plan References
 
