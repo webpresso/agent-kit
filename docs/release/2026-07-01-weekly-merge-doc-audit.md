@@ -5,7 +5,7 @@ last_updated: "2026-07-01"
 
 # Weekly merge documentation audit — 2026-07-01
 
-This note maps every pull request reported by GitHub as merged into `main` since 2026-06-24 to a durable documentation surface, an existing coverage surface, or a no-doc-needed rationale. It is intentionally an audit index; durable how-to content lives in the linked guides.
+This note maps every pull request reported by GitHub as merged into `main` from 2026-06-24 through PR [#338](https://github.com/webpresso/agent-kit/pull/338) on 2026-07-01 to a durable documentation surface, an existing coverage surface, or a no-doc-needed rationale. Follow-up audit-maintenance PRs after #338 are intentionally out of this audit window to avoid a self-referential documentation loop. This is intentionally an audit index; durable how-to content lives in the linked guides.
 
 ## Durable docs updated in this pass
 
@@ -22,6 +22,7 @@ Most PR merge commits in the audit window are ancestors of the current `origin/m
 
 | PR                                                      | Merged     | Target ancestry | Title                                                                                             | Documentation disposition                                                                                          |
 | ------------------------------------------------------- | ---------- | --------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| [#338](https://github.com/webpresso/agent-kit/pull/338) | 2026-07-01 | ancestor        | docs: audit weekly merged work surfaces                                                           | This audit note plus linked durable guide updates document the weekly merge review itself.                         |
 | [#336](https://github.com/webpresso/agent-kit/pull/336) | 2026-07-01 | ancestor        | Version Packages                                                                                  | No new docs: version-package maintenance; release history remains package changelog-owned.                         |
 | [#335](https://github.com/webpresso/agent-kit/pull/335) | 2026-07-01 | ancestor        | fix(release): publish agent core before config                                                    | Covered by docs/github-action.md release/dependency-order guidance and this audit note.                            |
 | [#334](https://github.com/webpresso/agent-kit/pull/334) | 2026-07-01 | ancestor        | Version Packages                                                                                  | No new docs: version-package maintenance.                                                                          |
