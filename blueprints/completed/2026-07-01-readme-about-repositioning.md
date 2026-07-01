@@ -41,8 +41,6 @@ keeping package metadata and packaged docs aligned.
   repo-specific setup and secrets.
 - Provide a GitHub About suggestion no longer than 160 characters in the final
   report.
-- Apply repo formatter-required mechanical drift fixes only if needed to keep
-  `wp format --check` green.
 
 ### Out of scope
 
@@ -128,17 +126,16 @@ rg -n "hands-free|automatic deploy|auto.*deploy|any arbitrary|universal|enterpri
 - promotion-ready: true
 - unresolved-count: 0
 - verified-at: 2026-07-01T19:35:00Z
-- verified-head: bb283d05d5f4630899f7be9774f23ba13f5717d9
+- verified-head: 1c0dadb95fdaf4d92d4f82cd629468e2de679cdc
 - trust-gate-version: v1
 
 ### Material Claims
 
-| ID  | Claim                                                                                    | Evidence                                                                                                                 |
-| --- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| C1  | Public positioning changes are limited to README, packaged docs, and metadata.           | repo:README.md; repo:docs/README.md; repo:docs/getting-started.md; repo:package.json                                     |
-| C2  | The implementation plan records no runtime or public API behavior changes.               | repo:blueprints/completed/2026-07-01-readme-about-repositioning.md                                                       |
-| C3  | Claim wording is guarded by docs checks, guardrail audits, and overclaim scans.          | derived:C1,C2                                                                                                            |
-| C4  | Repo-wide formatting required only mechanical drift fixes outside the positioning pages. | repo:.claude-plugin/marketplace.json; repo:.claude-plugin/plugin.json; repo:.codex-plugin/plugin.json; repo:CHANGELOG.md |
+| ID  | Claim                                                                           | Evidence                                                                             |
+| --- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| C1  | Public positioning changes are limited to README, packaged docs, and metadata.  | repo:README.md; repo:docs/README.md; repo:docs/getting-started.md; repo:package.json |
+| C2  | The implementation plan records no runtime or public API behavior changes.      | repo:blueprints/completed/2026-07-01-readme-about-repositioning.md                   |
+| C3  | Claim wording is guarded by docs checks, guardrail audits, and overclaim scans. | derived:C1,C2                                                                        |
 
 ### Material Decisions
 
@@ -147,7 +144,6 @@ rg -n "hands-free|automatic deploy|auto.*deploy|any arbitrary|universal|enterpri
 | D1  | Repositioning scope   | Focused README/package/docs wording update.                   | README-only change or full documentation overhaul.    | Keeps first-screen clarity aligned without expanding the docs-only task.      |
 | D2  | Proof-link ownership  | GitHub-absolute links for source, tests, scripts.             | npm-relative links to paths omitted from the package. | README remains useful from both GitHub and the published package page.        |
 | D3  | Preview/deploy claims | Bounded supported workflows with repo-specific setup/secrets. | Hands-off or generic production deployment claims.    | Matches the actual guardrail role and avoids unsupported automation promises. |
-| D4  | Format drift handling | Keep formatter-only baseline fixes from `wp format`.          | Leave the requested format gate failing.              | The mechanical diffs are small and required for the repo-wide format check.   |
 
 ### Promotion Gates
 
