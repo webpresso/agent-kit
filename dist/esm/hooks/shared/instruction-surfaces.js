@@ -1,0 +1,93 @@
+import { WP_TOOL_NAMES } from "#mcp/tools/_names";
+export const INSTRUCTION_SURFACE_HOSTS = ["claude", "codex", "cursor", "opencode"];
+const HOST_POLICIES = {
+    claude: {
+        artifactName: "SessionStart.additionalContext",
+        stdoutNoop: "SessionStart writes a JSON additionalContext envelope; with no project routing or continuity events it emits empty context. Tool routing comes from the wp_* MCP tool descriptions, not an injected block.",
+        lifecycleNotes: [
+            "SessionStart is context injection only and cannot block tool calls.",
+            "PreToolUse remains the lifecycle for deny decisions.",
+        ],
+        publicSupport: "Public support: first-class Claude hook context surface.",
+    },
+    codex: {
+        artifactName: "AGENTS.md",
+        stdoutNoop: "Codex hook commands with no action write {} on stdout; durable guidance belongs in AGENTS.md.",
+        lifecycleNotes: [
+            "Codex reads repository instruction files for durable guidance.",
+            "Unsupported managed lifecycle names are documented in the host capability matrix, not emulated here.",
+        ],
+        publicSupport: "Public support: first-class Codex instruction artifact.",
+    },
+    cursor: {
+        artifactName: "agent-rules/webpresso-routing.md -> .cursor/rules/webpresso-routing.mdc",
+        stdoutNoop: "Cursor command hooks that do not need to act write {} so the host receives valid JSON.",
+        lifecycleNotes: [
+            "Cursor uses command groups; beforeSubmitPrompt is the prompt-time lifecycle.",
+            "Unsupported managed lifecycle names are represented in capability tests, not generated as inert hooks.",
+        ],
+        publicSupport: "Public support: generated Cursor rules surface plus managed hook config.",
+    },
+    opencode: {
+        artifactName: ".opencode/plugins/webpresso-hooks.js",
+        stdoutNoop: "OpenCode plugin callbacks return without writing when there is no action; context is carried through host callback state.",
+        lifecycleNotes: [
+            "OpenCode maps session.created and experimental.session.compacting to context refresh.",
+            "Unsupported lifecycle callbacks stay absent unless OpenCode exposes a managed callback.",
+        ],
+        publicSupport: "Public support: degraded OpenCode plugin bridge.",
+    },
+};
+const ROUTING_SOURCE_NAME = "wp_routing";
+function nonEmpty(value) {
+    return value !== null && value !== undefined && value.length > 0;
+}
+function joinSections(sections) {
+    return sections.join("\n\n");
+}
+function xmlEscape(value) {
+    return value
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+}
+function renderHostEnvelope(host, policy) {
+    const toolNames = WP_TOOL_NAMES.join(", ");
+    const lifecycleNotes = policy.lifecycleNotes
+        .map((note) => `<note>${xmlEscape(note)}</note>`)
+        .join("\n");
+    return `<wp_instruction_surface host="${host}" artifact="${xmlEscape(policy.artifactName)}" source="${ROUTING_SOURCE_NAME}">
+<host_contract>
+<native_tool_names>${xmlEscape(toolNames)}</native_tool_names>
+<stdout_noop>${xmlEscape(policy.stdoutNoop)}</stdout_noop>
+<lifecycle_notes>
+${lifecycleNotes}
+</lifecycle_notes>
+<public_support>${xmlEscape(policy.publicSupport)}</public_support>
+</host_contract>
+</wp_instruction_surface>`;
+}
+export function renderInstructionSurface(input) {
+    const policy = HOST_POLICIES[input.host];
+    const includeEnvelope = input.includeEnvelope ?? true;
+    const sections = [
+        ...(includeEnvelope ? [renderHostEnvelope(input.host, policy)] : []),
+        input.projectRoutingMarkdown ?? null,
+        ...(input.extraSections ?? []),
+    ].filter(nonEmpty);
+    return {
+        host: input.host,
+        artifactName: policy.artifactName,
+        content: joinSections(sections),
+    };
+}
+export function renderSessionStartInstructionContext(input) {
+    return renderInstructionSurface({
+        host: "claude",
+        projectRoutingMarkdown: input.projectRoutingMarkdown,
+        extraSections: input.extraSections,
+        includeEnvelope: false,
+    }).content;
+}
+//# sourceMappingURL=instruction-surfaces.js.map

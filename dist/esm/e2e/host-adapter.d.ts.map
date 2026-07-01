@@ -1,0 +1,1 @@
+{"version":3,"file":"host-adapter.d.ts","sourceRoot":"","sources":["../../../src/e2e/host-adapter.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,cAAc,EAAE,MAAM,YAAY,CAAC;AAEjD,eAAO,MAAM,gCAAgC,4BAA4B,CAAC;AAC1E,eAAO,MAAM,+BAA+B,4BAA4B,CAAC;AACzE,eAAO,MAAM,kCAAkC,4EAIrC,CAAC;AAEX,wBAAgB,gBAAgB,CAAC,KAAK,EAAE,OAAO,GAAG,KAAK,IAAI,cAAc,CAiBxE"}
