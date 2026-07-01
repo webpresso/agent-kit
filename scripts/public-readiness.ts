@@ -162,6 +162,22 @@ function isAllowedPackedNativeAddon(path: string): boolean {
   return path.endsWith(".node");
 }
 
+export function sourceContainsUrlOrigin(
+  source: string,
+  expectedProtocol: "http:" | "https:",
+  expectedHost: string,
+): boolean {
+  const urlLiterals = source.match(/https?:\/\/[^\s"'`)]+/gu) ?? [];
+  return urlLiterals.some((literal) => {
+    try {
+      const parsed = new URL(literal);
+      return parsed.protocol === expectedProtocol && parsed.hostname === expectedHost;
+    } catch {
+      return false;
+    }
+  });
+}
+
 type ExecFileSyncLike = (
   command: string,
   args: readonly string[],
@@ -1080,7 +1096,7 @@ if (import.meta.main) {
   const doctorSurface = read("src/hooks/doctor.ts");
   const updaterHasPackage = updaterSurface.includes("@webpresso/agent-kit");
   const updaterHasRegistry =
-    updaterSurface.includes("https://registry.npmjs.org") &&
+    sourceContainsUrlOrigin(updaterSurface, "https:", "registry.npmjs.org") &&
     (updaterSurface.includes("@webpresso%2Fagent-kit") ||
       updaterSurface.includes("@webpresso/agent-kit"));
   const doctorHasPackage =

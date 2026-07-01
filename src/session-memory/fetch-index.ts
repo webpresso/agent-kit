@@ -93,31 +93,104 @@ function normalizeUrl(url: string): string {
 }
 
 function htmlToMarkdown(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/giu, "")
-    .replace(/<style[\s\S]*?<\/style>/giu, "")
-    .replace(
-      /<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/giu,
-      (_match, level: string, text: string) => `${"#".repeat(Number(level))} ${stripTags(text)}\n`,
-    )
-    .replace(/<li[^>]*>([\s\S]*?)<\/li>/giu, (_match, text: string) => `- ${stripTags(text)}\n`)
-    .replace(/<p[^>]*>([\s\S]*?)<\/p>/giu, (_match, text: string) => `${stripTags(text)}\n\n`)
-    .replace(/<br\s*\/?>/giu, "\n")
-    .replace(/<[^>]+>/gu, " ")
-    .replace(/&nbsp;/gu, " ")
-    .replace(/&amp;/gu, "&")
-    .replace(/&lt;/gu, "<")
-    .replace(/&gt;/gu, ">")
+  let text = "";
+  let cursor = 0;
+  const lowerHtml = html.toLowerCase();
+
+  while (cursor < html.length) {
+    const char = html[cursor];
+    if (char !== "<") {
+      text += char;
+      cursor += 1;
+      continue;
+    }
+
+    const tagEnd = html.indexOf(">", cursor + 1);
+    if (tagEnd === -1) {
+      text += char;
+      cursor += 1;
+      continue;
+    }
+
+    const tagContent = html.slice(cursor + 1, tagEnd).trim();
+    const closing = tagContent.startsWith("/");
+    const tagName = parseHtmlTagName(closing ? tagContent.slice(1) : tagContent);
+
+    if (!closing && (tagName === "script" || tagName === "style")) {
+      cursor = findHtmlBlockEnd(lowerHtml, tagName, tagEnd + 1);
+      continue;
+    }
+
+    text += markdownBoundaryForTag(tagName, closing);
+    cursor = tagEnd + 1;
+  }
+
+  return decodeHtmlEntitiesOnce(text)
     .replace(/[ \t]+/gu, " ")
     .replace(/\n{3,}/gu, "\n\n")
     .trim();
 }
 
-function stripTags(html: string): string {
-  return html
-    .replace(/<[^>]+>/gu, " ")
-    .replace(/[ \t\n]+/gu, " ")
-    .trim();
+function parseHtmlTagName(tagContent: string): string {
+  let name = "";
+  for (const char of tagContent.trimStart()) {
+    const lower = char.toLowerCase();
+    if ((lower >= "a" && lower <= "z") || (lower >= "0" && lower <= "9")) {
+      name += lower;
+      continue;
+    }
+    break;
+  }
+  return name;
+}
+
+function findHtmlBlockEnd(
+  lowerHtml: string,
+  tagName: "script" | "style",
+  fromIndex: number,
+): number {
+  const closeStart = lowerHtml.indexOf(`</${tagName}`, fromIndex);
+  if (closeStart === -1) return lowerHtml.length;
+  const closeEnd = lowerHtml.indexOf(">", closeStart);
+  return closeEnd === -1 ? lowerHtml.length : closeEnd + 1;
+}
+
+function markdownBoundaryForTag(tagName: string, closing: boolean): string {
+  const level = tagName[1];
+  if (
+    tagName.length === 2 &&
+    tagName[0] === "h" &&
+    level !== undefined &&
+    level >= "1" &&
+    level <= "6"
+  ) {
+    return closing ? "\n" : `\n${"#".repeat(Number(level))} `;
+  }
+  if (tagName === "li") return closing ? "\n" : "\n- ";
+  if (tagName === "p") return closing ? "\n\n" : " ";
+  if (tagName === "br") return "\n";
+  return " ";
+}
+
+function decodeHtmlEntitiesOnce(text: string): string {
+  return text.replace(/&(nbsp|amp|lt|gt|quot|#39);/gu, (entity) => {
+    switch (entity) {
+      case "&nbsp;":
+        return " ";
+      case "&amp;":
+        return "&";
+      case "&lt;":
+        return "<";
+      case "&gt;":
+        return ">";
+      case "&quot;":
+        return '"';
+      case "&#39;":
+        return "'";
+      default:
+        return entity;
+    }
+  });
 }
 
 function toIndexableText(body: string, contentType: string): string {

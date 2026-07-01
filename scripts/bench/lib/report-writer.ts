@@ -53,7 +53,7 @@ function formatNumber(value: number): string {
 }
 
 function formatMarkdownCell(value: string | undefined): string {
-  return (value ?? "n/a").replace(/\s+/g, " ").trim().replace(/\|/g, "\\|");
+  return (value ?? "n/a").replace(/\s+/g, " ").trim().replaceAll("|", "&#124;");
 }
 
 export function renderReport(report: SessionMemoryReport): string {

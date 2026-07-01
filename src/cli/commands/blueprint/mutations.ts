@@ -19,6 +19,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { parseBlueprint } from "#core/parser";
+import { escapeRegex } from "#utils/string";
 import { openDb } from "#db/connection.js";
 import { resolveBlueprintProjectionDbPath, withMarkdownWriteLock } from "#db/paths.js";
 import { type BlueprintShape, getBlueprintDocumentPaths } from "#utils/document-paths.js";
@@ -310,7 +311,7 @@ function findTaskStatusLine(
   lines: readonly string[],
   taskId: string,
 ): { lineIndex: number; currentStatus: string; prefix: string; suffix: string } | null {
-  const escapedId = taskId.replace(/\./g, "\\.");
+  const escapedId = escapeRegex(taskId);
   const taskPattern = new RegExp(`^####\\s+(?:\\[[^\\]]+\\]\\s+)?Task\\s+${escapedId}[:\\s]`);
   let inBlock = false;
 
@@ -575,7 +576,6 @@ async function promoteBlueprintLocked(
           file: currentDocumentPath,
           markdown: refreshedSource,
         });
-        trustedSource = refreshedSource;
       }
     }
   }

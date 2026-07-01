@@ -175,7 +175,7 @@ export function applyBlueprintLifecycle(
   }
 
   let nextMarkdown = markdown;
-  let targetStatus: LifecycleBlueprintStatus = currentStatus;
+  let targetStatus: LifecycleBlueprintStatus;
   const auditEvents: string[] = [];
 
   switch (intent.type) {

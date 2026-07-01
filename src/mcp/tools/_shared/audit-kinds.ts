@@ -45,7 +45,7 @@ export const MCP_AUDIT_KINDS = [
   "no-dev-vars",
   "github-actions-secrets",
   "secret-provider-quarantine",
-  "github-actions-secrets",
+  "security-quality-regressions",
   "secrets-config",
   "consumer-agent-kit-dependency",
   "session-memory-hardcut",
