@@ -53,18 +53,17 @@ Fix `session_memory_core::session::snapshot` so the time cap is enforced while r
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-| ---- | ------- | ---------------- |
-| Native tests | `pnpm run native:session-memory:test` | All session-memory Rust tests pass |
-| Bench gate | `pnpm run native:session-memory:bench:run && pnpm run native:session-memory:bench:gate` | All Criterion SLO checks pass without threshold increases |
-| Format | `pnpm run native:session-memory:fmt` | Rust formatting clean |
+| Gate         | Command                                                                                 | Success Criteria                                          |
+| ------------ | --------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Native tests | `pnpm run native:session-memory:test`                                                   | All session-memory Rust tests pass                        |
+| Bench gate   | `pnpm run native:session-memory:bench:run && pnpm run native:session-memory:bench:gate` | All Criterion SLO checks pass without threshold increases |
+| Format       | `pnpm run native:session-memory:fmt`                                                    | Rust formatting clean                                     |
 
 ## Non-goals
 
 - Raising `snapshot_50_events` thresholds or workflow timeouts.
 - Broad benchmark redesign beyond the failing hot path.
 - Release-package changes from PR #337.
-
 
 ## Verification evidence
 
