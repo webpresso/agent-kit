@@ -41,10 +41,18 @@ jobs:
 
 The agent-kit repo uses the `WP check` workflow job as the required aggregate
 branch-protection check. It depends on the scoped CI jobs (`lint-typecheck`,
-`test`, `native-session-memory`, `audits`, `bundle-smoke`, `blueprint-gate`,
-`e2e`, `architecture-drift`, and `deploy-verify`) and fails if any required
-dependency failed or was cancelled. Require `WP check` on `main` rather than
-trying to mirror every individual job in repository rulesets.
+`pr-description-contract`, `test`, `native-session-memory`, `audits`,
+`bundle-smoke`, `blueprint-gate`, `e2e`, `architecture-drift`, and
+`deploy-verify`) and fails if any required dependency failed or was cancelled.
+Require `WP check` on `main` rather than trying to mirror every individual job
+in repository rulesets.
+
+The `PR description contract` job requires non-automation pull requests to keep
+the `.github/PULL_REQUEST_TEMPLATE.md` AI/model disclosure fields filled in:
+execution model(s), planning/refinement model(s), and review/verification
+model(s). Use concrete model names when an AI agent performed that phase; use a
+specific non-placeholder rationale only when a phase was genuinely not
+AI-assisted.
 
 The `Audits` job includes the repo-specific
 `./bin/wp audit security-quality-regressions` gate, so smells already caught by

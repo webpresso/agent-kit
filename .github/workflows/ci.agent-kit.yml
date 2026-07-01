@@ -130,6 +130,50 @@ jobs:
       - name: Require blueprint coverage for non-doc PRs
         run: ./bin/wp audit blueprint-pr-coverage --base "${{ github.event.pull_request.base.sha }}"
 
+  pr-description-contract:
+    name: PR description contract
+    if: ${{ github.event_name == 'pull_request' && !startsWith(github.head_ref, 'changeset-release/') && !startsWith(github.head_ref, 'dependabot/') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require AI/model disclosure fields
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          body="$(jq -r '.pull_request.body // ""' "$GITHUB_EVENT_PATH")"
+
+          require_field() {
+            local label="$1"
+            local value
+            value="$(printf '%s\n' "$body" | awk -v label="$label" '
+              BEGIN { found = 0 }
+              {
+                line = tolower($0)
+                needle_one = "- " tolower(label) ":"
+                needle_two = tolower(label) ":"
+                if (index(line, needle_one) == 1 || index(line, needle_two) == 1) {
+                  sub(/^[^:]*:[[:space:]]*/, "", $0)
+                  print $0
+                  found = 1
+                  exit
+                }
+              }
+              END { if (found == 0) exit 1 }
+            ')" || {
+              echo "::error::PR description must include '${label}:' in the AI/model disclosure section."
+              exit 1
+            }
+
+            if [[ -z "${value//[[:space:]]/}" || "$value" == *"<!--"* || "$value" =~ ^[[:space:]]*(TODO|TBD|unknown)[[:space:]]*$ ]]; then
+              echo "::error::PR description '${label}:' must name the model(s) used, or state a specific non-placeholder rationale."
+              exit 1
+            fi
+          }
+
+          require_field "Execution model(s)"
+          require_field "Planning/refinement model(s)"
+          require_field "Review/verification model(s)"
+
   lint-typecheck:
     name: Lint & typecheck
     runs-on: ubuntu-latest
@@ -453,6 +497,7 @@ jobs:
       [
         ci-change-scope,
         lint-typecheck,
+        pr-description-contract,
         test,
         native-session-memory,
         audits,
