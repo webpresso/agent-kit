@@ -55,6 +55,68 @@ function runText(command: string, args: readonly string[], cwd: string): string 
   });
 }
 
+function extractJsonPayloadAt(trimmed: string, start: number): string | null {
+  const opening = trimmed[start];
+  if (opening !== "{" && opening !== "[") return null;
+  const closing = opening === "{" ? "}" : "]";
+  const stack = [closing];
+  let inString = false;
+  let escaped = false;
+
+  for (let index = start + 1; index < trimmed.length; index += 1) {
+    const char = trimmed[index];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (char === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (char === '"') inString = false;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (char === "{" || char === "[") {
+      stack.push(char === "{" ? "}" : "]");
+      continue;
+    }
+
+    if (char === "}" || char === "]") {
+      const expected = stack.pop();
+      if (char !== expected) return null;
+      if (stack.length === 0) return trimmed.slice(start, index + 1);
+    }
+  }
+
+  return null;
+}
+
+function parsePnpmOutdatedOutput(output: string): Record<string, OutdatedEntry> {
+  const trimmed = output.trim();
+  for (let index = 0; index < trimmed.length; index += 1) {
+    const payload = extractJsonPayloadAt(trimmed, index);
+    if (!payload) continue;
+    try {
+      return JSON.parse(payload) as Record<string, OutdatedEntry>;
+    } catch {
+      // Keep scanning: pnpm may prefix JSON with bracketed warnings such as [WARN].
+    }
+  }
+
+  const preview = trimmed.slice(0, 240);
+  throw new Error(
+    `pnpm outdated did not emit parseable JSON${preview ? `; stdout began: ${preview}` : ""}`,
+  );
+}
+
 function loadOutdatedJson(root: string, args: Map<string, string>): Record<string, OutdatedEntry> {
   const fixturePath = args.get("--outdated-json") ?? process.env.WP_DEPS_FRESHNESS_OUTDATED_JSON;
   if (fixturePath) return readJsonFile(resolve(root, fixturePath)) as Record<string, OutdatedEntry>;
@@ -67,7 +129,7 @@ function loadOutdatedJson(root: string, args: Map<string, string>): Record<strin
   if (!output && result.status && result.status !== 0) {
     throw new Error((result.stderr ?? "pnpm outdated failed").trim());
   }
-  return output ? (JSON.parse(output) as Record<string, OutdatedEntry>) : {};
+  return output ? parsePnpmOutdatedOutput(output) : {};
 }
 
 function latestPnpmVersion(root: string, args: Map<string, string>): string {
