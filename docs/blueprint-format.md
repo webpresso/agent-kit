@@ -1,6 +1,6 @@
 ---
 type: system
-last_updated: "2026-06-28"
+last_updated: "2026-07-01"
 ---
 
 # Blueprint format specification
@@ -358,3 +358,9 @@ package core.
 ## Trust Dossier
 
 Executable blueprints (`planned`, `in-progress`, `completed`) require a `## Trust Dossier` with these subsections: Readiness Verdict, Material Claims, Material Decisions, Promotion Gates, and Residual Unknowns. Trust Dossier evidence is separate from task completion evidence. Material claim evidence supports `repo:<path>`, `web:<url> (<YYYY-MM-DD>)`, and `derived:<claim-id>[,<claim-id>]`. Task dependencies use `**Depends:**`. Residual Unknowns must be exactly `None.`.
+
+Use `wp_blueprint_put` / `wp blueprint put` when rewriting a whole blueprint so
+the parser can preserve the canonical folder/flat shape and render the Trust
+Dossier consistently. Do not hand-maintain a generated README index for blueprint
+discovery; folder `_overview.md` files and the SQLite/MCP projection are the
+authoritative surfaces.

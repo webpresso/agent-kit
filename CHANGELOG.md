@@ -1208,7 +1208,6 @@
   ## New features
 
   ### Agent-asset compiler (multi-runtime)
-
   - `wp_compile` — thin wrapper over `rulesync generate --targets <list>` with O_EXCL lock, content-hash idempotency, and SHA-256 source hash manifest (`.agent/.compile-manifest.json`)
   - Four plugin manifest emitters: Claude Code (`.claude-plugin/plugin.json`), Codex (`.codex-plugin/`), Cursor (`.cursor-plugin/`), Gemini (`gemini-extension.json`)
   - AGENTS.md section-keyed merger with `memory.merge.yaml` directives (replace/append/prepend/delete/rotate); provenance JSON; rotation safeguards (opt-in, shallow-clone detection, dry-run)
@@ -1220,7 +1219,6 @@
   - OSS positioning docs: `docs/positioning-vs-rulesync.md`, `docs/wedge-experience/demo.sh`
 
   ### Minimal audit slice
-
   - `wp audit skill-sizes` — checks skills against configurable budgets in `.agent/.audit-budgets.yaml`
   - `wp audit broken-refs` — walks `.agent/**/*.md` for unresolved relative links and `@AGENTS.md` imports; supports `--staged` mode for pre-commit
   - `wp audit memory-rotation` — surfaces AGENTS.md rotation events from `.agent/.rotation-log.jsonl`
@@ -1228,7 +1226,6 @@
   - `wp setup --with husky` extended with pre-commit hooks for staged-mode audits
 
   ### Blueprint structured store (SQLite)
-
   - `better-sqlite3` SQLite projection of all blueprint markdown; cold-start rebuild from canonical markdown
   - Custom MCP server with 8 tools: `wp_blueprint_query`, `_new`, `_validate`, `_task_next`, `_task_advance`, `_promote`, `_finalize`, `_depgraph`
   - 9 pre-registered SQL query templates; `docs/blueprint-db-cookbook.md`
@@ -1238,13 +1235,11 @@
   - Three SQL-backed audits (alpha-gated via `WP_USE_SQL_AUDITS=1`): `blueprint-db-consistency`, `blueprint-lifecycle-sql`, `tech-debt-cadence`
 
   ## Breaking changes
-
   - `wp cursor-windsurf-sync` is removed. Use `wp compile` instead.
   - `.agent/` symlink-era outputs replaced by rulesync-emitted files. Run `wp setup --with base-kit --with example-skill && wp compile` on fresh install.
   - Internal consumers (monorepo, ingest-lens) require a one-time cleanup: delete legacy `.windsurfrules`, `.cursorrules`, and old symlinks before bumping to v0.15.0. See `docs/positioning-vs-rulesync.md` for the rollout guide.
 
   ## Dependencies added
-
   - `rulesync@8.15.1` (exact pin)
   - `remark@15.0.1`, `remark-validate-links@13.1.0`, `remark-frontmatter@5.0.0`
   - `better-sqlite3@^12.9.0` + `@types/better-sqlite3`

@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  createQualityScaffoldConfig,
-  qualityScaffoldTestDir,
-} from "./quality-scaffold.js";
+import { createQualityScaffoldConfig, qualityScaffoldTestDir } from "./quality-scaffold.js";
 
 describe("quality scaffold Playwright config", () => {
   it("points at package-owned smoke specs by default", () => {
