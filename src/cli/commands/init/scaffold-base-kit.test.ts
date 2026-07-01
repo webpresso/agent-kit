@@ -34,7 +34,8 @@ describe("scaffoldBaseKit", () => {
     expect(existsSync(join(repoRoot, ".secretlintrc.json"))).toBe(true);
     expect(existsSync(join(repoRoot, "commitlint.config.ts"))).toBe(true);
     expect(existsSync(join(repoRoot, ".husky", "pre-commit"))).toBe(true);
-    expect(existsSync(join(repoRoot, ".husky", "commit-msg"))).toBe(false);
+    expect(existsSync(join(repoRoot, ".husky", "commit-msg"))).toBe(true);
+    expect(existsSync(join(repoRoot, ".husky", "pre-push"))).toBe(true);
     expect(existsSync(join(repoRoot, ".github", "actions", "setup-webpresso", "action.yml"))).toBe(
       false,
     );
@@ -97,6 +98,8 @@ describe("scaffoldBaseKit", () => {
     expect(releaseWorkflow).not.toContain("release-preflight:");
 
     const preCommit = readFileSync(join(repoRoot, ".husky", "pre-commit"), "utf8");
+    const commitMsg = readFileSync(join(repoRoot, ".husky", "commit-msg"), "utf8");
+    const prePush = readFileSync(join(repoRoot, ".husky", "pre-push"), "utf8");
     expect(preCommit).toContain("git diff -z --cached --name-only --diff-filter=ACMR");
     expect(preCommit).toContain("wp format --affected || exit 1");
     expect(preCommit).toContain("git add --pathspec-from-file=- --pathspec-file-nul");
@@ -108,6 +111,115 @@ describe("scaffoldBaseKit", () => {
     expect(preCommit).toContain("wp audit guardrails --affected");
     expect(preCommit).not.toContain("wp audit guardrails\n");
     expect(preCommit).not.toContain("(ts|tsx|js|jsx");
+    expect(preCommit).toContain("# >>> managed by webpresso (husky-pre-commit)");
+    expect(preCommit).toContain("# >>> user-owned (husky-pre-commit)");
+    expect(commitMsg).toContain("# >>> managed by webpresso (husky-commit-msg)");
+    expect(commitMsg).toContain("# >>> user-owned (husky-commit-msg)");
+    expect(commitMsg).not.toContain("--require-lore");
+    expect(prePush).toContain("# >>> managed by webpresso (husky-pre-push)");
+    expect(prePush).toContain("# >>> user-owned (husky-pre-push)");
+    expect(prePush).not.toContain("--require-lore");
+  });
+
+  it("updates managed Husky sections while preserving user-owned hook commands", () => {
+    const catalogDir = resolveCatalogDir();
+    scaffoldBaseKit({ catalogDir, repoRoot, options: {} });
+
+    const preCommitPath = join(repoRoot, ".husky", "pre-commit");
+    const customized = readFileSync(preCommitPath, "utf8").replace(
+      "# Add repo-local pre-commit commands here. This block is preserved by `wp setup`.",
+      "echo local-pre-commit",
+    );
+    writeFileSync(preCommitPath, customized.replace("wp format --affected", "wp format --old"));
+
+    scaffoldBaseKit({ catalogDir, repoRoot, options: {} });
+
+    const preCommit = readFileSync(preCommitPath, "utf8");
+    expect(preCommit).toContain("wp format --affected || exit 1");
+    expect(preCommit).not.toContain("wp format --old");
+    expect(preCommit).toContain("echo local-pre-commit");
+  });
+
+  it("migrates unknown existing Husky hook bodies into user-owned sections", () => {
+    const catalogDir = resolveCatalogDir();
+    mkdirSync(join(repoRoot, ".husky"), { recursive: true });
+    writeFileSync(
+      join(repoRoot, ".husky", "pre-push"),
+      "#!/usr/bin/env sh\nset -eu\npnpm run custom-pre-push\n",
+    );
+
+    scaffoldBaseKit({ catalogDir, repoRoot, options: {} });
+
+    const prePush = readFileSync(join(repoRoot, ".husky", "pre-push"), "utf8");
+    expect(prePush).toContain("# >>> managed by webpresso (husky-pre-push)");
+    expect(prePush).toContain("# Migrated from a pre-existing local hook by `wp setup`.");
+    expect(prePush).toContain("pnpm run custom-pre-push");
+  });
+
+  it("upgrades a legacy Webpresso pre-commit hook while migrating local additions", () => {
+    const catalogDir = resolveCatalogDir();
+    mkdirSync(join(repoRoot, ".husky"), { recursive: true });
+    writeFileSync(
+      join(repoRoot, ".husky", "pre-commit"),
+      `#!/usr/bin/env sh
+set -eu
+
+wp format --affected || exit 1
+
+# Re-stage formatter rewrites for files that were already staged.
+if ! git diff --cached --quiet --diff-filter=ACMR; then
+  git diff -z --cached --name-only --diff-filter=ACMR |
+    git add --pathspec-from-file=- --pathspec-file-nul || exit 1
+fi
+
+wp audit guardrails --affected
+
+# Full whole-repo guardrails are CI-owned — see .github/workflows/ci.yml —
+# and are intentionally NOT run per-commit.
+
+pnpm run local-pre-commit
+`,
+    );
+
+    scaffoldBaseKit({ catalogDir, repoRoot, options: {} });
+
+    const preCommit = readFileSync(join(repoRoot, ".husky", "pre-commit"), "utf8");
+    expect(preCommit).toContain("# >>> managed by webpresso (husky-pre-commit)");
+    expect(preCommit).toContain("wp format --affected || exit 1");
+    expect(preCommit).toContain("wp audit guardrails --affected");
+    expect(preCommit).toContain("# Migrated from a pre-existing local hook by `wp setup`.");
+    expect(preCommit).toContain("pnpm run local-pre-commit");
+    expect(preCommit.match(/wp format --affected/g)).toHaveLength(1);
+  });
+
+  it("drops obsolete Lore-only Husky hook bodies instead of preserving them as custom hooks", () => {
+    const catalogDir = resolveCatalogDir();
+    mkdirSync(join(repoRoot, ".husky"), { recursive: true });
+    writeFileSync(
+      join(repoRoot, ".husky", "commit-msg"),
+      '#!/usr/bin/env sh\nset -eu\nwp audit commit-message --require-lore --message-file "$1"\n',
+    );
+    writeFileSync(
+      join(repoRoot, ".husky", "pre-push"),
+      `#!/usr/bin/env sh
+set -eu
+BASE="$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')"
+COMMITS=$(git rev-list --no-merges "origin/\${BASE}..HEAD" 2>/dev/null || true)
+for SHA in \${COMMITS}; do
+  git log -1 --format="%B" "\${SHA}" > /tmp/commit-msg.txt
+  wp audit commit-message --require-lore --message-file /tmp/commit-msg.txt || exit 1
+done
+`,
+    );
+
+    scaffoldBaseKit({ catalogDir, repoRoot, options: {} });
+
+    const commitMsg = readFileSync(join(repoRoot, ".husky", "commit-msg"), "utf8");
+    const prePush = readFileSync(join(repoRoot, ".husky", "pre-push"), "utf8");
+    expect(commitMsg).not.toContain("--require-lore");
+    expect(commitMsg).not.toContain("wp audit commit-message");
+    expect(prePush).not.toContain("--require-lore");
+    expect(prePush).not.toContain("git rev-list --no-merges");
   });
 
   it("dry-run does not write files", () => {

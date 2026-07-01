@@ -107,11 +107,28 @@ const TEMPLATE_MAP: Array<[string, string]> = [
   ["scripts/sync-release-metadata-version.ts.tmpl", "scripts/sync-release-metadata-version.ts"],
   ["scripts/release-publish.ts.tmpl", "scripts/release-publish.ts"],
   [".husky/pre-commit.tmpl", ".husky/pre-commit"],
+  [".husky/commit-msg.tmpl", ".husky/commit-msg"],
+  [".husky/pre-push.tmpl", ".husky/pre-push"],
   [".github/workflows/ci.yml.tmpl", ".github/workflows/ci.yml"],
   [".github/workflows/release.yml.tmpl", ".github/workflows/release.yml"],
   ["test/.gitkeep.tmpl", "test/.gitkeep"],
   ["e2e/.gitkeep.tmpl", "e2e/.gitkeep"],
 ];
+
+const HUSKY_HOOK_USER_MARKERS = {
+  ".husky/pre-commit": {
+    start: "# >>> user-owned (husky-pre-commit)",
+    end: "# <<< user-owned (husky-pre-commit)",
+  },
+  ".husky/commit-msg": {
+    start: "# >>> user-owned (husky-commit-msg)",
+    end: "# <<< user-owned (husky-commit-msg)",
+  },
+  ".husky/pre-push": {
+    start: "# >>> user-owned (husky-pre-push)",
+    end: "# <<< user-owned (husky-pre-push)",
+  },
+} as const;
 
 /** Consumer-owned quality scaffold: create for fresh repos, never clobber. */
 const QUALITY_BOOTSTRAP_ONLY_MAP: Array<[string, string]> = [
@@ -369,6 +386,146 @@ function isAgentKitSelfRepo(repoRoot: string): boolean {
   }
 }
 
+function writeHuskyHookMerged(
+  targetPath: string,
+  incoming: string,
+  targetRel: keyof typeof HUSKY_HOOK_USER_MARKERS,
+  options: MergeOptions,
+): MergeResult {
+  if (options.dryRun) {
+    return { targetPath, action: "skipped-dry" };
+  }
+
+  const exists = existsSync(targetPath);
+  if (!exists) {
+    mkdirSync(dirname(targetPath), { recursive: true });
+    writeFileSync(targetPath, incoming);
+    return { targetPath, action: "created" };
+  }
+
+  const existing = readFileSync(targetPath, "utf8");
+  const merged = mergeHookSections(existing, incoming, targetRel);
+  if (existing === merged) {
+    return { targetPath, action: "identical" };
+  }
+
+  writeFileSync(targetPath, merged);
+  return { targetPath, action: "overwritten" };
+}
+
+function mergeHookSections(
+  existing: string,
+  incoming: string,
+  targetRel: keyof typeof HUSKY_HOOK_USER_MARKERS,
+): string {
+  const markers = HUSKY_HOOK_USER_MARKERS[targetRel];
+  const existingUserContent = readSection(existing, markers.start, markers.end);
+
+  if (existingUserContent !== undefined) {
+    return replaceSection(incoming, markers.start, markers.end, existingUserContent);
+  }
+
+  const legacyCustomBody = extractLegacyCustomHookBody(existing, targetRel);
+  if (legacyCustomBody === "") {
+    return incoming;
+  }
+
+  const customBody = legacyCustomBody ?? normalizeLegacyHookBody(existing);
+  if (customBody.length === 0) {
+    return incoming;
+  }
+
+  return replaceSection(
+    incoming,
+    markers.start,
+    markers.end,
+    ["# Migrated from a pre-existing local hook by `wp setup`.", customBody].join("\n"),
+  );
+}
+
+function readSection(content: string, start: string, end: string): string | undefined {
+  const startIndex = content.indexOf(start);
+  const endIndex = content.indexOf(end);
+  if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
+    return undefined;
+  }
+
+  const contentStart = content.indexOf("\n", startIndex);
+  if (contentStart === -1 || contentStart + 1 > endIndex) {
+    return "";
+  }
+
+  return content.slice(contentStart + 1, endIndex).replace(/\n$/u, "");
+}
+
+function replaceSection(content: string, start: string, end: string, replacement: string): string {
+  const startIndex = content.indexOf(start);
+  const endIndex = content.indexOf(end);
+  if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
+    return content;
+  }
+
+  const contentStart = content.indexOf("\n", startIndex);
+  if (contentStart === -1) {
+    return content;
+  }
+
+  const normalizedReplacement =
+    replacement.length === 0 ? "" : `${replacement.replace(/\n*$/u, "")}\n`;
+  return `${content.slice(0, contentStart + 1)}${normalizedReplacement}${content.slice(endIndex)}`;
+}
+
+function normalizeLegacyHookBody(content: string): string {
+  return content
+    .replace(/^#![^\n]*\n/u, "")
+    .replace(/^set -eu\n+/u, "")
+    .trim();
+}
+
+function extractLegacyCustomHookBody(
+  content: string,
+  targetRel: keyof typeof HUSKY_HOOK_USER_MARKERS,
+): string | undefined {
+  const body = normalizeLegacyHookBody(content);
+  if (body.length === 0) return "";
+
+  if (targetRel === ".husky/pre-commit") {
+    const withoutKnown = body
+      .replace(/wp format --affected \|\| exit 1\n*/u, "")
+      .replace(
+        /# Re-stage formatter rewrites for files that were already staged\.\nif ! git diff --cached --quiet --diff-filter=ACMR; then\n  git diff -z --cached --name-only --diff-filter=ACMR \|\n    git add --pathspec-from-file=- --pathspec-file-nul \|\| exit 1\nfi\n*/u,
+        "",
+      )
+      .replace(/wp audit guardrails --affected\n*/u, "")
+      .replace(
+        /# Full whole-repo guardrails are CI-owned — see \.github\/workflows\/ci\.yml —\n# and are intentionally NOT run per-commit\.\n*/u,
+        "",
+      )
+      .trim();
+    return withoutKnown.length === body.length ? undefined : withoutKnown;
+  }
+
+  if (targetRel === ".husky/commit-msg") {
+    return /^# Global wp.*\nwp audit commit-message --require-lore --message-file "\$1"$/su.test(
+      body,
+    ) || /^wp audit commit-message (--require-lore )?--message-file "\$1"$/u.test(body)
+      ? ""
+      : undefined;
+  }
+
+  if (targetRel === ".husky/pre-push") {
+    return body.includes(
+      "wp audit commit-message --require-lore --message-file /tmp/commit-msg.txt",
+    ) &&
+      body.includes("git rev-list --no-merges") &&
+      body.includes('git log -1 --format="%B"')
+      ? ""
+      : undefined;
+  }
+
+  return undefined;
+}
+
 export function scaffoldBaseKit(input: ScaffoldBaseKitInput): MergeResult[] {
   const { catalogDir, repoRoot, options } = input;
   const baseKitDir = join(catalogDir, "base-kit");
@@ -382,7 +539,18 @@ export function scaffoldBaseKit(input: ScaffoldBaseKitInput): MergeResult[] {
     if (!existsSync(tmplPath)) continue;
     const content = readFileSync(tmplPath, "utf8");
     const targetPath = join(repoRoot, targetRel);
-    results.push(writeFileMerged(targetPath, content, options));
+    if (targetRel in HUSKY_HOOK_USER_MARKERS) {
+      results.push(
+        writeHuskyHookMerged(
+          targetPath,
+          content,
+          targetRel as keyof typeof HUSKY_HOOK_USER_MARKERS,
+          options,
+        ),
+      );
+    } else {
+      results.push(writeFileMerged(targetPath, content, options));
+    }
   }
 
   // Bootstrap-only: write template only when target is absent. Never
