@@ -92,3 +92,41 @@ Update the repo-owned instruction sources so future agents know that Ultragoal o
 
 - Implementing any high-value Ultragoal story in this instruction-only PR.
 - Changing `wp worktree` or `wp blueprint start` behavior.
+
+## Trust Dossier
+
+### Readiness Verdict
+
+- promotion-ready: true
+- unresolved-count: 0
+- verified-at: 2026-07-01T18:54:00Z
+- verified-head: e66f30bf7f8ba2c9f1b0e250d077ade032c71b5c
+- trust-gate-version: v1
+
+### Material Claims
+
+| ID  | Claim                                                                | Evidence                                                                                   |
+| --- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| C1  | Ultragoal instructions now forbid primary/main checkout controllers. | repo:AGENTS.md; repo:catalog/AGENTS.md.tpl; repo:catalog/agent/rules/pre-implementation.md |
+| C2  | Instructions require controller worktrees to start from origin/main. | repo:AGENTS.md; repo:catalog/AGENTS.md.tpl; repo:catalog/agent/rules/pre-implementation.md |
+| C3  | The instruction update was verified with repo-owned gates.           | repo:blueprints/in-progress/ultragoal-origin-main-controller-safety-instructions.md        |
+
+### Material Decisions
+
+| ID  | Decision                         | Chosen option                       | Rejected alternatives            | Rationale                                                      |
+| --- | -------------------------------- | ----------------------------------- | -------------------------------- | -------------------------------------------------------------- |
+| D1  | Where to document detailed rules | pre-implementation rule plus AGENTS | Only AGENTS or only catalog rule | Agents read AGENTS; detailed durable governance lives in rule. |
+| D2  | Ultragoal completion requirement | verify + green checks + merge first | checkpoint before merge          | Durable state should reflect landed code.                      |
+
+### Promotion Gates
+
+| Gate         | Command                      | Expected outcome | Last result                      |
+| ------------ | ---------------------------- | ---------------- | -------------------------------- |
+| sync         | wp sync --check              | pass             | pass at 2026-07-01T18:54:00.000Z |
+| agents audit | wp audit agents              | pass             | pass at 2026-07-01T18:54:00.000Z |
+| format       | wp format --check            | pass             | pass at 2026-07-01T18:54:00.000Z |
+| lifecycle    | wp audit blueprint-lifecycle | pass             | pass at 2026-07-01T18:54:00.000Z |
+
+### Residual Unknowns
+
+None.
