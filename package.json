@@ -1,6 +1,6 @@
 {
   "name": "@webpresso/agent-kit",
-  "version": "2.4.4",
+  "version": "2.4.5",
   "private": false,
   "description": "TypeScript-first agent harness for guarded develop/deploy workflows: wp CLI gates, MCP tools, hooks, memory, worktrees, secrets, audits, and evidence checks.",
   "keywords": [
